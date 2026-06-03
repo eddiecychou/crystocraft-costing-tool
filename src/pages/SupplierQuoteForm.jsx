@@ -209,7 +209,7 @@ export default function SupplierQuoteForm() {
   if (fetching) return <div className="p-6 text-gray-400">Loading…</div>
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
         <div className="text-sm text-gray-500 mb-1">
           <Link to={`/products/${productId}`} className="hover:text-brand-600">{productName}</Link>

@@ -54,7 +54,7 @@ export default function ComponentDetail() {
   if (!component) return <div className="p-6 text-gray-500">Component not found.</div>
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-4 md:p-6 max-w-3xl">
       {/* Breadcrumb */}
       <div className="text-sm text-gray-500 mb-1">
         <Link to="/products" className="hover:text-brand-600">Products</Link>

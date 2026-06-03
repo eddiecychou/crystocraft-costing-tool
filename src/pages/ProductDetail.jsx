@@ -47,20 +47,22 @@ export default function ProductDetail() {
   if (!product) return <div className="p-6 text-gray-500">Product not found.</div>
 
   return (
-    <div className="p-6 max-w-4xl">
+    <div className="p-4 md:p-6 max-w-4xl">
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <Link to="/products" className="text-sm text-brand-600 hover:underline">← Products</Link>
-          <h1 className="text-2xl font-bold text-gray-900 mt-1">{product.name}</h1>
-          <div className="flex items-center gap-2 mt-1">
-            <span className={`badge-${product.status}`}>{product.status}</span>
-            <span className="text-sm text-gray-500">{product.category}</span>
+      <div className="mb-6">
+        <Link to="/products" className="text-sm text-brand-600 hover:underline">← Products</Link>
+        <div className="flex items-start justify-between mt-1 gap-3">
+          <div>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">{product.name}</h1>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`badge-${product.status}`}>{product.status}</span>
+              <span className="text-sm text-gray-500">{product.category}</span>
+            </div>
           </div>
-        </div>
-        <div className="flex gap-2">
-          <Link to={`/products/${id}/edit`} className="btn-secondary">Edit</Link>
-          <button className="btn-danger" onClick={() => setConfirmDelete(true)}>Delete</button>
+          <div className="flex gap-2 shrink-0">
+            <Link to={`/products/${id}/edit`} className="btn-secondary text-sm">Edit</Link>
+            <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>Delete</button>
+          </div>
         </div>
       </div>
 

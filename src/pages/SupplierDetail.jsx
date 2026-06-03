@@ -39,7 +39,7 @@ export default function SupplierDetail() {
   if (!supplier) return <div className="p-6 text-gray-500">Supplier not found.</div>
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="p-4 md:p-6 max-w-2xl">
       <Link to="/suppliers" className="text-sm text-brand-600 hover:underline">← Suppliers</Link>
 
       <div className="flex items-start justify-between mt-2 mb-6">

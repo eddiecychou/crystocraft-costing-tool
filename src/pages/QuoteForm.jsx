@@ -54,7 +54,7 @@ export default function QuoteForm() {
   }
 
   return (
-    <div className="p-6 max-w-xl">
+    <div className="p-4 md:p-6 max-w-xl">
       <div className="mb-6">
         <Link to="/quotes" className="text-sm text-brand-600 hover:underline">← Quotes</Link>
         <h1 className="text-2xl font-bold text-gray-900 mt-1">New Client Quote</h1>

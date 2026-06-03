@@ -31,20 +31,20 @@ export default function Products() {
     <div className="p-6">
       {loading && <LoadingBar />}
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Products</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Products</h1>
           <p className="text-sm text-gray-500 mt-0.5">{products.length} items in catalogue</p>
         </div>
-        <Link to="/products/new" className="btn-primary">+ New Product</Link>
+        <Link to="/products/new" className="btn-primary text-sm">+ New</Link>
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3 mb-6 flex-wrap">
+      <div className="flex gap-2 mb-5 flex-wrap">
         <input
           type="text"
-          placeholder="Search products…"
-          className="input max-w-xs"
+          placeholder="Search…"
+          className="input flex-1 min-w-0"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />

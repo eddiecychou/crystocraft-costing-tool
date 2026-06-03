@@ -47,7 +47,7 @@ export default function SupplierForm() {
   if (fetching) return <div className="p-6 text-gray-400">Loading…</div>
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
         <Link to="/suppliers" className="text-sm text-brand-600 hover:underline">← Suppliers</Link>
         <h1 className="text-2xl font-bold text-gray-900 mt-1">{isEdit ? 'Edit Supplier' : 'New Supplier'}</h1>

@@ -113,17 +113,15 @@ export default function QuoteDetail() {
   }, 0)
 
   return (
-    <div className="p-6 max-w-4xl">
+    <div className="p-4 md:p-6 max-w-4xl">
       <Link to="/quotes" className="text-sm text-brand-600 hover:underline">← Quotes</Link>
 
       {/* Header */}
-      <div className="flex items-start justify-between mt-2 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">{quote.client_name}</h1>
-          {quote.contact_name && <p className="text-sm text-gray-500 mt-0.5">{quote.contact_name} {quote.contact_email && `· ${quote.contact_email}`}</p>}
-          <p className="text-xs text-gray-400 mt-1">Currency: <span className="font-medium text-gray-600">{quoteCurrency}</span></p>
-        </div>
-        <div className="flex gap-2 items-center">
+      <div className="mt-2 mb-6">
+        <h1 className="text-xl md:text-2xl font-bold text-gray-900">{quote.client_name}</h1>
+        {quote.contact_name && <p className="text-sm text-gray-500 mt-0.5">{quote.contact_name} {quote.contact_email && `· ${quote.contact_email}`}</p>}
+        <p className="text-xs text-gray-400 mt-1">Currency: <span className="font-medium text-gray-600">{quoteCurrency}</span></p>
+        <div className="flex flex-wrap gap-2 mt-3">
           <select
             className="input w-auto text-sm py-1.5"
             value={quote.status || 'draft'}
@@ -237,6 +235,7 @@ function QuoteItem({ item, quoteCurrency, onTiersChange, onRemove }) {
         </div>
 
         {/* Tier table */}
+        <div className="overflow-x-auto -mx-1">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-xs text-gray-400">
@@ -279,6 +278,7 @@ function QuoteItem({ item, quoteCurrency, onTiersChange, onRemove }) {
             ))}
           </tbody>
         </table>
+        </div>
         <button type="button" onClick={addTier} className="mt-1 text-xs text-brand-500 hover:text-brand-700">+ Add tier</button>
       </div>
     </div>

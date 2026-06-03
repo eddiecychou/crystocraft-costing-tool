@@ -146,7 +146,7 @@ export default function PricingTiers() {
   if (loading) return <LoadingBar />
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-4 md:p-6 max-w-3xl">
       {/* Breadcrumb */}
       <Link to={`/products/${id}`} className="text-sm text-brand-600 hover:underline">← {product?.name}</Link>
       <h1 className="text-2xl font-bold text-gray-900 mt-1 mb-6">Pricing Tiers</h1>

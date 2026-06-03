@@ -48,7 +48,7 @@ export default function ProductForm() {
   if (fetching) return <div className="p-6 text-gray-400">Loading…</div>
 
   return (
-    <div className="p-6 max-w-2xl">
+    <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Product' : 'New Product'}</h1>
       </div>
