@@ -43,6 +43,7 @@ export default function CustomerForm() {
     contact_email: '',
     contact_phone: '',
     whatsapp: '',
+    website: '',
     country: 'Hong Kong',
     address: '',
     notes: '',
@@ -64,6 +65,7 @@ export default function CustomerForm() {
           contact_email: d.contact_email || '',
           contact_phone: d.contact_phone || '',
           whatsapp:      d.whatsapp      || '',
+          website:       d.website       || '',
           country:       d.country || d.region || 'Hong Kong',
           address:       d.address || '',
           notes:         d.notes   || '',
@@ -215,6 +217,10 @@ export default function CustomerForm() {
           <div>
             <label className="label">WhatsApp Number</label>
             <input className="input" value={form.whatsapp} onChange={set('whatsapp')} placeholder="e.g. +852 9123 4567" />
+          </div>
+          <div>
+            <label className="label">Website</label>
+            <input className="input" type="url" value={form.website} onChange={set('website')} placeholder="https://www.example.com" />
           </div>
         </div>
 

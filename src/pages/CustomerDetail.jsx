@@ -81,6 +81,11 @@ export default function CustomerDetail() {
               <a href={`https://wa.me/${customer.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">{customer.whatsapp}</a>
             } />
           )}
+          {customer.website && (
+            <Row label="Website" value={
+              <a href={customer.website} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline truncate block">{customer.website.replace(/^https?:\/\//, '')}</a>
+            } />
+          )}
           {customer.country && <Row label="Country" value={customer.country} />}
           {customer.address && <Row label="Address" value={customer.address} />}
         </dl>
