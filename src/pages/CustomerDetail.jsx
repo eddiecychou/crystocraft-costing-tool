@@ -49,9 +49,14 @@ export default function CustomerDetail() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-gray-900">{customer.company_name}</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              {[customer.industry, customer.region].filter(Boolean).join(' · ')}
-            </p>
+            <p className="text-sm text-gray-500 mt-0.5">{customer.country || customer.region || ''}</p>
+            {customer.tags?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {customer.tags.map(tag => (
+                  <span key={tag} className="px-2 py-0.5 rounded-full bg-brand-100 text-brand-700 text-xs font-medium">{tag}</span>
+                ))}
+              </div>
+            )}
           </div>
           <div className="flex gap-2 shrink-0">
             <Link to={`/customers/${id}/edit`} className="btn-secondary text-sm">Edit</Link>
@@ -71,7 +76,12 @@ export default function CustomerDetail() {
           {customer.contact_phone && (
             <Row label="Phone" value={<a href={`tel:${customer.contact_phone}`} className="text-brand-600 hover:underline">{customer.contact_phone}</a>} />
           )}
-          {customer.wechat_id && <Row label="WeChat" value={customer.wechat_id} />}
+          {customer.whatsapp && (
+            <Row label="WhatsApp" value={
+              <a href={`https://wa.me/${customer.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">{customer.whatsapp}</a>
+            } />
+          )}
+          {customer.country && <Row label="Country" value={customer.country} />}
           {customer.address && <Row label="Address" value={customer.address} />}
         </dl>
       </div>

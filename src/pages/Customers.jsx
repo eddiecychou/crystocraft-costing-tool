@@ -4,13 +4,19 @@ import { db } from '../firebase'
 import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 
-const REGIONS = ['All', 'Hong Kong', 'China', 'International']
+const COUNTRIES = [
+  'Hong Kong', 'China (Mainland)', 'Macau', 'Taiwan',
+  'Singapore', 'Malaysia', 'Thailand', 'Vietnam', 'Indonesia', 'Philippines',
+  'Japan', 'South Korea', 'India',
+  'United Arab Emirates', 'Australia', 'United Kingdom',
+  'United States', 'Canada', 'Other',
+]
 
 export default function Customers() {
   const [customers, setCustomers] = useState([])
   const [loading, setLoading]     = useState(true)
   const [search, setSearch]       = useState('')
-  const [filterRegion, setFilterRegion] = useState('')
+  const [filterCountry, setFilterCountry] = useState('')
 
   useEffect(() => {
     const q = query(collection(db, 'customers'), orderBy('company_name'))
@@ -21,12 +27,13 @@ export default function Customers() {
   }, [])
 
   const filtered = customers.filter(c => {
+    const searchLower = search.toLowerCase()
     const matchSearch = !search ||
-      c.company_name?.toLowerCase().includes(search.toLowerCase()) ||
-      c.contact_name?.toLowerCase().includes(search.toLowerCase()) ||
-      c.industry?.toLowerCase().includes(search.toLowerCase())
-    const matchRegion = !filterRegion || c.region === filterRegion
-    return matchSearch && matchRegion
+      c.company_name?.toLowerCase().includes(searchLower) ||
+      c.contact_name?.toLowerCase().includes(searchLower) ||
+      c.tags?.some(t => t.toLowerCase().includes(searchLower))
+    const matchCountry = !filterCountry || (c.country || c.region) === filterCountry
+    return matchSearch && matchCountry
   })
 
   return (
@@ -44,14 +51,14 @@ export default function Customers() {
       <div className="flex gap-2 mb-5 flex-wrap">
         <input
           type="text"
-          placeholder="Search name, contact, industry…"
+          placeholder="Search name, contact, tag…"
           className="input flex-1 min-w-0"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
-        <select className="input w-auto" value={filterRegion} onChange={e => setFilterRegion(e.target.value)}>
-          <option value="">All regions</option>
-          {REGIONS.filter(r => r !== 'All').map(r => <option key={r}>{r}</option>)}
+        <select className="input w-auto" value={filterCountry} onChange={e => setFilterCountry(e.target.value)}>
+          <option value="">All countries</option>
+          {COUNTRIES.map(c => <option key={c}>{c}</option>)}
         </select>
       </div>
 
@@ -67,8 +74,16 @@ export default function Customers() {
               <div className="min-w-0">
                 <p className="font-semibold text-gray-900 text-sm truncate">{c.company_name}</p>
                 <p className="text-xs text-gray-500 mt-0.5 truncate">
-                  {[c.contact_name, c.industry, c.region].filter(Boolean).join(' · ')}
+                  {[c.contact_name, c.country || c.region].filter(Boolean).join(' · ')}
                 </p>
+                {c.tags?.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {c.tags.slice(0, 4).map(tag => (
+                      <span key={tag} className="px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-600 text-xs">{tag}</span>
+                    ))}
+                    {c.tags.length > 4 && <span className="text-xs text-gray-400">+{c.tags.length - 4}</span>}
+                  </div>
+                )}
               </div>
               <span className="text-xs text-gray-400 ml-3 shrink-0">→</span>
             </Link>
