@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { doc, getDoc, updateDoc, deleteDoc, collection, onSnapshot, orderBy, query } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, deleteDoc, addDoc, collection, collectionGroup, onSnapshot, orderBy, query, getDocs, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
@@ -15,6 +15,12 @@ export default function ProductDetail() {
   const [images, setImages]         = useState([])
   const [loading, setLoading]       = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
+
+  // Copy-existing picker state
+  const [showPicker, setShowPicker]       = useState(false)
+  const [allComponents, setAllComponents] = useState([])
+  const [pickerSearch, setPickerSearch]   = useState('')
+  const [copying, setCopying]             = useState(false)
 
   useEffect(() => {
     getDoc(doc(db, 'products', id)).then(snap => {
@@ -41,6 +47,48 @@ export default function ProductDetail() {
   async function handleDelete() {
     await deleteDoc(doc(db, 'products', id))
     navigate('/products')
+  }
+
+  async function openPicker() {
+    setPickerSearch('')
+    setShowPicker(true)
+    if (allComponents.length > 0) return
+    // Fetch all components across all products via collection group
+    const snap = await getDocs(collectionGroup(db, 'components'))
+    const items = snap.docs.map(d => {
+      const pathParts = d.ref.path.split('/')
+      const parentProductId = pathParts[1]
+      return { id: d.id, ...d.data(), _productId: parentProductId }
+    })
+    // Fetch product names for labelling
+    const productIds = [...new Set(items.map(c => c._productId))]
+    const productNames = {}
+    await Promise.all(productIds.map(async pid => {
+      const pSnap = await getDoc(doc(db, 'products', pid))
+      productNames[pid] = pSnap.data()?.name || pid
+    }))
+    setAllComponents(items.map(c => ({ ...c, _productName: productNames[c._productId] || '' })))
+  }
+
+  async function handleCopyComponent(comp) {
+    setCopying(true)
+    try {
+      const existing = components.map(c => c.sort_order ?? 0)
+      const nextOrder = existing.length ? Math.max(...existing) + 1 : 0
+      const newComp = {
+        name: comp.name,
+        spec: comp.spec || '',
+        unit: comp.unit || 'pcs',
+        notes: comp.notes || '',
+        sort_order: nextOrder,
+        createdAt: serverTimestamp(),
+      }
+      const ref = await addDoc(collection(db, 'products', id, 'components'), newComp)
+      setShowPicker(false)
+      navigate(`/products/${id}/components/${ref.id}`)
+    } finally {
+      setCopying(false)
+    }
   }
 
   if (loading) return <LoadingBar />
@@ -87,7 +135,10 @@ export default function ProductDetail() {
           <div className="card p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-gray-700">Bill of Materials</h2>
-              <Link to={`/products/${id}/components/new`} className="btn-secondary text-xs py-1 px-3">+ Add Component</Link>
+              <div className="flex gap-2">
+                <button onClick={openPicker} className="btn-secondary text-xs py-1 px-3">+ Copy Existing</button>
+                <Link to={`/products/${id}/components/new`} className="btn-primary text-xs py-1 px-3">+ New</Link>
+              </div>
             </div>
             {components.length === 0 ? (
               <p className="text-sm text-gray-400 py-4 text-center">No components yet — add the parts that make up this product.</p>
@@ -145,6 +196,97 @@ export default function ProductDetail() {
           onCancel={() => setConfirmDelete(false)}
         />
       )}
+
+      {/* Copy-existing component picker modal */}
+      {showPicker && (
+        <ComponentPicker
+          allComponents={allComponents}
+          currentProductId={id}
+          search={pickerSearch}
+          onSearchChange={setPickerSearch}
+          onSelect={handleCopyComponent}
+          onClose={() => setShowPicker(false)}
+          copying={copying}
+        />
+      )}
+    </div>
+  )
+}
+
+function ComponentPicker({ allComponents, currentProductId, search, onSearchChange, onSelect, onClose, copying }) {
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase()
+    return allComponents
+      .filter(c => c._productId !== currentProductId)
+      .filter(c =>
+        !q ||
+        c.name?.toLowerCase().includes(q) ||
+        c._productName?.toLowerCase().includes(q) ||
+        c.spec?.toLowerCase().includes(q)
+      )
+  }, [allComponents, currentProductId, search])
+
+  // Group by product
+  const grouped = useMemo(() => {
+    const map = {}
+    for (const c of filtered) {
+      if (!map[c._productName]) map[c._productName] = []
+      map[c._productName].push(c)
+    }
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b))
+  }, [filtered])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h2 className="font-semibold text-gray-800">Copy Existing Component</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+        </div>
+
+        <div className="px-4 py-3 border-b border-gray-100">
+          <input
+            autoFocus
+            type="text"
+            placeholder="Search by name, product, or spec…"
+            className="input"
+            value={search}
+            onChange={e => onSearchChange(e.target.value)}
+          />
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          {allComponents.length === 0 ? (
+            <p className="text-center text-sm text-gray-400 py-10">Loading components…</p>
+          ) : grouped.length === 0 ? (
+            <p className="text-center text-sm text-gray-400 py-10">No matching components found.</p>
+          ) : (
+            grouped.map(([productName, comps]) => (
+              <div key={productName}>
+                <p className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 sticky top-0">
+                  {productName}
+                </p>
+                {comps.map(c => (
+                  <button
+                    key={c.id}
+                    disabled={copying}
+                    onClick={() => onSelect(c)}
+                    className="w-full text-left px-4 py-3 hover:bg-brand-50 transition-colors border-b border-gray-50 last:border-0"
+                  >
+                    <p className="text-sm font-medium text-gray-800">{c.name}</p>
+                    {c.spec && <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{c.spec}</p>}
+                    {c.unit && <span className="text-xs text-gray-400">Unit: {c.unit}</span>}
+                  </button>
+                ))}
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="px-5 py-3 border-t border-gray-100 text-xs text-gray-400">
+          Click a component to copy it into this product. You can edit it after copying.
+        </div>
+      </div>
     </div>
   )
 }
