@@ -23,10 +23,11 @@ export default function PricingTiers() {
   const [confirmDelete, setConfirmDelete] = useState(null)
 
   // New tier form state
-  const [newQty, setNewQty]   = useState('')
-  const [newPrice, setNewPrice] = useState('')
+  const [newQty, setNewQty]         = useState('')
+  const [newPrice, setNewPrice]     = useState('')
+  const [newCurrency, setNewCurrency] = useState('HKD')
   const [newLeadTime, setNewLeadTime] = useState('')
-  const [adding, setAdding]   = useState(false)
+  const [adding, setAdding]         = useState(false)
 
   useEffect(() => {
     getDoc(doc(db, 'products', id)).then(s => {
@@ -83,16 +84,24 @@ export default function PricingTiers() {
 
   const suggestedPrice = totalUnitCostAtQty(tiers[0]?.quantity || 200) * markup
 
+  function toHKD(price, currency) {
+    return Number(price) * (rates[currency] || 1)
+  }
+
   async function handleAddTier(e) {
     e.preventDefault()
     if (!newQty) return
     setAdding(true)
     const qty = Number(newQty)
-    const price = newPrice ? Number(newPrice) : Math.ceil(totalUnitCostAtQty(qty) * markup)
+    const suggestedHKD = Math.ceil(totalUnitCostAtQty(qty) * markup)
+    const sellPrice = newPrice ? Number(newPrice) : (newCurrency === 'HKD' ? suggestedHKD : +(suggestedHKD / (rates[newCurrency] || 1)).toFixed(2))
+    const priceHKD = toHKD(sellPrice, newCurrency)
     try {
       await addDoc(collection(db, 'products', id, 'pricing_tiers'), {
         quantity: qty,
-        price_hkd: price,
+        sell_price: sellPrice,
+        sell_currency: newCurrency,
+        price_hkd: priceHKD,
         production_lead_time_days: newLeadTime ? Number(newLeadTime) : null,
         createdAt: serverTimestamp(),
       })
@@ -104,9 +113,22 @@ export default function PricingTiers() {
     }
   }
 
-  async function handlePriceChange(tierId, value) {
-    await updateDoc(doc(db, 'products', id, 'pricing_tiers', tierId), {
-      price_hkd: Number(value),
+  async function handlePriceChange(tier, sellPrice, currency) {
+    const cur = currency || tier.sell_currency || 'HKD'
+    const priceHKD = toHKD(sellPrice, cur)
+    await updateDoc(doc(db, 'products', id, 'pricing_tiers', tier.id), {
+      sell_price: Number(sellPrice),
+      sell_currency: cur,
+      price_hkd: priceHKD,
+    })
+  }
+
+  async function handleCurrencyChange(tier, currency) {
+    const sellPrice = tier.sell_price ?? tier.price_hkd
+    const priceHKD = toHKD(sellPrice, currency)
+    await updateDoc(doc(db, 'products', id, 'pricing_tiers', tier.id), {
+      sell_currency: currency,
+      price_hkd: priceHKD,
     })
   }
 
@@ -183,7 +205,7 @@ export default function PricingTiers() {
             <div className="mt-4 pt-4 border-t border-gray-100">
               <div className="flex items-center justify-between mb-1">
                 <label className="text-sm text-gray-600">Markup: <span className="font-semibold">{markup.toFixed(2)}×</span></label>
-                <p className="text-sm text-gray-600">Suggested price: <span className="font-semibold text-brand-700">HKD {suggestedPrice.toFixed(2)}</span></p>
+                <p className="text-sm text-gray-600">Suggested: <span className="font-semibold text-brand-700">HKD {suggestedPrice.toFixed(2)}</span></p>
               </div>
               <input
                 type="range" min="1.0" max="4.0" step="0.05"
@@ -226,8 +248,9 @@ export default function PricingTiers() {
                   <th className="text-left pb-2 font-medium">Qty</th>
                   <th className="text-right pb-2 font-medium">Unit Cost HKD</th>
                   <th className="text-right pb-2 font-medium whitespace-nowrap">Tooling / Unit</th>
-                  <th className="text-right pb-2 font-medium whitespace-nowrap">All-in Cost</th>
-                  <th className="text-right pb-2 font-medium">Sell Price HKD</th>
+                  <th className="text-right pb-2 font-medium whitespace-nowrap">All-in HKD</th>
+                  <th className="text-right pb-2 font-medium">Currency</th>
+                  <th className="text-right pb-2 font-medium">Sell Price</th>
                   <th className="text-right pb-2 font-medium">Margin</th>
                   <th className="text-right pb-2 font-medium">Lead Time (days)</th>
                   <th className="pb-2"></th>
@@ -237,8 +260,11 @@ export default function PricingTiers() {
                 {tiers.map(tier => {
                   const toolingPerUnit = toolingCostHKD / tier.quantity
                   const allInCost = totalUnitCostAtQty(tier.quantity)
-                  const margin = tier.price_hkd && allInCost
-                    ? ((tier.price_hkd - allInCost) / tier.price_hkd * 100)
+                  const sellCurrency = tier.sell_currency || 'HKD'
+                  const sellPrice = tier.sell_price ?? tier.price_hkd
+                  const priceHKD = tier.price_hkd
+                  const margin = priceHKD && allInCost
+                    ? ((priceHKD - allInCost) / priceHKD * 100)
                     : null
                   return (
                     <tr key={tier.id}>
@@ -247,13 +273,26 @@ export default function PricingTiers() {
                       <td className="py-2.5 text-right text-gray-400 text-xs">{toolingCostHKD > 0 ? `+${toolingPerUnit.toFixed(2)}` : '—'}</td>
                       <td className="py-2.5 text-right font-medium text-gray-800">{allInCost.toFixed(2)}</td>
                       <td className="py-2.5 text-right">
+                        <select
+                          className="input py-1 text-sm w-20"
+                          value={sellCurrency}
+                          onChange={e => handleCurrencyChange(tier, e.target.value)}
+                        >
+                          {CURRENCIES.map(c => <option key={c}>{c}</option>)}
+                        </select>
+                      </td>
+                      <td className="py-2.5 text-right">
                         <input
                           type="number"
-                          step="0.5"
+                          step="0.01"
                           className="input text-right w-24 py-1 text-sm"
-                          defaultValue={tier.price_hkd}
-                          onBlur={e => handlePriceChange(tier.id, e.target.value)}
+                          defaultValue={sellPrice}
+                          key={`${tier.id}-${sellCurrency}`}
+                          onBlur={e => handlePriceChange(tier, e.target.value, sellCurrency)}
                         />
+                        {sellCurrency !== 'HKD' && priceHKD != null && (
+                          <p className="text-xs text-gray-400 mt-0.5">≈ HKD {priceHKD.toFixed(2)}</p>
+                        )}
                       </td>
                       <td className="py-2.5 text-right">
                         {margin != null ? (
@@ -297,10 +336,19 @@ export default function PricingTiers() {
             />
           </div>
           <div>
-            <p className="text-xs text-gray-500 mb-1">Sell Price HKD</p>
+            <p className="text-xs text-gray-500 mb-1">Currency</p>
+            <select
+              className="input w-24 py-1.5 text-sm"
+              value={newCurrency} onChange={e => setNewCurrency(e.target.value)}
+            >
+              {CURRENCIES.map(c => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <p className="text-xs text-gray-500 mb-1">Sell Price</p>
             <input
-              type="number" step="0.5" min="0"
-              placeholder={suggestedPrice ? Math.ceil(suggestedPrice).toString() : '0'}
+              type="number" step="0.01" min="0"
+              placeholder={suggestedPrice ? (newCurrency === 'HKD' ? Math.ceil(suggestedPrice) : (suggestedPrice / (rates[newCurrency] || 1)).toFixed(2)) : '0'}
               className="input w-28 py-1.5 text-sm"
               value={newPrice} onChange={e => setNewPrice(e.target.value)}
             />
