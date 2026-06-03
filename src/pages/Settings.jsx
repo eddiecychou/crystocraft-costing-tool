@@ -71,7 +71,7 @@ export default function Settings() {
     }
   }
 
-  const isDirty = savedRates && CURRENCIES.some(c => String(rates[c]) !== String(savedRates[c]))
+  const isDirty = !savedRates || CURRENCIES.some(c => String(rates[c]) !== String(savedRates[c]))
 
   return (
     <div className="p-4 md:p-6 max-w-xl">
