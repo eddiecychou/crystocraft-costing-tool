@@ -82,7 +82,8 @@ export default function SupplierQuoteForm() {
     const newFiles = Array.from(e.target.files).map(file => ({
       _id: ++fileIdRef.current,
       file,
-      preview: URL.createObjectURL(file),
+      isPdf: file.type === 'application/pdf',
+      preview: file.type === 'application/pdf' ? null : URL.createObjectURL(file),
     }))
     setFiles(prev => [...prev, ...newFiles])
     e.target.value = ''
@@ -100,13 +101,20 @@ export default function SupplierQuoteForm() {
     setExtracting(true)
     setExtractError('')
     try {
-      const preprocessed = await preprocessForGemini(file)
-      const base64 = await toBase64(preprocessed)
+      let base64, mimeType
+      if (file.type === 'application/pdf') {
+        base64 = await toBase64(file)
+        mimeType = 'application/pdf'
+      } else {
+        const preprocessed = await preprocessForGemini(file)
+        base64 = await toBase64(preprocessed)
+        mimeType = 'image/png'
+      }
 
       const res = await fetch('/api/process-quote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64, mimeType: 'image/png' }),
+        body: JSON.stringify({ image: base64, mimeType }),
       })
 
       if (!res.ok) throw new Error('Extraction failed')
@@ -144,11 +152,16 @@ export default function SupplierQuoteForm() {
       const path = `products/${productId}/components/${componentId}/quotes`
       const uploadedAttachments = await Promise.all(
         files.map(async ({ file }) => {
-          const colourJpeg = await resizeToJpeg(file)
+          const isPdf = file.type === 'application/pdf'
           const fileRef = storageRef(storage, `${path}/${Date.now()}_${file.name}`)
-          await uploadBytes(fileRef, colourJpeg, { contentType: 'image/jpeg' })
+          if (isPdf) {
+            await uploadBytes(fileRef, file, { contentType: 'application/pdf' })
+          } else {
+            const colourJpeg = await resizeToJpeg(file)
+            await uploadBytes(fileRef, colourJpeg, { contentType: 'image/jpeg' })
+          }
           const url = await getDownloadURL(fileRef)
-          return { file_url: url, file_name: file.name, file_type: 'image', ai_extracted: extracting, uploaded_at: new Date().toISOString() }
+          return { file_url: url, file_name: file.name, file_type: isPdf ? 'pdf' : 'image', ai_extracted: extracting, uploaded_at: new Date().toISOString() }
         })
       )
       setUploading(false)
@@ -213,16 +226,18 @@ export default function SupplierQuoteForm() {
 
         <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:border-brand-400 hover:bg-brand-50 transition-colors">
           <span className="text-2xl mb-1">📎</span>
-          <span className="text-sm text-gray-600">Click to upload images</span>
-          <span className="text-xs text-gray-400 mt-0.5">JPG, PNG, WebP, HEIC</span>
-          <input type="file" accept="image/*" multiple className="hidden" onChange={handleFileChange} />
+          <span className="text-sm text-gray-600">Click to upload images or PDFs</span>
+          <span className="text-xs text-gray-400 mt-0.5">JPG, PNG, WebP, HEIC, PDF</span>
+          <input type="file" accept="image/*,.pdf" multiple className="hidden" onChange={handleFileChange} />
         </label>
 
         {files.length > 0 && (
           <div className="mt-3 space-y-2">
             {files.map(f => (
               <div key={f._id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                <img src={f.preview} alt="" className="w-12 h-12 object-cover rounded" />
+                {f.isPdf
+                  ? <div className="w-12 h-12 rounded bg-red-50 border border-red-100 flex items-center justify-center shrink-0"><span className="text-xl">📄</span></div>
+                  : <img src={f.preview} alt="" className="w-12 h-12 object-cover rounded shrink-0" />}
                 <span className="text-xs text-gray-600 flex-1 truncate">{f.file.name}</span>
                 <button type="button" onClick={() => removeFile(f._id)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
               </div>
@@ -244,9 +259,14 @@ export default function SupplierQuoteForm() {
         {existingAttachments.length > 0 && (
           <div className="mt-3 flex gap-2 flex-wrap">
             {existingAttachments.map((a, i) => (
-              <a key={i} href={a.file_url} target="_blank" rel="noreferrer">
-                <img src={a.file_url} alt="" className="w-12 h-12 object-cover rounded border" />
-              </a>
+              a.file_type === 'pdf'
+                ? <a key={i} href={a.file_url} target="_blank" rel="noreferrer"
+                    className="flex items-center gap-1.5 px-2 py-1 rounded border border-red-100 bg-red-50 text-xs text-red-700 hover:bg-red-100">
+                    <span>📄</span><span className="truncate max-w-32">{a.file_name}</span>
+                  </a>
+                : <a key={i} href={a.file_url} target="_blank" rel="noreferrer">
+                    <img src={a.file_url} alt="" className="w-12 h-12 object-cover rounded border" />
+                  </a>
             ))}
           </div>
         )}
