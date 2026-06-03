@@ -13,6 +13,10 @@
   function = "download-image"
   path = "/api/download-image"
 
+[[edge_functions]]
+  function = "fx-rates"
+  path = "/api/fx-rates"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
