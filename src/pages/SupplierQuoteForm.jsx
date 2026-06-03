@@ -12,6 +12,7 @@ export default function SupplierQuoteForm() {
   const fileIdRef = useRef(0)
 
   const [suppliers, setSuppliers] = useState([])
+  const [previousQuotes, setPreviousQuotes] = useState([])
 
   const [form, setForm] = useState({
     supplier_id: '',
@@ -44,6 +45,11 @@ export default function SupplierQuoteForm() {
       ),
       getDoc(doc(db, 'products', productId)).then(s => setProductName(s.data()?.name || '')),
       getDoc(doc(db, 'products', productId, 'components', componentId)).then(s => setComponentName(s.data()?.name || '')),
+      // Load previous quotes for the copy picker (only on new quote)
+      ...(!isEdit ? [
+        getDocs(query(collection(db, 'products', productId, 'components', componentId, 'supplier_quotes'), orderBy('createdAt', 'desc')))
+          .then(snap => setPreviousQuotes(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+      ] : []),
     ]
 
     if (isEdit) {
@@ -143,6 +149,24 @@ export default function SupplierQuoteForm() {
     await extractFromFile(files[0].file)
   }
 
+  function applyPreviousQuote(q) {
+    setForm(f => ({
+      ...f,
+      supplier_id: q.supplier_id || '',
+      supplier_name: q.supplier_name || '',
+      unit_cost: q.unit_cost ?? '',
+      unit_cost_currency: q.unit_cost_currency || 'RMB',
+      moq: q.moq ?? '',
+      tooling_sample_cost: q.tooling_sample_cost ?? '',
+      tooling_sample_cost_currency: q.tooling_sample_cost_currency || 'RMB',
+      tooling_lead_time_days: q.tooling_lead_time_days ?? '',
+      sampling_lead_time_days: q.sampling_lead_time_days ?? '',
+      production_lead_time_days: q.production_lead_time_days ?? '',
+      is_preferred: false,
+      notes: '',
+    }))
+  }
+
   async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
@@ -218,6 +242,36 @@ export default function SupplierQuoteForm() {
         </div>
         <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Supplier Quote' : 'Add Supplier Quote'}</h1>
       </div>
+
+      {/* Copy from previous quote */}
+      {!isEdit && previousQuotes.length > 0 && (
+        <div className="card p-4 mb-4">
+          <h2 className="text-sm font-semibold text-gray-700 mb-2">Copy from Previous Quote</h2>
+          <p className="text-xs text-gray-400 mb-3">Pre-fill the form from an existing quote — then adjust the new price and save.</p>
+          <div className="space-y-2">
+            {previousQuotes.map(q => (
+              <button
+                key={q.id}
+                type="button"
+                onClick={() => applyPreviousQuote(q)}
+                className="w-full text-left p-3 rounded-lg border border-gray-100 hover:border-brand-300 hover:bg-brand-50 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-800">{q.supplier_name}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {q.unit_cost != null ? `${q.unit_cost} ${q.unit_cost_currency}` : '—'}
+                      {q.moq ? ` · MOQ ${q.moq.toLocaleString()}` : ''}
+                      {q.createdAt?.toDate ? ` · ${q.createdAt.toDate().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                    </p>
+                  </div>
+                  <span className="text-xs text-brand-600 font-medium shrink-0 ml-3">Use this →</span>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Image Upload */}
       <div className="card p-4 mb-4">
