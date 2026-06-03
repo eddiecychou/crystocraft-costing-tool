@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { doc, getDoc, updateDoc, deleteDoc, addDoc, collection, collectionGroup, onSnapshot, orderBy, query, getDocs, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, deleteDoc, addDoc, collection, onSnapshot, orderBy, query, getDocs, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
@@ -53,21 +53,16 @@ export default function ProductDetail() {
     setPickerSearch('')
     setShowPicker(true)
     if (allComponents.length > 0) return
-    // Fetch all components across all products via collection group
-    const snap = await getDocs(collectionGroup(db, 'components'))
-    const items = snap.docs.map(d => {
-      const pathParts = d.ref.path.split('/')
-      const parentProductId = pathParts[1]
-      return { id: d.id, ...d.data(), _productId: parentProductId }
-    })
-    // Fetch product names for labelling
-    const productIds = [...new Set(items.map(c => c._productId))]
-    const productNames = {}
-    await Promise.all(productIds.map(async pid => {
-      const pSnap = await getDoc(doc(db, 'products', pid))
-      productNames[pid] = pSnap.data()?.name || pid
+    // Fetch all products, then their components — avoids collectionGroup index requirement
+    const productsSnap = await getDocs(query(collection(db, 'products'), orderBy('name')))
+    const items = []
+    await Promise.all(productsSnap.docs.map(async pDoc => {
+      const compSnap = await getDocs(collection(db, 'products', pDoc.id, 'components'))
+      compSnap.docs.forEach(d => {
+        items.push({ id: d.id, ...d.data(), _productId: pDoc.id, _productName: pDoc.data().name || pDoc.id })
+      })
     }))
-    setAllComponents(items.map(c => ({ ...c, _productName: productNames[c._productId] || '' })))
+    setAllComponents(items)
   }
 
   async function handleCopyComponent(comp) {
