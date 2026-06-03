@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { doc, getDoc, deleteDoc, collection, query, where, getDocs, orderBy } from 'firebase/firestore'
+import { doc, getDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
@@ -24,10 +24,10 @@ export default function CustomerDetail() {
   useEffect(() => {
     Promise.all([
       getDoc(doc(db, 'customers', id)),
-      getDocs(query(collection(db, 'client_quotes'), where('customer_id', '==', id), orderBy('createdAt', 'desc'))),
+      getDocs(query(collection(db, 'client_quotes'), where('customer_id', '==', id))),
     ]).then(([cSnap, qSnap]) => {
       if (cSnap.exists()) setCustomer({ id: cSnap.id, ...cSnap.data() })
-      setQuotes(qSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+      setQuotes(qSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)))
       setLoading(false)
     })
   }, [id])
