@@ -79,6 +79,17 @@ export default function ProductDetail() {
         createdAt: serverTimestamp(),
       }
       const ref = await addDoc(collection(db, 'products', id, 'components'), newComp)
+
+      // Copy images subcollection (reuse same Storage URLs)
+      const imgSnap = await getDocs(
+        query(collection(db, 'products', comp._productId, 'components', comp.id, 'images'), orderBy('sort_order'))
+      )
+      if (!imgSnap.empty) {
+        await Promise.all(imgSnap.docs.map(imgDoc =>
+          addDoc(collection(db, 'products', id, 'components', ref.id, 'images'), imgDoc.data())
+        ))
+      }
+
       setShowPicker(false)
       navigate(`/products/${id}/components/${ref.id}`)
     } finally {
