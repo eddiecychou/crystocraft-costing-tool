@@ -1,0 +1,59 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // All access requires a signed-in user
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Products and all subcollections
+    match /products/{productId} {
+      allow read, write: if isAuth();
+
+      match /images/{imageId} {
+        allow read, write: if isAuth();
+      }
+      match /components/{componentId} {
+        allow read, write: if isAuth();
+
+        match /images/{imageId} {
+          allow read, write: if isAuth();
+        }
+        match /supplier_quotes/{quoteId} {
+          allow read, write: if isAuth();
+
+          match /attachments/{attachmentId} {
+            allow read, write: if isAuth();
+          }
+        }
+      }
+      match /pricing_tiers/{tierId} {
+        allow read, write: if isAuth();
+      }
+    }
+
+    // Suppliers and catalogs
+    match /suppliers/{supplierId} {
+      allow read, write: if isAuth();
+
+      match /catalogs/{catalogId} {
+        allow read, write: if isAuth();
+      }
+    }
+
+    // Client quotes and items
+    match /client_quotes/{quoteId} {
+      allow read, write: if isAuth();
+
+      match /items/{itemId} {
+        allow read, write: if isAuth();
+      }
+    }
+
+    // Settings (exchange rates etc.)
+    match /settings/{docId} {
+      allow read, write: if isAuth();
+    }
+  }
+}

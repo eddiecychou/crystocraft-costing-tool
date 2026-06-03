@@ -1,0 +1,30 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // All access requires a signed-in user
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Product images
+    match /products/{productId}/{allPaths=**} {
+      allow read, write: if isAuth();
+    }
+
+    // Component images
+    match /components/{componentId}/{allPaths=**} {
+      allow read, write: if isAuth();
+    }
+
+    // Supplier quote attachments
+    match /supplier_quotes/{quoteId}/{allPaths=**} {
+      allow read, write: if isAuth();
+    }
+
+    // Supplier catalogs
+    match /suppliers/{supplierId}/{allPaths=**} {
+      allow read, write: if isAuth();
+    }
+  }
+}
