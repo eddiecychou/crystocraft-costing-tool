@@ -28,6 +28,7 @@ export default function QuoteDetail() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showExport, setShowExport] = useState(false)
   const [duplicating, setDuplicating] = useState(false)
+  const [liveImages, setLiveImages] = useState({}) // { product_id: heroImage }
 
   useEffect(() => {
     getDoc(doc(db, 'client_quotes', id)).then(snap => {
@@ -38,7 +39,19 @@ export default function QuoteDetail() {
 
   useEffect(() => {
     const q = query(collection(db, 'client_quotes', id, 'items'), orderBy('createdAt'))
-    return onSnapshot(q, snap => setItems(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+    return onSnapshot(q, async snap => {
+      const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      setItems(loaded)
+      // Fetch live heroImage for each product so image updates are reflected
+      const productIds = [...new Set(loaded.map(i => i.product_id).filter(Boolean))]
+      const entries = await Promise.all(
+        productIds.map(async pid => {
+          const pSnap = await getDoc(doc(db, 'products', pid))
+          return [pid, pSnap.data()?.heroImage || null]
+        })
+      )
+      setLiveImages(Object.fromEntries(entries))
+    })
   }, [id])
 
   async function handleStatusChange(status) {
@@ -180,6 +193,7 @@ export default function QuoteDetail() {
                 key={item.id}
                 item={item}
                 quoteCurrency={quoteCurrency}
+                heroImage={liveImages[item.product_id] ?? item.hero_image}
                 onTiersChange={tiers => handleTiersChange(item.id, tiers)}
                 onRemove={() => handleRemoveItem(item.id)}
               />
@@ -212,7 +226,11 @@ export default function QuoteDetail() {
       )}
 
       {showExport && (
-        <QuoteExport quote={quote} items={items} onClose={() => setShowExport(false)} />
+        <QuoteExport
+          quote={quote}
+          items={items.map(i => ({ ...i, hero_image: liveImages[i.product_id] ?? i.hero_image }))}
+          onClose={() => setShowExport(false)}
+        />
       )}
 
       {confirmDelete && (
@@ -226,7 +244,7 @@ export default function QuoteDetail() {
   )
 }
 
-function QuoteItem({ item, quoteCurrency, onTiersChange, onRemove }) {
+function QuoteItem({ item, quoteCurrency, heroImage, onTiersChange, onRemove }) {
   const currency = quoteCurrency || 'HKD'
   const tiers = (item.tiers || [{ quantity: item.quantity || 200, price: item.price_hkd || 0, currency }])
     .map(t => ({ ...t, price: t.price ?? t.price_hkd ?? 0, currency: t.currency || currency }))
@@ -247,10 +265,10 @@ function QuoteItem({ item, quoteCurrency, onTiersChange, onRemove }) {
 
   return (
     <div className="flex gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200">
-      {/* Image */}
+      {/* Image — always uses current product heroImage */}
       <div className="w-16 h-16 rounded-lg bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
-        {item.hero_image
-          ? <img src={item.hero_image} alt={item.product_name} className="w-full h-full object-cover" />
+        {heroImage
+          ? <img src={heroImage} alt={item.product_name} className="w-full h-full object-cover" />
           : <span className="text-2xl">📦</span>}
       </div>
 
