@@ -1,0 +1,10 @@
+node_modules
+dist
+.env.local
+.env
+.DS_Store
+*.local
+
+# Source / reference documents (keep locally, not in repo)
+*.xlsx
+*.pdf

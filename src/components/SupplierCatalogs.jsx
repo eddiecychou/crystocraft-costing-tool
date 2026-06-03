@@ -1,0 +1,171 @@
+import { useState, useEffect, useRef } from 'react'
+import { collection, addDoc, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore'
+import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
+import { db, storage } from '../firebase'
+import ConfirmDialog from './ConfirmDialog'
+
+const FILE_ICONS = {
+  'application/pdf': '📄',
+  'image/jpeg': '🖼️',
+  'image/png': '🖼️',
+  'image/webp': '🖼️',
+  default: '📁',
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+export default function SupplierCatalogs({ supplierId }) {
+  const fileIdRef = useRef(0)
+  const [catalogs, setCatalogs]   = useState([])
+  const [uploads, setUploads]     = useState([])   // in-progress uploads
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [lightbox, setLightbox]   = useState(null)
+
+  useEffect(() => {
+    const q = query(collection(db, 'suppliers', supplierId, 'catalogs'), orderBy('uploaded_at', 'desc'))
+    return onSnapshot(q, snap => setCatalogs(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+  }, [supplierId])
+
+  async function handleFiles(e) {
+    const files = Array.from(e.target.files)
+    e.target.value = ''
+
+    for (const file of files) {
+      const uid = ++fileIdRef.current
+      const path = `suppliers/${supplierId}/catalogs/${Date.now()}_${uid}_${file.name}`
+      const sRef = storageRef(storage, path)
+
+      setUploads(prev => [...prev, { uid, name: file.name, progress: 0, size: file.size, type: file.type }])
+
+      const task = uploadBytesResumable(sRef, file)
+
+      task.on('state_changed',
+        snapshot => {
+          const progress = Math.round(snapshot.bytesTransferred / snapshot.totalBytes * 100)
+          setUploads(prev => prev.map(u => u.uid === uid ? { ...u, progress } : u))
+        },
+        () => {
+          setUploads(prev => prev.filter(u => u.uid !== uid))
+        },
+        async () => {
+          const url = await getDownloadURL(task.snapshot.ref)
+          await addDoc(collection(db, 'suppliers', supplierId, 'catalogs'), {
+            file_url: url,
+            storage_path: path,
+            file_name: file.name,
+            file_type: file.type,
+            file_size: file.size,
+            uploaded_at: serverTimestamp(),
+          })
+          setUploads(prev => prev.filter(u => u.uid !== uid))
+        }
+      )
+    }
+  }
+
+  async function handleDelete(catalog) {
+    try {
+      if (catalog.storage_path) await deleteObject(storageRef(storage, catalog.storage_path))
+    } catch {}
+    await deleteDoc(doc(db, 'suppliers', supplierId, 'catalogs', catalog.id))
+    setConfirmDelete(null)
+  }
+
+  const isImage = type => type?.startsWith('image/')
+
+  return (
+    <div className="card p-5 mt-4">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-semibold text-gray-700">Supplier Catalogs</h2>
+        <label className="btn-secondary text-xs py-1.5 px-3 cursor-pointer">
+          + Upload Files
+          <input type="file" accept=".pdf,image/*" multiple className="hidden" onChange={handleFiles} />
+        </label>
+      </div>
+
+      <p className="text-xs text-gray-400 mb-4">Upload supplier product catalogs, lookbooks, or price lists (PDF or images). Stored here for inspiration when building new products.</p>
+
+      {/* In-progress uploads */}
+      {uploads.map(u => (
+        <div key={u.uid} className="flex items-center gap-3 p-3 bg-brand-50 rounded-lg mb-2">
+          <span className="text-xl">{FILE_ICONS[u.type] || FILE_ICONS.default}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs text-gray-700 truncate">{u.name}</p>
+            <div className="mt-1 h-1 bg-brand-200 rounded overflow-hidden">
+              <div className="h-full bg-brand-600 transition-all" style={{ width: `${u.progress}%` }} />
+            </div>
+          </div>
+          <span className="text-xs text-gray-400">{u.progress}%</span>
+        </div>
+      ))}
+
+      {/* Catalog list */}
+      {catalogs.length === 0 && uploads.length === 0 ? (
+        <p className="text-sm text-gray-400 text-center py-6">No catalogs yet — upload PDF or image files.</p>
+      ) : (
+        <div className="space-y-2">
+          {catalogs.map(c => (
+            <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-colors group">
+              {/* Thumbnail or icon */}
+              {isImage(c.file_type) ? (
+                <img
+                  src={c.file_url}
+                  alt={c.file_name}
+                  className="w-10 h-10 object-cover rounded cursor-pointer shrink-0"
+                  onClick={() => setLightbox(c)}
+                />
+              ) : (
+                <span className="text-2xl shrink-0">{FILE_ICONS[c.file_type] || FILE_ICONS.default}</span>
+              )}
+
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-gray-800 truncate font-medium">{c.file_name}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{formatBytes(c.file_size)}</p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <a
+                  href={c.file_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-brand-600 hover:text-brand-800 px-2 py-1 rounded hover:bg-brand-50"
+                >
+                  Open
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(c)}
+                  className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Image lightbox */}
+      {lightbox && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" onClick={() => setLightbox(null)}>
+          <img src={lightbox.file_url} alt={lightbox.file_name} className="max-w-full max-h-full rounded-lg object-contain" onClick={e => e.stopPropagation()} />
+          <button className="absolute top-4 right-4 text-white text-2xl" onClick={() => setLightbox(null)}>✕</button>
+        </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          message={`Delete "${confirmDelete.file_name}"? This cannot be undone.`}
+          onConfirm={() => handleDelete(confirmDelete)}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+    </div>
+  )
+}

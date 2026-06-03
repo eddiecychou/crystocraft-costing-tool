@@ -1,0 +1,444 @@
+# Crystocraft Corporate Gift Costing Tool — Project Plan
+
+## Current Status — as of 2026-05-31
+
+**All four core phases are complete and working locally.** The app is fully functional in the browser (dev server at port 5179).
+
+### What's working end-to-end
+- Create and manage products with image galleries (hero image, type labels, lightbox)
+- Build a BOM per product: add components, upload component images
+- Record supplier quotes per component — AI extraction from WeChat/supplier screenshots via Gemini
+- Mark a preferred supplier per component (enforced, single preferred only)
+- Store supplier database with catalog PDFs/images
+- Calculate pricing tiers with unit cost + tooling amortisation, margin colour coding, markup slider
+- Build client quotes: pick products, set multiple qty/price tiers per product (e.g. 200 pcs @ HKD 120 AND 500 pcs @ HKD 100)
+- Export client quote to Excel (.xlsx) with embedded product photos, one row per pricing tier
+
+### What's not done yet
+- **Settings page** — exchange rates UI exists but is read-only placeholder; categories and user management not built
+- **PDF export** — stubbed as "coming soon" in the Export modal
+- **Dashboard** — no home screen; app opens directly to Products
+- **Netlify deployment** — not yet pushed to Git or deployed; `GEMINI_API_KEY` not set in production so AI extraction only works locally (if key is in `.env.local`)
+- **Firebase security rules** — Firestore and Storage are currently in test mode (open read/write); must be locked before sharing with colleagues
+- **Data migration** — no products entered yet; starting from a blank database
+
+### Immediate next steps (Phase 5)
+1. Deploy to Netlify (push to Git → connect Netlify → add `GEMINI_API_KEY` env var)
+2. Set Firebase security rules
+3. Build Settings page (exchange rates at minimum — rates are currently hardcoded fallback values)
+4. Start entering top 20–30 active corporate gift products manually
+5. Dashboard and PDF export are lower priority
+
+---
+
+## 1. Problem Statement
+
+Crystocraft's corporate gift business is growing rapidly, creating an explosion of new product concepts and supplier quotes that are currently tracked in per-client Excel sheets. Key pain points:
+
+- No central product/concept database — the same product gets recreated across multiple client sheets
+- Products are assembled from multiple components, each with 2–3 alternative supplier quotes — impossible to model cleanly in Excel
+- Supplier quotes arrive as WeChat/WhatsApp screenshots, making data capture chaotic
+- Hard to recall what products exist and their costs when responding to a new B2B enquiry
+- Growing number of clients and concepts is consuming increasing mental energy
+
+The core crystal figurine business (30+ years) is handled by an existing ERP and is out of scope for this tool.
+
+---
+
+## 2. Goals
+
+1. Centralise all corporate gift products and concepts in one searchable database
+2. Model each product as a Bill of Materials (BOM) — components + per-component supplier options
+3. Capture supplier quotes with image attachments (screenshots, PDFs)
+4. Use AI to extract cost/MOQ/lead time from supplier quote images
+5. Calculate HKD sell prices across quantity tiers automatically
+6. Generate clean client quote sheets quickly from the master product database
+7. Support multi-user access (owner + 2 colleagues initially)
+
+---
+
+## 3. Scope
+
+### In Scope (V1)
+- Product/concept catalog with status tracking
+- BOM per product (components + assembly notes)
+- Supplier quotes per component with image upload + AI extraction
+- Quantity-tier HKD pricing per product
+- Client quote builder (select products → generate quote)
+- User authentication (email/password, 3 users)
+- Export client quote to Excel and PDF — both with embedded product photos, professional layout
+
+### Out of Scope (V1)
+- Crystocraft core crystal line (handled by ERP)
+- CRM / sales pipeline tracking
+- Inventory management
+- WooCommerce / website integration
+- Mobile native app
+
+---
+
+## 4. Tech Stack
+
+| Layer | Technology | Reason |
+|---|---|---|
+| Frontend | React 18 + Vite + SWC | Same as Expense Tool; fast builds, consistent codebase |
+| Routing | React Router v6 | Same as Expense Tool |
+| Database | Cloud Firestore | `persistentLocalCache` for offline-first fast loads |
+| Auth | Firebase Auth | Email/password + Google OAuth; same as Expense Tool |
+| File Storage | Firebase Storage | Product images, component images, supplier quote attachments |
+| AI Extraction | Gemini API (`gemini-2.5-flash` → `gemini-2.5-pro` fallback) | Vision OCR; handles Chinese text in WeChat/supplier screenshots |
+| Serverless | Netlify Edge Functions (Deno) | Gemini API key stays server-side, never in browser |
+| Export (Excel) | ExcelJS | `.xlsx` with embedded product photos; same library as Expense Tool |
+| Export (PDF) | `@react-pdf/renderer` | Professional PDF quote with photos, branding, layout |
+| Hosting | Netlify | Already have plan; CI/CD from Git |
+| Styling | Tailwind CSS | Fast, clean UI |
+
+---
+
+## 5. Data Model
+
+### `products`
+| Field | Type | Notes |
+|---|---|---|
+| id | string | Auto |
+| name | string | Product/concept name — format: `[Category] – [Key Feature] – [Use Case]` |
+| product_code | string | Corporate gift code e.g. `CG-DRINK-2601` — Phase 6 |
+| erp_finished_code | string? | Optional — ERP SKU if product maps to an existing figurine SKU |
+| category | string | e.g. Drinkware, Trophy, Stationery |
+| status | enum | `concept` / `sampled` / `active` / `discontinued` |
+| description | string | 2–3 sentences: material, size, customisation method, use case |
+| assembly_notes | string | Factory assembly instructions |
+| created_at | timestamp | |
+| updated_at | timestamp | |
+
+### `product_images` (subcollection of product)
+| Field | Type | Notes |
+|---|---|---|
+| id | string | Auto |
+| file_url | string | Firebase Storage URL |
+| file_name | string | Original filename |
+| caption | string | Optional description |
+| type | enum | `reference` / `sample` / `final` / `client_usage` |
+| sort_order | number | Display order in gallery |
+| uploaded_at | timestamp | |
+
+### `components` (subcollection of product)
+| Field | Type | Notes |
+|---|---|---|
+| id | string | Auto |
+| name | string | e.g. "Crystal Body", "NFC Card", "Packaging Box" |
+| spec | string | Material, size, finish etc. |
+| unit | string | pcs / set / kg |
+| sort_order | number | Display order in BOM |
+| notes | string | |
+| erp_code | string? | Optional — ERP reference code (e.g. `U0257-001-GAB`, `FM-PL120120H00-C`, `P-PB099-01-02`) |
+
+### `component_images` (subcollection of component)
+| Field | Type | Notes |
+|---|---|---|
+| id | string | Auto |
+| file_url | string | Firebase Storage URL |
+| file_name | string | Original filename |
+| caption | string | Optional description |
+| type | enum | `spec` / `sample` / `drawing` / `reference` |
+| sort_order | number | Display order |
+| uploaded_at | timestamp | |
+
+### `supplier_quotes` (subcollection of component)
+| Field | Type | Notes |
+|---|---|---|
+| id | string | Auto |
+| supplier_name | string | |
+| unit_cost | number | Per piece cost |
+| unit_cost_currency | enum | `RMB` / `HKD` / `USD` / `EUR` |
+| moq | number | Minimum order quantity |
+| tooling_sample_cost | number | One-time tooling/sample cost |
+| tooling_sample_cost_currency | enum | `RMB` / `HKD` / `USD` / `EUR` |
+| sampling_lead_time_days | number | Days from order to sample/prototype ready |
+| tooling_lead_time_days | number | Days for tooling if custom mould required (0 if none) |
+| production_lead_time_days | number | Baseline production lead time — free input, overridable per pricing tier |
+| is_preferred | boolean | Mark preferred supplier |
+| notes | string | |
+| created_at | timestamp | |
+
+### `quote_attachments` (subcollection of supplier_quote)
+| Field | Type | Notes |
+|---|---|---|
+| id | string | Auto |
+| file_url | string | Firebase Storage URL |
+| file_name | string | Original filename |
+| file_type | string | image / pdf |
+| ai_extracted | boolean | Whether AI was used to fill fields |
+| uploaded_at | timestamp | |
+
+### `pricing_tiers` (subcollection of product)
+Tiers are fully flexible — any quantity can be added (100, 200, 300, 500, 1000, 2000, etc.) depending on the supplier's MOQ breakpoints. No fixed set of tiers.
+
+| Field | Type | Notes |
+|---|---|---|
+| id | string | Auto |
+| quantity | number | User-defined: 100 / 200 / 300 / 500 / 1000 / 2000 / etc. |
+| total_cost_rmb | number | Auto-calculated from preferred supplier unit costs × qty |
+| tooling_cost_rmb | number | One-time tooling/sample cost (amortised or shown separately) |
+| price_hkd | number | Sell price — manually set or auto-suggested from markup |
+| margin_pct | number | Auto-calculated: (price_hkd − cost_hkd) / price_hkd |
+| production_lead_time_days | number | Optional override — if larger qty needs more time than baseline |
+
+### `client_quotes`
+| Field | Type | Notes |
+|---|---|---|
+| id | string | Auto |
+| client_name | string | |
+| contact_name | string | |
+| date | timestamp | |
+| status | enum | `draft` / `sent` / `won` / `lost` |
+| rmb_to_hkd_rate | number | Exchange rate used |
+| notes | string | |
+
+### `client_quote_items` (subcollection of client_quote)
+| Field | Type | Notes |
+|---|---|---|
+| id | string | Auto |
+| product_id | string | Reference to product |
+| product_name | string | Snapshot at time of adding |
+| product_category | string | Snapshot |
+| product_description | string | Snapshot |
+| hero_image | string | Firebase Storage URL snapshot |
+| tiers | array | `[{ quantity: number, price_hkd: number }]` — multiple qty/price options per product |
+| status | string | Product status snapshot |
+| createdAt | timestamp | |
+
+---
+
+## 6. Application Pages
+
+### 6.1 Product Catalog (`/products`)
+- Grid/list of all products with search, filter by category/status
+- Status badges: Concept · Sampled · Active · Discontinued
+- Quick stats: number of components, number of suppliers, last updated
+
+### 6.2 Product Detail (`/products/[id]`)
+- Product info (name, category, status, description)
+- BOM section: list of components, each expandable to show supplier quotes
+- Per-component: add/edit supplier quotes, upload quote images, trigger AI extraction
+- Pricing tiers table: qty → total cost RMB → HKD sell price → margin %
+- Action: "Add to Client Quote"
+
+### 6.3 Add / Edit Product (`/products/new`, `/products/[id]/edit`)
+- Form: basic product info
+- Then add components one by one
+- Each component: add supplier quotes + attachments
+
+### 6.4 Client Quotes (`/quotes`)
+- List of all client quotes with status
+- Create new quote: pick client, select products + quantities
+- View/edit quote: adjust prices, add notes
+- Export to Excel and PDF
+
+### 6.5 Client Quote Detail (`/quotes/[id]`)
+- Client info, date, exchange rate
+- Table of selected products: image, name, spec summary, qty, unit price HKD, total
+- "Your Brief" summary section
+- Export buttons → Excel (`.xlsx`) and PDF — both include product photos and professional layout
+  - **Excel**: product photo per row (embedded), item name, spec summary, qty tiers, unit price HKD
+  - **PDF**: branded layout with Crystocraft logo, product image card per item, clean typography — suitable to send directly to client
+
+### 6.6 Settings (`/settings`)
+- Manage categories list
+- Manage users (invite colleagues by email)
+- Default RMB → HKD exchange rate
+
+### 6.7 Login (`/login`)
+- Email/password auth via Firebase
+
+---
+
+## 7. Architecture
+
+```
+Browser (React SPA)
+│
+├── Firebase Auth          — sign-in / sign-out / session state
+├── Firestore              — all product, component, quote, pricing data
+├── Firebase Storage       — product images, component images, supplier quote attachments
+│
+└── Netlify (edge/serverless)
+    ├── /api/process-quote     — Edge Function (Deno): calls Gemini to extract supplier quote data
+    └── /api/download-image    — Edge Function (Deno): CORS proxy for Firebase Storage URLs
+```
+
+Same architecture as Expense Tool — all API keys stay server-side in Netlify environment variables.
+
+---
+
+## 8. AI Supplier Quote Extraction
+
+Uses the same two-image pipeline proven in the Expense Tool for maximum accuracy:
+
+| Version | Format | Used for |
+|---|---|---|
+| Colour JPEG (93%) | `image/jpeg` | Firebase Storage, image display in app |
+| Greyscale PNG (lossless) | `image/png` | Gemini API only — discarded after extraction |
+
+**Preprocessing steps** (client-side, before sending to Gemini):
+1. Resize to max 2400px
+2. Convert to greyscale (removes colour noise, improves contrast on WeChat screenshots)
+3. Auto-levels (stretch histogram to 0–255, clip 1% outliers)
+4. Encode as lossless PNG
+
+**Extraction flow:**
+1. User uploads screenshot/image to the supplier quote form
+2. Client preprocesses image (greyscale PNG) and POSTs to `/api/process-quote`
+3. Edge function forwards to `gemini-2.5-flash` (falls back to `gemini-2.5-pro` on error)
+4. Gemini extracts: supplier name, unit cost, currency, MOQ, tooling/sample cost, lead time, sample time
+5. Extracted fields pre-fill the form — user reviews and corrects before saving
+6. Original colour JPEG uploaded to Firebase Storage as the attachment record
+
+**Supports:** WhatsApp screenshots, WeChat screenshots (Simplified Chinese handled), PDF quotes, email screenshots.
+
+---
+
+## 8. Pricing Calculation Logic
+
+For each product:
+
+```
+Each component cost converted to HKD using exchange rates set in Settings:
+  Component Cost HKD = unit_cost × exchange_rate_to_hkd
+
+Total Component Cost HKD = Σ preferred supplier component cost HKD
+Assembly Cost HKD = manually entered if applicable
+Total Unit Cost HKD = Total Component Cost HKD + Assembly Cost HKD
+
+Suggested HKD Sell Price = Total Unit Cost HKD × markup multiplier (user-defined, e.g. 1.4–2.0×)
+Margin % = (Sell Price − Total Unit Cost HKD) / Sell Price
+```
+
+Exchange rates stored as a Firestore `settings` document (not hardcoded), so new currencies can be added without a code change. Initial set:
+- RMB → HKD
+- USD → HKD
+- EUR → HKD
+
+HKD is the base/display currency. Adding a new currency only requires adding a new rate entry in Settings.
+
+Pricing tiers are user-defined per product (any qty: 100, 200, 300, 500, 1000, 2000…). User adds tiers matching the supplier's actual MOQ breakpoints. Sell price is auto-suggested but always overridable.
+
+---
+
+## 9. Build Phases
+
+### Phase 1 — Foundation ✅ Complete
+- [x] Vite + React 18 + Tailwind project setup
+- [x] Firebase Auth (login page, protected routes)
+- [x] Firestore data model (products, components, supplier quotes, pricing tiers, client quotes)
+- [x] Product list page with search + category/status filters
+- [x] Add/edit product form
+- [x] Component BOM management (add/edit/delete components)
+
+### Phase 2 — Supplier Quotes ✅ Complete
+- [x] Add/edit supplier quotes per component
+- [x] Firebase Storage integration for image uploads
+- [x] Gemini AI extraction from supplier quote screenshots (two-image pipeline: greyscale PNG → Gemini, colour JPEG → Storage)
+- [x] Mark preferred supplier per component (enforced at save — clears all other `is_preferred` flags)
+- [x] Supplier database (name, address, phone, WeChat ID)
+- [x] Supplier catalog storage (PDFs + images, thumbnails, lightbox)
+- [x] Component image gallery (upload, hero star, type labels, 2-column grid, lightbox)
+
+### Phase 3 — Pricing ✅ Complete
+- [x] Pricing tiers table per product (flexible qty tiers)
+- [x] Auto-calculate unit cost + tooling cost from preferred suppliers
+- [x] Tooling/unit amortisation per tier (`toolingCostHKD / quantity`)
+- [x] All-in cost, sell price (inline editable), margin % with colour coding
+- [x] Markup slider (1×–4×) with live suggested price
+- [x] Warning banners for missing preferred suppliers (orange/red with links)
+- [x] Exchange rates from Firestore `settings/exchange_rates` with hardcoded fallback
+
+### Phase 4 — Client Quotes ✅ Complete
+- [x] Client quote list + create new quote
+- [x] Product picker modal (search, multi-select)
+- [x] Multiple pricing tiers per item in quote (e.g. 200 pcs @ HKD 120 AND 500 pcs @ HKD 100)
+- [x] Inline tier editing (qty + price per row), add/remove tiers per product
+- [x] Status dropdown (draft / sent / won / lost)
+- [x] Export to Excel with embedded product photos (ExcelJS) — one row per tier per product
+- [ ] Export to PDF (`@react-pdf/renderer`) — stubbed as "coming soon"
+
+### Phase 5 — Polish & Deployment (Next)
+- [ ] Netlify deployment — push to Git, connect Netlify, set `GEMINI_API_KEY` env var
+- [ ] Firebase security rules (currently in test mode)
+- [ ] Settings page: exchange rates — editable UI + `/api/fx-latest` edge function to fetch live rates (CNY/USD/EUR→HKD) with manual Apply; rates already snapshotted per quote so old quotes are unaffected
+- [ ] Settings page: category management
+- [ ] Settings page: user management / invite colleagues
+- [ ] Dashboard / home screen (summary stats — products by status, quotes by status, recent activity)
+- [ ] Search and filters on product catalog (category, status) — UI exists, wire up filtering logic
+- [ ] PDF quote export — implement with `@react-pdf/renderer` per layout spec in `costing-tool-Perplexity-input-June1.md` (A4, product cards with hero image + tier table per product, notes section instead of grand total)
+- [ ] Data migration: manual entry of top 20–30 active corporate gift products from `CorpGiftCosting-20260523.xlsx` — follow data hygiene checklist in `costing-tool-Perplexity-input-June1.md`
+
+### Phase 6 — Product Coding & ERP References
+- [ ] Add `product_code` field (`CG-[CAT]-[YY][NN]`) to products — user-confirmed (not fully auto-generated, to avoid Firestore race conditions); display on product list, detail, pricing, and both exports
+- [ ] Add optional `erp_finished_code` field to products (for figurines that map directly to an ERP SKU)
+- [ ] Add optional `erp_code` field to components (reference to ERP `U/FM/P` codes, no validation required)
+- [ ] Component coding (`CMP-[TYPE]-[DETAIL]`) — defer until enough data exists to see which components recur across 3+ products; do not build UI yet
+
+### Future — Gift Selector (Separate Project)
+The `gift-selector.md` describes a **separate customer-facing project** for Crystocraft.com — a B2B gift quiz with rules-based product matching and lead capture. It has its own stack (Next.js, PostgreSQL, WooCommerce API) and should be planned independently. The only integration point with the costing tool is that concept templates / the product catalog could eventually be sourced from Firestore in a future phase.
+
+---
+
+## 10. Environment Variables
+
+### Frontend (`.env.local` / Netlify site variables)
+```
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+```
+Safe to expose — Firebase security enforced by Auth rules, not key secrecy.
+
+### Backend (Netlify environment variables — server only)
+```
+GEMINI_API_KEY=
+```
+Only accessed inside the Deno edge function, never sent to the browser.
+
+---
+
+## 11. Key Implementation Notes (Learned from Expense Tool)
+
+- **Firestore persistence**: Use `persistentLocalCache` + `persistentMultipleTabManager` — serves data from IndexedDB instantly on repeat loads
+- **Real-time listeners**: Use `onSnapshot` everywhere (not `getDocs`) — auto-pushes changes back to UI, clean up with `return unsubscribe` in `useEffect`
+- **File upload UX**: Single image → auto-extract immediately; multiple images → show list with Remove buttons first, then single "Extract" button with progress counter
+- **File IDs**: Use a stable numeric `_id` counter (not filename) so Remove works correctly when multiple files share generic names (e.g. `image.jpg` from mobile)
+- **Image preprocessing**: Run `preprocessForGemini` client-side before POSTing to edge function — do not send raw colour image to Gemini
+- **Gemini fallback**: Try `gemini-2.5-flash` first, retry once after 3 seconds on high-demand errors, then fall back to `gemini-2.5-pro`
+- **ConfirmDialog**: Use custom in-app modal for all destructive actions (delete product, delete component, delete quote) — browser `confirm()` shows "Block this pop-up" on mobile Chrome
+- **CORS proxy**: Firebase Storage URLs require the `/api/download-image` edge function proxy for downloading images (e.g. for Excel export with embedded images)
+- **Auth domains**: Add Netlify branch preview URLs to Firebase → Authentication → Authorized domains before testing
+- **Mobile date inputs**: Add `-webkit-appearance: none` + `min-height: 36px` + `line-height: 1.4` to prevent collapsing on iOS WebKit
+
+---
+
+## 12. Migration from Excel
+
+After V1 is live, migrate existing products from the 3 Excel files:
+
+| Source File | What to migrate |
+|---|---|
+| `CorpGiftCosting-20260523.xlsx` | All unique products → master product catalog |
+| `Parts-Costing-260521.xlsx` | Reference only (core crystal line, stays in ERP) |
+| `Stock-WSPrice-20250527.xlsx` | Reference only |
+
+Migration approach: manual entry for top 20–30 active corporate gift products first, then add concepts progressively as they are discussed with new clients.
+
+---
+
+## 13. Future Phases (Post-V1)
+
+- **Crystocraft New Product Costing Sheet** — a separate, simpler tool for calculating WS price for new figurines before entering the ERP (replaces Parts-Costing Excel)
+- **Image gallery per product** — reference photos, sample photos, client usage photos
+- **WhatsApp/WeChat message parser** — paste raw message text, AI extracts quote data
+- **Client brief intake form** — shareable link for clients to submit requirements, auto-matches to products
+- **Analytics** — which products are most quoted, win rate per client, margin trends
+- **CRM light** — track follow-ups and status per client enquiry

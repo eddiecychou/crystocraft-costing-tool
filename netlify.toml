@@ -1,0 +1,19 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+[[edge_functions]]
+  function = "process-quote"
+  path = "/api/process-quote"
+
+[[edge_functions]]
+  function = "download-image"
+  path = "/api/download-image"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
