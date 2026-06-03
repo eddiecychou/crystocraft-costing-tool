@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, getDocs, serverTimestamp, orderBy, query } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
@@ -12,7 +12,9 @@ export default function SupplierQuoteForm() {
   const fileIdRef = useRef(0)
 
   const [suppliers, setSuppliers] = useState([])
-  const [previousQuotes, setPreviousQuotes] = useState([])
+  const [showCopyPicker, setShowCopyPicker] = useState(false)
+  const [allPreviousQuotes, setAllPreviousQuotes] = useState([])
+  const [pickerLoaded, setPickerLoaded] = useState(false)
 
   const [form, setForm] = useState({
     supplier_id: '',
@@ -45,11 +47,6 @@ export default function SupplierQuoteForm() {
       ),
       getDoc(doc(db, 'products', productId)).then(s => setProductName(s.data()?.name || '')),
       getDoc(doc(db, 'products', productId, 'components', componentId)).then(s => setComponentName(s.data()?.name || '')),
-      // Load previous quotes for the copy picker (only on new quote)
-      ...(!isEdit ? [
-        getDocs(query(collection(db, 'products', productId, 'components', componentId, 'supplier_quotes'), orderBy('createdAt', 'desc')))
-          .then(snap => setPreviousQuotes(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
-      ] : []),
     ]
 
     if (isEdit) {
@@ -149,7 +146,34 @@ export default function SupplierQuoteForm() {
     await extractFromFile(files[0].file)
   }
 
-  function applyPreviousQuote(q) {
+  async function openCopyPicker() {
+    setShowCopyPicker(true)
+    if (pickerLoaded) return
+    // Fetch all products → all components → all supplier quotes
+    const productsSnap = await getDocs(query(collection(db, 'products'), orderBy('name')))
+    const all = []
+    await Promise.all(productsSnap.docs.map(async pDoc => {
+      const compsSnap = await getDocs(collection(db, 'products', pDoc.id, 'components'))
+      await Promise.all(compsSnap.docs.map(async cDoc => {
+        const qSnap = await getDocs(query(
+          collection(db, 'products', pDoc.id, 'components', cDoc.id, 'supplier_quotes'),
+          orderBy('createdAt', 'desc')
+        ))
+        qSnap.docs.forEach(qDoc => {
+          all.push({
+            id: qDoc.id,
+            ...qDoc.data(),
+            _productName: pDoc.data().name || '',
+            _componentName: cDoc.data().name || '',
+          })
+        })
+      }))
+    }))
+    setAllPreviousQuotes(all)
+    setPickerLoaded(true)
+  }
+
+  function applyQuote(q) {
     setForm(f => ({
       ...f,
       supplier_id: q.supplier_id || '',
@@ -165,6 +189,7 @@ export default function SupplierQuoteForm() {
       is_preferred: false,
       notes: '',
     }))
+    setShowCopyPicker(false)
   }
 
   async function handleSubmit(e) {
@@ -244,32 +269,11 @@ export default function SupplierQuoteForm() {
       </div>
 
       {/* Copy from previous quote */}
-      {!isEdit && previousQuotes.length > 0 && (
-        <div className="card p-4 mb-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-2">Copy from Previous Quote</h2>
-          <p className="text-xs text-gray-400 mb-3">Pre-fill the form from an existing quote — then adjust the new price and save.</p>
-          <div className="space-y-2">
-            {previousQuotes.map(q => (
-              <button
-                key={q.id}
-                type="button"
-                onClick={() => applyPreviousQuote(q)}
-                className="w-full text-left p-3 rounded-lg border border-gray-100 hover:border-brand-300 hover:bg-brand-50 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-800">{q.supplier_name}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {q.unit_cost != null ? `${q.unit_cost} ${q.unit_cost_currency}` : '—'}
-                      {q.moq ? ` · MOQ ${q.moq.toLocaleString()}` : ''}
-                      {q.createdAt?.toDate ? ` · ${q.createdAt.toDate().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
-                    </p>
-                  </div>
-                  <span className="text-xs text-brand-600 font-medium shrink-0 ml-3">Use this →</span>
-                </div>
-              </button>
-            ))}
-          </div>
+      {!isEdit && (
+        <div className="flex justify-end mb-3">
+          <button type="button" onClick={openCopyPicker} className="btn-secondary text-sm">
+            ⎘ Copy from Previous Quote
+          </button>
         </div>
       )}
 
@@ -421,6 +425,106 @@ export default function SupplierQuoteForm() {
           <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>Cancel</button>
         </div>
       </form>
+
+      {/* Copy from previous quote modal */}
+      {showCopyPicker && (
+        <CopyQuotePicker
+          quotes={allPreviousQuotes}
+          loaded={pickerLoaded}
+          onSelect={applyQuote}
+          onClose={() => setShowCopyPicker(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+function CopyQuotePicker({ quotes, loaded, onSelect, onClose }) {
+  const [search, setSearch] = useState('')
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase()
+    if (!q) return quotes
+    return quotes.filter(sq =>
+      sq.supplier_name?.toLowerCase().includes(q) ||
+      sq._componentName?.toLowerCase().includes(q) ||
+      sq._productName?.toLowerCase().includes(q)
+    )
+  }, [quotes, search])
+
+  // Group by supplier name
+  const grouped = useMemo(() => {
+    const map = {}
+    for (const q of filtered) {
+      const key = q.supplier_name || 'Unknown Supplier'
+      if (!map[key]) map[key] = []
+      map[key].push(q)
+    }
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b))
+  }, [filtered])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h2 className="font-semibold text-gray-800">Copy from Previous Quote</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+        </div>
+
+        <div className="px-4 py-3 border-b border-gray-100">
+          <input
+            autoFocus
+            type="text"
+            placeholder="Search by supplier, component, or product…"
+            className="input"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+
+        <div className="overflow-y-auto flex-1">
+          {!loaded ? (
+            <p className="text-center text-sm text-gray-400 py-10">Loading all quotes…</p>
+          ) : grouped.length === 0 ? (
+            <p className="text-center text-sm text-gray-400 py-10">No quotes found.</p>
+          ) : grouped.map(([supplierName, qs]) => (
+            <div key={supplierName}>
+              <p className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 sticky top-0">
+                {supplierName}
+              </p>
+              {qs.map(q => (
+                <button
+                  key={q.id}
+                  onClick={() => onSelect(q)}
+                  className="w-full text-left px-4 py-3 hover:bg-brand-50 transition-colors border-b border-gray-50 last:border-0"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-xs text-gray-400">{q._productName} › {q._componentName}</p>
+                      <p className="text-sm font-medium text-gray-800 mt-0.5">
+                        {q.unit_cost != null ? `${q.unit_cost} ${q.unit_cost_currency}` : '—'}
+                        {q.moq ? ` · MOQ ${q.moq.toLocaleString()}` : ''}
+                      </p>
+                      {(q.sampling_lead_time_days || q.production_lead_time_days) && (
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {q.sampling_lead_time_days ? `Sample ${q.sampling_lead_time_days}d` : ''}
+                          {q.sampling_lead_time_days && q.production_lead_time_days ? ' · ' : ''}
+                          {q.production_lead_time_days ? `Prod ${q.production_lead_time_days}d` : ''}
+                        </p>
+                      )}
+                    </div>
+                    <span className="text-xs text-brand-600 font-medium shrink-0">Use →</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+
+        <div className="px-5 py-3 border-t border-gray-100 text-xs text-gray-400">
+          Click a quote to pre-fill the form. You can adjust before saving.
+        </div>
+      </div>
     </div>
   )
 }
