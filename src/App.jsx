@@ -16,6 +16,9 @@ import SupplierDetail from './pages/SupplierDetail'
 import Quotes from './pages/Quotes'
 import QuoteForm from './pages/QuoteForm'
 import QuoteDetail from './pages/QuoteDetail'
+import Customers from './pages/Customers'
+import CustomerForm from './pages/CustomerForm'
+import CustomerDetail from './pages/CustomerDetail'
 import Settings from './pages/Settings'
 
 function ProtectedRoute({ children, user }) {
@@ -54,6 +57,10 @@ export default function App() {
                 <Route path="/quotes" element={<Quotes />} />
                 <Route path="/quotes/new" element={<QuoteForm />} />
                 <Route path="/quotes/:id" element={<QuoteDetail />} />
+                <Route path="/customers" element={<Customers />} />
+                <Route path="/customers/new" element={<CustomerForm />} />
+                <Route path="/customers/:id" element={<CustomerDetail />} />
+                <Route path="/customers/:id/edit" element={<CustomerForm />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>
             </Layout>

@@ -51,6 +51,11 @@ service cloud.firestore {
       }
     }
 
+    // Customers
+    match /customers/{customerId} {
+      allow read, write: if isAuth();
+    }
+
     // Settings (exchange rates etc.)
     match /settings/{docId} {
       allow read, write: if isAuth();
