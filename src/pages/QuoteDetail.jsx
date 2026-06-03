@@ -60,11 +60,25 @@ export default function QuoteDetail() {
   }
 
   async function handleAddProducts(products) {
+    const quoteCurrency = quote.quote_currency || 'HKD'
+    const rates = { HKD: 1, RMB: quote.rmb_to_hkd, USD: quote.usd_to_hkd, EUR: quote.eur_to_hkd }
+
+    function toQuoteCurrency(price_hkd) {
+      return quoteCurrency === 'HKD' ? price_hkd : +(price_hkd / (rates[quoteCurrency] || 1)).toFixed(2)
+    }
+
     await Promise.all(products.map(async p => {
       const tierSnap = await getDocs(query(collection(db, 'products', p.id, 'pricing_tiers'), orderBy('quantity')))
       const tiers = tierSnap.docs.length > 0
-        ? tierSnap.docs.map(d => ({ quantity: d.data().quantity || 200, price_hkd: d.data().price_hkd || 0 }))
-        : [{ quantity: 200, price_hkd: 0 }]
+        ? tierSnap.docs.map(d => {
+            const td = d.data()
+            // Use the sell_price directly if currency matches, otherwise convert from price_hkd
+            const price = td.sell_currency === quoteCurrency
+              ? (td.sell_price || 0)
+              : toQuoteCurrency(td.price_hkd || 0)
+            return { quantity: td.quantity || 200, price, currency: quoteCurrency }
+          })
+        : [{ quantity: 200, price: 0, currency: quoteCurrency }]
 
       await addDoc(collection(db, 'client_quotes', id, 'items'), {
         product_id: p.id,
@@ -88,11 +102,14 @@ export default function QuoteDetail() {
   if (loading) return <LoadingBar />
   if (!quote) return <div className="p-6 text-gray-500">Quote not found.</div>
 
-  // Show total based on the first (lowest) tier of each item
-  const totalHKD = items.reduce((sum, i) => {
-    const tiers = i.tiers || [{ quantity: i.quantity || 0, price_hkd: i.price_hkd || 0 }]
+  const quoteCurrency = quote.quote_currency || 'HKD'
+
+  // Min total: first (lowest qty) tier of each item, in quote currency
+  const minTotal = items.reduce((sum, i) => {
+    const tiers = i.tiers || [{ quantity: i.quantity || 0, price: i.price_hkd || 0, currency: 'HKD' }]
     const t = tiers[0] || {}
-    return sum + (t.price_hkd || 0) * (t.quantity || 0)
+    const price = t.price ?? t.price_hkd ?? 0
+    return sum + price * (t.quantity || 0)
   }, 0)
 
   return (
@@ -104,6 +121,7 @@ export default function QuoteDetail() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{quote.client_name}</h1>
           {quote.contact_name && <p className="text-sm text-gray-500 mt-0.5">{quote.contact_name} {quote.contact_email && `· ${quote.contact_email}`}</p>}
+          <p className="text-xs text-gray-400 mt-1">Currency: <span className="font-medium text-gray-600">{quoteCurrency}</span></p>
         </div>
         <div className="flex gap-2 items-center">
           <select
@@ -133,6 +151,7 @@ export default function QuoteDetail() {
               <QuoteItem
                 key={item.id}
                 item={item}
+                quoteCurrency={quoteCurrency}
                 onTiersChange={tiers => handleTiersChange(item.id, tiers)}
                 onRemove={() => handleRemoveItem(item.id)}
               />
@@ -140,7 +159,7 @@ export default function QuoteDetail() {
 
             <div className="flex justify-end pt-3 border-t border-gray-100">
               <p className="text-sm font-semibold text-gray-700">
-                Min. Total: <span className="text-lg font-bold text-gray-900">HKD {totalHKD.toLocaleString('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                Min. Total: <span className="text-lg font-bold text-gray-900">{quoteCurrency} {minTotal.toLocaleString('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </p>
             </div>
           </div>
@@ -179,8 +198,10 @@ export default function QuoteDetail() {
   )
 }
 
-function QuoteItem({ item, onTiersChange, onRemove }) {
-  const tiers = item.tiers || [{ quantity: item.quantity || 200, price_hkd: item.price_hkd || 0 }]
+function QuoteItem({ item, quoteCurrency, onTiersChange, onRemove }) {
+  const currency = quoteCurrency || 'HKD'
+  const tiers = (item.tiers || [{ quantity: item.quantity || 200, price: item.price_hkd || 0, currency }])
+    .map(t => ({ ...t, price: t.price ?? t.price_hkd ?? 0, currency: t.currency || currency }))
 
   function updateTier(index, field, value) {
     const updated = tiers.map((t, i) => i === index ? { ...t, [field]: Number(value) } : t)
@@ -188,7 +209,7 @@ function QuoteItem({ item, onTiersChange, onRemove }) {
   }
 
   function addTier() {
-    onTiersChange([...tiers, { quantity: 0, price_hkd: 0 }])
+    onTiersChange([...tiers, { quantity: 0, price: 0, currency }])
   }
 
   function removeTier(index) {
@@ -220,8 +241,8 @@ function QuoteItem({ item, onTiersChange, onRemove }) {
           <thead>
             <tr className="text-xs text-gray-400">
               <th className="text-left font-normal pb-1 w-28">Quantity</th>
-              <th className="text-left font-normal pb-1 w-32">Unit Price HKD</th>
-              <th className="text-right font-normal pb-1">Subtotal</th>
+              <th className="text-left font-normal pb-1 w-32">Unit Price ({currency})</th>
+              <th className="text-right font-normal pb-1">Subtotal ({currency})</th>
               <th className="w-6"></th>
             </tr>
           </thead>
@@ -239,15 +260,15 @@ function QuoteItem({ item, onTiersChange, onRemove }) {
                 </td>
                 <td className="pr-2 py-0.5">
                   <input
-                    type="number" step="0.5" min="0"
+                    type="number" step="0.01" min="0"
                     className="input py-1 w-28 text-sm"
-                    defaultValue={tier.price_hkd}
-                    key={`price-${i}-${tier.price_hkd}`}
-                    onBlur={e => updateTier(i, 'price_hkd', e.target.value)}
+                    defaultValue={tier.price}
+                    key={`price-${i}-${tier.price}`}
+                    onBlur={e => updateTier(i, 'price', e.target.value)}
                   />
                 </td>
                 <td className="text-right py-0.5 font-semibold text-gray-800 whitespace-nowrap">
-                  HKD {((tier.price_hkd || 0) * (tier.quantity || 0)).toLocaleString()}
+                  {((tier.price || 0) * (tier.quantity || 0)).toLocaleString('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
                 <td className="pl-2 py-0.5 text-center">
                   {tiers.length > 1 && (

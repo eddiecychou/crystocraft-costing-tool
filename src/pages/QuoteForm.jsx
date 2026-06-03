@@ -1,15 +1,35 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, addDoc, serverTimestamp, getDoc, doc } from 'firebase/firestore'
 import { db } from '../firebase'
+import { CURRENCIES } from '../constants'
+
+const DEFAULT_RATES = { rmb_to_hkd: 1.09, usd_to_hkd: 7.78, eur_to_hkd: 8.60 }
 
 export default function QuoteForm() {
   const navigate = useNavigate()
   const [form, setForm] = useState({
     client_name: '', contact_name: '', contact_email: '',
     contact_phone: '', notes: '', status: 'draft',
-    rmb_to_hkd: 1.09, usd_to_hkd: 7.78, eur_to_hkd: 8.60,
+    quote_currency: 'HKD',
+    rmb_to_hkd: DEFAULT_RATES.rmb_to_hkd,
+    usd_to_hkd: DEFAULT_RATES.usd_to_hkd,
+    eur_to_hkd: DEFAULT_RATES.eur_to_hkd,
   })
+
+  useEffect(() => {
+    getDoc(doc(db, 'settings', 'exchange_rates')).then(s => {
+      if (s.exists()) {
+        const d = s.data()
+        setForm(f => ({
+          ...f,
+          rmb_to_hkd: d.RMB ?? f.rmb_to_hkd,
+          usd_to_hkd: d.USD ?? f.usd_to_hkd,
+          eur_to_hkd: d.EUR ?? f.eur_to_hkd,
+        }))
+      }
+    })
+  }, [])
   const [loading, setLoading] = useState(false)
 
   function set(field) { return e => setForm(f => ({ ...f, [field]: e.target.value })) }
@@ -69,7 +89,14 @@ export default function QuoteForm() {
         </div>
 
         <div className="card p-6 space-y-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Exchange Rates for This Quote</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Quote Currency & Exchange Rates</p>
+          <div>
+            <label className="label">Quote Currency</label>
+            <select className="input w-40" value={form.quote_currency} onChange={set('quote_currency')}>
+              {CURRENCIES.map(c => <option key={c}>{c}</option>)}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">All prices in this quote will be shown in this currency.</p>
+          </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="label">RMB → HKD</label>

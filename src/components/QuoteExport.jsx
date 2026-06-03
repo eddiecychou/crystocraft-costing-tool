@@ -23,7 +23,7 @@ export default function QuoteExport({ quote, items, onClose }) {
       ws.getCell('A5').value = 'Date:'
       ws.getCell('B5').value = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
       ws.getCell('D3').value = 'Currency:'
-      ws.getCell('E3').value = 'HKD'
+      ws.getCell('E3').value = quote.quote_currency || 'HKD'
       ws.getCell('D4').value = 'Exchange Rates:'
       ws.getCell('E4').value = `RMB ${quote.rmb_to_hkd} · USD ${quote.usd_to_hkd} · EUR ${quote.eur_to_hkd}`
 
@@ -32,7 +32,8 @@ export default function QuoteExport({ quote, items, onClose }) {
       // Column headers
       const headerRow = ws.addRow([])
       ws.addRow([])
-      const hRow = ws.addRow(['#', 'Product', 'Category', 'Description', 'Quantity', 'Unit Price (HKD)', 'Subtotal (HKD)'])
+      const cur = quote.quote_currency || 'HKD'
+      const hRow = ws.addRow(['#', 'Product', 'Category', 'Description', 'Quantity', `Unit Price (${cur})`, `Subtotal (${cur})`])
       hRow.eachCell(cell => {
         cell.font = { bold: true, color: { argb: 'FFFFFFFF' } }
         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4244CF' } }
@@ -58,13 +59,14 @@ export default function QuoteExport({ quote, items, onClose }) {
         for (let t = 0; t < tiers.length; t++) {
           const tier = tiers[t]
           const isFirstTier = t === 0
+          const tierPrice = tier.price ?? tier.price_hkd ?? 0
           const row = ws.addRow([
             isFirstTier ? i + 1 : '',
             isFirstTier ? item.product_name : '',
             isFirstTier ? item.product_category : '',
             isFirstTier ? item.product_description : '',
             tier.quantity,
-            tier.price_hkd,
+            tierPrice,
             { formula: `E${ws.lastRow.number}*F${ws.lastRow.number}` },
           ])
           row.height = isFirstTier ? 60 : 22
@@ -120,7 +122,7 @@ export default function QuoteExport({ quote, items, onClose }) {
 
       // Footer
       ws.addRow([])
-      ws.addRow(['', '', '', '', '', '', 'All prices in HKD. Subject to final confirmation.'])
+      ws.addRow(['', '', '', '', '', '', `All prices in ${cur}. Subject to final confirmation.`])
       ws.lastRow.getCell(7).font = { color: { argb: 'FF999999' }, italic: true }
       ws.lastRow.getCell(7).alignment = { horizontal: 'right' }
 
