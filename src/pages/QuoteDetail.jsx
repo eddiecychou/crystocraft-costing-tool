@@ -27,6 +27,7 @@ export default function QuoteDetail() {
   const [showProductPicker, setShowProductPicker] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [showExport, setShowExport] = useState(false)
+  const [duplicating, setDuplicating] = useState(false)
 
   useEffect(() => {
     getDoc(doc(db, 'client_quotes', id)).then(snap => {
@@ -48,6 +49,32 @@ export default function QuoteDetail() {
   async function handleDelete() {
     await deleteDoc(doc(db, 'client_quotes', id))
     navigate('/quotes')
+  }
+
+  async function handleDuplicate() {
+    setDuplicating(true)
+    try {
+      // Copy quote header (reset status to draft)
+      const { id: _id, ...quoteData } = quote
+      const newQuote = await addDoc(collection(db, 'client_quotes'), {
+        ...quoteData,
+        status: 'draft',
+        item_count: items.length,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+      // Copy all items
+      await Promise.all(items.map(item => {
+        const { id: _itemId, ...itemData } = item
+        return addDoc(collection(db, 'client_quotes', newQuote.id, 'items'), {
+          ...itemData,
+          createdAt: serverTimestamp(),
+        })
+      }))
+      navigate(`/quotes/${newQuote.id}`)
+    } finally {
+      setDuplicating(false)
+    }
   }
 
   async function handleRemoveItem(itemId) {
@@ -130,6 +157,9 @@ export default function QuoteDetail() {
             {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
           </select>
           <button className="btn-secondary text-sm" onClick={() => setShowExport(true)}>Export</button>
+          <button className="btn-secondary text-sm" onClick={handleDuplicate} disabled={duplicating}>
+            {duplicating ? 'Copying…' : '⎘ Duplicate'}
+          </button>
           <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>Delete</button>
         </div>
       </div>
