@@ -98,6 +98,15 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                         title="Set as hero image"
                       >⭐</button>
                     )}
+                    <a
+                      href={img.file_url}
+                      download={img.file_name || 'image.jpg'}
+                      target="_blank"
+                      rel="noreferrer"
+                      onClick={e => e.stopPropagation()}
+                      className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-blue-600 hover:bg-white"
+                      title="Download image"
+                    >↓</a>
                     <button
                       type="button"
                       onClick={e => { e.stopPropagation(); setConfirmDelete(img) }}
@@ -126,7 +135,18 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
       {lightbox && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" onClick={() => setLightbox(null)}>
           <img src={lightbox.file_url} alt="" className="max-w-full max-h-full rounded-lg object-contain" onClick={e => e.stopPropagation()} />
-          <button className="absolute top-4 right-4 text-white text-2xl" onClick={() => setLightbox(null)}>✕</button>
+          <div className="absolute top-4 right-4 flex gap-2">
+            <a
+              href={lightbox.file_url}
+              download={lightbox.file_name || 'image.jpg'}
+              target="_blank"
+              rel="noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm"
+              title="Download"
+            >↓ Download</a>
+            <button className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm" onClick={() => setLightbox(null)}>✕</button>
+          </div>
         </div>
       )}
 
