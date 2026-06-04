@@ -163,7 +163,8 @@ export default function PricingTiers() {
             <div className="divide-y divide-gray-100 mb-4">
               {components.map(c => {
                 const q = c.preferred_quote
-                const costHKD = q?.unit_cost ? Number(q.unit_cost) * (rates[q.unit_cost_currency] || 1) : null
+                const qty = Number(c.qty_per_product) || 1
+                const costHKD = q?.unit_cost ? Number(q.unit_cost) * (rates[q.unit_cost_currency] || 1) * qty : null
                 return (
                   <div key={c.id} className="py-2.5 flex items-center justify-between gap-4">
                     <div className="min-w-0">
