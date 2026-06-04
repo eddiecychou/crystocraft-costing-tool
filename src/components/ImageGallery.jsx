@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject, getBlob } from 'firebase/storage'
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { collection, addDoc, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { storage, db } from '../firebase'
 import ConfirmDialog from './ConfirmDialog'
@@ -9,41 +9,15 @@ function makeDownloadName(prefix, index) {
   return `${safe} - ${index + 1}.jpg`
 }
 
-async function downloadImage(img, filename) {
-  // Try Firebase SDK getBlob first (handles auth, no CORS issues)
-  if (img.storage_path) {
-    try {
-      const blobPromise = getBlob(storageRef(storage, img.storage_path))
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
-      const blob = await Promise.race([blobPromise, timeoutPromise])
-      const objectUrl = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = objectUrl
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(objectUrl)
-      return
-    } catch (err) {
-      console.warn('getBlob failed, trying direct URL:', err)
-    }
-  }
-  // Fallback: direct fetch with the download URL
-  try {
-    const res = await fetch(img.file_url)
-    const blob = await res.blob()
-    const objectUrl = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = objectUrl
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(objectUrl)
-  } catch {
-    window.open(img.file_url, '_blank')
-  }
+function downloadImage(img, filename) {
+  // Route through our server-side proxy — avoids CORS, forces correct filename
+  const proxyUrl = `/api/download-image?url=${encodeURIComponent(img.file_url)}&filename=${encodeURIComponent(filename)}`
+  const a = document.createElement('a')
+  a.href = proxyUrl
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
 }
 
 export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, onHeroChange, downloadPrefix }) {
@@ -51,7 +25,6 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
   const [uploading, setUploading]       = useState(false)
   const [lightbox, setLightbox]         = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
-  const [downloading, setDownloading]   = useState(null) // image id currently downloading
 
   async function handleFiles(e) {
     const files = Array.from(e.target.files)
@@ -144,16 +117,10 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                     )}
                     <button
                       type="button"
-                      disabled={downloading === img.id}
-                      onClick={async e => {
-                        e.stopPropagation()
-                        setDownloading(img.id)
-                        await downloadImage(img, makeDownloadName(downloadPrefix, idx))
-                        setDownloading(null)
-                      }}
-                      className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-blue-600 hover:bg-white disabled:opacity-50"
+                      onClick={e => { e.stopPropagation(); downloadImage(img, makeDownloadName(downloadPrefix, idx)) }}
+                      className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-blue-600 hover:bg-white"
                       title="Download image"
-                    >{downloading === img.id ? '…' : '↓'}</button>
+                    >↓</button>
                     <button
                       type="button"
                       onClick={e => { e.stopPropagation(); setConfirmDelete(img) }}
@@ -185,15 +152,9 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
           <div className="absolute top-4 right-4 flex gap-2">
             <button
               type="button"
-              disabled={downloading === lightbox.id}
-              onClick={async e => {
-                e.stopPropagation()
-                setDownloading(lightbox.id)
-                await downloadImage(lightbox, makeDownloadName(downloadPrefix, images.findIndex(i => i.id === lightbox.id)))
-                setDownloading(null)
-              }}
-              className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm disabled:opacity-50"
-            >{downloading === lightbox.id ? 'Downloading…' : '↓ Download'}</button>
+              onClick={e => { e.stopPropagation(); downloadImage(lightbox, makeDownloadName(downloadPrefix, images.findIndex(i => i.id === lightbox.id))) }}
+              className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm"
+            >↓ Download</button>
             <button className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm" onClick={() => setLightbox(null)}>✕</button>
           </div>
         </div>

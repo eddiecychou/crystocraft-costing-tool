@@ -1,14 +1,20 @@
 export default async function handler(req) {
-  const url = new URL(req.url).searchParams.get('url')
+  const params = new URL(req.url).searchParams
+  const url = params.get('url')
+  const filename = params.get('filename') || 'image.jpg'
+
   if (!url) return new Response('Missing url param', { status: 400 })
 
   const res = await fetch(url)
-  const blob = await res.blob()
+  if (!res.ok) return new Response('Failed to fetch image', { status: 502 })
+
+  const blob = await res.arrayBuffer()
 
   return new Response(blob, {
     headers: {
-      'Content-Type': res.headers.get('Content-Type') || 'application/octet-stream',
-      'Access-Control-Allow-Origin': '*',
+      'Content-Type': res.headers.get('Content-Type') || 'image/jpeg',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Cache-Control': 'private, max-age=3600',
     },
   })
 }
