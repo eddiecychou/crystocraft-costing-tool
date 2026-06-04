@@ -25,9 +25,9 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
   const [uploading, setUploading]       = useState(false)
   const [lightbox, setLightbox]         = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [dragOver, setDragOver]         = useState(false)
 
-  async function handleFiles(e) {
-    const files = Array.from(e.target.files)
+  async function uploadFiles(files) {
     if (!files.length) return
     setUploading(true)
     try {
@@ -49,8 +49,19 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
       }))
     } finally {
       setUploading(false)
-      e.target.value = ''
     }
+  }
+
+  function handleFiles(e) {
+    uploadFiles(Array.from(e.target.files))
+    e.target.value = ''
+  }
+
+  function handleDrop(e) {
+    e.preventDefault()
+    setDragOver(false)
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'))
+    uploadFiles(files)
   }
 
   async function handleDelete(image) {
@@ -81,9 +92,19 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
   return (
     <div>
       {/* Upload */}
-      <label className={`flex items-center justify-center gap-2 border-2 border-dashed rounded-lg p-4 cursor-pointer transition-colors ${uploading ? 'border-brand-300 bg-brand-50' : 'border-gray-200 hover:border-brand-300 hover:bg-brand-50'}`}>
-        <span className="text-lg">📎</span>
-        <span className="text-sm text-gray-600">{uploading ? 'Uploading…' : 'Upload images'}</span>
+      <label
+        className={`flex items-center justify-center gap-2 border-2 border-dashed rounded-lg p-4 cursor-pointer transition-colors
+          ${uploading   ? 'border-brand-300 bg-brand-50 cursor-wait' :
+            dragOver    ? 'border-brand-400 bg-brand-50 scale-[1.01]' :
+                          'border-gray-200 hover:border-brand-300 hover:bg-brand-50'}`}
+        onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+      >
+        <span className="text-lg">{dragOver ? '📂' : '📎'}</span>
+        <span className="text-sm text-gray-600">
+          {uploading ? 'Uploading…' : dragOver ? 'Drop to upload' : 'Upload images or drag & drop'}
+        </span>
         <input type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} disabled={uploading} />
       </label>
 
