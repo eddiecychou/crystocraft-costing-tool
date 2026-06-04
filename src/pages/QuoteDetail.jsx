@@ -104,6 +104,10 @@ export default function QuoteDetail() {
     await updateDoc(doc(db, 'client_quotes', id, 'items', itemId), { product_unit: unit })
   }
 
+  async function handleRemarksChange(itemId, remarks) {
+    await updateDoc(doc(db, 'client_quotes', id, 'items', itemId), { remarks })
+  }
+
   async function handleImageChange(itemId, url) {
     await updateDoc(doc(db, 'client_quotes', id, 'items', itemId), { custom_image: url || null })
   }
@@ -229,6 +233,7 @@ export default function QuoteDetail() {
                 onTiersChange={tiers => handleTiersChange(item.id, tiers)}
                 onUnitChange={unit => handleUnitChange(item.id, unit)}
                 onImageChange={url => handleImageChange(item.id, url)}
+                onRemarksChange={remarks => handleRemarksChange(item.id, remarks)}
                 onRemove={() => handleRemoveItem(item.id)}
               />
             ))}
@@ -287,7 +292,7 @@ function marginColor(m) {
   return 'text-red-500'
 }
 
-function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUnitChange, onImageChange, onRemove }) {
+function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUnitChange, onImageChange, onRemarksChange, onRemove }) {
   const currency = quoteCurrency || 'HKD'
   const baseTiers = (item.tiers || [{ quantity: item.quantity || 200, price: item.price_hkd || 0, currency }])
     .map(t => ({ ...t, price: t.price ?? t.price_hkd ?? 0, currency: t.currency || currency }))
@@ -444,6 +449,23 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
         </table>
         </div>
         <button type="button" onClick={addTier} className="mt-1 text-xs text-brand-500 hover:text-brand-700">+ Add tier</button>
+
+        {/* Remarks */}
+        <div className="mt-2">
+          <textarea
+            rows={1}
+            placeholder="Remarks / notes for this item…"
+            defaultValue={item.remarks || ''}
+            key={`remarks-${item.id}`}
+            onBlur={e => onRemarksChange(e.target.value)}
+            onChange={e => {
+              // Auto-expand
+              e.target.style.height = 'auto'
+              e.target.style.height = e.target.scrollHeight + 'px'
+            }}
+            className="w-full text-xs text-gray-600 placeholder-gray-300 border border-gray-100 rounded-lg px-2.5 py-1.5 resize-none focus:outline-none focus:border-brand-300 focus:ring-1 focus:ring-brand-200 bg-gray-50 hover:bg-white transition-colors"
+          />
+        </div>
       </div>
     </div>
   )
