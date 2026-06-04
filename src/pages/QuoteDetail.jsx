@@ -4,7 +4,7 @@ import {
   doc, getDoc, updateDoc, deleteDoc,
   collection, onSnapshot, orderBy, query, addDoc, getDocs, serverTimestamp,
 } from 'firebase/firestore'
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
@@ -104,11 +104,8 @@ export default function QuoteDetail() {
     await updateDoc(doc(db, 'client_quotes', id, 'items', itemId), { product_unit: unit })
   }
 
-  async function handleImageChange(itemId, url, storagePath) {
-    await updateDoc(doc(db, 'client_quotes', id, 'items', itemId), {
-      custom_image: url,
-      custom_image_path: storagePath,
-    })
+  async function handleImageChange(itemId, url) {
+    await updateDoc(doc(db, 'client_quotes', id, 'items', itemId), { custom_image: url || null })
   }
 
   async function handleAddProducts(products) {
@@ -231,7 +228,7 @@ export default function QuoteDetail() {
                 rates={quoteRates}
                 onTiersChange={tiers => handleTiersChange(item.id, tiers)}
                 onUnitChange={unit => handleUnitChange(item.id, unit)}
-                onImageChange={(url, path) => handleImageChange(item.id, url, path)}
+                onImageChange={url => handleImageChange(item.id, url)}
                 onRemove={() => handleRemoveItem(item.id)}
               />
             ))}
@@ -295,8 +292,7 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
   const baseTiers = (item.tiers || [{ quantity: item.quantity || 200, price: item.price_hkd || 0, currency }])
     .map(t => ({ ...t, price: t.price ?? t.price_hkd ?? 0, currency: t.currency || currency }))
 
-  const fileInputRef = useRef(null)
-  const [imgUploading, setImgUploading] = useState(false)
+  const [showImgPicker, setShowImgPicker] = useState(false)
 
   // Local price state for live margin display
   const [localPrices, setLocalPrices] = useState(() => baseTiers.map(t => t.price))
@@ -336,58 +332,31 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
 
   const displayImage = item.custom_image || heroImage
 
-  async function handleImageUpload(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setImgUploading(true)
-    try {
-      const resized = await resizeToJpeg(file)
-      const path = `client_quotes/${item._quoteId}/items/${item.id}/custom_image.jpg`
-      const sRef = storageRef(storage, path)
-      await uploadBytes(sRef, resized, { contentType: 'image/jpeg' })
-      const url = await getDownloadURL(sRef)
-      onImageChange(url, path)
-    } finally {
-      setImgUploading(false)
-      e.target.value = ''
-    }
-  }
-
-  async function handleImageRemove() {
-    if (item.custom_image_path) {
-      try { await deleteObject(storageRef(storage, item.custom_image_path)) } catch {}
-    }
-    onImageChange(null, null)
-  }
-
   return (
     <div className="flex gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200">
-      {/* Image — custom per-item or product hero fallback */}
-      <div className="group relative w-20 h-20 rounded-lg bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
+      {/* Image — click to open product image picker */}
+      <div className="group relative w-20 h-20 rounded-lg bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center cursor-pointer"
+           onClick={() => setShowImgPicker(true)}>
         {displayImage
           ? <img src={displayImage} alt={item.product_name} className="w-full h-full object-cover" />
           : <span className="text-2xl">📦</span>}
-        {/* Hover overlay */}
-        <div className="absolute inset-0 rounded-lg bg-black/0 group-hover:bg-black/40 transition-all flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={imgUploading}
-            className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-gray-700 hover:bg-white leading-tight"
-          >{imgUploading ? '…' : '📷'}</button>
-          {item.custom_image && (
-            <button
-              type="button"
-              onClick={handleImageRemove}
-              className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-red-500 hover:bg-white leading-tight"
-            >✕</button>
-          )}
+        <div className="absolute inset-0 rounded-lg bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+          <span className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-gray-700">change</span>
         </div>
-        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
         {item.custom_image && (
-          <div className="absolute bottom-1 left-1 bg-brand-600/80 text-white text-[9px] px-1 rounded leading-tight">custom</div>
+          <div className="absolute bottom-1 left-1 bg-brand-600/80 text-white text-[9px] px-1 rounded leading-tight pointer-events-none">custom</div>
         )}
       </div>
+
+      {showImgPicker && (
+        <ProductImagePicker
+          productId={item.product_id}
+          selectedUrl={item.custom_image}
+          onSelect={url => { onImageChange(url); setShowImgPicker(false) }}
+          onClear={() => { onImageChange(null); setShowImgPicker(false) }}
+          onClose={() => setShowImgPicker(false)}
+        />
+      )}
 
       {/* Info */}
       <div className="flex-1 min-w-0">
@@ -488,6 +457,107 @@ async function resizeToJpeg(file, maxPx = 2400, quality = 0.93) {
   const canvas = new OffscreenCanvas(w, h)
   canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h)
   return canvas.convertToBlob({ type: 'image/jpeg', quality })
+}
+
+function ProductImagePicker({ productId, selectedUrl, onSelect, onClear, onClose }) {
+  const [images, setImages] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef(null)
+
+  useEffect(() => {
+    getDocs(query(collection(db, 'products', productId, 'images'), orderBy('sort_order')))
+      .then(snap => { setImages(snap.docs.map(d => ({ id: d.id, ...d.data() }))) })
+      .finally(() => setLoading(false))
+  }, [productId])
+
+  async function handleUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploading(true)
+    try {
+      const resized = await resizeToJpeg(file)
+      const path = `products/${productId}/images/${Date.now()}.jpg`
+      const sRef = storageRef(storage, path)
+      await uploadBytes(sRef, resized, { contentType: 'image/jpeg' })
+      const url = await getDownloadURL(sRef)
+      // Save to product images subcollection
+      const newDoc = await addDoc(collection(db, 'products', productId, 'images'), {
+        file_url: url,
+        storage_path: path,
+        file_name: file.name,
+        type: 'reference',
+        caption: '',
+        sort_order: images.length,
+        uploaded_at: serverTimestamp(),
+      })
+      const newImg = { id: newDoc.id, file_url: url, storage_path: path, file_name: file.name }
+      setImages(prev => [...prev, newImg])
+      onSelect(url)
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h2 className="font-semibold text-gray-800 text-sm">Choose Image</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-4">
+          {loading ? (
+            <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
+          ) : images.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-6">No images uploaded for this product yet.</p>
+          ) : (
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              {images.map(img => {
+                const isSelected = img.file_url === selectedUrl
+                return (
+                  <div
+                    key={img.id}
+                    onClick={() => onSelect(img.file_url)}
+                    className={`relative cursor-pointer rounded-lg overflow-hidden aspect-square border-2 transition-all ${isSelected ? 'border-brand-500 ring-2 ring-brand-200' : 'border-transparent hover:border-brand-300'}`}
+                  >
+                    <img src={img.file_url} alt="" className="w-full h-full object-cover" />
+                    {isSelected && (
+                      <div className="absolute inset-0 bg-brand-500/20 flex items-center justify-center">
+                        <span className="bg-brand-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">✓</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between gap-2">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="btn-secondary text-xs py-1.5 px-3"
+            >
+              {uploading ? 'Uploading…' : '+ Upload new'}
+            </button>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
+            {selectedUrl && (
+              <button type="button" onClick={onClear} className="text-xs text-gray-400 hover:text-red-500 py-1.5 px-2">
+                Clear
+              </button>
+            )}
+          </div>
+          <p className="text-xs text-gray-400">New uploads saved to product</p>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function ProductPicker({ existingIds, onAdd, onClose }) {
