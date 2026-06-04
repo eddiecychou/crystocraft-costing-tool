@@ -10,11 +10,29 @@ function makeDownloadName(prefix, index) {
 }
 
 async function downloadImage(img, filename) {
+  // Try Firebase SDK getBlob first (handles auth, no CORS issues)
+  if (img.storage_path) {
+    try {
+      const blobPromise = getBlob(storageRef(storage, img.storage_path))
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000))
+      const blob = await Promise.race([blobPromise, timeoutPromise])
+      const objectUrl = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(objectUrl)
+      return
+    } catch (err) {
+      console.warn('getBlob failed, trying direct URL:', err)
+    }
+  }
+  // Fallback: direct fetch with the download URL
   try {
-    // Use Firebase SDK getBlob — handles auth tokens properly, no CORS issues
-    const path = img.storage_path
-    if (!path) throw new Error('no storage_path')
-    const blob = await getBlob(storageRef(storage, path))
+    const res = await fetch(img.file_url)
+    const blob = await res.blob()
     const objectUrl = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = objectUrl
@@ -30,9 +48,10 @@ async function downloadImage(img, filename) {
 
 export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, onHeroChange, downloadPrefix }) {
   const fileIdRef = useRef(0)
-  const [uploading, setUploading]     = useState(false)
-  const [lightbox, setLightbox]       = useState(null)
+  const [uploading, setUploading]       = useState(false)
+  const [lightbox, setLightbox]         = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const [downloading, setDownloading]   = useState(null) // image id currently downloading
 
   async function handleFiles(e) {
     const files = Array.from(e.target.files)
@@ -125,10 +144,16 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                     )}
                     <button
                       type="button"
-                      onClick={e => { e.stopPropagation(); downloadImage(img, makeDownloadName(downloadPrefix, idx)) }}
-                      className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-blue-600 hover:bg-white"
+                      disabled={downloading === img.id}
+                      onClick={async e => {
+                        e.stopPropagation()
+                        setDownloading(img.id)
+                        await downloadImage(img, makeDownloadName(downloadPrefix, idx))
+                        setDownloading(null)
+                      }}
+                      className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-blue-600 hover:bg-white disabled:opacity-50"
                       title="Download image"
-                    >↓</button>
+                    >{downloading === img.id ? '…' : '↓'}</button>
                     <button
                       type="button"
                       onClick={e => { e.stopPropagation(); setConfirmDelete(img) }}
@@ -160,9 +185,15 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
           <div className="absolute top-4 right-4 flex gap-2">
             <button
               type="button"
-              onClick={e => { e.stopPropagation(); downloadImage(lightbox, makeDownloadName(downloadPrefix, images.findIndex(i => i.id === lightbox.id))) }}
-              className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm"
-            >↓ Download</button>
+              disabled={downloading === lightbox.id}
+              onClick={async e => {
+                e.stopPropagation()
+                setDownloading(lightbox.id)
+                await downloadImage(lightbox, makeDownloadName(downloadPrefix, images.findIndex(i => i.id === lightbox.id)))
+                setDownloading(null)
+              }}
+              className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm disabled:opacity-50"
+            >{downloading === lightbox.id ? 'Downloading…' : '↓ Download'}</button>
             <button className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm" onClick={() => setLightbox(null)}>✕</button>
           </div>
         </div>
