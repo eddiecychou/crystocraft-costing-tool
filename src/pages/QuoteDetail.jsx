@@ -1,4 +1,12 @@
 import { useState, useEffect, useRef, Fragment } from 'react'
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext, verticalListSortingStrategy,
+  useSortable, arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   doc, getDoc, updateDoc, deleteDoc,
@@ -41,7 +49,9 @@ export default function QuoteDetail() {
   useEffect(() => {
     const q = query(collection(db, 'client_quotes', id, 'items'), orderBy('createdAt'))
     return onSnapshot(q, async snap => {
-      const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      const loaded = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
       setItems(loaded)
       // Fetch live heroImage for each product so image updates are reflected
       const productIds = [...new Set(loaded.map(i => i.product_id).filter(Boolean))]
@@ -54,6 +64,23 @@ export default function QuoteDetail() {
       setLiveImages(Object.fromEntries(entries))
     })
   }, [id])
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
+
+  async function handleDragEnd(event) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = items.findIndex(i => i.id === active.id)
+    const newIndex = items.findIndex(i => i.id === over.id)
+    const reordered = arrayMove(items, oldIndex, newIndex)
+    setItems(reordered)
+    // Persist new sort_order to Firestore
+    await Promise.all(
+      reordered.map((item, idx) =>
+        updateDoc(doc(db, 'client_quotes', id, 'items', item.id), { sort_order: idx })
+      )
+    )
+  }
 
   async function handleStatusChange(status) {
     await updateDoc(doc(db, 'client_quotes', id), { status })
@@ -214,19 +241,23 @@ export default function QuoteDetail() {
           <p className="text-sm text-gray-400 text-center py-8">No products yet — click "Add Products" to select from your catalogue.</p>
         ) : (
           <div className="space-y-3">
-            {items.map(item => (
-              <QuoteItem
-                key={item.id}
-                item={{ ...item, _quoteId: id }}
-                quoteCurrency={quoteCurrency}
-                heroImage={liveImages[item.product_id] ?? item.hero_image}
-                rates={quoteRates}
-                onTiersChange={tiers => handleTiersChange(item.id, tiers)}
-                onUnitChange={unit => handleUnitChange(item.id, unit)}
-                onImageChange={url => handleImageChange(item.id, url)}
-                onRemove={() => handleRemoveItem(item.id)}
-              />
-            ))}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={items.map(i => i.id)} strategy={verticalListSortingStrategy}>
+                {items.map(item => (
+                  <QuoteItem
+                    key={item.id}
+                    item={{ ...item, _quoteId: id }}
+                    quoteCurrency={quoteCurrency}
+                    heroImage={liveImages[item.product_id] ?? item.hero_image}
+                    rates={quoteRates}
+                    onTiersChange={tiers => handleTiersChange(item.id, tiers)}
+                    onUnitChange={unit => handleUnitChange(item.id, unit)}
+                    onImageChange={url => handleImageChange(item.id, url)}
+                    onRemove={() => handleRemoveItem(item.id)}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
 
           </div>
         )}
@@ -278,6 +309,7 @@ function marginColor(m) {
 }
 
 function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUnitChange, onImageChange, onRemove }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const currency = quoteCurrency || 'HKD'
   const baseTiers = (item.tiers || [{ quantity: item.quantity || 200, price: item.price_hkd || 0, currency }])
     .map(t => ({ ...t, price: t.price ?? t.price_hkd ?? 0, currency: t.currency || currency }))
@@ -323,8 +355,18 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
 
   const displayImage = item.custom_image || heroImage
 
+  const style = { transform: CSS.Transform.toString(transform), transition }
+
   return (
-    <div className="flex gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200">
+    <div ref={setNodeRef} style={style} className={`flex gap-3 p-3 rounded-lg border transition-colors ${isDragging ? 'border-brand-300 bg-brand-50 shadow-lg opacity-80' : 'border-gray-100 hover:border-gray-200'}`}>
+      {/* Drag handle */}
+      <div {...attributes} {...listeners} className="flex items-start pt-1 cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-400 shrink-0 touch-none">
+        <svg width="12" height="20" viewBox="0 0 12 20" fill="currentColor">
+          <circle cx="4" cy="4" r="1.5"/><circle cx="8" cy="4" r="1.5"/>
+          <circle cx="4" cy="10" r="1.5"/><circle cx="8" cy="10" r="1.5"/>
+          <circle cx="4" cy="16" r="1.5"/><circle cx="8" cy="16" r="1.5"/>
+        </svg>
+      </div>
       {/* Image — click to open product image picker */}
       <div className="group relative w-20 h-20 rounded-lg bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center cursor-pointer"
            onClick={() => setShowImgPicker(true)}>
