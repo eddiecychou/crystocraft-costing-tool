@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   doc, getDoc, updateDoc, deleteDoc,
@@ -104,9 +104,6 @@ export default function QuoteDetail() {
     await updateDoc(doc(db, 'client_quotes', id, 'items', itemId), { product_unit: unit })
   }
 
-  async function handleRemarksChange(itemId, remarks) {
-    await updateDoc(doc(db, 'client_quotes', id, 'items', itemId), { remarks })
-  }
 
   async function handleImageChange(itemId, url) {
     await updateDoc(doc(db, 'client_quotes', id, 'items', itemId), { custom_image: url || null })
@@ -233,7 +230,6 @@ export default function QuoteDetail() {
                 onTiersChange={tiers => handleTiersChange(item.id, tiers)}
                 onUnitChange={unit => handleUnitChange(item.id, unit)}
                 onImageChange={url => handleImageChange(item.id, url)}
-                onRemarksChange={remarks => handleRemarksChange(item.id, remarks)}
                 onRemove={() => handleRemoveItem(item.id)}
               />
             ))}
@@ -292,7 +288,7 @@ function marginColor(m) {
   return 'text-red-500'
 }
 
-function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUnitChange, onImageChange, onRemarksChange, onRemove }) {
+function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUnitChange, onImageChange, onRemove }) {
   const currency = quoteCurrency || 'HKD'
   const baseTiers = (item.tiers || [{ quantity: item.quantity || 200, price: item.price_hkd || 0, currency }])
     .map(t => ({ ...t, price: t.price ?? t.price_hkd ?? 0, currency: t.currency || currency }))
@@ -317,7 +313,8 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
   }
 
   function updateTier(index, field, value) {
-    const updated = tiers.map((t, i) => i === index ? { ...t, [field]: Number(value) } : t)
+    const parsed = field === 'remarks' ? value : Number(value)
+    const updated = tiers.map((t, i) => i === index ? { ...t, [field]: parsed } : t)
     if (field === 'price') {
       setLocalPrices(prev => prev.map((p, i) => i === index ? Number(value) : p))
     }
@@ -394,78 +391,76 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
             {tiers.map((tier, i) => {
               const livePrice = localPrices[i] ?? tier.price
               const margin = calcMargin(livePrice)
+              const colSpan = 2 + (costInQuoteCurrency != null ? 1 : 0) + 2
               return (
-              <tr key={i} className="group">
-                <td className="pr-2 py-0.5">
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number" min="1"
-                      className="input py-1 w-20 text-sm"
-                      defaultValue={tier.quantity}
-                      key={`qty-${i}-${tier.quantity}`}
-                      onBlur={e => updateTier(i, 'quantity', e.target.value)}
-                    />
-                    {i === 0 ? (
-                      <select
-                        className="input py-1 text-xs w-16"
-                        value={item.product_unit || 'pcs'}
-                        onChange={e => onUnitChange(e.target.value)}
-                      >
-                        {UNIT_OPTIONS.map(u => <option key={u}>{u}</option>)}
-                      </select>
-                    ) : (
-                      <span className="text-xs text-gray-400 w-16">{item.product_unit || 'pcs'}</span>
-                    )}
-                  </div>
-                </td>
-                <td className="pr-2 py-0.5">
-                  <input
-                    type="number" step="0.01" min="0"
-                    className="input py-1 w-28 text-sm"
-                    defaultValue={tier.price}
-                    key={`price-${i}-${tier.price}`}
-                    onChange={e => setLocalPrices(prev => prev.map((p, j) => j === i ? Number(e.target.value) : p))}
-                    onBlur={e => updateTier(i, 'price', e.target.value)}
-                  />
-                </td>
-                {costInQuoteCurrency != null && (
-                  <td className="text-right py-0.5 whitespace-nowrap">
-                    {margin != null ? (
-                      <span className={`text-xs font-semibold ${marginColor(margin)}`}>{margin.toFixed(1)}%</span>
-                    ) : <span className="text-xs text-gray-300">—</span>}
+              <Fragment key={i}>
+                <tr className="group">
+                  <td className="pr-2 pt-1.5 pb-0">
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number" min="1"
+                        className="input py-1 w-20 text-sm"
+                        defaultValue={tier.quantity}
+                        key={`qty-${i}-${tier.quantity}`}
+                        onBlur={e => updateTier(i, 'quantity', e.target.value)}
+                      />
+                      {i === 0 ? (
+                        <select
+                          className="input py-1 text-xs w-16"
+                          value={item.product_unit || 'pcs'}
+                          onChange={e => onUnitChange(e.target.value)}
+                        >
+                          {UNIT_OPTIONS.map(u => <option key={u}>{u}</option>)}
+                        </select>
+                      ) : (
+                        <span className="text-xs text-gray-400 w-16">{item.product_unit || 'pcs'}</span>
+                      )}
+                    </div>
                   </td>
-                )}
-                <td className="text-right py-0.5 font-semibold text-gray-800 whitespace-nowrap">
-                  {((livePrice || 0) * (tier.quantity || 0)).toLocaleString('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </td>
-                <td className="pl-2 py-0.5 text-center">
-                  {tiers.length > 1 && (
-                    <button type="button" onClick={() => removeTier(i)} className="text-xs text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                  <td className="pr-2 pt-1.5 pb-0">
+                    <input
+                      type="number" step="0.01" min="0"
+                      className="input py-1 w-28 text-sm"
+                      defaultValue={tier.price}
+                      key={`price-${i}-${tier.price}`}
+                      onChange={e => setLocalPrices(prev => prev.map((p, j) => j === i ? Number(e.target.value) : p))}
+                      onBlur={e => updateTier(i, 'price', e.target.value)}
+                    />
+                  </td>
+                  {costInQuoteCurrency != null && (
+                    <td className="text-right pt-1.5 pb-0 whitespace-nowrap">
+                      {margin != null ? (
+                        <span className={`text-xs font-semibold ${marginColor(margin)}`}>{margin.toFixed(1)}%</span>
+                      ) : <span className="text-xs text-gray-300">—</span>}
+                    </td>
                   )}
-                </td>
-              </tr>
+                  <td className="text-right pt-1.5 pb-0 font-semibold text-gray-800 whitespace-nowrap">
+                    {((livePrice || 0) * (tier.quantity || 0)).toLocaleString('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                  <td className="pl-2 pt-1.5 pb-0 text-center">
+                    {tiers.length > 1 && (
+                      <button type="button" onClick={() => removeTier(i)} className="text-xs text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                    )}
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan={colSpan} className="pb-1.5 pt-0.5">
+                    <input
+                      type="text"
+                      placeholder="Add remark…"
+                      defaultValue={tier.remarks || ''}
+                      key={`remarks-${i}-${tier.remarks}`}
+                      onBlur={e => updateTier(i, 'remarks', e.target.value)}
+                      className="w-full text-xs text-gray-500 placeholder-gray-300 bg-transparent border-b border-transparent hover:border-gray-200 focus:border-brand-300 focus:outline-none py-0.5 transition-colors"
+                    />
+                  </td>
+                </tr>
+              </Fragment>
             )})}
           </tbody>
         </table>
         </div>
         <button type="button" onClick={addTier} className="mt-1 text-xs text-brand-500 hover:text-brand-700">+ Add tier</button>
-
-        {/* Remarks */}
-        <div className="mt-2">
-          <textarea
-            rows={1}
-            placeholder="Remarks / notes for this item…"
-            defaultValue={item.remarks || ''}
-            key={`remarks-${item.id}`}
-            onBlur={e => onRemarksChange(e.target.value)}
-            onChange={e => {
-              // Auto-expand
-              e.target.style.height = 'auto'
-              e.target.style.height = e.target.scrollHeight + 'px'
-            }}
-            className="w-full text-xs text-gray-600 placeholder-gray-300 border border-gray-100 rounded-lg px-2.5 py-1.5 resize-none focus:outline-none focus:border-brand-300 focus:ring-1 focus:ring-brand-200 bg-gray-50 hover:bg-white transition-colors"
-          />
-        </div>
       </div>
     </div>
   )
