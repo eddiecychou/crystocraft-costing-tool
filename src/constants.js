@@ -20,9 +20,11 @@ export const CATEGORIES = [
 export const CURRENCIES = ['RMB', 'HKD', 'USD', 'EUR']
 
 export const IMAGE_TYPES = [
-  { value: 'reference', label: 'Reference' },
-  { value: 'sample',    label: 'Sample' },
-  { value: 'final',     label: 'Final' },
+  { value: 'reference',   label: 'Reference' },
+  { value: 'rendering',   label: 'Rendering' },
+  { value: 'design_dwg',  label: 'Design Dwg' },
+  { value: 'sample',      label: 'Sample' },
+  { value: 'final',       label: 'Final' },
   { value: 'client_usage', label: 'Client Usage' },
 ]
 
