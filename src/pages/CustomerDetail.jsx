@@ -1,4 +1,10 @@
 import { useState, useEffect } from 'react'
+
+function toArray(val) {
+  if (Array.isArray(val)) return val.filter(Boolean)
+  if (val && typeof val === 'string') return [val]
+  return []
+}
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { doc, getDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -70,11 +76,23 @@ export default function CustomerDetail() {
         <h2 className="text-sm font-semibold text-gray-700 mb-3">Contact Details</h2>
         <dl className="space-y-2">
           {customer.contact_name && <Row label="Contact" value={customer.contact_name} />}
-          {customer.contact_email && (
-            <Row label="Email" value={<a href={`mailto:${customer.contact_email}`} className="text-brand-600 hover:underline">{customer.contact_email}</a>} />
+          {toArray(customer.contact_emails ?? customer.contact_email).length > 0 && (
+            <Row label="Email" value={
+              <div className="space-y-0.5">
+                {toArray(customer.contact_emails ?? customer.contact_email).map((e, i) => (
+                  <a key={i} href={`mailto:${e}`} className="text-brand-600 hover:underline block">{e}</a>
+                ))}
+              </div>
+            } />
           )}
-          {customer.contact_phone && (
-            <Row label="Phone" value={<a href={`tel:${customer.contact_phone}`} className="text-brand-600 hover:underline">{customer.contact_phone}</a>} />
+          {toArray(customer.contact_phones ?? customer.contact_phone).length > 0 && (
+            <Row label="Phone" value={
+              <div className="space-y-0.5">
+                {toArray(customer.contact_phones ?? customer.contact_phone).map((p, i) => (
+                  <a key={i} href={`tel:${p}`} className="text-brand-600 hover:underline block">{p}</a>
+                ))}
+              </div>
+            } />
           )}
           {customer.whatsapp && (
             <Row label="WhatsApp" value={

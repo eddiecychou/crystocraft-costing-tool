@@ -1,4 +1,38 @@
 import { useState, useEffect, useRef } from 'react'
+
+function toArray(val) {
+  if (Array.isArray(val)) return val.length ? val : ['']
+  if (val && typeof val === 'string') return [val]
+  return ['']
+}
+
+function MultiInput({ label, values, onChange, type = 'text', placeholder }) {
+  function update(i, v) { onChange(values.map((x, j) => j === i ? v : x)) }
+  function add() { onChange([...values, '']) }
+  function remove(i) { onChange(values.filter((_, j) => j !== i)) }
+  return (
+    <div>
+      <label className="label">{label}</label>
+      <div className="space-y-2">
+        {values.map((v, i) => (
+          <div key={i} className="flex gap-2">
+            <input
+              className="input flex-1"
+              type={type}
+              value={v}
+              onChange={e => update(i, e.target.value)}
+              placeholder={placeholder}
+            />
+            {values.length > 1 && (
+              <button type="button" onClick={() => remove(i)} className="text-gray-400 hover:text-red-500 px-1 text-lg leading-none">×</button>
+            )}
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={add} className="mt-1.5 text-xs text-brand-600 hover:text-brand-800">+ Add another</button>
+    </div>
+  )
+}
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { doc, getDoc, addDoc, updateDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -40,14 +74,14 @@ export default function CustomerForm() {
   const [form, setForm] = useState({
     company_name: '',
     contact_name: '',
-    contact_email: '',
-    contact_phone: '',
     whatsapp: '',
     website: '',
     country: 'Hong Kong',
     address: '',
     notes: '',
   })
+  const [emails, setEmails]     = useState([''])
+  const [phones, setPhones]     = useState([''])
   const [tags, setTags]         = useState([])
   const [tagInput, setTagInput] = useState('')
   const [loading, setLoading]   = useState(false)
@@ -60,16 +94,16 @@ export default function CustomerForm() {
         const d = snap.data()
         setForm(f => ({
           ...f,
-          company_name:  d.company_name  || '',
-          contact_name:  d.contact_name  || '',
-          contact_email: d.contact_email || '',
-          contact_phone: d.contact_phone || '',
-          whatsapp:      d.whatsapp      || '',
-          website:       d.website       || '',
-          country:       d.country || d.region || 'Hong Kong',
-          address:       d.address || '',
-          notes:         d.notes   || '',
+          company_name: d.company_name || '',
+          contact_name: d.contact_name || '',
+          whatsapp:     d.whatsapp     || '',
+          website:      d.website      || '',
+          country:      d.country || d.region || 'Hong Kong',
+          address:      d.address || '',
+          notes:        d.notes   || '',
         }))
+        setEmails(toArray(d.contact_emails ?? d.contact_email))
+        setPhones(toArray(d.contact_phones ?? d.contact_phone))
         setTags(d.tags || [])
       }
       setFetching(false)
@@ -98,7 +132,16 @@ export default function CustomerForm() {
     e.preventDefault()
     setLoading(true)
     try {
-      const payload = { ...form, tags, updatedAt: serverTimestamp() }
+      const payload = {
+        ...form,
+        tags,
+        contact_emails: emails.filter(Boolean),
+        contact_phones: phones.filter(Boolean),
+        // Keep legacy single-value fields for backward compat
+        contact_email: emails.filter(Boolean)[0] || '',
+        contact_phone: phones.filter(Boolean)[0] || '',
+        updatedAt: serverTimestamp(),
+      }
       if (isEdit) {
         await updateDoc(doc(db, 'customers', id), payload)
         navigate(`/customers/${id}`)
@@ -205,14 +248,8 @@ export default function CustomerForm() {
             <input className="input" value={form.contact_name} onChange={set('contact_name')} placeholder="e.g. Sarah Chan" />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Email</label>
-              <input className="input" type="email" value={form.contact_email} onChange={set('contact_email')} />
-            </div>
-            <div>
-              <label className="label">Phone</label>
-              <input className="input" value={form.contact_phone} onChange={set('contact_phone')} />
-            </div>
+            <MultiInput label="Email" values={emails} onChange={setEmails} type="email" placeholder="e.g. sarah@company.com" />
+            <MultiInput label="Phone" values={phones} onChange={setPhones} placeholder="e.g. +852 1234 5678" />
           </div>
           <div>
             <label className="label">WhatsApp Number</label>

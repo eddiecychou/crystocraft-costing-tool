@@ -3,6 +3,41 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 
+// Convert old string or existing array → clean array with at least one entry
+function toArray(val) {
+  if (Array.isArray(val)) return val.length ? val : ['']
+  if (val && typeof val === 'string') return [val]
+  return ['']
+}
+
+function MultiInput({ label, values, onChange, type = 'text', placeholder }) {
+  function update(i, v) { onChange(values.map((x, j) => j === i ? v : x)) }
+  function add() { onChange([...values, '']) }
+  function remove(i) { onChange(values.filter((_, j) => j !== i)) }
+  return (
+    <div>
+      <label className="label">{label}</label>
+      <div className="space-y-2">
+        {values.map((v, i) => (
+          <div key={i} className="flex gap-2">
+            <input
+              className="input flex-1"
+              type={type}
+              value={v}
+              onChange={e => update(i, e.target.value)}
+              placeholder={placeholder}
+            />
+            {values.length > 1 && (
+              <button type="button" onClick={() => remove(i)} className="text-gray-400 hover:text-red-500 px-1 text-lg leading-none">×</button>
+            )}
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={add} className="mt-1.5 text-xs text-brand-600 hover:text-brand-800">+ Add another</button>
+    </div>
+  )
+}
+
 export default function SupplierForm() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -10,16 +45,28 @@ export default function SupplierForm() {
 
   const [form, setForm] = useState({
     name: '', name_cn: '', country: 'China', city: '',
-    address: '', phone: '', wechat_id: '', email: '',
-    whatsapp: '', contact_person: '', notes: '',
+    address: '', wechat_id: '', whatsapp: '', contact_person: '', notes: '',
   })
+  const [phones, setPhones] = useState([''])
+  const [emails, setEmails] = useState([''])
   const [loading, setLoading]   = useState(false)
   const [fetching, setFetching] = useState(isEdit)
 
   useEffect(() => {
     if (!isEdit) return
     getDoc(doc(db, 'suppliers', id)).then(snap => {
-      if (snap.exists()) setForm(f => ({ ...f, ...snap.data() }))
+      if (snap.exists()) {
+        const d = snap.data()
+        setForm(f => ({ ...f,
+          name: d.name || '', name_cn: d.name_cn || '',
+          country: d.country || 'China', city: d.city || '',
+          address: d.address || '', wechat_id: d.wechat_id || '',
+          whatsapp: d.whatsapp || '', contact_person: d.contact_person || '',
+          notes: d.notes || '',
+        }))
+        setPhones(toArray(d.phones ?? d.phone))
+        setEmails(toArray(d.emails ?? d.email))
+      }
       setFetching(false)
     })
   }, [id, isEdit])
@@ -30,13 +77,20 @@ export default function SupplierForm() {
     e.preventDefault()
     setLoading(true)
     try {
+      const payload = {
+        ...form,
+        phones: phones.filter(Boolean),
+        emails: emails.filter(Boolean),
+        // Keep legacy single-value fields for backward compat display
+        phone: phones.filter(Boolean)[0] || '',
+        email: emails.filter(Boolean)[0] || '',
+        updatedAt: serverTimestamp(),
+      }
       if (isEdit) {
-        await updateDoc(doc(db, 'suppliers', id), { ...form, updatedAt: serverTimestamp() })
+        await updateDoc(doc(db, 'suppliers', id), payload)
         navigate(`/suppliers/${id}`)
       } else {
-        const ref = await addDoc(collection(db, 'suppliers'), {
-          ...form, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-        })
+        const ref = await addDoc(collection(db, 'suppliers'), { ...payload, createdAt: serverTimestamp() })
         navigate(`/suppliers/${ref.id}`)
       }
     } finally {
@@ -87,12 +141,9 @@ export default function SupplierForm() {
         </div>
 
         <div className="border-t border-gray-100 pt-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Contact Details</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Contact Details</p>
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Phone</label>
-              <input className="input" value={form.phone} onChange={set('phone')} placeholder="+86 xxx xxxx xxxx" />
-            </div>
+            <MultiInput label="Phone" values={phones} onChange={setPhones} placeholder="+86 xxx xxxx xxxx" />
             <div>
               <label className="label">WeChat ID</label>
               <input className="input" value={form.wechat_id} onChange={set('wechat_id')} placeholder="WeChat ID" />
@@ -101,10 +152,7 @@ export default function SupplierForm() {
               <label className="label">WhatsApp</label>
               <input className="input" value={form.whatsapp} onChange={set('whatsapp')} placeholder="+86 xxx xxxx xxxx" />
             </div>
-            <div>
-              <label className="label">Email</label>
-              <input className="input" type="email" value={form.email} onChange={set('email')} placeholder="supplier@example.com" />
-            </div>
+            <MultiInput label="Email" values={emails} onChange={setEmails} type="email" placeholder="supplier@example.com" />
           </div>
         </div>
 

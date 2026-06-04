@@ -6,12 +6,31 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import SupplierCatalogs from '../components/SupplierCatalogs'
 
+function toArray(val) {
+  if (Array.isArray(val)) return val.filter(Boolean)
+  if (val && typeof val === 'string') return [val]
+  return []
+}
+
 function InfoRow({ label, value }) {
   if (!value) return null
   return (
     <div className="flex gap-3 py-2 border-b border-gray-50 last:border-0">
       <span className="text-xs text-gray-500 w-28 shrink-0 pt-0.5">{label}</span>
       <span className="text-sm text-gray-800 break-all">{value}</span>
+    </div>
+  )
+}
+
+function MultiRow({ label, values, render }) {
+  const arr = toArray(values)
+  if (!arr.length) return null
+  return (
+    <div className="flex gap-3 py-2 border-b border-gray-50 last:border-0">
+      <span className="text-xs text-gray-500 w-28 shrink-0 pt-0.5">{label}</span>
+      <div className="space-y-0.5">
+        {arr.map((v, i) => <div key={i} className="text-sm text-gray-800 break-all">{render ? render(v) : v}</div>)}
+      </div>
     </div>
   )
 }
@@ -58,10 +77,12 @@ export default function SupplierDetail() {
         <InfoRow label="Country" value={supplier.country} />
         <InfoRow label="City / Region" value={supplier.city} />
         <InfoRow label="Address" value={supplier.address} />
-        <InfoRow label="Phone" value={supplier.phone} />
+        <MultiRow label="Phone" values={supplier.phones ?? supplier.phone}
+          render={v => <a href={`tel:${v}`} className="text-brand-600 hover:underline">{v}</a>} />
         <InfoRow label="WeChat ID" value={supplier.wechat_id} />
         <InfoRow label="WhatsApp" value={supplier.whatsapp} />
-        <InfoRow label="Email" value={supplier.email} />
+        <MultiRow label="Email" values={supplier.emails ?? supplier.email}
+          render={v => <a href={`mailto:${v}`} className="text-brand-600 hover:underline">{v}</a>} />
         {supplier.notes && (
           <div className="pt-3 mt-2 border-t border-gray-100">
             <p className="text-xs text-gray-500 mb-1">Notes</p>
