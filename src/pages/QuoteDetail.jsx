@@ -99,6 +99,10 @@ export default function QuoteDetail() {
     await updateDoc(doc(db, 'client_quotes', id, 'items', itemId), { tiers })
   }
 
+  async function handleUnitChange(itemId, unit) {
+    await updateDoc(doc(db, 'client_quotes', id, 'items', itemId), { product_unit: unit })
+  }
+
   async function handleAddProducts(products) {
     const quoteCurrency = quote.quote_currency || 'HKD'
     const rates = { HKD: 1, RMB: quote.rmb_to_hkd, USD: quote.usd_to_hkd, EUR: quote.eur_to_hkd }
@@ -126,6 +130,7 @@ export default function QuoteDetail() {
         product_category: p.category,
         product_description: p.description || '',
         hero_image: p.heroImage || null,
+        product_unit: p.unit || 'pcs',
         tiers,
         status: p.status,
         createdAt: serverTimestamp(),
@@ -195,6 +200,7 @@ export default function QuoteDetail() {
                 quoteCurrency={quoteCurrency}
                 heroImage={liveImages[item.product_id] ?? item.hero_image}
                 onTiersChange={tiers => handleTiersChange(item.id, tiers)}
+                onUnitChange={unit => handleUnitChange(item.id, unit)}
                 onRemove={() => handleRemoveItem(item.id)}
               />
             ))}
@@ -244,7 +250,9 @@ export default function QuoteDetail() {
   )
 }
 
-function QuoteItem({ item, quoteCurrency, heroImage, onTiersChange, onRemove }) {
+const UNIT_OPTIONS = ['pcs', 'set', 'pair', 'box', 'kg', 'g', 'm']
+
+function QuoteItem({ item, quoteCurrency, heroImage, onTiersChange, onUnitChange, onRemove }) {
   const currency = quoteCurrency || 'HKD'
   const tiers = (item.tiers || [{ quantity: item.quantity || 200, price: item.price_hkd || 0, currency }])
     .map(t => ({ ...t, price: t.price ?? t.price_hkd ?? 0, currency: t.currency || currency }))
@@ -287,7 +295,7 @@ function QuoteItem({ item, quoteCurrency, heroImage, onTiersChange, onRemove }) 
         <table className="w-full text-sm">
           <thead>
             <tr className="text-xs text-gray-400">
-              <th className="text-left font-normal pb-1 w-28">Quantity</th>
+              <th className="text-left font-normal pb-1 w-36">Quantity</th>
               <th className="text-left font-normal pb-1 w-32">Unit Price ({currency})</th>
               <th className="text-right font-normal pb-1">Subtotal ({currency})</th>
               <th className="w-6"></th>
@@ -297,13 +305,26 @@ function QuoteItem({ item, quoteCurrency, heroImage, onTiersChange, onRemove }) 
             {tiers.map((tier, i) => (
               <tr key={i} className="group">
                 <td className="pr-2 py-0.5">
-                  <input
-                    type="number" min="1"
-                    className="input py-1 w-24 text-sm"
-                    defaultValue={tier.quantity}
-                    key={`qty-${i}-${tier.quantity}`}
-                    onBlur={e => updateTier(i, 'quantity', e.target.value)}
-                  />
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number" min="1"
+                      className="input py-1 w-20 text-sm"
+                      defaultValue={tier.quantity}
+                      key={`qty-${i}-${tier.quantity}`}
+                      onBlur={e => updateTier(i, 'quantity', e.target.value)}
+                    />
+                    {i === 0 ? (
+                      <select
+                        className="input py-1 text-xs w-16"
+                        value={item.product_unit || 'pcs'}
+                        onChange={e => onUnitChange(e.target.value)}
+                      >
+                        {UNIT_OPTIONS.map(u => <option key={u}>{u}</option>)}
+                      </select>
+                    ) : (
+                      <span className="text-xs text-gray-400 w-16">{item.product_unit || 'pcs'}</span>
+                    )}
+                  </div>
                 </td>
                 <td className="pr-2 py-0.5">
                   <input
