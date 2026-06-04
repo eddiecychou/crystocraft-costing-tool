@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   doc, getDoc, updateDoc, deleteDoc,
   collection, onSnapshot, orderBy, query, addDoc, getDocs, serverTimestamp,
 } from 'firebase/firestore'
-import { db } from '../firebase'
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { db, storage } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import QuoteExport from '../components/QuoteExport'
@@ -101,6 +102,13 @@ export default function QuoteDetail() {
 
   async function handleUnitChange(itemId, unit) {
     await updateDoc(doc(db, 'client_quotes', id, 'items', itemId), { product_unit: unit })
+  }
+
+  async function handleImageChange(itemId, url, storagePath) {
+    await updateDoc(doc(db, 'client_quotes', id, 'items', itemId), {
+      custom_image: url,
+      custom_image_path: storagePath,
+    })
   }
 
   async function handleAddProducts(products) {
@@ -217,12 +225,13 @@ export default function QuoteDetail() {
             {items.map(item => (
               <QuoteItem
                 key={item.id}
-                item={item}
+                item={{ ...item, _quoteId: id }}
                 quoteCurrency={quoteCurrency}
                 heroImage={liveImages[item.product_id] ?? item.hero_image}
                 rates={quoteRates}
                 onTiersChange={tiers => handleTiersChange(item.id, tiers)}
                 onUnitChange={unit => handleUnitChange(item.id, unit)}
+                onImageChange={(url, path) => handleImageChange(item.id, url, path)}
                 onRemove={() => handleRemoveItem(item.id)}
               />
             ))}
@@ -281,10 +290,13 @@ function marginColor(m) {
   return 'text-red-500'
 }
 
-function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUnitChange, onRemove }) {
+function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUnitChange, onImageChange, onRemove }) {
   const currency = quoteCurrency || 'HKD'
   const baseTiers = (item.tiers || [{ quantity: item.quantity || 200, price: item.price_hkd || 0, currency }])
     .map(t => ({ ...t, price: t.price ?? t.price_hkd ?? 0, currency: t.currency || currency }))
+
+  const fileInputRef = useRef(null)
+  const [imgUploading, setImgUploading] = useState(false)
 
   // Local price state for live margin display
   const [localPrices, setLocalPrices] = useState(() => baseTiers.map(t => t.price))
@@ -322,13 +334,59 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
     onTiersChange(tiers.filter((_, i) => i !== index))
   }
 
+  const displayImage = item.custom_image || heroImage
+
+  async function handleImageUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImgUploading(true)
+    try {
+      const resized = await resizeToJpeg(file)
+      const path = `client_quotes/${item._quoteId}/items/${item.id}/custom_image.jpg`
+      const sRef = storageRef(storage, path)
+      await uploadBytes(sRef, resized, { contentType: 'image/jpeg' })
+      const url = await getDownloadURL(sRef)
+      onImageChange(url, path)
+    } finally {
+      setImgUploading(false)
+      e.target.value = ''
+    }
+  }
+
+  async function handleImageRemove() {
+    if (item.custom_image_path) {
+      try { await deleteObject(storageRef(storage, item.custom_image_path)) } catch {}
+    }
+    onImageChange(null, null)
+  }
+
   return (
     <div className="flex gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200">
-      {/* Image — always uses current product heroImage */}
-      <div className="w-20 h-20 rounded-lg bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
-        {heroImage
-          ? <img src={heroImage} alt={item.product_name} className="w-full h-full object-cover" />
+      {/* Image — custom per-item or product hero fallback */}
+      <div className="group relative w-20 h-20 rounded-lg bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
+        {displayImage
+          ? <img src={displayImage} alt={item.product_name} className="w-full h-full object-cover" />
           : <span className="text-2xl">📦</span>}
+        {/* Hover overlay */}
+        <div className="absolute inset-0 rounded-lg bg-black/0 group-hover:bg-black/40 transition-all flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={imgUploading}
+            className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-gray-700 hover:bg-white leading-tight"
+          >{imgUploading ? '…' : '📷'}</button>
+          {item.custom_image && (
+            <button
+              type="button"
+              onClick={handleImageRemove}
+              className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-red-500 hover:bg-white leading-tight"
+            >✕</button>
+          )}
+        </div>
+        <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+        {item.custom_image && (
+          <div className="absolute bottom-1 left-1 bg-brand-600/80 text-white text-[9px] px-1 rounded leading-tight">custom</div>
+        )}
       </div>
 
       {/* Info */}
@@ -420,6 +478,16 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
       </div>
     </div>
   )
+}
+
+async function resizeToJpeg(file, maxPx = 2400, quality = 0.93) {
+  const bitmap = await createImageBitmap(file)
+  const scale = Math.min(1, maxPx / Math.max(bitmap.width, bitmap.height))
+  const w = Math.round(bitmap.width * scale)
+  const h = Math.round(bitmap.height * scale)
+  const canvas = new OffscreenCanvas(w, h)
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h)
+  return canvas.convertToBlob({ type: 'image/jpeg', quality })
 }
 
 function ProductPicker({ existingIds, onAdd, onClose }) {
