@@ -112,11 +112,30 @@ export default function QuoteDetail() {
     }
 
     await Promise.all(products.map(async p => {
-      const tierSnap = await getDocs(query(collection(db, 'products', p.id, 'pricing_tiers'), orderBy('quantity')))
+      const [tierSnap, compSnap, ratesSnap] = await Promise.all([
+        getDocs(query(collection(db, 'products', p.id, 'pricing_tiers'), orderBy('quantity'))),
+        getDocs(collection(db, 'products', p.id, 'components')),
+        getDoc(doc(db, 'settings', 'exchange_rates')),
+      ])
+
+      // Compute unit cost in HKD from preferred supplier quotes
+      const fxRates = { HKD: 1, ...(ratesSnap.exists()
+        ? Object.fromEntries(Object.entries(ratesSnap.data()).filter(([, v]) => typeof v === 'number'))
+        : { RMB: 1.09, USD: 7.78, EUR: 8.60 }) }
+
+      let unit_cost_hkd = 0
+      await Promise.all(compSnap.docs.map(async cDoc => {
+        const qSnap = await getDocs(collection(db, 'products', p.id, 'components', cDoc.id, 'supplier_quotes'))
+        const preferred = qSnap.docs.map(d => d.data()).find(q => q.is_preferred)
+        if (preferred?.unit_cost) {
+          const qty = Number(cDoc.data().qty_per_product) || 1
+          unit_cost_hkd += Number(preferred.unit_cost) * (fxRates[preferred.unit_cost_currency] || 1) * qty
+        }
+      }))
+
       const tiers = tierSnap.docs.length > 0
         ? tierSnap.docs.map(d => {
             const td = d.data()
-            // Use the sell_price directly if currency matches, otherwise convert from price_hkd
             const price = td.sell_currency === quoteCurrency
               ? (td.sell_price || 0)
               : toQuoteCurrency(td.price_hkd || 0)
@@ -131,6 +150,7 @@ export default function QuoteDetail() {
         product_description: p.description || '',
         hero_image: p.heroImage || null,
         product_unit: p.unit || 'pcs',
+        unit_cost_hkd: unit_cost_hkd || null,
         tiers,
         status: p.status,
         createdAt: serverTimestamp(),
@@ -148,6 +168,7 @@ export default function QuoteDetail() {
   if (!quote) return <div className="p-6 text-gray-500">Quote not found.</div>
 
   const quoteCurrency = quote.quote_currency || 'HKD'
+  const quoteRates = { HKD: 1, RMB: quote.rmb_to_hkd || 1.09, USD: quote.usd_to_hkd || 7.78, EUR: quote.eur_to_hkd || 8.60 }
 
   // Min total: first (lowest qty) tier of each item, in quote currency
   const minTotal = items.reduce((sum, i) => {
@@ -199,6 +220,7 @@ export default function QuoteDetail() {
                 item={item}
                 quoteCurrency={quoteCurrency}
                 heroImage={liveImages[item.product_id] ?? item.hero_image}
+                rates={quoteRates}
                 onTiersChange={tiers => handleTiersChange(item.id, tiers)}
                 onUnitChange={unit => handleUnitChange(item.id, unit)}
                 onRemove={() => handleRemoveItem(item.id)}
@@ -252,22 +274,51 @@ export default function QuoteDetail() {
 
 const UNIT_OPTIONS = ['pcs', 'set', 'pair', 'box', 'kg', 'g', 'm']
 
-function QuoteItem({ item, quoteCurrency, heroImage, onTiersChange, onUnitChange, onRemove }) {
+function marginColor(m) {
+  if (m == null) return 'text-gray-400'
+  if (m >= 40) return 'text-green-600'
+  if (m >= 25) return 'text-yellow-600'
+  return 'text-red-500'
+}
+
+function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUnitChange, onRemove }) {
   const currency = quoteCurrency || 'HKD'
-  const tiers = (item.tiers || [{ quantity: item.quantity || 200, price: item.price_hkd || 0, currency }])
+  const baseTiers = (item.tiers || [{ quantity: item.quantity || 200, price: item.price_hkd || 0, currency }])
     .map(t => ({ ...t, price: t.price ?? t.price_hkd ?? 0, currency: t.currency || currency }))
+
+  // Local price state for live margin display
+  const [localPrices, setLocalPrices] = useState(() => baseTiers.map(t => t.price))
+  const tiers = baseTiers
+
+  // Cost converted to quote currency for margin calc
+  const costInQuoteCurrency = (() => {
+    if (!item.unit_cost_hkd) return null
+    if (currency === 'HKD') return item.unit_cost_hkd
+    const rate = rates[currency] || 1   // rates[currency] = HKD per 1 unit of currency
+    return item.unit_cost_hkd / rate
+  })()
+
+  function calcMargin(price) {
+    if (!costInQuoteCurrency || !price) return null
+    return ((price - costInQuoteCurrency) / price) * 100
+  }
 
   function updateTier(index, field, value) {
     const updated = tiers.map((t, i) => i === index ? { ...t, [field]: Number(value) } : t)
+    if (field === 'price') {
+      setLocalPrices(prev => prev.map((p, i) => i === index ? Number(value) : p))
+    }
     onTiersChange(updated)
   }
 
   function addTier() {
+    setLocalPrices(prev => [...prev, 0])
     onTiersChange([...tiers, { quantity: 0, price: 0, currency }])
   }
 
   function removeTier(index) {
     if (tiers.length === 1) return
+    setLocalPrices(prev => prev.filter((_, i) => i !== index))
     onTiersChange(tiers.filter((_, i) => i !== index))
   }
 
@@ -285,7 +336,12 @@ function QuoteItem({ item, quoteCurrency, heroImage, onTiersChange, onUnitChange
         <div className="flex items-start justify-between gap-2 mb-2">
           <div>
             <p className="font-medium text-sm text-gray-900">{item.product_name}</p>
-            <p className="text-xs text-gray-500">{item.product_category}</p>
+            <p className="text-xs text-gray-500">
+              {item.product_category}
+              {costInQuoteCurrency != null && (
+                <span className="ml-2 text-gray-400">· Cost: {currency} {costInQuoteCurrency.toFixed(2)}</span>
+              )}
+            </p>
           </div>
           <button type="button" onClick={onRemove} className="text-xs text-red-400 hover:text-red-600 shrink-0">✕</button>
         </div>
@@ -297,12 +353,16 @@ function QuoteItem({ item, quoteCurrency, heroImage, onTiersChange, onUnitChange
             <tr className="text-xs text-gray-400">
               <th className="text-left font-normal pb-1 w-36">Quantity</th>
               <th className="text-left font-normal pb-1 w-32">Unit Price ({currency})</th>
+              {costInQuoteCurrency != null && <th className="text-right font-normal pb-1 w-16">Margin</th>}
               <th className="text-right font-normal pb-1">Subtotal ({currency})</th>
               <th className="w-6"></th>
             </tr>
           </thead>
           <tbody>
-            {tiers.map((tier, i) => (
+            {tiers.map((tier, i) => {
+              const livePrice = localPrices[i] ?? tier.price
+              const margin = calcMargin(livePrice)
+              return (
               <tr key={i} className="group">
                 <td className="pr-2 py-0.5">
                   <div className="flex items-center gap-1">
@@ -332,11 +392,19 @@ function QuoteItem({ item, quoteCurrency, heroImage, onTiersChange, onUnitChange
                     className="input py-1 w-28 text-sm"
                     defaultValue={tier.price}
                     key={`price-${i}-${tier.price}`}
+                    onChange={e => setLocalPrices(prev => prev.map((p, j) => j === i ? Number(e.target.value) : p))}
                     onBlur={e => updateTier(i, 'price', e.target.value)}
                   />
                 </td>
+                {costInQuoteCurrency != null && (
+                  <td className="text-right py-0.5 whitespace-nowrap">
+                    {margin != null ? (
+                      <span className={`text-xs font-semibold ${marginColor(margin)}`}>{margin.toFixed(1)}%</span>
+                    ) : <span className="text-xs text-gray-300">—</span>}
+                  </td>
+                )}
                 <td className="text-right py-0.5 font-semibold text-gray-800 whitespace-nowrap">
-                  {((tier.price || 0) * (tier.quantity || 0)).toLocaleString('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {((livePrice || 0) * (tier.quantity || 0)).toLocaleString('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
                 <td className="pl-2 py-0.5 text-center">
                   {tiers.length > 1 && (
@@ -344,7 +412,7 @@ function QuoteItem({ item, quoteCurrency, heroImage, onTiersChange, onUnitChange
                   )}
                 </td>
               </tr>
-            ))}
+            )})}
           </tbody>
         </table>
         </div>
