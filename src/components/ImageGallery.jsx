@@ -9,22 +9,28 @@ function makeDownloadName(prefix, index) {
   return `${safe} - ${index + 1}.jpg`
 }
 
-async function downloadImage(url, filename) {
-  try {
-    const res = await fetch(url)
-    const blob = await res.blob()
-    const objectUrl = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = objectUrl
-    a.download = filename
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
-    URL.revokeObjectURL(objectUrl)
-  } catch {
-    // Fallback: open in new tab
-    window.open(url, '_blank')
-  }
+function downloadImage(url, filename) {
+  return new Promise((resolve) => {
+    const xhr = new XMLHttpRequest()
+    xhr.responseType = 'blob'
+    xhr.open('GET', url)
+    xhr.onload = () => {
+      const objectUrl = URL.createObjectURL(xhr.response)
+      const a = document.createElement('a')
+      a.href = objectUrl
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(objectUrl)
+      resolve()
+    }
+    xhr.onerror = () => {
+      window.open(url, '_blank')
+      resolve()
+    }
+    xhr.send()
+  })
 }
 
 export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, onHeroChange, downloadPrefix }) {
