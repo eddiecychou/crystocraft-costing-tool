@@ -92,8 +92,9 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                   className="w-full aspect-square object-cover rounded-lg cursor-pointer"
                   onClick={() => setLightbox(img)}
                 />
-                {/* Overlay — pointer-events only active on hover */}
-                <div className="absolute inset-0 rounded-lg transition-all pointer-events-none group-hover:pointer-events-auto group-hover:bg-black/30">
+                {/* Overlay — click background to open lightbox, buttons handle their own actions */}
+                <div className="absolute inset-0 rounded-lg transition-all pointer-events-none group-hover:pointer-events-auto group-hover:bg-black/30 cursor-pointer"
+                     onClick={() => setLightbox(img)}>
                   <div className="flex justify-end gap-1 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     {onHeroChange && (
                       <button
