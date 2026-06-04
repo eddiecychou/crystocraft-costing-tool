@@ -34,9 +34,15 @@ export default function PricingTiers() {
       if (s.exists()) setProduct({ id: s.id, ...s.data() })
     })
 
-    // Load exchange rates from settings
+    // Load exchange rates from settings (only numeric currency keys)
     getDoc(doc(db, 'settings', 'exchange_rates')).then(s => {
-      if (s.exists()) setRates(r => ({ ...r, ...s.data() }))
+      if (s.exists()) {
+        const data = s.data()
+        const picked = Object.fromEntries(
+          Object.entries(data).filter(([, v]) => typeof v === 'number')
+        )
+        setRates(r => ({ ...r, ...picked }))
+      }
     })
   }, [id])
 
@@ -229,7 +235,7 @@ export default function PricingTiers() {
 
             {/* Exchange rates note */}
             <div className="mt-3 text-xs text-gray-400">
-              Rates used: {Object.entries(rates).filter(([k]) => k !== 'HKD').map(([k, v]) => `${k}→HKD ${v}`).join(' · ')}
+              Rates used: {Object.entries(rates).filter(([k, v]) => k !== 'HKD' && typeof v === 'number').map(([k, v]) => `${k}→HKD ${v}`).join(' · ')}
               {' · '}<Link to="/settings" className="text-brand-500 hover:underline">Update in Settings</Link>
             </div>
           </>
