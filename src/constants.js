@@ -13,6 +13,7 @@ export const CATEGORIES = [
   'Decor Object',
   'Travel Accessories',
   'Jewellery & Accessory',
+  'Sports Accessories',
   'Other',
 ]
 
