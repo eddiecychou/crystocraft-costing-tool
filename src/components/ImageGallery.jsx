@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject, getBlob } from 'firebase/storage'
 import { collection, addDoc, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { storage, db } from '../firebase'
 import ConfirmDialog from './ConfirmDialog'
@@ -9,28 +9,23 @@ function makeDownloadName(prefix, index) {
   return `${safe} - ${index + 1}.jpg`
 }
 
-function downloadImage(url, filename) {
-  return new Promise((resolve) => {
-    const xhr = new XMLHttpRequest()
-    xhr.responseType = 'blob'
-    xhr.open('GET', url)
-    xhr.onload = () => {
-      const objectUrl = URL.createObjectURL(xhr.response)
-      const a = document.createElement('a')
-      a.href = objectUrl
-      a.download = filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(objectUrl)
-      resolve()
-    }
-    xhr.onerror = () => {
-      window.open(url, '_blank')
-      resolve()
-    }
-    xhr.send()
-  })
+async function downloadImage(img, filename) {
+  try {
+    // Use Firebase SDK getBlob — handles auth tokens properly, no CORS issues
+    const path = img.storage_path
+    if (!path) throw new Error('no storage_path')
+    const blob = await getBlob(storageRef(storage, path))
+    const objectUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = objectUrl
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(objectUrl)
+  } catch {
+    window.open(img.file_url, '_blank')
+  }
 }
 
 export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, onHeroChange, downloadPrefix }) {
@@ -130,7 +125,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                     )}
                     <button
                       type="button"
-                      onClick={e => { e.stopPropagation(); downloadImage(img.file_url, makeDownloadName(downloadPrefix, idx)) }}
+                      onClick={e => { e.stopPropagation(); downloadImage(img, makeDownloadName(downloadPrefix, idx)) }}
                       className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-blue-600 hover:bg-white"
                       title="Download image"
                     >↓</button>
@@ -165,7 +160,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
           <div className="absolute top-4 right-4 flex gap-2">
             <button
               type="button"
-              onClick={e => { e.stopPropagation(); downloadImage(lightbox.file_url, makeDownloadName(downloadPrefix, images.findIndex(i => i.id === lightbox.id))) }}
+              onClick={e => { e.stopPropagation(); downloadImage(lightbox, makeDownloadName(downloadPrefix, images.findIndex(i => i.id === lightbox.id))) }}
               className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm"
             >↓ Download</button>
             <button className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm" onClick={() => setLightbox(null)}>✕</button>
