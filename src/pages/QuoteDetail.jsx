@@ -266,7 +266,7 @@ function QuoteItem({ item, quoteCurrency, heroImage, onTiersChange, onRemove }) 
   return (
     <div className="flex gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200">
       {/* Image — always uses current product heroImage */}
-      <div className="w-16 h-16 rounded-lg bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
+      <div className="w-20 h-20 rounded-lg bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
         {heroImage
           ? <img src={heroImage} alt={item.product_name} className="w-full h-full object-cover" />
           : <span className="text-2xl">📦</span>}
@@ -382,7 +382,7 @@ function ProductPicker({ existingIds, onAdd, onClose }) {
                 onClick={() => toggle(p)}
                 className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-brand-50 border border-brand-200' : 'hover:bg-gray-50 border border-transparent'}`}
               >
-                <div className="w-10 h-10 rounded bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
+                <div className="w-12 h-12 rounded bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
                   {p.heroImage
                     ? <img src={p.heroImage} alt={p.name} className="w-full h-full object-cover" />
                     : <span className="text-lg">📦</span>}

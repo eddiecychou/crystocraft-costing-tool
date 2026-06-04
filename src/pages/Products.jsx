@@ -75,7 +75,7 @@ export default function Products() {
 function ProductCard({ product: p }) {
   return (
     <Link to={`/products/${p.id}`} className="card hover:shadow-md transition-shadow overflow-hidden flex flex-col">
-      <div className="h-40 bg-gray-100 flex items-center justify-center overflow-hidden">
+      <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
         {p.heroImage
           ? <img src={p.heroImage} alt={p.name} className="w-full h-full object-cover" />
           : <span className="text-4xl">📦</span>
