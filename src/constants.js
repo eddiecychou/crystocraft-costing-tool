@@ -10,10 +10,9 @@ export const CATEGORIES = [
   'Trophy & Award',
   'Stationery',
   'Tech Accessory',
-  'Packaging',
-  'Lifestyle',
-  'NFC / Smart Gift',
-  'Crystal',
+  'Decor Object',
+  'Travel Accessories',
+  'Jewellery & Accessory',
   'Other',
 ]
 
