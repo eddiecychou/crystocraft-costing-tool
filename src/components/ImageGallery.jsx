@@ -9,6 +9,24 @@ function makeDownloadName(prefix, index) {
   return `${safe} - ${index + 1}.jpg`
 }
 
+async function downloadImage(url, filename) {
+  try {
+    const res = await fetch(url)
+    const blob = await res.blob()
+    const objectUrl = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = objectUrl
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(objectUrl)
+  } catch {
+    // Fallback: open in new tab
+    window.open(url, '_blank')
+  }
+}
+
 export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, onHeroChange, downloadPrefix }) {
   const fileIdRef = useRef(0)
   const [uploading, setUploading]     = useState(false)
@@ -104,15 +122,12 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                         title="Set as hero image"
                       >⭐</button>
                     )}
-                    <a
-                      href={img.file_url}
-                      download={makeDownloadName(downloadPrefix, idx)}
-                      target="_blank"
-                      rel="noreferrer"
-                      onClick={e => e.stopPropagation()}
+                    <button
+                      type="button"
+                      onClick={e => { e.stopPropagation(); downloadImage(img.file_url, makeDownloadName(downloadPrefix, idx)) }}
                       className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-blue-600 hover:bg-white"
                       title="Download image"
-                    >↓</a>
+                    >↓</button>
                     <button
                       type="button"
                       onClick={e => { e.stopPropagation(); setConfirmDelete(img) }}
@@ -142,15 +157,11 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" onClick={() => setLightbox(null)}>
           <img src={lightbox.file_url} alt="" className="max-w-full max-h-full rounded-lg object-contain" onClick={e => e.stopPropagation()} />
           <div className="absolute top-4 right-4 flex gap-2">
-            <a
-              href={lightbox.file_url}
-              download={makeDownloadName(downloadPrefix, images.findIndex(i => i.id === lightbox.id))}
-              target="_blank"
-              rel="noreferrer"
-              onClick={e => e.stopPropagation()}
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); downloadImage(lightbox.file_url, makeDownloadName(downloadPrefix, images.findIndex(i => i.id === lightbox.id))) }}
               className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm"
-              title="Download"
-            >↓ Download</a>
+            >↓ Download</button>
             <button className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm" onClick={() => setLightbox(null)}>✕</button>
           </div>
         </div>
