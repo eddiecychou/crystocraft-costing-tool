@@ -177,12 +177,6 @@ export default function QuoteDetail() {
   const quoteRates = { HKD: 1, RMB: quote.rmb_to_hkd || 1.09, USD: quote.usd_to_hkd || 7.78, EUR: quote.eur_to_hkd || 8.60 }
 
   // Min total: first (lowest qty) tier of each item, in quote currency
-  const minTotal = items.reduce((sum, i) => {
-    const tiers = i.tiers || [{ quantity: i.quantity || 0, price: i.price_hkd || 0, currency: 'HKD' }]
-    const t = tiers[0] || {}
-    const price = t.price ?? t.price_hkd ?? 0
-    return sum + price * (t.quantity || 0)
-  }, 0)
 
   return (
     <div className="p-4 md:p-6 max-w-4xl">
@@ -234,11 +228,6 @@ export default function QuoteDetail() {
               />
             ))}
 
-            <div className="flex justify-end pt-3 border-t border-gray-100">
-              <p className="text-sm font-semibold text-gray-700">
-                Min. Total: <span className="text-lg font-bold text-gray-900">{quoteCurrency} {minTotal.toLocaleString('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </p>
-            </div>
           </div>
         )}
       </div>
