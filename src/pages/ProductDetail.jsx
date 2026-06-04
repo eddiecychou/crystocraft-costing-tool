@@ -195,6 +195,7 @@ export default function ProductDetail() {
               storagePath={`products/${id}/images`}
               typeOptions={IMAGE_TYPES}
               onHeroChange={handleHeroChange}
+              downloadPrefix={product?.name}
             />
           </div>
         </div>

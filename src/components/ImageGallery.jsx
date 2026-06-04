@@ -4,7 +4,12 @@ import { collection, addDoc, deleteDoc, doc, updateDoc, serverTimestamp } from '
 import { storage, db } from '../firebase'
 import ConfirmDialog from './ConfirmDialog'
 
-export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, onHeroChange }) {
+function makeDownloadName(prefix, index) {
+  const safe = (prefix || 'image').replace(/[/\\?%*:|"<>]/g, '-').trim()
+  return `${safe} - ${index + 1}.jpg`
+}
+
+export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, onHeroChange, downloadPrefix }) {
   const fileIdRef = useRef(0)
   const [uploading, setUploading]     = useState(false)
   const [lightbox, setLightbox]       = useState(null)
@@ -74,7 +79,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
       {/* Grid */}
       {images.length > 0 && (
         <div className="grid grid-cols-2 gap-2 mt-3">
-          {images.map(img => (
+          {images.map((img, idx) => (
             <div key={img.id} className="group relative flex flex-col gap-1">
               {/* Image with overlay */}
               <div className="relative">
@@ -100,7 +105,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                     )}
                     <a
                       href={img.file_url}
-                      download={img.file_name || 'image.jpg'}
+                      download={makeDownloadName(downloadPrefix, idx)}
                       target="_blank"
                       rel="noreferrer"
                       onClick={e => e.stopPropagation()}
@@ -138,7 +143,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
           <div className="absolute top-4 right-4 flex gap-2">
             <a
               href={lightbox.file_url}
-              download={lightbox.file_name || 'image.jpg'}
+              download={makeDownloadName(downloadPrefix, images.findIndex(i => i.id === lightbox.id))}
               target="_blank"
               rel="noreferrer"
               onClick={e => e.stopPropagation()}

@@ -101,6 +101,7 @@ export default function ComponentDetail() {
             firestorePath={`products/${productId}/components/${componentId}/images`}
             storagePath={`products/${productId}/components/${componentId}/images`}
             typeOptions={COMPONENT_IMAGE_TYPES}
+            downloadPrefix={product ? `${product.name} - ${component.name}` : component.name}
           />
         </div>
       </div>
