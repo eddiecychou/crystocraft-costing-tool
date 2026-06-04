@@ -64,7 +64,14 @@ export default function ComponentDetail() {
       <div className="flex items-start justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{component.name}</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Unit: {component.unit}</p>
+          <p className="text-sm text-gray-500 mt-0.5">
+            Unit: {component.unit}
+            {(Number(component.qty_per_product) || 1) > 1 && (
+              <span className="ml-2 text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
+                ×{component.qty_per_product} per product
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex gap-2">
           <Link to={`/products/${productId}/components/${componentId}/edit`} className="btn-secondary">Edit</Link>

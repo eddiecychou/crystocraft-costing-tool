@@ -157,7 +157,12 @@ export default function ProductDetail() {
                     className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-brand-200 hover:bg-brand-50 transition-colors"
                   >
                     <div>
-                      <p className="text-sm font-medium text-gray-800">{c.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium text-gray-800">{c.name}</p>
+                        {(Number(c.qty_per_product) || 1) > 1 && (
+                          <span className="text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">×{c.qty_per_product}</span>
+                        )}
+                      </div>
                       {c.spec && <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{c.spec}</p>}
                     </div>
                     <span className="text-xs text-gray-400">→</span>

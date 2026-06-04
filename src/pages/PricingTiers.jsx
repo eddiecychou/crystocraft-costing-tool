@@ -63,11 +63,12 @@ export default function PricingTiers() {
     return onSnapshot(q, snap => setTiers(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
   }, [id])
 
-  // Total recurring unit cost HKD (no tooling)
+  // Total recurring unit cost HKD (no tooling) — multiplied by qty_per_product
   const unitCostHKD = components.reduce((sum, c) => {
     const q = c.preferred_quote
     if (!q || !q.unit_cost) return sum
-    return sum + Number(q.unit_cost) * (rates[q.unit_cost_currency] || 1)
+    const qty = Number(c.qty_per_product) || 1
+    return sum + Number(q.unit_cost) * (rates[q.unit_cost_currency] || 1) * qty
   }, 0)
 
   // Total one-time tooling/sample cost in HKD across all components
@@ -166,9 +167,16 @@ export default function PricingTiers() {
                 return (
                   <div key={c.id} className="py-2.5 flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-sm text-gray-800">{c.name}</p>
+                      <p className="text-sm text-gray-800">
+                        {c.name}
+                        {(Number(c.qty_per_product) || 1) > 1 && (
+                          <span className="ml-1.5 text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
+                            ×{c.qty_per_product}
+                          </span>
+                        )}
+                      </p>
                       {q ? (
-                        <p className="text-xs text-gray-500">{q.supplier_name} · {q.unit_cost} {q.unit_cost_currency}</p>
+                        <p className="text-xs text-gray-500">{q.supplier_name} · {q.unit_cost} {q.unit_cost_currency}{(Number(c.qty_per_product) || 1) > 1 ? ` × ${c.qty_per_product}` : ''}</p>
                       ) : c.has_quotes ? (
                         <Link to={`/products/${id}/components/${c.id}`} className="text-xs text-orange-500 hover:underline">
                           ⚠ Has quotes but no preferred set — click to fix

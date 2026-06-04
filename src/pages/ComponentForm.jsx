@@ -8,7 +8,7 @@ export default function ComponentForm() {
   const navigate = useNavigate()
   const isEdit = Boolean(componentId)
 
-  const [form, setForm] = useState({ name: '', spec: '', unit: 'pcs', notes: '' })
+  const [form, setForm] = useState({ name: '', spec: '', unit: 'pcs', qty_per_product: 1, notes: '' })
   const [sortOrder, setSortOrder] = useState(0)
   const [loading, setLoading]   = useState(false)
   const [fetching, setFetching] = useState(isEdit)
@@ -52,10 +52,12 @@ export default function ComponentForm() {
     try {
       let newComponentId = componentId
       if (isEdit) {
-        await updateDoc(doc(db, 'products', productId, 'components', componentId), form)
+        await updateDoc(doc(db, 'products', productId, 'components', componentId), {
+          ...form, qty_per_product: Number(form.qty_per_product) || 1,
+        })
       } else {
         const ref = await addDoc(collection(db, 'products', productId, 'components'), {
-          ...form, sort_order: sortOrder, createdAt: serverTimestamp(),
+          ...form, qty_per_product: Number(form.qty_per_product) || 1, sort_order: sortOrder, createdAt: serverTimestamp(),
         })
         newComponentId = ref.id
 
@@ -113,11 +115,25 @@ export default function ComponentForm() {
           <textarea className="input" rows={3} value={form.spec} onChange={set('spec')} placeholder="Material, size, finish, colour, weight…" />
         </div>
 
-        <div>
-          <label className="label">Unit</label>
-          <select className="input" value={form.unit} onChange={set('unit')}>
-            {['pcs', 'set', 'kg', 'g', 'm', 'box'].map(u => <option key={u} value={u}>{u}</option>)}
-          </select>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="label">Unit</label>
+            <select className="input" value={form.unit} onChange={set('unit')}>
+              {['pcs', 'set', 'pair', 'kg', 'g', 'm', 'box'].map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Qty per Product</label>
+            <input
+              className="input"
+              type="number"
+              min="1"
+              step="1"
+              value={form.qty_per_product}
+              onChange={set('qty_per_product')}
+            />
+            <p className="text-xs text-gray-400 mt-1">How many of this component go into 1 finished product</p>
+          </div>
         </div>
 
         <div>
