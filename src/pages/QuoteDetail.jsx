@@ -136,6 +136,10 @@ export default function QuoteDetail() {
     await updateDoc(doc(db, 'client_quotes', id, 'items', itemId), { custom_image: url || null })
   }
 
+  async function handleItemRemarksChange(itemId, item_remarks) {
+    await updateDoc(doc(db, 'client_quotes', id, 'items', itemId), { item_remarks })
+  }
+
   async function handleAddProducts(products) {
     const quoteCurrency = quote.quote_currency || 'HKD'
     const rates = { HKD: 1, RMB: quote.rmb_to_hkd, USD: quote.usd_to_hkd, EUR: quote.eur_to_hkd }
@@ -253,6 +257,7 @@ export default function QuoteDetail() {
                     onTiersChange={tiers => handleTiersChange(item.id, tiers)}
                     onUnitChange={unit => handleUnitChange(item.id, unit)}
                     onImageChange={url => handleImageChange(item.id, url)}
+                    onItemRemarksChange={r => handleItemRemarksChange(item.id, r)}
                     onRemove={() => handleRemoveItem(item.id)}
                   />
                 ))}
@@ -308,7 +313,7 @@ function marginColor(m) {
   return 'text-red-500'
 }
 
-function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUnitChange, onImageChange, onRemove }) {
+function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUnitChange, onImageChange, onItemRemarksChange, onRemove }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const currency = quoteCurrency || 'HKD'
   const baseTiers = (item.tiers || [{ quantity: item.quantity || 200, price: item.price_hkd || 0, currency }])
@@ -492,6 +497,22 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
         </table>
         </div>
         <button type="button" onClick={addTier} className="mt-1 text-xs text-brand-500 hover:text-brand-700">+ Add tier</button>
+
+        {/* Product-level remarks */}
+        <div className="mt-3 pt-2 border-t border-gray-100">
+          <textarea
+            rows={1}
+            placeholder="Product remarks (e.g. customisation details, special requirements…)"
+            defaultValue={item.item_remarks || ''}
+            key={`item-remarks-${item.id}`}
+            onBlur={e => onItemRemarksChange(e.target.value)}
+            onChange={e => {
+              e.target.style.height = 'auto'
+              e.target.style.height = e.target.scrollHeight + 'px'
+            }}
+            className="w-full text-xs text-gray-600 placeholder-gray-300 border border-gray-100 rounded-lg px-2.5 py-1.5 resize-none focus:outline-none focus:border-brand-300 focus:ring-1 focus:ring-brand-200 bg-gray-50 hover:bg-white transition-colors"
+          />
+        </div>
       </div>
     </div>
   )
