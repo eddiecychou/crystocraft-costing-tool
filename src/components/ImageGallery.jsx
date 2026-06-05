@@ -3,6 +3,13 @@ import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'fi
 import { collection, addDoc, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { storage, db } from '../firebase'
 import ConfirmDialog from './ConfirmDialog'
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+} from '@dnd-kit/core'
+import {
+  SortableContext, rectSortingStrategy, useSortable, arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 function makeDownloadName(prefix, index) {
   const safe = (prefix || 'image').replace(/[/\\?%*:|"<>]/g, '-').trim()
@@ -10,7 +17,6 @@ function makeDownloadName(prefix, index) {
 }
 
 function downloadImage(img, filename) {
-  // Route through our server-side proxy — avoids CORS, forces correct filename
   const proxyUrl = `/api/download-image?url=${encodeURIComponent(img.file_url)}&filename=${encodeURIComponent(filename)}`
   const a = document.createElement('a')
   a.href = proxyUrl
@@ -20,12 +26,104 @@ function downloadImage(img, filename) {
   document.body.removeChild(a)
 }
 
+function SortableImageCard({ img, idx, typeOptions, onHeroChange, onDelete, onLightbox, downloadPrefix, firestorePath }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: img.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  }
+
+  async function handleTypeChange(type) {
+    await updateDoc(doc(db, ...firestorePath.split('/'), img.id), { type })
+  }
+
+  async function setAsHero() {
+    // handled in parent via onHeroChange — just call setAsHero directly
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} className="group relative flex flex-col gap-1">
+      <div className="relative">
+        {img.is_hero && (
+          <div className="absolute top-1 left-1 z-10 bg-yellow-400 text-xs px-1 rounded font-bold text-white leading-4">★</div>
+        )}
+        {/* Drag handle — top-left grip icon, separate from lightbox click */}
+        <div
+          {...attributes}
+          {...listeners}
+          className="absolute top-1 right-1 z-10 bg-white/80 rounded p-0.5 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={e => e.stopPropagation()}
+          title="Drag to reorder"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <circle cx="4" cy="3" r="1" fill="#888"/>
+            <circle cx="8" cy="3" r="1" fill="#888"/>
+            <circle cx="4" cy="6" r="1" fill="#888"/>
+            <circle cx="8" cy="6" r="1" fill="#888"/>
+            <circle cx="4" cy="9" r="1" fill="#888"/>
+            <circle cx="8" cy="9" r="1" fill="#888"/>
+          </svg>
+        </div>
+
+        <img
+          src={img.file_url}
+          alt={img.caption || img.file_name}
+          className="w-full aspect-square object-cover rounded-lg cursor-pointer"
+          onClick={() => onLightbox(img)}
+        />
+
+        <div
+          className="absolute inset-0 rounded-lg transition-all pointer-events-none group-hover:pointer-events-auto group-hover:bg-black/30 cursor-pointer"
+          onClick={() => onLightbox(img)}
+        >
+          <div className="flex justify-end gap-1 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity pr-7">
+            {onHeroChange && (
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); onHeroChange(img) }}
+                className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-yellow-600 hover:bg-white"
+                title="Set as hero image"
+              >⭐</button>
+            )}
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); downloadImage(img, makeDownloadName(downloadPrefix, idx)) }}
+              className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-blue-600 hover:bg-white"
+              title="Download image"
+            >↓</button>
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); onDelete(img) }}
+              className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-red-600 hover:bg-white"
+            >✕</button>
+          </div>
+        </div>
+      </div>
+
+      {typeOptions && (
+        <select
+          className="text-xs border border-gray-200 rounded px-1.5 py-1 text-gray-600 bg-white w-full"
+          value={img.type || typeOptions[0].value}
+          onChange={e => handleTypeChange(e.target.value)}
+        >
+          {typeOptions.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+        </select>
+      )}
+    </div>
+  )
+}
+
 export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, onHeroChange, downloadPrefix }) {
   const fileIdRef = useRef(0)
-  const [uploading, setUploading]       = useState(false)
-  const [lightbox, setLightbox]         = useState(null)
+  const [uploading, setUploading]         = useState(false)
+  const [lightbox, setLightbox]           = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
-  const [dragOver, setDragOver]         = useState(false)
+  const [dragOver, setDragOver]           = useState(false)
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   async function uploadFiles(files) {
     if (!files.length) return
@@ -66,27 +164,34 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
 
   async function handleDelete(image) {
     try {
-      if (image.storage_path) {
-        await deleteObject(storageRef(storage, image.storage_path))
-      }
+      if (image.storage_path) await deleteObject(storageRef(storage, image.storage_path))
     } catch {}
     await deleteDoc(doc(db, ...firestorePath.split('/'), image.id))
-    if (onHeroChange && image.file_url) onHeroChange(images.find(i => i.id !== image.id)?.file_url || null)
+    if (onHeroChange && image.is_hero) onHeroChange(images.find(i => i.id !== image.id)?.file_url || null)
     setConfirmDelete(null)
   }
 
-  async function handleTypeChange(image, type) {
-    await updateDoc(doc(db, ...firestorePath.split('/'), image.id), { type })
-  }
-
   async function setAsHero(image) {
-    // Clear is_hero on all images, set on the selected one
     await Promise.all(
       images.map(img =>
         updateDoc(doc(db, ...firestorePath.split('/'), img.id), { is_hero: img.id === image.id })
       )
     )
     if (onHeroChange) onHeroChange(image.file_url)
+  }
+
+  async function handleDragEnd(event) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIdx = images.findIndex(i => i.id === active.id)
+    const newIdx = images.findIndex(i => i.id === over.id)
+    const reordered = arrayMove(images, oldIdx, newIdx)
+    // Write new sort_order values to Firestore
+    await Promise.all(
+      reordered.map((img, idx) =>
+        updateDoc(doc(db, ...firestorePath.split('/'), img.id), { sort_order: idx })
+      )
+    )
   }
 
   return (
@@ -108,62 +213,30 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
         <input type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} disabled={uploading} />
       </label>
 
-      {/* Grid */}
+      {/* Sortable grid */}
       {images.length > 0 && (
-        <div className="grid grid-cols-2 gap-2 mt-3">
-          {images.map((img, idx) => (
-            <div key={img.id} className="group relative flex flex-col gap-1">
-              {/* Image with overlay */}
-              <div className="relative">
-                {img.is_hero && (
-                  <div className="absolute top-1 left-1 z-10 bg-yellow-400 text-xs px-1 rounded font-bold text-white leading-4">★</div>
-                )}
-                <img
-                  src={img.file_url}
-                  alt={img.caption || img.file_name}
-                  className="w-full aspect-square object-cover rounded-lg cursor-pointer"
-                  onClick={() => setLightbox(img)}
-                />
-                {/* Overlay — click background to open lightbox, buttons handle their own actions */}
-                <div className="absolute inset-0 rounded-lg transition-all pointer-events-none group-hover:pointer-events-auto group-hover:bg-black/30 cursor-pointer"
-                     onClick={() => setLightbox(img)}>
-                  <div className="flex justify-end gap-1 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {onHeroChange && (
-                      <button
-                        type="button"
-                        onClick={e => { e.stopPropagation(); setAsHero(img) }}
-                        className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-yellow-600 hover:bg-white"
-                        title="Set as hero image"
-                      >⭐</button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={e => { e.stopPropagation(); downloadImage(img, makeDownloadName(downloadPrefix, idx)) }}
-                      className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-blue-600 hover:bg-white"
-                      title="Download image"
-                    >↓</button>
-                    <button
-                      type="button"
-                      onClick={e => { e.stopPropagation(); setConfirmDelete(img) }}
-                      className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-red-600 hover:bg-white"
-                    >✕</button>
-                  </div>
-                </div>
+        <>
+          <p className="text-xs text-gray-400 mt-2 mb-1">Drag images to reorder</p>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={images.map(i => i.id)} strategy={rectSortingStrategy}>
+              <div className="grid grid-cols-2 gap-2">
+                {images.map((img, idx) => (
+                  <SortableImageCard
+                    key={img.id}
+                    img={img}
+                    idx={idx}
+                    typeOptions={typeOptions}
+                    onHeroChange={onHeroChange ? setAsHero : null}
+                    onDelete={setConfirmDelete}
+                    onLightbox={setLightbox}
+                    downloadPrefix={downloadPrefix}
+                    firestorePath={firestorePath}
+                  />
+                ))}
               </div>
-
-              {/* Type selector — below image, always visible */}
-              {typeOptions && (
-                <select
-                  className="text-xs border border-gray-200 rounded px-1.5 py-1 text-gray-600 bg-white w-full"
-                  value={img.type || typeOptions[0].value}
-                  onChange={e => handleTypeChange(img, e.target.value)}
-                >
-                  {typeOptions.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-              )}
-            </div>
-          ))}
-        </div>
+            </SortableContext>
+          </DndContext>
+        </>
       )}
 
       {/* Lightbox */}
