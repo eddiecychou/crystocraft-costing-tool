@@ -21,7 +21,9 @@ export default function QuoteExport({ quote, items, onClose }) {
       ws.getCell('A4').value = 'Contact:'
       ws.getCell('B4').value = [quote.contact_name, quote.contact_email].filter(Boolean).join(' · ')
       ws.getCell('A5').value = 'Date:'
-      ws.getCell('B5').value = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+      ws.getCell('B5').value = quote.quote_date
+        ? new Date(quote.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+        : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
       ws.getCell('D3').value = 'Currency:'
       ws.getCell('E3').value = quote.quote_currency || 'HKD'
       ws.getCell('D4').value = 'Exchange Rates:'

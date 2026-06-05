@@ -47,7 +47,9 @@ export default function Quotes() {
                 <p className="font-semibold text-gray-900 text-sm">{q.client_name}</p>
                 {q.contact_name && <p className="text-xs text-gray-500 mt-0.5">{q.contact_name}</p>}
                 <p className="text-xs text-gray-400 mt-1">
-                  {q.createdAt?.toDate?.().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {q.quote_date
+                    ? new Date(q.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                    : q.createdAt?.toDate?.().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   {q.item_count ? ` · ${q.item_count} item${q.item_count > 1 ? 's' : ''}` : ''}
                 </p>
               </div>

@@ -13,10 +13,13 @@ export default function QuoteForm() {
   const [customers, setCustomers] = useState([])
   const [selectedCustomerId, setSelectedCustomerId] = useState(searchParams.get('customer_id') || '')
 
+  const todayISO = new Date().toISOString().split('T')[0]
+
   const [form, setForm] = useState({
     client_name: '', contact_name: '', contact_email: '',
     contact_phone: '', notes: '', status: 'draft',
     quote_currency: 'HKD',
+    quote_date: todayISO,
     rmb_to_hkd: DEFAULT_RATES.rmb_to_hkd,
     usd_to_hkd: DEFAULT_RATES.usd_to_hkd,
     eur_to_hkd: DEFAULT_RATES.eur_to_hkd,
@@ -120,9 +123,15 @@ export default function QuoteForm() {
         {/* Client details */}
         <div className="card p-5 space-y-4">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Client Details</p>
-          <div>
-            <label className="label">Company / Client Name *</label>
-            <input className="input" value={form.client_name} onChange={set('client_name')} required placeholder="e.g. Manulife HK" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Company / Client Name *</label>
+              <input className="input" value={form.client_name} onChange={set('client_name')} required placeholder="e.g. Manulife HK" />
+            </div>
+            <div>
+              <label className="label">Quote Date</label>
+              <input className="input" type="date" value={form.quote_date} onChange={set('quote_date')} />
+            </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

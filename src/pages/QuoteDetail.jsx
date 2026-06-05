@@ -217,7 +217,22 @@ export default function QuoteDetail() {
       <div className="mt-2 mb-6">
         <h1 className="text-xl md:text-2xl font-bold text-gray-900">{quote.client_name}</h1>
         {quote.contact_name && <p className="text-sm text-gray-500 mt-0.5">{quote.contact_name} {quote.contact_email && `· ${quote.contact_email}`}</p>}
-        <p className="text-xs text-gray-400 mt-1">Currency: <span className="font-medium text-gray-600">{quoteCurrency}</span></p>
+        <p className="text-xs text-gray-400 mt-1">
+          Currency: <span className="font-medium text-gray-600">{quoteCurrency}</span>
+          {' · '}
+          Date:{' '}
+          <input
+            type="date"
+            className="text-xs font-medium text-gray-600 bg-transparent border-b border-gray-200 hover:border-brand-300 focus:border-brand-400 focus:outline-none"
+            defaultValue={quote.quote_date || ''}
+            onBlur={e => {
+              if (e.target.value !== (quote.quote_date || '')) {
+                updateDoc(doc(db, 'client_quotes', id), { quote_date: e.target.value })
+                setQuote(q => ({ ...q, quote_date: e.target.value }))
+              }
+            }}
+          />
+        </p>
         <div className="flex flex-wrap gap-2 mt-3">
           <select
             className="input w-auto text-sm py-1.5"
