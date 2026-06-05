@@ -140,6 +140,23 @@ export default function QuoteExport({ quote, items, onClose }) {
         }
       })
 
+      // ── Helpers ─────────────────────────────────────────────────────────────
+      // Estimate how many wrapped lines a text needs in a given column width (chars)
+      function descLineCount(text, wrapChars) {
+        if (!text) return 1
+        return text.split('\n').reduce((n, line) => {
+          return n + Math.max(1, Math.ceil((line.length || 1) / wrapChars))
+        }, 0)
+      }
+
+      // DESC column is 36 char-units wide; at size-8 font roughly 48 chars fit per line
+      const DESC_WRAP  = 48
+      const LINE_PT    = 11   // approx pt per line at size-8 font
+      const PAD_PT     = 12   // top + bottom padding inside merged area
+      const IMG_SIZE   = 88   // px — larger image now that Category column removed
+      // Column B (Photo) width ≈ 14 char-units × 7 px/unit = 98 px
+      const PHOTO_COL_PX = 98
+
       // ── Data rows ───────────────────────────────────────────────────────────
       let currentRow = HEADER_ROW + 1
 
@@ -150,80 +167,80 @@ export default function QuoteExport({ quote, items, onClose }) {
         const firstRow = currentRow
         const lastRow  = currentRow + tiers.length - 1
 
-        // Equal row height for all tiers — single-tier gets taller to fit image
-        const TIER_ROW_H  = 24
-        const SINGLE_ROW_H = 68
-        const rowH = tiers.length === 1 ? SINGLE_ROW_H : TIER_ROW_H
+        // ── Calculate row height driven by description length ────────
+        const lines    = descLineCount(item.product_description, DESC_WRAP)
+        const descPt   = lines * LINE_PT + PAD_PT
+        // Image needs ~66pt (88px × 0.75pt/px) minimum
+        const imgMinPt = Math.ceil(IMG_SIZE * 0.75) + PAD_PT
+        const totalPt  = Math.max(imgMinPt, descPt)
+        // Distribute evenly — minimum 18pt per tier row
+        const rowH     = Math.max(18, Math.ceil(totalPt / tiers.length))
 
         for (let t = 0; t < tiers.length; t++) {
           const tier = tiers[t]
           const row  = ws.getRow(currentRow)
-          row.height = rowH   // all tier rows equal height
+          row.height = rowH  // equal height for every tier row
 
-          // # only on first tier row
           if (t === 0) {
             row.getCell(COL.NUM).value     = i + 1
             row.getCell(COL.NUM).font      = baseFont({ size: 8, color: { argb: B.GRAY_MID } })
             row.getCell(COL.NUM).alignment = { horizontal: 'center', vertical: 'middle' }
           }
 
-          // Qty & Price on every tier row — equal height, vertically centred
-          row.getCell(COL.QTY).value      = tier.quantity ?? ''
-          row.getCell(COL.QTY).font       = baseFont()
-          row.getCell(COL.QTY).alignment  = { horizontal: 'center', vertical: 'middle' }
-          row.getCell(COL.PRICE).value    = tier.price ?? tier.price_hkd ?? ''
-          row.getCell(COL.PRICE).font     = baseFont({ bold: true })
-          row.getCell(COL.PRICE).numFmt   = '#,##0.00'
+          row.getCell(COL.QTY).value       = tier.quantity ?? ''
+          row.getCell(COL.QTY).font        = baseFont()
+          row.getCell(COL.QTY).alignment   = { horizontal: 'center', vertical: 'middle' }
+          row.getCell(COL.PRICE).value     = tier.price ?? tier.price_hkd ?? ''
+          row.getCell(COL.PRICE).font      = baseFont({ bold: true })
+          row.getCell(COL.PRICE).numFmt    = '#,##0.00'
           row.getCell(COL.PRICE).alignment = { horizontal: 'right', vertical: 'middle' }
 
-          // Background fill
           if (rowBg !== B.WHITE) {
             for (let c = 1; c <= TOTAL_COLS; c++) {
               row.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } }
             }
           }
-
-          // Bottom border after last tier of each product
           if (t === tiers.length - 1) {
             for (let c = 1; c <= TOTAL_COLS; c++) {
               row.getCell(c).border = { bottom: { style: 'hair', color: { argb: B.BORDER } } }
             }
           }
-
           currentRow++
         }
 
-        // ── Merge Photo, Product, Description across all tier rows ──
+        // ── Merge # / Photo / Product / Description across all tier rows ──
         if (tiers.length > 1) {
+          ws.mergeCells(firstRow, COL.NUM,     lastRow, COL.NUM)
           ws.mergeCells(firstRow, COL.PHOTO,   lastRow, COL.PHOTO)
           ws.mergeCells(firstRow, COL.PRODUCT, lastRow, COL.PRODUCT)
           ws.mergeCells(firstRow, COL.DESC,    lastRow, COL.DESC)
-          ws.mergeCells(firstRow, COL.NUM,     lastRow, COL.NUM)
         }
 
-        // Set values on the top cell of each merged range
-        ws.getRow(firstRow).getCell(COL.NUM).alignment = { horizontal: 'center', vertical: 'middle' }
-
+        ws.getRow(firstRow).getCell(COL.NUM).alignment     = { horizontal: 'center', vertical: 'middle' }
         ws.getRow(firstRow).getCell(COL.PRODUCT).value     = item.product_name || ''
         ws.getRow(firstRow).getCell(COL.PRODUCT).font      = baseFont({ bold: true })
         ws.getRow(firstRow).getCell(COL.PRODUCT).alignment = { vertical: 'middle', wrapText: true }
+        ws.getRow(firstRow).getCell(COL.DESC).value        = item.product_description || ''
+        ws.getRow(firstRow).getCell(COL.DESC).font         = baseFont({ size: 8, color: { argb: B.GRAY_DARK } })
+        ws.getRow(firstRow).getCell(COL.DESC).alignment    = { vertical: 'middle', wrapText: true }
 
-        ws.getRow(firstRow).getCell(COL.DESC).value     = item.product_description || ''
-        ws.getRow(firstRow).getCell(COL.DESC).font      = baseFont({ size: 8, color: { argb: B.GRAY_DARK } })
-        ws.getRow(firstRow).getCell(COL.DESC).alignment = { vertical: 'middle', wrapText: true }
-
-        // ── Embed product image — spans merged photo cell ───────────
+        // ── Embed image — centred in merged Photo cell ───────────────
         const imgUrl = item.custom_image || item.hero_image
         if (imgUrl) {
           try {
-            const res    = await fetch(`/api/download-image?url=${encodeURIComponent(imgUrl)}`)
-            const buf    = await res.arrayBuffer()
-            const imgId  = wb.addImage({ buffer: buf, extension: 'jpeg' })
-            // Image size fits within the merged photo column area
-            const imgPx  = tiers.length === 1 ? 62 : Math.min(62, tiers.length * rowH - 6)
+            const res   = await fetch(`/api/download-image?url=${encodeURIComponent(imgUrl)}`)
+            const buf   = await res.arrayBuffer()
+            const imgId = wb.addImage({ buffer: buf, extension: 'jpeg' })
+
+            // Centre horizontally in the Photo column
+            const colOffFrac = (PHOTO_COL_PX - IMG_SIZE) / (2 * PHOTO_COL_PX)
+            // Centre vertically across all merged tier rows
+            const totalRowPx = rowH * tiers.length * (4 / 3)  // pt → px
+            const rowOffFrac = Math.max(0, (totalRowPx - IMG_SIZE) / (2 * totalRowPx))
+
             ws.addImage(imgId, {
-              tl:     { col: COL.PHOTO - 1, row: firstRow - 1 },
-              ext:    { width: imgPx, height: imgPx },
+              tl:     { col: (COL.PHOTO - 1) + colOffFrac, row: (firstRow - 1) + rowOffFrac },
+              ext:    { width: IMG_SIZE, height: IMG_SIZE },
               editAs: 'oneCell',
             })
           } catch {}

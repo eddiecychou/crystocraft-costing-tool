@@ -218,7 +218,8 @@ export default function QuoteDetail() {
         <h1 className="text-xl md:text-2xl font-bold text-gray-900">{quote.client_name}</h1>
 
         {/* Editable client detail fields */}
-        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 max-w-lg">
+        <p className="text-xs text-gray-400 mt-2 mb-1">Click any field to edit — changes save automatically</p>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 max-w-lg">
           {[
             { label: 'Contact',  field: 'contact_name' },
             { label: 'Email',    field: 'contact_email' },
