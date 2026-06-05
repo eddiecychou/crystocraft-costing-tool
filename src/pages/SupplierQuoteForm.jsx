@@ -34,6 +34,7 @@ export default function SupplierQuoteForm() {
   const [existingAttachments, setExistingAttachments] = useState([])
   const [uploading, setUploading] = useState(false)
   const [extracting, setExtracting] = useState(false)
+  const [dragOver, setDragOver]     = useState(false)
   const [loading, setLoading]     = useState(false)
   const [fetching, setFetching]   = useState(true)
   const [productName, setProductName]     = useState('')
@@ -81,19 +82,33 @@ export default function SupplierQuoteForm() {
   function set(field) { return e => setForm(f => ({ ...f, [field]: e.target.value })) }
   function setCheck(field) { return e => setForm(f => ({ ...f, [field]: e.target.checked })) }
 
-  function handleFileChange(e) {
-    const newFiles = Array.from(e.target.files).map(file => ({
+  function addFiles(rawFiles) {
+    const newFiles = rawFiles.map(file => ({
       _id: ++fileIdRef.current,
       file,
       isPdf: file.type === 'application/pdf',
       preview: file.type === 'application/pdf' ? null : URL.createObjectURL(file),
     }))
-    setFiles(prev => [...prev, ...newFiles])
-    e.target.value = ''
+    setFiles(prev => {
+      if (newFiles.length === 1 && prev.length === 0) {
+        extractFromFile(newFiles[0].file)
+      }
+      return [...prev, ...newFiles]
+    })
+  }
 
-    if (newFiles.length === 1 && files.length === 0) {
-      extractFromFile(newFiles[0].file)
-    }
+  function handleFileChange(e) {
+    addFiles(Array.from(e.target.files))
+    e.target.value = ''
+  }
+
+  function handleDrop(e) {
+    e.preventDefault()
+    setDragOver(false)
+    const raw = Array.from(e.dataTransfer.files).filter(
+      f => f.type.startsWith('image/') || f.type === 'application/pdf'
+    )
+    if (raw.length) addFiles(raw)
   }
 
   function removeFile(id) {
@@ -282,9 +297,15 @@ export default function SupplierQuoteForm() {
         <h2 className="text-sm font-semibold text-gray-700 mb-3">Quote Images / Screenshots</h2>
         <p className="text-xs text-gray-500 mb-3">Upload WeChat or WhatsApp screenshots — AI will try to extract the pricing data automatically.</p>
 
-        <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-lg p-6 cursor-pointer hover:border-brand-400 hover:bg-brand-50 transition-colors">
-          <span className="text-2xl mb-1">📎</span>
-          <span className="text-sm text-gray-600">Click to upload images or PDFs</span>
+        <label
+          className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer transition-colors
+            ${dragOver ? 'border-brand-400 bg-brand-50 scale-[1.01]' : 'border-gray-300 hover:border-brand-400 hover:bg-brand-50'}`}
+          onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+        >
+          <span className="text-2xl mb-1">{dragOver ? '📂' : '📎'}</span>
+          <span className="text-sm text-gray-600">{dragOver ? 'Drop to upload' : 'Click to upload or drag & drop'}</span>
           <span className="text-xs text-gray-400 mt-0.5">JPG, PNG, WebP, HEIC, PDF</span>
           <input type="file" accept="image/*,.pdf" multiple className="hidden" onChange={handleFileChange} />
         </label>
