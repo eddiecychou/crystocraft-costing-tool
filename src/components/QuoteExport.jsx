@@ -109,10 +109,9 @@ export default function QuoteExport({ quote, items, onClose }) {
       ws.getCell(5, COL.PRODUCT).value = String(quote.contact_phone || '—')
       ws.getCell(5, COL.PRODUCT).font  = valueFont; ws.getCell(5, COL.PRODUCT).alignment = valueAlign
 
-      // Row 6: ADDRESS — height grows with content
+      // Row 6: ADDRESS — height grows with content (supports multi-line)
       const addrText = String(quote.contact_address || '—')
-      // Col C (PRODUCT, width 22) + overflow into D,E,F ≈ ~85 chars usable before wrap
-      const addrLines = Math.max(1, Math.ceil(addrText.length / 50))
+      const addrLines = Math.max(1, addrText.split('\n').length, Math.ceil(addrText.length / 50))
       ws.getRow(6).height = Math.max(14, addrLines * 13)
       ws.getCell(6, COL.PHOTO).value   = 'ADDRESS'; ws.getCell(6, COL.PHOTO).font = labelFont; ws.getCell(6, COL.PHOTO).alignment = labelAlign
       ws.getCell(6, COL.PRODUCT).value = addrText

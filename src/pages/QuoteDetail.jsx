@@ -224,7 +224,6 @@ export default function QuoteDetail() {
             { label: 'Contact',  field: 'contact_name' },
             { label: 'Email',    field: 'contact_email' },
             { label: 'Phone',    field: 'contact_phone' },
-            { label: 'Address',  field: 'contact_address' },
           ].map(({ label, field }) => (
             <div key={field} className="flex items-center gap-1.5">
               <span className="text-xs text-gray-400 w-14 shrink-0">{label}</span>
@@ -242,6 +241,23 @@ export default function QuoteDetail() {
               />
             </div>
           ))}
+        </div>
+        {/* Address — full-width textarea so long addresses can wrap across lines */}
+        <div className="flex items-start gap-1.5 max-w-lg mt-1">
+          <span className="text-xs text-gray-400 w-14 shrink-0 pt-0.5">Address</span>
+          <textarea
+            className="text-xs text-gray-600 bg-transparent border-b border-transparent hover:border-gray-200 focus:border-brand-300 focus:outline-none flex-1 py-0.5 resize-none leading-relaxed"
+            rows={2}
+            defaultValue={quote.contact_address || ''}
+            key={`contact_address-${quote.contact_address}`}
+            placeholder="—"
+            onBlur={e => {
+              if (e.target.value !== (quote.contact_address || '')) {
+                updateDoc(doc(db, 'client_quotes', id), { contact_address: e.target.value })
+                setQuote(q => ({ ...q, contact_address: e.target.value }))
+              }
+            }}
+          />
         </div>
 
         <p className="text-xs text-gray-400 mt-2">
