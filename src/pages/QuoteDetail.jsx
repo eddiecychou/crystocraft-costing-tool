@@ -216,8 +216,34 @@ export default function QuoteDetail() {
       {/* Header */}
       <div className="mt-2 mb-6">
         <h1 className="text-xl md:text-2xl font-bold text-gray-900">{quote.client_name}</h1>
-        {quote.contact_name && <p className="text-sm text-gray-500 mt-0.5">{quote.contact_name} {quote.contact_email && `· ${quote.contact_email}`}</p>}
-        <p className="text-xs text-gray-400 mt-1">
+
+        {/* Editable client detail fields */}
+        <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 max-w-lg">
+          {[
+            { label: 'Contact',  field: 'contact_name' },
+            { label: 'Email',    field: 'contact_email' },
+            { label: 'Phone',    field: 'contact_phone' },
+            { label: 'Address',  field: 'contact_address' },
+          ].map(({ label, field }) => (
+            <div key={field} className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-400 w-14 shrink-0">{label}</span>
+              <input
+                className="text-xs text-gray-600 bg-transparent border-b border-transparent hover:border-gray-200 focus:border-brand-300 focus:outline-none flex-1 py-0.5"
+                defaultValue={quote[field] || ''}
+                key={`${field}-${quote[field]}`}
+                placeholder="—"
+                onBlur={e => {
+                  if (e.target.value !== (quote[field] || '')) {
+                    updateDoc(doc(db, 'client_quotes', id), { [field]: e.target.value })
+                    setQuote(q => ({ ...q, [field]: e.target.value }))
+                  }
+                }}
+              />
+            </div>
+          ))}
+        </div>
+
+        <p className="text-xs text-gray-400 mt-2">
           Currency: <span className="font-medium text-gray-600">{quoteCurrency}</span>
           {' · '}
           Date:{' '}

@@ -132,10 +132,10 @@ export default function QuoteExport({ quote, items, onClose }) {
       headers.forEach((h, i) => {
         const c = ws.getRow(HEADER_ROW).getCell(i + 1)
         c.value = h
-        c.font  = { name: 'Calibri Light', bold: true, size: 8, color: { argb: B.WHITE } }
-        c.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: B.BLACK } }
+        c.font  = { name: 'Calibri Light', bold: true, size: 8, color: { argb: B.GRAY_DARK } }
+        c.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8E8E8' } }  // light grey
         c.alignment = {
-          horizontal: (i === 4) ? 'center' : (i >= 5 ? 'right' : (i <= 1 ? 'center' : 'left')),
+          horizontal: i >= 4 ? 'center' : (i <= 1 ? 'center' : 'left'),
           vertical: 'middle',
         }
       })
@@ -150,19 +150,24 @@ export default function QuoteExport({ quote, items, onClose }) {
         const firstRow = currentRow
         const lastRow  = currentRow + tiers.length - 1
 
-        for (let t = 0; t < tiers.length; t++) {
-          const tier  = tiers[t]
-          const row   = ws.getRow(currentRow)
-          row.height  = t === 0 ? 68 : 20
+        // Equal row height for all tiers — single-tier gets taller to fit image
+        const TIER_ROW_H  = 24
+        const SINGLE_ROW_H = 68
+        const rowH = tiers.length === 1 ? SINGLE_ROW_H : TIER_ROW_H
 
-          // # and Photo only on first tier row
+        for (let t = 0; t < tiers.length; t++) {
+          const tier = tiers[t]
+          const row  = ws.getRow(currentRow)
+          row.height = rowH   // all tier rows equal height
+
+          // # only on first tier row
           if (t === 0) {
             row.getCell(COL.NUM).value     = i + 1
             row.getCell(COL.NUM).font      = baseFont({ size: 8, color: { argb: B.GRAY_MID } })
-            row.getCell(COL.NUM).alignment = { horizontal: 'center', vertical: 'top' }
+            row.getCell(COL.NUM).alignment = { horizontal: 'center', vertical: 'middle' }
           }
 
-          // Qty & Price on every tier row
+          // Qty & Price on every tier row — equal height, vertically centred
           row.getCell(COL.QTY).value      = tier.quantity ?? ''
           row.getCell(COL.QTY).font       = baseFont()
           row.getCell(COL.QTY).alignment  = { horizontal: 'center', vertical: 'middle' }
@@ -188,12 +193,17 @@ export default function QuoteExport({ quote, items, onClose }) {
           currentRow++
         }
 
-        // ── Merge Product cell across all tier rows ─────────────────
+        // ── Merge Photo, Product, Description across all tier rows ──
         if (tiers.length > 1) {
+          ws.mergeCells(firstRow, COL.PHOTO,   lastRow, COL.PHOTO)
           ws.mergeCells(firstRow, COL.PRODUCT, lastRow, COL.PRODUCT)
           ws.mergeCells(firstRow, COL.DESC,    lastRow, COL.DESC)
+          ws.mergeCells(firstRow, COL.NUM,     lastRow, COL.NUM)
         }
-        // Product name & Description values go on the first row of the merge
+
+        // Set values on the top cell of each merged range
+        ws.getRow(firstRow).getCell(COL.NUM).alignment = { horizontal: 'center', vertical: 'middle' }
+
         ws.getRow(firstRow).getCell(COL.PRODUCT).value     = item.product_name || ''
         ws.getRow(firstRow).getCell(COL.PRODUCT).font      = baseFont({ bold: true })
         ws.getRow(firstRow).getCell(COL.PRODUCT).alignment = { vertical: 'middle', wrapText: true }
@@ -202,16 +212,18 @@ export default function QuoteExport({ quote, items, onClose }) {
         ws.getRow(firstRow).getCell(COL.DESC).font      = baseFont({ size: 8, color: { argb: B.GRAY_DARK } })
         ws.getRow(firstRow).getCell(COL.DESC).alignment = { vertical: 'middle', wrapText: true }
 
-        // ── Embed product image (Photo column, first tier row) ──────
+        // ── Embed product image — spans merged photo cell ───────────
         const imgUrl = item.custom_image || item.hero_image
         if (imgUrl) {
           try {
-            const res   = await fetch(`/api/download-image?url=${encodeURIComponent(imgUrl)}`)
-            const buf   = await res.arrayBuffer()
-            const imgId = wb.addImage({ buffer: buf, extension: 'jpeg' })
+            const res    = await fetch(`/api/download-image?url=${encodeURIComponent(imgUrl)}`)
+            const buf    = await res.arrayBuffer()
+            const imgId  = wb.addImage({ buffer: buf, extension: 'jpeg' })
+            // Image size fits within the merged photo column area
+            const imgPx  = tiers.length === 1 ? 62 : Math.min(62, tiers.length * rowH - 6)
             ws.addImage(imgId, {
               tl:     { col: COL.PHOTO - 1, row: firstRow - 1 },
-              ext:    { width: 66, height: 62 },
+              ext:    { width: imgPx, height: imgPx },
               editAs: 'oneCell',
             })
           } catch {}
