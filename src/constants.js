@@ -6,14 +6,14 @@ export const PRODUCT_STATUSES = [
 ]
 
 export const CATEGORIES = [
-  'Drinkware',
+  'Dining & Kitchen',
   'Trophy & Award',
   'Stationery',
   'Tech Accessory',
   'Decor Object',
   'Travel Accessories',
-  'Jewellery & Accessory',
-  'Sports Accessories',
+  'Accessories',
+  'Apparel / Wearable',
   'Other',
 ]
 
