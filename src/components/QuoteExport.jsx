@@ -43,7 +43,7 @@ export default function QuoteExport({ quote, items, onClose }) {
       }
 
       // ── Column widths ───────────────────────────────────────────────────────
-      ws.getColumn(COL.NUM).width     = 10  // wide enough for label text (TO/CONTACT/ADDRESS)
+      ws.getColumn(COL.NUM).width     = 4   // narrow — only used for row numbers in data rows
       ws.getColumn(COL.PHOTO).width   = 14    // wider without Category column
       ws.getColumn(COL.PRODUCT).width = 22
       ws.getColumn(COL.DESC).width    = 36
@@ -73,50 +73,48 @@ export default function QuoteExport({ quote, items, onClose }) {
         ws.getRow(1).getCell(c).border = { bottom: { style: 'medium', color: { argb: B.GOLD } } }
       }
 
-      // ── Rows 2–8: Client info block ─────────────────────────────────────────
-      // Layout: col A (width 10) = label | cols B:D merged = value
-      // Avoids rich text entirely — plain strings in separate cells.
-      ws.getRow(2).height = 7  // spacer
+      // ── Rows 2–7: Client info block ─────────────────────────────────────────
+      // Direct cell assignment — no merges, no rich text, no helper functions.
+      // Col B (photo col, width 14) used as label; value starts at col C and overflows right.
+      const labelFont = { name: 'Calibri Light', size: 7.5, color: { argb: B.GRAY_MID } }
+      const valueFont = { name: 'Calibri Light', size: 9,   color: { argb: B.BLACK } }
+      const labelAlign = { vertical: 'middle' }
+      const valueAlign = { vertical: 'middle' }
 
-      function infoRow(rowNum, labelText, valueText, height = 14) {
-        ws.getRow(rowNum).height = height
-        // Label cell (col A)
-        const lbl = ws.getRow(rowNum).getCell(1)
-        lbl.value     = labelText
-        lbl.font      = { name: 'Calibri Light', size: 7.5, color: { argb: B.GRAY_MID } }
-        lbl.alignment = { vertical: 'middle', horizontal: 'right' }
-        // Value cell (cols B:D merged)
-        ws.mergeCells(rowNum, COL.PHOTO, rowNum, COL.DESC)
-        const val = ws.getRow(rowNum).getCell(COL.PHOTO)
-        val.value     = valueText || '—'
-        val.font      = { name: 'Calibri Light', size: 9, color: { argb: B.BLACK } }
-        val.alignment = { vertical: 'middle', wrapText: true }
-      }
+      ws.getRow(2).height = 7   // spacer after logo
 
-      infoRow(3, 'TO',      quote.client_name || '—')
-      infoRow(4, 'CONTACT', [quote.contact_name, quote.contact_email].filter(Boolean).join('   ·   ') || '—')
-      infoRow(5, 'PHONE',   quote.contact_phone   || '—')
-      infoRow(6, 'ADDRESS', quote.contact_address || '—', 16)
+      // Row 3: TO / client name
+      ws.getRow(3).height = 15
+      ws.getCell(3, COL.PHOTO).value     = 'TO';      ws.getCell(3, COL.PHOTO).font = labelFont; ws.getCell(3, COL.PHOTO).alignment = labelAlign
+      ws.getCell(3, COL.PRODUCT).value   = String(quote.client_name || '—');   ws.getCell(3, COL.PRODUCT).font = { ...valueFont, bold: true, size: 10 }; ws.getCell(3, COL.PRODUCT).alignment = valueAlign
 
-      ws.getRow(7).height = 7  // spacer before table
+      // Row 4: CONTACT / name + email
+      ws.getRow(4).height = 14
+      ws.getCell(4, COL.PHOTO).value   = 'CONTACT'; ws.getCell(4, COL.PHOTO).font = labelFont; ws.getCell(4, COL.PHOTO).alignment = labelAlign
+      ws.getCell(4, COL.PRODUCT).value = String([quote.contact_name, quote.contact_email].filter(Boolean).join('   ·   ') || '—')
+      ws.getCell(4, COL.PRODUCT).font  = valueFont; ws.getCell(4, COL.PRODUCT).alignment = valueAlign
 
-      // Right side: Date + Currency — col E = label, col F = value
-      const rightInfos = [
-        [3, 'DATE', quote.quote_date
-          ? new Date(quote.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-          : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })],
-        [4, 'CURRENCY', cur],
-      ]
-      rightInfos.forEach(([r, label, value]) => {
-        const lbl = ws.getRow(r).getCell(COL.QTY)
-        lbl.value     = label
-        lbl.font      = { name: 'Calibri Light', size: 7.5, color: { argb: B.GRAY_MID } }
-        lbl.alignment = { vertical: 'middle', horizontal: 'right' }
-        const val = ws.getRow(r).getCell(COL.PRICE)
-        val.value     = value
-        val.font      = { name: 'Calibri Light', size: 9, color: { argb: B.BLACK } }
-        val.alignment = { vertical: 'middle', horizontal: 'right' }
-      })
+      // Row 5: PHONE
+      ws.getRow(5).height = 14
+      ws.getCell(5, COL.PHOTO).value   = 'PHONE';   ws.getCell(5, COL.PHOTO).font = labelFont; ws.getCell(5, COL.PHOTO).alignment = labelAlign
+      ws.getCell(5, COL.PRODUCT).value = String(quote.contact_phone || '—')
+      ws.getCell(5, COL.PRODUCT).font  = valueFont; ws.getCell(5, COL.PRODUCT).alignment = valueAlign
+
+      // Row 6: ADDRESS
+      ws.getRow(6).height = 16
+      ws.getCell(6, COL.PHOTO).value   = 'ADDRESS'; ws.getCell(6, COL.PHOTO).font = labelFont; ws.getCell(6, COL.PHOTO).alignment = labelAlign
+      ws.getCell(6, COL.PRODUCT).value = String(quote.contact_address || '—')
+      ws.getCell(6, COL.PRODUCT).font  = valueFont; ws.getCell(6, COL.PRODUCT).alignment = { ...valueAlign, wrapText: true }
+
+      // Right side — DATE and CURRENCY (rows 3–4, cols E–F)
+      ws.getRow(7).height = 7   // spacer before header row
+      const dateStr = quote.quote_date
+        ? new Date(quote.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+        : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+      ws.getCell(3, COL.QTY).value   = 'DATE';     ws.getCell(3, COL.QTY).font = labelFont;  ws.getCell(3, COL.QTY).alignment = { vertical: 'middle', horizontal: 'right' }
+      ws.getCell(3, COL.PRICE).value = dateStr;    ws.getCell(3, COL.PRICE).font = valueFont; ws.getCell(3, COL.PRICE).alignment = { vertical: 'middle', horizontal: 'right' }
+      ws.getCell(4, COL.QTY).value   = 'CURRENCY'; ws.getCell(4, COL.QTY).font = labelFont;  ws.getCell(4, COL.QTY).alignment = { vertical: 'middle', horizontal: 'right' }
+      ws.getCell(4, COL.PRICE).value = cur;        ws.getCell(4, COL.PRICE).font = valueFont; ws.getCell(4, COL.PRICE).alignment = { vertical: 'middle', horizontal: 'right' }
 
       // ── Column header row (row 8) ───────────────────────────────────────────
       const HEADER_ROW = 8
@@ -142,13 +140,13 @@ export default function QuoteExport({ quote, items, onClose }) {
         }, 0)
       }
 
-      // DESC column is 36 char-units wide; at size-8 font roughly 48 chars fit per line
-      const DESC_WRAP  = 48
-      const LINE_PT    = 11   // approx pt per line at size-8 font
-      const PAD_PT     = 12   // top + bottom padding inside merged area
-      const IMG_SIZE   = 88   // px — larger image now that Category column removed
-      // Column B (Photo) width ≈ 14 char-units × 7 px/unit = 98 px
-      const PHOTO_COL_PX = 98
+      const DESC_WRAP    = 48    // chars per line in description col at size-8 font
+      const LINE_PT      = 11   // pt per wrapped line
+      const PAD_PT       = 12   // top+bottom padding
+      const IMG_SIZE     = 90   // px — image size
+      const PT_TO_PX     = 4/3  // 1 Excel pt ≈ 1.333 px at 96 DPI
+      // Col B (Photo): 14 char-units × 8.43 px/unit ≈ 118 px
+      const PHOTO_COL_PX = 118
 
       // ── Data rows ───────────────────────────────────────────────────────────
       let currentRow = HEADER_ROW + 1
@@ -225,11 +223,13 @@ export default function QuoteExport({ quote, items, onClose }) {
             const buf   = await res.arrayBuffer()
             const imgId = wb.addImage({ buffer: buf, extension: 'jpeg' })
 
-            // Centre horizontally in the Photo column
-            const colOffFrac = (PHOTO_COL_PX - IMG_SIZE) / (2 * PHOTO_COL_PX)
-            // Centre vertically across all merged tier rows
-            const totalRowPx = rowH * tiers.length * (4 / 3)  // pt → px
-            const rowOffFrac = Math.max(0, (totalRowPx - IMG_SIZE) / (2 * totalRowPx))
+            // Centre horizontally: offset = (colWidthPx - imgPx) / 2, as fraction of col width
+            const colOffFrac = Math.max(0, (PHOTO_COL_PX - IMG_SIZE) / (2 * PHOTO_COL_PX))
+            // Centre vertically: offset in px, then convert to fraction of ONE row height
+            const singleRowPx = rowH * PT_TO_PX
+            const totalRowPx  = singleRowPx * tiers.length
+            const topOffsetPx = Math.max(0, (totalRowPx - IMG_SIZE) / 2)
+            const rowOffFrac  = topOffsetPx / singleRowPx  // fraction of one row
 
             ws.addImage(imgId, {
               tl:     { col: (COL.PHOTO - 1) + colOffFrac, row: (firstRow - 1) + rowOffFrac },
