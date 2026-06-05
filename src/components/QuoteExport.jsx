@@ -109,11 +109,16 @@ export default function QuoteExport({ quote, items, onClose }) {
       ws.getCell(5, COL.PRODUCT).value = String(quote.contact_phone || '—')
       ws.getCell(5, COL.PRODUCT).font  = valueFont; ws.getCell(5, COL.PRODUCT).alignment = valueAlign
 
-      // Row 6: ADDRESS
-      ws.getRow(6).height = 16
+      // Row 6: ADDRESS — height grows with content
+      const addrText = String(quote.contact_address || '—')
+      // Col C (PRODUCT, width 22) + overflow into D,E,F ≈ ~85 chars usable before wrap
+      const addrLines = Math.max(1, Math.ceil(addrText.length / 50))
+      ws.getRow(6).height = Math.max(14, addrLines * 13)
       ws.getCell(6, COL.PHOTO).value   = 'ADDRESS'; ws.getCell(6, COL.PHOTO).font = labelFont; ws.getCell(6, COL.PHOTO).alignment = labelAlign
-      ws.getCell(6, COL.PRODUCT).value = String(quote.contact_address || '—')
+      ws.getCell(6, COL.PRODUCT).value = addrText
       ws.getCell(6, COL.PRODUCT).font  = valueFont; ws.getCell(6, COL.PRODUCT).alignment = { ...valueAlign, wrapText: true }
+      // Merge address value across remaining columns so long addresses don't get clipped
+      ws.mergeCells(6, COL.PRODUCT, 6, TOTAL_COLS)
 
       // Right side — DATE and CURRENCY (rows 3–4, cols E–F)
       ws.getRow(7).height = 7   // spacer before header row
