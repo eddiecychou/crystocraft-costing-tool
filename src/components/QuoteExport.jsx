@@ -30,6 +30,15 @@ export default function QuoteExport({ quote, items, onClose }) {
 
   async function exportExcel() {
     setLoading(true)
+    // Debug: log what fields are in the quote object
+    console.log('[QuoteExport] quote fields:', JSON.stringify({
+      client_name:     quote.client_name,
+      contact_name:    quote.contact_name,
+      contact_email:   quote.contact_email,
+      contact_phone:   quote.contact_phone,
+      contact_address: quote.contact_address,
+      quote_date:      quote.quote_date,
+    }))
     try {
       const wb = new ExcelJS.Workbook()
       const ws = wb.addWorksheet('Quotation')
@@ -298,14 +307,31 @@ export default function QuoteExport({ quote, items, onClose }) {
     }
   }
 
+  const fields = [
+    { label: 'To',      value: quote.client_name },
+    { label: 'Contact', value: [quote.contact_name, quote.contact_email].filter(Boolean).join(' · ') },
+    { label: 'Phone',   value: quote.contact_phone },
+    { label: 'Address', value: quote.contact_address },
+  ]
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
         <h2 className="font-semibold text-gray-900 mb-1">Export Quote</h2>
-        <p className="text-sm text-gray-500 mb-6">
-          Download a professional quotation for <span className="font-medium">{quote.client_name}</span>.
-        </p>
+
+        {/* Data preview — confirms what will appear in the Excel */}
+        <div className="mt-3 mb-5 rounded-lg bg-gray-50 border border-gray-100 px-3 py-2.5 space-y-1">
+          {fields.map(({ label, value }) => (
+            <div key={label} className="flex gap-2 text-xs">
+              <span className="text-gray-400 w-14 shrink-0">{label}</span>
+              <span className={value ? 'text-gray-700' : 'text-gray-300 italic'}>
+                {value || 'not set — edit in Quote Details first'}
+              </span>
+            </div>
+          ))}
+        </div>
+
         <div className="space-y-3">
           <button className="btn-primary w-full justify-center" onClick={exportExcel} disabled={loading}>
             {loading ? 'Generating…' : '⬇ Download Excel (.xlsx)'}
