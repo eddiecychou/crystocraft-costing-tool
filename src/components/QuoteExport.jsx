@@ -158,8 +158,6 @@ export default function QuoteExport({ quote, items, onClose }) {
       const PAD_PT       = 12   // top+bottom padding
       const IMG_SIZE     = 90   // px — image size
       const PT_TO_PX     = 4/3  // 1 Excel pt ≈ 1.333 px at 96 DPI
-      // Col B (Photo): 14 char-units × 8.43 px/unit ≈ 118 px
-      const PHOTO_COL_PX = 118
 
       // ── Data rows ───────────────────────────────────────────────────────────
       let currentRow = HEADER_ROW + 1
@@ -236,21 +234,22 @@ export default function QuoteExport({ quote, items, onClose }) {
             const buf   = await res.arrayBuffer()
             const imgId = wb.addImage({ buffer: buf, extension: 'jpeg' })
 
-            // Use EMU (English Metric Units) for precise pixel-perfect centering.
-            // 1 px at 96 DPI = 9525 EMU. nativeColOff/nativeRowOff are absolute
-            // offsets from the top-left of the anchor cell — no row-height conversion needed.
-            const EMU = 9525
-            const totalRowPx = rowH * PT_TO_PX * tiers.length
-            const colOffPx   = Math.max(0, (PHOTO_COL_PX - IMG_SIZE) / 2)
-            const rowOffPx   = Math.max(0, (totalRowPx - IMG_SIZE) / 2)
+            // Fractional col/row coordinates.
+            // Col B (width=14 char-units): actual px ≈ 14 * 7 + 5 = 103px (Calibri MDW ~7px)
+            // Horizontal: small fixed left-margin (4px) keeps image inside col B
+            const PHOTO_COL_ACTUAL_PX = 103
+            const colOffFrac = Math.max(0, (PHOTO_COL_ACTUAL_PX - IMG_SIZE) / (2 * PHOTO_COL_ACTUAL_PX))
+
+            // Vertical: center image in the total merged height.
+            // ExcelJS fractional row = fraction of that row's height (in points).
+            // We express the offset as a fraction of one row height (rowH pt = rowH*PT_TO_PX px).
+            const singleRowPx = rowH * PT_TO_PX
+            const totalRowPx  = singleRowPx * tiers.length
+            const topOffsetPx = Math.max(0, (totalRowPx - IMG_SIZE) / 2)
+            const rowOffFrac  = topOffsetPx / singleRowPx
 
             ws.addImage(imgId, {
-              tl: {
-                nativeCol:    COL.PHOTO - 1,
-                nativeColOff: Math.round(colOffPx * EMU),
-                nativeRow:    firstRow - 1,
-                nativeRowOff: Math.round(rowOffPx * EMU),
-              },
+              tl:     { col: (COL.PHOTO - 1) + colOffFrac, row: (firstRow - 1) + rowOffFrac },
               ext:    { width: IMG_SIZE, height: IMG_SIZE },
               editAs: 'oneCell',
             })
