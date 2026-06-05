@@ -91,22 +91,12 @@ export default function QuoteExport({ quote, items, onClose }) {
         ws.getRow(rowNum).getCell(1).alignment = { vertical: 'middle' }
       }
 
-      infoRow(3, 'TO', quote.client_name || '')
+      infoRow(3, 'TO',      quote.client_name || '')
+      infoRow(4, 'CONTACT', [quote.contact_name, quote.contact_email].filter(Boolean).join('   ·   ') || '—')
+      infoRow(5, 'PHONE',   quote.contact_phone   || '—')
+      infoRow(6, 'ADDRESS', quote.contact_address || '—', 16)
 
-      const contactVal = [quote.contact_name, quote.contact_email].filter(Boolean).join('   ·   ')
-      infoRow(4, 'CONTACT', contactVal)
-
-      let nextInfoRow = 5
-      if (quote.contact_phone) {
-        infoRow(nextInfoRow, 'PHONE', quote.contact_phone)
-        nextInfoRow++
-      }
-      if (quote.contact_address) {
-        infoRow(nextInfoRow, 'ADDRESS', quote.contact_address, 18)
-        nextInfoRow++
-      }
-
-      ws.getRow(7).height = 7  // spacer before table (used only if address not there)
+      ws.getRow(7).height = 7  // spacer before table
 
       // Right side: Date + Currency — merged D:F, right-aligned
       ;[
