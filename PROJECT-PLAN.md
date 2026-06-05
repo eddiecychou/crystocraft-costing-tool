@@ -1,33 +1,28 @@
 # Crystocraft Corporate Gift Costing Tool — Project Plan
 
-## Current Status — as of 2026-05-31
+## Current Status — V2.0 as of 2026-06-05
 
-**All four core phases are complete and working locally.** The app is fully functional in the browser (dev server at port 5179).
+**V2.0 is deployed to Netlify and live in production.**
 
-### What's working end-to-end
+### What's working end-to-end (V2.0)
 - Create and manage products with image galleries (hero image, type labels, lightbox)
 - Build a BOM per product: add components, upload component images
 - Record supplier quotes per component — AI extraction from WeChat/supplier screenshots via Gemini
 - Mark a preferred supplier per component (enforced, single preferred only)
 - Store supplier database with catalog PDFs/images
 - Calculate pricing tiers with unit cost + tooling amortisation, margin colour coding, markup slider
-- Build client quotes: pick products, set multiple qty/price tiers per product (e.g. 200 pcs @ HKD 120 AND 500 pcs @ HKD 100)
+- Build client quotes: pick products, set multiple qty/price tiers per product
 - Export client quote to Excel (.xlsx) with embedded product photos, one row per pricing tier
+- **Product Catalogue builder** — create branded A4 landscape catalogues with auto layout, drag-to-reorder images, cover page with background photo, print/PDF export
+- **Supplier quote improvements** — searchable supplier combobox, delete quote, remove uploaded attachments
+- Firebase security rules locked (Firestore + Storage)
+- Deployed to Netlify with `GEMINI_API_KEY` set
 
 ### What's not done yet
 - **Settings page** — exchange rates UI exists but is read-only placeholder; categories and user management not built
-- **PDF export** — stubbed as "coming soon" in the Export modal
+- **Client quote PDF export** — stubbed as "coming soon" in the Export modal
 - **Dashboard** — no home screen; app opens directly to Products
-- **Netlify deployment** — not yet pushed to Git or deployed; `GEMINI_API_KEY` not set in production so AI extraction only works locally (if key is in `.env.local`)
-- **Firebase security rules** — Firestore and Storage are currently in test mode (open read/write); must be locked before sharing with colleagues
-- **Data migration** — no products entered yet; starting from a blank database
-
-### Immediate next steps (Phase 5)
-1. Deploy to Netlify (push to Git → connect Netlify → add `GEMINI_API_KEY` env var)
-2. Set Firebase security rules
-3. Build Settings page (exchange rates at minimum — rates are currently hardcoded fallback values)
-4. Start entering top 20–30 active corporate gift products manually
-5. Dashboard and PDF export are lower priority
+- **Data migration** — products being entered manually
 
 ---
 
@@ -362,16 +357,40 @@ Pricing tiers are user-defined per product (any qty: 100, 200, 300, 500, 1000, 2
 - [x] Export to Excel with embedded product photos (ExcelJS) — one row per tier per product
 - [ ] Export to PDF (`@react-pdf/renderer`) — stubbed as "coming soon"
 
-### Phase 5 — Polish & Deployment (Next)
-- [ ] Netlify deployment — push to Git, connect Netlify, set `GEMINI_API_KEY` env var
-- [ ] Firebase security rules (currently in test mode)
-- [ ] Settings page: exchange rates — editable UI + `/api/fx-latest` edge function to fetch live rates (CNY/USD/EUR→HKD) with manual Apply; rates already snapshotted per quote so old quotes are unaffected
-- [ ] Settings page: category management
-- [ ] Settings page: user management / invite colleagues
-- [ ] Dashboard / home screen (summary stats — products by status, quotes by status, recent activity)
-- [ ] Search and filters on product catalog (category, status) — UI exists, wire up filtering logic
-- [ ] PDF quote export — implement with `@react-pdf/renderer` per layout spec in `costing-tool-Perplexity-input-June1.md` (A4, product cards with hero image + tier table per product, notes section instead of grand total)
-- [ ] Data migration: manual entry of top 20–30 active corporate gift products from `CorpGiftCosting-20260523.xlsx` — follow data hygiene checklist in `costing-tool-Perplexity-input-June1.md`
+### Phase 5 — Polish & Deployment ✅ Complete (V1.0 → V2.0)
+- [x] Netlify deployment — pushed to Git, connected Netlify, `GEMINI_API_KEY` set
+- [x] Firebase security rules locked (Firestore + Storage, all paths)
+- [x] Supplier quote improvements: searchable combobox, delete quote, remove attachments
+
+### Phase 6 — Product Catalogue ✅ Complete (V2.0)
+New feature: branded A4 landscape PDF catalogue generator.
+
+- [x] Catalogue list page (`/catalogues`) — create, edit, preview, delete
+- [x] Catalogue builder (`/catalogues/[id]`) — add products, drag to reorder items
+- [x] Auto layout from image count per product:
+  - 1–3 images → quarter page (4 products per A4 in 2×2 grid)
+  - 4 images → half page (2 products per A4 side by side)
+  - 5–6 images → full page (1 product per A4)
+- [x] Per-product image sequencer: drag to reorder selected images; first = hero (★); max 6
+- [x] Quarter-page layout variants: single (image left/text right), double (text left/2 images right), triple (3 images horizontal top/text bottom)
+- [x] Half-page layout variants: 4-image (2×2 grid top 65%/text 35%), 3-image (vertical images left/text right)
+- [x] Full-page layout: hero + up to 3 sub-row left pane (62%), text + up to 2 images right pane (38%)
+- [x] Cover page: background image upload (Firebase Storage), black/white overlay + opacity slider (0–90%), text at lower-right
+- [x] Gold dividers throughout at `rgba(200, 169, 81, 0.3)`
+- [x] Page summary widget in builder: shows quarter/half/full page counts and blank slots
+- [x] Print/PDF export: A4 landscape, correct pagination, `print-color-adjust: exact` for backgrounds
+- [x] Marketing description field per product in catalogue (separate from product description)
+- [x] Firebase Storage rules: `catalogues/{catalogueId}/{allPaths=**}` added
+
+**Print tip:** Use Chrome incognito to avoid RSS/feed browser extension icons appearing in PDF output.
+
+### Phase 7 — Next Steps
+- [ ] Settings page: exchange rates — editable UI + `/api/fx-latest` edge function to fetch live rates (CNY/USD/EUR→HKD)
+- [ ] Settings page: category management, user management
+- [ ] Dashboard / home screen (products by status, quotes by status, recent activity)
+- [ ] Client quote PDF export — implement with `@react-pdf/renderer`
+- [ ] Data migration: manual entry of top 20–30 active corporate gift products from `CorpGiftCosting-20260523.xlsx`
+- [ ] Product coding: `product_code` field (`CG-[CAT]-[YY][NN]`)
 
 ### Phase 6 — Product Coding & ERP References
 - [ ] Add `product_code` field (`CG-[CAT]-[YY][NN]`) to products — user-confirmed (not fully auto-generated, to avoid Firestore race conditions); display on product list, detail, pricing, and both exports
