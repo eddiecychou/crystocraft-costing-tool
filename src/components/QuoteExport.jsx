@@ -246,7 +246,9 @@ export default function QuoteExport({ quote, items, onClose }) {
             // divide by singleRowPx (= rowH × PT_TO_PX).
             const singleRowPx = rowH * PT_TO_PX
             const totalRowPx  = singleRowPx * tiers.length
-            const topOffsetPx = Math.max(0, (totalRowPx - IMG_SIZE) / 2)
+            // Cap top offset at 14px so tall rows (long descriptions) don't push
+            // the image further down than short-description rows.
+            const topOffsetPx = Math.min(14, Math.max(0, (totalRowPx - IMG_SIZE) / 2))
             const rowOffFrac  = topOffsetPx / singleRowPx
 
             ws.addImage(imgId, {
