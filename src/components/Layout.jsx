@@ -27,7 +27,7 @@ export default function Layout({ children, user }) {
       <aside className="hidden md:flex w-56 bg-white border-r border-gray-200 flex-col shrink-0">
         <div className="px-5 py-4 border-b border-gray-100">
           <img src={logo} alt="Crystocraft" className="h-7 w-auto" />
-          <p className="text-sm font-bold text-gray-900 mt-1">Costing Tool</p>
+          <p className="text-sm font-bold text-gray-900 mt-1">Product Management App</p>
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
@@ -64,7 +64,7 @@ export default function Layout({ children, user }) {
         <header className="md:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
           <div>
             <img src={logo} alt="Crystocraft" className="h-6 w-auto" />
-            <p className="text-xs font-bold text-gray-700 mt-0.5">Costing Tool</p>
+            <p className="text-xs font-bold text-gray-700 mt-0.5">Product Management App</p>
           </div>
           <button onClick={handleSignOut} className="text-xs text-gray-400 hover:text-red-500 transition-colors px-2 py-1">
             Sign out

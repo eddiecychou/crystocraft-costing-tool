@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
 import { auth } from '../firebase'
+import logo from '../assets/logo.png'
 
 export default function Login() {
   const [email, setEmail]       = useState('')
@@ -37,8 +38,8 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="card w-full max-w-sm p-8">
         <div className="mb-8 text-center">
-          <p className="text-xs font-semibold text-brand-600 uppercase tracking-widest">Crystocraft</p>
-          <h1 className="text-2xl font-bold text-gray-900 mt-1">Costing Tool</h1>
+          <img src={logo} alt="Crystocraft" className="h-10 w-auto mx-auto" />
+          <p className="text-xs font-medium text-brand-600 uppercase tracking-widest mt-3">Product Management App</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
