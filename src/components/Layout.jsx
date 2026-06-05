@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
+import logo from '../assets/logo.png'
 
 const nav = [
   { to: '/products',  label: 'Products',  icon: '📦' },
@@ -23,9 +24,9 @@ export default function Layout({ children, user }) {
 
       {/* Sidebar — desktop only */}
       <aside className="hidden md:flex w-56 bg-white border-r border-gray-200 flex-col shrink-0">
-        <div className="px-5 py-5 border-b border-gray-100">
-          <p className="text-xs font-semibold text-brand-600 uppercase tracking-widest">Crystocraft</p>
-          <p className="text-sm font-bold text-gray-900 mt-0.5">Costing Tool</p>
+        <div className="px-5 py-4 border-b border-gray-100">
+          <img src={logo} alt="Crystocraft" className="h-7 w-auto" />
+          <p className="text-sm font-bold text-gray-900 mt-1">Costing Tool</p>
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1">
@@ -61,8 +62,8 @@ export default function Layout({ children, user }) {
         {/* Mobile top bar */}
         <header className="md:hidden bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shrink-0">
           <div>
-            <p className="text-xs font-semibold text-brand-600 uppercase tracking-widest leading-none">Crystocraft</p>
-            <p className="text-sm font-bold text-gray-900">Costing Tool</p>
+            <img src={logo} alt="Crystocraft" className="h-6 w-auto" />
+            <p className="text-xs font-bold text-gray-700 mt-0.5">Costing Tool</p>
           </div>
           <button onClick={handleSignOut} className="text-xs text-gray-400 hover:text-red-500 transition-colors px-2 py-1">
             Sign out
