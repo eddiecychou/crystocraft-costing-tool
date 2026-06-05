@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Link } from 'react-router-dom'
 import { CATEGORIES, PRODUCT_STATUSES } from '../constants'
@@ -73,6 +73,13 @@ export default function Products() {
 }
 
 function ProductCard({ product: p }) {
+  const [tiers, setTiers] = useState(null)
+
+  useEffect(() => {
+    getDocs(query(collection(db, 'products', p.id, 'pricing_tiers'), orderBy('quantity')))
+      .then(snap => setTiers(snap.docs.map(d => d.data()).filter(t => t.price_hkd)))
+  }, [p.id])
+
   return (
     <Link to={`/products/${p.id}`} className="card hover:shadow-md transition-shadow overflow-hidden flex flex-col">
       <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
@@ -88,6 +95,21 @@ function ProductCard({ product: p }) {
         </div>
         <p className="text-xs text-gray-500">{p.category}</p>
         {p.description && <p className="text-xs text-gray-600 mt-1 line-clamp-2">{p.description}</p>}
+
+        {/* Pricing tiers */}
+        {tiers && tiers.length > 0 && (
+          <div className="mt-2 pt-2 border-t border-gray-100 flex flex-wrap gap-x-3 gap-y-1">
+            {tiers.map(t => (
+              <span key={t.quantity} className="text-xs text-gray-700">
+                <span className="font-semibold text-gray-900">HKD {t.price_hkd}</span>
+                <span className="text-gray-400"> @ {t.quantity.toLocaleString()} pcs</span>
+              </span>
+            ))}
+          </div>
+        )}
+        {tiers && tiers.length === 0 && (
+          <p className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-300 italic">No pricing set</p>
+        )}
       </div>
     </Link>
   )
