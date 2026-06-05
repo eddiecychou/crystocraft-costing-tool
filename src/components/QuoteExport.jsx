@@ -155,7 +155,7 @@ export default function QuoteExport({ quote, items, onClose }) {
 
       const DESC_WRAP    = 48    // chars per line in description col at size-8 font
       const LINE_PT      = 11   // pt per wrapped line
-      const PAD_PT       = 12   // top+bottom padding
+      const PAD_PT       = 26   // top+bottom padding — larger = more visible centering margin
       const IMG_SIZE     = 90   // px — image size
       const PT_TO_PX     = 4/3  // 1 Excel pt ≈ 1.333 px at 96 DPI
 
@@ -241,13 +241,13 @@ export default function QuoteExport({ quote, items, onClose }) {
             const colOffFrac = Math.max(0, (PHOTO_COL_ACTUAL_PX - IMG_SIZE) / (2 * PHOTO_COL_ACTUAL_PX))
 
             // Vertical: center image in the total merged height.
-            // ExcelJS converts fractional row coords using the DEFAULT row height (15pt = 20px),
-            // NOT the custom row height — so we must divide by 20px, not by singleRowPx.
-            const DEFAULT_ROW_PX = 20   // 15pt × (4/3 px/pt)
-            const singleRowPx    = rowH * PT_TO_PX
-            const totalRowPx     = singleRowPx * tiers.length
-            const topOffsetPx    = Math.max(0, (totalRowPx - IMG_SIZE) / 2)
-            const rowOffFrac     = topOffsetPx / DEFAULT_ROW_PX
+            // rowOffFrac = fraction of ONE row height to offset from top of firstRow.
+            // ExcelJS uses the anchor row's custom height for EMU conversion, so we
+            // divide by singleRowPx (= rowH × PT_TO_PX).
+            const singleRowPx = rowH * PT_TO_PX
+            const totalRowPx  = singleRowPx * tiers.length
+            const topOffsetPx = Math.max(0, (totalRowPx - IMG_SIZE) / 2)
+            const rowOffFrac  = topOffsetPx / singleRowPx
 
             ws.addImage(imgId, {
               tl:     { col: (COL.PHOTO - 1) + colOffFrac, row: (firstRow - 1) + rowOffFrac },
