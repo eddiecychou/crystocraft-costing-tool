@@ -43,7 +43,7 @@ export default function QuoteExport({ quote, items, onClose }) {
       }
 
       // ── Column widths ───────────────────────────────────────────────────────
-      ws.getColumn(COL.NUM).width     = 4
+      ws.getColumn(COL.NUM).width     = 10  // wide enough for label text (TO/CONTACT/ADDRESS)
       ws.getColumn(COL.PHOTO).width   = 14    // wider without Category column
       ws.getColumn(COL.PRODUCT).width = 22
       ws.getColumn(COL.DESC).width    = 36
@@ -74,45 +74,48 @@ export default function QuoteExport({ quote, items, onClose }) {
       }
 
       // ── Rows 2–8: Client info block ─────────────────────────────────────────
-      // Strategy: merge A:D for each info row so the narrow col A doesn't clip text.
-      // Labels are embedded as small gray prefix text (rich text).
+      // Layout: col A (width 10) = label | cols B:D merged = value
+      // Avoids rich text entirely — plain strings in separate cells.
       ws.getRow(2).height = 7  // spacer
 
       function infoRow(rowNum, labelText, valueText, height = 14) {
         ws.getRow(rowNum).height = height
-        ws.mergeCells(`A${rowNum}:D${rowNum}`)
-        if (!valueText) return
-        ws.getRow(rowNum).getCell(1).value = {
-          richText: [
-            { text: `${labelText}  `, font: { name: 'Calibri Light', size: 7.5, color: { argb: B.GRAY_MID } } },
-            { text: valueText,        font: { name: 'Calibri Light', size: 9,   color: { argb: B.BLACK } } },
-          ],
-        }
-        ws.getRow(rowNum).getCell(1).alignment = { vertical: 'middle' }
+        // Label cell (col A)
+        const lbl = ws.getRow(rowNum).getCell(1)
+        lbl.value     = labelText
+        lbl.font      = { name: 'Calibri Light', size: 7.5, color: { argb: B.GRAY_MID } }
+        lbl.alignment = { vertical: 'middle', horizontal: 'right' }
+        // Value cell (cols B:D merged)
+        ws.mergeCells(rowNum, COL.PHOTO, rowNum, COL.DESC)
+        const val = ws.getRow(rowNum).getCell(COL.PHOTO)
+        val.value     = valueText || '—'
+        val.font      = { name: 'Calibri Light', size: 9, color: { argb: B.BLACK } }
+        val.alignment = { vertical: 'middle', wrapText: true }
       }
 
-      infoRow(3, 'TO',      quote.client_name || '')
+      infoRow(3, 'TO',      quote.client_name || '—')
       infoRow(4, 'CONTACT', [quote.contact_name, quote.contact_email].filter(Boolean).join('   ·   ') || '—')
       infoRow(5, 'PHONE',   quote.contact_phone   || '—')
       infoRow(6, 'ADDRESS', quote.contact_address || '—', 16)
 
       ws.getRow(7).height = 7  // spacer before table
 
-      // Right side: Date + Currency — merged D:F, right-aligned
-      ;[
+      // Right side: Date + Currency — col E = label, col F = value
+      const rightInfos = [
         [3, 'DATE', quote.quote_date
           ? new Date(quote.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
           : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })],
         [4, 'CURRENCY', cur],
-      ].forEach(([r, label, value]) => {
-        ws.mergeCells(`E${r}:${LAST_COL}${r}`)
-        ws.getRow(r).getCell(COL.QTY).value = {
-          richText: [
-            { text: `${label}  `, font: { name: 'Calibri Light', size: 7.5, color: { argb: B.GRAY_MID } } },
-            { text: value,        font: { name: 'Calibri Light', size: 9,   color: { argb: B.BLACK } } },
-          ],
-        }
-        ws.getRow(r).getCell(COL.QTY).alignment = { horizontal: 'right', vertical: 'middle' }
+      ]
+      rightInfos.forEach(([r, label, value]) => {
+        const lbl = ws.getRow(r).getCell(COL.QTY)
+        lbl.value     = label
+        lbl.font      = { name: 'Calibri Light', size: 7.5, color: { argb: B.GRAY_MID } }
+        lbl.alignment = { vertical: 'middle', horizontal: 'right' }
+        const val = ws.getRow(r).getCell(COL.PRICE)
+        val.value     = value
+        val.font      = { name: 'Calibri Light', size: 9, color: { argb: B.BLACK } }
+        val.alignment = { vertical: 'middle', horizontal: 'right' }
       })
 
       // ── Column header row (row 8) ───────────────────────────────────────────
