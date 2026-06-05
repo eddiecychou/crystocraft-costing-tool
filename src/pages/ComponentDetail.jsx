@@ -124,7 +124,15 @@ export default function ComponentDetail() {
           </p>
         ) : (
           <div className="space-y-3">
-            {quotes.map(q => <QuoteCard key={q.id} quote={q} productId={productId} componentId={componentId} />)}
+            {quotes.map(q => (
+              <QuoteCard
+                key={q.id}
+                quote={q}
+                productId={productId}
+                componentId={componentId}
+                onDeleted={deletedId => setQuotes(prev => prev.filter(x => x.id !== deletedId))}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -140,29 +148,54 @@ export default function ComponentDetail() {
   )
 }
 
-function QuoteCard({ quote: q, productId, componentId }) {
+function QuoteCard({ quote: q, productId, componentId, onDeleted }) {
+  const [confirmDel, setConfirmDel] = useState(false)
+
+  async function handleDelete() {
+    await deleteDoc(doc(db, 'products', productId, 'components', componentId, 'supplier_quotes', q.id))
+    onDeleted(q.id)
+  }
+
   return (
-    <Link
-      to={`/products/${productId}/components/${componentId}/quotes/${q.id}`}
-      className="flex items-start justify-between p-4 rounded-lg border border-gray-100 hover:border-brand-200 hover:bg-brand-50 transition-colors"
-    >
-      <div className="space-y-1">
-        <div className="flex items-center gap-2">
-          <p className="font-medium text-sm text-gray-900">{q.supplier_name}</p>
-          {q.is_preferred && (
-            <span className="badge bg-brand-100 text-brand-700">Preferred</span>
-          )}
-        </div>
-        <p className="text-sm text-gray-700">
-          <span className="font-semibold">{q.unit_cost} {q.unit_cost_currency}</span>
-          {q.moq ? ` · MOQ ${q.moq.toLocaleString()} pcs` : ''}
-        </p>
-        <div className="flex gap-4 text-xs text-gray-500">
-          {q.sampling_lead_time_days ? <span>Sample: {q.sampling_lead_time_days}d</span> : null}
-          {q.production_lead_time_days ? <span>Production: {q.production_lead_time_days}d</span> : null}
+    <>
+      <div className="relative group flex items-start justify-between p-4 rounded-lg border border-gray-100 hover:border-brand-200 hover:bg-brand-50 transition-colors">
+        <Link
+          to={`/products/${productId}/components/${componentId}/quotes/${q.id}`}
+          className="flex-1 min-w-0 space-y-1"
+        >
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-sm text-gray-900">{q.supplier_name}</p>
+            {q.is_preferred && (
+              <span className="badge bg-brand-100 text-brand-700">Preferred</span>
+            )}
+          </div>
+          <p className="text-sm text-gray-700">
+            <span className="font-semibold">{q.unit_cost} {q.unit_cost_currency}</span>
+            {q.moq ? ` · MOQ ${q.moq.toLocaleString()} pcs` : ''}
+          </p>
+          <div className="flex gap-4 text-xs text-gray-500">
+            {q.sampling_lead_time_days ? <span>Sample: {q.sampling_lead_time_days}d</span> : null}
+            {q.production_lead_time_days ? <span>Production: {q.production_lead_time_days}d</span> : null}
+          </div>
+        </Link>
+        <div className="flex items-center gap-2 ml-3 shrink-0">
+          <span className="text-xs text-gray-400">→</span>
+          <button
+            onClick={e => { e.preventDefault(); setConfirmDel(true) }}
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-500 text-sm leading-none px-1"
+            title="Delete quote"
+          >✕</button>
         </div>
       </div>
-      <span className="text-xs text-gray-400 mt-1">→</span>
-    </Link>
+
+      {confirmDel && (
+        <ConfirmDialog
+          title="Delete Quote"
+          message={`Delete the quote from "${q.supplier_name}"? This cannot be undone.`}
+          onConfirm={handleDelete}
+          onCancel={() => setConfirmDel(false)}
+        />
+      )}
+    </>
   )
 }

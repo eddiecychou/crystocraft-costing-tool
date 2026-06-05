@@ -10,7 +10,7 @@ export default function ProductForm() {
   const isEdit = Boolean(id)
 
   const [form, setForm] = useState({
-    name: '', category: '', status: 'concept', description: '', assembly_notes: '',
+    name: '', category: '', status: 'concept', description: '', marketing_description: '', assembly_notes: '',
   })
   const [loading, setLoading]   = useState(false)
   const [fetching, setFetching] = useState(isEdit)
@@ -76,8 +76,13 @@ export default function ProductForm() {
         </div>
 
         <div>
-          <label className="label">Description</label>
-          <textarea className="input" rows={3} value={form.description} onChange={set('description')} placeholder="Brief product description for reference and quotes…" />
+          <label className="label">Spec Description</label>
+          <textarea className="input" rows={3} value={form.description} onChange={set('description')} placeholder="Materials, dimensions, technical specs — used in quotes…" />
+        </div>
+
+        <div>
+          <label className="label">Marketing Description</label>
+          <textarea className="input" rows={3} value={form.marketing_description} onChange={set('marketing_description')} placeholder="Sell-copy for catalogues — evocative, customer-facing language…" />
         </div>
 
         <div>

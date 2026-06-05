@@ -14,6 +14,7 @@ export const CATEGORIES = [
   'Travel Accessories',
   'Accessories',
   'Apparel / Wearable',
+  'Games & Leisure',
   'Other',
 ]
 

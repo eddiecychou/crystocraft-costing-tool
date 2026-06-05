@@ -215,7 +215,18 @@ export default function QuoteDetail() {
 
       {/* Header */}
       <div className="mt-2 mb-6">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900">{quote.client_name}</h1>
+        <input
+          className="text-xl md:text-2xl font-bold text-gray-900 bg-transparent border-b border-transparent hover:border-gray-200 focus:border-brand-300 focus:outline-none w-full"
+          defaultValue={quote.client_name || ''}
+          key={`client_name-${quote.client_name}`}
+          placeholder="Client name"
+          onBlur={e => {
+            if (e.target.value !== (quote.client_name || '')) {
+              updateDoc(doc(db, 'client_quotes', id), { client_name: e.target.value })
+              setQuote(q => ({ ...q, client_name: e.target.value }))
+            }
+          }}
+        />
 
         {/* Editable client detail fields */}
         <p className="text-xs text-gray-400 mt-2 mb-1">Click any field to edit — changes save automatically</p>

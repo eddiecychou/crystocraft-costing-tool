@@ -20,6 +20,10 @@ import Customers from './pages/Customers'
 import CustomerForm from './pages/CustomerForm'
 import CustomerDetail from './pages/CustomerDetail'
 import Settings from './pages/Settings'
+import Catalogues from './pages/Catalogues'
+import CatalogueForm from './pages/CatalogueForm'
+import CatalogueDetail from './pages/CatalogueDetail'
+import CataloguePreview from './pages/CataloguePreview'
 
 function ProtectedRoute({ children, user }) {
   if (user === undefined) return <LoadingBar />
@@ -61,6 +65,11 @@ export default function App() {
                 <Route path="/customers/new" element={<CustomerForm />} />
                 <Route path="/customers/:id" element={<CustomerDetail />} />
                 <Route path="/customers/:id/edit" element={<CustomerForm />} />
+                <Route path="/catalogues" element={<Catalogues />} />
+                <Route path="/catalogues/new" element={<CatalogueForm />} />
+                <Route path="/catalogues/:id" element={<CatalogueDetail />} />
+                <Route path="/catalogues/:id/edit" element={<CatalogueForm />} />
+                <Route path="/catalogues/:id/preview" element={<CataloguePreview />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>
             </Layout>

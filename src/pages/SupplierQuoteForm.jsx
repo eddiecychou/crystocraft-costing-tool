@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { collection, doc, addDoc, updateDoc, getDoc, getDocs, serverTimestamp, orderBy, query } from 'firebase/firestore'
+import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, serverTimestamp, orderBy, query } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
 import { CURRENCIES } from '../constants'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 export default function SupplierQuoteForm() {
   const { productId, componentId, quoteId } = useParams()
@@ -35,8 +36,9 @@ export default function SupplierQuoteForm() {
   const [uploading, setUploading] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [dragOver, setDragOver]     = useState(false)
-  const [loading, setLoading]     = useState(false)
-  const [fetching, setFetching]   = useState(true)
+  const [loading, setLoading]         = useState(false)
+  const [fetching, setFetching]       = useState(true)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [productName, setProductName]     = useState('')
   const [componentName, setComponentName] = useState('')
   const [extractError, setExtractError]   = useState('')
@@ -336,45 +338,47 @@ export default function SupplierQuoteForm() {
         )}
         {extractError && <p className="text-xs text-red-500 mt-2">{extractError}</p>}
         {existingAttachments.length > 0 && (
-          <div className="mt-3 flex gap-2 flex-wrap">
-            {existingAttachments.map((a, i) => (
-              a.file_type === 'pdf'
-                ? <a key={i} href={a.file_url} target="_blank" rel="noreferrer"
-                    className="flex items-center gap-1.5 px-2 py-1 rounded border border-red-100 bg-red-50 text-xs text-red-700 hover:bg-red-100">
-                    <span>📄</span><span className="truncate max-w-32">{a.file_name}</span>
-                  </a>
-                : <a key={i} href={a.file_url} target="_blank" rel="noreferrer">
-                    <img src={a.file_url} alt="" className="w-12 h-12 object-cover rounded border" />
-                  </a>
-            ))}
+          <div className="mt-3">
+            <p className="text-xs text-gray-400 mb-1.5">Saved attachments:</p>
+            <div className="flex gap-2 flex-wrap">
+              {existingAttachments.map((a, i) => (
+                <div key={i} className="relative group/att">
+                  {a.file_type === 'pdf'
+                    ? <a href={a.file_url} target="_blank" rel="noreferrer"
+                          className="flex items-center gap-1.5 px-2 py-1 rounded border border-red-100 bg-red-50 text-xs text-red-700 hover:bg-red-100">
+                          <span>📄</span><span className="truncate max-w-32">{a.file_name}</span>
+                        </a>
+                    : <a href={a.file_url} target="_blank" rel="noreferrer">
+                          <img src={a.file_url} alt="" className="w-12 h-12 object-cover rounded border" />
+                        </a>
+                  }
+                  <button
+                    type="button"
+                    onClick={() => setExistingAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                    className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full text-xs leading-none flex items-center justify-center opacity-0 group-hover/att:opacity-100 transition-opacity"
+                    title="Remove attachment"
+                  >✕</button>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Hover to remove · changes save when you click Save Changes</p>
           </div>
         )}
       </div>
 
       <form onSubmit={handleSubmit} className="card p-6 space-y-5">
-        {/* Supplier */}
+        {/* Supplier — searchable combobox */}
         <div>
           <label className="label">Supplier *</label>
-          <select
-            className="input"
+          <SupplierCombobox
+            suppliers={suppliers}
             value={form.supplier_id}
-            required
-            onChange={e => {
-              const s = suppliers.find(s => s.id === e.target.value)
-              setForm(f => ({
-                ...f,
-                supplier_id: e.target.value,
-                supplier_name: s ? (s.name_cn ? `${s.name} (${s.name_cn})` : s.name) : '',
-              }))
-            }}
-          >
-            <option value="">Select supplier…</option>
-            {suppliers.map(s => (
-              <option key={s.id} value={s.id}>
-                {s.name}{s.name_cn ? ` — ${s.name_cn}` : ''}{s.contact_person ? ` · ${s.contact_person}` : ''}
-              </option>
-            ))}
-          </select>
+            onChange={s => setForm(f => ({
+              ...f,
+              supplier_id: s ? s.id : '',
+              supplier_name: s ? (s.name_cn ? `${s.name} (${s.name_cn})` : s.name) : '',
+            }))}
+          />
           <Link to="/suppliers/new" className="text-xs text-brand-600 hover:underline mt-1 inline-block" target="_blank">
             + Add new supplier
           </Link>
@@ -439,13 +443,36 @@ export default function SupplierQuoteForm() {
           <textarea className="input" rows={2} value={form.notes} onChange={set('notes')} placeholder="Any conditions, remarks, or context from the quote…" />
         </div>
 
-        <div className="flex gap-3 pt-2">
-          <button type="submit" className="btn-primary" disabled={loading}>
-            {uploading ? 'Uploading images…' : loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Quote'}
-          </button>
-          <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>Cancel</button>
+        <div className="flex items-center justify-between pt-2">
+          <div className="flex gap-3">
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {uploading ? 'Uploading images…' : loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Quote'}
+            </button>
+            <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>Cancel</button>
+          </div>
+          {isEdit && (
+            <button
+              type="button"
+              className="btn-danger text-sm"
+              onClick={() => setConfirmDelete(true)}
+            >
+              Delete Quote
+            </button>
+          )}
         </div>
       </form>
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete Quote"
+          message="Delete this supplier quote? This cannot be undone."
+          onConfirm={async () => {
+            await deleteDoc(doc(db, 'products', productId, 'components', componentId, 'supplier_quotes', quoteId))
+            navigate(`/products/${productId}/components/${componentId}`)
+          }}
+          onCancel={() => setConfirmDelete(false)}
+        />
+      )}
 
       {/* Copy from previous quote modal */}
       {showCopyPicker && (
@@ -455,6 +482,102 @@ export default function SupplierQuoteForm() {
           onSelect={applyQuote}
           onClose={() => setShowCopyPicker(false)}
         />
+      )}
+    </div>
+  )
+}
+
+// ── Searchable supplier combobox ─────────────────────────────────────────────
+function SupplierCombobox({ suppliers, value, onChange }) {
+  const selected = suppliers.find(s => s.id === value) || null
+  const [query, setQuery]     = useState('')
+  const [open, setOpen]       = useState(false)
+  const containerRef          = useRef(null)
+
+  const filtered = useMemo(() => {
+    if (!query.trim()) return suppliers
+    const q = query.toLowerCase()
+    return suppliers.filter(s =>
+      s.name?.toLowerCase().includes(q) ||
+      s.name_cn?.toLowerCase().includes(q) ||
+      s.contact_person?.toLowerCase().includes(q)
+    )
+  }, [suppliers, query])
+
+  // Close on outside click
+  useEffect(() => {
+    function handleClick(e) {
+      if (containerRef.current && !containerRef.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  function selectSupplier(s) {
+    onChange(s)
+    setQuery('')
+    setOpen(false)
+  }
+
+  function displayName(s) {
+    if (!s) return ''
+    return s.name_cn ? `${s.name} (${s.name_cn})` : s.name
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      {/* Input */}
+      <div
+        className="input flex items-center gap-2 cursor-text"
+        onClick={() => { setOpen(true); setQuery('') }}
+      >
+        {open ? (
+          <input
+            autoFocus
+            className="flex-1 outline-none text-sm bg-transparent"
+            placeholder="Search supplier…"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Escape') setOpen(false)
+              if (e.key === 'Enter' && filtered.length > 0) { e.preventDefault(); selectSupplier(filtered[0]) }
+            }}
+          />
+        ) : (
+          <span className={`flex-1 text-sm truncate ${selected ? 'text-gray-900' : 'text-gray-400'}`}>
+            {selected ? displayName(selected) : 'Select supplier…'}
+          </span>
+        )}
+        <span className="text-gray-400 text-xs shrink-0">{open ? '▲' : '▼'}</span>
+      </div>
+
+      {/* Hidden required-field anchor */}
+      <input
+        tabIndex={-1}
+        required
+        value={value}
+        onChange={() => {}}
+        className="absolute opacity-0 w-0 h-0 pointer-events-none"
+      />
+
+      {/* Dropdown */}
+      {open && (
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-4">No suppliers found</p>
+          ) : filtered.map(s => (
+            <button
+              key={s.id}
+              type="button"
+              onMouseDown={e => e.preventDefault()}
+              onClick={() => selectSupplier(s)}
+              className={`w-full text-left px-4 py-2.5 hover:bg-brand-50 transition-colors border-b border-gray-50 last:border-0 ${s.id === value ? 'bg-brand-50' : ''}`}
+            >
+              <p className="text-sm font-medium text-gray-900">{s.name}{s.name_cn ? <span className="text-gray-400 font-normal"> · {s.name_cn}</span> : ''}</p>
+              {s.contact_person && <p className="text-xs text-gray-400">{s.contact_person}</p>}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   )

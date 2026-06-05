@@ -26,5 +26,10 @@ service firebase.storage {
     match /suppliers/{supplierId}/{allPaths=**} {
       allow read, write: if isAuth();
     }
+
+    // Catalogue cover images
+    match /catalogues/{catalogueId}/{allPaths=**} {
+      allow read, write: if isAuth();
+    }
   }
 }

@@ -110,9 +110,10 @@ export default function QuoteExport({ quote, items, onClose }) {
       ws.getCell(5, COL.PRODUCT).font  = valueFont; ws.getCell(5, COL.PRODUCT).alignment = valueAlign
 
       // Row 6: ADDRESS — height grows with content (supports multi-line)
-      const addrText = String(quote.contact_address || '—')
+      const addrText  = String(quote.contact_address || '—')
       const addrLines = Math.max(1, addrText.split('\n').length, Math.ceil(addrText.length / 50))
-      ws.getRow(6).height = Math.max(14, addrLines * 13)
+      const addrRowH  = Math.max(14, addrLines * 13)
+      ws.getRow(6).height = addrRowH
       ws.getCell(6, COL.PHOTO).value   = 'ADDRESS'; ws.getCell(6, COL.PHOTO).font = labelFont; ws.getCell(6, COL.PHOTO).alignment = labelAlign
       ws.getCell(6, COL.PRODUCT).value = addrText
       ws.getCell(6, COL.PRODUCT).font  = valueFont; ws.getCell(6, COL.PRODUCT).alignment = { ...valueAlign, wrapText: true }
@@ -155,9 +156,17 @@ export default function QuoteExport({ quote, items, onClose }) {
 
       const DESC_WRAP    = 48    // chars per line in description col at size-8 font
       const LINE_PT      = 11   // pt per wrapped line
-      const PAD_PT       = 54   // top+bottom padding — drives row height; larger = more centering room
+      const PAD_PT       = 96   // top+bottom padding — drives row height; larger = more centering room
       const IMG_SIZE     = 90   // px — image size
       const PT_TO_PX     = 4/3  // 1 Excel pt ≈ 1.333 px at 96 DPI
+
+      // ── Page break tracking ─────────────────────────────────────────────────
+      // A4 portrait usable height: 297mm = 841.89pt minus margins (top 0.6in + bottom 0.8in
+      // + header 0.3in + footer 0.3in = 144pt total margins) ≈ 698pt usable per page.
+      const PAGE_HEIGHT_PT = 698
+      // Header section height (rows 1–8) consumes space on page 1
+      const headerUsedPt = (LOGO_H + 10) + 7 + 15 + 14 + 14 + addrRowH + 7 + 22
+      let usedPt = headerUsedPt
 
       // ── Data rows ───────────────────────────────────────────────────────────
       let currentRow = HEADER_ROW + 1
@@ -177,6 +186,15 @@ export default function QuoteExport({ quote, items, onClose }) {
         const totalPt  = Math.max(imgMinPt, descPt)
         // Distribute evenly — minimum 18pt per tier row
         const rowH     = Math.max(18, Math.ceil(totalPt / tiers.length))
+
+        // ── Page break: don't split a product across pages ───────────
+        const productPt = rowH * tiers.length
+        if (i > 0 && usedPt + productPt > PAGE_HEIGHT_PT) {
+          // Insert a manual row break after the row just before this product
+          ws.rowBreaks.push({ id: firstRow - 1, min: 1, max: 16383, man: 1 })
+          usedPt = 0
+        }
+        usedPt += productPt
 
         for (let t = 0; t < tiers.length; t++) {
           const tier = tiers[t]
@@ -230,9 +248,18 @@ export default function QuoteExport({ quote, items, onClose }) {
         const imgUrl = item.custom_image || item.hero_image
         if (imgUrl) {
           try {
-            const res   = await fetch(`/api/download-image?url=${encodeURIComponent(imgUrl)}`)
-            const buf   = await res.arrayBuffer()
-            const imgId = wb.addImage({ buffer: buf, extension: 'jpeg' })
+            // Try proxy first (Netlify), fall back to direct fetch (local dev)
+            let buf
+            try {
+              const res = await fetch(`/api/download-image?url=${encodeURIComponent(imgUrl)}`)
+              if (!res.ok) throw new Error('proxy failed')
+              buf = await res.arrayBuffer()
+            } catch {
+              const res = await fetch(imgUrl)
+              buf = await res.arrayBuffer()
+            }
+            const ext   = imgUrl.includes('.png') ? 'png' : 'jpeg'
+            const imgId = wb.addImage({ buffer: buf, extension: ext })
 
             // Fractional col/row coordinates.
             // Col B (width=14 char-units): actual px ≈ 14 * 7 + 5 = 103px (Calibri MDW ~7px)
@@ -248,7 +275,7 @@ export default function QuoteExport({ quote, items, onClose }) {
             const totalRowPx  = singleRowPx * tiers.length
             // Cap top offset at 38px so tall rows (long descriptions) don't push
             // the image further down than short-description rows.
-            const topOffsetPx = Math.min(38, Math.max(0, (totalRowPx - IMG_SIZE) / 2))
+            const topOffsetPx = Math.min(70, Math.max(0, (totalRowPx - IMG_SIZE) / 2))
             const rowOffFrac  = topOffsetPx / singleRowPx
 
             ws.addImage(imgId, {

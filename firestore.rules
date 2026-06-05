@@ -60,5 +60,14 @@ service cloud.firestore {
     match /settings/{docId} {
       allow read, write: if isAuth();
     }
+
+    // Catalogues and items
+    match /catalogues/{catalogueId} {
+      allow read, write: if isAuth();
+
+      match /items/{itemId} {
+        allow read, write: if isAuth();
+      }
+    }
   }
 }
