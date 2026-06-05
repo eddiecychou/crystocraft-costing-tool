@@ -236,16 +236,21 @@ export default function QuoteExport({ quote, items, onClose }) {
             const buf   = await res.arrayBuffer()
             const imgId = wb.addImage({ buffer: buf, extension: 'jpeg' })
 
-            // Centre horizontally: offset = (colWidthPx - imgPx) / 2, as fraction of col width
-            const colOffFrac = Math.max(0, (PHOTO_COL_PX - IMG_SIZE) / (2 * PHOTO_COL_PX))
-            // Centre vertically: offset in px, then convert to fraction of ONE row height
-            const singleRowPx = rowH * PT_TO_PX
-            const totalRowPx  = singleRowPx * tiers.length
-            const topOffsetPx = Math.max(0, (totalRowPx - IMG_SIZE) / 2)
-            const rowOffFrac  = topOffsetPx / singleRowPx  // fraction of one row
+            // Use EMU (English Metric Units) for precise pixel-perfect centering.
+            // 1 px at 96 DPI = 9525 EMU. nativeColOff/nativeRowOff are absolute
+            // offsets from the top-left of the anchor cell — no row-height conversion needed.
+            const EMU = 9525
+            const totalRowPx = rowH * PT_TO_PX * tiers.length
+            const colOffPx   = Math.max(0, (PHOTO_COL_PX - IMG_SIZE) / 2)
+            const rowOffPx   = Math.max(0, (totalRowPx - IMG_SIZE) / 2)
 
             ws.addImage(imgId, {
-              tl:     { col: (COL.PHOTO - 1) + colOffFrac, row: (firstRow - 1) + rowOffFrac },
+              tl: {
+                nativeCol:    COL.PHOTO - 1,
+                nativeColOff: Math.round(colOffPx * EMU),
+                nativeRow:    firstRow - 1,
+                nativeRowOff: Math.round(rowOffPx * EMU),
+              },
               ext:    { width: IMG_SIZE, height: IMG_SIZE },
               editAs: 'oneCell',
             })
