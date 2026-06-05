@@ -241,12 +241,13 @@ export default function QuoteExport({ quote, items, onClose }) {
             const colOffFrac = Math.max(0, (PHOTO_COL_ACTUAL_PX - IMG_SIZE) / (2 * PHOTO_COL_ACTUAL_PX))
 
             // Vertical: center image in the total merged height.
-            // ExcelJS fractional row = fraction of that row's height (in points).
-            // We express the offset as a fraction of one row height (rowH pt = rowH*PT_TO_PX px).
-            const singleRowPx = rowH * PT_TO_PX
-            const totalRowPx  = singleRowPx * tiers.length
-            const topOffsetPx = Math.max(0, (totalRowPx - IMG_SIZE) / 2)
-            const rowOffFrac  = topOffsetPx / singleRowPx
+            // ExcelJS converts fractional row coords using the DEFAULT row height (15pt = 20px),
+            // NOT the custom row height — so we must divide by 20px, not by singleRowPx.
+            const DEFAULT_ROW_PX = 20   // 15pt × (4/3 px/pt)
+            const singleRowPx    = rowH * PT_TO_PX
+            const totalRowPx     = singleRowPx * tiers.length
+            const topOffsetPx    = Math.max(0, (totalRowPx - IMG_SIZE) / 2)
+            const rowOffFrac     = topOffsetPx / DEFAULT_ROW_PX
 
             ws.addImage(imgId, {
               tl:     { col: (COL.PHOTO - 1) + colOffFrac, row: (firstRow - 1) + rowOffFrac },
