@@ -155,7 +155,7 @@ export default function QuoteExport({ quote, items, onClose }) {
 
       const DESC_WRAP    = 48    // chars per line in description col at size-8 font
       const LINE_PT      = 11   // pt per wrapped line
-      const PAD_PT       = 26   // top+bottom padding — larger = more visible centering margin
+      const PAD_PT       = 54   // top+bottom padding — drives row height; larger = more centering room
       const IMG_SIZE     = 90   // px — image size
       const PT_TO_PX     = 4/3  // 1 Excel pt ≈ 1.333 px at 96 DPI
 
@@ -246,9 +246,9 @@ export default function QuoteExport({ quote, items, onClose }) {
             // divide by singleRowPx (= rowH × PT_TO_PX).
             const singleRowPx = rowH * PT_TO_PX
             const totalRowPx  = singleRowPx * tiers.length
-            // Cap top offset at 14px so tall rows (long descriptions) don't push
+            // Cap top offset at 38px so tall rows (long descriptions) don't push
             // the image further down than short-description rows.
-            const topOffsetPx = Math.min(14, Math.max(0, (totalRowPx - IMG_SIZE) / 2))
+            const topOffsetPx = Math.min(38, Math.max(0, (totalRowPx - IMG_SIZE) / 2))
             const rowOffFrac  = topOffsetPx / singleRowPx
 
             ws.addImage(imgId, {
