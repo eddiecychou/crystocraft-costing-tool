@@ -17,7 +17,7 @@ export default function QuoteForm() {
 
   const [form, setForm] = useState({
     client_name: '', contact_name: '', contact_email: '',
-    contact_phone: '', notes: '', status: 'draft',
+    contact_phone: '', contact_address: '', notes: '', status: 'draft',
     quote_currency: 'HKD',
     quote_date: todayISO,
     rmb_to_hkd: DEFAULT_RATES.rmb_to_hkd,
@@ -58,6 +58,7 @@ export default function QuoteForm() {
       contact_name: c.contact_name || f.contact_name,
       contact_email: c.contact_email || f.contact_email,
       contact_phone: c.contact_phone || f.contact_phone,
+      contact_address: c.address || f.contact_address,
     }))
   }
 
@@ -143,9 +144,15 @@ export default function QuoteForm() {
               <input className="input" type="email" value={form.contact_email} onChange={set('contact_email')} />
             </div>
           </div>
-          <div>
-            <label className="label">Contact Phone</label>
-            <input className="input" value={form.contact_phone} onChange={set('contact_phone')} />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Contact Phone</label>
+              <input className="input" value={form.contact_phone} onChange={set('contact_phone')} />
+            </div>
+            <div>
+              <label className="label">Address</label>
+              <input className="input" value={form.contact_address} onChange={set('contact_address')} placeholder="e.g. 123 Main St, Hong Kong" />
+            </div>
           </div>
           <div>
             <label className="label">Notes</label>

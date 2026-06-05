@@ -2,34 +2,28 @@ import { useState } from 'react'
 import ExcelJS from 'exceljs'
 import logoUrl from '../assets/logo.png'
 
-// ── Brand theme (from crystocraft.com — black/white/gold, minimalist luxury) ──
+// ── Brand theme ───────────────────────────────────────────────────────────────
 const B = {
-  BLACK:      'FF1A1A1A',
-  WHITE:      'FFFFFFFF',
-  GOLD:       'FFC8A951',
-  GOLD_LIGHT: 'FFFDF6E3',
-  GRAY_DARK:  'FF444444',
-  GRAY_MID:   'FF888888',
-  GRAY_LIGHT: 'FFF5F5F5',
-  ROW_ALT:    'FFFAFAF8',
-  BORDER:     'FFE0E0E0',
+  BLACK:     'FF1A1A1A',
+  WHITE:     'FFFFFFFF',
+  GOLD:      'FFC8A951',
+  GRAY_DARK: 'FF444444',
+  GRAY_MID:  'FF888888',
+  GRAY_LIGHT:'FFF5F5F5',
+  ROW_ALT:   'FFFAFAF8',
+  BORDER:    'FFE0E0E0',
 }
 
-// Logo natural dimensions: 617 × 108 px → aspect ratio 5.713
+// Logo: 617 × 108 px → aspect 5.713
 const LOGO_W = 210
-const LOGO_H = Math.round(LOGO_W / 5.713)   // ≈ 37px — correct aspect ratio
+const LOGO_H = Math.round(LOGO_W / 5.713)  // 37 px
 
-// Columns (1-indexed, no Subtotal)
-// A=#  B=Photo  C=Product  D=Category  E=Description  F=Qty  G=Unit Price
-const COL = { NUM: 1, PHOTO: 2, PRODUCT: 3, CATEGORY: 4, DESC: 5, QTY: 6, PRICE: 7 }
-const LAST_COL_LETTER = 'G'
-const TOTAL_COLS = 7
+// Columns (no Category): A=# · B=Photo · C=Product · D=Description · E=Qty · F=Unit Price
+const COL = { NUM: 1, PHOTO: 2, PRODUCT: 3, DESC: 4, QTY: 5, PRICE: 6 }
+const LAST_COL   = 'F'
+const TOTAL_COLS = 6
 
-function cell(ws, addr) { return ws.getCell(addr) }
-
-function applyFont(ws, addr, opts) {
-  ws.getCell(addr).font = { name: 'Calibri Light', size: 9, color: { argb: B.GRAY_DARK }, ...opts }
-}
+const baseFont = (opts = {}) => ({ name: 'Calibri Light', size: 9, color: { argb: B.BLACK }, ...opts })
 
 export default function QuoteExport({ quote, items, onClose }) {
   const [loading, setLoading] = useState(false)
@@ -38,233 +32,236 @@ export default function QuoteExport({ quote, items, onClose }) {
     setLoading(true)
     try {
       const wb = new ExcelJS.Workbook()
-      wb.creator = 'Crystocraft Costing Tool'
       const ws = wb.addWorksheet('Quotation')
       const cur = quote.quote_currency || 'HKD'
 
-      // ── Page setup: A4 portrait, fit to 1 page wide ──────────────
+      // ── A4 portrait, fit to 1 page wide ────────────────────────────────────
       ws.pageSetup = {
-        paperSize:    9,           // A4
-        orientation:  'portrait',
-        fitToPage:    true,
-        fitToWidth:   1,
-        fitToHeight:  0,           // let rows grow freely
+        paperSize: 9, orientation: 'portrait',
+        fitToPage: true, fitToWidth: 1, fitToHeight: 0,
         margins: { left: 0.5, right: 0.5, top: 0.6, bottom: 0.8, header: 0.3, footer: 0.3 },
       }
 
-      // ── Column widths (tuned to fit A4 portrait) ──────────────────
-      ws.getColumn(COL.NUM).width      = 4
-      ws.getColumn(COL.PHOTO).width    = 10
-      ws.getColumn(COL.PRODUCT).width  = 20
-      ws.getColumn(COL.CATEGORY).width = 13
-      ws.getColumn(COL.DESC).width     = 28
-      ws.getColumn(COL.QTY).width      = 9
-      ws.getColumn(COL.PRICE).width    = 14
+      // ── Column widths ───────────────────────────────────────────────────────
+      ws.getColumn(COL.NUM).width     = 4
+      ws.getColumn(COL.PHOTO).width   = 14    // wider without Category column
+      ws.getColumn(COL.PRODUCT).width = 22
+      ws.getColumn(COL.DESC).width    = 36
+      ws.getColumn(COL.QTY).width     = 10
+      ws.getColumn(COL.PRICE).width   = 15
 
-      // ── Row 1: Logo ───────────────────────────────────────────────
-      ws.getRow(1).height = LOGO_H + 8
+      // ── Row 1: Logo + "QUOTATION" ───────────────────────────────────────────
+      ws.getRow(1).height = LOGO_H + 10
       try {
         const logoRes = await fetch(logoUrl)
         const logoBuf = await logoRes.arrayBuffer()
         const logoId  = wb.addImage({ buffer: logoBuf, extension: 'png' })
-        ws.addImage(logoId, {
-          tl:      { col: 0, row: 0 },
-          ext:     { width: LOGO_W, height: LOGO_H },
-          editAs:  'oneCell',
-        })
+        ws.addImage(logoId, { tl: { col: 0, row: 0 }, ext: { width: LOGO_W, height: LOGO_H }, editAs: 'oneCell' })
       } catch {
-        // Fallback text if image fails
-        ws.getCell('A1').value = 'CRYSTOCRAFT'
-        ws.getCell('A1').font  = { name: 'Calibri Light', bold: true, size: 16, color: { argb: B.BLACK } }
-        ws.getCell('A1').alignment = { vertical: 'middle' }
+        const c = ws.getCell('A1')
+        c.value = 'CRYSTOCRAFT'
+        c.font  = baseFont({ bold: true, size: 16, color: { argb: B.BLACK } })
       }
-
-      // "QUOTATION" label — right-aligned in the same row
-      ws.mergeCells(`E1:${LAST_COL_LETTER}1`)
-      const titleCell = ws.getCell('E1')
+      ws.mergeCells(`D1:${LAST_COL}1`)
+      const titleCell = ws.getCell('D1')
       titleCell.value     = 'QUOTATION'
-      titleCell.font      = { name: 'Calibri Light', size: 16, color: { argb: B.GOLD }, bold: false }
+      titleCell.font      = { name: 'Calibri Light', size: 15, color: { argb: B.GOLD } }
       titleCell.alignment = { horizontal: 'right', vertical: 'bottom' }
 
-      // ── Thin gold rule under row 1 ────────────────────────────────
-      ws.getRow(1).eachCell({ includeEmpty: true }, (c, colNum) => {
-        if (colNum <= TOTAL_COLS) {
-          c.border = { bottom: { style: 'medium', color: { argb: B.GOLD } } }
+      // Gold rule under row 1
+      for (let c = 1; c <= TOTAL_COLS; c++) {
+        ws.getRow(1).getCell(c).border = { bottom: { style: 'medium', color: { argb: B.GOLD } } }
+      }
+
+      // ── Rows 2–8: Client info block ─────────────────────────────────────────
+      // Strategy: merge A:D for each info row so the narrow col A doesn't clip text.
+      // Labels are embedded as small gray prefix text (rich text).
+      ws.getRow(2).height = 7  // spacer
+
+      function infoRow(rowNum, labelText, valueText, height = 14) {
+        ws.getRow(rowNum).height = height
+        ws.mergeCells(`A${rowNum}:D${rowNum}`)
+        if (!valueText) return
+        ws.getRow(rowNum).getCell(1).value = {
+          richText: [
+            { text: `${labelText}  `, font: { name: 'Calibri Light', size: 7.5, color: { argb: B.GRAY_MID } } },
+            { text: valueText,        font: { name: 'Calibri Light', size: 9,   color: { argb: B.BLACK } } },
+          ],
         }
+        ws.getRow(rowNum).getCell(1).alignment = { vertical: 'middle' }
+      }
+
+      infoRow(3, 'TO', quote.client_name || '')
+
+      const contactVal = [quote.contact_name, quote.contact_email].filter(Boolean).join('   ·   ')
+      infoRow(4, 'CONTACT', contactVal)
+
+      let nextInfoRow = 5
+      if (quote.contact_phone) {
+        infoRow(nextInfoRow, 'PHONE', quote.contact_phone)
+        nextInfoRow++
+      }
+      if (quote.contact_address) {
+        infoRow(nextInfoRow, 'ADDRESS', quote.contact_address, 18)
+        nextInfoRow++
+      }
+
+      ws.getRow(7).height = 7  // spacer before table (used only if address not there)
+
+      // Right side: Date + Currency — merged D:F, right-aligned
+      ;[
+        [3, 'DATE', quote.quote_date
+          ? new Date(quote.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+          : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })],
+        [4, 'CURRENCY', cur],
+      ].forEach(([r, label, value]) => {
+        ws.mergeCells(`E${r}:${LAST_COL}${r}`)
+        ws.getRow(r).getCell(COL.QTY).value = {
+          richText: [
+            { text: `${label}  `, font: { name: 'Calibri Light', size: 7.5, color: { argb: B.GRAY_MID } } },
+            { text: value,        font: { name: 'Calibri Light', size: 9,   color: { argb: B.BLACK } } },
+          ],
+        }
+        ws.getRow(r).getCell(COL.QTY).alignment = { horizontal: 'right', vertical: 'middle' }
       })
 
-      // ── Rows 2–5: Header info block ───────────────────────────────
-      ws.getRow(2).height = 6   // spacer
-
-      // Left block
-      ws.getRow(3).height = 14
-      ws.getRow(4).height = 14
-      ws.getRow(5).height = 14
-      ws.getRow(6).height = 10  // spacer before table
-
-      const setLabel = (addr, txt) => {
-        cell(ws, addr).value = txt
-        cell(ws, addr).font  = { name: 'Calibri Light', size: 8, color: { argb: B.GRAY_MID }, bold: false }
-        cell(ws, addr).alignment = { vertical: 'middle' }
-      }
-      const setVal = (addr, txt) => {
-        cell(ws, addr).value = txt
-        cell(ws, addr).font  = { name: 'Calibri Light', size: 9, color: { argb: B.BLACK } }
-        cell(ws, addr).alignment = { vertical: 'middle' }
-      }
-
-      setLabel('A3', 'TO')
-      setVal('B3', quote.client_name || '')
-      ws.mergeCells('B3:D3')
-
-      setLabel('A4', 'CONTACT')
-      setVal('B4', [quote.contact_name, quote.contact_email].filter(Boolean).join('   ·   '))
-      ws.mergeCells('B4:D4')
-
-      setLabel('A5', 'DATE')
-      setVal('B5', quote.quote_date
-        ? new Date(quote.quote_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
-        : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }))
-
-      // Right block
-      setLabel('F3', 'CURRENCY')
-      setVal('G3', cur)
-      cell(ws, 'G3').alignment = { vertical: 'middle', horizontal: 'right' }
-
-      // ── Column header row (row 7) ─────────────────────────────────
-      const hRow = ws.getRow(7)
-      hRow.height = 22
-      const headers = ['', '', 'PRODUCT', 'CATEGORY', 'DESCRIPTION', 'QTY', `UNIT PRICE (${cur})`]
+      // ── Column header row (row 8) ───────────────────────────────────────────
+      const HEADER_ROW = 8
+      ws.getRow(HEADER_ROW).height = 22
+      const headers = ['', '', 'PRODUCT', 'DESCRIPTION', 'QTY', `UNIT PRICE (${cur})`]
       headers.forEach((h, i) => {
-        const c = hRow.getCell(i + 1)
+        const c = ws.getRow(HEADER_ROW).getCell(i + 1)
         c.value = h
         c.font  = { name: 'Calibri Light', bold: true, size: 8, color: { argb: B.WHITE } }
         c.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: B.BLACK } }
-        c.alignment = { horizontal: i >= 5 ? 'right' : (i === 0 ? 'center' : 'left'), vertical: 'middle' }
+        c.alignment = {
+          horizontal: (i === 4) ? 'center' : (i >= 5 ? 'right' : (i <= 1 ? 'center' : 'left')),
+          vertical: 'middle',
+        }
       })
 
-      // ── Data rows (from row 8) ────────────────────────────────────
-      let currentRow = 8
+      // ── Data rows ───────────────────────────────────────────────────────────
+      let currentRow = HEADER_ROW + 1
 
       for (let i = 0; i < items.length; i++) {
-        const item  = items[i]
-        const tiers = item.tiers?.length ? item.tiers : [{ quantity: 0, price: 0 }]
-        const rowBg = i % 2 === 1 ? B.ROW_ALT : B.WHITE
+        const item     = items[i]
+        const tiers    = item.tiers?.length ? item.tiers : [{ quantity: 0, price: 0 }]
+        const rowBg    = i % 2 === 1 ? B.ROW_ALT : B.WHITE
+        const firstRow = currentRow
+        const lastRow  = currentRow + tiers.length - 1
 
         for (let t = 0; t < tiers.length; t++) {
-          const tier    = tiers[t]
-          const isFirst = t === 0
-          const isLast  = t === tiers.length - 1
-          const rowH    = isFirst ? 64 : 18
+          const tier  = tiers[t]
+          const row   = ws.getRow(currentRow)
+          row.height  = t === 0 ? 68 : 20
 
-          const row = ws.getRow(currentRow)
-          row.height = rowH
+          // # and Photo only on first tier row
+          if (t === 0) {
+            row.getCell(COL.NUM).value     = i + 1
+            row.getCell(COL.NUM).font      = baseFont({ size: 8, color: { argb: B.GRAY_MID } })
+            row.getCell(COL.NUM).alignment = { horizontal: 'center', vertical: 'top' }
+          }
 
-          // Values
-          row.getCell(COL.NUM).value      = isFirst ? i + 1 : ''
-          row.getCell(COL.PHOTO).value    = ''
-          row.getCell(COL.PRODUCT).value  = isFirst ? item.product_name : ''
-          row.getCell(COL.CATEGORY).value = isFirst ? item.product_category : ''
-          row.getCell(COL.DESC).value     = isFirst ? (item.product_description || '') : ''
+          // Qty & Price on every tier row
           row.getCell(COL.QTY).value      = tier.quantity ?? ''
-          row.getCell(COL.PRICE).value    = tier.price ?? tier.price_hkd ?? ''
-
-          // Alignment & font
-          const baseFont = { name: 'Calibri Light', size: 9, color: { argb: B.BLACK } }
-          row.getCell(COL.NUM).font       = { ...baseFont, size: 8, color: { argb: B.GRAY_MID } }
-          row.getCell(COL.NUM).alignment  = { horizontal: 'center', vertical: 'top' }
-          row.getCell(COL.PRODUCT).font   = { ...baseFont, bold: isFirst }
-          row.getCell(COL.PRODUCT).alignment  = { vertical: 'top', wrapText: true }
-          row.getCell(COL.CATEGORY).font  = { ...baseFont, size: 8, color: { argb: B.GRAY_MID } }
-          row.getCell(COL.CATEGORY).alignment = { vertical: 'middle', horizontal: 'center', wrapText: true }
-          row.getCell(COL.DESC).font      = { ...baseFont, size: 8, color: { argb: B.GRAY_DARK } }
-          row.getCell(COL.DESC).alignment = { vertical: 'top', wrapText: true }
-          row.getCell(COL.QTY).font       = baseFont
+          row.getCell(COL.QTY).font       = baseFont()
           row.getCell(COL.QTY).alignment  = { horizontal: 'center', vertical: 'middle' }
-          row.getCell(COL.PRICE).font     = { ...baseFont, bold: true }
+          row.getCell(COL.PRICE).value    = tier.price ?? tier.price_hkd ?? ''
+          row.getCell(COL.PRICE).font     = baseFont({ bold: true })
           row.getCell(COL.PRICE).numFmt   = '#,##0.00'
           row.getCell(COL.PRICE).alignment = { horizontal: 'right', vertical: 'middle' }
 
-          // Row background fill
-          for (let c = 1; c <= TOTAL_COLS; c++) {
-            if (rowBg !== B.WHITE) {
+          // Background fill
+          if (rowBg !== B.WHITE) {
+            for (let c = 1; c <= TOTAL_COLS; c++) {
               row.getCell(c).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } }
             }
           }
 
-          // Bottom border — thin separator after last tier of each product
-          if (isLast) {
+          // Bottom border after last tier of each product
+          if (t === tiers.length - 1) {
             for (let c = 1; c <= TOTAL_COLS; c++) {
               row.getCell(c).border = { bottom: { style: 'hair', color: { argb: B.BORDER } } }
             }
           }
 
-          // Embed product image (first tier only, in Photo column)
-          if (isFirst) {
-            const imgUrl = item.custom_image || item.hero_image
-            if (imgUrl) {
-              try {
-                const res = await fetch(`/api/download-image?url=${encodeURIComponent(imgUrl)}`)
-                const buf = await res.arrayBuffer()
-                const imgId = wb.addImage({ buffer: buf, extension: 'jpeg' })
-                ws.addImage(imgId, {
-                  tl:     { col: COL.PHOTO - 1, row: currentRow - 1 },
-                  ext:    { width: 58, height: 58 },
-                  editAs: 'oneCell',
-                })
-              } catch {}
-            }
-          }
-
           currentRow++
+        }
+
+        // ── Merge Product cell across all tier rows ─────────────────
+        if (tiers.length > 1) {
+          ws.mergeCells(firstRow, COL.PRODUCT, lastRow, COL.PRODUCT)
+          ws.mergeCells(firstRow, COL.DESC,    lastRow, COL.DESC)
+        }
+        // Product name & Description values go on the first row of the merge
+        ws.getRow(firstRow).getCell(COL.PRODUCT).value     = item.product_name || ''
+        ws.getRow(firstRow).getCell(COL.PRODUCT).font      = baseFont({ bold: true })
+        ws.getRow(firstRow).getCell(COL.PRODUCT).alignment = { vertical: 'middle', wrapText: true }
+
+        ws.getRow(firstRow).getCell(COL.DESC).value     = item.product_description || ''
+        ws.getRow(firstRow).getCell(COL.DESC).font      = baseFont({ size: 8, color: { argb: B.GRAY_DARK } })
+        ws.getRow(firstRow).getCell(COL.DESC).alignment = { vertical: 'middle', wrapText: true }
+
+        // ── Embed product image (Photo column, first tier row) ──────
+        const imgUrl = item.custom_image || item.hero_image
+        if (imgUrl) {
+          try {
+            const res   = await fetch(`/api/download-image?url=${encodeURIComponent(imgUrl)}`)
+            const buf   = await res.arrayBuffer()
+            const imgId = wb.addImage({ buffer: buf, extension: 'jpeg' })
+            ws.addImage(imgId, {
+              tl:     { col: COL.PHOTO - 1, row: firstRow - 1 },
+              ext:    { width: 66, height: 62 },
+              editAs: 'oneCell',
+            })
+          } catch {}
         }
       }
 
-      // ── Gold closing rule ─────────────────────────────────────────
-      const closeRow = ws.getRow(currentRow)
-      closeRow.height = 3
+      // ── Gold closing rule ───────────────────────────────────────────────────
       for (let c = 1; c <= TOTAL_COLS; c++) {
-        closeRow.getCell(c).border = { top: { style: 'medium', color: { argb: B.GOLD } } }
+        ws.getRow(currentRow).getCell(c).border = { top: { style: 'medium', color: { argb: B.GOLD } } }
       }
+      ws.getRow(currentRow).height = 3
       currentRow += 2
 
-      // ── Notes ─────────────────────────────────────────────────────
+      // ── Notes ───────────────────────────────────────────────────────────────
       if (quote.notes) {
-        ws.mergeCells(`A${currentRow}:${LAST_COL_LETTER}${currentRow}`)
-        const notesCell = ws.getRow(currentRow).getCell(1)
-        notesCell.value = `Notes: ${quote.notes}`
-        notesCell.font  = { name: 'Calibri Light', size: 8, italic: true, color: { argb: B.GRAY_MID } }
-        notesCell.alignment = { wrapText: true }
-        ws.getRow(currentRow).height = 24
+        ws.mergeCells(`A${currentRow}:${LAST_COL}${currentRow}`)
+        ws.getRow(currentRow).getCell(1).value = {
+          richText: [
+            { text: 'Notes  ', font: { name: 'Calibri Light', size: 8, color: { argb: B.GRAY_MID } } },
+            { text: quote.notes, font: { name: 'Calibri Light', size: 8, color: { argb: B.GRAY_DARK } } },
+          ],
+        }
+        ws.getRow(currentRow).getCell(1).alignment = { wrapText: true }
+        ws.getRow(currentRow).height = 28
         currentRow += 2
       }
 
-      // ── Terms line ────────────────────────────────────────────────
-      ws.mergeCells(`A${currentRow}:${LAST_COL_LETTER}${currentRow}`)
-      const termsCell = ws.getRow(currentRow).getCell(1)
-      termsCell.value = `All prices quoted in ${cur}. Prices are for reference and subject to final confirmation. MOQ and lead times may vary.`
-      termsCell.font  = { name: 'Calibri Light', size: 7.5, italic: true, color: { argb: B.GRAY_MID } }
-      termsCell.alignment = { horizontal: 'center' }
+      // ── Terms ───────────────────────────────────────────────────────────────
+      ws.mergeCells(`A${currentRow}:${LAST_COL}${currentRow}`)
+      ws.getRow(currentRow).getCell(1).value = `All prices in ${cur}. For reference only — subject to final confirmation. MOQ and lead times may vary.`
+      ws.getRow(currentRow).getCell(1).font  = { name: 'Calibri Light', size: 7.5, italic: true, color: { argb: B.GRAY_MID } }
+      ws.getRow(currentRow).getCell(1).alignment = { horizontal: 'center' }
       ws.getRow(currentRow).height = 12
       currentRow += 2
 
-      // ── Company footer ────────────────────────────────────────────
-      const footerData = [
-        { text: 'United Art Metals Factory Limited', bold: true },
-        { text: '11A Seabright Plaza, 9-23 Shell Road, Causeway Bay, Hong Kong', bold: false },
-        { text: 'WhatsApp: +852 4608 3219   |   Email: sales@uart.com.hk', bold: false },
-      ]
-      for (const line of footerData) {
-        ws.mergeCells(`A${currentRow}:${LAST_COL_LETTER}${currentRow}`)
-        const fc = ws.getRow(currentRow).getCell(1)
-        fc.value = line.text
-        fc.font  = { name: 'Calibri Light', size: 7.5, bold: line.bold, color: { argb: B.GRAY_DARK } }
-        fc.alignment = { horizontal: 'center' }
+      // ── Company footer ──────────────────────────────────────────────────────
+      for (const [text, bold] of [
+        ['United Art Metals Factory Limited', true],
+        ['11A Seabright Plaza, 9-23 Shell Road, Causeway Bay, Hong Kong', false],
+        ['WhatsApp: +852 4608 3219   |   Email: sales@uart.com.hk', false],
+      ]) {
+        ws.mergeCells(`A${currentRow}:${LAST_COL}${currentRow}`)
+        ws.getRow(currentRow).getCell(1).value = text
+        ws.getRow(currentRow).getCell(1).font  = { name: 'Calibri Light', size: 7.5, bold, color: { argb: B.GRAY_DARK } }
+        ws.getRow(currentRow).getCell(1).alignment = { horizontal: 'center' }
         ws.getRow(currentRow).height = 12
         currentRow++
       }
 
-      // ── Download ──────────────────────────────────────────────────
+      // ── Download ────────────────────────────────────────────────────────────
       const buffer = await wb.xlsx.writeBuffer()
       const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
       const url  = URL.createObjectURL(blob)
