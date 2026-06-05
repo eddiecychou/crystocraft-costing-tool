@@ -256,23 +256,25 @@ export default function PricingTiers() {
         {tiers.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-4">No tiers yet — add your first quantity breakpoint below.</p>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto -mx-5 px-5">
+            <table className="text-sm border-separate border-spacing-0" style={{ minWidth: '640px' }}>
               <thead>
-                <tr className="border-b border-gray-200 text-xs text-gray-500 uppercase tracking-wide">
-                  <th className="text-left pb-2 font-medium">Qty</th>
-                  <th className="text-right pb-2 font-medium">Unit Cost HKD</th>
-                  <th className="text-right pb-2 font-medium whitespace-nowrap">Tooling / Unit</th>
-                  <th className="text-right pb-2 font-medium whitespace-nowrap">All-in HKD</th>
-                  <th className="text-right pb-2 font-medium">Currency</th>
-                  <th className="text-right pb-2 font-medium">Sell Price</th>
-                  <th className="text-right pb-2 font-medium">Margin</th>
-                  <th className="text-right pb-2 font-medium">Lead Time (days)</th>
-                  <th className="pb-2"></th>
+                <tr className="text-xs text-gray-400 uppercase tracking-wide">
+                  {/* Sticky Qty column */}
+                  <th className="text-left pb-3 pr-4 font-semibold text-gray-600 sticky left-0 bg-white whitespace-nowrap">Qty</th>
+                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Unit Cost<br/><span className="text-gray-300 font-normal normal-case tracking-normal">(HKD)</span></th>
+                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Tooling<br/><span className="text-gray-300 font-normal normal-case tracking-normal">/unit</span></th>
+                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">All-in<br/><span className="text-gray-300 font-normal normal-case tracking-normal">(HKD)</span></th>
+                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Currency</th>
+                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Sell Price</th>
+                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Margin</th>
+                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Lead Time<br/><span className="text-gray-300 font-normal normal-case tracking-normal">(days)</span></th>
+                  <th className="pb-3 pl-3 border-l border-gray-100"></th>
                 </tr>
+                <tr><td colSpan={9} className="pb-1"><div className="border-b border-gray-200" /></td></tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
-                {tiers.map(tier => {
+              <tbody>
+                {tiers.map((tier, idx) => {
                   const toolingPerUnit = toolingCostHKD / tier.quantity
                   const allInCost = totalUnitCostAtQty(tier.quantity)
                   const sellCurrency = tier.sell_currency || 'HKD'
@@ -281,13 +283,23 @@ export default function PricingTiers() {
                   const margin = priceHKD && allInCost
                     ? ((priceHKD - allInCost) / priceHKD * 100)
                     : null
+                  const rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                   return (
-                    <tr key={tier.id}>
-                      <td className="py-2.5 font-semibold text-gray-800">{tier.quantity.toLocaleString()}</td>
-                      <td className="py-2.5 text-right text-gray-600">{unitCostHKD.toFixed(2)}</td>
-                      <td className="py-2.5 text-right text-gray-400 text-xs">{toolingCostHKD > 0 ? `+${toolingPerUnit.toFixed(2)}` : '—'}</td>
-                      <td className="py-2.5 text-right font-medium text-gray-800">{allInCost.toFixed(2)}</td>
-                      <td className="py-2.5 text-right">
+                    <tr key={tier.id} className={rowBg}>
+                      {/* Sticky Qty */}
+                      <td className={`py-3 pr-4 font-bold text-gray-900 sticky left-0 ${rowBg} whitespace-nowrap`}>
+                        {tier.quantity.toLocaleString()}
+                      </td>
+                      <td className="py-3 px-4 text-right text-gray-600 border-l border-gray-100 whitespace-nowrap">
+                        {unitCostHKD.toFixed(2)}
+                      </td>
+                      <td className="py-3 px-4 text-right text-gray-400 text-xs border-l border-gray-100 whitespace-nowrap">
+                        {toolingCostHKD > 0 ? `+${toolingPerUnit.toFixed(2)}` : '—'}
+                      </td>
+                      <td className="py-3 px-4 text-right font-semibold text-gray-800 border-l border-gray-100 whitespace-nowrap">
+                        {allInCost.toFixed(2)}
+                      </td>
+                      <td className="py-3 px-4 text-right border-l border-gray-100">
                         <select
                           className="input py-1 text-sm w-20"
                           value={sellCurrency}
@@ -296,7 +308,7 @@ export default function PricingTiers() {
                           {CURRENCIES.map(c => <option key={c}>{c}</option>)}
                         </select>
                       </td>
-                      <td className="py-2.5 text-right">
+                      <td className="py-3 px-4 text-right border-l border-gray-100">
                         <input
                           type="number"
                           step="0.01"
@@ -306,17 +318,17 @@ export default function PricingTiers() {
                           onBlur={e => handlePriceChange(tier, e.target.value, sellCurrency)}
                         />
                         {sellCurrency !== 'HKD' && priceHKD != null && (
-                          <p className="text-xs text-gray-400 mt-0.5">≈ HKD {priceHKD.toFixed(2)}</p>
+                          <p className="text-xs text-gray-400 mt-0.5 whitespace-nowrap">≈ HKD {priceHKD.toFixed(2)}</p>
                         )}
                       </td>
-                      <td className="py-2.5 text-right">
+                      <td className="py-3 px-4 text-right border-l border-gray-100 whitespace-nowrap">
                         {margin != null ? (
-                          <span className={`font-medium ${margin >= 40 ? 'text-green-600' : margin >= 25 ? 'text-yellow-600' : 'text-red-500'}`}>
+                          <span className={`font-semibold text-sm ${margin >= 40 ? 'text-green-600' : margin >= 25 ? 'text-yellow-600' : 'text-red-500'}`}>
                             {margin.toFixed(1)}%
                           </span>
-                        ) : '—'}
+                        ) : <span className="text-gray-300">—</span>}
                       </td>
-                      <td className="py-2.5 text-right">
+                      <td className="py-3 px-4 text-right border-l border-gray-100">
                         <input
                           type="number"
                           className="input text-right w-20 py-1 text-sm"
@@ -325,11 +337,11 @@ export default function PricingTiers() {
                           onBlur={e => handleLeadTimeChange(tier.id, e.target.value)}
                         />
                       </td>
-                      <td className="py-2.5 text-right">
+                      <td className="py-3 pl-3 text-right border-l border-gray-100">
                         <button
                           type="button"
                           onClick={() => setConfirmDelete(tier)}
-                          className="text-xs text-red-400 hover:text-red-600"
+                          className="text-xs text-red-300 hover:text-red-500 transition-colors"
                         >✕</button>
                       </td>
                     </tr>
