@@ -122,7 +122,7 @@ function SectionImagePicker({ images, heroImage, selected, onChange }) {
 }
 
 // ── Blog preview (iframe) ─────────────────────────────────────────────────────
-function buildSpotlightPreviewHTML(result, heroImage, sectionImages) {
+function buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl) {
   const css = `
     *{box-sizing:border-box}
     body{font-family:Georgia,'Times New Roman',serif;max-width:800px;margin:0 auto;padding:28px 20px;color:#222;line-height:1.75}
@@ -141,32 +141,38 @@ function buildSpotlightPreviewHTML(result, heroImage, sectionImages) {
     .imgs figure{flex:1;width:0;min-width:0;margin:0}
     .imgs img{width:100%;border-radius:8px;display:block}
     figcaption{font-size:.78em;color:#999;text-align:center;margin-top:.35em;font-family:sans-serif}
+    .btn{display:inline-block;margin-top:1em;padding:.6em 1.4em;background:#111;color:#fff;border-radius:6px;text-decoration:none;font-family:sans-serif;font-size:.9em}
     @media(max-width:600px){.col{flex-direction:column}.imgs{flex-direction:column}.imgs figure{width:100%}}
   `
   let body = `<h1>${escapeHtml(result.seo_title)}</h1>`
   body += `<p class="kw">Focus keyword: ${escapeHtml(result.focus_keyword)} · Tags: ${(result.tags || []).map(escapeHtml).join(', ')}</p>`
 
   if (heroImage) {
-    body += `<img class="hero" src="${heroImage.file_url}" alt="${escapeHtml(heroImage.alt_text || heroImage.label || '')}" />`
+    const heroEl = `<img class="hero" src="${heroImage.file_url}" alt="${escapeHtml(heroImage.alt_text || heroImage.label || '')}" />`
+    body += productUrl ? `<a href="${productUrl}" target="_blank">${heroEl}</a>` : heroEl
   }
 
   result.sections?.forEach((s, i) => {
     const imgs = sectionImages[i] || []
     const heading = s.heading ? `<h2>${escapeHtml(s.heading)}</h2>` : ''
     const paras = `<p>${escapeHtml(s.body || '').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
-    const imgHtml = (img) => `<figure><img src="${img.file_url}" alt="${escapeHtml(img.alt_text || img.label || '')}" />${img.caption || img.label ? `<figcaption>${escapeHtml(img.caption || img.label)}</figcaption>` : ''}</figure>`
+    const imgHtml = (img) => {
+      const el = `<figure><img src="${img.file_url}" alt="${escapeHtml(img.alt_text || img.label || '')}" />${img.caption || img.label ? `<figcaption>${escapeHtml(img.caption || img.label)}</figcaption>` : ''}</figure>`
+      return productUrl ? `<a href="${productUrl}" target="_blank">${el}</a>` : el
+    }
+    const btn = (s.type === 'cta' && productUrl) ? `<a class="btn" href="${productUrl}" target="_blank">View Product →</a>` : ''
 
     if (imgs.length === 1) {
-      body += `<div class="section">${heading}${paras}<div class="imgs">${imgHtml(imgs[0])}</div></div>`
+      body += `<div class="section">${heading}${paras}<div class="imgs">${imgHtml(imgs[0])}</div>${btn}</div>`
     } else {
-      body += `<div class="section">${heading}${paras}${imgs.length > 0 ? `<div class="imgs">${imgs.map(imgHtml).join('')}</div>` : ''}</div>`
+      body += `<div class="section">${heading}${paras}${imgs.length > 0 ? `<div class="imgs">${imgs.map(imgHtml).join('')}</div>` : ''}${btn}</div>`
     }
   })
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body>${body}</body></html>`
 }
 
-function buildRoundupPreviewHTML(result, selected, heroImage, itemImages) {
+function buildRoundupPreviewHTML(result, selected, heroImage, itemImages, productUrl) {
   const css = `
     *{box-sizing:border-box}
     body{font-family:Georgia,'Times New Roman',serif;max-width:800px;margin:0 auto;padding:28px 20px;color:#222;line-height:1.75}
@@ -185,16 +191,20 @@ function buildRoundupPreviewHTML(result, selected, heroImage, itemImages) {
     .imgs figure{flex:1;width:0;min-width:0;margin:0}
     .imgs img{width:100%;border-radius:8px;display:block}
     figcaption{font-size:.78em;color:#999;text-align:center;margin-top:.35em;font-family:sans-serif}
+    .btn{display:inline-block;margin-top:1em;padding:.6em 1.4em;background:#111;color:#fff;border-radius:6px;text-decoration:none;font-family:sans-serif;font-size:.9em}
     @media(max-width:600px){.col{flex-direction:column}.imgs{flex-direction:column}.imgs figure{width:100%}}
   `
-  const imgHtml = (img, alt = '') =>
-    `<figure><img src="${img.file_url}" alt="${escapeHtml(img.alt_text || img.label || alt)}" />${img.caption || img.label ? `<figcaption>${escapeHtml(img.caption || img.label)}</figcaption>` : ''}</figure>`
+  const imgHtml = (img, alt = '', url = '') => {
+    const fig = `<figure><img src="${img.file_url}" alt="${escapeHtml(img.alt_text || img.label || alt)}" />${img.caption || img.label ? `<figcaption>${escapeHtml(img.caption || img.label)}</figcaption>` : ''}</figure>`
+    return url ? `<a href="${url}" target="_blank">${fig}</a>` : fig
+  }
 
   let body = `<h1>${escapeHtml(result.seo_title)}</h1>`
   body += `<p class="kw">Focus keyword: ${escapeHtml(result.focus_keyword)} · Tags: ${(result.tags || []).map(escapeHtml).join(', ')}</p>`
 
   if (heroImage) {
-    body += `<img class="hero" src="${heroImage.file_url}" alt="${escapeHtml(heroImage.alt_text || heroImage.label || '')}" />`
+    const heroEl = `<img class="hero" src="${heroImage.file_url}" alt="${escapeHtml(heroImage.alt_text || heroImage.label || '')}" />`
+    body += productUrl ? `<a href="${productUrl}" target="_blank">${heroEl}</a>` : heroEl
   }
 
   if (result.intro?.body) {
@@ -208,16 +218,17 @@ function buildRoundupPreviewHTML(result, selected, heroImage, itemImages) {
     const paras   = `<p>${escapeHtml(item.body || '').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
 
     if (imgs.length === 1) {
-      body += `<div class="section">${heading}${paras}<div class="imgs">${imgHtml(imgs[0], product?.name)}</div></div>`
+      body += `<div class="section">${heading}${paras}<div class="imgs">${imgHtml(imgs[0], product?.name, productUrl)}</div></div>`
     } else if (imgs.length >= 2) {
-      body += `<div class="section">${heading}${paras}<div class="imgs">${imgs.map(img => imgHtml(img, product?.name)).join('')}</div></div>`
+      body += `<div class="section">${heading}${paras}<div class="imgs">${imgs.map(img => imgHtml(img, product?.name, productUrl)).join('')}</div></div>`
     } else {
       body += `<div class="section">${heading}${paras}</div>`
     }
   })
 
   if (result.conclusion) {
-    body += `<div class="section"><h2>${escapeHtml(result.conclusion.heading)}</h2><p>${escapeHtml(result.conclusion.body || '').replace(/\n\n/g, '</p><p>')}</p></div>`
+    const btn = productUrl ? `<a class="btn" href="${productUrl}" target="_blank">Enquire Now →</a>` : ''
+    body += `<div class="section"><h2>${escapeHtml(result.conclusion.heading)}</h2><p>${escapeHtml(result.conclusion.body || '').replace(/\n\n/g, '</p><p>')}</p>${btn}</div>`
   }
 
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body>${body}</body></html>`
@@ -367,6 +378,7 @@ function SpotlightTab({ preloadedProduct }) {
   const [heroImage, setHeroImage]   = useState(null)
   const [sectionImages, setSectionImages] = useState([])  // array of arrays
   const [showPreview, setShowPreview] = useState(false)
+  const [productUrl, setProductUrl] = useState('')
 
   useEffect(() => {
     getDocs(query(collection(db, 'products'), orderBy('name')))
@@ -426,6 +438,7 @@ function SpotlightTab({ preloadedProduct }) {
     content: {
       ...result,
       product_name: selectedProduct?.name || '',
+      product_url: productUrl.trim(),
       sections: result.sections.map((s, i) => ({
         ...s,
         images: (sectionImages[i] || []).map(img => ({
@@ -437,7 +450,7 @@ function SpotlightTab({ preloadedProduct }) {
     }
   } : null
 
-  const previewHTML = result ? buildSpotlightPreviewHTML(result, heroImage, sectionImages) : ''
+  const previewHTML = result ? buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl) : ''
 
   return (
     <div className="space-y-5">
@@ -456,6 +469,10 @@ function SpotlightTab({ preloadedProduct }) {
             <option value="">General corporate gifting</option>
             {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
           </select>
+        </div>
+        <div>
+          <label className="label">Product Page URL <span className="text-gray-400 font-normal">(optional — links images & adds View Product button)</span></label>
+          <input className="input" type="url" value={productUrl} onChange={e => setProductUrl(e.target.value)} placeholder="https://crystocraft.com/products/..." />
         </div>
         <button onClick={handleGenerate} disabled={!selectedId || loading} className="btn-primary w-full justify-center">
           {loading ? '✍️ Writing blog post…' : '✨ Generate Product Spotlight Post'}
@@ -538,6 +555,7 @@ function RoundupTab() {
   const [loading, setLoading]         = useState(false)
   const [error, setError]             = useState('')
   const [showPreview, setShowPreview] = useState(false)
+  const [productUrl, setProductUrl]   = useState('')
   // Image state
   const [productImageMap, setProductImageMap] = useState({}) // { productId: [imageObjects] }
   const [heroImage, setHeroImage]     = useState(null)
@@ -595,6 +613,7 @@ function RoundupTab() {
     hero: heroImage ? { firebase_url: heroImage.file_url, alt_text: heroImage.alt_text || heroImage.label || '' } : null,
     content: {
       ...result,
+      product_url: productUrl.trim(),
       items: result.items.map((item, i) => {
         const p = selected[i]
         return {
@@ -611,7 +630,7 @@ function RoundupTab() {
     }
   } : null
 
-  const previewHTML = result ? buildRoundupPreviewHTML(result, selected, heroImage, itemImages) : ''
+  const previewHTML = result ? buildRoundupPreviewHTML(result, selected, heroImage, itemImages, productUrl) : ''
 
   return (
     <div className="space-y-5">
@@ -661,6 +680,10 @@ function RoundupTab() {
           </select>
         </div>
 
+        <div>
+          <label className="label">Product Page URL <span className="text-gray-400 font-normal">(optional — links images & adds Enquire Now button)</span></label>
+          <input className="input" type="url" value={productUrl} onChange={e => setProductUrl(e.target.value)} placeholder="https://crystocraft.com/products/..." />
+        </div>
         <button onClick={handleGenerate} disabled={selected.length < 2 || loading} className="btn-primary w-full justify-center">
           {loading ? '✍️ Writing roundup…' : `✨ Generate Roundup (${selected.length} products)`}
         </button>

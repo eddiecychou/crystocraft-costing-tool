@@ -27,6 +27,31 @@ export default async function handler(req) {
     })
   }
 
+  // ── Helper: read JPEG/PNG dimensions from binary header (fallback if Canvas unavailable) ──
+  function readImageDimensions(arrayBuffer) {
+    const v = new DataView(arrayBuffer)
+    try {
+      // JPEG: scan for SOF markers (FF C0..C3, C5..C7, C9..CB, CD..CF)
+      if (v.getUint16(0) === 0xFFD8) {
+        let i = 2
+        while (i < v.byteLength - 8) {
+          if (v.getUint8(i) !== 0xFF) break
+          const marker = v.getUint8(i + 1)
+          if ((marker >= 0xC0 && marker <= 0xC3) || (marker >= 0xC5 && marker <= 0xC7) ||
+              (marker >= 0xC9 && marker <= 0xCB) || (marker >= 0xCD && marker <= 0xCF)) {
+            return { width: v.getUint16(i + 7), height: v.getUint16(i + 5) }
+          }
+          i += 2 + v.getUint16(i + 2)
+        }
+      }
+      // PNG: dimensions at bytes 16–23
+      if (v.getUint32(0) === 0x89504E47) {
+        return { width: v.getUint32(16), height: v.getUint32(20) }
+      }
+    } catch {}
+    return null
+  }
+
   // ── Helper: resize to standard dimensions then compress to under 200KB ───────
   // Rules: square (ratio 0.85–1.18) → max 1000×1000 px
   //        landscape (wider)         → max 1200px wide, proportional height
@@ -67,10 +92,11 @@ export default async function handler(req) {
       }
       const out = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.25 })
       return { buffer: await out.arrayBuffer(), width: tw, height: th }
-    } catch {
-      console.warn('Image resize unavailable; uploading original')
-      // Return original with unknown dimensions
-      return { buffer: arrayBuffer, width: 0, height: 0 }
+    } catch (err) {
+      console.warn('Image resize failed, uploading original:', err?.message)
+      // Try to recover dimensions from binary header for correct filename
+      const dims = readImageDimensions(arrayBuffer)
+      return { buffer: arrayBuffer, width: dims?.width || 0, height: dims?.height || 0 }
     }
   }
 
@@ -120,10 +146,19 @@ export default async function handler(req) {
   }
 
   // ── Gutenberg block builders ───────────────────────────────────────────────
-  function imgBlock(media, size = 'large', extraClass = '') {
+  function imgBlock(media, size = 'large', extraClass = '', linkUrl = '') {
     if (!media) return ''
     const cls = ['wp-block-image', `size-${size}`, extraClass].filter(Boolean).join(' ')
-    return `<!-- wp:image {"id":${media.wp_id},"sizeSlug":"${size}"} -->\n<figure class="${cls}"><img src="${media.wp_url}" alt="${media.alt_text || ''}" />${media.caption ? `<figcaption class="wp-element-caption">${media.caption}</figcaption>` : ''}</figure>\n<!-- /wp:image -->\n\n`
+    const imgEl = `<img src="${media.wp_url}" alt="${media.alt_text || ''}" />`
+    const figInner = linkUrl ? `<a href="${linkUrl}">${imgEl}</a>` : imgEl
+    const caption = media.caption ? `<figcaption class="wp-element-caption">${media.caption}</figcaption>` : ''
+    const linkAttr = linkUrl ? `,"linkDestination":"custom"` : ''
+    return `<!-- wp:image {"id":${media.wp_id},"sizeSlug":"${size}"${linkAttr}} -->\n<figure class="${cls}">${figInner}${caption}</figure>\n<!-- /wp:image -->\n\n`
+  }
+
+  function buttonBlock(text, url) {
+    if (!url || !text) return ''
+    return `<!-- wp:buttons -->\n<div class="wp-block-buttons">\n<!-- wp:button -->\n<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="${url}">${text}</a></div>\n<!-- /wp:button -->\n</div>\n<!-- /wp:buttons -->\n\n`
   }
 
   function headingBlock(text) {
@@ -169,6 +204,7 @@ export default async function handler(req) {
       totalImages = (hero ? 1 : 0) + sections.reduce((n, s) => n + (s.images?.length || 0), 0)
 
       const productName = content.product_name || ''
+      const productUrl  = content.product_url  || ''
 
       // Upload hero + ALL section images in parallel
       const [heroMedia, ...sectionMediaArrays] = await Promise.all([
@@ -192,13 +228,16 @@ export default async function handler(req) {
       sections.forEach((section, i) => {
         if (i > 0) html += spacer
         const imgs = (sectionMediaArrays[i] || []).filter(Boolean)
+        const isCta = section.type === 'cta'
         if (imgs.length === 1) {
-          html += headingBlock(section.heading) + paraBlock(section.body) + imgBlock(imgs[0], 'large')
+          html += headingBlock(section.heading) + paraBlock(section.body) + imgBlock(imgs[0], 'large', '', productUrl)
         } else if (imgs.length >= 2) {
           html += galleryBlock(section.heading, section.body, imgs)
         } else {
           html += headingBlock(section.heading) + paraBlock(section.body)
         }
+        // Append "View Product" button after the CTA section
+        if (isCta && productUrl) html += buttonBlock('View Product →', productUrl)
       })
 
     // ── ROUNDUP ───────────────────────────────────────────────────────────────
@@ -222,6 +261,8 @@ export default async function handler(req) {
       if (heroMedia) { featuredMediaId = heroMedia.wp_id; totalUploaded++ }
       itemMediaArrays.forEach(arr => arr.forEach(m => { if (m) totalUploaded++ }))
 
+      const productUrl = content.product_url || ''
+
       // Hero is featured_media only — theme displays it as banner
       if (intro?.body) html += paraBlock(intro.body)
 
@@ -231,7 +272,7 @@ export default async function handler(req) {
         if (idx > 0) html += itemSpacer
         const imgs = (itemMediaArrays[idx] || []).filter(Boolean)
         if (imgs.length === 1) {
-          html += headingBlock(item.heading) + paraBlock(item.body) + imgBlock(imgs[0], 'large')
+          html += headingBlock(item.heading) + paraBlock(item.body) + imgBlock(imgs[0], 'large', '', item.product_url || productUrl)
         } else if (imgs.length >= 2) {
           html += galleryBlock(item.heading, item.body, imgs)
         } else {
@@ -239,7 +280,11 @@ export default async function handler(req) {
         }
       })
 
-      if (conclusion) html += headingBlock(conclusion.heading) + paraBlock(conclusion.body)
+      if (conclusion) {
+        html += itemSpacer
+        html += headingBlock(conclusion.heading) + paraBlock(conclusion.body)
+        if (productUrl) html += buttonBlock('Enquire Now →', productUrl)
+      }
     }
 
     // ── Handle tags — in parallel ─────────────────────────────────────────────
