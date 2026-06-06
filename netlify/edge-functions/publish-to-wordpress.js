@@ -177,15 +177,15 @@ export default async function handler(req) {
     if (!media) return ''
     const cls = ['wp-block-image', `size-${size}`, extraClass].filter(Boolean).join(' ')
     const imgEl = `<img src="${media.wp_url}" alt="${media.alt_text || ''}" />`
-    const figInner = linkUrl ? `<a href="${linkUrl}">${imgEl}</a>` : imgEl
+    const figInner = linkUrl ? `<a href="${linkUrl}" target="_blank" rel="noreferrer noopener">${imgEl}</a>` : imgEl
     const caption = media.caption ? `<figcaption class="wp-element-caption">${media.caption}</figcaption>` : ''
-    const linkAttr = linkUrl ? `,"linkDestination":"custom"` : ''
+    const linkAttr = linkUrl ? `,"linkDestination":"custom","linkTarget":"_blank"` : ''
     return `<!-- wp:image {"id":${media.wp_id},"sizeSlug":"${size}"${linkAttr}} -->\n<figure class="${cls}">${figInner}${caption}</figure>\n<!-- /wp:image -->\n\n`
   }
 
   function buttonBlock(text, url) {
     if (!url || !text) return ''
-    return `<!-- wp:buttons -->\n<div class="wp-block-buttons">\n<!-- wp:button -->\n<div class="wp-block-button"><a class="wp-block-button__link wp-element-button" href="${url}">${text}</a></div>\n<!-- /wp:button -->\n</div>\n<!-- /wp:buttons -->\n\n`
+    return `<!-- wp:buttons -->\n<div class="wp-block-buttons">\n<!-- wp:button {"backgroundColor":"black","textColor":"white","style":{"color":{"background":"#111111","text":"#ffffff"}}} -->\n<div class="wp-block-button"><a class="wp-block-button__link wp-element-button has-white-color has-black-background-color has-text-color has-background" href="${url}" target="_blank" rel="noreferrer noopener" style="background-color:#111111;color:#ffffff">${text}</a></div>\n<!-- /wp:button -->\n</div>\n<!-- /wp:buttons -->\n\n`
   }
 
   function headingBlock(text) {
@@ -260,7 +260,7 @@ export default async function handler(req) {
         const isCta   = section.type === 'cta'
         const linkUrl = section.section_url || ''  // per-section URL only — global is for button only
         const linkedHeading = (section.heading && linkUrl)
-          ? `<!-- wp:heading {"level":2} -->\n<h2 class="wp-block-heading"><a href="${linkUrl}">${section.heading}</a></h2>\n<!-- /wp:heading -->\n\n`
+          ? `<!-- wp:heading {"level":2} -->\n<h2 class="wp-block-heading"><a href="${linkUrl}" target="_blank" rel="noreferrer noopener">${section.heading}</a></h2>\n<!-- /wp:heading -->\n\n`
           : headingBlock(section.heading)
         if (imgs.length === 1) {
           html += linkedHeading + paraBlock(section.body) + imgBlock(imgs[0], 'large', '', linkUrl)
@@ -306,7 +306,7 @@ export default async function handler(req) {
         const imgs    = (itemMediaArrays[idx] || []).filter(Boolean)
         const linkUrl = item.item_url || ''  // per-item URL only — global productUrl is for the button only
         const linkedHeading = (item.heading && linkUrl)
-          ? `<!-- wp:heading {"level":2} -->\n<h2 class="wp-block-heading"><a href="${linkUrl}">${item.heading}</a></h2>\n<!-- /wp:heading -->\n\n`
+          ? `<!-- wp:heading {"level":2} -->\n<h2 class="wp-block-heading"><a href="${linkUrl}" target="_blank" rel="noreferrer noopener">${item.heading}</a></h2>\n<!-- /wp:heading -->\n\n`
           : headingBlock(item.heading)
         if (imgs.length === 1) {
           html += linkedHeading + paraBlock(item.body) + imgBlock(imgs[0], 'large', '', linkUrl)

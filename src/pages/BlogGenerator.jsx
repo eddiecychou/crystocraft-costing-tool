@@ -138,7 +138,9 @@ function buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl,
     .col .img{flex:4;min-width:0}
     .col .img img{width:100%;border-radius:8px;display:block}
     .imgs{display:flex;gap:1.2em;margin-top:1.5em;align-items:flex-start}
+    .imgs a{flex:1;display:block;min-width:0;margin:0;text-decoration:none}
     .imgs figure{flex:1;width:0;min-width:0;margin:0}
+    .imgs a figure{width:100%;flex:none}
     .imgs img{width:100%;border-radius:8px;display:block}
     figcaption{font-size:.78em;color:#999;text-align:center;margin-top:.35em;font-family:sans-serif}
     .btn{display:inline-block;margin-top:1em;padding:.6em 1.4em;background:#111;color:#fff;border-radius:6px;text-decoration:none;font-family:sans-serif;font-size:.9em}
@@ -191,7 +193,9 @@ function buildRoundupPreviewHTML(result, selected, heroImage, itemImages, produc
     .col .img{flex:4;min-width:0}
     .col .img img{width:100%;border-radius:8px;display:block}
     .imgs{display:flex;gap:1.2em;margin-top:1.5em;align-items:flex-start}
+    .imgs a{flex:1;display:block;min-width:0;margin:0;text-decoration:none}
     .imgs figure{flex:1;width:0;min-width:0;margin:0}
+    .imgs a figure{width:100%;flex:none}
     .imgs img{width:100%;border-radius:8px;display:block}
     figcaption{font-size:.78em;color:#999;text-align:center;margin-top:.35em;font-family:sans-serif}
     .btn{display:inline-block;margin-top:1em;padding:.6em 1.4em;background:#111;color:#fff;border-radius:6px;text-decoration:none;font-family:sans-serif;font-size:.9em}
@@ -281,7 +285,9 @@ function bufToBase64(buf) {
 
 async function compressForWP(firebaseUrl, imageType = 'content') {
   try {
-    const res = await fetch(firebaseUrl)
+    // Route through same-origin proxy to avoid Firebase Storage CORS restrictions
+    const proxyUrl = `/api/image-proxy?url=${encodeURIComponent(firebaseUrl)}`
+    const res = await fetch(proxyUrl)
     const blob = await res.blob()
     const bitmap = await createImageBitmap(blob)
     const { width, height } = bitmap
@@ -390,8 +396,6 @@ function WPPublishButton({ payload, disabled }) {
         <div className="flex gap-2 flex-wrap">
           <a href={wpResult.edit_url} target="_blank" rel="noreferrer"
             className="text-xs px-3 py-1.5 rounded-md bg-green-700 text-white hover:bg-green-800 transition-colors">✏️ Edit in WordPress →</a>
-          <a href={wpResult.preview_url} target="_blank" rel="noreferrer"
-            className="text-xs px-3 py-1.5 rounded-md bg-white border border-green-300 text-green-700 hover:bg-green-50 transition-colors">👁 Preview →</a>
         </div>
       </div>
     )
