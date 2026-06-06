@@ -1,10 +1,28 @@
 # Crystocraft Corporate Gift Costing Tool — Project Plan
 
-## Current Status — V2.1 as of 2026-06-06
+## Current Status — V3.0 as of 2026-06-06
 
-**V2.1 is deployed to Netlify and live in production.**
+**V3.0 is deployed to Netlify and live in production.**
 
-### What's working end-to-end (V2.1)
+### What's new in V3.0 (2026-06-06)
+- **Blog / Content Generator** — AI-powered blog post writer with Spotlight (single product) and Roundup (multi-product) modes; publishes directly to WordPress as a draft via REST API
+- **Blog: image compression pipeline** — all images compressed in-browser before upload (hero ≤400KB at 1200px wide, content ≤200KB); same-origin `/api/image-proxy` edge function bypasses Firebase Storage CORS
+- **Blog: WordPress publishing** — uploads images to WP Media Library for SEO; sets featured image; creates Gutenberg blocks (heading, paragraph, image, gallery, spacer, button); all links open in new tab; white text on black buttons
+- **Blog: per-section rewrite** — after AI generates content, each section has a "↺ Rewrite" button; type guidance (e.g. "more focused on banking clients") and AI rewrites just that section
+- **Blog: product hyperlinks** — global CTA URL adds an enquiry button at post end; per-section/item URL links that block's heading and images only
+- **Blog: customisable button text** — default "View Product →" / "Enquire Now →", overridable per post
+- **Blog: SEO title** — AI no longer appends `| Crystocraft` (WordPress adds this automatically)
+- **Blog: varied AI openings** — banned "Elevate", "Discover", "Introducing", "Transform", "Unleash" as openers
+- **Product duplicate** — ⧉ Duplicate button copies product, all BOM components + their images, and product images
+- **Product AI writer rewrite** — "↺ Rewrite with guidance" appears after generating marketing copy; same guided-rewrite UX as blog
+- **Image gallery: orientation tags** — L/S/P toggle buttons on each image card; auto-detected on upload
+- **Image gallery: image types** — Hero, Product Detail, Packaging, Lifestyle, Customisation, Client Ref
+- **Volume price tiers on supplier quotes** — add multiple (min qty → unit cost) rows per supplier quote; pricing tier calculation auto-selects the correct component price for each order quantity; "Volume pricing active" badge shown
+- **Mobile fixes** — product page header stacks vertically on mobile; blog CTA URL / Button Text fields stack on mobile; blog button removed from product page header to reduce overflow
+- **Netlify secret scan** — public Firebase config keys exempted from scanner via `SECRETS_SCAN_OMIT_KEYS`
+- **All blog edge functions registered** in `netlify.toml` for local `netlify dev` testing
+
+### What's working end-to-end (V2.1 and earlier)
 - Create and manage products with image galleries (hero image, type labels, lightbox)
 - Build a BOM per product: add components, upload component images
 - Record supplier quotes per component — AI extraction from WeChat/supplier screenshots via Gemini
