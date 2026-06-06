@@ -2,8 +2,8 @@ export default async function handler(req) {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
   const WP_BASE_URL    = Deno.env.get('WP_BASE_URL')
-  const WP_USERNAME    = Deno.env.get('WP_USERNAME')
-  const WP_APP_PASSWORD = Deno.env.get('WP_APP_PASSWORD')
+  const WP_USERNAME    = Deno.env.get('WP_USER')
+  const WP_APP_PASSWORD = Deno.env.get('WP_PASS')
 
   if (!WP_BASE_URL || !WP_USERNAME || !WP_APP_PASSWORD) {
     return new Response(JSON.stringify({ error: 'WordPress credentials not configured' }), {
