@@ -296,7 +296,7 @@ function detectOrientation(width, height) {
   return ratio > 1 ? 'landscape' : 'portrait'
 }
 
-async function resizeToJpeg(file, maxPx = 2400, quality = 0.93) {
+async function resizeToJpeg(file, maxPx = 1800) {
   const bitmap = await createImageBitmap(file)
   const orientation = detectOrientation(bitmap.width, bitmap.height)
   const scale = Math.min(1, maxPx / Math.max(bitmap.width, bitmap.height))
@@ -304,6 +304,14 @@ async function resizeToJpeg(file, maxPx = 2400, quality = 0.93) {
   const h = Math.round(bitmap.height * scale)
   const canvas = new OffscreenCanvas(w, h)
   canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h)
-  const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality })
+  bitmap.close()
+
+  // Compress until under 600KB so Firebase images are manageable for WP edge function
+  const MAX = 600 * 1024
+  for (const q of [0.90, 0.82, 0.72, 0.60, 0.48]) {
+    const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: q })
+    if (blob.size <= MAX) return { blob, orientation }
+  }
+  const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.38 })
   return { blob, orientation }
 }

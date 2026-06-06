@@ -52,13 +52,17 @@ export default async function handler(req) {
     return null
   }
 
-  // ── Helper: resize to standard dimensions then compress to under 200KB ───────
-  // Rules: square (ratio 0.85–1.18) → max 1000×1000 px
-  //        landscape (wider)         → max 1200px wide, proportional height
-  //        portrait  (taller)        → max 1000px wide, proportional height
+  // ── Helper: resize + compress image
+  // imageType 'hero'    → always 1200px wide (banner use), max 400KB
+  // imageType 'content' → square→1000px, landscape→1200px, portrait→1000px, max 200KB
   // Returns { buffer, width, height }
-  async function resizeAndCompress(arrayBuffer) {
-    const MAX_BYTES = 200 * 1024
+  async function resizeAndCompress(arrayBuffer, imageType = 'content') {
+    const isHero   = imageType === 'hero'
+    const MAX_BYTES = isHero ? 400 * 1024 : 200 * 1024
+
+    // Always try to get original dims from header (used in fallback filename)
+    const origDims = readImageDimensions(arrayBuffer)
+
     try {
       const blob   = new Blob([arrayBuffer], { type: 'image/jpeg' })
       const bitmap = await createImageBitmap(blob)
@@ -66,16 +70,21 @@ export default async function handler(req) {
       const ratio = width / height
 
       let tw, th
-      if (ratio >= 0.85 && ratio <= 1.18) {
-        if (width >= height) { tw = Math.min(width, 1000); th = Math.round(tw / ratio) }
-        else                  { th = Math.min(height, 1000); tw = Math.round(th * ratio) }
+      if (isHero) {
+        // Hero: always treat as landscape banner — 1200px wide max
+        tw = Math.min(width, 1200); th = Math.round(tw / ratio)
+      } else if (ratio >= 0.85 && ratio <= 1.18) {
+        // Square content: cap longest side at 1000px
+        tw = Math.min(width, 1000); th = Math.round(tw / ratio)
       } else if (width >= height) {
+        // Landscape content: 1200px wide
         tw = Math.min(width, 1200); th = Math.round(tw / ratio)
       } else {
+        // Portrait content: 1000px wide
         tw = Math.min(width, 1000); th = Math.round(tw / ratio)
       }
 
-      // Skip canvas if already correct size and small enough
+      // Skip redraw if already within target size and small enough
       if (tw === width && th === height && arrayBuffer.byteLength <= MAX_BYTES) {
         bitmap.close()
         return { buffer: arrayBuffer, width: tw, height: th }
@@ -85,18 +94,22 @@ export default async function handler(req) {
       canvas.getContext('2d').drawImage(bitmap, 0, 0, tw, th)
       bitmap.close()
 
-      for (const quality of [0.85, 0.75, 0.65, 0.5, 0.35]) {
+      const qualities = isHero
+        ? [0.88, 0.80, 0.70, 0.60, 0.50]
+        : [0.85, 0.75, 0.65, 0.50, 0.35, 0.25]
+
+      for (const quality of qualities) {
         const out = await canvas.convertToBlob({ type: 'image/jpeg', quality })
         const buf = await out.arrayBuffer()
         if (buf.byteLength <= MAX_BYTES) return { buffer: buf, width: tw, height: th }
       }
-      const out = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.25 })
-      return { buffer: await out.arrayBuffer(), width: tw, height: th }
+      // Last resort: lowest quality
+      const last = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.20 })
+      return { buffer: await last.arrayBuffer(), width: tw, height: th }
+
     } catch (err) {
-      console.warn('Image resize failed, uploading original:', err?.message)
-      // Try to recover dimensions from binary header for correct filename
-      const dims = readImageDimensions(arrayBuffer)
-      return { buffer: arrayBuffer, width: dims?.width || 0, height: dims?.height || 0 }
+      console.error('resizeAndCompress failed:', err?.message, '| size:', arrayBuffer.byteLength, '| dims:', origDims)
+      return { buffer: arrayBuffer, width: origDims?.width || 0, height: origDims?.height || 0 }
     }
   }
 
@@ -115,7 +128,7 @@ export default async function handler(req) {
       const imgRes = await fetch(firebase_url)
       if (!imgRes.ok) return null
       const raw  = await imgRes.arrayBuffer()
-      const { buffer: imgBuffer, width, height } = await resizeAndCompress(raw)
+      const { buffer: imgBuffer, width, height } = await resizeAndCompress(raw, imageType)
       const sizeStr  = width && height ? `${width}x${height}` : Date.now().toString()
       const filename = `${slugify(productName)}-${imageType}-${sizeStr}.jpg`
 
@@ -228,16 +241,20 @@ export default async function handler(req) {
       sections.forEach((section, i) => {
         if (i > 0) html += spacer
         const imgs = (sectionMediaArrays[i] || []).filter(Boolean)
-        const isCta = section.type === 'cta'
+        const isCta   = section.type === 'cta'
+        const linkUrl = section.section_url || productUrl  // per-section overrides global
+        const linkedHeading = (section.heading && linkUrl)
+          ? `<!-- wp:heading {"level":2} -->\n<h2 class="wp-block-heading"><a href="${linkUrl}">${section.heading}</a></h2>\n<!-- /wp:heading -->\n\n`
+          : headingBlock(section.heading)
         if (imgs.length === 1) {
-          html += headingBlock(section.heading) + paraBlock(section.body) + imgBlock(imgs[0], 'large', '', productUrl)
+          html += linkedHeading + paraBlock(section.body) + imgBlock(imgs[0], 'large', '', linkUrl)
         } else if (imgs.length >= 2) {
-          html += galleryBlock(section.heading, section.body, imgs)
+          // heading already rendered with link — pass null heading to galleryBlock
+          html += linkedHeading + paraBlock(section.body) + `<!-- wp:gallery {"columns":${imgs.length},"linkTo":"none"} -->\n<figure class="wp-block-gallery has-nested-images columns-${imgs.length} is-cropped">\n${imgs.map(m => `<!-- wp:image {"id":${m.wp_id},"sizeSlug":"medium"} -->\n<figure class="wp-block-image size-medium"><img src="${m.wp_url}" alt="${m.alt_text || ''}" /></figure>\n<!-- /wp:image -->`).join('\n')}\n</figure>\n<!-- /wp:gallery -->\n\n`
         } else {
-          html += headingBlock(section.heading) + paraBlock(section.body)
+          html += linkedHeading + paraBlock(section.body)
         }
-        // Append "View Product" button after the CTA section
-        if (isCta && productUrl) html += buttonBlock('View Product →', productUrl)
+        if (isCta && linkUrl) html += buttonBlock('View Product →', linkUrl)
       })
 
     // ── ROUNDUP ───────────────────────────────────────────────────────────────
@@ -270,13 +287,17 @@ export default async function handler(req) {
 
       items?.forEach((item, idx) => {
         if (idx > 0) html += itemSpacer
-        const imgs = (itemMediaArrays[idx] || []).filter(Boolean)
+        const imgs    = (itemMediaArrays[idx] || []).filter(Boolean)
+        const linkUrl = item.item_url || productUrl  // per-item overrides global
+        const linkedHeading = (item.heading && linkUrl)
+          ? `<!-- wp:heading {"level":2} -->\n<h2 class="wp-block-heading"><a href="${linkUrl}">${item.heading}</a></h2>\n<!-- /wp:heading -->\n\n`
+          : headingBlock(item.heading)
         if (imgs.length === 1) {
-          html += headingBlock(item.heading) + paraBlock(item.body) + imgBlock(imgs[0], 'large', '', item.product_url || productUrl)
+          html += linkedHeading + paraBlock(item.body) + imgBlock(imgs[0], 'large', '', linkUrl)
         } else if (imgs.length >= 2) {
-          html += galleryBlock(item.heading, item.body, imgs)
+          html += linkedHeading + paraBlock(item.body) + `<!-- wp:gallery {"columns":${imgs.length},"linkTo":"none"} -->\n<figure class="wp-block-gallery has-nested-images columns-${imgs.length} is-cropped">\n${imgs.map(m => `<!-- wp:image {"id":${m.wp_id},"sizeSlug":"medium"} -->\n<figure class="wp-block-image size-medium"><img src="${m.wp_url}" alt="${m.alt_text || ''}" /></figure>\n<!-- /wp:image -->`).join('\n')}\n</figure>\n<!-- /wp:gallery -->\n\n`
         } else {
-          html += headingBlock(item.heading) + paraBlock(item.body)
+          html += linkedHeading + paraBlock(item.body)
         }
       })
 

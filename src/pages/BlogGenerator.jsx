@@ -153,14 +153,17 @@ function buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl)
   }
 
   result.sections?.forEach((s, i) => {
-    const imgs = sectionImages[i] || []
-    const heading = s.heading ? `<h2>${escapeHtml(s.heading)}</h2>` : ''
+    const imgs    = sectionImages[i] || []
+    const linkUrl = s.section_url || productUrl
+    const heading = s.heading
+      ? (linkUrl ? `<h2><a href="${linkUrl}" target="_blank">${escapeHtml(s.heading)}</a></h2>` : `<h2>${escapeHtml(s.heading)}</h2>`)
+      : ''
     const paras = `<p>${escapeHtml(s.body || '').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
     const imgHtml = (img) => {
       const el = `<figure><img src="${img.file_url}" alt="${escapeHtml(img.alt_text || img.label || '')}" />${img.caption || img.label ? `<figcaption>${escapeHtml(img.caption || img.label)}</figcaption>` : ''}</figure>`
-      return productUrl ? `<a href="${productUrl}" target="_blank">${el}</a>` : el
+      return linkUrl ? `<a href="${linkUrl}" target="_blank">${el}</a>` : el
     }
-    const btn = (s.type === 'cta' && productUrl) ? `<a class="btn" href="${productUrl}" target="_blank">View Product →</a>` : ''
+    const btn = (s.type === 'cta' && linkUrl) ? `<a class="btn" href="${linkUrl}" target="_blank">View Product →</a>` : ''
 
     if (imgs.length === 1) {
       body += `<div class="section">${heading}${paras}<div class="imgs">${imgHtml(imgs[0])}</div>${btn}</div>`
@@ -213,14 +216,17 @@ function buildRoundupPreviewHTML(result, selected, heroImage, itemImages, produc
 
   result.items?.forEach((item, i) => {
     const product = selected[i]
-    const imgs = itemImages[product?.id] || []
-    const heading = `<h2>${escapeHtml(item.heading)}</h2>`
-    const paras   = `<p>${escapeHtml(item.body || '').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
+    const imgs    = itemImages[product?.id] || []
+    const linkUrl = item.item_url || productUrl
+    const heading = item.heading
+      ? (linkUrl ? `<h2><a href="${linkUrl}" target="_blank">${escapeHtml(item.heading)}</a></h2>` : `<h2>${escapeHtml(item.heading)}</h2>`)
+      : ''
+    const paras = `<p>${escapeHtml(item.body || '').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
 
     if (imgs.length === 1) {
-      body += `<div class="section">${heading}${paras}<div class="imgs">${imgHtml(imgs[0], product?.name, productUrl)}</div></div>`
+      body += `<div class="section">${heading}${paras}<div class="imgs">${imgHtml(imgs[0], product?.name, linkUrl)}</div></div>`
     } else if (imgs.length >= 2) {
-      body += `<div class="section">${heading}${paras}<div class="imgs">${imgs.map(img => imgHtml(img, product?.name, productUrl)).join('')}</div></div>`
+      body += `<div class="section">${heading}${paras}<div class="imgs">${imgs.map(img => imgHtml(img, product?.name, linkUrl)).join('')}</div></div>`
     } else {
       body += `<div class="section">${heading}${paras}</div>`
     }
@@ -445,7 +451,8 @@ function SpotlightTab({ preloadedProduct }) {
           firebase_url: img.file_url,
           alt_text: img.alt_text || img.label || '',
           caption: img.caption || img.label || '',
-        }))
+        })),
+        section_url: s.section_url?.trim() || '',
       }))
     }
   } : null
@@ -511,6 +518,8 @@ function SpotlightTab({ preloadedProduct }) {
                 )}
                 <textarea className="input text-sm" rows={4} value={s.body || ''}
                   onChange={e => updateSection(i, 'body', e.target.value)} />
+                <input className="input text-xs text-gray-500" type="url" value={s.section_url || ''} placeholder="Section link URL (overrides global — links images & heading)"
+                  onChange={e => updateSection(i, 'section_url', e.target.value)} />
 
                 {/* Section image picker */}
                 <div className="border-t border-gray-50 pt-2">
@@ -619,6 +628,7 @@ function RoundupTab() {
         return {
           ...item,
           product_name: p?.name || '',
+          item_url: item.item_url?.trim() || '',
           images: (itemImages[p?.id] || []).map(img => ({
             firebase_url: img.file_url,
             alt_text: img.alt_text || img.label || '',
@@ -734,6 +744,8 @@ function RoundupTab() {
                   onChange={e => updateItem(i, 'heading', e.target.value)} />
                 <textarea className="input text-sm" rows={4} value={item.body || ''}
                   onChange={e => updateItem(i, 'body', e.target.value)} />
+                <input className="input text-xs text-gray-500" type="url" value={item.item_url || ''} placeholder="Product link URL (overrides global — links images & heading)"
+                  onChange={e => updateItem(i, 'item_url', e.target.value)} />
 
                 {/* Per-product image picker */}
                 <div className="border-t border-gray-50 pt-2">
