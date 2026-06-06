@@ -15,6 +15,7 @@ export default function ProductDetail() {
   const [images, setImages]         = useState([])
   const [loading, setLoading]       = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [duplicating, setDuplicating]     = useState(false)
 
   // Copy-existing picker state
   const [showPicker, setShowPicker]       = useState(false)
@@ -47,6 +48,46 @@ export default function ProductDetail() {
   async function handleDelete() {
     await deleteDoc(doc(db, 'products', id))
     navigate('/products')
+  }
+
+  async function handleDuplicate() {
+    setDuplicating(true)
+    try {
+      // Create new product with "(Copy)" suffix, reset timestamps
+      const { id: _id, ...productData } = product
+      const newRef = await addDoc(collection(db, 'products'), {
+        ...productData,
+        name: `${product.name} (Copy)`,
+        status: 'concept',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+
+      // Copy components + their images subcollections in parallel
+      const compSnap = await getDocs(query(collection(db, 'products', id, 'components'), orderBy('sort_order')))
+      await Promise.all(compSnap.docs.map(async compDoc => {
+        const { id: _cid, ...compData } = { id: compDoc.id, ...compDoc.data() }
+        const newCompRef = await addDoc(collection(db, 'products', newRef.id, 'components'), compData)
+        const compImgSnap = await getDocs(
+          query(collection(db, 'products', id, 'components', compDoc.id, 'images'), orderBy('sort_order'))
+        )
+        if (!compImgSnap.empty) {
+          await Promise.all(compImgSnap.docs.map(imgDoc =>
+            addDoc(collection(db, 'products', newRef.id, 'components', newCompRef.id, 'images'), imgDoc.data())
+          ))
+        }
+      }))
+
+      // Copy product images (reuse same Storage URLs)
+      const imgSnap = await getDocs(query(collection(db, 'products', id, 'images'), orderBy('sort_order')))
+      await Promise.all(imgSnap.docs.map(imgDoc =>
+        addDoc(collection(db, 'products', newRef.id, 'images'), imgDoc.data())
+      ))
+
+      navigate(`/products/${newRef.id}`)
+    } finally {
+      setDuplicating(false)
+    }
   }
 
   async function openPicker() {
@@ -116,6 +157,9 @@ export default function ProductDetail() {
           <div className="flex gap-2 shrink-0">
             <Link to={`/blog-generator/${id}`} className="btn-secondary text-sm">✍️ Blog</Link>
             <Link to={`/products/${id}/edit`} className="btn-secondary text-sm">Edit</Link>
+            <button className="btn-secondary text-sm" onClick={handleDuplicate} disabled={duplicating}>
+              {duplicating ? 'Copying…' : '⧉ Duplicate'}
+            </button>
             <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>Delete</button>
           </div>
         </div>

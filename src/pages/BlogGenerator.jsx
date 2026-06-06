@@ -28,17 +28,25 @@ function CopyButton({ text, label = 'Copy' }) {
 }
 
 // ── Hero image picker — single select ────────────────────────────────────────
+const ORIENTATION_BADGE = {
+  landscape: { label: 'L', cls: 'bg-blue-500 text-white' },
+  square:    { label: 'S', cls: 'bg-purple-500 text-white' },
+  portrait:  { label: 'P', cls: 'bg-green-500 text-white' },
+}
+
 function HeroPicker({ images, value, onChange }) {
   if (!images.length) return <p className="text-xs text-gray-400">No images on this product yet.</p>
   return (
     <div className="grid grid-cols-5 gap-2">
       {images.map((img, i) => {
         const active = value?.file_url === img.file_url
+        const orient = ORIENTATION_BADGE[img.orientation] || ORIENTATION_BADGE.square
         return (
           <button key={img.file_url || i} type="button"
             onClick={() => onChange(active ? null : img)}
             className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${active ? 'border-brand-500' : 'border-gray-200 opacity-50 hover:opacity-90'}`}>
             <img src={img.file_url} alt="" className="w-full h-full object-cover" />
+            <span className={`absolute top-1 left-1 text-[10px] font-bold px-1 py-0.5 rounded leading-none ${orient.cls}`}>{orient.label}</span>
             {active && (
               <div className="absolute inset-0 bg-brand-500/20 flex items-end justify-center pb-1">
                 <span className="text-xs bg-brand-500 text-white px-1.5 py-0.5 rounded font-semibold">HERO</span>
@@ -84,7 +92,7 @@ function SectionImagePicker({ images, heroImage, selected, onChange }) {
         )}
         {selected.length > 0 && (
           <p className="text-xs text-gray-400 ml-1">
-            {selected.length === 1 ? 'Image will appear on the right' : `${selected.length} images will appear below text`}
+            {selected.length === 1 ? '1 image — appears below text' : `${selected.length} images — appear below text`}
           </p>
         )}
       </div>
@@ -99,6 +107,7 @@ function SectionImagePicker({ images, heroImage, selected, onChange }) {
                 <button key={img.file_url} type="button" onClick={() => toggle(img)} disabled={atMax}
                   className={`relative aspect-square rounded overflow-hidden border-2 transition-all ${active ? 'border-brand-500' : 'border-transparent opacity-50 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
                   <img src={img.file_url} alt="" className="w-full h-full object-cover" />
+                  {img.orientation && (() => { const o = ORIENTATION_BADGE[img.orientation]; return o ? <span className={`absolute top-0.5 left-0.5 text-[9px] font-bold px-0.5 rounded leading-none ${o.cls}`}>{o.label}</span> : null })()}
                   {active && <div className="absolute inset-0 bg-brand-500/30" />}
                 </button>
               )
@@ -121,13 +130,14 @@ function buildSpotlightPreviewHTML(result, heroImage, sectionImages) {
     h2{font-size:1.3em;margin:0 0 .5em;color:#111}
     p{margin:0 0 1em}
     .kw{font-family:sans-serif;font-size:.8em;color:#aaa;margin-bottom:2em}
-    .hero{width:100%;border-radius:10px;display:block;margin-bottom:2.5em}
-    .section{margin-bottom:2.5em}
-    .col{display:flex;gap:2em;align-items:flex-start}
+    .hero{width:100%;border-radius:10px;display:block;margin-bottom:3em}
+    .section{margin-bottom:4em;padding-bottom:4em;border-bottom:1px solid #e5e7eb}
+    .section:last-child{border-bottom:none;padding-bottom:0}
+    .col{display:flex;gap:2.5em;align-items:flex-start}
     .col .text{flex:6;min-width:0}
     .col .img{flex:4;min-width:0}
     .col .img img{width:100%;border-radius:8px;display:block}
-    .imgs{display:flex;gap:1em;margin-top:1em;align-items:flex-start}
+    .imgs{display:flex;gap:1.2em;margin-top:1.5em;align-items:flex-start}
     .imgs figure{flex:1;width:0;min-width:0;margin:0}
     .imgs img{width:100%;border-radius:8px;display:block}
     figcaption{font-size:.78em;color:#999;text-align:center;margin-top:.35em;font-family:sans-serif}
@@ -147,7 +157,7 @@ function buildSpotlightPreviewHTML(result, heroImage, sectionImages) {
     const imgHtml = (img) => `<figure><img src="${img.file_url}" alt="${escapeHtml(img.alt_text || img.label || '')}" />${img.caption || img.label ? `<figcaption>${escapeHtml(img.caption || img.label)}</figcaption>` : ''}</figure>`
 
     if (imgs.length === 1) {
-      body += `<div class="section col"><div class="text">${heading}${paras}</div><div class="img">${imgHtml(imgs[0])}</div></div>`
+      body += `<div class="section">${heading}${paras}<div class="imgs">${imgHtml(imgs[0])}</div></div>`
     } else {
       body += `<div class="section">${heading}${paras}${imgs.length > 0 ? `<div class="imgs">${imgs.map(imgHtml).join('')}</div>` : ''}</div>`
     }
@@ -164,16 +174,16 @@ function buildRoundupPreviewHTML(result, selected, heroImage, itemImages) {
     h2{font-size:1.3em;margin:0 0 .5em;color:#111}
     p{margin:0 0 1em}
     .kw{font-family:sans-serif;font-size:.8em;color:#aaa;margin-bottom:2em}
-    .hero{width:100%;border-radius:10px;display:block;margin-bottom:2.5em}
-    .section{margin-bottom:2.5em}
-    .col{display:flex;gap:2em;align-items:flex-start}
+    .hero{width:100%;border-radius:10px;display:block;margin-bottom:3em}
+    .section{margin-bottom:4em;padding-bottom:4em;border-bottom:1px solid #e5e7eb}
+    .section:last-child{border-bottom:none;padding-bottom:0}
+    .col{display:flex;gap:2.5em;align-items:flex-start}
     .col .text{flex:6;min-width:0}
     .col .img{flex:4;min-width:0}
     .col .img img{width:100%;border-radius:8px;display:block}
-    .imgs{display:flex;gap:1em;margin-top:1em;align-items:flex-start}
+    .imgs{display:flex;gap:1.2em;margin-top:1.5em;align-items:flex-start}
     .imgs figure{flex:1;width:0;min-width:0;margin:0}
     .imgs img{width:100%;border-radius:8px;display:block}
-    hr{border:none;border-top:1px solid #e5e7eb;margin:2em 0}
     figcaption{font-size:.78em;color:#999;text-align:center;margin-top:.35em;font-family:sans-serif}
     @media(max-width:600px){.col{flex-direction:column}.imgs{flex-direction:column}.imgs figure{width:100%}}
   `
@@ -198,13 +208,12 @@ function buildRoundupPreviewHTML(result, selected, heroImage, itemImages) {
     const paras   = `<p>${escapeHtml(item.body || '').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
 
     if (imgs.length === 1) {
-      body += `<div class="section col"><div class="text">${heading}${paras}</div><div class="img">${imgHtml(imgs[0], product?.name)}</div></div>`
+      body += `<div class="section">${heading}${paras}<div class="imgs">${imgHtml(imgs[0], product?.name)}</div></div>`
     } else if (imgs.length >= 2) {
       body += `<div class="section">${heading}${paras}<div class="imgs">${imgs.map(img => imgHtml(img, product?.name)).join('')}</div></div>`
     } else {
       body += `<div class="section">${heading}${paras}</div>`
     }
-    if (i < result.items.length - 1) body += '<hr/>'
   })
 
   if (result.conclusion) {
@@ -416,6 +425,7 @@ function SpotlightTab({ preloadedProduct }) {
     hero: heroImage ? { firebase_url: heroImage.file_url, alt_text: heroImage.alt_text || heroImage.label || selectedProduct?.name || '' } : null,
     content: {
       ...result,
+      product_name: selectedProduct?.name || '',
       sections: result.sections.map((s, i) => ({
         ...s,
         images: (sectionImages[i] || []).map(img => ({
@@ -589,10 +599,12 @@ function RoundupTab() {
         const p = selected[i]
         return {
           ...item,
+          product_name: p?.name || '',
           images: (itemImages[p?.id] || []).map(img => ({
             firebase_url: img.file_url,
             alt_text: img.alt_text || img.label || '',
             caption: img.caption || img.label || '',
+            product_name: p?.name || '',
           }))
         }
       })

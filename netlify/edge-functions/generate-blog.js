@@ -41,6 +41,12 @@ Product details:
 - Status: ${product.status}
 ${industry ? `- Primary target industry: ${industry}` : ''}
 
+Writing style:
+- Be concise. Less is more — every sentence must earn its place.
+- 1 short paragraph per section (3–4 sentences max). No padding, no repetition.
+- Lead with the most important point. Cut filler phrases like "In today's world..." or "It's no secret that..."
+- Tone: confident and editorial, like a premium brand magazine — not a sales brochure.
+
 Return ONLY a valid JSON object with this structure:
 {
   "seo_title": "string (max 65 chars, include product name + target keyword)",
@@ -51,27 +57,27 @@ Return ONLY a valid JSON object with this structure:
     {
       "type": "intro",
       "heading": null,
-      "body": "string (2-3 paragraphs, hooks the reader, establishes the problem this gift solves)"
+      "body": "string (1 paragraph — hook the reader, establish what makes this gift exceptional)"
     },
     {
       "type": "product_story",
       "heading": "string",
-      "body": "string (the craft behind it, what makes it unique, materials/process)"
+      "body": "string (1 paragraph — the craft, what makes it unique, materials or design detail)"
     },
     {
       "type": "use_cases",
       "heading": "string",
-      "body": "string (which industries, occasions, and recipient types this suits best — specific examples)"
+      "body": "string (1 paragraph — best industries, occasions, recipient types — be specific, not generic)"
     },
     {
       "type": "customisation",
       "heading": "string",
-      "body": "string (how Crystocraft customises this for each brand — logo, colours, packaging etc)"
+      "body": "string (1 paragraph — how Crystocraft personalises it: logo, engraving, packaging)"
     },
     {
       "type": "cta",
       "heading": "string",
-      "body": "string (soft CTA — invite enquiry, no pressure, emphasise bespoke service)"
+      "body": "string (2–3 sentences — soft CTA, invite enquiry, no pressure)"
     }
   ],
   "tags": ["array", "of", "5-8", "relevant", "tags"],
@@ -95,6 +101,12 @@ Tone: ${tone || 'professional and premium'}
 Products to feature:
 ${productList}
 
+Writing style:
+- Be concise. Every sentence must earn its place — cut padding and repetition.
+- Intro: 1 short paragraph max. Items: 1–2 short paragraphs each. Conclusion: 2–3 sentences.
+- Lead with impact. No filler openers like "In today's competitive landscape..."
+- Tone: confident and editorial, like a premium brand magazine — not a sales brochure.
+
 Return ONLY a valid JSON object with this structure:
 {
   "seo_title": "string (max 65 chars, include number + target keyword e.g. '5 Unique Corporate Gifts for...')",
@@ -102,19 +114,19 @@ Return ONLY a valid JSON object with this structure:
   "slug": "string (URL-friendly slug)",
   "intro": {
     "heading": null,
-    "body": "string (2 paragraphs — why premium corporate gifts matter for this industry/occasion)"
+    "body": "string (1 paragraph — why premium corporate gifts matter for this industry/occasion)"
   },
   "items": [
     {
       "product_name": "string (exact product name from the list)",
       "heading": "string (catchy item heading e.g. '1. The Gift That Keeps Spinning')",
-      "body": "string (2-3 paragraphs — why this product, who it suits, how to customise it)",
+      "body": "string (1–2 paragraphs — why this product, who it suits, one customisation detail)",
       "image_caption": "string (caption for the product image)"
     }
   ],
   "conclusion": {
     "heading": "string",
-    "body": "string (wrap-up + soft CTA to enquire)"
+    "body": "string (2–3 sentences — wrap-up + soft CTA)"
   },
   "tags": ["array", "of", "5-8", "relevant", "tags"],
   "focus_keyword": "string (primary SEO keyword)"

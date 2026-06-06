@@ -31,6 +31,7 @@ export default async function handler(req) {
   // Rules: square (ratio 0.85–1.18) → max 1000×1000 px
   //        landscape (wider)         → max 1200px wide, proportional height
   //        portrait  (taller)        → max 1000px wide, proportional height
+  // Returns { buffer, width, height }
   async function resizeAndCompress(arrayBuffer) {
     const MAX_BYTES = 200 * 1024
     try {
@@ -41,58 +42,56 @@ export default async function handler(req) {
 
       let tw, th
       if (ratio >= 0.85 && ratio <= 1.18) {
-        // Square-ish → cap longest side at 1000px, preserve ratio (no crop)
-        if (width >= height) {
-          tw = Math.min(width, 1000)
-          th = Math.round(tw / ratio)
-        } else {
-          th = Math.min(height, 1000)
-          tw = Math.round(th * ratio)
-        }
+        if (width >= height) { tw = Math.min(width, 1000); th = Math.round(tw / ratio) }
+        else                  { th = Math.min(height, 1000); tw = Math.round(th * ratio) }
       } else if (width >= height) {
-        // Landscape banner → cap width at 1200px, proportional height
-        tw = Math.min(width, 1200)
-        th = Math.round(tw / ratio)
+        tw = Math.min(width, 1200); th = Math.round(tw / ratio)
       } else {
-        // Portrait → cap width at 1000px, proportional height
-        tw = Math.min(width, 1000)
-        th = Math.round(tw / ratio)
+        tw = Math.min(width, 1000); th = Math.round(tw / ratio)
       }
 
-      // Skip canvas processing if already the right size and small enough
+      // Skip canvas if already correct size and small enough
       if (tw === width && th === height && arrayBuffer.byteLength <= MAX_BYTES) {
         bitmap.close()
-        return arrayBuffer
+        return { buffer: arrayBuffer, width: tw, height: th }
       }
 
       const canvas = new OffscreenCanvas(tw, th)
       canvas.getContext('2d').drawImage(bitmap, 0, 0, tw, th)
       bitmap.close()
 
-      // Reduce JPEG quality until under 200KB
       for (const quality of [0.85, 0.75, 0.65, 0.5, 0.35]) {
         const out = await canvas.convertToBlob({ type: 'image/jpeg', quality })
         const buf = await out.arrayBuffer()
-        if (buf.byteLength <= MAX_BYTES) return buf
+        if (buf.byteLength <= MAX_BYTES) return { buffer: buf, width: tw, height: th }
       }
-      // Last resort
       const out = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.25 })
-      return await out.arrayBuffer()
+      return { buffer: await out.arrayBuffer(), width: tw, height: th }
     } catch {
-      // OffscreenCanvas not available in this runtime — upload original
       console.warn('Image resize unavailable; uploading original')
-      return arrayBuffer
+      // Return original with unknown dimensions
+      return { buffer: arrayBuffer, width: 0, height: 0 }
     }
   }
 
+  function slugify(str) {
+    return (str || 'crystocraft')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 60)
+  }
+
   // ── Helper: upload one image to WP Media Library ───────────────────────────
-  async function uploadOne(firebase_url, alt_text = '', caption = '') {
+  // imageType: 'hero' | 'content'
+  async function uploadOne(firebase_url, alt_text = '', caption = '', productName = '', imageType = 'content') {
     try {
       const imgRes = await fetch(firebase_url)
       if (!imgRes.ok) return null
-      const raw       = await imgRes.arrayBuffer()
-      const imgBuffer = await resizeAndCompress(raw)
-      const filename  = `crystocraft-${Date.now()}.jpg`
+      const raw  = await imgRes.arrayBuffer()
+      const { buffer: imgBuffer, width, height } = await resizeAndCompress(raw)
+      const sizeStr  = width && height ? `${width}x${height}` : Date.now().toString()
+      const filename = `${slugify(productName)}-${imageType}-${sizeStr}.jpg`
 
       const mediaRes = await fetch(`${wpApi}/media`, {
         method: 'POST',
@@ -169,14 +168,16 @@ export default async function handler(req) {
       const sections = content.sections || []
       totalImages = (hero ? 1 : 0) + sections.reduce((n, s) => n + (s.images?.length || 0), 0)
 
+      const productName = content.product_name || ''
+
       // Upload hero + ALL section images in parallel
       const [heroMedia, ...sectionMediaArrays] = await Promise.all([
         hero?.firebase_url
-          ? uploadOne(hero.firebase_url, hero.alt_text || '', '')
+          ? uploadOne(hero.firebase_url, hero.alt_text || '', '', productName, 'hero')
           : Promise.resolve(null),
         ...sections.map(section =>
           Promise.all((section.images || []).map(img =>
-            uploadOne(img.firebase_url, img.alt_text, img.caption)
+            uploadOne(img.firebase_url, img.alt_text, img.caption, productName, 'content')
           ))
         ),
       ])
@@ -186,10 +187,13 @@ export default async function handler(req) {
 
       // Hero is set as featured_media — theme displays it as banner, do NOT add to content
 
+      const spacer = `<!-- wp:spacer {"height":"48px"} -->\n<div style="height:48px" aria-hidden="true" class="wp-block-spacer"></div>\n<!-- /wp:spacer -->\n\n`
+
       sections.forEach((section, i) => {
+        if (i > 0) html += spacer
         const imgs = (sectionMediaArrays[i] || []).filter(Boolean)
         if (imgs.length === 1) {
-          html += columnsBlock(section.heading, section.body, imgs[0])
+          html += headingBlock(section.heading) + paraBlock(section.body) + imgBlock(imgs[0], 'large')
         } else if (imgs.length >= 2) {
           html += galleryBlock(section.heading, section.body, imgs)
         } else {
@@ -203,13 +207,14 @@ export default async function handler(req) {
       totalImages = (hero ? 1 : 0) + (items || []).reduce((n, item) => n + (item.images?.length || 0), 0)
 
       // Upload hero + all item images in parallel
+      const heroProductName = (items?.[0]?.product_name) || ''
       const [heroMedia, ...itemMediaArrays] = await Promise.all([
         hero?.firebase_url
-          ? uploadOne(hero.firebase_url, hero.alt_text || '', '')
+          ? uploadOne(hero.firebase_url, hero.alt_text || '', '', heroProductName, 'hero')
           : Promise.resolve(null),
         ...(items || []).map(item =>
           Promise.all((item.images || []).map(img =>
-            uploadOne(img.firebase_url, img.alt_text, img.caption)
+            uploadOne(img.firebase_url, img.alt_text, img.caption, img.product_name || item.product_name || '', 'content')
           ))
         ),
       ])
@@ -220,17 +225,18 @@ export default async function handler(req) {
       // Hero is featured_media only — theme displays it as banner
       if (intro?.body) html += paraBlock(intro.body)
 
+      const itemSpacer = `<!-- wp:spacer {"height":"48px"} -->\n<div style="height:48px" aria-hidden="true" class="wp-block-spacer"></div>\n<!-- /wp:spacer -->\n\n`
+
       items?.forEach((item, idx) => {
+        if (idx > 0) html += itemSpacer
         const imgs = (itemMediaArrays[idx] || []).filter(Boolean)
         if (imgs.length === 1) {
-          html += columnsBlock(item.heading, item.body, imgs[0])
+          html += headingBlock(item.heading) + paraBlock(item.body) + imgBlock(imgs[0], 'large')
         } else if (imgs.length >= 2) {
           html += galleryBlock(item.heading, item.body, imgs)
         } else {
           html += headingBlock(item.heading) + paraBlock(item.body)
         }
-        if (idx < items.length - 1)
-          html += `<!-- wp:separator {"className":"is-style-wide"} -->\n<hr class="wp-block-separator is-style-wide"/>\n<!-- /wp:separator -->\n\n`
       })
 
       if (conclusion) html += headingBlock(conclusion.heading) + paraBlock(conclusion.body)

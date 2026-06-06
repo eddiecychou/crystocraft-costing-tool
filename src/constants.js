@@ -21,12 +21,18 @@ export const CATEGORIES = [
 export const CURRENCIES = ['RMB', 'HKD', 'USD', 'EUR']
 
 export const IMAGE_TYPES = [
-  { value: 'reference',   label: 'Reference' },
-  { value: 'rendering',   label: 'Rendering' },
-  { value: 'design_dwg',  label: 'Design Dwg' },
-  { value: 'sample',      label: 'Sample' },
-  { value: 'final',       label: 'Final' },
-  { value: 'client_usage', label: 'Client Usage' },
+  { value: 'hero',           label: 'Hero' },
+  { value: 'product_detail', label: 'Product Detail' },
+  { value: 'packaging',      label: 'Packaging' },
+  { value: 'lifestyle',      label: 'Lifestyle' },
+  { value: 'customisation',  label: 'Customisation' },
+  { value: 'client_ref',     label: 'Client Ref' },
+]
+
+export const IMAGE_ORIENTATIONS = [
+  { value: 'landscape', label: 'Landscape', short: 'L' },
+  { value: 'square',    label: 'Square',    short: 'S' },
+  { value: 'portrait',  label: 'Portrait',  short: 'P' },
 ]
 
 export const COMPONENT_IMAGE_TYPES = [

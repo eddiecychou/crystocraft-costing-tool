@@ -10,6 +10,13 @@ import {
   SortableContext, rectSortingStrategy, useSortable, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { IMAGE_ORIENTATIONS } from '../constants'
+
+const ORIENTATION_STYLES = {
+  landscape: 'bg-blue-100 text-blue-700',
+  square:    'bg-purple-100 text-purple-700',
+  portrait:  'bg-green-100 text-green-700',
+}
 
 function makeDownloadName(prefix, index) {
   const safe = (prefix || 'image').replace(/[/\\?%*:|"<>]/g, '-').trim()
@@ -40,8 +47,8 @@ function SortableImageCard({ img, idx, typeOptions, onHeroChange, onDelete, onLi
     await updateDoc(doc(db, ...firestorePath.split('/'), img.id), { type })
   }
 
-  async function setAsHero() {
-    // handled in parent via onHeroChange — just call setAsHero directly
+  async function handleOrientationChange(orientation) {
+    await updateDoc(doc(db, ...firestorePath.split('/'), img.id), { orientation })
   }
 
   return (
@@ -112,6 +119,23 @@ function SortableImageCard({ img, idx, typeOptions, onHeroChange, onDelete, onLi
           {typeOptions.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
       )}
+      <div className="flex gap-1">
+        {IMAGE_ORIENTATIONS.map(o => (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => handleOrientationChange(o.value)}
+            className={`flex-1 text-xs py-0.5 rounded font-medium transition-colors ${
+              (img.orientation || 'square') === o.value
+                ? ORIENTATION_STYLES[o.value]
+                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+            }`}
+            title={o.label}
+          >
+            {o.short}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -129,19 +153,20 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
     if (!files.length) return
     setUploading(true)
     try {
-      await Promise.all(files.map(async file => {
-        const resized = await resizeToJpeg(file)
+      await Promise.all(files.map(async (file, i) => {
+        const { blob, orientation } = await resizeToJpeg(file)
         const path = `${storagePath}/${Date.now()}_${++fileIdRef.current}.jpg`
         const sRef = storageRef(storage, path)
-        await uploadBytes(sRef, resized, { contentType: 'image/jpeg' })
+        await uploadBytes(sRef, blob, { contentType: 'image/jpeg' })
         const url = await getDownloadURL(sRef)
         await addDoc(collection(db, ...firestorePath.split('/')), {
           file_url: url,
           storage_path: path,
           file_name: file.name,
-          type: typeOptions?.[0]?.value || 'reference',
+          type: typeOptions?.[0]?.value || 'hero',
+          orientation,
           caption: '',
-          sort_order: images.length,
+          sort_order: images.length + i,
           uploaded_at: serverTimestamp(),
         })
       }))
@@ -265,12 +290,20 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
   )
 }
 
+function detectOrientation(width, height) {
+  const ratio = width / height
+  if (ratio >= 0.85 && ratio <= 1.18) return 'square'
+  return ratio > 1 ? 'landscape' : 'portrait'
+}
+
 async function resizeToJpeg(file, maxPx = 2400, quality = 0.93) {
   const bitmap = await createImageBitmap(file)
+  const orientation = detectOrientation(bitmap.width, bitmap.height)
   const scale = Math.min(1, maxPx / Math.max(bitmap.width, bitmap.height))
   const w = Math.round(bitmap.width * scale)
   const h = Math.round(bitmap.height * scale)
   const canvas = new OffscreenCanvas(w, h)
   canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h)
-  return canvas.convertToBlob({ type: 'image/jpeg', quality })
+  const blob = await canvas.convertToBlob({ type: 'image/jpeg', quality })
+  return { blob, orientation }
 }
