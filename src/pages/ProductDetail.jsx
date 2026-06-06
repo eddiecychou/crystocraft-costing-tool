@@ -114,6 +114,7 @@ export default function ProductDetail() {
             </div>
           </div>
           <div className="flex gap-2 shrink-0">
+            <Link to={`/blog-generator/${id}`} className="btn-secondary text-sm">✍️ Blog</Link>
             <Link to={`/products/${id}/edit`} className="btn-secondary text-sm">Edit</Link>
             <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>Delete</button>
           </div>

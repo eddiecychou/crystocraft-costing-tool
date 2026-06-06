@@ -24,6 +24,7 @@ import Catalogues from './pages/Catalogues'
 import CatalogueForm from './pages/CatalogueForm'
 import CatalogueDetail from './pages/CatalogueDetail'
 import CataloguePreview from './pages/CataloguePreview'
+import BlogGenerator from './pages/BlogGenerator'
 
 function ProtectedRoute({ children, user }) {
   if (user === undefined) return <LoadingBar />
@@ -70,6 +71,8 @@ export default function App() {
                 <Route path="/catalogues/:id" element={<CatalogueDetail />} />
                 <Route path="/catalogues/:id/edit" element={<CatalogueForm />} />
                 <Route path="/catalogues/:id/preview" element={<CataloguePreview />} />
+                <Route path="/blog-generator" element={<BlogGenerator />} />
+                <Route path="/blog-generator/:productId" element={<BlogGenerator />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>
             </Layout>

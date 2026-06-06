@@ -8,8 +8,9 @@ const nav = [
   { to: '/suppliers',  label: 'Suppliers',  icon: '🏭' },
   { to: '/customers',  label: 'Customers',  icon: '🏢' },
   { to: '/quotes',     label: 'Quotes',     icon: '📋' },
-  { to: '/catalogues', label: 'Catalogues', icon: '📖' },
-  { to: '/settings',   label: 'Settings',   icon: '⚙️' },
+  { to: '/catalogues',    label: 'Catalogues',  icon: '📖' },
+  { to: '/blog-generator', label: 'Blog Writer', icon: '✍️' },
+  { to: '/settings',      label: 'Settings',    icon: '⚙️' },
 ]
 
 export default function Layout({ children, user }) {
