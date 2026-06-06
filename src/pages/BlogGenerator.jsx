@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 
 const INDUSTRIES = [
   'Banking & Financial Services',
@@ -16,13 +16,86 @@ const INDUSTRIES = [
   'General Corporate Gifting',
 ]
 
+// ── Copy button ───────────────────────────────────────────────────────────────
+function CopyButton({ text, label = 'Copy' }) {
+  const [copied, setCopied] = useState(false)
+  function handleCopy() {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+  return (
+    <button
+      onClick={handleCopy}
+      className="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-brand-50 text-gray-600 hover:text-brand-700 transition-colors shrink-0"
+    >
+      {copied ? '✓ Copied!' : label}
+    </button>
+  )
+}
+
+// ── Image picker ──────────────────────────────────────────────────────────────
+function ImagePicker({ images, selected, onChange }) {
+  function toggle(img) {
+    const isSelected = selected.find(s => s.url === img.url)
+    if (isSelected) {
+      onChange(selected.filter(s => s.url !== img.url))
+    } else {
+      onChange([...selected, img])
+    }
+  }
+
+  if (!images.length) return (
+    <p className="text-xs text-gray-400 py-2">No images found for this product. Upload images on the product page first.</p>
+  )
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-gray-500">{selected.length} of {images.length} selected — first image becomes the hero & featured image</p>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => onChange(images)} className="text-xs text-brand-600 hover:underline">All</button>
+          <button type="button" onClick={() => onChange([])} className="text-xs text-gray-400 hover:underline">None</button>
+        </div>
+      </div>
+      <div className="grid grid-cols-4 gap-2">
+        {images.map((img, i) => {
+          const isSelected = Boolean(selected.find(s => s.url === img.url))
+          const position = selected.findIndex(s => s.url === img.url)
+          return (
+            <button
+              key={img.url || i}
+              type="button"
+              onClick={() => toggle(img)}
+              className={`relative rounded-lg overflow-hidden border-2 transition-all aspect-square ${
+                isSelected ? 'border-brand-500' : 'border-gray-200 opacity-50'
+              }`}
+            >
+              <img src={img.url} alt="" className="w-full h-full object-cover" />
+              {isSelected && (
+                <div className="absolute top-1 left-1 w-5 h-5 rounded-full bg-brand-500 text-white text-xs flex items-center justify-center font-bold">
+                  {position + 1}
+                </div>
+              )}
+              {position === 0 && (
+                <div className="absolute bottom-0 inset-x-0 bg-brand-500/80 text-white text-xs text-center py-0.5">hero</div>
+              )}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── WordPress publish button ──────────────────────────────────────────────────
 function WPPublishButton({ type, content, images }) {
-  const [state, setState] = useState('idle') // idle | loading | success | error
+  const [state, setState] = useState('idle')
   const [result, setResult] = useState(null)
   const [errMsg, setErrMsg] = useState('')
 
   async function handlePublish() {
+    if (!images.length) return
     setState('loading')
     setErrMsg('')
     try {
@@ -45,24 +118,14 @@ function WPPublishButton({ type, content, images }) {
     return (
       <div className="rounded-lg border border-green-200 bg-green-50 p-4 space-y-2">
         <p className="text-sm font-semibold text-green-800">✅ Draft published to WordPress!</p>
-        <p className="text-xs text-green-700">
-          {result.images_uploaded}/{result.images_total} images uploaded to Media Library
-        </p>
+        <p className="text-xs text-green-700">{result.images_uploaded}/{result.images_total} images uploaded to Media Library</p>
         <div className="flex gap-2 flex-wrap">
-          <a
-            href={result.edit_url}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs px-3 py-1.5 rounded-md bg-green-700 text-white hover:bg-green-800 transition-colors"
-          >
+          <a href={result.edit_url} target="_blank" rel="noreferrer"
+            className="text-xs px-3 py-1.5 rounded-md bg-green-700 text-white hover:bg-green-800 transition-colors">
             ✏️ Edit in WordPress →
           </a>
-          <a
-            href={result.preview_url}
-            target="_blank"
-            rel="noreferrer"
-            className="text-xs px-3 py-1.5 rounded-md bg-white border border-green-300 text-green-700 hover:bg-green-50 transition-colors"
-          >
+          <a href={result.preview_url} target="_blank" rel="noreferrer"
+            className="text-xs px-3 py-1.5 rounded-md bg-white border border-green-300 text-green-700 hover:bg-green-50 transition-colors">
             👁 Preview post →
           </a>
         </div>
@@ -74,61 +137,81 @@ function WPPublishButton({ type, content, images }) {
     <div className="space-y-2">
       <button
         onClick={handlePublish}
-        disabled={state === 'loading'}
-        className="w-full btn-primary justify-center bg-blue-600 hover:bg-blue-700 border-blue-600"
-        style={{ background: state === 'loading' ? '#3b82f6' : '#2563eb', borderColor: '#2563eb' }}
+        disabled={state === 'loading' || !images.length}
+        className="w-full py-2.5 px-4 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-40"
+        style={{ background: '#2563eb' }}
       >
-        {state === 'loading' ? '⏳ Uploading images & publishing draft…' : '🚀 Publish Draft to WordPress'}
+        {state === 'loading' ? '⏳ Uploading images & publishing draft…' : `🚀 Publish Draft to WordPress (${images.length} image${images.length !== 1 ? 's' : ''})`}
       </button>
+      {!images.length && <p className="text-xs text-amber-600 text-center">Select at least one image to publish</p>}
       {state === 'error' && <p className="text-xs text-red-500">{errMsg}</p>}
-      <p className="text-xs text-gray-400 text-center">Images will be uploaded to WP Media Library for maximum SEO benefit</p>
+      <p className="text-xs text-gray-400 text-center">Images upload to WP Media Library — same domain = max SEO</p>
     </div>
   )
 }
 
-// ── Copy button ───────────────────────────────────────────────────────────────
-function CopyButton({ text, label = 'Copy' }) {
-  const [copied, setCopied] = useState(false)
-  function handleCopy() {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+// ── Editable SEO meta card ────────────────────────────────────────────────────
+function EditableMeta({ result, onChange }) {
+  function set(field) {
+    return e => onChange({ ...result, [field]: e.target.value })
   }
-  return (
-    <button
-      onClick={handleCopy}
-      className="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-brand-50 text-gray-600 hover:text-brand-700 transition-colors"
-    >
-      {copied ? '✓ Copied!' : label}
-    </button>
-  )
-}
+  function setTag(val) {
+    onChange({ ...result, tags: val.split(',').map(t => t.trim()).filter(Boolean) })
+  }
 
-// ── Section block (for spotlight output) ─────────────────────────────────────
-function SectionBlock({ section }) {
+  const fields = [
+    { label: 'SEO Title', field: 'seo_title', hint: `${result.seo_title?.length || 0}/65 chars` },
+    { label: 'URL Slug', field: 'slug' },
+    { label: 'Focus Keyword', field: 'focus_keyword' },
+  ]
+
   return (
-    <div className="border border-gray-100 rounded-lg p-4 space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
-          {section.type.replace('_', ' ')}
-        </span>
-        <CopyButton text={[section.heading, section.body].filter(Boolean).join('\n\n')} />
+    <div className="card p-5 space-y-3">
+      <h3 className="font-semibold text-gray-800">SEO & Meta</h3>
+      <div className="space-y-3">
+        {fields.map(({ label, field, hint }) => (
+          <div key={field}>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-xs text-gray-500">{label} {hint && <span className="text-gray-300">· {hint}</span>}</label>
+              <CopyButton text={result[field] || ''} />
+            </div>
+            <input className="input text-sm" value={result[field] || ''} onChange={set(field)} />
+          </div>
+        ))}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs text-gray-500">Meta Description · {result.meta_description?.length || 0}/155 chars</label>
+            <CopyButton text={result.meta_description || ''} />
+          </div>
+          <textarea className="input text-sm" rows={2} value={result.meta_description || ''} onChange={set('meta_description')} />
+        </div>
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs text-gray-500">Tags (comma separated)</label>
+            <CopyButton text={result.tags?.join(', ') || ''} />
+          </div>
+          <input className="input text-sm" value={result.tags?.join(', ') || ''} onChange={e => setTag(e.target.value)} />
+          <div className="flex flex-wrap gap-1 mt-1">
+            {result.tags?.map(t => (
+              <span key={t} className="text-xs bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full">{t}</span>
+            ))}
+          </div>
+        </div>
       </div>
-      {section.heading && <p className="font-semibold text-gray-900">{section.heading}</p>}
-      <p className="text-sm text-gray-700 whitespace-pre-line">{section.body}</p>
     </div>
   )
 }
 
 // ── Spotlight tab ─────────────────────────────────────────────────────────────
 function SpotlightTab({ preloadedProduct }) {
-  const [products, setProducts]   = useState([])
+  const [products, setProducts]     = useState([])
   const [selectedId, setSelectedId] = useState(preloadedProduct?.id || '')
-  const [industry, setIndustry]   = useState('')
-  const [result, setResult]       = useState(null)
-  const [loading, setLoading]     = useState(false)
-  const [error, setError]         = useState('')
+  const [industry, setIndustry]     = useState('')
+  const [result, setResult]         = useState(null)
+  const [loading, setLoading]       = useState(false)
+  const [error, setError]           = useState('')
   const [productImages, setProductImages] = useState([])
+  const [selectedImages, setSelectedImages] = useState([])
 
   useEffect(() => {
     getDocs(query(collection(db, 'products'), orderBy('name')))
@@ -139,11 +222,14 @@ function SpotlightTab({ preloadedProduct }) {
     ? preloadedProduct
     : products.find(p => p.id === selectedId)
 
-  // Fetch images when product changes
   useEffect(() => {
-    if (!selectedId) { setProductImages([]); return }
+    if (!selectedId) { setProductImages([]); setSelectedImages([]); return }
     getDocs(query(collection(db, 'products', selectedId, 'images'), orderBy('sort_order')))
-      .then(snap => setProductImages(snap.docs.map(d => d.data())))
+      .then(snap => {
+        const imgs = snap.docs.map(d => d.data())
+        setProductImages(imgs)
+        setSelectedImages(imgs) // default: all selected
+      })
   }, [selectedId])
 
   async function handleGenerate() {
@@ -169,23 +255,31 @@ function SpotlightTab({ preloadedProduct }) {
     }
   }
 
+  function updateSection(i, field, val) {
+    setResult(prev => ({
+      ...prev,
+      sections: prev.sections.map((s, idx) => idx === i ? { ...s, [field]: val } : s),
+    }))
+  }
+
   function fullPostText() {
     if (!result) return ''
-    const lines = [
+    return [
       `SEO TITLE: ${result.seo_title}`,
       `META DESCRIPTION: ${result.meta_description}`,
       `SLUG: ${result.slug}`,
       `FOCUS KEYWORD: ${result.focus_keyword}`,
       `TAGS: ${result.tags?.join(', ')}`,
       '',
-      ...result.sections.flatMap(s => [
-        s.heading ? `## ${s.heading}` : '',
-        s.body,
-        '',
-      ]),
-    ]
-    return lines.filter(l => l !== undefined).join('\n')
+      ...result.sections.flatMap(s => [s.heading ? `## ${s.heading}` : '', s.body, '']),
+    ].join('\n')
   }
+
+  const wpImages = selectedImages.map(img => ({
+    firebase_url: img.url,
+    alt_text: img.alt_text || result?.hero_alt_text || selectedProduct?.name || '',
+    caption: img.caption || img.label || '',
+  }))
 
   return (
     <div className="space-y-5">
@@ -199,120 +293,67 @@ function SpotlightTab({ preloadedProduct }) {
           </select>
         </div>
         <div>
-          <label className="label">Target Industry <span className="text-gray-400 font-normal">(optional — improves relevance)</span></label>
+          <label className="label">Target Industry <span className="text-gray-400 font-normal">(optional)</span></label>
           <select className="input" value={industry} onChange={e => setIndustry(e.target.value)}>
             <option value="">General corporate gifting</option>
             {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
           </select>
         </div>
-        <button
-          onClick={handleGenerate}
-          disabled={!selectedId || loading}
-          className="btn-primary w-full justify-center"
-        >
+        <button onClick={handleGenerate} disabled={!selectedId || loading} className="btn-primary w-full justify-center">
           {loading ? '✍️ Writing blog post…' : '✨ Generate Product Spotlight Post'}
         </button>
         {error && <p className="text-sm text-red-500">{error}</p>}
       </div>
 
-      {/* Result */}
       {result && (
         <div className="space-y-4">
-          {/* SEO meta */}
-          <div className="card p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800">SEO & Meta</h3>
-              <CopyButton text={fullPostText()} label="Copy Full Post" />
-            </div>
-            <div className="space-y-2">
-              {[
-                { label: 'SEO Title', value: result.seo_title, hint: `${result.seo_title?.length || 0}/65 chars` },
-                { label: 'Meta Description', value: result.meta_description, hint: `${result.meta_description?.length || 0}/155 chars` },
-                { label: 'URL Slug', value: result.slug },
-                { label: 'Focus Keyword', value: result.focus_keyword },
-              ].map(({ label, value, hint }) => (
-                <div key={label} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-400 mb-0.5">{label} {hint && <span className="text-gray-300">· {hint}</span>}</p>
-                    <p className="text-sm text-gray-800">{value}</p>
-                  </div>
-                  <CopyButton text={value} />
-                </div>
-              ))}
-              {result.tags && (
-                <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-400 mb-1">Tags</p>
-                    <div className="flex flex-wrap gap-1">
-                      {result.tags.map(t => (
-                        <span key={t} className="text-xs bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full">{t}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <CopyButton text={result.tags?.join(', ')} />
-                </div>
-              )}
-            </div>
-          </div>
+          {/* SEO meta — editable */}
+          <EditableMeta result={result} onChange={setResult} />
 
-          {/* Hero image */}
-          {selectedProduct?.heroImage && (
-            <div className="card p-5 space-y-2">
-              <h3 className="font-semibold text-gray-800">Hero Image</h3>
-              <div className="flex items-center gap-4">
-                <img src={selectedProduct.heroImage} alt="" className="w-20 h-20 object-cover rounded-lg" />
-                <div className="flex-1 space-y-1">
-                  <p className="text-xs text-gray-400">Alt text for SEO</p>
-                  <p className="text-sm text-gray-700">{result.hero_alt_text}</p>
-                  <div className="flex gap-2 mt-1">
-                    <CopyButton text={result.hero_alt_text} label="Copy alt text" />
-                    <CopyButton text={selectedProduct.heroImage} label="Copy image URL" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Content sections */}
+          {/* Content sections — editable */}
           <div className="card p-5 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-800">Blog Content</h3>
-              <p className="text-xs text-gray-400">Paste each section into an Elementor Text widget</p>
+              <CopyButton text={fullPostText()} label="Copy All" />
             </div>
-            {result.sections?.map((s, i) => <SectionBlock key={i} section={s} />)}
+            {result.sections?.map((s, i) => (
+              <div key={i} className="border border-gray-100 rounded-lg p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 shrink-0">
+                    {s.type?.replace('_', ' ') || `Section ${i + 1}`}
+                  </span>
+                  <CopyButton text={[s.heading, s.body].filter(Boolean).join('\n\n')} />
+                </div>
+                {s.heading !== undefined && (
+                  <input
+                    className="input text-sm font-medium"
+                    value={s.heading || ''}
+                    onChange={e => updateSection(i, 'heading', e.target.value)}
+                    placeholder="Section heading…"
+                  />
+                )}
+                <textarea
+                  className="input text-sm"
+                  rows={4}
+                  value={s.body || ''}
+                  onChange={e => updateSection(i, 'body', e.target.value)}
+                />
+              </div>
+            ))}
           </div>
 
           {/* Publish to WordPress */}
-          <div className="card p-5 space-y-3">
-            <div>
-              <h3 className="font-semibold text-gray-800">Publish to WordPress</h3>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Creates a draft post with {productImages.length} image{productImages.length !== 1 ? 's' : ''} uploaded to WP Media Library
-              </p>
-            </div>
-            <WPPublishButton
-              type="spotlight"
-              content={result}
-              images={productImages.map(img => ({
-                firebase_url: img.url,
-                alt_text: img.alt_text || result.hero_alt_text || selectedProduct?.name || '',
-                caption: img.caption || img.label || '',
-              }))}
+          <div className="card p-5 space-y-4">
+            <h3 className="font-semibold text-gray-800">Images & Publish to WordPress</h3>
+            <p className="text-xs text-gray-500">
+              Select which images to include. They'll be uploaded to WP Media Library and spread across the post content automatically.
+            </p>
+            <ImagePicker
+              images={productImages}
+              selected={selectedImages}
+              onChange={setSelectedImages}
             />
-          </div>
-
-          {/* Elementor guide */}
-          <div className="card p-5 bg-amber-50 border border-amber-100">
-            <h3 className="font-semibold text-amber-800 mb-2">📋 Elementor Workflow (manual alternative)</h3>
-            <ol className="text-sm text-amber-700 space-y-1 list-decimal list-inside">
-              <li>In WordPress → Posts → Add New, set the <strong>SEO Title</strong> and <strong>Meta Description</strong> in Yoast/RankMath</li>
-              <li>Set the <strong>URL slug</strong> in the post permalink</li>
-              <li>Click <strong>Edit with Elementor</strong></li>
-              <li>Add an <strong>Image widget</strong> → paste the image URL, set alt text</li>
-              <li>Add a <strong>Heading widget</strong> for each section heading</li>
-              <li>Add a <strong>Text Editor widget</strong> for each section body — copy from above</li>
-              <li>Add <strong>Tags</strong> in the WordPress post settings panel</li>
-            </ol>
+            <WPPublishButton type="spotlight" content={result} images={wpImages} />
           </div>
         </div>
       )}
@@ -322,13 +363,13 @@ function SpotlightTab({ preloadedProduct }) {
 
 // ── Roundup tab ───────────────────────────────────────────────────────────────
 function RoundupTab() {
-  const [products, setProducts]     = useState([])
-  const [selected, setSelected]     = useState([])
-  const [industry, setIndustry]     = useState('')
-  const [tone, setTone]             = useState('professional and premium')
-  const [result, setResult]         = useState(null)
-  const [loading, setLoading]       = useState(false)
-  const [error, setError]           = useState('')
+  const [products, setProducts] = useState([])
+  const [selected, setSelected] = useState([])
+  const [industry, setIndustry] = useState('')
+  const [tone, setTone]         = useState('professional and premium')
+  const [result, setResult]     = useState(null)
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState('')
 
   useEffect(() => {
     getDocs(query(collection(db, 'products'), orderBy('name')))
@@ -365,9 +406,18 @@ function RoundupTab() {
     }
   }
 
+  function updateItem(i, field, val) {
+    setResult(prev => ({
+      ...prev,
+      items: prev.items.map((item, idx) => idx === i ? { ...item, [field]: val } : item),
+    }))
+  }
+  function updateIntro(val) { setResult(prev => ({ ...prev, intro: { ...prev.intro, body: val } })) }
+  function updateConclusion(field, val) { setResult(prev => ({ ...prev, conclusion: { ...prev.conclusion, [field]: val } })) }
+
   function fullPostText() {
     if (!result) return ''
-    const lines = [
+    return [
       `SEO TITLE: ${result.seo_title}`,
       `META DESCRIPTION: ${result.meta_description}`,
       `SLUG: ${result.slug}`,
@@ -376,37 +426,34 @@ function RoundupTab() {
       '',
       result.intro?.body || '',
       '',
-      ...(result.items || []).flatMap(item => [
-        `## ${item.heading}`,
-        item.body,
-        item.image_caption ? `[Image: ${item.image_caption}]` : '',
-        '',
-      ]),
+      ...(result.items || []).flatMap(item => [`## ${item.heading}`, item.body, '']),
       `## ${result.conclusion?.heading || ''}`,
       result.conclusion?.body || '',
-    ]
-    return lines.join('\n')
+    ].join('\n')
   }
+
+  const wpImages = selected
+    .map((p, i) => ({
+      firebase_url: p.heroImage,
+      alt_text: result?.items?.[i]?.image_caption || p.name || '',
+      caption: result?.items?.[i]?.image_caption || '',
+    }))
+    .filter(img => img.firebase_url)
 
   return (
     <div className="space-y-5">
       <div className="card p-5 space-y-4">
         {/* Product picker */}
         <div>
-          <label className="label">Select Products <span className="text-gray-400 font-normal">(2–7, in the order you want them)</span></label>
+          <label className="label">Select Products <span className="text-gray-400 font-normal">(2–7, in the order you want)</span></label>
           <div className="mt-2 space-y-1.5 max-h-64 overflow-y-auto pr-1">
             {products.map(p => {
               const isSelected = selected.find(s => s.id === p.id)
               const idx = selected.findIndex(s => s.id === p.id)
               return (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => toggleProduct(p)}
+                <button key={p.id} type="button" onClick={() => toggleProduct(p)}
                   className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-colors ${
-                    isSelected
-                      ? 'border-brand-300 bg-brand-50'
-                      : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
+                    isSelected ? 'border-brand-300 bg-brand-50' : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'
                   }`}
                 >
                   {p.heroImage
@@ -421,6 +468,9 @@ function RoundupTab() {
                     <span className="w-6 h-6 rounded-full bg-brand-500 text-white text-xs flex items-center justify-center shrink-0 font-bold">
                       {idx + 1}
                     </span>
+                  )}
+                  {!p.heroImage && (
+                    <span className="text-xs text-amber-500 shrink-0">no image</span>
                   )}
                 </button>
               )
@@ -449,56 +499,17 @@ function RoundupTab() {
           </select>
         </div>
 
-        <button
-          onClick={handleGenerate}
-          disabled={selected.length < 2 || loading}
-          className="btn-primary w-full justify-center"
-        >
+        <button onClick={handleGenerate} disabled={selected.length < 2 || loading} className="btn-primary w-full justify-center">
           {loading ? '✍️ Writing roundup post…' : `✨ Generate Roundup Post (${selected.length} products)`}
         </button>
-        {selected.length < 2 && <p className="text-xs text-gray-400 text-center">Select at least 2 products to generate a roundup</p>}
+        {selected.length < 2 && <p className="text-xs text-gray-400 text-center">Select at least 2 products</p>}
         {error && <p className="text-sm text-red-500">{error}</p>}
       </div>
 
-      {/* Result */}
       {result && (
         <div className="space-y-4">
-          {/* SEO meta */}
-          <div className="card p-5 space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800">SEO & Meta</h3>
-              <CopyButton text={fullPostText()} label="Copy Full Post" />
-            </div>
-            <div className="space-y-2">
-              {[
-                { label: 'SEO Title', value: result.seo_title, hint: `${result.seo_title?.length || 0}/65 chars` },
-                { label: 'Meta Description', value: result.meta_description, hint: `${result.meta_description?.length || 0}/155 chars` },
-                { label: 'URL Slug', value: result.slug },
-                { label: 'Focus Keyword', value: result.focus_keyword },
-              ].map(({ label, value, hint }) => (
-                <div key={label} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-400 mb-0.5">{label} {hint && <span className="text-gray-300">· {hint}</span>}</p>
-                    <p className="text-sm text-gray-800">{value}</p>
-                  </div>
-                  <CopyButton text={value} />
-                </div>
-              ))}
-              {result.tags && (
-                <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-400 mb-1">Tags</p>
-                    <div className="flex flex-wrap gap-1">
-                      {result.tags.map(t => (
-                        <span key={t} className="text-xs bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full">{t}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <CopyButton text={result.tags?.join(', ')} />
-                </div>
-              )}
-            </div>
-          </div>
+          {/* SEO meta — editable */}
+          <EditableMeta result={result} onChange={setResult} />
 
           {/* Intro */}
           {result.intro && (
@@ -507,7 +518,7 @@ function RoundupTab() {
                 <h3 className="font-semibold text-gray-800">Introduction</h3>
                 <CopyButton text={result.intro.body} />
               </div>
-              <p className="text-sm text-gray-700 whitespace-pre-line">{result.intro.body}</p>
+              <textarea className="input text-sm" rows={3} value={result.intro.body || ''} onChange={e => updateIntro(e.target.value)} />
             </div>
           )}
 
@@ -517,19 +528,28 @@ function RoundupTab() {
             return (
               <div key={i} className="card p-5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-800">{item.heading}</h3>
+                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Product {i + 1}</span>
                   <CopyButton text={`${item.heading}\n\n${item.body}`} />
                 </div>
+                <input className="input text-sm font-medium" value={item.heading || ''} onChange={e => updateItem(i, 'heading', e.target.value)} placeholder="Heading…" />
                 {product?.heroImage && (
-                  <div className="flex items-center gap-3">
-                    <img src={product.heroImage} alt="" className="w-16 h-16 object-cover rounded-lg" />
-                    <div className="text-xs text-gray-500 space-y-1">
-                      <p className="font-medium text-gray-700">Image caption: {item.image_caption}</p>
-                      <CopyButton text={product.heroImage} label="Copy image URL" />
+                  <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+                    <img src={product.heroImage} alt="" className="w-14 h-14 object-cover rounded" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-400 mb-1">Image caption / alt text</p>
+                      <input
+                        className="input text-xs py-1"
+                        value={item.image_caption || ''}
+                        onChange={e => updateItem(i, 'image_caption', e.target.value)}
+                        placeholder="e.g. Crystal trophy engraved with company logo"
+                      />
                     </div>
                   </div>
                 )}
-                <p className="text-sm text-gray-700 whitespace-pre-line">{item.body}</p>
+                {!product?.heroImage && (
+                  <p className="text-xs text-amber-500 bg-amber-50 rounded p-2">⚠️ This product has no hero image — it will appear without a photo in the post</p>
+                )}
+                <textarea className="input text-sm" rows={4} value={item.body || ''} onChange={e => updateItem(i, 'body', e.target.value)} />
               </div>
             )
           })}
@@ -538,42 +558,32 @@ function RoundupTab() {
           {result.conclusion && (
             <div className="card p-5 space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-800">{result.conclusion.heading}</h3>
+                <h3 className="font-semibold text-gray-800">Conclusion</h3>
                 <CopyButton text={`${result.conclusion.heading}\n\n${result.conclusion.body}`} />
               </div>
-              <p className="text-sm text-gray-700 whitespace-pre-line">{result.conclusion.body}</p>
+              <input className="input text-sm font-medium" value={result.conclusion.heading || ''} onChange={e => updateConclusion('heading', e.target.value)} />
+              <textarea className="input text-sm" rows={3} value={result.conclusion.body || ''} onChange={e => updateConclusion('body', e.target.value)} />
             </div>
           )}
 
-          {/* Publish to WordPress */}
-          <div className="card p-5 space-y-3">
+          {/* Images preview + publish */}
+          <div className="card p-5 space-y-4">
             <div>
-              <h3 className="font-semibold text-gray-800">Publish to WordPress</h3>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Creates a draft post with {selected.length} product image{selected.length !== 1 ? 's' : ''} uploaded to WP Media Library
-              </p>
+              <h3 className="font-semibold text-gray-800">Images & Publish to WordPress</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Each product's hero image will be placed beside its section in the post.</p>
             </div>
-            <WPPublishButton
-              type="roundup"
-              content={result}
-              images={selected.map((p, i) => ({
-                firebase_url: p.heroImage,
-                alt_text: result.items?.[i]?.image_caption || p.name || '',
-                caption: result.items?.[i]?.image_caption || '',
-              })).filter(img => img.firebase_url)}
-            />
-          </div>
-
-          {/* Elementor guide */}
-          <div className="card p-5 bg-amber-50 border border-amber-100">
-            <h3 className="font-semibold text-amber-800 mb-2">📋 Elementor Workflow (manual alternative)</h3>
-            <ol className="text-sm text-amber-700 space-y-1 list-decimal list-inside">
-              <li>WordPress → Posts → Add New, paste <strong>SEO Title</strong> + <strong>Meta Description</strong> into Yoast/RankMath</li>
-              <li>Set the <strong>URL slug</strong> in permalink settings</li>
-              <li>Edit with Elementor → for each product section: Image widget → Heading widget → Text widget</li>
-              <li>Use <strong>"Copy image URL"</strong> to paste into Elementor Image widget URL field</li>
-              <li>Add <strong>Tags</strong> in the WordPress sidebar</li>
-            </ol>
+            <div className="grid grid-cols-4 gap-2">
+              {selected.map((p, i) => (
+                <div key={p.id} className="space-y-1">
+                  {p.heroImage
+                    ? <img src={p.heroImage} alt="" className="w-full aspect-square object-cover rounded-lg border border-gray-200" />
+                    : <div className="w-full aspect-square rounded-lg border border-dashed border-gray-200 flex items-center justify-center text-gray-300 text-xs">no image</div>
+                  }
+                  <p className="text-xs text-gray-500 text-center truncate">{p.name}</p>
+                </div>
+              ))}
+            </div>
+            <WPPublishButton type="roundup" content={result} images={wpImages} />
           </div>
         </div>
       )}
@@ -584,7 +594,6 @@ function RoundupTab() {
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function BlogGenerator() {
   const { productId } = useParams()
-  const navigate = useNavigate()
   const [tab, setTab] = useState('spotlight')
   const [preloadedProduct, setPreloadedProduct] = useState(null)
 
@@ -602,23 +611,18 @@ export default function BlogGenerator() {
         <Link to="/products" className="text-sm text-brand-600 hover:underline">← Products</Link>
         <h1 className="text-2xl font-bold text-gray-900 mt-1">Blog Post Generator</h1>
         <p className="text-sm text-gray-500 mt-1">
-          Generate SEO-optimised blog content from your product data, ready to paste into Elementor.
+          Generate SEO-optimised blog content from your product data, then publish as a WordPress draft in one click.
         </p>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-1 p-1 bg-gray-100 rounded-lg mb-6">
         {[
           { key: 'spotlight', label: '🔦 Product Spotlight', desc: 'One product, one post' },
-          { key: 'roundup', label: '📋 Roundup Post', desc: 'Multiple products, one post' },
+          { key: 'roundup',   label: '📋 Roundup Post',      desc: 'Multiple products, one post' },
         ].map(t => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+          <button key={t.key} onClick={() => setTab(t.key)}
             className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${
-              tab === t.key
-                ? 'bg-white shadow text-gray-900'
-                : 'text-gray-500 hover:text-gray-700'
+              tab === t.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'
             }`}
           >
             <span>{t.label}</span>

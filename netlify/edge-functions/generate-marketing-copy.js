@@ -36,7 +36,7 @@ REQUIREMENTS:
 
 Marketing description:`
 
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash']
+  const models = ['gemini-2.0-flash', 'gemini-2.5-flash']
 
   for (const model of models) {
     try {
@@ -47,7 +47,7 @@ Marketing description:`
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.75, maxOutputTokens: 300 },
+            generationConfig: { temperature: 0.75, maxOutputTokens: 512 },
           }),
         }
       )
