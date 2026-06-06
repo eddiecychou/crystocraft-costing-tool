@@ -40,15 +40,20 @@ Marketing description:`
 
   for (const model of models) {
     try {
+      const body = {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.75, maxOutputTokens: 1024 },
+      }
+      // Disable thinking for 2.5-flash — thinking tokens eat into output budget
+      if (model === 'gemini-2.5-flash') {
+        body.generationConfig.thinkingConfig = { thinkingBudget: 0 }
+      }
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.75, maxOutputTokens: 512 },
-          }),
+          body: JSON.stringify(body),
         }
       )
 

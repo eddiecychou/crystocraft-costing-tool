@@ -122,6 +122,15 @@ Return ONLY a valid JSON object with this structure:
   }
 
   async function callGemini(model) {
+    const genConfig = {
+      temperature: 0.7,
+      maxOutputTokens: 4096,
+      responseMimeType: 'application/json',
+    }
+    // Disable thinking — thinking tokens consume output budget
+    if (model.includes('2.5')) {
+      genConfig.thinkingConfig = { thinkingBudget: 0 }
+    }
     return fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
       {
@@ -129,15 +138,15 @@ Return ONLY a valid JSON object with this structure:
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.7, responseMimeType: 'application/json' },
+          generationConfig: genConfig,
         }),
       }
     )
   }
 
   try {
-    let res = await callGemini('gemini-2.5-flash')
-    if (!res.ok) res = await callGemini('gemini-2.5-pro')
+    let res = await callGemini('gemini-2.0-flash')
+    if (!res.ok) res = await callGemini('gemini-2.5-flash')
 
     const data = await res.json()
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
