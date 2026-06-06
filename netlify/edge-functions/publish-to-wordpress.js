@@ -184,8 +184,7 @@ export default async function handler(req) {
       if (heroMedia) { featuredMediaId = heroMedia.wp_id; totalUploaded++ }
       sectionMediaArrays.forEach(arr => arr.forEach(m => { if (m) totalUploaded++ }))
 
-      // Build HTML
-      if (heroMedia) html += imgBlock(heroMedia, 'large', 'hero-image')
+      // Hero is set as featured_media — theme displays it as banner, do NOT add to content
 
       sections.forEach((section, i) => {
         const imgs = (sectionMediaArrays[i] || []).filter(Boolean)
