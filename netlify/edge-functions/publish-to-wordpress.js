@@ -200,23 +200,35 @@ export default async function handler(req) {
     // ── ROUNDUP ───────────────────────────────────────────────────────────────
     } else if (type === 'roundup') {
       const { intro, items, conclusion } = content
-      totalImages = (images || []).length
+      totalImages = (hero ? 1 : 0) + (items || []).reduce((n, item) => n + (item.images?.length || 0), 0)
 
-      // Upload all product images in parallel
-      const uploadedImages = await Promise.all(
-        (images || []).map(img => uploadOne(img.firebase_url, img.alt_text, img.caption))
-      )
-      totalUploaded = uploadedImages.filter(Boolean).length
+      // Upload hero + all item images in parallel
+      const [heroMedia, ...itemMediaArrays] = await Promise.all([
+        hero?.firebase_url
+          ? uploadOne(hero.firebase_url, hero.alt_text || '', '')
+          : Promise.resolve(null),
+        ...(items || []).map(item =>
+          Promise.all((item.images || []).map(img =>
+            uploadOne(img.firebase_url, img.alt_text, img.caption)
+          ))
+        ),
+      ])
 
-      if (uploadedImages[0]?.wp_id) featuredMediaId = uploadedImages[0].wp_id
+      if (heroMedia) { featuredMediaId = heroMedia.wp_id; totalUploaded++ }
+      itemMediaArrays.forEach(arr => arr.forEach(m => { if (m) totalUploaded++ }))
 
+      // Hero is featured_media only — theme displays it as banner
       if (intro?.body) html += paraBlock(intro.body)
 
       items?.forEach((item, idx) => {
-        const media = uploadedImages[idx]
-        html += media
-          ? columnsBlock(item.heading, item.body, media)
-          : headingBlock(item.heading) + paraBlock(item.body)
+        const imgs = (itemMediaArrays[idx] || []).filter(Boolean)
+        if (imgs.length === 1) {
+          html += columnsBlock(item.heading, item.body, imgs[0])
+        } else if (imgs.length >= 2) {
+          html += galleryBlock(item.heading, item.body, imgs)
+        } else {
+          html += headingBlock(item.heading) + paraBlock(item.body)
+        }
         if (idx < items.length - 1)
           html += `<!-- wp:separator {"className":"is-style-wide"} -->\n<hr class="wp-block-separator is-style-wide"/>\n<!-- /wp:separator -->\n\n`
       })

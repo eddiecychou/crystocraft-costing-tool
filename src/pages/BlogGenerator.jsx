@@ -156,7 +156,7 @@ function buildSpotlightPreviewHTML(result, heroImage, sectionImages) {
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body>${body}</body></html>`
 }
 
-function buildRoundupPreviewHTML(result, selected) {
+function buildRoundupPreviewHTML(result, selected, heroImage, itemImages) {
   const css = `
     *{box-sizing:border-box}
     body{font-family:Georgia,'Times New Roman',serif;max-width:800px;margin:0 auto;padding:28px 20px;color:#222;line-height:1.75}
@@ -164,17 +164,28 @@ function buildRoundupPreviewHTML(result, selected) {
     h2{font-size:1.3em;margin:0 0 .5em;color:#111}
     p{margin:0 0 1em}
     .kw{font-family:sans-serif;font-size:.8em;color:#aaa;margin-bottom:2em}
+    .hero{width:100%;border-radius:10px;display:block;margin-bottom:2.5em}
     .section{margin-bottom:2.5em}
     .col{display:flex;gap:2em;align-items:flex-start}
     .col .text{flex:6;min-width:0}
     .col .img{flex:4;min-width:0}
     .col .img img{width:100%;border-radius:8px;display:block}
+    .imgs{display:flex;gap:1em;margin-top:1em;align-items:flex-start}
+    .imgs figure{flex:1;width:0;min-width:0;margin:0}
+    .imgs img{width:100%;border-radius:8px;display:block}
     hr{border:none;border-top:1px solid #e5e7eb;margin:2em 0}
     figcaption{font-size:.78em;color:#999;text-align:center;margin-top:.35em;font-family:sans-serif}
-    @media(max-width:600px){.col{flex-direction:column}}
+    @media(max-width:600px){.col{flex-direction:column}.imgs{flex-direction:column}.imgs figure{width:100%}}
   `
+  const imgHtml = (img, alt = '') =>
+    `<figure><img src="${img.file_url}" alt="${escapeHtml(img.alt_text || img.label || alt)}" />${img.caption || img.label ? `<figcaption>${escapeHtml(img.caption || img.label)}</figcaption>` : ''}</figure>`
+
   let body = `<h1>${escapeHtml(result.seo_title)}</h1>`
   body += `<p class="kw">Focus keyword: ${escapeHtml(result.focus_keyword)} · Tags: ${(result.tags || []).map(escapeHtml).join(', ')}</p>`
+
+  if (heroImage) {
+    body += `<img class="hero" src="${heroImage.file_url}" alt="${escapeHtml(heroImage.alt_text || heroImage.label || '')}" />`
+  }
 
   if (result.intro?.body) {
     body += `<p>${escapeHtml(result.intro.body).replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
@@ -182,10 +193,14 @@ function buildRoundupPreviewHTML(result, selected) {
 
   result.items?.forEach((item, i) => {
     const product = selected[i]
+    const imgs = itemImages[product?.id] || []
     const heading = `<h2>${escapeHtml(item.heading)}</h2>`
-    const paras = `<p>${escapeHtml(item.body || '').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
-    if (product?.heroImage) {
-      body += `<div class="section col"><div class="text">${heading}${paras}</div><div class="img"><figure><img src="${product.heroImage}" alt="${escapeHtml(item.image_caption || product.name || '')}" />${item.image_caption ? `<figcaption>${escapeHtml(item.image_caption)}</figcaption>` : ''}</figure></div></div>`
+    const paras   = `<p>${escapeHtml(item.body || '').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
+
+    if (imgs.length === 1) {
+      body += `<div class="section col"><div class="text">${heading}${paras}</div><div class="img">${imgHtml(imgs[0], product?.name)}</div></div>`
+    } else if (imgs.length >= 2) {
+      body += `<div class="section">${heading}${paras}<div class="imgs">${imgs.map(img => imgHtml(img, product?.name)).join('')}</div></div>`
     } else {
       body += `<div class="section">${heading}${paras}</div>`
     }
@@ -505,23 +520,41 @@ function SpotlightTab({ preloadedProduct }) {
 
 // ── Roundup tab ───────────────────────────────────────────────────────────────
 function RoundupTab() {
-  const [products, setProducts] = useState([])
-  const [selected, setSelected] = useState([])
-  const [industry, setIndustry] = useState('')
-  const [tone, setTone]         = useState('professional and premium')
-  const [result, setResult]     = useState(null)
-  const [loading, setLoading]   = useState(false)
-  const [error, setError]       = useState('')
+  const [products, setProducts]       = useState([])
+  const [selected, setSelected]       = useState([])
+  const [industry, setIndustry]       = useState('')
+  const [tone, setTone]               = useState('professional and premium')
+  const [result, setResult]           = useState(null)
+  const [loading, setLoading]         = useState(false)
+  const [error, setError]             = useState('')
   const [showPreview, setShowPreview] = useState(false)
+  // Image state
+  const [productImageMap, setProductImageMap] = useState({}) // { productId: [imageObjects] }
+  const [heroImage, setHeroImage]     = useState(null)
+  const [itemImages, setItemImages]   = useState({}) // { productId: [imageObjects] }
 
   useEffect(() => {
     getDocs(query(collection(db, 'products'), orderBy('name')))
       .then(snap => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
   }, [])
 
-  function toggleProduct(p) {
-    setSelected(prev => prev.find(s => s.id === p.id) ? prev.filter(s => s.id !== p.id) : prev.length < 7 ? [...prev, p] : prev)
+  async function toggleProduct(p) {
+    const isSelected = selected.find(s => s.id === p.id)
+    if (isSelected) {
+      setSelected(prev => prev.filter(s => s.id !== p.id))
+    } else if (selected.length < 7) {
+      setSelected(prev => [...prev, p])
+      // Fetch images for this product if not already cached
+      if (!productImageMap[p.id]) {
+        const snap = await getDocs(query(collection(db, 'products', p.id, 'images'), orderBy('sort_order')))
+        const imgs = snap.docs.map(d => d.data())
+        setProductImageMap(prev => ({ ...prev, [p.id]: imgs }))
+      }
+    }
   }
+
+  // All images from all selected products (for hero picker)
+  const allImages = selected.flatMap(p => productImageMap[p.id] || [])
 
   async function handleGenerate() {
     if (selected.length < 2) return
@@ -543,18 +576,30 @@ function RoundupTab() {
   function updateItem(i, field, val) {
     setResult(prev => ({ ...prev, items: prev.items.map((item, idx) => idx === i ? { ...item, [field]: val } : item) }))
   }
+  function setProductImgs(productId, imgs) {
+    setItemImages(prev => ({ ...prev, [productId]: imgs }))
+  }
 
   const wpPayload = result ? {
     type: 'roundup',
-    content: result,
-    images: selected.map((p, i) => ({
-      firebase_url: p.heroImage,
-      alt_text: result.items?.[i]?.image_caption || p.name || '',
-      caption: result.items?.[i]?.image_caption || '',
-    })).filter(img => img.firebase_url),
+    hero: heroImage ? { firebase_url: heroImage.file_url, alt_text: heroImage.alt_text || heroImage.label || '' } : null,
+    content: {
+      ...result,
+      items: result.items.map((item, i) => {
+        const p = selected[i]
+        return {
+          ...item,
+          images: (itemImages[p?.id] || []).map(img => ({
+            firebase_url: img.file_url,
+            alt_text: img.alt_text || img.label || '',
+            caption: img.caption || img.label || '',
+          }))
+        }
+      })
+    }
   } : null
 
-  const previewHTML = result ? buildRoundupPreviewHTML(result, selected) : ''
+  const previewHTML = result ? buildRoundupPreviewHTML(result, selected, heroImage, itemImages) : ''
 
   return (
     <div className="space-y-5">
@@ -615,6 +660,18 @@ function RoundupTab() {
         <div className="space-y-4">
           <EditableMeta result={result} onChange={setResult} />
 
+          {/* Hero image picker */}
+          <div className="card p-5 space-y-3">
+            <div>
+              <h3 className="font-semibold text-gray-800">Hero Image</h3>
+              <p className="text-xs text-gray-400 mt-0.5">Full-width banner at the top + WordPress featured image. Choose from any selected product's images.</p>
+            </div>
+            {allImages.length > 0
+              ? <HeroPicker images={allImages} value={heroImage} onChange={setHeroImage} />
+              : <p className="text-xs text-gray-400">No images found — upload images to the selected products first.</p>
+            }
+          </div>
+
           {result.intro && (
             <div className="card p-5 space-y-2">
               <div className="flex items-center justify-between">
@@ -628,28 +685,36 @@ function RoundupTab() {
 
           {result.items?.map((item, i) => {
             const product = selected[i]
+            const productImages = productImageMap[product?.id] || []
             return (
               <div key={i} className="card p-5 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Product {i + 1}</span>
+                  <div className="flex items-center gap-2">
+                    {product?.heroImage && <img src={product.heroImage} alt="" className="w-7 h-7 rounded object-cover" />}
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Product {i + 1} · {product?.name}</span>
+                  </div>
                   <CopyButton text={`${item.heading}\n\n${item.body}`} />
                 </div>
                 <input className="input text-sm font-medium" value={item.heading || ''} placeholder="Heading…"
                   onChange={e => updateItem(i, 'heading', e.target.value)} />
-                {product?.heroImage ? (
-                  <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
-                    <img src={product.heroImage} alt="" className="w-14 h-14 object-cover rounded shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-gray-400 mb-1">Image caption / alt text</p>
-                      <input className="input text-xs py-1" value={item.image_caption || ''} placeholder="e.g. Crystal trophy with logo engraving"
-                        onChange={e => updateItem(i, 'image_caption', e.target.value)} />
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-xs text-amber-500 bg-amber-50 rounded p-2">⚠️ No hero image — this product will appear without a photo</p>
-                )}
                 <textarea className="input text-sm" rows={4} value={item.body || ''}
                   onChange={e => updateItem(i, 'body', e.target.value)} />
+
+                {/* Per-product image picker */}
+                <div className="border-t border-gray-50 pt-2">
+                  <p className="text-xs text-gray-400 mb-1">
+                    Section images <span className="text-gray-300">(0–3 · 1 image = right side, 2–3 = row below text)</span>
+                  </p>
+                  {productImages.length > 0
+                    ? <SectionImagePicker
+                        images={productImages}
+                        heroImage={heroImage}
+                        selected={itemImages[product?.id] || []}
+                        onChange={imgs => setProductImgs(product.id, imgs)}
+                      />
+                    : <p className="text-xs text-amber-500">⚠️ No images found for this product</p>
+                  }
+                </div>
               </div>
             )
           })}
@@ -674,16 +739,6 @@ function RoundupTab() {
                 className="text-xs px-3 py-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
                 👁 Preview HTML
               </button>
-            </div>
-            <div className="grid grid-cols-5 gap-2">
-              {selected.map(p => (
-                <div key={p.id}>
-                  {p.heroImage
-                    ? <img src={p.heroImage} alt="" className="w-full aspect-square object-cover rounded-lg border border-gray-200" />
-                    : <div className="w-full aspect-square rounded-lg border border-dashed border-gray-200 flex items-center justify-center text-gray-300 text-xs">no img</div>
-                  }
-                </div>
-              ))}
             </div>
             <WPPublishButton payload={wpPayload} />
           </div>
