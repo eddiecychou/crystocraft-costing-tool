@@ -105,38 +105,31 @@ export default async function handler(req) {
     let totalUploaded = 0
     let totalImages = 0
 
-    // ── SPOTLIGHT (new per-section format) ────────────────────────────────────
+    // ── SPOTLIGHT ─────────────────────────────────────────────────────────────
     if (type === 'spotlight') {
       const sections = content.sections || []
-
-      // Count total images to upload
       totalImages = (hero ? 1 : 0) + sections.reduce((n, s) => n + (s.images?.length || 0), 0)
 
-      // Upload hero
-      let heroMedia = null
-      if (hero?.firebase_url) {
-        heroMedia = await uploadOne(hero.firebase_url, hero.alt_text || '', '')
-        if (heroMedia) { featuredMediaId = heroMedia.wp_id; totalUploaded++ }
-      }
+      // Upload hero + ALL section images in parallel
+      const [heroMedia, ...sectionMediaArrays] = await Promise.all([
+        hero?.firebase_url
+          ? uploadOne(hero.firebase_url, hero.alt_text || '', '')
+          : Promise.resolve(null),
+        ...sections.map(section =>
+          Promise.all((section.images || []).map(img =>
+            uploadOne(img.firebase_url, img.alt_text, img.caption)
+          ))
+        ),
+      ])
 
-      // Upload section images in parallel per section (sequential sections to preserve order)
-      const sectionsWithMedia = []
-      for (const section of sections) {
-        const uploaded = []
-        for (const img of (section.images || [])) {
-          const m = await uploadOne(img.firebase_url, img.alt_text, img.caption)
-          if (m) { uploaded.push(m); totalUploaded++ }
-        }
-        sectionsWithMedia.push({ ...section, uploadedImages: uploaded })
-      }
+      if (heroMedia) { featuredMediaId = heroMedia.wp_id; totalUploaded++ }
+      sectionMediaArrays.forEach(arr => arr.forEach(m => { if (m) totalUploaded++ }))
 
       // Build HTML
-      if (heroMedia) {
-        html += imgBlock(heroMedia, 'large', 'hero-image')
-      }
+      if (heroMedia) html += imgBlock(heroMedia, 'large', 'hero-image')
 
-      for (const section of sectionsWithMedia) {
-        const imgs = section.uploadedImages
+      sections.forEach((section, i) => {
+        const imgs = (sectionMediaArrays[i] || []).filter(Boolean)
         if (imgs.length === 1) {
           html += columnsBlock(section.heading, section.body, imgs[0])
         } else if (imgs.length >= 2) {
@@ -144,67 +137,54 @@ export default async function handler(req) {
         } else {
           html += headingBlock(section.heading) + paraBlock(section.body)
         }
-      }
+      })
 
     // ── ROUNDUP ───────────────────────────────────────────────────────────────
     } else if (type === 'roundup') {
       const { intro, items, conclusion } = content
       totalImages = (images || []).length
 
-      // Upload all product images
-      const uploadedImages = []
-      for (const img of (images || [])) {
-        const m = await uploadOne(img.firebase_url, img.alt_text, img.caption)
-        uploadedImages.push(m)
-        if (m) totalUploaded++
-      }
+      // Upload all product images in parallel
+      const uploadedImages = await Promise.all(
+        (images || []).map(img => uploadOne(img.firebase_url, img.alt_text, img.caption))
+      )
+      totalUploaded = uploadedImages.filter(Boolean).length
 
-      // Featured image = first uploaded
       if (uploadedImages[0]?.wp_id) featuredMediaId = uploadedImages[0].wp_id
 
-      // Intro
       if (intro?.body) html += paraBlock(intro.body)
 
-      // Each item: columns layout (text left, image right)
       items?.forEach((item, idx) => {
         const media = uploadedImages[idx]
-        if (media) {
-          html += columnsBlock(item.heading, item.body, media)
-        } else {
-          html += headingBlock(item.heading) + paraBlock(item.body)
-        }
-        if (idx < items.length - 1) {
+        html += media
+          ? columnsBlock(item.heading, item.body, media)
+          : headingBlock(item.heading) + paraBlock(item.body)
+        if (idx < items.length - 1)
           html += `<!-- wp:separator {"className":"is-style-wide"} -->\n<hr class="wp-block-separator is-style-wide"/>\n<!-- /wp:separator -->\n\n`
-        }
       })
 
-      // Conclusion
-      if (conclusion) {
-        html += headingBlock(conclusion.heading) + paraBlock(conclusion.body)
-      }
+      if (conclusion) html += headingBlock(conclusion.heading) + paraBlock(conclusion.body)
     }
 
-    // ── Handle tags ───────────────────────────────────────────────────────────
-    const tagIds = []
-    for (const tagName of (content.tags || [])) {
-      try {
-        const searchRes = await fetch(`${wpApi}/tags?search=${encodeURIComponent(tagName)}`, {
-          headers: { 'Authorization': `Basic ${credentials}` },
-        })
-        const existing = await searchRes.json()
-        if (existing.length > 0) {
-          tagIds.push(existing[0].id)
-        } else {
+    // ── Handle tags — in parallel ─────────────────────────────────────────────
+    const tagIds = (await Promise.all(
+      (content.tags || []).map(async tagName => {
+        try {
+          const searchRes = await fetch(`${wpApi}/tags?search=${encodeURIComponent(tagName)}`, {
+            headers: { 'Authorization': `Basic ${credentials}` },
+          })
+          const existing = await searchRes.json()
+          if (existing.length > 0) return existing[0].id
           const createRes = await fetch(`${wpApi}/tags`, {
             method: 'POST',
             headers: { 'Authorization': `Basic ${credentials}`, 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: tagName }),
           })
           const newTag = await createRes.json()
-          if (newTag.id) tagIds.push(newTag.id)
-        }
-      } catch {}
-    }
+          return newTag.id || null
+        } catch { return null }
+      })
+    )).filter(Boolean)
 
     // ── Create draft post ─────────────────────────────────────────────────────
     const postPayload = {
