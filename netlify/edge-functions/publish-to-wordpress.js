@@ -41,15 +41,20 @@ export default async function handler(req) {
 
       let tw, th
       if (ratio >= 0.85 && ratio <= 1.18) {
-        // Square
-        tw = Math.min(width, 1000)
-        th = Math.min(height, 1000)
+        // Square-ish → cap longest side at 1000px, preserve ratio (no crop)
+        if (width >= height) {
+          tw = Math.min(width, 1000)
+          th = Math.round(tw / ratio)
+        } else {
+          th = Math.min(height, 1000)
+          tw = Math.round(th * ratio)
+        }
       } else if (width >= height) {
-        // Landscape banner
+        // Landscape banner → cap width at 1200px, proportional height
         tw = Math.min(width, 1200)
         th = Math.round(tw / ratio)
       } else {
-        // Portrait
+        // Portrait → cap width at 1000px, proportional height
         tw = Math.min(width, 1000)
         th = Math.round(tw / ratio)
       }
