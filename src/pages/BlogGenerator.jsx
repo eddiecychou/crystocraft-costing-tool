@@ -244,6 +244,12 @@ function WPPublishButton({ payload, disabled }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
+      // Edge function may return HTML on crash — guard against non-JSON
+      const contentType = res.headers.get('content-type') || ''
+      if (!contentType.includes('application/json')) {
+        const text = await res.text()
+        throw new Error(`Server error (${res.status}): ${text.replace(/<[^>]*>/g, '').trim().slice(0, 200)}`)
+      }
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || 'Publish failed')
       setWpResult(data)

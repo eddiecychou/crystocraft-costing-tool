@@ -17,7 +17,15 @@ export default async function handler(req) {
   // Payload shape:
   //   Spotlight: { type:'spotlight', hero:{firebase_url,alt_text}, content:{...result, sections:[{heading,body,images:[]}]} }
   //   Roundup:   { type:'roundup',  content:{...result},           images:[{firebase_url,alt_text,caption}] }
-  const { type, content, images, hero } = await req.json()
+  let type, content, images, hero
+  try {
+    const body = await req.json()
+    type = body.type; content = body.content; images = body.images; hero = body.hero
+  } catch (err) {
+    return new Response(JSON.stringify({ error: `Failed to parse request body: ${err.message}` }), {
+      status: 400, headers: { 'Content-Type': 'application/json' },
+    })
+  }
 
   // ── Helper: upload one image to WP Media Library ───────────────────────────
   async function uploadOne(firebase_url, alt_text = '', caption = '') {
