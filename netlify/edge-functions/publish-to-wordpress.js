@@ -27,35 +27,55 @@ export default async function handler(req) {
     })
   }
 
-  // ── Helper: compress image to under 200KB ────────────────────────────────────
-  async function compressIfNeeded(arrayBuffer) {
-    const MAX = 200 * 1024 // 200 KB
-    if (arrayBuffer.byteLength <= MAX) return arrayBuffer
+  // ── Helper: resize to standard dimensions then compress to under 200KB ───────
+  // Rules: square (ratio 0.85–1.18) → max 1000×1000 px
+  //        landscape (wider)         → max 1200px wide, proportional height
+  //        portrait  (taller)        → max 1000px wide, proportional height
+  async function resizeAndCompress(arrayBuffer) {
+    const MAX_BYTES = 200 * 1024
     try {
       const blob   = new Blob([arrayBuffer], { type: 'image/jpeg' })
       const bitmap = await createImageBitmap(blob)
+      const { width, height } = bitmap
+      const ratio = width / height
 
-      // Try progressively lower quality first
-      for (const quality of [0.8, 0.65, 0.5, 0.35]) {
-        const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
-        canvas.getContext('2d').drawImage(bitmap, 0, 0)
-        const out = await canvas.convertToBlob({ type: 'image/jpeg', quality })
-        const buf = await out.arrayBuffer()
-        if (buf.byteLength <= MAX) { bitmap.close(); return buf }
+      let tw, th
+      if (ratio >= 0.85 && ratio <= 1.18) {
+        // Square
+        tw = Math.min(width, 1000)
+        th = Math.min(height, 1000)
+      } else if (width >= height) {
+        // Landscape banner
+        tw = Math.min(width, 1200)
+        th = Math.round(tw / ratio)
+      } else {
+        // Portrait
+        tw = Math.min(width, 1000)
+        th = Math.round(tw / ratio)
       }
 
-      // If still too large, scale dimensions down proportionally then re-encode
-      const scale  = Math.sqrt(MAX / arrayBuffer.byteLength) * 0.85
-      const width  = Math.max(400, Math.floor(bitmap.width  * scale))
-      const height = Math.max(300, Math.floor(bitmap.height * scale))
-      const canvas = new OffscreenCanvas(width, height)
-      canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height)
-      const out = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.75 })
+      // Skip canvas processing if already the right size and small enough
+      if (tw === width && th === height && arrayBuffer.byteLength <= MAX_BYTES) {
+        bitmap.close()
+        return arrayBuffer
+      }
+
+      const canvas = new OffscreenCanvas(tw, th)
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, tw, th)
       bitmap.close()
+
+      // Reduce JPEG quality until under 200KB
+      for (const quality of [0.85, 0.75, 0.65, 0.5, 0.35]) {
+        const out = await canvas.convertToBlob({ type: 'image/jpeg', quality })
+        const buf = await out.arrayBuffer()
+        if (buf.byteLength <= MAX_BYTES) return buf
+      }
+      // Last resort
+      const out = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.25 })
       return await out.arrayBuffer()
     } catch {
-      // OffscreenCanvas not supported in this runtime — upload original
-      console.warn('Image compression unavailable; uploading original')
+      // OffscreenCanvas not available in this runtime — upload original
+      console.warn('Image resize unavailable; uploading original')
       return arrayBuffer
     }
   }
@@ -65,8 +85,8 @@ export default async function handler(req) {
     try {
       const imgRes = await fetch(firebase_url)
       if (!imgRes.ok) return null
-      const raw      = await imgRes.arrayBuffer()
-      const imgBuffer = await compressIfNeeded(raw)
+      const raw       = await imgRes.arrayBuffer()
+      const imgBuffer = await resizeAndCompress(raw)
       const filename  = `crystocraft-${Date.now()}.jpg`
 
       const mediaRes = await fetch(`${wpApi}/media`, {
