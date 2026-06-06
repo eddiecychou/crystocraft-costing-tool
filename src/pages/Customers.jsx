@@ -8,15 +8,26 @@ const COUNTRIES = [
   'Hong Kong', 'China (Mainland)', 'Macau', 'Taiwan',
   'Singapore', 'Malaysia', 'Thailand', 'Vietnam', 'Indonesia', 'Philippines',
   'Japan', 'South Korea', 'India',
-  'United Arab Emirates', 'Australia', 'United Kingdom',
-  'United States', 'Canada', 'Other',
+  'United Arab Emirates', 'Australia', 'New Zealand',
+  'United Kingdom', 'Germany', 'France', 'Netherlands', 'Switzerland', 'Italy', 'Spain',
+  'Belgium', 'Poland', 'Czech Republic', 'Austria', 'Sweden', 'Denmark', 'Norway',
+  'South Africa', 'United States', 'Canada', 'Other',
 ]
 
+const CRM_STATUS_STYLES = {
+  Active:   'bg-green-100 text-green-700',
+  Prospect: 'bg-blue-100 text-blue-700',
+  Dormant:  'bg-amber-100 text-amber-700',
+  Inactive: 'bg-gray-100 text-gray-500',
+}
+
 export default function Customers() {
-  const [customers, setCustomers] = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [search, setSearch]       = useState('')
+  const [customers, setCustomers]       = useState([])
+  const [loading, setLoading]           = useState(true)
+  const [search, setSearch]             = useState('')
   const [filterCountry, setFilterCountry] = useState('')
+  const [filterChannel, setFilterChannel] = useState('')
+  const [filterStatus, setFilterStatus]   = useState('')
 
   useEffect(() => {
     const q = query(collection(db, 'customers'), orderBy('company_name'))
@@ -31,9 +42,12 @@ export default function Customers() {
     const matchSearch = !search ||
       c.company_name?.toLowerCase().includes(searchLower) ||
       c.contact_name?.toLowerCase().includes(searchLower) ||
-      c.tags?.some(t => t.toLowerCase().includes(searchLower))
+      c.tags?.some(t => t.toLowerCase().includes(searchLower)) ||
+      c.segment?.toLowerCase().includes(searchLower)
     const matchCountry = !filterCountry || (c.country || c.region) === filterCountry
-    return matchSearch && matchCountry
+    const matchChannel = !filterChannel || c.primary_channel === filterChannel
+    const matchStatus  = !filterStatus  || c.crm_status === filterStatus
+    return matchSearch && matchCountry && matchChannel && matchStatus
   })
 
   return (
@@ -48,18 +62,29 @@ export default function Customers() {
         <Link to="/customers/new" className="btn-primary text-sm">+ New</Link>
       </div>
 
-      <div className="flex gap-2 mb-5 flex-wrap">
+      {/* Filters */}
+      <div className="space-y-2 mb-5">
         <input
           type="text"
-          placeholder="Search name, contact, tag…"
-          className="input flex-1 min-w-0"
+          placeholder="Search name, contact, tag, segment…"
+          className="input w-full"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
-        <select className="input w-auto" value={filterCountry} onChange={e => setFilterCountry(e.target.value)}>
-          <option value="">All countries</option>
-          {COUNTRIES.map(c => <option key={c}>{c}</option>)}
-        </select>
+        <div className="flex gap-2 flex-wrap">
+          <select className="input flex-1 min-w-[120px]" value={filterCountry} onChange={e => setFilterCountry(e.target.value)}>
+            <option value="">All countries</option>
+            {COUNTRIES.map(c => <option key={c}>{c}</option>)}
+          </select>
+          <select className="input flex-1 min-w-[120px]" value={filterChannel} onChange={e => setFilterChannel(e.target.value)}>
+            <option value="">All channels</option>
+            {['Email', 'WhatsApp Business', 'Alibaba', 'Personal WhatsApp'].map(c => <option key={c}>{c}</option>)}
+          </select>
+          <select className="input flex-1 min-w-[120px]" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+            <option value="">All statuses</option>
+            {['Active', 'Prospect', 'Dormant', 'Inactive'].map(s => <option key={s}>{s}</option>)}
+          </select>
+        </div>
       </div>
 
       {filtered.length === 0 && !loading ? (
@@ -71,19 +96,26 @@ export default function Customers() {
         <div className="card divide-y divide-gray-100">
           {filtered.map(c => (
             <Link key={c.id} to={`/customers/${c.id}`} className="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors">
-              <div className="min-w-0">
-                <p className="font-semibold text-gray-900 text-sm truncate">{c.company_name}</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold text-gray-900 text-sm truncate">{c.company_name}</p>
+                  {c.is_vip && <span className="text-xs">⭐</span>}
+                  {c.is_personal_wa && <span title="Personal WhatsApp" className="text-xs">📱</span>}
+                </div>
                 <p className="text-xs text-gray-500 mt-0.5 truncate">
-                  {[c.contact_name, c.country || c.region].filter(Boolean).join(' · ')}
+                  {[c.contact_name, c.country || c.region, c.primary_channel].filter(Boolean).join(' · ')}
                 </p>
-                {c.tags?.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {c.tags.slice(0, 4).map(tag => (
-                      <span key={tag} className="px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-600 text-xs">{tag}</span>
-                    ))}
-                    {c.tags.length > 4 && <span className="text-xs text-gray-400">+{c.tags.length - 4}</span>}
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {c.crm_status && (
+                    <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${CRM_STATUS_STYLES[c.crm_status] || 'bg-gray-100 text-gray-500'}`}>
+                      {c.crm_status}
+                    </span>
+                  )}
+                  {c.tags?.slice(0, 3).map(tag => (
+                    <span key={tag} className="px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-600 text-xs">{tag}</span>
+                  ))}
+                  {c.tags?.length > 3 && <span className="text-xs text-gray-400">+{c.tags.length - 3}</span>}
+                </div>
               </div>
               <span className="text-xs text-gray-400 ml-3 shrink-0">→</span>
             </Link>

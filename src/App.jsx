@@ -25,6 +25,8 @@ import CatalogueForm from './pages/CatalogueForm'
 import CatalogueDetail from './pages/CatalogueDetail'
 import CataloguePreview from './pages/CataloguePreview'
 import BlogGenerator from './pages/BlogGenerator'
+import Dashboard from './pages/Dashboard'
+import ImportData from './pages/ImportData'
 
 function ProtectedRoute({ children, user }) {
   if (user === undefined) return <LoadingBar />
@@ -38,13 +40,14 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={user ? <Navigate to="/products" replace /> : <Login />} />
+        <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
 
         <Route path="/*" element={
           <ProtectedRoute user={user}>
             <Layout user={user}>
               <Routes>
-                <Route path="/" element={<Navigate to="/products" replace />} />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/products/new" element={<ProductForm />} />
                 <Route path="/products/:id" element={<ProductDetail />} />
@@ -74,6 +77,7 @@ export default function App() {
                 <Route path="/blog-generator" element={<BlogGenerator />} />
                 <Route path="/blog-generator/:productId" element={<BlogGenerator />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/import-data" element={<ImportData />} />
               </Routes>
             </Layout>
           </ProtectedRoute>

@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import {
+  doc, getDoc, deleteDoc, collection, query, where, getDocs,
+  onSnapshot, deleteDoc as deleteDocument, serverTimestamp,
+} from 'firebase/firestore'
+import { db } from '../firebase'
+import ConfirmDialog from '../components/ConfirmDialog'
+import LoadingBar from '../components/LoadingBar'
+import EnquiryForm from './EnquiryForm'
 
 function toArray(val) {
   if (Array.isArray(val)) return val.filter(Boolean)
   if (val && typeof val === 'string') return [val]
   return []
 }
-import { useParams, useNavigate, Link } from 'react-router-dom'
-import { doc, getDoc, deleteDoc, collection, query, where, getDocs } from 'firebase/firestore'
-import { db } from '../firebase'
-import ConfirmDialog from '../components/ConfirmDialog'
-import LoadingBar from '../components/LoadingBar'
 
 const STATUS_STYLES = {
   draft: 'bg-gray-100 text-gray-600',
@@ -18,23 +22,109 @@ const STATUS_STYLES = {
   lost:  'bg-red-100 text-red-600',
 }
 
+const ENQUIRY_STATUS_STYLES = {
+  Open:      'bg-amber-100 text-amber-700',
+  Quoted:    'bg-blue-100 text-blue-700',
+  Won:       'bg-green-100 text-green-700',
+  Lost:      'bg-red-100 text-red-600',
+  'On Hold': 'bg-gray-100 text-gray-500',
+}
+
+const ENQUIRY_STATUS_DOT = {
+  Open:      'bg-amber-400',
+  Quoted:    'bg-blue-500',
+  Won:       'bg-green-500',
+  Lost:      'bg-red-500',
+  'On Hold': 'bg-gray-400',
+}
+
+const CRM_STATUS_STYLES = {
+  Active:   'bg-green-100 text-green-700',
+  Prospect: 'bg-blue-100 text-blue-700',
+  Dormant:  'bg-amber-100 text-amber-700',
+  Inactive: 'bg-gray-100 text-gray-500',
+}
+
+const CHANNEL_BADGE = {
+  'Email':             'bg-purple-100 text-purple-700',
+  'WhatsApp Business': 'bg-green-100 text-green-700',
+  'Alibaba':           'bg-orange-100 text-orange-700',
+  'Personal WhatsApp': 'bg-amber-100 text-amber-700',
+}
+
+function fmtDate(ts) {
+  if (!ts) return '—'
+  const d = ts.toDate ? ts.toDate() : new Date(ts.seconds * 1000)
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
 export default function CustomerDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
 
-  const [customer, setCustomer]   = useState(null)
-  const [quotes, setQuotes]       = useState([])
-  const [loading, setLoading]     = useState(true)
+  const [customer, setCustomer]         = useState(null)
+  const [quotes, setQuotes]             = useState([])
+  const [enquiries, setEnquiries]       = useState([])
+  const [loading, setLoading]           = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmDeleteEnquiry, setConfirmDeleteEnquiry] = useState(null)
+
+  // Enquiry form state
+  const [enquiryFormOpen, setEnquiryFormOpen] = useState(false)
+  const [editingEnquiry, setEditingEnquiry]   = useState(null)
+
+  // Compose message state
+  const [composeProduct, setComposeProduct]     = useState(null)   // { id, name, category, description }
+  const [composeProductSearch, setComposeProductSearch] = useState('')
+  const [composeProductOpen, setComposeProductOpen]     = useState(false)
+  const [allProducts, setAllProducts]           = useState([])
+  const [composeContext, setComposeContext]      = useState('')
+  const [composeChannel, setComposeChannel]     = useState('')
+  const [composeResult, setComposeResult]       = useState('')
+  const [composeLoading, setComposeLoading]     = useState(false)
+  const [composeError, setComposeError]         = useState('')
+  const [composeCopied, setComposeCopied]       = useState(false)
 
   useEffect(() => {
     Promise.all([
       getDoc(doc(db, 'customers', id)),
       getDocs(query(collection(db, 'client_quotes'), where('customer_id', '==', id))),
-    ]).then(([cSnap, qSnap]) => {
-      if (cSnap.exists()) setCustomer({ id: cSnap.id, ...cSnap.data() })
-      setQuotes(qSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)))
+      getDocs(collection(db, 'products')),
+    ]).then(([cSnap, qSnap, pSnap]) => {
+      if (cSnap.exists()) {
+        const c = { id: cSnap.id, ...cSnap.data() }
+        setCustomer(c)
+        setComposeChannel(c.primary_channel || '')
+      }
+      setQuotes(
+        qSnap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+      )
+      setAllProducts(
+        pSnap.docs
+          .map(d => ({ id: d.id, name: d.data().name || '', category: d.data().category || '', description: d.data().description || '' }))
+          .filter(p => p.name)
+          .sort((a, b) => a.name.localeCompare(b.name))
+      )
       setLoading(false)
+    })
+  }, [id])
+
+  // Real-time enquiry listener (no orderBy — sort client-side)
+  const [contextAutoFilled, setContextAutoFilled] = useState(false)
+  useEffect(() => {
+    const q = query(collection(db, 'customers', id, 'enquiries'))
+    return onSnapshot(q, snap => {
+      const sorted = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.date?.seconds || 0) - (a.date?.seconds || 0))
+      setEnquiries(sorted)
+      // Auto-fill compose context from latest enquiry (once only)
+      if (!contextAutoFilled && sorted.length > 0 && sorted[0].description) {
+        setComposeContext(sorted[0].description)
+        setContextAutoFilled(true)
+      }
     })
   }, [id])
 
@@ -43,18 +133,72 @@ export default function CustomerDetail() {
     navigate('/customers')
   }
 
+  async function handleDeleteEnquiry(enquiryId) {
+    await deleteDocument(doc(db, 'customers', id, 'enquiries', enquiryId))
+    setConfirmDeleteEnquiry(null)
+  }
+
+  async function handleCompose(e) {
+    e.preventDefault()
+    if (!composeContext.trim()) {
+      setComposeError('Please describe the situation / what you want to say.')
+      return
+    }
+    setComposeLoading(true)
+    setComposeError('')
+    setComposeResult('')
+    try {
+      const res = await fetch('/api/compose-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer,
+          product: composeProduct
+            ? `${composeProduct.name}${composeProduct.category ? ` (${composeProduct.category})` : ''}${composeProduct.description ? ` — ${composeProduct.description}` : ''}`
+            : 'General / Full Catalogue',
+          channel: composeChannel,
+          context: composeContext,
+        }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setComposeResult(data.message)
+    } catch (err) {
+      setComposeError(err.message || 'Failed to generate message.')
+    } finally {
+      setComposeLoading(false)
+    }
+  }
+
+  function handleCopy() {
+    navigator.clipboard.writeText(composeResult).then(() => {
+      setComposeCopied(true)
+      setTimeout(() => setComposeCopied(false), 2000)
+    })
+  }
+
   if (loading) return <LoadingBar />
   if (!customer) return <div className="p-4 text-gray-500">Customer not found.</div>
+
+  const followUpEnquiries = enquiries.filter(e => e.follow_up_date)
 
   return (
     <div className="p-4 md:p-6 max-w-2xl">
       <Link to="/customers" className="text-sm text-brand-600 hover:underline">← Customers</Link>
 
       {/* Header */}
-      <div className="mb-6 mt-1">
+      <div className="mb-4 mt-1">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900">{customer.company_name}</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl md:text-2xl font-bold text-gray-900">{customer.company_name}</h1>
+              {customer.is_vip && <span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-semibold">⭐ VIP</span>}
+              {customer.crm_status && (
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${CRM_STATUS_STYLES[customer.crm_status] || 'bg-gray-100 text-gray-500'}`}>
+                  {customer.crm_status}
+                </span>
+              )}
+            </div>
             <p className="text-sm text-gray-500 mt-0.5">{customer.country || customer.region || ''}</p>
             {customer.tags?.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
@@ -70,6 +214,17 @@ export default function CustomerDetail() {
           </div>
         </div>
       </div>
+
+      {/* Personal WA warning banner */}
+      {customer.is_personal_wa && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <span>⚠️</span>
+          <span>
+            <strong>{customer.contact_name || customer.company_name}</strong> communicates via
+            Eddie's <strong>personal WhatsApp</strong> — they will not appear in WhatsApp Business.
+          </span>
+        </div>
+      )}
 
       {/* Contact info */}
       <div className="card p-5 mb-4">
@@ -106,6 +261,21 @@ export default function CustomerDetail() {
           )}
           {customer.country && <Row label="Country" value={customer.country} />}
           {customer.address && <Row label="Address" value={customer.address} />}
+          {/* CRM fields */}
+          {customer.primary_channel && (
+            <Row label="Channel" value={
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${CHANNEL_BADGE[customer.primary_channel] || 'bg-gray-100 text-gray-600'}`}>
+                {customer.primary_channel}
+              </span>
+            } />
+          )}
+          {customer.source && <Row label="Source" value={customer.source} />}
+          {customer.segment && <Row label="Segment" value={customer.segment} />}
+          {customer.folder_path && (
+            <Row label="Folder" value={
+              <span className="font-mono text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded">{customer.folder_path}</span>
+            } />
+          )}
         </dl>
       </div>
 
@@ -121,12 +291,7 @@ export default function CustomerDetail() {
       <div className="card mb-4">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <h2 className="text-sm font-semibold text-gray-700">Quotes ({quotes.length})</h2>
-          <Link
-            to={`/quotes/new?customer_id=${id}`}
-            className="btn-primary text-xs py-1.5 px-3"
-          >
-            + New Quote
-          </Link>
+          <Link to={`/quotes/new?customer_id=${id}`} className="btn-primary text-xs py-1.5 px-3">+ New Quote</Link>
         </div>
         {quotes.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-8">No quotes yet for this customer.</p>
@@ -136,7 +301,7 @@ export default function CustomerDetail() {
               <Link key={q.id} to={`/quotes/${q.id}`} className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors">
                 <div>
                   <p className="text-sm font-medium text-gray-900">
-                    {q.createdAt?.toDate?.().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {q.quote_date || q.createdAt?.toDate?.().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">
                     {q.item_count ? `${q.item_count} item${q.item_count > 1 ? 's' : ''}` : 'No items'}
@@ -153,11 +318,224 @@ export default function CustomerDetail() {
         )}
       </div>
 
+      {/* Interaction Log */}
+      <div className="card mb-4">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">Interaction Log ({enquiries.length})</h2>
+          <button
+            onClick={() => { setEditingEnquiry(null); setEnquiryFormOpen(true) }}
+            className="btn-primary text-xs py-1.5 px-3"
+          >
+            + Log Interaction
+          </button>
+        </div>
+
+        {enquiries.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">No interactions logged yet.</p>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {enquiries.map(enq => (
+              <div key={enq.id} className="px-5 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    {/* Date · Channel · Status */}
+                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                      <span className="text-xs text-gray-500">{fmtDate(enq.date)}</span>
+                      {enq.channel && <span className="text-xs text-gray-400">· {enq.channel}</span>}
+                      {enq.status && (
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${ENQUIRY_STATUS_STYLES[enq.status] || 'bg-gray-100 text-gray-500'}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${ENQUIRY_STATUS_DOT[enq.status] || 'bg-gray-400'}`} />
+                          {enq.status}
+                        </span>
+                      )}
+                    </div>
+                    {/* Description */}
+                    <p className="text-sm text-gray-800">{enq.description}</p>
+                    {/* Products */}
+                    {enq.product_interest?.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        <span className="font-medium">Products:</span> {enq.product_interest.join(', ')}
+                      </p>
+                    )}
+                    {/* Follow-up + linked quotes */}
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
+                      {enq.follow_up_date && (
+                        <p className={`text-xs font-medium ${isOverdue(enq.follow_up_date) ? 'text-red-600' : 'text-gray-500'}`}>
+                          Follow-up: {fmtDate(enq.follow_up_date)}
+                          {isOverdue(enq.follow_up_date) && ' ⚠️'}
+                        </p>
+                      )}
+                      {enq.linked_quote_ids?.length > 0 && (
+                        <p className="text-xs text-gray-500">
+                          Linked: {enq.linked_quote_ids.length} quote{enq.linked_quote_ids.length > 1 ? 's' : ''}
+                        </p>
+                      )}
+                    </div>
+                    {/* Outcome notes */}
+                    {enq.outcome_notes && (
+                      <p className="text-xs text-gray-500 mt-1 italic">{enq.outcome_notes}</p>
+                    )}
+                  </div>
+                  {/* Actions */}
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => { setEditingEnquiry(enq); setEnquiryFormOpen(true) }}
+                      className="text-xs text-brand-600 hover:underline"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteEnquiry(enq.id)}
+                      className="text-xs text-red-500 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Compose Message */}
+      <div className="card mb-4">
+        <div className="px-5 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">✦ Compose Message</h2>
+          <p className="text-xs text-gray-400 mt-0.5">AI-written message tailored to this customer</p>
+        </div>
+        <div className="p-5 space-y-4">
+
+          {/* Product picker */}
+          <div>
+            <label className="label">Product <span className="text-gray-400 font-normal">(optional)</span></label>
+            {composeProduct ? (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-200 bg-brand-50">
+                <span className="text-sm font-medium text-brand-700 flex-1">{composeProduct.name}</span>
+                {composeProduct.category && <span className="text-xs text-brand-500">{composeProduct.category}</span>}
+                <button type="button" onClick={() => { setComposeProduct(null); setComposeProductSearch('') }} className="text-brand-400 hover:text-brand-700 text-lg leading-none">×</button>
+              </div>
+            ) : (
+              <div className="relative">
+                <input
+                  type="text"
+                  className="input"
+                  placeholder="Search your products… (leave blank for general catalogue)"
+                  value={composeProductSearch}
+                  onChange={e => { setComposeProductSearch(e.target.value); setComposeProductOpen(true) }}
+                  onFocus={() => setComposeProductOpen(true)}
+                  onBlur={() => setTimeout(() => setComposeProductOpen(false), 150)}
+                />
+                {composeProductOpen && composeProductSearch && (
+                  <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                    {allProducts.filter(p => p.name.toLowerCase().includes(composeProductSearch.toLowerCase())).length === 0 ? (
+                      <p className="text-xs text-gray-400 px-3 py-2">No products found</p>
+                    ) : allProducts
+                        .filter(p => p.name.toLowerCase().includes(composeProductSearch.toLowerCase()))
+                        .map(p => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onMouseDown={() => { setComposeProduct(p); setComposeProductSearch(''); setComposeProductOpen(false) }}
+                            className="w-full text-left px-3 py-2.5 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                          >
+                            <p className="text-sm font-medium text-gray-800">{p.name}</p>
+                            {p.category && <p className="text-xs text-gray-400">{p.category}</p>}
+                          </button>
+                        ))
+                    }
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Channel */}
+          <div>
+            <label className="label">Channel</label>
+            <select className="input" value={composeChannel} onChange={e => setComposeChannel(e.target.value)}>
+              <option value="">— Select —</option>
+              {['Email', 'WhatsApp Business', 'Alibaba', 'Personal WhatsApp'].map(c => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+
+          {/* Situation / context — the main field */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="label mb-0">What's the situation? *</label>
+              {enquiries.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setComposeContext(enquiries[0].description || '')}
+                  className="text-xs text-brand-600 hover:text-brand-800"
+                >
+                  ↺ Use latest interaction
+                </button>
+              )}
+            </div>
+            <textarea
+              className="input"
+              rows={4}
+              value={composeContext}
+              onChange={e => setComposeContext(e.target.value)}
+              placeholder="Describe what you want to say or what's happening — e.g. 'They asked about crystal fabric roses last month, we now have 3 new colours, want to follow up and ask if they want samples'"
+            />
+          </div>
+
+          <button onClick={handleCompose} disabled={composeLoading} className="btn-primary">
+            {composeLoading ? (
+              <span className="flex items-center gap-2">
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Generating…
+              </span>
+            ) : '✦ Generate Message'}
+          </button>
+
+          {composeError && <p className="text-sm text-red-600">{composeError}</p>}
+
+          {composeResult && (
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="label mb-0">Generated Message</label>
+                <button onClick={handleCopy} className="text-xs text-brand-600 hover:text-brand-800 font-medium">
+                  {composeCopied ? '✓ Copied!' : 'Copy'}
+                </button>
+              </div>
+              <textarea
+                className="input font-mono text-xs"
+                rows={12}
+                value={composeResult}
+                onChange={e => setComposeResult(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Enquiry form drawer */}
+      {enquiryFormOpen && (
+        <EnquiryForm
+          customerId={id}
+          customerQuotes={quotes}
+          enquiry={editingEnquiry}
+          onSave={() => {}}
+          onClose={() => { setEnquiryFormOpen(false); setEditingEnquiry(null) }}
+        />
+      )}
+
       {confirmDelete && (
         <ConfirmDialog
           message={`Delete ${customer.company_name}? This cannot be undone.`}
           onConfirm={handleDelete}
           onCancel={() => setConfirmDelete(false)}
+        />
+      )}
+
+      {confirmDeleteEnquiry && (
+        <ConfirmDialog
+          message="Delete this interaction? This cannot be undone."
+          onConfirm={() => handleDeleteEnquiry(confirmDeleteEnquiry)}
+          onCancel={() => setConfirmDeleteEnquiry(null)}
         />
       )}
     </div>
@@ -171,4 +549,10 @@ function Row({ label, value }) {
       <dd className="text-gray-800 min-w-0 break-words">{value}</dd>
     </div>
   )
+}
+
+function isOverdue(ts) {
+  if (!ts) return false
+  const d = ts.toDate ? ts.toDate() : new Date(ts.seconds * 1000)
+  return d < new Date()
 }

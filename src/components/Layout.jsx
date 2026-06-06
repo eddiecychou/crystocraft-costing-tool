@@ -5,6 +5,7 @@ import { auth } from '../firebase'
 import logo from '../assets/logo.png'
 
 const nav = [
+  { to: '/dashboard',  label: 'Dashboard',  icon: '📊' },
   { to: '/products',   label: 'Products',   icon: '📦' },
   { to: '/suppliers',  label: 'Suppliers',  icon: '🏭' },
   { to: '/customers',  label: 'Customers',  icon: '🏢' },

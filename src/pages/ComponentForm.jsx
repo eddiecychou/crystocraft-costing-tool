@@ -64,7 +64,7 @@ export default function ComponentForm() {
         // Copy product images into new component if checkbox ticked
         if (copyingImages && productImages.length > 0) {
           await Promise.all(productImages.map(img => {
-            const { id: _id, ...imgData } = img
+            const { id: _id, storage_path: _sp, ...imgData } = img
             return addDoc(
               collection(db, 'products', productId, 'components', newComponentId, 'images'),
               imgData

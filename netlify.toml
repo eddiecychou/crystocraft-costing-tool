@@ -40,6 +40,10 @@
   function = "generate-marketing-copy"
   path = "/api/generate-marketing-copy"
 
+[[edge_functions]]
+  function = "compose-message"
+  path = "/api/compose-message"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

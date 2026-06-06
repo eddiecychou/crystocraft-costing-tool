@@ -1,4 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
+import { useNavigate, useParams, Link } from 'react-router-dom'
+import { doc, getDoc, addDoc, updateDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { db } from '../firebase'
 
 function toArray(val) {
   if (Array.isArray(val)) return val.length ? val : ['']
@@ -33,36 +36,33 @@ function MultiInput({ label, values, onChange, type = 'text', placeholder }) {
     </div>
   )
 }
-import { useNavigate, useParams, Link } from 'react-router-dom'
-import { doc, getDoc, addDoc, updateDoc, collection, serverTimestamp } from 'firebase/firestore'
-import { db } from '../firebase'
 
 const COUNTRIES = [
-  // Greater China & HK region first
   'Hong Kong', 'China (Mainland)', 'Macau', 'Taiwan',
-  // Southeast Asia
   'Singapore', 'Malaysia', 'Thailand', 'Vietnam', 'Indonesia', 'Philippines', 'Myanmar', 'Cambodia',
-  // Northeast Asia
   'Japan', 'South Korea',
-  // South Asia
   'India',
-  // Middle East
   'United Arab Emirates', 'Saudi Arabia', 'Qatar',
-  // Oceania
   'Australia', 'New Zealand',
-  // Europe
   'United Kingdom', 'Germany', 'France', 'Netherlands', 'Switzerland', 'Italy', 'Spain',
-  // North America
-  'United States', 'Canada',
-  // Others
+  'Belgium', 'Poland', 'Czech Republic', 'Austria', 'Sweden', 'Denmark', 'Norway', 'Finland',
+  'Portugal', 'Romania', 'Hungary', 'Slovakia',
+  'South Africa', 'Nigeria', 'Kenya',
+  'United States', 'Canada', 'Mexico',
+  'Brazil', 'Argentina',
   'Other',
 ]
+
+const CHANNELS = ['Email', 'WhatsApp Business', 'Alibaba', 'Personal WhatsApp']
+const SOURCES  = ['Alibaba', 'Website', 'Email Marketing', 'Referral', 'Trade Show', 'BNI', 'Direct']
+const CRM_STATUSES = ['Active', 'Prospect', 'Dormant', 'Inactive']
 
 const TAG_SUGGESTIONS = [
   'Banking', 'Insurance', 'Finance', 'Retail', 'Property', 'Hospitality', 'Hotel',
   'Healthcare', 'Education', 'Government', 'NGO', 'Charity', 'Technology',
   'Professional Services', 'Legal', 'Accounting', 'Consulting', 'Media', 'Luxury',
   'VIP Client', 'Agency', 'Event', 'Corporate', 'SME',
+  'Distributor', 'OEM', 'Alibaba', 'Theme Park', 'Disney',
 ]
 
 export default function CustomerForm() {
@@ -79,13 +79,21 @@ export default function CustomerForm() {
     country: 'Hong Kong',
     address: '',
     notes: '',
+    // CRM fields
+    primary_channel: '',
+    source: '',
+    segment: '',
+    crm_status: 'Prospect',
+    folder_path: '',
   })
-  const [emails, setEmails]     = useState([''])
-  const [phones, setPhones]     = useState([''])
-  const [tags, setTags]         = useState([])
-  const [tagInput, setTagInput] = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [fetching, setFetching] = useState(isEdit)
+  const [emails, setEmails]           = useState([''])
+  const [phones, setPhones]           = useState([''])
+  const [tags, setTags]               = useState([])
+  const [tagInput, setTagInput]       = useState('')
+  const [isPersonalWa, setIsPersonalWa] = useState(false)
+  const [isVip, setIsVip]             = useState(false)
+  const [loading, setLoading]         = useState(false)
+  const [fetching, setFetching]       = useState(isEdit)
 
   useEffect(() => {
     if (!isEdit) return
@@ -94,23 +102,36 @@ export default function CustomerForm() {
         const d = snap.data()
         setForm(f => ({
           ...f,
-          company_name: d.company_name || '',
-          contact_name: d.contact_name || '',
-          whatsapp:     d.whatsapp     || '',
-          website:      d.website      || '',
-          country:      d.country || d.region || 'Hong Kong',
-          address:      d.address || '',
-          notes:        d.notes   || '',
+          company_name:    d.company_name    || '',
+          contact_name:    d.contact_name    || '',
+          whatsapp:        d.whatsapp        || '',
+          website:         d.website         || '',
+          country:         d.country || d.region || 'Hong Kong',
+          address:         d.address         || '',
+          notes:           d.notes           || '',
+          primary_channel: d.primary_channel || '',
+          source:          d.source          || '',
+          segment:         d.segment         || '',
+          crm_status:      d.crm_status      || 'Prospect',
+          folder_path:     d.folder_path     || '',
         }))
         setEmails(toArray(d.contact_emails ?? d.contact_email))
         setPhones(toArray(d.contact_phones ?? d.contact_phone))
         setTags(d.tags || [])
+        setIsPersonalWa(d.is_personal_wa || false)
+        setIsVip(d.is_vip || false)
       }
       setFetching(false)
     })
   }, [id, isEdit])
 
   function set(field) { return e => setForm(f => ({ ...f, [field]: e.target.value })) }
+
+  function handleChannelChange(e) {
+    const val = e.target.value
+    setForm(f => ({ ...f, primary_channel: val }))
+    if (val === 'Personal WhatsApp') setIsPersonalWa(true)
+  }
 
   // Tags
   function addTag(value) {
@@ -135,9 +156,10 @@ export default function CustomerForm() {
       const payload = {
         ...form,
         tags,
+        is_personal_wa: isPersonalWa,
+        is_vip: isVip,
         contact_emails: emails.filter(Boolean),
         contact_phones: phones.filter(Boolean),
-        // Keep legacy single-value fields for backward compat
         contact_email: emails.filter(Boolean)[0] || '',
         contact_phone: phones.filter(Boolean)[0] || '',
         updatedAt: serverTimestamp(),
@@ -210,29 +232,21 @@ export default function CustomerForm() {
               className="outline-none text-sm flex-1 min-w-24 bg-transparent"
             />
           </div>
-          {/* Suggestions */}
           {tagInput && suggestions.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
               {suggestions.map(s => (
-                <button
-                  key={s} type="button"
-                  onClick={() => addTag(s)}
-                  className="px-2 py-0.5 rounded-full border border-gray-200 text-xs text-gray-600 hover:bg-brand-50 hover:border-brand-300 hover:text-brand-700 transition-colors"
-                >
+                <button key={s} type="button" onClick={() => addTag(s)}
+                  className="px-2 py-0.5 rounded-full border border-gray-200 text-xs text-gray-600 hover:bg-brand-50 hover:border-brand-300 hover:text-brand-700 transition-colors">
                   + {s}
                 </button>
               ))}
             </div>
           )}
-          {/* Quick-add suggestions when empty */}
           {!tagInput && tags.length === 0 && (
             <div className="flex flex-wrap gap-1.5 mt-2">
               {TAG_SUGGESTIONS.slice(0, 10).map(s => (
-                <button
-                  key={s} type="button"
-                  onClick={() => addTag(s)}
-                  className="px-2 py-0.5 rounded-full border border-gray-200 text-xs text-gray-500 hover:bg-brand-50 hover:border-brand-300 hover:text-brand-700 transition-colors"
-                >
+                <button key={s} type="button" onClick={() => addTag(s)}
+                  className="px-2 py-0.5 rounded-full border border-gray-200 text-xs text-gray-500 hover:bg-brand-50 hover:border-brand-300 hover:text-brand-700 transition-colors">
                   {s}
                 </button>
               ))}
@@ -247,7 +261,7 @@ export default function CustomerForm() {
             <label className="label">Contact Name</label>
             <input className="input" value={form.contact_name} onChange={set('contact_name')} placeholder="e.g. Sarah Chan" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <MultiInput label="Email" values={emails} onChange={setEmails} type="email" placeholder="e.g. sarah@company.com" />
             <MultiInput label="Phone" values={phones} onChange={setPhones} placeholder="e.g. +852 1234 5678" />
           </div>
@@ -258,6 +272,68 @@ export default function CustomerForm() {
           <div>
             <label className="label">Website</label>
             <input className="input" type="url" value={form.website} onChange={set('website')} placeholder="https://www.example.com" />
+          </div>
+        </div>
+
+        {/* CRM */}
+        <div className="card p-5 space-y-4">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">CRM</p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="label">Primary Channel</label>
+              <select className="input" value={form.primary_channel} onChange={handleChannelChange}>
+                <option value="">— Select —</option>
+                {CHANNELS.map(c => <option key={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">CRM Status</label>
+              <select className="input" value={form.crm_status} onChange={set('crm_status')}>
+                <option value="">— Select —</option>
+                {CRM_STATUSES.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Source</label>
+              <select className="input" value={form.source} onChange={set('source')}>
+                <option value="">— Select —</option>
+                {SOURCES.map(s => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">Segment</label>
+              <input className="input" value={form.segment} onChange={set('segment')} placeholder="e.g. Distributor — Poland (VIP)" />
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Folder Path</label>
+            <input className="input" value={form.folder_path} onChange={set('folder_path')} placeholder="e.g. Europe/Widdop" />
+          </div>
+
+          <div className="space-y-2 pt-1">
+            <label className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="w-4 h-4 rounded border-gray-300 text-brand-600"
+                checked={isPersonalWa}
+                onChange={e => setIsPersonalWa(e.target.checked)}
+              />
+              <span>Communicates via <strong>personal WhatsApp</strong> (not WA Business)</span>
+            </label>
+            <label className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="w-4 h-4 rounded border-gray-300 text-brand-600"
+                checked={isVip}
+                onChange={e => setIsVip(e.target.checked)}
+              />
+              <span>⭐ VIP customer</span>
+            </label>
           </div>
         </div>
 

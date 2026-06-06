@@ -72,17 +72,19 @@ export default function ProductDetail() {
           query(collection(db, 'products', id, 'components', compDoc.id, 'images'), orderBy('sort_order'))
         )
         if (!compImgSnap.empty) {
-          await Promise.all(compImgSnap.docs.map(imgDoc =>
-            addDoc(collection(db, 'products', newRef.id, 'components', newCompRef.id, 'images'), imgDoc.data())
-          ))
+          await Promise.all(compImgSnap.docs.map(imgDoc => {
+            const { storage_path: _sp, ...imgData } = imgDoc.data()
+            return addDoc(collection(db, 'products', newRef.id, 'components', newCompRef.id, 'images'), imgData)
+          }))
         }
       }))
 
       // Copy product images (reuse same Storage URLs)
       const imgSnap = await getDocs(query(collection(db, 'products', id, 'images'), orderBy('sort_order')))
-      await Promise.all(imgSnap.docs.map(imgDoc =>
-        addDoc(collection(db, 'products', newRef.id, 'images'), imgDoc.data())
-      ))
+      await Promise.all(imgSnap.docs.map(imgDoc => {
+        const { storage_path: _sp, ...imgData } = imgDoc.data()
+        return addDoc(collection(db, 'products', newRef.id, 'images'), imgData)
+      }))
 
       navigate(`/products/${newRef.id}`)
     } finally {
@@ -126,9 +128,10 @@ export default function ProductDetail() {
         query(collection(db, 'products', comp._productId, 'components', comp.id, 'images'), orderBy('sort_order'))
       )
       if (!imgSnap.empty) {
-        await Promise.all(imgSnap.docs.map(imgDoc =>
-          addDoc(collection(db, 'products', id, 'components', ref.id, 'images'), imgDoc.data())
-        ))
+        await Promise.all(imgSnap.docs.map(imgDoc => {
+          const { storage_path: _sp, ...imgData } = imgDoc.data()
+          return addDoc(collection(db, 'products', id, 'components', ref.id, 'images'), imgData)
+        }))
       }
 
       setShowPicker(false)
