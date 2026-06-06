@@ -3,10 +3,11 @@ export default async function handler(req) {
 
   const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
   if (!GEMINI_API_KEY) {
-    return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not configured' }), {
+    return new Response(JSON.stringify({ error: 'GEMINI_API_KEY not configured — check your .env file' }), {
       status: 500, headers: { 'Content-Type': 'application/json' },
     })
   }
+  console.log('GEMINI_API_KEY present, length:', GEMINI_API_KEY.length)
 
   const { product, tone = 'professional and premium' } = await req.json()
   if (!product?.name) {
@@ -58,10 +59,14 @@ Marketing description:`
         }
       )
 
-      if (!res.ok) continue
+      if (!res.ok) {
+        const errText = await res.text()
+        console.error(`Gemini ${model} error ${res.status}:`, errText)
+        continue
+      }
       const data = await res.json()
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
-      if (!text) continue
+      if (!text) { console.error(`Gemini ${model} empty response:`, JSON.stringify(data)); continue }
 
       return new Response(JSON.stringify({ marketing_description: text }), {
         headers: { 'Content-Type': 'application/json' },

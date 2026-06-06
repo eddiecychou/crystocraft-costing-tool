@@ -5,6 +5,9 @@
 [build.environment]
   NODE_VERSION = "20"
 
+[context.production]
+  SECRETS_SCAN_OMIT_KEYS = "VITE_FIREBASE_API_KEY,VITE_FIREBASE_MESSAGING_SENDER_ID,VITE_FIREBASE_APP_ID"
+
 [[edge_functions]]
   function = "process-quote"
   path = "/api/process-quote"
@@ -28,6 +31,14 @@
 [[edge_functions]]
   function = "image-proxy"
   path = "/api/image-proxy"
+
+[[edge_functions]]
+  function = "rewrite-section"
+  path = "/api/rewrite-section"
+
+[[edge_functions]]
+  function = "generate-marketing-copy"
+  path = "/api/generate-marketing-copy"
 
 [[redirects]]
   from = "/*"

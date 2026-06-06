@@ -414,6 +414,69 @@ function WPPublishButton({ payload, disabled }) {
   )
 }
 
+// ── Per-section rewrite panel ─────────────────────────────────────────────────
+function RewritePanel({ sectionType, heading, body, context, onRewrite }) {
+  const [open, setOpen]         = useState(false)
+  const [guidance, setGuidance] = useState('')
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState('')
+
+  async function handleRewrite() {
+    if (!guidance.trim()) return
+    setLoading(true); setError('')
+    try {
+      const res = await fetch('/api/rewrite-section', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ section_type: sectionType, heading, body, guidance, context }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      onRewrite(data)
+      setOpen(false)
+      setGuidance('')
+    } catch (err) {
+      setError(err.message || 'Rewrite failed — please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)}
+        className="text-xs text-gray-400 hover:text-brand-600 transition-colors flex items-center gap-1">
+        ↺ Rewrite
+      </button>
+    )
+  }
+
+  return (
+    <div className="border border-brand-100 rounded-lg p-3 bg-brand-50 space-y-2 mt-1">
+      <p className="text-xs font-medium text-brand-700">What should be different?</p>
+      <textarea
+        className="input text-sm w-full"
+        rows={2}
+        placeholder="e.g. Make it more focused on banking clients, shorter, lead with the engraving detail…"
+        value={guidance}
+        onChange={e => setGuidance(e.target.value)}
+        autoFocus
+      />
+      {error && <p className="text-xs text-red-500">{error}</p>}
+      <div className="flex gap-2">
+        <button type="button" onClick={handleRewrite} disabled={loading || !guidance.trim()}
+          className="text-xs px-3 py-1.5 rounded-md bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 transition-colors">
+          {loading ? '✍️ Rewriting…' : '↺ Rewrite'}
+        </button>
+        <button type="button" onClick={() => { setOpen(false); setGuidance('') }}
+          className="text-xs px-3 py-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+          Cancel
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Editable SEO meta ─────────────────────────────────────────────────────────
 function EditableMeta({ result, onChange }) {
   function set(field) { return e => onChange({ ...result, [field]: e.target.value }) }
@@ -564,8 +627,8 @@ function SpotlightTab({ preloadedProduct }) {
             {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
           </select>
         </div>
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="sm:col-span-2">
             <label className="label">Enquiry / CTA URL <span className="text-gray-400 font-normal">(optional — adds a button at the end of the post)</span></label>
             <input className="input" type="url" value={productUrl} onChange={e => setProductUrl(e.target.value)} placeholder="https://crystocraft.com/products/..." />
           </div>
@@ -611,6 +674,16 @@ function SpotlightTab({ preloadedProduct }) {
                 )}
                 <textarea className="input text-sm" rows={4} value={s.body || ''}
                   onChange={e => updateSection(i, 'body', e.target.value)} />
+                <RewritePanel
+                  sectionType={s.type}
+                  heading={s.heading}
+                  body={s.body}
+                  context={`Product: ${selectedProduct?.name || ''}\nCategory: ${selectedProduct?.category || ''}\nDescription: ${selectedProduct?.description || ''}`}
+                  onRewrite={data => {
+                    if (data.heading !== undefined) updateSection(i, 'heading', data.heading)
+                    updateSection(i, 'body', data.body)
+                  }}
+                />
                 <input className="input text-xs text-gray-500" type="url" value={s.section_url || ''} placeholder="Section link URL (overrides global — links images & heading)"
                   onChange={e => updateSection(i, 'section_url', e.target.value)} />
 
@@ -785,8 +858,8 @@ function RoundupTab() {
           </select>
         </div>
 
-        <div className="grid grid-cols-3 gap-3">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="sm:col-span-2">
             <label className="label">Enquiry / CTA URL <span className="text-gray-400 font-normal">(optional — adds a button after the conclusion)</span></label>
             <input className="input" type="url" value={productUrl} onChange={e => setProductUrl(e.target.value)} placeholder="https://crystocraft.com/products/..." />
           </div>
@@ -826,6 +899,12 @@ function RoundupTab() {
               </div>
               <textarea className="input text-sm" rows={3} value={result.intro.body || ''}
                 onChange={e => setResult(prev => ({ ...prev, intro: { ...prev.intro, body: e.target.value } }))} />
+              <RewritePanel
+                sectionType="intro"
+                body={result.intro.body}
+                context={`Post type: roundup\nProducts: ${selected.map(p => p.name).join(', ')}`}
+                onRewrite={data => setResult(prev => ({ ...prev, intro: { ...prev.intro, body: data.body } }))}
+              />
             </div>
           )}
 
@@ -845,6 +924,16 @@ function RoundupTab() {
                   onChange={e => updateItem(i, 'heading', e.target.value)} />
                 <textarea className="input text-sm" rows={4} value={item.body || ''}
                   onChange={e => updateItem(i, 'body', e.target.value)} />
+                <RewritePanel
+                  sectionType="product_item"
+                  heading={item.heading}
+                  body={item.body}
+                  context={`Product: ${product?.name || ''}\nCategory: ${product?.category || ''}\nDescription: ${product?.description || ''}`}
+                  onRewrite={data => {
+                    if (data.heading !== undefined) updateItem(i, 'heading', data.heading)
+                    updateItem(i, 'body', data.body)
+                  }}
+                />
                 <input className="input text-xs text-gray-500" type="url" value={item.item_url || ''} placeholder="Product link URL (overrides global — links images & heading)"
                   onChange={e => updateItem(i, 'item_url', e.target.value)} />
 
@@ -877,6 +966,19 @@ function RoundupTab() {
                 onChange={e => setResult(prev => ({ ...prev, conclusion: { ...prev.conclusion, heading: e.target.value } }))} />
               <textarea className="input text-sm" rows={3} value={result.conclusion.body || ''}
                 onChange={e => setResult(prev => ({ ...prev, conclusion: { ...prev.conclusion, body: e.target.value } }))} />
+              <RewritePanel
+                sectionType="conclusion"
+                heading={result.conclusion.heading}
+                body={result.conclusion.body}
+                context={`Post type: roundup\nProducts: ${selected.map(p => p.name).join(', ')}`}
+                onRewrite={data => setResult(prev => ({
+                  ...prev,
+                  conclusion: {
+                    heading: data.heading !== undefined ? data.heading : prev.conclusion.heading,
+                    body: data.body,
+                  }
+                }))}
+              />
             </div>
           )}
 
