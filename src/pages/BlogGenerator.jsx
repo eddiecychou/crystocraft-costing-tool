@@ -122,7 +122,7 @@ function SectionImagePicker({ images, heroImage, selected, onChange }) {
 }
 
 // ── Blog preview (iframe) ─────────────────────────────────────────────────────
-function buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl) {
+function buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl, ctaText) {
   const css = `
     *{box-sizing:border-box}
     body{font-family:Georgia,'Times New Roman',serif;max-width:800px;margin:0 auto;padding:28px 20px;color:#222;line-height:1.75}
@@ -154,7 +154,7 @@ function buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl)
 
   result.sections?.forEach((s, i) => {
     const imgs    = sectionImages[i] || []
-    const linkUrl = s.section_url || productUrl
+    const linkUrl = s.section_url || ''  // per-section only; global URL is for button
     const heading = s.heading
       ? (linkUrl ? `<h2><a href="${linkUrl}" target="_blank">${escapeHtml(s.heading)}</a></h2>` : `<h2>${escapeHtml(s.heading)}</h2>`)
       : ''
@@ -163,7 +163,7 @@ function buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl)
       const el = `<figure><img src="${img.file_url}" alt="${escapeHtml(img.alt_text || img.label || '')}" />${img.caption || img.label ? `<figcaption>${escapeHtml(img.caption || img.label)}</figcaption>` : ''}</figure>`
       return linkUrl ? `<a href="${linkUrl}" target="_blank">${el}</a>` : el
     }
-    const btn = (s.type === 'cta' && linkUrl) ? `<a class="btn" href="${linkUrl}" target="_blank">View Product →</a>` : ''
+    const btn = (s.type === 'cta' && productUrl) ? `<a class="btn" href="${productUrl}" target="_blank">${escapeHtml(ctaText || 'View Product →')}</a>` : ''
 
     if (imgs.length === 1) {
       body += `<div class="section">${heading}${paras}<div class="imgs">${imgHtml(imgs[0])}</div>${btn}</div>`
@@ -175,7 +175,7 @@ function buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl)
   return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body>${body}</body></html>`
 }
 
-function buildRoundupPreviewHTML(result, selected, heroImage, itemImages, productUrl) {
+function buildRoundupPreviewHTML(result, selected, heroImage, itemImages, productUrl, ctaText) {
   const css = `
     *{box-sizing:border-box}
     body{font-family:Georgia,'Times New Roman',serif;max-width:800px;margin:0 auto;padding:28px 20px;color:#222;line-height:1.75}
@@ -217,7 +217,7 @@ function buildRoundupPreviewHTML(result, selected, heroImage, itemImages, produc
   result.items?.forEach((item, i) => {
     const product = selected[i]
     const imgs    = itemImages[product?.id] || []
-    const linkUrl = item.item_url || productUrl
+    const linkUrl = item.item_url || ''  // per-item only; global URL is for button
     const heading = item.heading
       ? (linkUrl ? `<h2><a href="${linkUrl}" target="_blank">${escapeHtml(item.heading)}</a></h2>` : `<h2>${escapeHtml(item.heading)}</h2>`)
       : ''
@@ -233,7 +233,7 @@ function buildRoundupPreviewHTML(result, selected, heroImage, itemImages, produc
   })
 
   if (result.conclusion) {
-    const btn = productUrl ? `<a class="btn" href="${productUrl}" target="_blank">Enquire Now →</a>` : ''
+    const btn = productUrl ? `<a class="btn" href="${productUrl}" target="_blank">${escapeHtml(ctaText || 'Enquire Now →')}</a>` : ''
     body += `<div class="section"><h2>${escapeHtml(result.conclusion.heading)}</h2><p>${escapeHtml(result.conclusion.body || '').replace(/\n\n/g, '</p><p>')}</p>${btn}</div>`
   }
 
@@ -385,6 +385,7 @@ function SpotlightTab({ preloadedProduct }) {
   const [sectionImages, setSectionImages] = useState([])  // array of arrays
   const [showPreview, setShowPreview] = useState(false)
   const [productUrl, setProductUrl] = useState('')
+  const [ctaText, setCtaText]       = useState('View Product →')
 
   useEffect(() => {
     getDocs(query(collection(db, 'products'), orderBy('name')))
@@ -445,6 +446,7 @@ function SpotlightTab({ preloadedProduct }) {
       ...result,
       product_name: selectedProduct?.name || '',
       product_url: productUrl.trim(),
+      cta_text: ctaText.trim() || 'View Product →',
       sections: result.sections.map((s, i) => ({
         ...s,
         images: (sectionImages[i] || []).map(img => ({
@@ -457,7 +459,7 @@ function SpotlightTab({ preloadedProduct }) {
     }
   } : null
 
-  const previewHTML = result ? buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl) : ''
+  const previewHTML = result ? buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl, ctaText) : ''
 
   return (
     <div className="space-y-5">
@@ -477,9 +479,15 @@ function SpotlightTab({ preloadedProduct }) {
             {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
           </select>
         </div>
-        <div>
-          <label className="label">Product Page URL <span className="text-gray-400 font-normal">(optional — links images & adds View Product button)</span></label>
-          <input className="input" type="url" value={productUrl} onChange={e => setProductUrl(e.target.value)} placeholder="https://crystocraft.com/products/..." />
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-2">
+            <label className="label">Enquiry / CTA URL <span className="text-gray-400 font-normal">(optional — adds a button at the end of the post)</span></label>
+            <input className="input" type="url" value={productUrl} onChange={e => setProductUrl(e.target.value)} placeholder="https://crystocraft.com/products/..." />
+          </div>
+          <div>
+            <label className="label">Button Text</label>
+            <input className="input" value={ctaText} onChange={e => setCtaText(e.target.value)} placeholder="View Product →" />
+          </div>
         </div>
         <button onClick={handleGenerate} disabled={!selectedId || loading} className="btn-primary w-full justify-center">
           {loading ? '✍️ Writing blog post…' : '✨ Generate Product Spotlight Post'}
@@ -565,6 +573,7 @@ function RoundupTab() {
   const [error, setError]             = useState('')
   const [showPreview, setShowPreview] = useState(false)
   const [productUrl, setProductUrl]   = useState('')
+  const [ctaText, setCtaText]         = useState('Enquire Now →')
   // Image state
   const [productImageMap, setProductImageMap] = useState({}) // { productId: [imageObjects] }
   const [heroImage, setHeroImage]     = useState(null)
@@ -623,6 +632,7 @@ function RoundupTab() {
     content: {
       ...result,
       product_url: productUrl.trim(),
+      cta_text: ctaText.trim() || 'Enquire Now →',
       items: result.items.map((item, i) => {
         const p = selected[i]
         return {
@@ -640,7 +650,7 @@ function RoundupTab() {
     }
   } : null
 
-  const previewHTML = result ? buildRoundupPreviewHTML(result, selected, heroImage, itemImages, productUrl) : ''
+  const previewHTML = result ? buildRoundupPreviewHTML(result, selected, heroImage, itemImages, productUrl, ctaText) : ''
 
   return (
     <div className="space-y-5">
@@ -690,9 +700,15 @@ function RoundupTab() {
           </select>
         </div>
 
-        <div>
-          <label className="label">Product Page URL <span className="text-gray-400 font-normal">(optional — links images & adds Enquire Now button)</span></label>
-          <input className="input" type="url" value={productUrl} onChange={e => setProductUrl(e.target.value)} placeholder="https://crystocraft.com/products/..." />
+        <div className="grid grid-cols-3 gap-3">
+          <div className="col-span-2">
+            <label className="label">Enquiry / CTA URL <span className="text-gray-400 font-normal">(optional — adds a button after the conclusion)</span></label>
+            <input className="input" type="url" value={productUrl} onChange={e => setProductUrl(e.target.value)} placeholder="https://crystocraft.com/products/..." />
+          </div>
+          <div>
+            <label className="label">Button Text</label>
+            <input className="input" value={ctaText} onChange={e => setCtaText(e.target.value)} placeholder="Enquire Now →" />
+          </div>
         </div>
         <button onClick={handleGenerate} disabled={selected.length < 2 || loading} className="btn-primary w-full justify-center">
           {loading ? '✍️ Writing roundup…' : `✨ Generate Roundup (${selected.length} products)`}

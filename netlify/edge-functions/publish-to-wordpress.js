@@ -238,23 +238,24 @@ export default async function handler(req) {
 
       const spacer = `<!-- wp:spacer {"height":"48px"} -->\n<div style="height:48px" aria-hidden="true" class="wp-block-spacer"></div>\n<!-- /wp:spacer -->\n\n`
 
+      const ctaText = content.cta_text || 'View Product →'
+
       sections.forEach((section, i) => {
         if (i > 0) html += spacer
-        const imgs = (sectionMediaArrays[i] || []).filter(Boolean)
+        const imgs    = (sectionMediaArrays[i] || []).filter(Boolean)
         const isCta   = section.type === 'cta'
-        const linkUrl = section.section_url || productUrl  // per-section overrides global
+        const linkUrl = section.section_url || ''  // per-section URL only — global is for button only
         const linkedHeading = (section.heading && linkUrl)
           ? `<!-- wp:heading {"level":2} -->\n<h2 class="wp-block-heading"><a href="${linkUrl}">${section.heading}</a></h2>\n<!-- /wp:heading -->\n\n`
           : headingBlock(section.heading)
         if (imgs.length === 1) {
           html += linkedHeading + paraBlock(section.body) + imgBlock(imgs[0], 'large', '', linkUrl)
         } else if (imgs.length >= 2) {
-          // heading already rendered with link — pass null heading to galleryBlock
           html += linkedHeading + paraBlock(section.body) + `<!-- wp:gallery {"columns":${imgs.length},"linkTo":"none"} -->\n<figure class="wp-block-gallery has-nested-images columns-${imgs.length} is-cropped">\n${imgs.map(m => `<!-- wp:image {"id":${m.wp_id},"sizeSlug":"medium"} -->\n<figure class="wp-block-image size-medium"><img src="${m.wp_url}" alt="${m.alt_text || ''}" /></figure>\n<!-- /wp:image -->`).join('\n')}\n</figure>\n<!-- /wp:gallery -->\n\n`
         } else {
           html += linkedHeading + paraBlock(section.body)
         }
-        if (isCta && linkUrl) html += buttonBlock('View Product →', linkUrl)
+        if (isCta && productUrl) html += buttonBlock(ctaText, productUrl)
       })
 
     // ── ROUNDUP ───────────────────────────────────────────────────────────────
@@ -279,6 +280,7 @@ export default async function handler(req) {
       itemMediaArrays.forEach(arr => arr.forEach(m => { if (m) totalUploaded++ }))
 
       const productUrl = content.product_url || ''
+      const ctaText    = content.cta_text    || 'Enquire Now →'
 
       const itemSpacer = `<!-- wp:spacer {"height":"48px"} -->\n<div style="height:48px" aria-hidden="true" class="wp-block-spacer"></div>\n<!-- /wp:spacer -->\n\n`
 
@@ -288,7 +290,7 @@ export default async function handler(req) {
       items?.forEach((item, idx) => {
         if (idx > 0) html += itemSpacer
         const imgs    = (itemMediaArrays[idx] || []).filter(Boolean)
-        const linkUrl = item.item_url || productUrl  // per-item overrides global
+        const linkUrl = item.item_url || ''  // per-item URL only — global productUrl is for the button only
         const linkedHeading = (item.heading && linkUrl)
           ? `<!-- wp:heading {"level":2} -->\n<h2 class="wp-block-heading"><a href="${linkUrl}">${item.heading}</a></h2>\n<!-- /wp:heading -->\n\n`
           : headingBlock(item.heading)
@@ -304,7 +306,7 @@ export default async function handler(req) {
       if (conclusion) {
         html += itemSpacer
         html += headingBlock(conclusion.heading) + paraBlock(conclusion.body)
-        if (productUrl) html += buttonBlock('Enquire Now →', productUrl)
+        if (productUrl) html += buttonBlock(ctaText, productUrl)
       }
     }
 
