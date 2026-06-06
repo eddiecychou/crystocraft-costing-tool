@@ -1,4 +1,5 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
 import logo from '../assets/logo.png'
@@ -13,8 +14,14 @@ const nav = [
   { to: '/settings',      label: 'Settings',    icon: '⚙️' },
 ]
 
+const mainNav  = nav.slice(0, 5)
+const moreNav  = nav.slice(5)
+
 export default function Layout({ children, user }) {
-  const navigate = useNavigate()
+  const navigate  = useNavigate()
+  const location  = useLocation()
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreActive = moreNav.some(n => location.pathname.startsWith(n.to))
 
   async function handleSignOut() {
     await signOut(auth)
@@ -79,7 +86,7 @@ export default function Layout({ children, user }) {
 
         {/* Bottom tab bar — mobile only */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex z-40">
-          {nav.map(({ to, label, icon }) => (
+          {mainNav.map(({ to, label, icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -93,7 +100,43 @@ export default function Layout({ children, user }) {
               <span>{label}</span>
             </NavLink>
           ))}
+
+          {/* More button */}
+          <button
+            onClick={() => setMoreOpen(o => !o)}
+            className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-xs font-medium transition-colors ${
+              moreActive || moreOpen ? 'text-brand-600' : 'text-gray-400'
+            }`}
+          >
+            <span className="text-xl leading-none">⋯</span>
+            <span>More</span>
+          </button>
         </nav>
+
+        {/* More drawer — slides up above tab bar */}
+        {moreOpen && (
+          <>
+            <div className="md:hidden fixed inset-0 z-30" onClick={() => setMoreOpen(false)} />
+            <div className="md:hidden fixed bottom-16 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg rounded-t-xl">
+              {moreNav.map(({ to, label, icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  onClick={() => setMoreOpen(false)}
+                  className={({ isActive }) =>
+                    `flex items-center gap-4 px-6 py-4 text-sm font-medium border-b border-gray-100 last:border-0 transition-colors ${
+                      isActive ? 'text-brand-600 bg-brand-50' : 'text-gray-700'
+                    }`
+                  }
+                >
+                  <span className="text-2xl leading-none">{icon}</span>
+                  <span>{label}</span>
+                </NavLink>
+              ))}
+            </div>
+          </>
+        )}
+
       </div>
     </div>
   )

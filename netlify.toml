@@ -17,6 +17,18 @@
   function = "fx-rates"
   path = "/api/fx-rates"
 
+[[edge_functions]]
+  function = "generate-blog"
+  path = "/api/generate-blog"
+
+[[edge_functions]]
+  function = "publish-to-wordpress"
+  path = "/api/publish-to-wordpress"
+
+[[edge_functions]]
+  function = "image-proxy"
+  path = "/api/image-proxy"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

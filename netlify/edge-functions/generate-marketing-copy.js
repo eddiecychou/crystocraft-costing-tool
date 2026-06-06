@@ -33,6 +33,7 @@ REQUIREMENTS:
 - Do NOT mention prices
 - Write in English only
 - Output ONLY the marketing copy — no headings, no labels, no extra text
+- NEVER start with "Elevate" — vary your openings each time. Other banned openers: "Discover", "Introducing", "Transform", "Unleash"
 
 Marketing description:`
 

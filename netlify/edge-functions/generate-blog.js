@@ -46,10 +46,11 @@ Writing style:
 - 1 short paragraph per section (3–4 sentences max). No padding, no repetition.
 - Lead with the most important point. Cut filler phrases like "In today's world..." or "It's no secret that..."
 - Tone: confident and editorial, like a premium brand magazine — not a sales brochure.
+- NEVER start any sentence or heading with "Elevate" — vary your openings. Other banned openers: "Discover", "Introducing", "Transform", "Unleash".
 
 Return ONLY a valid JSON object with this structure:
 {
-  "seo_title": "string (max 65 chars, include product name + target keyword)",
+  "seo_title": "string (max 65 chars, include product name + target keyword — do NOT append '| Crystocraft' or any brand suffix, WordPress adds this automatically)",
   "meta_description": "string (max 155 chars, compelling summary for Google snippet)",
   "slug": "string (URL-friendly slug e.g. smooth-spin-crystal-drinkware-corporate-gift)",
   "hero_alt_text": "string (descriptive alt text for the hero image for SEO)",
@@ -106,10 +107,11 @@ Writing style:
 - Intro: 1 short paragraph max. Items: 1–2 short paragraphs each. Conclusion: 2–3 sentences.
 - Lead with impact. No filler openers like "In today's competitive landscape..."
 - Tone: confident and editorial, like a premium brand magazine — not a sales brochure.
+- NEVER start any sentence or heading with "Elevate" — vary your openings. Other banned openers: "Discover", "Introducing", "Transform", "Unleash".
 
 Return ONLY a valid JSON object with this structure:
 {
-  "seo_title": "string (max 65 chars, include number + target keyword e.g. '5 Unique Corporate Gifts for...')",
+  "seo_title": "string (max 65 chars, include number + target keyword e.g. '5 Unique Corporate Gifts for...' — do NOT append '| Crystocraft' or any brand suffix, WordPress adds this automatically)",
   "meta_description": "string (max 155 chars)",
   "slug": "string (URL-friendly slug)",
   "intro": {

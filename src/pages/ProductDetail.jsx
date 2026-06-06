@@ -146,7 +146,7 @@ export default function ProductDetail() {
       {/* Header */}
       <div className="mb-6">
         <Link to="/products" className="text-sm text-brand-600 hover:underline">← Products</Link>
-        <div className="flex items-start justify-between mt-1 gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mt-1 gap-2">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-gray-900">{product.name}</h1>
             <div className="flex items-center gap-2 mt-1">
@@ -155,7 +155,6 @@ export default function ProductDetail() {
             </div>
           </div>
           <div className="flex gap-2 shrink-0">
-            <Link to={`/blog-generator/${id}`} className="btn-secondary text-sm">✍️ Blog</Link>
             <Link to={`/products/${id}/edit`} className="btn-secondary text-sm">Edit</Link>
             <button className="btn-secondary text-sm" onClick={handleDuplicate} disabled={duplicating}>
               {duplicating ? 'Copying…' : '⧉ Duplicate'}
