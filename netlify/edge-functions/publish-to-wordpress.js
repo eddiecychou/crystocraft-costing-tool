@@ -122,13 +122,27 @@ export default async function handler(req) {
   }
 
   // ── Helper: upload one image to WP Media Library ───────────────────────────
-  // imageType: 'hero' | 'content'
-  async function uploadOne(firebase_url, alt_text = '', caption = '', productName = '', imageType = 'content') {
+  // img: { firebase_url, alt_text, caption, b64?, width?, height? }
+  // If b64 is present the browser already compressed it — skip fetch+resize.
+  async function uploadOne(img, productName = '', imageType = 'content') {
+    const { firebase_url, alt_text = '', caption = '', b64, width: preW, height: preH } = img
     try {
-      const imgRes = await fetch(firebase_url)
-      if (!imgRes.ok) return null
-      const raw  = await imgRes.arrayBuffer()
-      const { buffer: imgBuffer, width, height } = await resizeAndCompress(raw, imageType)
+      let imgBuffer, width, height
+      if (b64) {
+        // Pre-compressed by browser — decode base64
+        const binary = atob(b64)
+        const bytes  = new Uint8Array(binary.length)
+        for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+        imgBuffer = bytes.buffer
+        width  = preW  || 0
+        height = preH || 0
+      } else {
+        // Fallback: fetch from Firebase and attempt edge-function compression
+        const imgRes = await fetch(firebase_url)
+        if (!imgRes.ok) return null
+        const raw = await imgRes.arrayBuffer()
+        ;({ buffer: imgBuffer, width, height } = await resizeAndCompress(raw, imageType))
+      }
       const sizeStr  = width && height ? `${width}x${height}` : Date.now().toString()
       const filename = `${slugify(productName)}-${imageType}-${sizeStr}.jpg`
 
@@ -222,11 +236,11 @@ export default async function handler(req) {
       // Upload hero + ALL section images in parallel
       const [heroMedia, ...sectionMediaArrays] = await Promise.all([
         hero?.firebase_url
-          ? uploadOne(hero.firebase_url, hero.alt_text || '', '', productName, 'hero')
+          ? uploadOne(hero, productName, 'hero')
           : Promise.resolve(null),
         ...sections.map(section =>
           Promise.all((section.images || []).map(img =>
-            uploadOne(img.firebase_url, img.alt_text, img.caption, productName, 'content')
+            uploadOne(img, productName, 'content')
           ))
         ),
       ])
@@ -267,11 +281,11 @@ export default async function handler(req) {
       const heroProductName = (items?.[0]?.product_name) || ''
       const [heroMedia, ...itemMediaArrays] = await Promise.all([
         hero?.firebase_url
-          ? uploadOne(hero.firebase_url, hero.alt_text || '', '', heroProductName, 'hero')
+          ? uploadOne(hero, heroProductName, 'hero')
           : Promise.resolve(null),
         ...(items || []).map(item =>
           Promise.all((item.images || []).map(img =>
-            uploadOne(img.firebase_url, img.alt_text, img.caption, img.product_name || item.product_name || '', 'content')
+            uploadOne(img, img.product_name || item.product_name || '', 'content')
           ))
         ),
       ])

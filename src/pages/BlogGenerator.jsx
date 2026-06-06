@@ -270,6 +270,85 @@ function PreviewModal({ html, onClose }) {
   )
 }
 
+// ── Browser-side image compression (reliable — browser has no memory constraints) ─
+function bufToBase64(buf) {
+  let out = ''
+  const bytes = new Uint8Array(buf)
+  for (let i = 0; i < bytes.length; i += 8192)
+    out += String.fromCharCode(...bytes.subarray(i, i + 8192))
+  return btoa(out)
+}
+
+async function compressForWP(firebaseUrl, imageType = 'content') {
+  try {
+    const res = await fetch(firebaseUrl)
+    const blob = await res.blob()
+    const bitmap = await createImageBitmap(blob)
+    const { width, height } = bitmap
+    const ratio = width / height
+
+    let tw, th
+    if (imageType === 'hero') {
+      tw = Math.min(width, 1200); th = Math.round(tw / ratio)
+    } else if (ratio >= 0.85 && ratio <= 1.18) {
+      tw = Math.min(width, 1000); th = Math.round(tw / ratio)
+    } else if (width >= height) {
+      tw = Math.min(width, 1200); th = Math.round(tw / ratio)
+    } else {
+      tw = Math.min(width, 1000); th = Math.round(tw / ratio)
+    }
+
+    const maxBytes = imageType === 'hero' ? 400 * 1024 : 200 * 1024
+    const canvas = new OffscreenCanvas(tw, th)
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, tw, th)
+    bitmap.close()
+
+    const qualities = imageType === 'hero'
+      ? [0.88, 0.80, 0.70, 0.60, 0.50]
+      : [0.85, 0.75, 0.65, 0.50, 0.35, 0.25]
+    for (const q of qualities) {
+      const out = await canvas.convertToBlob({ type: 'image/jpeg', quality: q })
+      if (out.size <= maxBytes) return { b64: bufToBase64(await out.arrayBuffer()), width: tw, height: th }
+    }
+    const out = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.20 })
+    return { b64: bufToBase64(await out.arrayBuffer()), width: tw, height: th }
+  } catch (err) {
+    console.warn('compressForWP failed:', firebaseUrl, err?.message)
+    return null
+  }
+}
+
+async function preprocessPayload(payload) {
+  const p = JSON.parse(JSON.stringify(payload))
+
+  // Compress hero
+  if (p.hero?.firebase_url) {
+    const r = await compressForWP(p.hero.firebase_url, 'hero')
+    if (r) { p.hero.b64 = r.b64; p.hero.width = r.width; p.hero.height = r.height }
+  }
+
+  // Compress all content images in parallel
+  if (p.type === 'spotlight') {
+    await Promise.all((p.content.sections || []).map(async s => {
+      s.images = await Promise.all((s.images || []).map(async img => {
+        const r = await compressForWP(img.firebase_url, 'content')
+        if (r) { img.b64 = r.b64; img.width = r.width; img.height = r.height }
+        return img
+      }))
+    }))
+  } else if (p.type === 'roundup') {
+    await Promise.all((p.content.items || []).map(async item => {
+      item.images = await Promise.all((item.images || []).map(async img => {
+        const r = await compressForWP(img.firebase_url, 'content')
+        if (r) { img.b64 = r.b64; img.width = r.width; img.height = r.height }
+        return img
+      }))
+    }))
+  }
+
+  return p
+}
+
 // ── WordPress publish button ──────────────────────────────────────────────────
 function WPPublishButton({ payload, disabled }) {
   const [state, setState] = useState('idle')
@@ -277,13 +356,15 @@ function WPPublishButton({ payload, disabled }) {
   const [errMsg, setErrMsg] = useState('')
 
   async function handlePublish() {
-    setState('loading')
+    setState('compressing')
     setErrMsg('')
     try {
+      const processedPayload = await preprocessPayload(payload)
+      setState('publishing')
       const res = await fetch('/api/publish-to-wordpress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(processedPayload),
       })
       // Edge function may return HTML on crash — guard against non-JSON
       const contentType = res.headers.get('content-type') || ''
@@ -318,10 +399,10 @@ function WPPublishButton({ payload, disabled }) {
 
   return (
     <div className="space-y-1.5">
-      <button onClick={handlePublish} disabled={state === 'loading' || disabled}
+      <button onClick={handlePublish} disabled={state === 'compressing' || state === 'publishing' || disabled}
         className="w-full py-2.5 px-4 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-40"
         style={{ background: '#2563eb' }}>
-        {state === 'loading' ? '⏳ Uploading & publishing draft…' : '🚀 Publish Draft to WordPress'}
+        {state === 'compressing' ? '🗜 Compressing images…' : state === 'publishing' ? '⏳ Publishing draft…' : '🚀 Publish Draft to WordPress'}
       </button>
       {state === 'error' && <p className="text-xs text-red-500">{errMsg}</p>}
       <p className="text-xs text-gray-400 text-center">Images upload to WP Media Library for maximum SEO benefit</p>
