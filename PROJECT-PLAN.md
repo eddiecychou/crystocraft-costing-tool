@@ -1,10 +1,10 @@
 # Crystocraft Corporate Gift Costing Tool — Project Plan
 
-## Current Status — V2.0 as of 2026-06-05
+## Current Status — V2.1 as of 2026-06-06
 
-**V2.0 is deployed to Netlify and live in production.**
+**V2.1 is deployed to Netlify and live in production.**
 
-### What's working end-to-end (V2.0)
+### What's working end-to-end (V2.1)
 - Create and manage products with image galleries (hero image, type labels, lightbox)
 - Build a BOM per product: add components, upload component images
 - Record supplier quotes per component — AI extraction from WeChat/supplier screenshots via Gemini
@@ -15,6 +15,9 @@
 - Export client quote to Excel (.xlsx) with embedded product photos, one row per pricing tier
 - **Product Catalogue builder** — create branded A4 landscape catalogues with auto layout, drag-to-reorder images, cover page with background photo, print/PDF export
 - **Supplier quote improvements** — searchable supplier combobox, delete quote, remove uploaded attachments
+- **Drag-to-reorder** images in product and component image galleries
+- **Pricing tiers shown on product cards** in the product list (HKD xx @ xxx pcs)
+- **Rebranded** to "Crystocraft Product Management App"; Netlify site renamed to `ua-product-manager.netlify.app`; logo shown on login page; page title and OG tags updated
 - Firebase security rules locked (Firestore + Storage)
 - Deployed to Netlify with `GEMINI_API_KEY` set
 
@@ -358,9 +361,13 @@ Pricing tiers are user-defined per product (any qty: 100, 200, 300, 500, 1000, 2
 - [ ] Export to PDF (`@react-pdf/renderer`) — stubbed as "coming soon"
 
 ### Phase 5 — Polish & Deployment ✅ Complete (V1.0 → V2.0)
+### Phase 5.1 — UX Improvements ✅ Complete (V2.1)
 - [x] Netlify deployment — pushed to Git, connected Netlify, `GEMINI_API_KEY` set
 - [x] Firebase security rules locked (Firestore + Storage, all paths)
 - [x] Supplier quote improvements: searchable combobox, delete quote, remove attachments
+- [x] Drag-to-reorder images in product and component galleries (sort_order persisted to Firestore)
+- [x] Pricing tiers displayed on product list cards
+- [x] Rebranded to "Crystocraft Product Management App" — login logo, sidebar, page title, OG tags, Netlify site name (`ua-product-manager.netlify.app`)
 
 ### Phase 6 — Product Catalogue ✅ Complete (V2.0)
 New feature: branded A4 landscape PDF catalogue generator.
