@@ -16,6 +16,76 @@ const INDUSTRIES = [
   'General Corporate Gifting',
 ]
 
+// ── WordPress publish button ──────────────────────────────────────────────────
+function WPPublishButton({ type, content, images }) {
+  const [state, setState] = useState('idle') // idle | loading | success | error
+  const [result, setResult] = useState(null)
+  const [errMsg, setErrMsg] = useState('')
+
+  async function handlePublish() {
+    setState('loading')
+    setErrMsg('')
+    try {
+      const res = await fetch('/api/publish-to-wordpress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, content, images }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) throw new Error(data.error || 'Publish failed')
+      setResult(data)
+      setState('success')
+    } catch (err) {
+      setErrMsg(err.message || 'Publish failed — check WordPress credentials')
+      setState('error')
+    }
+  }
+
+  if (state === 'success' && result) {
+    return (
+      <div className="rounded-lg border border-green-200 bg-green-50 p-4 space-y-2">
+        <p className="text-sm font-semibold text-green-800">✅ Draft published to WordPress!</p>
+        <p className="text-xs text-green-700">
+          {result.images_uploaded}/{result.images_total} images uploaded to Media Library
+        </p>
+        <div className="flex gap-2 flex-wrap">
+          <a
+            href={result.edit_url}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs px-3 py-1.5 rounded-md bg-green-700 text-white hover:bg-green-800 transition-colors"
+          >
+            ✏️ Edit in WordPress →
+          </a>
+          <a
+            href={result.preview_url}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs px-3 py-1.5 rounded-md bg-white border border-green-300 text-green-700 hover:bg-green-50 transition-colors"
+          >
+            👁 Preview post →
+          </a>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      <button
+        onClick={handlePublish}
+        disabled={state === 'loading'}
+        className="w-full btn-primary justify-center bg-blue-600 hover:bg-blue-700 border-blue-600"
+        style={{ background: state === 'loading' ? '#3b82f6' : '#2563eb', borderColor: '#2563eb' }}
+      >
+        {state === 'loading' ? '⏳ Uploading images & publishing draft…' : '🚀 Publish Draft to WordPress'}
+      </button>
+      {state === 'error' && <p className="text-xs text-red-500">{errMsg}</p>}
+      <p className="text-xs text-gray-400 text-center">Images will be uploaded to WP Media Library for maximum SEO benefit</p>
+    </div>
+  )
+}
+
 // ── Copy button ───────────────────────────────────────────────────────────────
 function CopyButton({ text, label = 'Copy' }) {
   const [copied, setCopied] = useState(false)
@@ -58,6 +128,7 @@ function SpotlightTab({ preloadedProduct }) {
   const [result, setResult]       = useState(null)
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState('')
+  const [productImages, setProductImages] = useState([])
 
   useEffect(() => {
     getDocs(query(collection(db, 'products'), orderBy('name')))
@@ -67,6 +138,13 @@ function SpotlightTab({ preloadedProduct }) {
   const selectedProduct = preloadedProduct?.id === selectedId
     ? preloadedProduct
     : products.find(p => p.id === selectedId)
+
+  // Fetch images when product changes
+  useEffect(() => {
+    if (!selectedId) { setProductImages([]); return }
+    getDocs(query(collection(db, 'products', selectedId, 'images'), orderBy('sort_order')))
+      .then(snap => setProductImages(snap.docs.map(d => d.data())))
+  }, [selectedId])
 
   async function handleGenerate() {
     if (!selectedProduct) return
@@ -204,9 +282,28 @@ function SpotlightTab({ preloadedProduct }) {
             {result.sections?.map((s, i) => <SectionBlock key={i} section={s} />)}
           </div>
 
+          {/* Publish to WordPress */}
+          <div className="card p-5 space-y-3">
+            <div>
+              <h3 className="font-semibold text-gray-800">Publish to WordPress</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Creates a draft post with {productImages.length} image{productImages.length !== 1 ? 's' : ''} uploaded to WP Media Library
+              </p>
+            </div>
+            <WPPublishButton
+              type="spotlight"
+              content={result}
+              images={productImages.map(img => ({
+                firebase_url: img.url,
+                alt_text: img.alt_text || result.hero_alt_text || selectedProduct?.name || '',
+                caption: img.caption || img.label || '',
+              }))}
+            />
+          </div>
+
           {/* Elementor guide */}
           <div className="card p-5 bg-amber-50 border border-amber-100">
-            <h3 className="font-semibold text-amber-800 mb-2">📋 Elementor Workflow</h3>
+            <h3 className="font-semibold text-amber-800 mb-2">📋 Elementor Workflow (manual alternative)</h3>
             <ol className="text-sm text-amber-700 space-y-1 list-decimal list-inside">
               <li>In WordPress → Posts → Add New, set the <strong>SEO Title</strong> and <strong>Meta Description</strong> in Yoast/RankMath</li>
               <li>Set the <strong>URL slug</strong> in the post permalink</li>
@@ -448,9 +545,28 @@ function RoundupTab() {
             </div>
           )}
 
+          {/* Publish to WordPress */}
+          <div className="card p-5 space-y-3">
+            <div>
+              <h3 className="font-semibold text-gray-800">Publish to WordPress</h3>
+              <p className="text-xs text-gray-400 mt-0.5">
+                Creates a draft post with {selected.length} product image{selected.length !== 1 ? 's' : ''} uploaded to WP Media Library
+              </p>
+            </div>
+            <WPPublishButton
+              type="roundup"
+              content={result}
+              images={selected.map((p, i) => ({
+                firebase_url: p.heroImage,
+                alt_text: result.items?.[i]?.image_caption || p.name || '',
+                caption: result.items?.[i]?.image_caption || '',
+              })).filter(img => img.firebase_url)}
+            />
+          </div>
+
           {/* Elementor guide */}
           <div className="card p-5 bg-amber-50 border border-amber-100">
-            <h3 className="font-semibold text-amber-800 mb-2">📋 Elementor Workflow</h3>
+            <h3 className="font-semibold text-amber-800 mb-2">📋 Elementor Workflow (manual alternative)</h3>
             <ol className="text-sm text-amber-700 space-y-1 list-decimal list-inside">
               <li>WordPress → Posts → Add New, paste <strong>SEO Title</strong> + <strong>Meta Description</strong> into Yoast/RankMath</li>
               <li>Set the <strong>URL slug</strong> in permalink settings</li>
