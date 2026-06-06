@@ -263,10 +263,10 @@ export default async function handler(req) {
 
       const productUrl = content.product_url || ''
 
-      // Hero is featured_media only — theme displays it as banner
-      if (intro?.body) html += paraBlock(intro.body)
-
       const itemSpacer = `<!-- wp:spacer {"height":"48px"} -->\n<div style="height:48px" aria-hidden="true" class="wp-block-spacer"></div>\n<!-- /wp:spacer -->\n\n`
+
+      // Hero is featured_media only — theme displays it as banner
+      if (intro?.body) { html += paraBlock(intro.body); html += itemSpacer }
 
       items?.forEach((item, idx) => {
         if (idx > 0) html += itemSpacer

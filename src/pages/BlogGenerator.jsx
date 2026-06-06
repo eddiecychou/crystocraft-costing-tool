@@ -131,7 +131,7 @@ function buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl)
     p{margin:0 0 1em}
     .kw{font-family:sans-serif;font-size:.8em;color:#aaa;margin-bottom:2em}
     .hero{width:100%;border-radius:10px;display:block;margin-bottom:3em}
-    .section{margin-bottom:4em;padding-bottom:4em;border-bottom:1px solid #e5e7eb}
+    .section{margin-top:3em;margin-bottom:4em;padding-bottom:4em;border-bottom:1px solid #e5e7eb}
     .section:last-child{border-bottom:none;padding-bottom:0}
     .col{display:flex;gap:2.5em;align-items:flex-start}
     .col .text{flex:6;min-width:0}
@@ -181,7 +181,7 @@ function buildRoundupPreviewHTML(result, selected, heroImage, itemImages, produc
     p{margin:0 0 1em}
     .kw{font-family:sans-serif;font-size:.8em;color:#aaa;margin-bottom:2em}
     .hero{width:100%;border-radius:10px;display:block;margin-bottom:3em}
-    .section{margin-bottom:4em;padding-bottom:4em;border-bottom:1px solid #e5e7eb}
+    .section{margin-top:3em;margin-bottom:4em;padding-bottom:4em;border-bottom:1px solid #e5e7eb}
     .section:last-child{border-bottom:none;padding-bottom:0}
     .col{display:flex;gap:2.5em;align-items:flex-start}
     .col .text{flex:6;min-width:0}
