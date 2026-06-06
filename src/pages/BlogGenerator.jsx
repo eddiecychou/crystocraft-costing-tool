@@ -121,15 +121,15 @@ function buildSpotlightPreviewHTML(result, heroImage, sectionImages) {
     h2{font-size:1.3em;margin:0 0 .5em;color:#111}
     p{margin:0 0 1em}
     .kw{font-family:sans-serif;font-size:.8em;color:#aaa;margin-bottom:2em}
-    .hero{width:100%;max-height:400px;object-fit:cover;border-radius:10px;display:block;margin-bottom:2.5em}
+    .hero{width:100%;border-radius:10px;display:block;margin-bottom:2.5em}
     .section{margin-bottom:2.5em}
     .col{display:flex;gap:2em;align-items:flex-start}
     .col .text{flex:6;min-width:0}
     .col .img{flex:4;min-width:0}
     .col .img img{width:100%;border-radius:8px;display:block}
-    .imgs{display:flex;gap:1em;margin-top:1em}
+    .imgs{display:flex;gap:1em;margin-top:1em;align-items:flex-start}
     .imgs figure{flex:1;width:0;min-width:0;margin:0}
-    .imgs img{width:100%;border-radius:8px;object-fit:cover;aspect-ratio:4/3;display:block}
+    .imgs img{width:100%;border-radius:8px;display:block}
     figcaption{font-size:.78em;color:#999;text-align:center;margin-top:.35em;font-family:sans-serif}
     @media(max-width:600px){.col{flex-direction:column}.imgs{flex-direction:column}.imgs figure{width:100%}}
   `
