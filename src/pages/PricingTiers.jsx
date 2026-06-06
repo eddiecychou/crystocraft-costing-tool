@@ -69,13 +69,38 @@ export default function PricingTiers() {
     return onSnapshot(q, snap => setTiers(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
   }, [id])
 
-  // Total recurring unit cost HKD (no tooling) — multiplied by qty_per_product
-  const unitCostHKD = components.reduce((sum, c) => {
-    const q = c.preferred_quote
-    if (!q || !q.unit_cost) return sum
-    const qty = Number(c.qty_per_product) || 1
-    return sum + Number(q.unit_cost) * (rates[q.unit_cost_currency] || 1) * qty
-  }, 0)
+  // Get the applicable unit cost for a component at a given order quantity
+  // Uses volume_tiers if available, falls back to base unit_cost
+  function componentUnitCostAtQty(q, orderQty) {
+    if (!q || !q.unit_cost) return null
+    const tiers = q.volume_tiers
+    if (tiers && tiers.length > 0) {
+      // Find the highest min_qty that is <= orderQty
+      const applicable = tiers
+        .filter(t => t.min_qty <= orderQty)
+        .sort((a, b) => b.min_qty - a.min_qty)[0]
+      if (applicable) return Number(applicable.unit_cost)
+    }
+    return Number(q.unit_cost)
+  }
+
+  // Total recurring unit cost HKD at a given order quantity
+  function unitCostHKDAtQty(orderQty) {
+    return components.reduce((sum, c) => {
+      const q = c.preferred_quote
+      if (!q) return sum
+      const unitCost = componentUnitCostAtQty(q, orderQty)
+      if (unitCost == null) return sum
+      const compQty = Number(c.qty_per_product) || 1
+      return sum + unitCost * (rates[q.unit_cost_currency] || 1) * compQty
+    }, 0)
+  }
+
+  // Flat unit cost at MOQ/base (used for cost summary display)
+  const unitCostHKD = unitCostHKDAtQty(tiers[0]?.quantity || 200)
+
+  // Check if any component has volume tiers
+  const hasVolumeTiers = components.some(c => c.preferred_quote?.volume_tiers?.length > 0)
 
   // Total one-time tooling/sample cost in HKD across all components
   const toolingCostHKD = components.reduce((sum, c) => {
@@ -86,7 +111,7 @@ export default function PricingTiers() {
 
   // Total unit cost including amortised tooling at a given quantity
   function totalUnitCostAtQty(qty) {
-    return unitCostHKD + (qty > 0 ? toolingCostHKD / qty : 0)
+    return unitCostHKDAtQty(qty) + (qty > 0 ? toolingCostHKD / qty : 0)
   }
 
   const suggestedPrice = totalUnitCostAtQty(tiers[0]?.quantity || 200) * markup
@@ -160,7 +185,10 @@ export default function PricingTiers() {
 
       {/* Cost Summary */}
       <div className="card p-5 mb-6">
-        <h2 className="text-sm font-semibold text-gray-700 mb-4">Cost Breakdown (from preferred suppliers)</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-sm font-semibold text-gray-700">Cost Breakdown (from preferred suppliers)</h2>
+          {hasVolumeTiers && <span className="text-xs bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full font-medium">Volume pricing active</span>}
+        </div>
 
         {components.length === 0 ? (
           <p className="text-sm text-gray-400">No components yet — <Link to={`/products/${id}`} className="text-brand-600 hover:underline">add components</Link> first.</p>
@@ -183,7 +211,12 @@ export default function PricingTiers() {
                         )}
                       </p>
                       {q ? (
-                        <p className="text-xs text-gray-500">{q.supplier_name} · {q.unit_cost} {q.unit_cost_currency}{(Number(c.qty_per_product) || 1) > 1 ? ` × ${c.qty_per_product}` : ''}</p>
+                        <p className="text-xs text-gray-500">
+                          {q.supplier_name} · {q.unit_cost} {q.unit_cost_currency}{(Number(c.qty_per_product) || 1) > 1 ? ` × ${c.qty_per_product}` : ''}
+                          {q.volume_tiers?.length > 0 && (
+                            <span className="ml-1.5 text-brand-500">· {q.volume_tiers.length} volume tier{q.volume_tiers.length > 1 ? 's' : ''}</span>
+                          )}
+                        </p>
                       ) : c.has_quotes ? (
                         <Link to={`/products/${id}/components/${c.id}`} className="text-xs text-orange-500 hover:underline">
                           ⚠ Has quotes but no preferred set — click to fix
@@ -262,7 +295,7 @@ export default function PricingTiers() {
                 <tr className="text-xs text-gray-400 uppercase tracking-wide">
                   {/* Sticky Qty column */}
                   <th className="text-left pb-3 pr-4 font-semibold text-gray-600 sticky left-0 bg-white whitespace-nowrap">Qty</th>
-                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Unit Cost<br/><span className="text-gray-300 font-normal normal-case tracking-normal">(HKD)</span></th>
+                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Unit Cost<br/><span className="text-gray-300 font-normal normal-case tracking-normal">{hasVolumeTiers ? 'at qty' : '(HKD)'}</span></th>
                   <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Tooling<br/><span className="text-gray-300 font-normal normal-case tracking-normal">/unit</span></th>
                   <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">All-in<br/><span className="text-gray-300 font-normal normal-case tracking-normal">(HKD)</span></th>
                   <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Currency</th>
@@ -291,7 +324,10 @@ export default function PricingTiers() {
                         {tier.quantity.toLocaleString()}
                       </td>
                       <td className="py-3 px-4 text-right text-gray-600 border-l border-gray-100 whitespace-nowrap">
-                        {unitCostHKD.toFixed(2)}
+                        {unitCostHKDAtQty(tier.quantity).toFixed(2)}
+                        {hasVolumeTiers && unitCostHKDAtQty(tier.quantity) !== unitCostHKD && (
+                          <span className="block text-xs text-brand-500">vol. price</span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-right text-gray-400 text-xs border-l border-gray-100 whitespace-nowrap">
                         {toolingCostHKD > 0 ? `+${toolingPerUnit.toFixed(2)}` : '—'}

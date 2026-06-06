@@ -31,6 +31,7 @@ export default function SupplierQuoteForm() {
     is_preferred: false,
     notes: '',
   })
+  const [volumeTiers, setVolumeTiers] = useState([]) // [{ min_qty, unit_cost }]
   const [files, setFiles]         = useState([])
   const [existingAttachments, setExistingAttachments] = useState([])
   const [uploading, setUploading] = useState(false)
@@ -73,6 +74,7 @@ export default function SupplierQuoteForm() {
               notes: d.notes || '',
             }))
             setExistingAttachments(d.attachments || [])
+            setVolumeTiers(d.volume_tiers || [])
           }
         })
       )
@@ -206,6 +208,7 @@ export default function SupplierQuoteForm() {
       is_preferred: false,
       notes: '',
     }))
+    setVolumeTiers(q.volume_tiers || [])
     setShowCopyPicker(false)
   }
 
@@ -245,6 +248,10 @@ export default function SupplierQuoteForm() {
         sampling_lead_time_days: form.sampling_lead_time_days === '' ? null : Number(form.sampling_lead_time_days),
         production_lead_time_days: form.production_lead_time_days === '' ? null : Number(form.production_lead_time_days),
         attachments: [...existingAttachments, ...uploadedAttachments],
+        volume_tiers: volumeTiers
+          .filter(t => t.min_qty !== '' && t.unit_cost !== '')
+          .map(t => ({ min_qty: Number(t.min_qty), unit_cost: Number(t.unit_cost) }))
+          .sort((a, b) => a.min_qty - b.min_qty),
       }
 
       const basePath = collection(db, 'products', productId, 'components', componentId, 'supplier_quotes')
@@ -393,6 +400,33 @@ export default function SupplierQuoteForm() {
               {CURRENCIES.map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
+        </div>
+
+        {/* Volume Price Tiers */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="label mb-0">Volume Price Tiers <span className="text-gray-400 font-normal text-xs">(optional — different unit costs at higher quantities)</span></label>
+            <button type="button" onClick={() => setVolumeTiers(t => [...t, { min_qty: '', unit_cost: '' }])}
+              className="text-xs text-brand-600 hover:text-brand-800 font-medium">+ Add Tier</button>
+          </div>
+          {volumeTiers.length > 0 && (
+            <div className="space-y-2">
+              <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs text-gray-400 px-1">
+                <span>Min Qty</span><span>Unit Cost ({form.unit_cost_currency})</span><span></span>
+              </div>
+              {volumeTiers.map((t, i) => (
+                <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
+                  <input className="input py-1.5 text-sm" type="number" min="1" placeholder="e.g. 500"
+                    value={t.min_qty} onChange={e => setVolumeTiers(prev => prev.map((r, j) => j === i ? { ...r, min_qty: e.target.value } : r))} />
+                  <input className="input py-1.5 text-sm" type="number" step="0.01" min="0" placeholder="0.00"
+                    value={t.unit_cost} onChange={e => setVolumeTiers(prev => prev.map((r, j) => j === i ? { ...r, unit_cost: e.target.value } : r))} />
+                  <button type="button" onClick={() => setVolumeTiers(t => t.filter((_, j) => j !== i))}
+                    className="text-red-300 hover:text-red-500 text-lg leading-none px-1">×</button>
+                </div>
+              ))}
+              <p className="text-xs text-gray-400">Currency same as unit cost above. Pricing tiers will auto-select the best price for each order quantity.</p>
+            </div>
+          )}
         </div>
 
         {/* MOQ */}
