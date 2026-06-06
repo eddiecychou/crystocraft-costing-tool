@@ -27,12 +27,46 @@ export default async function handler(req) {
     })
   }
 
+  // ── Helper: compress image to under 200KB ────────────────────────────────────
+  async function compressIfNeeded(arrayBuffer) {
+    const MAX = 200 * 1024 // 200 KB
+    if (arrayBuffer.byteLength <= MAX) return arrayBuffer
+    try {
+      const blob   = new Blob([arrayBuffer], { type: 'image/jpeg' })
+      const bitmap = await createImageBitmap(blob)
+
+      // Try progressively lower quality first
+      for (const quality of [0.8, 0.65, 0.5, 0.35]) {
+        const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+        canvas.getContext('2d').drawImage(bitmap, 0, 0)
+        const out = await canvas.convertToBlob({ type: 'image/jpeg', quality })
+        const buf = await out.arrayBuffer()
+        if (buf.byteLength <= MAX) { bitmap.close(); return buf }
+      }
+
+      // If still too large, scale dimensions down proportionally then re-encode
+      const scale  = Math.sqrt(MAX / arrayBuffer.byteLength) * 0.85
+      const width  = Math.max(400, Math.floor(bitmap.width  * scale))
+      const height = Math.max(300, Math.floor(bitmap.height * scale))
+      const canvas = new OffscreenCanvas(width, height)
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height)
+      const out = await canvas.convertToBlob({ type: 'image/jpeg', quality: 0.75 })
+      bitmap.close()
+      return await out.arrayBuffer()
+    } catch {
+      // OffscreenCanvas not supported in this runtime — upload original
+      console.warn('Image compression unavailable; uploading original')
+      return arrayBuffer
+    }
+  }
+
   // ── Helper: upload one image to WP Media Library ───────────────────────────
   async function uploadOne(firebase_url, alt_text = '', caption = '') {
     try {
       const imgRes = await fetch(firebase_url)
       if (!imgRes.ok) return null
-      const imgBuffer = await imgRes.arrayBuffer()
+      const raw      = await imgRes.arrayBuffer()
+      const imgBuffer = await compressIfNeeded(raw)
       const filename  = `crystocraft-${Date.now()}.jpg`
 
       const mediaRes = await fetch(`${wpApi}/media`, {
