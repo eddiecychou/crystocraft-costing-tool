@@ -14,8 +14,12 @@ export default function ProductForm() {
   })
   const [loading, setLoading]   = useState(false)
   const [fetching, setFetching] = useState(isEdit)
-  const [aiLoading, setAiLoading] = useState(false)
-  const [aiError, setAiError]   = useState('')
+  const [aiLoading, setAiLoading]     = useState(false)
+  const [aiError, setAiError]         = useState('')
+  const [rewriteOpen, setRewriteOpen] = useState(false)
+  const [rewriteGuide, setRewriteGuide] = useState('')
+  const [rewriteLoading, setRewriteLoading] = useState(false)
+  const [rewriteError, setRewriteError]     = useState('')
 
   useEffect(() => {
     if (!isEdit) return
@@ -46,6 +50,31 @@ export default function ProductForm() {
       setAiError(err.message || 'Generation failed — please try again.')
     } finally {
       setAiLoading(false)
+    }
+  }
+
+  async function handleRewrite() {
+    if (!rewriteGuide.trim()) return
+    setRewriteLoading(true); setRewriteError('')
+    try {
+      const res = await fetch('/api/rewrite-section', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          section_type: 'marketing_description',
+          body: form.marketing_description,
+          guidance: rewriteGuide,
+          context: `Product: ${form.name}\nCategory: ${form.category}\nSpec: ${form.description}`,
+        }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setForm(f => ({ ...f, marketing_description: data.body }))
+      setRewriteOpen(false); setRewriteGuide('')
+    } catch (err) {
+      setRewriteError(err.message || 'Rewrite failed — please try again.')
+    } finally {
+      setRewriteLoading(false)
     }
   }
 
@@ -123,6 +152,36 @@ export default function ProductForm() {
           />
           {aiError && <p className="text-xs text-red-500 mt-1">{aiError}</p>}
           {!form.name && <p className="text-xs text-gray-400 mt-1">Enter a product name first to enable AI writing</p>}
+          {form.marketing_description && !rewriteOpen && (
+            <button type="button" onClick={() => setRewriteOpen(true)}
+              className="text-xs text-gray-400 hover:text-brand-600 transition-colors mt-1 flex items-center gap-1">
+              ↺ Rewrite with guidance
+            </button>
+          )}
+          {rewriteOpen && (
+            <div className="border border-brand-100 rounded-lg p-3 bg-brand-50 space-y-2 mt-1">
+              <p className="text-xs font-medium text-brand-700">What should be different?</p>
+              <textarea
+                className="input text-sm w-full"
+                rows={2}
+                placeholder="e.g. More focused on luxury hotel clients, shorter, emphasise the engraving…"
+                value={rewriteGuide}
+                onChange={e => setRewriteGuide(e.target.value)}
+                autoFocus
+              />
+              {rewriteError && <p className="text-xs text-red-500">{rewriteError}</p>}
+              <div className="flex gap-2">
+                <button type="button" onClick={handleRewrite} disabled={rewriteLoading || !rewriteGuide.trim()}
+                  className="text-xs px-3 py-1.5 rounded-md bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 transition-colors">
+                  {rewriteLoading ? '✍️ Rewriting…' : '↺ Rewrite'}
+                </button>
+                <button type="button" onClick={() => { setRewriteOpen(false); setRewriteGuide('') }}
+                  className="text-xs px-3 py-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div>
