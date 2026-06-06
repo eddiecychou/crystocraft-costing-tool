@@ -14,6 +14,8 @@ export default function ProductForm() {
   })
   const [loading, setLoading]   = useState(false)
   const [fetching, setFetching] = useState(isEdit)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError]   = useState('')
 
   useEffect(() => {
     if (!isEdit) return
@@ -25,6 +27,26 @@ export default function ProductForm() {
 
   function set(field) {
     return e => setForm(f => ({ ...f, [field]: e.target.value }))
+  }
+
+  async function handleGenerateCopy() {
+    if (!form.name) return
+    setAiLoading(true)
+    setAiError('')
+    try {
+      const res = await fetch('/api/generate-marketing-copy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product: form }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setForm(f => ({ ...f, marketing_description: data.marketing_description }))
+    } catch (err) {
+      setAiError(err.message || 'Generation failed — please try again.')
+    } finally {
+      setAiLoading(false)
+    }
   }
 
   async function handleSubmit(e) {
@@ -81,8 +103,26 @@ export default function ProductForm() {
         </div>
 
         <div>
-          <label className="label">Marketing Description</label>
-          <textarea className="input" rows={3} value={form.marketing_description} onChange={set('marketing_description')} placeholder="Sell-copy for catalogues — evocative, customer-facing language…" />
+          <div className="flex items-center justify-between mb-1">
+            <label className="label mb-0">Marketing Description</label>
+            <button
+              type="button"
+              onClick={handleGenerateCopy}
+              disabled={!form.name || aiLoading}
+              className="text-xs px-2.5 py-1 rounded-md bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+            >
+              {aiLoading ? '⏳ Writing…' : '✨ AI Write'}
+            </button>
+          </div>
+          <textarea
+            className="input"
+            rows={4}
+            value={form.marketing_description}
+            onChange={set('marketing_description')}
+            placeholder="Sell-copy for catalogues — evocative, customer-facing language… or click ✨ AI Write to generate"
+          />
+          {aiError && <p className="text-xs text-red-500 mt-1">{aiError}</p>}
+          {!form.name && <p className="text-xs text-gray-400 mt-1">Enter a product name first to enable AI writing</p>}
         </div>
 
         <div>
