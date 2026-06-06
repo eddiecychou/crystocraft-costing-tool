@@ -33,12 +33,12 @@ function HeroPicker({ images, value, onChange }) {
   return (
     <div className="grid grid-cols-5 gap-2">
       {images.map((img, i) => {
-        const active = value?.url === img.url
+        const active = value?.file_url === img.file_url
         return (
-          <button key={img.url || i} type="button"
+          <button key={img.file_url || i} type="button"
             onClick={() => onChange(active ? null : img)}
             className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${active ? 'border-brand-500' : 'border-gray-200 opacity-50 hover:opacity-90'}`}>
-            <img src={img.url} alt="" className="w-full h-full object-cover" />
+            <img src={img.file_url} alt="" className="w-full h-full object-cover" />
             {active && (
               <div className="absolute inset-0 bg-brand-500/20 flex items-end justify-center pb-1">
                 <span className="text-xs bg-brand-500 text-white px-1.5 py-0.5 rounded font-semibold">HERO</span>
@@ -54,11 +54,11 @@ function HeroPicker({ images, value, onChange }) {
 // ── Per-section image picker — 0 to 3 images ─────────────────────────────────
 function SectionImagePicker({ images, heroImage, selected, onChange }) {
   const [open, setOpen] = useState(false)
-  const available = images.filter(img => img.url !== heroImage?.url)
+  const available = images.filter(img => img.file_url !== heroImage?.file_url)
 
   function toggle(img) {
-    const has = selected.find(s => s.url === img.url)
-    if (has) { onChange(selected.filter(s => s.url !== img.url)) }
+    const has = selected.find(s => s.file_url === img.file_url)
+    if (has) { onChange(selected.filter(s => s.file_url !== img.file_url)) }
     else if (selected.length < 3) { onChange([...selected, img]) }
   }
 
@@ -66,9 +66,9 @@ function SectionImagePicker({ images, heroImage, selected, onChange }) {
     <div className="mt-2 space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
         {selected.map((img, i) => (
-          <div key={img.url} className="relative">
-            <img src={img.url} alt="" className="w-14 h-14 object-cover rounded-lg border border-gray-200" />
-            <button type="button" onClick={() => onChange(selected.filter(s => s.url !== img.url))}
+          <div key={img.file_url} className="relative">
+            <img src={img.file_url} alt="" className="w-14 h-14 object-cover rounded-lg border border-gray-200" />
+            <button type="button" onClick={() => onChange(selected.filter(s => s.file_url !== img.file_url))}
               className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center leading-none">×</button>
             <span className="absolute -bottom-1.5 -left-1 text-[10px] bg-gray-700 text-white px-1 rounded">
               {i === 0 && selected.length === 1 ? 'right' : `${i + 1}`}
@@ -93,12 +93,12 @@ function SectionImagePicker({ images, heroImage, selected, onChange }) {
         <div className="border border-gray-100 rounded-lg p-3 bg-gray-50">
           <div className="grid grid-cols-6 gap-1.5">
             {available.map(img => {
-              const active = Boolean(selected.find(s => s.url === img.url))
+              const active = Boolean(selected.find(s => s.file_url === img.file_url))
               const atMax = selected.length >= 3 && !active
               return (
-                <button key={img.url} type="button" onClick={() => toggle(img)} disabled={atMax}
+                <button key={img.file_url} type="button" onClick={() => toggle(img)} disabled={atMax}
                   className={`relative aspect-square rounded overflow-hidden border-2 transition-all ${active ? 'border-brand-500' : 'border-transparent opacity-50 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
-                  <img src={img.url} alt="" className="w-full h-full object-cover" />
+                  <img src={img.file_url} alt="" className="w-full h-full object-cover" />
                   {active && <div className="absolute inset-0 bg-brand-500/30" />}
                 </button>
               )
@@ -137,14 +137,14 @@ function buildSpotlightPreviewHTML(result, heroImage, sectionImages) {
   body += `<p class="kw">Focus keyword: ${escapeHtml(result.focus_keyword)} · Tags: ${(result.tags || []).map(escapeHtml).join(', ')}</p>`
 
   if (heroImage) {
-    body += `<img class="hero" src="${heroImage.url}" alt="${escapeHtml(heroImage.alt_text || heroImage.label || '')}" />`
+    body += `<img class="hero" src="${heroImage.file_url}" alt="${escapeHtml(heroImage.alt_text || heroImage.label || '')}" />`
   }
 
   result.sections?.forEach((s, i) => {
     const imgs = sectionImages[i] || []
     const heading = s.heading ? `<h2>${escapeHtml(s.heading)}</h2>` : ''
     const paras = `<p>${escapeHtml(s.body || '').replace(/\n\n/g, '</p><p>').replace(/\n/g, '<br>')}</p>`
-    const imgHtml = (img) => `<figure><img src="${img.url}" alt="${escapeHtml(img.alt_text || img.label || '')}" />${img.caption || img.label ? `<figcaption>${escapeHtml(img.caption || img.label)}</figcaption>` : ''}</figure>`
+    const imgHtml = (img) => `<figure><img src="${img.file_url}" alt="${escapeHtml(img.alt_text || img.label || '')}" />${img.caption || img.label ? `<figcaption>${escapeHtml(img.caption || img.label)}</figcaption>` : ''}</figure>`
 
     if (imgs.length === 1) {
       body += `<div class="section col"><div class="text">${heading}${paras}</div><div class="img">${imgHtml(imgs[0])}</div></div>`
@@ -392,13 +392,13 @@ function SpotlightTab({ preloadedProduct }) {
   // Build payload for WP publish
   const wpPayload = result ? {
     type: 'spotlight',
-    hero: heroImage ? { firebase_url: heroImage.url, alt_text: heroImage.alt_text || heroImage.label || selectedProduct?.name || '' } : null,
+    hero: heroImage ? { firebase_url: heroImage.file_url, alt_text: heroImage.alt_text || heroImage.label || selectedProduct?.name || '' } : null,
     content: {
       ...result,
       sections: result.sections.map((s, i) => ({
         ...s,
         images: (sectionImages[i] || []).map(img => ({
-          firebase_url: img.url,
+          firebase_url: img.file_url,
           alt_text: img.alt_text || img.label || '',
           caption: img.caption || img.label || '',
         }))
