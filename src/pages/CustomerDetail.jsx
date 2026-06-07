@@ -262,6 +262,11 @@ export default function CustomerDetail() {
           {customer.country && <Row label="Country" value={customer.country} />}
           {customer.address && <Row label="Address" value={customer.address} />}
           {/* CRM fields */}
+          {customer.crm_category && (
+            <Row label="Type" value={
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">{customer.crm_category}</span>
+            } />
+          )}
           {customer.primary_channel && (
             <Row label="Channel" value={
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${CHANNEL_BADGE[customer.primary_channel] || 'bg-gray-100 text-gray-600'}`}>

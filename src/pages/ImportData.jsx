@@ -27,6 +27,7 @@ const IMPORT_DATA = [
       "crystal-fabric"
     ],
     "segment": "VIP — Theme Park",
+    "crm_category": "Distributor",
     "crm_status": "Active",
     "primary_channel": "Email",
     "is_personal_wa": false,
@@ -57,6 +58,7 @@ const IMPORT_DATA = [
       "hkdl"
     ],
     "segment": "VIP — Arribas (HK sourcing)",
+    "crm_category": "Distributor",
     "crm_status": "Prospect",
     "primary_channel": "Email",
     "is_personal_wa": false,
@@ -86,6 +88,7 @@ const IMPORT_DATA = [
       "czech"
     ],
     "segment": "Distributor — Europe",
+    "crm_category": "Distributor",
     "crm_status": "Active",
     "primary_channel": "Email",
     "is_personal_wa": false,
@@ -120,6 +123,7 @@ const IMPORT_DATA = [
       "nfc"
     ],
     "segment": "Gift/OEM",
+    "crm_category": "Gift / OEM",
     "crm_status": "Prospect",
     "primary_channel": "Email",
     "is_personal_wa": false,
@@ -154,6 +158,7 @@ const IMPORT_DATA = [
       "major"
     ],
     "segment": "Distributor — Major UK",
+    "crm_category": "Distributor",
     "crm_status": "Active",
     "primary_channel": "Email",
     "is_personal_wa": false,
@@ -185,6 +190,7 @@ const IMPORT_DATA = [
       "biggest-poland"
     ],
     "segment": "Distributor — Poland (BIGGEST)",
+    "crm_category": "Distributor",
     "crm_status": "Prospect",
     "primary_channel": "Email",
     "is_personal_wa": false,
@@ -212,6 +218,7 @@ const IMPORT_DATA = [
       "email"
     ],
     "segment": "Distributor — Poland",
+    "crm_category": "Distributor",
     "crm_status": "Prospect",
     "primary_channel": "Email",
     "is_personal_wa": false,
@@ -241,6 +248,7 @@ const IMPORT_DATA = [
       "netherlands"
     ],
     "segment": "Distributor — Europe",
+    "crm_category": "Distributor",
     "crm_status": "Prospect",
     "primary_channel": "Email",
     "is_personal_wa": false,
@@ -267,6 +275,7 @@ const IMPORT_DATA = [
       "email"
     ],
     "segment": "Distributor",
+    "crm_category": "Distributor",
     "crm_status": "Prospect",
     "primary_channel": "Email",
     "is_personal_wa": false,
@@ -296,6 +305,7 @@ const IMPORT_DATA = [
       "swarovski"
     ],
     "segment": "Distributor — Europe",
+    "crm_category": "Distributor",
     "crm_status": "Prospect",
     "primary_channel": "Email",
     "is_personal_wa": false,
@@ -324,6 +334,7 @@ const IMPORT_DATA = [
       "long-term"
     ],
     "segment": "Distributor — HK VIP",
+    "crm_category": "Distributor",
     "crm_status": "Prospect",
     "primary_channel": "Personal WhatsApp",
     "is_personal_wa": true,
@@ -357,6 +368,7 @@ const IMPORT_DATA = [
       "matashi"
     ],
     "segment": "Distributor — USA Importer",
+    "crm_category": "Distributor",
     "crm_status": "Prospect",
     "primary_channel": "Personal WhatsApp",
     "is_personal_wa": true,
@@ -384,6 +396,7 @@ const IMPORT_DATA = [
       "whatsapp"
     ],
     "segment": "Local HK",
+    "crm_category": "Distributor",
     "crm_status": "Active",
     "primary_channel": "Email",
     "is_personal_wa": false,
@@ -413,6 +426,7 @@ const IMPORT_DATA = [
       "email"
     ],
     "segment": "Distributor — Poland (BIGGEST)",
+    "crm_category": "Distributor",
     "crm_status": "Prospect",
     "primary_channel": "Email",
     "is_personal_wa": false,
@@ -447,6 +461,7 @@ const IMPORT_DATA = [
       "prestige"
     ],
     "segment": "Gift/OEM — Sourcing Agency",
+    "crm_category": "Gift / OEM",
     "crm_status": "Active",
     "primary_channel": "Personal WhatsApp",
     "is_personal_wa": true,
@@ -476,6 +491,7 @@ const IMPORT_DATA = [
       "vcfc"
     ],
     "segment": "Gift/OEM — Sports Club",
+    "crm_category": "Gift / OEM",
     "crm_status": "Prospect",
     "primary_channel": "Email",
     "is_personal_wa": false,
@@ -508,6 +524,7 @@ const IMPORT_DATA = [
       "lsps"
     ],
     "segment": "Gift/OEM — School",
+    "crm_category": "Gift / OEM",
     "crm_status": "Active",
     "primary_channel": "Personal WhatsApp",
     "is_personal_wa": true,
@@ -537,6 +554,7 @@ const IMPORT_DATA = [
       "custom"
     ],
     "segment": "WA — Hot B2B Lead",
+    "crm_category": "Small B2B",
     "crm_status": "Active",
     "primary_channel": "WhatsApp",
     "is_personal_wa": false,
@@ -564,6 +582,7 @@ const IMPORT_DATA = [
       "lead"
     ],
     "segment": "WA — Lead",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "WhatsApp",
     "is_personal_wa": false,
@@ -591,6 +610,7 @@ const IMPORT_DATA = [
       "lead"
     ],
     "segment": "WA — Lead",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "WhatsApp",
     "is_personal_wa": false,
@@ -619,6 +639,7 @@ const IMPORT_DATA = [
       "rose"
     ],
     "segment": "WA — Lead",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "WhatsApp",
     "is_personal_wa": false,
@@ -647,6 +668,7 @@ const IMPORT_DATA = [
       "music-box"
     ],
     "segment": "WA — Lead",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "WhatsApp",
     "is_personal_wa": false,
@@ -674,6 +696,7 @@ const IMPORT_DATA = [
       "retail"
     ],
     "segment": "WA — Retail",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "WhatsApp",
     "is_personal_wa": false,
@@ -701,6 +724,7 @@ const IMPORT_DATA = [
       "lead"
     ],
     "segment": "WA — Lead",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "WhatsApp",
     "is_personal_wa": false,
@@ -728,6 +752,7 @@ const IMPORT_DATA = [
       "lead"
     ],
     "segment": "WA — Lead",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "WhatsApp",
     "is_personal_wa": false,
@@ -755,6 +780,7 @@ const IMPORT_DATA = [
       "new"
     ],
     "segment": "Alibaba — New",
+    "crm_category": "Small B2B",
     "crm_status": "Active",
     "primary_channel": "Alibaba",
     "is_personal_wa": false,
@@ -783,6 +809,7 @@ const IMPORT_DATA = [
       "zodiac"
     ],
     "segment": "Alibaba — L1+",
+    "crm_category": "Small B2B",
     "crm_status": "Active",
     "primary_channel": "Alibaba",
     "is_personal_wa": false,
@@ -809,10 +836,10 @@ const IMPORT_DATA = [
       "japan",
       "vip",
       "arribas",
-      "disney",
-      "Distributor"
+      "disney"
     ],
     "segment": "VIP — Arribas (Japan sourcing)",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "Alibaba",
     "is_personal_wa": false,
@@ -843,6 +870,7 @@ const IMPORT_DATA = [
       "romantic-gifts"
     ],
     "segment": "Alibaba — L1+",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "Alibaba",
     "is_personal_wa": false,
@@ -871,6 +899,7 @@ const IMPORT_DATA = [
       "figurine"
     ],
     "segment": "Alibaba — L1+",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "Alibaba",
     "is_personal_wa": false,
@@ -899,6 +928,7 @@ const IMPORT_DATA = [
       "regalo"
     ],
     "segment": "Distributor — Spain",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "Alibaba",
     "is_personal_wa": false,
@@ -929,6 +959,7 @@ const IMPORT_DATA = [
       "drinkware"
     ],
     "segment": "Alibaba — Active",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "Alibaba",
     "is_personal_wa": false,
@@ -956,6 +987,7 @@ const IMPORT_DATA = [
       "active"
     ],
     "segment": "Alibaba — Active",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "Alibaba",
     "is_personal_wa": false,
@@ -986,6 +1018,7 @@ const IMPORT_DATA = [
       "wind-chime"
     ],
     "segment": "Alibaba — Lead",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "Alibaba",
     "is_personal_wa": false,
@@ -1013,6 +1046,7 @@ const IMPORT_DATA = [
       "active"
     ],
     "segment": "Alibaba — Active",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "Alibaba",
     "is_personal_wa": false,
@@ -1040,6 +1074,7 @@ const IMPORT_DATA = [
       "active"
     ],
     "segment": "Alibaba — Active",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "Alibaba",
     "is_personal_wa": false,
@@ -1067,6 +1102,7 @@ const IMPORT_DATA = [
       "active"
     ],
     "segment": "Alibaba — Active",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "Alibaba",
     "is_personal_wa": false,
@@ -1094,6 +1130,7 @@ const IMPORT_DATA = [
       "active"
     ],
     "segment": "Alibaba — Active",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "Alibaba",
     "is_personal_wa": false,
@@ -1121,6 +1158,7 @@ const IMPORT_DATA = [
       "active"
     ],
     "segment": "Alibaba — Active",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "Alibaba",
     "is_personal_wa": false,
@@ -1148,6 +1186,7 @@ const IMPORT_DATA = [
       "active"
     ],
     "segment": "Alibaba — Active",
+    "crm_category": "Small B2B",
     "crm_status": "Prospect",
     "primary_channel": "Alibaba",
     "is_personal_wa": false,
@@ -1163,11 +1202,7 @@ const IMPORT_DATA = [
 
 function parseDateStr(s) {
   if (!s) return null
-  try {
-    return Timestamp.fromDate(new Date(s))
-  } catch {
-    return null
-  }
+  try { return Timestamp.fromDate(new Date(s)) } catch { return null }
 }
 
 export default function ImportData() {
@@ -1182,30 +1217,22 @@ export default function ImportData() {
     setRunning(true)
     setLog([])
     setDone(false)
-
     try {
-      // 1. Delete existing customers
       addLog('Deleting existing customers…')
       const existing = await getDocs(collection(db, 'customers'))
       await Promise.all(existing.docs.map(d => deleteDoc(doc(db, 'customers', d.id))))
       addLog(`Deleted ${existing.docs.length} existing customer(s).`)
 
-      // 2. Import new records
       addLog('Importing 40 new customers…')
       let count = 0
       for (const r of IMPORT_DATA) {
         const { last_contact_date_str, last_contact_notes, action_required, products_interest, ...coreData } = r
-        
-        const payload = {
+        const ref = await addDoc(collection(db, 'customers'), {
           ...coreData,
           last_contacted: parseDateStr(last_contact_date_str),
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-        }
-        
-        const ref = await addDoc(collection(db, 'customers'), payload)
-        
-        // Seed initial enquiry — may fail if Firestore rules not yet published
+        })
         if (last_contact_notes || action_required) {
           try {
             await addDoc(collection(db, 'customers', ref.id, 'enquiries'), {
@@ -1219,18 +1246,13 @@ export default function ImportData() {
               linked_quote_ids: [],
               createdAt: serverTimestamp(),
             })
-          } catch {
-            // Enquiry rules not published yet — customer still saved, skip enquiry
-          }
+          } catch { /* rules not published yet */ }
         }
-
         count++
         addLog(`✓ ${count}/40 — ${r.company_name} (${r.contact_name || '—'})`)
       }
-
       addLog('')
       addLog(`✅ Import complete! ${count} customers imported.`)
-      addLog('⚠️  Enquiry seeding requires Firestore rules to be published — see below if enquiries are missing.')
       setDone(true)
     } catch (err) {
       addLog(`❌ Error: ${err.message}`)
@@ -1242,27 +1264,17 @@ export default function ImportData() {
   return (
     <div className="p-4 md:p-6 max-w-2xl">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">CRM Data Import</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        One-time import of 40 customers from <code>Crystocraft_CRM_Import.xlsx</code>.
-        This will clear all existing customers first.
-      </p>
-
+      <p className="text-sm text-gray-500 mb-6">One-time import of 40 customers from <code>Crystocraft_CRM_Import.xlsx</code>. Clears all existing customers first.</p>
       <div className="card p-5 mb-4">
-        <p className="text-sm font-semibold text-gray-700 mb-1">What this does:</p>
         <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside mb-4">
           <li>Deletes ALL existing customers in Firestore</li>
-          <li>Imports 40 customers with full CRM fields (channel, status, segment, VIP, etc.)</li>
-          <li>Seeds one initial enquiry entry per customer from last contact notes</li>
+          <li>Imports 40 customers with crm_category (Distributor / Small B2B / Gift OEM / Crystal Fabric)</li>
+          <li>Seeds one initial enquiry per customer from last contact notes</li>
         </ul>
-        <button
-          onClick={handleClearAndImport}
-          disabled={running || done}
-          className="btn-primary"
-        >
+        <button onClick={handleClearAndImport} disabled={running || done} className="btn-primary">
           {running ? 'Importing…' : done ? '✅ Done' : '🚀 Clear & Import 40 Customers'}
         </button>
       </div>
-
       {log.length > 0 && (
         <div className="card p-4 font-mono text-xs text-gray-700 space-y-0.5 max-h-96 overflow-y-auto">
           {log.map((line, i) => <div key={i}>{line || <br />}</div>)}

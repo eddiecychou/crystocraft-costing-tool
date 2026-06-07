@@ -21,13 +21,22 @@ const CRM_STATUS_STYLES = {
   Inactive: 'bg-gray-100 text-gray-500',
 }
 
+const CATEGORY_TABS = [
+  { key: '',               label: 'All' },
+  { key: 'Distributor',   label: '🏪 Distributor' },
+  { key: 'Small B2B',     label: '🛒 Small B2B' },
+  { key: 'Gift / OEM',    label: '🎁 Gift / OEM' },
+  { key: 'Crystal Fabric',label: '✨ Crystal Fabric' },
+]
+
 export default function Customers() {
   const [customers, setCustomers]       = useState([])
   const [loading, setLoading]           = useState(true)
   const [search, setSearch]             = useState('')
   const [filterCountry, setFilterCountry] = useState('')
-  const [filterChannel, setFilterChannel] = useState('')
-  const [filterStatus, setFilterStatus]   = useState('')
+  const [filterChannel, setFilterChannel]   = useState('')
+  const [filterStatus, setFilterStatus]     = useState('')
+  const [filterCategory, setFilterCategory] = useState('')
 
   useEffect(() => {
     const q = query(collection(db, 'customers'), orderBy('company_name'))
@@ -44,10 +53,11 @@ export default function Customers() {
       c.contact_name?.toLowerCase().includes(searchLower) ||
       c.tags?.some(t => t.toLowerCase().includes(searchLower)) ||
       c.segment?.toLowerCase().includes(searchLower)
-    const matchCountry = !filterCountry || (c.country || c.region) === filterCountry
-    const matchChannel = !filterChannel || c.primary_channel === filterChannel
-    const matchStatus  = !filterStatus  || c.crm_status === filterStatus
-    return matchSearch && matchCountry && matchChannel && matchStatus
+    const matchCountry   = !filterCountry   || (c.country || c.region) === filterCountry
+    const matchChannel   = !filterChannel   || c.primary_channel === filterChannel
+    const matchStatus    = !filterStatus    || c.crm_status === filterStatus
+    const matchCategory  = !filterCategory  || c.crm_category === filterCategory
+    return matchSearch && matchCountry && matchChannel && matchStatus && matchCategory
   })
 
   return (
@@ -60,6 +70,26 @@ export default function Customers() {
           <p className="text-sm text-gray-500 mt-0.5">{customers.length} clients</p>
         </div>
         <Link to="/customers/new" className="btn-primary text-sm">+ New</Link>
+      </div>
+
+      {/* Category tabs */}
+      <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1">
+        {CATEGORY_TABS.map(tab => {
+          const count = tab.key ? customers.filter(c => c.crm_category === tab.key).length : customers.length
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setFilterCategory(tab.key)}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap ${
+                filterCategory === tab.key
+                  ? 'bg-brand-600 text-white border-brand-600'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+              }`}
+            >
+              {tab.label} <span className={`ml-1 ${filterCategory === tab.key ? 'text-white/70' : 'text-gray-400'}`}>{count}</span>
+            </button>
+          )
+        })}
       </div>
 
       {/* Filters */}
@@ -103,7 +133,8 @@ export default function Customers() {
                   {c.is_personal_wa && <span title="Personal WhatsApp" className="text-xs">📱</span>}
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5 truncate">
-                  {[c.contact_name, c.country || c.region, c.primary_channel].filter(Boolean).join(' · ')}
+                  {[c.contact_name, c.country || c.region].filter(Boolean).join(' · ')}
+                  {c.crm_category && <span className="ml-1 text-gray-400">· {c.crm_category}</span>}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {c.crm_status && (

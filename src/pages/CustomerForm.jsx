@@ -53,6 +53,8 @@ const COUNTRIES = [
   'Other',
 ]
 
+const CRM_CATEGORIES = ['Distributor', 'Small B2B', 'Gift / OEM', 'Crystal Fabric']
+const CATEGORY_ICON  = { 'Distributor': '🏪', 'Small B2B': '🛒', 'Gift / OEM': '🎁', 'Crystal Fabric': '✨' }
 const CHANNELS = ['Email', 'WhatsApp Business', 'Alibaba', 'Personal WhatsApp']
 const SOURCES  = ['Alibaba', 'Website', 'Email Marketing', 'Referral', 'Trade Show', 'BNI', 'Direct']
 const CRM_STATUSES = ['Active', 'Prospect', 'Dormant', 'Inactive']
@@ -80,6 +82,7 @@ export default function CustomerForm() {
     address: '',
     notes: '',
     // CRM fields
+    crm_category: '',
     primary_channel: '',
     source: '',
     segment: '',
@@ -109,6 +112,7 @@ export default function CustomerForm() {
           country:         d.country || d.region || 'Hong Kong',
           address:         d.address         || '',
           notes:           d.notes           || '',
+          crm_category:    d.crm_category    || '',
           primary_channel: d.primary_channel || '',
           source:          d.source          || '',
           segment:         d.segment         || '',
@@ -278,6 +282,26 @@ export default function CustomerForm() {
         {/* CRM */}
         <div className="card p-5 space-y-4">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">CRM</p>
+
+          <div>
+            <label className="label">Customer Type *</label>
+            <div className="grid grid-cols-2 gap-2">
+              {CRM_CATEGORIES.map(cat => (
+                <button
+                  key={cat}
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, crm_category: cat }))}
+                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors text-left ${
+                    form.crm_category === cat
+                      ? 'border-brand-500 bg-brand-50 text-brand-700'
+                      : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  {CATEGORY_ICON[cat]} {cat}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
