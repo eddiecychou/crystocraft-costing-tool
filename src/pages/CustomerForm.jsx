@@ -140,7 +140,7 @@ export default function CustomerForm() {
         setChannels(d.channels?.length ? d.channels : d.primary_channel ? [d.primary_channel] : [])
         setEmails(toArray(d.contact_emails ?? d.contact_email))
         setPhones(toArray(d.contact_phones ?? d.contact_phone))
-        setWhatsapps(toArray(d.contact_whatsapps))
+        setWhatsapps(toArray(d.contact_whatsapps?.length ? d.contact_whatsapps : d.whatsapp))
         setWechats(toArray(d.contact_wechats))
         setTags(d.tags || [])
         setIsPersonalWa(d.is_personal_wa || false)
@@ -336,12 +336,8 @@ export default function CustomerForm() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <MultiInput label="Email" values={emails} onChange={setEmails} type="email" placeholder="e.g. sarah@company.com" />
             <MultiInput label="Phone" values={phones} onChange={setPhones} placeholder="e.g. +852 1234 5678" />
-            <MultiInput label="WhatsApp" values={whatsapps} onChange={setWhatsapps} placeholder="e.g. +852 9876 5432" />
+            <MultiInput label="WhatsApp Number" values={whatsapps} onChange={setWhatsapps} placeholder="e.g. +852 9876 5432" />
             <MultiInput label="WeChat ID" values={wechats} onChange={setWechats} placeholder="e.g. wechat_username" />
-          </div>
-          <div>
-            <label className="label">WhatsApp Number</label>
-            <input className="input" value={form.whatsapp} onChange={set('whatsapp')} placeholder="e.g. +852 9123 4567" />
           </div>
           <div>
             <label className="label">Website</label>
