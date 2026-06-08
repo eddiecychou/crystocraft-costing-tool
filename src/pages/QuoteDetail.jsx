@@ -12,7 +12,7 @@ import {
   doc, getDoc, updateDoc, deleteDoc,
   collection, onSnapshot, orderBy, query, addDoc, getDocs, serverTimestamp,
 } from 'firebase/firestore'
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
@@ -203,6 +203,11 @@ export default function QuoteDetail() {
 
   if (loading) return <LoadingBar />
   if (!quote) return <div className="p-6 text-gray-500">Quote not found.</div>
+
+  // ── Uploaded quote view ──────────────────────────────────────────────────
+  if (quote.quote_type === 'uploaded') {
+    return <UploadedQuoteDetail quote={quote} id={id} onDelete={() => { deleteDoc(doc(db, 'client_quotes', id)); navigate('/quotes') }} />
+  }
 
   const quoteCurrency = quote.quote_currency || 'HKD'
   const quoteRates = { HKD: 1, RMB: quote.rmb_to_hkd || 1.09, USD: quote.usd_to_hkd || 7.78, EUR: quote.eur_to_hkd || 8.60 }
@@ -772,6 +777,189 @@ function ProductPicker({ existingIds, onAdd, onClose }) {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Uploaded Quote Detail ────────────────────────────────────────────────────
+const UPLOADED_STATUS_OPTIONS = ['draft', 'sent', 'confirmed', 'lost']
+const UPLOADED_STATUS_STYLES = {
+  draft:     'bg-gray-100 text-gray-600',
+  sent:      'bg-blue-100 text-blue-700',
+  confirmed: 'bg-green-100 text-green-700',
+  lost:      'bg-red-100 text-red-600',
+}
+
+function UploadedQuoteDetail({ quote, id, onDelete }) {
+  const navigate = useNavigate()
+  const [q, setQ]                     = useState(quote)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [removingIdx, setRemovingIdx] = useState(null)
+  const [uploading, setUploading]     = useState(false)
+  const fileInputRef = useRef(null)
+
+  function save(field, value) {
+    updateDoc(doc(db, 'client_quotes', id), { [field]: value, updatedAt: serverTimestamp() })
+    setQ(prev => ({ ...prev, [field]: value }))
+  }
+
+  async function handleAddFiles(e) {
+    const files = Array.from(e.target.files)
+    if (!files.length) return
+    setUploading(true)
+    try {
+      const uploaded = await Promise.all(files.map(file => new Promise((resolve, reject) => {
+        const path = `client_quotes/${id}/${Date.now()}_${file.name}`
+        const ref = storageRef(storage, path)
+        uploadBytes(ref, file).then(async () => resolve({ url: await getDownloadURL(ref), path, name: file.name })).catch(reject)
+      })))
+      const updated = [...(q.attachments || []), ...uploaded]
+      await updateDoc(doc(db, 'client_quotes', id), { attachments: updated, updatedAt: serverTimestamp() })
+      setQ(prev => ({ ...prev, attachments: updated }))
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
+
+  async function handleRemoveFile(idx) {
+    setRemovingIdx(idx)
+    try {
+      const att = q.attachments[idx]
+      if (att.path) { try { await deleteObject(storageRef(storage, att.path)) } catch {} }
+      const updated = q.attachments.filter((_, i) => i !== idx)
+      await updateDoc(doc(db, 'client_quotes', id), { attachments: updated, updatedAt: serverTimestamp() })
+      setQ(prev => ({ ...prev, attachments: updated }))
+    } finally {
+      setRemovingIdx(null)
+    }
+  }
+
+  const atts = q.attachments || []
+
+  return (
+    <div className="p-4 md:p-6 max-w-2xl">
+      <Link to="/quotes" className="text-sm text-brand-600 hover:underline">← Quotes</Link>
+
+      <div className="flex items-start gap-3 mt-3 mb-1">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">{q.client_name}</h1>
+            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-medium">📎 Uploaded</span>
+          </div>
+          <p className="text-xs text-gray-400 mt-0.5">Click any field to edit — changes save automatically</p>
+        </div>
+      </div>
+
+      <div className="card p-5 mb-4 space-y-4">
+        <EditableField label="Client Name" value={q.client_name} onSave={v => save('client_name', v)} />
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">Date</p>
+            <input type="date" className="input text-sm" defaultValue={q.quote_date}
+              onBlur={e => { if (e.target.value !== q.quote_date) save('quote_date', e.target.value) }} />
+          </div>
+          <div>
+            <p className="text-xs text-gray-400 mb-0.5">Currency</p>
+            <select className="input text-sm" value={q.quote_currency || 'HKD'} onChange={e => save('quote_currency', e.target.value)}>
+              {['HKD', 'USD', 'EUR', 'RMB', 'GBP', 'AUD', 'SGD', 'JPY'].map(c => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+        </div>
+        <div>
+          <p className="text-xs text-gray-400 mb-0.5">Amount <span className="text-gray-300">(optional)</span></p>
+          <input type="number" min="0" step="0.01" className="input text-sm w-48" defaultValue={q.amount || ''}
+            placeholder="e.g. 12000"
+            onBlur={e => { const v = e.target.value ? Number(e.target.value) : null; if (v !== q.amount) save('amount', v) }} />
+        </div>
+        <div>
+          <p className="text-xs text-gray-400 mb-1">Status</p>
+          <div className="flex flex-wrap gap-2">
+            {UPLOADED_STATUS_OPTIONS.map(s => (
+              <button key={s} type="button" onClick={() => save('status', s)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors capitalize ${
+                  (q.status || 'draft') === s
+                    ? UPLOADED_STATUS_STYLES[s] + ' border-transparent'
+                    : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                }`}>{s}</button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <p className="text-xs text-gray-400 mb-0.5">Notes</p>
+          <textarea className="input text-sm" rows={2} defaultValue={q.notes || ''} placeholder="Brief description…"
+            onBlur={e => { if (e.target.value !== (q.notes || '')) save('notes', e.target.value) }} />
+        </div>
+      </div>
+
+      <div className="card p-5 mb-4">
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-700">Quote Files ({atts.length})</h2>
+          <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+            className="text-xs text-brand-600 hover:underline font-medium">
+            {uploading ? 'Uploading…' : '+ Add files'}
+          </button>
+          <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple className="hidden" onChange={handleAddFiles} />
+        </div>
+        {atts.length === 0 ? (
+          <button onClick={() => fileInputRef.current?.click()}
+            className="w-full border-2 border-dashed border-gray-200 rounded-lg py-6 text-sm text-gray-400 hover:border-brand-300 hover:text-brand-500 transition-colors">
+            📎 Tap to add PDF or image files
+          </button>
+        ) : (
+          <div className="space-y-2">
+            {atts.map((att, i) => (
+              <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-200 bg-gray-50">
+                {att.name?.match(/\.(jpg|jpeg|png|webp|gif)$/i)
+                  ? <a href={att.url} target="_blank" rel="noreferrer" className="shrink-0"><img src={att.url} alt="" className="h-12 w-16 object-cover rounded border border-gray-200" /></a>
+                  : <span className="text-2xl shrink-0">📄</span>
+                }
+                <a href={att.url} target="_blank" rel="noreferrer" className="flex-1 text-sm text-brand-600 hover:underline truncate min-w-0">
+                  {att.name || `File ${i + 1}`}
+                </a>
+                <button onClick={() => handleRemoveFile(i)} disabled={removingIdx === i}
+                  className="text-xs text-red-400 hover:text-red-600 shrink-0 px-1">
+                  {removingIdx === i ? '…' : '✕'}
+                </button>
+              </div>
+            ))}
+            <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+              className="mt-1 w-full border-2 border-dashed border-gray-200 rounded-lg py-2.5 text-sm text-gray-400 hover:border-brand-300 hover:text-brand-500 transition-colors">
+              📎 Add more files
+            </button>
+          </div>
+        )}
+      </div>
+
+      <button onClick={() => setConfirmDelete(true)} className="text-sm text-red-500 hover:text-red-700">Delete this quote</button>
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete Quote"
+          message={`Delete uploaded quote for "${q.client_name}"? This cannot be undone.`}
+          onConfirm={onDelete}
+          onCancel={() => setConfirmDelete(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+function EditableField({ label, value, onSave }) {
+  const [editing, setEditing] = useState(false)
+  const [val, setVal]         = useState(value)
+  if (editing) return (
+    <div>
+      <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+      <input autoFocus className="input text-sm" value={val} onChange={e => setVal(e.target.value)}
+        onBlur={() => { onSave(val); setEditing(false) }}
+        onKeyDown={e => { if (e.key === 'Enter') { onSave(val); setEditing(false) } }} />
+    </div>
+  )
+  return (
+    <div onClick={() => setEditing(true)} className="cursor-pointer group">
+      <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+      <p className="text-sm font-semibold text-gray-900 group-hover:text-brand-600 transition-colors">{val || <span className="text-gray-300 font-normal">—</span>}</p>
     </div>
   )
 }

@@ -38,18 +38,25 @@ function MultiInput({ label, values, onChange, type = 'text', placeholder }) {
 }
 
 const COUNTRIES = [
-  'Hong Kong', 'China (Mainland)', 'Macau', 'Taiwan',
-  'Singapore', 'Malaysia', 'Thailand', 'Vietnam', 'Indonesia', 'Philippines', 'Myanmar', 'Cambodia',
-  'Japan', 'South Korea',
-  'India',
-  'United Arab Emirates', 'Saudi Arabia', 'Qatar',
-  'Australia', 'New Zealand',
-  'United Kingdom', 'Germany', 'France', 'Netherlands', 'Switzerland', 'Italy', 'Spain',
-  'Belgium', 'Poland', 'Czech Republic', 'Austria', 'Sweden', 'Denmark', 'Norway', 'Finland',
-  'Portugal', 'Romania', 'Hungary', 'Slovakia',
-  'South Africa', 'Nigeria', 'Kenya',
-  'United States', 'Canada', 'Mexico',
-  'Brazil', 'Argentina',
+  'Argentina', 'Australia', 'Austria',
+  'Belgium', 'Brazil', 'Bulgaria',
+  'Cambodia', 'Canada', 'China (Mainland)', 'Czech Republic',
+  'Denmark',
+  'Finland', 'France',
+  'Germany',
+  'Hong Kong', 'Hungary',
+  'India', 'Indonesia', 'Italy',
+  'Japan',
+  'Kenya',
+  'Macau', 'Malaysia', 'Mexico', 'Moldova', 'Morocco', 'Myanmar',
+  'Netherlands', 'New Zealand', 'Nigeria', 'Norway',
+  'Philippines', 'Poland', 'Portugal',
+  'Qatar',
+  'Romania', 'Russia',
+  'Saudi Arabia', 'Singapore', 'Slovakia', 'South Africa', 'South Korea', 'Spain', 'Sweden', 'Switzerland',
+  'Taiwan', 'Thailand',
+  'United Arab Emirates', 'United Kingdom', 'United States',
+  'Vietnam',
   'Other',
 ]
 
@@ -59,12 +66,23 @@ const CHANNELS = ['Email', 'WhatsApp Business', 'Alibaba', 'Personal WhatsApp']
 const SOURCES  = ['Alibaba', 'Website', 'Email Marketing', 'Referral', 'Trade Show', 'BNI', 'Direct']
 const CRM_STATUSES = ['Active', 'Prospect', 'Dormant', 'Inactive']
 
-const TAG_SUGGESTIONS = [
-  'Banking', 'Insurance', 'Finance', 'Retail', 'Property', 'Hospitality', 'Hotel',
-  'Healthcare', 'Education', 'Government', 'NGO', 'Charity', 'Technology',
-  'Professional Services', 'Legal', 'Accounting', 'Consulting', 'Media', 'Luxury',
-  'VIP Client', 'Agency', 'Event', 'Corporate', 'SME',
-  'Distributor', 'OEM', 'Alibaba', 'Theme Park', 'Disney',
+const TAG_GROUPS = [
+  {
+    label: 'Industry',
+    tags: ['Banking & Finance', 'Insurance', 'Property & Real Estate', 'Retail', 'Hospitality & Hotel', 'F&B', 'Healthcare', 'Education', 'Government & Public Sector', 'NGO & Charity', 'Technology', 'Legal & Professional', 'Media & Entertainment', 'Luxury & Jewellery', 'Theme Park & Attractions'],
+  },
+  {
+    label: 'Client Type',
+    tags: ['VIP', 'Agency', 'Event Organiser', 'OEM / White Label', 'Referral', 'BNI'],
+  },
+  {
+    label: 'Order Profile',
+    tags: ['High Volume', 'Repeat Buyer', 'Sample Only', 'Custom Design', 'Urgent'],
+  },
+  {
+    label: 'Geography',
+    tags: ['Local HK', 'Asia Pacific', 'Europe', 'Middle East', 'Australia / NZ'],
+  },
 ]
 
 export default function CustomerForm() {
@@ -85,17 +103,19 @@ export default function CustomerForm() {
     crm_category: '',
     primary_channel: '',
     source: '',
-    segment: '',
     crm_status: 'Prospect',
-    folder_path: '',
   })
   const [emails, setEmails]           = useState([''])
   const [phones, setPhones]           = useState([''])
+  const [whatsapps, setWhatsapps]     = useState([''])
+  const [wechats, setWechats]         = useState([''])
   const [tags, setTags]               = useState([])
   const [tagInput, setTagInput]       = useState('')
   const [isPersonalWa, setIsPersonalWa] = useState(false)
   const [isVip, setIsVip]             = useState(false)
   const [loading, setLoading]         = useState(false)
+  const [countrySearch, setCountrySearch] = useState('')
+  const [countryOpen, setCountryOpen]     = useState(false)
   const [fetching, setFetching]       = useState(isEdit)
 
   useEffect(() => {
@@ -115,12 +135,12 @@ export default function CustomerForm() {
           crm_category:    d.crm_category    || '',
           primary_channel: d.primary_channel || '',
           source:          d.source          || '',
-          segment:         d.segment         || '',
           crm_status:      d.crm_status      || 'Prospect',
-          folder_path:     d.folder_path     || '',
         }))
         setEmails(toArray(d.contact_emails ?? d.contact_email))
         setPhones(toArray(d.contact_phones ?? d.contact_phone))
+        setWhatsapps(toArray(d.contact_whatsapps))
+        setWechats(toArray(d.contact_wechats))
         setTags(d.tags || [])
         setIsPersonalWa(d.is_personal_wa || false)
         setIsVip(d.is_vip || false)
@@ -149,9 +169,6 @@ export default function CustomerForm() {
   }
   function removeTag(tag) { setTags(t => t.filter(x => x !== tag)) }
 
-  const suggestions = TAG_SUGGESTIONS.filter(s =>
-    !tags.includes(s) && s.toLowerCase().includes(tagInput.toLowerCase())
-  ).slice(0, 8)
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -164,6 +181,8 @@ export default function CustomerForm() {
         is_vip: isVip,
         contact_emails: emails.filter(Boolean),
         contact_phones: phones.filter(Boolean),
+        contact_whatsapps: whatsapps.filter(Boolean),
+        contact_wechats: wechats.filter(Boolean),
         contact_email: emails.filter(Boolean)[0] || '',
         contact_phone: phones.filter(Boolean)[0] || '',
         updatedAt: serverTimestamp(),
@@ -200,11 +219,30 @@ export default function CustomerForm() {
             <label className="label">Company / Client Name *</label>
             <input className="input" value={form.company_name} onChange={set('company_name')} required placeholder="e.g. Manulife HK" />
           </div>
-          <div>
+          <div className="relative">
             <label className="label">Country</label>
-            <select className="input" value={form.country} onChange={set('country')}>
-              {COUNTRIES.map(c => <option key={c}>{c}</option>)}
-            </select>
+            <input
+              className="input"
+              value={countryOpen ? countrySearch : (form.country || '')}
+              placeholder="Search country…"
+              onFocus={() => { setCountryOpen(true); setCountrySearch('') }}
+              onBlur={() => setTimeout(() => setCountryOpen(false), 150)}
+              onChange={e => setCountrySearch(e.target.value)}
+            />
+            {countryOpen && (
+              <div className="absolute z-20 left-0 right-0 mt-1 border border-gray-200 rounded-lg bg-white shadow-lg max-h-52 overflow-y-auto">
+                {COUNTRIES.filter(c => c.toLowerCase().includes(countrySearch.toLowerCase())).map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onMouseDown={() => { set('country')({ target: { value: c } }); setCountryOpen(false) }}
+                    className={`w-full text-left text-sm px-3 py-2 hover:bg-gray-50 transition-colors ${form.country === c ? 'text-brand-600 font-medium' : 'text-gray-700'}`}
+                  >
+                    {form.country === c ? '✓ ' : ''}{c}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <label className="label">Address</label>
@@ -213,49 +251,74 @@ export default function CustomerForm() {
         </div>
 
         {/* Tags */}
-        <div className="card p-5">
-          <label className="label">Tags</label>
-          <div
-            className="input flex flex-wrap gap-1.5 min-h-[42px] cursor-text"
-            onClick={() => tagInputRef.current?.focus()}
-          >
-            {tags.map(tag => (
-              <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand-100 text-brand-700 text-xs font-medium">
-                {tag}
-                <button type="button" onClick={() => removeTag(tag)} className="hover:text-brand-900 leading-none">×</button>
-              </span>
-            ))}
-            <input
-              ref={tagInputRef}
-              type="text"
-              value={tagInput}
-              onChange={e => setTagInput(e.target.value)}
-              onKeyDown={handleTagKeyDown}
-              onBlur={() => { if (tagInput.trim()) addTag(tagInput) }}
-              placeholder={tags.length === 0 ? 'Type a tag and press Enter…' : ''}
-              className="outline-none text-sm flex-1 min-w-24 bg-transparent"
-            />
+        <div className="card p-5 space-y-4">
+          <div>
+            <label className="label mb-0">Tags</label>
+            <p className="text-xs text-gray-400 mt-0.5">Tap to select · tap again to remove</p>
           </div>
-          {tagInput && suggestions.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {suggestions.map(s => (
-                <button key={s} type="button" onClick={() => addTag(s)}
-                  className="px-2 py-0.5 rounded-full border border-gray-200 text-xs text-gray-600 hover:bg-brand-50 hover:border-brand-300 hover:text-brand-700 transition-colors">
-                  + {s}
-                </button>
+
+          {/* Selected tags summary */}
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {tags.map(tag => (
+                <span key={tag} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-brand-600 text-white text-xs font-medium">
+                  {tag}
+                  <button type="button" onClick={() => removeTag(tag)} className="hover:text-brand-200 leading-none ml-0.5">×</button>
+                </span>
               ))}
             </div>
           )}
-          {!tagInput && tags.length === 0 && (
-            <div className="flex flex-wrap gap-1.5 mt-2">
-              {TAG_SUGGESTIONS.slice(0, 10).map(s => (
-                <button key={s} type="button" onClick={() => addTag(s)}
-                  className="px-2 py-0.5 rounded-full border border-gray-200 text-xs text-gray-500 hover:bg-brand-50 hover:border-brand-300 hover:text-brand-700 transition-colors">
-                  {s}
-                </button>
-              ))}
+
+          {/* Grouped toggle pills */}
+          {TAG_GROUPS.map(group => (
+            <div key={group.label}>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{group.label}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {group.tags.map(tag => {
+                  const selected = tags.includes(tag)
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => selected ? removeTag(tag) : addTag(tag)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                        selected
+                          ? 'bg-brand-50 border-brand-400 text-brand-700'
+                          : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
+                      }`}
+                    >
+                      {selected ? '✓ ' : ''}{tag}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          )}
+          ))}
+
+          {/* Custom tag input */}
+          <div>
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Custom</p>
+            <div className="flex gap-2">
+              <input
+                ref={tagInputRef}
+                type="text"
+                value={tagInput}
+                onChange={e => setTagInput(e.target.value)}
+                onKeyDown={handleTagKeyDown}
+                placeholder="Type a custom tag…"
+                className="input text-sm flex-1"
+              />
+              {tagInput.trim() && (
+                <button
+                  type="button"
+                  onMouseDown={e => { e.preventDefault(); addTag(tagInput) }}
+                  className="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition-colors shrink-0"
+                >
+                  + Add
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Contact */}
@@ -268,6 +331,8 @@ export default function CustomerForm() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <MultiInput label="Email" values={emails} onChange={setEmails} type="email" placeholder="e.g. sarah@company.com" />
             <MultiInput label="Phone" values={phones} onChange={setPhones} placeholder="e.g. +852 1234 5678" />
+            <MultiInput label="WhatsApp" values={whatsapps} onChange={setWhatsapps} placeholder="e.g. +852 9876 5432" />
+            <MultiInput label="WeChat ID" values={wechats} onChange={setWechats} placeholder="e.g. wechat_username" />
           </div>
           <div>
             <label className="label">WhatsApp Number</label>
@@ -328,15 +393,6 @@ export default function CustomerForm() {
                 {SOURCES.map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
-            <div>
-              <label className="label">Segment</label>
-              <input className="input" value={form.segment} onChange={set('segment')} placeholder="e.g. Distributor — Poland (VIP)" />
-            </div>
-          </div>
-
-          <div>
-            <label className="label">Folder Path</label>
-            <input className="input" value={form.folder_path} onChange={set('folder_path')} placeholder="e.g. Europe/Widdop" />
           </div>
 
           <div className="space-y-2 pt-1">

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
-  doc, getDoc, deleteDoc, collection, query, where, getDocs,
+  doc, getDoc, deleteDoc, updateDoc, collection, query, where, getDocs,
   onSnapshot, deleteDoc as deleteDocument, serverTimestamp,
 } from 'firebase/firestore'
-import { db } from '../firebase'
+import { db, storage } from '../firebase'
+import { ref as storageRef, deleteObject } from 'firebase/storage'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
@@ -72,6 +73,7 @@ export default function CustomerDetail() {
   // Enquiry form state
   const [enquiryFormOpen, setEnquiryFormOpen] = useState(false)
   const [editingEnquiry, setEditingEnquiry]   = useState(null)
+  const [removingAtt, setRemovingAtt]         = useState(null) // `${enquiryId}-${attIdx}`
 
   // Compose message state
   const [composeProduct, setComposeProduct]     = useState(null)   // { id, name, category, description }
@@ -136,6 +138,26 @@ export default function CustomerDetail() {
   async function handleDeleteEnquiry(enquiryId) {
     await deleteDocument(doc(db, 'customers', id, 'enquiries', enquiryId))
     setConfirmDeleteEnquiry(null)
+  }
+
+  async function handleRemoveAttachment(enq, attIdx) {
+    const key = `${enq.id}-${attIdx}`
+    setRemovingAtt(key)
+    try {
+      const atts = enq.attachments?.length
+        ? enq.attachments
+        : enq.attachment_url ? [{ url: enq.attachment_url, name: enq.attachment_name, path: enq.attachment_path }] : []
+      const att = atts[attIdx]
+      if (att?.path) { try { await deleteObject(storageRef(storage, att.path)) } catch {} }
+      const updated = atts.filter((_, i) => i !== attIdx)
+      await updateDoc(doc(db, 'customers', id, 'enquiries', enq.id), {
+        attachments: updated,
+        attachment_url: null, attachment_name: null, attachment_path: null,
+        updatedAt: serverTimestamp(),
+      })
+    } finally {
+      setRemovingAtt(null)
+    }
   }
 
   async function handleCompose(e) {
@@ -249,9 +271,22 @@ export default function CustomerDetail() {
               </div>
             } />
           )}
-          {customer.whatsapp && (
+          {toArray(customer.contact_whatsapps ?? customer.whatsapp).length > 0 && (
             <Row label="WhatsApp" value={
-              <a href={`https://wa.me/${customer.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">{customer.whatsapp}</a>
+              <div className="space-y-0.5">
+                {toArray(customer.contact_whatsapps ?? customer.whatsapp).map((w, i) => (
+                  <a key={i} href={`https://wa.me/${w.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline block">{w}</a>
+                ))}
+              </div>
+            } />
+          )}
+          {toArray(customer.contact_wechats).length > 0 && (
+            <Row label="WeChat" value={
+              <div className="space-y-0.5">
+                {toArray(customer.contact_wechats).map((w, i) => (
+                  <span key={i} className="block text-gray-700">{w}</span>
+                ))}
+              </div>
             } />
           )}
           {customer.website && (
@@ -380,6 +415,40 @@ export default function CustomerDetail() {
                     {enq.outcome_notes && (
                       <p className="text-xs text-gray-500 mt-1 italic">{enq.outcome_notes}</p>
                     )}
+                    {/* Quote attachments */}
+                    {(() => {
+                      const atts = enq.attachments?.length
+                        ? enq.attachments
+                        : enq.attachment_url
+                          ? [{ url: enq.attachment_url, name: enq.attachment_name || 'attachment', path: enq.attachment_path }]
+                          : []
+                      if (!atts.length) return null
+                      return (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {atts.map((att, i) => (
+                            <div key={i} className="relative group">
+                              <a href={att.url} target="_blank" rel="noreferrer"
+                                onClick={e => e.stopPropagation()}
+                                className="inline-flex items-center gap-1.5 text-xs text-brand-600 hover:underline"
+                              >
+                                {att.name?.match(/\.(jpg|jpeg|png|webp|gif)$/i)
+                                  ? <img src={att.url} alt="" className="h-10 w-14 object-cover rounded border border-gray-200" />
+                                  : <><span>📄</span><span className="truncate max-w-[140px]">{att.name || `Quote ${i + 1}`}</span></>
+                                }
+                              </a>
+                              <button
+                                type="button"
+                                onClick={e => { e.stopPropagation(); handleRemoveAttachment(enq, i) }}
+                                disabled={removingAtt === `${enq.id}-${i}`}
+                                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-xs leading-none flex items-center justify-center hover:bg-red-600"
+                              >
+                                {removingAtt === `${enq.id}-${i}` ? '…' : '×'}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
                   </div>
                   {/* Actions */}
                   <div className="flex gap-2 shrink-0">

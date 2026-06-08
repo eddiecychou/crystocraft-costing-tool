@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, Timestamp } from 'firebase/firestore'
-import { db } from '../firebase'
+import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
+import { db, storage } from '../firebase'
 
 const CHANNELS  = ['Email', 'WhatsApp', 'Alibaba', 'Personal WhatsApp']
-const STATUSES  = ['Open', 'Quoted', 'Won', 'Lost', 'On Hold']
+const STATUSES  = ['Open', 'Quoted', 'Confirmed', 'In Production', 'Completed', 'Lost', 'On Hold']
 
 function todayStr() {
   return new Date().toISOString().split('T')[0]
@@ -30,6 +31,12 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
   const [allProducts, setAllProducts] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // Quote file attachments (multiple)
+  const [savedAttachments, setSavedAttachments]   = useState([])    // [{url, name, path}] from Firestore
+  const [pendingFiles, setPendingFiles]           = useState([])    // File[] picked but not yet uploaded
+  const [uploadProgress, setUploadProgress]       = useState({})    // { filename: 0-100 }
+  const [removingIdx, setRemovingIdx]             = useState(null)
+  const fileInputRef = useRef(null)
 
   // Fetch products for interest picker
   useEffect(() => {
@@ -49,6 +56,14 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
     setOutcomeNotes(enquiry.outcome_notes || '')
     setLinkedQuoteIds(enquiry.linked_quote_ids || [])
     setSelectedProducts(enquiry.product_interest || [])
+    // Support both old single attachment and new array
+    if (enquiry.attachments?.length) {
+      setSavedAttachments(enquiry.attachments)
+    } else if (enquiry.attachment_url) {
+      setSavedAttachments([{ url: enquiry.attachment_url, name: enquiry.attachment_name || 'attachment', path: enquiry.attachment_path || '' }])
+    } else {
+      setSavedAttachments([])
+    }
   }, [enquiry])
 
   function toggleProduct(name) {
@@ -62,6 +77,40 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
   const filteredProducts = allProducts.filter(p =>
     p.name.toLowerCase().includes(productSearch.toLowerCase())
   )
+
+  function uploadOneFile(file, enquiryId) {
+    return new Promise((resolve, reject) => {
+      const ext = file.name.split('.').pop()
+      const path = `customers/${customerId}/enquiries/${enquiryId}/${Date.now()}_${file.name}`
+      const ref = storageRef(storage, path)
+      const task = uploadBytesResumable(ref, file)
+      task.on('state_changed',
+        snap => setUploadProgress(prev => ({ ...prev, [file.name]: Math.round(snap.bytesTransferred / snap.totalBytes * 100) })),
+        reject,
+        async () => {
+          const url = await getDownloadURL(ref)
+          resolve({ url, path, name: file.name })
+        }
+      )
+    })
+  }
+
+  async function handleRemoveSaved(idx) {
+    setRemovingIdx(idx)
+    try {
+      const att = savedAttachments[idx]
+      if (att.path) { try { await deleteObject(storageRef(storage, att.path)) } catch {} }
+      const updated = savedAttachments.filter((_, i) => i !== idx)
+      if (isEdit) {
+        await updateDoc(doc(db, 'customers', customerId, 'enquiries', enquiry.id), {
+          attachments: updated, updatedAt: serverTimestamp(),
+        })
+      }
+      setSavedAttachments(updated)
+    } finally {
+      setRemovingIdx(null)
+    }
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -80,20 +129,39 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
         linked_quote_ids: linkedQuoteIds,
         updatedAt:        serverTimestamp(),
       }
+
+      let enquiryId = enquiry?.id
+      if (!isEdit) {
+        const newRef = await addDoc(collection(db, 'customers', customerId, 'enquiries'), {
+          ...payload, createdAt: serverTimestamp(),
+        })
+        enquiryId = newRef.id
+      }
+
+      // Upload any pending files
+      const uploaded = pendingFiles.length
+        ? await Promise.all(pendingFiles.map(f => uploadOneFile(f, enquiryId)))
+        : []
+
+      const allAttachments = [...savedAttachments, ...uploaded]
+
       if (isEdit) {
-        await updateDoc(doc(db, 'customers', customerId, 'enquiries', enquiry.id), payload)
-      } else {
-        await addDoc(collection(db, 'customers', customerId, 'enquiries'), {
-          ...payload,
-          createdAt: serverTimestamp(),
+        await updateDoc(doc(db, 'customers', customerId, 'enquiries', enquiryId), {
+          ...payload, attachments: allAttachments,
+        })
+      } else if (uploaded.length) {
+        await updateDoc(doc(db, 'customers', customerId, 'enquiries', enquiryId), {
+          attachments: allAttachments,
         })
       }
+
       onSave?.()
       onClose()
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
+      setUploadProgress({})
     }
   }
 
@@ -183,17 +251,34 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
             {productSearch && (
               <div className="border border-gray-200 rounded-lg mt-1 max-h-36 overflow-y-auto divide-y divide-gray-100">
                 {filteredProducts.length === 0 ? (
-                  <p className="text-xs text-gray-400 px-3 py-2">No products found</p>
-                ) : filteredProducts.map(p => (
                   <button
-                    key={p.id}
                     type="button"
-                    onClick={() => { toggleProduct(p.name); setProductSearch('') }}
-                    className={`w-full text-left text-sm px-3 py-2 hover:bg-gray-50 transition-colors ${selectedProducts.includes(p.name) ? 'text-brand-600 font-medium' : 'text-gray-700'}`}
+                    onClick={() => { toggleProduct(productSearch); setProductSearch('') }}
+                    className="w-full text-left text-sm px-3 py-2 text-brand-600 hover:bg-brand-50 transition-colors"
                   >
-                    {selectedProducts.includes(p.name) ? '✓ ' : ''}{p.name}
+                    + Add "{productSearch}" as custom item
                   </button>
-                ))}
+                ) : (
+                  <>
+                    {filteredProducts.map(p => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => { toggleProduct(p.name); setProductSearch('') }}
+                        className={`w-full text-left text-sm px-3 py-2 hover:bg-gray-50 transition-colors ${selectedProducts.includes(p.name) ? 'text-brand-600 font-medium' : 'text-gray-700'}`}
+                      >
+                        {selectedProducts.includes(p.name) ? '✓ ' : ''}{p.name}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => { toggleProduct(productSearch); setProductSearch('') }}
+                      className="w-full text-left text-sm px-3 py-2 text-brand-400 hover:bg-brand-50 hover:text-brand-600 transition-colors italic"
+                    >
+                      + Add "{productSearch}" as custom item
+                    </button>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -201,7 +286,19 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
           {/* Follow-up date */}
           <div>
             <label className="label">Follow-up Date <span className="text-gray-400 font-normal">(optional)</span></label>
-            <input type="date" className="input" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} />
+            <div className="flex items-center gap-2">
+              <input type="date" className="input flex-1" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} />
+              {followUpDate && (
+                <button
+                  type="button"
+                  onClick={() => setFollowUpDate('')}
+                  className="text-gray-400 hover:text-red-500 transition-colors text-lg leading-none shrink-0"
+                  title="Clear date"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Outcome notes */}
@@ -213,6 +310,76 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
               value={outcomeNotes}
               onChange={e => setOutcomeNotes(e.target.value)}
               placeholder="What happened / result"
+            />
+          </div>
+
+          {/* Quote file attachments */}
+          <div>
+            <label className="label">Quote Attachments <span className="text-gray-400 font-normal">(PDF or images)</span></label>
+
+            <div className="space-y-2">
+              {/* Saved attachments */}
+              {savedAttachments.map((att, idx) => (
+                <div key={idx} className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-200 bg-gray-50">
+                  {att.name?.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? (
+                    <a href={att.url} target="_blank" rel="noreferrer" className="shrink-0">
+                      <img src={att.url} alt="" className="h-10 w-14 object-cover rounded border border-gray-200" />
+                    </a>
+                  ) : (
+                    <span className="text-xl shrink-0">📄</span>
+                  )}
+                  <a href={att.url} target="_blank" rel="noreferrer" className="flex-1 text-sm text-brand-600 hover:underline truncate min-w-0">
+                    {att.name || `Attachment ${idx + 1}`}
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSaved(idx)}
+                    disabled={removingIdx === idx}
+                    className="text-xs text-red-400 hover:text-red-600 shrink-0"
+                  >
+                    {removingIdx === idx ? '…' : '✕'}
+                  </button>
+                </div>
+              ))}
+
+              {/* Pending files (not yet uploaded) */}
+              {pendingFiles.map((file, idx) => (
+                <div key={idx} className="flex items-center gap-3 p-2.5 rounded-lg border border-brand-200 bg-brand-50">
+                  <span className="text-xl shrink-0">{file.type.startsWith('image/') ? '🖼️' : '📄'}</span>
+                  <span className="flex-1 text-sm text-brand-700 truncate min-w-0">{file.name}</span>
+                  {uploadProgress[file.name] != null && (
+                    <span className="text-xs text-brand-500 shrink-0">{uploadProgress[file.name]}%</span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setPendingFiles(f => f.filter((_, i) => i !== idx))}
+                    className="text-xs text-red-400 hover:text-red-600 shrink-0"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Add more button — always visible */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="mt-2 w-full border-2 border-dashed border-gray-200 rounded-lg py-3 text-sm text-gray-400 hover:border-brand-300 hover:text-brand-500 transition-colors"
+            >
+              📎 Add PDF or image
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,application/pdf"
+              multiple
+              className="hidden"
+              onChange={e => {
+                const files = Array.from(e.target.files)
+                if (files.length) setPendingFiles(prev => [...prev, ...files])
+                e.target.value = ''
+              }}
             />
           </div>
 
@@ -255,9 +422,11 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
 }
 
 const STATUS_SELECTED = {
-  Open:      'border-amber-400 bg-amber-50 text-amber-700',
-  Quoted:    'border-blue-400 bg-blue-50 text-blue-700',
-  Won:       'border-green-400 bg-green-50 text-green-700',
-  Lost:      'border-red-400 bg-red-50 text-red-600',
-  'On Hold': 'border-gray-400 bg-gray-100 text-gray-600',
+  Open:           'border-amber-400 bg-amber-50 text-amber-700',
+  Quoted:         'border-blue-400 bg-blue-50 text-blue-700',
+  Confirmed:      'border-green-400 bg-green-50 text-green-700',
+  'In Production':'border-purple-400 bg-purple-50 text-purple-700',
+  Completed:      'border-teal-400 bg-teal-50 text-teal-700',
+  Lost:           'border-red-400 bg-red-50 text-red-600',
+  'On Hold':      'border-gray-400 bg-gray-100 text-gray-600',
 }
