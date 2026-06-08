@@ -101,10 +101,10 @@ export default function CustomerForm() {
     notes: '',
     // CRM fields
     crm_category: '',
-    primary_channel: '',
     source: '',
     crm_status: 'Prospect',
   })
+  const [channels, setChannels] = useState([])
   const [emails, setEmails]           = useState([''])
   const [phones, setPhones]           = useState([''])
   const [whatsapps, setWhatsapps]     = useState([''])
@@ -133,10 +133,11 @@ export default function CustomerForm() {
           address:         d.address         || '',
           notes:           d.notes           || '',
           crm_category:    d.crm_category    || '',
-          primary_channel: d.primary_channel || '',
           source:          d.source          || '',
           crm_status:      d.crm_status      || 'Prospect',
         }))
+        // Backwards compat: old single primary_channel → array
+        setChannels(d.channels?.length ? d.channels : d.primary_channel ? [d.primary_channel] : [])
         setEmails(toArray(d.contact_emails ?? d.contact_email))
         setPhones(toArray(d.contact_phones ?? d.contact_phone))
         setWhatsapps(toArray(d.contact_whatsapps))
@@ -151,10 +152,12 @@ export default function CustomerForm() {
 
   function set(field) { return e => setForm(f => ({ ...f, [field]: e.target.value })) }
 
-  function handleChannelChange(e) {
-    const val = e.target.value
-    setForm(f => ({ ...f, primary_channel: val }))
-    if (val === 'Personal WhatsApp') setIsPersonalWa(true)
+  function toggleChannel(ch) {
+    setChannels(prev => {
+      const next = prev.includes(ch) ? prev.filter(c => c !== ch) : [...prev, ch]
+      if (ch === 'Personal WhatsApp') setIsPersonalWa(!prev.includes(ch))
+      return next
+    })
   }
 
   // Tags
@@ -177,6 +180,8 @@ export default function CustomerForm() {
       const payload = {
         ...form,
         tags,
+        channels,
+        primary_channel: channels[0] || '',  // backwards compat
         is_personal_wa: isPersonalWa,
         is_vip: isVip,
         contact_emails: emails.filter(Boolean),
@@ -368,21 +373,35 @@ export default function CustomerForm() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="label">Primary Channel</label>
-              <select className="input" value={form.primary_channel} onChange={handleChannelChange}>
-                <option value="">— Select —</option>
-                {CHANNELS.map(c => <option key={c}>{c}</option>)}
-              </select>
+          <div>
+            <label className="label">Channels <span className="text-gray-400 font-normal">(select all that apply)</span></label>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {CHANNELS.map(ch => {
+                const selected = channels.includes(ch)
+                return (
+                  <button
+                    key={ch}
+                    type="button"
+                    onClick={() => toggleChannel(ch)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                      selected
+                        ? 'bg-brand-600 text-white border-brand-600'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400'
+                    }`}
+                  >
+                    {selected ? '✓ ' : ''}{ch}
+                  </button>
+                )
+              })}
             </div>
-            <div>
-              <label className="label">CRM Status</label>
-              <select className="input" value={form.crm_status} onChange={set('crm_status')}>
-                <option value="">— Select —</option>
-                {CRM_STATUSES.map(s => <option key={s}>{s}</option>)}
-              </select>
-            </div>
+          </div>
+
+          <div>
+            <label className="label">CRM Status</label>
+            <select className="input" value={form.crm_status} onChange={set('crm_status')}>
+              <option value="">— Select —</option>
+              {CRM_STATUSES.map(s => <option key={s}>{s}</option>)}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

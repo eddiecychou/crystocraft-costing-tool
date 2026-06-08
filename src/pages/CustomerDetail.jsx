@@ -96,7 +96,7 @@ export default function CustomerDetail() {
       if (cSnap.exists()) {
         const c = { id: cSnap.id, ...cSnap.data() }
         setCustomer(c)
-        setComposeChannel(c.primary_channel || '')
+        setComposeChannel(c.channels?.[0] || c.primary_channel || '')
       }
       setQuotes(
         qSnap.docs
@@ -238,7 +238,7 @@ export default function CustomerDetail() {
       </div>
 
       {/* Personal WA warning banner */}
-      {customer.is_personal_wa && (
+      {(customer.is_personal_wa || customer.channels?.includes('Personal WhatsApp')) && (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <span>⚠️</span>
           <span>
@@ -302,13 +302,20 @@ export default function CustomerDetail() {
               <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">{customer.crm_category}</span>
             } />
           )}
-          {customer.primary_channel && (
-            <Row label="Channel" value={
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${CHANNEL_BADGE[customer.primary_channel] || 'bg-gray-100 text-gray-600'}`}>
-                {customer.primary_channel}
-              </span>
-            } />
-          )}
+          {(() => {
+            const chs = customer.channels?.length ? customer.channels : customer.primary_channel ? [customer.primary_channel] : []
+            return chs.length > 0 ? (
+              <Row label="Channels" value={
+                <div className="flex flex-wrap gap-1">
+                  {chs.map(ch => (
+                    <span key={ch} className={`px-2 py-0.5 rounded-full text-xs font-medium ${CHANNEL_BADGE[ch] || 'bg-gray-100 text-gray-600'}`}>
+                      {ch}
+                    </span>
+                  ))}
+                </div>
+              } />
+            ) : null
+          })()}
           {customer.source && <Row label="Source" value={customer.source} />}
           {customer.segment && <Row label="Segment" value={customer.segment} />}
           {customer.folder_path && (

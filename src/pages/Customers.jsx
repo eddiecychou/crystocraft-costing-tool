@@ -54,7 +54,7 @@ export default function Customers() {
       c.tags?.some(t => t.toLowerCase().includes(searchLower)) ||
       c.segment?.toLowerCase().includes(searchLower)
     const matchCountry   = !filterCountry   || (c.country || c.region) === filterCountry
-    const matchChannel   = !filterChannel   || c.primary_channel === filterChannel
+    const matchChannel   = !filterChannel   || c.channels?.includes(filterChannel) || c.primary_channel === filterChannel
     const matchStatus    = !filterStatus    || c.crm_status === filterStatus
     const matchCategory  = !filterCategory  || c.crm_category === filterCategory
     return matchSearch && matchCountry && matchChannel && matchStatus && matchCategory
