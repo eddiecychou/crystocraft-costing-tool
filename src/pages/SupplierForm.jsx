@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
+import { SUPPLIER_CATEGORIES } from '../constants'
 
 // Convert old string or existing array → clean array with at least one entry
 function toArray(val) {
@@ -44,7 +45,7 @@ export default function SupplierForm() {
   const isEdit = Boolean(id)
 
   const [form, setForm] = useState({
-    name: '', name_cn: '', country: 'China', city: '',
+    name: '', name_cn: '', category: '', country: 'China', city: '',
     address: '', wechat_id: '', whatsapp: '', contact_person: '', notes: '',
   })
   const [phones, setPhones] = useState([''])
@@ -59,6 +60,7 @@ export default function SupplierForm() {
         const d = snap.data()
         setForm(f => ({ ...f,
           name: d.name || '', name_cn: d.name_cn || '',
+          category: d.category || '',
           country: d.country || 'China', city: d.city || '',
           address: d.address || '', wechat_id: d.wechat_id || '',
           whatsapp: d.whatsapp || '', contact_person: d.contact_person || '',
@@ -116,6 +118,26 @@ export default function SupplierForm() {
           <div>
             <label className="label">Supplier Name (Chinese)</label>
             <input className="input" value={form.name_cn} onChange={set('name_cn')} placeholder="e.g. 浦江晶鸿水晶" />
+          </div>
+        </div>
+
+        <div>
+          <label className="label">Category</label>
+          <div className="flex flex-wrap gap-2 mt-1">
+            {SUPPLIER_CATEGORIES.map(c => (
+              <button
+                key={c.value}
+                type="button"
+                onClick={() => setForm(f => ({ ...f, category: f.category === c.value ? '' : c.value }))}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                  form.category === c.value
+                    ? 'bg-brand-600 text-white border-brand-600'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400'
+                }`}
+              >
+                {c.emoji} {c.value}
+              </button>
+            ))}
           </div>
         </div>
 

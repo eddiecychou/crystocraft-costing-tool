@@ -1,3 +1,14 @@
+export const SUPPLIER_CATEGORIES = [
+  { value: 'Crystal / Glass',        emoji: '🔮' },
+  { value: 'Metal Parts',            emoji: '⚙️' },
+  { value: 'Packaging',              emoji: '📦' },
+  { value: 'Wood / Acrylic / Plastics', emoji: '🪵' },
+  { value: 'Electronics',            emoji: '📡' },
+  { value: 'Fabric & Textile',       emoji: '🧵' },
+  { value: 'Printing & Engraving',   emoji: '🖨️' },
+  { value: 'Others',                 emoji: '🏷️' },
+]
+
 export const PRODUCT_STATUSES = [
   { value: 'concept',      label: 'Concept' },
   { value: 'sampled',      label: 'Sampled' },

@@ -5,6 +5,7 @@ import { db } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import SupplierCatalogs from '../components/SupplierCatalogs'
+import { SUPPLIER_CATEGORIES } from '../constants'
 
 function toArray(val) {
   if (Array.isArray(val)) return val.filter(Boolean)
@@ -65,6 +66,14 @@ export default function SupplierDetail() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{supplier.name}</h1>
           {supplier.name_cn && <p className="text-gray-500 text-sm mt-0.5">{supplier.name_cn}</p>}
+          {supplier.category && (() => {
+            const cat = SUPPLIER_CATEGORIES.find(c => c.value === supplier.category)
+            return cat ? (
+              <span className="inline-block mt-1.5 text-xs px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 font-medium">
+                {cat.emoji} {supplier.category}
+              </span>
+            ) : null
+          })()}
         </div>
         <div className="flex gap-2">
           <Link to={`/suppliers/${id}/edit`} className="btn-secondary">Edit</Link>
