@@ -60,6 +60,11 @@ service cloud.firestore {
       }
     }
 
+    // Collection group query for supplier_quotes (needed for supplier page)
+    match /{path=**}/supplier_quotes/{quoteId} {
+      allow read, write: if isAuth();
+    }
+
     // Settings (exchange rates etc.)
     match /settings/{docId} {
       allow read, write: if isAuth();

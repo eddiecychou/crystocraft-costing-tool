@@ -181,12 +181,16 @@ export default function SupplierDetail() {
               >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-medium text-gray-900 truncate">{q._productName}</p>
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {q._productName && q._productName !== q.productId ? q._productName : q.supplier_name || 'Unknown Product'}
+                    </p>
                     {q.is_preferred && (
                       <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium shrink-0">⭐ Preferred</span>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">Component: {q._componentName}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Component: {q._componentName && q._componentName !== q.componentId ? q._componentName : '—'}
+                  </p>
                   <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-400">
                     {q.unit_cost != null && (
                       <span className="font-medium text-gray-700">{q.unit_cost} {q.unit_cost_currency}</span>
