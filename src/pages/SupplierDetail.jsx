@@ -206,7 +206,7 @@ export default function SupplierDetail() {
               )
               return isOrphaned
                 ? <div key={q.id} className={`${rowClass} opacity-50 cursor-default`}>{inner}</div>
-                : <Link key={q.id} to={`/products/${q.productId}/components/${q.componentId}/quotes/${q.id}/edit`} className={`${rowClass} hover:bg-gray-50`}>{inner}</Link>
+                : <Link key={q.id} to={`/products/${q.productId}/components/${q.componentId}/quotes/${q.id}`} className={`${rowClass} hover:bg-gray-50`}>{inner}</Link>
             })}
           </div>
         )}
