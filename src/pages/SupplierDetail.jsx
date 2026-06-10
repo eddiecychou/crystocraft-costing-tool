@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { doc, getDoc, deleteDoc, collectionGroup, query, where, getDocs } from 'firebase/firestore'
+import { doc, getDoc, deleteDoc, collectionGroup, query, where, getDocs, writeBatch } from 'firebase/firestore'
 import { db } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
@@ -80,11 +80,28 @@ export default function SupplierDetail() {
         return getDoc(doc(db, 'products', pid, 'components', cid))
           .then(s => { compNames[key] = s.data()?.name || cid })
       }))
-      setQuotes(raw.map(r => ({
+      const enriched = raw.map(r => ({
         ...r,
         _productName:   productNames[r.productId] || '',
         _componentName: compNames[`${r.productId}::${r.componentId}`] || '',
-      })).sort((a, b) => a._productName.localeCompare(b._productName)))
+      }))
+
+      // Auto-delete orphaned quotes (parent product was deleted)
+      const orphans = enriched.filter(r => !r._productName || r._productName === r.productId)
+      if (orphans.length) {
+        const batch = writeBatch(db)
+        orphans.forEach(r => {
+          batch.delete(doc(db, 'products', r.productId, 'components', r.componentId, 'supplier_quotes', r.id))
+        })
+        await batch.commit()
+        console.log(`Cleaned up ${orphans.length} orphaned supplier quote(s)`)
+      }
+
+      setQuotes(
+        enriched
+          .filter(r => r._productName && r._productName !== r.productId)
+          .sort((a, b) => a._productName.localeCompare(b._productName))
+      )
     } catch (err) {
       console.error('Supplier quotes query error:', err.code, err.message)
       setIndexError(true)
