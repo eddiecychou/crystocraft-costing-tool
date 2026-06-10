@@ -51,8 +51,8 @@ export default function Customers() {
     const matchSearch = !search ||
       c.company_name?.toLowerCase().includes(searchLower) ||
       c.contact_name?.toLowerCase().includes(searchLower) ||
-      c.tags?.some(t => t.toLowerCase().includes(searchLower)) ||
-      c.segment?.toLowerCase().includes(searchLower)
+      c.erp_code?.toLowerCase().includes(searchLower) ||
+      c.tags?.some(t => t.toLowerCase().includes(searchLower))
     const matchCountry   = !filterCountry   || (c.country || c.region) === filterCountry
     const matchChannel   = !filterChannel   || c.channels?.includes(filterChannel) || c.primary_channel === filterChannel
     const matchStatus    = !filterStatus    || c.crm_status === filterStatus

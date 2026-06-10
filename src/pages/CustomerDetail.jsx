@@ -213,7 +213,12 @@ export default function CustomerDetail() {
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-xl md:text-2xl font-bold text-gray-900">{customer.company_name}</h1>
+              <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-xl md:text-2xl font-bold text-gray-900">{customer.company_name}</h1>
+          {customer.erp_code && (
+            <span className="text-xs font-mono px-2 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">{customer.erp_code}</span>
+          )}
+        </div>
               {customer.is_vip && <span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-semibold">⭐ VIP</span>}
               {customer.crm_status && (
                 <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${CRM_STATUS_STYLES[customer.crm_status] || 'bg-gray-100 text-gray-500'}`}>

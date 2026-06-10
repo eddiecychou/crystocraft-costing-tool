@@ -64,7 +64,12 @@ export default function SupplierDetail() {
 
       <div className="flex items-start justify-between mt-2 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{supplier.name}</h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl font-bold text-gray-900">{supplier.name}</h1>
+            {supplier.erp_code && (
+              <span className="text-xs font-mono px-2 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">{supplier.erp_code}</span>
+            )}
+          </div>
           {supplier.name_cn && <p className="text-gray-500 text-sm mt-0.5">{supplier.name_cn}</p>}
           {supplier.category && (() => {
             const cat = SUPPLIER_CATEGORIES.find(c => c.value === supplier.category)

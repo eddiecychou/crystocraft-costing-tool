@@ -94,6 +94,7 @@ export default function CustomerForm() {
   const [form, setForm] = useState({
     company_name: '',
     contact_name: '',
+    erp_code: '',
     whatsapp: '',
     website: '',
     country: 'Hong Kong',
@@ -127,6 +128,7 @@ export default function CustomerForm() {
           ...f,
           company_name:    d.company_name    || '',
           contact_name:    d.contact_name    || '',
+          erp_code:        d.erp_code        || '',
           whatsapp:        d.whatsapp        || '',
           website:         d.website         || '',
           country:         d.country || d.region || 'Hong Kong',
@@ -220,9 +222,15 @@ export default function CustomerForm() {
         {/* Company */}
         <div className="card p-5 space-y-4">
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Company</p>
-          <div>
-            <label className="label">Company / Client Name *</label>
-            <input className="input" value={form.company_name} onChange={set('company_name')} required placeholder="e.g. Manulife HK" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="sm:col-span-2">
+              <label className="label">Company / Client Name *</label>
+              <input className="input" value={form.company_name} onChange={set('company_name')} required placeholder="e.g. Manulife HK" />
+            </div>
+            <div>
+              <label className="label">ERP Code <span className="text-gray-400 font-normal">(optional)</span></label>
+              <input className="input" value={form.erp_code} onChange={set('erp_code')} placeholder="e.g. C-00123" />
+            </div>
           </div>
           <div className="relative">
             <label className="label">Country</label>

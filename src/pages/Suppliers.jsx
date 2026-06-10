@@ -31,7 +31,7 @@ export default function Suppliers() {
   }, [])
 
   const filtered = suppliers.filter(s => {
-    const matchSearch = !search || s.name?.toLowerCase().includes(search.toLowerCase()) || s.name_cn?.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = !search || s.name?.toLowerCase().includes(search.toLowerCase()) || s.name_cn?.toLowerCase().includes(search.toLowerCase()) || s.erp_code?.toLowerCase().includes(search.toLowerCase())
     const matchCat = !catFilter || s.category === catFilter
     return matchSearch && matchCat
   })

@@ -45,7 +45,7 @@ export default function SupplierForm() {
   const isEdit = Boolean(id)
 
   const [form, setForm] = useState({
-    name: '', name_cn: '', category: '', country: 'China', city: '',
+    name: '', name_cn: '', erp_code: '', category: '', country: 'China', city: '',
     address: '', wechat_id: '', whatsapp: '', contact_person: '', notes: '',
   })
   const [phones, setPhones] = useState([''])
@@ -60,6 +60,7 @@ export default function SupplierForm() {
         const d = snap.data()
         setForm(f => ({ ...f,
           name: d.name || '', name_cn: d.name_cn || '',
+          erp_code: d.erp_code || '',
           category: d.category || '',
           country: d.country || 'China', city: d.city || '',
           address: d.address || '', wechat_id: d.wechat_id || '',
@@ -119,6 +120,11 @@ export default function SupplierForm() {
             <label className="label">Supplier Name (Chinese)</label>
             <input className="input" value={form.name_cn} onChange={set('name_cn')} placeholder="e.g. 浦江晶鸿水晶" />
           </div>
+        </div>
+
+        <div>
+          <label className="label">ERP Code <span className="text-gray-400 font-normal">(optional)</span></label>
+          <input className="input max-w-xs" value={form.erp_code} onChange={set('erp_code')} placeholder="e.g. S-00456" />
         </div>
 
         <div>
