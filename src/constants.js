@@ -17,16 +17,16 @@ export const PRODUCT_STATUSES = [
 ]
 
 export const CATEGORIES = [
+  'ESG & Sustainable Gifts',
   'Dining & Kitchen',
-  'Trophy & Award',
-  'Stationery',
-  'Tech Accessory',
-  'Decor Object',
+  'Tech Accessories',
   'Travel Accessories',
+  'Apparel & Wearables',
   'Accessories',
-  'Apparel / Wearable',
   'Games & Leisure',
-  'Other',
+  'Stationery',
+  'Decor Objects',
+  'Trophy & Award',
 ]
 
 export const CURRENCIES = ['RMB', 'HKD', 'USD', 'EUR']
