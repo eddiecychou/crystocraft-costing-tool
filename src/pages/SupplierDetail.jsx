@@ -86,7 +86,8 @@ export default function SupplierDetail() {
         _componentName: compNames[`${r.productId}::${r.componentId}`] || '',
       })).sort((a, b) => a._productName.localeCompare(b._productName)))
     } catch (err) {
-      if (err.code === 'failed-precondition') setIndexError(true)
+      console.error('Supplier quotes query error:', err.code, err.message)
+      setIndexError(true)
     } finally {
       setQuotesLoading(false)
     }
