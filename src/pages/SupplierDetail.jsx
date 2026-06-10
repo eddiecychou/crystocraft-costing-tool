@@ -173,37 +173,41 @@ export default function SupplierDetail() {
           <p className="text-sm text-gray-400 text-center py-8">No component quotes linked to this supplier yet.</p>
         ) : (
           <div className="divide-y divide-gray-100">
-            {quotes.map(q => (
-              <Link
-                key={q.id}
-                to={`/products/${q.productId}/components/${q.componentId}/quotes/${q.id}/edit`}
-                className="flex items-start justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors gap-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {q._productName && q._productName !== q.productId ? q._productName : q.supplier_name || 'Unknown Product'}
-                    </p>
-                    {q.is_preferred && (
-                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium shrink-0">⭐ Preferred</span>
-                    )}
+            {quotes.map(q => {
+              const isOrphaned = !q._productName || q._productName === q.productId
+              const productLabel = isOrphaned ? (q.supplier_name || 'Unknown Product') : q._productName
+              const componentLabel = (!q._componentName || q._componentName === q.componentId) ? '—' : q._componentName
+              const rowClass = 'flex items-start justify-between px-5 py-3.5 gap-3 transition-colors'
+              const inner = (
+                <>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium text-gray-900 truncate">{productLabel}</p>
+                      {q.is_preferred && (
+                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium shrink-0">⭐ Preferred</span>
+                      )}
+                      {isOrphaned && (
+                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400 shrink-0">Product deleted</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">Component: {componentLabel}</p>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-400">
+                      {q.unit_cost != null && (
+                        <span className="font-medium text-gray-700">{q.unit_cost} {q.unit_cost_currency}</span>
+                      )}
+                      {q.moq && <span>MOQ {q.moq.toLocaleString()}</span>}
+                      {q.production_lead_time_days && <span>Prod {q.production_lead_time_days}d</span>}
+                      {q.sampling_lead_time_days && <span>Sample {q.sampling_lead_time_days}d</span>}
+                    </div>
+                    {q.notes && <p className="text-xs text-gray-400 mt-0.5 italic truncate">{q.notes}</p>}
                   </div>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    Component: {q._componentName && q._componentName !== q.componentId ? q._componentName : '—'}
-                  </p>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-400">
-                    {q.unit_cost != null && (
-                      <span className="font-medium text-gray-700">{q.unit_cost} {q.unit_cost_currency}</span>
-                    )}
-                    {q.moq && <span>MOQ {q.moq.toLocaleString()}</span>}
-                    {q.production_lead_time_days && <span>Prod {q.production_lead_time_days}d</span>}
-                    {q.sampling_lead_time_days && <span>Sample {q.sampling_lead_time_days}d</span>}
-                  </div>
-                  {q.notes && <p className="text-xs text-gray-400 mt-0.5 italic truncate">{q.notes}</p>}
-                </div>
-                <span className="text-xs text-gray-400 shrink-0 mt-1">Edit →</span>
-              </Link>
-            ))}
+                  {!isOrphaned && <span className="text-xs text-gray-400 shrink-0 mt-1">Edit →</span>}
+                </>
+              )
+              return isOrphaned
+                ? <div key={q.id} className={`${rowClass} opacity-50 cursor-default`}>{inner}</div>
+                : <Link key={q.id} to={`/products/${q.productId}/components/${q.componentId}/quotes/${q.id}/edit`} className={`${rowClass} hover:bg-gray-50`}>{inner}</Link>
+            })}
           </div>
         )}
       </div>
