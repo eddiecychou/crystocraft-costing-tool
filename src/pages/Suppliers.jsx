@@ -4,6 +4,7 @@ import { db } from '../firebase'
 import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import { SUPPLIER_CATEGORIES } from '../constants'
+import useScrollMemory from '../hooks/useScrollMemory'
 
 const CAT_STYLES = {
   'Crystal / Glass':          'bg-blue-50 text-blue-700',
@@ -21,6 +22,7 @@ export default function Suppliers() {
   const [loading, setLoading]     = useState(true)
   const [search, setSearch]       = useState('')
   const [catFilter, setCatFilter] = useState('')
+  const remember = useScrollMemory('suppliers', !loading)
 
   useEffect(() => {
     const q = query(collection(db, 'suppliers'), orderBy('name'))
@@ -91,6 +93,7 @@ export default function Suppliers() {
               <Link
                 key={s.id}
                 to={`/suppliers/${s.id}`}
+                onClick={remember}
                 className="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors"
               >
                 <div className="min-w-0 flex-1">

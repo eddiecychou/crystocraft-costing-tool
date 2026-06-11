@@ -4,6 +4,7 @@ import { db } from '../firebase'
 import { Link } from 'react-router-dom'
 import { CATEGORIES, PRODUCT_STATUSES } from '../constants'
 import LoadingBar from '../components/LoadingBar'
+import useScrollMemory from '../hooks/useScrollMemory'
 
 export default function Products() {
   const [products, setProducts] = useState([])
@@ -11,6 +12,7 @@ export default function Products() {
   const [search, setSearch]     = useState('')
   const [filterCat, setFilterCat]       = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const remember = useScrollMemory('products', !loading)
 
   useEffect(() => {
     const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'))
@@ -65,14 +67,14 @@ export default function Products() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map(p => <ProductCard key={p.id} product={p} />)}
+          {filtered.map(p => <ProductCard key={p.id} product={p} onNavigate={remember} />)}
         </div>
       )}
     </div>
   )
 }
 
-function ProductCard({ product: p }) {
+function ProductCard({ product: p, onNavigate }) {
   const [tiers, setTiers] = useState(null)
 
   useEffect(() => {
@@ -81,7 +83,7 @@ function ProductCard({ product: p }) {
   }, [p.id])
 
   return (
-    <Link to={`/products/${p.id}`} className="card hover:shadow-md transition-shadow overflow-hidden flex flex-col">
+    <Link to={`/products/${p.id}`} onClick={onNavigate} className="card hover:shadow-md transition-shadow overflow-hidden flex flex-col">
       <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
         {p.heroImage
           ? <img src={p.heroImage} alt={p.name} className="w-full h-full object-cover" />

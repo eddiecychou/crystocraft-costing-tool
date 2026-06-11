@@ -6,6 +6,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import ImageGallery from '../components/ImageGallery'
 import { COMPONENT_IMAGE_TYPES } from '../constants'
+import useScrollMemory from '../hooks/useScrollMemory'
 
 export default function ComponentDetail() {
   const { productId, componentId } = useParams()
@@ -17,6 +18,7 @@ export default function ComponentDetail() {
   const [images, setImages]         = useState([])
   const [loading, setLoading]       = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const remember = useScrollMemory(`component-${productId}-${componentId}`, !loading)
 
   useEffect(() => {
     Promise.all([
@@ -74,7 +76,7 @@ export default function ComponentDetail() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Link to={`/products/${productId}/components/${componentId}/edit`} className="btn-secondary">Edit</Link>
+          <Link to={`/products/${productId}/components/${componentId}/edit`} onClick={remember} className="btn-secondary">Edit</Link>
           <button className="btn-danger" onClick={() => setConfirmDelete(true)}>Delete</button>
         </div>
       </div>
@@ -112,6 +114,7 @@ export default function ComponentDetail() {
           <h2 className="text-sm font-semibold text-gray-700">Supplier Quotes</h2>
           <Link
             to={`/products/${productId}/components/${componentId}/quotes/new`}
+            onClick={remember}
             className="btn-primary text-xs py-1.5 px-3"
           >
             + Add Quote
@@ -130,6 +133,7 @@ export default function ComponentDetail() {
                 quote={q}
                 productId={productId}
                 componentId={componentId}
+                onNavigate={remember}
                 onDeleted={deletedId => setQuotes(prev => prev.filter(x => x.id !== deletedId))}
               />
             ))}
@@ -148,7 +152,7 @@ export default function ComponentDetail() {
   )
 }
 
-function QuoteCard({ quote: q, productId, componentId, onDeleted }) {
+function QuoteCard({ quote: q, productId, componentId, onNavigate, onDeleted }) {
   const [confirmDel, setConfirmDel] = useState(false)
 
   async function handleDelete() {
@@ -161,6 +165,7 @@ function QuoteCard({ quote: q, productId, componentId, onDeleted }) {
       <div className="relative group flex items-start justify-between p-4 rounded-lg border border-gray-100 hover:border-brand-200 hover:bg-brand-50 transition-colors">
         <Link
           to={`/products/${productId}/components/${componentId}/quotes/${q.id}`}
+          onClick={onNavigate}
           className="flex-1 min-w-0 space-y-1"
         >
           <div className="flex items-center gap-2">

@@ -9,6 +9,7 @@ import { ref as storageRef, deleteObject } from 'firebase/storage'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
+import useScrollMemory from '../hooks/useScrollMemory'
 
 function toArray(val) {
   if (Array.isArray(val)) return val.filter(Boolean)
@@ -69,6 +70,7 @@ export default function CustomerDetail() {
   const [loading, setLoading]           = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmDeleteEnquiry, setConfirmDeleteEnquiry] = useState(null)
+  const remember = useScrollMemory(`customer-${id}`, !loading)
 
   // Enquiry form state
   const [enquiryFormOpen, setEnquiryFormOpen] = useState(false)
@@ -236,7 +238,7 @@ export default function CustomerDetail() {
             )}
           </div>
           <div className="flex gap-2 shrink-0">
-            <Link to={`/customers/${id}/edit`} className="btn-secondary text-sm">Edit</Link>
+            <Link to={`/customers/${id}/edit`} onClick={remember} className="btn-secondary text-sm">Edit</Link>
             <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>Delete</button>
           </div>
         </div>
@@ -343,14 +345,14 @@ export default function CustomerDetail() {
       <div className="card mb-4">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <h2 className="text-sm font-semibold text-gray-700">Quotes ({quotes.length})</h2>
-          <Link to={`/quotes/new?customer_id=${id}`} className="btn-primary text-xs py-1.5 px-3">+ New Quote</Link>
+          <Link to={`/quotes/new?customer_id=${id}`} onClick={remember} className="btn-primary text-xs py-1.5 px-3">+ New Quote</Link>
         </div>
         {quotes.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-8">No quotes yet for this customer.</p>
         ) : (
           <div className="divide-y divide-gray-100">
             {quotes.map(q => (
-              <Link key={q.id} to={`/quotes/${q.id}`} className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors">
+              <Link key={q.id} to={`/quotes/${q.id}`} onClick={remember} className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors">
                 <div>
                   <p className="text-sm font-medium text-gray-900">
                     {q.quote_date || q.createdAt?.toDate?.().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}

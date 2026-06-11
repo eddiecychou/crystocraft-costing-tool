@@ -3,6 +3,7 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
+import useScrollMemory from '../hooks/useScrollMemory'
 
 const COUNTRIES = [
   'Hong Kong', 'China (Mainland)', 'Macau', 'Taiwan',
@@ -37,6 +38,7 @@ export default function Customers() {
   const [filterChannel, setFilterChannel]   = useState('')
   const [filterStatus, setFilterStatus]     = useState('')
   const [filterCategory, setFilterCategory] = useState('')
+  const remember = useScrollMemory('customers', !loading)
 
   useEffect(() => {
     const q = query(collection(db, 'customers'), orderBy('company_name'))
@@ -125,7 +127,7 @@ export default function Customers() {
       ) : (
         <div className="card divide-y divide-gray-100">
           {filtered.map(c => (
-            <Link key={c.id} to={`/customers/${c.id}`} className="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors">
+            <Link key={c.id} to={`/customers/${c.id}`} onClick={remember} className="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-gray-900 text-sm truncate">{c.company_name}</p>

@@ -7,6 +7,7 @@ import LoadingBar from '../components/LoadingBar'
 import SupplierCatalogs from '../components/SupplierCatalogs'
 import SupplierAddQuoteModal from '../components/SupplierAddQuoteModal'
 import { SUPPLIER_CATEGORIES } from '../constants'
+import useScrollMemory from '../hooks/useScrollMemory'
 
 function toArray(val) {
   if (Array.isArray(val)) return val.filter(Boolean)
@@ -47,6 +48,7 @@ export default function SupplierDetail() {
   const [quotesLoading, setQuotesLoading] = useState(true)
   const [showAddQuote, setShowAddQuote] = useState(false)
   const [indexError, setIndexError]     = useState(false)
+  const remember = useScrollMemory(`supplier-${id}`, !loading)
 
   useEffect(() => {
     getDoc(doc(db, 'suppliers', id)).then(snap => {
@@ -143,7 +145,7 @@ export default function SupplierDetail() {
           })()}
         </div>
         <div className="flex gap-2">
-          <Link to={`/suppliers/${id}/edit`} className="btn-secondary">Edit</Link>
+          <Link to={`/suppliers/${id}/edit`} onClick={remember} className="btn-secondary">Edit</Link>
           <button className="btn-danger" onClick={() => setConfirmDelete(true)}>Delete</button>
         </div>
       </div>
@@ -223,7 +225,7 @@ export default function SupplierDetail() {
               )
               return isOrphaned
                 ? <div key={q.id} className={`${rowClass} opacity-50 cursor-default`}>{inner}</div>
-                : <Link key={q.id} to={`/products/${q.productId}/components/${q.componentId}/quotes/${q.id}`} className={`${rowClass} hover:bg-gray-50`}>{inner}</Link>
+                : <Link key={q.id} to={`/products/${q.productId}/components/${q.componentId}/quotes/${q.id}`} onClick={remember} className={`${rowClass} hover:bg-gray-50`}>{inner}</Link>
             })}
           </div>
         )}

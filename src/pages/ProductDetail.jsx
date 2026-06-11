@@ -6,6 +6,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import ImageGallery from '../components/ImageGallery'
 import { IMAGE_TYPES } from '../constants'
+import useScrollMemory from '../hooks/useScrollMemory'
 
 export default function ProductDetail() {
   const { id } = useParams()
@@ -22,6 +23,7 @@ export default function ProductDetail() {
   const [allComponents, setAllComponents] = useState([])
   const [pickerSearch, setPickerSearch]   = useState('')
   const [copying, setCopying]             = useState(false)
+  const remember = useScrollMemory(`product-${id}`, !loading)
 
   useEffect(() => {
     getDoc(doc(db, 'products', id)).then(snap => {
@@ -158,7 +160,7 @@ export default function ProductDetail() {
             </div>
           </div>
           <div className="flex gap-2 shrink-0">
-            <Link to={`/products/${id}/edit`} className="btn-secondary text-sm">Edit</Link>
+            <Link to={`/products/${id}/edit`} onClick={remember} className="btn-secondary text-sm">Edit</Link>
             <button className="btn-secondary text-sm" onClick={handleDuplicate} disabled={duplicating}>
               {duplicating ? 'Copying…' : '⧉ Duplicate'}
             </button>
@@ -190,7 +192,7 @@ export default function ProductDetail() {
               <h2 className="text-sm font-semibold text-gray-700">Bill of Materials</h2>
               <div className="flex gap-2">
                 <button onClick={openPicker} className="btn-secondary text-xs py-1 px-3">+ Copy Existing</button>
-                <Link to={`/products/${id}/components/new`} className="btn-primary text-xs py-1 px-3">+ New</Link>
+                <Link to={`/products/${id}/components/new`} onClick={remember} className="btn-primary text-xs py-1 px-3">+ New</Link>
               </div>
             </div>
             {components.length === 0 ? (
@@ -201,6 +203,7 @@ export default function ProductDetail() {
                   <Link
                     key={c.id}
                     to={`/products/${id}/components/${c.id}`}
+                    onClick={remember}
                     className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-brand-200 hover:bg-brand-50 transition-colors"
                   >
                     <div>
@@ -223,7 +226,7 @@ export default function ProductDetail() {
           <div className="card p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-gray-700">Pricing Tiers</h2>
-              <Link to={`/products/${id}/pricing`} className="btn-secondary text-xs py-1 px-3">Manage Pricing</Link>
+              <Link to={`/products/${id}/pricing`} onClick={remember} className="btn-secondary text-xs py-1 px-3">Manage Pricing</Link>
             </div>
             <p className="text-sm text-gray-400 text-center py-2">Set up components and suppliers first, then add pricing tiers.</p>
           </div>
