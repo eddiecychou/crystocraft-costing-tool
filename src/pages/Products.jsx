@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { collection, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Link } from 'react-router-dom'
@@ -11,6 +11,19 @@ export default function Products() {
   const [search, setSearch]     = useState('')
   const [filterCat, setFilterCat]       = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const containerRef = useRef(null)
+
+  // Restore scroll position when returning to this page
+  useEffect(() => {
+    const saved = sessionStorage.getItem('products-scroll')
+    if (saved) {
+      setTimeout(() => window.scrollTo(0, parseInt(saved)), 50)
+      sessionStorage.removeItem('products-scroll')
+    }
+    return () => {
+      sessionStorage.setItem('products-scroll', window.scrollY)
+    }
+  }, [])
 
   useEffect(() => {
     const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'))
