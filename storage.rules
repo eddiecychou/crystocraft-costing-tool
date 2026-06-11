@@ -31,5 +31,10 @@ service firebase.storage {
     match /catalogues/{catalogueId}/{allPaths=**} {
       allow read, write: if isAuth();
     }
+
+    // Customer enquiry attachments
+    match /customers/{customerId}/{allPaths=**} {
+      allow read, write: if isAuth();
+    }
   }
 }
