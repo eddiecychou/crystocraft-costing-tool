@@ -148,7 +148,7 @@ export default function ProductDetail() {
     <div className="p-4 md:p-6 max-w-4xl">
       {/* Header */}
       <div className="mb-6">
-        <button onClick={() => navigate(-1)} className="text-sm text-brand-600 hover:underline">← Products</button>
+        <Link to="/products" className="text-sm text-brand-600 hover:underline">← Products</Link>
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mt-1 gap-2">
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-gray-900">{product.name}</h1>

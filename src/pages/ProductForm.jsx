@@ -193,7 +193,7 @@ export default function ProductForm() {
           <button type="submit" className="btn-primary" disabled={loading}>
             {loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Product'}
           </button>
-          <button type="button" className="btn-secondary" onClick={() => navigate(isEdit ? `/products/${id}` : -1)}>Cancel</button>
+          <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>Cancel</button>
         </div>
       </form>
     </div>
