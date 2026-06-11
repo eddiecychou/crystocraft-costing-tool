@@ -15,13 +15,15 @@ export default function Products() {
 
   // Restore scroll position when returning to this page
   useEffect(() => {
+    const el = document.getElementById('main-scroll')
     const saved = sessionStorage.getItem('products-scroll')
-    if (saved) {
-      setTimeout(() => window.scrollTo(0, parseInt(saved)), 50)
+    if (saved && el) {
+      setTimeout(() => { el.scrollTop = parseInt(saved) }, 50)
       sessionStorage.removeItem('products-scroll')
     }
     return () => {
-      sessionStorage.setItem('products-scroll', window.scrollY)
+      const el = document.getElementById('main-scroll')
+      if (el) sessionStorage.setItem('products-scroll', el.scrollTop)
     }
   }, [])
 
