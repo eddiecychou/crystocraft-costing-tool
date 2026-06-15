@@ -617,6 +617,33 @@ function SupplierCombobox({ suppliers, value, onChange }) {
   )
 }
 
+// Builds a stable key from the meaningful cost fields so copied/identical
+// quotes collapse into a single row in the picker. Defensive: never throws —
+// a malformed quote just falls back to its own id (so it shows as its own row)
+// rather than breaking the whole list.
+function quoteSignature(q) {
+  try {
+    const tiers = (Array.isArray(q.volume_tiers) ? q.volume_tiers : [])
+      .map(t => `${t?.min_qty}:${t?.unit_cost}`)
+      .sort()
+      .join('|')
+    return [
+      q.supplier_id || q.supplier_name || '',
+      q.unit_cost ?? '',
+      q.unit_cost_currency || '',
+      q.moq ?? '',
+      q.tooling_sample_cost ?? '',
+      q.tooling_sample_cost_currency || '',
+      q.tooling_lead_time_days ?? '',
+      q.sampling_lead_time_days ?? '',
+      q.production_lead_time_days ?? '',
+      tiers,
+    ].join('§')
+  } catch {
+    return `__raw_${q.id}`
+  }
+}
+
 function CopyQuotePicker({ quotes, loaded, onSelect, onClose }) {
   const [search, setSearch] = useState('')
 
@@ -630,15 +657,31 @@ function CopyQuotePicker({ quotes, loaded, onSelect, onClose }) {
     )
   }, [quotes, search])
 
-  // Group by supplier name
+  // Group by supplier name, then collapse identical quotes (same cost signature).
+  // Many quotes are copied from one another, so without this the list shows
+  // the same price repeated once per component it was applied to.
   const grouped = useMemo(() => {
     const map = {}
     for (const q of filtered) {
-      const key = q.supplier_name || 'Unknown Supplier'
-      if (!map[key]) map[key] = []
-      map[key].push(q)
+      const supplierKey = q.supplier_name || 'Unknown Supplier'
+      if (!map[supplierKey]) map[supplierKey] = new Map()
+      const sig = quoteSignature(q)
+      const bucket = map[supplierKey]
+      const existing = bucket.get(sig)
+      if (!existing) {
+        bucket.set(sig, { ...q, _useCount: 1 })
+      } else {
+        existing._useCount += 1
+        // Keep the most recent doc as the representative
+        if ((q.createdAt?.seconds || 0) > (existing.createdAt?.seconds || 0)) {
+          const count = existing._useCount
+          bucket.set(sig, { ...q, _useCount: count })
+        }
+      }
     }
-    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b))
+    return Object.entries(map)
+      .map(([supplierName, bucket]) => [supplierName, [...bucket.values()]])
+      .sort(([a], [b]) => a.localeCompare(b))
   }, [filtered])
 
   return (
@@ -678,7 +721,16 @@ function CopyQuotePicker({ quotes, loaded, onSelect, onClose }) {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <p className="text-xs text-gray-400">{q._productName} › {q._componentName}</p>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <p className="text-xs text-gray-400">
+                          {q._useCount > 1 ? q._componentName : `${q._productName} › ${q._componentName}`}
+                        </p>
+                        {q._useCount > 1 && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium shrink-0">
+                            used in {q._useCount}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm font-medium text-gray-800 mt-0.5">
                         {q.unit_cost != null ? `${q.unit_cost} ${q.unit_cost_currency}` : '—'}
                         {q.moq ? ` · MOQ ${q.moq.toLocaleString()}` : ''}

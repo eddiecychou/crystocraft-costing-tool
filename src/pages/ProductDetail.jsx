@@ -337,7 +337,11 @@ function ComponentPicker({ allComponents, currentProductId, search, onSearchChan
                   >
                     <p className="text-sm font-medium text-gray-800">{c.name}</p>
                     {c.spec && <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{c.spec}</p>}
-                    {c.unit && <span className="text-xs text-gray-400">Unit: {c.unit}</span>}
+                    {(c.unit || c.qty_per_product) && (
+                      <span className="text-xs text-gray-400">
+                        {c.qty_per_product ? `${c.qty_per_product} ${c.unit || 'pcs'}` : `Unit: ${c.unit}`}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>

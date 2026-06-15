@@ -124,26 +124,27 @@ function SectionImagePicker({ images, heroImage, selected, onChange }) {
 // ── Blog preview (iframe) ─────────────────────────────────────────────────────
 function buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl, ctaText) {
   const css = `
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;500&display=swap');
     *{box-sizing:border-box}
-    body{font-family:Georgia,'Times New Roman',serif;max-width:800px;margin:0 auto;padding:28px 20px;color:#222;line-height:1.75}
-    h1{font-size:1.9em;line-height:1.25;margin:0 0 .3em;color:#111}
-    h2{font-size:1.3em;margin:0 0 .5em;color:#111}
+    body{font-family:'Outfit','Helvetica Neue',Arial,sans-serif;max-width:800px;margin:0 auto;padding:28px 20px;color:#1C1C1A;line-height:1.75;background:#F7F4EF}
+    h1{font-family:'Cormorant Garamond',Georgia,serif;font-size:2.2em;font-weight:600;line-height:1.15;margin:0 0 .3em;color:#1C1C1A;letter-spacing:-0.01em}
+    h2{font-family:'Cormorant Garamond',Georgia,serif;font-size:1.5em;font-weight:600;margin:0 0 .5em;color:#1C1C1A}
     p{margin:0 0 1em}
-    .kw{font-family:sans-serif;font-size:.8em;color:#aaa;margin-bottom:2em}
-    .hero{width:100%;border-radius:10px;display:block;margin-bottom:3em}
-    .section{margin-top:3em;margin-bottom:4em;padding-bottom:4em;border-bottom:1px solid #e5e7eb}
+    .kw{font-size:.8em;color:#6E6C66;margin-bottom:2em;letter-spacing:0.04em}
+    .hero{width:100%;display:block;margin-bottom:3em}
+    .section{margin-top:3em;margin-bottom:4em;padding-bottom:4em;border-bottom:1px solid #EDE8DF}
     .section:last-child{border-bottom:none;padding-bottom:0}
     .col{display:flex;gap:2.5em;align-items:flex-start}
     .col .text{flex:6;min-width:0}
     .col .img{flex:4;min-width:0}
-    .col .img img{width:100%;border-radius:8px;display:block}
+    .col .img img{width:100%;display:block}
     .imgs{display:flex;gap:1.2em;margin-top:1.5em;align-items:flex-start}
     .imgs a{flex:1;display:block;min-width:0;margin:0;text-decoration:none}
     .imgs figure{flex:1;width:0;min-width:0;margin:0}
     .imgs a figure{width:100%;flex:none}
-    .imgs img{width:100%;border-radius:8px;display:block}
-    figcaption{font-size:.78em;color:#999;text-align:center;margin-top:.35em;font-family:sans-serif}
-    .btn{display:inline-block;margin-top:1em;padding:.6em 1.4em;background:#111;color:#fff;border-radius:6px;text-decoration:none;font-family:sans-serif;font-size:.9em}
+    .imgs img{width:100%;display:block}
+    figcaption{font-size:.78em;color:#6E6C66;text-align:center;margin-top:.35em}
+    .btn{display:inline-block;margin-top:1em;padding:.6em 1.4em;background:#6E2433;color:#F7F4EF;text-decoration:none;font-size:.9em;letter-spacing:0.04em}
     @media(max-width:600px){.col{flex-direction:column}.imgs{flex-direction:column}.imgs figure{width:100%}}
   `
   let body = `<h1>${escapeHtml(result.seo_title)}</h1>`
@@ -179,26 +180,27 @@ function buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl,
 
 function buildRoundupPreviewHTML(result, selected, heroImage, itemImages, productUrl, ctaText) {
   const css = `
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;500&display=swap');
     *{box-sizing:border-box}
-    body{font-family:Georgia,'Times New Roman',serif;max-width:800px;margin:0 auto;padding:28px 20px;color:#222;line-height:1.75}
-    h1{font-size:1.9em;line-height:1.25;margin:0 0 .3em;color:#111}
-    h2{font-size:1.3em;margin:0 0 .5em;color:#111}
+    body{font-family:'Outfit','Helvetica Neue',Arial,sans-serif;max-width:800px;margin:0 auto;padding:28px 20px;color:#1C1C1A;line-height:1.75;background:#F7F4EF}
+    h1{font-family:'Cormorant Garamond',Georgia,serif;font-size:2.2em;font-weight:600;line-height:1.15;margin:0 0 .3em;color:#1C1C1A;letter-spacing:-0.01em}
+    h2{font-family:'Cormorant Garamond',Georgia,serif;font-size:1.5em;font-weight:600;margin:0 0 .5em;color:#1C1C1A}
     p{margin:0 0 1em}
-    .kw{font-family:sans-serif;font-size:.8em;color:#aaa;margin-bottom:2em}
-    .hero{width:100%;border-radius:10px;display:block;margin-bottom:3em}
-    .section{margin-top:3em;margin-bottom:4em;padding-bottom:4em;border-bottom:1px solid #e5e7eb}
+    .kw{font-size:.8em;color:#6E6C66;margin-bottom:2em;letter-spacing:0.04em}
+    .hero{width:100%;display:block;margin-bottom:3em}
+    .section{margin-top:3em;margin-bottom:4em;padding-bottom:4em;border-bottom:1px solid #EDE8DF}
     .section:last-child{border-bottom:none;padding-bottom:0}
     .col{display:flex;gap:2.5em;align-items:flex-start}
     .col .text{flex:6;min-width:0}
     .col .img{flex:4;min-width:0}
-    .col .img img{width:100%;border-radius:8px;display:block}
+    .col .img img{width:100%;display:block}
     .imgs{display:flex;gap:1.2em;margin-top:1.5em;align-items:flex-start}
     .imgs a{flex:1;display:block;min-width:0;margin:0;text-decoration:none}
     .imgs figure{flex:1;width:0;min-width:0;margin:0}
     .imgs a figure{width:100%;flex:none}
-    .imgs img{width:100%;border-radius:8px;display:block}
-    figcaption{font-size:.78em;color:#999;text-align:center;margin-top:.35em;font-family:sans-serif}
-    .btn{display:inline-block;margin-top:1em;padding:.6em 1.4em;background:#111;color:#fff;border-radius:6px;text-decoration:none;font-family:sans-serif;font-size:.9em}
+    .imgs img{width:100%;display:block}
+    figcaption{font-size:.78em;color:#6E6C66;text-align:center;margin-top:.35em}
+    .btn{display:inline-block;margin-top:1em;padding:.6em 1.4em;background:#6E2433;color:#F7F4EF;text-decoration:none;font-size:.9em;letter-spacing:0.04em}
     @media(max-width:600px){.col{flex-direction:column}.imgs{flex-direction:column}.imgs figure{width:100%}}
   `
   const imgHtml = (img, alt = '', url = '') => {

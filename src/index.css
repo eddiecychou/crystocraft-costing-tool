@@ -3,46 +3,79 @@
 @tailwind utilities;
 
 @layer base {
+  /* Use direct CSS values so custom tokens don't need a dev-server restart */
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    background-color: #F7F4EF; /* ivory */
+    color: #1C1C1A;            /* ink */
+    font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Cormorant Garamond for display headings */
+  h1, h2 {
+    font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
   }
 }
 
 @layer components {
+
+  /* ── Buttons ─────────────────────────────────────────── */
   .btn {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed tracking-wide;
   }
   .btn-primary {
     @apply btn bg-brand-600 text-white hover:bg-brand-700 focus:ring-brand-500;
   }
   .btn-secondary {
-    @apply btn bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-brand-500;
+    @apply btn bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 focus:ring-brand-500;
+    color: #444340;
   }
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+    @apply btn bg-red-700 text-white hover:bg-red-800 focus:ring-red-500;
   }
+
+  /* ── Form elements ───────────────────────────────────── */
   .input {
-    @apply block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500;
+    @apply block w-full rounded border border-gray-200 bg-white px-3 py-2 text-sm shadow-none focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors;
+    color: #1C1C1A;
+  }
+  .input::placeholder {
+    color: rgba(110, 108, 102, 0.6); /* graphite/60 */
   }
   .label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+    @apply block text-xs font-medium mb-1 tracking-widest uppercase;
+    color: #6E6C66; /* graphite */
   }
+
+  /* ── Cards ───────────────────────────────────────────── */
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200;
+    @apply bg-white rounded-sm shadow-sm;
+    border: 1px solid #EDE8DF; /* ivory-dark */
   }
+
+  /* ── Badges / status pills ───────────────────────────── */
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium tracking-wide;
   }
   .badge-concept {
     @apply badge bg-purple-100 text-purple-700;
   }
   .badge-sampled {
-    @apply badge bg-yellow-100 text-yellow-700;
+    @apply badge bg-amber-100 text-amber-700;
   }
   .badge-active {
-    @apply badge bg-green-100 text-green-700;
+    @apply badge bg-emerald-100 text-emerald-700;
   }
   .badge-discontinued {
-    @apply badge bg-gray-100 text-gray-600;
+    @apply badge bg-gray-100 text-gray-500;
+  }
+
+  /* ── Eyebrow / section kicker ────────────────────────── */
+  .eyebrow {
+    @apply text-xs font-medium uppercase;
+    color: #6E6C66;
+    letter-spacing: 0.18em;
+    font-family: 'Outfit', system-ui, sans-serif;
   }
 }
