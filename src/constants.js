@@ -74,13 +74,14 @@ export const RANGE_FORMAT_CODES = [
   { code: '033', label: 'Music Box' },
 ]
 
-// Plating colour (first letter of the 3rd segment)
+// Plating colour (first letter of the 3rd segment). Field is free-text —
+// these are the known codes; e.g. M = mixed plating can be typed in directly.
 export const RANGE_PLATINGS = [
-  { code: 'G', name: 'Gold',     dot: '#C6A664' },
-  { code: 'C', name: 'Chrome',   dot: '#9AA0A6' },
-  { code: 'A', name: 'Gunmetal', dot: '#4A4A47' },
-  { code: 'T', name: 'Two-tone', dot: '#B7935A' },
-  { code: 'W', name: 'White',    dot: '#E8E6E1' },
+  { code: 'G', name: 'Gold',      dot: '#C6A664' },
+  { code: 'C', name: 'Chrome',    dot: '#9AA0A6' },
+  { code: 'R', name: 'Rose Gold', dot: '#B76E79' },
+  { code: 'A', name: 'Gun Metal', dot: '#4A4A47' },
+  { code: 'M', name: 'Mixed',     dot: '#B7935A' },
 ]
 
 // Crystal colour codes (suffix after plating). Editable — add as discovered.

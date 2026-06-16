@@ -120,7 +120,7 @@ export default function Range() {
     return {
       id: p.id,
       code: [p.design_code, p.format_code].filter(Boolean).join('-'),
-      name: p.design_name,
+      name: p.description || p.design_name || [p.design_code, p.format_code].filter(Boolean).join('-'),
       design_type: p.design_type || p.category || '',
       product_type: p.product_type || '',
       size: p.size,
@@ -199,11 +199,11 @@ export default function Range() {
         <input type="text" placeholder="Search name, code or SKU…" className="input flex-1 min-w-0"
                value={search} onChange={e => setSearch(e.target.value)} />
         <select className="input w-auto" value={ptype} onChange={e => setPtype(e.target.value)}>
-          <option value="">All product types</option>
+          <option value="">All product cats</option>
           {productTypes.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <select className="input w-auto" value={cat} onChange={e => setCat(e.target.value)}>
-          <option value="">All design types</option>
+          <option value="">All design cats</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <select className="input w-auto" value={plating} onChange={e => setPlating(e.target.value)}>

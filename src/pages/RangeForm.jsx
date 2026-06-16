@@ -113,7 +113,7 @@ export default function RangeForm() {
   const setPlating = i => e => {
     const code = e.target.value
     const match = RANGE_PLATINGS.find(p => p.code === code)
-    patchVariant(i, match ? { plating_code: code, plating_name: match.name } : { plating_code: code })
+    patchVariant(i, { plating_code: code, plating_name: match ? match.name : '' })
   }
   const setCrystal = i => e => {
     const code = e.target.value
@@ -157,6 +157,7 @@ export default function RangeForm() {
   const removeGallery = i => setForm(f => ({ ...f, gallery: f.gallery.filter((_, j) => j !== i) }))
 
   const num = v => (v === '' || v == null ? null : (Number.isFinite(Number(v)) ? Number(v) : null))
+  const intNum = v => { const n = num(v); return n == null ? null : Math.round(n) }
 
   async function handleSave(e) {
     e.preventDefault()
@@ -185,7 +186,7 @@ export default function RangeForm() {
         sku: buildSku(design, format, {
           plating_code: v.plating_code.trim(), crystal_code: v.crystal_code.trim(), running_no: v.running_no.trim(),
         }),
-        ws_price_usd: num(v.ws_price_usd), stock_finished: num(v.stock_finished),
+        ws_price_usd: num(v.ws_price_usd), stock_finished: intNum(v.stock_finished),
         packaging: v.packaging.trim(), engraving: v.engraving.trim(), image: v.image.trim(),
       })),
       updatedAt: serverTimestamp(),
@@ -227,23 +228,23 @@ export default function RangeForm() {
       <form onSubmit={handleSave} className="space-y-5">
         {/* Core fields */}
         <div className="card p-5 space-y-4">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div>
               <label className="label">Design Code</label>
               <input className="input font-mono" value={form.design_code} onChange={set('design_code')}
                      placeholder="D0002" required />
             </div>
             <div>
-              <label className="label">Format Code</label>
+              <label className="label">Product Type</label>
               <input className="input font-mono" list="format-codes" value={form.format_code}
                      onChange={set('format_code')} placeholder="001" required />
               <datalist id="format-codes">
                 {RANGE_FORMAT_CODES.map(fc => <option key={fc.code} value={fc.code}>{fc.label}</option>)}
               </datalist>
             </div>
-            <div className="col-span-2">
-              <label className="label">Design Name</label>
-              <input className="input" value={form.design_name} onChange={set('design_name')} required />
+            <div>
+              <label className="label">Size</label>
+              <input className="input" value={form.size} onChange={set('size')} placeholder="7.5 x 5.5 cm" />
             </div>
           </div>
           <p className="text-[11px] text-ink-60 -mt-2">
@@ -251,9 +252,9 @@ export default function RangeForm() {
             Each variant's full SKU is built from this plus plating / crystal colour.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="label">Design Type</label>
+              <label className="label">Design Cat</label>
               <input className="input" list="design-types" value={form.design_type}
                      onChange={set('design_type')} placeholder="Butterfly, Bird…" />
               <datalist id="design-types">
@@ -261,16 +262,12 @@ export default function RangeForm() {
               </datalist>
             </div>
             <div>
-              <label className="label">Product Type</label>
+              <label className="label">Product Cat</label>
               <input className="input" list="product-types" value={form.product_type}
                      onChange={set('product_type')} placeholder="Figurine, Music Box…" />
               <datalist id="product-types">
                 {RANGE_PRODUCT_TYPES.map(t => <option key={t} value={t} />)}
               </datalist>
-            </div>
-            <div>
-              <label className="label">Size</label>
-              <input className="input" value={form.size} onChange={set('size')} placeholder="7.5 x 5.5 cm" />
             </div>
           </div>
 
@@ -363,6 +360,7 @@ export default function RangeForm() {
                           <datalist id="platings">
                             {RANGE_PLATINGS.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
                           </datalist>
+                          <p className="text-[10px] text-ink-60 mt-0.5 leading-tight">G = Gold · C = Chrome · R = Rose Gold · A = Gun Metal</p>
                         </div>
                         <div>
                           <label className="label">Crystal Colour</label>
@@ -376,16 +374,14 @@ export default function RangeForm() {
                           <input className="input text-xs font-mono" value={v.running_no} onChange={setVariant(i, 'running_no')} placeholder="(opt.)" />
                         </div>
                         <div>
-                          <label className="label">Plating Name</label>
-                          <input className="input text-xs" value={v.plating_name} onChange={setVariant(i, 'plating_name')} placeholder="Gold" />
-                        </div>
-                        <div>
                           <label className="label">WS Price USD</label>
                           <input className="input text-xs" type="number" step="0.01" value={v.ws_price_usd} onChange={setVariant(i, 'ws_price_usd')} />
                         </div>
                         <div>
                           <label className="label">Stock (pcs)</label>
-                          <input className="input text-xs" type="number" step="1" value={v.stock_finished} onChange={setVariant(i, 'stock_finished')} />
+                          <input className="input text-xs" type="number" step="1" min="0"
+                                 value={v.stock_finished}
+                                 onChange={e => patchVariant(i, { stock_finished: e.target.value.replace(/[^\d]/g, '') })} />
                         </div>
                         <div>
                           <label className="label">Packaging</label>
