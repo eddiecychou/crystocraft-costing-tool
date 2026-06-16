@@ -44,10 +44,11 @@ const PACKING_FIELDS = [
   { key: 'pack_box_ref', label: 'Pack / Box Ref', placeholder: 'P-…' },
 ]
 
-// Full SKU = {brand}{body}{design_no}-{format}-{plating}{crystal}{running}
-//   e.g. D0002-001-GC1 (metal) or UA061-231-CC1 (crystal-body, body letter A)
-function buildSku(designNo, body, format, v) {
-  const head = `${v.brand_code || ''}${body || ''}${designNo || ''}`
+// Full SKU = {prefix}{design_no}-{format}-{plating}{crystal}{running}
+//   prefix = 1-2 letters: brand (1st) + optional body/type (2nd)
+//   e.g. D0002-001-GC1 (metal) or UA061-231-CC1 (crystal-body, prefix UA)
+function buildSku(designNo, format, v) {
+  const head = `${v.brand_code || ''}${designNo || ''}`
   const suffix = `${v.plating_code || ''}${v.crystal_code || ''}${v.running_no || ''}`
   return [head, format || '', suffix].filter(Boolean).join('-')
 }
@@ -142,7 +143,7 @@ export default function RangeForm() {
       const prev = variants[i]
       const v = { ...prev }
       if (kind === 'brand') {
-        v.brand_code = code; v.brand_name = BRAND_NAME[code] || ''
+        v.brand_code = code; v.brand_name = BRAND_NAME[(code || '')[0]] || ''
       } else if (kind === 'plating') {
         const m = RANGE_PLATINGS.find(p => p.code === code)
         v.plating_code = code; v.plating_name = m ? m.name : ''
@@ -206,8 +207,9 @@ export default function RangeForm() {
     if (!form.format_code.trim()) { setError('Product type code (e.g. 001) is required.'); return }
     setSaving(true); setError('')
     const designNo = form.design_no.trim()
-    const body = (form.body_code || '').trim()
     const format = form.format_code.trim()
+    // Body/type = the optional 2nd prefix letter, taken from the variants' prefix.
+    const body = ((form.variants.find(v => (v.brand_code || '').length > 1)?.brand_code || '').slice(1)).toUpperCase()
     const payload = {
       design_no: designNo,
       body_code: body,
@@ -230,7 +232,7 @@ export default function RangeForm() {
         plating_code: v.plating_code.trim(), plating_name: v.plating_name.trim(),
         crystal_code: v.crystal_code.trim(), crystal_name: v.crystal_name.trim(),
         description: v.description.trim(), running_no: v.running_no.trim(),
-        sku: buildSku(designNo, body, format, {
+        sku: buildSku(designNo, format, {
           brand_code: v.brand_code.trim(), plating_code: v.plating_code.trim(),
           crystal_code: v.crystal_code.trim(), running_no: v.running_no.trim(),
         }),
@@ -259,7 +261,9 @@ export default function RangeForm() {
   if (fetching) return <LoadingBar />
   if (!form) return <div className="p-6 text-ink-60">Product not found. <Link to="/range" className="text-brand-600">Back to Figurine Gifts</Link></div>
 
-  const productCode = [`${form.body_code || ''}${form.design_no}`, form.format_code].filter(Boolean).join('-')
+  // 3-digit designs allow a 2-letter prefix (brand + body); 4-digit allow 1 letter.
+  const brandMax = form.design_no.replace(/\D/g, '').length <= 3 ? 2 : 1
+  const productCode = [form.design_no, form.format_code].filter(Boolean).join('-')
 
   return (
     <div className="p-4 md:p-6 max-w-3xl">
@@ -276,21 +280,13 @@ export default function RangeForm() {
       <form onSubmit={handleSave} className="space-y-5">
         {/* Core fields */}
         <div className="card p-5 space-y-4">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div>
               <label className="label">Design No.</label>
               <input className="input font-mono" value={form.design_no} inputMode="numeric" maxLength={4}
                      onChange={e => setForm(f => ({ ...f, design_no: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
                      placeholder="0002" required />
-              <p className="text-[10px] text-ink-50 mt-0.5">3 or 4 digits</p>
-            </div>
-            <div>
-              <label className="label">Body / Type</label>
-              <select className="input" value={form.body_code || ''} onChange={set('body_code')}>
-                {RANGE_BODY_TYPES.map(b => (
-                  <option key={b.code} value={b.code}>{b.code ? `${b.code} — ${b.name}` : b.name}</option>
-                ))}
-              </select>
+              <p className="text-[10px] text-ink-50 mt-0.5">3 or 4 digits (3 = 2-letter prefix allowed)</p>
             </div>
             <div>
               <label className="label">Product Type</label>
@@ -309,9 +305,9 @@ export default function RangeForm() {
           <p className="text-[11px] text-ink-60 -mt-2">
             Product <span className="font-mono text-ink-80">{productCode || '…'}</span>.
             Each variant's full SKU = crystal brand + this + plating / crystal colour
-            (e.g. <span className="font-mono">D{form.body_code || ''}{form.design_no || '0002'}-{form.format_code || '001'}-GC1</span>).
-            Brands: D = Bohemia · U = Swarovski · A = Asfour/Chinese · M = Mixed.
-            Body letter (optional): A = Crystal body · C = Glassware · D = Display unit.
+            (e.g. <span className="font-mono">D{form.design_no || '0002'}-{form.format_code || '001'}-GC1</span>).
+            Prefix per variant: 1st letter = brand (D/U/A/M), optional 2nd letter
+            (3-digit designs) = body — A Crystal body · C Glassware · D Display unit.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -402,7 +398,7 @@ export default function RangeForm() {
           <p className="text-xs text-ink-60 mb-3">Each plating / crystal-colour combination is one SKU. The full code is built automatically.</p>
           <div className="space-y-4">
             {form.variants.map((v, i) => {
-              const sku = buildSku(form.design_no, form.body_code, form.format_code, v)
+              const sku = buildSku(form.design_no, form.format_code, v)
               return (
                 <div key={i} className="border border-ivory-dark p-3">
                   <div className="flex items-start gap-3">
@@ -423,10 +419,13 @@ export default function RangeForm() {
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <div>
-                          <label className="label">Crystal Brand</label>
-                          <select className="input text-xs font-mono" value={v.brand_code} onChange={setBrand(i)}>
-                            {RANGE_CRYSTAL_BRANDS.map(b => <option key={b.code} value={b.code}>{b.code} · {b.name}</option>)}
-                          </select>
+                          <label className="label">Prefix</label>
+                          <input className="input text-xs font-mono uppercase" value={v.brand_code}
+                                 maxLength={brandMax} placeholder={brandMax === 2 ? 'UA' : 'D'}
+                                 onChange={e => applyCode(i, 'brand', e.target.value.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, brandMax))} />
+                          <p className="text-[10px] text-ink-60 mt-0.5 leading-tight">
+                            1st: D=Bohemia U=Swarovski A=Asfour M=Mixed{brandMax === 2 ? ' · 2nd: A=Crystal body C=Glassware D=Display unit' : ''}
+                          </p>
                         </div>
                         <div>
                           <label className="label">Plating</label>

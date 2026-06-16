@@ -41,7 +41,6 @@ export default function Range() {
   const [search, setSearch] = useState('')
   const [cat, setCat] = useState('')
   const [ptype, setPtype] = useState('')
-  const [plating, setPlating] = useState('')
   const [status, setStatus] = useState('all')
   const [stockOnly, setStockOnly] = useState(false)
   const [seeding, setSeeding] = useState(false)
@@ -154,7 +153,6 @@ export default function Range() {
 
   const categories = useMemo(() => [...new Set(items.map(s => s.design_type).filter(Boolean))].sort(), [items])
   const productTypes = useMemo(() => [...new Set(items.map(s => s.product_type).filter(Boolean))].sort(), [items])
-  const platingOpts = useMemo(() => [...new Set(items.flatMap(s => s.platings))].sort(), [items])
 
   const filtered = useMemo(() => items.filter(s => {
     const q = search.toLowerCase()
@@ -162,11 +160,11 @@ export default function Range() {
       || s.skus.some(sku => sku?.toLowerCase().includes(q))
     const matchCat = !cat || s.design_type === cat
     const matchPtype = !ptype || s.product_type === ptype
-    const matchPlating = !plating || s.platings.includes(plating)
+    const matchPlating = true
     const matchStatus = status === 'all' || s.status === status
     const matchStock = !stockOnly || s.totalStock > 0
     return matchSearch && matchCat && matchPtype && matchPlating && matchStatus && matchStock
-  }), [items, search, cat, ptype, plating, status, stockOnly])
+  }), [items, search, cat, ptype, status, stockOnly])
 
   const statusCounts = useMemo(() => ({
     all: items.length,
@@ -182,7 +180,6 @@ export default function Range() {
   if (!loading && products.length === 0) {
     return (
       <div className="p-4 md:p-6 max-w-xl">
-        <p className="eyebrow mb-1">Ready-to-Ship · Bohemia Crystal</p>
         <h1 className="text-xl md:text-2xl mb-4">Figurine Gifts</h1>
         <div className="card p-6">
           <p className="text-sm text-ink-80 mb-1">No figurine products in the database yet.</p>
@@ -208,7 +205,6 @@ export default function Range() {
 
       <div className="flex items-end justify-between mb-1 flex-wrap gap-2">
         <div>
-          <p className="eyebrow mb-1">Ready-to-Ship · Bohemia Crystal</p>
           <h1 className="text-xl md:text-2xl">Figurine Gifts</h1>
         </div>
         <div className="text-right flex flex-col items-end gap-1">
@@ -250,10 +246,6 @@ export default function Range() {
         <select className="input w-auto" value={cat} onChange={e => setCat(e.target.value)}>
           <option value="">All design cats</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select className="input w-auto" value={plating} onChange={e => setPlating(e.target.value)}>
-          <option value="">All platings</option>
-          {platingOpts.map(f => <option key={f} value={f}>{f}</option>)}
         </select>
         <label className="flex items-center gap-2 text-sm text-ink-80 px-2 cursor-pointer select-none">
           <input type="checkbox" checked={stockOnly} onChange={e => setStockOnly(e.target.checked)} />
