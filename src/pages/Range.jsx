@@ -22,6 +22,7 @@ export default function Range() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [cat, setCat] = useState('')
+  const [ptype, setPtype] = useState('')
   const [finish, setFinish] = useState('')
   const [stockOnly, setStockOnly] = useState(false)
   const [seeding, setSeeding] = useState(false)
@@ -59,6 +60,9 @@ export default function Range() {
           format_code: p.format_code || '',
           size: p.size || '',
           crystal_type: p.crystal_type || 'Bohemia',
+          design_type: p.design_type || p.category || '',
+          product_type: p.product_type || 'Figurine',
+          gallery: p.gallery || [],
           packing: p.packing || {
             carton_dims: '', pcs_per_carton: '', pack_box_ref: '',
             cbm_per_carton: '', weight_per_carton_kg: '', weight_per_pcs_kg: '',
@@ -93,6 +97,8 @@ export default function Range() {
       productId: p.id,
       name: p.design_name,
       category: p.category,
+      design_type: p.design_type || p.category || '',
+      product_type: p.product_type || '',
       size: p.size,
       active: p.active !== false,
       sku: f.sku,
@@ -103,17 +109,19 @@ export default function Range() {
     }))
   ), [products])
 
-  const categories = useMemo(() => [...new Set(skus.map(s => s.category).filter(Boolean))].sort(), [skus])
+  const categories = useMemo(() => [...new Set(skus.map(s => s.design_type).filter(Boolean))].sort(), [skus])
+  const productTypes = useMemo(() => [...new Set(skus.map(s => s.product_type).filter(Boolean))].sort(), [skus])
   const finishes = useMemo(() => [...new Set(skus.map(s => s.finish_name).filter(Boolean))].sort(), [skus])
 
   const filtered = useMemo(() => skus.filter(s => {
     const q = search.toLowerCase()
     const matchSearch = !q || s.name?.toLowerCase().includes(q) || s.sku?.toLowerCase().includes(q)
-    const matchCat = !cat || s.category === cat
+    const matchCat = !cat || s.design_type === cat
+    const matchPtype = !ptype || s.product_type === ptype
     const matchFinish = !finish || s.finish_name === finish
     const matchStock = !stockOnly || (s.stock != null && s.stock > 0)
-    return matchSearch && matchCat && matchFinish && matchStock
-  }), [skus, search, cat, finish, stockOnly])
+    return matchSearch && matchCat && matchPtype && matchFinish && matchStock
+  }), [skus, search, cat, ptype, finish, stockOnly])
 
   const totalValue = filtered.reduce((sum, s) =>
     sum + (s.ws_price_usd && s.stock > 0 ? s.ws_price_usd * s.stock : 0), 0)
@@ -130,9 +138,12 @@ export default function Range() {
             Import the active catalogue ({rangeData.products.length} designs · {rangeData.products.reduce((n, p) => n + p.finishes.length, 0)} SKUs)
             from your working sheet. You can then edit any of them.
           </p>
-          <button onClick={handleSeed} disabled={seeding} className="btn-primary">
-            {seeding ? 'Importing…' : `Import ${rangeData.products.length} designs`}
-          </button>
+          <div className="flex gap-2">
+            <button onClick={handleSeed} disabled={seeding} className="btn-primary">
+              {seeding ? 'Importing…' : `Import ${rangeData.products.length} designs`}
+            </button>
+            <Link to="/range/new" className="btn-secondary">+ New product</Link>
+          </div>
           {seedLog && <p className="text-xs font-mono text-ink-60 mt-3">{seedLog}</p>}
         </div>
       </div>
@@ -148,7 +159,8 @@ export default function Range() {
           <p className="eyebrow mb-1">Ready-to-Ship · Bohemia Crystal</p>
           <h1 className="text-xl md:text-2xl">Figurine Gifts</h1>
         </div>
-        <div className="text-right">
+        <div className="text-right flex flex-col items-end gap-1">
+          <Link to="/range/new" className="btn-primary text-sm">+ New product</Link>
           <p className="text-sm text-ink-60">{filtered.length} of {skus.length} SKUs</p>
           <p className="text-xs text-ink-60">Stock value ≈ ${Math.round(totalValue).toLocaleString()} USD (WS)</p>
           <button onClick={handleSeed} disabled={seeding}
@@ -163,8 +175,12 @@ export default function Range() {
       <div className="flex gap-2 my-5 flex-wrap items-center">
         <input type="text" placeholder="Search name or SKU…" className="input flex-1 min-w-0"
                value={search} onChange={e => setSearch(e.target.value)} />
+        <select className="input w-auto" value={ptype} onChange={e => setPtype(e.target.value)}>
+          <option value="">All product types</option>
+          {productTypes.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
         <select className="input w-auto" value={cat} onChange={e => setCat(e.target.value)}>
-          <option value="">All categories</option>
+          <option value="">All design types</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <select className="input w-auto" value={finish} onChange={e => setFinish(e.target.value)}>

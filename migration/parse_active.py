@@ -158,9 +158,12 @@ for (body, fmt), variants in sorted(grp.items()):
         "design_name": re.sub(r"\s*-\s*(Free Stand|Freestand).*$", "", base["desc"]).strip() or base["desc"],
         "description": base["desc"],
         "category": base["category"],
+        "design_type": base["category"],   # seed from sheet category; user can refine
+        "product_type": "Figurine",         # active sheet is all figurines
         "format_code": fmt,
         "size": base["size"],
         "crystal_type": "Bohemia",
+        "gallery": [],
         "packing": pk or {
             "carton_dims": "", "pcs_per_carton": "", "pack_box_ref": "",
             "cbm_per_carton": "", "weight_per_carton_kg": "", "weight_per_pcs_kg": "",

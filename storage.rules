@@ -36,5 +36,10 @@ service firebase.storage {
     match /customers/{customerId}/{allPaths=**} {
       allow read, write: if isAuth();
     }
+
+    // Figurine Gifts (Crystocraft Range) images
+    match /range_products/{rangeId}/{allPaths=**} {
+      allow read, write: if isAuth();
+    }
   }
 }
