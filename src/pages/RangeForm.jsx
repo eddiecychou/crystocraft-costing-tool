@@ -272,13 +272,15 @@ export default function RangeForm() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div>
               <label className="label">Design No.</label>
-              <input className="input font-mono" value={form.design_no} onChange={set('design_no')}
+              <input className="input font-mono" value={form.design_no} inputMode="numeric" maxLength={4}
+                     onChange={e => setForm(f => ({ ...f, design_no: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
                      placeholder="0002" required />
             </div>
             <div>
               <label className="label">Product Type</label>
-              <input className="input font-mono" list="format-codes" value={form.format_code}
-                     onChange={set('format_code')} placeholder="001" required />
+              <input className="input font-mono" list="format-codes" value={form.format_code} inputMode="numeric" maxLength={3}
+                     onChange={e => setForm(f => ({ ...f, format_code: e.target.value.replace(/\D/g, '').slice(0, 3) }))}
+                     placeholder="001" required />
               <datalist id="format-codes">
                 {RANGE_FORMAT_CODES.map(fc => <option key={fc.code} value={fc.code}>{fc.label}</option>)}
               </datalist>
@@ -383,7 +385,7 @@ export default function RangeForm() {
           <p className="text-xs text-ink-60 mb-3">Each plating / crystal-colour combination is one SKU. The full code is built automatically.</p>
           <div className="space-y-4">
             {form.variants.map((v, i) => {
-              const sku = buildSku(form.design_code, form.format_code, v)
+              const sku = buildSku(form.design_no, form.format_code, v)
               return (
                 <div key={i} className="border border-ivory-dark p-3">
                   <div className="flex items-start gap-3">
