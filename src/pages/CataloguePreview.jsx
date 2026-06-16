@@ -439,7 +439,7 @@ export default function CataloguePreview() {
 
 // ── Catalogue CSS ─────────────────────────────────────────────────────────────
 const catalogueCSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Outfit:wght@300;400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Questrial&family=Work+Sans:wght@400;500;600&display=swap');
 
   /* ── Screen wrapper ── */
   .catalogue-wrapper {
@@ -458,7 +458,7 @@ const catalogueCSS = `
     overflow: hidden;
     display: flex;
     box-shadow: 0 4px 24px rgba(0,0,0,0.13);
-    font-family: 'Outfit', 'Helvetica Neue', Arial, sans-serif;
+    font-family: 'Questrial', 'Helvetica Neue', Arial, sans-serif;
     page-break-after: always;
     break-after: page;
     box-sizing: border-box;
@@ -492,11 +492,12 @@ const catalogueCSS = `
     margin: 2px 0;
   }
   .cover-title {
-    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-family: 'Questrial', Georgia, serif;
     font-size: 28px;
-    font-weight: 600;
+    font-weight: 400;
     color: #ffffff;
-    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
     margin: 0;
     line-height: 1.15;
   }

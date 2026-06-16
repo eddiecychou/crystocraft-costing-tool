@@ -124,11 +124,11 @@ function SectionImagePicker({ images, heroImage, selected, onChange }) {
 // ── Blog preview (iframe) ─────────────────────────────────────────────────────
 function buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl, ctaText) {
   const css = `
-    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Questrial&family=Work+Sans:wght@400;500;600&display=swap');
     *{box-sizing:border-box}
-    body{font-family:'Outfit','Helvetica Neue',Arial,sans-serif;max-width:800px;margin:0 auto;padding:28px 20px;color:#1C1C1A;line-height:1.75;background:#F7F4EF}
-    h1{font-family:'Cormorant Garamond',Georgia,serif;font-size:2.2em;font-weight:600;line-height:1.15;margin:0 0 .3em;color:#1C1C1A;letter-spacing:-0.01em}
-    h2{font-family:'Cormorant Garamond',Georgia,serif;font-size:1.5em;font-weight:600;margin:0 0 .5em;color:#1C1C1A}
+    body{font-family:'Questrial',system-ui,'Helvetica Neue',Arial,sans-serif;max-width:800px;margin:0 auto;padding:28px 20px;color:#222222;line-height:1.75;background:#FFFFFF}
+    h1{font-family:'Questrial',system-ui,sans-serif;font-size:2.2em;font-weight:400;line-height:1.15;margin:0 0 .3em;color:#222222;text-transform:uppercase;letter-spacing:0.03em}
+    h2{font-family:'Questrial',system-ui,sans-serif;font-size:1.5em;font-weight:400;margin:0 0 .5em;color:#222222;text-transform:uppercase;letter-spacing:0.03em}
     p{margin:0 0 1em}
     .kw{font-size:.8em;color:#6E6C66;margin-bottom:2em;letter-spacing:0.04em}
     .hero{width:100%;display:block;margin-bottom:3em}
@@ -180,11 +180,11 @@ function buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl,
 
 function buildRoundupPreviewHTML(result, selected, heroImage, itemImages, productUrl, ctaText) {
   const css = `
-    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Outfit:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Questrial&family=Work+Sans:wght@400;500;600&display=swap');
     *{box-sizing:border-box}
-    body{font-family:'Outfit','Helvetica Neue',Arial,sans-serif;max-width:800px;margin:0 auto;padding:28px 20px;color:#1C1C1A;line-height:1.75;background:#F7F4EF}
-    h1{font-family:'Cormorant Garamond',Georgia,serif;font-size:2.2em;font-weight:600;line-height:1.15;margin:0 0 .3em;color:#1C1C1A;letter-spacing:-0.01em}
-    h2{font-family:'Cormorant Garamond',Georgia,serif;font-size:1.5em;font-weight:600;margin:0 0 .5em;color:#1C1C1A}
+    body{font-family:'Questrial',system-ui,'Helvetica Neue',Arial,sans-serif;max-width:800px;margin:0 auto;padding:28px 20px;color:#222222;line-height:1.75;background:#FFFFFF}
+    h1{font-family:'Questrial',system-ui,sans-serif;font-size:2.2em;font-weight:400;line-height:1.15;margin:0 0 .3em;color:#222222;text-transform:uppercase;letter-spacing:0.03em}
+    h2{font-family:'Questrial',system-ui,sans-serif;font-size:1.5em;font-weight:400;margin:0 0 .5em;color:#222222;text-transform:uppercase;letter-spacing:0.03em}
     p{margin:0 0 1em}
     .kw{font-size:.8em;color:#6E6C66;margin-bottom:2em;letter-spacing:0.04em}
     .hero{width:100%;display:block;margin-bottom:3em}

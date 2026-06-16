@@ -3,60 +3,75 @@
 @tailwind utilities;
 
 @layer base {
-  /* Use direct CSS values so custom tokens don't need a dev-server restart */
+  /* Crystocraft Design System 2026 V2 — direct CSS values so tokens
+     don't depend on a dev-server restart to take effect */
   body {
-    background-color: #F7F4EF; /* ivory */
-    color: #1C1C1A;            /* ink */
-    font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+    background-color: #F7EEE3; /* beige — warm app background */
+    color: #222222;            /* near-black — primary text */
+    font-family: 'Questrial', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Cormorant Garamond for display headings */
-  h1, h2 {
-    font-family: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  /* Questrial uppercase headings — the wordmark-echo treatment (H1–H3) */
+  h1, h2, h3 {
+    font-family: 'Questrial', system-ui, -apple-system, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 400;
   }
 }
 
 @layer components {
 
-  /* ── Buttons ─────────────────────────────────────────── */
+  /* ── Buttons — Work Sans, uppercase, square corners ──── */
   .btn {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded font-medium text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed tracking-wide;
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2 rounded-none text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed uppercase;
+    font-family: 'Work Sans', system-ui, sans-serif;
+    font-weight: 500;
+    letter-spacing: 0.1em;
   }
   .btn-primary {
-    @apply btn bg-brand-600 text-white hover:bg-brand-700 focus:ring-brand-500;
+    @apply btn bg-brand-600 text-white hover:bg-brand-800 focus:ring-brand-500;
   }
   .btn-secondary {
-    @apply btn bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 focus:ring-brand-500;
-    color: #444340;
+    @apply btn bg-white border hover:bg-ivory focus:ring-brand-500;
+    color: #222222;
+    border-color: #E9E8E6; /* warm-grey hairline */
   }
   .btn-danger {
-    @apply btn bg-red-700 text-white hover:bg-red-800 focus:ring-red-500;
+    @apply btn bg-red-800 text-white hover:bg-red-900 focus:ring-red-500;
   }
 
-  /* ── Form elements ───────────────────────────────────── */
+  /* ── Form elements — boxed, square, hairline border ──── */
   .input {
-    @apply block w-full rounded border border-gray-200 bg-white px-3 py-2 text-sm shadow-none focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 transition-colors;
-    color: #1C1C1A;
+    @apply block w-full rounded-sm border bg-white px-3 py-2 text-sm shadow-none focus:outline-none focus:ring-1 focus:ring-ink focus:border-ink transition-colors;
+    color: #222222;
+    border-color: rgba(34, 34, 34, 0.20); /* border-mid */
   }
   .input::placeholder {
-    color: rgba(110, 108, 102, 0.6); /* graphite/60 */
+    color: rgba(102, 102, 102, 0.55); /* mid-grey/55 */
   }
   .label {
-    @apply block text-xs font-medium mb-1 tracking-widest uppercase;
-    color: #6E6C66; /* graphite */
+    @apply block text-xs mb-1 uppercase;
+    font-family: 'Work Sans', system-ui, sans-serif;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    color: #666666; /* mid-grey */
   }
 
-  /* ── Cards ───────────────────────────────────────────── */
+  /* ── Cards — flat, square, hairline border ───────────── */
   .card {
-    @apply bg-white rounded-sm shadow-sm;
-    border: 1px solid #EDE8DF; /* ivory-dark */
+    @apply bg-white rounded-none;
+    border: 1px solid #E9E8E6; /* warm-grey hairline */
   }
 
-  /* ── Badges / status pills ───────────────────────────── */
+  /* ── Badges / status pills — square, Work Sans caps ──── */
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium tracking-wide;
+    @apply inline-flex items-center px-2 py-0.5 rounded-none text-xs uppercase;
+    font-family: 'Work Sans', system-ui, sans-serif;
+    font-weight: 500;
+    letter-spacing: 0.08em;
   }
   .badge-concept {
     @apply badge bg-purple-100 text-purple-700;
@@ -71,11 +86,12 @@
     @apply badge bg-gray-100 text-gray-500;
   }
 
-  /* ── Eyebrow / section kicker ────────────────────────── */
+  /* ── Eyebrow / section kicker — Work Sans caps ────────── */
   .eyebrow {
-    @apply text-xs font-medium uppercase;
-    color: #6E6C66;
+    @apply text-xs uppercase;
+    font-family: 'Work Sans', system-ui, sans-serif;
+    font-weight: 500;
+    color: #666666;
     letter-spacing: 0.18em;
-    font-family: 'Outfit', system-ui, sans-serif;
   }
 }
