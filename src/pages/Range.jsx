@@ -71,6 +71,13 @@ export default function Range() {
       let n = 0
       for (const p of rangeData.products) {
         const designNo = p.design_no || designNumber(p.design_code)
+        // Seed the plating stock pool = sum of per-variant stock by plating.
+        const platingStock = {}
+        for (const v of (p.variants || [])) {
+          const k = (v.plating_code || '').trim().toUpperCase()
+          const q = Number(v.stock_finished)
+          if (Number.isFinite(q) && q > 0) platingStock[k] = (platingStock[k] || 0) + q
+        }
         await addDoc(collection(db, 'range_products'), {
           design_no: designNo,
           body_code: p.body_code || '',
@@ -85,6 +92,7 @@ export default function Range() {
           design_type: p.design_type || p.category || '',
           product_type: p.product_type || 'Figurine',
           status: p.status || 'active',
+          plating_stock: platingStock,
           gallery: p.gallery || [],
           packing: p.packing || {
             carton_dims: '', pcs_per_carton: '', pack_box_ref: '',
@@ -128,7 +136,11 @@ export default function Range() {
     const body = p.body_code || bodyLetter(p.design_code)
     const variants = docVariants(p)
     const prices = variants.map(v => v.ws_price_usd).filter(x => x != null)
-    const totalStock = variants.reduce((s, v) => s + (v.stock_finished > 0 ? v.stock_finished : 0), 0)
+    // Stock pool is held per plating; fall back to summing per-variant stock (legacy).
+    const pool = p.plating_stock && Object.keys(p.plating_stock).length ? p.plating_stock : null
+    const totalStock = pool
+      ? Object.values(pool).reduce((s, n) => s + (Number(n) > 0 ? Number(n) : 0), 0)
+      : variants.reduce((s, v) => s + (v.stock_finished > 0 ? v.stock_finished : 0), 0)
     const platings = [...new Set(variants.map(v => v.plating_name).filter(Boolean))]
     const brands = [...new Set(variants.map(v => v.brand_code || fallbackBrand).filter(Boolean))]
     const image = variants.find(v => v.image)?.image || (Array.isArray(p.gallery) && p.gallery[0]) || ''

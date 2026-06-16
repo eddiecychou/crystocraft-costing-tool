@@ -32,8 +32,26 @@ const blankForm = () => ({
   design_no: '', body_code: '', design_name: '', description: '', category: '',
   design_type: '', product_type: 'Figurine', format_code: '001',
   size: '', crystal_type: 'Bohemia', active: true, status: 'active',
-  packing: emptyPacking(), gallery: [], variants: [emptyVariant()],
+  packing: emptyPacking(), gallery: [], variants: [emptyVariant()], plating_stock: {},
 })
+
+const PLATING_NAME = Object.fromEntries(RANGE_PLATINGS.map(p => [p.code, p.name]))
+const platingKey = v => (v.plating_code || '').trim().toUpperCase()
+// Distinct platings used by the variants, in first-seen order ('' = unplated).
+const platingsUsed = variants => {
+  const seen = []
+  for (const v of variants) { const k = platingKey(v); if (!seen.includes(k)) seen.push(k) }
+  return seen
+}
+// Seed a plating→stock pool from legacy per-variant stock (sum per plating).
+const derivePlatingStock = variants => {
+  const m = {}
+  for (const v of variants) {
+    const n = Number(v.stock_finished)
+    if (Number.isFinite(n) && n > 0) m[platingKey(v)] = (m[platingKey(v)] || 0) + n
+  }
+  return m
+}
 
 const PACKING_FIELDS = [
   { key: 'carton_dims', label: 'Carton Size', placeholder: 'L x W x H cm' },
@@ -103,6 +121,7 @@ export default function RangeForm() {
       if (snap.exists()) {
         const d = snap.data()
         const fallbackBrand = brandLetter(d.design_code) || 'D'
+        const vs = variantsFromDoc(d, fallbackBrand)
         setForm({
           design_no: d.design_no || designNumber(d.design_code),
           body_code: d.body_code || bodyLetter(d.design_code),
@@ -118,7 +137,10 @@ export default function RangeForm() {
           status: d.status || 'active',
           packing: { ...emptyPacking(), ...(d.packing || {}) },
           gallery: Array.isArray(d.gallery) ? d.gallery : [],
-          variants: variantsFromDoc(d, fallbackBrand),
+          variants: vs,
+          // Plating pool: stored map wins; else seed from legacy per-variant stock.
+          plating_stock: d.plating_stock && Object.keys(d.plating_stock).length
+            ? { ...d.plating_stock } : derivePlatingStock(vs),
         })
       }
       setFetching(false)
@@ -126,6 +148,10 @@ export default function RangeForm() {
   }, [routeId, isNew])
 
   const set = field => e => setForm(f => ({ ...f, [field]: e.target.value }))
+  const setPlatingStock = code => e => {
+    const val = e.target.value.replace(/[^\d]/g, '')
+    setForm(f => ({ ...f, plating_stock: { ...f.plating_stock, [code]: val } }))
+  }
   const setPacking = key => e => setForm(f => ({ ...f, packing: { ...f.packing, [key]: e.target.value } }))
 
   function patchVariant(i, patch) {
@@ -227,6 +253,12 @@ export default function RangeForm() {
       status: form.status,
       packing: Object.fromEntries(PACKING_FIELDS.map(pf => [pf.key, (form.packing[pf.key] ?? '').toString().trim()])),
       gallery: form.gallery,
+      // Plating-level stock pool — keep only platings still present, as integers.
+      plating_stock: Object.fromEntries(
+        platingsUsed(form.variants)
+          .map(code => [code, intNum(form.plating_stock[code])])
+          .filter(([, n]) => n != null)
+      ),
       variants: form.variants.map(v => ({
         brand_code: v.brand_code.trim(), brand_name: v.brand_name.trim(),
         plating_code: v.plating_code.trim(), plating_name: v.plating_name.trim(),
@@ -263,6 +295,8 @@ export default function RangeForm() {
 
   // 3-digit designs allow a 2-letter prefix (brand + body); 4-digit allow 1 letter.
   const brandMax = form.design_no.replace(/\D/g, '').length <= 3 ? 2 : 1
+  const platingStockTotal = platingsUsed(form.variants)
+    .reduce((s, code) => s + (parseInt(form.plating_stock[code], 10) || 0), 0)
   const productCode = [form.design_no, form.format_code].filter(Boolean).join('-')
 
   return (
@@ -396,6 +430,37 @@ export default function RangeForm() {
             <button type="button" onClick={addVariant} className="btn-secondary text-xs">+ Add variation</button>
           </div>
           <p className="text-xs text-ink-60 mb-3">Each plating / crystal-colour combination is one SKU. The full code is built automatically.</p>
+
+          {/* Stock pool, held per plating (the binding constraint), shared across
+              that plating's crystal-colour / running-no variants. */}
+          <div className="border border-ivory-dark rounded-md p-3 mb-4 bg-ivory/40">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-medium">Stock by plating</h3>
+              <span className="text-xs text-ink-60">Total {platingStockTotal} pcs</span>
+            </div>
+            <p className="text-[11px] text-ink-60 mb-2 leading-tight">
+              Stock is counted per plating and shared by all crystal-colour / running-no
+              variants of that plating. A variant can still set its own count below to
+              override the pool for that specific SKU.
+            </p>
+            {platingsUsed(form.variants).length === 0 ? (
+              <p className="text-xs text-ink-60">Add a variation with a plating to set its stock.</p>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {platingsUsed(form.variants).map(code => (
+                  <div key={code || '_none'}>
+                    <label className="label">
+                      {code ? `${code}${PLATING_NAME[code] ? ' · ' + PLATING_NAME[code] : ''}` : '(no plating)'}
+                    </label>
+                    <input className="input text-xs" inputMode="numeric"
+                           value={form.plating_stock[code] ?? ''} onChange={setPlatingStock(code)}
+                           placeholder="0" />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="space-y-4">
             {form.variants.map((v, i) => {
               const sku = buildSku(form.design_no, form.format_code, v)
@@ -448,9 +513,10 @@ export default function RangeForm() {
                           <input className="input text-xs" type="number" step="0.01" value={v.ws_price_usd} onChange={setVariant(i, 'ws_price_usd')} />
                         </div>
                         <div>
-                          <label className="label">Stock (pcs)</label>
-                          <input className="input text-xs" type="number" step="1" min="0"
+                          <label className="label">Stock override <span className="text-ink-60 font-normal">(opt.)</span></label>
+                          <input className="input text-xs" inputMode="numeric"
                                  value={v.stock_finished}
+                                 placeholder="pool"
                                  onChange={e => patchVariant(i, { stock_finished: e.target.value.replace(/[^\d]/g, '') })} />
                         </div>
                         <div>
