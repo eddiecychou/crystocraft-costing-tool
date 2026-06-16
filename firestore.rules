@@ -78,5 +78,10 @@ service cloud.firestore {
         allow read, write: if isAuth();
       }
     }
+
+    // Crystocraft Range — ready-to-ship figurine gifts
+    match /range_products/{rangeId} {
+      allow read, write: if isAuth();
+    }
   }
 }
