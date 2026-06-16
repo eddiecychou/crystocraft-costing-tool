@@ -29,10 +29,38 @@ WS PRICE USD is the canonical wholesale price. Customer-type display pricing
 import os, re, json, csv, collections
 import pandas as pd
 
+
+def load_packing():
+    """Lookup keyed (body_number, format_number) -> packing dict.
+    packing_db uses legacy U/B codes + dashed AccCode; strip non-digits to
+    match the active sheet's D-codes (same body number) and format codes."""
+    pack = {}
+    if not os.path.exists(PACKING_CSV):
+        return pack
+    with open(PACKING_CSV) as f:
+        rd = csv.reader(f)
+        next(rd, None)
+        for r in rd:
+            if len(r) < 11 or not r[0]:
+                continue
+            key = (re.sub(r"\D", "", r[0]), re.sub(r"\D", "", r[1]))
+            if key in pack:  # first running-no wins; pack data is per body+format
+                continue
+            pack[key] = {
+                "carton_dims": r[4].strip(),
+                "pcs_per_carton": r[5].strip(),
+                "pack_box_ref": r[7].strip(),
+                "cbm_per_carton": r[8].strip(),
+                "weight_per_carton_kg": r[9].strip(),
+                "weight_per_pcs_kg": r[10].strip(),
+            }
+    return pack
+
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PROJ = os.path.dirname(ROOT)
 ACTIVE = os.path.join(PROJ, "Stock-WSPrice-20250527.xlsx")
 IMG_DIR = os.path.join(PROJ, "LocalWeb", "Datafiles", "img")
+PACKING_CSV = os.path.join(PROJ, "LocalWeb", "Datafiles", "catalogue_db", "packing_db.csv")
 OUT = os.path.join(ROOT, "out")
 
 FINISH_NAME = {"G": "Gold", "C": "Chrome", "A": "Gunmetal", "T": "Two-tone", "W": "White"}
@@ -95,11 +123,13 @@ for sn in xl.sheet_names:
         })
 
 # ── Build product cards (group by body+format) ─────────────────────────────
+packing = load_packing()
 grp = collections.defaultdict(list)
 for r in rows:
     grp[(r["body"], r["fmt"])].append(r)
 
 products, validation = [], []
+n_packed = 0
 for (body, fmt), variants in sorted(grp.items()):
     base = variants[0]
     finishes = []
@@ -120,6 +150,9 @@ for (body, fmt), variants in sorted(grp.items()):
             "ws_usd": v["ws_usd"], "stock": v["stock"],
             "has_image": "Y" if img else "-",
         })
+    pk = packing.get((re.sub(r"\D", "", body), re.sub(r"\D", "", fmt)))
+    if pk:
+        n_packed += 1
     products.append({
         "design_code": body,
         "design_name": re.sub(r"\s*-\s*(Free Stand|Freestand).*$", "", base["desc"]).strip() or base["desc"],
@@ -128,6 +161,10 @@ for (body, fmt), variants in sorted(grp.items()):
         "format_code": fmt,
         "size": base["size"],
         "crystal_type": "Bohemia",
+        "packing": pk or {
+            "carton_dims": "", "pcs_per_carton": "", "pack_box_ref": "",
+            "cbm_per_carton": "", "weight_per_carton_kg": "", "weight_per_pcs_kg": "",
+        },
         "finishes": finishes,
     })
 
@@ -154,5 +191,6 @@ print(f"SKU rows          : {n}")
 print(f"  with WS price   : {n_price} ({n_price*100//max(n,1)}%)")
 print(f"  with stock qty  : {n_stock} ({n_stock*100//max(n,1)}%)")
 print(f"  with image      : {n_img} ({n_img*100//max(n,1)}%)")
+print(f"Cards w/ packing  : {n_packed}/{len(products)}")
 print(f"Categories        : {dict(cats)}")
 print(f"Output            : out/active_range.json + _validation.csv")

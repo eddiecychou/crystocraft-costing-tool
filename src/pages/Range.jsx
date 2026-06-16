@@ -49,6 +49,10 @@ export default function Range() {
           format_code: p.format_code || '',
           size: p.size || '',
           crystal_type: p.crystal_type || 'Bohemia',
+          packing: p.packing || {
+            carton_dims: '', pcs_per_carton: '', pack_box_ref: '',
+            cbm_per_carton: '', weight_per_carton_kg: '', weight_per_pcs_kg: '',
+          },
           active: true,
           finishes: p.finishes.map(f => ({
             sku: f.sku,

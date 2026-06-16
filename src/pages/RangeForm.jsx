@@ -13,6 +13,20 @@ const emptyFinish = () => ({
   sku: '', finish_code: '', finish_name: '', ws_price_usd: '', stock_finished: '', image: '',
 })
 
+const emptyPacking = () => ({
+  carton_dims: '', pcs_per_carton: '', pack_box_ref: '',
+  cbm_per_carton: '', weight_per_carton_kg: '', weight_per_pcs_kg: '',
+})
+
+const PACKING_FIELDS = [
+  { key: 'carton_dims', label: 'Carton Size', placeholder: 'L x W x H cm' },
+  { key: 'pcs_per_carton', label: 'Pcs / Carton', placeholder: '48' },
+  { key: 'cbm_per_carton', label: 'CBM / Carton', placeholder: '0.0164' },
+  { key: 'weight_per_carton_kg', label: 'Weight / Carton (kg)', placeholder: '13.3' },
+  { key: 'weight_per_pcs_kg', label: 'Weight / Pc (kg)', placeholder: '0.131' },
+  { key: 'pack_box_ref', label: 'Pack / Box Ref', placeholder: 'P-…' },
+]
+
 export default function RangeForm() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -35,6 +49,7 @@ export default function RangeForm() {
           size: d.size || '',
           crystal_type: d.crystal_type || 'Bohemia',
           active: d.active !== false,
+          packing: { ...emptyPacking(), ...(d.packing || {}) },
           finishes: (d.finishes || []).map(f => ({
             sku: f.sku || '',
             finish_code: f.finish_code || '',
@@ -51,6 +66,9 @@ export default function RangeForm() {
 
   function set(field) {
     return e => setForm(f => ({ ...f, [field]: e.target.value }))
+  }
+  function setPacking(key) {
+    return e => setForm(f => ({ ...f, packing: { ...f.packing, [key]: e.target.value } }))
   }
   function setFinish(i, field) {
     return e => setForm(f => {
@@ -83,6 +101,14 @@ export default function RangeForm() {
         size: form.size.trim(),
         crystal_type: form.crystal_type,
         active: form.active,
+        packing: {
+          carton_dims: form.packing.carton_dims.trim(),
+          pcs_per_carton: form.packing.pcs_per_carton.toString().trim(),
+          pack_box_ref: form.packing.pack_box_ref.trim(),
+          cbm_per_carton: form.packing.cbm_per_carton.toString().trim(),
+          weight_per_carton_kg: form.packing.weight_per_carton_kg.toString().trim(),
+          weight_per_pcs_kg: form.packing.weight_per_pcs_kg.toString().trim(),
+        },
         finishes: form.finishes.map(f => ({
           sku: f.sku.trim(),
           finish_code: f.finish_code.trim(),
@@ -157,6 +183,21 @@ export default function RangeForm() {
             <input type="checkbox" checked={form.active} onChange={e => setForm(f => ({ ...f, active: e.target.checked }))} />
             Visible in catalogue (untick to hide without deleting)
           </label>
+        </div>
+
+        {/* Packing */}
+        <div className="card p-5">
+          <h2 className="text-base mb-1">Packing</h2>
+          <p className="text-xs text-ink-60 mb-3">Carton & weight info for shipping quotes.</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {PACKING_FIELDS.map(pf => (
+              <div key={pf.key}>
+                <label className="label">{pf.label}</label>
+                <input className="input text-sm" value={form.packing[pf.key] ?? ''}
+                       onChange={setPacking(pf.key)} placeholder={pf.placeholder} />
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Finishes / SKUs */}

@@ -8,6 +8,14 @@
       "format_code": "001",
       "size": "7.5 x 5.5 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "3",
+        "weight_per_pcs_kg": "0.05"
+      },
       "finishes": [
         {
           "sku": "D0001-001-G",
@@ -27,6 +35,14 @@
       "format_code": "001",
       "size": "5.2 x 4.4 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.7",
+        "weight_per_pcs_kg": "0.033"
+      },
       "finishes": [
         {
           "sku": "D0002-001-G",
@@ -46,6 +62,14 @@
       "format_code": "001",
       "size": "5.6 x 3.8 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.7",
+        "weight_per_pcs_kg": "0.033"
+      },
       "finishes": [
         {
           "sku": "D0003-001-G",
@@ -65,6 +89,14 @@
       "format_code": "001",
       "size": "5.2 x 6.5 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.8",
+        "weight_per_pcs_kg": "0.033"
+      },
       "finishes": [
         {
           "sku": "D0007-001-G",
@@ -84,6 +116,14 @@
       "format_code": "001",
       "size": "4 x 5.9 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "8 x 8 x 10 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB035-02-01",
+        "cbm_per_carton": "0.0419",
+        "weight_per_carton_kg": "4",
+        "weight_per_pcs_kg": "0.067"
+      },
       "finishes": [
         {
           "sku": "D0008-001-C",
@@ -103,6 +143,14 @@
       "format_code": "001",
       "size": "11.2 x 14 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "12.8 x 6 x 15.2 cm",
+        "pcs_per_carton": "36",
+        "pack_box_ref": "P-PB010ROS-02-01",
+        "cbm_per_carton": "0.0516",
+        "weight_per_carton_kg": "4.9",
+        "weight_per_pcs_kg": "0.11"
+      },
       "finishes": [
         {
           "sku": "D0009-001-C",
@@ -122,6 +170,14 @@
       "format_code": "001",
       "size": "10 x 14 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "12.8 x 6 x 15.2 cm",
+        "pcs_per_carton": "36",
+        "pack_box_ref": "P-PB010ROS-02-01",
+        "cbm_per_carton": "0.0516",
+        "weight_per_carton_kg": "4.9",
+        "weight_per_pcs_kg": "0.11"
+      },
       "finishes": [
         {
           "sku": "D0010-001-C",
@@ -141,6 +197,14 @@
       "format_code": "001",
       "size": "10.8 x 14 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "12.8 x 6 x 15.2 cm",
+        "pcs_per_carton": "36",
+        "pack_box_ref": "P-PB010ROS-02-01",
+        "cbm_per_carton": "0.0516",
+        "weight_per_carton_kg": "4.9",
+        "weight_per_pcs_kg": "0.11"
+      },
       "finishes": [
         {
           "sku": "D0011-001-C",
@@ -160,6 +224,14 @@
       "format_code": "001",
       "size": "7.3 x 7.33 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "2.6",
+        "weight_per_pcs_kg": "0.046"
+      },
       "finishes": [
         {
           "sku": "D0018-001-G",
@@ -179,6 +251,14 @@
       "format_code": "001",
       "size": "7.3 x 7.33 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "2.6",
+        "weight_per_pcs_kg": "0.046"
+      },
       "finishes": [
         {
           "sku": "D0019-001-G",
@@ -198,6 +278,14 @@
       "format_code": "001",
       "size": "7.4 x 7.33 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "2.6",
+        "weight_per_pcs_kg": "0.046"
+      },
       "finishes": [
         {
           "sku": "D0020-001-G",
@@ -225,6 +313,14 @@
       "format_code": "001",
       "size": "7.6 x 7.33 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "2.66",
+        "weight_per_pcs_kg": "0.043"
+      },
       "finishes": [
         {
           "sku": "D0021-001-G",
@@ -244,6 +340,14 @@
       "format_code": "001",
       "size": "5.5 x 7.25 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "4.2",
+        "weight_per_pcs_kg": "0.038"
+      },
       "finishes": [
         {
           "sku": "D0022-001-G",
@@ -271,6 +375,14 @@
       "format_code": "001",
       "size": "5.4 x 7.25 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.6",
+        "weight_per_pcs_kg": "0.032"
+      },
       "finishes": [
         {
           "sku": "D0023-001-C",
@@ -290,6 +402,14 @@
       "format_code": "001",
       "size": "5.5 x 7.25 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.6",
+        "weight_per_pcs_kg": "0.032"
+      },
       "finishes": [
         {
           "sku": "D0024-001-C",
@@ -309,6 +429,14 @@
       "format_code": "001",
       "size": "5.5 x 7.25 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.6",
+        "weight_per_pcs_kg": "0.032"
+      },
       "finishes": [
         {
           "sku": "D0025-001-G",
@@ -336,6 +464,14 @@
       "format_code": "001",
       "size": "8.2 x 7.3 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3.7",
+        "weight_per_pcs_kg": "0.065"
+      },
       "finishes": [
         {
           "sku": "D0026-001-C",
@@ -355,6 +491,14 @@
       "format_code": "001",
       "size": "4.3 x 5.8 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "8 x 8 x 10 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB035-02-01",
+        "cbm_per_carton": "0.0419",
+        "weight_per_carton_kg": "4.3",
+        "weight_per_pcs_kg": "0.073"
+      },
       "finishes": [
         {
           "sku": "D0027-001-G",
@@ -374,6 +518,14 @@
       "format_code": "001",
       "size": "4.5 x 6.4 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.7",
+        "weight_per_pcs_kg": "0.033"
+      },
       "finishes": [
         {
           "sku": "D0030-001-G",
@@ -393,6 +545,14 @@
       "format_code": "001",
       "size": "7.2 x 7.3 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "3.1",
+        "weight_per_pcs_kg": "0.056"
+      },
       "finishes": [
         {
           "sku": "D0031-001-G",
@@ -412,6 +572,14 @@
       "format_code": "001",
       "size": "5.1 x 10.5 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3.3",
+        "weight_per_pcs_kg": "0.056"
+      },
       "finishes": [
         {
           "sku": "D0032-001-C",
@@ -431,6 +599,14 @@
       "format_code": "001",
       "size": "2.15 x 7.15 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.6",
+        "weight_per_pcs_kg": "0.03"
+      },
       "finishes": [
         {
           "sku": "D0035-001-C",
@@ -450,6 +626,14 @@
       "format_code": "001",
       "size": "5.7 x 5.8 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.9",
+        "weight_per_pcs_kg": "0.034"
+      },
       "finishes": [
         {
           "sku": "D0037-001-G",
@@ -469,6 +653,14 @@
       "format_code": "001",
       "size": "5.7 x 5.8 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.9",
+        "weight_per_pcs_kg": "0.034"
+      },
       "finishes": [
         {
           "sku": "D0040-001-G",
@@ -488,6 +680,14 @@
       "format_code": "001",
       "size": "12.6 x 7.2 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "8.9 x 6.4 x 10.1 cm",
+        "pcs_per_carton": "24",
+        "pack_box_ref": "P-PB006ROS-02-01",
+        "cbm_per_carton": "0.0177",
+        "weight_per_carton_kg": "1.7",
+        "weight_per_pcs_kg": "0.054"
+      },
       "finishes": [
         {
           "sku": "D0045-001-G",
@@ -515,6 +715,14 @@
       "format_code": "001",
       "size": "6.3 x 8.7 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "3.77",
+        "weight_per_pcs_kg": "0.066"
+      },
       "finishes": [
         {
           "sku": "D0046-001-G",
@@ -542,6 +750,14 @@
       "format_code": "001",
       "size": "7.9 x 9.4 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3.4",
+        "weight_per_pcs_kg": "0.07"
+      },
       "finishes": [
         {
           "sku": "D0058-001-G",
@@ -569,6 +785,14 @@
       "format_code": "001",
       "size": "6.7 x 5.5 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "3",
+        "weight_per_pcs_kg": "0.05"
+      },
       "finishes": [
         {
           "sku": "D0065-001-G",
@@ -596,6 +820,14 @@
       "format_code": "001",
       "size": "4.5 x 7.4 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3.9",
+        "weight_per_pcs_kg": "0.069"
+      },
       "finishes": [
         {
           "sku": "D0070-001-C",
@@ -615,6 +847,14 @@
       "format_code": "001",
       "size": "5.2 x 6.66 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.8",
+        "weight_per_pcs_kg": "0.033"
+      },
       "finishes": [
         {
           "sku": "D0083-001-G",
@@ -642,6 +882,14 @@
       "format_code": "001",
       "size": "3.6 x 6.8 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.8",
+        "weight_per_pcs_kg": "0.033"
+      },
       "finishes": [
         {
           "sku": "D0088-001-C",
@@ -661,6 +909,14 @@
       "format_code": "001",
       "size": "3.6 x 6.5 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.8",
+        "weight_per_pcs_kg": "0.033"
+      },
       "finishes": [
         {
           "sku": "D0089-001-C",
@@ -680,6 +936,14 @@
       "format_code": "001",
       "size": "13.4 x 9.1 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "14 x 7.6 x 10.7 cm",
+        "pcs_per_carton": "36",
+        "pack_box_ref": "P-PB005ROS-02-01",
+        "cbm_per_carton": "0.0503",
+        "weight_per_carton_kg": "4",
+        "weight_per_pcs_kg": "0.11"
+      },
       "finishes": [
         {
           "sku": "D0092-001-G",
@@ -707,6 +971,14 @@
       "format_code": "001",
       "size": "6.8 x 10.6 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "8.9 x 6.4 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB006ROS-02-01",
+        "cbm_per_carton": "0.0338",
+        "weight_per_carton_kg": "3.6",
+        "weight_per_pcs_kg": "0.063"
+      },
       "finishes": [
         {
           "sku": "D0095-001-G",
@@ -734,6 +1006,14 @@
       "format_code": "001",
       "size": "6.8 x 10.6 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "8.9 x 6.4 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB006ROS-02-01",
+        "cbm_per_carton": "0.0338",
+        "weight_per_carton_kg": "3.6",
+        "weight_per_pcs_kg": "0.063"
+      },
       "finishes": [
         {
           "sku": "D0096-001-G",
@@ -761,6 +1041,14 @@
       "format_code": "001",
       "size": "7.4 x 9.4 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "2.6",
+        "weight_per_pcs_kg": "0.054"
+      },
       "finishes": [
         {
           "sku": "D0102-001-C",
@@ -780,6 +1068,14 @@
       "format_code": "001",
       "size": "8.96 x 12 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "2.9",
+        "weight_per_pcs_kg": "0.048"
+      },
       "finishes": [
         {
           "sku": "D0103-001-C",
@@ -799,6 +1095,14 @@
       "format_code": "001",
       "size": "6.5 x 9.4 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3",
+        "weight_per_pcs_kg": "0.05"
+      },
       "finishes": [
         {
           "sku": "D0109-001-G",
@@ -826,6 +1130,14 @@
       "format_code": "001",
       "size": "6.5 x 9.4 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3",
+        "weight_per_pcs_kg": "0.05"
+      },
       "finishes": [
         {
           "sku": "D0110-001-G",
@@ -853,6 +1165,14 @@
       "format_code": "001",
       "size": "6.5 x 9.4 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3",
+        "weight_per_pcs_kg": "0.05"
+      },
       "finishes": [
         {
           "sku": "D0111-001-G",
@@ -880,6 +1200,14 @@
       "format_code": "001",
       "size": "6.5 x 9.9 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3.29",
+        "weight_per_pcs_kg": "0.056"
+      },
       "finishes": [
         {
           "sku": "D0112-001-C",
@@ -899,6 +1227,14 @@
       "format_code": "001",
       "size": "6.6 x 5 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "3.29",
+        "weight_per_pcs_kg": "0.056"
+      },
       "finishes": [
         {
           "sku": "D0114-001-G",
@@ -926,6 +1262,14 @@
       "format_code": "001",
       "size": "6.7 x 6.1 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "3",
+        "weight_per_pcs_kg": "0.05"
+      },
       "finishes": [
         {
           "sku": "D0115-001-C",
@@ -945,6 +1289,14 @@
       "format_code": "001",
       "size": "7.36 x 4.7 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.9",
+        "weight_per_pcs_kg": "0.034"
+      },
       "finishes": [
         {
           "sku": "D0118-001-G",
@@ -972,6 +1324,14 @@
       "format_code": "001",
       "size": "6.5 x 9.5 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3.3",
+        "weight_per_pcs_kg": "0.056"
+      },
       "finishes": [
         {
           "sku": "D0121-001-G",
@@ -999,6 +1359,14 @@
       "format_code": "001",
       "size": "3.8 x 5.6 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "",
+        "pcs_per_carton": "",
+        "pack_box_ref": "",
+        "cbm_per_carton": "",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0123-001-G",
@@ -1018,6 +1386,14 @@
       "format_code": "001",
       "size": "3.5 x 5.7 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "",
+        "pcs_per_carton": "",
+        "pack_box_ref": "",
+        "cbm_per_carton": "",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0124-001-G",
@@ -1045,6 +1421,14 @@
       "format_code": "001",
       "size": "3.8 x 5.8 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "",
+        "pcs_per_carton": "",
+        "pack_box_ref": "",
+        "cbm_per_carton": "",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0125-001-G",
@@ -1072,6 +1456,14 @@
       "format_code": "001",
       "size": "6.2 x 6.6 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0337",
+        "weight_per_carton_kg": "4.1",
+        "weight_per_pcs_kg": "0.035"
+      },
       "finishes": [
         {
           "sku": "D0135-001-G",
@@ -1099,6 +1491,14 @@
       "format_code": "001",
       "size": "7.1 x 6 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "2.76",
+        "weight_per_pcs_kg": "0.045"
+      },
       "finishes": [
         {
           "sku": "D0139-001-C",
@@ -1118,6 +1518,14 @@
       "format_code": "001",
       "size": "7.5 x 8.9 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "2.76",
+        "weight_per_pcs_kg": "0.045"
+      },
       "finishes": [
         {
           "sku": "D0140-001-G",
@@ -1145,6 +1553,14 @@
       "format_code": "001",
       "size": "4 x 4.8 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0141-001-G",
@@ -1172,6 +1588,14 @@
       "format_code": "001",
       "size": "7.5 x 6.35 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "2.76",
+        "weight_per_pcs_kg": "0.045"
+      },
       "finishes": [
         {
           "sku": "D0145-001-G",
@@ -1191,6 +1615,14 @@
       "format_code": "001",
       "size": "4.1 x 6 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.9",
+        "weight_per_pcs_kg": "0.034"
+      },
       "finishes": [
         {
           "sku": "D0167-001-G",
@@ -1210,6 +1642,14 @@
       "format_code": "001",
       "size": "4.1 x 5.1 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.5",
+        "weight_per_pcs_kg": "0.03"
+      },
       "finishes": [
         {
           "sku": "D0168-001-G",
@@ -1229,6 +1669,14 @@
       "format_code": "001",
       "size": "6.1 x 5.5 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.5",
+        "weight_per_pcs_kg": "0.03"
+      },
       "finishes": [
         {
           "sku": "D0169-001-G",
@@ -1256,6 +1704,14 @@
       "format_code": "001",
       "size": "3.32 x 4.7 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.5",
+        "weight_per_pcs_kg": "0.03"
+      },
       "finishes": [
         {
           "sku": "D0172-001-G",
@@ -1283,6 +1739,14 @@
       "format_code": "001",
       "size": "3.82 x 7.7 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "2.5",
+        "weight_per_pcs_kg": "0.044"
+      },
       "finishes": [
         {
           "sku": "D0173-001-G",
@@ -1310,6 +1774,14 @@
       "format_code": "001",
       "size": "4.5 x 7.65 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "2.4",
+        "weight_per_pcs_kg": "0.042"
+      },
       "finishes": [
         {
           "sku": "D0174-001-C",
@@ -1329,6 +1801,14 @@
       "format_code": "001",
       "size": "3.3 x 7.1 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "8 x 8 x 10 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB035-02-01",
+        "cbm_per_carton": "0.0419",
+        "weight_per_carton_kg": "4",
+        "weight_per_pcs_kg": "0.067"
+      },
       "finishes": [
         {
           "sku": "D0175-001-G",
@@ -1356,6 +1836,14 @@
       "format_code": "001",
       "size": "5.9 x 5.8 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0337",
+        "weight_per_carton_kg": "4.7",
+        "weight_per_pcs_kg": "0.042"
+      },
       "finishes": [
         {
           "sku": "D0208-001-G",
@@ -1383,6 +1871,14 @@
       "format_code": "001",
       "size": "6.7 x 3.3 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3",
+        "weight_per_pcs_kg": "0.025"
+      },
       "finishes": [
         {
           "sku": "D0210-001-G",
@@ -1402,6 +1898,14 @@
       "format_code": "001",
       "size": "6.1 x 5.9 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0337",
+        "weight_per_carton_kg": "4.7",
+        "weight_per_pcs_kg": "0.049"
+      },
       "finishes": [
         {
           "sku": "D0220-001-G",
@@ -1429,6 +1933,14 @@
       "format_code": "001",
       "size": "7.5 x 7.2 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3.1",
+        "weight_per_pcs_kg": "0.052"
+      },
       "finishes": [
         {
           "sku": "D0221-001-G",
@@ -1456,6 +1968,14 @@
       "format_code": "001",
       "size": "4.7 x 6.2 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.5",
+        "weight_per_pcs_kg": "0.031"
+      },
       "finishes": [
         {
           "sku": "D0229-001-G",
@@ -1483,6 +2003,14 @@
       "format_code": "001",
       "size": "4.3 x 6 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.5",
+        "weight_per_pcs_kg": "0.03"
+      },
       "finishes": [
         {
           "sku": "D0230-001-C",
@@ -1502,6 +2030,14 @@
       "format_code": "001",
       "size": "7.3 x 15 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "14 x 7.6 x 10.7 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB005ROS-02-01",
+        "cbm_per_carton": "0.0663",
+        "weight_per_carton_kg": "5.3",
+        "weight_per_pcs_kg": "0.11"
+      },
       "finishes": [
         {
           "sku": "D0235-001-C",
@@ -1521,6 +2057,14 @@
       "format_code": "001",
       "size": "4.3 x 7.6 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0337",
+        "weight_per_carton_kg": "4.8",
+        "weight_per_pcs_kg": "0.043"
+      },
       "finishes": [
         {
           "sku": "D0241-001-C",
@@ -1540,6 +2084,14 @@
       "format_code": "001",
       "size": "3.6 x 5.4 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "4.7",
+        "weight_per_pcs_kg": "0.043"
+      },
       "finishes": [
         {
           "sku": "D0242-001-C",
@@ -1559,6 +2111,14 @@
       "format_code": "001",
       "size": "8.7 x 9.6 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "8.9 x 6.4 x 10.1 cm",
+        "pcs_per_carton": "36",
+        "pack_box_ref": "P-PB006ROS-02-01",
+        "cbm_per_carton": "0.0254",
+        "weight_per_carton_kg": "2.9",
+        "weight_per_pcs_kg": "0.081"
+      },
       "finishes": [
         {
           "sku": "D0246-001-C",
@@ -1578,6 +2138,14 @@
       "format_code": "001",
       "size": "4.3 x 7.6 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "8.9 x 6.4 x 10.1 cm",
+        "pcs_per_carton": "36",
+        "pack_box_ref": "P-PB006ROS-02-01",
+        "cbm_per_carton": "0.0254",
+        "weight_per_carton_kg": "3.12",
+        "weight_per_pcs_kg": "0.07"
+      },
       "finishes": [
         {
           "sku": "D0251-001-G",
@@ -1605,6 +2173,14 @@
       "format_code": "001",
       "size": "8.5 x 6.3 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0337",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0253-001-C",
@@ -1624,6 +2200,14 @@
       "format_code": "001",
       "size": "4.7 x 4.6 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "4.6",
+        "weight_per_pcs_kg": "0.04"
+      },
       "finishes": [
         {
           "sku": "D0269-001-G",
@@ -1643,6 +2227,14 @@
       "format_code": "001",
       "size": "3.9 x 5.4 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "4.6",
+        "weight_per_pcs_kg": "0.042"
+      },
       "finishes": [
         {
           "sku": "D0270-001-G",
@@ -1670,6 +2262,14 @@
       "format_code": "001",
       "size": "3.6 x 6 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0271-001-G",
@@ -1697,6 +2297,14 @@
       "format_code": "001",
       "size": "3.4 x 5.9 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0272-001-C",
@@ -1716,6 +2324,14 @@
       "format_code": "001",
       "size": "3.9 x 5.6 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "4.5",
+        "weight_per_pcs_kg": "0.04"
+      },
       "finishes": [
         {
           "sku": "D0273-001-G",
@@ -1743,6 +2359,14 @@
       "format_code": "001",
       "size": "4.6 x 6.4 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "4.7",
+        "weight_per_pcs_kg": "0.04"
+      },
       "finishes": [
         {
           "sku": "D0274-001-G",
@@ -1762,6 +2386,14 @@
       "format_code": "001",
       "size": "5.2 x 5.8 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "4.8",
+        "weight_per_pcs_kg": "0.04"
+      },
       "finishes": [
         {
           "sku": "D0275-001-G",
@@ -1781,6 +2413,14 @@
       "format_code": "001",
       "size": "4.2 x 5.8 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "4.5",
+        "weight_per_pcs_kg": "0.04"
+      },
       "finishes": [
         {
           "sku": "D0276-001-G",
@@ -1808,6 +2448,14 @@
       "format_code": "001",
       "size": "3.6 x 5.9 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0277-001-C",
@@ -1827,6 +2475,14 @@
       "format_code": "001",
       "size": "3.7 x 5.5 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "4.7",
+        "weight_per_pcs_kg": "0.043"
+      },
       "finishes": [
         {
           "sku": "D0278-001-C",
@@ -1846,6 +2502,14 @@
       "format_code": "001",
       "size": "4.9 x 11.1 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3.2",
+        "weight_per_pcs_kg": "0.054"
+      },
       "finishes": [
         {
           "sku": "D0279-001-G",
@@ -1873,6 +2537,14 @@
       "format_code": "001",
       "size": "3.7 x 5.4 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "4.9",
+        "weight_per_pcs_kg": "0.046"
+      },
       "finishes": [
         {
           "sku": "D0299-001-C",
@@ -1892,6 +2564,14 @@
       "format_code": "001",
       "size": "4.8 x 6.1 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "4.8",
+        "weight_per_pcs_kg": "0.04"
+      },
       "finishes": [
         {
           "sku": "D0300-001-G",
@@ -1911,6 +2591,14 @@
       "format_code": "001",
       "size": "4.5 x 5.8 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "4.8",
+        "weight_per_pcs_kg": "0.04"
+      },
       "finishes": [
         {
           "sku": "D0301-001-G",
@@ -1938,6 +2626,14 @@
       "format_code": "001",
       "size": "4.1 x 5 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "5",
+        "weight_per_pcs_kg": "0.047"
+      },
       "finishes": [
         {
           "sku": "D0302-001-G",
@@ -1965,6 +2661,14 @@
       "format_code": "001",
       "size": "5 x 4.6 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "5",
+        "weight_per_pcs_kg": "0.047"
+      },
       "finishes": [
         {
           "sku": "D0303-001-G",
@@ -1992,6 +2696,14 @@
       "format_code": "001",
       "size": "6 x 8.4 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "2.6",
+        "weight_per_pcs_kg": "0.046"
+      },
       "finishes": [
         {
           "sku": "D0320-001-G",
@@ -2019,6 +2731,14 @@
       "format_code": "001",
       "size": "5.1 x 5.2 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0324-001-G",
@@ -2046,6 +2766,14 @@
       "format_code": "001",
       "size": "5 x 6.3 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "4.9",
+        "weight_per_pcs_kg": "0.046"
+      },
       "finishes": [
         {
           "sku": "D0326-001-G",
@@ -2073,6 +2801,14 @@
       "format_code": "001",
       "size": "8.3 x 12.3 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "8.4 x 8.4 x 13.3 cm",
+        "pcs_per_carton": "36",
+        "pack_box_ref": "P-PB003ROS-02-01",
+        "cbm_per_carton": "0.0398",
+        "weight_per_carton_kg": "3.8",
+        "weight_per_pcs_kg": "0.106"
+      },
       "finishes": [
         {
           "sku": "D0328-001-G",
@@ -2100,6 +2836,14 @@
       "format_code": "001",
       "size": "6.3 x 6.4 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0330-001-G",
@@ -2127,6 +2871,14 @@
       "format_code": "001",
       "size": "2.75 x 5.5 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "",
+        "pcs_per_carton": "",
+        "pack_box_ref": "",
+        "cbm_per_carton": "",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0332-001-G",
@@ -2146,6 +2898,14 @@
       "format_code": "001",
       "size": "4.2x4.1cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "4.6",
+        "weight_per_pcs_kg": "0.042"
+      },
       "finishes": [
         {
           "sku": "D0337-001-C",
@@ -2165,6 +2925,14 @@
       "format_code": "001",
       "size": "4.2x4.1cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "4.6",
+        "weight_per_pcs_kg": "0.042"
+      },
       "finishes": [
         {
           "sku": "D0338-001-C",
@@ -2184,6 +2952,14 @@
       "format_code": "001",
       "size": "4.0 x 4.0 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5.9 x 5.9 x 7",
+        "pcs_per_carton": "90",
+        "pack_box_ref": "P-GB001A00-06-06",
+        "cbm_per_carton": "0.0349",
+        "weight_per_carton_kg": "4.6",
+        "weight_per_pcs_kg": "0.042"
+      },
       "finishes": [
         {
           "sku": "D0339-001-G",
@@ -2203,6 +2979,14 @@
       "format_code": "001",
       "size": "7.2 x 7.8 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "13.5 x 8.7 x 13.6 cm",
+        "pcs_per_carton": "24",
+        "pack_box_ref": "P-PB032-01-15",
+        "cbm_per_carton": "0.05",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0343-001-C",
@@ -2222,6 +3006,14 @@
       "format_code": "001",
       "size": "10 x 7.9 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "13.5 x 8.7 x 13.6 cm",
+        "pcs_per_carton": "24",
+        "pack_box_ref": "P-PB032-01-15",
+        "cbm_per_carton": "0.05",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": "0.47"
+      },
       "finishes": [
         {
           "sku": "D0360-001-C",
@@ -2241,6 +3033,14 @@
       "format_code": "001",
       "size": "7.2 x 8.3 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "2.7",
+        "weight_per_pcs_kg": "0.048"
+      },
       "finishes": [
         {
           "sku": "D0363-001-C",
@@ -2260,6 +3060,14 @@
       "format_code": "001",
       "size": "5.3 x 5.2 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0365-001-G",
@@ -2287,6 +3095,14 @@
       "format_code": "001",
       "size": "4.1 x 4.9 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5x3.3x7.6cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0377-001-G",
@@ -2306,6 +3122,14 @@
       "format_code": "001",
       "size": "4.3 x 4.6 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5x3.3x7.6cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0379-001-G",
@@ -2333,6 +3157,14 @@
       "format_code": "001",
       "size": "3.8 x 4.3 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5x3.3x7.6cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.8",
+        "weight_per_pcs_kg": "0.0396"
+      },
       "finishes": [
         {
           "sku": "D0380-001-G",
@@ -2352,6 +3184,14 @@
       "format_code": "001",
       "size": "3.7 x 5.8 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "",
+        "pcs_per_carton": "",
+        "pack_box_ref": "",
+        "cbm_per_carton": "",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0383-001-G",
@@ -2379,6 +3219,14 @@
       "format_code": "001",
       "size": "4.0 x 7 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "",
+        "pcs_per_carton": "",
+        "pack_box_ref": "",
+        "cbm_per_carton": "",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0415-001-G",
@@ -2398,6 +3246,14 @@
       "format_code": "001",
       "size": "4.1 x 6.3 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0416-001-G",
@@ -2425,6 +3281,14 @@
       "format_code": "001",
       "size": "3.5 x 5.5 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0465-001-G",
@@ -2444,6 +3308,14 @@
       "format_code": "001",
       "size": "4.2 x 5.2 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0466-001-G",
@@ -2463,6 +3335,14 @@
       "format_code": "001",
       "size": "6.3 x 8.1 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "",
+        "pcs_per_carton": "",
+        "pack_box_ref": "",
+        "cbm_per_carton": "",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "D0497-001-G",
@@ -2490,6 +3370,14 @@
       "format_code": "001",
       "size": "5.8 x 6.4 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "2.4",
+        "weight_per_pcs_kg": "0.042"
+      },
       "finishes": [
         {
           "sku": "H0042-001-G",
@@ -2517,6 +3405,14 @@
       "format_code": "001",
       "size": "6.1 x 6.4 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "2.66",
+        "weight_per_pcs_kg": "0.043"
+      },
       "finishes": [
         {
           "sku": "H0063-001-C",
@@ -2536,6 +3432,14 @@
       "format_code": "001",
       "size": "8 x 9.1 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "13.5 x 8.7 x 13.6 cm",
+        "pcs_per_carton": "24",
+        "pack_box_ref": "P-PB032-01-15",
+        "cbm_per_carton": "0.05",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "H0064-001-G",
@@ -2563,6 +3467,14 @@
       "format_code": "001",
       "size": "6.5 x 9.05 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3.1",
+        "weight_per_pcs_kg": "0.052"
+      },
       "finishes": [
         {
           "sku": "H0106-001-C",
@@ -2582,6 +3494,14 @@
       "format_code": "001",
       "size": "6.5 x 9.05 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3",
+        "weight_per_pcs_kg": "0.05"
+      },
       "finishes": [
         {
           "sku": "H0107-001-G",
@@ -2609,6 +3529,14 @@
       "format_code": "001",
       "size": "6.5 x 9.05 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3",
+        "weight_per_pcs_kg": "0.05"
+      },
       "finishes": [
         {
           "sku": "H0108-001-C",
@@ -2628,6 +3556,14 @@
       "format_code": "001",
       "size": "6.5 x 9.05 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3.1",
+        "weight_per_pcs_kg": "0.052"
+      },
       "finishes": [
         {
           "sku": "H0153-001-C",
@@ -2647,6 +3583,14 @@
       "format_code": "001",
       "size": "5.1 x 6.9 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5x3.3x7.6cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": ""
+      },
       "finishes": [
         {
           "sku": "H0378-001-G",
@@ -2674,6 +3618,14 @@
       "format_code": "001",
       "size": "9.5 x 8.3 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3.4",
+        "weight_per_pcs_kg": "0.058"
+      },
       "finishes": [
         {
           "sku": "M0004-001-G",
@@ -2701,6 +3653,14 @@
       "format_code": "001",
       "size": "10.4 x 9.1 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "8.9 x 6.4 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB006ROS-02-01",
+        "cbm_per_carton": "0.0338",
+        "weight_per_carton_kg": "3.3",
+        "weight_per_pcs_kg": "0.056"
+      },
       "finishes": [
         {
           "sku": "M0005-001-G",
@@ -2728,6 +3688,14 @@
       "format_code": "001",
       "size": "4 x 7.4 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "10.1  x 4 x 12.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB027ROS-02-11",
+        "cbm_per_carton": "0.0289",
+        "weight_per_carton_kg": "3",
+        "weight_per_pcs_kg": "0.05"
+      },
       "finishes": [
         {
           "sku": "M0014-001-G",
@@ -2747,6 +3715,14 @@
       "format_code": "001",
       "size": "4 x 7.36 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.8",
+        "weight_per_pcs_kg": "0.034"
+      },
       "finishes": [
         {
           "sku": "M0015-001-C",
@@ -2766,6 +3742,14 @@
       "format_code": "001",
       "size": "4 x 7.36 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "5 x 3.3 x 7.6 cm",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "PB001",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.8",
+        "weight_per_pcs_kg": "0.0396"
+      },
       "finishes": [
         {
           "sku": "M0017-001-G",
@@ -2793,6 +3777,14 @@
       "format_code": "001",
       "size": "6.5 x 10 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3.1",
+        "weight_per_pcs_kg": "0.052"
+      },
       "finishes": [
         {
           "sku": "M0085-001-G",
@@ -2812,6 +3804,14 @@
       "format_code": "001",
       "size": "6.5 x 10 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "3.1",
+        "weight_per_pcs_kg": "0.052"
+      },
       "finishes": [
         {
           "sku": "M0086-001-G",
@@ -2839,6 +3839,14 @@
       "format_code": "001",
       "size": "5 x 9.1 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "3.1",
+        "weight_per_pcs_kg": "0.052"
+      },
       "finishes": [
         {
           "sku": "M0119-001-C",
@@ -2858,6 +3866,14 @@
       "format_code": "001",
       "size": "2.9 x 8.6 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "2.6",
+        "weight_per_pcs_kg": "0.046"
+      },
       "finishes": [
         {
           "sku": "M0122-001-C",
@@ -2877,6 +3893,14 @@
       "format_code": "001",
       "size": "6 x 7.7 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "3.1",
+        "weight_per_pcs_kg": "0.052"
+      },
       "finishes": [
         {
           "sku": "M0191-001-G",
@@ -2904,6 +3928,14 @@
       "format_code": "001",
       "size": "6 x 7.7 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "3.48",
+        "weight_per_pcs_kg": "0.06"
+      },
       "finishes": [
         {
           "sku": "M0196-001-G",
@@ -2931,6 +3963,14 @@
       "format_code": "001",
       "size": "8.96 x 12 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "2.9",
+        "weight_per_pcs_kg": "0.048"
+      },
       "finishes": [
         {
           "sku": "U0103-001-G",
@@ -2950,6 +3990,14 @@
       "format_code": "001",
       "size": "3.1 x 10 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "7.6 x 5.1 x 10.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB002ROS-02-01",
+        "cbm_per_carton": "0.0247",
+        "weight_per_carton_kg": "2.7",
+        "weight_per_pcs_kg": "0.044"
+      },
       "finishes": [
         {
           "sku": "U0411-001-G",
@@ -2969,6 +4017,14 @@
       "format_code": "001",
       "size": "5.5 x 7.7 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "2.8",
+        "weight_per_pcs_kg": "0.05"
+      },
       "finishes": [
         {
           "sku": "U0413-001-G",
@@ -2996,6 +4052,14 @@
       "format_code": "001",
       "size": "5.9 x 7.1 cm",
       "crystal_type": "Bohemia",
+      "packing": {
+        "carton_dims": "6.8 x 4.4 x 9.1 cm",
+        "pcs_per_carton": "48",
+        "pack_box_ref": "P-PB007ROS-02-01",
+        "cbm_per_carton": "0.0164",
+        "weight_per_carton_kg": "2.8",
+        "weight_per_pcs_kg": "0.05"
+      },
       "finishes": [
         {
           "sku": "U0414-001-G",
