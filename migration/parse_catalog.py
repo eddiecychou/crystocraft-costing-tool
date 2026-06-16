@@ -66,11 +66,25 @@ def clean_name(desc):
     return s.strip(" -") or desc
 
 
+PLATING_LETTERS = set("GCRAM")  # Gold Chrome RoseGold gunmetal(A) Mixed
+
+
 def split_suffix(suf):
-    """plating = first char; crystal colour = remainder (best-effort)."""
+    """Split the code's trailing suffix into (plating, crystal colour).
+
+    Crystal-colour codes are 2 letters (RE, PI, BL, C1, AB…); plating is a
+    single leading letter. So:
+      3+ chars starting with a plating letter -> plating + colour (GC1, CRE)
+      1 char that is a plating letter         -> plating only (G, C)
+      anything else (e.g. 2-char RE/PI/BL)    -> colour only, NO plating
+    """
     if not suf:
         return "", ""
-    return suf[0], suf[1:]
+    if len(suf) >= 3 and suf[0] in PLATING_LETTERS:
+        return suf[0], suf[1:]
+    if len(suf) == 1 and suf in PLATING_LETTERS:
+        return suf, ""
+    return "", suf
 
 
 xl = pd.ExcelFile(SRC)

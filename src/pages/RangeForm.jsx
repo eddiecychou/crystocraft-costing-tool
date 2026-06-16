@@ -37,18 +37,21 @@ const blankForm = () => ({
 
 const PLATING_NAME = Object.fromEntries(RANGE_PLATINGS.map(p => [p.code, p.name]))
 const platingKey = v => (v.plating_code || '').trim().toUpperCase()
-// Distinct platings used by the variants, in first-seen order ('' = unplated).
+// Distinct *plated* groups used by the variants, in first-seen order.
+// Unplated variants ('') are excluded — they track stock per SKU instead.
 const platingsUsed = variants => {
   const seen = []
-  for (const v of variants) { const k = platingKey(v); if (!seen.includes(k)) seen.push(k) }
+  for (const v of variants) { const k = platingKey(v); if (k && !seen.includes(k)) seen.push(k) }
   return seen
 }
 // Seed a plating→stock pool from legacy per-variant stock (sum per plating).
+// Only plated variants feed the pool; unplated stay per-SKU.
 const derivePlatingStock = variants => {
   const m = {}
   for (const v of variants) {
+    const k = platingKey(v); if (!k) continue
     const n = Number(v.stock_finished)
-    if (Number.isFinite(n) && n > 0) m[platingKey(v)] = (m[platingKey(v)] || 0) + n
+    if (Number.isFinite(n) && n > 0) m[k] = (m[k] || 0) + n
   }
   return m
 }
@@ -441,10 +444,11 @@ export default function RangeForm() {
             <p className="text-[11px] text-ink-60 mb-2 leading-tight">
               Stock is counted per plating and shared by all crystal-colour / running-no
               variants of that plating. A variant can still set its own count below to
-              override the pool for that specific SKU.
+              override the pool for that specific SKU. Variants with <b>no plating</b>
+              {' '}(e.g. crystal-body items) track stock per SKU in the rows below instead.
             </p>
             {platingsUsed(form.variants).length === 0 ? (
-              <p className="text-xs text-ink-60">Add a variation with a plating to set its stock.</p>
+              <p className="text-xs text-ink-60">No plated variants — stock is entered per SKU in the rows below.</p>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {platingsUsed(form.variants).map(code => (
@@ -513,10 +517,14 @@ export default function RangeForm() {
                           <input className="input text-xs" type="number" step="0.01" value={v.ws_price_usd} onChange={setVariant(i, 'ws_price_usd')} />
                         </div>
                         <div>
-                          <label className="label">Stock override <span className="text-ink-60 font-normal">(opt.)</span></label>
+                          <label className="label">
+                            {platingKey(v)
+                              ? <>Stock override <span className="text-ink-60 font-normal">(opt.)</span></>
+                              : 'Stock (pcs)'}
+                          </label>
                           <input className="input text-xs" inputMode="numeric"
                                  value={v.stock_finished}
-                                 placeholder="pool"
+                                 placeholder={platingKey(v) ? 'pool' : '0'}
                                  onChange={e => patchVariant(i, { stock_finished: e.target.value.replace(/[^\d]/g, '') })} />
                         </div>
                         <div>

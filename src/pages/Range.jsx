@@ -75,6 +75,7 @@ export default function Range() {
         const platingStock = {}
         for (const v of (p.variants || [])) {
           const k = (v.plating_code || '').trim().toUpperCase()
+          if (!k) continue   // unplated variants keep stock per SKU
           const q = Number(v.stock_finished)
           if (Number.isFinite(q) && q > 0) platingStock[k] = (platingStock[k] || 0) + q
         }
@@ -136,10 +137,11 @@ export default function Range() {
     const body = p.body_code || bodyLetter(p.design_code)
     const variants = docVariants(p)
     const prices = variants.map(v => v.ws_price_usd).filter(x => x != null)
-    // Stock pool is held per plating; fall back to summing per-variant stock (legacy).
+    // Plated variants pool by plating; unplated variants count stock per SKU.
     const pool = p.plating_stock && Object.keys(p.plating_stock).length ? p.plating_stock : null
     const totalStock = pool
       ? Object.values(pool).reduce((s, n) => s + (Number(n) > 0 ? Number(n) : 0), 0)
+        + variants.reduce((s, v) => s + (!(v.plating_code || '').trim() && v.stock_finished > 0 ? v.stock_finished : 0), 0)
       : variants.reduce((s, v) => s + (v.stock_finished > 0 ? v.stock_finished : 0), 0)
     const platings = [...new Set(variants.map(v => v.plating_name).filter(Boolean))]
     const brands = [...new Set(variants.map(v => v.brand_code || fallbackBrand).filter(Boolean))]
