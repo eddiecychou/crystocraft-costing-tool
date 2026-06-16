@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, addDoc, getDocs, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import rangeData from '../data/rangeProducts.json'
@@ -36,9 +36,19 @@ export default function Range() {
   }, [])
 
   async function handleSeed() {
-    if (!confirm(`Import ${rangeData.products.length} designs from the active sheet into the database?`)) return
+    const existingCount = products.length
+    const msg = existingCount > 0
+      ? `This will DELETE the ${existingCount} existing design(s) and re-import ${rangeData.products.length} fresh from the active sheet. Any manual edits will be lost. Continue?`
+      : `Import ${rangeData.products.length} designs from the active sheet into the database?`
+    if (!confirm(msg)) return
     setSeeding(true)
     try {
+      if (existingCount > 0) {
+        setSeedLog('Deleting existing designs…')
+        const snap = await getDocs(collection(db, 'range_products'))
+        await Promise.all(snap.docs.map(d => deleteDoc(doc(db, 'range_products', d.id))))
+        setSeedLog(`Deleted ${snap.docs.length}. Importing…`)
+      }
       let n = 0
       for (const p of rangeData.products) {
         await addDoc(collection(db, 'range_products'), {
@@ -141,8 +151,13 @@ export default function Range() {
         <div className="text-right">
           <p className="text-sm text-ink-60">{filtered.length} of {skus.length} SKUs</p>
           <p className="text-xs text-ink-60">Stock value ≈ ${Math.round(totalValue).toLocaleString()} USD (WS)</p>
+          <button onClick={handleSeed} disabled={seeding}
+                  className="text-xs text-ink-60 hover:text-brand-600 underline mt-1 disabled:opacity-50">
+            {seeding ? 'Re-importing…' : 'Re-import from sheet'}
+          </button>
         </div>
       </div>
+      {seedLog && <p className="text-xs font-mono text-ink-60 mb-2">{seedLog}</p>}
 
       {/* Filters */}
       <div className="flex gap-2 my-5 flex-wrap items-center">
