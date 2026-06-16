@@ -71,12 +71,11 @@ export default function Range() {
       }
       let n = 0
       for (const p of rangeData.products) {
-        const brand = brandLetter(p.design_code) || 'D'
-        const designNo = designNumber(p.design_code)
+        const designNo = p.design_no || designNumber(p.design_code)
         await addDoc(collection(db, 'range_products'), {
           design_no: designNo,
-          design_code: designNo,
-          design_name: p.design_name,
+          design_code: p.design_code || designNo,
+          design_name: p.design_name || '',
           description: p.description || '',
           category: p.category || '',
           format_code: p.format_code || '001',
@@ -84,26 +83,28 @@ export default function Range() {
           crystal_type: p.crystal_type || 'Bohemia',
           design_type: p.design_type || p.category || '',
           product_type: p.product_type || 'Figurine',
+          status: p.status || 'active',
           gallery: p.gallery || [],
           packing: p.packing || {
             carton_dims: '', pcs_per_carton: '', pack_box_ref: '',
             cbm_per_carton: '', weight_per_carton_kg: '', weight_per_pcs_kg: '',
           },
-          active: true,
-          variants: p.finishes.map(f => ({
-            brand_code: brand,
-            brand_name: BRAND_NAME[brand] || '',
-            plating_code: f.finish_code || '',
-            plating_name: f.finish_name || '',
-            crystal_code: '',
-            crystal_name: '',
-            running_no: '',
-            sku: f.sku,
-            ws_price_usd: f.ws_price_usd ?? null,
-            stock_finished: f.stock_finished ?? null,
-            packaging: '',
-            engraving: '',
-            image: f.image || '',
+          active: (p.status || 'active') === 'active',
+          variants: (p.variants || []).map(v => ({
+            brand_code: v.brand_code || 'D',
+            brand_name: v.brand_name || BRAND_NAME[v.brand_code] || '',
+            plating_code: v.plating_code || '',
+            plating_name: v.plating_name || '',
+            crystal_code: v.crystal_code || '',
+            crystal_name: v.crystal_name || '',
+            running_no: v.running_no || '',
+            description: v.description || '',
+            sku: v.sku || '',
+            ws_price_usd: v.ws_price_usd ?? null,
+            stock_finished: v.stock_finished ?? null,
+            packaging: v.packaging || '',
+            engraving: v.engraving || '',
+            image: v.image || '',
           })),
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -183,7 +184,7 @@ export default function Range() {
         <div className="card p-6">
           <p className="text-sm text-ink-80 mb-1">No figurine products in the database yet.</p>
           <p className="text-sm text-ink-60 mb-4">
-            Import the active catalogue ({rangeData.products.length} designs · {rangeData.products.reduce((n, p) => n + p.finishes.length, 0)} SKUs)
+            Import the active catalogue ({rangeData.products.length} designs · {rangeData.products.reduce((n, p) => n + (p.variants || []).length, 0)} SKUs)
             from your working sheet. You can then edit any of them.
           </p>
           <div className="flex gap-2">
@@ -208,7 +209,12 @@ export default function Range() {
           <h1 className="text-xl md:text-2xl">Figurine Gifts</h1>
         </div>
         <div className="text-right flex flex-col items-end gap-1">
-          <Link to="/range/new" className="btn-primary text-sm">+ New product</Link>
+          <div className="flex gap-2">
+            <button onClick={handleSeed} disabled={seeding} className="btn-secondary text-sm">
+              {seeding ? 'Importing…' : 'Re-import catalogue'}
+            </button>
+            <Link to="/range/new" className="btn-primary text-sm">+ New product</Link>
+          </div>
           <p className="text-sm text-ink-60">{filtered.length} of {items.length} products · {totalSkus} SKUs</p>
           <p className="text-xs text-ink-60">Stock value ≈ ${Math.round(totalValue).toLocaleString()} USD (WS)</p>
         </div>
