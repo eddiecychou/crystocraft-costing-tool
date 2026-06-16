@@ -163,10 +163,6 @@ export default function Range() {
           <Link to="/range/new" className="btn-primary text-sm">+ New product</Link>
           <p className="text-sm text-ink-60">{filtered.length} of {skus.length} SKUs</p>
           <p className="text-xs text-ink-60">Stock value ≈ ${Math.round(totalValue).toLocaleString()} USD (WS)</p>
-          <button onClick={handleSeed} disabled={seeding}
-                  className="text-xs text-ink-60 hover:text-brand-600 underline mt-1 disabled:opacity-50">
-            {seeding ? 'Re-importing…' : 'Re-import from sheet'}
-          </button>
         </div>
       </div>
       {seedLog && <p className="text-xs font-mono text-ink-60 mb-2">{seedLog}</p>}
