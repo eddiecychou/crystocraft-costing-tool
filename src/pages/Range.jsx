@@ -146,10 +146,15 @@ export default function Range() {
     const platings = [...new Set(variants.map(v => v.plating_name).filter(Boolean))]
     const brands = [...new Set(variants.map(v => v.brand_code || fallbackBrand).filter(Boolean))]
     const image = variants.find(v => v.image)?.image || (Array.isArray(p.gallery) && p.gallery[0]) || ''
-    const code = [`${body}${designNo}`, p.format_code].filter(Boolean).join('-')
+    // Show the full SKU prefix in the code when the design has a single brand
+    // (e.g. UA061-231, D0002-001). Multi-brand designs show the shared base
+    // code + per-brand chips so the prefix letters aren't lost.
+    const brandPrefix = brands.length === 1 ? brands[0] : ''
+    const code = [`${brandPrefix}${body}${designNo}`, p.format_code].filter(Boolean).join('-')
     return {
       id: p.id,
       code,
+      multiBrand: brands.length > 1,
       name: p.description || p.design_name || code,
       design_type: p.design_type || p.category || '',
       product_type: p.product_type || '',
@@ -222,12 +227,7 @@ export default function Range() {
           <h1 className="text-xl md:text-2xl">Figurine Gifts</h1>
         </div>
         <div className="text-right flex flex-col items-end gap-1">
-          <div className="flex gap-2">
-            <button onClick={handleSeed} disabled={seeding} className="btn-secondary text-sm">
-              {seeding ? 'Importing…' : 'Re-import catalogue'}
-            </button>
-            <Link to="/range/new" className="btn-primary text-sm">+ New product</Link>
-          </div>
+          <Link to="/range/new" className="btn-primary text-sm">+ New product</Link>
           <p className="text-sm text-ink-60">{filtered.length} of {items.length} products · {totalSkus} SKUs</p>
           <p className="text-xs text-ink-60">Stock value ≈ ${Math.round(totalValue).toLocaleString()} USD (WS)</p>
         </div>
@@ -310,9 +310,9 @@ function ProductCard({ s }) {
         <h3 className="text-sm leading-tight text-ink line-clamp-2" title={s.name}>{s.name}</h3>
         <div className="flex items-center gap-1 flex-wrap">
           <p className="text-[11px] text-ink-60 font-mono">{s.code}</p>
-          {s.brands.map(b => (
+          {s.multiBrand && s.brands.map(b => (
             <span key={b} className="text-[9px] uppercase tracking-wide bg-ivory text-ink-60 border border-ivory-dark rounded px-1 leading-tight"
-                  title={BRAND_NAME[b] || b}>{b}</span>
+                  title={`Also available in ${BRAND_NAME[b] || b}`}>{b}</span>
           ))}
         </div>
         <p className="text-[11px] text-ink-60">{s.size}</p>
