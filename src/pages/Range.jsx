@@ -3,18 +3,33 @@ import { collection, query, orderBy, onSnapshot, addDoc, getDocs, deleteDoc, doc
 import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import rangeData from '../data/rangeProducts.json'
+import { RANGE_PLATINGS } from '../constants'
 import LoadingBar from '../components/LoadingBar'
 
-const FINISH_DOT = { Gold: '#C6A664', Chrome: '#9AA0A6', Gunmetal: '#4A4A47' }
+const PLATING_DOT = Object.fromEntries(RANGE_PLATINGS.map(p => [p.name, p.dot]))
 
 function money(v) {
   return v == null || v === '' ? '—' : `$${Number(v).toFixed(2)}`
 }
+function priceRange(min, max) {
+  if (min == null) return '—'
+  return min === max ? money(min) : `${money(min)}–${money(max)}`
+}
 function stockBadge(n) {
-  if (n == null || n === '') return { label: 'No data', cls: 'bg-gray-100 text-gray-500' }
+  if (n == null) return { label: 'No data', cls: 'bg-gray-100 text-gray-500' }
   if (n <= 0) return { label: 'Out of stock', cls: 'bg-red-100 text-red-700' }
   if (n < 100) return { label: `Low · ${Math.round(n)}`, cls: 'bg-amber-100 text-amber-700' }
   return { label: `${Math.round(n)} in stock`, cls: 'bg-emerald-100 text-emerald-700' }
+}
+
+// Normalise a stored doc (new `variants` shape, or legacy `finishes`) to variants[]
+function docVariants(p) {
+  if (Array.isArray(p.variants) && p.variants.length) return p.variants
+  return (p.finishes || []).map(f => ({
+    plating_code: f.finish_code, plating_name: f.finish_name,
+    crystal_code: '', crystal_name: '', running_no: '',
+    sku: f.sku, ws_price_usd: f.ws_price_usd, stock_finished: f.stock_finished, image: f.image,
+  }))
 }
 
 export default function Range() {
@@ -23,7 +38,7 @@ export default function Range() {
   const [search, setSearch] = useState('')
   const [cat, setCat] = useState('')
   const [ptype, setPtype] = useState('')
-  const [finish, setFinish] = useState('')
+  const [plating, setPlating] = useState('')
   const [stockOnly, setStockOnly] = useState(false)
   const [seeding, setSeeding] = useState(false)
   const [seedLog, setSeedLog] = useState('')
@@ -57,7 +72,7 @@ export default function Range() {
           design_name: p.design_name,
           description: p.description || '',
           category: p.category || '',
-          format_code: p.format_code || '',
+          format_code: p.format_code || '001',
           size: p.size || '',
           crystal_type: p.crystal_type || 'Bohemia',
           design_type: p.design_type || p.category || '',
@@ -68,12 +83,17 @@ export default function Range() {
             cbm_per_carton: '', weight_per_carton_kg: '', weight_per_pcs_kg: '',
           },
           active: true,
-          finishes: p.finishes.map(f => ({
+          variants: p.finishes.map(f => ({
+            plating_code: f.finish_code || '',
+            plating_name: f.finish_name || '',
+            crystal_code: '',
+            crystal_name: '',
+            running_no: '',
             sku: f.sku,
-            finish_code: f.finish_code,
-            finish_name: f.finish_name,
             ws_price_usd: f.ws_price_usd ?? null,
             stock_finished: f.stock_finished ?? null,
+            packaging: '',
+            engraving: '',
             image: f.image || '',
           })),
           createdAt: serverTimestamp(),
@@ -90,41 +110,48 @@ export default function Range() {
     }
   }
 
-  // Flatten to one card per finish (SKU), keep parent product id for editing
-  const skus = useMemo(() => products.flatMap(p =>
-    (p.finishes || []).map((f, i) => ({
-      key: `${p.id}-${i}`,
-      productId: p.id,
+  // One item per product (design + format); variations collapsed inside
+  const items = useMemo(() => products.map(p => {
+    const variants = docVariants(p)
+    const prices = variants.map(v => v.ws_price_usd).filter(x => x != null)
+    const totalStock = variants.reduce((s, v) => s + (v.stock_finished > 0 ? v.stock_finished : 0), 0)
+    const platings = [...new Set(variants.map(v => v.plating_name).filter(Boolean))]
+    const image = variants.find(v => v.image)?.image || (Array.isArray(p.gallery) && p.gallery[0]) || ''
+    return {
+      id: p.id,
+      code: [p.design_code, p.format_code].filter(Boolean).join('-'),
       name: p.design_name,
-      category: p.category,
       design_type: p.design_type || p.category || '',
       product_type: p.product_type || '',
       size: p.size,
       active: p.active !== false,
-      sku: f.sku,
-      finish_name: f.finish_name,
-      ws_price_usd: f.ws_price_usd,
-      stock: f.stock_finished,
-      image: f.image,
-    }))
-  ), [products])
+      variants, platings, image,
+      skus: variants.map(v => v.sku).filter(Boolean),
+      minPrice: prices.length ? Math.min(...prices) : null,
+      maxPrice: prices.length ? Math.max(...prices) : null,
+      totalStock,
+      skuCount: variants.length,
+    }
+  }), [products])
 
-  const categories = useMemo(() => [...new Set(skus.map(s => s.design_type).filter(Boolean))].sort(), [skus])
-  const productTypes = useMemo(() => [...new Set(skus.map(s => s.product_type).filter(Boolean))].sort(), [skus])
-  const finishes = useMemo(() => [...new Set(skus.map(s => s.finish_name).filter(Boolean))].sort(), [skus])
+  const categories = useMemo(() => [...new Set(items.map(s => s.design_type).filter(Boolean))].sort(), [items])
+  const productTypes = useMemo(() => [...new Set(items.map(s => s.product_type).filter(Boolean))].sort(), [items])
+  const platingOpts = useMemo(() => [...new Set(items.flatMap(s => s.platings))].sort(), [items])
 
-  const filtered = useMemo(() => skus.filter(s => {
+  const filtered = useMemo(() => items.filter(s => {
     const q = search.toLowerCase()
-    const matchSearch = !q || s.name?.toLowerCase().includes(q) || s.sku?.toLowerCase().includes(q)
+    const matchSearch = !q || s.name?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q)
+      || s.skus.some(sku => sku?.toLowerCase().includes(q))
     const matchCat = !cat || s.design_type === cat
     const matchPtype = !ptype || s.product_type === ptype
-    const matchFinish = !finish || s.finish_name === finish
-    const matchStock = !stockOnly || (s.stock != null && s.stock > 0)
-    return matchSearch && matchCat && matchPtype && matchFinish && matchStock
-  }), [skus, search, cat, ptype, finish, stockOnly])
+    const matchPlating = !plating || s.platings.includes(plating)
+    const matchStock = !stockOnly || s.totalStock > 0
+    return matchSearch && matchCat && matchPtype && matchPlating && matchStock
+  }), [items, search, cat, ptype, plating, stockOnly])
 
+  const totalSkus = items.reduce((n, s) => n + s.skuCount, 0)
   const totalValue = filtered.reduce((sum, s) =>
-    sum + (s.ws_price_usd && s.stock > 0 ? s.ws_price_usd * s.stock : 0), 0)
+    sum + s.variants.reduce((a, v) => a + (v.ws_price_usd && v.stock_finished > 0 ? v.ws_price_usd * v.stock_finished : 0), 0), 0)
 
   // Empty-state: offer to seed from the bundled active sheet
   if (!loading && products.length === 0) {
@@ -161,7 +188,7 @@ export default function Range() {
         </div>
         <div className="text-right flex flex-col items-end gap-1">
           <Link to="/range/new" className="btn-primary text-sm">+ New product</Link>
-          <p className="text-sm text-ink-60">{filtered.length} of {skus.length} SKUs</p>
+          <p className="text-sm text-ink-60">{filtered.length} of {items.length} products · {totalSkus} SKUs</p>
           <p className="text-xs text-ink-60">Stock value ≈ ${Math.round(totalValue).toLocaleString()} USD (WS)</p>
         </div>
       </div>
@@ -169,7 +196,7 @@ export default function Range() {
 
       {/* Filters */}
       <div className="flex gap-2 my-5 flex-wrap items-center">
-        <input type="text" placeholder="Search name or SKU…" className="input flex-1 min-w-0"
+        <input type="text" placeholder="Search name, code or SKU…" className="input flex-1 min-w-0"
                value={search} onChange={e => setSearch(e.target.value)} />
         <select className="input w-auto" value={ptype} onChange={e => setPtype(e.target.value)}>
           <option value="">All product types</option>
@@ -179,9 +206,9 @@ export default function Range() {
           <option value="">All design types</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-        <select className="input w-auto" value={finish} onChange={e => setFinish(e.target.value)}>
-          <option value="">All finishes</option>
-          {finishes.map(f => <option key={f} value={f}>{f}</option>)}
+        <select className="input w-auto" value={plating} onChange={e => setPlating(e.target.value)}>
+          <option value="">All platings</option>
+          {platingOpts.map(f => <option key={f} value={f}>{f}</option>)}
         </select>
         <label className="flex items-center gap-2 text-sm text-ink-80 px-2 cursor-pointer select-none">
           <input type="checkbox" checked={stockOnly} onChange={e => setStockOnly(e.target.checked)} />
@@ -190,37 +217,47 @@ export default function Range() {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="text-center py-20 text-ink-60">No SKUs match your filters.</div>
+        <div className="text-center py-20 text-ink-60">No products match your filters.</div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
-          {filtered.map(s => <SkuCard key={s.key} s={s} />)}
+          {filtered.map(s => <ProductCard key={s.id} s={s} />)}
         </div>
       )}
     </div>
   )
 }
 
-function SkuCard({ s }) {
-  const sb = stockBadge(s.stock)
+function ProductCard({ s }) {
+  const sb = stockBadge(s.variants.length ? s.totalStock : null)
   return (
-    <Link to={`/range/${s.productId}`} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow group">
+    <Link to={`/range/${s.id}`} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow group">
       <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
         {s.image
           ? <img src={s.image} alt={s.name} className="w-full h-full object-contain p-2" loading="lazy" />
           : <span className="text-3xl opacity-30">💎</span>}
         {!s.active && <span className="absolute top-1.5 left-1.5 badge bg-gray-200 text-gray-600">Hidden</span>}
+        {s.skuCount > 1 && (
+          <span className="absolute top-1.5 right-1.5 text-[10px] bg-ink/70 text-white px-1.5 py-0.5 rounded">{s.skuCount} variations</span>
+        )}
         <span className="absolute bottom-1.5 right-1.5 text-[10px] uppercase tracking-wide bg-ink/70 text-white px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
       </div>
       <div className="p-3 flex flex-col gap-1.5 flex-1">
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: FINISH_DOT[s.finish_name] || '#ccc' }} />
-          <span className="text-[11px] text-ink-60 uppercase tracking-wide font-label">{s.finish_name}</span>
+        <div className="flex items-center gap-1">
+          {s.platings.length > 0
+            ? s.platings.map(p => (
+                <span key={p} className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ background: PLATING_DOT[p] || '#ccc' }} title={p} />
+              ))
+            : <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0 bg-gray-200" />}
+          <span className="text-[11px] text-ink-60 uppercase tracking-wide font-label ml-1 truncate">
+            {s.platings.join(' · ') || '—'}
+          </span>
         </div>
         <h3 className="text-sm leading-tight text-ink line-clamp-2" title={s.name}>{s.name}</h3>
-        <p className="text-[11px] text-ink-60 font-mono">{s.sku}</p>
+        <p className="text-[11px] text-ink-60 font-mono">{s.code}</p>
         <p className="text-[11px] text-ink-60">{s.size}</p>
         <div className="mt-auto pt-1.5 flex items-center justify-between">
-          <span className="text-base text-ink">{money(s.ws_price_usd)}</span>
+          <span className="text-base text-ink">{priceRange(s.minPrice, s.maxPrice)}</span>
           <span className={`badge ${sb.cls}`}>{sb.label}</span>
         </div>
       </div>
