@@ -7,6 +7,7 @@ import logo from '../assets/logo.png'
 const nav = [
   { to: '/dashboard',  label: 'Dashboard',  icon: '📊' },
   { to: '/products',   label: 'Products',   icon: '📦' },
+  { to: '/range',      label: 'Range',      icon: '💎' },
   { to: '/suppliers',  label: 'Suppliers',  icon: '🏭' },
   { to: '/customers',  label: 'Customers',  icon: '🏢' },
   { to: '/quotes',     label: 'Quotes',     icon: '📋' },

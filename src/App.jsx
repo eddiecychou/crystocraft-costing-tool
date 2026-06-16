@@ -4,6 +4,7 @@ import Layout from './components/Layout'
 import LoadingBar from './components/LoadingBar'
 import Login from './pages/Login'
 import Products from './pages/Products'
+import Range from './pages/Range'
 import ProductForm from './pages/ProductForm'
 import ProductDetail from './pages/ProductDetail'
 import ComponentForm from './pages/ComponentForm'
@@ -49,6 +50,7 @@ export default function App() {
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/products" element={<Products />} />
+                <Route path="/range" element={<Range />} />
                 <Route path="/products/new" element={<ProductForm />} />
                 <Route path="/products/:id" element={<ProductDetail />} />
                 <Route path="/products/:id/edit" element={<ProductForm />} />
