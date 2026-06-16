@@ -84,9 +84,6 @@ export const RANGE_PLATINGS = [
   { code: 'M', name: 'Mixed',     dot: '#B7935A' },
 ]
 
-// Crystal colour codes (suffix after plating). Editable — add as discovered.
-export const RANGE_CRYSTAL_COLORS = [
-  { code: '',   name: 'Clear / Default' },
-  { code: 'C1', name: 'Crystal AB' },
-  { code: 'C2', name: 'Aurora' },
-]
+// Crystal colour codes (suffix after plating). Free-text — add a name map here
+// once the real code→colour mapping is known.
+export const RANGE_CRYSTAL_COLORS = []

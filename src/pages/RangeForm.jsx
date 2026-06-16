@@ -10,9 +10,13 @@ import {
 import LoadingBar from '../components/LoadingBar'
 
 const emptyVariant = () => ({
-  plating_code: '', plating_name: '', crystal_code: '', crystal_name: '',
+  plating_code: '', plating_name: '', crystal_code: '', crystal_name: '', description: '',
   running_no: '', ws_price_usd: '', stock_finished: '', packaging: '', engraving: '', image: '',
 })
+
+// Auto description = plating + crystal colour (falls back to raw codes)
+const autoVariantDesc = v =>
+  [v.plating_name || v.plating_code, v.crystal_name || v.crystal_code].filter(Boolean).join(', ')
 const emptyPacking = () => ({
   carton_dims: '', pcs_per_carton: '', pack_box_ref: '',
   cbm_per_carton: '', weight_per_carton_kg: '', weight_per_pcs_kg: '',
@@ -45,6 +49,7 @@ function variantsFromDoc(d) {
     return d.variants.map(v => ({
       plating_code: v.plating_code || '', plating_name: v.plating_name || '',
       crystal_code: v.crystal_code || '', crystal_name: v.crystal_name || '',
+      description: v.description || '',
       running_no: v.running_no || '',
       ws_price_usd: v.ws_price_usd ?? '', stock_finished: v.stock_finished ?? '',
       packaging: v.packaging || '', engraving: v.engraving || '', image: v.image || '',
@@ -53,7 +58,7 @@ function variantsFromDoc(d) {
   // Legacy: finishes[] carried only a single plating dimension
   return (d.finishes || []).map(f => ({
     plating_code: f.finish_code || '', plating_name: f.finish_name || '',
-    crystal_code: '', crystal_name: '', running_no: '',
+    crystal_code: '', crystal_name: '', description: f.finish_name || '', running_no: '',
     ws_price_usd: f.ws_price_usd ?? '', stock_finished: f.stock_finished ?? '',
     packaging: '', engraving: '', image: f.image || '',
   }))
@@ -109,17 +114,30 @@ export default function RangeForm() {
     })
   }
   const setVariant = (i, field) => e => patchVariant(i, { [field]: e.target.value })
-  // Picking a plating/crystal code auto-fills its display name (still editable)
-  const setPlating = i => e => {
-    const code = e.target.value
-    const match = RANGE_PLATINGS.find(p => p.code === code)
-    patchVariant(i, { plating_code: code, plating_name: match ? match.name : '' })
+  // Picking a plating/crystal code auto-fills its name AND the auto description,
+  // unless the user has already customised the description.
+  function applyCode(i, kind, code) {
+    setForm(f => {
+      const variants = [...f.variants]
+      const prev = variants[i]
+      const v = { ...prev }
+      if (kind === 'plating') {
+        const m = RANGE_PLATINGS.find(p => p.code === code)
+        v.plating_code = code; v.plating_name = m ? m.name : ''
+      } else {
+        const m = RANGE_CRYSTAL_COLORS.find(c => c.code === code)
+        v.crystal_code = code; v.crystal_name = m ? m.name : ''
+      }
+      // Keep description in sync only while it still matches the auto value
+      if (!v.description || v.description === autoVariantDesc(prev)) {
+        v.description = autoVariantDesc(v)
+      }
+      variants[i] = v
+      return { ...f, variants }
+    })
   }
-  const setCrystal = i => e => {
-    const code = e.target.value
-    const match = RANGE_CRYSTAL_COLORS.find(c => c.code === code)
-    patchVariant(i, match ? { crystal_code: code, crystal_name: match.name } : { crystal_code: code })
-  }
+  const setPlating = i => e => applyCode(i, 'plating', e.target.value)
+  const setCrystal = i => e => applyCode(i, 'crystal', e.target.value)
   const addVariant = () => setForm(f => ({ ...f, variants: [...f.variants, emptyVariant()] }))
   const removeVariant = i => setForm(f => ({ ...f, variants: f.variants.filter((_, j) => j !== i) }))
 
@@ -182,7 +200,7 @@ export default function RangeForm() {
       variants: form.variants.map(v => ({
         plating_code: v.plating_code.trim(), plating_name: v.plating_name.trim(),
         crystal_code: v.crystal_code.trim(), crystal_name: v.crystal_name.trim(),
-        running_no: v.running_no.trim(),
+        description: v.description.trim(), running_no: v.running_no.trim(),
         sku: buildSku(design, format, {
           plating_code: v.plating_code.trim(), crystal_code: v.crystal_code.trim(), running_no: v.running_no.trim(),
         }),
@@ -364,10 +382,7 @@ export default function RangeForm() {
                         </div>
                         <div>
                           <label className="label">Crystal Colour</label>
-                          <input className="input text-xs font-mono" list="crystal-colors" value={v.crystal_code} onChange={setCrystal(i)} placeholder="C1" />
-                          <datalist id="crystal-colors">
-                            {RANGE_CRYSTAL_COLORS.filter(c => c.code).map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
-                          </datalist>
+                          <input className="input text-xs font-mono" value={v.crystal_code} onChange={setCrystal(i)} placeholder="C1" />
                         </div>
                         <div>
                           <label className="label">Running No.</label>
@@ -390,6 +405,10 @@ export default function RangeForm() {
                         <div>
                           <label className="label">Engraving</label>
                           <input className="input text-xs" value={v.engraving} onChange={setVariant(i, 'engraving')} placeholder="Logo / text…" />
+                        </div>
+                        <div className="col-span-2 sm:col-span-4">
+                          <label className="label">Description <span className="text-ink-60 font-normal">(auto from plating + crystal, editable)</span></label>
+                          <input className="input text-xs" value={v.description} onChange={setVariant(i, 'description')} placeholder="Gold, Crystal AB" />
                         </div>
                         <div className="col-span-2 sm:col-span-4">
                           <label className="label">Image URL</label>
