@@ -3,6 +3,8 @@
     {
       "design_no": "0002",
       "design_code": "0002",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Butterfly Freestand",
       "description": "Mini Butterfly Freestand",
       "category": "Butterflies",
@@ -107,6 +109,8 @@
     {
       "design_no": "0003",
       "design_code": "0003",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Angeliwing Butterfly Freestand",
       "description": "Mini Angeliwing Butterfly Freestand",
       "category": "Butterflies",
@@ -211,6 +215,8 @@
     {
       "design_no": "0006",
       "design_code": "0006",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Hummingbird Freestand",
       "description": "Mini Hummingbird Freestand",
       "category": "Birds",
@@ -299,6 +305,8 @@
     {
       "design_no": "0026",
       "design_code": "0026",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Swan Freestand",
       "description": "Swan Freestand",
       "category": "Birds",
@@ -403,6 +411,8 @@
     {
       "design_no": "0027",
       "design_code": "0027",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Swan Freestand",
       "description": "Mini Swan Freestand",
       "category": "Birds",
@@ -507,6 +517,8 @@
     {
       "design_no": "0028",
       "design_code": "0028",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Eagle Freestand",
       "description": "Eagle Freestand",
       "category": "Birds",
@@ -563,6 +575,8 @@
     {
       "design_no": "0088",
       "design_code": "0088",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Hooded Owl Freestand",
       "description": "Mini Hooded Owl Freestand",
       "category": "Birds",
@@ -667,6 +681,8 @@
     {
       "design_no": "0009",
       "design_code": "0009",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Sacred Angel Freestand",
       "description": "Sacred Angel Freestand",
       "category": "Angels",
@@ -771,6 +787,8 @@
     {
       "design_no": "0014",
       "design_code": "0014",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Guardian Angel Freestand",
       "description": "Guardian Angel Freestand",
       "category": "Angels",
@@ -875,6 +893,8 @@
     {
       "design_no": "0023",
       "design_code": "0023",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Sacred Angel Freestand",
       "description": "Mini Sacred Angel Freestand",
       "category": "Angels",
@@ -979,6 +999,8 @@
     {
       "design_no": "0226",
       "design_code": "0226",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket Sweetie Angel Freestand",
       "description": "Pocket Sweetie Angel Freestand",
       "category": "Angels",
@@ -1067,6 +1089,8 @@
     {
       "design_no": "0029",
       "design_code": "0029",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cross Freestand",
       "description": "Cross Freestand",
       "category": "Crosses",
@@ -1155,6 +1179,8 @@
     {
       "design_no": "0030",
       "design_code": "0030",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Cross Freestand",
       "description": "Mini Cross Freestand",
       "category": "Crosses",
@@ -1259,6 +1285,8 @@
     {
       "design_no": "0031",
       "design_code": "0031",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Dolphin Freestand",
       "description": "Dolphin Freestand",
       "category": "Animals",
@@ -1363,6 +1391,8 @@
     {
       "design_no": "0209",
       "design_code": "0209",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Sea Turtle Freestand",
       "description": "Sea Turtle Freestand",
       "category": "Animals",
@@ -1451,6 +1481,8 @@
     {
       "design_no": "0094",
       "design_code": "0094",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Dolphin Freestand",
       "description": "Mini Dolphin Freestand",
       "category": "Animals",
@@ -1539,6 +1571,8 @@
     {
       "design_no": "0597",
       "design_code": "0597",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Running Horse Freestand",
       "description": "Running Horse Freestand",
       "category": "Animals",
@@ -1627,6 +1661,8 @@
     {
       "design_no": "0598",
       "design_code": "0598",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Lion Freestand",
       "description": "Lion Freestand",
       "category": "Animals",
@@ -1715,6 +1751,8 @@
     {
       "design_no": "0599",
       "design_code": "0599",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Elephant Freestand",
       "description": "Elephant Freestand",
       "category": "Animals",
@@ -1803,6 +1841,8 @@
     {
       "design_no": "0600",
       "design_code": "0600",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Bull Freestand",
       "description": "Bull Freestand",
       "category": "Animals",
@@ -1891,6 +1931,8 @@
     {
       "design_no": "0601",
       "design_code": "0601",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Crystal Bulldog Freestand",
       "description": "Crystal Bulldog Freestand",
       "category": "Animals",
@@ -1947,6 +1989,8 @@
     {
       "design_no": "0602",
       "design_code": "0602",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Crystal Labrador Puppy Freestand",
       "description": "Crystal Labrador Puppy Freestand",
       "category": "Animals",
@@ -2003,6 +2047,8 @@
     {
       "design_no": "0603",
       "design_code": "0603",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Crystal Cat Freestand",
       "description": "Crystal Cat Freestand",
       "category": "Animals",
@@ -2059,6 +2105,8 @@
     {
       "design_no": "0033",
       "design_code": "0033",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Treble Clef Freestand",
       "description": "Mini Treble Clef Freestand",
       "category": "Musical",
@@ -2147,6 +2195,8 @@
     {
       "design_no": "0055",
       "design_code": "0055",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Violin Freestand",
       "description": "Violin Freestand",
       "category": "Musical",
@@ -2187,6 +2237,8 @@
     {
       "design_no": "0256",
       "design_code": "0256",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Vintage Piano Freestand",
       "description": "Vintage Piano Freestand",
       "category": "Musical",
@@ -2243,6 +2295,8 @@
     {
       "design_no": "0327",
       "design_code": "0327",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Ballerina Freestand",
       "description": "Ballerina Freestand",
       "category": "Musical",
@@ -2331,6 +2385,8 @@
     {
       "design_no": "0037",
       "design_code": "0037",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Twin Heart Freestand",
       "description": "Twin Heart Freestand",
       "category": "Hearts",
@@ -2435,6 +2491,8 @@
     {
       "design_no": "0574",
       "design_code": "0574",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Double Hearts Freestand with Ribbon Plate",
       "description": "Double Hearts Freestand with Ribbon Plate",
       "category": "Hearts",
@@ -2473,8 +2531,10 @@
       ]
     },
     {
-      "design_no": "0061",
-      "design_code": "0061",
+      "design_no": "061",
+      "design_code": "A061",
+      "body_code": "A",
+      "body_name": "Crystal body",
       "design_name": "Crystal Heart (40mm) Mobile Freestand with Plaque Clear",
       "description": "Crystal Heart (40mm) Mobile Freestand with Plaque Clear",
       "category": "Hearts",
@@ -2495,14 +2555,14 @@
       "gallery": [],
       "variants": [
         {
-          "brand_code": "UA",
-          "brand_name": "",
+          "brand_code": "U",
+          "brand_name": "Swarovski",
           "plating_code": "C",
           "plating_name": "Chrome",
           "crystal_code": "C1",
           "crystal_name": "",
           "running_no": "",
-          "description": "UA, Chrome, C1",
+          "description": "Swarovski, Chrome, C1",
           "sku": "UA061-231-CC1",
           "ws_price_usd": 7.05,
           "stock_finished": null,
@@ -2511,14 +2571,14 @@
           "image": ""
         },
         {
-          "brand_code": "UA",
-          "brand_name": "",
+          "brand_code": "U",
+          "brand_name": "Swarovski",
           "plating_code": "C",
           "plating_name": "Chrome",
           "crystal_code": "PI",
           "crystal_name": "",
           "running_no": "",
-          "description": "UA, Chrome, PI",
+          "description": "Swarovski, Chrome, PI",
           "sku": "UA061-231-CPI",
           "ws_price_usd": 8.1,
           "stock_finished": null,
@@ -2527,14 +2587,14 @@
           "image": ""
         },
         {
-          "brand_code": "UA",
-          "brand_name": "",
+          "brand_code": "U",
+          "brand_name": "Swarovski",
           "plating_code": "C",
           "plating_name": "Chrome",
           "crystal_code": "VL",
           "crystal_name": "",
           "running_no": "",
-          "description": "UA, Chrome, VL",
+          "description": "Swarovski, Chrome, VL",
           "sku": "UA061-231-CVL",
           "ws_price_usd": 8.1,
           "stock_finished": null,
@@ -2543,14 +2603,14 @@
           "image": ""
         },
         {
-          "brand_code": "UA",
-          "brand_name": "",
+          "brand_code": "U",
+          "brand_name": "Swarovski",
           "plating_code": "C",
           "plating_name": "Chrome",
           "crystal_code": "RE",
           "crystal_name": "",
           "running_no": "",
-          "description": "UA, Chrome, RE",
+          "description": "Swarovski, Chrome, RE",
           "sku": "UA061-231-CRE",
           "ws_price_usd": 8.28,
           "stock_finished": null,
@@ -2561,8 +2621,10 @@
       ]
     },
     {
-      "design_no": "0062",
-      "design_code": "0062",
+      "design_no": "062",
+      "design_code": "A062",
+      "body_code": "A",
+      "body_name": "Crystal body",
       "design_name": "Crystal Teddy Bear Freestand with Red Heart Crystal",
       "description": "Crystal Teddy Bear Freestand with Red Heart Crystal",
       "category": "Hearts",
@@ -2583,14 +2645,14 @@
       "gallery": [],
       "variants": [
         {
-          "brand_code": "UA",
-          "brand_name": "",
+          "brand_code": "U",
+          "brand_name": "Swarovski",
           "plating_code": "R",
           "plating_name": "Rose Gold",
           "crystal_code": "E",
           "crystal_name": "",
           "running_no": "",
-          "description": "UA, Rose Gold, E",
+          "description": "Swarovski, Rose Gold, E",
           "sku": "UA062-224-RE",
           "ws_price_usd": 11.95,
           "stock_finished": null,
@@ -2599,14 +2661,14 @@
           "image": ""
         },
         {
-          "brand_code": "UA",
-          "brand_name": "",
+          "brand_code": "U",
+          "brand_name": "Swarovski",
           "plating_code": "P",
           "plating_name": "",
           "crystal_code": "I",
           "crystal_name": "",
           "running_no": "",
-          "description": "UA, P, I",
+          "description": "Swarovski, P, I",
           "sku": "UA062-224-PI",
           "ws_price_usd": 11.95,
           "stock_finished": null,
@@ -2615,14 +2677,14 @@
           "image": ""
         },
         {
-          "brand_code": "UA",
-          "brand_name": "",
+          "brand_code": "U",
+          "brand_name": "Swarovski",
           "plating_code": "B",
           "plating_name": "",
           "crystal_code": "L",
           "crystal_name": "",
           "running_no": "",
-          "description": "UA, B, L",
+          "description": "Swarovski, B, L",
           "sku": "UA062-224-BL",
           "ws_price_usd": 11.95,
           "stock_finished": null,
@@ -2631,14 +2693,14 @@
           "image": ""
         },
         {
-          "brand_code": "UA",
-          "brand_name": "",
+          "brand_code": "U",
+          "brand_name": "Swarovski",
           "plating_code": "C",
           "plating_name": "Chrome",
           "crystal_code": "1",
           "crystal_name": "",
           "running_no": "",
-          "description": "UA, Chrome, 1",
+          "description": "Swarovski, Chrome, 1",
           "sku": "UA062-224-C1",
           "ws_price_usd": 11.95,
           "stock_finished": null,
@@ -2651,6 +2713,8 @@
     {
       "design_no": "0061",
       "design_code": "0061",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Globe Freestand",
       "description": "Globe Freestand",
       "category": "Objects",
@@ -2691,6 +2755,8 @@
     {
       "design_no": "0062",
       "design_code": "0062",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Globe Freestand",
       "description": "Mini Globe Freestand",
       "category": "Objects",
@@ -2747,6 +2813,8 @@
     {
       "design_no": "0215",
       "design_code": "0215",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Five Tulips in Crystal Vase Freestand",
       "description": "Five Tulips in Crystal Vase Freestand",
       "category": "Flowers",
@@ -2835,6 +2903,8 @@
     {
       "design_no": "0240",
       "design_code": "0240",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Crystal Sunflower Freestand  with Crystal Base",
       "description": "Crystal Sunflower Freestand  with Crystal Base",
       "category": "Flowers",
@@ -2923,6 +2993,8 @@
     {
       "design_no": "0353",
       "design_code": "0353",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Rose S-Shape Freestand",
       "description": "Rose S-Shape Freestand",
       "category": "Flowers",
@@ -2979,6 +3051,8 @@
     {
       "design_no": "0354",
       "design_code": "0354",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Rose Bud S-Shape Stand",
       "description": "Rose Bud S-Shape Stand",
       "category": "Flowers",
@@ -3035,6 +3109,8 @@
     {
       "design_no": "0355",
       "design_code": "0355",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Rose Freestand",
       "description": "Mini Rose Freestand",
       "category": "Flowers",
@@ -3123,6 +3199,8 @@
     {
       "design_no": "0562",
       "design_code": "0562",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Double Roses Freestand with Plaque",
       "description": "Mini Double Roses Freestand with Plaque",
       "category": "Flowers",
@@ -3179,6 +3257,8 @@
     {
       "design_no": "0558",
       "design_code": "0558",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Rose Freestand with Heart Plaque",
       "description": "Mini Rose Freestand with Heart Plaque",
       "category": "Flowers",
@@ -3235,6 +3315,8 @@
     {
       "design_no": "0357",
       "design_code": "0357",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Three Roses in Crystal Vase",
       "description": "Three Roses in Crystal Vase",
       "category": "Flowers",
@@ -3291,6 +3373,8 @@
     {
       "design_no": "0605",
       "design_code": "0605",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Crystal Fabric Rose Figurine",
       "description": "Crystal Fabric Rose Figurine",
       "category": "Flowers",
@@ -3331,6 +3415,8 @@
     {
       "design_no": "0257",
       "design_code": "0257",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Zodiac Aries Freestand",
       "description": "Zodiac Aries Freestand",
       "category": "Zodiac Signs",
@@ -3419,6 +3505,8 @@
     {
       "design_no": "0258",
       "design_code": "0258",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Zodiac Taurus Freestand",
       "description": "Zodiac Taurus Freestand",
       "category": "Zodiac Signs",
@@ -3507,6 +3595,8 @@
     {
       "design_no": "0259",
       "design_code": "0259",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Zodiac Gemini Freestand",
       "description": "Zodiac Gemini Freestand",
       "category": "Zodiac Signs",
@@ -3595,6 +3685,8 @@
     {
       "design_no": "0260",
       "design_code": "0260",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Zodiac Cancer Freestand",
       "description": "Zodiac Cancer Freestand",
       "category": "Zodiac Signs",
@@ -3683,6 +3775,8 @@
     {
       "design_no": "0261",
       "design_code": "0261",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Zodiac Leo Freestand",
       "description": "Zodiac Leo Freestand",
       "category": "Zodiac Signs",
@@ -3771,6 +3865,8 @@
     {
       "design_no": "0262",
       "design_code": "0262",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Zodiac Virgo Freestand",
       "description": "Zodiac Virgo Freestand",
       "category": "Zodiac Signs",
@@ -3859,6 +3955,8 @@
     {
       "design_no": "0263",
       "design_code": "0263",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Zodiac Libra Freestand",
       "description": "Zodiac Libra Freestand",
       "category": "Zodiac Signs",
@@ -3947,6 +4045,8 @@
     {
       "design_no": "0264",
       "design_code": "0264",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Zodiac Scorpio Freestand",
       "description": "Zodiac Scorpio Freestand",
       "category": "Zodiac Signs",
@@ -4035,6 +4135,8 @@
     {
       "design_no": "0265",
       "design_code": "0265",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Zodiac Sagittarius Freestand",
       "description": "Zodiac Sagittarius Freestand",
       "category": "Zodiac Signs",
@@ -4123,6 +4225,8 @@
     {
       "design_no": "0266",
       "design_code": "0266",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Zodiac Capricorn Freestand",
       "description": "Zodiac Capricorn Freestand",
       "category": "Zodiac Signs",
@@ -4211,6 +4315,8 @@
     {
       "design_no": "0267",
       "design_code": "0267",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Zodiac Aquarius Freestand",
       "description": "Zodiac Aquarius Freestand",
       "category": "Zodiac Signs",
@@ -4299,6 +4405,8 @@
     {
       "design_no": "0268",
       "design_code": "0268",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Zodiac Pisces Freestand",
       "description": "Zodiac Pisces Freestand",
       "category": "Zodiac Signs",
@@ -4387,6 +4495,8 @@
     {
       "design_no": "0340",
       "design_code": "0340",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Chinese Zodiac Rat Freestand",
       "description": "Chinese Zodiac Rat Freestand",
       "category": "Chinese Horoscopes",
@@ -4443,6 +4553,8 @@
     {
       "design_no": "0341",
       "design_code": "0341",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Chinese Zodiac Ox Freestand",
       "description": "Chinese Zodiac Ox Freestand",
       "category": "Chinese Horoscopes",
@@ -4499,6 +4611,8 @@
     {
       "design_no": "0342",
       "design_code": "0342",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Chinese Zodiac Tiger Freestand",
       "description": "Chinese Zodiac Tiger Freestand",
       "category": "Chinese Horoscopes",
@@ -4555,6 +4669,8 @@
     {
       "design_no": "0343",
       "design_code": "0343",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Chinese Zodiac Rabbit Freestand",
       "description": "Chinese Zodiac Rabbit Freestand",
       "category": "Chinese Horoscopes",
@@ -4627,6 +4743,8 @@
     {
       "design_no": "0344",
       "design_code": "0344",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Chinese Zodiac Dragon Freestand",
       "description": "Chinese Zodiac Dragon Freestand",
       "category": "Chinese Horoscopes",
@@ -4683,6 +4801,8 @@
     {
       "design_no": "0345",
       "design_code": "0345",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Chinese Zodiac Snake Freestand",
       "description": "Chinese Zodiac Snake Freestand",
       "category": "Chinese Horoscopes",
@@ -4739,6 +4859,8 @@
     {
       "design_no": "0346",
       "design_code": "0346",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Chinese Zodiac Horse Freestand",
       "description": "Chinese Zodiac Horse Freestand",
       "category": "Chinese Horoscopes",
@@ -4795,6 +4917,8 @@
     {
       "design_no": "0347",
       "design_code": "0347",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Chinese Zodiac Ram Freestand",
       "description": "Chinese Zodiac Ram Freestand",
       "category": "Chinese Horoscopes",
@@ -4851,6 +4975,8 @@
     {
       "design_no": "0348",
       "design_code": "0348",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Chinese Zodiac Monkey Freestand",
       "description": "Chinese Zodiac Monkey Freestand",
       "category": "Chinese Horoscopes",
@@ -4907,6 +5033,8 @@
     {
       "design_no": "0349",
       "design_code": "0349",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Chinese Zodiac Rooster Freestand",
       "description": "Chinese Zodiac Rooster Freestand",
       "category": "Chinese Horoscopes",
@@ -4963,6 +5091,8 @@
     {
       "design_no": "0350",
       "design_code": "0350",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Chinese Zodiac Dog Freestand",
       "description": "Chinese Zodiac Dog Freestand",
       "category": "Chinese Horoscopes",
@@ -5019,6 +5149,8 @@
     {
       "design_no": "0351",
       "design_code": "0351",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Chinese Zodiac Pig Freestand",
       "description": "Chinese Zodiac Pig Freestand",
       "category": "Chinese Horoscopes",
@@ -5075,6 +5207,8 @@
     {
       "design_no": "0061",
       "design_code": "0061",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Globe Pen Stand (Wood Base)",
       "description": "Globe Pen Stand (Wood Base)",
       "category": "Pen Stand",
@@ -5115,6 +5249,8 @@
     {
       "design_no": "0597",
       "design_code": "0597",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Running Horse Pen Stand (Wood Base)",
       "description": "Running Horse Pen Stand (Wood Base)",
       "category": "Pen Stand",
@@ -5155,6 +5291,8 @@
     {
       "design_no": "0002",
       "design_code": "0002",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Butterfly with Crystal Bible",
       "description": "Mini Butterfly with Crystal Bible",
       "category": "Crystal Bible",
@@ -5211,6 +5349,8 @@
     {
       "design_no": "0006",
       "design_code": "0006",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Hummingbird with Crystal Bible",
       "description": "Mini Hummingbird with Crystal Bible",
       "category": "Crystal Bible",
@@ -5267,6 +5407,8 @@
     {
       "design_no": "0014",
       "design_code": "0014",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Guardian Angel with Crystal Bible",
       "description": "Guardian Angel with Crystal Bible",
       "category": "Crystal Bible",
@@ -5323,6 +5465,8 @@
     {
       "design_no": "0023",
       "design_code": "0023",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Sacred Angel with Crystal Bible",
       "description": "Mini Sacred Angel with Crystal Bible",
       "category": "Crystal Bible",
@@ -5379,6 +5523,8 @@
     {
       "design_no": "0028",
       "design_code": "0028",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Eagle with Crystal Bible",
       "description": "Eagle with Crystal Bible",
       "category": "Crystal Bible",
@@ -5435,6 +5581,8 @@
     {
       "design_no": "0030",
       "design_code": "0030",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Cross with Crystal Bible",
       "description": "Mini Cross with Crystal Bible",
       "category": "Crystal Bible",
@@ -5491,6 +5639,8 @@
     {
       "design_no": "0037",
       "design_code": "0037",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Twin Hearts with Crystal Bible",
       "description": "Twin Hearts with Crystal Bible",
       "category": "Crystal Bible",
@@ -5547,6 +5697,8 @@
     {
       "design_no": "0083",
       "design_code": "0083",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Sunburst with Crystal Bible",
       "description": "Mini Sunburst with Crystal Bible",
       "category": "Crystal Bible",
@@ -5603,6 +5755,8 @@
     {
       "design_no": "0088",
       "design_code": "0088",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Owl with Crystal Bible",
       "description": "Mini Owl with Crystal Bible",
       "category": "Crystal Bible",
@@ -5659,6 +5813,8 @@
     {
       "design_no": "0094",
       "design_code": "0094",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Dolphin with Crystal Bible",
       "description": "Mini Dolphin with Crystal Bible",
       "category": "Crystal Bible",
@@ -5715,6 +5871,8 @@
     {
       "design_no": "0355",
       "design_code": "0355",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Rose with Crystal Bible",
       "description": "Mini Rose with Crystal Bible",
       "category": "Crystal Bible",
@@ -5771,6 +5929,8 @@
     {
       "design_no": "0002",
       "design_code": "0002",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Butterfly Music Box (Wood Body)",
       "description": "Mini Butterfly Music Box (Wood Body)",
       "category": "Music Boxes",
@@ -5827,6 +5987,8 @@
     {
       "design_no": "0006",
       "design_code": "0006",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Hummingbird Music Box (Wood Body)",
       "description": "Mini Hummingbird Music Box (Wood Body)",
       "category": "Music Boxes",
@@ -5883,6 +6045,8 @@
     {
       "design_no": "0014",
       "design_code": "0014",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Guardian Angel Music Box (Wood Body)",
       "description": "Guardian Angel Music Box (Wood Body)",
       "category": "Music Boxes",
@@ -5939,6 +6103,8 @@
     {
       "design_no": "0023",
       "design_code": "0023",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Sacred Angel Music Box (Wood Body)",
       "description": "Mini Sacred Angel Music Box (Wood Body)",
       "category": "Music Boxes",
@@ -5995,6 +6161,8 @@
     {
       "design_no": "0026",
       "design_code": "0026",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Swan Music Box (Wood Body)",
       "description": "Swan Music Box (Wood Body)",
       "category": "Music Boxes",
@@ -6051,6 +6219,8 @@
     {
       "design_no": "0027",
       "design_code": "0027",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Swan Music Box (Wood Body)",
       "description": "Mini Swan Music Box (Wood Body)",
       "category": "Music Boxes",
@@ -6107,6 +6277,8 @@
     {
       "design_no": "0030",
       "design_code": "0030",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Cross Music Box (Wood Body)",
       "description": "Mini Cross Music Box (Wood Body)",
       "category": "Music Boxes",
@@ -6163,6 +6335,8 @@
     {
       "design_no": "0031",
       "design_code": "0031",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Dolphin Music Box (Wood Body)",
       "description": "Dolphin Music Box (Wood Body)",
       "category": "Music Boxes",
@@ -6219,6 +6393,8 @@
     {
       "design_no": "0037",
       "design_code": "0037",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Twin Heart Music Box (Wood Body)",
       "description": "Twin Heart Music Box (Wood Body)",
       "category": "Music Boxes",
@@ -6275,6 +6451,8 @@
     {
       "design_no": "0055",
       "design_code": "0055",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Violin Music Box (Wood Body)",
       "description": "Violin Music Box (Wood Body)",
       "category": "Music Boxes",
@@ -6331,6 +6509,8 @@
     {
       "design_no": "0062",
       "design_code": "0062",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Globe Music Box (Wood Body)",
       "description": "Mini Globe Music Box (Wood Body)",
       "category": "Music Boxes",
@@ -6387,6 +6567,8 @@
     {
       "design_no": "0088",
       "design_code": "0088",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Owl Music Box (Wood Body)",
       "description": "Mini Owl Music Box (Wood Body)",
       "category": "Music Boxes",
@@ -6443,6 +6625,8 @@
     {
       "design_no": "0327",
       "design_code": "0327",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Ballerina Music Box (Wood Body)",
       "description": "Ballerina Music Box (Wood Body)",
       "category": "Music Boxes",
@@ -6499,6 +6683,8 @@
     {
       "design_no": "0558",
       "design_code": "0558",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Rose & Heart Music Box (Wood Body)",
       "description": "Rose & Heart Music Box (Wood Body)",
       "category": "Music Boxes",
@@ -6539,6 +6725,8 @@
     {
       "design_no": "0574",
       "design_code": "0574",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Double Heart (Lrg) Music Box (Wood Body)",
       "description": "Double Heart (Lrg) Music Box (Wood Body)",
       "category": "Music Boxes",
@@ -6579,6 +6767,8 @@
     {
       "design_no": "0597",
       "design_code": "0597",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Running Horse Music Box (Wood Body)",
       "description": "Running Horse Music Box (Wood Body)",
       "category": "Music Boxes",
@@ -6635,6 +6825,8 @@
     {
       "design_no": "0015",
       "design_code": "0015",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Black Crystal Fine Rock Fabric (1.5mm rhinestones) Magsafe Wallet Stand",
       "description": "Black Crystal Fine Rock Fabric (1.5mm rhinestones) Magsafe Wallet Stand",
       "category": "Phone Accessories",
@@ -6787,6 +6979,8 @@
     {
       "design_no": "0014",
       "design_code": "0014",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "White Crystal Fine Rock Fabric (1.5mm rhinestones) Magsafe Wallet Stand",
       "description": "White Crystal Fine Rock Fabric (1.5mm rhinestones) Magsafe Wallet Stand",
       "category": "Phone Accessories",
@@ -6827,6 +7021,8 @@
     {
       "design_no": "0018",
       "design_code": "0018",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Flying Angel(Trumpet)",
       "description": "Flying Angel(Trumpet)",
       "category": "Angel",
@@ -6867,6 +7063,8 @@
     {
       "design_no": "0019",
       "design_code": "0019",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Flying Angel(Heart)",
       "description": "Flying Angel(Heart)",
       "category": "Angel",
@@ -6907,6 +7105,8 @@
     {
       "design_no": "0020",
       "design_code": "0020",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Flying Angel(Dove)",
       "description": "Flying Angel(Dove)",
       "category": "Angel",
@@ -6963,6 +7163,8 @@
     {
       "design_no": "0021",
       "design_code": "0021",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Flying Angel(Cross)",
       "description": "Flying Angel(Cross)",
       "category": "Angel",
@@ -7003,6 +7205,8 @@
     {
       "design_no": "0022",
       "design_code": "0022",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Sacred Angel(Cross)",
       "description": "Mini Sacred Angel(Cross)",
       "category": "Angel",
@@ -7059,6 +7263,8 @@
     {
       "design_no": "0025",
       "design_code": "0025",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Sacred Angel(Star)",
       "description": "Mini Sacred Angel(Star)",
       "category": "Angel",
@@ -7115,6 +7321,8 @@
     {
       "design_no": "0328",
       "design_code": "0328",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Classic Angel",
       "description": "Classic Angel",
       "category": "Angel",
@@ -7171,6 +7379,8 @@
     {
       "design_no": "0107",
       "design_code": "0107",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Junior Angel(Heart)",
       "description": "Junior Angel(Heart)",
       "category": "Angel",
@@ -7227,6 +7437,8 @@
     {
       "design_no": "0017",
       "design_code": "0017",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Guardian Angel(Star)",
       "description": "Guardian Angel(Star)",
       "category": "Angel",
@@ -7283,6 +7495,8 @@
     {
       "design_no": "0007",
       "design_code": "0007",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini fantail Hummingbird",
       "description": "Mini fantail Hummingbird",
       "category": "Bird & Animal",
@@ -7323,6 +7537,8 @@
     {
       "design_no": "0045",
       "design_code": "0045",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cat(Ball)",
       "description": "Cat(Ball)",
       "category": "Bird & Animal",
@@ -7379,6 +7595,8 @@
     {
       "design_no": "0065",
       "design_code": "0065",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cardinal",
       "description": "Cardinal",
       "category": "Bird & Animal",
@@ -7435,6 +7653,8 @@
     {
       "design_no": "0092",
       "design_code": "0092",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Fan-Out Peacock",
       "description": "Fan-Out Peacock",
       "category": "Bird & Animal",
@@ -7491,6 +7711,8 @@
     {
       "design_no": "0095",
       "design_code": "0095",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Tommy Cat",
       "description": "Tommy Cat",
       "category": "Bird & Animal",
@@ -7547,6 +7769,8 @@
     {
       "design_no": "0096",
       "design_code": "0096",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Suzy Cat",
       "description": "Suzy Cat",
       "category": "Bird & Animal",
@@ -7603,6 +7827,8 @@
     {
       "design_no": "0135",
       "design_code": "0135",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Angelfish",
       "description": "Angelfish",
       "category": "Bird & Animal",
@@ -7659,6 +7885,8 @@
     {
       "design_no": "0140",
       "design_code": "0140",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pelican",
       "description": "Pelican",
       "category": "Bird & Animal",
@@ -7715,6 +7943,8 @@
     {
       "design_no": "0210",
       "design_code": "0210",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Baby Labrador Dog",
       "description": "Baby Labrador Dog",
       "category": "Bird & Animal",
@@ -7755,6 +7985,8 @@
     {
       "design_no": "0269",
       "design_code": "0269",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Tropical Fish",
       "description": "Pocket - Tropical Fish",
       "category": "Bird & Animal",
@@ -7795,6 +8027,8 @@
     {
       "design_no": "0273",
       "design_code": "0273",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Sea Turtle",
       "description": "Pocket - Sea Turtle",
       "category": "Bird & Animal",
@@ -7851,6 +8085,8 @@
     {
       "design_no": "0274",
       "design_code": "0274",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Elephant",
       "description": "Pocket - Elephant",
       "category": "Bird & Animal",
@@ -7891,6 +8127,8 @@
     {
       "design_no": "0275",
       "design_code": "0275",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Cat",
       "description": "Pocket - Cat",
       "category": "Bird & Animal",
@@ -7931,6 +8169,8 @@
     {
       "design_no": "0276",
       "design_code": "0276",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Dolphin",
       "description": "Pocket - Dolphin",
       "category": "Bird & Animal",
@@ -7987,6 +8227,8 @@
     {
       "design_no": "0330",
       "design_code": "0330",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cat",
       "description": "Cat",
       "category": "Bird & Animal",
@@ -8043,6 +8285,8 @@
     {
       "design_no": "0383",
       "design_code": "0383",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Duckling",
       "description": "Duckling",
       "category": "Bird & Animal",
@@ -8099,6 +8343,8 @@
     {
       "design_no": "0497",
       "design_code": "0497",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Horse with Little Horseshoe",
       "description": "Horse with Little Horseshoe",
       "category": "Bird & Animal",
@@ -8155,6 +8401,8 @@
     {
       "design_no": "0004",
       "design_code": "0004",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Original Hummingbird",
       "description": "Original Hummingbird",
       "category": "Bird & Animal",
@@ -8211,6 +8459,8 @@
     {
       "design_no": "0005",
       "design_code": "0005",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Fantail Hummingbird",
       "description": "Fantail Hummingbird",
       "category": "Bird & Animal",
@@ -8267,6 +8517,8 @@
     {
       "design_no": "0191",
       "design_code": "0191",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Labrador Dog",
       "description": "Labrador Dog",
       "category": "Bird & Animal",
@@ -8323,6 +8575,8 @@
     {
       "design_no": "0196",
       "design_code": "0196",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Labrador Dog (Panting)",
       "description": "Labrador Dog (Panting)",
       "category": "Bird & Animal",
@@ -8379,6 +8633,8 @@
     {
       "design_no": "0411",
       "design_code": "0411",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Sparkling Seahorse",
       "description": "Sparkling Seahorse",
       "category": "Bird & Animal",
@@ -8419,6 +8675,8 @@
     {
       "design_no": "0413",
       "design_code": "0413",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Sparkling Goldfish",
       "description": "Sparkling Goldfish",
       "category": "Bird & Animal",
@@ -8475,6 +8733,8 @@
     {
       "design_no": "0414",
       "design_code": "0414",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Sparkling Octopus",
       "description": "Sparkling Octopus",
       "category": "Bird & Animal",
@@ -8531,6 +8791,8 @@
     {
       "design_no": "0109",
       "design_code": "0109",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "B-fly Fairy(Dancing)",
       "description": "B-fly Fairy(Dancing)",
       "category": "Fairy",
@@ -8587,6 +8849,8 @@
     {
       "design_no": "0110",
       "design_code": "0110",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "B-fly Fairy(Heart)",
       "description": "B-fly Fairy(Heart)",
       "category": "Fairy",
@@ -8643,6 +8907,8 @@
     {
       "design_no": "0111",
       "design_code": "0111",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "B-fly Fairy(Ribbon)",
       "description": "B-fly Fairy(Ribbon)",
       "category": "Fairy",
@@ -8699,6 +8965,8 @@
     {
       "design_no": "0085",
       "design_code": "0085",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Flower Fairy(Rose)",
       "description": "Flower Fairy(Rose)",
       "category": "Fairy",
@@ -8739,6 +9007,8 @@
     {
       "design_no": "0086",
       "design_code": "0086",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Flower Fairy(Heart)",
       "description": "Flower Fairy(Heart)",
       "category": "Fairy",
@@ -8795,6 +9065,8 @@
     {
       "design_no": "0001",
       "design_code": "0001",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Swallowtail Butterfly",
       "description": "Swallowtail Butterfly",
       "category": "Garden",
@@ -8835,6 +9107,8 @@
     {
       "design_no": "0114",
       "design_code": "0114",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Butterfly",
       "description": "Butterfly",
       "category": "Garden",
@@ -8891,6 +9165,8 @@
     {
       "design_no": "0118",
       "design_code": "0118",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Watering Can",
       "description": "Watering Can",
       "category": "Garden",
@@ -8947,6 +9223,8 @@
     {
       "design_no": "0123",
       "design_code": "0123",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Fruit - Apple",
       "description": "Fruit - Apple",
       "category": "Garden",
@@ -8987,6 +9265,8 @@
     {
       "design_no": "0124",
       "design_code": "0124",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Fruit - Strawberry",
       "description": "Fruit - Strawberry",
       "category": "Garden",
@@ -9043,6 +9323,8 @@
     {
       "design_no": "0125",
       "design_code": "0125",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Fruit - Pineapple",
       "description": "Fruit - Pineapple",
       "category": "Garden",
@@ -9099,6 +9381,8 @@
     {
       "design_no": "0208",
       "design_code": "0208",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Orchid Butterfly",
       "description": "Orchid Butterfly",
       "category": "Garden",
@@ -9155,6 +9439,8 @@
     {
       "design_no": "0220",
       "design_code": "0220",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Swallowtail Butterfly",
       "description": "Mini Swallowtail Butterfly",
       "category": "Garden",
@@ -9211,6 +9497,8 @@
     {
       "design_no": "0221",
       "design_code": "0221",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Tiger Butterfly",
       "description": "Tiger Butterfly",
       "category": "Garden",
@@ -9267,6 +9555,8 @@
     {
       "design_no": "0270",
       "design_code": "0270",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Shamrock",
       "description": "Pocket - Shamrock",
       "category": "Garden",
@@ -9323,6 +9613,8 @@
     {
       "design_no": "0324",
       "design_code": "0324",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Emperor Butterfly",
       "description": "Pocket - Emperor Butterfly",
       "category": "Garden",
@@ -9379,6 +9671,8 @@
     {
       "design_no": "0326",
       "design_code": "0326",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Oleander Flower",
       "description": "Pocket - Oleander Flower",
       "category": "Garden",
@@ -9435,6 +9729,8 @@
     {
       "design_no": "0332",
       "design_code": "0332",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Rose Blossom",
       "description": "Rose Blossom",
       "category": "Garden",
@@ -9475,6 +9771,8 @@
     {
       "design_no": "0339",
       "design_code": "0339",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Rose",
       "description": "Pocket - Rose",
       "category": "Garden",
@@ -9515,6 +9813,8 @@
     {
       "design_no": "0415",
       "design_code": "0415",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Fancy Rose",
       "description": "Pocket - Fancy Rose",
       "category": "Garden",
@@ -9555,6 +9855,8 @@
     {
       "design_no": "0416",
       "design_code": "0416",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Heart-shaped Clover",
       "description": "Pocket - Heart-shaped Clover",
       "category": "Garden",
@@ -9611,6 +9913,8 @@
     {
       "design_no": "0466",
       "design_code": "0466",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Plum Flower",
       "description": "Pocket - Plum Flower",
       "category": "Garden",
@@ -9651,6 +9955,8 @@
     {
       "design_no": "0040",
       "design_code": "0040",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Twin Hearts(Love)",
       "description": "Twin Hearts(Love)",
       "category": "Heart",
@@ -9691,6 +9997,8 @@
     {
       "design_no": "0168",
       "design_code": "0168",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Heart(Heart)",
       "description": "Mini Heart(Heart)",
       "category": "Heart",
@@ -9731,6 +10039,8 @@
     {
       "design_no": "0169",
       "design_code": "0169",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Heart(Arrow)",
       "description": "Mini Heart(Arrow)",
       "category": "Heart",
@@ -9787,6 +10097,8 @@
     {
       "design_no": "0172",
       "design_code": "0172",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Heart(w/ Slot)",
       "description": "Mini Heart(w/ Slot)",
       "category": "Heart",
@@ -9843,6 +10155,8 @@
     {
       "design_no": "0173",
       "design_code": "0173",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Heart & Rose",
       "description": "Heart & Rose",
       "category": "Heart",
@@ -9899,6 +10213,8 @@
     {
       "design_no": "0175",
       "design_code": "0175",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Heart & Tulip",
       "description": "Heart & Tulip",
       "category": "Heart",
@@ -9955,6 +10271,8 @@
     {
       "design_no": "0229",
       "design_code": "0229",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Heart (Love)",
       "description": "Mini Heart (Love)",
       "category": "Heart",
@@ -10011,6 +10329,8 @@
     {
       "design_no": "0365",
       "design_code": "0365",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Carriage",
       "description": "Pocket - Carriage",
       "category": "Heart",
@@ -10067,6 +10387,8 @@
     {
       "design_no": "0377",
       "design_code": "0377",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Blooming Heart",
       "description": "Blooming Heart",
       "category": "Heart",
@@ -10107,6 +10429,8 @@
     {
       "design_no": "0379",
       "design_code": "0379",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Leafy Heart",
       "description": "Leafy Heart",
       "category": "Heart",
@@ -10163,6 +10487,8 @@
     {
       "design_no": "0380",
       "design_code": "0380",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Sweet Heart",
       "description": "Sweet Heart",
       "category": "Heart",
@@ -10203,6 +10529,8 @@
     {
       "design_no": "0042",
       "design_code": "0042",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Heart",
       "description": "Heart",
       "category": "Heart",
@@ -10259,6 +10587,8 @@
     {
       "design_no": "0064",
       "design_code": "0064",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Hugging Heart",
       "description": "Hugging Heart",
       "category": "Heart",
@@ -10315,6 +10645,8 @@
     {
       "design_no": "0378",
       "design_code": "0378",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Love Drop",
       "description": "Love Drop",
       "category": "Heart",
@@ -10371,6 +10703,8 @@
     {
       "design_no": "0121",
       "design_code": "0121",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Tennis Racquet",
       "description": "Tennis Racquet",
       "category": "Hobby & Sport",
@@ -10427,6 +10761,8 @@
     {
       "design_no": "0145",
       "design_code": "0145",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Coffee Pot",
       "description": "Coffee Pot",
       "category": "Hobby & Sport",
@@ -10467,6 +10803,8 @@
     {
       "design_no": "0279",
       "design_code": "0279",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Guitar A",
       "description": "Guitar A",
       "category": "Hobby & Sport",
@@ -10523,6 +10861,8 @@
     {
       "design_no": "0320",
       "design_code": "0320",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Antique Scale",
       "description": "Antique Scale",
       "category": "Hobby & Sport",
@@ -10579,6 +10919,8 @@
     {
       "design_no": "0465",
       "design_code": "0465",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Crown",
       "description": "Pocket - Crown",
       "category": "Hobby & Sport",
@@ -10619,6 +10961,8 @@
     {
       "design_no": "0103",
       "design_code": "0103",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Music Note",
       "description": "Music Note",
       "category": "Hobby & Sport",
@@ -10675,6 +11019,8 @@
     {
       "design_no": "0046",
       "design_code": "0046",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Lighthouse",
       "description": "Lighthouse",
       "category": "Religious",
@@ -10731,6 +11077,8 @@
     {
       "design_no": "0167",
       "design_code": "0167",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Celtic Cross",
       "description": "Celtic Cross",
       "category": "Religious",
@@ -10771,6 +11119,8 @@
     {
       "design_no": "0251",
       "design_code": "0251",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Holy Cross with Bible",
       "description": "Holy Cross with Bible",
       "category": "Religious",
@@ -10827,6 +11177,8 @@
     {
       "design_no": "0271",
       "design_code": "0271",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Church",
       "description": "Pocket - Church",
       "category": "Religious",
@@ -10883,6 +11235,8 @@
     {
       "design_no": "0058",
       "design_code": "0058",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Snowflake",
       "description": "Snowflake",
       "category": "Seasonal",
@@ -10939,6 +11293,8 @@
     {
       "design_no": "0083",
       "design_code": "0083",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Sunburst",
       "description": "Mini Sunburst",
       "category": "Seasonal",
@@ -10995,6 +11351,8 @@
     {
       "design_no": "0141",
       "design_code": "0141",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Gift",
       "description": "Pocket - Gift",
       "category": "Seasonal",
@@ -11051,6 +11409,8 @@
     {
       "design_no": "0300",
       "design_code": "0300",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Snowman",
       "description": "Pocket - Snowman",
       "category": "Seasonal",
@@ -11091,6 +11451,8 @@
     {
       "design_no": "0301",
       "design_code": "0301",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Santa Claus",
       "description": "Pocket - Santa Claus",
       "category": "Seasonal",
@@ -11147,6 +11509,8 @@
     {
       "design_no": "0302",
       "design_code": "0302",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Sock",
       "description": "Pocket - Sock",
       "category": "Seasonal",
@@ -11203,6 +11567,8 @@
     {
       "design_no": "0303",
       "design_code": "0303",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Sledge",
       "description": "Pocket - Sledge",
       "category": "Seasonal",
@@ -11259,6 +11625,8 @@
     {
       "design_no": "0010",
       "design_code": "0010",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Sacred Angel(Hymn Book)",
       "description": "Sacred Angel(Hymn Book)",
       "category": "Angel",
@@ -11299,6 +11667,8 @@
     {
       "design_no": "0011",
       "design_code": "0011",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Sacred Angel(Lyre)",
       "description": "Sacred Angel(Lyre)",
       "category": "Angel",
@@ -11339,6 +11709,8 @@
     {
       "design_no": "0024",
       "design_code": "0024",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Sacred Angel(Dove)",
       "description": "Mini Sacred Angel(Dove)",
       "category": "Angel",
@@ -11379,6 +11751,8 @@
     {
       "design_no": "0246",
       "design_code": "0246",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Graceful Angel(Heart)",
       "description": "Graceful Angel(Heart)",
       "category": "Angel",
@@ -11419,6 +11793,8 @@
     {
       "design_no": "0015",
       "design_code": "0015",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Guardian Angel(Heart)",
       "description": "Guardian Angel(Heart)",
       "category": "Angel",
@@ -11459,6 +11835,8 @@
     {
       "design_no": "0106",
       "design_code": "0106",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Junior Angel(Doves)",
       "description": "Junior Angel(Doves)",
       "category": "Angel",
@@ -11499,6 +11877,8 @@
     {
       "design_no": "0108",
       "design_code": "0108",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Junior Angel(Lyre)",
       "description": "Junior Angel(Lyre)",
       "category": "Angel",
@@ -11539,6 +11919,8 @@
     {
       "design_no": "0153",
       "design_code": "0153",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Junior Angel(Candle)",
       "description": "Junior Angel(Candle)",
       "category": "Angel",
@@ -11579,6 +11961,8 @@
     {
       "design_no": "0008",
       "design_code": "0008",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Dove",
       "description": "Dove",
       "category": "Bird & Animal",
@@ -11619,6 +12003,8 @@
     {
       "design_no": "0035",
       "design_code": "0035",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Turtle",
       "description": "Turtle",
       "category": "Bird & Animal",
@@ -11659,6 +12045,8 @@
     {
       "design_no": "0089",
       "design_code": "0089",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Spotted Owl",
       "description": "Mini Spotted Owl",
       "category": "Bird & Animal",
@@ -11699,6 +12087,8 @@
     {
       "design_no": "0139",
       "design_code": "0139",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Schnauzer Dog",
       "description": "Schnauzer Dog",
       "category": "Bird & Animal",
@@ -11739,6 +12129,8 @@
     {
       "design_no": "0253",
       "design_code": "0253",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Bull",
       "description": "Bull",
       "category": "Bird & Animal",
@@ -11779,6 +12171,8 @@
     {
       "design_no": "0360",
       "design_code": "0360",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Camel",
       "description": "Camel",
       "category": "Bird & Animal",
@@ -11819,6 +12213,8 @@
     {
       "design_no": "0277",
       "design_code": "0277",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Dog",
       "description": "Pocket - Dog",
       "category": "Bird & Animal",
@@ -11859,6 +12255,8 @@
     {
       "design_no": "0278",
       "design_code": "0278",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Teddy Bear",
       "description": "Pocket - Teddy Bear",
       "category": "Bird & Animal",
@@ -11899,6 +12297,8 @@
     {
       "design_no": "0363",
       "design_code": "0363",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Scorpio",
       "description": "Scorpio",
       "category": "Bird & Animal",
@@ -11939,6 +12339,8 @@
     {
       "design_no": "0119",
       "design_code": "0119",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Hooded Owl",
       "description": "Hooded Owl",
       "category": "Bird & Animal",
@@ -11979,6 +12381,8 @@
     {
       "design_no": "0122",
       "design_code": "0122",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Penguin",
       "description": "Penguin",
       "category": "Bird & Animal",
@@ -12019,6 +12423,8 @@
     {
       "design_no": "0115",
       "design_code": "0115",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Comma Butterfly",
       "description": "Comma Butterfly",
       "category": "Garden",
@@ -12059,6 +12465,8 @@
     {
       "design_no": "0235",
       "design_code": "0235",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Sunflower(Lrg) - B",
       "description": "Sunflower(Lrg) - B",
       "category": "Garden",
@@ -12099,6 +12507,8 @@
     {
       "design_no": "0174",
       "design_code": "0174",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Heart & Sunflower",
       "description": "Heart & Sunflower",
       "category": "Heart",
@@ -12139,6 +12549,8 @@
     {
       "design_no": "0230",
       "design_code": "0230",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Heart (Birthstone)",
       "description": "Mini Heart (Birthstone)",
       "category": "Heart",
@@ -12179,6 +12591,8 @@
     {
       "design_no": "0337",
       "design_code": "0337",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Love",
       "description": "Pocket - Love",
       "category": "Heart",
@@ -12219,6 +12633,8 @@
     {
       "design_no": "0338",
       "design_code": "0338",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Twin Hearts",
       "description": "Pocket - Twin Hearts",
       "category": "Heart",
@@ -12259,6 +12675,8 @@
     {
       "design_no": "0063",
       "design_code": "0063",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Sweet Heart",
       "description": "Sweet Heart",
       "category": "Heart",
@@ -12299,6 +12717,8 @@
     {
       "design_no": "0032",
       "design_code": "0032",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Treble Clef",
       "description": "Treble Clef",
       "category": "Hobby & Sport",
@@ -12339,6 +12759,8 @@
     {
       "design_no": "0102",
       "design_code": "0102",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Double Music Note",
       "description": "Double Music Note",
       "category": "Hobby & Sport",
@@ -12379,6 +12801,8 @@
     {
       "design_no": "0272",
       "design_code": "0272",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Hot Air Balloon",
       "description": "Pocket - Hot Air Balloon",
       "category": "Hobby & Sport",
@@ -12419,6 +12843,8 @@
     {
       "design_no": "0241",
       "design_code": "0241",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Holy Cross",
       "description": "Holy Cross",
       "category": "Religious",
@@ -12459,6 +12885,8 @@
     {
       "design_no": "0070",
       "design_code": "0070",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Crystal Egg",
       "description": "Crystal Egg",
       "category": "Seasonal",
@@ -12499,6 +12927,8 @@
     {
       "design_no": "0242",
       "design_code": "0242",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Mitten",
       "description": "Pocket - Mitten",
       "category": "Seasonal",
@@ -12539,6 +12969,8 @@
     {
       "design_no": "0299",
       "design_code": "0299",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Bell",
       "description": "Pocket - Bell",
       "category": "Seasonal",
@@ -12579,6 +13011,8 @@
     {
       "design_no": "0112",
       "design_code": "0112",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "B-fly Fairy(Star)",
       "description": "B-fly Fairy(Star)",
       "category": "Fairy",
@@ -12619,6 +13053,8 @@
     {
       "design_no": "0450",
       "design_code": "0450",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket Zodiac - Aries",
       "description": "Cute Pocket Zodiac - Aries",
       "category": "Zodiac",
@@ -12675,6 +13111,8 @@
     {
       "design_no": "0451",
       "design_code": "0451",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket Zodiac - Taurus",
       "description": "Cute Pocket Zodiac - Taurus",
       "category": "Zodiac",
@@ -12731,6 +13169,8 @@
     {
       "design_no": "0452",
       "design_code": "0452",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket Zodiac - Gemini",
       "description": "Cute Pocket Zodiac - Gemini",
       "category": "Zodiac",
@@ -12787,6 +13227,8 @@
     {
       "design_no": "0453",
       "design_code": "0453",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket Zodiac - Cancer",
       "description": "Cute Pocket Zodiac - Cancer",
       "category": "Zodiac",
@@ -12843,6 +13285,8 @@
     {
       "design_no": "0454",
       "design_code": "0454",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket Zodiac - Leo",
       "description": "Cute Pocket Zodiac - Leo",
       "category": "Zodiac",
@@ -12899,6 +13343,8 @@
     {
       "design_no": "0455",
       "design_code": "0455",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket Zodiac - Virgo",
       "description": "Cute Pocket Zodiac - Virgo",
       "category": "Zodiac",
@@ -12955,6 +13401,8 @@
     {
       "design_no": "0456",
       "design_code": "0456",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket Zodiac - Libra",
       "description": "Cute Pocket Zodiac - Libra",
       "category": "Zodiac",
@@ -13011,6 +13459,8 @@
     {
       "design_no": "0457",
       "design_code": "0457",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket Zodiac - Scorpio",
       "description": "Cute Pocket Zodiac - Scorpio",
       "category": "Zodiac",
@@ -13067,6 +13517,8 @@
     {
       "design_no": "0458",
       "design_code": "0458",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket Zodiac - Sagittarius",
       "description": "Cute Pocket Zodiac - Sagittarius",
       "category": "Zodiac",
@@ -13123,6 +13575,8 @@
     {
       "design_no": "0459",
       "design_code": "0459",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket Zodiac - Capricorn",
       "description": "Cute Pocket Zodiac - Capricorn",
       "category": "Zodiac",
@@ -13179,6 +13633,8 @@
     {
       "design_no": "0460",
       "design_code": "0460",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket Zodiac - Aquarius",
       "description": "Cute Pocket Zodiac - Aquarius",
       "category": "Zodiac",
@@ -13235,6 +13691,8 @@
     {
       "design_no": "0461",
       "design_code": "0461",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket Zodiac - Pisces",
       "description": "Cute Pocket Zodiac - Pisces",
       "category": "Zodiac",
@@ -13291,6 +13749,8 @@
     {
       "design_no": "0037",
       "design_code": "0037",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Twin Hearts - Zinc alloy Mini Oval Base with Round Plaque",
       "description": "Twin Hearts - Zinc alloy Mini Oval Base with Round Plaque",
       "category": "Sentiment Heart",
@@ -13331,6 +13791,8 @@
     {
       "design_no": "0040",
       "design_code": "0040",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Twin Hearts(Love) - Zinc alloy Mini Oval Base with Round Plaque",
       "description": "Twin Hearts(Love) - Zinc alloy Mini Oval Base with Round Plaque",
       "category": "Sentiment Heart",
@@ -13371,6 +13833,8 @@
     {
       "design_no": "0043",
       "design_code": "0043",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Heart - Zinc alloy Mobile Freestand with Black Pad Print",
       "description": "Mini Heart - Zinc alloy Mobile Freestand with Black Pad Print",
       "category": "Sentiment Heart",
@@ -13427,6 +13891,8 @@
     {
       "design_no": "0168",
       "design_code": "0168",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Heart(Heart) - Zinc alloy Mobile Freestand with Black Pad Print",
       "description": "Mini Heart(Heart) - Zinc alloy Mobile Freestand with Black Pad Print",
       "category": "Sentiment Heart",
@@ -13483,6 +13949,8 @@
     {
       "design_no": "0168",
       "design_code": "0168",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Heart(Heart) - Zinc alloy Mini Oval Base with Round Plaque",
       "description": "Mini Heart(Heart) - Zinc alloy Mini Oval Base with Round Plaque",
       "category": "Sentiment Heart",
@@ -13523,6 +13991,8 @@
     {
       "design_no": "0169",
       "design_code": "0169",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Heart(Arrow) - Zinc alloy Mini Oval Base with Round Plaque",
       "description": "Mini Heart(Arrow) - Zinc alloy Mini Oval Base with Round Plaque",
       "category": "Sentiment Heart",
@@ -13579,6 +14049,8 @@
     {
       "design_no": "0171",
       "design_code": "0171",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Heart(Doves) - Zinc alloy Mobile Freestand with Black Pad Print",
       "description": "Mini Heart(Doves) - Zinc alloy Mobile Freestand with Black Pad Print",
       "category": "Sentiment Heart",
@@ -13635,6 +14107,8 @@
     {
       "design_no": "0172",
       "design_code": "0172",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Heart(w/ Slot) - Zinc alloy Mini Oval Base with Round Plaque",
       "description": "Mini Heart(w/ Slot) - Zinc alloy Mini Oval Base with Round Plaque",
       "category": "Sentiment Heart",
@@ -13691,6 +14165,8 @@
     {
       "design_no": "0229",
       "design_code": "0229",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Heart (Love) - Zinc alloy Mobile Freestand with Black Pad Print",
       "description": "Mini Heart (Love) - Zinc alloy Mobile Freestand with Black Pad Print",
       "category": "Sentiment Heart",
@@ -13747,6 +14223,8 @@
     {
       "design_no": "0229",
       "design_code": "0229",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Mini Heart (Love) - Zinc alloy Mini Oval Base with Round Plaque",
       "description": "Mini Heart (Love) - Zinc alloy Mini Oval Base with Round Plaque",
       "category": "Sentiment Heart",
@@ -13787,6 +14265,8 @@
     {
       "design_no": "0337",
       "design_code": "0337",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Love - Zinc alloy Mobile Freestand with Black Pad Print",
       "description": "Pocket - Love - Zinc alloy Mobile Freestand with Black Pad Print",
       "category": "Sentiment Heart",
@@ -13827,6 +14307,8 @@
     {
       "design_no": "0337",
       "design_code": "0337",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Love - Zinc alloy Mini Oval Base with Round Plaque",
       "description": "Pocket - Love - Zinc alloy Mini Oval Base with Round Plaque",
       "category": "Sentiment Heart",
@@ -13867,6 +14349,8 @@
     {
       "design_no": "0338",
       "design_code": "0338",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Twin Hearts - Zinc alloy Mobile Freestand with Black Pad Print",
       "description": "Pocket - Twin Hearts - Zinc alloy Mobile Freestand with Black Pad Print",
       "category": "Sentiment Heart",
@@ -13923,6 +14407,8 @@
     {
       "design_no": "0338",
       "design_code": "0338",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Twin Hearts - Zinc alloy Mini Oval Base with Round Plaque",
       "description": "Pocket - Twin Hearts - Zinc alloy Mini Oval Base with Round Plaque",
       "category": "Sentiment Heart",
@@ -13963,6 +14449,8 @@
     {
       "design_no": "0377",
       "design_code": "0377",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Blooming Heart - Zinc alloy Mobile Freestand with Black Pad Print",
       "description": "Blooming Heart - Zinc alloy Mobile Freestand with Black Pad Print",
       "category": "Sentiment Heart",
@@ -14019,6 +14507,8 @@
     {
       "design_no": "0377",
       "design_code": "0377",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Blooming Heart - Zinc alloy Mini Oval Base with Round Plaque",
       "description": "Blooming Heart - Zinc alloy Mini Oval Base with Round Plaque",
       "category": "Sentiment Heart",
@@ -14059,6 +14549,8 @@
     {
       "design_no": "0379",
       "design_code": "0379",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Leafy Heart - Zinc alloy Mini Oval Base with Round Plaque",
       "description": "Leafy Heart - Zinc alloy Mini Oval Base with Round Plaque",
       "category": "Sentiment Heart",
@@ -14115,6 +14607,8 @@
     {
       "design_no": "0380",
       "design_code": "0380",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Sweet Heart - Zinc alloy Mobile Freestand with Black Pad Print",
       "description": "Sweet Heart - Zinc alloy Mobile Freestand with Black Pad Print",
       "category": "Sentiment Heart",
@@ -14171,6 +14665,8 @@
     {
       "design_no": "0380",
       "design_code": "0380",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Sweet Heart - Zinc alloy Mini Oval Base with Round Plaque",
       "description": "Sweet Heart - Zinc alloy Mini Oval Base with Round Plaque",
       "category": "Sentiment Heart",
@@ -14211,6 +14707,8 @@
     {
       "design_no": "0582",
       "design_code": "0582",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Twins Love Heart - Zinc alloy Mobile Freestand with Black Pad Print",
       "description": "Twins Love Heart - Zinc alloy Mobile Freestand with Black Pad Print",
       "category": "Sentiment Heart",
@@ -14251,6 +14749,8 @@
     {
       "design_no": "0042",
       "design_code": "0042",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Heart",
       "description": "Heart",
       "category": "Sentiment Heart",
@@ -14307,6 +14807,8 @@
     {
       "design_no": "0064",
       "design_code": "0064",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Hugging Heart",
       "description": "Hugging Heart",
       "category": "Sentiment Heart",
@@ -14363,6 +14865,8 @@
     {
       "design_no": "0378",
       "design_code": "0378",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Love Drop",
       "description": "Love Drop",
       "category": "Sentiment Heart",
@@ -14419,6 +14923,8 @@
     {
       "design_no": "0269",
       "design_code": "0269",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Tropical Fish - Metal Bookmark",
       "description": "Pocket - Tropical Fish - Metal Bookmark",
       "category": "Bookmark",
@@ -14459,6 +14965,8 @@
     {
       "design_no": "0274",
       "design_code": "0274",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Elephant - Metal Bookmark",
       "description": "Pocket - Elephant - Metal Bookmark",
       "category": "Bookmark",
@@ -14499,6 +15007,8 @@
     {
       "design_no": "0276",
       "design_code": "0276",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Dolphin - Metal Bookmark",
       "description": "Pocket - Dolphin - Metal Bookmark",
       "category": "Bookmark",
@@ -14539,6 +15049,8 @@
     {
       "design_no": "0278",
       "design_code": "0278",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Teddy Bear - Metal Bookmark",
       "description": "Pocket - Teddy Bear - Metal Bookmark",
       "category": "Bookmark",
@@ -14579,6 +15091,8 @@
     {
       "design_no": "0286",
       "design_code": "0286",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Sea Shell - Letter Opener",
       "description": "Pocket - Sea Shell - Letter Opener",
       "category": "Bookmark",
@@ -14635,6 +15149,8 @@
     {
       "design_no": "0292",
       "design_code": "0292",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Butterfly - Metal Bookmark",
       "description": "Pocket - Butterfly - Metal Bookmark",
       "category": "Bookmark",
@@ -14691,6 +15207,8 @@
     {
       "design_no": "0292",
       "design_code": "0292",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Butterfly - Letter Opener",
       "description": "Pocket - Butterfly - Letter Opener",
       "category": "Bookmark",
@@ -14731,6 +15249,8 @@
     {
       "design_no": "0324",
       "design_code": "0324",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Emperor Butterfly - Metal Bookmark",
       "description": "Pocket - Emperor Butterfly - Metal Bookmark",
       "category": "Bookmark",
@@ -14787,6 +15307,8 @@
     {
       "design_no": "0396",
       "design_code": "0396",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket - Elephant - Letter Opener",
       "description": "Cute Pocket - Elephant - Letter Opener",
       "category": "Bookmark",
@@ -14843,6 +15365,8 @@
     {
       "design_no": "0397",
       "design_code": "0397",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket - Ladybug - Letter Opener",
       "description": "Cute Pocket - Ladybug - Letter Opener",
       "category": "Bookmark",
@@ -14883,6 +15407,8 @@
     {
       "design_no": "0399",
       "design_code": "0399",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket Chinese Zodiac - Dragon - Metal Bookmark",
       "description": "Cute Pocket Chinese Zodiac - Dragon - Metal Bookmark",
       "category": "Bookmark",
@@ -14923,6 +15449,8 @@
     {
       "design_no": "0401",
       "design_code": "0401",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket Chinese Zodiac - Horse - Metal Bookmark",
       "description": "Cute Pocket Chinese Zodiac - Horse - Metal Bookmark",
       "category": "Bookmark",
@@ -14979,6 +15507,8 @@
     {
       "design_no": "0404",
       "design_code": "0404",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket Chinese Zodiac - Rooster - Metal Bookmark",
       "description": "Cute Pocket Chinese Zodiac - Rooster - Metal Bookmark",
       "category": "Bookmark",
@@ -15035,6 +15565,8 @@
     {
       "design_no": "0405",
       "design_code": "0405",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket Chinese Zodiac - Dog - Metal Bookmark",
       "description": "Cute Pocket Chinese Zodiac - Dog - Metal Bookmark",
       "category": "Bookmark",
@@ -15075,6 +15607,8 @@
     {
       "design_no": "0290",
       "design_code": "0290",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Heart - Letter Opener",
       "description": "Pocket - Heart - Letter Opener",
       "category": "Bookmark",
@@ -15131,6 +15665,8 @@
     {
       "design_no": "0337",
       "design_code": "0337",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Love - Metal Bookmark",
       "description": "Pocket - Love - Metal Bookmark",
       "category": "Bookmark",
@@ -15171,6 +15707,8 @@
     {
       "design_no": "0338",
       "design_code": "0338",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Twin Hearts - Metal Bookmark",
       "description": "Pocket - Twin Hearts - Metal Bookmark",
       "category": "Bookmark",
@@ -15211,6 +15749,8 @@
     {
       "design_no": "0339",
       "design_code": "0339",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Rose - Metal Bookmark",
       "description": "Pocket - Rose - Metal Bookmark",
       "category": "Bookmark",
@@ -15267,6 +15807,8 @@
     {
       "design_no": "0365",
       "design_code": "0365",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Carriage - Metal Bookmark",
       "description": "Pocket - Carriage - Metal Bookmark",
       "category": "Bookmark",
@@ -15323,6 +15865,8 @@
     {
       "design_no": "0377",
       "design_code": "0377",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Blooming Heart - Metal Bookmark",
       "description": "Blooming Heart - Metal Bookmark",
       "category": "Bookmark",
@@ -15363,6 +15907,8 @@
     {
       "design_no": "0379",
       "design_code": "0379",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Leafy Heart - Metal Bookmark",
       "description": "Leafy Heart - Metal Bookmark",
       "category": "Bookmark",
@@ -15419,6 +15965,8 @@
     {
       "design_no": "0380",
       "design_code": "0380",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Sweet Heart - Metal Bookmark",
       "description": "Sweet Heart - Metal Bookmark",
       "category": "Bookmark",
@@ -15475,6 +16023,8 @@
     {
       "design_no": "0378",
       "design_code": "0378",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Love Drop - Metal Bookmark",
       "description": "Love Drop - Metal Bookmark",
       "category": "Bookmark",
@@ -15515,6 +16065,8 @@
     {
       "design_no": "0393",
       "design_code": "0393",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Cute Pocket - Crown - Letter Opener",
       "description": "Cute Pocket - Crown - Letter Opener",
       "category": "Bookmark",
@@ -15555,6 +16107,8 @@
     {
       "design_no": "0226",
       "design_code": "0226",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Sweetie Angel - Metal Bookmark",
       "description": "Pocket - Sweetie Angel - Metal Bookmark",
       "category": "Bookmark",
@@ -15595,6 +16149,8 @@
     {
       "design_no": "0289",
       "design_code": "0289",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Angel - Letter Opener",
       "description": "Pocket - Angel - Letter Opener",
       "category": "Bookmark",
@@ -15635,6 +16191,8 @@
     {
       "design_no": "0291",
       "design_code": "0291",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Swing - Metal Bookmark",
       "description": "Pocket - Swing - Metal Bookmark",
       "category": "Bookmark",
@@ -15675,6 +16233,8 @@
     {
       "design_no": "0291",
       "design_code": "0291",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Swing - Letter Opener",
       "description": "Pocket - Swing - Letter Opener",
       "category": "Bookmark",
@@ -15715,6 +16275,8 @@
     {
       "design_no": "0325",
       "design_code": "0325",
+      "body_code": "",
+      "body_name": "Metal",
       "design_name": "Pocket - Thorns Cross - Metal Bookmark",
       "description": "Pocket - Thorns Cross - Metal Bookmark",
       "category": "Bookmark",

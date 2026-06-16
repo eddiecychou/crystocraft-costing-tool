@@ -68,9 +68,19 @@ export const RANGE_PRODUCT_TYPES = [
 //   e.g. D0002-001-GC1  ->  design D0002, format 001 (freestand figurine),
 //   plating G (Gold), crystal colour C1, optional running-no for variations.
 
-// Item-code helpers: split the leading brand letter(s) from the design number
+// Item-code helpers. Leading letters = brand (1st letter) + optional body
+// letter (2nd). The numeric part is the design number (3 or 4 digits).
 export const designNumber = code => (code || '').replace(/^[A-Za-z]+/, '')
-export const brandLetter = code => ((code || '').match(/^[A-Za-z]+/) || [''])[0]
+export const brandLetter = code => ((code || '').match(/^[A-Za-z]/) || [''])[0]
+export const bodyLetter  = code => (((code || '').match(/^[A-Za-z]+/) || [''])[0]).slice(1)
+
+// Optional 2nd prefix letter = the design's body / type. Blank = normal metal.
+export const RANGE_BODY_TYPES = [
+  { code: '',  name: 'Metal' },
+  { code: 'A', name: 'Crystal body' },
+  { code: 'C', name: 'Glassware' },
+  { code: 'D', name: 'Display unit' },
+]
 
 // Lifecycle status: Active = current model; Stock = retired but stock remains
 export const RANGE_STATUSES = [

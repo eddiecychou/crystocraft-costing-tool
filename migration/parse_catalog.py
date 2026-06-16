@@ -26,6 +26,8 @@ SRC = "/Users/eddie/Desktop/RTS Stocks/WS Catalog/Catalog-WSPrice-20260602.xlsx"
 OUT = os.path.join(PROJ, "src", "data", "rangeProducts.json")
 
 BRAND_NAME = {"D": "Bohemia", "U": "Swarovski", "A": "Asfour / Chinese", "M": "Mixed"}
+# Second prefix letter = design body / type ("" = normal metal body)
+BODY_NAME = {"": "Metal", "A": "Crystal body", "C": "Glassware", "D": "Display unit"}
 PLATING_NAME = {"G": "Gold", "C": "Chrome", "R": "Rose Gold", "A": "Gun Metal", "M": "Mixed"}
 PT_MAP = {"001": "Figurine", "033": "Music Box", "231": "Mobile / Freestand",
           "232": "Mobile / Freestand", "163": "Bookmark", "175": "Bookmark"}
@@ -79,12 +81,14 @@ active_keys = set()
 warnings = []
 
 
-def get_product(design_no, fmt, meta):
-    key = (design_no, fmt)
+def get_product(design_no, body, fmt, meta):
+    key = (design_no, body, fmt)
     if key not in products:
         products[key] = {
             "design_no": design_no,
-            "design_code": design_no,
+            "design_code": body + design_no,
+            "body_code": body,
+            "body_name": BODY_NAME.get(body, body),
             "design_name": meta["name"],
             "description": meta["name"],
             "category": meta["cat"],
@@ -150,8 +154,9 @@ for sn in xl.sheet_names:
         if not m:
             warnings.append(f"UNPARSED {sn}: {code}")
             continue
-        brand, design_no, fmt, suf = m.groups()
-        design_no = design_no.zfill(4)
+        prefix, design_no, fmt, suf = m.groups()
+        brand = prefix[0]          # crystal brand (U/D/A/M/B/H…)
+        body = prefix[1:]          # body/type letter ("" = metal)
         plating, crystal = split_suffix(suf)
         desc = str(r[c_desc]).strip() if c_desc else code
         cat = (str(r[c_cat]).strip() if c_cat and pd.notna(r[c_cat]) else SHEET_CAT.get(sn, ""))
@@ -166,9 +171,9 @@ for sn in xl.sheet_names:
         }
         meta = {"name": clean_name(desc), "cat": cat, "size": size,
                 "status": "active" if is_active else "stock", "packing": packing}
-        p = get_product(design_no, fmt, meta)
+        p = get_product(design_no, body, fmt, meta)
         if is_active:
-            active_keys.add((design_no, fmt))
+            active_keys.add((design_no, body, fmt))
 
         price1 = num(r[c_price]) if c_price else None
         # Bohemia/colour-crystal variant uses the code's own brand letter
@@ -177,18 +182,18 @@ for sn in xl.sheet_names:
         if is_active and c_price2:
             price2 = num(r[c_price2])
             if price2 is not None:
-                a_sku = f"A{design_no}-{fmt}-{suf}"
+                a_sku = f"A{body}{design_no}-{fmt}-{suf}"
                 add_variant(p, "A", plating, crystal, a_sku, price2, None)
 
 
 # Finalise
 out = []
 multi_name = 0
-for (dno, fmt), p in products.items():
+for (dno, body, fmt), p in products.items():
     names = p.pop("_names")
     if len({n.lower() for n in names}) > 1:
         multi_name += 1
-        warnings.append(f"MERGE-CHECK {dno}-{fmt}: {sorted(names)}")
+        warnings.append(f"MERGE-CHECK {body}{dno}-{fmt}: {sorted(names)}")
     out.append(p)
 
 with open(OUT, "w") as f:

@@ -3,7 +3,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, getDocs, deleteDoc, doc
 import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import rangeData from '../data/rangeProducts.json'
-import { RANGE_PLATINGS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS, designNumber, brandLetter } from '../constants'
+import { RANGE_PLATINGS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS, designNumber, brandLetter, bodyLetter } from '../constants'
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
@@ -74,6 +74,8 @@ export default function Range() {
         const designNo = p.design_no || designNumber(p.design_code)
         await addDoc(collection(db, 'range_products'), {
           design_no: designNo,
+          body_code: p.body_code || '',
+          body_name: p.body_name || '',
           design_code: p.design_code || designNo,
           design_name: p.design_name || '',
           description: p.description || '',
@@ -124,13 +126,14 @@ export default function Range() {
   const items = useMemo(() => products.map(p => {
     const fallbackBrand = brandLetter(p.design_code) || 'D'
     const designNo = p.design_no || designNumber(p.design_code)
+    const body = p.body_code || bodyLetter(p.design_code)
     const variants = docVariants(p)
     const prices = variants.map(v => v.ws_price_usd).filter(x => x != null)
     const totalStock = variants.reduce((s, v) => s + (v.stock_finished > 0 ? v.stock_finished : 0), 0)
     const platings = [...new Set(variants.map(v => v.plating_name).filter(Boolean))]
     const brands = [...new Set(variants.map(v => v.brand_code || fallbackBrand).filter(Boolean))]
     const image = variants.find(v => v.image)?.image || (Array.isArray(p.gallery) && p.gallery[0]) || ''
-    const code = [designNo, p.format_code].filter(Boolean).join('-')
+    const code = [`${body}${designNo}`, p.format_code].filter(Boolean).join('-')
     return {
       id: p.id,
       code,

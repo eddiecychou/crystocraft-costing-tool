@@ -6,8 +6,10 @@ import { db, storage } from '../firebase'
 import {
   RANGE_DESIGN_TYPES, RANGE_PRODUCT_TYPES, RANGE_FORMAT_CODES,
   RANGE_PLATINGS, RANGE_CRYSTAL_COLORS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS,
-  designNumber, brandLetter,
+  RANGE_BODY_TYPES, designNumber, brandLetter, bodyLetter,
 } from '../constants'
+
+const BODY_NAME = Object.fromEntries(RANGE_BODY_TYPES.map(b => [b.code, b.name]))
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
@@ -27,7 +29,7 @@ const emptyPacking = () => ({
   cbm_per_carton: '', weight_per_carton_kg: '', weight_per_pcs_kg: '',
 })
 const blankForm = () => ({
-  design_no: '', design_name: '', description: '', category: '',
+  design_no: '', body_code: '', design_name: '', description: '', category: '',
   design_type: '', product_type: 'Figurine', format_code: '001',
   size: '', crystal_type: 'Bohemia', active: true, status: 'active',
   packing: emptyPacking(), gallery: [], variants: [emptyVariant()],
@@ -42,9 +44,10 @@ const PACKING_FIELDS = [
   { key: 'pack_box_ref', label: 'Pack / Box Ref', placeholder: 'P-…' },
 ]
 
-// Full SKU = {brand}{design_no}-{format}-{plating}{crystal}{running}  e.g. D0002-001-GC1
-function buildSku(designNo, format, v) {
-  const head = `${v.brand_code || ''}${designNo || ''}`
+// Full SKU = {brand}{body}{design_no}-{format}-{plating}{crystal}{running}
+//   e.g. D0002-001-GC1 (metal) or UA061-231-CC1 (crystal-body, body letter A)
+function buildSku(designNo, body, format, v) {
+  const head = `${v.brand_code || ''}${body || ''}${designNo || ''}`
   const suffix = `${v.plating_code || ''}${v.crystal_code || ''}${v.running_no || ''}`
   return [head, format || '', suffix].filter(Boolean).join('-')
 }
@@ -101,6 +104,7 @@ export default function RangeForm() {
         const fallbackBrand = brandLetter(d.design_code) || 'D'
         setForm({
           design_no: d.design_no || designNumber(d.design_code),
+          body_code: d.body_code || bodyLetter(d.design_code),
           design_name: d.design_name || '',
           description: d.description || '',
           category: d.category || '',
@@ -202,10 +206,13 @@ export default function RangeForm() {
     if (!form.format_code.trim()) { setError('Product type code (e.g. 001) is required.'); return }
     setSaving(true); setError('')
     const designNo = form.design_no.trim()
+    const body = (form.body_code || '').trim()
     const format = form.format_code.trim()
     const payload = {
       design_no: designNo,
-      design_code: designNo,   // kept for list ordering / back-compat
+      body_code: body,
+      body_name: BODY_NAME[body] || '',
+      design_code: body + designNo,   // kept for list ordering / back-compat
       design_name: form.design_name.trim(),
       description: form.description.trim(),
       category: form.category.trim(),
@@ -223,7 +230,7 @@ export default function RangeForm() {
         plating_code: v.plating_code.trim(), plating_name: v.plating_name.trim(),
         crystal_code: v.crystal_code.trim(), crystal_name: v.crystal_name.trim(),
         description: v.description.trim(), running_no: v.running_no.trim(),
-        sku: buildSku(designNo, format, {
+        sku: buildSku(designNo, body, format, {
           brand_code: v.brand_code.trim(), plating_code: v.plating_code.trim(),
           crystal_code: v.crystal_code.trim(), running_no: v.running_no.trim(),
         }),
@@ -252,7 +259,7 @@ export default function RangeForm() {
   if (fetching) return <LoadingBar />
   if (!form) return <div className="p-6 text-ink-60">Product not found. <Link to="/range" className="text-brand-600">Back to Figurine Gifts</Link></div>
 
-  const productCode = [form.design_no, form.format_code].filter(Boolean).join('-')
+  const productCode = [`${form.body_code || ''}${form.design_no}`, form.format_code].filter(Boolean).join('-')
 
   return (
     <div className="p-4 md:p-6 max-w-3xl">
@@ -269,12 +276,21 @@ export default function RangeForm() {
       <form onSubmit={handleSave} className="space-y-5">
         {/* Core fields */}
         <div className="card p-5 space-y-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <label className="label">Design No.</label>
               <input className="input font-mono" value={form.design_no} inputMode="numeric" maxLength={4}
                      onChange={e => setForm(f => ({ ...f, design_no: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
                      placeholder="0002" required />
+              <p className="text-[10px] text-ink-50 mt-0.5">3 or 4 digits</p>
+            </div>
+            <div>
+              <label className="label">Body / Type</label>
+              <select className="input" value={form.body_code || ''} onChange={set('body_code')}>
+                {RANGE_BODY_TYPES.map(b => (
+                  <option key={b.code} value={b.code}>{b.code ? `${b.code} — ${b.name}` : b.name}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="label">Product Type</label>
@@ -293,8 +309,9 @@ export default function RangeForm() {
           <p className="text-[11px] text-ink-60 -mt-2">
             Product <span className="font-mono text-ink-80">{productCode || '…'}</span>.
             Each variant's full SKU = crystal brand + this + plating / crystal colour
-            (e.g. <span className="font-mono">D{form.design_no || '0002'}-{form.format_code || '001'}-GC1</span>).
+            (e.g. <span className="font-mono">D{form.body_code || ''}{form.design_no || '0002'}-{form.format_code || '001'}-GC1</span>).
             Brands: D = Bohemia · U = Swarovski · A = Asfour/Chinese · M = Mixed.
+            Body letter (optional): A = Crystal body · C = Glassware · D = Display unit.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -385,7 +402,7 @@ export default function RangeForm() {
           <p className="text-xs text-ink-60 mb-3">Each plating / crystal-colour combination is one SKU. The full code is built automatically.</p>
           <div className="space-y-4">
             {form.variants.map((v, i) => {
-              const sku = buildSku(form.design_no, form.format_code, v)
+              const sku = buildSku(form.design_no, form.body_code, form.format_code, v)
               return (
                 <div key={i} className="border border-ivory-dark p-3">
                   <div className="flex items-start gap-3">
