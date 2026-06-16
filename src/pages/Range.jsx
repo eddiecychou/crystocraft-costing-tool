@@ -3,7 +3,9 @@ import { collection, query, orderBy, onSnapshot, addDoc, getDocs, deleteDoc, doc
 import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import rangeData from '../data/rangeProducts.json'
-import { RANGE_PLATINGS, RANGE_STATUSES } from '../constants'
+import { RANGE_PLATINGS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS, designNumber, brandLetter } from '../constants'
+
+const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
 
 const PLATING_DOT = Object.fromEntries(RANGE_PLATINGS.map(p => [p.name, p.dot]))
@@ -69,8 +71,11 @@ export default function Range() {
       }
       let n = 0
       for (const p of rangeData.products) {
+        const brand = brandLetter(p.design_code) || 'D'
+        const designNo = designNumber(p.design_code)
         await addDoc(collection(db, 'range_products'), {
-          design_code: p.design_code,
+          design_no: designNo,
+          design_code: designNo,
           design_name: p.design_name,
           description: p.description || '',
           category: p.category || '',
@@ -86,6 +91,8 @@ export default function Range() {
           },
           active: true,
           variants: p.finishes.map(f => ({
+            brand_code: brand,
+            brand_name: BRAND_NAME[brand] || '',
             plating_code: f.finish_code || '',
             plating_name: f.finish_name || '',
             crystal_code: '',
@@ -112,23 +119,27 @@ export default function Range() {
     }
   }
 
-  // One item per product (design + format); variations collapsed inside
+  // One item per product (design number + format); variations collapsed inside
   const items = useMemo(() => products.map(p => {
+    const fallbackBrand = brandLetter(p.design_code) || 'D'
+    const designNo = p.design_no || designNumber(p.design_code)
     const variants = docVariants(p)
     const prices = variants.map(v => v.ws_price_usd).filter(x => x != null)
     const totalStock = variants.reduce((s, v) => s + (v.stock_finished > 0 ? v.stock_finished : 0), 0)
     const platings = [...new Set(variants.map(v => v.plating_name).filter(Boolean))]
+    const brands = [...new Set(variants.map(v => v.brand_code || fallbackBrand).filter(Boolean))]
     const image = variants.find(v => v.image)?.image || (Array.isArray(p.gallery) && p.gallery[0]) || ''
+    const code = [designNo, p.format_code].filter(Boolean).join('-')
     return {
       id: p.id,
-      code: [p.design_code, p.format_code].filter(Boolean).join('-'),
-      name: p.description || p.design_name || [p.design_code, p.format_code].filter(Boolean).join('-'),
+      code,
+      name: p.description || p.design_name || code,
       design_type: p.design_type || p.category || '',
       product_type: p.product_type || '',
       size: p.size,
       active: p.active !== false,
       status: p.status === 'stock' ? 'stock' : 'active',
-      variants, platings, image,
+      variants, platings, brands, image,
       skus: variants.map(v => v.sku).filter(Boolean),
       minPrice: prices.length ? Math.min(...prices) : null,
       maxPrice: prices.length ? Math.max(...prices) : null,
@@ -282,7 +293,13 @@ function ProductCard({ s }) {
           </span>
         </div>
         <h3 className="text-sm leading-tight text-ink line-clamp-2" title={s.name}>{s.name}</h3>
-        <p className="text-[11px] text-ink-60 font-mono">{s.code}</p>
+        <div className="flex items-center gap-1 flex-wrap">
+          <p className="text-[11px] text-ink-60 font-mono">{s.code}</p>
+          {s.brands.map(b => (
+            <span key={b} className="text-[9px] uppercase tracking-wide bg-ivory text-ink-60 border border-ivory-dark rounded px-1 leading-tight"
+                  title={BRAND_NAME[b] || b}>{b}</span>
+          ))}
+        </div>
         <p className="text-[11px] text-ink-60">{s.size}</p>
         <div className="mt-auto pt-1.5 flex items-center justify-between">
           <span className="text-base text-ink">{priceRange(s.minPrice, s.maxPrice)}</span>

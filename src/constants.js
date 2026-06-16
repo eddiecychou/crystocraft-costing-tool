@@ -68,16 +68,33 @@ export const RANGE_PRODUCT_TYPES = [
 //   e.g. D0002-001-GC1  ->  design D0002, format 001 (freestand figurine),
 //   plating G (Gold), crystal colour C1, optional running-no for variations.
 
+// Item-code helpers: split the leading brand letter(s) from the design number
+export const designNumber = code => (code || '').replace(/^[A-Za-z]+/, '')
+export const brandLetter = code => ((code || '').match(/^[A-Za-z]+/) || [''])[0]
+
 // Lifecycle status: Active = current model; Stock = retired but stock remains
 export const RANGE_STATUSES = [
   { value: 'active', label: 'Active',          badge: 'bg-emerald-100 text-emerald-700' },
   { value: 'stock',  label: 'Stock clearance', badge: 'bg-amber-100 text-amber-700' },
 ]
 
+// First letter of the item code = crystal brand. The numeric part is the
+// actual design — U0002 / D0002 / A0002 / M0002 are the SAME design in
+// different crystal brands, so brand is a per-variant axis.
+export const RANGE_CRYSTAL_BRANDS = [
+  { code: 'D', name: 'Bohemia' },
+  { code: 'U', name: 'Swarovski' },
+  { code: 'A', name: 'Asfour / Chinese' },
+  { code: 'M', name: 'Mixed' },
+]
+
 // Middle segment = format code (what the design is built into)
 export const RANGE_FORMAT_CODES = [
   { code: '001', label: 'Freestand Figurine' },
   { code: '033', label: 'Music Box' },
+  { code: '231', label: 'Mobile Freestand' },
+  { code: '232', label: 'Mobile Freestand (Pad Print)' },
+  { code: '163', label: 'Metal Bookmark' },
 ]
 
 // Plating colour (first letter of the 3rd segment). Field is free-text —

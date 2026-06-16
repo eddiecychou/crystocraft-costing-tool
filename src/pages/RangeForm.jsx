@@ -5,24 +5,29 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { db, storage } from '../firebase'
 import {
   RANGE_DESIGN_TYPES, RANGE_PRODUCT_TYPES, RANGE_FORMAT_CODES,
-  RANGE_PLATINGS, RANGE_CRYSTAL_COLORS, RANGE_STATUSES,
+  RANGE_PLATINGS, RANGE_CRYSTAL_COLORS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS,
+  designNumber, brandLetter,
 } from '../constants'
+
+const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
 
 const emptyVariant = () => ({
+  brand_code: 'D', brand_name: 'Bohemia',
   plating_code: '', plating_name: '', crystal_code: '', crystal_name: '', description: '',
   running_no: '', ws_price_usd: '', stock_finished: '', packaging: '', engraving: '', image: '',
 })
 
-// Auto description = plating + crystal colour (falls back to raw codes)
+// Auto description = brand + plating + crystal colour (falls back to raw codes)
 const autoVariantDesc = v =>
-  [v.plating_name || v.plating_code, v.crystal_name || v.crystal_code].filter(Boolean).join(', ')
+  [v.brand_name || '', v.plating_name || v.plating_code, v.crystal_name || v.crystal_code]
+    .filter(Boolean).join(', ')
 const emptyPacking = () => ({
   carton_dims: '', pcs_per_carton: '', pack_box_ref: '',
   cbm_per_carton: '', weight_per_carton_kg: '', weight_per_pcs_kg: '',
 })
 const blankForm = () => ({
-  design_code: '', design_name: '', description: '', category: '',
+  design_no: '', design_name: '', description: '', category: '',
   design_type: '', product_type: 'Figurine', format_code: '001',
   size: '', crystal_type: 'Bohemia', active: true, status: 'active',
   packing: emptyPacking(), gallery: [], variants: [emptyVariant()],
@@ -37,26 +42,35 @@ const PACKING_FIELDS = [
   { key: 'pack_box_ref', label: 'Pack / Box Ref', placeholder: 'P-…' },
 ]
 
-// SKU = {design}-{format}-{plating}{crystal}{running}  e.g. D0002-001-GC1
-function buildSku(design, format, v) {
+// Full SKU = {brand}{design_no}-{format}-{plating}{crystal}{running}  e.g. D0002-001-GC1
+function buildSku(designNo, format, v) {
+  const head = `${v.brand_code || ''}${designNo || ''}`
   const suffix = `${v.plating_code || ''}${v.crystal_code || ''}${v.running_no || ''}`
-  return [design || '', format || '', suffix].filter(Boolean).join('-')
+  return [head, format || '', suffix].filter(Boolean).join('-')
 }
 
-// Read a stored doc (new `variants` shape, or legacy `finishes`) into the form
-function variantsFromDoc(d) {
+// Read a stored doc (new `variants` shape, or legacy `finishes`) into the form.
+// `fallbackBrand` = the brand letter from the doc's old design_code, used to
+// migrate variants that pre-date the per-variant brand field.
+function variantsFromDoc(d, fallbackBrand) {
   if (Array.isArray(d.variants) && d.variants.length) {
-    return d.variants.map(v => ({
-      plating_code: v.plating_code || '', plating_name: v.plating_name || '',
-      crystal_code: v.crystal_code || '', crystal_name: v.crystal_name || '',
-      description: v.description || '',
-      running_no: v.running_no || '',
-      ws_price_usd: v.ws_price_usd ?? '', stock_finished: v.stock_finished ?? '',
-      packaging: v.packaging || '', engraving: v.engraving || '', image: v.image || '',
-    }))
+    return d.variants.map(v => {
+      const code = v.brand_code || fallbackBrand || 'D'
+      return {
+        brand_code: code, brand_name: v.brand_name || BRAND_NAME[code] || '',
+        plating_code: v.plating_code || '', plating_name: v.plating_name || '',
+        crystal_code: v.crystal_code || '', crystal_name: v.crystal_name || '',
+        description: v.description || '',
+        running_no: v.running_no || '',
+        ws_price_usd: v.ws_price_usd ?? '', stock_finished: v.stock_finished ?? '',
+        packaging: v.packaging || '', engraving: v.engraving || '', image: v.image || '',
+      }
+    })
   }
   // Legacy: finishes[] carried only a single plating dimension
+  const code = fallbackBrand || 'D'
   return (d.finishes || []).map(f => ({
+    brand_code: code, brand_name: BRAND_NAME[code] || '',
     plating_code: f.finish_code || '', plating_name: f.finish_name || '',
     crystal_code: '', crystal_name: '', description: f.finish_name || '', running_no: '',
     ws_price_usd: f.ws_price_usd ?? '', stock_finished: f.stock_finished ?? '',
@@ -84,8 +98,9 @@ export default function RangeForm() {
     getDoc(doc(db, 'range_products', routeId)).then(snap => {
       if (snap.exists()) {
         const d = snap.data()
+        const fallbackBrand = brandLetter(d.design_code) || 'D'
         setForm({
-          design_code: d.design_code || '',
+          design_no: d.design_no || designNumber(d.design_code),
           design_name: d.design_name || '',
           description: d.description || '',
           category: d.category || '',
@@ -98,7 +113,7 @@ export default function RangeForm() {
           status: d.status || 'active',
           packing: { ...emptyPacking(), ...(d.packing || {}) },
           gallery: Array.isArray(d.gallery) ? d.gallery : [],
-          variants: variantsFromDoc(d),
+          variants: variantsFromDoc(d, fallbackBrand),
         })
       }
       setFetching(false)
@@ -122,7 +137,9 @@ export default function RangeForm() {
       const variants = [...f.variants]
       const prev = variants[i]
       const v = { ...prev }
-      if (kind === 'plating') {
+      if (kind === 'brand') {
+        v.brand_code = code; v.brand_name = BRAND_NAME[code] || ''
+      } else if (kind === 'plating') {
         const m = RANGE_PLATINGS.find(p => p.code === code)
         v.plating_code = code; v.plating_name = m ? m.name : ''
       } else {
@@ -137,6 +154,7 @@ export default function RangeForm() {
       return { ...f, variants }
     })
   }
+  const setBrand = i => e => applyCode(i, 'brand', e.target.value)
   const setPlating = i => e => applyCode(i, 'plating', e.target.value)
   const setCrystal = i => e => applyCode(i, 'crystal', e.target.value)
   const addVariant = () => setForm(f => ({ ...f, variants: [...f.variants, emptyVariant()] }))
@@ -180,13 +198,14 @@ export default function RangeForm() {
 
   async function handleSave(e) {
     e.preventDefault()
-    if (!form.design_code.trim()) { setError('Design code (e.g. D0002) is required.'); return }
-    if (!form.format_code.trim()) { setError('Format code (e.g. 001) is required.'); return }
+    if (!form.design_no.trim()) { setError('Design no. (e.g. 0002) is required.'); return }
+    if (!form.format_code.trim()) { setError('Product type code (e.g. 001) is required.'); return }
     setSaving(true); setError('')
-    const design = form.design_code.trim()
+    const designNo = form.design_no.trim()
     const format = form.format_code.trim()
     const payload = {
-      design_code: design,
+      design_no: designNo,
+      design_code: designNo,   // kept for list ordering / back-compat
       design_name: form.design_name.trim(),
       description: form.description.trim(),
       category: form.category.trim(),
@@ -200,11 +219,13 @@ export default function RangeForm() {
       packing: Object.fromEntries(PACKING_FIELDS.map(pf => [pf.key, (form.packing[pf.key] ?? '').toString().trim()])),
       gallery: form.gallery,
       variants: form.variants.map(v => ({
+        brand_code: v.brand_code.trim(), brand_name: v.brand_name.trim(),
         plating_code: v.plating_code.trim(), plating_name: v.plating_name.trim(),
         crystal_code: v.crystal_code.trim(), crystal_name: v.crystal_name.trim(),
         description: v.description.trim(), running_no: v.running_no.trim(),
-        sku: buildSku(design, format, {
-          plating_code: v.plating_code.trim(), crystal_code: v.crystal_code.trim(), running_no: v.running_no.trim(),
+        sku: buildSku(designNo, format, {
+          brand_code: v.brand_code.trim(), plating_code: v.plating_code.trim(),
+          crystal_code: v.crystal_code.trim(), running_no: v.running_no.trim(),
         }),
         ws_price_usd: num(v.ws_price_usd), stock_finished: intNum(v.stock_finished),
         packaging: v.packaging.trim(), engraving: v.engraving.trim(), image: v.image.trim(),
@@ -222,7 +243,7 @@ export default function RangeForm() {
   }
 
   async function handleDelete() {
-    if (!confirm(`Delete "${form.design_name || form.design_code}" permanently? (Tip: untick "Visible" to just hide it.)`)) return
+    if (!confirm(`Delete "${form.design_name || form.design_no}" permanently? (Tip: untick "Visible" to just hide it.)`)) return
     setSaving(true)
     try { await deleteDoc(doc(db, 'range_products', docId)); navigate('/range') }
     catch (err) { setError(err.message || 'Delete failed.'); setSaving(false) }
@@ -231,7 +252,7 @@ export default function RangeForm() {
   if (fetching) return <LoadingBar />
   if (!form) return <div className="p-6 text-ink-60">Product not found. <Link to="/range" className="text-brand-600">Back to Figurine Gifts</Link></div>
 
-  const productCode = [form.design_code, form.format_code].filter(Boolean).join('-')
+  const productCode = [form.design_no, form.format_code].filter(Boolean).join('-')
 
   return (
     <div className="p-4 md:p-6 max-w-3xl">
@@ -250,9 +271,9 @@ export default function RangeForm() {
         <div className="card p-5 space-y-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div>
-              <label className="label">Design Code</label>
-              <input className="input font-mono" value={form.design_code} onChange={set('design_code')}
-                     placeholder="D0002" required />
+              <label className="label">Design No.</label>
+              <input className="input font-mono" value={form.design_no} onChange={set('design_no')}
+                     placeholder="0002" required />
             </div>
             <div>
               <label className="label">Product Type</label>
@@ -268,8 +289,10 @@ export default function RangeForm() {
             </div>
           </div>
           <p className="text-[11px] text-ink-60 -mt-2">
-            Product code <span className="font-mono text-ink-80">{productCode || '…'}</span>.
-            Each variant's full SKU is built from this plus plating / crystal colour.
+            Product <span className="font-mono text-ink-80">{productCode || '…'}</span>.
+            Each variant's full SKU = crystal brand + this + plating / crystal colour
+            (e.g. <span className="font-mono">D{form.design_no || '0002'}-{form.format_code || '001'}-GC1</span>).
+            Brands: D = Bohemia · U = Swarovski · A = Asfour/Chinese · M = Mixed.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -380,6 +403,12 @@ export default function RangeForm() {
                         <button type="button" onClick={() => removeVariant(i)} className="text-red-500 hover:text-red-700 text-lg leading-none px-1" title="Remove variation">×</button>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div>
+                          <label className="label">Crystal Brand</label>
+                          <select className="input text-xs font-mono" value={v.brand_code} onChange={setBrand(i)}>
+                            {RANGE_CRYSTAL_BRANDS.map(b => <option key={b.code} value={b.code}>{b.code} · {b.name}</option>)}
+                          </select>
+                        </div>
                         <div>
                           <label className="label">Plating</label>
                           <input className="input text-xs font-mono" list="platings" value={v.plating_code} onChange={setPlating(i)} placeholder="G" />
