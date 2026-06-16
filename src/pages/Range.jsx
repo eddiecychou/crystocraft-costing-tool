@@ -3,10 +3,11 @@ import { collection, query, orderBy, onSnapshot, addDoc, getDocs, deleteDoc, doc
 import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import rangeData from '../data/rangeProducts.json'
-import { RANGE_PLATINGS } from '../constants'
+import { RANGE_PLATINGS, RANGE_STATUSES } from '../constants'
 import LoadingBar from '../components/LoadingBar'
 
 const PLATING_DOT = Object.fromEntries(RANGE_PLATINGS.map(p => [p.name, p.dot]))
+const STATUS_META = Object.fromEntries(RANGE_STATUSES.map(s => [s.value, s]))
 
 function money(v) {
   return v == null || v === '' ? '—' : `$${Number(v).toFixed(2)}`
@@ -39,6 +40,7 @@ export default function Range() {
   const [cat, setCat] = useState('')
   const [ptype, setPtype] = useState('')
   const [plating, setPlating] = useState('')
+  const [status, setStatus] = useState('all')
   const [stockOnly, setStockOnly] = useState(false)
   const [seeding, setSeeding] = useState(false)
   const [seedLog, setSeedLog] = useState('')
@@ -125,6 +127,7 @@ export default function Range() {
       product_type: p.product_type || '',
       size: p.size,
       active: p.active !== false,
+      status: p.status === 'stock' ? 'stock' : 'active',
       variants, platings, image,
       skus: variants.map(v => v.sku).filter(Boolean),
       minPrice: prices.length ? Math.min(...prices) : null,
@@ -145,9 +148,16 @@ export default function Range() {
     const matchCat = !cat || s.design_type === cat
     const matchPtype = !ptype || s.product_type === ptype
     const matchPlating = !plating || s.platings.includes(plating)
+    const matchStatus = status === 'all' || s.status === status
     const matchStock = !stockOnly || s.totalStock > 0
-    return matchSearch && matchCat && matchPtype && matchPlating && matchStock
-  }), [items, search, cat, ptype, plating, stockOnly])
+    return matchSearch && matchCat && matchPtype && matchPlating && matchStatus && matchStock
+  }), [items, search, cat, ptype, plating, status, stockOnly])
+
+  const statusCounts = useMemo(() => ({
+    all: items.length,
+    active: items.filter(s => s.status === 'active').length,
+    stock: items.filter(s => s.status === 'stock').length,
+  }), [items])
 
   const totalSkus = items.reduce((n, s) => n + s.skuCount, 0)
   const totalValue = filtered.reduce((sum, s) =>
@@ -194,6 +204,21 @@ export default function Range() {
       </div>
       {seedLog && <p className="text-xs font-mono text-ink-60 mb-2">{seedLog}</p>}
 
+      {/* Active / Stock-clearance toggle */}
+      <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden mt-3">
+        {[
+          { v: 'all', label: 'All' },
+          { v: 'active', label: 'Active' },
+          { v: 'stock', label: 'Stock clearance' },
+        ].map(t => (
+          <button key={t.v} onClick={() => setStatus(t.v)}
+                  className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark transition-colors
+                    ${status === t.v ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory'}`}>
+            {t.label} <span className="opacity-60">{statusCounts[t.v]}</span>
+          </button>
+        ))}
+      </div>
+
       {/* Filters */}
       <div className="flex gap-2 my-5 flex-wrap items-center">
         <input type="text" placeholder="Search name, code or SKU…" className="input flex-1 min-w-0"
@@ -235,7 +260,10 @@ function ProductCard({ s }) {
         {s.image
           ? <img src={s.image} alt={s.name} className="w-full h-full object-contain p-2" loading="lazy" />
           : <span className="text-3xl opacity-30">💎</span>}
-        {!s.active && <span className="absolute top-1.5 left-1.5 badge bg-gray-200 text-gray-600">Hidden</span>}
+        <span className={`absolute top-1.5 left-1.5 badge ${STATUS_META[s.status]?.badge || ''}`}>
+          {STATUS_META[s.status]?.label || s.status}
+        </span>
+        {!s.active && <span className="absolute top-7 left-1.5 badge bg-gray-200 text-gray-600">Hidden</span>}
         {s.skuCount > 1 && (
           <span className="absolute top-1.5 right-1.5 text-[10px] bg-ink/70 text-white px-1.5 py-0.5 rounded">{s.skuCount} variations</span>
         )}

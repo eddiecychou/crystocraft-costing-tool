@@ -68,6 +68,12 @@ export const RANGE_PRODUCT_TYPES = [
 //   e.g. D0002-001-GC1  ->  design D0002, format 001 (freestand figurine),
 //   plating G (Gold), crystal colour C1, optional running-no for variations.
 
+// Lifecycle status: Active = current model; Stock = retired but stock remains
+export const RANGE_STATUSES = [
+  { value: 'active', label: 'Active',          badge: 'bg-emerald-100 text-emerald-700' },
+  { value: 'stock',  label: 'Stock clearance', badge: 'bg-amber-100 text-amber-700' },
+]
+
 // Middle segment = format code (what the design is built into)
 export const RANGE_FORMAT_CODES = [
   { code: '001', label: 'Freestand Figurine' },

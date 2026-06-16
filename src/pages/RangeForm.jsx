@@ -5,7 +5,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { db, storage } from '../firebase'
 import {
   RANGE_DESIGN_TYPES, RANGE_PRODUCT_TYPES, RANGE_FORMAT_CODES,
-  RANGE_PLATINGS, RANGE_CRYSTAL_COLORS,
+  RANGE_PLATINGS, RANGE_CRYSTAL_COLORS, RANGE_STATUSES,
 } from '../constants'
 import LoadingBar from '../components/LoadingBar'
 
@@ -24,7 +24,7 @@ const emptyPacking = () => ({
 const blankForm = () => ({
   design_code: '', design_name: '', description: '', category: '',
   design_type: '', product_type: 'Figurine', format_code: '001',
-  size: '', crystal_type: 'Bohemia', active: true,
+  size: '', crystal_type: 'Bohemia', active: true, status: 'active',
   packing: emptyPacking(), gallery: [], variants: [emptyVariant()],
 })
 
@@ -95,6 +95,7 @@ export default function RangeForm() {
           size: d.size || '',
           crystal_type: d.crystal_type || 'Bohemia',
           active: d.active !== false,
+          status: d.status || 'active',
           packing: { ...emptyPacking(), ...(d.packing || {}) },
           gallery: Array.isArray(d.gallery) ? d.gallery : [],
           variants: variantsFromDoc(d),
@@ -195,6 +196,7 @@ export default function RangeForm() {
       size: form.size.trim(),
       crystal_type: form.crystal_type.trim(),
       active: form.active,
+      status: form.status,
       packing: Object.fromEntries(PACKING_FIELDS.map(pf => [pf.key, (form.packing[pf.key] ?? '').toString().trim()])),
       gallery: form.gallery,
       variants: form.variants.map(v => ({
@@ -270,7 +272,7 @@ export default function RangeForm() {
             Each variant's full SKU is built from this plus plating / crystal colour.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="label">Design Cat</label>
               <input className="input" list="design-types" value={form.design_type}
@@ -286,6 +288,12 @@ export default function RangeForm() {
               <datalist id="product-types">
                 {RANGE_PRODUCT_TYPES.map(t => <option key={t} value={t} />)}
               </datalist>
+            </div>
+            <div>
+              <label className="label">Status</label>
+              <select className="input" value={form.status} onChange={set('status')}>
+                {RANGE_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
             </div>
           </div>
 
