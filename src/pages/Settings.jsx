@@ -173,7 +173,7 @@ export default function Settings() {
 }
 
 function CrystalColorsCard() {
-  const [rows, setRows] = useState([])         // [{code,name,surcharge_usd}]
+  const [rows, setRows] = useState([])         // [{code,name}]
   const [saved, setSaved] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -181,13 +181,12 @@ function CrystalColorsCard() {
 
   useEffect(() => {
     loadCrystalColors().then(c => {
-      const r = c.map(x => ({ ...x, surcharge_usd: x.surcharge_usd ?? '' }))
-      setRows(r); setSaved(r); setLoading(false)
+      setRows(c); setSaved(c); setLoading(false)
     })
   }, [])
 
   const update = (i, key, val) => setRows(rs => rs.map((r, j) => (j === i ? { ...r, [key]: val } : r)))
-  const addRow = () => setRows(rs => [...rs, { code: '', name: '', surcharge_usd: '' }])
+  const addRow = () => setRows(rs => [...rs, { code: '', name: '' }])
   const removeRow = i => setRows(rs => rs.filter((_, j) => j !== i))
   const move = (i, dir) => setRows(rs => {
     const j = i + dir
@@ -201,9 +200,8 @@ function CrystalColorsCard() {
     setSaving(true); setMsg(null)
     try {
       const clean = await saveCrystalColors(rows)
-      const r = clean.map(x => ({ ...x, surcharge_usd: x.surcharge_usd ?? '' }))
-      setRows(r); setSaved(r)
-      setMsg(`Saved ${r.length} colour${r.length === 1 ? '' : 's'}.`)
+      setRows(clean); setSaved(clean)
+      setMsg(`Saved ${clean.length} colour${clean.length === 1 ? '' : 's'}.`)
       setTimeout(() => setMsg(null), 3000)
     } catch (e) {
       setMsg('Error saving: ' + e.message)
@@ -218,8 +216,8 @@ function CrystalColorsCard() {
       </div>
       <p className="text-xs text-gray-400 mb-4">
         Shared list of crystal colours used as a selectable attribute on Figurine
-        products. Colours don't create separate SKUs or stock — surcharge is optional
-        (blank = same price as the plating's base).
+        products. Colours don't create separate SKUs, stock, or price changes. For a
+        colour that costs more, add a separate variation with its own price.
       </p>
 
       {loading ? (
@@ -231,7 +229,6 @@ function CrystalColorsCard() {
           <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-wide text-gray-400 px-1">
             <span className="w-16 shrink-0">Code</span>
             <span className="flex-1">Name</span>
-            <span className="w-24 shrink-0">Surcharge $</span>
             <span className="w-16 shrink-0" />
           </div>
           {rows.map((r, i) => (
@@ -241,9 +238,6 @@ function CrystalColorsCard() {
                      onChange={e => update(i, 'code', e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} />
               <input className="input text-xs flex-1 min-w-0" value={r.name}
                      placeholder="Sapphire" onChange={e => update(i, 'name', e.target.value)} />
-              <input className="input text-xs w-24 shrink-0 text-right tabular-nums" value={r.surcharge_usd}
-                     inputMode="decimal" placeholder="0.00"
-                     onChange={e => update(i, 'surcharge_usd', e.target.value.replace(/[^\d.]/g, ''))} />
               <div className="flex items-center gap-0.5 w-16 shrink-0 justify-end">
                 <button type="button" onClick={() => move(i, -1)} disabled={i === 0}
                         className="text-gray-400 hover:text-gray-700 disabled:opacity-30 px-1" title="Move up">↑</button>

@@ -11,14 +11,12 @@ export function buildRangeSku({ brand_code = '', design_no = '', format = '', pl
   return [head, format || '', suffix].filter(Boolean).join('-')
 }
 
-// Price for a chosen plating-variant + colour = variant base + colour surcharge.
-// `color` is a library entry { code, name, surcharge_usd } (or undefined).
-export function rangePrice(variant, color) {
+// Price for a chosen plating-variant. Colour no longer affects price — a dearer
+// colour is modelled as its own variation (plating row) with a different price.
+// `color` is kept in the signature for call-site compatibility but is ignored.
+export function rangePrice(variant) {
   const base = Number(variant?.ws_price_usd)
-  const sur = Number(color?.surcharge_usd)
-  const b = Number.isFinite(base) ? base : 0
-  const s = Number.isFinite(sur) ? sur : 0
-  return b + s
+  return Number.isFinite(base) ? base : 0
 }
 
 // Enumerate the resolvable SKUs for a product: one per (plating-variant × colour).

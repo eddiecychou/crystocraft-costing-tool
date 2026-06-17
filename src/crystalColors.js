@@ -3,19 +3,16 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from './firebase'
 
 // Shared Crystal Colour Library — a single settings doc holds the whole list.
-// Shape: { colors: [{ code, name, surcharge_usd }], updatedAt }
-// Order of the array = display order. Colours are an *attribute* of a product
-// (a multi-select), not a per-colour SKU — they don't affect stock and only
-// carry an optional surcharge on top of the plating's base price.
+// Shape: { colors: [{ code, name }], updatedAt }
+// Order of the array = display order. Colours are an *attribute* of a variant
+// (a multi-select), not a per-colour SKU — they don't affect stock or price.
+// Price differences between colours are expressed by adding a separate variation
+// (plating row) with its own price and assigning the dearer colours to it.
 const DOC_REF = () => doc(db, 'settings', 'crystal_colors')
 
 const norm = c => ({
   code: (c.code || '').trim().toUpperCase(),
   name: (c.name || '').trim(),
-  surcharge_usd:
-    c.surcharge_usd === '' || c.surcharge_usd == null || !Number.isFinite(Number(c.surcharge_usd))
-      ? null
-      : Number(c.surcharge_usd),
 })
 
 export async function loadCrystalColors() {
@@ -50,7 +47,7 @@ export async function ensureColors(codes) {
   const add = []
   for (const raw of codes) {
     const code = (raw || '').trim().toUpperCase()
-    if (code && !have.has(code)) { have.add(code); add.push({ code, name: code, surcharge_usd: null }) }
+    if (code && !have.has(code)) { have.add(code); add.push({ code, name: code }) }
   }
   if (!add.length) return existing
   return saveCrystalColors([...existing, ...add])
@@ -68,5 +65,5 @@ export function useCrystalColors() {
   return { colors, loading, setColors }
 }
 
-// Build a lookup code -> {name, surcharge_usd}
+// Build a lookup code -> {code, name}
 export const colorMap = colors => Object.fromEntries((colors || []).map(c => [c.code, c]))

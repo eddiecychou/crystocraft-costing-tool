@@ -476,7 +476,7 @@ export default function RangeForm() {
             <h2 className="text-base">Variations & Stock</h2>
             <button type="button" onClick={addVariant} className="btn-secondary text-xs">+ Add variation</button>
           </div>
-          <p className="text-xs text-ink-60 mb-3">One row per plating. Tick the crystal colours each plating can be made in — colours don't create separate SKUs or stock; the SKU &amp; any surcharge are applied at quote time.</p>
+          <p className="text-xs text-ink-60 mb-3">One row per plating. Tick the crystal colours each plating can be made in — colours don't create separate SKUs, stock, or price changes; the SKU is built at quote time. For a colour that costs more, add a separate variation with its own price.</p>
 
           {/* Stock pool, held per plating (the binding constraint), shared across
               that plating's crystal-colour / running-no variants. */}
@@ -607,10 +607,8 @@ export default function RangeForm() {
                                   return (
                                     <button key={c.code} type="button" onClick={() => toggleColor(i, c.code)}
                                       className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
-                                        on ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-ivory-dark hover:bg-ivory'}`}
-                                      title={c.surcharge_usd ? `+$${c.surcharge_usd}` : 'No surcharge'}>
+                                        on ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-ivory-dark hover:bg-ivory'}`}>
                                       {c.name || c.code}
-                                      {c.surcharge_usd ? <span className="opacity-60 ml-1">+${c.surcharge_usd}</span> : null}
                                     </button>
                                   )
                                 })}
