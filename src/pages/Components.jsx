@@ -1,9 +1,9 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { useComponents, bulkCreateComponents } from '../criticalComponents'
+import { useComponents, bulkCreateComponents, saveComponent } from '../criticalComponents'
 import { loadCrystalColors, saveCrystalColors } from '../crystalColors'
 import { RANGE_COMPONENT_CATEGORIES } from '../constants'
-import { Puzzle, ArrowUp, ArrowDown, X } from 'lucide-react'
+import { Puzzle, ArrowUp, ArrowDown, X, Minus, Plus, Check } from 'lucide-react'
 
 export default function Components() {
   const [tab, setTab] = useState('critical')
@@ -76,28 +76,89 @@ function CriticalComponents() {
       ) : (
         <div className="card divide-y divide-ivory-dark overflow-hidden">
           {filtered.map(c => (
-            <Link key={c.id} to={`/components/critical/${c.id}`}
-                  className="flex items-center gap-3 px-3 py-2.5 hover:bg-ivory/50 transition-colors">
-              <div className="w-11 h-11 shrink-0 bg-white border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
-                {c.images[0] ? <img src={c.images[0]} alt="" className="w-full h-full object-contain p-0.5" /> : <Puzzle size={18} className="text-gray-300" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm text-ink-90 truncate">{c.code}</span>
-                  {c.category && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 shrink-0">{c.category}</span>}
+            <div key={c.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-ivory/50 transition-colors">
+              <Link to={`/components/critical/${c.id}`} className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="w-11 h-11 shrink-0 bg-white border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
+                  {c.images[0] ? <img src={c.images[0]} alt="" className="w-full h-full object-contain p-0.5" /> : <Puzzle size={18} className="text-gray-300" />}
                 </div>
-                <p className="text-xs text-ink-60 truncate">{c.name || '—'}{c.supplierName ? ` · ${c.supplierName}` : ''}</p>
-              </div>
-              <div className="text-right shrink-0 tabular-nums">
-                <p className="text-sm text-ink-90">{c.stock_qty ?? 0} <span className="text-ink-40 text-xs">pcs</span></p>
-                <p className="text-[11px] text-ink-50">{c.lead_time_weeks != null ? `${c.lead_time_weeks} wk lead` : '—'}</p>
-              </div>
-            </Link>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm text-ink-90 truncate">{c.code}</span>
+                    {c.category && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 shrink-0">{c.category}</span>}
+                  </div>
+                  <p className="text-xs text-ink-60 truncate">{c.name || '—'}{c.supplierName ? ` · ${c.supplierName}` : ''}</p>
+                </div>
+              </Link>
+              <StockEditor component={c} />
+            </div>
           ))}
         </div>
       )}
 
       {importing && <ImportModal onClose={() => setImporting(false)} />}
+    </div>
+  )
+}
+
+// Inline stock editor — type a new qty (or use −/+) and it auto-saves on blur,
+// so stock can be reconciled straight from the list without opening each part.
+function StockEditor({ component: c }) {
+  const current = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
+  const [val, setVal]       = useState(String(current))
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved]   = useState(false)
+
+  // Re-sync when the live snapshot changes (e.g. edited elsewhere).
+  useEffect(() => { setVal(String(Number.isFinite(c.stock_qty) ? c.stock_qty : 0)) }, [c.stock_qty])
+
+  async function commit(next) {
+    const n = Math.max(0, Math.round(Number(next)))
+    const safe = Number.isFinite(n) ? n : 0
+    setVal(String(safe))
+    if (safe === current) return
+    setSaving(true)
+    try {
+      await saveComponent(c.id, { ...c, stock_qty: safe })
+      setSaved(true)
+      setTimeout(() => setSaved(false), 1500)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function step(delta) {
+    const next = Math.max(0, (Math.round(Number(val)) || 0) + delta)
+    commit(next)
+  }
+
+  return (
+    <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-1">
+        <button type="button" onClick={() => step(-1)} title="−1"
+                className="w-6 h-6 rounded border border-ivory-dark text-ink-50 hover:bg-ivory flex items-center justify-center"><Minus size={13} /></button>
+        <input
+          type="number" inputMode="numeric" min="0"
+          className="input text-sm text-right tabular-nums w-16 px-2 py-1"
+          value={val}
+          onChange={e => setVal(e.target.value)}
+          onFocus={e => e.target.select()}
+          onBlur={e => commit(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter') e.target.blur()
+            if (e.key === 'Escape') { setVal(String(current)); e.target.blur() }
+          }}
+        />
+        <button type="button" onClick={() => step(1)} title="+1"
+                className="w-6 h-6 rounded border border-ivory-dark text-ink-50 hover:bg-ivory flex items-center justify-center"><Plus size={13} /></button>
+      </div>
+      <div className="w-12 text-right leading-tight">
+        <p className="text-[10px] text-ink-40">pcs</p>
+        {saving
+          ? <p className="text-[10px] text-ink-40">saving…</p>
+          : saved
+            ? <p className="inline-flex items-center gap-0.5 text-[10px] text-green-600"><Check size={11} />saved</p>
+            : <p className="text-[10px] text-ink-50">{c.lead_time_weeks != null ? `${c.lead_time_weeks}wk lead` : '—'}</p>}
+      </div>
     </div>
   )
 }
