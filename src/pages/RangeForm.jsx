@@ -468,13 +468,25 @@ export default function RangeForm() {
             <h2 className="text-base">Production & Availability</h2>
             <Link to="/settings" className="text-xs text-brand-600 hover:underline">Manage components →</Link>
           </div>
-          <p className="text-xs text-ink-60 mb-3">
-            Tick the <strong>critical</strong> parts this product needs (long-lead, tooling, MOQ, or
-            supply-risk items only — not plating/crystal/boxes). Stock & lead time live on each
-            component and are shared across products. The customer promise below is computed from
-            status + ready stock + component availability.
-          </p>
+          {form.status === 'stock' ? (
+            <p className="text-xs text-ink-60 mb-3">
+              <strong>Last Stock</strong> — retired design, no re-runs. Critical components and MOQ
+              don't apply; the only thing that matters is how many finished units are left. Enter the
+              remaining units in <strong>Variations &amp; Stock → Stock by plating</strong> below —
+              that's the single source of truth for this item.
+            </p>
+          ) : (
+            <p className="text-xs text-ink-60 mb-3">
+              Tick the <strong>critical</strong> parts this product needs (long-lead, tooling, MOQ, or
+              supply-risk items only — not plating/crystal/boxes). Stock &amp; lead time live on each
+              component and are shared across products. Any units entered under <strong>Stock by
+              plating</strong> count as finished surplus that ships first. The customer promise below
+              is computed from status + ready stock + component availability.
+            </p>
+          )}
 
+          {form.status !== 'stock' && (
+          <>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 [&_label.label]:min-h-[2.2rem] [&_label.label]:flex [&_label.label]:items-end">
             <div>
               <label className="label">MOQ <span className="text-ink-60 font-normal">(made-to-order)</span></label>
@@ -538,6 +550,8 @@ export default function RangeForm() {
               )}
             </>
           )}
+          </>
+          )}
 
           {/* Optional override + computed customer promise */}
           <div className="mt-4">
@@ -549,7 +563,7 @@ export default function RangeForm() {
           <div className="mt-3 rounded-md bg-ivory/60 border border-ivory-dark p-3">
             <p className="text-[10px] uppercase tracking-wide text-ink-50 mb-1">What the customer sees</p>
             <p className="text-sm text-ink-80">{availability.promise}</p>
-            {availability.buildable != null && (
+            {form.status !== 'stock' && availability.buildable != null && (
               <p className="text-[11px] text-ink-50 mt-1">
                 Buildable now from component stock: <b>{availability.buildable}</b>
                 {availability.bottleneck ? ` (limited by ${availability.bottleneck})` : ''} ·
