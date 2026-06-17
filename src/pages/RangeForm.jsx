@@ -16,7 +16,13 @@ import LoadingBar from '../components/LoadingBar'
 import { useCrystalColors, colorMap } from '../crystalColors'
 import { buildRangeSku, rangePrice } from '../rangeSku'
 import { useComponents, resolveRef, productAvailability } from '../criticalComponents'
-import { Puzzle, Gem, Check } from 'lucide-react'
+import { Puzzle, Gem, Check, Download, Plus, X } from 'lucide-react'
+import CRYSTAL_MIXES from '../data/crystalMixes.json'
+
+// Mixture codes the catalogue understands (single-colour codes live in the
+// Crystal Colour Library; these are the "assorted/mix" buckets that need a recipe).
+const MIX_CODES = ['MX', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8',
+  'AX', 'A1', 'A2', 'A3', 'A4', 'A5', 'GX', 'G1', 'G2', 'G3', 'G4']
 
 const emptyVariant = () => ({
   brand_code: 'D', brand_name: 'Bohemia',
@@ -39,7 +45,20 @@ const blankForm = () => ({
   size: '', crystal_type: 'Bohemia', active: true, status: 'active',
   moq: '', lead_time_weeks: '', delivery_note: '', critical_components: [],
   packing: emptyPacking(), gallery: [], variants: [emptyVariant()], plating_stock: {},
+  crystal_mixes: {},
 })
+
+// Normalise a crystal_mixes map: upper-case codes, de-dupe crystals, drop empties.
+const cleanMixes = mixes => {
+  const out = {}
+  for (const [code, list] of Object.entries(mixes || {})) {
+    const k = (code || '').trim().toUpperCase()
+    const crystals = [...new Set((Array.isArray(list) ? list : [])
+      .map(c => (c || '').trim().toUpperCase()).filter(Boolean))]
+    if (k && crystals.length) out[k] = crystals
+  }
+  return out
+}
 
 const PLATING_NAME = Object.fromEntries(RANGE_PLATINGS.map(p => [p.code, p.name]))
 const platingKey = v => (v.plating_code || '').trim().toUpperCase()
@@ -132,6 +151,7 @@ export default function RangeForm() {
   const [error, setError] = useState('')
   const [uploading, setUploading] = useState('')
   const [catOptions, setCatOptions] = useState({ design: [], product: [] })
+  const [mixMsg, setMixMsg] = useState('')
   const { colors: libColors } = useCrystalColors()
   const colorLookup = colorMap(libColors)
   const { components: libComponents } = useComponents()
@@ -205,6 +225,34 @@ export default function RangeForm() {
     return { ...f, variants: f.variants.map(v => ({ ...v, crystal_colors: [...src] })) }
   })
 
+  // ── Crystal mixtures (model-level recipes: mixcode -> [crystal codes]) ──
+  // Toggle a crystal code in/out of a mixcode's recipe.
+  const toggleMixCrystal = (mixCode, crystal) => setForm(f => {
+    const list = Array.isArray(f.crystal_mixes?.[mixCode]) ? f.crystal_mixes[mixCode] : []
+    const has = list.includes(crystal)
+    return { ...f, crystal_mixes: { ...f.crystal_mixes, [mixCode]: has ? list.filter(c => c !== crystal) : [...list, crystal] } }
+  })
+  const removeMix = mixCode => setForm(f => {
+    const next = { ...f.crystal_mixes }; delete next[mixCode]
+    return { ...f, crystal_mixes: next }
+  })
+  const addMix = mixCode => setForm(f =>
+    f.crystal_mixes?.[mixCode] ? f : { ...f, crystal_mixes: { ...f.crystal_mixes, [mixCode]: [] } })
+  // The product's identifying code (body letter + design no), e.g. "M0004".
+  const designCodeNow = () => {
+    const body = ((form.variants.find(v => (v.brand_code || '').length > 1)?.brand_code || '').slice(1)
+      || form.body_code || '').toUpperCase()
+    return body + (form.design_no || '').trim()
+  }
+  // Pull the legacy decoded recipes for this product (shared across platings).
+  const pullLegacyMixes = () => {
+    const code = designCodeNow()
+    const rec = CRYSTAL_MIXES[code]
+    if (!rec) { setMixMsg(`No legacy recipe found for ${code || '(no code)'}.`); return }
+    setForm(f => ({ ...f, crystal_mixes: { ...cleanMixes(f.crystal_mixes), ...cleanMixes(rec.mixes) } }))
+    setMixMsg(`Pulled ${Object.keys(rec.mixes).length} mixture${Object.keys(rec.mixes).length === 1 ? '' : 's'} for ${code}.`)
+  }
+
   // Pull the distinct categories already used in the system so the
   // datalists suggest existing names (avoids near-duplicate / plural drift).
   useEffect(() => {
@@ -252,6 +300,7 @@ export default function RangeForm() {
           packing: { ...emptyPacking(), ...(d.packing || {}) },
           gallery: Array.isArray(d.gallery) ? d.gallery : [],
           variants: vs,
+          crystal_mixes: cleanMixes(d.crystal_mixes),
           // Plating pool: stored map wins; else seed from legacy per-variant stock.
           plating_stock: d.plating_stock && Object.keys(d.plating_stock).length
             ? { ...d.plating_stock } : derivePlatingStock(vs),
@@ -401,6 +450,9 @@ export default function RangeForm() {
         // Selectable crystal colours for this plating — not a SKU/stock dimension.
         crystal_colors: [...new Set((v.crystal_colors || []).map(c => (c || '').trim().toUpperCase()).filter(Boolean))],
       })),
+      // Per-model crystal mixture recipes (shared across platings):
+      // mixcode -> [crystal short-codes]. Drives the catalogue swatch table.
+      crystal_mixes: cleanMixes(form.crystal_mixes),
       updatedAt: serverTimestamp(),
     }
     try {
@@ -916,6 +968,68 @@ export default function RangeForm() {
             })}
             {form.variants.length === 0 && <p className="text-sm text-ink-60">No variations — add one.</p>}
           </div>
+        </div>
+
+        {/* Crystal mixtures — model-level recipes for mix/assorted colour codes */}
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-base flex items-center gap-2"><Gem size={18} className="text-brand-500" />Crystal Mixtures</h2>
+            <button type="button" onClick={pullLegacyMixes} className="btn-secondary text-xs inline-flex items-center gap-1">
+              <Download size={13} />Pull from legacy catalogue
+            </button>
+          </div>
+          <p className="text-xs text-ink-60 mb-3">
+            Single colours (CL, RE, PI…) come straight from the Crystal Colour Library. The mix codes below
+            (MX, M1, AX, GX…) differ per model — tick which crystals each mix contains so the catalogue can
+            show the right swatches. Shared across all platings.
+          </p>
+          {mixMsg && <p className="text-xs text-brand-600 mb-2">{mixMsg}</p>}
+          {libColors.length === 0 ? (
+            <p className="text-xs text-ink-50">
+              Add crystal colours first in <Link to="/components" className="text-brand-600 hover:underline">Components → Crystal Colours</Link>.
+            </p>
+          ) : (
+            <>
+              <div className="space-y-3">
+                {Object.keys(form.crystal_mixes || {}).filter(c => (form.crystal_mixes[c] || []).length >= 0).length === 0 && (
+                  <p className="text-xs text-ink-50">No mixtures yet — add a mix code below or pull from the legacy catalogue.</p>
+                )}
+                {Object.entries(form.crystal_mixes || {}).map(([mixCode, crystals]) => (
+                  <div key={mixCode} className="border border-ink-10 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-mono text-sm font-semibold text-ink-80">{mixCode}</span>
+                      <button type="button" onClick={() => removeMix(mixCode)}
+                              className="text-red-400 hover:text-red-600" title="Remove mixture"><X size={15} /></button>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {libColors.map(c => {
+                        const on = (crystals || []).includes(c.code)
+                        return (
+                          <button type="button" key={c.code} onClick={() => toggleMixCrystal(mixCode, c.code)}
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] border transition-colors ${
+                              on ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-ink-10 text-ink-50 hover:border-ink-30'}`}
+                            title={c.name || c.code}>
+                            <span className="inline-block w-3 h-3 rounded-full border border-black/10"
+                                  style={{ background: c.swatch || 'repeating-conic-gradient(#bbb 0% 25%, #eee 0% 50%)' }} />
+                            <span className="font-mono">{c.code}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-1.5 items-center">
+                <span className="text-[11px] uppercase tracking-wide text-ink-40 mr-1">Add mix code:</span>
+                {MIX_CODES.filter(mc => !(mc in (form.crystal_mixes || {}))).map(mc => (
+                  <button type="button" key={mc} onClick={() => addMix(mc)}
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] border border-ink-10 text-ink-50 hover:border-brand-300 hover:text-brand-600">
+                    <Plus size={11} /><span className="font-mono">{mc}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         {/* Actions */}

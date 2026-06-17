@@ -3,7 +3,9 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from './firebase'
 
 // Shared Crystal Colour Library — a single settings doc holds the whole list.
-// Shape: { colors: [{ code, name }], updatedAt }
+// Shape: { colors: [{ code, name, swatch }], updatedAt }
+// `swatch` is an optional hex colour (e.g. '#c0392b') used to render a dot in
+// the catalogue variation table. Empty/missing => render a neutral "assorted" dot.
 // Order of the array = display order. Colours are an *attribute* of a variant
 // (a multi-select), not a per-colour SKU — they don't affect stock or price.
 // Price differences between colours are expressed by adding a separate variation
@@ -13,6 +15,7 @@ const DOC_REF = () => doc(db, 'settings', 'crystal_colors')
 const norm = c => ({
   code: (c.code || '').trim().toUpperCase(),
   name: (c.name || '').trim(),
+  swatch: (c.swatch || '').trim(),
 })
 
 export async function loadCrystalColors() {

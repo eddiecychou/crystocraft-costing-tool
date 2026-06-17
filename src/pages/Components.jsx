@@ -234,7 +234,7 @@ function CrystalColours() {
   }, [])
 
   const update = (i, key, val) => setRows(rs => rs.map((r, j) => (j === i ? { ...r, [key]: val } : r)))
-  const addRow = () => setRows(rs => [...rs, { code: '', name: '' }])
+  const addRow = () => setRows(rs => [...rs, { code: '', name: '', swatch: '' }])
   const removeRow = i => setRows(rs => rs.filter((_, j) => j !== i))
   const move = (i, dir) => setRows(rs => {
     const j = i + dir
@@ -275,6 +275,7 @@ function CrystalColours() {
           <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-wide text-ink-40 px-1">
             <span className="w-16 shrink-0">Code</span>
             <span className="flex-1">Name</span>
+            <span className="w-14 shrink-0">Swatch</span>
             <span className="w-16 shrink-0" />
           </div>
           {rows.map((r, i) => (
@@ -284,6 +285,15 @@ function CrystalColours() {
                      onChange={e => update(i, 'code', e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} />
               <input className="input text-xs flex-1 min-w-0" value={r.name}
                      placeholder="Sapphire" onChange={e => update(i, 'name', e.target.value)} />
+              <div className="w-14 shrink-0 flex items-center gap-1">
+                <input type="color" className="h-7 w-7 rounded cursor-pointer border border-ink-10 bg-white p-0.5"
+                       value={r.swatch || '#cccccc'} title={r.swatch || 'No colour set'}
+                       onChange={e => update(i, 'swatch', e.target.value)} />
+                {r.swatch && (
+                  <button type="button" onClick={() => update(i, 'swatch', '')}
+                          className="text-ink-30 hover:text-ink-60 leading-none" title="Clear swatch"><X size={12} /></button>
+                )}
+              </div>
               <div className="flex items-center gap-0.5 w-16 shrink-0 justify-end">
                 <button type="button" onClick={() => move(i, -1)} disabled={i === 0}
                         className="text-ink-40 hover:text-ink-70 disabled:opacity-30 px-1" title="Move up"><ArrowUp size={14} /></button>

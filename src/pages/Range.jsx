@@ -8,6 +8,7 @@ import { RANGE_PLATINGS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS, designNumber, bra
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
 import { Gem } from 'lucide-react'
+import { useCrystalColors, colorMap } from '../crystalColors'
 
 const PLATING_DOT = Object.fromEntries(RANGE_PLATINGS.map(p => [p.name, p.dot]))
 const STATUS_META = Object.fromEntries(RANGE_STATUSES.map(s => [s.value, s]))
@@ -45,6 +46,8 @@ export default function Range() {
   const [status, setStatus] = useState('all')
   const [stockOnly, setStockOnly] = useState(false)
   const [seeding, setSeeding] = useState(false)
+  const { colors: libColors } = useCrystalColors()
+  const colorLookup = useMemo(() => colorMap(libColors), [libColors])
   const [seedLog, setSeedLog] = useState('')
 
   useEffect(() => {
@@ -169,7 +172,9 @@ export default function Range() {
       maxPrice: prices.length ? Math.max(...prices) : null,
       totalStock,
       skuCount: variants.length,
+      colorCodes: [...new Set(variants.flatMap(v => Array.isArray(v.crystal_colors) ? v.crystal_colors : []))],
       colorCount: new Set(variants.flatMap(v => Array.isArray(v.crystal_colors) ? v.crystal_colors : [])).size,
+      mixes: p.crystal_mixes && typeof p.crystal_mixes === 'object' ? p.crystal_mixes : {},
     }
   }), [products])
 
@@ -275,15 +280,40 @@ export default function Range() {
         <div className="text-center py-20 text-ink-60">No products match your filters.</div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-4">
-          {filtered.map(s => <ProductCard key={s.id} s={s} />)}
+          {filtered.map(s => <ProductCard key={s.id} s={s} colorLookup={colorLookup} />)}
         </div>
       )}
     </div>
   )
 }
 
-function ProductCard({ s }) {
+// A single crystal swatch. A single colour shows its library hex; a mixture
+// shows up to 3 of its crystals as a split conic; unknown -> "assorted" hatch.
+function Swatch({ code, mixes, lookup }) {
+  const ASSORTED = 'repeating-conic-gradient(#bbb 0% 25%, #eee 0% 50%)'
+  const single = lookup[code]
+  let bg = ASSORTED
+  let title = single?.name ? `${code} — ${single.name}` : code
+  if (single?.swatch) {
+    bg = single.swatch
+  } else if (mixes && Array.isArray(mixes[code]) && mixes[code].length) {
+    const cols = mixes[code].map(c => lookup[c]?.swatch).filter(Boolean).slice(0, 3)
+    if (cols.length >= 2) {
+      const seg = 100 / cols.length
+      bg = `conic-gradient(${cols.map((c, i) => `${c} ${i * seg}% ${(i + 1) * seg}%`).join(', ')})`
+    } else if (cols.length === 1) {
+      bg = cols[0]
+    }
+    title = `${code} (mix): ${mixes[code].join(', ')}`
+  }
+  return <span className="inline-block w-3 h-3 rounded-full shrink-0 border border-black/10"
+               style={{ background: bg }} title={title} />
+}
+
+function ProductCard({ s, colorLookup = {} }) {
   const sb = stockBadge(s.variants.length ? s.totalStock : null)
+  // All crystal codes shown to customers = single colours + any mix codes with a recipe.
+  const crystalCodes = [...new Set([...(s.colorCodes || []), ...Object.keys(s.mixes || {})])]
   return (
     <Link to={`/range/${s.id}`} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow group">
       <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
@@ -324,6 +354,14 @@ function ProductCard({ s }) {
           ))}
         </div>
         <p className="text-[11px] text-ink-60">{s.size}</p>
+        {crystalCodes.length > 0 && (
+          <div className="flex items-center gap-1 flex-wrap" title="Crystal colours">
+            {crystalCodes.slice(0, 12).map(code => (
+              <Swatch key={code} code={code} mixes={s.mixes} lookup={colorLookup} />
+            ))}
+            {crystalCodes.length > 12 && <span className="text-[10px] text-ink-50">+{crystalCodes.length - 12}</span>}
+          </div>
+        )}
         <div className="mt-auto pt-1.5 flex items-center justify-between">
           <span className="text-base text-ink">{priceRange(s.minPrice, s.maxPrice)}</span>
           <span className={`badge ${sb.cls}`}>{sb.label}</span>
