@@ -312,8 +312,11 @@ function Swatch({ code, mixes, lookup }) {
 
 function ProductCard({ s, colorLookup = {} }) {
   const sb = stockBadge(s.variants.length ? s.totalStock : null)
-  // All crystal codes shown to customers = single colours + any mix codes with a recipe.
-  const crystalCodes = [...new Set([...(s.colorCodes || []), ...Object.keys(s.mixes || {})])]
+  // Only the codes actually ticked on this product's variations are shown.
+  // A ticked code may be a single colour (library hex) or a mix code (composed
+  // from this product's recipe in s.mixes) — but a mix recipe alone never adds a
+  // dot; it must be selected in a variation to appear.
+  const crystalCodes = [...new Set(s.colorCodes || [])]
   return (
     <Link to={`/range/${s.id}`} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow group">
       <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">

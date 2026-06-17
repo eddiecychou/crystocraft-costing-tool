@@ -19,10 +19,11 @@ import { useComponents, resolveRef, productAvailability } from '../criticalCompo
 import { Puzzle, Gem, Check, Download, Plus, X } from 'lucide-react'
 import CRYSTAL_MIXES from '../data/crystalMixes.json'
 
-// Mixture codes the catalogue understands (single-colour codes live in the
-// Crystal Colour Library; these are the "assorted/mix" buckets that need a recipe).
-const MIX_CODES = ['MX', 'M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8',
-  'AX', 'A1', 'A2', 'A3', 'A4', 'A5', 'GX', 'G1', 'G2', 'G3', 'G4']
+// A "mix" code is an assorted/multi-crystal bucket (MX, M1–M9, AX, A1–A9,
+// GX, G1–G9). These live in the Crystal Colour Library like any other code so
+// they can be ticked per variation; the per-product recipe (which crystals each
+// contains) is defined in the Crystal Mixtures editor.
+const isMixCode = code => /^(MX|AX|GX|[MAG][1-9])$/.test((code || '').trim().toUpperCase())
 
 const emptyVariant = () => ({
   brand_code: 'D', brand_name: 'Bohemia',
@@ -266,18 +267,22 @@ export default function RangeForm() {
     // The model's genuine single colours (legacy MonoCrystal). Used to correct
     // over-ticked colour selections on every variant so the card shows only the
     // colours this model is actually offered in.
-    const mono = [...new Set((Array.isArray(rec.mono) ? rec.mono : [])
-      .map(c => (c || '').trim().toUpperCase()).filter(Boolean))]
-    const mixCount = Object.keys(rec.mixes || {}).length
+    const mono = (Array.isArray(rec.mono) ? rec.mono : [])
+      .map(c => (c || '').trim().toUpperCase()).filter(Boolean)
+    const mixCodes = Object.keys(cleanMixes(rec.mixes))
+    // The legacy model offered both its single colours AND its mix codes, so tick
+    // both on every variation — mixes only render on the card when ticked.
+    const selection = [...new Set([...mono, ...mixCodes])]
+    const mixCount = mixCodes.length
     setForm(f => ({
       ...f,
       crystal_mixes: { ...cleanMixes(f.crystal_mixes), ...cleanMixes(rec.mixes) },
-      variants: mono.length
-        ? f.variants.map(v => ({ ...v, crystal_colors: [...mono] }))
+      variants: selection.length
+        ? f.variants.map(v => ({ ...v, crystal_colors: [...selection] }))
         : f.variants,
     }))
     setMixMsg(`Pulled ${mixCount} mixture${mixCount === 1 ? '' : 's'}`
-      + (mono.length ? ` and set ${mono.length} single colours` : '')
+      + (selection.length ? ` and ticked ${selection.length} colour${selection.length === 1 ? '' : 's'} on every variation` : '')
       + ` from ${code}. Save to apply.`)
   }
 
@@ -1007,9 +1012,9 @@ export default function RangeForm() {
             </button>
           </div>
           <p className="text-xs text-ink-60 mb-3">
-            Single colours (CL, RE, PI…) come straight from the Crystal Colour Library. The mix codes below
-            (MX, M1, AX, GX…) differ per model — tick which crystals each mix contains so the catalogue can
-            show the right swatches. Shared across all platings.
+            Mix codes (MX, M1, AX, GX…) live in the Crystal Colour Library so they can be ticked per
+            variation — define here which single crystals each one contains for <em>this</em> model.
+            A mix only shows on the product card when it's ticked in a variation. Shared across all platings.
           </p>
           {mixMsg && <p className="text-xs text-brand-600 mb-2">{mixMsg}</p>}
           {libColors.length === 0 ? (
@@ -1030,7 +1035,7 @@ export default function RangeForm() {
                               className="text-red-400 hover:text-red-600" title="Remove mixture"><X size={15} /></button>
                     </div>
                     <div className="flex flex-wrap gap-1.5">
-                      {libColors.map(c => {
+                      {libColors.filter(c => !isMixCode(c.code)).map(c => {
                         const on = (crystals || []).includes(c.code)
                         return (
                           <button type="button" key={c.code} onClick={() => toggleMixCrystal(mixCode, c.code)}
@@ -1047,15 +1052,32 @@ export default function RangeForm() {
                   </div>
                 ))}
               </div>
-              <div className="mt-3 flex flex-wrap gap-1.5 items-center">
-                <span className="text-[11px] uppercase tracking-wide text-ink-40 mr-1">Add mix code:</span>
-                {MIX_CODES.filter(mc => !(mc in (form.crystal_mixes || {}))).map(mc => (
-                  <button type="button" key={mc} onClick={() => addMix(mc)}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] border border-ink-10 text-ink-50 hover:border-brand-300 hover:text-brand-600">
-                    <Plus size={11} /><span className="font-mono">{mc}</span>
-                  </button>
-                ))}
-              </div>
+              {(() => {
+                // Mix codes come from the library — only codes that exist there
+                // can be ticked in a variation, so only those are worth a recipe.
+                const libMixCodes = libColors.map(c => c.code).filter(isMixCode)
+                const addable = libMixCodes.filter(mc => !(mc in (form.crystal_mixes || {})))
+                if (libMixCodes.length === 0) return (
+                  <p className="text-[11px] text-ink-50 mt-3">
+                    No mix codes in the library yet. Add codes like MX, M1, AX, GX in{' '}
+                    <Link to="/components" className="text-brand-600 hover:underline">Components → Crystal Colours</Link>{' '}
+                    so they can be selected in each variation.
+                  </p>
+                )
+                return (
+                  <div className="mt-3 flex flex-wrap gap-1.5 items-center">
+                    <span className="text-[11px] uppercase tracking-wide text-ink-40 mr-1">Add mix code:</span>
+                    {addable.length === 0
+                      ? <span className="text-[11px] text-ink-50">all library mix codes added</span>
+                      : addable.map(mc => (
+                          <button type="button" key={mc} onClick={() => addMix(mc)}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] border border-ink-10 text-ink-50 hover:border-brand-300 hover:text-brand-600">
+                            <Plus size={11} /><span className="font-mono">{mc}</span>
+                          </button>
+                        ))}
+                  </div>
+                )
+              })()}
             </>
           )}
         </div>
