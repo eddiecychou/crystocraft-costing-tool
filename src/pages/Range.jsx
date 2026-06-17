@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
-import { collection, query, orderBy, onSnapshot, addDoc, getDocs, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, addDoc, getDocs, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import rangeData from '../data/rangeProducts.json'
+import packingDb from '../data/packingDb.json'
 import { RANGE_PLATINGS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS, designNumber, brandLetter, bodyLetter } from '../constants'
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
@@ -130,6 +131,42 @@ export default function Range() {
     }
   }
 
+  // Non-destructive: patch each product's packing (+ blank size) from packing_db,
+  // matched on design_no(4) + format_code. Leaves all other fields untouched.
+  async function handleSyncPacking() {
+    const keysAvailable = Object.keys(packingDb).length
+    if (!confirm(`Update packing info on matching products from packing_db (${keysAvailable} entries)? This only fills carton/CBM/weight/pack-box fields and won't touch prices, stock, or names.`)) return
+    setSeeding(true)
+    try {
+      const snap = await getDocs(collection(db, 'range_products'))
+      let updated = 0, skipped = 0
+      for (const d of snap.docs) {
+        const p = d.data()
+        const dn = (p.design_no || designNumber(p.design_code) || '').padStart(4, '0')
+        const rec = packingDb[`${dn}-${p.format_code || ''}`]
+        if (!rec) { skipped++; continue }
+        const packing = {
+          ...(p.packing || {}),
+          pcs_per_carton: rec.pcs_per_carton || p.packing?.pcs_per_carton || '',
+          cbm_per_carton: rec.cbm_per_carton || p.packing?.cbm_per_carton || '',
+          weight_per_carton_kg: rec.weight_per_carton_kg || p.packing?.weight_per_carton_kg || '',
+          weight_per_pcs_kg: rec.weight_per_pcs_kg || p.packing?.weight_per_pcs_kg || '',
+          pack_box_ref: rec.pack_box_ref || p.packing?.pack_box_ref || '',
+        }
+        const patch = { packing, updatedAt: serverTimestamp() }
+        if (!((p.size || '').trim()) && rec._size) patch.size = rec._size
+        await updateDoc(doc(db, 'range_products', d.id), patch)
+        updated++
+        setSeedLog(`Packing: updated ${updated}, skipped ${skipped}…`)
+      }
+      setSeedLog(`✅ Packing synced — ${updated} updated, ${skipped} had no match.`)
+    } catch (err) {
+      setSeedLog(`❌ ${err.message}`)
+    } finally {
+      setSeeding(false)
+    }
+  }
+
   // One item per product (design number + format); variations collapsed inside
   const items = useMemo(() => products.map(p => {
     const fallbackBrand = brandLetter(p.design_code) || 'D'
@@ -227,7 +264,12 @@ export default function Range() {
           <h1 className="text-xl md:text-2xl">Figurine Gifts</h1>
         </div>
         <div className="text-right flex flex-col items-end gap-1">
-          <Link to="/range/new" className="btn-primary text-sm">+ New product</Link>
+          <div className="flex gap-2">
+            <button onClick={handleSyncPacking} disabled={seeding} className="btn-secondary text-sm">
+              {seeding ? 'Working…' : 'Sync packing'}
+            </button>
+            <Link to="/range/new" className="btn-primary text-sm">+ New product</Link>
+          </div>
           <p className="text-sm text-ink-60">{filtered.length} of {items.length} products · {totalSkus} SKUs</p>
           <p className="text-xs text-ink-60">Stock value ≈ ${Math.round(totalValue).toLocaleString()} USD (WS)</p>
         </div>
