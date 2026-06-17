@@ -13,7 +13,7 @@ const BODY_NAME = Object.fromEntries(RANGE_BODY_TYPES.map(b => [b.code, b.name])
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
-import { useCrystalColors, colorMap } from '../crystalColors'
+import { useCrystalColors, colorMap, ensureColors } from '../crystalColors'
 import { buildRangeSku, rangePrice } from '../rangeSku'
 import { useComponents, resolveRef, productAvailability } from '../criticalComponents'
 import { Puzzle, Gem, Check, Download, Plus, X } from 'lucide-react'
@@ -153,7 +153,7 @@ export default function RangeForm() {
   const [uploading, setUploading] = useState('')
   const [catOptions, setCatOptions] = useState({ design: [], product: [] })
   const [mixMsg, setMixMsg] = useState('')
-  const { colors: libColors } = useCrystalColors()
+  const { colors: libColors, setColors: setLibColors } = useCrystalColors()
   const colorLookup = colorMap(libColors)
   const { components: libComponents } = useComponents()
 
@@ -249,7 +249,7 @@ export default function RangeForm() {
   // Recipes are keyed by full code (e.g. "M0014"). The body letter isn't always
   // filled on a product, so fall back: try the full code, then "M"+design_no
   // (legacy U#### -> M####), then any recipe whose trailing digits match.
-  const pullLegacyMixes = () => {
+  const pullLegacyMixes = async () => {
     const designNo = (form.design_no || '').trim()
     const digits = designNo.replace(/\D/g, '')
     const candidates = [
@@ -281,6 +281,14 @@ export default function RangeForm() {
         ? f.variants.map(v => ({ ...v, crystal_colors: [...selection] }))
         : f.variants,
     }))
+    // Make sure every referenced code (singles + mix codes) exists in the library
+    // so the ticks render as proper chips, not "(not in library)" orphans.
+    if (selection.length) {
+      try {
+        const merged = await ensureColors(selection)
+        if (Array.isArray(merged)) setLibColors(merged)
+      } catch { /* non-fatal: codes still tick, just show as orphan until added */ }
+    }
     setMixMsg(`Pulled ${mixCount} mixture${mixCount === 1 ? '' : 's'}`
       + (selection.length ? ` and ticked ${selection.length} colour${selection.length === 1 ? '' : 's'} on every variation` : '')
       + ` from ${code}. Save to apply.`)
@@ -953,9 +961,9 @@ export default function RangeForm() {
                                   const on = sel.includes(c.code)
                                   return (
                                     <button key={c.code} type="button" onClick={() => toggleColor(i, c.code)}
-                                      title={c.code}
-                                      className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${on ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-ivory-dark hover:border-brand-400 hover:text-brand-600'}`}>
-                                      {c.name || c.code}
+                                      title={c.name || c.code}
+                                      className={`text-[11px] font-mono px-2 py-0.5 rounded-full border transition-colors ${on ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-ivory-dark hover:border-brand-400 hover:text-brand-600'}`}>
+                                      {c.code}
                                     </button>
                                   )
                                 })}
