@@ -1,11 +1,9 @@
 import { useState, useEffect, useMemo } from 'react'
-import { collection, query, orderBy, onSnapshot, addDoc, getDocs, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, addDoc, getDocs, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import rangeData from '../data/rangeProducts.json'
-import packingDb from '../data/packingDb.json'
 import { RANGE_PLATINGS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS, designNumber, brandLetter, bodyLetter } from '../constants'
-import { ensureColors } from '../crystalColors'
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
@@ -132,124 +130,6 @@ export default function Range() {
     }
   }
 
-  // Non-destructive: patch each product's packing (+ blank size) from packing_db,
-  // matched on design_no(4) + format_code. Leaves all other fields untouched.
-  async function handleSyncPacking() {
-    const keysAvailable = Object.keys(packingDb).length
-    if (!confirm(`Update packing info on matching products from packing_db (${keysAvailable} entries)? This only fills carton/CBM/weight/pack-box fields and won't touch prices, stock, or names.`)) return
-    setSeeding(true)
-    try {
-      const snap = await getDocs(collection(db, 'range_products'))
-      let updated = 0, skipped = 0
-      for (const d of snap.docs) {
-        const p = d.data()
-        const dn = (p.design_no || designNumber(p.design_code) || '').padStart(4, '0')
-        const rec = packingDb[`${dn}-${p.format_code || ''}`]
-        if (!rec) { skipped++; continue }
-        const packing = {
-          ...(p.packing || {}),
-          pcs_per_carton: rec.pcs_per_carton || p.packing?.pcs_per_carton || '',
-          cbm_per_carton: rec.cbm_per_carton || p.packing?.cbm_per_carton || '',
-          weight_per_carton_kg: rec.weight_per_carton_kg || p.packing?.weight_per_carton_kg || '',
-          weight_per_pcs_kg: rec.weight_per_pcs_kg || p.packing?.weight_per_pcs_kg || '',
-          pack_box_ref: rec.pack_box_ref || p.packing?.pack_box_ref || '',
-        }
-        const patch = { packing, updatedAt: serverTimestamp() }
-        if (!((p.size || '').trim()) && rec._size) patch.size = rec._size
-        await updateDoc(doc(db, 'range_products', d.id), patch)
-        updated++
-        setSeedLog(`Packing: updated ${updated}, skipped ${skipped}…`)
-      }
-      setSeedLog(`✅ Packing synced — ${updated} updated, ${skipped} had no match.`)
-    } catch (err) {
-      setSeedLog(`❌ ${err.message}`)
-    } finally {
-      setSeeding(false)
-    }
-  }
-
-  // Collapse per-colour variant rows into the colour-attribute model:
-  //  - distinct crystal codes across a product -> product.crystal_colors
-  //  - variants reduced to one row per plating (keeps brand/running/price/stock)
-  //  - discovered colours are added to the shared library (name defaults to code)
-  //  - original variants are backed up to variants_legacy (once) — non-destructive
-  async function handleCollapseColors() {
-    if (!confirm(
-      'Collapse per-colour variants into the new colour-attribute model?\n\n' +
-      '• Distinct crystal colours move onto each plating row as an "available colours" list.\n' +
-      '• Variants reduce to one row per plating (price & stock kept).\n' +
-      '• Discovered colours are added to the Crystal Colour Library.\n' +
-      '• Original variants are backed up (variants_legacy) — nothing is lost.'
-    )) return
-    setSeeding(true)
-    try {
-      const snap = await getDocs(collection(db, 'range_products'))
-      const allColors = new Set()
-      let changed = 0, already = 0
-      const priceFlags = []
-
-      for (const d of snap.docs) {
-        const p = d.data()
-        const vs = Array.isArray(p.variants) ? p.variants : []
-        if (!vs.length) { already++; continue }
-
-        // distinct colour codes for this product
-        const colors = [...new Set(vs.map(v => (v.crystal_code || '').trim().toUpperCase()).filter(Boolean))]
-        colors.forEach(c => allColors.add(c))
-
-        // group by plating; keep lowest non-null price as the base, and collect
-        // that plating's distinct crystal colours onto the collapsed variant.
-        const byPlating = new Map()
-        for (const v of vs) {
-          const key = (v.plating_code || '').trim().toUpperCase()
-          const price = Number(v.ws_price_usd)
-          const slot = byPlating.get(key) || { rows: [], prices: new Set(), colors: new Set() }
-          slot.rows.push(v)
-          if (Number.isFinite(price)) slot.prices.add(price)
-          const cc = (v.crystal_code || '').trim().toUpperCase()
-          if (cc) slot.colors.add(cc)
-          byPlating.set(key, slot)
-        }
-
-        const newVariants = []
-        for (const [, slot] of byPlating) {
-          const first = slot.rows[0]
-          const prices = [...slot.prices]
-          if (prices.length > 1) priceFlags.push(`${p.design_no || p.design_code || d.id}-${p.format_code || ''} ${first.plating_code || '—'} (${prices.join('/')})`)
-          newVariants.push({
-            brand_code: first.brand_code || '', brand_name: first.brand_name || '',
-            plating_code: first.plating_code || '', plating_name: first.plating_name || '',
-            crystal_code: '', crystal_name: '',
-            crystal_colors: [...slot.colors],
-            description: first.description || '',
-            running_no: first.running_no || '',
-            ws_price_usd: prices.length ? Math.min(...prices) : (first.ws_price_usd ?? null),
-            stock_finished: first.stock_finished ?? null,
-            packaging: first.packaging || '', engraving: first.engraving || '', image: first.image || '',
-            sku: '',
-          })
-        }
-
-        const patch = {
-          variants: newVariants,
-          updatedAt: serverTimestamp(),
-        }
-        if (!p.variants_legacy) patch.variants_legacy = vs   // backup once
-        await updateDoc(doc(db, 'range_products', d.id), patch)
-        changed++
-        setSeedLog(`Collapsing colours: ${changed} products…`)
-      }
-
-      await ensureColors([...allColors])
-      let log = `✅ Collapsed ${changed} products · ${allColors.size} colours added to library.`
-      if (priceFlags.length) log += ` ⚠️ ${priceFlags.length} plating(s) had varying prices (kept lowest): ${priceFlags.slice(0, 8).join(', ')}${priceFlags.length > 8 ? '…' : ''}`
-      setSeedLog(log)
-    } catch (err) {
-      setSeedLog(`❌ ${err.message}`)
-    } finally {
-      setSeeding(false)
-    }
-  }
 
   // One item per product (design number + format); variations collapsed inside
   const items = useMemo(() => products.map(p => {
@@ -351,12 +231,6 @@ export default function Range() {
           <p className="text-xs text-ink-60">Stock value ≈ ${Math.round(totalValue).toLocaleString()} USD (WS)</p>
         </div>
         <div className="flex gap-2 shrink-0 flex-wrap justify-end">
-          <button onClick={handleCollapseColors} disabled={seeding} className="btn-secondary text-sm">
-            {seeding ? 'Working…' : 'Collapse colours'}
-          </button>
-          <button onClick={handleSyncPacking} disabled={seeding} className="btn-secondary text-sm">
-            {seeding ? 'Working…' : 'Sync packing'}
-          </button>
           <Link to="/range/new" className="btn-primary text-sm text-center">+ New product</Link>
         </div>
       </div>
