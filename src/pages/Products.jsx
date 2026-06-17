@@ -75,6 +75,11 @@ export default function Products() {
   )
 }
 
+const fmtTierPrice = (val, cur) => {
+  const dp = cur === 'HKD' ? 1 : 2
+  return (Number(val) || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: dp })
+}
+
 function ProductCard({ product: p, onNavigate }) {
   const [tiers, setTiers] = useState(null)
 
@@ -104,7 +109,7 @@ function ProductCard({ product: p, onNavigate }) {
           <div className="mt-2 pt-2 border-t border-gray-100 flex flex-wrap gap-x-3 gap-y-1">
             {tiers.map(t => (
               <span key={t.quantity} className="text-xs text-gray-700">
-                <span className="font-semibold text-gray-900">HKD {t.price_hkd}</span>
+                <span className="font-semibold text-gray-900">{t.sell_currency || 'HKD'} {fmtTierPrice(t.sell_price ?? t.price_hkd, t.sell_currency || 'HKD')}</span>
                 <span className="text-gray-400"> @ {t.quantity.toLocaleString()} pcs</span>
               </span>
             ))}
