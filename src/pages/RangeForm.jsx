@@ -15,7 +15,7 @@ const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.n
 import LoadingBar from '../components/LoadingBar'
 import { useCrystalColors, colorMap } from '../crystalColors'
 import { buildRangeSku, rangePrice } from '../rangeSku'
-import { useComponents, componentMap, productAvailability } from '../criticalComponents'
+import { useComponents, resolveRef, productAvailability } from '../criticalComponents'
 
 const emptyVariant = () => ({
   brand_code: 'D', brand_name: 'Bohemia',
@@ -134,18 +134,26 @@ export default function RangeForm() {
   const { colors: libColors } = useCrystalColors()
   const colorLookup = colorMap(libColors)
   const { components: libComponents } = useComponents()
-  const componentLookup = componentMap(libComponents)
 
-  // Toggle a critical component on/off for this product (qty defaults to 1).
-  const toggleComponent = code => setForm(f => {
+  // Toggle a critical component on/off for this product. We store the stable
+  // doc id (so renaming the component's code never breaks the link) plus the
+  // code for display / legacy fallback. qty defaults to 1.
+  const sameRef = (r, comp) => (comp.id && r.id === comp.id) || (!r.id && r.code === comp.code)
+  const toggleComponent = comp => setForm(f => {
     const list = Array.isArray(f.critical_components) ? f.critical_components : []
-    const has = list.some(r => r.code === code)
-    return { ...f, critical_components: has ? list.filter(r => r.code !== code) : [...list, { code, qty_per_unit: 1 }] }
+    const has = list.some(r => sameRef(r, comp))
+    return {
+      ...f,
+      critical_components: has
+        ? list.filter(r => !sameRef(r, comp))
+        : [...list, { id: comp.id || '', code: comp.code, qty_per_unit: 1 }],
+    }
   })
-  const setComponentQty = (code, val) => setForm(f => ({
+  const refKey = r => r.id || r.code
+  const setComponentQty = (key, val) => setForm(f => ({
     ...f,
     critical_components: (f.critical_components || []).map(r =>
-      r.code === code ? { ...r, qty_per_unit: val.replace(/[^\d]/g, '') } : r),
+      refKey(r) === key ? { ...r, qty_per_unit: val.replace(/[^\d]/g, '') } : r),
   }))
 
   const toggleColor = (i, code) => setForm(f => ({
@@ -200,7 +208,7 @@ export default function RangeForm() {
           lead_time_weeks: d.lead_time_weeks ?? '',
           delivery_note: d.delivery_note || '',
           critical_components: Array.isArray(d.critical_components)
-            ? d.critical_components.map(r => ({ code: (r.code || '').toUpperCase(), qty_per_unit: r.qty_per_unit || 1 }))
+            ? d.critical_components.map(r => ({ id: r.id || '', code: (r.code || '').toUpperCase(), qty_per_unit: r.qty_per_unit || 1 }))
             : [],
           packing: { ...emptyPacking(), ...(d.packing || {}) },
           gallery: Array.isArray(d.gallery) ? d.gallery : [],
@@ -323,8 +331,15 @@ export default function RangeForm() {
       lead_time_weeks: num(form.lead_time_weeks),
       delivery_note: (form.delivery_note || '').trim(),
       critical_components: (form.critical_components || [])
-        .map(r => ({ code: (r.code || '').trim().toUpperCase(), qty_per_unit: Math.max(1, intNum(r.qty_per_unit) || 1) }))
-        .filter(r => r.code),
+        .map(r => {
+          const c = resolveRef(r, libComponents)   // refresh code from the live library
+          return {
+            id: r.id || c?.id || '',
+            code: (c?.code || r.code || '').trim().toUpperCase(),
+            qty_per_unit: Math.max(1, intNum(r.qty_per_unit) || 1),
+          }
+        })
+        .filter(r => r.id || r.code),
       packing: Object.fromEntries(PACKING_FIELDS.map(pf => [pf.key, (form.packing[pf.key] ?? '').toString().trim()])),
       gallery: form.gallery,
       // Plating-level stock pool — keep only platings still present, as integers.
@@ -513,9 +528,9 @@ export default function RangeForm() {
               <label className="text-[11px] uppercase tracking-wide text-ink-50">Critical components</label>
               <div className="flex flex-wrap gap-1.5 mt-1.5">
                 {libComponents.map(c => {
-                  const on = (form.critical_components || []).some(r => r.code === c.code)
+                  const on = (form.critical_components || []).some(r => sameRef(r, c))
                   return (
-                    <button key={c.code} type="button" onClick={() => toggleComponent(c.code)}
+                    <button key={c.id || c.code} type="button" onClick={() => toggleComponent(c)}
                       className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
                         on ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-ivory-dark hover:bg-ivory'}`}
                       title={`${c.stock_qty ?? 0} in stock · ${c.lead_time_weeks ?? '?'} wk lead`}>
@@ -529,15 +544,15 @@ export default function RangeForm() {
               {(form.critical_components || []).length > 0 && (
                 <div className="mt-3 border-t border-ivory-dark pt-3 space-y-2">
                   {(form.critical_components || []).map(r => {
-                    const c = componentLookup[r.code]
+                    const c = resolveRef(r, libComponents)
                     return (
-                      <div key={r.code} className="flex items-center gap-2 text-xs">
-                        <span className="font-mono text-ink-80 w-28 shrink-0 truncate" title={r.code}>{r.code}</span>
+                      <div key={refKey(r)} className="flex items-center gap-2 text-xs">
+                        <span className="font-mono text-ink-80 w-28 shrink-0 truncate" title={c?.code || r.code}>{c?.code || r.code}</span>
                         <span className="flex-1 min-w-0 truncate text-ink-70">{c?.name || <span className="text-amber-600">not in library</span>}</span>
                         <label className="flex items-center gap-1 shrink-0">
                           <span className="text-ink-50">×</span>
                           <input className="input text-xs w-12 text-right tabular-nums py-1" inputMode="numeric"
-                                 value={r.qty_per_unit} onChange={e => setComponentQty(r.code, e.target.value)} placeholder="1" />
+                                 value={r.qty_per_unit} onChange={e => setComponentQty(refKey(r), e.target.value)} placeholder="1" />
                           <span className="text-ink-50">/unit</span>
                         </label>
                         <span className="w-24 shrink-0 text-right text-ink-50 tabular-nums">

@@ -117,6 +117,18 @@ export function useComponents() {
 }
 
 export const componentMap = list => Object.fromEntries((list || []).map(c => [c.code, c]))
+export const componentById = list => Object.fromEntries((list || []).map(c => [c.id, c]))
+
+// Resolve a product's component reference to the live library record. Prefers
+// the stable doc id (so renaming a component's code never breaks the link) and
+// falls back to code for legacy references saved before ids were stored.
+export function resolveRef(ref, lib) {
+  if (!ref) return null
+  const byId = componentById(lib)
+  if (ref.id && byId[ref.id]) return byId[ref.id]
+  const byCode = componentMap(lib)
+  return byCode[(ref.code || '').toUpperCase()] || null
+}
 
 // ── Derived production signals ───────────────────────────────────────────────
 
@@ -127,12 +139,11 @@ const perUnit = r => { const n = Number(r?.qty_per_unit); return n > 0 ? n : 1 }
 // limited by the scarcest critical part. Returns { qty, bottleneck } (qty null
 // when the product lists no critical components).
 export function buildableFromComponents(product, lib) {
-  const map = componentMap(lib)
   const refs = refsOf(product)
   if (!refs.length) return { qty: null, bottleneck: null }
   let qty = Infinity, bottleneck = null
   for (const r of refs) {
-    const c = map[(r.code || '').toUpperCase()]
+    const c = resolveRef(r, lib)
     if (!c) continue
     const stock = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
     const canMake = Math.floor(stock / perUnit(r))
@@ -145,10 +156,9 @@ export function buildableFromComponents(product, lib) {
 // Returns { weeks, driver } — the limiting part governs the make-from-scratch
 // promise. weeks is null if every critical part is already in stock.
 export function makeLeadWeeks(product, lib) {
-  const map = componentMap(lib)
   let weeks = null, driver = null
   for (const r of refsOf(product)) {
-    const c = map[(r.code || '').toUpperCase()]
+    const c = resolveRef(r, lib)
     if (!c) continue
     const stock = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
     if (stock >= perUnit(r)) continue            // this part is covered
