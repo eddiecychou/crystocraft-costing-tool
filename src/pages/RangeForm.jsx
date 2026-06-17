@@ -155,6 +155,12 @@ export default function RangeForm() {
     critical_components: (f.critical_components || []).map(r =>
       refKey(r) === key ? { ...r, qty_per_unit: val.replace(/[^\d]/g, '') } : r),
   }))
+  // Remove a reference directly from the selected list (covers orphans that
+  // have no matching library chip to un-tick).
+  const removeComponentRef = key => setForm(f => ({
+    ...f,
+    critical_components: (f.critical_components || []).filter(r => refKey(r) !== key),
+  }))
 
   const toggleColor = (i, code) => setForm(f => ({
     ...f,
@@ -558,6 +564,9 @@ export default function RangeForm() {
                         <span className="w-24 shrink-0 text-right text-ink-50 tabular-nums">
                           {c ? `${c.stock_qty ?? 0} pcs · ${c.lead_time_weeks ?? '?'}wk` : '—'}
                         </span>
+                        <button type="button" onClick={() => removeComponentRef(refKey(r))}
+                                className="shrink-0 text-red-400 hover:text-red-600 px-1 text-base leading-none"
+                                title="Remove component">×</button>
                       </div>
                     )
                   })}
