@@ -1,66 +1,119 @@
 import { useState, useEffect } from 'react'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import {
+  collection, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc,
+  onSnapshot, query, orderBy, serverTimestamp, writeBatch,
+} from 'firebase/firestore'
 import { db } from './firebase'
 
-// Shared Critical Components Library — a single settings doc holds the whole list.
-// Shape: { components: [{ code, name, stock_qty, lead_time_weeks }], updatedAt }
+// Critical Components Library — promoted from a single settings doc-array to a
+// proper per-document collection so it scales to hundreds of parts, each with
+// its own image, category, supplier link and notes. The component `code` is the
+// ERP item code and is what products reference (no SKU/stock duplication).
 //
-// Only *business-critical* parts belong here — items that actually drive the
-// production promise: long lead time, tooling/mould cost, MOQ, or real supply
-// risk (figurine bodies, metal parts, music-box movements, …). Commodity /
-// fast-replenishment parts (plating, crystal, gift boxes, screws) are
-// deliberately NOT modelled — they don't change what we tell the customer.
+// Only *business-critical* parts belong here — items that drive the production
+// promise: long lead time, tooling/mould cost, MOQ, or supply risk (figurine
+// bodies, metal parts, music-box movements). Commodity / fast-replenishment
+// parts (plating, crystal, gift boxes) are deliberately NOT modelled.
 //
 // A product references components as [{ code, qty_per_unit }] (qty defaults 1).
 // Stock lives on the component, so one shared body pool feeds every product
 // that uses it (e.g. U0002 body → U0002-001, U0002-236, U0002-230).
-const DOC_REF = () => doc(db, 'settings', 'components')
+const COL = () => collection(db, 'range_components')
+const LEGACY_DOC = () => doc(db, 'settings', 'components')
 
 const ASSEMBLY_WEEKS_DEFAULT = 2   // plate + assemble + pack when parts are on hand
 
 const numOrNull = v =>
   v === '' || v == null || !Number.isFinite(Number(v)) ? null : Number(v)
 
-const norm = c => ({
+// Normalise a raw record (form or Firestore) into the canonical shape.
+export const normComponent = c => ({
   code: (c.code || '').trim().toUpperCase(),
   name: (c.name || '').trim(),
+  category: (c.category || '').trim(),
+  supplierId: c.supplierId || '',
+  supplierName: (c.supplierName || '').trim(),
+  notes: (c.notes || '').trim(),
+  images: Array.isArray(c.images) ? c.images.filter(Boolean) : [],
   stock_qty: numOrNull(c.stock_qty),
   lead_time_weeks: numOrNull(c.lead_time_weeks),
 })
 
+const fromDoc = d => ({ id: d.id, ...normComponent(d.data()) })
+
+// ── CRUD ─────────────────────────────────────────────────────────────────────
+
 export async function loadComponents() {
   try {
-    const snap = await getDoc(DOC_REF())
-    const arr = snap.exists() ? snap.data().components : []
-    return Array.isArray(arr) ? arr.map(norm).filter(c => c.code) : []
+    const snap = await getDocs(query(COL(), orderBy('code')))
+    return snap.docs.map(fromDoc)
   } catch {
     return []
   }
 }
 
-export async function saveComponents(list) {
-  const clean = (list || []).map(norm).filter(c => c.code)
-  const seen = new Set()
-  const out = []
-  for (const c of clean) {
-    if (seen.has(c.code)) continue
-    seen.add(c.code)
-    out.push(c)
-  }
-  await setDoc(DOC_REF(), { components: out, updatedAt: serverTimestamp() })
-  return out
+export async function getComponent(id) {
+  const snap = await getDoc(doc(db, 'range_components', id))
+  return snap.exists() ? fromDoc(snap) : null
 }
 
-// React hook — loads once on mount.
+// Create (id null/undefined) or update an existing component doc.
+export async function saveComponent(id, data) {
+  const payload = { ...normComponent(data), updatedAt: serverTimestamp() }
+  if (id) {
+    await setDoc(doc(db, 'range_components', id), payload, { merge: true })
+    return id
+  }
+  const ref = await addDoc(COL(), { ...payload, createdAt: serverTimestamp() })
+  return ref.id
+}
+
+export async function deleteComponent(id) {
+  await deleteDoc(doc(db, 'range_components', id))
+}
+
+// Bulk create (CSV import / Excel migration). Skips rows with no code.
+export async function bulkCreateComponents(rows) {
+  const clean = (rows || []).map(normComponent).filter(c => c.code)
+  let n = 0
+  for (let i = 0; i < clean.length; i += 400) {
+    const batch = writeBatch(db)
+    for (const c of clean.slice(i, i + 400)) {
+      batch.set(doc(COL()), { ...c, createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+      n++
+    }
+    await batch.commit()
+  }
+  return n
+}
+
+// One-time migration of the old settings/components doc-array into the
+// collection. Idempotent: does nothing if the collection already has rows.
+export async function migrateLegacyComponents() {
+  const existing = await getDocs(COL())
+  if (!existing.empty) return 0
+  const snap = await getDoc(LEGACY_DOC())
+  const arr = snap.exists() ? snap.data().components : []
+  if (!Array.isArray(arr) || !arr.length) return 0
+  return bulkCreateComponents(arr)
+}
+
+// React hook — live collection. Runs the legacy migration once on first mount.
 export function useComponents() {
   const [components, setComponents] = useState([])
   const [loading, setLoading] = useState(true)
   useEffect(() => {
-    let alive = true
-    loadComponents().then(c => { if (alive) { setComponents(c); setLoading(false) } })
-    return () => { alive = false }
+    let unsub = () => {}
+    migrateLegacyComponents().finally(() => {
+      unsub = onSnapshot(
+        query(COL(), orderBy('code')),
+        snap => { setComponents(snap.docs.map(fromDoc)); setLoading(false) },
+        () => setLoading(false),
+      )
+    })
+    return () => unsub()
   }, [])
-  return { components, loading, setComponents }
+  return { components, loading }
 }
 
 export const componentMap = list => Object.fromEntries((list || []).map(c => [c.code, c]))

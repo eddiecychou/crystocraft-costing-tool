@@ -466,7 +466,7 @@ export default function RangeForm() {
         <div className="card p-5">
           <div className="flex items-center justify-between mb-1">
             <h2 className="text-base">Production & Availability</h2>
-            <Link to="/settings" className="text-xs text-brand-600 hover:underline">Manage components →</Link>
+            <Link to="/components" className="text-xs text-brand-600 hover:underline">Manage components →</Link>
           </div>
           {form.status === 'stock' ? (
             <p className="text-xs text-ink-60 mb-3">
@@ -506,7 +506,7 @@ export default function RangeForm() {
           {libComponents.length === 0 ? (
             <p className="text-sm text-ink-60">
               No components in the library yet — add your long-lead / tooling parts in{' '}
-              <Link to="/settings" className="text-brand-600 hover:underline">Settings → Critical Components</Link>.
+              <Link to="/components" className="text-brand-600 hover:underline">Components → Critical Components</Link>.
             </p>
           ) : (
             <>
@@ -736,11 +736,11 @@ export default function RangeForm() {
                       <div className="border-t border-ivory-dark pt-2 mt-1">
                         <div className="flex items-center justify-between mb-1.5">
                           <label className="text-[11px] uppercase tracking-wide text-ink-50">Crystal colours</label>
-                          <Link to="/settings" className="text-[11px] text-brand-600 hover:underline">Manage library →</Link>
+                          <Link to="/components" className="text-[11px] text-brand-600 hover:underline">Manage library →</Link>
                         </div>
                         {libColors.length === 0 ? (
                           <p className="text-[11px] text-ink-60">
-                            No colours in the library yet — add them in <Link to="/settings" className="text-brand-600 hover:underline">Settings</Link>,
+                            No colours in the library yet — add them in <Link to="/components" className="text-brand-600 hover:underline">Components</Link>,
                             or run “Collapse colours” on the Figurine Gifts list.
                           </p>
                         ) : (() => {

@@ -121,6 +121,18 @@ export const RANGE_PLATINGS = [
   { code: 'M', name: 'Mixed',     dot: '#B7935A' },
 ]
 
+// Critical-component categories — used to group/filter the components library.
+export const RANGE_COMPONENT_CATEGORIES = [
+  'Figurine Body',
+  'Metal Part',
+  'Music Box',
+  'Base / Stand',
+  'Display Unit',
+  'Electronics',
+  'Packaging',
+  'Other',
+]
+
 // Crystal colour codes (suffix after plating). Free-text — add a name map here
 // once the real code→colour mapping is known.
 export const RANGE_CRYSTAL_COLORS = []

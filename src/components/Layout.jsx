@@ -9,6 +9,7 @@ const nav = [
   { to: '/products',   label: 'Corp Gifts', short: 'Corp',     icon: '📦', primary: true },
   { to: '/range',      label: 'Figurine Gifts', short: 'Figurine', icon: '💎', primary: true },
   { to: '/quotes',     label: 'Quotes',     short: 'Quotes',   icon: '📋', primary: true },
+  { to: '/components', label: 'Components', short: 'Components', icon: '🧩' },
   { to: '/suppliers',  label: 'Suppliers',  short: 'Suppliers',  icon: '🏭' },
   { to: '/customers',  label: 'Customers',  short: 'Customers',  icon: '🏢' },
   { to: '/catalogues', label: 'Catalogues', short: 'Catalogues', icon: '📖' },

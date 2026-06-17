@@ -22,6 +22,8 @@ import Customers from './pages/Customers'
 import CustomerForm from './pages/CustomerForm'
 import CustomerDetail from './pages/CustomerDetail'
 import Settings from './pages/Settings'
+import ComponentsLib from './pages/Components'
+import RangeComponentForm from './pages/RangeComponentForm'
 import Catalogues from './pages/Catalogues'
 import CatalogueForm from './pages/CatalogueForm'
 import CatalogueDetail from './pages/CatalogueDetail'
@@ -53,6 +55,9 @@ export default function App() {
                 <Route path="/products" element={<Products />} />
                 <Route path="/range" element={<Range />} />
                 <Route path="/range/:id" element={<RangeForm />} />
+                <Route path="/components" element={<ComponentsLib />} />
+                <Route path="/components/critical/new" element={<RangeComponentForm />} />
+                <Route path="/components/critical/:id" element={<RangeComponentForm />} />
                 <Route path="/products/new" element={<ProductForm />} />
                 <Route path="/products/:id" element={<ProductDetail />} />
                 <Route path="/products/:id/edit" element={<ProductForm />} />
