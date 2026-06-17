@@ -259,19 +259,17 @@ export default function Range() {
     <div className="p-4 md:p-6">
       {loading && <LoadingBar />}
 
-      <div className="flex items-end justify-between mb-1 flex-wrap gap-2">
+      <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-1">
         <div>
           <h1 className="text-xl md:text-2xl">Figurine Gifts</h1>
-        </div>
-        <div className="text-right flex flex-col items-end gap-1">
-          <div className="flex gap-2">
-            <button onClick={handleSyncPacking} disabled={seeding} className="btn-secondary text-sm">
-              {seeding ? 'Working…' : 'Sync packing'}
-            </button>
-            <Link to="/range/new" className="btn-primary text-sm">+ New product</Link>
-          </div>
-          <p className="text-sm text-ink-60">{filtered.length} of {items.length} products · {totalSkus} SKUs</p>
+          <p className="text-sm text-ink-60 mt-0.5">{filtered.length} of {items.length} products · {totalSkus} SKUs</p>
           <p className="text-xs text-ink-60">Stock value ≈ ${Math.round(totalValue).toLocaleString()} USD (WS)</p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          <button onClick={handleSyncPacking} disabled={seeding} className="btn-secondary text-sm flex-1 md:flex-none">
+            {seeding ? 'Working…' : 'Sync packing'}
+          </button>
+          <Link to="/range/new" className="btn-primary text-sm flex-1 md:flex-none text-center">+ New product</Link>
         </div>
       </div>
       {seedLog && <p className="text-xs font-mono text-ink-60 mb-2">{seedLog}</p>}
@@ -292,18 +290,20 @@ export default function Range() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2 my-5 flex-wrap items-center">
-        <input type="text" placeholder="Search name, code or SKU…" className="input flex-1 min-w-0"
+      <div className="flex flex-col sm:flex-row gap-2 my-5 sm:flex-wrap sm:items-center">
+        <input type="text" placeholder="Search name, code or SKU…" className="input w-full sm:flex-1 sm:min-w-0"
                value={search} onChange={e => setSearch(e.target.value)} />
-        <select className="input w-auto" value={ptype} onChange={e => setPtype(e.target.value)}>
-          <option value="">All product cats</option>
-          {productTypes.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select className="input w-auto" value={cat} onChange={e => setCat(e.target.value)}>
-          <option value="">All design cats</option>
-          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <label className="flex items-center gap-2 text-sm text-ink-80 px-2 cursor-pointer select-none">
+        <div className="flex gap-2">
+          <select className="input flex-1 sm:flex-none sm:w-auto min-w-0" value={ptype} onChange={e => setPtype(e.target.value)}>
+            <option value="">All product cats</option>
+            {productTypes.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select className="input flex-1 sm:flex-none sm:w-auto min-w-0" value={cat} onChange={e => setCat(e.target.value)}>
+            <option value="">All design cats</option>
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <label className="flex items-center gap-2 text-sm text-ink-80 sm:px-2 cursor-pointer select-none">
           <input type="checkbox" checked={stockOnly} onChange={e => setStockOnly(e.target.checked)} />
           In stock only
         </label>

@@ -5,19 +5,19 @@ import { auth } from '../firebase'
 import logo from '../assets/logo.png'
 
 const nav = [
-  { to: '/dashboard',  label: 'Dashboard',  icon: '📊' },
-  { to: '/products',   label: 'Corp Gifts', icon: '📦' },
-  { to: '/range',      label: 'Figurine Gifts', icon: '💎' },
-  { to: '/suppliers',  label: 'Suppliers',  icon: '🏭' },
-  { to: '/customers',  label: 'Customers',  icon: '🏢' },
-  { to: '/quotes',     label: 'Quotes',     icon: '📋' },
-  { to: '/catalogues',    label: 'Catalogues',  icon: '📖' },
-  { to: '/blog-generator', label: 'Blog Writer', icon: '✍️' },
-  { to: '/settings',      label: 'Settings',    icon: '⚙️' },
+  { to: '/dashboard',  label: 'Dashboard',  short: 'Home',     icon: '📊', primary: true },
+  { to: '/products',   label: 'Corp Gifts', short: 'Corp',     icon: '📦', primary: true },
+  { to: '/range',      label: 'Figurine Gifts', short: 'Figurine', icon: '💎', primary: true },
+  { to: '/quotes',     label: 'Quotes',     short: 'Quotes',   icon: '📋', primary: true },
+  { to: '/suppliers',  label: 'Suppliers',  short: 'Suppliers',  icon: '🏭' },
+  { to: '/customers',  label: 'Customers',  short: 'Customers',  icon: '🏢' },
+  { to: '/catalogues', label: 'Catalogues', short: 'Catalogues', icon: '📖' },
+  { to: '/blog-generator', label: 'Blog Writer', short: 'Blog Writer', icon: '✍️' },
+  { to: '/settings',   label: 'Settings',   short: 'Settings',   icon: '⚙️' },
 ]
 
-const mainNav  = nav.slice(0, 5)
-const moreNav  = nav.slice(5)
+const mainNav  = nav.filter(n => n.primary)
+const moreNav  = nav.filter(n => !n.primary)
 
 export default function Layout({ children, user }) {
   const navigate  = useNavigate()
@@ -87,31 +87,31 @@ export default function Layout({ children, user }) {
         </main>
 
         {/* Bottom tab bar — mobile only */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-ink border-t border-white/10 flex z-40">
-          {mainNav.map(({ to, label, icon }) => (
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-ink border-t border-white/10 flex z-40 pb-[env(safe-area-inset-bottom)]">
+          {mainNav.map(({ to, short, icon }) => (
             <NavLink
               key={to}
               to={to}
               className={({ isActive }) =>
-                `flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-xs font-medium transition-colors ${
+                `flex-1 min-w-0 flex flex-col items-center justify-center py-2 gap-1 transition-colors ${
                   isActive ? 'text-white' : 'text-ivory/40'
                 }`
               }
             >
-              <span className="text-xl leading-none">{icon}</span>
-              <span>{label}</span>
+              <span className="text-lg leading-none">{icon}</span>
+              <span className="text-[10px] font-medium leading-none truncate max-w-full px-0.5">{short}</span>
             </NavLink>
           ))}
 
           {/* More button */}
           <button
             onClick={() => setMoreOpen(o => !o)}
-            className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-xs font-medium transition-colors ${
+            className={`flex-1 min-w-0 flex flex-col items-center justify-center py-2 gap-1 transition-colors ${
               moreActive || moreOpen ? 'text-white' : 'text-ivory/40'
             }`}
           >
-            <span className="text-xl leading-none">⋯</span>
-            <span>More</span>
+            <span className="text-lg leading-none">⋯</span>
+            <span className="text-[10px] font-medium leading-none">More</span>
           </button>
         </nav>
 
@@ -119,7 +119,7 @@ export default function Layout({ children, user }) {
         {moreOpen && (
           <>
             <div className="md:hidden fixed inset-0 z-30" onClick={() => setMoreOpen(false)} />
-            <div className="md:hidden fixed bottom-16 left-0 right-0 z-40 bg-white border-t border-ivory-dark shadow-lg rounded-t-sm">
+            <div className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 bg-white border-t border-ivory-dark shadow-lg rounded-t-sm overflow-hidden">
               {moreNav.map(({ to, label, icon }) => (
                 <NavLink
                   key={to}
