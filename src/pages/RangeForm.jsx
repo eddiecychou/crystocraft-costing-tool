@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
@@ -6,7 +6,7 @@ import { db, storage } from '../firebase'
 import {
   RANGE_DESIGN_TYPES, RANGE_PRODUCT_TYPES, RANGE_FORMAT_CODES,
   RANGE_PLATINGS, RANGE_CRYSTAL_COLORS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS,
-  RANGE_BODY_TYPES, designNumber, brandLetter, bodyLetter,
+  RANGE_BODY_TYPES, RANGE_COMPONENT_CATEGORIES, designNumber, brandLetter, bodyLetter,
 } from '../constants'
 
 const BODY_NAME = Object.fromEntries(RANGE_BODY_TYPES.map(b => [b.code, b.name]))
@@ -161,6 +161,23 @@ export default function RangeForm() {
     ...f,
     critical_components: (f.critical_components || []).filter(r => refKey(r) !== key),
   }))
+
+  // Search-driven component picker (scales to hundreds of parts).
+  const [compSearch, setCompSearch] = useState('')
+  const [compCat, setCompCat] = useState('')
+  const compCats = useMemo(() => {
+    const used = new Set(libComponents.map(c => c.category).filter(Boolean))
+    return RANGE_COMPONENT_CATEGORIES.filter(c => used.has(c))
+  }, [libComponents])
+  const compResults = useMemo(() => {
+    const q = compSearch.trim().toLowerCase()
+    if (!q && !compCat) return []
+    return libComponents.filter(c => {
+      if (compCat && c.category !== compCat) return false
+      if (!q) return true
+      return [c.code, c.name, c.category, c.supplierName].some(v => (v || '').toLowerCase().includes(q))
+    }).slice(0, 50)
+  }, [libComponents, compSearch, compCat])
 
   const toggleColor = (i, code) => setForm(f => ({
     ...f,
@@ -531,24 +548,52 @@ export default function RangeForm() {
             </p>
           ) : (
             <>
-              <label className="text-[11px] uppercase tracking-wide text-ink-50">Critical components</label>
-              <div className="flex flex-wrap gap-1.5 mt-1.5">
-                {libComponents.map(c => {
-                  const on = (form.critical_components || []).some(r => sameRef(r, c))
-                  return (
-                    <button key={c.id || c.code} type="button" onClick={() => toggleComponent(c)}
-                      className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
-                        on ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-ivory-dark hover:bg-ivory'}`}
-                      title={`${c.stock_qty ?? 0} in stock · ${c.lead_time_weeks ?? '?'} wk lead`}>
-                      {c.name || c.code}
-                    </button>
-                  )
-                })}
+              <label className="text-[11px] uppercase tracking-wide text-ink-50">Add critical components</label>
+              <div className="flex gap-2 mt-1.5">
+                <input className="input text-sm flex-1 min-w-0" placeholder="Search code, name, supplier…"
+                       value={compSearch} onChange={e => setCompSearch(e.target.value)} />
+                <select className="input text-sm w-auto shrink-0" value={compCat} onChange={e => setCompCat(e.target.value)}>
+                  <option value="">All categories</option>
+                  {compCats.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
               </div>
+
+              {(compSearch.trim() || compCat) && (
+                <div className="mt-1.5 border border-ivory-dark rounded-md max-h-60 overflow-auto divide-y divide-ivory-dark">
+                  {compResults.length === 0 ? (
+                    <p className="text-xs text-ink-50 px-3 py-2.5">No matching components.</p>
+                  ) : compResults.map(c => {
+                    const on = (form.critical_components || []).some(r => sameRef(r, c))
+                    return (
+                      <button key={c.id || c.code} type="button" onClick={() => toggleComponent(c)}
+                        className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${on ? 'bg-brand-50' : 'hover:bg-ivory/60'}`}>
+                        <div className="w-8 h-8 shrink-0 bg-white border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
+                          {c.images?.[0] ? <img src={c.images[0]} alt="" className="w-full h-full object-contain p-0.5" /> : <span className="text-xs opacity-30">🧩</span>}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-xs text-ink-90 truncate">{c.code}</span>
+                            {c.category && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 shrink-0">{c.category}</span>}
+                          </div>
+                          <p className="text-[11px] text-ink-60 truncate">{c.name || '—'}</p>
+                        </div>
+                        <span className="text-[11px] text-ink-50 shrink-0 tabular-nums">{c.stock_qty ?? 0} pcs · {c.lead_time_weeks ?? '?'}wk</span>
+                        <span className={`shrink-0 text-sm ${on ? 'text-brand-600' : 'text-ink-30'}`}>{on ? '✓' : '+'}</span>
+                      </button>
+                    )
+                  })}
+                  {compResults.length === 50 && (
+                    <p className="text-[11px] text-ink-50 px-3 py-2">Showing first 50 — refine your search.</p>
+                  )}
+                </div>
+              )}
 
               {/* Selected components — qty per unit + live stock / lead */}
               {(form.critical_components || []).length > 0 && (
                 <div className="mt-3 border-t border-ivory-dark pt-3 space-y-2">
+                  <label className="text-[11px] uppercase tracking-wide text-ink-50">
+                    Selected ({(form.critical_components || []).length})
+                  </label>
                   {(form.critical_components || []).map(r => {
                     const c = resolveRef(r, libComponents)
                     return (
