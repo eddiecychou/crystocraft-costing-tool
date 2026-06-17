@@ -486,7 +486,7 @@ export default function RangeForm() {
                         <span className="text-xs font-mono text-ink-80 bg-ivory px-2 py-0.5 rounded">{sku || '—'}</span>
                         <button type="button" onClick={() => removeVariant(i)} className="text-red-500 hover:text-red-700 text-lg leading-none px-1" title="Remove variation">×</button>
                       </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 [&_label.label]:min-h-[2.2rem] [&_label.label]:flex [&_label.label]:items-end">
                         <div>
                           <label className="label">Prefix</label>
                           <input className="input text-xs font-mono uppercase" value={v.brand_code}
@@ -519,7 +519,7 @@ export default function RangeForm() {
                         <div>
                           <label className="label">
                             {platingKey(v)
-                              ? <>Stock override <span className="text-ink-60 font-normal">(opt.)</span></>
+                              ? <>Stock <span className="text-ink-60 font-normal">(opt.)</span></>
                               : 'Stock (pcs)'}
                           </label>
                           <input className="input text-xs" inputMode="numeric"
