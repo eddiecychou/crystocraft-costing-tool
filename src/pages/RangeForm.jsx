@@ -245,12 +245,26 @@ export default function RangeForm() {
     return body + (form.design_no || '').trim()
   }
   // Pull the legacy decoded recipes for this product (shared across platings).
+  // Recipes are keyed by full code (e.g. "M0014"). The body letter isn't always
+  // filled on a product, so fall back: try the full code, then "M"+design_no
+  // (legacy U#### -> M####), then any recipe whose trailing digits match.
   const pullLegacyMixes = () => {
-    const code = designCodeNow()
-    const rec = CRYSTAL_MIXES[code]
-    if (!rec) { setMixMsg(`No legacy recipe found for ${code || '(no code)'}.`); return }
+    const designNo = (form.design_no || '').trim()
+    const digits = designNo.replace(/\D/g, '')
+    const candidates = [
+      designCodeNow(),
+      'M' + designNo,
+      // any recipe whose numeric part matches this design no (keys are all M####)
+      ...Object.keys(CRYSTAL_MIXES).filter(k => k.replace(/\D/g, '') === digits),
+    ].filter(Boolean)
+    const code = candidates.find(c => CRYSTAL_MIXES[c])
+    const rec = code && CRYSTAL_MIXES[code]
+    if (!rec) {
+      setMixMsg(`No legacy recipe found for ${designCodeNow() || designNo || '(no code)'}.`)
+      return
+    }
     setForm(f => ({ ...f, crystal_mixes: { ...cleanMixes(f.crystal_mixes), ...cleanMixes(rec.mixes) } }))
-    setMixMsg(`Pulled ${Object.keys(rec.mixes).length} mixture${Object.keys(rec.mixes).length === 1 ? '' : 's'} for ${code}.`)
+    setMixMsg(`Pulled ${Object.keys(rec.mixes).length} mixture${Object.keys(rec.mixes).length === 1 ? '' : 's'} from ${code}.`)
   }
 
   // Pull the distinct categories already used in the system so the
