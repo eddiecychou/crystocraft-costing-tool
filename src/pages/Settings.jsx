@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
+import { RefreshCw } from 'lucide-react'
 
 const CURRENCIES = ['RMB', 'USD', 'EUR']
 const LABELS = { RMB: 'RMB → HKD', USD: 'USD → HKD', EUR: 'EUR → HKD' }
@@ -86,7 +87,7 @@ export default function Settings() {
             disabled={fetching}
             className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5"
           >
-            {fetching ? <><Spinner /> Fetching…</> : '↻ Fetch Live Rates'}
+            {fetching ? <><Spinner /> Fetching…</> : <span className="inline-flex items-center gap-1.5"><RefreshCw size={14} />Fetch Live Rates</span>}
           </button>
         </div>
 

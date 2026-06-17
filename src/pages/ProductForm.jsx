@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { CATEGORIES, PRODUCT_STATUSES } from '../constants'
+import { Sparkles, RotateCcw } from 'lucide-react'
 
 export default function ProductForm() {
   const { id } = useParams()
@@ -140,7 +141,7 @@ export default function ProductForm() {
               disabled={!form.name || aiLoading}
               className="text-xs px-2.5 py-1 rounded-md bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
             >
-              {aiLoading ? '⏳ Writing…' : '✨ AI Write'}
+              {aiLoading ? 'Writing…' : <span className="inline-flex items-center gap-1"><Sparkles size={13} />AI Write</span>}
             </button>
           </div>
           <textarea
@@ -148,14 +149,14 @@ export default function ProductForm() {
             rows={4}
             value={form.marketing_description}
             onChange={set('marketing_description')}
-            placeholder="Sell-copy for catalogues — evocative, customer-facing language… or click ✨ AI Write to generate"
+            placeholder="Sell-copy for catalogues — evocative, customer-facing language… or click AI Write to generate"
           />
           {aiError && <p className="text-xs text-red-500 mt-1">{aiError}</p>}
           {!form.name && <p className="text-xs text-gray-400 mt-1">Enter a product name first to enable AI writing</p>}
           {form.marketing_description && !rewriteOpen && (
             <button type="button" onClick={() => setRewriteOpen(true)}
               className="text-xs text-gray-400 hover:text-brand-600 transition-colors mt-1 flex items-center gap-1">
-              ↺ Rewrite with guidance
+              <RotateCcw size={13} />Rewrite with guidance
             </button>
           )}
           {rewriteOpen && (
@@ -173,7 +174,7 @@ export default function ProductForm() {
               <div className="flex gap-2">
                 <button type="button" onClick={handleRewrite} disabled={rewriteLoading || !rewriteGuide.trim()}
                   className="text-xs px-3 py-1.5 rounded-md bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 transition-colors">
-                  {rewriteLoading ? '✍️ Rewriting…' : '↺ Rewrite'}
+                  {rewriteLoading ? 'Rewriting…' : <span className="inline-flex items-center gap-1"><RotateCcw size={13} />Rewrite</span>}
                 </button>
                 <button type="button" onClick={() => { setRewriteOpen(false); setRewriteGuide('') }}
                   className="text-xs px-3 py-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">

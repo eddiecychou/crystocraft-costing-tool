@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useComponents, bulkCreateComponents } from '../criticalComponents'
 import { loadCrystalColors, saveCrystalColors } from '../crystalColors'
 import { RANGE_COMPONENT_CATEGORIES } from '../constants'
+import { Puzzle, ArrowUp, ArrowDown, X } from 'lucide-react'
 
 export default function Components() {
   const [tab, setTab] = useState('critical')
@@ -78,7 +79,7 @@ function CriticalComponents() {
             <Link key={c.id} to={`/components/critical/${c.id}`}
                   className="flex items-center gap-3 px-3 py-2.5 hover:bg-ivory/50 transition-colors">
               <div className="w-11 h-11 shrink-0 bg-white border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
-                {c.images[0] ? <img src={c.images[0]} alt="" className="w-full h-full object-contain p-0.5" /> : <span className="opacity-30">🧩</span>}
+                {c.images[0] ? <img src={c.images[0]} alt="" className="w-full h-full object-contain p-0.5" /> : <Puzzle size={18} className="text-gray-300" />}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -224,11 +225,11 @@ function CrystalColours() {
                      placeholder="Sapphire" onChange={e => update(i, 'name', e.target.value)} />
               <div className="flex items-center gap-0.5 w-16 shrink-0 justify-end">
                 <button type="button" onClick={() => move(i, -1)} disabled={i === 0}
-                        className="text-ink-40 hover:text-ink-70 disabled:opacity-30 px-1" title="Move up">↑</button>
+                        className="text-ink-40 hover:text-ink-70 disabled:opacity-30 px-1" title="Move up"><ArrowUp size={14} /></button>
                 <button type="button" onClick={() => move(i, 1)} disabled={i === rows.length - 1}
-                        className="text-ink-40 hover:text-ink-70 disabled:opacity-30 px-1" title="Move down">↓</button>
+                        className="text-ink-40 hover:text-ink-70 disabled:opacity-30 px-1" title="Move down"><ArrowDown size={14} /></button>
                 <button type="button" onClick={() => removeRow(i)}
-                        className="text-red-400 hover:text-red-600 px-1 text-base leading-none" title="Remove">×</button>
+                        className="text-red-400 hover:text-red-600 px-1 leading-none" title="Remove"><X size={15} /></button>
               </div>
             </div>
           ))}

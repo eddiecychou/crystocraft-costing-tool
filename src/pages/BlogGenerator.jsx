@@ -2,6 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useParams, Link } from 'react-router-dom'
+import {
+  Check, X, Pencil, FileArchive, Clock, Rocket, RotateCcw,
+  Sparkles, Eye, Package, AlertTriangle, Monitor, Smartphone,
+  Flashlight, List,
+} from 'lucide-react'
 
 const INDUSTRIES = [
   'Banking & Financial Services', 'Insurance Companies', 'Luxury & Premium Brands',
@@ -22,7 +27,7 @@ function CopyButton({ text, label = 'Copy' }) {
   return (
     <button onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
       className="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-brand-50 text-gray-600 hover:text-brand-700 transition-colors shrink-0">
-      {copied ? '✓ Copied!' : label}
+      {copied ? <span className="inline-flex items-center gap-1"><Check size={12} />Copied!</span> : label}
     </button>
   )
 }
@@ -77,7 +82,7 @@ function SectionImagePicker({ images, heroImage, selected, onChange }) {
           <div key={img.file_url} className="relative">
             <img src={img.file_url} alt="" className="w-14 h-14 object-cover rounded-lg border border-gray-200" />
             <button type="button" onClick={() => onChange(selected.filter(s => s.file_url !== img.file_url))}
-              className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full text-xs flex items-center justify-center leading-none">×</button>
+              className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center leading-none"><X size={10} /></button>
             <span className="absolute -bottom-1.5 -left-1 text-[10px] bg-gray-700 text-white px-1 rounded">
               {i === 0 && selected.length === 1 ? 'right' : `${i + 1}`}
             </span>
@@ -254,15 +259,15 @@ function PreviewModal({ html, onClose }) {
         <div className="flex items-center gap-3">
           <h2 className="font-semibold text-gray-800 text-sm">Blog Post Preview</h2>
           <div className="flex gap-1 bg-gray-100 p-0.5 rounded-md">
-            {[['desktop', '🖥 Desktop'], ['mobile', '📱 Mobile']].map(([key, label]) => (
+            {[['desktop', 'Desktop', Monitor], ['mobile', 'Mobile', Smartphone]].map(([key, label, Icon]) => (
               <button key={key} onClick={() => setViewport(key)}
-                className={`text-xs px-3 py-1 rounded transition-colors ${viewport === key ? 'bg-white shadow text-gray-800 font-medium' : 'text-gray-500 hover:text-gray-700'}`}>
-                {label}
+                className={`inline-flex items-center gap-1 text-xs px-3 py-1 rounded transition-colors ${viewport === key ? 'bg-white shadow text-gray-800 font-medium' : 'text-gray-500 hover:text-gray-700'}`}>
+                <Icon size={13} />{label}
               </button>
             ))}
           </div>
         </div>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-2xl leading-none px-1">×</button>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-700 leading-none px-1"><X size={22} /></button>
       </div>
       <div className="flex-1 overflow-auto bg-gray-200 p-4 flex justify-center">
         <iframe
@@ -393,11 +398,11 @@ function WPPublishButton({ payload, disabled }) {
   if (state === 'success' && wpResult) {
     return (
       <div className="rounded-lg border border-green-200 bg-green-50 p-4 space-y-2">
-        <p className="text-sm font-semibold text-green-800">✅ Draft published to WordPress!</p>
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-green-800"><Check size={15} />Draft published to WordPress!</p>
         <p className="text-xs text-green-700">{wpResult.images_uploaded}/{wpResult.images_total} images uploaded to Media Library</p>
         <div className="flex gap-2 flex-wrap">
           <a href={wpResult.edit_url} target="_blank" rel="noreferrer"
-            className="text-xs px-3 py-1.5 rounded-md bg-green-700 text-white hover:bg-green-800 transition-colors">✏️ Edit in WordPress →</a>
+            className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md bg-green-700 text-white hover:bg-green-800 transition-colors"><Pencil size={12} />Edit in WordPress →</a>
         </div>
       </div>
     )
@@ -408,7 +413,13 @@ function WPPublishButton({ payload, disabled }) {
       <button onClick={handlePublish} disabled={state === 'compressing' || state === 'publishing' || disabled}
         className="w-full py-2.5 px-4 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-40"
         style={{ background: '#2563eb' }}>
-        {state === 'compressing' ? '🗜 Compressing images…' : state === 'publishing' ? '⏳ Publishing draft…' : '🚀 Publish Draft to WordPress'}
+        <span className="inline-flex items-center justify-center gap-1.5">
+          {state === 'compressing'
+            ? <><FileArchive size={15} />Compressing images…</>
+            : state === 'publishing'
+              ? <><Clock size={15} />Publishing draft…</>
+              : <><Rocket size={15} />Publish Draft to WordPress</>}
+        </span>
       </button>
       {state === 'error' && <p className="text-xs text-red-500">{errMsg}</p>}
       <p className="text-xs text-gray-400 text-center">Images upload to WP Media Library for maximum SEO benefit</p>
@@ -448,7 +459,7 @@ function RewritePanel({ sectionType, heading, body, context, onRewrite }) {
     return (
       <button type="button" onClick={() => setOpen(true)}
         className="text-xs text-gray-400 hover:text-brand-600 transition-colors flex items-center gap-1">
-        ↺ Rewrite
+        <RotateCcw size={12} />Rewrite
       </button>
     )
   }
@@ -468,7 +479,7 @@ function RewritePanel({ sectionType, heading, body, context, onRewrite }) {
       <div className="flex gap-2">
         <button type="button" onClick={handleRewrite} disabled={loading || !guidance.trim()}
           className="text-xs px-3 py-1.5 rounded-md bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 transition-colors">
-          {loading ? '✍️ Rewriting…' : '↺ Rewrite'}
+          {loading ? <span className="inline-flex items-center gap-1"><Pencil size={12} />Rewriting…</span> : <span className="inline-flex items-center gap-1"><RotateCcw size={12} />Rewrite</span>}
         </button>
         <button type="button" onClick={() => { setOpen(false); setGuidance('') }}
           className="text-xs px-3 py-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
@@ -640,7 +651,7 @@ function SpotlightTab({ preloadedProduct }) {
           </div>
         </div>
         <button onClick={handleGenerate} disabled={!selectedId || loading} className="btn-primary w-full justify-center">
-          {loading ? '✍️ Writing blog post…' : '✨ Generate Product Spotlight Post'}
+          {loading ? <span className="inline-flex items-center gap-1.5"><Pencil size={15} />Writing blog post…</span> : <span className="inline-flex items-center gap-1.5"><Sparkles size={15} />Generate Product Spotlight Post</span>}
         </button>
         {error && <p className="text-sm text-red-500">{error}</p>}
       </div>
@@ -708,8 +719,8 @@ function SpotlightTab({ preloadedProduct }) {
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-800">Publish to WordPress</h3>
               <button onClick={() => setShowPreview(true)}
-                className="text-xs px-3 py-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
-                👁 Preview HTML
+                className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                <Eye size={13} />Preview HTML
               </button>
             </div>
             <WPPublishButton payload={wpPayload} />
@@ -826,7 +837,7 @@ function RoundupTab() {
                   className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-colors ${isSelected ? 'border-brand-300 bg-brand-50' : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'}`}>
                   {p.heroImage
                     ? <img src={p.heroImage} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
-                    : <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center shrink-0 text-lg">📦</div>
+                    : <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center shrink-0 text-gray-300"><Package size={18} /></div>
                   }
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
@@ -871,7 +882,7 @@ function RoundupTab() {
           </div>
         </div>
         <button onClick={handleGenerate} disabled={selected.length < 2 || loading} className="btn-primary w-full justify-center">
-          {loading ? '✍️ Writing roundup…' : `✨ Generate Roundup (${selected.length} products)`}
+          {loading ? <span className="inline-flex items-center gap-1.5"><Pencil size={15} />Writing roundup…</span> : <span className="inline-flex items-center gap-1.5"><Sparkles size={15} />Generate Roundup · {selected.length} products</span>}
         </button>
         {selected.length < 2 && <p className="text-xs text-gray-400 text-center">Select at least 2 products</p>}
         {error && <p className="text-sm text-red-500">{error}</p>}
@@ -951,7 +962,7 @@ function RoundupTab() {
                         selected={itemImages[product?.id] || []}
                         onChange={imgs => setProductImgs(product.id, imgs)}
                       />
-                    : <p className="text-xs text-amber-500">⚠️ No images found for this product</p>
+                    : <p className="inline-flex items-center gap-1 text-xs text-amber-500"><AlertTriangle size={12} />No images found for this product</p>
                   }
                 </div>
               </div>
@@ -988,8 +999,8 @@ function RoundupTab() {
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-800">Publish to WordPress</h3>
               <button onClick={() => setShowPreview(true)}
-                className="text-xs px-3 py-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
-                👁 Preview HTML
+                className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                <Eye size={13} />Preview HTML
               </button>
             </div>
             <WPPublishButton payload={wpPayload} />
@@ -1025,11 +1036,11 @@ export default function BlogGenerator() {
       </div>
 
       <div className="flex gap-1 p-1 bg-gray-100 rounded-lg mb-6">
-        {[{ key: 'spotlight', label: '🔦 Product Spotlight', desc: 'One product, one post' },
-          { key: 'roundup', label: '📋 Roundup Post', desc: 'Multiple products, one post' }].map(t => (
+        {[{ key: 'spotlight', label: 'Product Spotlight', Icon: Flashlight, desc: 'One product, one post' },
+          { key: 'roundup', label: 'Roundup Post', Icon: List, desc: 'Multiple products, one post' }].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${tab === t.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
-            <span>{t.label}</span>
+            <span className="inline-flex items-center gap-1.5"><t.Icon size={14} />{t.label}</span>
             <span className="block text-xs font-normal text-gray-400">{t.desc}</span>
           </button>
         ))}

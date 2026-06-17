@@ -17,6 +17,7 @@ import { db, storage } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import QuoteExport from '../components/QuoteExport'
+import { Package, X, Check, Paperclip, FileText, Copy } from 'lucide-react'
 
 const STATUS_OPTIONS = ['draft', 'sent', 'won', 'lost']
 const STATUS_STYLES = {
@@ -301,8 +302,8 @@ export default function QuoteDetail() {
             {STATUS_OPTIONS.map(s => <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>)}
           </select>
           <button className="btn-secondary text-sm" onClick={() => setShowExport(true)}>Export</button>
-          <button className="btn-secondary text-sm" onClick={handleDuplicate} disabled={duplicating}>
-            {duplicating ? 'Copying…' : '⎘ Duplicate'}
+          <button className="btn-secondary text-sm inline-flex items-center gap-1.5" onClick={handleDuplicate} disabled={duplicating}>
+            {duplicating ? 'Copying…' : <><Copy size={14} />Duplicate</>}
           </button>
           <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>Delete</button>
         </div>
@@ -451,7 +452,7 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
            onClick={() => setShowImgPicker(true)}>
         {displayImage
           ? <img src={displayImage} alt={item.product_name} className="w-full h-full object-cover" />
-          : <span className="text-2xl">📦</span>}
+          : <Package size={24} strokeWidth={1.5} className="text-gray-300" />}
         <div className="absolute inset-0 rounded-lg bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
           <span className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-gray-700">change</span>
         </div>
@@ -482,7 +483,7 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
               )}
             </p>
           </div>
-          <button type="button" onClick={onRemove} className="text-xs text-red-400 hover:text-red-600 shrink-0">✕</button>
+          <button type="button" onClick={onRemove} className="text-red-400 hover:text-red-600 shrink-0"><X size={14} /></button>
         </div>
 
         {/* Tier table */}
@@ -549,7 +550,7 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
                   </td>
                   <td className="pl-2 pt-1.5 pb-0 text-center">
                     {tiers.length > 1 && (
-                      <button type="button" onClick={() => removeTier(i)} className="text-xs text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                      <button type="button" onClick={() => removeTier(i)} className="text-gray-300 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><X size={14} /></button>
                     )}
                   </td>
                 </tr>
@@ -669,7 +670,7 @@ function ProductImagePicker({ productId, selectedUrl, onSelect, onClear, onClose
                     <img src={img.file_url} alt="" className="w-full h-full object-cover" />
                     {isSelected && (
                       <div className="absolute inset-0 bg-brand-500/20 flex items-center justify-center">
-                        <span className="bg-brand-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">✓</span>
+                        <span className="bg-brand-500 text-white rounded-full w-5 h-5 flex items-center justify-center"><Check size={12} /></span>
                       </div>
                     )}
                   </div>
@@ -755,13 +756,13 @@ function ProductPicker({ existingIds, onAdd, onClose }) {
                 <div className="w-12 h-12 rounded bg-gray-100 shrink-0 overflow-hidden flex items-center justify-center">
                   {p.heroImage
                     ? <img src={p.heroImage} alt={p.name} className="w-full h-full object-cover" />
-                    : <span className="text-lg">📦</span>}
+                    : <Package size={18} strokeWidth={1.5} className="text-gray-300" />}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900">{p.name}</p>
                   <p className="text-xs text-gray-500">{p.category}</p>
                 </div>
-                {isSelected && <span className="text-brand-600 text-lg">✓</span>}
+                {isSelected && <Check size={18} className="text-brand-600" />}
               </div>
             )
           })}
@@ -845,7 +846,7 @@ function UploadedQuoteDetail({ quote, id, onDelete }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-xl md:text-2xl font-bold text-gray-900">{q.client_name}</h1>
-            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-medium">📎 Uploaded</span>
+            <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-medium"><Paperclip size={11} />Uploaded</span>
           </div>
           <p className="text-xs text-gray-400 mt-0.5">Click any field to edit — changes save automatically</p>
         </div>
@@ -904,7 +905,7 @@ function UploadedQuoteDetail({ quote, id, onDelete }) {
         {atts.length === 0 ? (
           <button onClick={() => fileInputRef.current?.click()}
             className="w-full border-2 border-dashed border-gray-200 rounded-lg py-6 text-sm text-gray-400 hover:border-brand-300 hover:text-brand-500 transition-colors">
-            📎 Tap to add PDF or image files
+            <span className="inline-flex items-center gap-1.5"><Paperclip size={15} />Tap to add PDF or image files</span>
           </button>
         ) : (
           <div className="space-y-2">
@@ -912,20 +913,20 @@ function UploadedQuoteDetail({ quote, id, onDelete }) {
               <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-200 bg-gray-50">
                 {att.name?.match(/\.(jpg|jpeg|png|webp|gif)$/i)
                   ? <a href={att.url} target="_blank" rel="noreferrer" className="shrink-0"><img src={att.url} alt="" className="h-12 w-16 object-cover rounded border border-gray-200" /></a>
-                  : <span className="text-2xl shrink-0">📄</span>
+                  : <FileText size={24} className="text-gray-400 shrink-0" />
                 }
                 <a href={att.url} target="_blank" rel="noreferrer" className="flex-1 text-sm text-brand-600 hover:underline truncate min-w-0">
                   {att.name || `File ${i + 1}`}
                 </a>
                 <button onClick={() => handleRemoveFile(i)} disabled={removingIdx === i}
                   className="text-xs text-red-400 hover:text-red-600 shrink-0 px-1">
-                  {removingIdx === i ? '…' : '✕'}
+                  {removingIdx === i ? '…' : <X size={14} />}
                 </button>
               </div>
             ))}
             <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
               className="mt-1 w-full border-2 border-dashed border-gray-200 rounded-lg py-2.5 text-sm text-gray-400 hover:border-brand-300 hover:text-brand-500 transition-colors">
-              📎 Add more files
+              <span className="inline-flex items-center gap-1.5"><Paperclip size={15} />Add more files</span>
             </button>
           </div>
         )}

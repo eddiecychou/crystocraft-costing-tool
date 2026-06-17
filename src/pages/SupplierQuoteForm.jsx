@@ -4,6 +4,7 @@ import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, serverT
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
 import { CURRENCIES } from '../constants'
+import { FolderOpen, Paperclip, FileText, X, Copy, ChevronUp, ChevronDown } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
 
 export default function SupplierQuoteForm() {
@@ -295,8 +296,8 @@ export default function SupplierQuoteForm() {
       {/* Copy from previous quote */}
       {!isEdit && (
         <div className="flex justify-end mb-3">
-          <button type="button" onClick={openCopyPicker} className="btn-secondary text-sm">
-            ⎘ Copy from Previous Quote
+          <button type="button" onClick={openCopyPicker} className="btn-secondary text-sm inline-flex items-center gap-1.5">
+            <Copy size={14} />Copy from Previous Quote
           </button>
         </div>
       )}
@@ -313,7 +314,7 @@ export default function SupplierQuoteForm() {
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
         >
-          <span className="text-2xl mb-1">{dragOver ? '📂' : '📎'}</span>
+          <span className="text-gray-500 mb-1">{dragOver ? <FolderOpen size={22} /> : <Paperclip size={22} />}</span>
           <span className="text-sm text-gray-600">{dragOver ? 'Drop to upload' : 'Click to upload or drag & drop'}</span>
           <span className="text-xs text-gray-400 mt-0.5">JPG, PNG, WebP, HEIC, PDF</span>
           <input type="file" accept="image/*,.pdf" multiple className="hidden" onChange={handleFileChange} />
@@ -324,7 +325,7 @@ export default function SupplierQuoteForm() {
             {files.map(f => (
               <div key={f._id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
                 {f.isPdf
-                  ? <div className="w-12 h-12 rounded bg-red-50 border border-red-100 flex items-center justify-center shrink-0"><span className="text-xl">📄</span></div>
+                  ? <div className="w-12 h-12 rounded bg-red-50 border border-red-100 flex items-center justify-center shrink-0"><FileText size={20} className="text-red-400" /></div>
                   : <img src={f.preview} alt="" className="w-12 h-12 object-cover rounded shrink-0" />}
                 <span className="text-xs text-gray-600 flex-1 truncate">{f.file.name}</span>
                 <button type="button" onClick={() => removeFile(f._id)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
@@ -353,7 +354,7 @@ export default function SupplierQuoteForm() {
                   {a.file_type === 'pdf'
                     ? <a href={a.file_url} target="_blank" rel="noreferrer"
                           className="flex items-center gap-1.5 px-2 py-1 rounded border border-red-100 bg-red-50 text-xs text-red-700 hover:bg-red-100">
-                          <span>📄</span><span className="truncate max-w-32">{a.file_name}</span>
+                          <FileText size={14} /><span className="truncate max-w-32">{a.file_name}</span>
                         </a>
                     : <a href={a.file_url} target="_blank" rel="noreferrer">
                           <img src={a.file_url} alt="" className="w-12 h-12 object-cover rounded border" />
@@ -362,9 +363,9 @@ export default function SupplierQuoteForm() {
                   <button
                     type="button"
                     onClick={() => setExistingAttachments(prev => prev.filter((_, idx) => idx !== i))}
-                    className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full text-xs leading-none flex items-center justify-center opacity-0 group-hover/att:opacity-100 transition-opacity"
+                    className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full leading-none flex items-center justify-center opacity-0 group-hover/att:opacity-100 transition-opacity"
                     title="Remove attachment"
-                  >✕</button>
+                  ><X size={10} /></button>
                 </div>
               ))}
             </div>
@@ -582,7 +583,7 @@ function SupplierCombobox({ suppliers, value, onChange }) {
             {selected ? displayName(selected) : 'Select supplier…'}
           </span>
         )}
-        <span className="text-gray-400 text-xs shrink-0">{open ? '▲' : '▼'}</span>
+        <span className="text-gray-400 shrink-0">{open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
       </div>
 
       {/* Hidden required-field anchor */}

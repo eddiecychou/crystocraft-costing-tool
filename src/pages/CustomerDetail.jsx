@@ -9,6 +9,7 @@ import { ref as storageRef, deleteObject } from 'firebase/storage'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
+import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 
 function toArray(val) {
@@ -221,7 +222,7 @@ export default function CustomerDetail() {
             <span className="text-xs font-mono px-2 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">{customer.erp_code}</span>
           )}
         </div>
-              {customer.is_vip && <span className="px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-semibold">⭐ VIP</span>}
+              {customer.is_vip && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-semibold"><Star size={12} className="fill-current" />VIP</span>}
               {customer.crm_status && (
                 <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${CRM_STATUS_STYLES[customer.crm_status] || 'bg-gray-100 text-gray-500'}`}>
                   {customer.crm_status}
@@ -247,7 +248,7 @@ export default function CustomerDetail() {
       {/* Personal WA warning banner */}
       {(customer.is_personal_wa || customer.channels?.includes('Personal WhatsApp')) && (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          <span>⚠️</span>
+          <AlertTriangle size={15} className="shrink-0" />
           <span>
             <strong>{customer.contact_name || customer.company_name}</strong> communicates via
             Eddie's <strong>personal WhatsApp</strong> — they will not appear in WhatsApp Business.
@@ -416,7 +417,7 @@ export default function CustomerDetail() {
                       {enq.follow_up_date && (
                         <p className={`text-xs font-medium ${isOverdue(enq.follow_up_date) ? 'text-red-600' : 'text-gray-500'}`}>
                           Follow-up: {fmtDate(enq.follow_up_date)}
-                          {isOverdue(enq.follow_up_date) && ' ⚠️'}
+                          {isOverdue(enq.follow_up_date) && <AlertTriangle size={11} className="inline align-[-1px] ml-1" />}
                         </p>
                       )}
                       {enq.linked_quote_ids?.length > 0 && (
@@ -447,7 +448,7 @@ export default function CustomerDetail() {
                               >
                                 {att.name?.match(/\.(jpg|jpeg|png|webp|gif)$/i)
                                   ? <img src={att.url} alt="" className="h-10 w-14 object-cover rounded border border-gray-200" />
-                                  : <><span>📄</span><span className="truncate max-w-[140px]">{att.name || `Quote ${i + 1}`}</span></>
+                                  : <><FileText size={14} className="shrink-0" /><span className="truncate max-w-[140px]">{att.name || `Quote ${i + 1}`}</span></>
                                 }
                               </a>
                               <button
@@ -489,7 +490,7 @@ export default function CustomerDetail() {
       {/* Compose Message */}
       <div className="card mb-4">
         <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">✦ Compose Message</h2>
+          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-gray-700"><Sparkle size={15} />Compose Message</h2>
           <p className="text-xs text-gray-400 mt-0.5">AI-written message tailored to this customer</p>
         </div>
         <div className="p-5 space-y-4">
@@ -555,9 +556,9 @@ export default function CustomerDetail() {
                 <button
                   type="button"
                   onClick={() => setComposeContext(enquiries[0].description || '')}
-                  className="text-xs text-brand-600 hover:text-brand-800"
+                  className="inline-flex items-center gap-1 text-xs text-brand-600 hover:text-brand-800"
                 >
-                  ↺ Use latest interaction
+                  <RotateCcw size={12} />Use latest interaction
                 </button>
               )}
             </div>
@@ -576,7 +577,7 @@ export default function CustomerDetail() {
                 <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 Generating…
               </span>
-            ) : '✦ Generate Message'}
+            ) : <span className="inline-flex items-center gap-1.5"><Sparkle size={15} />Generate Message</span>}
           </button>
 
           {composeError && <p className="text-sm text-red-600">{composeError}</p>}
@@ -586,7 +587,7 @@ export default function CustomerDetail() {
               <div className="flex items-center justify-between mb-1.5">
                 <label className="label mb-0">Generated Message</label>
                 <button onClick={handleCopy} className="text-xs text-brand-600 hover:text-brand-800 font-medium">
-                  {composeCopied ? '✓ Copied!' : 'Copy'}
+                  {composeCopied ? <span className="inline-flex items-center gap-1"><Check size={12} />Copied!</span> : 'Copy'}
                 </button>
               </div>
               <textarea

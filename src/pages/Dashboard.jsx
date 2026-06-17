@@ -4,6 +4,10 @@ import { db } from '../firebase'
 import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
+import {
+  AlertTriangle, ClipboardList, Factory, Trophy, Calendar, Check,
+  Store, ShoppingCart, Gift, Sparkles, Smartphone, X, RefreshCw, ChevronUp,
+} from 'lucide-react'
 
 function fmtDate(ts) {
   if (!ts) return '—'
@@ -166,25 +170,25 @@ export default function Dashboard() {
   // Filtered list panel config
   const filterConfig = {
     overdue: {
-      title: '⚠️ Overdue Follow-ups',
+      title: 'Overdue Follow-ups', Icon: AlertTriangle,
       empty: 'No overdue follow-ups',
       items: overdueList.sort((a, b) => (a.follow_up_date?.seconds || 0) - (b.follow_up_date?.seconds || 0)),
       type: 'enquiry',
     },
     open: {
-      title: '📋 Pipeline — Open & Quoted',
+      title: 'Pipeline — Open & Quoted', Icon: ClipboardList,
       empty: 'No open or quoted enquiries',
       items: pipelineList.sort((a, b) => (b.date?.seconds || 0) - (a.date?.seconds || 0)),
       type: 'enquiry',
     },
     quotes: {
-      title: '🏭 In Production',
+      title: 'In Production', Icon: Factory,
       empty: 'Nothing currently in production',
       items: inProductionList.sort((a, b) => (b.date?.seconds || 0) - (a.date?.seconds || 0)),
       type: 'enquiry',
     },
     won: {
-      title: `🏆 New Orders This Month (${new Date().toLocaleDateString('en-GB', { month: 'long' })})`,
+      title: `New Orders This Month (${new Date().toLocaleDateString('en-GB', { month: 'long' })})`, Icon: Trophy,
       empty: 'No confirmed orders this month yet',
       items: wonList.sort((a, b) => (b.date?.seconds || 0) - (a.date?.seconds || 0)),
       type: 'enquiry',
@@ -207,7 +211,7 @@ export default function Dashboard() {
           disabled={refreshing}
           className="text-sm text-brand-600 hover:text-brand-800 font-medium flex items-center gap-1.5 mt-1"
         >
-          <span className={refreshing ? 'animate-spin' : ''}>↻</span>
+          <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
           {refreshing ? 'Refreshing…' : 'Refresh'}
         </button>
       </div>
@@ -251,11 +255,11 @@ export default function Dashboard() {
       {/* Category filter pills */}
       <div className="flex flex-wrap gap-2 mb-4">
         {[
-          { label: '🏪 Distributor',   value: 'Distributor' },
-          { label: '🛒 Small B2B',     value: 'Small B2B' },
-          { label: '🎁 Gift / OEM',    value: 'Gift / OEM' },
-          { label: '✨ Crystal Fabric', value: 'Crystal Fabric' },
-        ].map(({ label, value }) => (
+          { label: 'Distributor',   value: 'Distributor',   Icon: Store },
+          { label: 'Small B2B',     value: 'Small B2B',     Icon: ShoppingCart },
+          { label: 'Gift / OEM',    value: 'Gift / OEM',    Icon: Gift },
+          { label: 'Crystal Fabric', value: 'Crystal Fabric', Icon: Sparkles },
+        ].map(({ label, value, Icon }) => (
           <button
             key={value}
             onClick={() => setCategoryFilter(f => f === value ? null : value)}
@@ -265,7 +269,7 @@ export default function Dashboard() {
                 : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
             }`}
           >
-            {label}
+            {Icon && <Icon size={13} className="inline align-[-2px] mr-1" />}{label}
           </button>
         ))}
         {categoryFilter && (
@@ -282,11 +286,12 @@ export default function Dashboard() {
       {activeFilter && (
         <div className="card mb-6 ring-2 ring-brand-200">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-700">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+              {(() => { const I = filterConfig[activeFilter].Icon; return I ? <I size={15} /> : null })()}
               {filterConfig[activeFilter].title}
               {categoryFilter && <span className="ml-2 text-xs font-normal text-gray-400">· {categoryFilter}</span>}
             </h2>
-            <button onClick={() => setActiveFilter(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">×</button>
+            <button onClick={() => setActiveFilter(null)} className="text-gray-400 hover:text-gray-600 leading-none"><X size={18} /></button>
           </div>
           {filterConfig[activeFilter].items.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">{filterConfig[activeFilter].empty}</p>
@@ -342,7 +347,7 @@ export default function Dashboard() {
                         </p>
                         {enq.follow_up_date && (
                           <p className={`text-xs font-semibold mt-1 ${overdue ? 'text-red-600' : today ? 'text-amber-600' : 'text-gray-400'}`}>
-                            {overdue ? '⚠️ ' : today ? '📅 ' : ''}Follow-up: {fmtDate(enq.follow_up_date)}
+                            {overdue ? <AlertTriangle size={11} className="inline align-[-1px] mr-1" /> : today ? <Calendar size={11} className="inline align-[-1px] mr-1" /> : null}Follow-up: {fmtDate(enq.follow_up_date)}
                           </p>
                         )}
                         {enq.date && !enq.follow_up_date && (
@@ -362,7 +367,7 @@ export default function Dashboard() {
                             disabled={dismissing === enq.id}
                             className="px-2.5 py-1 rounded-lg border border-gray-200 bg-white text-gray-500 text-xs font-medium hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
                           >
-                            {dismissing === enq.id ? '…' : '✓ Done'}
+                            {dismissing === enq.id ? '…' : <span className="inline-flex items-center gap-1"><Check size={12} />Done</span>}
                           </button>
                         </div>
                       )}
@@ -383,7 +388,7 @@ export default function Dashboard() {
           </div>
           {priorityFollowUps.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">
-              {categoryFilter ? `No follow-ups for ${categoryFilter} in the next 7 days` : 'No follow-ups due in the next 7 days 🎉'}
+              {categoryFilter ? `No follow-ups for ${categoryFilter} in the next 7 days` : 'No follow-ups due in the next 7 days'}
             </p>
           ) : (
             <div className="divide-y divide-gray-100">
@@ -407,7 +412,7 @@ export default function Dashboard() {
                           {enq.description?.slice(0, 100)}{enq.description?.length > 100 ? '…' : ''}
                         </p>
                         <p className={`text-xs font-semibold mt-1 ${overdue ? 'text-red-600' : today ? 'text-amber-600' : 'text-gray-400'}`}>
-                          {overdue ? '⚠️ ' : today ? '📅 ' : ''}{fmtDate(enq.follow_up_date)}
+                          {overdue ? <AlertTriangle size={11} className="inline align-[-1px] mr-1" /> : today ? <Calendar size={11} className="inline align-[-1px] mr-1" /> : null}{fmtDate(enq.follow_up_date)}
                         </p>
                       </Link>
                       <div className="flex flex-col gap-1.5 shrink-0">
@@ -422,7 +427,7 @@ export default function Dashboard() {
                           disabled={dismissing === enq.id}
                           className="px-2.5 py-1 rounded-lg border border-gray-200 bg-white text-gray-500 text-xs font-medium hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
                         >
-                          {dismissing === enq.id ? '…' : '✓ Done'}
+                          {dismissing === enq.id ? '…' : <span className="inline-flex items-center gap-1"><Check size={12} />Done</span>}
                         </button>
                       </div>
                     </div>
@@ -448,7 +453,7 @@ export default function Dashboard() {
       {personalWaCustomers.length > 0 && (
         <div className="card mb-4">
           <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-700">📱 Personal WhatsApp Contacts</h2>
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-gray-700"><Smartphone size={15} />Personal WhatsApp Contacts</h2>
             <p className="text-xs text-gray-400 mt-0.5">These contacts use personal WhatsApp — check your personal phone</p>
           </div>
           <ul className="divide-y divide-gray-100">
@@ -489,7 +494,7 @@ function StatCard({ label, value, colour, note, active, onClick }) {
       <p className={`text-3xl font-bold ${c.num}`}>{value}</p>
       <p className={`text-xs font-semibold mt-1 leading-tight ${c.label}`}>{label}</p>
       {note && <p className="text-xs text-gray-400 mt-0.5 leading-tight">{note}</p>}
-      {active && <p className={`text-xs mt-1 font-medium ${c.label} opacity-70`}>▲ filtered</p>}
+      {active && <p className={`inline-flex items-center gap-1 text-xs mt-1 font-medium ${c.label} opacity-70`}><ChevronUp size={12} />filtered</p>}
     </button>
   )
 }
