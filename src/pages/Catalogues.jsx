@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { collection, getDocs, query, orderBy, deleteDoc, doc } from 'firebase/firestore'
 import { db } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { BookOpen, X } from 'lucide-react'
 
 const STATUS_STYLES = {
   draft:     'bg-gray-100 text-gray-600',
@@ -41,7 +42,7 @@ export default function Catalogues() {
 
       {catalogues.length === 0 ? (
         <div className="card p-10 text-center">
-          <p className="text-3xl mb-3">📖</p>
+          <BookOpen size={36} strokeWidth={1.25} className="mx-auto mb-3 text-gray-300" />
           <p className="text-gray-500 text-sm">No catalogues yet. Create your first one.</p>
           <Link to="/catalogues/new" className="btn-primary mt-4 inline-block">+ New Catalogue</Link>
         </div>
@@ -64,8 +65,8 @@ export default function Catalogues() {
                 <Link to={`/catalogues/${cat.id}`} className="btn-primary text-xs px-3 py-1.5">Edit</Link>
                 <button
                   onClick={() => setConfirmDelete(cat)}
-                  className="text-xs text-gray-400 hover:text-red-500 px-2 py-1.5"
-                >✕</button>
+                  className="text-gray-400 hover:text-red-500 px-2 py-1.5"
+                ><X size={15} /></button>
               </div>
             </div>
           ))}

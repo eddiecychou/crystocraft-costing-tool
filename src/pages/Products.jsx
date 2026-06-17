@@ -4,6 +4,7 @@ import { db } from '../firebase'
 import { Link } from 'react-router-dom'
 import { CATEGORIES, PRODUCT_STATUSES } from '../constants'
 import LoadingBar from '../components/LoadingBar'
+import { Package } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 
 export default function Products() {
@@ -87,7 +88,7 @@ function ProductCard({ product: p, onNavigate }) {
       <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
         {p.heroImage
           ? <img src={p.heroImage} alt={p.name} className="w-full h-full object-cover" />
-          : <span className="text-4xl">📦</span>
+          : <Package size={40} strokeWidth={1.25} className="text-gray-300" />
         }
       </div>
       <div className="p-4 flex flex-col gap-1 flex-1">

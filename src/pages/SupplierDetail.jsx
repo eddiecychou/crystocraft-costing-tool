@@ -7,6 +7,7 @@ import LoadingBar from '../components/LoadingBar'
 import SupplierCatalogs from '../components/SupplierCatalogs'
 import SupplierAddQuoteModal from '../components/SupplierAddQuoteModal'
 import { SUPPLIER_CATEGORIES } from '../constants'
+import { AlertTriangle, Star } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 
 function toArray(val) {
@@ -139,7 +140,7 @@ export default function SupplierDetail() {
             const cat = SUPPLIER_CATEGORIES.find(c => c.value === supplier.category)
             return cat ? (
               <span className="inline-block mt-1.5 text-xs px-2.5 py-1 rounded-full bg-brand-50 text-brand-700 font-medium">
-                {cat.emoji} {supplier.category}
+                <cat.Icon size={12} className="inline align-[-2px] mr-1" />{supplier.category}
               </span>
             ) : null
           })()}
@@ -181,8 +182,8 @@ export default function SupplierDetail() {
         </div>
 
         {indexError && (
-          <div className="p-4 text-sm text-amber-700 bg-amber-50 border-b border-amber-100">
-            ⚠️ A Firestore index is needed for this query. Check the browser console for a link to create it — takes about 1 minute.
+          <div className="p-4 text-sm text-amber-700 bg-amber-50 border-b border-amber-100 flex items-start gap-2">
+            <AlertTriangle size={15} className="shrink-0 mt-0.5" />A Firestore index is needed for this query. Check the browser console for a link to create it — takes about 1 minute.
           </div>
         )}
 
@@ -203,7 +204,7 @@ export default function SupplierDetail() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-medium text-gray-900 truncate">{productLabel}</p>
                       {q.is_preferred && (
-                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium shrink-0">⭐ Preferred</span>
+                        <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium shrink-0"><Star size={11} className="fill-current" />Preferred</span>
                       )}
                       {isOrphaned && (
                         <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400 shrink-0">Product deleted</span>

@@ -6,6 +6,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { CURRENCIES } from '../constants'
+import { AlertTriangle, X } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 
@@ -219,11 +220,11 @@ export default function PricingTiers() {
                         </p>
                       ) : c.has_quotes ? (
                         <Link to={`/products/${id}/components/${c.id}`} className="text-xs text-orange-500 hover:underline">
-                          ⚠ Has quotes but no preferred set — click to fix
+                          <AlertTriangle size={12} className="inline align-[-2px] mr-1" />Has quotes but no preferred set — click to fix
                         </Link>
                       ) : (
                         <Link to={`/products/${id}/components/${c.id}`} className="text-xs text-red-400 hover:underline">
-                          ✕ No supplier quotes yet — click to add
+                          <X size={12} className="inline align-[-2px] mr-1" />No supplier quotes yet — click to add
                         </Link>
                       )}
                     </div>
@@ -278,7 +279,7 @@ export default function PricingTiers() {
       {/* Warning if any component is missing a preferred supplier */}
       {components.some(c => !c.preferred_quote) && (
         <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 mb-4 text-sm text-orange-700">
-          ⚠ Some components have no preferred supplier — cost totals and margins below are incomplete.
+          <AlertTriangle size={13} className="inline align-[-2px] mr-1" />Some components have no preferred supplier — cost totals and margins below are incomplete.
         </div>
       )}
 
@@ -377,8 +378,8 @@ export default function PricingTiers() {
                         <button
                           type="button"
                           onClick={() => setConfirmDelete(tier)}
-                          className="text-xs text-red-300 hover:text-red-500 transition-colors"
-                        >✕</button>
+                          className="text-red-300 hover:text-red-500 transition-colors"
+                        ><X size={14} /></button>
                       </td>
                     </tr>
                   )

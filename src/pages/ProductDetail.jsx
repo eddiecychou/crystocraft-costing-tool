@@ -6,6 +6,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import ImageGallery from '../components/ImageGallery'
 import { IMAGE_TYPES } from '../constants'
+import { Star, X } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 
 export default function ProductDetail() {
@@ -237,7 +238,7 @@ export default function ProductDetail() {
           <div className="card p-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">
               Images
-              <span className="text-xs text-gray-400 font-normal ml-2">hover image to set hero ⭐ or delete ✕</span>
+              <span className="inline-flex items-center gap-1 text-xs text-gray-400 font-normal ml-2">hover image to set hero <Star size={12} /> or delete <X size={12} /></span>
             </h2>
             <ImageGallery
               images={images}

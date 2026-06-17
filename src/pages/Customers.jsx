@@ -3,6 +3,7 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
+import { Store, ShoppingCart, Gift, Sparkles, Building2, Star, Smartphone } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 
 const COUNTRIES = [
@@ -24,10 +25,10 @@ const CRM_STATUS_STYLES = {
 
 const CATEGORY_TABS = [
   { key: '',               label: 'All' },
-  { key: 'Distributor',   label: '🏪 Distributor' },
-  { key: 'Small B2B',     label: '🛒 Small B2B' },
-  { key: 'Gift / OEM',    label: '🎁 Gift / OEM' },
-  { key: 'Crystal Fabric',label: '✨ Crystal Fabric' },
+  { key: 'Distributor',   label: 'Distributor',   Icon: Store },
+  { key: 'Small B2B',     label: 'Small B2B',     Icon: ShoppingCart },
+  { key: 'Gift / OEM',    label: 'Gift / OEM',    Icon: Gift },
+  { key: 'Crystal Fabric',label: 'Crystal Fabric',Icon: Sparkles },
 ]
 
 export default function Customers() {
@@ -88,7 +89,7 @@ export default function Customers() {
                   : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
               }`}
             >
-              {tab.label} <span className={`ml-1 ${filterCategory === tab.key ? 'text-white/70' : 'text-gray-400'}`}>{count}</span>
+              {tab.Icon && <tab.Icon size={13} className="inline align-[-2px] mr-1" />}{tab.label} <span className={`ml-1 ${filterCategory === tab.key ? 'text-white/70' : 'text-gray-400'}`}>{count}</span>
             </button>
           )
         })}
@@ -121,7 +122,7 @@ export default function Customers() {
 
       {filtered.length === 0 && !loading ? (
         <div className="text-center py-20 text-gray-400">
-          <p className="text-5xl mb-4">🏢</p>
+          <Building2 size={48} strokeWidth={1.25} className="mx-auto mb-4 text-gray-300" />
           <p>{customers.length === 0 ? 'No customers yet — add your first client.' : 'No results found.'}</p>
         </div>
       ) : (
@@ -131,8 +132,8 @@ export default function Customers() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-gray-900 text-sm truncate">{c.company_name}</p>
-                  {c.is_vip && <span className="text-xs">⭐</span>}
-                  {c.is_personal_wa && <span title="Personal WhatsApp" className="text-xs">📱</span>}
+                  {c.is_vip && <Star size={13} className="fill-current text-yellow-500 shrink-0" />}
+                  {c.is_personal_wa && <Smartphone size={13} className="text-gray-400 shrink-0" aria-label="Personal WhatsApp" />}
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5 truncate">
                   {[c.contact_name, c.country || c.region].filter(Boolean).join(' · ')}

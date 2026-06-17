@@ -4,6 +4,7 @@ import { db } from '../firebase'
 import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import { SUPPLIER_CATEGORIES } from '../constants'
+import { MapPin, Phone, MessageCircle } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 
 const CAT_STYLES = {
@@ -75,7 +76,7 @@ export default function Suppliers() {
               onClick={() => setCatFilter(catFilter === c.value ? '' : c.value)}
               className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${catFilter === c.value ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
             >
-              {c.emoji} {c.value} <span className="opacity-60 ml-0.5">({count})</span>
+              <c.Icon size={13} className="inline align-[-2px] mr-1" />{c.value} <span className="opacity-60 ml-0.5">({count})</span>
             </button>
           )
         })}
@@ -101,16 +102,16 @@ export default function Suppliers() {
                     <p className="font-medium text-gray-900 text-sm">{s.name}</p>
                     {cat && (
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${CAT_STYLES[s.category] || 'bg-gray-100 text-gray-500'}`}>
-                        {cat.emoji} {s.category}
+                        <cat.Icon size={12} className="inline align-[-2px] mr-1" />{s.category}
                       </span>
                     )}
                   </div>
                   {s.name_cn && <p className="text-xs text-gray-500 mt-0.5">{s.name_cn}</p>}
                   <div className="flex gap-3 mt-1 text-xs text-gray-400 flex-wrap">
-                    {s.city  && <span>📍 {s.city}{s.country && s.country !== 'China' ? `, ${s.country}` : ''}</span>}
-                    {!s.city && s.country && <span>📍 {s.country}</span>}
-                    {(s.phones?.[0] || s.phone) && <span>📞 {s.phones?.[0] || s.phone}</span>}
-                    {s.wechat_id && <span>💬 {s.wechat_id}</span>}
+                    {s.city  && <span className="inline-flex items-center gap-1"><MapPin size={12} />{s.city}{s.country && s.country !== 'China' ? `, ${s.country}` : ''}</span>}
+                    {!s.city && s.country && <span className="inline-flex items-center gap-1"><MapPin size={12} />{s.country}</span>}
+                    {(s.phones?.[0] || s.phone) && <span className="inline-flex items-center gap-1"><Phone size={12} />{s.phones?.[0] || s.phone}</span>}
+                    {s.wechat_id && <span className="inline-flex items-center gap-1"><MessageCircle size={12} />{s.wechat_id}</span>}
                   </div>
                 </div>
                 <span className="text-xs text-gray-400 ml-3">→</span>

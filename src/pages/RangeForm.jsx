@@ -16,6 +16,7 @@ import LoadingBar from '../components/LoadingBar'
 import { useCrystalColors, colorMap } from '../crystalColors'
 import { buildRangeSku, rangePrice } from '../rangeSku'
 import { useComponents, resolveRef, productAvailability } from '../criticalComponents'
+import { Puzzle, Gem, Check } from 'lucide-react'
 
 const emptyVariant = () => ({
   brand_code: 'D', brand_name: 'Bohemia',
@@ -583,7 +584,7 @@ export default function RangeForm() {
                       <button key={c.id || c.code} type="button" onClick={() => toggleComponent(c)}
                         className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${on ? 'bg-brand-50' : 'hover:bg-ivory/60'}`}>
                         <div className="w-8 h-8 shrink-0 bg-white border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
-                          {c.images?.[0] ? <img src={c.images[0]} alt="" className="w-full h-full object-contain p-0.5" /> : <span className="text-xs opacity-30">🧩</span>}
+                          {c.images?.[0] ? <img src={c.images[0]} alt="" className="w-full h-full object-contain p-0.5" /> : <Puzzle size={16} className="text-gray-300" />}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
@@ -593,7 +594,7 @@ export default function RangeForm() {
                           <p className="text-[11px] text-ink-60 truncate">{c.name || '—'}</p>
                         </div>
                         <span className="text-[11px] text-ink-50 shrink-0 tabular-nums">{c.stock_qty ?? 0} pcs · {c.lead_time_weeks ?? '?'}wk</span>
-                        <span className={`shrink-0 text-sm ${on ? 'text-brand-600' : 'text-ink-30'}`}>{on ? '✓' : '+'}</span>
+                        <span className={`shrink-0 ${on ? 'text-brand-600' : 'text-ink-30'}`}>{on ? <Check size={14} /> : '+'}</span>
                       </button>
                     )
                   })}
@@ -751,7 +752,7 @@ export default function RangeForm() {
                             ? <span className="text-[10px] text-ink-50">…</span>
                             : v.image
                               ? <img src={v.image} alt="" className="w-full h-full object-contain p-1" />
-                              : <span className="text-xl opacity-30">💎</span>}
+                              : <Gem size={20} className="text-gray-300" />}
                           <input type="file" accept="image/*" className="hidden"
                                  onChange={e => handleVariantUpload(i, e.target.files[0])} />
                         </label>

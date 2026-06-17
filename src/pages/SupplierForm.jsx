@@ -141,7 +141,7 @@ export default function SupplierForm() {
                     : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400'
                 }`}
               >
-                {c.emoji} {c.value}
+                <c.Icon size={13} className="inline align-[-2px] mr-1" />{c.value}
               </button>
             ))}
           </div>

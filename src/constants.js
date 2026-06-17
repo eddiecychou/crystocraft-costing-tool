@@ -1,12 +1,14 @@
+import { Gem, Cog, Package, TreePine, Cpu, Shirt, Printer, Tag } from 'lucide-react'
+
 export const SUPPLIER_CATEGORIES = [
-  { value: 'Crystal / Glass',        emoji: '🔮' },
-  { value: 'Metal Parts',            emoji: '⚙️' },
-  { value: 'Packaging',              emoji: '📦' },
-  { value: 'Wood / Acrylic / Plastics', emoji: '🪵' },
-  { value: 'Electronics',            emoji: '📡' },
-  { value: 'Fabric & Textile',       emoji: '🧵' },
-  { value: 'Printing & Engraving',   emoji: '🖨️' },
-  { value: 'Others',                 emoji: '🏷️' },
+  { value: 'Crystal / Glass',        Icon: Gem },
+  { value: 'Metal Parts',            Icon: Cog },
+  { value: 'Packaging',              Icon: Package },
+  { value: 'Wood / Acrylic / Plastics', Icon: TreePine },
+  { value: 'Electronics',            Icon: Cpu },
+  { value: 'Fabric & Textile',       Icon: Shirt },
+  { value: 'Printing & Engraving',   Icon: Printer },
+  { value: 'Others',                 Icon: Tag },
 ]
 
 export const PRODUCT_STATUSES = [

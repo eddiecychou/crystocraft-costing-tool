@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { db } from '../firebase'
 import logo from '../assets/logo.png'
+import { Printer } from 'lucide-react'
 
 // ── Auto layout ───────────────────────────────────────────────────────────────
 // 1–2 images → quarter page (4 per A4)
@@ -417,9 +418,9 @@ export default function CataloguePreview() {
             window.print()
             setTimeout(() => { document.title = prev }, 1000)
           }}
-          className="btn-primary"
+          className="btn-primary inline-flex items-center gap-1.5"
         >
-          🖨 Print / Save as PDF
+          <Printer size={15} />Print / Save as PDF
         </button>
       </div>
 

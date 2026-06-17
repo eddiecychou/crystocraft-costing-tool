@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, Timestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from '../firebase'
+import { Check, FileText, Image as ImageIcon, X, Paperclip } from 'lucide-react'
 
 const CHANNELS  = ['Email', 'WhatsApp', 'Alibaba', 'Personal WhatsApp']
 const STATUSES  = ['Open', 'Quoted', 'Confirmed', 'In Production', 'Completed', 'Lost', 'On Hold']
@@ -267,7 +268,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
                         onClick={() => { toggleProduct(p.name); setProductSearch('') }}
                         className={`w-full text-left text-sm px-3 py-2 hover:bg-gray-50 transition-colors ${selectedProducts.includes(p.name) ? 'text-brand-600 font-medium' : 'text-gray-700'}`}
                       >
-                        {selectedProducts.includes(p.name) ? '✓ ' : ''}{p.name}
+                        {selectedProducts.includes(p.name) && <Check size={13} className="inline align-[-2px] mr-1" />}{p.name}
                       </button>
                     ))}
                     <button
@@ -326,7 +327,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
                       <img src={att.url} alt="" className="h-10 w-14 object-cover rounded border border-gray-200" />
                     </a>
                   ) : (
-                    <span className="text-xl shrink-0">📄</span>
+                    <FileText size={20} className="text-gray-400 shrink-0" />
                   )}
                   <a href={att.url} target="_blank" rel="noreferrer" className="flex-1 text-sm text-brand-600 hover:underline truncate min-w-0">
                     {att.name || `Attachment ${idx + 1}`}
@@ -337,7 +338,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
                     disabled={removingIdx === idx}
                     className="text-xs text-red-400 hover:text-red-600 shrink-0"
                   >
-                    {removingIdx === idx ? '…' : '✕'}
+                    {removingIdx === idx ? '…' : <X size={14} />}
                   </button>
                 </div>
               ))}
@@ -345,7 +346,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
               {/* Pending files (not yet uploaded) */}
               {pendingFiles.map((file, idx) => (
                 <div key={idx} className="flex items-center gap-3 p-2.5 rounded-lg border border-brand-200 bg-brand-50">
-                  <span className="text-xl shrink-0">{file.type.startsWith('image/') ? '🖼️' : '📄'}</span>
+                  <span className="text-gray-500 shrink-0">{file.type.startsWith('image/') ? <ImageIcon size={18} /> : <FileText size={18} />}</span>
                   <span className="flex-1 text-sm text-brand-700 truncate min-w-0">{file.name}</span>
                   {uploadProgress[file.name] != null && (
                     <span className="text-xs text-brand-500 shrink-0">{uploadProgress[file.name]}%</span>
@@ -355,7 +356,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
                     onClick={() => setPendingFiles(f => f.filter((_, i) => i !== idx))}
                     className="text-xs text-red-400 hover:text-red-600 shrink-0"
                   >
-                    ✕
+                    <X size={14} />
                   </button>
                 </div>
               ))}
@@ -367,7 +368,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
               onClick={() => fileInputRef.current?.click()}
               className="mt-2 w-full border-2 border-dashed border-gray-200 rounded-lg py-3 text-sm text-gray-400 hover:border-brand-300 hover:text-brand-500 transition-colors"
             >
-              📎 Add PDF or image
+              <span className="inline-flex items-center gap-1.5"><Paperclip size={15} />Add PDF or image</span>
             </button>
             <input
               ref={fileInputRef}

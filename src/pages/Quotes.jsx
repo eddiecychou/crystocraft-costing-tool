@@ -4,6 +4,7 @@ import { db } from '../firebase'
 import { Link, useNavigate } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import UploadQuoteModal from '../components/UploadQuoteModal'
+import { Paperclip, ClipboardList } from 'lucide-react'
 
 const STATUS_STYLES = {
   draft:     'bg-gray-100 text-gray-600',
@@ -70,7 +71,7 @@ export default function Quotes() {
             onClick={() => setShowUploadModal(true)}
             className="btn-secondary text-sm flex items-center justify-center gap-1.5 whitespace-nowrap"
           >
-            📎 Upload
+            <Paperclip size={15} />Upload
           </button>
           <Link to="/quotes/new" className="btn-primary text-sm whitespace-nowrap text-center">+ New Quote</Link>
         </div>
@@ -95,7 +96,7 @@ export default function Quotes() {
 
       {filtered.length === 0 && !loading ? (
         <div className="text-center py-20 text-gray-400">
-          <p className="text-5xl mb-4">📋</p>
+          <ClipboardList size={48} strokeWidth={1.25} className="mx-auto mb-4 text-gray-300" />
           <p>{quotes.length === 0 ? 'No quotes yet — create your first client quote.' : 'No quotes match your search.'}</p>
         </div>
       ) : (
@@ -106,7 +107,7 @@ export default function Quotes() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-semibold text-gray-900 text-sm truncate">{q.client_name}</p>
                   {q.quote_type === 'uploaded' && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-medium shrink-0">📎 Uploaded</span>
+                    <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-medium shrink-0"><Paperclip size={11} />Uploaded</span>
                   )}
                 </div>
                 {q.contact_name && <p className="text-xs text-gray-500 mt-0.5">{q.contact_name}</p>}

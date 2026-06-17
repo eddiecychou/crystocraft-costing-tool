@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp, Timestamp } from 'firebase/firestore'
 import { db } from '../firebase'
+import { Check, Rocket } from 'lucide-react'
 
 const IMPORT_DATA = [
   {
@@ -1249,13 +1250,13 @@ export default function ImportData() {
           } catch { /* rules not published yet */ }
         }
         count++
-        addLog(`✓ ${count}/40 — ${r.company_name} (${r.contact_name || '—'})`)
+        addLog(`${count}/40 — ${r.company_name} (${r.contact_name || '—'})`)
       }
       addLog('')
-      addLog(`✅ Import complete! ${count} customers imported.`)
+      addLog(`Import complete! ${count} customers imported.`)
       setDone(true)
     } catch (err) {
-      addLog(`❌ Error: ${err.message}`)
+      addLog(`Error: ${err.message}`)
     } finally {
       setRunning(false)
     }
@@ -1272,7 +1273,7 @@ export default function ImportData() {
           <li>Seeds one initial enquiry per customer from last contact notes</li>
         </ul>
         <button onClick={handleClearAndImport} disabled={running || done} className="btn-primary">
-          {running ? 'Importing…' : done ? '✅ Done' : '🚀 Clear & Import 40 Customers'}
+          {running ? 'Importing…' : done ? <span className="inline-flex items-center gap-1.5"><Check size={15} />Done</span> : <span className="inline-flex items-center gap-1.5"><Rocket size={15} />Clear & Import 40 Customers</span>}
         </button>
       </div>
       {log.length > 0 && (

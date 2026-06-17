@@ -7,6 +7,7 @@ import { RANGE_PLATINGS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS, designNumber, bra
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
+import { Gem } from 'lucide-react'
 
 const PLATING_DOT = Object.fromEntries(RANGE_PLATINGS.map(p => [p.name, p.dot]))
 const STATUS_META = Object.fromEntries(RANGE_STATUSES.map(s => [s.value, s]))
@@ -122,9 +123,9 @@ export default function Range() {
         n++
         setSeedLog(`Imported ${n}/${rangeData.products.length}…`)
       }
-      setSeedLog(`✅ Imported ${n} designs.`)
+      setSeedLog(`Imported ${n} designs.`)
     } catch (err) {
-      setSeedLog(`❌ ${err.message}`)
+      setSeedLog(`Error: ${err.message}`)
     } finally {
       setSeeding(false)
     }
@@ -288,7 +289,7 @@ function ProductCard({ s }) {
       <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
         {s.image
           ? <img src={s.image} alt={s.name} className="w-full h-full object-contain p-2" loading="lazy" />
-          : <span className="text-3xl opacity-30">💎</span>}
+          : <Gem size={30} strokeWidth={1.25} className="text-gray-300" />}
         <span className={`absolute top-1.5 left-1.5 badge ${STATUS_META[s.status]?.badge || ''}`}>
           {STATUS_META[s.status]?.label || s.status}
         </span>

@@ -6,6 +6,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import ImageGallery from '../components/ImageGallery'
 import { COMPONENT_IMAGE_TYPES } from '../constants'
+import { X } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 
 export default function ComponentDetail() {
@@ -96,7 +97,7 @@ export default function ComponentDetail() {
         <div className="card p-4">
           <h2 className="text-sm font-semibold text-gray-700 mb-3">
             Images
-            <span className="text-xs text-gray-400 font-normal ml-1">hover to delete ✕</span>
+            <span className="inline-flex items-center gap-1 text-xs text-gray-400 font-normal ml-1">hover to delete <X size={12} /></span>
           </h2>
           <ImageGallery
             images={images}
@@ -187,9 +188,9 @@ function QuoteCard({ quote: q, productId, componentId, onNavigate, onDeleted }) 
           <span className="text-xs text-gray-400">→</span>
           <button
             onClick={e => { e.preventDefault(); setConfirmDel(true) }}
-            className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-500 text-sm leading-none px-1"
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-500 leading-none px-1"
             title="Delete quote"
-          >✕</button>
+          ><X size={15} /></button>
         </div>
       </div>
 

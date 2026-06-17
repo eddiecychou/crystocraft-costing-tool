@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { doc, getDoc, addDoc, updateDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
+import { Camera } from 'lucide-react'
 
 export default function CatalogueForm() {
   const { id } = useParams()
@@ -150,7 +151,7 @@ export default function CatalogueForm() {
                 disabled={uploading}
                 className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-lg p-6 hover:border-brand-300 hover:bg-brand-50 transition-colors text-gray-500 text-sm"
               >
-                {uploading ? '⏳ Uploading…' : '📷 Click to upload cover image'}
+                {uploading ? 'Uploading…' : <span className="inline-flex items-center gap-1.5"><Camera size={15} />Click to upload cover image</span>}
               </button>
             )}
           </div>

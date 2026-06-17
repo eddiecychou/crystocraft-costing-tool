@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { doc, getDoc, addDoc, updateDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
+import { Store, ShoppingCart, Gift, Sparkles, Check, Star } from 'lucide-react'
 
 function toArray(val) {
   if (Array.isArray(val)) return val.length ? val : ['']
@@ -61,7 +62,7 @@ const COUNTRIES = [
 ]
 
 const CRM_CATEGORIES = ['Distributor', 'Small B2B', 'Gift / OEM', 'Crystal Fabric']
-const CATEGORY_ICON  = { 'Distributor': '🏪', 'Small B2B': '🛒', 'Gift / OEM': '🎁', 'Crystal Fabric': '✨' }
+const CATEGORY_ICON  = { 'Distributor': Store, 'Small B2B': ShoppingCart, 'Gift / OEM': Gift, 'Crystal Fabric': Sparkles }
 const CHANNELS = ['Email', 'WhatsApp Business', 'Alibaba', 'Personal WhatsApp']
 const SOURCES  = ['Alibaba', 'Website', 'Email Marketing', 'Referral', 'Trade Show', 'BNI', 'Direct']
 const CRM_STATUSES = ['Active', 'Prospect', 'Dormant', 'Inactive']
@@ -251,7 +252,7 @@ export default function CustomerForm() {
                     onMouseDown={() => { set('country')({ target: { value: c } }); setCountryOpen(false) }}
                     className={`w-full text-left text-sm px-3 py-2 hover:bg-gray-50 transition-colors ${form.country === c ? 'text-brand-600 font-medium' : 'text-gray-700'}`}
                   >
-                    {form.country === c ? '✓ ' : ''}{c}
+                    {form.country === c && <Check size={13} className="inline align-[-2px] mr-1" />}{c}
                   </button>
                 ))}
               </div>
@@ -300,7 +301,7 @@ export default function CustomerForm() {
                           : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
                       }`}
                     >
-                      {selected ? '✓ ' : ''}{tag}
+                      {selected && <Check size={13} className="inline align-[-2px] mr-1" />}{tag}
                     </button>
                   )
                 })}
@@ -371,7 +372,7 @@ export default function CustomerForm() {
                       : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
                   }`}
                 >
-                  {CATEGORY_ICON[cat]} {cat}
+                  {(() => { const I = CATEGORY_ICON[cat]; return I ? <I size={14} className="inline align-[-2px] mr-1" /> : null })()}{cat}
                 </button>
               ))}
             </div>
@@ -393,7 +394,7 @@ export default function CustomerForm() {
                         : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400'
                     }`}
                   >
-                    {selected ? '✓ ' : ''}{ch}
+                    {selected && <Check size={13} className="inline align-[-2px] mr-1" />}{ch}
                   </button>
                 )
               })}
@@ -435,7 +436,7 @@ export default function CustomerForm() {
                 checked={isVip}
                 onChange={e => setIsVip(e.target.checked)}
               />
-              <span>⭐ VIP customer</span>
+              <span className="inline-flex items-center gap-1"><Star size={14} className="fill-current text-yellow-500" />VIP customer</span>
             </label>
           </div>
         </div>

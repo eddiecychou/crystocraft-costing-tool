@@ -14,6 +14,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { db } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { Star, X, Camera } from 'lucide-react'
 
 // ── Auto layout label ─────────────────────────────────────────────────────────
 function layoutLabel(count) {
@@ -32,8 +33,8 @@ function SortableImage({ id, url, isHero, onRemove }) {
   return (
     <div ref={setNodeRef} style={style} className="relative w-16 h-16 shrink-0 group/img">
       {isHero && (
-        <div className="absolute top-0.5 left-0.5 z-10 bg-amber-400 text-white text-[10px] px-1 rounded leading-4 font-bold pointer-events-none">
-          ★
+        <div className="absolute top-0.5 left-0.5 z-10 bg-amber-400 text-white px-1 py-0.5 rounded leading-none pointer-events-none">
+          <Star size={10} className="fill-current" />
         </div>
       )}
       <img
@@ -46,8 +47,8 @@ function SortableImage({ id, url, isHero, onRemove }) {
       <button
         onPointerDown={e => e.stopPropagation()}
         onClick={onRemove}
-        className="absolute top-0.5 right-0.5 bg-white/90 hover:bg-white rounded text-red-400 text-xs leading-4 px-0.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
-      >✕</button>
+        className="absolute top-0.5 right-0.5 bg-white/90 hover:bg-white rounded text-red-400 leading-none p-0.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
+      ><X size={12} /></button>
     </div>
   )
 }
@@ -72,7 +73,7 @@ function ImageSequencer({ itemId, selectedImages, allImages, onUpdate }) {
       <div className="flex items-center gap-2">
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${layoutStyle}`}>{layoutText}</span>
         {selectedImages.length > 0 && (
-          <span className="text-xs text-gray-400">★ first image is hero · drag to reorder</span>
+          <span className="inline-flex items-center gap-1 text-xs text-gray-400"><Star size={11} className="fill-current text-amber-400" />first image is hero · drag to reorder</span>
         )}
       </div>
 
@@ -155,7 +156,7 @@ function CatalogueItem({ item, onUpdate, onDelete }) {
         <div className="w-16 h-16 rounded-lg bg-gray-100 shrink-0 overflow-hidden">
           {selectedImages[0]
             ? <img src={selectedImages[0]} alt="" className="w-full h-full object-cover" />
-            : <div className="w-full h-full flex items-center justify-center text-gray-300 text-2xl">📷</div>
+            : <div className="w-full h-full flex items-center justify-center text-gray-300"><Camera size={24} /></div>
           }
         </div>
 
@@ -166,7 +167,7 @@ function CatalogueItem({ item, onUpdate, onDelete }) {
         </div>
 
         {/* Delete */}
-        <button onClick={() => onDelete(item.id)} className="text-gray-300 hover:text-red-400 shrink-0">✕</button>
+        <button onClick={() => onDelete(item.id)} className="text-gray-300 hover:text-red-400 shrink-0"><X size={15} /></button>
       </div>
 
       {/* Image sequencer */}
@@ -241,7 +242,7 @@ function ProductPicker({ existingIds, onAdd, onClose }) {
               <div className="w-10 h-10 rounded-lg bg-gray-100 shrink-0 overflow-hidden">
                 {p.heroImage
                   ? <img src={p.heroImage} alt="" className="w-full h-full object-cover" />
-                  : <div className="w-full h-full flex items-center justify-center text-gray-300">📷</div>
+                  : <div className="w-full h-full flex items-center justify-center text-gray-300"><Camera size={20} /></div>
                 }
               </div>
               <div className="min-w-0">

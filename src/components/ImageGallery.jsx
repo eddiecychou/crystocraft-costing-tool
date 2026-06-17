@@ -10,6 +10,7 @@ import {
   SortableContext, rectSortingStrategy, useSortable, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { Star, X, Download, Paperclip, FolderOpen } from 'lucide-react'
 import { IMAGE_ORIENTATIONS } from '../constants'
 
 const ORIENTATION_STYLES = {
@@ -55,7 +56,7 @@ function SortableImageCard({ img, idx, typeOptions, onHeroChange, onDelete, onLi
     <div ref={setNodeRef} style={style} className="group relative flex flex-col gap-1">
       <div className="relative">
         {img.is_hero && (
-          <div className="absolute top-1 left-1 z-10 bg-yellow-400 text-xs px-1 rounded font-bold text-white leading-4">★</div>
+          <div className="absolute top-1 left-1 z-10 bg-yellow-400 px-1 py-0.5 rounded text-white leading-none"><Star size={11} className="fill-current" /></div>
         )}
         {/* Drag handle — top-left grip icon, separate from lightbox click */}
         <div
@@ -93,19 +94,19 @@ function SortableImageCard({ img, idx, typeOptions, onHeroChange, onDelete, onLi
                 onClick={e => { e.stopPropagation(); onHeroChange(img) }}
                 className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-yellow-600 hover:bg-white"
                 title="Set as hero image"
-              >⭐</button>
+              ><Star size={13} /></button>
             )}
             <button
               type="button"
               onClick={e => { e.stopPropagation(); downloadImage(img, makeDownloadName(downloadPrefix, idx)) }}
               className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-blue-600 hover:bg-white"
               title="Download image"
-            >↓</button>
+            ><Download size={13} /></button>
             <button
               type="button"
               onClick={e => { e.stopPropagation(); onDelete(img) }}
               className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-red-600 hover:bg-white"
-            >✕</button>
+            ><X size={13} /></button>
           </div>
         </div>
       </div>
@@ -231,7 +232,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
       >
-        <span className="text-lg">{dragOver ? '📂' : '📎'}</span>
+        <span className="text-gray-500">{dragOver ? <FolderOpen size={20} /> : <Paperclip size={20} />}</span>
         <span className="text-sm text-gray-600">
           {uploading ? 'Uploading…' : dragOver ? 'Drop to upload' : 'Upload images or drag & drop'}
         </span>
@@ -273,8 +274,8 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
               type="button"
               onClick={e => { e.stopPropagation(); downloadImage(lightbox, makeDownloadName(downloadPrefix, images.findIndex(i => i.id === lightbox.id))) }}
               className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm"
-            >↓ Download</button>
-            <button className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm" onClick={() => setLightbox(null)}>✕</button>
+            ><span className="inline-flex items-center gap-1"><Download size={14} />Download</span></button>
+            <button className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm inline-flex items-center" onClick={() => setLightbox(null)}><X size={16} /></button>
           </div>
         </div>
       )}

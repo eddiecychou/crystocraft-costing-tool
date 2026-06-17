@@ -3,13 +3,18 @@ import { collection, addDoc, deleteDoc, doc, onSnapshot, orderBy, query, serverT
 import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from '../firebase'
 import ConfirmDialog from './ConfirmDialog'
+import { FileText, Image as ImageIcon, File, X } from 'lucide-react'
 
 const FILE_ICONS = {
-  'application/pdf': '📄',
-  'image/jpeg': '🖼️',
-  'image/png': '🖼️',
-  'image/webp': '🖼️',
-  default: '📁',
+  'application/pdf': FileText,
+  'image/jpeg': ImageIcon,
+  'image/png': ImageIcon,
+  'image/webp': ImageIcon,
+  default: File,
+}
+const FileTypeIcon = ({ type, size }) => {
+  const I = FILE_ICONS[type] || FILE_ICONS.default
+  return <I size={size} />
 }
 
 function formatBytes(bytes) {
@@ -92,7 +97,7 @@ export default function SupplierCatalogs({ supplierId }) {
       {/* In-progress uploads */}
       {uploads.map(u => (
         <div key={u.uid} className="flex items-center gap-3 p-3 bg-brand-50 rounded-lg mb-2">
-          <span className="text-xl">{FILE_ICONS[u.type] || FILE_ICONS.default}</span>
+          <span className="text-gray-500"><FileTypeIcon type={u.type} size={20} /></span>
           <div className="flex-1 min-w-0">
             <p className="text-xs text-gray-700 truncate">{u.name}</p>
             <div className="mt-1 h-1 bg-brand-200 rounded overflow-hidden">
@@ -119,7 +124,7 @@ export default function SupplierCatalogs({ supplierId }) {
                   onClick={() => setLightbox(c)}
                 />
               ) : (
-                <span className="text-2xl shrink-0">{FILE_ICONS[c.file_type] || FILE_ICONS.default}</span>
+                <span className="text-gray-500 shrink-0"><FileTypeIcon type={c.file_type} size={24} /></span>
               )}
 
               {/* Info */}
@@ -155,7 +160,7 @@ export default function SupplierCatalogs({ supplierId }) {
       {lightbox && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" onClick={() => setLightbox(null)}>
           <img src={lightbox.file_url} alt={lightbox.file_name} className="max-w-full max-h-full rounded-lg object-contain" onClick={e => e.stopPropagation()} />
-          <button className="absolute top-4 right-4 text-white text-2xl" onClick={() => setLightbox(null)}>✕</button>
+          <button className="absolute top-4 right-4 text-white" onClick={() => setLightbox(null)}><X size={24} /></button>
         </div>
       )}
 

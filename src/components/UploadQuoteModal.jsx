@@ -3,6 +3,7 @@ import { collection, addDoc, updateDoc, doc, getDocs, query, orderBy, serverTime
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
 import { CURRENCIES } from '../constants'
+import { Image as ImageIcon, FileText, X, Paperclip } from 'lucide-react'
 
 const todayISO = () => new Date().toISOString().split('T')[0]
 
@@ -154,13 +155,13 @@ export default function UploadQuoteModal({ onClose, onCreated }) {
             <div className="space-y-2">
               {pendingFiles.map((file, idx) => (
                 <div key={idx} className="flex items-center gap-3 p-2.5 rounded-lg border border-brand-200 bg-brand-50">
-                  <span className="text-xl shrink-0">{file.type.startsWith('image/') ? '🖼️' : '📄'}</span>
+                  <span className="text-gray-500 shrink-0">{file.type.startsWith('image/') ? <ImageIcon size={18} /> : <FileText size={18} />}</span>
                   <span className="flex-1 text-sm text-brand-700 truncate min-w-0">{file.name}</span>
                   {uploadProgress[file.name] != null && (
                     <span className="text-xs text-brand-500 shrink-0">{uploadProgress[file.name]}%</span>
                   )}
                   <button type="button" onClick={() => setPendingFiles(f => f.filter((_, i) => i !== idx))}
-                    className="text-xs text-red-400 hover:text-red-600 shrink-0">✕</button>
+                    className="text-red-400 hover:text-red-600 shrink-0"><X size={14} /></button>
                 </div>
               ))}
             </div>
@@ -169,7 +170,7 @@ export default function UploadQuoteModal({ onClose, onCreated }) {
               onClick={() => fileInputRef.current?.click()}
               className="mt-2 w-full border-2 border-dashed border-gray-200 rounded-lg py-3 text-sm text-gray-400 hover:border-brand-300 hover:text-brand-500 transition-colors"
             >
-              📎 Add PDF or image
+              <span className="inline-flex items-center gap-1.5"><Paperclip size={15} />Add PDF or image</span>
             </button>
             <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple className="hidden"
               onChange={e => { const files = Array.from(e.target.files); if (files.length) setPendingFiles(p => [...p, ...files]); e.target.value = '' }} />

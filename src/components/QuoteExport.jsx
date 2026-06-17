@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ExcelJS from 'exceljs'
+import { Download } from 'lucide-react'
 import logoUrl from '../assets/logo.png'
 
 // ── Brand theme ───────────────────────────────────────────────────────────────
@@ -372,10 +373,10 @@ export default function QuoteExport({ quote, items, onClose }) {
 
         <div className="space-y-3">
           <button className="btn-primary w-full justify-center" onClick={exportExcel} disabled={loading}>
-            {loading ? 'Generating…' : '⬇ Download Excel (.xlsx)'}
+            {loading ? 'Generating…' : <span className="inline-flex items-center gap-1.5"><Download size={15} />Download Excel (.xlsx)</span>}
           </button>
           <button className="btn-secondary w-full justify-center" disabled>
-            ⬇ Download PDF <span className="text-xs opacity-60 ml-1">(coming in V2)</span>
+            <span className="inline-flex items-center gap-1.5"><Download size={15} />Download PDF</span> <span className="text-xs opacity-60 ml-1">(coming in V2)</span>
           </button>
         </div>
         <button className="mt-4 text-xs text-gray-400 hover:text-gray-600 w-full text-center" onClick={onClose}>Cancel</button>
