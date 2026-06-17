@@ -250,6 +250,13 @@ export default function RangeForm() {
   // filled on a product, so fall back: try the full code, then "M"+design_no
   // (legacy U#### -> M####), then any recipe whose trailing digits match.
   const pullLegacyMixes = async () => {
+    // Only Bohemia (D), Swarovski (U) and Mixed (M) brands carry crystal colour
+    // variations. Asfour/Chinese (A) products are plain — never auto-tick colours.
+    const brand = (form.variants.map(v => (v.brand_code || '').trim().toUpperCase()[0]).find(Boolean) || '').toUpperCase()
+    if (brand && !['D', 'U', 'M'].includes(brand)) {
+      setMixMsg(`Pull skipped — ${BRAND_NAME[brand] || brand}-brand products have no crystal colours.`)
+      return
+    }
     const designNo = (form.design_no || '').trim()
     const digits = designNo.replace(/\D/g, '')
     const candidates = [
