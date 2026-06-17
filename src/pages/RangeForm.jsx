@@ -249,14 +249,13 @@ export default function RangeForm() {
   // Recipes are keyed by full code (e.g. "M0014"). The body letter isn't always
   // filled on a product, so fall back: try the full code, then "M"+design_no
   // (legacy U#### -> M####), then any recipe whose trailing digits match.
+  // Brand carries crystal colours only for Bohemia (D), Swarovski (U) and Mixed
+  // (M). Asfour/Chinese (A) variants are plain — never auto-tick colours on them.
+  const brandTakesColours = v => {
+    const b = (v.brand_code || '').trim().toUpperCase()[0]
+    return !b || ['D', 'U', 'M'].includes(b)   // unknown/empty defaults to allowed
+  }
   const pullLegacyMixes = async () => {
-    // Only Bohemia (D), Swarovski (U) and Mixed (M) brands carry crystal colour
-    // variations. Asfour/Chinese (A) products are plain — never auto-tick colours.
-    const brand = (form.variants.map(v => (v.brand_code || '').trim().toUpperCase()[0]).find(Boolean) || '').toUpperCase()
-    if (brand && !['D', 'U', 'M'].includes(brand)) {
-      setMixMsg(`Pull skipped — ${BRAND_NAME[brand] || brand}-brand products have no crystal colours.`)
-      return
-    }
     const designNo = (form.design_no || '').trim()
     const digits = designNo.replace(/\D/g, '')
     const candidates = [
@@ -281,11 +280,13 @@ export default function RangeForm() {
     // both on every variation — mixes only render on the card when ticked.
     const selection = [...new Set([...mono, ...mixCodes])]
     const mixCount = mixCodes.length
+    // Tick colours only on colour-bearing brands (D/U/M); clear Asfour (A) rows.
+    const colourVariants = form.variants.filter(brandTakesColours).length
     setForm(f => ({
       ...f,
       crystal_mixes: { ...cleanMixes(f.crystal_mixes), ...cleanMixes(rec.mixes) },
       variants: selection.length
-        ? f.variants.map(v => ({ ...v, crystal_colors: [...selection] }))
+        ? f.variants.map(v => ({ ...v, crystal_colors: brandTakesColours(v) ? [...selection] : [] }))
         : f.variants,
     }))
     // Make sure every referenced code (singles + mix codes) exists in the library
@@ -296,8 +297,10 @@ export default function RangeForm() {
         if (Array.isArray(merged)) setLibColors(merged)
       } catch { /* non-fatal: codes still tick, just show as orphan until added */ }
     }
+    const skipped = form.variants.length - colourVariants
     setMixMsg(`Pulled ${mixCount} mixture${mixCount === 1 ? '' : 's'}`
-      + (selection.length ? ` and ticked ${selection.length} colour${selection.length === 1 ? '' : 's'} on every variation` : '')
+      + (selection.length && colourVariants ? ` and ticked ${selection.length} colour${selection.length === 1 ? '' : 's'} on ${colourVariants} variation${colourVariants === 1 ? '' : 's'}` : '')
+      + (skipped ? ` (skipped ${skipped} Asfour row${skipped === 1 ? '' : 's'})` : '')
       + ` from ${code}. Save to apply.`)
   }
 
