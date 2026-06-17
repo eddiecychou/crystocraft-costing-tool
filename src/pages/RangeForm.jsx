@@ -192,6 +192,17 @@ export default function RangeForm() {
       return { ...v, crystal_colors: has ? list.filter(c => c !== code) : [...list, code] }
     }),
   }))
+  // Set a variant's colours outright (used by Select all / Clear).
+  const setVariantColors = (i, codes) => setForm(f => ({
+    ...f,
+    variants: f.variants.map((v, j) => (j === i ? { ...v, crystal_colors: codes } : v)),
+  }))
+  // Copy one variant's colour selection onto every variant (most products share
+  // the same colour set across platings).
+  const applyColorsToAll = i => setForm(f => {
+    const src = Array.isArray(f.variants[i]?.crystal_colors) ? f.variants[i].crystal_colors : []
+    return { ...f, variants: f.variants.map(v => ({ ...v, crystal_colors: [...src] })) }
+  })
 
   // Pull the distinct categories already used in the system so the
   // datalists suggest existing names (avoids near-duplicate / plural drift).
@@ -826,44 +837,54 @@ export default function RangeForm() {
                           const sel = Array.isArray(v.crystal_colors) ? v.crystal_colors : []
                           const missing = sel.filter(code => !colorLookup[code])
                           const term = (colorSearch[i] || '').trim().toLowerCase()
-                          const results = (term
+                          const shown = term
                             ? libColors.filter(c => `${c.code} ${c.name}`.toLowerCase().includes(term))
-                            : []).slice(0, 30)
+                            : libColors
                           return (
                             <>
-                              {/* Selected colours as removable chips */}
-                              {sel.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5 mb-1.5">
-                                  {sel.map(code => {
-                                    const c = colorLookup[code]
-                                    return (
-                                      <span key={code}
-                                        className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${c ? 'bg-ink text-white border-ink' : 'bg-amber-50 text-amber-700 border-amber-300'}`}>
-                                        {c ? (c.name || c.code) : `${code} (not in library)`}
-                                        <button type="button" onClick={() => toggleColor(i, code)}
-                                          className="leading-none hover:opacity-70" title="Remove">×</button>
-                                      </span>
-                                    )
-                                  })}
-                                </div>
-                              )}
-                              {/* Search to add */}
-                              <input className="input text-xs" placeholder="Search colour to add…"
+                              {/* Action bar */}
+                              <div className="flex items-center flex-wrap gap-x-3 gap-y-1 mb-2 text-[11px]">
+                                <span className="text-ink-60">{sel.length} selected</span>
+                                <button type="button" onClick={() => setVariantColors(i, libColors.map(c => c.code))}
+                                  className="text-brand-600 hover:underline">Select all</button>
+                                <button type="button" onClick={() => setVariantColors(i, [])}
+                                  className="text-ink-50 hover:underline" disabled={sel.length === 0}>Clear</button>
+                                {form.variants.length > 1 && (
+                                  <button type="button" onClick={() => applyColorsToAll(i)}
+                                    className="text-brand-600 hover:underline ml-auto" title="Apply this variation's colours to every variation">
+                                    Copy to all variations →
+                                  </button>
+                                )}
+                              </div>
+                              {/* Filter */}
+                              <input className="input text-xs mb-2" placeholder="Filter colours…"
                                      value={colorSearch[i] || ''} onChange={e => setColorTerm(i, e.target.value)} />
-                              {term && (
-                                <div className="mt-1 border border-ivory-dark rounded-md max-h-44 overflow-auto divide-y divide-ivory-dark">
-                                  {results.length === 0 ? (
-                                    <p className="text-[11px] text-ink-50 px-2.5 py-2">No matching colours.</p>
-                                  ) : results.map(c => {
-                                    const on = sel.includes(c.code)
-                                    return (
-                                      <button key={c.code} type="button" onClick={() => toggleColor(i, c.code)}
-                                        className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 text-left text-[11px] transition-colors ${on ? 'bg-brand-50' : 'hover:bg-ivory/60'}`}>
-                                        <span className="truncate"><span className="font-mono text-ink-80">{c.code}</span>{c.name ? <span className="text-ink-60"> · {c.name}</span> : null}</span>
-                                        <span className={`shrink-0 ${on ? 'text-brand-600' : 'text-ink-30'}`}>{on ? '✓' : '+'}</span>
-                                      </button>
-                                    )
-                                  })}
+                              {/* All colours as rapid toggle chips */}
+                              <div className="flex flex-wrap gap-1.5">
+                                {shown.length === 0 ? (
+                                  <p className="text-[11px] text-ink-50">No matching colours.</p>
+                                ) : shown.map(c => {
+                                  const on = sel.includes(c.code)
+                                  return (
+                                    <button key={c.code} type="button" onClick={() => toggleColor(i, c.code)}
+                                      title={c.code}
+                                      className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${on ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-ivory-dark hover:border-brand-400 hover:text-brand-600'}`}>
+                                      {c.name || c.code}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                              {/* Orphan colours not in library */}
+                              {missing.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                  {missing.map(code => (
+                                    <span key={code}
+                                      className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-300">
+                                      {code} (not in library)
+                                      <button type="button" onClick={() => toggleColor(i, code)}
+                                        className="leading-none hover:opacity-70" title="Remove">×</button>
+                                    </span>
+                                  ))}
                                 </div>
                               )}
                               {sel.length > 0 && (
