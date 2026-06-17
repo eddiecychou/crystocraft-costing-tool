@@ -236,12 +236,11 @@ export default function Range() {
       </div>
       {seedLog && <p className="text-xs font-mono text-ink-60 mb-2">{seedLog}</p>}
 
-      {/* Active / Stock-clearance toggle */}
+      {/* Made to Order / Last Stock toggle */}
       <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden mt-3">
         {[
           { v: 'all', label: 'All' },
-          { v: 'active', label: 'Active' },
-          { v: 'stock', label: 'Stock clearance' },
+          ...RANGE_STATUSES.map(s => ({ v: s.value, label: s.label })),
         ].map(t => (
           <button key={t.v} onClick={() => setStatus(t.v)}
                   className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark transition-colors

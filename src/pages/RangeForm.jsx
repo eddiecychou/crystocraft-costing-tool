@@ -15,6 +15,7 @@ const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.n
 import LoadingBar from '../components/LoadingBar'
 import { useCrystalColors, colorMap } from '../crystalColors'
 import { buildRangeSku, rangePrice } from '../rangeSku'
+import { useComponents, componentMap, productAvailability } from '../criticalComponents'
 
 const emptyVariant = () => ({
   brand_code: 'D', brand_name: 'Bohemia',
@@ -35,6 +36,7 @@ const blankForm = () => ({
   design_no: '', body_code: '', design_name: '', description: '', category: '',
   design_type: '', product_type: 'Figurine', format_code: '001',
   size: '', crystal_type: 'Bohemia', active: true, status: 'active',
+  moq: '', lead_time_weeks: '', delivery_note: '', critical_components: [],
   packing: emptyPacking(), gallery: [], variants: [emptyVariant()], plating_stock: {},
 })
 
@@ -131,6 +133,20 @@ export default function RangeForm() {
   const [catOptions, setCatOptions] = useState({ design: [], product: [] })
   const { colors: libColors } = useCrystalColors()
   const colorLookup = colorMap(libColors)
+  const { components: libComponents } = useComponents()
+  const componentLookup = componentMap(libComponents)
+
+  // Toggle a critical component on/off for this product (qty defaults to 1).
+  const toggleComponent = code => setForm(f => {
+    const list = Array.isArray(f.critical_components) ? f.critical_components : []
+    const has = list.some(r => r.code === code)
+    return { ...f, critical_components: has ? list.filter(r => r.code !== code) : [...list, { code, qty_per_unit: 1 }] }
+  })
+  const setComponentQty = (code, val) => setForm(f => ({
+    ...f,
+    critical_components: (f.critical_components || []).map(r =>
+      r.code === code ? { ...r, qty_per_unit: val.replace(/[^\d]/g, '') } : r),
+  }))
 
   const toggleColor = (i, code) => setForm(f => ({
     ...f,
@@ -180,6 +196,12 @@ export default function RangeForm() {
           crystal_type: d.crystal_type || 'Bohemia',
           active: d.active !== false,
           status: d.status || 'active',
+          moq: d.moq ?? '',
+          lead_time_weeks: d.lead_time_weeks ?? '',
+          delivery_note: d.delivery_note || '',
+          critical_components: Array.isArray(d.critical_components)
+            ? d.critical_components.map(r => ({ code: (r.code || '').toUpperCase(), qty_per_unit: r.qty_per_unit || 1 }))
+            : [],
           packing: { ...emptyPacking(), ...(d.packing || {}) },
           gallery: Array.isArray(d.gallery) ? d.gallery : [],
           variants: vs,
@@ -296,6 +318,13 @@ export default function RangeForm() {
       crystal_type: form.crystal_type.trim(),
       active: form.active,
       status: form.status,
+      // Production / availability — drives the customer promise alongside stock.
+      moq: intNum(form.moq),
+      lead_time_weeks: num(form.lead_time_weeks),
+      delivery_note: (form.delivery_note || '').trim(),
+      critical_components: (form.critical_components || [])
+        .map(r => ({ code: (r.code || '').trim().toUpperCase(), qty_per_unit: Math.max(1, intNum(r.qty_per_unit) || 1) }))
+        .filter(r => r.code),
       packing: Object.fromEntries(PACKING_FIELDS.map(pf => [pf.key, (form.packing[pf.key] ?? '').toString().trim()])),
       gallery: form.gallery,
       // Plating-level stock pool — keep only platings still present, as integers.
@@ -345,6 +374,13 @@ export default function RangeForm() {
   const platingStockTotal = platingsUsed(form.variants)
     .reduce((s, code) => s + (parseInt(form.plating_stock[code], 10) || 0), 0)
   const productCode = [form.design_no, form.format_code].filter(Boolean).join('-')
+
+  // Live customer-promise preview from current form state + components library.
+  const availability = productAvailability({
+    status: form.status, moq: form.moq, lead_time_weeks: form.lead_time_weeks,
+    delivery_note: form.delivery_note, critical_components: form.critical_components,
+    plating_stock: form.plating_stock, variants: form.variants,
+  }, libComponents)
 
   return (
     <div className="p-4 md:p-6 max-w-3xl">
@@ -424,6 +460,103 @@ export default function RangeForm() {
             <input type="checkbox" checked={form.active} onChange={e => setForm(f => ({ ...f, active: e.target.checked }))} />
             Visible in catalogue (untick to hide without deleting)
           </label>
+        </div>
+
+        {/* Production & Availability */}
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-base">Production & Availability</h2>
+            <Link to="/settings" className="text-xs text-brand-600 hover:underline">Manage components →</Link>
+          </div>
+          <p className="text-xs text-ink-60 mb-3">
+            Tick the <strong>critical</strong> parts this product needs (long-lead, tooling, MOQ, or
+            supply-risk items only — not plating/crystal/boxes). Stock & lead time live on each
+            component and are shared across products. The customer promise below is computed from
+            status + ready stock + component availability.
+          </p>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 [&_label.label]:min-h-[2.2rem] [&_label.label]:flex [&_label.label]:items-end">
+            <div>
+              <label className="label">MOQ <span className="text-ink-60 font-normal">(made-to-order)</span></label>
+              <input className="input text-sm" inputMode="numeric" value={form.moq}
+                     onChange={e => setForm(f => ({ ...f, moq: e.target.value.replace(/[^\d]/g, '') }))}
+                     placeholder="e.g. 100" />
+            </div>
+            <div>
+              <label className="label">Assembly lead <span className="text-ink-60 font-normal">(weeks)</span></label>
+              <input className="input text-sm" inputMode="numeric" value={form.lead_time_weeks}
+                     onChange={e => setForm(f => ({ ...f, lead_time_weeks: e.target.value.replace(/[^\d.]/g, '') }))}
+                     placeholder="2" />
+            </div>
+          </div>
+
+          {/* Critical components multi-select */}
+          {libComponents.length === 0 ? (
+            <p className="text-sm text-ink-60">
+              No components in the library yet — add your long-lead / tooling parts in{' '}
+              <Link to="/settings" className="text-brand-600 hover:underline">Settings → Critical Components</Link>.
+            </p>
+          ) : (
+            <>
+              <label className="text-[11px] uppercase tracking-wide text-ink-50">Critical components</label>
+              <div className="flex flex-wrap gap-1.5 mt-1.5">
+                {libComponents.map(c => {
+                  const on = (form.critical_components || []).some(r => r.code === c.code)
+                  return (
+                    <button key={c.code} type="button" onClick={() => toggleComponent(c.code)}
+                      className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
+                        on ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-ivory-dark hover:bg-ivory'}`}
+                      title={`${c.stock_qty ?? 0} in stock · ${c.lead_time_weeks ?? '?'} wk lead`}>
+                      {c.name || c.code}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Selected components — qty per unit + live stock / lead */}
+              {(form.critical_components || []).length > 0 && (
+                <div className="mt-3 border-t border-ivory-dark pt-3 space-y-2">
+                  {(form.critical_components || []).map(r => {
+                    const c = componentLookup[r.code]
+                    return (
+                      <div key={r.code} className="flex items-center gap-2 text-xs">
+                        <span className="font-mono text-ink-80 w-28 shrink-0 truncate" title={r.code}>{r.code}</span>
+                        <span className="flex-1 min-w-0 truncate text-ink-70">{c?.name || <span className="text-amber-600">not in library</span>}</span>
+                        <label className="flex items-center gap-1 shrink-0">
+                          <span className="text-ink-50">×</span>
+                          <input className="input text-xs w-12 text-right tabular-nums py-1" inputMode="numeric"
+                                 value={r.qty_per_unit} onChange={e => setComponentQty(r.code, e.target.value)} placeholder="1" />
+                          <span className="text-ink-50">/unit</span>
+                        </label>
+                        <span className="w-24 shrink-0 text-right text-ink-50 tabular-nums">
+                          {c ? `${c.stock_qty ?? 0} pcs · ${c.lead_time_weeks ?? '?'}wk` : '—'}
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Optional override + computed customer promise */}
+          <div className="mt-4">
+            <label className="label">Delivery note <span className="text-ink-60 font-normal">(optional — overrides the computed promise)</span></label>
+            <input className="input text-sm" value={form.delivery_note} onChange={set('delivery_note')}
+                   placeholder="Leave blank to auto-generate from status + stock + components" />
+          </div>
+
+          <div className="mt-3 rounded-md bg-ivory/60 border border-ivory-dark p-3">
+            <p className="text-[10px] uppercase tracking-wide text-ink-50 mb-1">What the customer sees</p>
+            <p className="text-sm text-ink-80">{availability.promise}</p>
+            {availability.buildable != null && (
+              <p className="text-[11px] text-ink-50 mt-1">
+                Buildable now from component stock: <b>{availability.buildable}</b>
+                {availability.bottleneck ? ` (limited by ${availability.bottleneck})` : ''} ·
+                {' '}Ready stock: <b>{availability.finished}</b>
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Gallery */}
