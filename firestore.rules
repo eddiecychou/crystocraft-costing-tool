@@ -83,5 +83,10 @@ service cloud.firestore {
     match /range_products/{rangeId} {
       allow read, write: if isAuth();
     }
+
+    // Critical Components library (shared parts for the figurine range)
+    match /range_components/{componentId} {
+      allow read, write: if isAuth();
+    }
   }
 }

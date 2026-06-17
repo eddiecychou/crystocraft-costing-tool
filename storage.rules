@@ -41,5 +41,10 @@ service firebase.storage {
     match /range_products/{rangeId}/{allPaths=**} {
       allow read, write: if isAuth();
     }
+
+    // Critical Components library images
+    match /range_components/{componentId}/{allPaths=**} {
+      allow read, write: if isAuth();
+    }
   }
 }
