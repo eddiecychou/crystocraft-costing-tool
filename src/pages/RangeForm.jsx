@@ -263,8 +263,22 @@ export default function RangeForm() {
       setMixMsg(`No legacy recipe found for ${designCodeNow() || designNo || '(no code)'}.`)
       return
     }
-    setForm(f => ({ ...f, crystal_mixes: { ...cleanMixes(f.crystal_mixes), ...cleanMixes(rec.mixes) } }))
-    setMixMsg(`Pulled ${Object.keys(rec.mixes).length} mixture${Object.keys(rec.mixes).length === 1 ? '' : 's'} from ${code}.`)
+    // The model's genuine single colours (legacy MonoCrystal). Used to correct
+    // over-ticked colour selections on every variant so the card shows only the
+    // colours this model is actually offered in.
+    const mono = [...new Set((Array.isArray(rec.mono) ? rec.mono : [])
+      .map(c => (c || '').trim().toUpperCase()).filter(Boolean))]
+    const mixCount = Object.keys(rec.mixes || {}).length
+    setForm(f => ({
+      ...f,
+      crystal_mixes: { ...cleanMixes(f.crystal_mixes), ...cleanMixes(rec.mixes) },
+      variants: mono.length
+        ? f.variants.map(v => ({ ...v, crystal_colors: [...mono] }))
+        : f.variants,
+    }))
+    setMixMsg(`Pulled ${mixCount} mixture${mixCount === 1 ? '' : 's'}`
+      + (mono.length ? ` and set ${mono.length} single colours` : '')
+      + ` from ${code}. Save to apply.`)
   }
 
   // Pull the distinct categories already used in the system so the
