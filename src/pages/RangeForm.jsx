@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { collection, doc, getDoc, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
 import {
@@ -117,6 +117,25 @@ export default function RangeForm() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [uploading, setUploading] = useState('')
+  const [catOptions, setCatOptions] = useState({ design: [], product: [] })
+
+  // Pull the distinct categories already used in the system so the
+  // datalists suggest existing names (avoids near-duplicate / plural drift).
+  useEffect(() => {
+    getDocs(collection(db, 'range_products')).then(snap => {
+      const design = new Set(RANGE_DESIGN_TYPES)
+      const product = new Set(RANGE_PRODUCT_TYPES)
+      snap.forEach(s => {
+        const d = s.data()
+        const dt = (d.design_type || d.category || '').trim()
+        const pt = (d.product_type || '').trim()
+        if (dt) design.add(dt)
+        if (pt) product.add(pt)
+      })
+      const sort = set => [...set].sort((a, b) => a.localeCompare(b))
+      setCatOptions({ design: sort(design), product: sort(product) })
+    }).catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (isNew) return
@@ -353,7 +372,7 @@ export default function RangeForm() {
               <input className="input" list="design-types" value={form.design_type}
                      onChange={set('design_type')} placeholder="Butterfly, Bird…" />
               <datalist id="design-types">
-                {RANGE_DESIGN_TYPES.map(t => <option key={t} value={t} />)}
+                {catOptions.design.map(t => <option key={t} value={t} />)}
               </datalist>
             </div>
             <div>
@@ -361,7 +380,7 @@ export default function RangeForm() {
               <input className="input" list="product-types" value={form.product_type}
                      onChange={set('product_type')} placeholder="Figurine, Music Box…" />
               <datalist id="product-types">
-                {RANGE_PRODUCT_TYPES.map(t => <option key={t} value={t} />)}
+                {catOptions.product.map(t => <option key={t} value={t} />)}
               </datalist>
             </div>
             <div>
@@ -415,7 +434,7 @@ export default function RangeForm() {
         <div className="card p-5">
           <h2 className="text-base mb-1">Packing</h2>
           <p className="text-xs text-ink-60 mb-3">Default carton & weight info for shipping quotes (per-variant packaging notes go below).</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 [&_label.label]:min-h-[2.2rem] [&_label.label]:flex [&_label.label]:items-end">
             {PACKING_FIELDS.map(pf => (
               <div key={pf.key}>
                 <label className="label">{pf.label}</label>
