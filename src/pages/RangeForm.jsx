@@ -13,6 +13,8 @@ const BODY_NAME = Object.fromEntries(RANGE_BODY_TYPES.map(b => [b.code, b.name])
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
+import { useCrystalColors, colorMap } from '../crystalColors'
+import { buildRangeSku, rangePrice } from '../rangeSku'
 
 const emptyVariant = () => ({
   brand_code: 'D', brand_name: 'Bohemia',
@@ -33,6 +35,7 @@ const blankForm = () => ({
   design_type: '', product_type: 'Figurine', format_code: '001',
   size: '', crystal_type: 'Bohemia', active: true, status: 'active',
   packing: emptyPacking(), gallery: [], variants: [emptyVariant()], plating_stock: {},
+  crystal_colors: [],   // selectable colour attribute (codes from the library)
 })
 
 const PLATING_NAME = Object.fromEntries(RANGE_PLATINGS.map(p => [p.code, p.name]))
@@ -118,6 +121,13 @@ export default function RangeForm() {
   const [error, setError] = useState('')
   const [uploading, setUploading] = useState('')
   const [catOptions, setCatOptions] = useState({ design: [], product: [] })
+  const { colors: libColors } = useCrystalColors()
+  const colorLookup = colorMap(libColors)
+
+  const toggleColor = code => setForm(f => {
+    const has = f.crystal_colors.includes(code)
+    return { ...f, crystal_colors: has ? f.crystal_colors.filter(c => c !== code) : [...f.crystal_colors, code] }
+  })
 
   // Pull the distinct categories already used in the system so the
   // datalists suggest existing names (avoids near-duplicate / plural drift).
@@ -159,6 +169,9 @@ export default function RangeForm() {
           status: d.status || 'active',
           packing: { ...emptyPacking(), ...(d.packing || {}) },
           gallery: Array.isArray(d.gallery) ? d.gallery : [],
+          crystal_colors: Array.isArray(d.crystal_colors)
+            ? d.crystal_colors.map(c => (c || '').toString().trim().toUpperCase()).filter(Boolean)
+            : [],
           variants: vs,
           // Plating pool: stored map wins; else seed from legacy per-variant stock.
           plating_stock: d.plating_stock && Object.keys(d.plating_stock).length
@@ -275,6 +288,9 @@ export default function RangeForm() {
       status: form.status,
       packing: Object.fromEntries(PACKING_FIELDS.map(pf => [pf.key, (form.packing[pf.key] ?? '').toString().trim()])),
       gallery: form.gallery,
+      // Selectable crystal-colour attribute (codes from the shared library).
+      // Not a SKU/stock dimension — colour is chosen at quote/catalogue time.
+      crystal_colors: [...new Set((form.crystal_colors || []).map(c => (c || '').trim().toUpperCase()).filter(Boolean))],
       // Plating-level stock pool — keep only platings still present, as integers.
       plating_stock: Object.fromEntries(
         platingsUsed(form.variants)
@@ -445,13 +461,80 @@ export default function RangeForm() {
           </div>
         </div>
 
+        {/* Crystal colours — selectable attribute, not a SKU/stock dimension */}
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-base">Crystal Colours</h2>
+            <Link to="/settings" className="text-xs text-brand-600 hover:underline">Manage library →</Link>
+          </div>
+          <p className="text-xs text-ink-60 mb-3">
+            Tick the crystal colours this design can be made in. Colours don't create
+            separate SKUs or stock — the SKU &amp; any surcharge are applied at quote time.
+          </p>
+          {libColors.length === 0 ? (
+            <p className="text-sm text-ink-60">
+              No colours in the library yet — add them in <Link to="/settings" className="text-brand-600 hover:underline">Settings</Link>,
+              or run “Collapse colours” on the Figurine Gifts list to import them from existing data.
+            </p>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-1.5">
+                {libColors.map(c => {
+                  const on = form.crystal_colors.includes(c.code)
+                  return (
+                    <button key={c.code} type="button" onClick={() => toggleColor(c.code)}
+                      className={`text-xs px-2 py-1 rounded-full border transition-colors ${
+                        on ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-ivory-dark hover:bg-ivory'}`}
+                      title={c.surcharge_usd ? `+$${c.surcharge_usd}` : 'No surcharge'}>
+                      {c.name || c.code}
+                      {c.surcharge_usd ? <span className="opacity-60 ml-1">+${c.surcharge_usd}</span> : null}
+                    </button>
+                  )
+                })}
+              </div>
+              {/* Colours selected that are no longer in the library (e.g. renamed) */}
+              {form.crystal_colors.filter(code => !colorLookup[code]).length > 0 && (
+                <p className="text-[11px] text-amber-600 mt-2">
+                  Not in library: {form.crystal_colors.filter(code => !colorLookup[code]).join(', ')} — add them in Settings or untick.
+                </p>
+              )}
+              <p className="text-[11px] text-ink-50 mt-2">{form.crystal_colors.length} selected</p>
+
+              {/* Live SKU/price preview for the first plating × selected colours */}
+              {form.crystal_colors.length > 0 && form.variants[0] && (
+                <div className="mt-3 border-t border-ivory-dark pt-2">
+                  <p className="text-[10px] uppercase tracking-wide text-ink-50 mb-1">
+                    Example SKUs · {form.variants[0].plating_name || form.variants[0].plating_code || 'first plating'}
+                  </p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                    {form.crystal_colors.slice(0, 8).map(code => {
+                      const v = form.variants[0]
+                      const sku = buildRangeSku({
+                        brand_code: v.brand_code, design_no: form.design_no, format: form.format_code,
+                        plating_code: v.plating_code, crystal_code: code, running_no: v.running_no,
+                      })
+                      const price = rangePrice(v, colorLookup[code])
+                      return (
+                        <span key={code} className="text-[11px] font-mono text-ink-70">
+                          {sku}{price ? <span className="text-ink-50"> ${price.toFixed(2)}</span> : null}
+                        </span>
+                      )
+                    })}
+                    {form.crystal_colors.length > 8 && <span className="text-[11px] text-ink-50">+{form.crystal_colors.length - 8} more</span>}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
         {/* Variants / SKUs */}
         <div className="card p-5">
           <div className="flex items-center justify-between mb-1">
             <h2 className="text-base">Variations & Stock</h2>
             <button type="button" onClick={addVariant} className="btn-secondary text-xs">+ Add variation</button>
           </div>
-          <p className="text-xs text-ink-60 mb-3">Each plating / crystal-colour combination is one SKU. The full code is built automatically.</p>
+          <p className="text-xs text-ink-60 mb-3">One row per plating. Crystal colours are set above; the full SKU is built automatically.</p>
 
           {/* Stock pool, held per plating (the binding constraint), shared across
               that plating's crystal-colour / running-no variants. */}
@@ -522,10 +605,6 @@ export default function RangeForm() {
                             {RANGE_PLATINGS.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
                           </datalist>
                           <p className="text-[10px] text-ink-60 mt-0.5 leading-tight">G = Gold · C = Chrome · R = Rose Gold · A = Gun Metal</p>
-                        </div>
-                        <div>
-                          <label className="label">Crystal Colour</label>
-                          <input className="input text-xs font-mono" value={v.crystal_code} onChange={setCrystal(i)} placeholder="C1" />
                         </div>
                         <div>
                           <label className="label">Running No.</label>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
+import { loadCrystalColors, saveCrystalColors } from '../crystalColors'
 
 const CURRENCIES = ['RMB', 'USD', 'EUR']
 const LABELS = { RMB: 'RMB → HKD', USD: 'USD → HKD', EUR: 'EUR → HKD' }
@@ -74,7 +75,7 @@ export default function Settings() {
   const isDirty = !savedRates || CURRENCIES.some(c => String(rates[c]) !== String(savedRates[c]))
 
   return (
-    <div className="p-4 md:p-6 max-w-xl">
+    <div className="p-4 md:p-6 max-w-2xl">
       <h1 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">Settings</h1>
 
       {/* Exchange Rates */}
@@ -150,6 +151,9 @@ export default function Settings() {
         </div>
       </div>
 
+      {/* Crystal Colour Library */}
+      <CrystalColorsCard />
+
       {/* Info card */}
       <div className="card p-5 text-sm text-gray-500 space-y-1.5">
         <p className="font-medium text-gray-700 mb-1">How exchange rates work</p>
@@ -163,6 +167,102 @@ export default function Settings() {
           (free, no API key needed).
         </p>
         <p>• Existing quotes are not affected when you update rates here.</p>
+      </div>
+    </div>
+  )
+}
+
+function CrystalColorsCard() {
+  const [rows, setRows] = useState([])         // [{code,name,surcharge_usd}]
+  const [saved, setSaved] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState(null)
+
+  useEffect(() => {
+    loadCrystalColors().then(c => {
+      const r = c.map(x => ({ ...x, surcharge_usd: x.surcharge_usd ?? '' }))
+      setRows(r); setSaved(r); setLoading(false)
+    })
+  }, [])
+
+  const update = (i, key, val) => setRows(rs => rs.map((r, j) => (j === i ? { ...r, [key]: val } : r)))
+  const addRow = () => setRows(rs => [...rs, { code: '', name: '', surcharge_usd: '' }])
+  const removeRow = i => setRows(rs => rs.filter((_, j) => j !== i))
+  const move = (i, dir) => setRows(rs => {
+    const j = i + dir
+    if (j < 0 || j >= rs.length) return rs
+    const out = [...rs]; [out[i], out[j]] = [out[j], out[i]]; return out
+  })
+
+  const dirty = JSON.stringify(rows) !== JSON.stringify(saved)
+
+  async function handleSave() {
+    setSaving(true); setMsg(null)
+    try {
+      const clean = await saveCrystalColors(rows)
+      const r = clean.map(x => ({ ...x, surcharge_usd: x.surcharge_usd ?? '' }))
+      setRows(r); setSaved(r)
+      setMsg(`Saved ${r.length} colour${r.length === 1 ? '' : 's'}.`)
+      setTimeout(() => setMsg(null), 3000)
+    } catch (e) {
+      setMsg('Error saving: ' + e.message)
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="card p-5 mb-4">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-sm font-semibold text-gray-700">Crystal Colour Library</h2>
+        <button onClick={addRow} className="btn-secondary text-xs py-1.5 px-3">+ Add colour</button>
+      </div>
+      <p className="text-xs text-gray-400 mb-4">
+        Shared list of crystal colours used as a selectable attribute on Figurine
+        products. Colours don't create separate SKUs or stock — surcharge is optional
+        (blank = same price as the plating's base).
+      </p>
+
+      {loading ? (
+        <p className="text-xs text-gray-400">Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="text-xs text-gray-400">No colours yet — add one, or run “Collapse colours” on the Figurine Gifts page to import them from existing products.</p>
+      ) : (
+        <div className="space-y-2">
+          <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-wide text-gray-400 px-1">
+            <span className="w-16 shrink-0">Code</span>
+            <span className="flex-1">Name</span>
+            <span className="w-24 shrink-0">Surcharge $</span>
+            <span className="w-16 shrink-0" />
+          </div>
+          {rows.map((r, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input className="input text-xs font-mono uppercase w-16 shrink-0" value={r.code}
+                     placeholder="BL" maxLength={6}
+                     onChange={e => update(i, 'code', e.target.value.replace(/[^A-Za-z0-9]/g, '').toUpperCase())} />
+              <input className="input text-xs flex-1 min-w-0" value={r.name}
+                     placeholder="Sapphire" onChange={e => update(i, 'name', e.target.value)} />
+              <input className="input text-xs w-24 shrink-0 text-right tabular-nums" value={r.surcharge_usd}
+                     inputMode="decimal" placeholder="0.00"
+                     onChange={e => update(i, 'surcharge_usd', e.target.value.replace(/[^\d.]/g, ''))} />
+              <div className="flex items-center gap-0.5 w-16 shrink-0 justify-end">
+                <button type="button" onClick={() => move(i, -1)} disabled={i === 0}
+                        className="text-gray-400 hover:text-gray-700 disabled:opacity-30 px-1" title="Move up">↑</button>
+                <button type="button" onClick={() => move(i, 1)} disabled={i === rows.length - 1}
+                        className="text-gray-400 hover:text-gray-700 disabled:opacity-30 px-1" title="Move down">↓</button>
+                <button type="button" onClick={() => removeRow(i)}
+                        className="text-red-400 hover:text-red-600 px-1 text-base leading-none" title="Remove">×</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-5 flex items-center gap-3 flex-wrap">
+        <button onClick={handleSave} disabled={saving || !dirty} className="btn-primary text-sm">
+          {saving ? 'Saving…' : 'Save Colours'}
+        </button>
+        {dirty && <span className="text-xs text-amber-500">unsaved changes</span>}
+        {msg && <p className={`text-xs ${msg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{msg}</p>}
       </div>
     </div>
   )

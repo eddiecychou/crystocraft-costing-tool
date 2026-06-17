@@ -5,6 +5,7 @@ import { db } from '../firebase'
 import rangeData from '../data/rangeProducts.json'
 import packingDb from '../data/packingDb.json'
 import { RANGE_PLATINGS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS, designNumber, brandLetter, bodyLetter } from '../constants'
+import { ensureColors } from '../crystalColors'
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
@@ -167,6 +168,86 @@ export default function Range() {
     }
   }
 
+  // Collapse per-colour variant rows into the colour-attribute model:
+  //  - distinct crystal codes across a product -> product.crystal_colors
+  //  - variants reduced to one row per plating (keeps brand/running/price/stock)
+  //  - discovered colours are added to the shared library (name defaults to code)
+  //  - original variants are backed up to variants_legacy (once) — non-destructive
+  async function handleCollapseColors() {
+    if (!confirm(
+      'Collapse per-colour variants into the new colour-attribute model?\n\n' +
+      '• Distinct crystal colours move to a product-level "available colours" list.\n' +
+      '• Variants reduce to one row per plating (price & stock kept).\n' +
+      '• Discovered colours are added to the Crystal Colour Library.\n' +
+      '• Original variants are backed up (variants_legacy) — nothing is lost.'
+    )) return
+    setSeeding(true)
+    try {
+      const snap = await getDocs(collection(db, 'range_products'))
+      const allColors = new Set()
+      let changed = 0, already = 0
+      const priceFlags = []
+
+      for (const d of snap.docs) {
+        const p = d.data()
+        const vs = Array.isArray(p.variants) ? p.variants : []
+        if (!vs.length) { already++; continue }
+
+        // distinct colour codes for this product
+        const colors = [...new Set(vs.map(v => (v.crystal_code || '').trim().toUpperCase()).filter(Boolean))]
+        colors.forEach(c => allColors.add(c))
+
+        // group by plating; keep lowest non-null price as the base
+        const byPlating = new Map()
+        for (const v of vs) {
+          const key = (v.plating_code || '').trim().toUpperCase()
+          const price = Number(v.ws_price_usd)
+          const slot = byPlating.get(key) || { rows: [], prices: new Set() }
+          slot.rows.push(v)
+          if (Number.isFinite(price)) slot.prices.add(price)
+          byPlating.set(key, slot)
+        }
+
+        const newVariants = []
+        for (const [, slot] of byPlating) {
+          const first = slot.rows[0]
+          const prices = [...slot.prices]
+          if (prices.length > 1) priceFlags.push(`${p.design_no || p.design_code || d.id}-${p.format_code || ''} ${first.plating_code || '—'} (${prices.join('/')})`)
+          newVariants.push({
+            brand_code: first.brand_code || '', brand_name: first.brand_name || '',
+            plating_code: first.plating_code || '', plating_name: first.plating_name || '',
+            crystal_code: '', crystal_name: '',
+            description: first.description || '',
+            running_no: first.running_no || '',
+            ws_price_usd: prices.length ? Math.min(...prices) : (first.ws_price_usd ?? null),
+            stock_finished: first.stock_finished ?? null,
+            packaging: first.packaging || '', engraving: first.engraving || '', image: first.image || '',
+            sku: '',
+          })
+        }
+
+        const patch = {
+          crystal_colors: Array.isArray(p.crystal_colors) && p.crystal_colors.length ? p.crystal_colors : colors,
+          variants: newVariants,
+          updatedAt: serverTimestamp(),
+        }
+        if (!p.variants_legacy) patch.variants_legacy = vs   // backup once
+        await updateDoc(doc(db, 'range_products', d.id), patch)
+        changed++
+        setSeedLog(`Collapsing colours: ${changed} products…`)
+      }
+
+      await ensureColors([...allColors])
+      let log = `✅ Collapsed ${changed} products · ${allColors.size} colours added to library.`
+      if (priceFlags.length) log += ` ⚠️ ${priceFlags.length} plating(s) had varying prices (kept lowest): ${priceFlags.slice(0, 8).join(', ')}${priceFlags.length > 8 ? '…' : ''}`
+      setSeedLog(log)
+    } catch (err) {
+      setSeedLog(`❌ ${err.message}`)
+    } finally {
+      setSeeding(false)
+    }
+  }
+
   // One item per product (design number + format); variations collapsed inside
   const items = useMemo(() => products.map(p => {
     const fallbackBrand = brandLetter(p.design_code) || 'D'
@@ -204,6 +285,7 @@ export default function Range() {
       maxPrice: prices.length ? Math.max(...prices) : null,
       totalStock,
       skuCount: variants.length,
+      colorCount: Array.isArray(p.crystal_colors) ? p.crystal_colors.length : 0,
     }
   }), [products])
 
@@ -265,11 +347,14 @@ export default function Range() {
           <p className="text-sm text-ink-60 mt-0.5">{filtered.length} of {items.length} products · {totalSkus} SKUs</p>
           <p className="text-xs text-ink-60">Stock value ≈ ${Math.round(totalValue).toLocaleString()} USD (WS)</p>
         </div>
-        <div className="flex gap-2 shrink-0">
-          <button onClick={handleSyncPacking} disabled={seeding} className="btn-secondary text-sm flex-1 md:flex-none">
+        <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+          <button onClick={handleCollapseColors} disabled={seeding} className="btn-secondary text-sm">
+            {seeding ? 'Working…' : 'Collapse colours'}
+          </button>
+          <button onClick={handleSyncPacking} disabled={seeding} className="btn-secondary text-sm">
             {seeding ? 'Working…' : 'Sync packing'}
           </button>
-          <Link to="/range/new" className="btn-primary text-sm flex-1 md:flex-none text-center">+ New product</Link>
+          <Link to="/range/new" className="btn-primary text-sm text-center">+ New product</Link>
         </div>
       </div>
       {seedLog && <p className="text-xs font-mono text-ink-60 mb-2">{seedLog}</p>}
@@ -332,8 +417,12 @@ function ProductCard({ s }) {
           {STATUS_META[s.status]?.label || s.status}
         </span>
         {!s.active && <span className="absolute top-7 left-1.5 badge bg-gray-200 text-gray-600">Hidden</span>}
-        {s.skuCount > 1 && (
-          <span className="absolute top-1.5 right-1.5 text-[10px] bg-ink/70 text-white px-1.5 py-0.5 rounded">{s.skuCount} variations</span>
+        {(s.skuCount > 1 || s.colorCount > 0) && (
+          <span className="absolute top-1.5 right-1.5 text-[10px] bg-ink/70 text-white px-1.5 py-0.5 rounded">
+            {s.skuCount > 1 ? `${s.skuCount} platings` : ''}
+            {s.skuCount > 1 && s.colorCount > 0 ? ' · ' : ''}
+            {s.colorCount > 0 ? `${s.colorCount} colours` : ''}
+          </span>
         )}
         <span className="absolute bottom-1.5 right-1.5 text-[10px] uppercase tracking-wide bg-ink/70 text-white px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
       </div>
