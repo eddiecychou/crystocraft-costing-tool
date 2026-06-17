@@ -3,18 +3,22 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
 import logo from '../assets/logo.png'
+import {
+  LayoutDashboard, Package, Gem, ClipboardList, Puzzle,
+  Factory, Building2, BookOpen, PenLine, Settings, MoreHorizontal,
+} from 'lucide-react'
 
 const nav = [
-  { to: '/dashboard',  label: 'Dashboard',  short: 'Home',     icon: '📊', primary: true },
-  { to: '/products',   label: 'Corp Gifts', short: 'Corp',     icon: '📦', primary: true },
-  { to: '/range',      label: 'Figurine Gifts', short: 'Figurine', icon: '💎', primary: true },
-  { to: '/quotes',     label: 'Quotes',     short: 'Quotes',   icon: '📋', primary: true },
-  { to: '/components', label: 'Components', short: 'Components', icon: '🧩' },
-  { to: '/suppliers',  label: 'Suppliers',  short: 'Suppliers',  icon: '🏭' },
-  { to: '/customers',  label: 'Customers',  short: 'Customers',  icon: '🏢' },
-  { to: '/catalogues', label: 'Catalogues', short: 'Catalogues', icon: '📖' },
-  { to: '/blog-generator', label: 'Blog Writer', short: 'Blog Writer', icon: '✍️' },
-  { to: '/settings',   label: 'Settings',   short: 'Settings',   icon: '⚙️' },
+  { to: '/dashboard',  label: 'Dashboard',  short: 'Home',     Icon: LayoutDashboard, primary: true },
+  { to: '/products',   label: 'Corp Gifts', short: 'Corp',     Icon: Package, primary: true },
+  { to: '/range',      label: 'Figurine Gifts', short: 'Figurine', Icon: Gem, primary: true },
+  { to: '/quotes',     label: 'Quotes',     short: 'Quotes',   Icon: ClipboardList, primary: true },
+  { to: '/components', label: 'Components', short: 'Components', Icon: Puzzle },
+  { to: '/suppliers',  label: 'Suppliers',  short: 'Suppliers',  Icon: Factory },
+  { to: '/customers',  label: 'Customers',  short: 'Customers',  Icon: Building2 },
+  { to: '/catalogues', label: 'Catalogues', short: 'Catalogues', Icon: BookOpen },
+  { to: '/blog-generator', label: 'Blog Writer', short: 'Blog Writer', Icon: PenLine },
+  { to: '/settings',   label: 'Settings',   short: 'Settings',   Icon: Settings },
 ]
 
 const mainNav  = nav.filter(n => n.primary)
@@ -42,7 +46,7 @@ export default function Layout({ children, user }) {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-0.5">
-          {nav.map(({ to, label, icon }) => (
+          {nav.map(({ to, label, Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -54,7 +58,7 @@ export default function Layout({ children, user }) {
                 }`
               }
             >
-              <span className="text-base leading-none">{icon}</span>
+              <Icon size={18} strokeWidth={1.75} className="shrink-0" />
               {label}
             </NavLink>
           ))}
@@ -89,7 +93,7 @@ export default function Layout({ children, user }) {
 
         {/* Bottom tab bar — mobile only */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-ink border-t border-white/10 flex z-40 pb-[env(safe-area-inset-bottom)]">
-          {mainNav.map(({ to, short, icon }) => (
+          {mainNav.map(({ to, short, Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -99,7 +103,7 @@ export default function Layout({ children, user }) {
                 }`
               }
             >
-              <span className="text-lg leading-none">{icon}</span>
+              <Icon size={20} strokeWidth={1.75} />
               <span className="text-[10px] font-medium leading-none truncate max-w-full px-0.5">{short}</span>
             </NavLink>
           ))}
@@ -111,7 +115,7 @@ export default function Layout({ children, user }) {
               moreActive || moreOpen ? 'text-white' : 'text-ivory/40'
             }`}
           >
-            <span className="text-lg leading-none">⋯</span>
+            <MoreHorizontal size={20} strokeWidth={1.75} />
             <span className="text-[10px] font-medium leading-none">More</span>
           </button>
         </nav>
@@ -121,7 +125,7 @@ export default function Layout({ children, user }) {
           <>
             <div className="md:hidden fixed inset-0 z-30" onClick={() => setMoreOpen(false)} />
             <div className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 bg-white border-t border-ivory-dark shadow-lg rounded-t-sm overflow-hidden">
-              {moreNav.map(({ to, label, icon }) => (
+              {moreNav.map(({ to, label, Icon }) => (
                 <NavLink
                   key={to}
                   to={to}
@@ -132,7 +136,7 @@ export default function Layout({ children, user }) {
                     }`
                   }
                 >
-                  <span className="text-2xl leading-none">{icon}</span>
+                  <Icon size={22} strokeWidth={1.75} className="shrink-0" />
                   <span>{label}</span>
                 </NavLink>
               ))}
