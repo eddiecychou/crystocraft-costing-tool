@@ -151,27 +151,25 @@ export default function RangeComponentForm() {
 
         {/* Images */}
         <div className="card p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base">Images</h2>
-            <label className="text-xs text-brand-600 cursor-pointer hover:underline">
-              {uploading ? 'Uploading…' : '+ Add images'}
+          <h2 className="text-base mb-3">Images</h2>
+          <p className="text-xs text-ink-60 mb-3">Click a tile to upload. Hover an image and tap × to remove.</p>
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {form.images.map(url => (
+              <div key={url} className="relative aspect-square bg-white border border-ivory-dark overflow-hidden rounded">
+                <img src={url} alt="" className="w-full h-full object-contain p-1" />
+                <button type="button" onClick={() => removeImage(url)}
+                        className="absolute -top-1.5 -right-1.5 bg-white border border-ivory-dark text-red-600 rounded-full w-5 h-5 text-xs leading-none shadow-sm hover:bg-red-50"
+                        title="Remove image">×</button>
+              </div>
+            ))}
+            <label className="aspect-square border border-dashed border-ivory-dark rounded flex flex-col items-center justify-center cursor-pointer text-ink-50 hover:border-brand-400 hover:text-brand-600 transition-colors"
+                   title="Click to upload images">
+              <span className="text-2xl leading-none">＋</span>
+              <span className="text-[10px] mt-0.5">{uploading ? 'Uploading…' : 'Upload'}</span>
               <input type="file" accept="image/*" multiple className="hidden"
                      onChange={e => handleUpload(e.target.files)} />
             </label>
           </div>
-          {form.images.length === 0 ? (
-            <p className="text-xs text-ink-60">No images yet.</p>
-          ) : (
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-              {form.images.map(url => (
-                <div key={url} className="relative group aspect-square bg-white border border-ivory-dark overflow-hidden rounded">
-                  <img src={url} alt="" className="w-full h-full object-contain p-1" />
-                  <button type="button" onClick={() => removeImage(url)}
-                          className="absolute top-1 right-1 bg-white/90 text-red-500 rounded-full w-5 h-5 text-xs leading-none opacity-0 group-hover:opacity-100 transition-opacity">×</button>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
 
         {error && <p className="text-sm text-red-500">{error}</p>}

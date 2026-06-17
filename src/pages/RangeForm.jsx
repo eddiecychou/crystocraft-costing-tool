@@ -162,6 +162,10 @@ export default function RangeForm() {
     critical_components: (f.critical_components || []).filter(r => refKey(r) !== key),
   }))
 
+  // Per-variant crystal-colour search (keyed by variant index).
+  const [colorSearch, setColorSearch] = useState({})
+  const setColorTerm = (i, val) => setColorSearch(s => ({ ...s, [i]: val }))
+
   // Search-driven component picker (scales to hundreds of parts).
   const [compSearch, setCompSearch] = useState('')
   const [compCat, setCompCat] = useState('')
@@ -646,29 +650,26 @@ export default function RangeForm() {
         <div className="card p-5">
           <div className="flex items-center justify-between mb-1">
             <h2 className="text-base">Images</h2>
-            <div className="flex gap-2">
-              <button type="button" onClick={addGalleryUrl} className="btn-secondary text-xs">+ URL</button>
-              <label className="btn-secondary text-xs cursor-pointer">
-                {uploading === 'gallery' ? 'Uploading…' : '+ Upload'}
-                <input type="file" accept="image/*" multiple className="hidden"
-                       onChange={e => handleGalleryUpload(Array.from(e.target.files))} />
-              </label>
-            </div>
+            <button type="button" onClick={addGalleryUrl} className="btn-secondary text-xs">+ URL</button>
           </div>
-          <p className="text-xs text-ink-60 mb-3">Extra product photos (upload files or paste links).</p>
-          {form.gallery.length === 0 ? (
-            <p className="text-sm text-ink-60">No extra images yet.</p>
-          ) : (
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-              {form.gallery.map((url, i) => (
-                <div key={i} className="relative group aspect-square bg-white border border-ivory-dark">
-                  <img src={url} alt="" className="w-full h-full object-contain p-1" />
-                  <button type="button" onClick={() => removeGallery(i)}
-                          className="absolute top-1 right-1 bg-white/90 text-red-600 rounded-full w-5 h-5 text-xs opacity-0 group-hover:opacity-100">×</button>
-                </div>
-              ))}
-            </div>
-          )}
+          <p className="text-xs text-ink-60 mb-3">Extra product photos — click a tile to upload, or paste links with “+ URL”.</p>
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+            {form.gallery.map((url, i) => (
+              <div key={i} className="relative aspect-square bg-white border border-ivory-dark">
+                <img src={url} alt="" className="w-full h-full object-contain p-1" />
+                <button type="button" onClick={() => removeGallery(i)}
+                        className="absolute -top-1.5 -right-1.5 bg-white border border-ivory-dark text-red-600 rounded-full w-5 h-5 text-xs leading-none shadow-sm hover:bg-red-50"
+                        title="Remove image">×</button>
+              </div>
+            ))}
+            <label className="aspect-square border border-dashed border-ivory-dark rounded flex flex-col items-center justify-center cursor-pointer text-ink-50 hover:border-brand-400 hover:text-brand-600 transition-colors"
+                   title="Click to upload images">
+              <span className="text-2xl leading-none">＋</span>
+              <span className="text-[10px] mt-0.5">{uploading === 'gallery' ? 'Uploading…' : 'Upload'}</span>
+              <input type="file" accept="image/*" multiple className="hidden"
+                     onChange={e => handleGalleryUpload(Array.from(e.target.files))} />
+            </label>
+          </div>
         </div>
 
         {/* Packing */}
@@ -731,15 +732,24 @@ export default function RangeForm() {
               return (
                 <div key={i} className="border border-ivory-dark p-3">
                   <div className="flex items-start gap-3">
-                    <div className="shrink-0 flex flex-col items-center gap-1">
-                      <div className="w-16 h-16 bg-white border border-ivory-dark flex items-center justify-center overflow-hidden">
-                        {v.image ? <img src={v.image} alt="" className="w-full h-full object-contain p-1" /> : <span className="text-xl opacity-30">💎</span>}
+                    <div className="shrink-0">
+                      <div className="relative w-16 h-16">
+                        <label className="w-16 h-16 bg-white border border-ivory-dark flex items-center justify-center overflow-hidden cursor-pointer hover:border-brand-400 transition-colors"
+                               title={v.image ? 'Click to replace image' : 'Click to upload image'}>
+                          {uploading === `variant-${i}`
+                            ? <span className="text-[10px] text-ink-50">…</span>
+                            : v.image
+                              ? <img src={v.image} alt="" className="w-full h-full object-contain p-1" />
+                              : <span className="text-xl opacity-30">💎</span>}
+                          <input type="file" accept="image/*" className="hidden"
+                                 onChange={e => handleVariantUpload(i, e.target.files[0])} />
+                        </label>
+                        {v.image && (
+                          <button type="button" onClick={() => patchVariant(i, { image: '' })}
+                                  className="absolute -top-1.5 -right-1.5 bg-white border border-ivory-dark text-red-600 rounded-full w-5 h-5 text-xs leading-none shadow-sm hover:bg-red-50"
+                                  title="Remove image">×</button>
+                        )}
                       </div>
-                      <label className="text-[11px] text-brand-600 cursor-pointer hover:underline">
-                        {uploading === `variant-${i}` ? '…' : 'Upload'}
-                        <input type="file" accept="image/*" className="hidden"
-                               onChange={e => handleVariantUpload(i, e.target.files[0])} />
-                      </label>
                     </div>
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center justify-between">
@@ -815,24 +825,46 @@ export default function RangeForm() {
                         ) : (() => {
                           const sel = Array.isArray(v.crystal_colors) ? v.crystal_colors : []
                           const missing = sel.filter(code => !colorLookup[code])
+                          const term = (colorSearch[i] || '').trim().toLowerCase()
+                          const results = (term
+                            ? libColors.filter(c => `${c.code} ${c.name}`.toLowerCase().includes(term))
+                            : []).slice(0, 30)
                           return (
                             <>
-                              <div className="flex flex-wrap gap-1.5">
-                                {libColors.map(c => {
-                                  const on = sel.includes(c.code)
-                                  return (
-                                    <button key={c.code} type="button" onClick={() => toggleColor(i, c.code)}
-                                      className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
-                                        on ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-ivory-dark hover:bg-ivory'}`}>
-                                      {c.name || c.code}
-                                    </button>
-                                  )
-                                })}
-                              </div>
-                              {missing.length > 0 && (
-                                <p className="text-[11px] text-amber-600 mt-1.5">
-                                  Not in library: {missing.join(', ')} — add them in Settings or untick.
-                                </p>
+                              {/* Selected colours as removable chips */}
+                              {sel.length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mb-1.5">
+                                  {sel.map(code => {
+                                    const c = colorLookup[code]
+                                    return (
+                                      <span key={code}
+                                        className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${c ? 'bg-ink text-white border-ink' : 'bg-amber-50 text-amber-700 border-amber-300'}`}>
+                                        {c ? (c.name || c.code) : `${code} (not in library)`}
+                                        <button type="button" onClick={() => toggleColor(i, code)}
+                                          className="leading-none hover:opacity-70" title="Remove">×</button>
+                                      </span>
+                                    )
+                                  })}
+                                </div>
+                              )}
+                              {/* Search to add */}
+                              <input className="input text-xs" placeholder="Search colour to add…"
+                                     value={colorSearch[i] || ''} onChange={e => setColorTerm(i, e.target.value)} />
+                              {term && (
+                                <div className="mt-1 border border-ivory-dark rounded-md max-h-44 overflow-auto divide-y divide-ivory-dark">
+                                  {results.length === 0 ? (
+                                    <p className="text-[11px] text-ink-50 px-2.5 py-2">No matching colours.</p>
+                                  ) : results.map(c => {
+                                    const on = sel.includes(c.code)
+                                    return (
+                                      <button key={c.code} type="button" onClick={() => toggleColor(i, c.code)}
+                                        className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 text-left text-[11px] transition-colors ${on ? 'bg-brand-50' : 'hover:bg-ivory/60'}`}>
+                                        <span className="truncate"><span className="font-mono text-ink-80">{c.code}</span>{c.name ? <span className="text-ink-60"> · {c.name}</span> : null}</span>
+                                        <span className={`shrink-0 ${on ? 'text-brand-600' : 'text-ink-30'}`}>{on ? '✓' : '+'}</span>
+                                      </button>
+                                    )
+                                  })}
+                                </div>
                               )}
                               {sel.length > 0 && (
                                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5">
