@@ -176,7 +176,7 @@ export default function Range() {
   async function handleCollapseColors() {
     if (!confirm(
       'Collapse per-colour variants into the new colour-attribute model?\n\n' +
-      '• Distinct crystal colours move to a product-level "available colours" list.\n' +
+      '• Distinct crystal colours move onto each plating row as an "available colours" list.\n' +
       '• Variants reduce to one row per plating (price & stock kept).\n' +
       '• Discovered colours are added to the Crystal Colour Library.\n' +
       '• Original variants are backed up (variants_legacy) — nothing is lost.'
@@ -197,14 +197,17 @@ export default function Range() {
         const colors = [...new Set(vs.map(v => (v.crystal_code || '').trim().toUpperCase()).filter(Boolean))]
         colors.forEach(c => allColors.add(c))
 
-        // group by plating; keep lowest non-null price as the base
+        // group by plating; keep lowest non-null price as the base, and collect
+        // that plating's distinct crystal colours onto the collapsed variant.
         const byPlating = new Map()
         for (const v of vs) {
           const key = (v.plating_code || '').trim().toUpperCase()
           const price = Number(v.ws_price_usd)
-          const slot = byPlating.get(key) || { rows: [], prices: new Set() }
+          const slot = byPlating.get(key) || { rows: [], prices: new Set(), colors: new Set() }
           slot.rows.push(v)
           if (Number.isFinite(price)) slot.prices.add(price)
+          const cc = (v.crystal_code || '').trim().toUpperCase()
+          if (cc) slot.colors.add(cc)
           byPlating.set(key, slot)
         }
 
@@ -217,6 +220,7 @@ export default function Range() {
             brand_code: first.brand_code || '', brand_name: first.brand_name || '',
             plating_code: first.plating_code || '', plating_name: first.plating_name || '',
             crystal_code: '', crystal_name: '',
+            crystal_colors: [...slot.colors],
             description: first.description || '',
             running_no: first.running_no || '',
             ws_price_usd: prices.length ? Math.min(...prices) : (first.ws_price_usd ?? null),
@@ -227,7 +231,6 @@ export default function Range() {
         }
 
         const patch = {
-          crystal_colors: Array.isArray(p.crystal_colors) && p.crystal_colors.length ? p.crystal_colors : colors,
           variants: newVariants,
           updatedAt: serverTimestamp(),
         }
@@ -285,7 +288,7 @@ export default function Range() {
       maxPrice: prices.length ? Math.max(...prices) : null,
       totalStock,
       skuCount: variants.length,
-      colorCount: Array.isArray(p.crystal_colors) ? p.crystal_colors.length : 0,
+      colorCount: new Set(variants.flatMap(v => Array.isArray(v.crystal_colors) ? v.crystal_colors : [])).size,
     }
   }), [products])
 

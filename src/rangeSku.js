@@ -22,15 +22,16 @@ export function rangePrice(variant, color) {
 }
 
 // Enumerate the resolvable SKUs for a product: one per (plating-variant × colour).
-// If the product has no colours selected, falls back to one SKU per variant.
+// Each variant (plating row) carries its own crystal_colors selection. If a
+// variant has no colours selected, falls back to a single SKU for that variant.
 export function enumerateRangeSkus(product, colorLib = []) {
   const byCode = Object.fromEntries(colorLib.map(c => [c.code, c]))
   const designNo = product.design_no || ''
   const format = product.format_code || ''
   const variants = Array.isArray(product.variants) ? product.variants : []
-  const colors = Array.isArray(product.crystal_colors) ? product.crystal_colors : []
   const out = []
   for (const v of variants) {
+    const colors = Array.isArray(v.crystal_colors) ? v.crystal_colors : []
     const common = {
       brand_code: v.brand_code || '', design_no: designNo, format,
       plating_code: v.plating_code || '', running_no: v.running_no || '',

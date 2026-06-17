@@ -20,6 +20,7 @@ const emptyVariant = () => ({
   brand_code: 'D', brand_name: 'Bohemia',
   plating_code: '', plating_name: '', crystal_code: '', crystal_name: '', description: '',
   running_no: '', ws_price_usd: '', stock_finished: '', packaging: '', engraving: '', image: '',
+  crystal_colors: [],   // selectable colour attribute, per variation (plating)
 })
 
 // Auto description = brand + plating + crystal colour (falls back to raw codes)
@@ -35,7 +36,6 @@ const blankForm = () => ({
   design_type: '', product_type: 'Figurine', format_code: '001',
   size: '', crystal_type: 'Bohemia', active: true, status: 'active',
   packing: emptyPacking(), gallery: [], variants: [emptyVariant()], plating_stock: {},
-  crystal_colors: [],   // selectable colour attribute (codes from the library)
 })
 
 const PLATING_NAME = Object.fromEntries(RANGE_PLATINGS.map(p => [p.code, p.name]))
@@ -81,9 +81,16 @@ function buildSku(designNo, format, v) {
 // `fallbackBrand` = the brand letter from the doc's old design_code, used to
 // migrate variants that pre-date the per-variant brand field.
 function variantsFromDoc(d, fallbackBrand) {
+  // Back-compat: an earlier build stored colours product-level. Seed each
+  // variant from that list when the variant itself has none.
+  const docColors = Array.isArray(d.crystal_colors)
+    ? d.crystal_colors.map(c => (c || '').toString().trim().toUpperCase()).filter(Boolean) : []
   if (Array.isArray(d.variants) && d.variants.length) {
     return d.variants.map(v => {
       const code = v.brand_code || fallbackBrand || 'D'
+      const vColors = Array.isArray(v.crystal_colors) && v.crystal_colors.length
+        ? v.crystal_colors.map(c => (c || '').toString().trim().toUpperCase()).filter(Boolean)
+        : docColors
       return {
         brand_code: code, brand_name: v.brand_name || BRAND_NAME[code] || '',
         plating_code: v.plating_code || '', plating_name: v.plating_name || '',
@@ -92,6 +99,7 @@ function variantsFromDoc(d, fallbackBrand) {
         running_no: v.running_no || '',
         ws_price_usd: v.ws_price_usd ?? '', stock_finished: v.stock_finished ?? '',
         packaging: v.packaging || '', engraving: v.engraving || '', image: v.image || '',
+        crystal_colors: vColors,
       }
     })
   }
@@ -102,7 +110,7 @@ function variantsFromDoc(d, fallbackBrand) {
     plating_code: f.finish_code || '', plating_name: f.finish_name || '',
     crystal_code: '', crystal_name: '', description: f.finish_name || '', running_no: '',
     ws_price_usd: f.ws_price_usd ?? '', stock_finished: f.stock_finished ?? '',
-    packaging: '', engraving: '', image: f.image || '',
+    packaging: '', engraving: '', image: f.image || '', crystal_colors: [],
   }))
 }
 
@@ -124,10 +132,15 @@ export default function RangeForm() {
   const { colors: libColors } = useCrystalColors()
   const colorLookup = colorMap(libColors)
 
-  const toggleColor = code => setForm(f => {
-    const has = f.crystal_colors.includes(code)
-    return { ...f, crystal_colors: has ? f.crystal_colors.filter(c => c !== code) : [...f.crystal_colors, code] }
-  })
+  const toggleColor = (i, code) => setForm(f => ({
+    ...f,
+    variants: f.variants.map((v, j) => {
+      if (j !== i) return v
+      const list = Array.isArray(v.crystal_colors) ? v.crystal_colors : []
+      const has = list.includes(code)
+      return { ...v, crystal_colors: has ? list.filter(c => c !== code) : [...list, code] }
+    }),
+  }))
 
   // Pull the distinct categories already used in the system so the
   // datalists suggest existing names (avoids near-duplicate / plural drift).
@@ -169,9 +182,6 @@ export default function RangeForm() {
           status: d.status || 'active',
           packing: { ...emptyPacking(), ...(d.packing || {}) },
           gallery: Array.isArray(d.gallery) ? d.gallery : [],
-          crystal_colors: Array.isArray(d.crystal_colors)
-            ? d.crystal_colors.map(c => (c || '').toString().trim().toUpperCase()).filter(Boolean)
-            : [],
           variants: vs,
           // Plating pool: stored map wins; else seed from legacy per-variant stock.
           plating_stock: d.plating_stock && Object.keys(d.plating_stock).length
@@ -288,9 +298,6 @@ export default function RangeForm() {
       status: form.status,
       packing: Object.fromEntries(PACKING_FIELDS.map(pf => [pf.key, (form.packing[pf.key] ?? '').toString().trim()])),
       gallery: form.gallery,
-      // Selectable crystal-colour attribute (codes from the shared library).
-      // Not a SKU/stock dimension — colour is chosen at quote/catalogue time.
-      crystal_colors: [...new Set((form.crystal_colors || []).map(c => (c || '').trim().toUpperCase()).filter(Boolean))],
       // Plating-level stock pool — keep only platings still present, as integers.
       plating_stock: Object.fromEntries(
         platingsUsed(form.variants)
@@ -308,6 +315,8 @@ export default function RangeForm() {
         }),
         ws_price_usd: num(v.ws_price_usd), stock_finished: intNum(v.stock_finished),
         packaging: v.packaging.trim(), engraving: v.engraving.trim(), image: v.image.trim(),
+        // Selectable crystal colours for this plating — not a SKU/stock dimension.
+        crystal_colors: [...new Set((v.crystal_colors || []).map(c => (c || '').trim().toUpperCase()).filter(Boolean))],
       })),
       updatedAt: serverTimestamp(),
     }
@@ -461,80 +470,13 @@ export default function RangeForm() {
           </div>
         </div>
 
-        {/* Crystal colours — selectable attribute, not a SKU/stock dimension */}
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-base">Crystal Colours</h2>
-            <Link to="/settings" className="text-xs text-brand-600 hover:underline">Manage library →</Link>
-          </div>
-          <p className="text-xs text-ink-60 mb-3">
-            Tick the crystal colours this design can be made in. Colours don't create
-            separate SKUs or stock — the SKU &amp; any surcharge are applied at quote time.
-          </p>
-          {libColors.length === 0 ? (
-            <p className="text-sm text-ink-60">
-              No colours in the library yet — add them in <Link to="/settings" className="text-brand-600 hover:underline">Settings</Link>,
-              or run “Collapse colours” on the Figurine Gifts list to import them from existing data.
-            </p>
-          ) : (
-            <>
-              <div className="flex flex-wrap gap-1.5">
-                {libColors.map(c => {
-                  const on = form.crystal_colors.includes(c.code)
-                  return (
-                    <button key={c.code} type="button" onClick={() => toggleColor(c.code)}
-                      className={`text-xs px-2 py-1 rounded-full border transition-colors ${
-                        on ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-ivory-dark hover:bg-ivory'}`}
-                      title={c.surcharge_usd ? `+$${c.surcharge_usd}` : 'No surcharge'}>
-                      {c.name || c.code}
-                      {c.surcharge_usd ? <span className="opacity-60 ml-1">+${c.surcharge_usd}</span> : null}
-                    </button>
-                  )
-                })}
-              </div>
-              {/* Colours selected that are no longer in the library (e.g. renamed) */}
-              {form.crystal_colors.filter(code => !colorLookup[code]).length > 0 && (
-                <p className="text-[11px] text-amber-600 mt-2">
-                  Not in library: {form.crystal_colors.filter(code => !colorLookup[code]).join(', ')} — add them in Settings or untick.
-                </p>
-              )}
-              <p className="text-[11px] text-ink-50 mt-2">{form.crystal_colors.length} selected</p>
-
-              {/* Live SKU/price preview for the first plating × selected colours */}
-              {form.crystal_colors.length > 0 && form.variants[0] && (
-                <div className="mt-3 border-t border-ivory-dark pt-2">
-                  <p className="text-[10px] uppercase tracking-wide text-ink-50 mb-1">
-                    Example SKUs · {form.variants[0].plating_name || form.variants[0].plating_code || 'first plating'}
-                  </p>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-                    {form.crystal_colors.slice(0, 8).map(code => {
-                      const v = form.variants[0]
-                      const sku = buildRangeSku({
-                        brand_code: v.brand_code, design_no: form.design_no, format: form.format_code,
-                        plating_code: v.plating_code, crystal_code: code, running_no: v.running_no,
-                      })
-                      const price = rangePrice(v, colorLookup[code])
-                      return (
-                        <span key={code} className="text-[11px] font-mono text-ink-70">
-                          {sku}{price ? <span className="text-ink-50"> ${price.toFixed(2)}</span> : null}
-                        </span>
-                      )
-                    })}
-                    {form.crystal_colors.length > 8 && <span className="text-[11px] text-ink-50">+{form.crystal_colors.length - 8} more</span>}
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-
         {/* Variants / SKUs */}
         <div className="card p-5">
           <div className="flex items-center justify-between mb-1">
             <h2 className="text-base">Variations & Stock</h2>
             <button type="button" onClick={addVariant} className="btn-secondary text-xs">+ Add variation</button>
           </div>
-          <p className="text-xs text-ink-60 mb-3">One row per plating. Crystal colours are set above; the full SKU is built automatically.</p>
+          <p className="text-xs text-ink-60 mb-3">One row per plating. Tick the crystal colours each plating can be made in — colours don't create separate SKUs or stock; the SKU &amp; any surcharge are applied at quote time.</p>
 
           {/* Stock pool, held per plating (the binding constraint), shared across
               that plating's crystal-colour / running-no variants. */}
@@ -641,6 +583,63 @@ export default function RangeForm() {
                           <label className="label">Image URL</label>
                           <input className="input text-xs" value={v.image} onChange={setVariant(i, 'image')} placeholder="/range-img/… or https://… or Upload" />
                         </div>
+                      </div>
+
+                      {/* Crystal colours for this plating — selectable attribute, not a SKU/stock dimension */}
+                      <div className="border-t border-ivory-dark pt-2 mt-1">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-[11px] uppercase tracking-wide text-ink-50">Crystal colours</label>
+                          <Link to="/settings" className="text-[11px] text-brand-600 hover:underline">Manage library →</Link>
+                        </div>
+                        {libColors.length === 0 ? (
+                          <p className="text-[11px] text-ink-60">
+                            No colours in the library yet — add them in <Link to="/settings" className="text-brand-600 hover:underline">Settings</Link>,
+                            or run “Collapse colours” on the Figurine Gifts list.
+                          </p>
+                        ) : (() => {
+                          const sel = Array.isArray(v.crystal_colors) ? v.crystal_colors : []
+                          const missing = sel.filter(code => !colorLookup[code])
+                          return (
+                            <>
+                              <div className="flex flex-wrap gap-1.5">
+                                {libColors.map(c => {
+                                  const on = sel.includes(c.code)
+                                  return (
+                                    <button key={c.code} type="button" onClick={() => toggleColor(i, c.code)}
+                                      className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${
+                                        on ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-ivory-dark hover:bg-ivory'}`}
+                                      title={c.surcharge_usd ? `+$${c.surcharge_usd}` : 'No surcharge'}>
+                                      {c.name || c.code}
+                                      {c.surcharge_usd ? <span className="opacity-60 ml-1">+${c.surcharge_usd}</span> : null}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                              {missing.length > 0 && (
+                                <p className="text-[11px] text-amber-600 mt-1.5">
+                                  Not in library: {missing.join(', ')} — add them in Settings or untick.
+                                </p>
+                              )}
+                              {sel.length > 0 && (
+                                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5">
+                                  {sel.slice(0, 8).map(code => {
+                                    const exSku = buildRangeSku({
+                                      brand_code: v.brand_code, design_no: form.design_no, format: form.format_code,
+                                      plating_code: v.plating_code, crystal_code: code, running_no: v.running_no,
+                                    })
+                                    const price = rangePrice(v, colorLookup[code])
+                                    return (
+                                      <span key={code} className="text-[11px] font-mono text-ink-70">
+                                        {exSku}{price ? <span className="text-ink-50"> ${price.toFixed(2)}</span> : null}
+                                      </span>
+                                    )
+                                  })}
+                                  {sel.length > 8 && <span className="text-[11px] text-ink-50">+{sel.length - 8} more</span>}
+                                </div>
+                              )}
+                            </>
+                          )
+                        })()}
                       </div>
                     </div>
                   </div>
