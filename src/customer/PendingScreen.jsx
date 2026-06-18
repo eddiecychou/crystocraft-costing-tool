@@ -20,6 +20,12 @@ export default function PendingScreen({ profile }) {
         </p>
         <button onClick={() => signOut(auth).then(() => navigate('/login'))}
           className="btn-secondary w-full justify-center">Sign out</button>
+
+        {/* TEMP DIAGNOSTIC — remove after debugging */}
+        <pre className="mt-6 text-left text-[10px] leading-snug bg-gray-100 rounded p-2 overflow-x-auto whitespace-pre-wrap break-all">
+{`uid: ${auth.currentUser?.uid || '(none)'}
+profile: ${JSON.stringify(profile)}`}
+        </pre>
       </div>
     </div>
   )
