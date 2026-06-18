@@ -24,10 +24,12 @@ export default function EnquiryPage({ profile }) {
   const total = items.reduce((s, i) => s + (lineTotal(i) || 0), 0)
   const hasIndicative = items.some(i => unitPrice(i) == null)
 
-  // MOQ is a per-design (metal-part) minimum: all plating/colour variations of
-  // the same design count toward it together, so aggregate pieces by design.
+  // MOQ is a per-design (metal-part) minimum. All plating/colour variations AND
+  // formats (freestand, music box, bible…) that share the same design number
+  // count toward it together, so aggregate pieces by design number.
+  const moqKey = i => (i.type === 'figurine' && i.design_no) ? `figurine:${i.design_no}` : `${i.type}:${i.id}`
   const designPcs = items.reduce((m, i) => {
-    const k = `${i.type}:${i.id}`
+    const k = moqKey(i)
     m[k] = (m[k] || 0) + Math.max(1, Number(i.qty) || 1)
     return m
   }, {})
@@ -43,7 +45,7 @@ export default function EnquiryPage({ profile }) {
         email: profile?.email || auth.currentUser?.email || '',
         base_currency: cur,
         items: items.map(i => ({
-          type: i.type, id: i.id, name: i.name || '', code: i.code || '',
+          type: i.type, id: i.id, name: i.name || '', code: i.code || '', design_no: i.design_no || '',
           image: i.image || '', qty: Number(i.qty) || 1, note: i.note || '',
           finish: i.finish || '', color: i.color || '', color_name: i.color_name || '',
           ws_price_usd: i.ws_price_usd ?? null,

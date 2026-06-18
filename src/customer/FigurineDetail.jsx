@@ -72,10 +72,11 @@ export default function FigurineDetail({ profile }) {
   const ppc = Number(p.packing?.pcs_per_carton) || 0    // pcs per carton (0 = unknown)
   const moq = Number(p.moq) || 0                          // design-level made-to-order minimum
   const pcs = ppc > 0 ? cartons * ppc : cartons           // total pieces ordered (this selection)
-  // MOQ applies across all variations of this design, so include any pieces of
+  // MOQ applies across every variation AND format of this design (same body /
+  // design number — freestand, music box, bible, …), so include any pieces of
   // the same design already sitting in the enquiry cart.
   const cartDesignPcs = (cart?.items || [])
-    .filter(it => it.type === 'figurine' && it.id === p.id)
+    .filter(it => it.type === 'figurine' && (designNo ? it.design_no === designNo : it.id === p.id))
     .reduce((s, it) => s + Math.max(1, Number(it.qty) || 1), 0)
   const designPcs = cartDesignPcs + (inCart ? 0 : pcs)
   const belowMoq = moq > 0 && designPcs < moq
@@ -91,6 +92,7 @@ export default function FigurineDetail({ profile }) {
     if (!canAdd) return
     cart?.add({
       type: 'figurine', id: p.id, name, code,
+      design_no: designNo || '',
       image: selVariant.image || image,
       finish: selVariant.plating_name || selVariant.plating_code || '',
       finish_sku: selVariant.sku || '',
