@@ -101,7 +101,12 @@ function Card({ r, set }) {
                 </p>
               </div>
               <div className="text-right shrink-0">
-                <p className="text-sm text-ink-70">×{i.qty || 1}</p>
+                <p className="text-sm text-ink-70">
+                  {Number(i.qty || 1).toLocaleString()} pcs
+                  {Number(i.pcs_per_carton) > 0 && Number(i.cartons) > 0 && <span className="text-ink-40"> · {i.cartons} ctn</span>}
+                </p>
+                {Number(i.moq) > 0 && Number(i.qty || 1) < Number(i.moq) &&
+                  <p className="text-[10px] text-amber-700">below MOQ {Number(i.moq).toLocaleString()}</p>}
                 {i.line_total != null
                   ? <p className="text-sm text-ink font-medium">{fmtMoney(i.line_total, cur)}</p>
                   : <p className="text-[11px] text-ink-40 italic">On enquiry</p>}

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { useParams, Link } from 'react-router-dom'
 import { db } from '../firebase'
-import { Gem, ArrowLeft, Check, Plus } from 'lucide-react'
+import { Gem, ArrowLeft, Check, Plus, Minus } from 'lucide-react'
 import { designNumber, brandLetter, bodyLetter, RANGE_CRYSTAL_BRANDS } from '../constants'
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
@@ -25,6 +25,7 @@ export default function FigurineDetail({ profile }) {
   const [p, setP] = useState(undefined)
   const [finishIdx, setFinishIdx] = useState(0)
   const [color, setColor] = useState(null)
+  const [cartons, setCartons] = useState(1)
   const rates = useRates()
   const { colors: libColors } = useCrystalColors()
   const lookup = useMemo(() => colorMap(libColors), [libColors])
@@ -63,6 +64,11 @@ export default function FigurineDetail({ profile }) {
   const colorValid = !!color && finishColors.includes(color)
   const canAdd = !needsColor || colorValid
 
+  const ppc = Number(p.packing?.pcs_per_carton) || 0    // pcs per carton (0 = unknown)
+  const moq = Number(p.moq) || 0                          // design-level made-to-order minimum
+  const pcs = ppc > 0 ? cartons * ppc : cartons           // total pieces ordered
+  const belowMoq = moq > 0 && pcs < moq
+
   const pickFinish = i => {
     setFinishIdx(i)
     const v = variants[i] || {}
@@ -80,6 +86,10 @@ export default function FigurineDetail({ profile }) {
       color: needsColor ? color : '',
       color_name: needsColor ? (lookup[color]?.name || '') : '',
       ws_price_usd: selVariant.ws_price_usd ?? null,
+      pcs_per_carton: ppc,
+      cartons: ppc > 0 ? cartons : 0,
+      qty: pcs,
+      moq,
     })
   }
 
@@ -145,6 +155,38 @@ export default function FigurineDetail({ profile }) {
             </div>
           )}
 
+          {/* Quantity — wholesale, ordered by carton */}
+          {!inCart && (
+            <div className="mt-4">
+              <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-1.5">
+                Quantity {ppc > 0 && <span className="normal-case text-ink-40">· {ppc} pcs/carton</span>}
+              </p>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="inline-flex items-center border border-ivory-dark rounded-md overflow-hidden">
+                  <button type="button" onClick={() => setCartons(c => Math.max(1, c - 1))}
+                    className="px-2.5 py-2 hover:bg-ivory text-ink-70" aria-label="Decrease"><Minus size={14} /></button>
+                  <input type="number" min="1" value={cartons}
+                    onChange={e => setCartons(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+                    className="w-14 text-center text-sm py-1.5 outline-none border-x border-ivory-dark" />
+                  <button type="button" onClick={() => setCartons(c => c + 1)}
+                    className="px-2.5 py-2 hover:bg-ivory text-ink-70" aria-label="Increase"><Plus size={14} /></button>
+                </div>
+                <span className="text-sm text-ink-60">
+                  {ppc > 0 ? `${cartons} carton${cartons > 1 ? 's' : ''} = ${pcs.toLocaleString()} pcs` : `${pcs.toLocaleString()} pcs`}
+                </span>
+              </div>
+              {selVariant.ws_price_usd != null && colorValid && (
+                <p className="text-sm text-ink mt-2">Subtotal: <span className="font-medium">{fmtMoney(net(selVariant.ws_price_usd) * pcs, cur)}</span></p>
+              )}
+              {moq > 0 && (
+                <p className={`text-[11px] mt-1.5 ${belowMoq ? 'text-amber-700' : 'text-ink-50'}`}>
+                  Made to order · minimum {moq.toLocaleString()} pcs per design
+                  {belowMoq && ' — below the minimum, we will confirm feasibility on quotation'}
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="mt-5 flex items-center gap-3">
             <button onClick={addToEnquiry}
               disabled={inCart || !canAdd}
@@ -152,6 +194,7 @@ export default function FigurineDetail({ profile }) {
               {inCart ? <><Check size={16} /> In enquiry</> : <><Plus size={16} /> Add to enquiry</>}
             </button>
             {!inCart && needsColor && !colorValid && <span className="text-xs text-ink-50">Select a crystal colour</span>}
+            {inCart && <span className="text-xs text-ink-50">Adjust quantity in your enquiry list</span>}
           </div>
 
           <p className="text-[11px] text-ink-40 mt-3">

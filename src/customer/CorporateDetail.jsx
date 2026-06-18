@@ -34,6 +34,8 @@ export default function CorporateDetail({ profile }) {
   )
 
   const inCart = cart?.has('corporate', p.id)
+  const tierQtys = tiers.map(t => Number(t.quantity) || 0).filter(q => q > 0)
+  const minQty = tierQtys.length ? Math.min(...tierQtys) : 0
 
   return (
     <div>
@@ -54,14 +56,16 @@ export default function CorporateDetail({ profile }) {
           <div className="rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2 mt-4">
             Made to order. Prices below are indicative reference points only — final pricing varies by
             specification, quantity and customisation.
+            {minQty > 0 && <span className="block mt-1 font-medium">Minimum order: {minQty.toLocaleString()} pcs per design.</span>}
           </div>
 
           <div className="mt-5">
-            <button onClick={() => cart?.add({ type: 'corporate', id: p.id, name: p.name, code: '', image: p.heroImage || '' })}
+            <button onClick={() => cart?.add({ type: 'corporate', id: p.id, name: p.name, code: '', image: p.heroImage || '', qty: minQty || 1, moq: minQty })}
               disabled={inCart}
               className={`btn-primary ${inCart ? 'opacity-60 pointer-events-none' : ''}`}>
               {inCart ? <><Check size={16} /> In enquiry</> : <><Plus size={16} /> Add to enquiry</>}
             </button>
+            {inCart && <span className="ml-3 text-xs text-ink-50">Adjust quantity in your enquiry list</span>}
           </div>
 
           {tiers.length > 0 && (

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db, auth } from '../firebase'
-import { Gem, Package, Trash2, ClipboardList, CheckCircle2 } from 'lucide-react'
+import { Gem, Package, Trash2, ClipboardList, CheckCircle2, Plus, Minus } from 'lucide-react'
 import { useCart } from './store'
 import { useRates, fromUSD, fmtMoney } from '../currency'
 
@@ -39,6 +39,9 @@ export default function EnquiryPage({ profile }) {
           image: i.image || '', qty: Number(i.qty) || 1, note: i.note || '',
           finish: i.finish || '', color: i.color || '', color_name: i.color_name || '',
           ws_price_usd: i.ws_price_usd ?? null,
+          pcs_per_carton: Number(i.pcs_per_carton) || 0,
+          cartons: Number(i.cartons) || 0,
+          moq: Number(i.moq) || 0,
           unit_price: unitPrice(i), line_total: lineTotal(i),
         })),
         currency: cur,
@@ -85,6 +88,13 @@ export default function EnquiryPage({ profile }) {
       <div className="card divide-y divide-ivory-dark mb-5">
         {items.map(i => {
           const Icon = i.type === 'figurine' ? Gem : Package
+          const ppc = Number(i.pcs_per_carton) || 0
+          const moq = Number(i.moq) || 0
+          const qtyPcs = Math.max(1, Number(i.qty) || 1)
+          const cartons = ppc > 0 ? Math.max(1, Math.round(qtyPcs / ppc)) : 0
+          const belowMoq = moq > 0 && qtyPcs < moq
+          const setCartons = n => { const c = Math.max(1, Math.floor(n) || 1); cart.update(i.type, i.id, { cartons: c, qty: c * ppc }) }
+          const setPcs = n => cart.update(i.type, i.id, { qty: Math.max(1, Math.floor(n) || 1) })
           return (
             <div key={`${i.type}-${i.id}`} className="flex items-center gap-3 p-3">
               <div className="w-14 h-14 bg-white border border-ivory-dark rounded flex items-center justify-center overflow-hidden shrink-0">
@@ -109,14 +119,30 @@ export default function EnquiryPage({ profile }) {
                 <span className="text-[11px] text-ink-50">
                   {unitPrice(i) != null ? `${fmtMoney(unitPrice(i), cur)} ea` : 'On enquiry'}
                 </span>
-                <label className="text-[11px] text-ink-50">Qty
-                  <input type="number" min="1" value={i.qty || 1}
-                    onChange={e => cart.update(i.type, i.id, { qty: Math.max(1, Number(e.target.value) || 1) })}
-                    className="input py-1 w-20 ml-1 inline-block" />
-                </label>
+                {ppc > 0 ? (
+                  <div className="flex flex-col items-end gap-0.5">
+                    <div className="inline-flex items-center border border-ivory-dark rounded-md overflow-hidden">
+                      <button type="button" onClick={() => setCartons(cartons - 1)}
+                        className="px-2 py-1.5 hover:bg-ivory text-ink-70" aria-label="Fewer cartons"><Minus size={12} /></button>
+                      <input type="number" min="1" value={cartons}
+                        onChange={e => setCartons(Number(e.target.value))}
+                        className="w-12 text-center text-sm py-1 outline-none border-x border-ivory-dark" />
+                      <button type="button" onClick={() => setCartons(cartons + 1)}
+                        className="px-2 py-1.5 hover:bg-ivory text-ink-70" aria-label="More cartons"><Plus size={12} /></button>
+                    </div>
+                    <span className="text-[10px] text-ink-50">{cartons} ctn · {qtyPcs.toLocaleString()} pcs</span>
+                  </div>
+                ) : (
+                  <label className="text-[11px] text-ink-50">Qty (pcs)
+                    <input type="number" min="1" value={qtyPcs}
+                      onChange={e => setPcs(Number(e.target.value))}
+                      className="input py-1 w-20 ml-1 inline-block" />
+                  </label>
+                )}
                 <span className="text-sm text-ink font-medium">
                   {lineTotal(i) != null ? fmtMoney(lineTotal(i), cur) : '—'}
                 </span>
+                {belowMoq && <span className="text-[10px] text-amber-700 text-right">Below min {moq.toLocaleString()} pcs</span>}
                 <button onClick={() => cart.remove(i.type, i.id)} className="text-ink-40 hover:text-red-500" aria-label="Remove">
                   <Trash2 size={15} />
                 </button>
