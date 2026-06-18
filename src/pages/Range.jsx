@@ -330,7 +330,7 @@ function ProductCard({ s, colorLookup = {} }) {
         </span>
         {!s.active && <span className="absolute top-7 left-1.5 badge bg-gray-200 text-gray-600">Hidden</span>}
         {(s.skuCount > 1 || s.colorCount > 0) && (
-          <span className="absolute top-1.5 right-1.5 text-[10px] bg-ink/70 text-white px-1.5 py-0.5 rounded">
+          <span className="absolute bottom-1.5 left-1.5 text-[10px] bg-ink/70 text-white px-1.5 py-0.5 rounded">
             {s.skuCount > 1 ? `${s.skuCount} platings` : ''}
             {s.skuCount > 1 && s.colorCount > 0 ? ' · ' : ''}
             {s.colorCount > 0 ? `${s.colorCount} colours` : ''}
