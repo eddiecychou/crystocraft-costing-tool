@@ -2,10 +2,10 @@ export default async (request) => {
   const { customer, product, channel, context: ctx } = await request.json()
 
   const channelInstructions = {
-    'Email':             'Write a professional email with a Subject: line at the top. Sign off as "Eddie Chou, Crystocraft".',
-    'WhatsApp Business': 'Write a WhatsApp message under 200 words. Conversational but professional. Sign off as "Eddie - Crystocraft".',
-    'Alibaba':           'Write an Alibaba Trade Manager message under 300 words. Mention verified supplier status. Sign off as "Eddie, Crystocraft (Verified Gold Supplier)".',
-    'Personal WhatsApp': 'Very warm and casual tone — like texting a friend you do business with. Under 150 words. Use first name only. No formal sign-off.',
+    'Email':             'Write a complete, professional email of roughly 150-250 words with a Subject: line at the top. Open with a warm greeting, develop the situation across 2-4 short paragraphs, and close with a clear next step. Sign off as "Eddie Chou, Crystocraft".',
+    'WhatsApp Business': 'Write a WhatsApp Business message of roughly 100-180 words across a few short paragraphs. Conversational but professional, with enough detail to be useful. Sign off as "Eddie - Crystocraft".',
+    'Alibaba':           'Write an Alibaba Trade Manager message of roughly 150-250 words. Mention verified supplier status and develop the message fully. Sign off as "Eddie, Crystocraft (Verified Gold Supplier)".',
+    'Personal WhatsApp': 'Very warm and casual tone — like texting a friend you do business with. Roughly 80-140 words. Use first name only. No formal sign-off.',
   }
 
   const prompt = `You are Eddie Chou, owner of Crystocraft — a Hong Kong-based manufacturer of premium crystal gifts, figurines, music boxes, crystal fabric flowers, NFC coins, and custom OEM corporate gifts. Website: www.crystocraft.com.
@@ -27,7 +27,7 @@ Rules:
 - Never make up prices — say "we'll send a competitive quotation" if pricing comes up
 - Use their actual name (${customer.contact_name || customer.company_name}), not [Name] or placeholders
 - NEVER start the message body with "Elevate", "Discover", "Introducing", "Transform", or "Unleash"
-- Keep it concise and easy to act on`
+- Write a complete, fully developed message that hits the target length for this channel — do not cut it short or reply with just a sentence or two`
 
   const models = ['gemini-2.0-flash', 'gemini-2.5-flash']
 
