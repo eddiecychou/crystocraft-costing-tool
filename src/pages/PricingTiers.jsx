@@ -150,6 +150,16 @@ export default function PricingTiers() {
         await batch.commit()
       }
 
+      // Stamp a representative price (at the default markup) back onto each tier
+      // doc so the admin Products grid has a figure to show. Customer-specific
+      // prices still live in customer_prices.
+      await Promise.all(tiers.map(t =>
+        updateDoc(doc(db, 'products', id, 'pricing_tiers', t.id), {
+          price_hkd: Math.ceil(totalUnitCostAtQty(components, rates, t.quantity) * DEFAULT_MARKUP),
+          sell_currency: 'HKD',
+        })
+      ))
+
       await setDoc(doc(db, 'products', id), {
         prices_published_at: serverTimestamp(),
         prices_signature: signature,
