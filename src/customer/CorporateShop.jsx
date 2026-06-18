@@ -16,9 +16,13 @@ export default function CorporateShop({ profile }) {
   const cur = profile?.base_currency || 'USD'
 
   useEffect(() => {
-    const q = query(collection(db, 'products'), orderBy('name'))
+    const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'))
     return onSnapshot(q, snap => {
-      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status === 'active'))
+      setProducts(
+        snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .filter(p => p.status !== 'discontinued')
+          .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+      )
       setLoading(false)
     }, () => setLoading(false))
   }, [])
