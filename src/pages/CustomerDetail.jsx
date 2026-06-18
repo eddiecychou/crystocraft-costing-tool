@@ -67,6 +67,7 @@ export default function CustomerDetail() {
 
   const [customer, setCustomer]         = useState(null)
   const [quotes, setQuotes]             = useState([])
+  const [accounts, setAccounts]         = useState([])
   const [enquiries, setEnquiries]       = useState([])
   const [loading, setLoading]           = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -95,7 +96,9 @@ export default function CustomerDetail() {
       getDoc(doc(db, 'customers', id)),
       getDocs(query(collection(db, 'client_quotes'), where('customer_id', '==', id))),
       getDocs(collection(db, 'products')),
-    ]).then(([cSnap, qSnap, pSnap]) => {
+      getDocs(query(collection(db, 'users'), where('customer_id', '==', id))),
+    ]).then(([cSnap, qSnap, pSnap, uSnap]) => {
+      setAccounts(uSnap.docs.map(d => ({ id: d.id, ...d.data() })))
       if (cSnap.exists()) {
         const c = { id: cSnap.id, ...cSnap.data() }
         setCustomer(c)
@@ -332,6 +335,34 @@ export default function CustomerDetail() {
             } />
           )}
         </dl>
+      </div>
+
+      {/* Linked storefront accounts */}
+      <div className="card p-5 mb-4">
+        <h2 className="text-sm font-semibold text-gray-700 mb-1">Storefront Accounts ({accounts.length})</h2>
+        <p className="text-xs text-gray-400 mb-3">Login accounts linked to this customer. Manage links on the Accounts page.</p>
+        {accounts.length === 0 ? (
+          <p className="text-sm text-gray-400">
+            No accounts linked yet. Link one from <Link to="/customer-accounts" className="text-brand-600 hover:underline">Accounts</Link>.
+          </p>
+        ) : (
+          <div className="space-y-1.5">
+            {accounts.map(a => (
+              <div key={a.id} className="flex items-center justify-between gap-2 text-sm">
+                <div className="min-w-0">
+                  <span className="text-gray-800">{a.contact_name || a.company_name || a.email}</span>
+                  {a.email && <span className="text-gray-400"> · {a.email}</span>}
+                </div>
+                <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium shrink-0 ${
+                  a.role === 'admin' ? 'bg-purple-100 text-purple-700'
+                  : a.status === 'approved' ? 'bg-green-100 text-green-700'
+                  : 'bg-amber-100 text-amber-700'}`}>
+                  {a.role === 'admin' ? 'Admin' : a.status === 'approved' ? 'Approved' : 'Pending'}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Notes */}

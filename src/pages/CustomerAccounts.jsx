@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { collection, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import { CUSTOMER_CURRENCIES } from '../currency'
 import LoadingBar from '../components/LoadingBar'
-import { ShieldCheck, Clock, UserCheck } from 'lucide-react'
+import { ShieldCheck, Clock, UserCheck, Building2, X } from 'lucide-react'
 
 export default function CustomerAccounts() {
   const [users, setUsers] = useState([])
+  const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('pending')
 
@@ -15,6 +17,15 @@ export default function CustomerAccounts() {
       setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       setLoading(false)
     }, () => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    return onSnapshot(collection(db, 'customers'), snap => {
+      setCustomers(
+        snap.docs.map(d => ({ id: d.id, company_name: d.data().company_name || '(unnamed)' }))
+          .sort((a, b) => a.company_name.localeCompare(b.company_name))
+      )
+    })
   }, [])
 
   const set = (id, patch) => updateDoc(doc(db, 'users', id), { ...patch, updatedAt: serverTimestamp() })
@@ -50,14 +61,14 @@ export default function CustomerAccounts() {
         <div className="text-center py-16 text-ink-60">Nothing here.</div>
       ) : (
         <div className="space-y-2">
-          {rows.map(u => <Row key={u.id} u={u} tab={tab} set={set} />)}
+          {rows.map(u => <Row key={u.id} u={u} tab={tab} set={set} customers={customers} />)}
         </div>
       )}
     </div>
   )
 }
 
-function Row({ u, tab, set }) {
+function Row({ u, tab, set, customers }) {
   const [cur, setCur] = useState(u.base_currency || 'USD')
   const [disc, setDisc] = useState(u.ws_discount_pct ?? 0)
   const [override, setOverride] = useState(u.corp_markup_override ?? '')
@@ -84,6 +95,11 @@ function Row({ u, tab, set }) {
       <div className="flex-1 min-w-0">
         <p className="font-medium text-ink truncate">{u.company_name || '—'}</p>
         <p className="text-xs text-ink-60 truncate">{u.contact_name ? `${u.contact_name} · ` : ''}{u.email}</p>
+        <CustomerPicker
+          customers={customers}
+          value={u.customer_id || ''}
+          onChange={cid => set(u.id, { customer_id: cid || null })}
+        />
       </div>
 
       {tab !== 'admins' && (
@@ -148,6 +164,69 @@ function Row({ u, tab, set }) {
           </span>
         )}
       </div>
+    </div>
+  )
+}
+
+// Searchable picker that links this login account to a CRM customer record.
+// One customer can be linked to many accounts (the link lives on the account).
+function CustomerPicker({ customers, value, onChange }) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const ref = useRef(null)
+  const selected = customers.find(c => c.id === value)
+
+  useEffect(() => {
+    if (!open) return
+    const onDoc = e => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    document.addEventListener('mousedown', onDoc)
+    return () => document.removeEventListener('mousedown', onDoc)
+  }, [open])
+
+  const matches = search
+    ? customers.filter(c => c.company_name.toLowerCase().includes(search.toLowerCase())).slice(0, 30)
+    : customers.slice(0, 30)
+
+  if (selected) {
+    return (
+      <div className="mt-1 inline-flex items-center gap-1 text-xs">
+        <Building2 size={12} className="text-ink-40" />
+        <Link to={`/customers/${selected.id}`} className="text-brand-600 hover:underline truncate max-w-[180px]">
+          {selected.company_name}
+        </Link>
+        <button onClick={() => onChange('')} className="text-ink-30 hover:text-red-500" title="Unlink"><X size={12} /></button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-1 relative inline-block" ref={ref}>
+      {open ? (
+        <div className="relative">
+          <input
+            autoFocus
+            className="input py-1 text-xs w-56"
+            placeholder="Search customer to link…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+          <div className="absolute z-20 mt-1 w-64 max-h-56 overflow-auto bg-white border border-ivory-dark rounded-lg shadow-lg">
+            {matches.length === 0 ? (
+              <p className="text-xs text-ink-40 px-3 py-2">No customers found.</p>
+            ) : matches.map(c => (
+              <button key={c.id}
+                onClick={() => { onChange(c.id); setOpen(false); setSearch('') }}
+                className="block w-full text-left px-3 py-1.5 text-xs hover:bg-ivory border-b border-ivory-dark last:border-0">
+                {c.company_name}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setOpen(true)} className="text-xs text-ink-40 hover:text-brand-600 inline-flex items-center gap-1">
+          <Building2 size={12} /> Link to customer
+        </button>
+      )}
     </div>
   )
 }
