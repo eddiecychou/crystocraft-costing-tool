@@ -238,13 +238,14 @@ export default function ProductDetail() {
           <div className="card p-4">
             <h2 className="text-sm font-semibold text-gray-700 mb-3">
               Images
-              <span className="inline-flex items-center gap-1 text-xs text-gray-400 font-normal ml-2">hover image to set hero <Star size={12} /> or delete <X size={12} /></span>
+              <span className="inline-flex items-center gap-1 text-xs text-gray-400 font-normal ml-2">hover image to set hero <Star size={12} /> or delete <X size={12} /> · add a caption below each</span>
             </h2>
             <ImageGallery
               images={images}
               firestorePath={`products/${id}/images`}
               storagePath={`products/${id}/images`}
               typeOptions={IMAGE_TYPES}
+              captionable
               onHeroChange={handleHeroChange}
               downloadPrefix={product?.name}
             />

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { doc, onSnapshot, getDoc } from 'firebase/firestore'
+import { doc, onSnapshot, getDoc, collection, query, orderBy } from 'firebase/firestore'
 import { useParams, Link } from 'react-router-dom'
 import { db, auth } from '../firebase'
 import { Package, ArrowLeft, Check, Plus } from 'lucide-react'
@@ -11,6 +11,7 @@ import LoadingBar from '../components/LoadingBar'
 export default function CorporateDetail({ profile }) {
   const { id } = useParams()
   const [p, setP] = useState(undefined)
+  const [images, setImages] = useState([])
   const [tiers, setTiers] = useState([])
   const rates = useRates()
   const cart = useCart()
@@ -18,6 +19,12 @@ export default function CorporateDetail({ profile }) {
 
   useEffect(() => onSnapshot(doc(db, 'products', id),
     s => setP(s.exists() ? { id: s.id, ...s.data() } : null), () => setP(null)), [id])
+
+  useEffect(() => onSnapshot(
+    query(collection(db, 'products', id, 'images'), orderBy('sort_order')),
+    snap => setImages(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+    () => setImages([])
+  ), [id])
 
   useEffect(() => {
     const uid = profile?.id || auth.currentUser?.uid
@@ -39,6 +46,9 @@ export default function CorporateDetail({ profile }) {
       <Link to="/shop/corporate" className="text-brand-600 text-sm mt-2 inline-block">Back to catalogue</Link>
     </div>
   )
+
+  // Show all images except the hero (which is already displayed large above).
+  const gallery = images.filter(im => im.file_url && im.file_url !== p.heroImage)
 
   const inCart = cart?.has({ type: 'corporate', id: p.id })
   const tierQtys = tiers.map(t => Number(t.quantity) || 0).filter(q => q > 0)
@@ -90,6 +100,25 @@ export default function CorporateDetail({ profile }) {
           )}
         </div>
       </div>
+
+      {gallery.length > 0 && (
+        <div className="mt-10">
+          <h2 className="text-lg text-ink mb-3">Gallery & inspiration</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+            {gallery.map(im => (
+              <figure key={im.id} className="card overflow-hidden flex flex-col">
+                <div className="aspect-square bg-gray-100 overflow-hidden">
+                  <img src={im.file_url} alt={im.caption || p.name} loading="lazy"
+                    className="w-full h-full object-cover" />
+                </div>
+                {im.caption && (
+                  <figcaption className="text-xs text-ink-60 px-2.5 py-2">{im.caption}</figcaption>
+                )}
+              </figure>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

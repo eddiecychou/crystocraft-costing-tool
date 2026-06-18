@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { collection, addDoc, deleteDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { storage, db } from '../firebase'
@@ -34,9 +34,12 @@ function downloadImage(img, filename) {
   document.body.removeChild(a)
 }
 
-function SortableImageCard({ img, idx, typeOptions, onHeroChange, onDelete, onLightbox, downloadPrefix, firestorePath }) {
+function SortableImageCard({ img, idx, typeOptions, captionable, onHeroChange, onDelete, onLightbox, downloadPrefix, firestorePath }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: img.id })
+
+  const [caption, setCaption] = useState(img.caption || '')
+  useEffect(() => { setCaption(img.caption || '') }, [img.caption])
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -50,6 +53,11 @@ function SortableImageCard({ img, idx, typeOptions, onHeroChange, onDelete, onLi
 
   async function handleOrientationChange(orientation) {
     await updateDoc(doc(db, ...firestorePath.split('/'), img.id), { orientation })
+  }
+
+  async function saveCaption() {
+    if ((img.caption || '') === caption) return
+    await updateDoc(doc(db, ...firestorePath.split('/'), img.id), { caption })
   }
 
   return (
@@ -120,6 +128,16 @@ function SortableImageCard({ img, idx, typeOptions, onHeroChange, onDelete, onLi
           {typeOptions.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
         </select>
       )}
+      {captionable && (
+        <input
+          type="text"
+          value={caption}
+          onChange={e => setCaption(e.target.value)}
+          onBlur={saveCaption}
+          placeholder="Caption (optional)"
+          className="text-xs border border-gray-200 rounded px-1.5 py-1 text-gray-600 bg-white w-full"
+        />
+      )}
       <div className="flex gap-1">
         {IMAGE_ORIENTATIONS.map(o => (
           <button
@@ -141,7 +159,7 @@ function SortableImageCard({ img, idx, typeOptions, onHeroChange, onDelete, onLi
   )
 }
 
-export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, onHeroChange, downloadPrefix }) {
+export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, captionable, onHeroChange, downloadPrefix }) {
   const fileIdRef = useRef(0)
   const [uploading, setUploading]         = useState(false)
   const [lightbox, setLightbox]           = useState(null)
@@ -252,6 +270,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                     img={img}
                     idx={idx}
                     typeOptions={typeOptions}
+                    captionable={captionable}
                     onHeroChange={onHeroChange ? setAsHero : null}
                     onDelete={setConfirmDelete}
                     onLightbox={setLightbox}
