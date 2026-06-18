@@ -54,6 +54,7 @@ function normalizeRangeModel(p) {
     description: p.description || '',
     marketing_description: '',  // the range has no marketing copy field
     status: p.active === false ? 'hidden' : 'active',
+    heroImage: images[0]?.file_url || '',  // row thumbnail (matches corporate field)
     images,
   }
 }
