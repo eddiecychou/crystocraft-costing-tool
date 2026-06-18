@@ -136,7 +136,7 @@ function buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl,
     h1{font-family:'Questrial',system-ui,sans-serif;font-size:2.2em;font-weight:400;line-height:1.15;margin:0 0 .3em;color:#222222;text-transform:uppercase;letter-spacing:0.03em}
     h2{font-family:'Questrial',system-ui,sans-serif;font-size:1.5em;font-weight:400;margin:0 0 .5em;color:#222222;text-transform:uppercase;letter-spacing:0.03em}
     p{margin:0 0 1em}
-    .kw{font-size:.8em;color:#6E6C66;margin-bottom:2em;letter-spacing:0.04em}
+    .kw{font-family:'Work Sans',system-ui,sans-serif;font-size:.72em;font-weight:500;text-transform:uppercase;color:#666666;margin-bottom:2em;letter-spacing:0.18em}
     .hero{width:100%;display:block;margin-bottom:3em}
     .section{margin-top:3em;margin-bottom:4em;padding-bottom:4em;border-bottom:1px solid #EDE8DF}
     .section:last-child{border-bottom:none;padding-bottom:0}
@@ -149,8 +149,8 @@ function buildSpotlightPreviewHTML(result, heroImage, sectionImages, productUrl,
     .imgs figure{flex:1;width:0;min-width:0;margin:0}
     .imgs a figure{width:100%;flex:none}
     .imgs img{width:100%;display:block}
-    figcaption{font-size:.78em;color:#6E6C66;text-align:center;margin-top:.35em}
-    .btn{display:inline-block;margin-top:1em;padding:.6em 1.4em;background:#6E2433;color:#F7F4EF;text-decoration:none;font-size:.9em;letter-spacing:0.04em}
+    figcaption{font-family:'Work Sans',system-ui,sans-serif;font-size:.72em;font-weight:400;color:#6E6C66;text-align:center;margin-top:.35em;letter-spacing:0.04em}
+    .btn{font-family:'Work Sans',system-ui,sans-serif;display:inline-block;margin-top:1em;padding:.6em 1.4em;background:#6E2433;color:#F7F4EF;text-decoration:none;font-size:.82em;font-weight:500;text-transform:uppercase;letter-spacing:0.1em;border-radius:0}
     @media(max-width:600px){.col{flex-direction:column}.imgs{flex-direction:column}.imgs figure{width:100%}}
   `
   let body = `<h1>${escapeHtml(result.seo_title)}</h1>`
@@ -192,7 +192,7 @@ function buildRoundupPreviewHTML(result, selected, heroImage, itemImages, produc
     h1{font-family:'Questrial',system-ui,sans-serif;font-size:2.2em;font-weight:400;line-height:1.15;margin:0 0 .3em;color:#222222;text-transform:uppercase;letter-spacing:0.03em}
     h2{font-family:'Questrial',system-ui,sans-serif;font-size:1.5em;font-weight:400;margin:0 0 .5em;color:#222222;text-transform:uppercase;letter-spacing:0.03em}
     p{margin:0 0 1em}
-    .kw{font-size:.8em;color:#6E6C66;margin-bottom:2em;letter-spacing:0.04em}
+    .kw{font-family:'Work Sans',system-ui,sans-serif;font-size:.72em;font-weight:500;text-transform:uppercase;color:#666666;margin-bottom:2em;letter-spacing:0.18em}
     .hero{width:100%;display:block;margin-bottom:3em}
     .section{margin-top:3em;margin-bottom:4em;padding-bottom:4em;border-bottom:1px solid #EDE8DF}
     .section:last-child{border-bottom:none;padding-bottom:0}
@@ -205,8 +205,8 @@ function buildRoundupPreviewHTML(result, selected, heroImage, itemImages, produc
     .imgs figure{flex:1;width:0;min-width:0;margin:0}
     .imgs a figure{width:100%;flex:none}
     .imgs img{width:100%;display:block}
-    figcaption{font-size:.78em;color:#6E6C66;text-align:center;margin-top:.35em}
-    .btn{display:inline-block;margin-top:1em;padding:.6em 1.4em;background:#6E2433;color:#F7F4EF;text-decoration:none;font-size:.9em;letter-spacing:0.04em}
+    figcaption{font-family:'Work Sans',system-ui,sans-serif;font-size:.72em;font-weight:400;color:#6E6C66;text-align:center;margin-top:.35em;letter-spacing:0.04em}
+    .btn{font-family:'Work Sans',system-ui,sans-serif;display:inline-block;margin-top:1em;padding:.6em 1.4em;background:#6E2433;color:#F7F4EF;text-decoration:none;font-size:.82em;font-weight:500;text-transform:uppercase;letter-spacing:0.1em;border-radius:0}
     @media(max-width:600px){.col{flex-direction:column}.imgs{flex-direction:column}.imgs figure{width:100%}}
   `
   const imgHtml = (img, alt = '', url = '') => {
