@@ -88,7 +88,7 @@ const s = StyleSheet.create({
   goldClose: { borderTopWidth: 1.4, borderTopColor: C.gold, marginTop: 4, marginBottom: 12 },
   notes: { fontSize: 8, color: C.grayDark, marginBottom: 10 },
   notesLabel: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 7, color: C.grayMid, letterSpacing: 1.2 },
-  terms: { fontSize: 7.5, color: C.grayMid, textAlign: 'center', marginBottom: 14, fontStyle: 'italic' },
+  terms: { fontSize: 7.5, color: C.grayMid, textAlign: 'center', marginBottom: 14 },
   footLine: { fontSize: 7.5, color: C.grayDark, textAlign: 'center', marginBottom: 2 },
   footStrong: { fontFamily: 'Work Sans', fontWeight: 600 },
 })
