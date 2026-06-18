@@ -3,6 +3,34 @@ import ExcelJS from 'exceljs'
 import { Download } from 'lucide-react'
 import logoUrl from '../assets/logo.png'
 
+// Fetch a product image and return a data: URL so react-pdf can embed it without
+// hitting CORS. Tries the Netlify proxy first (handles Firebase Storage), then a
+// direct fetch (local dev). Returns null on failure so the row simply has no image.
+async function imageToDataURL(url) {
+  if (!url) return null
+  try {
+    let buf
+    try {
+      const res = await fetch(`/api/download-image?url=${encodeURIComponent(url)}`)
+      if (!res.ok) throw new Error('proxy failed')
+      buf = await res.arrayBuffer()
+    } catch {
+      const res = await fetch(url)
+      buf = await res.arrayBuffer()
+    }
+    const mime = url.toLowerCase().includes('.png') ? 'image/png' : 'image/jpeg'
+    let binary = ''
+    const bytes = new Uint8Array(buf)
+    const CHUNK = 0x8000
+    for (let i = 0; i < bytes.length; i += CHUNK) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
+    }
+    return `data:${mime};base64,${btoa(binary)}`
+  } catch {
+    return null
+  }
+}
+
 // ── Brand theme ───────────────────────────────────────────────────────────────
 const B = {
   BLACK:     'FF1A1A1A',
@@ -28,6 +56,35 @@ const baseFont = (opts = {}) => ({ name: 'Calibri Light', size: 9, color: { argb
 
 export default function QuoteExport({ quote, items, onClose }) {
   const [loading, setLoading] = useState(false)
+  const [pdfLoading, setPdfLoading] = useState(false)
+
+  async function exportPDF() {
+    setPdfLoading(true)
+    try {
+      // Pre-embed each product image as a data URL (avoids CORS in react-pdf).
+      const withImages = await Promise.all(items.map(async item => ({
+        ...item,
+        _imageData: await imageToDataURL(item.custom_image || item.hero_image),
+      })))
+      // Lazy-load react-pdf + the document so its weight stays out of the main bundle.
+      const [{ pdf }, { default: QuotePDF }] = await Promise.all([
+        import('@react-pdf/renderer'),
+        import('./QuotePDF'),
+      ])
+      const blob = await pdf(<QuotePDF quote={quote} items={withImages} />).toBlob()
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = `Quotation_${quote.client_name}_${quote.quote_date || new Date().toISOString().slice(0, 10)}.pdf`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('[QuoteExport] PDF error:', err)
+      alert(`PDF generation failed: ${err.message}`)
+    } finally {
+      setPdfLoading(false)
+    }
+  }
 
   async function exportExcel() {
     setLoading(true)
@@ -372,11 +429,11 @@ export default function QuoteExport({ quote, items, onClose }) {
         </div>
 
         <div className="space-y-3">
-          <button className="btn-primary w-full justify-center" onClick={exportExcel} disabled={loading}>
-            {loading ? 'Generating…' : <span className="inline-flex items-center gap-1.5"><Download size={15} />Download Excel (.xlsx)</span>}
+          <button className="btn-primary w-full justify-center" onClick={exportPDF} disabled={pdfLoading || loading}>
+            {pdfLoading ? 'Generating…' : <span className="inline-flex items-center gap-1.5"><Download size={15} />Download PDF</span>}
           </button>
-          <button className="btn-secondary w-full justify-center" disabled>
-            <span className="inline-flex items-center gap-1.5"><Download size={15} />Download PDF</span> <span className="text-xs opacity-60 ml-1">(coming in V2)</span>
+          <button className="btn-secondary w-full justify-center" onClick={exportExcel} disabled={loading || pdfLoading}>
+            {loading ? 'Generating…' : <span className="inline-flex items-center gap-1.5"><Download size={15} />Download Excel (.xlsx)</span>}
           </button>
         </div>
         <button className="mt-4 text-xs text-gray-400 hover:text-gray-600 w-full text-center" onClick={onClose}>Cancel</button>
