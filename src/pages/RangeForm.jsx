@@ -7,9 +7,10 @@ import {
   RANGE_DESIGN_TYPES, RANGE_PRODUCT_TYPES, RANGE_FORMAT_CODES,
   RANGE_PLATINGS, RANGE_CRYSTAL_COLORS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS,
   RANGE_BODY_TYPES, RANGE_COMPONENT_CATEGORIES, designNumber, brandLetter, bodyLetter,
-  normGallery, youtubeEmbed,
+  normGallery, normVideos,
 } from '../constants'
 import { resizeToJpeg } from '../imageResize'
+import VideoUrlsEditor from '../components/VideoUrlsEditor'
 
 const BODY_NAME = Object.fromEntries(RANGE_BODY_TYPES.map(b => [b.code, b.name]))
 
@@ -48,7 +49,7 @@ const blankForm = () => ({
   size: '', crystal_type: 'Bohemia', active: true, status: 'active',
   moq: '', lead_time_weeks: '', delivery_note: '', critical_components: [],
   packing: emptyPacking(), gallery: [], variants: [emptyVariant()], plating_stock: {},
-  crystal_mixes: {}, video_url: '',
+  crystal_mixes: {}, videos: [],
 })
 
 // Normalise a crystal_mixes map: upper-case codes, de-dupe crystals, drop empties.
@@ -362,7 +363,7 @@ export default function RangeForm() {
           design_name: d.design_name || '',
           description: d.description || '',
           marketing_description: d.marketing_description || '',
-          video_url: d.video_url || '',
+          videos: normVideos(d.videos, d.video_url),
           category: d.category || '',
           design_type: d.design_type || d.category || '',
           product_type: d.product_type || 'Figurine',
@@ -572,7 +573,8 @@ export default function RangeForm() {
       design_name: form.design_name.trim(),
       description: form.description.trim(),
       marketing_description: (form.marketing_description || '').trim(),
-      video_url: (form.video_url || '').trim(),
+      videos: normVideos(form.videos),
+      video_url: normVideos(form.videos)[0] || '',
       category: form.category.trim(),
       design_type: form.design_type.trim(),
       product_type: form.product_type.trim(),
@@ -788,14 +790,7 @@ export default function RangeForm() {
             )}
           </div>
 
-          <div>
-            <label className="label">Product Video (YouTube)</label>
-            <input className="input" value={form.video_url} onChange={set('video_url')}
-              placeholder="https://www.youtube.com/watch?v=… — shown to customers in the catalogue" />
-            {form.video_url && !youtubeEmbed(form.video_url) && (
-              <p className="text-xs text-amber-600 mt-1">This doesn't look like a YouTube link — the video won't display.</p>
-            )}
-          </div>
+          <VideoUrlsEditor videos={form.videos} onChange={v => setForm(f => ({ ...f, videos: v }))} />
 
           <label className="flex items-center gap-2 text-sm text-ink-80 cursor-pointer select-none">
             <input type="checkbox" checked={form.active} onChange={e => setForm(f => ({ ...f, active: e.target.checked }))} />

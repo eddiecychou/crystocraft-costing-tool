@@ -3,7 +3,7 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { useParams, Link } from 'react-router-dom'
 import { db } from '../firebase'
 import { Gem, ArrowLeft, Check, Plus, Minus } from 'lucide-react'
-import { designNumber, brandLetter, bodyLetter, RANGE_CRYSTAL_BRANDS, normGallery, RANGE_STATUS_CUSTOMER, youtubeEmbed } from '../constants'
+import { designNumber, brandLetter, bodyLetter, RANGE_CRYSTAL_BRANDS, normGallery, RANGE_STATUS_CUSTOMER, normVideos, youtubeEmbed } from '../constants'
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import { useRates, fromUSD, fmtMoney } from '../currency'
@@ -254,12 +254,20 @@ export default function FigurineDetail({ profile }) {
         </div>
       </div>
 
-      {youtubeEmbed(p.video_url) && (
-        <div className="mt-8 max-w-2xl">
-          <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-3">Product video</p>
-          <VideoEmbed url={p.video_url} title={name} />
-        </div>
-      )}
+      {(() => {
+        const videos = normVideos(p.videos, p.video_url).filter(youtubeEmbed)
+        if (!videos.length) return null
+        return (
+          <div className="mt-8 max-w-2xl">
+            <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-3">
+              {videos.length > 1 ? 'Product videos' : 'Product video'}
+            </p>
+            <div className="space-y-4">
+              {videos.map((v, i) => <VideoEmbed key={i} url={v} title={`${name} video ${i + 1}`} />)}
+            </div>
+          </div>
+        )
+      })()}
 
       {gallery.length > 0 && (
         <div className="mt-8">

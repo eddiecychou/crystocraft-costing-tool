@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import { CATEGORIES, PRODUCT_STATUSES, youtubeEmbed } from '../constants'
+import { CATEGORIES, PRODUCT_STATUSES, normVideos } from '../constants'
 import { Sparkles, RotateCcw } from 'lucide-react'
+import VideoUrlsEditor from '../components/VideoUrlsEditor'
 
 export default function ProductForm() {
   const { id } = useParams()
@@ -11,7 +12,7 @@ export default function ProductForm() {
   const isEdit = Boolean(id)
 
   const [form, setForm] = useState({
-    name: '', category: '', status: 'concept', description: '', marketing_description: '', assembly_notes: '', video_url: '',
+    name: '', category: '', status: 'concept', description: '', marketing_description: '', assembly_notes: '', videos: [],
   })
   const [loading, setLoading]   = useState(false)
   const [fetching, setFetching] = useState(isEdit)
@@ -27,7 +28,10 @@ export default function ProductForm() {
   useEffect(() => {
     if (!isEdit) return
     getDoc(doc(db, 'products', id)).then(snap => {
-      if (snap.exists()) setForm(f => ({ ...f, ...snap.data() }))
+      if (snap.exists()) {
+        const d = snap.data()
+        setForm(f => ({ ...f, ...d, videos: normVideos(d.videos, d.video_url) }))
+      }
       setFetching(false)
     })
   }, [id, isEdit])
@@ -84,13 +88,15 @@ export default function ProductForm() {
   async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
+    const videos = normVideos(form.videos)
+    const payload = { ...form, videos, video_url: videos[0] || '' }
     try {
       if (isEdit) {
-        await updateDoc(doc(db, 'products', id), { ...form, updatedAt: serverTimestamp() })
+        await updateDoc(doc(db, 'products', id), { ...payload, updatedAt: serverTimestamp() })
         navigate(`/products/${id}`)
       } else {
         const ref = await addDoc(collection(db, 'products'), {
-          ...form, heroImage: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+          ...payload, heroImage: null, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
         })
         navigate(`/products/${ref.id}`)
       }
@@ -217,13 +223,7 @@ export default function ProductForm() {
           <textarea className="input" rows={2} value={form.assembly_notes} onChange={set('assembly_notes')} placeholder="Factory assembly instructions, special handling notes…" />
         </div>
 
-        <div>
-          <label className="label">Product Video (YouTube)</label>
-          <input className="input" value={form.video_url} onChange={set('video_url')} placeholder="https://www.youtube.com/watch?v=… — shown to customers in the catalogue" />
-          {form.video_url && !youtubeEmbed(form.video_url) && (
-            <p className="text-xs text-amber-600 mt-1">This doesn't look like a YouTube link — the video won't display.</p>
-          )}
-        </div>
+        <VideoUrlsEditor videos={form.videos} onChange={v => setForm(f => ({ ...f, videos: v }))} />
 
         <div className="flex gap-3 pt-2">
           <button type="submit" className="btn-primary" disabled={loading}>

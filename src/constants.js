@@ -196,3 +196,19 @@ export const youtubeEmbed = url => {
   const id = youtubeId(url)
   return id ? `https://www.youtube.com/embed/${id}` : ''
 }
+
+// Products can carry several videos. Normalise the `videos` array (strings) and
+// fall back to the legacy single `video_url` field so older products keep their
+// video. Returns a de-duped list of trimmed, non-empty URLs.
+export const normVideos = (videos, legacyUrl) => {
+  const arr = Array.isArray(videos) ? videos : []
+  const urls = arr
+    .map(v => (typeof v === 'string' ? v : v?.url || ''))
+    .map(s => String(s).trim())
+    .filter(Boolean)
+  if (!urls.length && legacyUrl) {
+    const s = String(legacyUrl).trim()
+    if (s) urls.push(s)
+  }
+  return [...new Set(urls)]
+}
