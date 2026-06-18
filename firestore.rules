@@ -76,6 +76,11 @@ service cloud.firestore {
     match /range_products/{rangeId} {
       allow read: if canShop();
       allow write: if isAdmin();
+      // Nested figurine images / sub-docs.
+      match /{allPaths=**} {
+        allow read: if canShop();
+        allow write: if isAdmin();
+      }
     }
 
     // ---- Settings: exchange rates + crystal colours are read by the
