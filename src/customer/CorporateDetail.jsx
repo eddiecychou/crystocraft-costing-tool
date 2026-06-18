@@ -33,7 +33,7 @@ export default function CorporateDetail({ profile }) {
     </div>
   )
 
-  const inCart = cart?.has('corporate', p.id)
+  const inCart = cart?.has({ type: 'corporate', id: p.id })
   const tierQtys = tiers.map(t => Number(t.quantity) || 0).filter(q => q > 0)
   const minQty = tierQtys.length ? Math.min(...tierQtys) : 0
 

@@ -24,7 +24,9 @@ export default function FavouritesPage() {
         {items.map(it => {
           const to = it.type === 'figurine' ? `/shop/figurine/${it.id}` : `/shop/corporate/${it.id}`
           const Icon = it.type === 'figurine' ? Gem : Package
-          const inCart = cart?.has(it.type, it.id)
+          // Figurines need plating/colour chosen on the detail page, so only
+          // corporate (single-SKU) favourites can report an in-enquiry state here.
+          const inCart = it.type !== 'figurine' && cart?.has({ type: it.type, id: it.id })
           return (
             <div key={`${it.type}-${it.id}`} className="card overflow-hidden flex flex-col">
               <Link to={to} className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark">

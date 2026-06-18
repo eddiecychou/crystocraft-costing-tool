@@ -93,10 +93,10 @@ export default function EnquiryPage({ profile }) {
           const qtyPcs = Math.max(1, Number(i.qty) || 1)
           const cartons = ppc > 0 ? Math.max(1, Math.round(qtyPcs / ppc)) : 0
           const belowMoq = moq > 0 && qtyPcs < moq
-          const setCartons = n => { const c = Math.max(1, Math.floor(n) || 1); cart.update(i.type, i.id, { cartons: c, qty: c * ppc }) }
-          const setPcs = n => cart.update(i.type, i.id, { qty: Math.max(1, Math.floor(n) || 1) })
+          const setCartons = n => { const c = Math.max(1, Math.floor(n) || 1); cart.update(i.key, { cartons: c, qty: c * ppc }) }
+          const setPcs = n => cart.update(i.key, { qty: Math.max(1, Math.floor(n) || 1) })
           return (
-            <div key={`${i.type}-${i.id}`} className="flex items-center gap-3 p-3">
+            <div key={i.key} className="flex items-center gap-3 p-3">
               <div className="w-14 h-14 bg-white border border-ivory-dark rounded flex items-center justify-center overflow-hidden shrink-0">
                 {i.image ? <img src={i.image} alt={i.name} className="w-full h-full object-contain" />
                   : <Icon size={20} className="text-gray-300" />}
@@ -112,7 +112,7 @@ export default function EnquiryPage({ profile }) {
                   </p>
                 )}
                 <input type="text" placeholder="Note (extra customisation, deadlines…)"
-                  value={i.note || ''} onChange={e => cart.update(i.type, i.id, { note: e.target.value })}
+                  value={i.note || ''} onChange={e => cart.update(i.key, { note: e.target.value })}
                   className="input py-1 text-xs mt-1 w-full" />
               </div>
               <div className="flex flex-col items-end gap-1 shrink-0">
@@ -143,7 +143,7 @@ export default function EnquiryPage({ profile }) {
                   {lineTotal(i) != null ? fmtMoney(lineTotal(i), cur) : '—'}
                 </span>
                 {belowMoq && <span className="text-[10px] text-amber-700 text-right">Below min {moq.toLocaleString()} pcs</span>}
-                <button onClick={() => cart.remove(i.type, i.id)} className="text-ink-40 hover:text-red-500" aria-label="Remove">
+                <button onClick={() => cart.remove(i.key)} className="text-ink-40 hover:text-red-500" aria-label="Remove">
                   <Trash2 size={15} />
                 </button>
               </div>

@@ -52,7 +52,6 @@ export default function FigurineDetail({ profile }) {
   const image = variants.find(v => v.image)?.image || (Array.isArray(p.gallery) && p.gallery[0]) || ''
   const mixes = p.crystal_mixes && typeof p.crystal_mixes === 'object' ? p.crystal_mixes : {}
   const colorCodes = [...new Set(variants.flatMap(v => Array.isArray(v.crystal_colors) ? v.crystal_colors : []))]
-  const inCart = cart?.has('figurine', p.id)
 
   const selVariant = variants[finishIdx] || variants[0] || {}
   // Selected-finish SKU code carries the chosen brand prefix (e.g. D0002-001).
@@ -63,6 +62,12 @@ export default function FigurineDetail({ profile }) {
   const needsColor = colorCodes.length > 0
   const colorValid = !!color && finishColors.includes(color)
   const canAdd = !needsColor || colorValid
+  // In-cart status reflects the specific selected SKU (plating + colour).
+  const inCart = cart?.has({
+    type: 'figurine', id: p.id,
+    finish: selVariant.plating_name || selVariant.plating_code || '',
+    color: needsColor ? (color || '') : '',
+  })
 
   const ppc = Number(p.packing?.pcs_per_carton) || 0    // pcs per carton (0 = unknown)
   const moq = Number(p.moq) || 0                          // design-level made-to-order minimum
