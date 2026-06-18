@@ -55,7 +55,8 @@ export default function FigurineDetail({ profile }) {
   const baseCode = [`${multiBrand ? '' : brands[0] || ''}${body}${designNo}`, p.format_code].filter(Boolean).join('-')
   const name = p.description || p.design_name || baseCode
   const gallery = normGallery(p.gallery)
-  const image = variants.find(v => v.image)?.image || gallery[0]?.url || ''
+  // First gallery image is the chosen hero; variant image is only a fallback.
+  const image = gallery[0]?.url || variants.find(v => v.image)?.image || ''
   const mixes = p.crystal_mixes && typeof p.crystal_mixes === 'object' ? p.crystal_mixes : {}
   const colorCodes = [...new Set(variants.flatMap(v => Array.isArray(v.crystal_colors) ? v.crystal_colors : []))]
 
