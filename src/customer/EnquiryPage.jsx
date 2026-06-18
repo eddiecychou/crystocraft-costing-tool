@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db, auth } from '../firebase'
 import { Gem, Package, Trash2, ClipboardList, CheckCircle2, Plus, Minus } from 'lucide-react'
-import { useCart } from './store'
+import { useCart, designGroupKey } from './store'
 import { useRates, fromUSD, fmtMoney } from '../currency'
 
 export default function EnquiryPage({ profile }) {
@@ -26,10 +26,9 @@ export default function EnquiryPage({ profile }) {
 
   // MOQ is a per-design (metal-part) minimum. All plating/colour variations AND
   // formats (freestand, music box, bible…) that share the same design number
-  // count toward it together, so aggregate pieces by design number.
-  const moqKey = i => (i.type === 'figurine' && i.design_no) ? `figurine:${i.design_no}` : `${i.type}:${i.id}`
+  // count toward it together, so aggregate pieces by design group.
   const designPcs = items.reduce((m, i) => {
-    const k = moqKey(i)
+    const k = designGroupKey(i)
     m[k] = (m[k] || 0) + Math.max(1, Number(i.qty) || 1)
     return m
   }, {})
@@ -102,7 +101,7 @@ export default function EnquiryPage({ profile }) {
           const moq = Number(i.moq) || 0
           const qtyPcs = Math.max(1, Number(i.qty) || 1)
           const cartons = ppc > 0 ? Math.max(1, Math.round(qtyPcs / ppc)) : 0
-          const designTotal = designPcs[`${i.type}:${i.id}`] || qtyPcs
+          const designTotal = designPcs[designGroupKey(i)] || qtyPcs
           const belowMoq = moq > 0 && designTotal < moq
           const setCartons = n => { const c = Math.max(1, Math.floor(n) || 1); cart.update(i.key, { cartons: c, qty: c * ppc }) }
           const setPcs = n => cart.update(i.key, { qty: Math.max(1, Math.floor(n) || 1) })

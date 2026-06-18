@@ -9,7 +9,7 @@ const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.n
 import { useRates, fromUSD, fmtMoney } from '../currency'
 import { useCrystalColors, colorMap } from '../crystalColors'
 import FavHeart from './FavHeart'
-import { useCart } from './store'
+import { useCart, designGroupKey } from './store'
 import LoadingBar from '../components/LoadingBar'
 
 function docVariants(p) {
@@ -75,8 +75,9 @@ export default function FigurineDetail({ profile }) {
   // MOQ applies across every variation AND format of this design (same body /
   // design number — freestand, music box, bible, …), so include any pieces of
   // the same design already sitting in the enquiry cart.
+  const thisGroup = designGroupKey({ type: 'figurine', id: p.id, design_no: designNo, code })
   const cartDesignPcs = (cart?.items || [])
-    .filter(it => it.type === 'figurine' && (designNo ? it.design_no === designNo : it.id === p.id))
+    .filter(it => designGroupKey(it) === thisGroup)
     .reduce((s, it) => s + Math.max(1, Number(it.qty) || 1), 0)
   const designPcs = cartDesignPcs + (inCart ? 0 : pcs)
   const belowMoq = moq > 0 && designPcs < moq

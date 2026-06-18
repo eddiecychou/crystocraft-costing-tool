@@ -8,6 +8,22 @@ const sameItem = (a, t, id) => a.type === t && a.id === id
 // Two variations of the same design are therefore distinct lines.
 export const cartKey = i => `${i.type}:${i.id}:${i.finish || ''}:${i.color || ''}`
 
+// MOQ groups every variation AND format that shares one design body. The design
+// number is taken from design_no (falling back to the middle of the item code,
+// e.g. "D0002-236" -> "0002") and normalised so "0002" and 2 collapse together.
+export const designGroupKey = i => {
+  if (i.type !== 'figurine') return `${i.type}:${i.id}`
+  let raw = i.design_no != null && i.design_no !== '' ? String(i.design_no) : ''
+  if (!raw) {
+    const code = String(i.code || '')
+    const base = code.includes('-') ? code.slice(0, code.lastIndexOf('-')) : code
+    const m = base.match(/(\d+)/)
+    raw = m ? m[1] : ''
+  }
+  const norm = /^\d+$/.test(raw) ? String(parseInt(raw, 10)) : raw
+  return norm ? `figurine:${norm}` : `figurine:${i.id}`
+}
+
 // ---- Enquiry cart (localStorage-backed) --------------------------------
 const CartCtx = createContext(null)
 
