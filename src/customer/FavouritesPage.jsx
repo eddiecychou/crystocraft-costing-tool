@@ -35,10 +35,19 @@ export default function FavouritesPage() {
                 <Link to={to}><h3 className="text-sm leading-tight text-ink line-clamp-2">{it.name}</h3></Link>
                 {it.code && <p className="text-[11px] text-ink-50 font-mono">{it.code}</p>}
                 <div className="mt-auto pt-2 flex items-center gap-2">
-                  <button onClick={() => cart?.add(it)} disabled={inCart}
-                    className={`text-xs px-2 py-1 rounded border ${inCart ? 'border-ivory-dark text-ink-40' : 'border-brand-500 text-brand-600 hover:bg-brand-50'}`}>
-                    {inCart ? 'In enquiry' : 'Add to enquiry'}
-                  </button>
+                  {inCart ? (
+                    <span className="text-xs px-2 py-1 rounded border border-ivory-dark text-ink-40">In enquiry</span>
+                  ) : it.type === 'figurine' ? (
+                    <Link to={to}
+                      className="text-xs px-2 py-1 rounded border border-brand-500 text-brand-600 hover:bg-brand-50">
+                      Select options
+                    </Link>
+                  ) : (
+                    <button onClick={() => cart?.add(it)}
+                      className="text-xs px-2 py-1 rounded border border-brand-500 text-brand-600 hover:bg-brand-50">
+                      Add to enquiry
+                    </button>
+                  )}
                   <button onClick={() => fav?.toggle(it)} className="text-xs text-ink-40 hover:text-red-500 ml-auto">Remove</button>
                 </div>
               </div>

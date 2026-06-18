@@ -79,6 +79,7 @@ export default function FigurineDetail({ profile }) {
       finish_sku: selVariant.sku || '',
       color: needsColor ? color : '',
       color_name: needsColor ? (lookup[color]?.name || '') : '',
+      ws_price_usd: selVariant.ws_price_usd ?? null,
     })
   }
 

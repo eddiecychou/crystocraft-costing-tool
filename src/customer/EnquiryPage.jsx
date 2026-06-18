@@ -4,14 +4,25 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db, auth } from '../firebase'
 import { Gem, Package, Trash2, ClipboardList, CheckCircle2 } from 'lucide-react'
 import { useCart } from './store'
+import { useRates, fromUSD, fmtMoney } from '../currency'
 
 export default function EnquiryPage({ profile }) {
   const cart = useCart()
+  const rates = useRates()
+  const cur = profile?.base_currency || 'USD'
+  const disc = Math.max(0, Math.min(100, Number(profile?.ws_discount_pct) || 0)) / 100
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
   const items = cart?.items || []
+
+  // Unit price (customer currency, discount applied) for figurine lines.
+  const unitPrice = i => (i.type === 'figurine' && i.ws_price_usd != null)
+    ? fromUSD(Number(i.ws_price_usd) * (1 - disc), cur, rates) : null
+  const lineTotal = i => { const u = unitPrice(i); return u == null ? null : u * (Number(i.qty) || 1) }
+  const total = items.reduce((s, i) => s + (lineTotal(i) || 0), 0)
+  const hasIndicative = items.some(i => unitPrice(i) == null)
 
   async function submit() {
     if (!items.length) return
@@ -22,12 +33,16 @@ export default function EnquiryPage({ profile }) {
         company_name: profile?.company_name || '',
         contact_name: profile?.contact_name || '',
         email: profile?.email || auth.currentUser?.email || '',
-        base_currency: profile?.base_currency || '',
+        base_currency: cur,
         items: items.map(i => ({
           type: i.type, id: i.id, name: i.name || '', code: i.code || '',
           image: i.image || '', qty: Number(i.qty) || 1, note: i.note || '',
           finish: i.finish || '', color: i.color || '', color_name: i.color_name || '',
+          ws_price_usd: i.ws_price_usd ?? null,
+          unit_price: unitPrice(i), line_total: lineTotal(i),
         })),
+        currency: cur,
+        estimated_total: total,
         message,
         status: 'new',
         createdAt: serverTimestamp(),
@@ -91,11 +106,17 @@ export default function EnquiryPage({ profile }) {
                   className="input py-1 text-xs mt-1 w-full" />
               </div>
               <div className="flex flex-col items-end gap-1 shrink-0">
+                <span className="text-[11px] text-ink-50">
+                  {unitPrice(i) != null ? `${fmtMoney(unitPrice(i), cur)} ea` : 'On enquiry'}
+                </span>
                 <label className="text-[11px] text-ink-50">Qty
                   <input type="number" min="1" value={i.qty || 1}
                     onChange={e => cart.update(i.type, i.id, { qty: Math.max(1, Number(e.target.value) || 1) })}
                     className="input py-1 w-20 ml-1 inline-block" />
                 </label>
+                <span className="text-sm text-ink font-medium">
+                  {lineTotal(i) != null ? fmtMoney(lineTotal(i), cur) : '—'}
+                </span>
                 <button onClick={() => cart.remove(i.type, i.id)} className="text-ink-40 hover:text-red-500" aria-label="Remove">
                   <Trash2 size={15} />
                 </button>
@@ -103,6 +124,20 @@ export default function EnquiryPage({ profile }) {
             </div>
           )
         })}
+      </div>
+
+      <div className="card p-4 mb-5">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-ink-70">Estimated total <span className="text-ink-40">({cur})</span></span>
+          <span className="text-lg font-medium text-ink">{fmtMoney(total, cur)}</span>
+        </div>
+        <p className="text-[11px] text-ink-40 mt-2">
+          {profile?.ws_discount_pct > 0
+            ? `Wholesale prices with your ${Number(profile.ws_discount_pct)}% discount applied. `
+            : 'Indicative wholesale prices. '}
+          {hasIndicative && 'Made-to-order corporate items are quoted separately and not included in this total. '}
+          Final pricing, MOQ and availability are confirmed on quotation.
+        </p>
       </div>
 
       <label className="label">Message (optional)</label>

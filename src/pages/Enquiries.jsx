@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Gem, Package, Mail } from 'lucide-react'
+import { fmtMoney } from '../currency'
 import LoadingBar from '../components/LoadingBar'
 
 const STATUS = {
@@ -62,6 +63,7 @@ export default function Enquiries() {
 function Card({ r, set }) {
   const when = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString() : ''
   const st = STATUS[r.status || 'new']
+  const cur = r.currency || r.base_currency || 'USD'
   return (
     <div className="card p-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -98,11 +100,23 @@ function Card({ r, set }) {
                   {i.note ? ` · ${i.note}` : ''}
                 </p>
               </div>
-              <span className="text-sm text-ink-70 shrink-0">×{i.qty || 1}</span>
+              <div className="text-right shrink-0">
+                <p className="text-sm text-ink-70">×{i.qty || 1}</p>
+                {i.line_total != null
+                  ? <p className="text-sm text-ink font-medium">{fmtMoney(i.line_total, cur)}</p>
+                  : <p className="text-[11px] text-ink-40 italic">On enquiry</p>}
+              </div>
             </div>
           )
         })}
       </div>
+
+      {r.estimated_total != null && (
+        <div className="mt-2 flex items-center justify-end gap-3 text-sm">
+          <span className="text-ink-60">Estimated total ({cur})</span>
+          <span className="font-medium text-ink">{fmtMoney(r.estimated_total, cur)}</span>
+        </div>
+      )}
 
       <div className="mt-3 flex items-center gap-2">
         {(r.status || 'new') !== 'handled' && (
