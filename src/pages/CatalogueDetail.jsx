@@ -15,6 +15,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { db } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { Star, X, Camera } from 'lucide-react'
+import { loadBlogProducts, loadBlogImages, PRODUCT_SOURCES } from '../productSource'
 
 // ── Auto layout label ─────────────────────────────────────────────────────────
 function layoutLabel(count) {
@@ -202,12 +203,14 @@ function CatalogueItem({ item, onUpdate, onDelete }) {
 function ProductPicker({ existingIds, onAdd, onClose }) {
   const [products, setProducts] = useState([])
   const [search, setSearch]     = useState('')
+  const [source, setSource]     = useState('corporate')
 
   useEffect(() => {
-    getDocs(query(collection(db, 'products'), orderBy('name'))).then(snap =>
-      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    )
-  }, [])
+    let active = true
+    setProducts([])
+    loadBlogProducts(source).then(list => { if (active) setProducts(list) })
+    return () => { active = false }
+  }, [source])
 
   const filtered = products.filter(p =>
     !existingIds.includes(p.id) &&
@@ -221,6 +224,17 @@ function ProductPicker({ existingIds, onAdd, onClose }) {
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="p-4 border-b border-gray-100">
           <h3 className="font-semibold text-gray-900">Add Product to Catalogue</h3>
+          <div className="flex gap-1 mt-2 p-0.5 bg-gray-100 rounded-lg">
+            {PRODUCT_SOURCES.map(s => (
+              <button
+                key={s.value}
+                onClick={() => setSource(s.value)}
+                className={`flex-1 text-xs py-1.5 rounded-md transition-colors ${
+                  source === s.value ? 'bg-white text-gray-900 font-medium shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >{s.label}</button>
+            ))}
+          </div>
           <input
             className="input mt-2 text-sm"
             placeholder="Search products…"
@@ -287,18 +301,23 @@ export default function CatalogueDetail() {
   }, [id])
 
   async function handleAddProduct(product) {
-    const imagesSnap = await getDocs(collection(db, 'products', product.id, 'images'))
-    const productImages = imagesSnap.docs.map(d => d.data().file_url).filter(Boolean)
+    const source = product.source || 'corporate'
+    // Corporate images live in a sub-collection; range images are already on the
+    // normalized object. loadBlogImages handles both and returns {file_url,...}.
+    const imgs = await loadBlogImages(source, product)
+    const productImages = imgs.map(i => i.file_url).filter(Boolean)
+    const heroImage = product.heroImage || productImages[0] || null
 
     await addDoc(collection(db, 'catalogues', id, 'items'), {
       product_id:                     product.id,
+      product_source:                 source,
       product_name:                   product.name,
       product_category:               product.category,
       product_marketing_description:  product.marketing_description || '',
       product_description:            product.description || '',
-      hero_image:                     product.heroImage || null,
-      product_images:                 productImages,
-      selected_images:                product.heroImage ? [product.heroImage] : [],
+      hero_image:                     heroImage,
+      product_images:                 productImages.filter(u => u !== heroImage),
+      selected_images:                heroImage ? [heroImage] : [],
       marketing_description:          product.marketing_description || '',
       sort_order:                     items.length,
       createdAt:                      serverTimestamp(),
