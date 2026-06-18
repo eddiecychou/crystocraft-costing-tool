@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { doc, onSnapshot, collection, query, orderBy, getDocs } from 'firebase/firestore'
+import { doc, onSnapshot, getDoc } from 'firebase/firestore'
 import { useParams, Link } from 'react-router-dom'
-import { db } from '../firebase'
+import { db, auth } from '../firebase'
 import { Package, ArrowLeft, Check, Plus } from 'lucide-react'
 import { useRates, fromHKD, fmtMoney } from '../currency'
 import FavHeart from './FavHeart'
@@ -20,10 +20,17 @@ export default function CorporateDetail({ profile }) {
     s => setP(s.exists() ? { id: s.id, ...s.data() } : null), () => setP(null)), [id])
 
   useEffect(() => {
-    getDocs(query(collection(db, 'products', id, 'pricing_tiers'), orderBy('quantity')))
-      .then(snap => setTiers(snap.docs.map(d => d.data()).filter(t => t.price_hkd != null)))
+    const uid = profile?.id || auth.currentUser?.uid
+    if (!uid) { setTiers([]); return }
+    // Prices are published per-customer (cost × this customer's markup), so we
+    // read only this customer's own price doc — raw cost is never sent here.
+    getDoc(doc(db, 'products', id, 'customer_prices', uid))
+      .then(s => {
+        const list = s.exists() ? (s.data().tiers || []) : []
+        setTiers(list.filter(t => t.price_hkd != null).sort((a, b) => (a.quantity || 0) - (b.quantity || 0)))
+      })
       .catch(() => setTiers([]))
-  }, [id])
+  }, [id, profile?.id])
 
   if (p === undefined) return <LoadingBar />
   if (p === null) return (

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
-import { collection, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore'
 import { Link } from 'react-router-dom'
-import { db } from '../firebase'
+import { db, auth } from '../firebase'
 import { Package } from 'lucide-react'
 import { useRates, fromHKD, fmtMoney } from '../currency'
 import FavHeart from './FavHeart'
@@ -57,23 +57,25 @@ export default function CorporateShop({ profile }) {
         <div className="text-center py-20 text-ink-60">No products match your search.</div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-          {filtered.map(p => <CorpCard key={p.id} p={p} cur={cur} rates={rates} />)}
+          {filtered.map(p => <CorpCard key={p.id} p={p} cur={cur} rates={rates} profile={profile} />)}
         </div>
       )}
     </div>
   )
 }
 
-function CorpCard({ p, cur, rates }) {
+function CorpCard({ p, cur, rates, profile }) {
   const [fromPrice, setFromPrice] = useState(undefined) // undefined=loading, null=none
   useEffect(() => {
-    getDocs(query(collection(db, 'products', p.id, 'pricing_tiers'), orderBy('quantity')))
-      .then(snap => {
-        const hkds = snap.docs.map(d => d.data().price_hkd).filter(v => v != null).map(Number)
+    const uid = profile?.id || auth.currentUser?.uid
+    if (!uid) { setFromPrice(null); return }
+    getDoc(doc(db, 'products', p.id, 'customer_prices', uid))
+      .then(s => {
+        const hkds = (s.exists() ? (s.data().tiers || []) : []).map(t => t.price_hkd).filter(v => v != null).map(Number)
         setFromPrice(hkds.length ? fromHKD(Math.min(...hkds), cur, rates) : null)
       })
       .catch(() => setFromPrice(null))
-  }, [p.id, cur, rates])
+  }, [p.id, cur, rates, profile?.id])
 
   return (
     <Link to={`/shop/corporate/${p.id}`} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">

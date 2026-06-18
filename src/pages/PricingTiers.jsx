@@ -1,14 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   doc, getDoc, collection, getDocs, onSnapshot,
-  addDoc, updateDoc, deleteDoc, orderBy, query, serverTimestamp,
+  addDoc, updateDoc, deleteDoc, setDoc, writeBatch, orderBy, query, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../firebase'
-import { CURRENCIES } from '../constants'
-import { AlertTriangle, X } from 'lucide-react'
+import { AlertTriangle, X, BadgeCheck } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
+import {
+  usePricingGroups, effectiveMarkup, DEFAULT_MARKUP,
+  unitCostHKDAtQty, toolingCostHKD, totalUnitCostAtQty,
+} from '../pricing'
 
 const DEFAULT_RATES = { RMB: 1.09, USD: 7.78, EUR: 8.60, HKD: 1 }
 
@@ -19,36 +22,33 @@ export default function PricingTiers() {
   const [components, setComponents] = useState([])
   const [tiers, setTiers]           = useState([])
   const [rates, setRates]           = useState(DEFAULT_RATES)
-  const [markup, setMarkup]         = useState(1.5)
   const [loading, setLoading]       = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(null)
+  const { groups }                  = usePricingGroups()
 
   // New tier form state
   const [newQty, setNewQty]         = useState('')
-  const [newPrice, setNewPrice]     = useState('')
-  const [newCurrency, setNewCurrency] = useState('HKD')
   const [newLeadTime, setNewLeadTime] = useState('')
   const [adding, setAdding]         = useState(false)
+
+  // Publish state
+  const [publishing, setPublishing] = useState(false)
+  const [publishMsg, setPublishMsg] = useState(null)
 
   useEffect(() => {
     getDoc(doc(db, 'products', id)).then(s => {
       if (s.exists()) setProduct({ id: s.id, ...s.data() })
     })
-
-    // Load exchange rates from settings (only numeric currency keys)
     getDoc(doc(db, 'settings', 'exchange_rates')).then(s => {
       if (s.exists()) {
         const data = s.data()
-        const picked = Object.fromEntries(
-          Object.entries(data).filter(([, v]) => typeof v === 'number')
-        )
+        const picked = Object.fromEntries(Object.entries(data).filter(([, v]) => typeof v === 'number'))
         setRates(r => ({ ...r, ...picked }))
       }
     })
   }, [id])
 
   useEffect(() => {
-    // Load all components with their preferred supplier quotes
     const fetchComponents = async () => {
       const cSnap = await getDocs(query(collection(db, 'products', id, 'components'), orderBy('sort_order')))
       const comps = await Promise.all(
@@ -70,99 +70,44 @@ export default function PricingTiers() {
     return onSnapshot(q, snap => setTiers(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
   }, [id])
 
-  // Get the applicable unit cost for a component at a given order quantity
-  // Uses volume_tiers if available, falls back to base unit_cost
-  function componentUnitCostAtQty(q, orderQty) {
-    if (!q || !q.unit_cost) return null
-    const tiers = q.volume_tiers
-    if (tiers && tiers.length > 0) {
-      // Find the highest min_qty that is <= orderQty
-      const applicable = tiers
-        .filter(t => t.min_qty <= orderQty)
-        .sort((a, b) => b.min_qty - a.min_qty)[0]
-      if (applicable) return Number(applicable.unit_cost)
-    }
-    return Number(q.unit_cost)
-  }
-
-  // Total recurring unit cost HKD at a given order quantity
-  function unitCostHKDAtQty(orderQty) {
-    return components.reduce((sum, c) => {
-      const q = c.preferred_quote
-      if (!q) return sum
-      const unitCost = componentUnitCostAtQty(q, orderQty)
-      if (unitCost == null) return sum
-      const compQty = Number(c.qty_per_product) || 1
-      return sum + unitCost * (rates[q.unit_cost_currency] || 1) * compQty
-    }, 0)
-  }
-
-  // Flat unit cost at MOQ/base (used for cost summary display)
-  const unitCostHKD = unitCostHKDAtQty(tiers[0]?.quantity || 200)
-
-  // Check if any component has volume tiers
+  const unitCostHKD = unitCostHKDAtQty(components, rates, tiers[0]?.quantity || 200)
   const hasVolumeTiers = components.some(c => c.preferred_quote?.volume_tiers?.length > 0)
+  const toolingHKD = toolingCostHKD(components, rates)
+  const missingPreferred = components.some(c => !c.preferred_quote)
 
-  // Total one-time tooling/sample cost in HKD across all components
-  const toolingCostHKD = components.reduce((sum, c) => {
-    const q = c.preferred_quote
-    if (!q || !q.tooling_sample_cost) return sum
-    return sum + Number(q.tooling_sample_cost) * (rates[q.tooling_sample_cost_currency] || 1)
-  }, 0)
+  // Signature of everything that feeds published prices (cost inputs, the qty
+  // ladder, and the group markups). Compared to what was stored at last publish
+  // so we can flag when the live prices are stale.
+  const signature = useMemo(() => JSON.stringify({
+    tiers: tiers.map(t => [t.quantity, t.production_lead_time_days ?? null]),
+    cost: components.map(c => {
+      const q = c.preferred_quote
+      return q
+        ? [Number(c.qty_per_product) || 1, q.unit_cost, q.unit_cost_currency, q.volume_tiers || [], q.tooling_sample_cost || 0, q.tooling_sample_cost_currency || '']
+        : [Number(c.qty_per_product) || 1, null]
+    }),
+    groups: groups.map(g => [g.id, g.markup]),
+    rates,
+  }), [tiers, components, groups, rates])
 
-  // Total unit cost including amortised tooling at a given quantity
-  function totalUnitCostAtQty(qty) {
-    return unitCostHKDAtQty(qty) + (qty > 0 ? toolingCostHKD / qty : 0)
-  }
-
-  const suggestedPrice = totalUnitCostAtQty(tiers[0]?.quantity || 200) * markup
-
-  function toHKD(price, currency) {
-    return Number(price) * (rates[currency] || 1)
-  }
+  const published = product?.prices_published_at != null
+  const stale = !published || product?.prices_signature !== signature
 
   async function handleAddTier(e) {
     e.preventDefault()
     if (!newQty) return
     setAdding(true)
-    const qty = Number(newQty)
-    const suggestedHKD = Math.ceil(totalUnitCostAtQty(qty) * markup)
-    const sellPrice = newPrice ? Number(newPrice) : (newCurrency === 'HKD' ? suggestedHKD : +(suggestedHKD / (rates[newCurrency] || 1)).toFixed(2))
-    const priceHKD = toHKD(sellPrice, newCurrency)
     try {
       await addDoc(collection(db, 'products', id, 'pricing_tiers'), {
-        quantity: qty,
-        sell_price: sellPrice,
-        sell_currency: newCurrency,
-        price_hkd: priceHKD,
+        quantity: Number(newQty),
         production_lead_time_days: newLeadTime ? Number(newLeadTime) : null,
         createdAt: serverTimestamp(),
       })
       setNewQty('')
-      setNewPrice('')
       setNewLeadTime('')
     } finally {
       setAdding(false)
     }
-  }
-
-  async function handlePriceChange(tier, sellPrice, currency) {
-    const cur = currency || tier.sell_currency || 'HKD'
-    const priceHKD = toHKD(sellPrice, cur)
-    await updateDoc(doc(db, 'products', id, 'pricing_tiers', tier.id), {
-      sell_price: Number(sellPrice),
-      sell_currency: cur,
-      price_hkd: priceHKD,
-    })
-  }
-
-  async function handleCurrencyChange(tier, currency) {
-    const sellPrice = tier.sell_price ?? tier.price_hkd
-    const priceHKD = toHKD(sellPrice, currency)
-    await updateDoc(doc(db, 'products', id, 'pricing_tiers', tier.id), {
-      sell_currency: currency,
-      price_hkd: priceHKD,
-    })
   }
 
   async function handleLeadTimeChange(tierId, value) {
@@ -176,13 +121,61 @@ export default function PricingTiers() {
     setConfirmDelete(null)
   }
 
+  // Compute each customer's price list (cost × their markup) and write one
+  // customer_prices doc each. Raw cost never leaves the admin tool this way.
+  async function publish() {
+    if (!tiers.length) { setPublishMsg('Add at least one quantity tier first.'); return }
+    setPublishing(true); setPublishMsg(null)
+    try {
+      const usersSnap = await getDocs(collection(db, 'users'))
+      const customers = usersSnap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(u => u.role === 'customer' && u.status === 'approved')
+
+      // Chunk writes so we stay well under the 500-op batch limit.
+      const chunkSize = 400
+      for (let i = 0; i < customers.length; i += chunkSize) {
+        const batch = writeBatch(db)
+        for (const u of customers.slice(i, i + chunkSize)) {
+          const mk = effectiveMarkup(u, groups)
+          const priced = tiers.map(t => ({
+            quantity: t.quantity,
+            price_hkd: Math.ceil(totalUnitCostAtQty(components, rates, t.quantity) * mk),
+            lead_time_days: t.production_lead_time_days ?? null,
+          }))
+          batch.set(doc(db, 'products', id, 'customer_prices', u.id), {
+            tiers: priced, markup: mk, computedAt: serverTimestamp(),
+          })
+        }
+        await batch.commit()
+      }
+
+      await setDoc(doc(db, 'products', id), {
+        prices_published_at: serverTimestamp(),
+        prices_signature: signature,
+      }, { merge: true })
+      setProduct(p => ({ ...p, prices_published_at: new Date(), prices_signature: signature }))
+      setPublishMsg(`Published prices to ${customers.length} customer${customers.length === 1 ? '' : 's'}.`)
+      setTimeout(() => setPublishMsg(null), 4000)
+    } catch (e) {
+      setPublishMsg('Error: ' + e.message)
+    } finally {
+      setPublishing(false)
+    }
+  }
+
   if (loading) return <LoadingBar />
+
+  // Groups (plus an implicit Default) used for the price preview columns.
+  const previewGroups = [
+    ...groups.map(g => ({ id: g.id, name: g.name, markup: Number(g.markup) })),
+    { id: '__default', name: 'Default', markup: DEFAULT_MARKUP },
+  ]
 
   return (
     <div className="p-4 md:p-6 max-w-3xl">
-      {/* Breadcrumb */}
       <Link to={`/products/${id}`} className="text-sm text-brand-600 hover:underline">← {product?.name}</Link>
-      <h1 className="text-2xl font-bold text-gray-900 mt-1 mb-6">Pricing Tiers</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mt-1 mb-6">Pricing</h1>
 
       {/* Cost Summary */}
       <div className="card p-5 mb-6">
@@ -205,18 +198,12 @@ export default function PricingTiers() {
                     <div className="min-w-0">
                       <p className="text-sm text-gray-800">
                         {c.name}
-                        {(Number(c.qty_per_product) || 1) > 1 && (
-                          <span className="ml-1.5 text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
-                            ×{c.qty_per_product}
-                          </span>
-                        )}
+                        {qty > 1 && <span className="ml-1.5 text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">×{c.qty_per_product}</span>}
                       </p>
                       {q ? (
                         <p className="text-xs text-gray-500">
-                          {q.supplier_name} · {q.unit_cost} {q.unit_cost_currency}{(Number(c.qty_per_product) || 1) > 1 ? ` × ${c.qty_per_product}` : ''}
-                          {q.volume_tiers?.length > 0 && (
-                            <span className="ml-1.5 text-brand-500">· {q.volume_tiers.length} volume tier{q.volume_tiers.length > 1 ? 's' : ''}</span>
-                          )}
+                          {q.supplier_name} · {q.unit_cost} {q.unit_cost_currency}{qty > 1 ? ` × ${c.qty_per_product}` : ''}
+                          {q.volume_tiers?.length > 0 && <span className="ml-1.5 text-brand-500">· {q.volume_tiers.length} volume tier{q.volume_tiers.length > 1 ? 's' : ''}</span>}
                         </p>
                       ) : c.has_quotes ? (
                         <Link to={`/products/${id}/components/${c.id}`} className="text-xs text-orange-500 hover:underline">
@@ -228,21 +215,19 @@ export default function PricingTiers() {
                         </Link>
                       )}
                     </div>
-                    <p className="text-sm font-medium text-gray-900 shrink-0">
-                      {costHKD != null ? `HKD ${costHKD.toFixed(2)}` : '—'}
-                    </p>
+                    <p className="text-sm font-medium text-gray-900 shrink-0">{costHKD != null ? `HKD ${costHKD.toFixed(2)}` : '—'}</p>
                   </div>
                 )
               })}
             </div>
 
-            {toolingCostHKD > 0 && (
+            {toolingHKD > 0 && (
               <div className="flex items-center justify-between py-2.5 border-t border-gray-100">
                 <div>
                   <p className="text-sm text-gray-800">Tooling / Sample Cost</p>
                   <p className="text-xs text-gray-400">One-time — amortised per tier quantity</p>
                 </div>
-                <p className="text-sm font-medium text-gray-900">HKD {toolingCostHKD.toFixed(2)}</p>
+                <p className="text-sm font-medium text-gray-900">HKD {toolingHKD.toFixed(2)}</p>
               </div>
             )}
             <div className="flex items-center justify-between pt-3 border-t border-gray-200">
@@ -250,24 +235,6 @@ export default function PricingTiers() {
               <p className="text-lg font-bold text-gray-900">HKD {unitCostHKD.toFixed(2)}</p>
             </div>
 
-            {/* Markup slider */}
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-sm text-gray-600">Markup: <span className="font-semibold">{markup.toFixed(2)}×</span></label>
-                <p className="text-sm text-gray-600">Suggested: <span className="font-semibold text-brand-700">HKD {suggestedPrice.toFixed(2)}</span></p>
-              </div>
-              <input
-                type="range" min="1.0" max="4.0" step="0.05"
-                value={markup}
-                onChange={e => setMarkup(Number(e.target.value))}
-                className="w-full accent-brand-600"
-              />
-              <div className="flex justify-between text-xs text-gray-400 mt-0.5">
-                <span>1.0×</span><span>2.0×</span><span>3.0×</span><span>4.0×</span>
-              </div>
-            </div>
-
-            {/* Exchange rates note */}
             <div className="mt-3 text-xs text-gray-400">
               Rates used: {Object.entries(rates).filter(([k, v]) => k !== 'HKD' && typeof v === 'number').map(([k, v]) => `${k}→HKD ${v}`).join(' · ')}
               {' · '}<Link to="/settings" className="text-brand-500 hover:underline">Update in Settings</Link>
@@ -276,110 +243,55 @@ export default function PricingTiers() {
         )}
       </div>
 
-      {/* Warning if any component is missing a preferred supplier */}
-      {components.some(c => !c.preferred_quote) && (
+      {missingPreferred && (
         <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 mb-4 text-sm text-orange-700">
-          <AlertTriangle size={13} className="inline align-[-2px] mr-1" />Some components have no preferred supplier — cost totals and margins below are incomplete.
+          <AlertTriangle size={13} className="inline align-[-2px] mr-1" />Some components have no preferred supplier — cost totals and prices below are incomplete.
         </div>
       )}
 
-      {/* Pricing Tiers Table */}
+      {/* Quantity Tiers — qty + lead time only; price is derived from cost × markup */}
       <div className="card p-5 mb-6">
-        <h2 className="text-sm font-semibold text-gray-700 mb-4">Quantity Tiers</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-1">Quantity Tiers</h2>
+        <p className="text-xs text-gray-400 mb-4">Set the order-quantity breakpoints. Customer prices are computed from the all-in cost at each quantity multiplied by the customer's pricing-group markup.</p>
 
         {tiers.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-4">No tiers yet — add your first quantity breakpoint below.</p>
         ) : (
           <div className="overflow-x-auto -mx-5 px-5">
-            <table className="text-sm border-separate border-spacing-0" style={{ minWidth: '640px' }}>
+            <table className="text-sm border-separate border-spacing-0 w-full" style={{ minWidth: '520px' }}>
               <thead>
                 <tr className="text-xs text-gray-400 uppercase tracking-wide">
-                  {/* Sticky Qty column */}
-                  <th className="text-left pb-3 pr-4 font-semibold text-gray-600 sticky left-0 bg-white whitespace-nowrap">Qty</th>
+                  <th className="text-left pb-3 pr-4 font-semibold text-gray-600 whitespace-nowrap">Qty</th>
                   <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Unit Cost<br/><span className="text-gray-300 font-normal normal-case tracking-normal">{hasVolumeTiers ? 'at qty' : '(HKD)'}</span></th>
                   <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Tooling<br/><span className="text-gray-300 font-normal normal-case tracking-normal">/unit</span></th>
-                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">All-in<br/><span className="text-gray-300 font-normal normal-case tracking-normal">(HKD)</span></th>
-                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Currency</th>
-                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Sell Price</th>
-                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Margin</th>
+                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">All-in Cost<br/><span className="text-gray-300 font-normal normal-case tracking-normal">(HKD)</span></th>
                   <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Lead Time<br/><span className="text-gray-300 font-normal normal-case tracking-normal">(days)</span></th>
                   <th className="pb-3 pl-3 border-l border-gray-100"></th>
                 </tr>
-                <tr><td colSpan={9} className="pb-1"><div className="border-b border-gray-200" /></td></tr>
+                <tr><td colSpan={6} className="pb-1"><div className="border-b border-gray-200" /></td></tr>
               </thead>
               <tbody>
                 {tiers.map((tier, idx) => {
-                  const toolingPerUnit = toolingCostHKD / tier.quantity
-                  const allInCost = totalUnitCostAtQty(tier.quantity)
-                  const sellCurrency = tier.sell_currency || 'HKD'
-                  const sellPrice = tier.sell_price ?? tier.price_hkd
-                  const priceHKD = tier.price_hkd
-                  const margin = priceHKD && allInCost
-                    ? ((priceHKD - allInCost) / priceHKD * 100)
-                    : null
+                  const toolingPerUnit = toolingHKD / tier.quantity
+                  const allInCost = totalUnitCostAtQty(components, rates, tier.quantity)
                   const rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
                   return (
                     <tr key={tier.id} className={rowBg}>
-                      {/* Sticky Qty */}
-                      <td className={`py-3 pr-4 font-bold text-gray-900 sticky left-0 ${rowBg} whitespace-nowrap`}>
-                        {tier.quantity.toLocaleString()}
-                      </td>
+                      <td className="py-3 pr-4 font-bold text-gray-900 whitespace-nowrap">{tier.quantity.toLocaleString()}</td>
                       <td className="py-3 px-4 text-right text-gray-600 border-l border-gray-100 whitespace-nowrap">
-                        {unitCostHKDAtQty(tier.quantity).toFixed(2)}
-                        {hasVolumeTiers && unitCostHKDAtQty(tier.quantity) !== unitCostHKD && (
+                        {unitCostHKDAtQty(components, rates, tier.quantity).toFixed(2)}
+                        {hasVolumeTiers && unitCostHKDAtQty(components, rates, tier.quantity) !== unitCostHKD && (
                           <span className="block text-xs text-brand-500">vol. price</span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-right text-gray-400 text-xs border-l border-gray-100 whitespace-nowrap">
-                        {toolingCostHKD > 0 ? `+${toolingPerUnit.toFixed(2)}` : '—'}
-                      </td>
-                      <td className="py-3 px-4 text-right font-semibold text-gray-800 border-l border-gray-100 whitespace-nowrap">
-                        {allInCost.toFixed(2)}
-                      </td>
+                      <td className="py-3 px-4 text-right text-gray-400 text-xs border-l border-gray-100 whitespace-nowrap">{toolingHKD > 0 ? `+${toolingPerUnit.toFixed(2)}` : '—'}</td>
+                      <td className="py-3 px-4 text-right font-semibold text-gray-800 border-l border-gray-100 whitespace-nowrap">{allInCost.toFixed(2)}</td>
                       <td className="py-3 px-4 text-right border-l border-gray-100">
-                        <select
-                          className="input py-1 text-sm w-20"
-                          value={sellCurrency}
-                          onChange={e => handleCurrencyChange(tier, e.target.value)}
-                        >
-                          {CURRENCIES.map(c => <option key={c}>{c}</option>)}
-                        </select>
-                      </td>
-                      <td className="py-3 px-4 text-right border-l border-gray-100">
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="input text-right w-24 py-1 text-sm"
-                          defaultValue={sellPrice}
-                          key={`${tier.id}-${sellCurrency}`}
-                          onBlur={e => handlePriceChange(tier, e.target.value, sellCurrency)}
-                        />
-                        {sellCurrency !== 'HKD' && priceHKD != null && (
-                          <p className="text-xs text-gray-400 mt-0.5 whitespace-nowrap">≈ HKD {priceHKD.toFixed(2)}</p>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-right border-l border-gray-100 whitespace-nowrap">
-                        {margin != null ? (
-                          <span className={`font-semibold text-sm ${margin >= 40 ? 'text-green-600' : margin >= 25 ? 'text-yellow-600' : 'text-red-500'}`}>
-                            {margin.toFixed(1)}%
-                          </span>
-                        ) : <span className="text-gray-300">—</span>}
-                      </td>
-                      <td className="py-3 px-4 text-right border-l border-gray-100">
-                        <input
-                          type="number"
-                          className="input text-right w-20 py-1 text-sm"
-                          defaultValue={tier.production_lead_time_days ?? ''}
-                          placeholder="—"
-                          onBlur={e => handleLeadTimeChange(tier.id, e.target.value)}
-                        />
+                        <input type="number" className="input text-right w-20 py-1 text-sm" defaultValue={tier.production_lead_time_days ?? ''} placeholder="—"
+                          onBlur={e => handleLeadTimeChange(tier.id, e.target.value)} />
                       </td>
                       <td className="py-3 pl-3 text-right border-l border-gray-100">
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDelete(tier)}
-                          className="text-red-300 hover:text-red-500 transition-colors"
-                        ><X size={14} /></button>
+                        <button type="button" onClick={() => setConfirmDelete(tier)} className="text-red-300 hover:text-red-500 transition-colors"><X size={14} /></button>
                       </td>
                     </tr>
                   )
@@ -389,48 +301,81 @@ export default function PricingTiers() {
           </div>
         )}
 
-        {/* Add tier row */}
         <form onSubmit={handleAddTier} className="flex gap-2 mt-4 pt-4 border-t border-gray-100 flex-wrap">
           <div>
             <p className="text-xs text-gray-500 mb-1">Quantity *</p>
-            <input
-              type="number" min="1" placeholder="e.g. 200"
-              className="input w-28 py-1.5 text-sm"
-              value={newQty} onChange={e => setNewQty(e.target.value)} required
-            />
-          </div>
-          <div>
-            <p className="text-xs text-gray-500 mb-1">Currency</p>
-            <select
-              className="input w-24 py-1.5 text-sm"
-              value={newCurrency} onChange={e => setNewCurrency(e.target.value)}
-            >
-              {CURRENCIES.map(c => <option key={c}>{c}</option>)}
-            </select>
-          </div>
-          <div>
-            <p className="text-xs text-gray-500 mb-1">Sell Price</p>
-            <input
-              type="number" step="0.01" min="0"
-              placeholder={suggestedPrice ? (newCurrency === 'HKD' ? Math.ceil(suggestedPrice) : (suggestedPrice / (rates[newCurrency] || 1)).toFixed(2)) : '0'}
-              className="input w-28 py-1.5 text-sm"
-              value={newPrice} onChange={e => setNewPrice(e.target.value)}
-            />
+            <input type="number" min="1" placeholder="e.g. 200" className="input w-28 py-1.5 text-sm" value={newQty} onChange={e => setNewQty(e.target.value)} required />
           </div>
           <div>
             <p className="text-xs text-gray-500 mb-1">Lead Time (days)</p>
-            <input
-              type="number" min="0" placeholder="e.g. 30"
-              className="input w-28 py-1.5 text-sm"
-              value={newLeadTime} onChange={e => setNewLeadTime(e.target.value)}
-            />
+            <input type="number" min="0" placeholder="e.g. 30" className="input w-28 py-1.5 text-sm" value={newLeadTime} onChange={e => setNewLeadTime(e.target.value)} />
           </div>
           <div className="flex items-end">
-            <button type="submit" className="btn-primary py-1.5 text-sm" disabled={adding}>
-              {adding ? 'Adding…' : '+ Add Tier'}
-            </button>
+            <button type="submit" className="btn-primary py-1.5 text-sm" disabled={adding}>{adding ? 'Adding…' : '+ Add Tier'}</button>
           </div>
         </form>
+      </div>
+
+      {/* Customer price preview by pricing group */}
+      {tiers.length > 0 && (
+        <div className="card p-5 mb-6">
+          <h2 className="text-sm font-semibold text-gray-700 mb-1">Customer Price Preview (HKD)</h2>
+          <p className="text-xs text-gray-400 mb-4">
+            All-in cost × each group's markup, rounded up. Customers with a per-customer override are priced at their own markup on publish.
+            {groups.length === 0 && <span className="block mt-1 text-amber-600">No pricing groups yet — <Link to="/components" className="underline">add groups</Link>. The Default {DEFAULT_MARKUP.toFixed(2)}× applies meanwhile.</span>}
+          </p>
+          <div className="overflow-x-auto -mx-5 px-5">
+            <table className="text-sm border-separate border-spacing-0" style={{ minWidth: '420px' }}>
+              <thead>
+                <tr className="text-xs text-gray-400 uppercase tracking-wide">
+                  <th className="text-left pb-3 pr-4 font-semibold text-gray-600 whitespace-nowrap">Qty</th>
+                  {previewGroups.map(g => (
+                    <th key={g.id} className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">
+                      {g.name}<br/><span className="text-gray-300 font-normal normal-case tracking-normal">{g.markup.toFixed(2)}×</span>
+                    </th>
+                  ))}
+                </tr>
+                <tr><td colSpan={previewGroups.length + 1} className="pb-1"><div className="border-b border-gray-200" /></td></tr>
+              </thead>
+              <tbody>
+                {tiers.map((tier, idx) => {
+                  const allIn = totalUnitCostAtQty(components, rates, tier.quantity)
+                  const rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  return (
+                    <tr key={tier.id} className={rowBg}>
+                      <td className="py-3 pr-4 font-bold text-gray-900 whitespace-nowrap">{tier.quantity.toLocaleString()}</td>
+                      {previewGroups.map(g => (
+                        <td key={g.id} className="py-3 px-4 text-right text-gray-800 border-l border-gray-100 whitespace-nowrap">{Math.ceil(allIn * g.markup).toLocaleString()}</td>
+                      ))}
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Publish */}
+      <div className="card p-5 mb-6">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-700">Publish to customers</h2>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {!published ? 'Not published yet — customers see no corporate price until you publish.'
+                : stale ? 'Costs, tiers or markups changed since the last publish.'
+                : `Up to date · last published ${product.prices_published_at?.toDate?.().toLocaleString?.() || ''}`}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {published && !stale && <span className="inline-flex items-center gap-1 text-xs text-green-600"><BadgeCheck size={14} /> Up to date</span>}
+            {stale && published && <span className="text-xs text-amber-600">Out of date</span>}
+            <button onClick={publish} disabled={publishing || !tiers.length} className="btn-primary text-sm">
+              {publishing ? 'Publishing…' : stale ? 'Publish prices' : 'Re-publish'}
+            </button>
+          </div>
+        </div>
+        {publishMsg && <p className={`text-xs mt-3 ${publishMsg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{publishMsg}</p>}
       </div>
 
       {confirmDelete && (
