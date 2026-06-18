@@ -323,38 +323,66 @@ function CrystalColours() {
 // ── Format MOQs tab ─────────────────────────────────────────────────────────
 
 function FormatMoqs() {
-  const [moq, setMoq] = useState({})       // { code: string }
-  const [saved, setSaved] = useState({})
+  const [rows, setRows] = useState([])     // [{ code, label, moq }]  (all strings)
+  const [saved, setSaved] = useState([])
+  const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
-  const [newCode, setNewCode] = useState('')
 
   useEffect(() => {
     getDoc(doc(db, 'settings', 'format_moq')).then(snap => {
-      const m = snap.exists() ? (snap.data().moq || {}) : {}
-      const asStr = Object.fromEntries(Object.entries(m).map(([k, v]) => [k, String(v)]))
-      setMoq(asStr)
-      setSaved(asStr)
-    })
+      const d = snap.exists() ? snap.data() : {}
+      let next
+      if (Array.isArray(d.formats) && d.formats.length) {
+        // Canonical, editable list (lets deletes stick).
+        next = d.formats.map(f => ({
+          code: String(f.code || ''),
+          label: String(f.label || ''),
+          moq: f.moq != null && f.moq !== '' ? String(f.moq) : '',
+        }))
+      } else {
+        // First load: seed from legacy moq map + the built-in format codes.
+        const legacyMoq = d.moq || {}
+        const legacyLabels = d.labels || {}
+        const codes = [...new Set([...RANGE_FORMAT_CODES.map(f => f.code), ...Object.keys(legacyMoq)])]
+        next = codes.map(c => ({
+          code: c,
+          label: legacyLabels[c] || RANGE_FORMAT_CODES.find(f => f.code === c)?.label || '',
+          moq: legacyMoq[c] != null ? String(legacyMoq[c]) : '',
+        }))
+      }
+      setRows(next); setSaved(next); setLoading(false)
+    }).catch(() => setLoading(false))
   }, [])
 
-  // Known formats plus any extra codes already saved.
-  const codes = [...new Set([...RANGE_FORMAT_CODES.map(f => f.code), ...Object.keys(moq)])]
-  const labelOf = c => RANGE_FORMAT_CODES.find(f => f.code === c)?.label || `Format ${c}`
-  const isDirty = JSON.stringify(moq) !== JSON.stringify(saved)
+  const update = (i, key, val) => setRows(rs => rs.map((r, j) => (j === i ? { ...r, [key]: val } : r)))
+  const addRow = () => setRows(rs => [...rs, { code: '', label: '', moq: '' }])
+  const removeRow = i => setRows(rs => rs.filter((_, j) => j !== i))
+  const dirty = JSON.stringify(rows) !== JSON.stringify(saved)
 
   async function save() {
     setSaving(true); setMsg(null)
     try {
-      // Persist as numbers, dropping blanks/zeros.
-      const out = {}
-      for (const [k, v] of Object.entries(moq)) {
-        const n = Number(v)
-        if (v !== '' && n > 0) out[k] = n
+      // Keep only rows with a code; de-dupe by code (last one wins).
+      const byCode = {}
+      for (const r of rows) {
+        const code = r.code.trim()
+        if (!code) continue
+        byCode[code] = { code, label: r.label.trim(), moq: r.moq }
       }
-      await setDoc(doc(db, 'settings', 'format_moq'), { moq: out, updatedAt: serverTimestamp() })
-      const asStr = Object.fromEntries(Object.entries(out).map(([k, v]) => [k, String(v)]))
-      setMoq(asStr); setSaved(asStr)
+      const clean = Object.values(byCode)
+      // Storefront-facing maps (only positive minimums / non-empty labels).
+      const moq = {}, labels = {}
+      const formats = clean.map(r => {
+        const n = Number(r.moq)
+        const has = r.moq !== '' && n > 0
+        if (has) moq[r.code] = n
+        if (r.label) labels[r.code] = r.label
+        return { code: r.code, label: r.label, moq: has ? n : 0 }
+      })
+      await setDoc(doc(db, 'settings', 'format_moq'), { formats, moq, labels, updatedAt: serverTimestamp() })
+      const asRows = formats.map(f => ({ code: f.code, label: f.label, moq: f.moq > 0 ? String(f.moq) : '' }))
+      setRows(asRows); setSaved(asRows)
       setMsg('Format MOQs saved.')
       setTimeout(() => setMsg(null), 3000)
     } catch (e) {
@@ -366,51 +394,54 @@ function FormatMoqs() {
 
   return (
     <div className="card p-5">
-      <h2 className="text-sm font-semibold text-ink-80 mb-1">Format Minimum Order Quantities</h2>
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-sm font-semibold text-ink-80">Format Minimum Order Quantities</h2>
+        <button onClick={addRow} className="btn-secondary text-xs py-1.5 px-3">+ Add format</button>
+      </div>
       <p className="text-xs text-ink-50 mb-4">
         Minimum run for each format base component (music box, freestand, bible…). On a customer
         enquiry these pool across every design sharing the format, so the customer is told to combine
-        designs to reach the minimum. Leave blank for no format minimum.
+        designs to reach the minimum. Leave the MOQ blank for no format minimum.
       </p>
-      <div className="space-y-3">
-        {codes.map(c => (
-          <div key={c} className="flex items-center gap-3">
-            <label className="w-44 text-sm text-ink-70 shrink-0">
-              {labelOf(c)} <span className="text-ink-40 font-mono">{c}</span>
-            </label>
-            <div className="relative flex-1 max-w-[180px]">
-              <input
-                type="number" min="0" step="1"
-                className="input pr-12 text-right tabular-nums"
-                value={moq[c] ?? ''}
-                onChange={e => setMoq(m => ({ ...m, [c]: e.target.value.replace(/[^\d]/g, '') }))}
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-40 pointer-events-none">pcs</span>
-            </div>
-            {String(moq[c] ?? '') !== String(saved[c] ?? '') && (
-              <span className="text-xs text-amber-500 shrink-0">unsaved</span>
-            )}
+
+      {loading ? (
+        <p className="text-xs text-ink-50">Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="text-xs text-ink-50">No formats yet — add one.</p>
+      ) : (
+        <div className="space-y-2">
+          <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-wide text-ink-40 px-1">
+            <span className="w-20 shrink-0">Code</span>
+            <span className="flex-1">Name</span>
+            <span className="w-28 shrink-0">MOQ (pcs)</span>
+            <span className="w-6 shrink-0" />
           </div>
-        ))}
-      </div>
-      <div className="mt-4 flex items-center gap-2">
-        <input
-          type="text" placeholder="Add format code (e.g. 236)"
-          className="input text-sm max-w-[220px]"
-          value={newCode}
-          onChange={e => setNewCode(e.target.value.replace(/[^\d]/g, '').slice(0, 3))}
-        />
-        <button type="button" className="btn-secondary text-sm"
-          disabled={!newCode || codes.includes(newCode)}
-          onClick={() => { setMoq(m => ({ ...m, [newCode]: m[newCode] ?? '' })); setNewCode('') }}>
-          Add
-        </button>
-      </div>
+          {rows.map((r, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input className="input text-sm font-mono w-20 shrink-0" value={r.code}
+                     placeholder="236" maxLength={4}
+                     onChange={e => update(i, 'code', e.target.value.replace(/[^\d]/g, '').slice(0, 4))} />
+              <input className="input text-sm flex-1 min-w-0" value={r.label}
+                     placeholder="Music Box" onChange={e => update(i, 'label', e.target.value)} />
+              <div className="relative w-28 shrink-0">
+                <input type="number" min="0" step="1"
+                       className="input pr-9 text-right tabular-nums"
+                       value={r.moq}
+                       onChange={e => update(i, 'moq', e.target.value.replace(/[^\d]/g, ''))} />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-40 pointer-events-none">pcs</span>
+              </div>
+              <button type="button" onClick={() => removeRow(i)}
+                      className="text-red-400 hover:text-red-600 px-1 leading-none shrink-0" title="Remove"><X size={15} /></button>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="mt-5 flex items-center gap-3 flex-wrap">
-        <button onClick={save} disabled={saving || !isDirty} className="btn-primary text-sm">
+        <button onClick={save} disabled={saving || !dirty} className="btn-primary text-sm">
           {saving ? 'Saving…' : 'Save Format MOQs'}
         </button>
+        {dirty && <span className="text-xs text-amber-500">unsaved changes</span>}
         {msg && <p className={`text-xs ${msg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{msg}</p>}
       </div>
     </div>

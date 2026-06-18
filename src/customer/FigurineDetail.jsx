@@ -34,7 +34,7 @@ export default function FigurineDetail({ profile }) {
   const { colors: libColors } = useCrystalColors()
   const lookup = useMemo(() => colorMap(libColors), [libColors])
   const cart = useCart()
-  const formatMoqMap = useFormatMoq()
+  const { moq: formatMoqMap, labels: formatLabels } = useFormatMoq()
   const cur = profile?.base_currency || 'USD'
   const disc = Math.max(0, Math.min(100, Number(profile?.ws_discount_pct) || 0)) / 100
 
@@ -98,7 +98,7 @@ export default function FigurineDetail({ profile }) {
     .reduce((s, it) => s + Math.max(1, Number(it.qty) || 1), 0)
   const formatPcs = cartFormatPcs + (inCart ? 0 : pcs)
   const belowFormatMoq = fmtMoq > 0 && formatPcs < fmtMoq
-  const fmtLabel = FORMAT_LABEL[fmtCode] || `format ${fmtCode}`
+  const fmtLabel = formatLabels[fmtCode] || FORMAT_LABEL[fmtCode] || `format ${fmtCode}`
 
   const pickFinish = i => {
     setFinishIdx(i)

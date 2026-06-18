@@ -12,7 +12,7 @@ const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.l
 
 export default function EnquiryPage({ profile }) {
   const cart = useCart()
-  const formatMoqMap = useFormatMoq()
+  const { moq: formatMoqMap, labels: formatLabels } = useFormatMoq()
   const rates = useRates()
   const cur = profile?.base_currency || 'USD'
   const disc = Math.max(0, Math.min(100, Number(profile?.ws_discount_pct) || 0)) / 100
@@ -120,7 +120,7 @@ export default function EnquiryPage({ profile }) {
           const fmtMoq = Number(formatMoqMap[fmtCode]) || 0
           const formatTotal = formatPcs[formatGroupKey(i)] || qtyPcs
           const belowFormatMoq = fmtMoq > 0 && formatTotal < fmtMoq
-          const fmtLabel = FORMAT_LABEL[fmtCode] || `Format ${fmtCode}`
+          const fmtLabel = formatLabels[fmtCode] || FORMAT_LABEL[fmtCode] || `Format ${fmtCode}`
           const setCartons = n => { const c = Math.max(1, Math.floor(n) || 1); cart.update(i.key, { cartons: c, qty: c * ppc }) }
           const setPcs = n => cart.update(i.key, { qty: Math.max(1, Math.floor(n) || 1) })
           return (
