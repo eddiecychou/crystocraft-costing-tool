@@ -90,6 +90,19 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // ---- Customer favourites (one doc per user) -------------------------
+    match /favourites/{uid} {
+      allow read, write: if request.auth.uid == uid || isAdmin();
+    }
+
+    // ---- Customer enquiries (RFQs) --------------------------------------
+    // Customers may create their own and read back their own; admins manage.
+    match /enquiries/{eid} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
     // ---- Everything below is internal / admin only ----------------------
     match /suppliers/{supplierId} {
       allow read, write: if isAdmin();

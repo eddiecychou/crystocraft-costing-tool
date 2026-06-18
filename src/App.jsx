@@ -35,6 +35,7 @@ import BlogGenerator from './pages/BlogGenerator'
 import Dashboard from './pages/Dashboard'
 import ImportData from './pages/ImportData'
 import CustomerAccounts from './pages/CustomerAccounts'
+import Enquiries from './pages/Enquiries'
 
 export default function App() {
   const user = useAuthState()
@@ -115,6 +116,7 @@ function AdminApp({ user }) {
                 <Route path="/blog-generator/:productId" element={<BlogGenerator />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/customer-accounts" element={<CustomerAccounts />} />
+                <Route path="/enquiries" element={<Enquiries />} />
                 <Route path="/import-data" element={<ImportData />} />
               </Routes>
             </Layout>

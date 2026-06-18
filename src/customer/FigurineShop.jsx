@@ -1,9 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
+import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import { Gem } from 'lucide-react'
 import { designNumber, brandLetter, bodyLetter } from '../constants'
 import { useRates, fromUSD, fmtMoney } from '../currency'
+import FavHeart from './FavHeart'
 import LoadingBar from '../components/LoadingBar'
 
 function docVariants(p) {
@@ -89,11 +91,13 @@ export default function FigurineShop({ profile }) {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
           {filtered.map(s => (
-            <div key={s.id} className="card overflow-hidden flex flex-col">
-              <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark">
+            <Link key={s.id} to={`/shop/figurine/${s.id}`} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow group">
+              <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
                 {s.image
                   ? <img src={s.image} alt={s.name} className="w-full h-full object-contain p-2" loading="lazy" />
                   : <Gem size={30} strokeWidth={1.25} className="text-gray-300" />}
+                <FavHeart item={{ type: 'figurine', id: s.id, name: s.name, code: s.code, image: s.image }}
+                  className="absolute top-1.5 right-1.5" />
               </div>
               <div className="p-3 flex flex-col gap-1 flex-1">
                 <h3 className="text-sm leading-tight text-ink line-clamp-2" title={s.name}>{s.name}</h3>
@@ -104,7 +108,7 @@ export default function FigurineShop({ profile }) {
                   <span className="text-base text-ink font-medium">{priceLabel(s)}</span>
                 </div>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

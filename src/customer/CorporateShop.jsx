@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import { collection, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore'
+import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import { Package } from 'lucide-react'
 import { useRates, fromHKD, fmtMoney } from '../currency'
+import FavHeart from './FavHeart'
 import LoadingBar from '../components/LoadingBar'
 
 export default function CorporateShop({ profile }) {
@@ -70,11 +72,13 @@ function CorpCard({ p, cur, rates }) {
   }, [p.id, cur, rates])
 
   return (
-    <div className="card overflow-hidden flex flex-col">
-      <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
+    <Link to={`/shop/corporate/${p.id}`} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+      <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
         {p.heroImage
           ? <img src={p.heroImage} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
           : <Package size={32} strokeWidth={1.25} className="text-gray-300" />}
+        <FavHeart item={{ type: 'corporate', id: p.id, name: p.name, code: '', image: p.heroImage || '' }}
+          className="absolute top-1.5 right-1.5" />
       </div>
       <div className="p-3 flex flex-col gap-1 flex-1">
         <h3 className="text-sm leading-tight text-ink line-clamp-2" title={p.name}>{p.name}</h3>
@@ -86,6 +90,6 @@ function CorpCard({ p, cur, rates }) {
             : <span className="text-sm text-ink"><span className="text-[11px] text-ink-50">from </span>{fmtMoney(fromPrice, cur)}</span>}
         </div>
       </div>
-    </div>
+    </Link>
   )
 }

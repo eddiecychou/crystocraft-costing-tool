@@ -1,0 +1,132 @@
+import { useState, useEffect, useMemo } from 'react'
+import { doc, onSnapshot } from 'firebase/firestore'
+import { useParams, Link } from 'react-router-dom'
+import { db } from '../firebase'
+import { Gem, ArrowLeft, Check, Plus } from 'lucide-react'
+import { designNumber, brandLetter, bodyLetter } from '../constants'
+import { useRates, fromUSD, fmtMoney } from '../currency'
+import { useCrystalColors, colorMap } from '../crystalColors'
+import FavHeart from './FavHeart'
+import { useCart } from './store'
+import LoadingBar from '../components/LoadingBar'
+
+function docVariants(p) {
+  if (Array.isArray(p.variants) && p.variants.length) return p.variants
+  return (p.finishes || []).map(f => ({
+    plating_name: f.finish_name, sku: f.sku,
+    ws_price_usd: f.ws_price_usd, stock_finished: f.stock_finished, image: f.image,
+  }))
+}
+
+export default function FigurineDetail({ profile }) {
+  const { id } = useParams()
+  const [p, setP] = useState(undefined)
+  const rates = useRates()
+  const { colors: libColors } = useCrystalColors()
+  const lookup = useMemo(() => colorMap(libColors), [libColors])
+  const cart = useCart()
+  const cur = profile?.base_currency || 'USD'
+  const disc = Math.max(0, Math.min(100, Number(profile?.ws_discount_pct) || 0)) / 100
+
+  useEffect(() => onSnapshot(doc(db, 'range_products', id),
+    s => setP(s.exists() ? { id: s.id, ...s.data() } : null), () => setP(null)), [id])
+
+  if (p === undefined) return <LoadingBar />
+  if (p === null) return <NotFound />
+
+  const net = usd => usd == null ? null : fromUSD(usd * (1 - disc), cur, rates)
+  const variants = docVariants(p)
+  const designNo = p.design_no || designNumber(p.design_code)
+  const body = p.body_code || bodyLetter(p.design_code)
+  const brands = [...new Set(variants.map(v => v.brand_code || brandLetter(p.design_code) || 'D').filter(Boolean))]
+  const code = [`${brands.length === 1 ? brands[0] : ''}${body}${designNo}`, p.format_code].filter(Boolean).join('-')
+  const name = p.description || p.design_name || code
+  const image = variants.find(v => v.image)?.image || (Array.isArray(p.gallery) && p.gallery[0]) || ''
+  const mixes = p.crystal_mixes && typeof p.crystal_mixes === 'object' ? p.crystal_mixes : {}
+  const colorCodes = [...new Set(variants.flatMap(v => Array.isArray(v.crystal_colors) ? v.crystal_colors : []))]
+  const inCart = cart?.has('figurine', p.id)
+
+  return (
+    <div>
+      <Link to="/shop/figurine" className="inline-flex items-center gap-1 text-sm text-ink-60 hover:text-ink mb-4">
+        <ArrowLeft size={15} /> Back to Figurine Gifts
+      </Link>
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="card overflow-hidden bg-white aspect-square flex items-center justify-center relative">
+          {image ? <img src={image} alt={name} className="w-full h-full object-contain p-4" />
+            : <Gem size={56} className="text-gray-200" />}
+          <FavHeart item={{ type: 'figurine', id: p.id, name, code, image }} className="absolute top-3 right-3" />
+        </div>
+        <div>
+          <h1 className="text-xl md:text-2xl text-ink">{name}</h1>
+          <p className="text-sm text-ink-60 font-mono mt-1">{code}</p>
+          {p.size && <p className="text-sm text-ink-60 mt-1">{p.size}</p>}
+          {p.design_type && <p className="text-xs text-ink-50 mt-1">{p.design_type}</p>}
+
+          {colorCodes.length > 0 && (
+            <div className="mt-4">
+              <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-1.5">Crystal colours</p>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {colorCodes.map(c => <Swatch key={c} code={c} mixes={mixes} lookup={lookup} />)}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-5 flex items-center gap-3">
+            <button onClick={() => cart?.add({ type: 'figurine', id: p.id, name, code, image })}
+              disabled={inCart}
+              className={`btn-primary ${inCart ? 'opacity-60 pointer-events-none' : ''}`}>
+              {inCart ? <><Check size={16} /> In enquiry</> : <><Plus size={16} /> Add to enquiry</>}
+            </button>
+          </div>
+
+          <div className="mt-6">
+            <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-2">
+              Wholesale prices ({cur}{disc > 0 ? `, your ${(disc * 100).toFixed(disc * 100 % 1 ? 1 : 0)}% discount applied` : ''})
+            </p>
+            <div className="card divide-y divide-ivory-dark">
+              {variants.map((v, i) => (
+                <div key={i} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                  <div className="min-w-0">
+                    <span className="text-ink">{v.plating_name || v.plating_code || '—'}</span>
+                    {v.crystal_name && <span className="text-ink-50"> · {v.crystal_name}</span>}
+                  </div>
+                  <span className="text-ink font-medium shrink-0">{fmtMoney(net(v.ws_price_usd), cur)}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-ink-40 mt-2">
+              Prices are indicative wholesale rates. Final pricing and availability confirmed on enquiry.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Swatch({ code, mixes, lookup }) {
+  const ASSORTED = 'repeating-conic-gradient(#bbb 0% 25%, #eee 0% 50%)'
+  const single = lookup[code]
+  let bg = ASSORTED
+  let title = single?.name ? `${code} — ${single.name}` : code
+  if (single?.swatch) bg = single.swatch
+  else if (mixes && Array.isArray(mixes[code]) && mixes[code].length) {
+    const cols = mixes[code].map(c => lookup[c]?.swatch).filter(Boolean).slice(0, 3)
+    if (cols.length >= 2) {
+      const seg = 100 / cols.length
+      bg = `conic-gradient(${cols.map((c, i) => `${c} ${i * seg}% ${(i + 1) * seg}%`).join(', ')})`
+    } else if (cols.length === 1) bg = cols[0]
+    title = `${code} (mix): ${mixes[code].join(', ')}`
+  }
+  return <span className="inline-block w-4 h-4 rounded-full border border-black/10" style={{ background: bg }} title={title} />
+}
+
+function NotFound() {
+  return (
+    <div className="text-center py-20 text-ink-60">
+      <p>This product is no longer available.</p>
+      <Link to="/shop/figurine" className="text-brand-600 text-sm mt-2 inline-block">Back to catalogue</Link>
+    </div>
+  )
+}
