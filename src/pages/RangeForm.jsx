@@ -9,6 +9,7 @@ import {
   RANGE_BODY_TYPES, RANGE_COMPONENT_CATEGORIES, designNumber, brandLetter, bodyLetter,
   normGallery, youtubeEmbed,
 } from '../constants'
+import { resizeToJpeg } from '../imageResize'
 
 const BODY_NAME = Object.fromEntries(RANGE_BODY_TYPES.map(b => [b.code, b.name]))
 
@@ -497,9 +498,14 @@ export default function RangeForm() {
   const removeVariant = i => setForm(f => ({ ...f, variants: f.variants.filter((_, j) => j !== i) }))
 
   async function uploadFile(file) {
-    const safe = file.name.replace(/[^\w.\-]/g, '_')
-    const path = `range_products/${docId}/${Date.now()}-${safe}`
-    await uploadBytes(storageRef(storage, path), file)
+    // Downscale + compress before upload — raw phone photos (multi-MB, 4000px+)
+    // otherwise make the customer storefront crawl. Non-images pass through.
+    const isImage = (file.type || '').startsWith('image/')
+    const { blob, type } = isImage ? await resizeToJpeg(file) : { blob: file, type: file.type }
+    const baseName = file.name.replace(/[^\w.\-]/g, '_').replace(/\.[^.]+$/, '')
+    const ext = type === 'image/jpeg' ? 'jpg' : (file.name.split('.').pop() || 'bin')
+    const path = `range_products/${docId}/${Date.now()}-${baseName}.${ext}`
+    await uploadBytes(storageRef(storage, path), blob, { contentType: type })
     return getDownloadURL(storageRef(storage, path))
   }
 
