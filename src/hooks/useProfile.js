@@ -17,7 +17,7 @@ export function useProfile(user) {
     return onSnapshot(
       doc(db, 'users', user.uid),
       snap => setProfile(snap.exists() ? { id: snap.id, ...snap.data() } : { missing: true }),
-      () => setProfile({ missing: true, error: true }),
+      err => setProfile({ missing: true, error: true, code: err?.code || '?', msg: err?.message || '?' }),
     )
   }, [user])
 
