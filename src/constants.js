@@ -112,6 +112,20 @@ export const RANGE_STATUSES = [
   { value: 'stock',  label: 'Last Stock',    badge: 'bg-amber-100 text-amber-700' },
 ]
 
+// Customer-facing availability labels + explanatory tooltips for range figurines.
+export const RANGE_STATUS_CUSTOMER = {
+  active: {
+    label: 'Made to Order',
+    cls: 'bg-emerald-100 text-emerald-700',
+    tip: 'Produced to order — standard production lead time applies.',
+  },
+  stock: {
+    label: 'Last Stock',
+    cls: 'bg-amber-100 text-amber-700',
+    tip: 'Retired design — limited remaining stock, available while supplies last.',
+  },
+}
+
 // First letter of the item code = crystal brand. The numeric part is the
 // actual design — U0002 / D0002 / A0002 / M0002 are the SAME design in
 // different crystal brands, so brand is a per-variant axis.

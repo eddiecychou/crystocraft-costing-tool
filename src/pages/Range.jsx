@@ -367,9 +367,9 @@ function ProductCard({ s, colorLookup = {} }) {
             {crystalCodes.length > 12 && <span className="text-[10px] text-ink-50">+{crystalCodes.length - 12}</span>}
           </div>
         )}
-        <div className="mt-auto pt-1.5 flex items-center justify-between">
-          <span className="text-base text-ink">{priceRange(s.minPrice, s.maxPrice)}</span>
-          <span className={`badge ${sb.cls}`}>{sb.label}</span>
+        <div className="mt-auto pt-1.5 flex items-center justify-between gap-2 flex-wrap">
+          <span className="text-base text-ink truncate">{priceRange(s.minPrice, s.maxPrice)}</span>
+          <span className={`badge whitespace-nowrap shrink-0 ${sb.cls}`}>{sb.label}</span>
         </div>
       </div>
     </Link>

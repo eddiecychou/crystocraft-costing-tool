@@ -3,7 +3,7 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { useParams, Link } from 'react-router-dom'
 import { db } from '../firebase'
 import { Gem, ArrowLeft, Check, Plus, Minus } from 'lucide-react'
-import { designNumber, brandLetter, bodyLetter, RANGE_CRYSTAL_BRANDS, normGallery } from '../constants'
+import { designNumber, brandLetter, bodyLetter, RANGE_CRYSTAL_BRANDS, normGallery, RANGE_STATUS_CUSTOMER } from '../constants'
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import { useRates, fromUSD, fmtMoney } from '../currency'
@@ -140,6 +140,15 @@ export default function FigurineDetail({ profile }) {
           <FavHeart item={{ type: 'figurine', id: p.id, name, code: baseCode, image }} className="absolute top-3 right-3" />
         </div>
         <div>
+          {(() => {
+            const st = RANGE_STATUS_CUSTOMER[p.status === 'stock' ? 'stock' : 'active']
+            return (
+              <div className="mb-2">
+                <span className={`badge ${st.cls}`} title={st.tip}>{st.label}</span>
+                <p className="text-xs text-ink-50 mt-1">{st.tip}</p>
+              </div>
+            )
+          })()}
           <h1 className="text-xl md:text-2xl text-ink">{name}</h1>
           <p className="text-sm text-ink-60 font-mono mt-1">{code}</p>
           {p.size && <p className="text-sm text-ink-60 mt-1">{p.size}</p>}
