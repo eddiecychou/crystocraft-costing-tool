@@ -21,6 +21,8 @@ function docVariants(p) {
 export default function FigurineDetail({ profile }) {
   const { id } = useParams()
   const [p, setP] = useState(undefined)
+  const [finishIdx, setFinishIdx] = useState(0)
+  const [color, setColor] = useState(null)
   const rates = useRates()
   const { colors: libColors } = useCrystalColors()
   const lookup = useMemo(() => colorMap(libColors), [libColors])
@@ -46,6 +48,32 @@ export default function FigurineDetail({ profile }) {
   const colorCodes = [...new Set(variants.flatMap(v => Array.isArray(v.crystal_colors) ? v.crystal_colors : []))]
   const inCart = cart?.has('figurine', p.id)
 
+  const selVariant = variants[finishIdx] || variants[0] || {}
+  const finishColors = (Array.isArray(selVariant.crystal_colors) && selVariant.crystal_colors.length)
+    ? selVariant.crystal_colors : colorCodes
+  const needsColor = colorCodes.length > 0
+  const colorValid = !!color && finishColors.includes(color)
+  const canAdd = !needsColor || colorValid
+
+  const pickFinish = i => {
+    setFinishIdx(i)
+    const v = variants[i] || {}
+    const fc = (Array.isArray(v.crystal_colors) && v.crystal_colors.length) ? v.crystal_colors : colorCodes
+    setColor(c => (c && fc.includes(c)) ? c : null)
+  }
+
+  const addToEnquiry = () => {
+    if (!canAdd) return
+    cart?.add({
+      type: 'figurine', id: p.id, name, code,
+      image: selVariant.image || image,
+      finish: selVariant.plating_name || selVariant.plating_code || '',
+      finish_sku: selVariant.sku || '',
+      color: needsColor ? color : '',
+      color_name: needsColor ? (lookup[color]?.name || '') : '',
+    })
+  }
+
   return (
     <div>
       <Link to="/shop/figurine" className="inline-flex items-center gap-1 text-sm text-ink-60 hover:text-ink mb-4">
@@ -53,7 +81,7 @@ export default function FigurineDetail({ profile }) {
       </Link>
       <div className="grid md:grid-cols-2 gap-6">
         <div className="card overflow-hidden bg-white aspect-square flex items-center justify-center relative">
-          {image ? <img src={image} alt={name} className="w-full h-full object-contain p-4" />
+          {(selVariant.image || image) ? <img src={selVariant.image || image} alt={name} className="w-full h-full object-contain p-4" />
             : <Gem size={56} className="text-gray-200" />}
           <FavHeart item={{ type: 'figurine', id: p.id, name, code, image }} className="absolute top-3 right-3" />
         </div>
@@ -63,49 +91,66 @@ export default function FigurineDetail({ profile }) {
           {p.size && <p className="text-sm text-ink-60 mt-1">{p.size}</p>}
           {p.design_type && <p className="text-xs text-ink-50 mt-1">{p.design_type}</p>}
 
-          {colorCodes.length > 0 && (
+          {/* Plating finish — select one (doubles as price list) */}
+          <div className="mt-5">
+            <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-2">
+              Plating finish {!inCart && <span className="text-red-500">*</span>}
+              <span className="normal-case text-ink-40"> · {cur}{disc > 0 ? `, your ${(disc * 100).toFixed(disc * 100 % 1 ? 1 : 0)}% discount` : ''}</span>
+            </p>
+            <div className="card divide-y divide-ivory-dark">
+              {variants.map((v, i) => {
+                const sel = i === finishIdx
+                return (
+                  <button key={i} type="button" onClick={() => pickFinish(i)}
+                    className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-left transition-colors ${sel ? 'bg-brand-50' : 'hover:bg-ivory'}`}>
+                    <span className="flex items-center gap-2 min-w-0">
+                      <span className={`w-3.5 h-3.5 rounded-full border shrink-0 ${sel ? 'border-brand-500 bg-brand-500' : 'border-ink-30'}`}>
+                        {sel && <Check size={12} className="text-white" strokeWidth={3} />}
+                      </span>
+                      <span className="text-ink truncate">{v.plating_name || v.plating_code || '—'}</span>
+                    </span>
+                    <span className="text-ink font-medium shrink-0">{fmtMoney(net(v.ws_price_usd), cur)}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Crystal colour — required pick */}
+          {needsColor && (
             <div className="mt-4">
-              <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-1.5">Crystal colours</p>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                {colorCodes.map(c => <Swatch key={c} code={c} mixes={mixes} lookup={lookup} />)}
+              <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-1.5">
+                Crystal colour {!inCart && <span className="text-red-500">*</span>}
+                {colorValid && <span className="normal-case text-ink-60"> · {lookup[color]?.name || color}</span>}
+              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                {finishColors.map(c => (
+                  <Swatch key={c} code={c} mixes={mixes} lookup={lookup}
+                    selected={color === c} onClick={() => setColor(c)} />
+                ))}
               </div>
             </div>
           )}
 
           <div className="mt-5 flex items-center gap-3">
-            <button onClick={() => cart?.add({ type: 'figurine', id: p.id, name, code, image })}
-              disabled={inCart}
-              className={`btn-primary ${inCart ? 'opacity-60 pointer-events-none' : ''}`}>
+            <button onClick={addToEnquiry}
+              disabled={inCart || !canAdd}
+              className={`btn-primary ${(inCart || !canAdd) ? 'opacity-60 pointer-events-none' : ''}`}>
               {inCart ? <><Check size={16} /> In enquiry</> : <><Plus size={16} /> Add to enquiry</>}
             </button>
+            {!inCart && needsColor && !colorValid && <span className="text-xs text-ink-50">Select a crystal colour</span>}
           </div>
 
-          <div className="mt-6">
-            <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-2">
-              Wholesale prices ({cur}{disc > 0 ? `, your ${(disc * 100).toFixed(disc * 100 % 1 ? 1 : 0)}% discount applied` : ''})
-            </p>
-            <div className="card divide-y divide-ivory-dark">
-              {variants.map((v, i) => (
-                <div key={i} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                  <div className="min-w-0">
-                    <span className="text-ink">{v.plating_name || v.plating_code || '—'}</span>
-                    {v.crystal_name && <span className="text-ink-50"> · {v.crystal_name}</span>}
-                  </div>
-                  <span className="text-ink font-medium shrink-0">{fmtMoney(net(v.ws_price_usd), cur)}</span>
-                </div>
-              ))}
-            </div>
-            <p className="text-[11px] text-ink-40 mt-2">
-              Prices are indicative wholesale rates. Final pricing and availability confirmed on enquiry.
-            </p>
-          </div>
+          <p className="text-[11px] text-ink-40 mt-3">
+            Prices are indicative wholesale rates. Final pricing and availability confirmed on enquiry.
+          </p>
         </div>
       </div>
     </div>
   )
 }
 
-function Swatch({ code, mixes, lookup }) {
+function Swatch({ code, mixes, lookup, selected, onClick }) {
   const ASSORTED = 'repeating-conic-gradient(#bbb 0% 25%, #eee 0% 50%)'
   const single = lookup[code]
   let bg = ASSORTED
@@ -119,7 +164,15 @@ function Swatch({ code, mixes, lookup }) {
     } else if (cols.length === 1) bg = cols[0]
     title = `${code} (mix): ${mixes[code].join(', ')}`
   }
-  return <span className="inline-block w-4 h-4 rounded-full border border-black/10" style={{ background: bg }} title={title} />
+  // Read-only swatch (no onClick): small inline dot.
+  if (!onClick) {
+    return <span className="inline-block w-4 h-4 rounded-full border border-black/10" style={{ background: bg }} title={title} />
+  }
+  return (
+    <button type="button" onClick={onClick} title={title} aria-label={title}
+      className={`w-7 h-7 rounded-full transition-transform hover:scale-110 ${selected ? 'ring-2 ring-brand-500 ring-offset-2' : 'ring-1 ring-black/10'}`}
+      style={{ background: bg }} />
+  )
 }
 
 function NotFound() {

@@ -92,7 +92,10 @@ function Card({ r, set }) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-ink truncate">{i.name}</p>
                 <p className="text-[11px] text-ink-50">
-                  {i.code ? `${i.code} · ` : ''}{i.type}{i.note ? ` · ${i.note}` : ''}
+                  {i.code ? `${i.code} · ` : ''}{i.type}
+                  {i.finish ? ` · ${i.finish}` : ''}
+                  {(i.color_name || i.color) ? ` · ${i.color_name || i.color}` : ''}
+                  {i.note ? ` · ${i.note}` : ''}
                 </p>
               </div>
               <span className="text-sm text-ink-70 shrink-0">×{i.qty || 1}</span>

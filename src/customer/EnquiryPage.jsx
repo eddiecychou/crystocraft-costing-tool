@@ -26,6 +26,7 @@ export default function EnquiryPage({ profile }) {
         items: items.map(i => ({
           type: i.type, id: i.id, name: i.name || '', code: i.code || '',
           image: i.image || '', qty: Number(i.qty) || 1, note: i.note || '',
+          finish: i.finish || '', color: i.color || '', color_name: i.color_name || '',
         })),
         message,
         status: 'new',
@@ -78,7 +79,14 @@ export default function EnquiryPage({ profile }) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-ink truncate">{i.name}</p>
                 {i.code && <p className="text-[11px] text-ink-50 font-mono">{i.code}</p>}
-                <input type="text" placeholder="Note (colour, plating, customisation…)"
+                {(i.finish || i.color_name || i.color) && (
+                  <p className="text-[11px] text-ink-60 mt-0.5">
+                    {i.finish && <span>{i.finish}</span>}
+                    {i.finish && (i.color_name || i.color) && <span> · </span>}
+                    {(i.color_name || i.color) && <span>{i.color_name || i.color}</span>}
+                  </p>
+                )}
+                <input type="text" placeholder="Note (extra customisation, deadlines…)"
                   value={i.note || ''} onChange={e => cart.update(i.type, i.id, { note: e.target.value })}
                   className="input py-1 text-xs mt-1 w-full" />
               </div>
