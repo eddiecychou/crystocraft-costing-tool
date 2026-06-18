@@ -101,6 +101,22 @@ function buildSku(designNo, format, v) {
   return [head, format || '', suffix].filter(Boolean).join('-')
 }
 
+// Download a range image through the proxy edge function, naming the file after
+// the variant SKU (matches the corporate-gift image-download behaviour).
+function downloadRangeImage(url, baseName) {
+  if (!url) return
+  const safe = (baseName || 'image').replace(/[/\\?%*:|"<>]/g, '-').trim() || 'image'
+  const ext = (url.split('?')[0].match(/\.(jpe?g|png|webp|gif)$/i)?.[1] || 'jpg').toLowerCase()
+  const filename = `${safe}.${ext}`
+  const proxyUrl = `/api/download-image?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`
+  const a = document.createElement('a')
+  a.href = proxyUrl
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+}
+
 // Read a stored doc (new `variants` shape, or legacy `finishes`) into the form.
 // `fallbackBrand` = the brand letter from the doc's old design_code, used to
 // migrate variants that pre-date the per-variant brand field.
@@ -1031,7 +1047,16 @@ export default function RangeForm() {
                     </div>
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-mono text-ink-80 bg-ivory px-2 py-0.5 rounded">{sku || '—'}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-mono text-ink-80 bg-ivory px-2 py-0.5 rounded">{sku || '—'}</span>
+                          {v.image && (
+                            <button type="button" onClick={() => downloadRangeImage(v.image, sku || form.design_name)}
+                                    className="inline-flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700"
+                                    title={`Download image as ${sku || 'image'}`}>
+                              <Download size={13} /> Download
+                            </button>
+                          )}
+                        </div>
                         <button type="button" onClick={() => removeVariant(i)} className="text-red-500 hover:text-red-700 text-lg leading-none px-1" title="Remove variation">×</button>
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 [&_label.label]:min-h-[2.2rem] [&_label.label]:flex [&_label.label]:items-end">
