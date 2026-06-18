@@ -3,6 +3,7 @@ import { collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, Timestamp
 import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from '../firebase'
 import { Check, FileText, Image as ImageIcon, X, Paperclip } from 'lucide-react'
+import { loadBlogProducts } from '../productSource'
 
 const CHANNELS  = ['Email', 'WhatsApp', 'Alibaba', 'Personal WhatsApp']
 const STATUSES  = ['Open', 'Quoted', 'Confirmed', 'In Production', 'Completed', 'Lost', 'On Hold']
@@ -39,10 +40,17 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
   const [removingIdx, setRemovingIdx]             = useState(null)
   const fileInputRef = useRef(null)
 
-  // Fetch products for interest picker
+  // Fetch products for interest picker — corporate gifts + Crystocraft range
   useEffect(() => {
-    getDocs(collection(db, 'products')).then(snap => {
-      setAllProducts(snap.docs.map(d => ({ id: d.id, name: d.data().name || d.data().product_name || '' })).sort((a, b) => a.name.localeCompare(b.name)))
+    Promise.all([
+      getDocs(collection(db, 'products')),
+      loadBlogProducts('range'),
+    ]).then(([snap, rangeProducts]) => {
+      const corporate = snap.docs.map(d => ({ id: d.id, name: d.data().name || d.data().product_name || '' }))
+      const range = rangeProducts.map(p => ({ id: p.id, name: p.name || '' }))
+      setAllProducts(
+        [...corporate, ...range].filter(p => p.name).sort((a, b) => a.name.localeCompare(b.name))
+      )
     })
   }, [])
 
