@@ -150,7 +150,9 @@ export default function Range() {
       : variants.reduce((s, v) => s + (v.stock_finished > 0 ? v.stock_finished : 0), 0)
     const platings = [...new Set(variants.map(v => v.plating_name).filter(Boolean))]
     const brands = [...new Set(variants.map(v => v.brand_code || fallbackBrand).filter(Boolean))]
-    const image = variants.find(v => v.image)?.image || galleryUrl(p.gallery?.[0]) || ''
+    // The first gallery image is the chosen hero (MAIN badge in the editor);
+    // fall back to the first variant image only when no gallery image exists.
+    const image = galleryUrl(p.gallery?.[0]) || variants.find(v => v.image)?.image || ''
     // Show the full SKU prefix in the code when the design has a single brand
     // (e.g. UA061-231, D0002-001). Multi-brand designs show the shared base
     // code + per-brand chips so the prefix letters aren't lost.
