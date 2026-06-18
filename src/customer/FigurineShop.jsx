@@ -3,7 +3,7 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import { Gem } from 'lucide-react'
-import { designNumber, brandLetter, bodyLetter } from '../constants'
+import { designNumber, brandLetter, bodyLetter, galleryUrl } from '../constants'
 import { useRates, fromUSD, fmtMoney } from '../currency'
 import FavHeart from './FavHeart'
 import LoadingBar from '../components/LoadingBar'
@@ -43,7 +43,7 @@ export default function FigurineShop({ profile }) {
     const fallbackBrand = brandLetter(p.design_code) || 'D'
     const brands = [...new Set(variants.map(v => v.brand_code || fallbackBrand).filter(Boolean))]
     const prices = variants.map(v => v.ws_price_usd).filter(x => x != null)
-    const image = variants.find(v => v.image)?.image || (Array.isArray(p.gallery) && p.gallery[0]) || ''
+    const image = variants.find(v => v.image)?.image || galleryUrl(p.gallery?.[0]) || ''
     const code = [`${brands.length === 1 ? brands[0] : ''}${body}${designNo}`, p.format_code].filter(Boolean).join('-')
     return {
       id: p.id, code,

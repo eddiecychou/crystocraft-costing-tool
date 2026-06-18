@@ -7,6 +7,7 @@ import {
   RANGE_DESIGN_TYPES, RANGE_PRODUCT_TYPES, RANGE_FORMAT_CODES,
   RANGE_PLATINGS, RANGE_CRYSTAL_COLORS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS,
   RANGE_BODY_TYPES, RANGE_COMPONENT_CATEGORIES, designNumber, brandLetter, bodyLetter,
+  normGallery,
 } from '../constants'
 
 const BODY_NAME = Object.fromEntries(RANGE_BODY_TYPES.map(b => [b.code, b.name]))
@@ -349,7 +350,7 @@ export default function RangeForm() {
             ? d.critical_components.map(r => ({ id: r.id || '', code: (r.code || '').toUpperCase(), qty_per_unit: r.qty_per_unit || 1 }))
             : [],
           packing: { ...emptyPacking(), ...(d.packing || {}) },
-          gallery: Array.isArray(d.gallery) ? d.gallery : [],
+          gallery: normGallery(d.gallery),
           variants: vs,
           crystal_mixes: cleanMixes(d.crystal_mixes),
           // Plating pool: stored map wins; else seed from legacy per-variant stock.
@@ -426,17 +427,26 @@ export default function RangeForm() {
     if (!files || !files.length) return
     setUploading('gallery'); setError('')
     try {
-      const urls = []
-      for (const file of files) urls.push(await uploadFile(file))
-      setForm(f => ({ ...f, gallery: [...f.gallery, ...urls] }))
+      const items = []
+      for (const file of files) items.push({ url: await uploadFile(file), caption: '' })
+      setForm(f => ({ ...f, gallery: [...f.gallery, ...items] }))
     } catch (err) { setError(err.message || 'Upload failed.') }
     finally { setUploading('') }
   }
   const addGalleryUrl = () => {
     const url = prompt('Paste image URL:')
-    if (url && url.trim()) setForm(f => ({ ...f, gallery: [...f.gallery, url.trim()] }))
+    if (url && url.trim()) setForm(f => ({ ...f, gallery: [...f.gallery, { url: url.trim(), caption: '' }] }))
   }
   const removeGallery = i => setForm(f => ({ ...f, gallery: f.gallery.filter((_, j) => j !== i) }))
+  const setGalleryCaption = (i, caption) =>
+    setForm(f => ({ ...f, gallery: f.gallery.map((g, j) => (j === i ? { ...g, caption } : g)) }))
+  const moveGallery = (i, dir) => setForm(f => {
+    const j = i + dir
+    if (j < 0 || j >= f.gallery.length) return f
+    const next = [...f.gallery]
+    ;[next[i], next[j]] = [next[j], next[i]]
+    return { ...f, gallery: next }
+  })
 
   const num = v => (v === '' || v == null ? null : (Number.isFinite(Number(v)) ? Number(v) : null))
   const intNum = v => { const n = num(v); return n == null ? null : Math.round(n) }
@@ -480,7 +490,7 @@ export default function RangeForm() {
         })
         .filter(r => r.id || r.code),
       packing: Object.fromEntries(PACKING_FIELDS.map(pf => [pf.key, (form.packing[pf.key] ?? '').toString().trim()])),
-      gallery: form.gallery,
+      gallery: form.gallery.map(g => ({ url: (g.url || '').trim(), caption: (g.caption || '').trim() })).filter(g => g.url),
       // Plating-level stock pool — keep only platings still present, as integers.
       plating_stock: Object.fromEntries(
         platingsUsed(form.variants)
@@ -767,24 +777,44 @@ export default function RangeForm() {
             <h2 className="text-base">Images</h2>
             <button type="button" onClick={addGalleryUrl} className="btn-secondary text-xs">+ URL</button>
           </div>
-          <p className="text-xs text-ink-60 mb-3">Extra product photos — click a tile to upload, or paste links with “+ URL”.</p>
-          <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-            {form.gallery.map((url, i) => (
-              <div key={i} className="relative aspect-square bg-white border border-ivory-dark">
-                <img src={url} alt="" className="w-full h-full object-contain p-1" />
-                <button type="button" onClick={() => removeGallery(i)}
-                        className="absolute -top-1.5 -right-1.5 bg-white border border-ivory-dark text-red-600 rounded-full w-5 h-5 text-xs leading-none shadow-sm hover:bg-red-50"
-                        title="Remove image">×</button>
-              </div>
-            ))}
-            <label className="aspect-square border border-dashed border-ivory-dark rounded flex flex-col items-center justify-center cursor-pointer text-ink-50 hover:border-brand-400 hover:text-brand-600 transition-colors"
-                   title="Click to upload images">
-              <span className="text-2xl leading-none">＋</span>
-              <span className="text-[10px] mt-0.5">{uploading === 'gallery' ? 'Uploading…' : 'Upload'}</span>
-              <input type="file" accept="image/*" multiple className="hidden"
-                     onChange={e => handleGalleryUpload(Array.from(e.target.files))} />
-            </label>
-          </div>
+          <p className="text-xs text-ink-60 mb-3">
+            Reference photos shown to customers. Add a caption to each (e.g. “Packaging” or a full
+            SKU like <span className="font-mono">U0002-001-CMX</span> so customers know which colour
+            mix it is). Use ↑ ↓ to set the display order — the first image is the main one.
+          </p>
+
+          {form.gallery.length > 0 && (
+            <div className="space-y-2 mb-3">
+              {form.gallery.map((g, i) => (
+                <div key={i} className="flex items-center gap-3 border border-ivory-dark rounded p-2 bg-white">
+                  <div className="w-14 h-14 shrink-0 bg-white border border-ivory-dark rounded overflow-hidden flex items-center justify-center">
+                    {g.url ? <img src={g.url} alt="" className="w-full h-full object-contain p-0.5" /> : <span className="text-[10px] text-ink-40">no image</span>}
+                  </div>
+                  <input
+                    className="input text-sm flex-1 min-w-0"
+                    value={g.caption || ''}
+                    placeholder="Caption — e.g. Packaging, or U0002-001-CMX"
+                    onChange={e => setGalleryCaption(i, e.target.value)} />
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button type="button" onClick={() => moveGallery(i, -1)} disabled={i === 0}
+                            className="text-ink-40 hover:text-ink-70 disabled:opacity-30 px-1" title="Move up">↑</button>
+                    <button type="button" onClick={() => moveGallery(i, 1)} disabled={i === form.gallery.length - 1}
+                            className="text-ink-40 hover:text-ink-70 disabled:opacity-30 px-1" title="Move down">↓</button>
+                    <button type="button" onClick={() => removeGallery(i)}
+                            className="text-red-400 hover:text-red-600 px-1 leading-none" title="Remove image">×</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <label className="border border-dashed border-ivory-dark rounded flex items-center justify-center gap-2 cursor-pointer text-ink-50 hover:border-brand-400 hover:text-brand-600 transition-colors py-3"
+                 title="Click to upload images">
+            <span className="text-xl leading-none">＋</span>
+            <span className="text-xs">{uploading === 'gallery' ? 'Uploading…' : 'Upload images'}</span>
+            <input type="file" accept="image/*" multiple className="hidden"
+                   onChange={e => handleGalleryUpload(Array.from(e.target.files))} />
+          </label>
         </div>
 
         {/* Packing */}

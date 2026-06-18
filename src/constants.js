@@ -138,3 +138,13 @@ export const RANGE_COMPONENT_CATEGORIES = [
 // Crystal colour codes (suffix after plating). Free-text — add a name map here
 // once the real code→colour mapping is known.
 export const RANGE_CRYSTAL_COLORS = []
+
+// ---- Product gallery -------------------------------------------------------
+// Gallery items are { url, caption }. Older products stored plain URL strings,
+// so normalise on read and pull the URL safely wherever a string is expected.
+export const galleryUrl = g => (typeof g === 'string' ? g : (g?.url || ''))
+export const galleryCaption = g => (typeof g === 'string' ? '' : (g?.caption || ''))
+export const normGallery = arr =>
+  (Array.isArray(arr) ? arr : [])
+    .map(g => ({ url: galleryUrl(g), caption: galleryCaption(g) }))
+    .filter(g => g.url)

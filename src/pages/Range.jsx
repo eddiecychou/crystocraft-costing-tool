@@ -3,7 +3,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, getDocs, deleteDoc, doc
 import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import rangeData from '../data/rangeProducts.json'
-import { RANGE_PLATINGS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS, designNumber, brandLetter, bodyLetter } from '../constants'
+import { RANGE_PLATINGS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS, designNumber, brandLetter, bodyLetter, galleryUrl } from '../constants'
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
@@ -150,7 +150,7 @@ export default function Range() {
       : variants.reduce((s, v) => s + (v.stock_finished > 0 ? v.stock_finished : 0), 0)
     const platings = [...new Set(variants.map(v => v.plating_name).filter(Boolean))]
     const brands = [...new Set(variants.map(v => v.brand_code || fallbackBrand).filter(Boolean))]
-    const image = variants.find(v => v.image)?.image || (Array.isArray(p.gallery) && p.gallery[0]) || ''
+    const image = variants.find(v => v.image)?.image || galleryUrl(p.gallery?.[0]) || ''
     // Show the full SKU prefix in the code when the design has a single brand
     // (e.g. UA061-231, D0002-001). Multi-brand designs show the shared base
     // code + per-brand chips so the prefix letters aren't lost.

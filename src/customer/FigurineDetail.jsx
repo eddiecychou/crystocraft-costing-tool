@@ -3,7 +3,7 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { useParams, Link } from 'react-router-dom'
 import { db } from '../firebase'
 import { Gem, ArrowLeft, Check, Plus, Minus } from 'lucide-react'
-import { designNumber, brandLetter, bodyLetter, RANGE_CRYSTAL_BRANDS } from '../constants'
+import { designNumber, brandLetter, bodyLetter, RANGE_CRYSTAL_BRANDS, normGallery } from '../constants'
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import { useRates, fromUSD, fmtMoney } from '../currency'
@@ -54,7 +54,8 @@ export default function FigurineDetail({ profile }) {
   // Product-level base code (brand prefix only when the design is single-brand).
   const baseCode = [`${multiBrand ? '' : brands[0] || ''}${body}${designNo}`, p.format_code].filter(Boolean).join('-')
   const name = p.description || p.design_name || baseCode
-  const image = variants.find(v => v.image)?.image || (Array.isArray(p.gallery) && p.gallery[0]) || ''
+  const gallery = normGallery(p.gallery)
+  const image = variants.find(v => v.image)?.image || gallery[0]?.url || ''
   const mixes = p.crystal_mixes && typeof p.crystal_mixes === 'object' ? p.crystal_mixes : {}
   const colorCodes = [...new Set(variants.flatMap(v => Array.isArray(v.crystal_colors) ? v.crystal_colors : []))]
 
@@ -241,6 +242,26 @@ export default function FigurineDetail({ profile }) {
           </p>
         </div>
       </div>
+
+      {gallery.length > 0 && (
+        <div className="mt-8">
+          <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-3">Reference photos</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {gallery.map((g, i) => (
+              <figure key={i} className="card overflow-hidden">
+                <div className="aspect-square bg-white flex items-center justify-center overflow-hidden">
+                  <img src={g.url} alt={g.caption || name} className="w-full h-full object-contain p-2" />
+                </div>
+                {g.caption && (
+                  <figcaption className="px-2 py-1.5 text-[11px] text-ink-60 border-t border-ivory-dark truncate" title={g.caption}>
+                    {g.caption}
+                  </figcaption>
+                )}
+              </figure>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
