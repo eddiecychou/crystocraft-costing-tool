@@ -24,6 +24,14 @@ export default function EnquiryPage({ profile }) {
   const total = items.reduce((s, i) => s + (lineTotal(i) || 0), 0)
   const hasIndicative = items.some(i => unitPrice(i) == null)
 
+  // MOQ is a per-design (metal-part) minimum: all plating/colour variations of
+  // the same design count toward it together, so aggregate pieces by design.
+  const designPcs = items.reduce((m, i) => {
+    const k = `${i.type}:${i.id}`
+    m[k] = (m[k] || 0) + Math.max(1, Number(i.qty) || 1)
+    return m
+  }, {})
+
   async function submit() {
     if (!items.length) return
     setSending(true); setError('')
@@ -92,7 +100,8 @@ export default function EnquiryPage({ profile }) {
           const moq = Number(i.moq) || 0
           const qtyPcs = Math.max(1, Number(i.qty) || 1)
           const cartons = ppc > 0 ? Math.max(1, Math.round(qtyPcs / ppc)) : 0
-          const belowMoq = moq > 0 && qtyPcs < moq
+          const designTotal = designPcs[`${i.type}:${i.id}`] || qtyPcs
+          const belowMoq = moq > 0 && designTotal < moq
           const setCartons = n => { const c = Math.max(1, Math.floor(n) || 1); cart.update(i.key, { cartons: c, qty: c * ppc }) }
           const setPcs = n => cart.update(i.key, { qty: Math.max(1, Math.floor(n) || 1) })
           return (
@@ -142,7 +151,7 @@ export default function EnquiryPage({ profile }) {
                 <span className="text-sm text-ink font-medium">
                   {lineTotal(i) != null ? fmtMoney(lineTotal(i), cur) : '—'}
                 </span>
-                {belowMoq && <span className="text-[10px] text-amber-700 text-right">Below min {moq.toLocaleString()} pcs</span>}
+                {belowMoq && <span className="text-[10px] text-amber-700 text-right">Design total {designTotal.toLocaleString()} / min {moq.toLocaleString()} pcs</span>}
                 <button onClick={() => cart.remove(i.key)} className="text-ink-40 hover:text-red-500" aria-label="Remove">
                   <Trash2 size={15} />
                 </button>
