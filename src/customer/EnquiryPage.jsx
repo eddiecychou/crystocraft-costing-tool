@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db, auth } from '../firebase'
 import { Gem, Package, Trash2, ClipboardList, CheckCircle2, Plus, Minus } from 'lucide-react'
-import { useCart, designGroupKey, formatGroupKey, formatCodeOf } from './store'
+import { useCart, designGroupKey, formatGroupKey, formatCodeOf, designNumberOf } from './store'
 import { useFormatMoq } from '../formatMoq'
 import { RANGE_FORMAT_CODES } from '../constants'
 import { useRates, fromUSD, fmtMoney } from '../currency'
@@ -170,8 +170,8 @@ export default function EnquiryPage({ profile }) {
                 <span className="text-sm text-ink font-medium">
                   {lineTotal(i) != null ? fmtMoney(lineTotal(i), cur) : '—'}
                 </span>
-                {belowMoq && <span className="text-[10px] text-amber-700 text-right">Design total {designTotal.toLocaleString()} / min {moq.toLocaleString()} pcs</span>}
-                {belowFormatMoq && <span className="text-[10px] text-amber-700 text-right">{fmtLabel} total {formatTotal.toLocaleString()} / min {fmtMoq.toLocaleString()} pcs</span>}
+                {belowMoq && <Link to={`/shop/figurine?design=${designNumberOf(i)}`} title="Find more items of this design to reach the minimum" className="text-[10px] text-amber-700 hover:text-amber-900 underline decoration-dotted text-right">Design total {designTotal.toLocaleString()} / min {moq.toLocaleString()} pcs — add more</Link>}
+                {belowFormatMoq && <Link to={`/shop/figurine?format=${fmtCode}`} title={`Find more ${fmtLabel} designs to reach the minimum`} className="text-[10px] text-amber-700 hover:text-amber-900 underline decoration-dotted text-right">{fmtLabel} total {formatTotal.toLocaleString()} / min {fmtMoq.toLocaleString()} pcs — add more</Link>}
                 <button onClick={() => cart.remove(i.key)} className="text-ink-40 hover:text-red-500" aria-label="Remove">
                   <Trash2 size={15} />
                 </button>

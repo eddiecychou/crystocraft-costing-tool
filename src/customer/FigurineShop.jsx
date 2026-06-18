@@ -1,12 +1,20 @@
 import { useState, useEffect, useMemo } from 'react'
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { db } from '../firebase'
-import { Gem } from 'lucide-react'
-import { designNumber, brandLetter, bodyLetter, galleryUrl } from '../constants'
+import { Gem, X } from 'lucide-react'
+import { designNumber, brandLetter, bodyLetter, galleryUrl, RANGE_FORMAT_CODES } from '../constants'
 import { useRates, fromUSD, fmtMoney } from '../currency'
+import { useFormatMoq } from '../formatMoq'
 import FavHeart from './FavHeart'
 import LoadingBar from '../components/LoadingBar'
+
+const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.label]))
+// Normalise a design number the same way designGroupKey does (strip leading zeros).
+const normDesign = raw => {
+  const s = String(raw ?? '').trim()
+  return /^\d+$/.test(s) ? String(parseInt(s, 10)) : s
+}
 
 function docVariants(p) {
   if (Array.isArray(p.variants) && p.variants.length) return p.variants
@@ -21,6 +29,10 @@ export default function FigurineShop({ profile }) {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [cat, setCat] = useState('')
+  const [params, setParams] = useSearchParams()
+  const { labels: formatLabels } = useFormatMoq()
+  const designFilter = params.get('design') ? normDesign(params.get('design')) : ''
+  const formatFilter = params.get('format') || ''
   const rates = useRates()
   const cur = profile?.base_currency || 'USD'
   const disc = Math.max(0, Math.min(100, Number(profile?.ws_discount_pct) || 0)) / 100
@@ -47,6 +59,8 @@ export default function FigurineShop({ profile }) {
     const code = [`${brands.length === 1 ? brands[0] : ''}${body}${designNo}`, p.format_code].filter(Boolean).join('-')
     return {
       id: p.id, code,
+      design_key: normDesign(designNo),
+      format_code: String(p.format_code || '').trim(),
       name: p.description || p.design_name || code,
       design_type: p.design_type || p.category || '',
       size: p.size, image,
@@ -60,8 +74,17 @@ export default function FigurineShop({ profile }) {
   const filtered = useMemo(() => items.filter(s => {
     const q = search.toLowerCase()
     const ms = !q || s.name?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q)
-    return ms && (!cat || s.design_type === cat)
-  }), [items, search, cat])
+    const md = !designFilter || s.design_key === designFilter
+    const mf = !formatFilter || s.format_code === formatFilter
+    return ms && md && mf && (!cat || s.design_type === cat)
+  }), [items, search, cat, designFilter, formatFilter])
+
+  const formatName = formatLabels[formatFilter] || FORMAT_LABEL[formatFilter] || `Format ${formatFilter}`
+  const clearMoqFilter = () => {
+    const next = new URLSearchParams(params)
+    next.delete('design'); next.delete('format')
+    setParams(next, { replace: true })
+  }
 
   const priceLabel = s => {
     if (s.minNet == null) return 'Enquire'
@@ -78,6 +101,16 @@ export default function FigurineShop({ profile }) {
           {disc > 0 ? ` (your ${(disc * 100).toFixed(disc * 100 % 1 ? 1 : 0)}% discount applied)` : ''}
         </p>
       </div>
+      {(designFilter || formatFilter) && (
+        <div className="flex items-center justify-between gap-2 mb-4 px-3 py-2 rounded-md bg-amber-50 border border-amber-200">
+          <span className="text-sm text-amber-800">
+            Showing {designFilter ? <>designs in number <span className="font-mono font-medium">{designFilter}</span></> : <>all <span className="font-medium">{formatName}</span> designs</>} to help reach the minimum order quantity.
+          </span>
+          <button onClick={clearMoqFilter} className="inline-flex items-center gap-1 text-sm text-amber-800 hover:text-amber-950 shrink-0">
+            <X size={14} /> Clear
+          </button>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row gap-2 mb-5">
         <input type="text" placeholder="Search name or code…" className="input w-full sm:flex-1"
           value={search} onChange={e => setSearch(e.target.value)} />

@@ -24,6 +24,13 @@ export const designGroupKey = i => {
   return norm ? `figurine:${norm}` : `figurine:${i.id}`
 }
 
+// The normalised design number for an item (e.g. "0002"/2 -> "2"), matching
+// designGroupKey. Used to deep-link the shop to all formats of one design.
+export const designNumberOf = i => {
+  const k = designGroupKey(i)
+  return k.startsWith('figurine:') ? k.slice('figurine:'.length) : ''
+}
+
 // The format code (what the design is built into: freestand 001, music box 033,
 // bible…). Taken from format_code, else the last segment of the item code
 // ("D0002-236" -> "236").
