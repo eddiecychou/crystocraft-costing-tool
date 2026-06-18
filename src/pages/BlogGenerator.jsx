@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { isPublicVisible } from '../constants'
+import { loadBlogProducts, loadBlogImages, PRODUCT_SOURCES } from '../productSource'
 import { useParams, Link } from 'react-router-dom'
 import {
   Check, X, Pencil, FileArchive, Clock, Rocket, RotateCcw,
@@ -536,6 +537,7 @@ function EditableMeta({ result, onChange }) {
 
 // ── Spotlight tab ─────────────────────────────────────────────────────────────
 function SpotlightTab({ preloadedProduct }) {
+  const [source, setSource]         = useState('corporate')
   const [products, setProducts]     = useState([])
   const [selectedId, setSelectedId] = useState(preloadedProduct?.id || '')
   const [industry, setIndustry]     = useState('')
@@ -550,25 +552,24 @@ function SpotlightTab({ preloadedProduct }) {
   const [ctaText, setCtaText]       = useState('View Product →')
 
   useEffect(() => {
-    getDocs(query(collection(db, 'products'), orderBy('name')))
-      .then(snap => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
-  }, [])
+    loadBlogProducts(source).then(setProducts)
+  }, [source])
 
   const selectedProduct = preloadedProduct?.id === selectedId
     ? preloadedProduct
     : products.find(p => p.id === selectedId)
 
   useEffect(() => {
-    if (!selectedId) { setProductImages([]); setHeroImage(null); setSectionImages([]); return }
-    getDocs(query(collection(db, 'products', selectedId, 'images'), orderBy('sort_order')))
-      .then(snap => {
-        // Blog posts are public — only images marked Public may be used.
-        const imgs = snap.docs.map(d => d.data()).filter(isPublicVisible)
-        setProductImages(imgs)
-        setHeroImage(imgs[0] || null)
-        setSectionImages(result ? result.sections.map(() => []) : [])
-      })
-  }, [selectedId])
+    if (!selectedId || !selectedProduct) { setProductImages([]); setHeroImage(null); setSectionImages([]); return }
+    loadBlogImages(source, selectedProduct).then(raw => {
+      // Blog posts are public — only Public-visibility images may be used.
+      // (Range images have no visibility field and are treated as public.)
+      const imgs = raw.filter(isPublicVisible)
+      setProductImages(imgs)
+      setHeroImage(imgs[0] || null)
+      setSectionImages(result ? result.sections.map(() => []) : [])
+    })
+  }, [selectedId, source, selectedProduct])
 
   async function handleGenerate() {
     if (!selectedProduct) return
@@ -628,6 +629,18 @@ function SpotlightTab({ preloadedProduct }) {
     <div className="space-y-5">
       {/* Controls */}
       <div className="card p-5 space-y-4">
+        <div>
+          <label className="label">Product Source</label>
+          <div className="flex gap-2">
+            {PRODUCT_SOURCES.map(s => (
+              <button key={s.value} type="button"
+                onClick={() => { if (s.value !== source) { setSource(s.value); setSelectedId(''); setResult(null) } }}
+                className={`text-sm px-3 py-1.5 rounded-md border transition-colors ${source === s.value ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
         <div>
           <label className="label">Product</label>
           <select className="input" value={selectedId} onChange={e => setSelectedId(e.target.value)}>
@@ -737,6 +750,7 @@ function SpotlightTab({ preloadedProduct }) {
 
 // ── Roundup tab ───────────────────────────────────────────────────────────────
 function RoundupTab() {
+  const [source, setSource]           = useState('corporate')
   const [products, setProducts]       = useState([])
   const [selected, setSelected]       = useState([])
   const [industry, setIndustry]       = useState('')
@@ -753,9 +767,8 @@ function RoundupTab() {
   const [itemImages, setItemImages]   = useState({}) // { productId: [imageObjects] }
 
   useEffect(() => {
-    getDocs(query(collection(db, 'products'), orderBy('name')))
-      .then(snap => setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
-  }, [])
+    loadBlogProducts(source).then(setProducts)
+  }, [source])
 
   async function toggleProduct(p) {
     const isSelected = selected.find(s => s.id === p.id)
@@ -765,9 +778,9 @@ function RoundupTab() {
       setSelected(prev => [...prev, p])
       // Fetch images for this product if not already cached
       if (!productImageMap[p.id]) {
-        const snap = await getDocs(query(collection(db, 'products', p.id, 'images'), orderBy('sort_order')))
-        // Public path: only Public-visibility images are eligible.
-        const imgs = snap.docs.map(d => d.data()).filter(isPublicVisible)
+        // Public path: only Public-visibility images are eligible. (Range images
+        // have no visibility field and pass as public automatically.)
+        const imgs = (await loadBlogImages(source, p)).filter(isPublicVisible)
         setProductImageMap(prev => ({ ...prev, [p.id]: imgs }))
       }
     }
@@ -829,6 +842,19 @@ function RoundupTab() {
   return (
     <div className="space-y-5">
       <div className="card p-5 space-y-4">
+        <div>
+          <label className="label">Product Source</label>
+          <div className="flex gap-2">
+            {PRODUCT_SOURCES.map(s => (
+              <button key={s.value} type="button"
+                onClick={() => { if (s.value !== source) { setSource(s.value); setSelected([]); setProductImageMap({}); setItemImages({}); setHeroImage(null); setResult(null) } }}
+                className={`text-sm px-3 py-1.5 rounded-md border transition-colors ${source === s.value ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-gray-400 mt-1">A roundup features products from one source at a time.</p>
+        </div>
         <div>
           <label className="label">Select Products <span className="text-gray-400 font-normal">(2–7, in order)</span></label>
           <div className="mt-2 space-y-1.5 max-h-64 overflow-y-auto pr-1">
