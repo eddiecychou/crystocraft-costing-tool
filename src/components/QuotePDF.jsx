@@ -57,7 +57,7 @@ const s = StyleSheet.create({
 
   // Client info
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 },
-  infoCol: { flexDirection: 'column', maxWidth: 320 },
+  infoCol: { flexDirection: 'column', width: 330 },
   infoLine: { flexDirection: 'row', marginBottom: 3, alignItems: 'flex-start' },
   label: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 7, color: C.grayLabel, letterSpacing: 1.3, width: 62, paddingTop: 1 },
   labelRight: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 7, color: C.grayLabel, letterSpacing: 1.3, marginRight: 8, textAlign: 'right' },
@@ -134,7 +134,7 @@ export default function QuotePDF({ quote, items }) {
               <Text style={[s.value, { fontFamily: contentFont(quote.contact_address) }]}>{quote.contact_address || '—'}</Text>
             </View>
           </View>
-          <View style={{ flexDirection: 'column', minWidth: 150 }}>
+          <View style={{ flexDirection: 'column', width: 170 }}>
             <View style={s.infoRightLine}>
               <Text style={s.labelRight}>DATE</Text>
               <Text style={s.value}>{fmtDate(quote.quote_date)}</Text>
