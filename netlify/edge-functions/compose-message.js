@@ -33,6 +33,10 @@ Rules:
 
   for (const model of models) {
     try {
+      const generationConfig = { maxOutputTokens: 2048, temperature: 0.7 }
+      // 2.5-flash spends maxOutputTokens on hidden "thinking" first, which can
+      // truncate the visible message mid-sentence. Disable thinking for it.
+      if (model.startsWith('gemini-2.5')) generationConfig.thinkingConfig = { thinkingBudget: 0 }
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${Deno.env.get('GEMINI_API_KEY')}`,
         {
@@ -40,7 +44,7 @@ Rules:
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { maxOutputTokens: 1000, temperature: 0.7 },
+            generationConfig,
           }),
         }
       )
