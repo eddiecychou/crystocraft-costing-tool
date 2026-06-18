@@ -39,7 +39,9 @@ service cloud.firestore {
         || (request.auth.uid == uid
             && request.resource.data.role == resource.data.role
             && request.resource.data.status == resource.data.status
-            && request.resource.data.ws_discount_pct == resource.data.ws_discount_pct);
+            && request.resource.data.ws_discount_pct == resource.data.ws_discount_pct
+            && request.resource.data.get('pricing_group', '') == resource.data.get('pricing_group', '')
+            && request.resource.data.get('corp_markup_override', 0) == resource.data.get('corp_markup_override', 0));
       allow delete: if isAdmin();
     }
 
@@ -56,6 +58,13 @@ service cloud.firestore {
       }
       match /pricing_tiers/{tierId} {
         allow read: if canShop();
+        allow write: if isAdmin();
+      }
+      // Per-customer published prices (cost × that customer's markup, precomputed
+      // by the admin so raw cost never reaches the storefront). A customer may
+      // only read their OWN price doc; admins manage all.
+      match /customer_prices/{priceUid} {
+        allow read: if request.auth.uid == priceUid || isAdmin();
         allow write: if isAdmin();
       }
       match /components/{componentId} {

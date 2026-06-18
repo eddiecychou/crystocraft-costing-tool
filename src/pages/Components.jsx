@@ -18,7 +18,7 @@ export default function Components() {
       </p>
 
       <div className="flex gap-1 border-b border-ivory-dark mb-5">
-        {[['critical', 'Critical Components'], ['colours', 'Crystal Colours'], ['formatmoq', 'Format MOQs']].map(([k, label]) => (
+        {[['critical', 'Critical Components'], ['colours', 'Crystal Colours'], ['formatmoq', 'Format MOQs'], ['pricegroups', 'Pricing Groups']].map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
               tab === k ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-80'}`}>
@@ -27,7 +27,7 @@ export default function Components() {
         ))}
       </div>
 
-      {tab === 'critical' ? <CriticalComponents /> : tab === 'colours' ? <CrystalColours /> : <FormatMoqs />}
+      {tab === 'critical' ? <CriticalComponents /> : tab === 'colours' ? <CrystalColours /> : tab === 'formatmoq' ? <FormatMoqs /> : <PricingGroups />}
     </div>
   )
 }
@@ -440,6 +440,121 @@ function FormatMoqs() {
       <div className="mt-5 flex items-center gap-3 flex-wrap">
         <button onClick={save} disabled={saving || !dirty} className="btn-primary text-sm">
           {saving ? 'Saving…' : 'Save Format MOQs'}
+        </button>
+        {dirty && <span className="text-xs text-amber-500">unsaved changes</span>}
+        {msg && <p className={`text-xs ${msg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{msg}</p>}
+      </div>
+    </div>
+  )
+}
+
+// ── Pricing Groups tab ───────────────────────────────────────────────────────
+// Customer pricing strategies for corporate gifts. Each group has a markup
+// (cost × markup = sell price). Customers are assigned a group in Customer
+// Accounts; a per-customer override can still beat the group. Prices are
+// recomputed per customer when an admin publishes on a product's Pricing page.
+
+const slugify = s => (s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+
+function PricingGroups() {
+  const [rows, setRows] = useState([])   // [{ id, name, markup }]  (markup string)
+  const [saved, setSaved] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState(null)
+
+  useEffect(() => {
+    getDoc(doc(db, 'settings', 'pricing_groups')).then(snap => {
+      const d = snap.exists() ? snap.data() : {}
+      const next = (Array.isArray(d.groups) ? d.groups : []).map(g => ({
+        id: String(g.id || ''),
+        name: String(g.name || ''),
+        markup: g.markup != null && g.markup !== '' ? String(g.markup) : '',
+      }))
+      setRows(next); setSaved(next); setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [])
+
+  const update = (i, key, val) => setRows(rs => rs.map((r, j) => (j === i ? { ...r, [key]: val } : r)))
+  const addRow = () => setRows(rs => [...rs, { id: '', name: '', markup: '' }])
+  const removeRow = i => setRows(rs => rs.filter((_, j) => j !== i))
+  const dirty = JSON.stringify(rows) !== JSON.stringify(saved)
+
+  async function save() {
+    setSaving(true); setMsg(null)
+    try {
+      // Keep rows with a name + positive markup; assign a stable id (slug of name,
+      // de-duplicated) so customer assignments survive renames of the label.
+      const used = new Set()
+      const groups = []
+      for (const r of rows) {
+        const name = r.name.trim()
+        const markup = Number(r.markup)
+        if (!name || !(markup > 0)) continue
+        let id = r.id && r.id.trim() ? r.id.trim() : slugify(name)
+        if (!id) id = 'group'
+        let unique = id, n = 2
+        while (used.has(unique)) unique = `${id}-${n++}`
+        used.add(unique)
+        groups.push({ id: unique, name, markup })
+      }
+      await setDoc(doc(db, 'settings', 'pricing_groups'), { groups, updatedAt: serverTimestamp() })
+      const asRows = groups.map(g => ({ id: g.id, name: g.name, markup: String(g.markup) }))
+      setRows(asRows); setSaved(asRows)
+      setMsg(`Saved ${groups.length} group${groups.length === 1 ? '' : 's'}.`)
+      setTimeout(() => setMsg(null), 3000)
+    } catch (e) {
+      setMsg('Error saving: ' + e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="card p-5">
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-sm font-semibold text-ink-80">Customer Pricing Groups</h2>
+        <button onClick={addRow} className="btn-secondary text-xs py-1.5 px-3">+ Add group</button>
+      </div>
+      <p className="text-xs text-ink-50 mb-4">
+        Pricing strategies for corporate gifts. The markup multiplies the product's all-in cost to set
+        the customer's price (e.g. 2.0× = cost doubled). Assign each customer a group in Customer
+        Accounts; a per-customer override can beat the group. After changing markups, open a product's
+        Pricing page and Publish to push new prices.
+      </p>
+
+      {loading ? (
+        <p className="text-xs text-ink-50">Loading…</p>
+      ) : rows.length === 0 ? (
+        <p className="text-xs text-ink-50">No groups yet — add one (e.g. Standard 2.0×, Preferred 1.7×, VIP 1.5×).</p>
+      ) : (
+        <div className="space-y-2">
+          <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-wide text-ink-40 px-1">
+            <span className="flex-1">Group name</span>
+            <span className="w-28 shrink-0">Markup (×)</span>
+            <span className="w-6 shrink-0" />
+          </div>
+          {rows.map((r, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <input className="input text-sm flex-1 min-w-0" value={r.name}
+                     placeholder="e.g. Preferred" onChange={e => update(i, 'name', e.target.value)} />
+              <div className="relative w-28 shrink-0">
+                <input type="number" min="1" step="0.05"
+                       className="input pr-7 text-right tabular-nums"
+                       value={r.markup} placeholder="2.0"
+                       onChange={e => update(i, 'markup', e.target.value)} />
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-40 pointer-events-none">×</span>
+              </div>
+              <button type="button" onClick={() => removeRow(i)}
+                      className="text-red-400 hover:text-red-600 px-1 leading-none shrink-0" title="Remove"><X size={15} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-5 flex items-center gap-3 flex-wrap">
+        <button onClick={save} disabled={saving || !dirty} className="btn-primary text-sm">
+          {saving ? 'Saving…' : 'Save Pricing Groups'}
         </button>
         {dirty && <span className="text-xs text-amber-500">unsaved changes</span>}
         {msg && <p className={`text-xs ${msg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{msg}</p>}

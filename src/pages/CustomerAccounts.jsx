@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { collection, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { CUSTOMER_CURRENCIES } from '../currency'
+import { usePricingGroups } from '../pricing'
 import LoadingBar from '../components/LoadingBar'
 import { ShieldCheck, Clock, UserCheck } from 'lucide-react'
 
@@ -9,6 +10,7 @@ export default function CustomerAccounts() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('pending')
+  const { groups } = usePricingGroups()
 
   useEffect(() => {
     return onSnapshot(collection(db, 'users'), snap => {
@@ -50,16 +52,23 @@ export default function CustomerAccounts() {
         <div className="text-center py-16 text-ink-60">Nothing here.</div>
       ) : (
         <div className="space-y-2">
-          {rows.map(u => <Row key={u.id} u={u} tab={tab} set={set} />)}
+          {rows.map(u => <Row key={u.id} u={u} tab={tab} set={set} groups={groups} />)}
         </div>
       )}
     </div>
   )
 }
 
-function Row({ u, tab, set }) {
+function Row({ u, tab, set, groups }) {
   const [cur, setCur] = useState(u.base_currency || 'USD')
   const [disc, setDisc] = useState(u.ws_discount_pct ?? 0)
+  const [group, setGroup] = useState(u.pricing_group || '')
+  const [override, setOverride] = useState(u.corp_markup_override ?? '')
+
+  const pricingPatch = {
+    pricing_group: group,
+    corp_markup_override: override === '' ? 0 : Number(override) || 0,
+  }
 
   return (
     <div className="card p-4 flex flex-col md:flex-row md:items-center gap-3">
@@ -69,7 +78,7 @@ function Row({ u, tab, set }) {
       </div>
 
       {tab !== 'admins' && (
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <label className="text-xs text-ink-60">Currency
             <select className="input py-1 ml-1 w-24 inline-block" value={cur} onChange={e => setCur(e.target.value)}>
               {CUSTOMER_CURRENCIES.map(c => <option key={c}>{c}</option>)}
@@ -79,20 +88,30 @@ function Row({ u, tab, set }) {
             <input type="number" min="0" max="100" step="0.5" className="input py-1 ml-1 w-20 inline-block"
               value={disc} onChange={e => setDisc(e.target.value)} />
           </label>
+          <label className="text-xs text-ink-60">Pricing
+            <select className="input py-1 ml-1 w-32 inline-block" value={group} onChange={e => setGroup(e.target.value)}>
+              <option value="">— Default —</option>
+              {groups.map(g => <option key={g.id} value={g.id}>{g.name} ({Number(g.markup).toFixed(2)}×)</option>)}
+            </select>
+          </label>
+          <label className="text-xs text-ink-60" title="Per-customer markup that overrides the group. Leave blank to use the group.">Override ×
+            <input type="number" min="0" step="0.05" placeholder="—" className="input py-1 ml-1 w-20 inline-block"
+              value={override} onChange={e => setOverride(e.target.value)} />
+          </label>
         </div>
       )}
 
       <div className="flex items-center gap-2 shrink-0">
         {tab === 'pending' && (
           <button className="btn-primary text-sm"
-            onClick={() => set(u.id, { status: 'approved', base_currency: cur, ws_discount_pct: Number(disc) || 0 })}>
+            onClick={() => set(u.id, { status: 'approved', base_currency: cur, ws_discount_pct: Number(disc) || 0, ...pricingPatch })}>
             Approve
           </button>
         )}
         {tab === 'approved' && (
           <>
             <button className="btn-secondary text-sm"
-              onClick={() => set(u.id, { base_currency: cur, ws_discount_pct: Number(disc) || 0 })}>
+              onClick={() => set(u.id, { base_currency: cur, ws_discount_pct: Number(disc) || 0, ...pricingPatch })}>
               Save
             </button>
             <button className="text-xs text-ink-50 hover:text-amber-600"
