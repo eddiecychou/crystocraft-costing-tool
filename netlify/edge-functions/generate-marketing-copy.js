@@ -9,7 +9,7 @@ export default async function handler(req) {
   }
   console.log('GEMINI_API_KEY present, length:', GEMINI_API_KEY.length)
 
-  const { product, tone = 'professional and premium', instructions = '' } = await req.json()
+  const { product, source = 'corporate', tone = 'professional and premium', instructions = '' } = await req.json()
   if (!product?.name) {
     return new Response(JSON.stringify({ error: 'Product data required' }), {
       status: 400, headers: { 'Content-Type': 'application/json' },
@@ -41,7 +41,40 @@ export default async function handler(req) {
     }
   }
 
-  const prompt = `You are a marketing copywriter for Crystocraft, a Hong Kong corporate gift supplier specialising in premium crystal, glassware, and luxury branded merchandise. Our clients are HR, procurement and marketing managers at banks, insurance companies, law firms, hotels, and large corporations.
+  const accuracyBlock = `ACCURACY RULES (critical — do not break these):
+- Base every factual claim (materials, dimensions, finish, colour names) ONLY on the PRODUCT DETAILS text above. If a detail is not provided, do NOT state or invent it.
+- Never guess or fabricate specifications, measurements, materials, or certifications.
+${imagePart ? `- A product image is provided. You MAY describe visual qualities you can clearly see — shape, form, colour, faceting, how light interacts — but NEVER infer specs, materials, or measurements from the image. Visual description only.` : ''}`
+
+  const commonReqs = `REQUIREMENTS:
+- Tone: ${tone}
+- Length: 2–4 sentences (50–100 words)
+- Do NOT mention prices
+- Write in English only
+- Output ONLY the marketing copy — no headings, no labels, no extra text
+- NEVER start with "Elevate" — vary your openings each time. Other banned openers: "Discover", "Introducing", "Transform", "Unleash"`
+
+  const prompt = source === 'range'
+    ? `You are a marketing copywriter for Crystocraft, a Hong Kong designer and maker of premium crystal giftware and collectible figurines — sparkling crystal ornaments, animals, and decorative pieces sold to gift retailers, collectors, and design-led stores worldwide.
+
+Write a compelling marketing description for the following crystal design. It will be used on our product range website and in catalogues.
+
+PRODUCT DETAILS:
+Design name: ${product.name}
+Type: ${product.category || ''}
+${product.size ? `Size: ${product.size}` : ''}
+${product.crystal_type ? `Crystal: ${product.crystal_type}` : ''}
+${product.finishes ? `Available finishes / colours: ${product.finishes}` : ''}
+Description: ${product.description || ''}
+${instructions ? `\nADDITIONAL INSTRUCTIONS FROM THE TEAM (these take priority — follow them closely):\n${instructions}\n` : ''}
+${accuracyBlock}
+
+${commonReqs}
+- Evoke the craftsmanship, sparkle and collectible charm of the piece — the feeling of giving or displaying it
+- Mention the finish/colour options naturally if provided
+
+Marketing description:`
+    : `You are a marketing copywriter for Crystocraft, a Hong Kong corporate gift supplier specialising in premium crystal, glassware, and luxury branded merchandise. Our clients are HR, procurement and marketing managers at banks, insurance companies, law firms, hotels, and large corporations.
 
 Write a compelling marketing description for the following product. It will be used in our product catalogue and website.
 
@@ -51,20 +84,11 @@ Category: ${product.category || ''}
 Spec / Description: ${product.description || ''}
 ${product.assembly_notes ? `Notes: ${product.assembly_notes}` : ''}
 ${instructions ? `\nADDITIONAL INSTRUCTIONS FROM THE TEAM (these take priority — follow them closely):\n${instructions}\n` : ''}
-ACCURACY RULES (critical — do not break these):
-- Base every factual claim (materials, dimensions, capacity, colour names, finish, packaging) ONLY on the PRODUCT DETAILS text above. If a detail is not provided, do NOT state or invent it.
-- Never guess or fabricate specifications, measurements, materials, or certifications.
-${imagePart ? `- A product image is provided. You MAY describe visual qualities you can clearly see — shape, form, colour, faceting, how light interacts, and where a logo or engraving could sit — but NEVER infer specs, materials, or measurements from the image. Visual description only.` : ''}
+${accuracyBlock}
 
-REQUIREMENTS:
-- Tone: ${tone}
-- Length: 2–4 sentences (50–100 words)
+${commonReqs}
 - Focus on the emotional appeal, prestige, and gifting occasion — not just specs
 - Highlight customisation potential (logo engraving, branding) naturally if relevant
-- Do NOT mention prices
-- Write in English only
-- Output ONLY the marketing copy — no headings, no labels, no extra text
-- NEVER start with "Elevate" — vary your openings each time. Other banned openers: "Discover", "Introducing", "Transform", "Unleash"
 
 Marketing description:`
 

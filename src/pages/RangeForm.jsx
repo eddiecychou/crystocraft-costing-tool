@@ -17,7 +17,7 @@ import LoadingBar from '../components/LoadingBar'
 import { useCrystalColors, colorMap, ensureColors } from '../crystalColors'
 import { buildRangeSku, rangePrice } from '../rangeSku'
 import { useComponents, resolveRef, productAvailability } from '../criticalComponents'
-import { Puzzle, Gem, Check, Download, Plus, X } from 'lucide-react'
+import { Puzzle, Gem, Check, Download, Plus, X, Sparkles, RotateCcw } from 'lucide-react'
 import CRYSTAL_MIXES from '../data/crystalMixes.json'
 
 // A "mix" code is an assorted/multi-crystal bucket (MX, M1–M9, AX, A1–A9,
@@ -42,7 +42,7 @@ const emptyPacking = () => ({
   cbm_per_carton: '', weight_per_carton_kg: '', weight_per_pcs_kg: '',
 })
 const blankForm = () => ({
-  design_no: '', body_code: '', design_name: '', description: '', category: '',
+  design_no: '', body_code: '', design_name: '', description: '', marketing_description: '', category: '',
   design_type: '', product_type: 'Figurine', format_code: '001',
   size: '', crystal_type: 'Bohemia', active: true, status: 'active',
   moq: '', lead_time_weeks: '', delivery_note: '', critical_components: [],
@@ -154,6 +154,15 @@ export default function RangeForm() {
   const [uploading, setUploading] = useState('')
   const [catOptions, setCatOptions] = useState({ design: [], product: [] })
   const [mixMsg, setMixMsg] = useState('')
+  // AI marketing-copy writer (mirrors the corporate-gift product form)
+  const [aiLoading, setAiLoading]   = useState(false)
+  const [aiError, setAiError]       = useState('')
+  const [aiGuide, setAiGuide]       = useState('')
+  const [guideOpen, setGuideOpen]   = useState(false)
+  const [rewriteOpen, setRewriteOpen]       = useState(false)
+  const [rewriteGuide, setRewriteGuide]     = useState('')
+  const [rewriteLoading, setRewriteLoading] = useState(false)
+  const [rewriteError, setRewriteError]     = useState('')
   const { colors: libColors, setColors: setLibColors } = useCrystalColors()
   const colorLookup = colorMap(libColors)
   const { components: libComponents } = useComponents()
@@ -335,6 +344,7 @@ export default function RangeForm() {
           body_code: d.body_code || bodyLetter(d.design_code),
           design_name: d.design_name || '',
           description: d.description || '',
+          marketing_description: d.marketing_description || '',
           category: d.category || '',
           design_type: d.design_type || d.category || '',
           product_type: d.product_type || 'Figurine',
@@ -363,6 +373,69 @@ export default function RangeForm() {
   }, [routeId, isNew])
 
   const set = field => e => setForm(f => ({ ...f, [field]: e.target.value }))
+
+  // Build the normalized "product" shape the AI writer expects from range fields.
+  function aiProductPayload() {
+    const heroImage = form.gallery?.[0]?.url || form.variants?.find(v => v.image)?.image || null
+    // Distinct finish/colour names across variants give the model real material detail.
+    const finishes = [...new Set(form.variants
+      .map(v => [v.plating_name, v.crystal_name].filter(Boolean).join(' / '))
+      .filter(Boolean))].join('; ')
+    return {
+      name: form.design_name,
+      category: form.design_type || form.category || form.product_type || 'Crystocraft Range',
+      description: form.description,
+      size: form.size,
+      crystal_type: form.crystal_type,
+      finishes,
+      heroImage,
+    }
+  }
+
+  async function handleGenerateCopy() {
+    if (!form.design_name) return
+    setAiLoading(true); setAiError('')
+    try {
+      const res = await fetch('/api/generate-marketing-copy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product: aiProductPayload(), source: 'range', instructions: aiGuide.trim() }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setForm(f => ({ ...f, marketing_description: data.marketing_description }))
+    } catch (err) {
+      setAiError(err.message || 'Generation failed — please try again.')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  async function handleRewrite() {
+    if (!rewriteGuide.trim()) return
+    setRewriteLoading(true); setRewriteError('')
+    try {
+      const res = await fetch('/api/rewrite-section', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          section_type: 'marketing_description',
+          body: form.marketing_description,
+          guidance: rewriteGuide,
+          context: `Crystocraft range design: ${form.design_name}\nType: ${form.design_type || form.product_type}\nSpec: ${form.description}`,
+        }),
+      })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setForm(f => ({ ...f, marketing_description: data.body }))
+      setRewriteOpen(false); setRewriteGuide('')
+    } catch (err) {
+      setRewriteError(err.message || 'Rewrite failed — please try again.')
+    } finally {
+      setRewriteLoading(false)
+    }
+  }
+
   const setPlatingStock = code => e => {
     const val = e.target.value.replace(/[^\d]/g, '')
     setForm(f => ({ ...f, plating_stock: { ...f.plating_stock, [code]: val } }))
@@ -467,6 +540,7 @@ export default function RangeForm() {
       design_code: body + designNo,   // kept for list ordering / back-compat
       design_name: form.design_name.trim(),
       description: form.description.trim(),
+      marketing_description: (form.marketing_description || '').trim(),
       category: form.category.trim(),
       design_type: form.design_type.trim(),
       product_type: form.product_type.trim(),
@@ -623,6 +697,65 @@ export default function RangeForm() {
             <label className="label">Description</label>
             <textarea className="input min-h-[80px]" value={form.description} onChange={set('description')} />
           </div>
+
+          {/* Marketing description with AI writer (mirrors corporate-gift form) */}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="label mb-0">Marketing Description</label>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={() => setGuideOpen(o => !o)}
+                  className="text-xs text-ink-50 hover:text-brand-600 transition-colors">
+                  {guideOpen ? 'Hide instructions' : '+ Instructions'}
+                </button>
+                <button type="button" onClick={handleGenerateCopy} disabled={!form.design_name || aiLoading}
+                  className="text-xs px-2.5 py-1 rounded-md bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1">
+                  {aiLoading ? 'Writing…' : <span className="inline-flex items-center gap-1"><Sparkles size={13} />AI Write</span>}
+                </button>
+              </div>
+            </div>
+            {guideOpen && (
+              <div className="mb-2">
+                <textarea className="input text-sm" rows={2}
+                  placeholder="Optional: tell the AI what to emphasise — e.g. highlight the Bohemia crystal, target collectors, keep it under 60 words…"
+                  value={aiGuide} onChange={e => setAiGuide(e.target.value)} />
+                <p className="text-xs text-ink-50 mt-1">
+                  {(form.gallery?.[0]?.url || form.variants?.find(v => v.image)?.image)
+                    ? 'A product image will be sent to the AI so it can describe what it sees.'
+                    : 'No image yet — add a gallery or variant image so the AI can also see the design.'}
+                </p>
+              </div>
+            )}
+            <textarea className="input min-h-[96px]" value={form.marketing_description} onChange={set('marketing_description')}
+              placeholder="Customer-facing sell-copy for catalogues and the storefront… or click AI Write to generate" />
+            {aiError && <p className="text-xs text-red-500 mt-1">{aiError}</p>}
+            {!form.design_name && <p className="text-xs text-ink-50 mt-1">Enter a design name first to enable AI writing</p>}
+            {form.marketing_description && !rewriteOpen && (
+              <button type="button" onClick={() => setRewriteOpen(true)}
+                className="text-xs text-ink-50 hover:text-brand-600 transition-colors mt-1 flex items-center gap-1">
+                <RotateCcw size={13} />Rewrite with guidance
+              </button>
+            )}
+            {rewriteOpen && (
+              <div className="border border-brand-100 rounded-lg p-3 bg-brand-50 space-y-2 mt-1">
+                <p className="text-xs font-medium text-brand-700">What should be different?</p>
+                <textarea className="input text-sm w-full" rows={2}
+                  placeholder="e.g. More focused on collectors, shorter, emphasise the crystal sparkle…"
+                  value={rewriteGuide} onChange={e => setRewriteGuide(e.target.value)} autoFocus />
+                {rewriteError && <p className="text-xs text-red-500">{rewriteError}</p>}
+                <div className="flex gap-2">
+                  <button type="button" onClick={handleRewrite} disabled={rewriteLoading || !rewriteGuide.trim()}
+                    className="text-xs px-3 py-1.5 rounded-md bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 transition-colors">
+                    {rewriteLoading ? 'Rewriting…' : <span className="inline-flex items-center gap-1"><RotateCcw size={13} />Rewrite</span>}
+                  </button>
+                  <button type="button" onClick={() => { setRewriteOpen(false); setRewriteGuide('') }}
+                    className="text-xs px-3 py-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <label className="flex items-center gap-2 text-sm text-ink-80 cursor-pointer select-none">
             <input type="checkbox" checked={form.active} onChange={e => setForm(f => ({ ...f, active: e.target.checked }))} />
             Visible in catalogue (untick to hide without deleting)

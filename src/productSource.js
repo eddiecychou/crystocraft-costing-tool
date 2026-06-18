@@ -52,7 +52,7 @@ function normalizeRangeModel(p) {
     name: p.design_name || p.description || p.design_code || 'Untitled design',
     category: p.design_type || p.category || 'Crystocraft Range',
     description: p.description || '',
-    marketing_description: '',  // the range has no marketing copy field
+    marketing_description: p.marketing_description || '',  // AI-written range sell-copy
     status: p.active === false ? 'hidden' : 'active',
     heroImage: images[0]?.file_url || '',  // row thumbnail (matches corporate field)
     images,
