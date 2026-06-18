@@ -536,6 +536,14 @@ export default function RangeForm() {
     ;[next[i], next[j]] = [next[j], next[i]]
     return { ...f, gallery: next }
   })
+  // Promote an image to position 0 — that first image is the card hero.
+  const setGalleryMain = i => setForm(f => {
+    if (i <= 0 || i >= f.gallery.length) return f
+    const next = [...f.gallery]
+    const [picked] = next.splice(i, 1)
+    next.unshift(picked)
+    return { ...f, gallery: next }
+  })
 
   const num = v => (v === '' || v == null ? null : (Number.isFinite(Number(v)) ? Number(v) : null))
   const intNum = v => { const n = num(v); return n == null ? null : Math.round(n) }
@@ -936,8 +944,11 @@ export default function RangeForm() {
             <div className="space-y-2 mb-3">
               {form.gallery.map((g, i) => (
                 <div key={i} className="flex items-center gap-3 border border-ivory-dark rounded p-2 bg-white">
-                  <div className="w-14 h-14 shrink-0 bg-white border border-ivory-dark rounded overflow-hidden flex items-center justify-center">
+                  <div className="relative w-14 h-14 shrink-0 bg-white border border-ivory-dark rounded overflow-hidden flex items-center justify-center">
                     {g.url ? <img src={g.url} alt="" className="w-full h-full object-contain p-0.5" /> : <span className="text-[10px] text-ink-40">no image</span>}
+                    {i === 0 && (
+                      <span className="absolute top-0 left-0 bg-brand-600 text-white text-[9px] font-medium px-1 leading-tight rounded-br" title="Main image shown on the product card">MAIN</span>
+                    )}
                   </div>
                   <input
                     className="input text-sm flex-1 min-w-0"
@@ -945,6 +956,16 @@ export default function RangeForm() {
                     placeholder="Caption — e.g. Packaging, or U0002-001-CMX"
                     onChange={e => setGalleryCaption(i, e.target.value)} />
                   <div className="flex items-center gap-0.5 shrink-0">
+                    {i !== 0 && (
+                      <button type="button" onClick={() => setGalleryMain(i)}
+                              className="text-ink-40 hover:text-brand-600 px-1" title="Set as main (card) image">★</button>
+                    )}
+                    {g.url && (
+                      <button type="button" onClick={() => downloadRangeImage(g.url, g.caption || form.design_name)}
+                              className="text-ink-40 hover:text-brand-600 px-1" title={`Download image as ${g.caption || 'image'}`}>
+                        <Download size={14} />
+                      </button>
+                    )}
                     <button type="button" onClick={() => moveGallery(i, -1)} disabled={i === 0}
                             className="text-ink-40 hover:text-ink-70 disabled:opacity-30 px-1" title="Move up">↑</button>
                     <button type="button" onClick={() => moveGallery(i, 1)} disabled={i === form.gallery.length - 1}
