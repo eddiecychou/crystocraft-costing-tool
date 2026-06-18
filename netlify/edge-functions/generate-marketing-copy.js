@@ -9,11 +9,36 @@ export default async function handler(req) {
   }
   console.log('GEMINI_API_KEY present, length:', GEMINI_API_KEY.length)
 
-  const { product, tone = 'professional and premium' } = await req.json()
+  const { product, tone = 'professional and premium', instructions = '' } = await req.json()
   if (!product?.name) {
     return new Response(JSON.stringify({ error: 'Product data required' }), {
       status: 400, headers: { 'Content-Type': 'application/json' },
     })
+  }
+
+  // Optionally fetch the hero image so the model can SEE the product. Firebase
+  // Storage download URLs are publicly fetchable (they carry an access token).
+  // Vision is best-effort: if the fetch fails we silently fall back to text-only.
+  let imagePart = null
+  if (product.heroImage) {
+    try {
+      const imgRes = await fetch(product.heroImage)
+      if (imgRes.ok) {
+        const mime = imgRes.headers.get('content-type') || 'image/jpeg'
+        if (mime.startsWith('image/')) {
+          const bytes = new Uint8Array(await imgRes.arrayBuffer())
+          // Base64-encode in chunks to avoid call-stack limits on large images.
+          let binary = ''
+          const CHUNK = 0x8000
+          for (let i = 0; i < bytes.length; i += CHUNK) {
+            binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK))
+          }
+          imagePart = { inline_data: { mime_type: mime, data: btoa(binary) } }
+        }
+      }
+    } catch (e) {
+      console.error('Hero image fetch failed, continuing text-only:', e?.message)
+    }
   }
 
   const prompt = `You are a marketing copywriter for Crystocraft, a Hong Kong corporate gift supplier specialising in premium crystal, glassware, and luxury branded merchandise. Our clients are HR, procurement and marketing managers at banks, insurance companies, law firms, hotels, and large corporations.
@@ -25,6 +50,11 @@ Name: ${product.name}
 Category: ${product.category || ''}
 Spec / Description: ${product.description || ''}
 ${product.assembly_notes ? `Notes: ${product.assembly_notes}` : ''}
+${instructions ? `\nADDITIONAL INSTRUCTIONS FROM THE TEAM (these take priority — follow them closely):\n${instructions}\n` : ''}
+ACCURACY RULES (critical — do not break these):
+- Base every factual claim (materials, dimensions, capacity, colour names, finish, packaging) ONLY on the PRODUCT DETAILS text above. If a detail is not provided, do NOT state or invent it.
+- Never guess or fabricate specifications, measurements, materials, or certifications.
+${imagePart ? `- A product image is provided. You MAY describe visual qualities you can clearly see — shape, form, colour, faceting, how light interacts, and where a logo or engraving could sit — but NEVER infer specs, materials, or measurements from the image. Visual description only.` : ''}
 
 REQUIREMENTS:
 - Tone: ${tone}
@@ -38,12 +68,13 @@ REQUIREMENTS:
 
 Marketing description:`
 
+  const promptParts = imagePart ? [{ text: prompt }, imagePart] : [{ text: prompt }]
   const models = ['gemini-2.0-flash', 'gemini-2.5-flash']
 
   for (const model of models) {
     try {
       const body = {
-        contents: [{ parts: [{ text: prompt }] }],
+        contents: [{ parts: promptParts }],
         generationConfig: { temperature: 0.75, maxOutputTokens: 1024 },
       }
       // Disable thinking for 2.5-flash — thinking tokens eat into output budget

@@ -17,6 +17,8 @@ export default function ProductForm() {
   const [fetching, setFetching] = useState(isEdit)
   const [aiLoading, setAiLoading]     = useState(false)
   const [aiError, setAiError]         = useState('')
+  const [aiGuide, setAiGuide]         = useState('')
+  const [guideOpen, setGuideOpen]     = useState(false)
   const [rewriteOpen, setRewriteOpen] = useState(false)
   const [rewriteGuide, setRewriteGuide] = useState('')
   const [rewriteLoading, setRewriteLoading] = useState(false)
@@ -42,7 +44,7 @@ export default function ProductForm() {
       const res = await fetch('/api/generate-marketing-copy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ product: form }),
+        body: JSON.stringify({ product: form, instructions: aiGuide.trim() }),
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
@@ -135,15 +137,40 @@ export default function ProductForm() {
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="label mb-0">Marketing Description</label>
-            <button
-              type="button"
-              onClick={handleGenerateCopy}
-              disabled={!form.name || aiLoading}
-              className="text-xs px-2.5 py-1 rounded-md bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
-            >
-              {aiLoading ? 'Writing…' : <span className="inline-flex items-center gap-1"><Sparkles size={13} />AI Write</span>}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setGuideOpen(o => !o)}
+                className="text-xs text-gray-400 hover:text-brand-600 transition-colors"
+              >
+                {guideOpen ? 'Hide instructions' : '+ Instructions'}
+              </button>
+              <button
+                type="button"
+                onClick={handleGenerateCopy}
+                disabled={!form.name || aiLoading}
+                className="text-xs px-2.5 py-1 rounded-md bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+              >
+                {aiLoading ? 'Writing…' : <span className="inline-flex items-center gap-1"><Sparkles size={13} />AI Write</span>}
+              </button>
+            </div>
           </div>
+          {guideOpen && (
+            <div className="mb-2">
+              <textarea
+                className="input text-sm"
+                rows={2}
+                placeholder="Optional: tell the AI what to emphasise — e.g. target luxury hotels, mention the gift-box packaging, keep it under 60 words…"
+                value={aiGuide}
+                onChange={e => setAiGuide(e.target.value)}
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                {form.heroImage
+                  ? 'The product hero image will be sent to the AI so it can describe what it sees.'
+                  : 'No hero image yet — add one on the product page so the AI can also see the product.'}
+              </p>
+            </div>
+          )}
           <textarea
             className="input"
             rows={4}
