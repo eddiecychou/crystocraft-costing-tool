@@ -11,6 +11,7 @@ import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
 import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
+import { loadBlogProducts } from '../productSource'
 
 function toArray(val) {
   if (Array.isArray(val)) return val.filter(Boolean)
@@ -97,7 +98,8 @@ export default function CustomerDetail() {
       getDocs(query(collection(db, 'client_quotes'), where('customer_id', '==', id))),
       getDocs(collection(db, 'products')),
       getDocs(query(collection(db, 'users'), where('customer_id', '==', id))),
-    ]).then(([cSnap, qSnap, pSnap, uSnap]) => {
+      loadBlogProducts('range'),  // Crystocraft range, normalized to a common shape
+    ]).then(([cSnap, qSnap, pSnap, uSnap, rangeProducts]) => {
       setAccounts(uSnap.docs.map(d => ({ id: d.id, ...d.data() })))
       if (cSnap.exists()) {
         const c = { id: cSnap.id, ...cSnap.data() }
@@ -109,11 +111,14 @@ export default function CustomerDetail() {
           .map(d => ({ id: d.id, ...d.data() }))
           .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
       )
+      const corporate = pSnap.docs
+        .map(d => ({ id: d.id, source: 'corporate', name: d.data().name || '', category: d.data().category || '', description: d.data().description || '' }))
+        .filter(p => p.name)
+      const range = rangeProducts
+        .map(p => ({ id: p.id, source: 'range', name: p.name || '', category: p.category || 'Crystocraft Range', description: p.description || '' }))
+        .filter(p => p.name)
       setAllProducts(
-        pSnap.docs
-          .map(d => ({ id: d.id, name: d.data().name || '', category: d.data().category || '', description: d.data().description || '' }))
-          .filter(p => p.name)
-          .sort((a, b) => a.name.localeCompare(b.name))
+        [...corporate, ...range].sort((a, b) => a.name.localeCompare(b.name))
       )
       setLoading(false)
     })
