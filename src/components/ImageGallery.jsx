@@ -11,7 +11,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Star, X, Download, Paperclip, FolderOpen } from 'lucide-react'
-import { IMAGE_ORIENTATIONS } from '../constants'
+import { IMAGE_ORIENTATIONS, IMAGE_VISIBILITY, imageVisibility } from '../constants'
 
 const ORIENTATION_STYLES = {
   landscape: 'bg-blue-100 text-blue-700',
@@ -34,7 +34,7 @@ function downloadImage(img, filename) {
   document.body.removeChild(a)
 }
 
-function SortableImageCard({ img, idx, typeOptions, captionable, onHeroChange, onDelete, onLightbox, downloadPrefix, firestorePath }) {
+function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility, onHeroChange, onDelete, onLightbox, downloadPrefix, firestorePath }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: img.id })
 
@@ -60,11 +60,23 @@ function SortableImageCard({ img, idx, typeOptions, captionable, onHeroChange, o
     await updateDoc(doc(db, ...firestorePath.split('/'), img.id), { caption })
   }
 
+  async function handleVisibilityChange(visibility) {
+    await updateDoc(doc(db, ...firestorePath.split('/'), img.id), { visibility })
+  }
+
+  const vis = imageVisibility(img)
+  const visMeta = IMAGE_VISIBILITY.find(v => v.value === vis)
+
   return (
     <div ref={setNodeRef} style={style} className="group relative flex flex-col gap-1">
       <div className="relative">
         {img.is_hero && (
           <div className="absolute top-1 left-1 z-10 bg-yellow-400 px-1 py-0.5 rounded text-white leading-none"><Star size={11} className="fill-current" /></div>
+        )}
+        {showVisibility && (
+          <div className={`absolute z-10 ${img.is_hero ? 'top-1 left-7' : 'top-1 left-1'} px-1.5 py-0.5 rounded text-[10px] font-medium leading-none ${visMeta?.cls || 'bg-gray-200 text-gray-600'}`}>
+            {visMeta?.short || vis}
+          </div>
         )}
         {/* Drag handle — top-left grip icon, separate from lightbox click */}
         <div
@@ -138,6 +150,16 @@ function SortableImageCard({ img, idx, typeOptions, captionable, onHeroChange, o
           className="text-xs border border-gray-200 rounded px-1.5 py-1 text-gray-600 bg-white w-full"
         />
       )}
+      {showVisibility && (
+        <select
+          className={`text-xs border rounded px-1.5 py-1 w-full font-medium ${visMeta?.cls || 'bg-white text-gray-600 border-gray-200'}`}
+          value={vis}
+          onChange={e => handleVisibilityChange(e.target.value)}
+          title="Where this image is allowed to appear"
+        >
+          {IMAGE_VISIBILITY.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+        </select>
+      )}
       <div className="flex gap-1">
         {IMAGE_ORIENTATIONS.map(o => (
           <button
@@ -159,7 +181,7 @@ function SortableImageCard({ img, idx, typeOptions, captionable, onHeroChange, o
   )
 }
 
-export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, captionable, onHeroChange, downloadPrefix }) {
+export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, captionable, showVisibility, onHeroChange, downloadPrefix }) {
   const fileIdRef = useRef(0)
   const [uploading, setUploading]         = useState(false)
   const [lightbox, setLightbox]           = useState(null)
@@ -185,6 +207,8 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
           type: typeOptions?.[0]?.value || 'hero',
           orientation,
           caption: '',
+          // New corporate uploads start hidden from customers until reviewed.
+          ...(showVisibility ? { visibility: 'internal' } : {}),
           sort_order: images.length + i,
           uploaded_at: serverTimestamp(),
         })
@@ -271,6 +295,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                     idx={idx}
                     typeOptions={typeOptions}
                     captionable={captionable}
+                    showVisibility={showVisibility}
                     onHeroChange={onHeroChange ? setAsHero : null}
                     onDelete={setConfirmDelete}
                     onLightbox={setLightbox}

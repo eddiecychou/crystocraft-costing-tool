@@ -240,12 +240,20 @@ export default function ProductDetail() {
               Images
               <span className="inline-flex items-center gap-1 text-xs text-gray-400 font-normal ml-2">hover image to set hero <Star size={12} /> or delete <X size={12} /> · add a caption below each</span>
             </h2>
+            <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+              <span className="font-medium text-gray-600">Visibility</span> controls where each image may appear:
+              <span className="inline-block mx-1 px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 text-[10px] font-medium">Internal</span> admin only,
+              <span className="inline-block mx-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium">Storefront</span> shown to logged-in customers,
+              <span className="inline-block mx-1 px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-medium">Public</span> also allowed in blog posts.
+              New uploads start <span className="font-medium">Internal</span> — set client-logo images carefully before sharing.
+            </p>
             <ImageGallery
               images={images}
               firestorePath={`products/${id}/images`}
               storagePath={`products/${id}/images`}
               typeOptions={IMAGE_TYPES}
               captionable
+              showVisibility
               onHeroChange={handleHeroChange}
               downloadPrefix={product?.name}
             />

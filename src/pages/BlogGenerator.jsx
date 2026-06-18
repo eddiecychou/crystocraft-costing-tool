@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
+import { isPublicVisible } from '../constants'
 import { useParams, Link } from 'react-router-dom'
 import {
   Check, X, Pencil, FileArchive, Clock, Rocket, RotateCcw,
@@ -561,7 +562,8 @@ function SpotlightTab({ preloadedProduct }) {
     if (!selectedId) { setProductImages([]); setHeroImage(null); setSectionImages([]); return }
     getDocs(query(collection(db, 'products', selectedId, 'images'), orderBy('sort_order')))
       .then(snap => {
-        const imgs = snap.docs.map(d => d.data())
+        // Blog posts are public — only images marked Public may be used.
+        const imgs = snap.docs.map(d => d.data()).filter(isPublicVisible)
         setProductImages(imgs)
         setHeroImage(imgs[0] || null)
         setSectionImages(result ? result.sections.map(() => []) : [])
@@ -764,7 +766,8 @@ function RoundupTab() {
       // Fetch images for this product if not already cached
       if (!productImageMap[p.id]) {
         const snap = await getDocs(query(collection(db, 'products', p.id, 'images'), orderBy('sort_order')))
-        const imgs = snap.docs.map(d => d.data())
+        // Public path: only Public-visibility images are eligible.
+        const imgs = snap.docs.map(d => d.data()).filter(isPublicVisible)
         setProductImageMap(prev => ({ ...prev, [p.id]: imgs }))
       }
     }

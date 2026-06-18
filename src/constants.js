@@ -48,6 +48,24 @@ export const IMAGE_ORIENTATIONS = [
   { value: 'portrait',  label: 'Portrait',  short: 'P' },
 ]
 
+// Where a corporate product image is allowed to appear. Gates the storefront
+// (customer-visible) and the blog/WordPress (public) surfaces.
+//   internal — admin library only; never shown to customers or published.
+//   private  — shown to logged-in customers in the storefront catalogue.
+//   public   — also allowed in public blog posts / website content.
+export const IMAGE_VISIBILITY = [
+  { value: 'internal', label: 'Internal', short: 'Internal', cls: 'bg-gray-200 text-gray-600' },
+  { value: 'private',  label: 'Storefront', short: 'Storefront', cls: 'bg-amber-100 text-amber-700' },
+  { value: 'public',   label: 'Public', short: 'Public', cls: 'bg-green-100 text-green-700' },
+]
+
+// Legacy images (uploaded before this field existed) have no `visibility`.
+// Treat them as fully visible so nothing disappears when this ships; the admin
+// tightens them over time. New uploads default to 'internal' (see ImageGallery).
+export const imageVisibility = img => img?.visibility || 'public'
+export const isStorefrontVisible = img => imageVisibility(img) !== 'internal'
+export const isPublicVisible     = img => imageVisibility(img) === 'public'
+
 export const COMPONENT_IMAGE_TYPES = [
   { value: 'spec',      label: 'Spec' },
   { value: 'sample',    label: 'Sample' },

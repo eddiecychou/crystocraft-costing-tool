@@ -7,6 +7,7 @@ import { useRates, fromHKD, fmtMoney } from '../currency'
 import FavHeart from './FavHeart'
 import { useCart } from './store'
 import LoadingBar from '../components/LoadingBar'
+import { isStorefrontVisible } from '../constants'
 
 export default function CorporateDetail({ profile }) {
   const { id } = useParams()
@@ -47,8 +48,9 @@ export default function CorporateDetail({ profile }) {
     </div>
   )
 
-  // Show all images except the hero (which is already displayed large above).
-  const gallery = images.filter(im => im.file_url && im.file_url !== p.heroImage)
+  // Show all storefront-visible images except the hero (already shown large above).
+  // Internal-only images are hidden from customers.
+  const gallery = images.filter(im => im.file_url && im.file_url !== p.heroImage && isStorefrontVisible(im))
 
   const inCart = cart?.has({ type: 'corporate', id: p.id })
   const tierQtys = tiers.map(t => Number(t.quantity) || 0).filter(q => q > 0)
