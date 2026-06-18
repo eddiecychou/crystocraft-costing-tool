@@ -18,7 +18,7 @@ export default function Components() {
       </p>
 
       <div className="flex gap-1 border-b border-ivory-dark mb-5">
-        {[['critical', 'Critical Components'], ['colours', 'Crystal Colours'], ['formatmoq', 'Format MOQs'], ['pricegroups', 'Pricing Groups']].map(([k, label]) => (
+        {[['critical', 'Critical Components'], ['colours', 'Crystal Colours'], ['formatmoq', 'Format MOQs']].map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
               tab === k ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-80'}`}>
@@ -27,7 +27,7 @@ export default function Components() {
         ))}
       </div>
 
-      {tab === 'critical' ? <CriticalComponents /> : tab === 'colours' ? <CrystalColours /> : tab === 'formatmoq' ? <FormatMoqs /> : <PricingGroups />}
+      {tab === 'critical' ? <CriticalComponents /> : tab === 'colours' ? <CrystalColours /> : <FormatMoqs />}
     </div>
   )
 }
@@ -448,12 +448,12 @@ function FormatMoqs() {
   )
 }
 
-// ── Pricing Groups tab ───────────────────────────────────────────────────────
-// Customer pricing strategies for corporate gifts. Each group has a markup
-// (cost × markup = sell price). Customers are assigned a group in Customer
-// Accounts; a per-customer override can still beat the group. Prices are
-// recomputed per customer when an admin publishes on a product's Pricing page.
+// ── Pricing Groups (retired) ─────────────────────────────────────────────────
+// Tab removed from the UI for now to keep things simple; component kept out of
+// the render tree. Customer corp pricing uses the per-customer markup override
+// on Customer Accounts.
 
+/* eslint-disable no-unused-vars */
 const slugify = s => (s || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
 
 function PricingGroups() {
