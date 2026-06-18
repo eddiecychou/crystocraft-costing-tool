@@ -61,10 +61,22 @@ function Row({ u, tab, set }) {
   const [cur, setCur] = useState(u.base_currency || 'USD')
   const [disc, setDisc] = useState(u.ws_discount_pct ?? 0)
   const [override, setOverride] = useState(u.corp_markup_override ?? '')
+  const [status, setStatus] = useState(null) // 'saving' | 'saved' | error string
 
   // Corp pricing is driven by a per-customer markup for now (no groups UI).
   const pricingPatch = {
     corp_markup_override: override === '' ? 0 : Number(override) || 0,
+  }
+
+  async function save(extra = {}) {
+    setStatus('saving')
+    try {
+      await set(u.id, { base_currency: cur, ws_discount_pct: Number(disc) || 0, ...pricingPatch, ...extra })
+      setStatus('saved')
+      setTimeout(() => setStatus(s => (s === 'saved' ? null : s)), 2500)
+    } catch (e) {
+      setStatus('Error: ' + (e?.message || 'could not save'))
+    }
   }
 
   return (
@@ -104,16 +116,15 @@ function Row({ u, tab, set }) {
 
       <div className="flex items-center gap-2 shrink-0">
         {tab === 'pending' && (
-          <button className="btn-primary text-sm"
-            onClick={() => set(u.id, { status: 'approved', base_currency: cur, ws_discount_pct: Number(disc) || 0, ...pricingPatch })}>
-            Approve
+          <button className="btn-primary text-sm" disabled={status === 'saving'}
+            onClick={() => save({ status: 'approved' })}>
+            {status === 'saving' ? 'Approving…' : 'Approve'}
           </button>
         )}
         {tab === 'approved' && (
           <>
-            <button className="btn-secondary text-sm"
-              onClick={() => set(u.id, { base_currency: cur, ws_discount_pct: Number(disc) || 0, ...pricingPatch })}>
-              Save
+            <button className="btn-secondary text-sm" disabled={status === 'saving'} onClick={() => save()}>
+              {status === 'saving' ? 'Saving…' : 'Save'}
             </button>
             <button className="text-xs text-ink-50 hover:text-amber-600"
               onClick={() => { if (confirm('Suspend this customer? They will lose pricing access.')) set(u.id, { status: 'pending' }) }}>
@@ -130,6 +141,11 @@ function Row({ u, tab, set }) {
             onClick={() => { if (confirm('Remove admin access? They become a pending customer.')) set(u.id, { role: 'customer', status: 'pending' }) }}>
             Revoke admin
           </button>
+        )}
+        {status && status !== 'saving' && (
+          <span className={`text-xs ${status === 'saved' ? 'text-green-600' : 'text-red-600'}`}>
+            {status === 'saved' ? 'Saved ✓' : status}
+          </span>
         )}
       </div>
     </div>
