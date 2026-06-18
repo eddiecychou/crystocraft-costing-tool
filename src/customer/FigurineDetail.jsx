@@ -3,7 +3,9 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { useParams, Link } from 'react-router-dom'
 import { db } from '../firebase'
 import { Gem, ArrowLeft, Check, Plus } from 'lucide-react'
-import { designNumber, brandLetter, bodyLetter } from '../constants'
+import { designNumber, brandLetter, bodyLetter, RANGE_CRYSTAL_BRANDS } from '../constants'
+
+const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import { useRates, fromUSD, fmtMoney } from '../currency'
 import { useCrystalColors, colorMap } from '../crystalColors'
 import FavHeart from './FavHeart'
@@ -38,17 +40,23 @@ export default function FigurineDetail({ profile }) {
 
   const net = usd => usd == null ? null : fromUSD(usd * (1 - disc), cur, rates)
   const variants = docVariants(p)
+  const fallbackBrand = brandLetter(p.design_code) || 'D'
   const designNo = p.design_no || designNumber(p.design_code)
   const body = p.body_code || bodyLetter(p.design_code)
-  const brands = [...new Set(variants.map(v => v.brand_code || brandLetter(p.design_code) || 'D').filter(Boolean))]
-  const code = [`${brands.length === 1 ? brands[0] : ''}${body}${designNo}`, p.format_code].filter(Boolean).join('-')
-  const name = p.description || p.design_name || code
+  const brands = [...new Set(variants.map(v => v.brand_code || fallbackBrand).filter(Boolean))]
+  const multiBrand = brands.length > 1
+  // Product-level base code (brand prefix only when the design is single-brand).
+  const baseCode = [`${multiBrand ? '' : brands[0] || ''}${body}${designNo}`, p.format_code].filter(Boolean).join('-')
+  const name = p.description || p.design_name || baseCode
   const image = variants.find(v => v.image)?.image || (Array.isArray(p.gallery) && p.gallery[0]) || ''
   const mixes = p.crystal_mixes && typeof p.crystal_mixes === 'object' ? p.crystal_mixes : {}
   const colorCodes = [...new Set(variants.flatMap(v => Array.isArray(v.crystal_colors) ? v.crystal_colors : []))]
   const inCart = cart?.has('figurine', p.id)
 
   const selVariant = variants[finishIdx] || variants[0] || {}
+  // Selected-finish SKU code carries the chosen brand prefix (e.g. D0002-001).
+  const selBrand = selVariant.brand_code || fallbackBrand
+  const code = [`${selBrand}${body}${designNo}`, p.format_code].filter(Boolean).join('-')
   const finishColors = (Array.isArray(selVariant.crystal_colors) && selVariant.crystal_colors.length)
     ? selVariant.crystal_colors : colorCodes
   const needsColor = colorCodes.length > 0
@@ -83,7 +91,7 @@ export default function FigurineDetail({ profile }) {
         <div className="card overflow-hidden bg-white aspect-square flex items-center justify-center relative">
           {(selVariant.image || image) ? <img src={selVariant.image || image} alt={name} className="w-full h-full object-contain p-4" />
             : <Gem size={56} className="text-gray-200" />}
-          <FavHeart item={{ type: 'figurine', id: p.id, name, code, image }} className="absolute top-3 right-3" />
+          <FavHeart item={{ type: 'figurine', id: p.id, name, code: baseCode, image }} className="absolute top-3 right-3" />
         </div>
         <div>
           <h1 className="text-xl md:text-2xl text-ink">{name}</h1>
@@ -107,7 +115,11 @@ export default function FigurineDetail({ profile }) {
                       <span className={`w-3.5 h-3.5 rounded-full border shrink-0 ${sel ? 'border-brand-500 bg-brand-500' : 'border-ink-30'}`}>
                         {sel && <Check size={12} className="text-white" strokeWidth={3} />}
                       </span>
-                      <span className="text-ink truncate">{v.plating_name || v.plating_code || '—'}</span>
+                      <span className="text-ink truncate">
+                        {v.plating_name || v.plating_code || '—'}
+                        {multiBrand && (v.brand_name || BRAND_NAME[v.brand_code || fallbackBrand]) &&
+                          <span className="text-ink-50"> · {v.brand_name || BRAND_NAME[v.brand_code || fallbackBrand]}</span>}
+                      </span>
                     </span>
                     <span className="text-ink font-medium shrink-0">{fmtMoney(net(v.ws_price_usd), cur)}</span>
                   </button>
