@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { collection, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { CUSTOMER_CURRENCIES } from '../currency'
-import { usePricingGroups } from '../pricing'
 import LoadingBar from '../components/LoadingBar'
 import { ShieldCheck, Clock, UserCheck } from 'lucide-react'
 
@@ -10,7 +9,6 @@ export default function CustomerAccounts() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('pending')
-  const { groups } = usePricingGroups()
 
   useEffect(() => {
     return onSnapshot(collection(db, 'users'), snap => {
@@ -52,21 +50,20 @@ export default function CustomerAccounts() {
         <div className="text-center py-16 text-ink-60">Nothing here.</div>
       ) : (
         <div className="space-y-2">
-          {rows.map(u => <Row key={u.id} u={u} tab={tab} set={set} groups={groups} />)}
+          {rows.map(u => <Row key={u.id} u={u} tab={tab} set={set} />)}
         </div>
       )}
     </div>
   )
 }
 
-function Row({ u, tab, set, groups }) {
+function Row({ u, tab, set }) {
   const [cur, setCur] = useState(u.base_currency || 'USD')
   const [disc, setDisc] = useState(u.ws_discount_pct ?? 0)
-  const [group, setGroup] = useState(u.pricing_group || '')
   const [override, setOverride] = useState(u.corp_markup_override ?? '')
 
+  // Corp pricing is driven by a per-customer markup for now (no groups UI).
   const pricingPatch = {
-    pricing_group: group,
     corp_markup_override: override === '' ? 0 : Number(override) || 0,
   }
 
@@ -78,26 +75,30 @@ function Row({ u, tab, set, groups }) {
       </div>
 
       {tab !== 'admins' && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
           <label className="text-xs text-ink-60">Currency
             <select className="input py-1 ml-1 w-24 inline-block" value={cur} onChange={e => setCur(e.target.value)}>
               {CUSTOMER_CURRENCIES.map(c => <option key={c}>{c}</option>)}
             </select>
           </label>
-          <label className="text-xs text-ink-60">WS %
-            <input type="number" min="0" max="100" step="0.5" className="input py-1 ml-1 w-20 inline-block"
-              value={disc} onChange={e => setDisc(e.target.value)} />
-          </label>
-          <label className="text-xs text-ink-60">Pricing
-            <select className="input py-1 ml-1 w-32 inline-block" value={group} onChange={e => setGroup(e.target.value)}>
-              <option value="">— Default —</option>
-              {groups.map(g => <option key={g.id} value={g.id}>{g.name} ({Number(g.markup).toFixed(2)}×)</option>)}
-            </select>
-          </label>
-          <label className="text-xs text-ink-60" title="Per-customer markup that overrides the group. Leave blank to use the group.">Override ×
-            <input type="number" min="0" step="0.05" placeholder="—" className="input py-1 ml-1 w-20 inline-block"
-              value={override} onChange={e => setOverride(e.target.value)} />
-          </label>
+
+          {/* Figurine Gift Catalogue — wholesale list price less a discount % */}
+          <div className="flex items-center gap-2 pl-3 border-l border-ivory-dark">
+            <span className="text-[10px] uppercase tracking-wide text-ink-40">Figurine Gift Catalogue</span>
+            <label className="text-xs text-ink-60">WS %
+              <input type="number" min="0" max="100" step="0.5" className="input py-1 ml-1 w-20 inline-block"
+                value={disc} onChange={e => setDisc(e.target.value)} />
+            </label>
+          </div>
+
+          {/* Corp Gift Catalogue — made-to-order, priced as cost × markup */}
+          <div className="flex items-center gap-2 pl-3 border-l border-ivory-dark">
+            <span className="text-[10px] uppercase tracking-wide text-ink-40">Corp Gift Catalogue</span>
+            <label className="text-xs text-ink-60" title="Sell price = product cost × this markup (e.g. 2.0 = cost doubled).">Markup ×
+              <input type="number" min="0" step="0.05" placeholder="2.0" className="input py-1 ml-1 w-20 inline-block"
+                value={override} onChange={e => setOverride(e.target.value)} />
+            </label>
+          </div>
         </div>
       )}
 
