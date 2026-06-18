@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { RefreshCw } from 'lucide-react'
-import { RANGE_FORMAT_CODES } from '../constants'
 
 const CURRENCIES = ['RMB', 'USD', 'EUR']
 const LABELS = { RMB: 'RMB → HKD', USD: 'USD → HKD', EUR: 'EUR → HKD' }
@@ -152,10 +151,7 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* Format base-component MOQs */}
-      <FormatMoqCard />
-
-      {/* Crystal Colours & Critical Components now live under the Components section. */}
+      {/* Crystal Colours, Critical Components & Format MOQs live under the Components section. */}
 
       {/* Info card */}
       <div className="card p-5 text-sm text-gray-500 space-y-1.5">
@@ -170,101 +166,6 @@ export default function Settings() {
           (free, no API key needed).
         </p>
         <p>• Existing quotes are not affected when you update rates here.</p>
-      </div>
-    </div>
-  )
-}
-
-function FormatMoqCard() {
-  const [moq, setMoq] = useState({})       // { code: string }
-  const [saved, setSaved] = useState({})
-  const [saving, setSaving] = useState(false)
-  const [msg, setMsg] = useState(null)
-  const [newCode, setNewCode] = useState('')
-
-  useEffect(() => {
-    getDoc(doc(db, 'settings', 'format_moq')).then(snap => {
-      const m = snap.exists() ? (snap.data().moq || {}) : {}
-      const asStr = Object.fromEntries(Object.entries(m).map(([k, v]) => [k, String(v)]))
-      setMoq(asStr)
-      setSaved(asStr)
-    })
-  }, [])
-
-  // Known formats plus any extra codes already saved.
-  const codes = [...new Set([...RANGE_FORMAT_CODES.map(f => f.code), ...Object.keys(moq)])]
-  const labelOf = c => RANGE_FORMAT_CODES.find(f => f.code === c)?.label || `Format ${c}`
-  const isDirty = JSON.stringify(moq) !== JSON.stringify(saved)
-
-  async function save() {
-    setSaving(true); setMsg(null)
-    try {
-      // Persist as numbers, dropping blanks/zeros.
-      const out = {}
-      for (const [k, v] of Object.entries(moq)) {
-        const n = Number(v)
-        if (v !== '' && n > 0) out[k] = n
-      }
-      await setDoc(doc(db, 'settings', 'format_moq'), { moq: out, updatedAt: serverTimestamp() })
-      const asStr = Object.fromEntries(Object.entries(out).map(([k, v]) => [k, String(v)]))
-      setMoq(asStr); setSaved(asStr)
-      setMsg('Format MOQs saved.')
-      setTimeout(() => setMsg(null), 3000)
-    } catch (e) {
-      setMsg('Error saving: ' + e.message)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  return (
-    <div className="card p-5 mb-4">
-      <h2 className="text-sm font-semibold text-gray-700 mb-1">Format Minimum Order Quantities</h2>
-      <p className="text-xs text-gray-400 mb-4">
-        Minimum run for each format base component (music box, freestand, bible…). On a customer
-        enquiry these pool across every design sharing the format, so the customer is told to combine
-        designs to reach the minimum. Leave blank for no format minimum.
-      </p>
-      <div className="space-y-3">
-        {codes.map(c => (
-          <div key={c} className="flex items-center gap-3">
-            <label className="w-44 text-sm text-gray-600 shrink-0">
-              {labelOf(c)} <span className="text-gray-400 font-mono">{c}</span>
-            </label>
-            <div className="relative flex-1 max-w-[180px]">
-              <input
-                type="number" min="0" step="1"
-                className="input pr-12 text-right tabular-nums"
-                value={moq[c] ?? ''}
-                onChange={e => setMoq(m => ({ ...m, [c]: e.target.value.replace(/[^\d]/g, '') }))}
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">pcs</span>
-            </div>
-            {String(moq[c] ?? '') !== String(saved[c] ?? '') && (
-              <span className="text-xs text-amber-500 shrink-0">unsaved</span>
-            )}
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 flex items-center gap-2">
-        <input
-          type="text" placeholder="Add format code (e.g. 236)"
-          className="input text-sm max-w-[220px]"
-          value={newCode}
-          onChange={e => setNewCode(e.target.value.replace(/[^\d]/g, '').slice(0, 3))}
-        />
-        <button type="button" className="btn-secondary text-sm"
-          disabled={!newCode || codes.includes(newCode)}
-          onClick={() => { setMoq(m => ({ ...m, [newCode]: m[newCode] ?? '' })); setNewCode('') }}>
-          Add
-        </button>
-      </div>
-
-      <div className="mt-5 flex items-center gap-3 flex-wrap">
-        <button onClick={save} disabled={saving || !isDirty} className="btn-primary text-sm">
-          {saving ? 'Saving…' : 'Save Format MOQs'}
-        </button>
-        {msg && <p className={`text-xs ${msg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{msg}</p>}
       </div>
     </div>
   )
