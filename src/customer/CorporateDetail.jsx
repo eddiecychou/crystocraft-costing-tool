@@ -7,7 +7,8 @@ import { useRates, fromHKD, fmtMoney } from '../currency'
 import FavHeart from './FavHeart'
 import { useCart } from './store'
 import LoadingBar from '../components/LoadingBar'
-import { isStorefrontVisible } from '../constants'
+import VideoEmbed from '../components/VideoEmbed'
+import { isStorefrontVisible, youtubeEmbed } from '../constants'
 
 export default function CorporateDetail({ profile }) {
   const { id } = useParams()
@@ -102,6 +103,13 @@ export default function CorporateDetail({ profile }) {
           )}
         </div>
       </div>
+
+      {youtubeEmbed(p.video_url) && (
+        <div className="mt-10 max-w-2xl">
+          <h2 className="text-lg text-ink mb-3">Product video</h2>
+          <VideoEmbed url={p.video_url} title={p.name} />
+        </div>
+      )}
 
       {gallery.length > 0 && (
         <div className="mt-10">

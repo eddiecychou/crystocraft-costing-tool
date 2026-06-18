@@ -15,6 +15,7 @@ import { RANGE_FORMAT_CODES } from '../constants'
 
 const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.label]))
 import LoadingBar from '../components/LoadingBar'
+import VideoEmbed from '../components/VideoEmbed'
 
 function docVariants(p) {
   if (Array.isArray(p.variants) && p.variants.length) return p.variants
@@ -252,6 +253,13 @@ export default function FigurineDetail({ profile }) {
           </p>
         </div>
       </div>
+
+      {youtubeEmbed(p.video_url) && (
+        <div className="mt-8 max-w-2xl">
+          <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-3">Product video</p>
+          <VideoEmbed url={p.video_url} title={name} />
+        </div>
+      )}
 
       {gallery.length > 0 && (
         <div className="mt-8">

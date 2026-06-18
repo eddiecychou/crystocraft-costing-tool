@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import { CATEGORIES, PRODUCT_STATUSES } from '../constants'
+import { CATEGORIES, PRODUCT_STATUSES, youtubeEmbed } from '../constants'
 import { Sparkles, RotateCcw } from 'lucide-react'
 
 export default function ProductForm() {
@@ -11,7 +11,7 @@ export default function ProductForm() {
   const isEdit = Boolean(id)
 
   const [form, setForm] = useState({
-    name: '', category: '', status: 'concept', description: '', marketing_description: '', assembly_notes: '',
+    name: '', category: '', status: 'concept', description: '', marketing_description: '', assembly_notes: '', video_url: '',
   })
   const [loading, setLoading]   = useState(false)
   const [fetching, setFetching] = useState(isEdit)
@@ -215,6 +215,14 @@ export default function ProductForm() {
         <div>
           <label className="label">Assembly Notes</label>
           <textarea className="input" rows={2} value={form.assembly_notes} onChange={set('assembly_notes')} placeholder="Factory assembly instructions, special handling notes…" />
+        </div>
+
+        <div>
+          <label className="label">Product Video (YouTube)</label>
+          <input className="input" value={form.video_url} onChange={set('video_url')} placeholder="https://www.youtube.com/watch?v=… — shown to customers in the catalogue" />
+          {form.video_url && !youtubeEmbed(form.video_url) && (
+            <p className="text-xs text-amber-600 mt-1">This doesn't look like a YouTube link — the video won't display.</p>
+          )}
         </div>
 
         <div className="flex gap-3 pt-2">

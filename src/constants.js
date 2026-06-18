@@ -180,3 +180,14 @@ export const normGallery = arr =>
   (Array.isArray(arr) ? arr : [])
     .map(g => ({ url: galleryUrl(g), caption: galleryCaption(g) }))
     .filter(g => g.url)
+
+// ---- Product video ---------------------------------------------------------
+// Accept any common YouTube URL form (watch, youtu.be, shorts, embed) and return
+// an embeddable URL. Returns '' when the input isn't a recognisable YouTube link.
+export const youtubeEmbed = url => {
+  if (!url) return ''
+  const m = String(url).trim().match(
+    /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/|v\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/
+  )
+  return m ? `https://www.youtube.com/embed/${m[1]}` : ''
+}
