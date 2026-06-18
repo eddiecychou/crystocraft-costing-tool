@@ -2,91 +2,119 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // All access requires a signed-in user
-    function isAuth() {
+    function signedIn() {
       return request.auth != null;
     }
+    function hasProfile() {
+      return signedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    function profile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isAdmin() {
+      return hasProfile() && profile().role == 'admin';
+    }
+    function isApprovedCustomer() {
+      return hasProfile() && profile().role == 'customer' && profile().status == 'approved';
+    }
+    // Anyone who may browse the catalogue (admins + approved customers).
+    function canShop() {
+      return isAdmin() || isApprovedCustomer();
+    }
 
-    // Products and all subcollections
+    // ---- User role docs --------------------------------------------------
+    // Admin status lives here. Bootstrap the first admin(s) once via the
+    // Firebase console (set role:'admin' on their users/{uid} doc).
+    match /users/{uid} {
+      allow read: if isAdmin() || request.auth.uid == uid;
+      // Self sign-up: a user may only create their OWN doc, as a pending
+      // customer, with a zero discount. They can never self-assign admin.
+      allow create: if request.auth.uid == uid
+        && request.resource.data.role == 'customer'
+        && request.resource.data.status == 'pending'
+        && request.resource.data.ws_discount_pct == 0;
+      // Admins manage everything; a user may edit their own profile but NOT
+      // their role, approval status, or wholesale discount.
+      allow update: if isAdmin()
+        || (request.auth.uid == uid
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.status == resource.data.status
+            && request.resource.data.ws_discount_pct == resource.data.ws_discount_pct);
+      allow delete: if isAdmin();
+    }
+
+    // ---- Corporate gift products ----------------------------------------
+    // Product doc + pricing tiers are customer-visible (reference pricing).
+    // Cost-bearing subcollections (components, supplier quotes) are ADMIN ONLY.
     match /products/{productId} {
-      allow read, write: if isAuth();
+      allow read: if canShop();
+      allow write: if isAdmin();
 
       match /images/{imageId} {
-        allow read, write: if isAuth();
+        allow read: if canShop();
+        allow write: if isAdmin();
+      }
+      match /pricing_tiers/{tierId} {
+        allow read: if canShop();
+        allow write: if isAdmin();
       }
       match /components/{componentId} {
-        allow read, write: if isAuth();
-
+        allow read, write: if isAdmin();
         match /images/{imageId} {
-          allow read, write: if isAuth();
+          allow read, write: if isAdmin();
         }
         match /supplier_quotes/{quoteId} {
-          allow read, write: if isAuth();
-
+          allow read, write: if isAdmin();
           match /attachments/{attachmentId} {
-            allow read, write: if isAuth();
+            allow read, write: if isAdmin();
           }
         }
       }
-      match /pricing_tiers/{tierId} {
-        allow read, write: if isAuth();
-      }
     }
 
-    // Suppliers and catalogs
-    match /suppliers/{supplierId} {
-      allow read, write: if isAuth();
-
-      match /catalogs/{catalogId} {
-        allow read, write: if isAuth();
-      }
-    }
-
-    // Client quotes and items
-    match /client_quotes/{quoteId} {
-      allow read, write: if isAuth();
-
-      match /items/{itemId} {
-        allow read, write: if isAuth();
-      }
-    }
-
-    // Customers and enquiry log
-    match /customers/{customerId} {
-      allow read, write: if isAuth();
-
-      match /enquiries/{enquiryId} {
-        allow read, write: if isAuth();
-      }
-    }
-
-    // Collection group query for supplier_quotes (needed for supplier page)
-    match /{path=**}/supplier_quotes/{quoteId} {
-      allow read, write: if isAuth();
-    }
-
-    // Settings (exchange rates etc.)
-    match /settings/{docId} {
-      allow read, write: if isAuth();
-    }
-
-    // Catalogues and items
-    match /catalogues/{catalogueId} {
-      allow read, write: if isAuth();
-
-      match /items/{itemId} {
-        allow read, write: if isAuth();
-      }
-    }
-
-    // Crystocraft Range — ready-to-ship figurine gifts
+    // ---- Figurine (Crystocraft Range) -----------------------------------
     match /range_products/{rangeId} {
-      allow read, write: if isAuth();
+      allow read: if canShop();
+      allow write: if isAdmin();
     }
 
-    // Critical Components library (shared parts for the figurine range)
+    // ---- Settings: exchange rates + crystal colours are read by the
+    //      storefront for currency conversion and swatches. Admin writes.
+    match /settings/{docId} {
+      allow read: if canShop();
+      allow write: if isAdmin();
+    }
+
+    // ---- Everything below is internal / admin only ----------------------
+    match /suppliers/{supplierId} {
+      allow read, write: if isAdmin();
+      match /catalogs/{catalogId} {
+        allow read, write: if isAdmin();
+      }
+    }
+    match /client_quotes/{quoteId} {
+      allow read, write: if isAdmin();
+      match /items/{itemId} {
+        allow read, write: if isAdmin();
+      }
+    }
+    match /customers/{customerId} {
+      allow read, write: if isAdmin();
+      match /enquiries/{enquiryId} {
+        allow read, write: if isAdmin();
+      }
+    }
+    match /{path=**}/supplier_quotes/{quoteId} {
+      allow read, write: if isAdmin();
+    }
+    match /catalogues/{catalogueId} {
+      allow read, write: if isAdmin();
+      match /items/{itemId} {
+        allow read, write: if isAdmin();
+      }
+    }
     match /range_components/{componentId} {
-      allow read, write: if isAuth();
+      allow read, write: if isAdmin();
     }
   }
 }

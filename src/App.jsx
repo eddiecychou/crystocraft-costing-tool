@@ -1,8 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthState } from './hooks/useAuthState'
+import { useProfile, isAdmin, isApproved, isPending } from './hooks/useProfile'
 import Layout from './components/Layout'
 import LoadingBar from './components/LoadingBar'
 import Login from './pages/Login'
+import Storefront from './customer/Storefront'
+import PendingScreen from './customer/PendingScreen'
 import Products from './pages/Products'
 import Range from './pages/Range'
 import RangeForm from './pages/RangeForm'
@@ -31,23 +34,48 @@ import CataloguePreview from './pages/CataloguePreview'
 import BlogGenerator from './pages/BlogGenerator'
 import Dashboard from './pages/Dashboard'
 import ImportData from './pages/ImportData'
-
-function ProtectedRoute({ children, user }) {
-  if (user === undefined) return <LoadingBar />
-  if (user === null) return <Navigate to="/login" replace />
-  return children
-}
+import CustomerAccounts from './pages/CustomerAccounts'
 
 export default function App() {
   const user = useAuthState()
-
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+      <AppRoutes user={user} />
+    </BrowserRouter>
+  )
+}
 
-        <Route path="/*" element={
-          <ProtectedRoute user={user}>
+function AppRoutes({ user }) {
+  const { profile } = useProfile(user)
+
+  if (user === undefined) return <LoadingBar />
+  if (user && profile === undefined) return <LoadingBar />
+
+  const role = !user ? null
+    : isAdmin(profile) ? 'admin'
+    : isApproved(profile) ? 'customer'
+    : 'pending'
+
+  return (
+    <Routes>
+      <Route path="/login" element={
+        !user ? <Login />
+        : role === 'admin' ? <Navigate to="/dashboard" replace />
+        : role === 'customer' ? <Navigate to="/shop/figurine" replace />
+        : <PendingScreen profile={profile} />
+      } />
+      <Route path="/*" element={
+        !user ? <Navigate to="/login" replace />
+        : role === 'pending' ? <PendingScreen profile={profile} />
+        : role === 'customer' ? <Storefront profile={profile} />
+        : <AdminApp user={user} />
+      } />
+    </Routes>
+  )
+}
+
+function AdminApp({ user }) {
+  return (
             <Layout user={user}>
               <Routes>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -86,12 +114,9 @@ export default function App() {
                 <Route path="/blog-generator" element={<BlogGenerator />} />
                 <Route path="/blog-generator/:productId" element={<BlogGenerator />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/customer-accounts" element={<CustomerAccounts />} />
                 <Route path="/import-data" element={<ImportData />} />
               </Routes>
             </Layout>
-          </ProtectedRoute>
-        } />
-      </Routes>
-    </BrowserRouter>
   )
 }
