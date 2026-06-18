@@ -24,6 +24,21 @@ export const designGroupKey = i => {
   return norm ? `figurine:${norm}` : `figurine:${i.id}`
 }
 
+// The format code (what the design is built into: freestand 001, music box 033,
+// bible…). Taken from format_code, else the last segment of the item code
+// ("D0002-236" -> "236").
+export const formatCodeOf = i => {
+  if (i.format_code != null && i.format_code !== '') return String(i.format_code)
+  const code = String(i.code || '')
+  const seg = code.includes('-') ? code.slice(code.lastIndexOf('-') + 1) : ''
+  return /^\d+$/.test(seg) ? seg : ''
+}
+
+// MOQ groups for the format base component: every design that shares one format
+// (e.g. all music boxes) pools toward that component's minimum run.
+export const formatGroupKey = i =>
+  i.type === 'figurine' && formatCodeOf(i) ? `fmt:${formatCodeOf(i)}` : `${i.type}:${i.id}`
+
 // ---- Enquiry cart (localStorage-backed) --------------------------------
 const CartCtx = createContext(null)
 

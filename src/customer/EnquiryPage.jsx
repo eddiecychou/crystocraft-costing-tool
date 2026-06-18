@@ -3,11 +3,16 @@ import { Link } from 'react-router-dom'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db, auth } from '../firebase'
 import { Gem, Package, Trash2, ClipboardList, CheckCircle2, Plus, Minus } from 'lucide-react'
-import { useCart, designGroupKey } from './store'
+import { useCart, designGroupKey, formatGroupKey, formatCodeOf } from './store'
+import { useFormatMoq } from '../formatMoq'
+import { RANGE_FORMAT_CODES } from '../constants'
 import { useRates, fromUSD, fmtMoney } from '../currency'
+
+const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.label]))
 
 export default function EnquiryPage({ profile }) {
   const cart = useCart()
+  const formatMoqMap = useFormatMoq()
   const rates = useRates()
   const cur = profile?.base_currency || 'USD'
   const disc = Math.max(0, Math.min(100, Number(profile?.ws_discount_pct) || 0)) / 100
@@ -33,6 +38,14 @@ export default function EnquiryPage({ profile }) {
     return m
   }, {})
 
+  // Second MOQ floor: the format base component (music box, bible…) pools across
+  // every design sharing that format. Minimums come from admin Settings.
+  const formatPcs = items.reduce((m, i) => {
+    const k = formatGroupKey(i)
+    m[k] = (m[k] || 0) + Math.max(1, Number(i.qty) || 1)
+    return m
+  }, {})
+
   async function submit() {
     if (!items.length) return
     setSending(true); setError('')
@@ -44,7 +57,7 @@ export default function EnquiryPage({ profile }) {
         email: profile?.email || auth.currentUser?.email || '',
         base_currency: cur,
         items: items.map(i => ({
-          type: i.type, id: i.id, name: i.name || '', code: i.code || '', design_no: i.design_no || '',
+          type: i.type, id: i.id, name: i.name || '', code: i.code || '', design_no: i.design_no || '', format_code: i.format_code || '',
           image: i.image || '', qty: Number(i.qty) || 1, note: i.note || '',
           finish: i.finish || '', color: i.color || '', color_name: i.color_name || '',
           ws_price_usd: i.ws_price_usd ?? null,
@@ -103,6 +116,11 @@ export default function EnquiryPage({ profile }) {
           const cartons = ppc > 0 ? Math.max(1, Math.round(qtyPcs / ppc)) : 0
           const designTotal = designPcs[designGroupKey(i)] || qtyPcs
           const belowMoq = moq > 0 && designTotal < moq
+          const fmtCode = formatCodeOf(i)
+          const fmtMoq = Number(formatMoqMap[fmtCode]) || 0
+          const formatTotal = formatPcs[formatGroupKey(i)] || qtyPcs
+          const belowFormatMoq = fmtMoq > 0 && formatTotal < fmtMoq
+          const fmtLabel = FORMAT_LABEL[fmtCode] || `Format ${fmtCode}`
           const setCartons = n => { const c = Math.max(1, Math.floor(n) || 1); cart.update(i.key, { cartons: c, qty: c * ppc }) }
           const setPcs = n => cart.update(i.key, { qty: Math.max(1, Math.floor(n) || 1) })
           return (
@@ -153,6 +171,7 @@ export default function EnquiryPage({ profile }) {
                   {lineTotal(i) != null ? fmtMoney(lineTotal(i), cur) : '—'}
                 </span>
                 {belowMoq && <span className="text-[10px] text-amber-700 text-right">Design total {designTotal.toLocaleString()} / min {moq.toLocaleString()} pcs</span>}
+                {belowFormatMoq && <span className="text-[10px] text-amber-700 text-right">{fmtLabel} total {formatTotal.toLocaleString()} / min {fmtMoq.toLocaleString()} pcs</span>}
                 <button onClick={() => cart.remove(i.key)} className="text-ink-40 hover:text-red-500" aria-label="Remove">
                   <Trash2 size={15} />
                 </button>

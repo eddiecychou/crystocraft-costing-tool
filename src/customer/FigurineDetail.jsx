@@ -9,7 +9,11 @@ const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.n
 import { useRates, fromUSD, fmtMoney } from '../currency'
 import { useCrystalColors, colorMap } from '../crystalColors'
 import FavHeart from './FavHeart'
-import { useCart, designGroupKey } from './store'
+import { useCart, designGroupKey, formatGroupKey } from './store'
+import { useFormatMoq } from '../formatMoq'
+import { RANGE_FORMAT_CODES } from '../constants'
+
+const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.label]))
 import LoadingBar from '../components/LoadingBar'
 
 function docVariants(p) {
@@ -30,6 +34,7 @@ export default function FigurineDetail({ profile }) {
   const { colors: libColors } = useCrystalColors()
   const lookup = useMemo(() => colorMap(libColors), [libColors])
   const cart = useCart()
+  const formatMoqMap = useFormatMoq()
   const cur = profile?.base_currency || 'USD'
   const disc = Math.max(0, Math.min(100, Number(profile?.ws_discount_pct) || 0)) / 100
 
@@ -75,12 +80,25 @@ export default function FigurineDetail({ profile }) {
   // MOQ applies across every variation AND format of this design (same body /
   // design number — freestand, music box, bible, …), so include any pieces of
   // the same design already sitting in the enquiry cart.
-  const thisGroup = designGroupKey({ type: 'figurine', id: p.id, design_no: designNo, code })
+  const lineLike = { type: 'figurine', id: p.id, design_no: designNo, code, format_code: p.format_code || '' }
+  const thisGroup = designGroupKey(lineLike)
   const cartDesignPcs = (cart?.items || [])
     .filter(it => designGroupKey(it) === thisGroup)
     .reduce((s, it) => s + Math.max(1, Number(it.qty) || 1), 0)
   const designPcs = cartDesignPcs + (inCart ? 0 : pcs)
   const belowMoq = moq > 0 && designPcs < moq
+
+  // Format base component MOQ (e.g. music box), pooled across all designs that
+  // share this format. Configured in admin Settings (settings/format_moq).
+  const fmtCode = p.format_code || ''
+  const fmtMoq = Number(formatMoqMap[fmtCode]) || 0
+  const fmtGroup = formatGroupKey(lineLike)
+  const cartFormatPcs = (cart?.items || [])
+    .filter(it => formatGroupKey(it) === fmtGroup)
+    .reduce((s, it) => s + Math.max(1, Number(it.qty) || 1), 0)
+  const formatPcs = cartFormatPcs + (inCart ? 0 : pcs)
+  const belowFormatMoq = fmtMoq > 0 && formatPcs < fmtMoq
+  const fmtLabel = FORMAT_LABEL[fmtCode] || `format ${fmtCode}`
 
   const pickFinish = i => {
     setFinishIdx(i)
@@ -94,6 +112,7 @@ export default function FigurineDetail({ profile }) {
     cart?.add({
       type: 'figurine', id: p.id, name, code,
       design_no: designNo || '',
+      format_code: p.format_code || '',
       image: selVariant.image || image,
       finish: selVariant.plating_name || selVariant.plating_code || '',
       finish_sku: selVariant.sku || '',
@@ -196,6 +215,12 @@ export default function FigurineDetail({ profile }) {
                 <p className={`text-[11px] mt-1.5 ${belowMoq ? 'text-amber-700' : 'text-ink-50'}`}>
                   Made to order · minimum {moq.toLocaleString()} pcs per design
                   {belowMoq && ' — below the minimum, we will confirm feasibility on quotation'}
+                </p>
+              )}
+              {fmtMoq > 0 && (
+                <p className={`text-[11px] mt-1 ${belowFormatMoq ? 'text-amber-700' : 'text-ink-50'}`}>
+                  {fmtLabel} base · minimum {fmtMoq.toLocaleString()} pcs across all designs
+                  {belowFormatMoq && ' — combine with other ' + fmtLabel.toLowerCase() + ' designs to reach it'}
                 </p>
               )}
             </div>
