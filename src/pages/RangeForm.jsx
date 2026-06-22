@@ -171,6 +171,7 @@ export default function RangeForm() {
   const [error, setError] = useState('')
   const [uploading, setUploading] = useState('')
   const [lightbox, setLightbox] = useState(null)
+  const [pickerFor, setPickerFor] = useState(null)
   const [catOptions, setCatOptions] = useState({ design: [], product: [] })
   const [mixMsg, setMixMsg] = useState('')
   // AI marketing-copy writer (mirrors the corporate-gift product form)
@@ -516,7 +517,13 @@ export default function RangeForm() {
     setUploading(`variant-${i}`); setError('')
     try {
       const url = await uploadFile(file)
+      // Assign to the variant AND add it to the shared Images gallery (deduped) so the
+      // same upload can be reused on other variants without uploading it again.
       patchVariant(i, { image: url })
+      setForm(f => f.gallery.some(g => g.url === url)
+        ? f
+        : { ...f, gallery: [...f.gallery, { url, caption: '' }] })
+      setPickerFor(null)
     } catch (err) { setError(err.message || 'Upload failed.') }
     finally { setUploading('') }
   }
@@ -1070,20 +1077,55 @@ export default function RangeForm() {
                   <div className="flex items-start gap-3">
                     <div className="shrink-0">
                       <div className="relative w-16 h-16">
-                        <label className="w-16 h-16 bg-white border border-ivory-dark flex items-center justify-center overflow-hidden cursor-pointer hover:border-brand-400 transition-colors"
-                               title={v.image ? 'Click to replace image' : 'Click to upload image'}>
+                        <button type="button" onClick={() => setPickerFor(pickerFor === i ? null : i)}
+                                className="w-16 h-16 bg-white border border-ivory-dark flex items-center justify-center overflow-hidden cursor-pointer hover:border-brand-400 transition-colors"
+                                title="Choose an image">
                           {uploading === `variant-${i}`
                             ? <span className="text-[10px] text-ink-50">…</span>
                             : v.image
                               ? <img src={v.image} alt="" className="w-full h-full object-contain p-1" />
                               : <Gem size={20} className="text-gray-300" />}
-                          <input type="file" accept="image/*" className="hidden"
-                                 onChange={e => handleVariantUpload(i, e.target.files[0])} />
-                        </label>
+                        </button>
                         {v.image && (
                           <button type="button" onClick={() => patchVariant(i, { image: '' })}
                                   className="absolute -top-1.5 -right-1.5 bg-white border border-ivory-dark text-red-600 rounded-full w-5 h-5 text-xs leading-none shadow-sm hover:bg-red-50"
                                   title="Remove image">×</button>
+                        )}
+
+                        {pickerFor === i && (
+                          <>
+                            <div className="fixed inset-0 z-30" onClick={() => setPickerFor(null)} />
+                            <div className="absolute z-40 top-[4.5rem] left-0 w-64 bg-white border border-ivory-dark rounded-lg shadow-lg p-2.5 space-y-2">
+                              {form.gallery.length > 0 ? (
+                                <>
+                                  <p className="text-[11px] text-ink-60">Use a product image</p>
+                                  <div className="grid grid-cols-4 gap-1">
+                                    {form.gallery.map((g, gi) => g.url && (
+                                      <button key={gi} type="button"
+                                              onClick={() => { patchVariant(i, { image: g.url }); setPickerFor(null) }}
+                                              className={`relative aspect-square bg-white border rounded overflow-hidden hover:border-brand-400 ${g.url === v.image ? 'border-brand-500 ring-1 ring-brand-400' : 'border-ivory-dark'}`}
+                                              title={g.caption || 'Use this image'}>
+                                        <img src={g.url} alt="" className="w-full h-full object-contain p-0.5" />
+                                      </button>
+                                    ))}
+                                  </div>
+                                </>
+                              ) : (
+                                <p className="text-[11px] text-ink-50">No images yet — upload one below or in the Images section.</p>
+                              )}
+                              <div className="flex items-center gap-2 pt-1 border-t border-ivory-dark">
+                                <label className="text-xs text-brand-600 hover:text-brand-700 cursor-pointer inline-flex items-center gap-1">
+                                  ＋ Upload new
+                                  <input type="file" accept="image/*" className="hidden"
+                                         onChange={e => handleVariantUpload(i, e.target.files[0])} />
+                                </label>
+                                {v.image && (
+                                  <button type="button" onClick={() => { setLightbox({ url: v.image }); setPickerFor(null) }}
+                                          className="text-xs text-ink-60 hover:text-ink ml-auto">Enlarge</button>
+                                )}
+                              </div>
+                            </div>
+                          </>
                         )}
                       </div>
                     </div>
