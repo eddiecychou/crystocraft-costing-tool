@@ -157,6 +157,16 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
     return products.filter(p => !q || p.name.toLowerCase().includes(q) || p.id.toLowerCase().includes(q)).slice(0, 40)
   }, [products, search])
 
+  // Representative product image for the templated preview.
+  const repImage = useMemo(() => {
+    if (f.type === 'manual') {
+      const byId = Object.fromEntries(products.map(p => [p.id, p]))
+      return (f.product_ids || []).map(id => byId[id]?.image).find(Boolean) || ''
+    }
+    if (f.type === 'filter') return products.find(p => p.cat === f.filter_value && p.image)?.image || ''
+    return products.find(p => p.image)?.image || ''
+  }, [f.type, f.filter_value, f.product_ids, products])
+
   async function upload(file) {
     if (!file) return
     setUploading(true)
@@ -303,6 +313,11 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
             </div>
           )}
 
+          <div>
+            <label className="label">Preview</label>
+            <TilePreview f={f} repImage={repImage} />
+          </div>
+
           <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
             <input type="checkbox" className="w-4 h-4 accent-brand-600" checked={f.active !== false} onChange={e => set('active', e.target.checked)} />
             Active (visible in the shop)
@@ -313,6 +328,44 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
           <button onClick={onClose} className="btn-secondary text-sm">Cancel</button>
           <button onClick={() => onSave(f)} disabled={!canSave} className="btn-primary text-sm">Save</button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// WYSIWYG tile — mirrors the customer CollectionBand tile exactly.
+function TilePreview({ f, repImage }) {
+  const ac = accentOf(f.accent)
+  const custom = f.image_mode === 'custom' && f.custom_url
+  const wrap = { width: 168 }
+  if (custom) {
+    const tcol = f.title_color === 'black' ? '#1a1a1a' : '#ffffff'
+    const rgb = f.overlay_color === 'white' ? '255,255,255' : '0,0,0'
+    const op = f.overlay_color === 'none' ? 0 : (f.overlay_opacity ?? 0.55)
+    const shadow = f.title_color === 'black' ? 'none' : '0 1px 3px rgba(0,0,0,0.55)'
+    return (
+      <div style={wrap} className="relative rounded-xl overflow-hidden border border-ivory-dark">
+        <div className="aspect-square overflow-hidden">
+          <img src={f.custom_url} alt="" className="block w-full h-full object-cover" />
+        </div>
+        <div className="absolute inset-x-0 bottom-0 px-2.5 py-2"
+             style={{ background: `linear-gradient(to top, rgba(${rgb},${op}), rgba(${rgb},0))` }}>
+          <p className="text-xs font-medium truncate" style={{ color: tcol, textShadow: shadow }}>{f.title || 'Title'}</p>
+          {f.subtitle && <p className="text-[10px] truncate" style={{ color: tcol, opacity: 0.85, textShadow: shadow }}>{f.subtitle}</p>}
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div style={wrap} className="rounded-xl overflow-hidden border border-ivory-dark">
+      <div className="aspect-square flex items-center justify-center" style={{ background: ac.tile }}>
+        {repImage
+          ? <img src={repImage} alt="" className="w-[78%] h-[78%] object-contain" />
+          : <span className="text-2xl font-medium" style={{ color: ac.ink }}>{(f.title || '?').slice(0, 1)}</span>}
+      </div>
+      <div className="px-2.5 py-2" style={{ background: ac.tile }}>
+        <p className="text-xs font-medium truncate" style={{ color: ac.ink }}>{f.title || 'Title'}</p>
+        {f.subtitle && <p className="text-[10px] truncate" style={{ color: ac.ink, opacity: 0.7 }}>{f.subtitle}</p>}
       </div>
     </div>
   )
