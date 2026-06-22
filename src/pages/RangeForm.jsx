@@ -172,6 +172,7 @@ export default function RangeForm() {
   const [uploading, setUploading] = useState('')
   const [lightbox, setLightbox] = useState(null)
   const [pickerFor, setPickerFor] = useState(null)
+  const [pickerUrl, setPickerUrl] = useState('')
   const [catOptions, setCatOptions] = useState({ design: [], product: [] })
   const [mixMsg, setMixMsg] = useState('')
   // AI marketing-copy writer (mirrors the corporate-gift product form)
@@ -526,6 +527,16 @@ export default function RangeForm() {
       setPickerFor(null)
     } catch (err) { setError(err.message || 'Upload failed.') }
     finally { setUploading('') }
+  }
+
+  function applyVariantUrl(i, raw) {
+    const url = (raw || '').trim()
+    if (!url) return
+    patchVariant(i, { image: url })
+    setForm(f => f.gallery.some(g => g.url === url)
+      ? f
+      : { ...f, gallery: [...f.gallery, { url, caption: '' }] })
+    setPickerUrl(''); setPickerFor(null)
   }
 
   async function handleGalleryUpload(files) {
@@ -1077,7 +1088,7 @@ export default function RangeForm() {
                   <div className="flex items-start gap-3">
                     <div className="shrink-0">
                       <div className="relative w-16 h-16">
-                        <button type="button" onClick={() => setPickerFor(pickerFor === i ? null : i)}
+                        <button type="button" onClick={() => { setPickerUrl(''); setPickerFor(pickerFor === i ? null : i) }}
                                 className="w-16 h-16 bg-white border border-ivory-dark flex items-center justify-center overflow-hidden cursor-pointer hover:border-brand-400 transition-colors"
                                 title="Choose an image">
                           {uploading === `variant-${i}`
@@ -1123,6 +1134,14 @@ export default function RangeForm() {
                                   <button type="button" onClick={() => { setLightbox({ url: v.image }); setPickerFor(null) }}
                                           className="text-xs text-ink-60 hover:text-ink ml-auto">Enlarge</button>
                                 )}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <input type="url" value={pickerUrl} onChange={e => setPickerUrl(e.target.value)}
+                                       onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); applyVariantUrl(i, pickerUrl) } }}
+                                       placeholder="…or paste an image URL"
+                                       className="input text-xs flex-1 min-w-0 py-1" />
+                                <button type="button" onClick={() => applyVariantUrl(i, pickerUrl)} disabled={!pickerUrl.trim()}
+                                        className="btn-secondary text-xs py-1 px-2 shrink-0 disabled:opacity-40">Use</button>
                               </div>
                             </div>
                           </>
