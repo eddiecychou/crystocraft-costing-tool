@@ -1211,10 +1211,6 @@ export default function RangeForm() {
                           <label className="label">Description <span className="text-ink-60 font-normal">(auto from plating + crystal, editable)</span></label>
                           <input className="input text-xs" value={v.description} onChange={setVariant(i, 'description')} placeholder="Gold, Crystal AB" />
                         </div>
-                        <div className="col-span-2 sm:col-span-4">
-                          <label className="label">Image URL</label>
-                          <input className="input text-xs" value={v.image} onChange={setVariant(i, 'image')} placeholder="/range-img/… or https://… or Upload" />
-                        </div>
                       </div>
 
                       {/* Crystal colours for this plating — selectable attribute, not a SKU/stock dimension */}
