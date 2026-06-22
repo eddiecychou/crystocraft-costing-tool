@@ -122,26 +122,32 @@ export default function Layout({ children, user }) {
           </button>
         </nav>
 
-        {/* More drawer — slides up above tab bar */}
+        {/* More sheet — full grid of every section, slides up above tab bar */}
         {moreOpen && (
           <>
-            <div className="md:hidden fixed inset-0 z-30" onClick={() => setMoreOpen(false)} />
-            <div className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 bg-white border-t border-ivory-dark shadow-lg rounded-t-sm overflow-hidden">
-              {moreNav.map(({ to, label, Icon }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  onClick={() => setMoreOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center gap-4 px-6 py-4 text-sm font-medium border-b border-ivory-dark last:border-0 transition-colors ${
-                      isActive ? 'text-brand-600 bg-brand-50' : 'text-ink-80'
-                    }`
-                  }
-                >
-                  <Icon size={22} strokeWidth={1.75} className="shrink-0" />
-                  <span>{label}</span>
-                </NavLink>
-              ))}
+            <div className="md:hidden fixed inset-0 z-30 bg-black/30" onClick={() => setMoreOpen(false)} />
+            <div className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 bg-white border-t border-ivory-dark shadow-2xl rounded-t-xl overflow-hidden">
+              <div className="flex flex-col items-center pt-2 pb-1">
+                <span className="w-9 h-1 rounded-full bg-ivory-dark mb-2" />
+                <p className="text-xs font-medium text-ink-50 uppercase tracking-[0.12em] font-label">All sections</p>
+              </div>
+              <div className="grid grid-cols-4 gap-1 p-3 pt-2">
+                {nav.map(({ to, short, Icon }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    onClick={() => setMoreOpen(false)}
+                    className={({ isActive }) =>
+                      `flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-lg text-center transition-colors ${
+                        isActive ? 'bg-brand-50 text-brand-600' : 'text-ink-70 hover:bg-ivory active:bg-ivory'
+                      }`
+                    }
+                  >
+                    <Icon size={24} strokeWidth={1.6} className="shrink-0" />
+                    <span className="text-[10.5px] font-medium leading-tight line-clamp-2">{short}</span>
+                  </NavLink>
+                ))}
+              </div>
             </div>
           </>
         )}
