@@ -10,6 +10,7 @@ import Products from './pages/Products'
 import Range from './pages/Range'
 import RangeForm from './pages/RangeForm'
 import RangeCosting from './pages/RangeCosting'
+import RangeQuoteForm from './pages/RangeQuoteForm'
 import ProductForm from './pages/ProductForm'
 import ProductDetail from './pages/ProductDetail'
 import ComponentForm from './pages/ComponentForm'
@@ -90,6 +91,8 @@ function AdminApp({ user }) {
                 <Route path="/range/:id" element={<RangeForm />} />
                 <Route path="/components" element={<ComponentsLib />} />
                 <Route path="/components/critical/new" element={<RangeComponentForm />} />
+                <Route path="/components/critical/:id/quotes/new" element={<RangeQuoteForm />} />
+                <Route path="/components/critical/:id/quotes/:quoteId" element={<RangeQuoteForm />} />
                 <Route path="/components/critical/:id" element={<RangeComponentForm />} />
                 <Route path="/products/new" element={<ProductForm />} />
                 <Route path="/products/:id" element={<ProductDetail />} />

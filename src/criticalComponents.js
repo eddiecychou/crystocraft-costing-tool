@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
-  collection, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc,
+  collection, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, updateDoc,
   onSnapshot, query, orderBy, serverTimestamp, writeBatch,
 } from 'firebase/firestore'
 import { db } from './firebase'
@@ -71,9 +71,23 @@ export async function getComponent(id) {
   return snap.exists() ? fromDoc(snap) : null
 }
 
-// Create (id null/undefined) or update an existing component doc.
+// Descriptive (non-cost) fields written by the component editor. Cost fields are
+// owned by supplier quotes and denormalised separately, so saving the editor form
+// (merge:true) must never overwrite them.
+const descriptorOf = c => {
+  const n = normComponent(c)
+  return {
+    code: n.code, name: n.name, category: n.category,
+    supplierId: n.supplierId, supplierName: n.supplierName,
+    notes: n.notes, images: n.images,
+    stock_qty: n.stock_qty, lead_time_weeks: n.lead_time_weeks,
+  }
+}
+
+// Create (id null/undefined) or update an existing component doc. Only descriptive
+// fields are written; cost comes from the preferred supplier quote.
 export async function saveComponent(id, data) {
-  const payload = { ...normComponent(data), updatedAt: serverTimestamp() }
+  const payload = { ...descriptorOf(data), updatedAt: serverTimestamp() }
   if (id) {
     await setDoc(doc(db, 'range_components', id), payload, { merge: true })
     return id
@@ -84,6 +98,95 @@ export async function saveComponent(id, data) {
 
 export async function deleteComponent(id) {
   await deleteDoc(doc(db, 'range_components', id))
+}
+
+// ── Supplier quotes (subcollection, mirrors corp-gift) ───────────────────────
+// range_components/{id}/supplier_quotes/{quoteId}. Each quote carries its own
+// screenshots/PDF, OCR-extracted cost, MOQ, volume tiers and lead times. The
+// preferred quote's cost is denormalised onto the component doc so the costing
+// layer (rangeCosting.js) can read it without a subcollection fetch.
+const QUOTES = id => collection(db, 'range_components', id, 'supplier_quotes')
+
+const numOr = v => (v === '' || v == null || !Number.isFinite(Number(v)) ? null : Number(v))
+
+export const normQuote = q => ({
+  supplier_id: q.supplier_id || '',
+  supplier_name: (q.supplier_name || '').trim(),
+  unit_cost: numOr(q.unit_cost),
+  unit_cost_currency: (q.unit_cost_currency || 'RMB').trim() || 'RMB',
+  volume_tiers: normVolumeTiers(q.volume_tiers),
+  moq: numOr(q.moq),
+  tooling_sample_cost: numOr(q.tooling_sample_cost),
+  tooling_sample_cost_currency: (q.tooling_sample_cost_currency || q.unit_cost_currency || 'RMB').trim() || 'RMB',
+  sampling_lead_time_days: numOr(q.sampling_lead_time_days),
+  tooling_lead_time_days: numOr(q.tooling_lead_time_days),
+  production_lead_time_days: numOr(q.production_lead_time_days),
+  is_preferred: !!q.is_preferred,
+  notes: (q.notes || '').trim(),
+  attachments: Array.isArray(q.attachments) ? q.attachments : [],
+})
+
+export async function loadComponentQuotes(componentId) {
+  try {
+    const snap = await getDocs(query(QUOTES(componentId), orderBy('createdAt', 'desc')))
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  } catch {
+    return []
+  }
+}
+
+// Cost snapshot copied from the preferred quote onto the component doc.
+const denormFrom = q => q ? {
+  unit_cost: q.unit_cost ?? null,
+  unit_cost_currency: q.unit_cost_currency || 'RMB',
+  volume_tiers: normVolumeTiers(q.volume_tiers),
+  tooling_sample_cost: q.tooling_sample_cost ?? null,
+  tooling_sample_cost_currency: q.tooling_sample_cost_currency || q.unit_cost_currency || 'RMB',
+  preferred_supplier_name: q.supplier_name || '',
+  preferred_quote_id: q.id || null,
+} : {
+  unit_cost: null, volume_tiers: [], tooling_sample_cost: null,
+  preferred_supplier_name: '', preferred_quote_id: null,
+}
+
+// Re-read quotes, mark exactly one preferred (or none), and refresh the
+// component's denormalised cost snapshot accordingly.
+async function recomputeDenorm(componentId, preferId) {
+  const snap = await getDocs(QUOTES(componentId))
+  let chosen = null
+  await Promise.all(snap.docs.map(d => {
+    const pref = preferId != null ? d.id === preferId : !!d.data().is_preferred
+    if (pref && !chosen) chosen = { id: d.id, ...d.data() }
+    return d.data().is_preferred !== pref ? updateDoc(d.ref, { is_preferred: pref }) : null
+  }))
+  await updateDoc(doc(db, 'range_components', componentId), {
+    ...denormFrom(chosen), updatedAt: serverTimestamp(),
+  })
+  return chosen
+}
+
+export async function saveComponentQuote(componentId, quoteId, data) {
+  const payload = { ...normQuote(data), updatedAt: serverTimestamp() }
+  let id = quoteId
+  if (quoteId) {
+    await updateDoc(doc(db, 'range_components', componentId, 'supplier_quotes', quoteId), payload)
+  } else {
+    const ref = await addDoc(QUOTES(componentId), { ...payload, createdAt: serverTimestamp() })
+    id = ref.id
+  }
+  // Preferred selection (or editing the current preferred) refreshes the snapshot.
+  if (payload.is_preferred) await recomputeDenorm(componentId, id)
+  else await recomputeDenorm(componentId, null)
+  return id
+}
+
+export async function setPreferredQuote(componentId, quoteId) {
+  await recomputeDenorm(componentId, quoteId)
+}
+
+export async function deleteComponentQuote(componentId, quoteId) {
+  await deleteDoc(doc(db, 'range_components', componentId, 'supplier_quotes', quoteId))
+  await recomputeDenorm(componentId, null)
 }
 
 // Bulk create (CSV import / Excel migration). Skips rows with no code.

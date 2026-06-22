@@ -3,14 +3,13 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
-import { getComponent, saveComponent, deleteComponent } from '../criticalComponents'
-import { RANGE_COMPONENT_CATEGORIES, CURRENCIES } from '../constants'
+import { getComponent, saveComponent, deleteComponent, loadComponentQuotes, setPreferredQuote } from '../criticalComponents'
+import { RANGE_COMPONENT_CATEGORIES } from '../constants'
+import { Star, FileText } from 'lucide-react'
 
 const blank = {
   code: '', name: '', category: '', stock_qty: '', lead_time_weeks: '',
   supplierId: '', supplierName: '', notes: '', images: [],
-  unit_cost: '', unit_cost_currency: 'RMB', volume_tiers: [],
-  tooling_sample_cost: '', tooling_sample_cost_currency: 'RMB',
 }
 
 // Stable id for new docs so image storage paths exist before first save.
@@ -28,11 +27,20 @@ export default function RangeComponentForm() {
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
+  const [quotes, setQuotes] = useState([])
 
   useEffect(() => {
     const q = query(collection(db, 'suppliers'), orderBy('name'))
     return onSnapshot(q, snap => setSuppliers(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
   }, [])
+
+  const refreshQuotes = () => { if (!isNew) loadComponentQuotes(routeId).then(setQuotes) }
+  useEffect(() => { refreshQuotes() }, [routeId, isNew])
+
+  async function preferQuote(qid) {
+    await setPreferredQuote(routeId, qid)
+    refreshQuotes()
+  }
 
   useEffect(() => {
     if (isNew) return
@@ -42,11 +50,6 @@ export default function RangeComponentForm() {
         stock_qty: c.stock_qty ?? '', lead_time_weeks: c.lead_time_weeks ?? '',
         supplierId: c.supplierId || '', supplierName: c.supplierName || '',
         notes: c.notes || '', images: c.images || [],
-        unit_cost: c.unit_cost ?? '', unit_cost_currency: c.unit_cost_currency || 'RMB',
-        volume_tiers: Array.isArray(c.volume_tiers)
-          ? c.volume_tiers.map(t => ({ min_qty: t.min_qty ?? '', unit_cost: t.unit_cost ?? '' })) : [],
-        tooling_sample_cost: c.tooling_sample_cost ?? '',
-        tooling_sample_cost_currency: c.tooling_sample_cost_currency || c.unit_cost_currency || 'RMB',
       })
       setLoading(false)
     })
@@ -54,13 +57,6 @@ export default function RangeComponentForm() {
 
   const set = key => e => setForm(f => ({ ...f, [key]: e.target.value }))
   const setNum = key => e => setForm(f => ({ ...f, [key]: e.target.value.replace(/[^\d.]/g, '') }))
-
-  const setTier = (i, key) => e => setForm(f => ({
-    ...f, volume_tiers: f.volume_tiers.map((t, j) =>
-      j === i ? { ...t, [key]: e.target.value.replace(/[^\d.]/g, '') } : t),
-  }))
-  const addTier = () => setForm(f => ({ ...f, volume_tiers: [...f.volume_tiers, { min_qty: '', unit_cost: '' }] }))
-  const removeTier = i => setForm(f => ({ ...f, volume_tiers: f.volume_tiers.filter((_, j) => j !== i) }))
 
   const onSupplier = e => {
     const sid = e.target.value
@@ -163,67 +159,47 @@ export default function RangeComponentForm() {
           </div>
         </div>
 
-        {/* Cost — used by Range Costing */}
-        <div className="card p-5 space-y-4">
-          <div>
-            <h2 className="text-base">Cost <span className="text-ink-60 font-normal text-sm">(for figurine costing)</span></h2>
-            <p className="text-xs text-ink-60 mt-0.5">The supplier cost of one part. Leave blank if this part isn't costed yet.</p>
+        {/* Supplier quotes — image + OCR, like corp gift. Cost comes from the
+            preferred quote and feeds figurine costing. */}
+        <div className="card p-5">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-base">Supplier quotes <span className="text-ink-60 font-normal text-sm">(drives figurine cost)</span></h2>
+            {!isNew && <Link to={`/components/critical/${routeId}/quotes/new`} className="btn-secondary text-sm">+ Add quote</Link>}
           </div>
+          <p className="text-xs text-ink-60 mb-3">Upload supplier screenshots / PDFs; AI extracts the price. Star one as preferred — its cost is used in costing.</p>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">Unit cost</label>
-              <input className="input" inputMode="decimal" value={form.unit_cost}
-                     onChange={setNum('unit_cost')} placeholder="e.g. 3.20" />
-            </div>
-            <div>
-              <label className="label">Currency</label>
-              <select className="input" value={form.unit_cost_currency} onChange={set('unit_cost_currency')}>
-                {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
-
-          {/* Volume tiers — optional cheaper price at higher order quantities */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="label mb-0">Volume tiers <span className="text-ink-60 font-normal">(optional)</span></label>
-              <button type="button" onClick={addTier} className="text-xs text-brand-600 hover:underline">+ Add tier</button>
-            </div>
-            <p className="text-xs text-ink-60 mb-2">Cheaper unit cost at or above an order quantity. Currency follows the unit cost above.</p>
-            {form.volume_tiers.length === 0 ? (
-              <p className="text-xs text-ink-50">No volume tiers — the unit cost above applies at every quantity.</p>
-            ) : (
-              <div className="space-y-2">
-                {form.volume_tiers.map((t, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <span className="text-xs text-ink-50 w-10">≥ qty</span>
-                    <input className="input py-1.5 text-sm w-28" inputMode="numeric" value={t.min_qty}
-                           onChange={setTier(i, 'min_qty')} placeholder="e.g. 500" />
-                    <span className="text-xs text-ink-50">→ unit cost</span>
-                    <input className="input py-1.5 text-sm w-28" inputMode="decimal" value={t.unit_cost}
-                           onChange={setTier(i, 'unit_cost')} placeholder="e.g. 2.90" />
-                    <button type="button" onClick={() => removeTier(i)}
-                            className="text-red-300 hover:text-red-500 text-sm ml-auto" title="Remove tier">×</button>
+          {isNew ? (
+            <p className="text-sm text-ink-50">Save the component first, then add supplier quotes with images.</p>
+          ) : quotes.length === 0 ? (
+            <p className="text-sm text-ink-50">No quotes yet — <Link to={`/components/critical/${routeId}/quotes/new`} className="text-brand-600 hover:underline">add the first supplier quote</Link>.</p>
+          ) : (
+            <div className="divide-y divide-ivory-dark">
+              {quotes.map(q => (
+                <div key={q.id} className="py-2.5 flex items-center gap-3">
+                  <button type="button" onClick={() => preferQuote(q.id)} title={q.is_preferred ? 'Preferred' : 'Mark preferred'}
+                          className={q.is_preferred ? 'text-amber-500' : 'text-ink-30 hover:text-amber-400'}>
+                    <Star size={16} fill={q.is_preferred ? 'currentColor' : 'none'} />
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-gray-800 truncate">
+                      {q.supplier_name || 'Unnamed supplier'}
+                      {q.is_preferred && <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-600">preferred</span>}
+                    </p>
+                    <p className="text-xs text-ink-50">
+                      {q.unit_cost != null ? `${q.unit_cost} ${q.unit_cost_currency}` : 'no price'}
+                      {q.moq ? ` · MOQ ${Number(q.moq).toLocaleString()}` : ''}
+                      {q.volume_tiers?.length ? ` · ${q.volume_tiers.length} tier${q.volume_tiers.length > 1 ? 's' : ''}` : ''}
+                      {q.attachments?.length ? ` · ${q.attachments.length} file${q.attachments.length > 1 ? 's' : ''}` : ''}
+                    </p>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 border-t border-ivory-dark pt-4">
-            <div>
-              <label className="label">Tooling / mould <span className="text-ink-60 font-normal">(one-time)</span></label>
-              <input className="input" inputMode="decimal" value={form.tooling_sample_cost}
-                     onChange={setNum('tooling_sample_cost')} placeholder="optional" />
+                  {q.attachments?.length > 0 && (q.attachments[0].file_type === 'image'
+                    ? <img src={q.attachments[0].file_url} alt="" className="w-9 h-9 object-cover rounded border border-ivory-dark shrink-0" />
+                    : <FileText size={16} className="text-red-400 shrink-0" />)}
+                  <Link to={`/components/critical/${routeId}/quotes/${q.id}`} className="text-xs text-brand-600 hover:underline shrink-0">Edit</Link>
+                </div>
+              ))}
             </div>
-            <div>
-              <label className="label">Tooling currency</label>
-              <select className="input" value={form.tooling_sample_cost_currency} onChange={set('tooling_sample_cost_currency')}>
-                {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Images */}
