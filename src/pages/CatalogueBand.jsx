@@ -11,7 +11,7 @@ import LoadingBar from '../components/LoadingBar'
 import { ChevronUp, ChevronDown, Pencil, Trash2, Plus, X } from 'lucide-react'
 
 const CATALOGUES = [{ key: 'range', label: 'Figurine Gifts' }, { key: 'corp_gift', label: 'Corporate Gifts' }]
-const blank = cat => ({ catalogue: cat, title: '', subtitle: '', type: 'filter', filter_value: '', product_ids: [], smart_rule: 'new_in', accent: 'teal', image_mode: 'template', custom_url: '', active: true })
+const blank = cat => ({ catalogue: cat, title: '', subtitle: '', type: 'filter', filter_value: '', product_ids: [], smart_rule: 'new_in', accent: 'teal', image_mode: 'template', custom_url: '', title_color: 'white', overlay_color: 'black', overlay_opacity: 0.55, active: true })
 
 export default function CatalogueBand() {
   const [catalogue, setCatalogue] = useState('range')
@@ -269,6 +269,39 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
             </div>
             <p className="text-xs text-ink-50 mt-1">Custom uses your full-bleed image with the title overlaid (best look — keep a consistent style across tiles). Templated falls back to a representative product photo on the accent colour.</p>
           </div>
+
+          {f.image_mode === 'custom' && (
+            <div className="rounded-lg border border-ivory-dark p-3 space-y-3">
+              <p className="text-xs font-medium text-ink-70">Label &amp; overlay</p>
+              <div className="flex flex-wrap items-center gap-4">
+                <div>
+                  <label className="label">Title colour</label>
+                  <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden">
+                    {[['white', 'White'], ['black', 'Black']].map(([v, lbl]) => (
+                      <button key={v} type="button" onClick={() => set('title_color', v)}
+                              className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark ${(f.title_color || 'white') === v ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory'}`}>{lbl}</button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="label">Overlay</label>
+                  <select className="input py-1.5 text-sm w-28" value={f.overlay_color || 'black'} onChange={e => set('overlay_color', e.target.value)}>
+                    <option value="black">Dark</option>
+                    <option value="white">Light</option>
+                    <option value="none">None</option>
+                  </select>
+                </div>
+                {(f.overlay_color || 'black') !== 'none' && (
+                  <div className="flex-1 min-w-[140px]">
+                    <label className="label">Overlay strength · {Math.round((f.overlay_opacity ?? 0.55) * 100)}%</label>
+                    <input type="range" min="0" max="80" step="5" className="w-full"
+                           value={Math.round((f.overlay_opacity ?? 0.55) * 100)}
+                           onChange={e => set('overlay_opacity', Number(e.target.value) / 100)} />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
             <input type="checkbox" className="w-4 h-4 accent-brand-600" checked={f.active !== false} onChange={e => set('active', e.target.checked)} />

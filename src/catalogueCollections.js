@@ -50,6 +50,10 @@ export function normCollection(c) {
     accent: c.accent || 'teal',
     image_mode: c.image_mode === 'custom' ? 'custom' : 'template',
     custom_url: (c.custom_url || '').trim(),
+    // Custom-tile label/overlay styling.
+    title_color: c.title_color === 'black' ? 'black' : 'white',
+    overlay_color: ['black', 'white', 'none'].includes(c.overlay_color) ? c.overlay_color : 'black',
+    overlay_opacity: Math.max(0, Math.min(0.8, numOr(c.overlay_opacity, 0.55))),
     active: c.active !== false,
   }
 }
