@@ -2,9 +2,39 @@
 
 ## Current Status — V3.x as of 2026-06-22
 
-**Live in production on Netlify.** This is the stable checkpoint backed up on GitHub
-immediately before starting the **Range Costing** build (see "Next Version" below).
-Backup reference: git tag `v3.1-pre-range-costing` (commit `c94f74b`).
+**Live in production on Netlify.** Pre-costing stable checkpoint backed up on GitHub:
+git tag `v3.1-pre-range-costing` (commit `c94f74b`) — `git reset --hard` to it to roll back
+the costing work below.
+
+### Range / Figurine Costing — BUILT & deployed (2026-06-22)
+Cost a figurine from its critical components, mirroring corp gift. Opt-in per product —
+products without a `costing` object keep their `ws_price_usd`; nothing recalculates
+automatically.
+- **Component-built cost** — `range_components` cost comes from a **supplier_quotes**
+  subcollection (see next item). Product cost = Σ(component cost × qty) + extra lines.
+- **Base + plating/crystal adders** — `costing.extra_lines` (assembly/packaging, all
+  variants) + per-plating adder + per-crystal-colour adder; a multi-colour variant is
+  costed at its dearest colour. Markup (per-product override, else pricing-group/default)
+  → HKD sell price, using the corp-gift FX rates (`settings/exchange_rates`).
+- **`rangeCosting.js`** — pure module mirroring `pricing.js`; volume-aware component cost,
+  tooling amortised over qty, per-variant all-in cost → sell.
+- **Costing page** `/range/:id/costing` (button in the figurine editor) — component cost
+  breakdown, editable extra/plating/crystal adders, markup + quantity tiers, live
+  per-variant cost & sell table, Save / Save & publish (writes `product.costing`).
+
+### Supplier quotes with image + OCR on critical components — BUILT & deployed (2026-06-22)
+The corp-gift supplier-quote flow, brought to figurine critical components.
+- **`range_components/{id}/supplier_quotes`** subcollection — each quote has its own
+  screenshots/PDF, AI-OCR-extracted unit cost, currency, MOQ, volume tiers and lead times.
+  Reuses the existing `/api/process-quote` Gemini endpoint and image preprocessing.
+- **Preferred quote** — star one; its cost is **denormalised onto the component doc**
+  (`unit_cost`, `unit_cost_currency`, `volume_tiers`, tooling, `preferred_quote_id`) so
+  `rangeCosting` reads cost with no subcollection fetch.
+- **`RangeQuoteForm`** `/components/critical/:id/quotes/:quoteId` — drag-drop upload, OCR,
+  volume tiers, preferred toggle, delete. The component editor lists quotes with a preferred
+  star + attachment preview instead of a single manual cost.
+- **Safe write** — saving the component editor writes descriptor fields only (merge), so it
+  never clobbers quote-owned cost.
 
 ### What's new since V3.0 (figurine / UX work, up to 2026-06-22)
 - **WordPress image importer** (`/range/import-images`) — scans the catalogue blog pages
@@ -503,11 +533,17 @@ Migration approach: manual entry for top 20–30 active corporate gift products 
 
 ---
 
-## Next Version (Planned, NOT yet built) — Range / Figurine Costing
+## Range / Figurine Costing — BUILT (design record)
 
-> Documented here **before** building so the spec survives if the build fails or is
-> rolled back. Stable checkpoint is git tag `v3.1-pre-range-costing` (commit `c94f74b`).
-> If the build breaks, `git reset --hard v3.1-pre-range-costing` restores this state.
+> ✅ **Shipped 2026-06-22** (see Current Status at the top for the as-built summary).
+> Kept as the design record. Pre-build checkpoint: git tag `v3.1-pre-range-costing`
+> (commit `c94f74b`); `git reset --hard` to it to roll back.
+>
+> **One change vs the plan below:** component cost was NOT stored as flat fields on
+> `range_components`. Instead each component got a **`supplier_quotes` subcollection**
+> (image + OCR, multiple quotes, preferred). The preferred quote's cost is denormalised
+> onto the component doc as the same fields (`unit_cost`, `unit_cost_currency`,
+> `volume_tiers`, `tooling_sample_cost`), so steps 2–4 below are unchanged.
 
 **Goal:** cost a figurine the way corp gift is costed, but built from the existing
 **critical component** model. Opt-in per product — products left untouched keep their
