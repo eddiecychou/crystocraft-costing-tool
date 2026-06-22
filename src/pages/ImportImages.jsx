@@ -29,6 +29,13 @@ function variantBaseCode(p, v) {
   })
 }
 
+// Brand-agnostic core of an item code: drop the leading brand letter(s) so a
+// product stored as D0002-230-C still matches a WordPress photo named
+// U0002-230-CAB.jpg (same physical design, different crystal-brand letter).
+function stripBrand(code) {
+  return String(code || '').replace(/^[A-Za-z]+/, '')
+}
+
 async function scrapePages(urls) {
   const res = await fetch('/api/scrape-images', {
     method: 'POST',
@@ -81,8 +88,13 @@ export default function ImportImages() {
         for (const v of variants) {
           const base = variantBaseCode(p, v)
           if (!base || base.length < 6) continue
+          const core = stripBrand(base) // e.g. 0002-230-C
+          if (core.length < 5) continue
           for (const img of pool) {
-            if (img.filename.startsWith(base) && !existing.has(img.url)) {
+            if (existing.has(img.url)) continue
+            // Match brand-agnostically: drop the photo's leading brand letter
+            // before comparing, so D0002-230-C matches U0002-230-CAB.jpg.
+            if (stripBrand(img.filename).startsWith(core)) {
               if (!matches.has(img.url)) matches.set(img.url, img)
             }
           }
