@@ -44,6 +44,10 @@
   function = "compose-message"
   path = "/api/compose-message"
 
+[[edge_functions]]
+  function = "scrape-images"
+  path = "/api/scrape-images"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

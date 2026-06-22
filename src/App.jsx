@@ -34,6 +34,7 @@ import CataloguePreview from './pages/CataloguePreview'
 import BlogGenerator from './pages/BlogGenerator'
 import Dashboard from './pages/Dashboard'
 import ImportData from './pages/ImportData'
+import ImportImages from './pages/ImportImages'
 import CustomerAccounts from './pages/CustomerAccounts'
 import Enquiries from './pages/Enquiries'
 
@@ -83,6 +84,7 @@ function AdminApp({ user }) {
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/range" element={<Range />} />
+                <Route path="/range/import-images" element={<ImportImages />} />
                 <Route path="/range/:id" element={<RangeForm />} />
                 <Route path="/components" element={<ComponentsLib />} />
                 <Route path="/components/critical/new" element={<RangeComponentForm />} />
