@@ -170,6 +170,7 @@ export default function RangeForm() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [uploading, setUploading] = useState('')
+  const [lightbox, setLightbox] = useState(null)
   const [catOptions, setCatOptions] = useState({ design: [], product: [] })
   const [mixMsg, setMixMsg] = useState('')
   // AI marketing-copy writer (mirrors the corporate-gift product form)
@@ -957,7 +958,7 @@ export default function RangeForm() {
               {form.gallery.map((g, i) => (
                 <div key={i} className="flex items-center gap-3 border border-ivory-dark rounded p-2 bg-white">
                   <div className="relative w-14 h-14 shrink-0 bg-white border border-ivory-dark rounded overflow-hidden flex items-center justify-center">
-                    {g.url ? <img src={g.url} alt="" className="w-full h-full object-contain p-0.5" /> : <span className="text-[10px] text-ink-40">no image</span>}
+                    {g.url ? <img src={g.url} alt="" onClick={() => setLightbox(g)} className="w-full h-full object-contain p-0.5 cursor-zoom-in" title="Click to enlarge" /> : <span className="text-[10px] text-ink-40">no image</span>}
                     {i === 0 && (
                       <span className="absolute top-0 left-0 bg-brand-600 text-white text-[9px] font-medium px-1 leading-tight rounded-br" title="Main image shown on the product card">MAIN</span>
                     )}
@@ -997,6 +998,14 @@ export default function RangeForm() {
             <input type="file" accept="image/*" multiple className="hidden"
                    onChange={e => handleGalleryUpload(Array.from(e.target.files))} />
           </label>
+
+          {lightbox && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" onClick={() => setLightbox(null)}>
+              <img src={lightbox.url} alt={lightbox.caption || ''} className="max-w-full max-h-full rounded-lg object-contain" onClick={e => e.stopPropagation()} />
+              <button type="button" className="absolute top-4 right-4 text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm inline-flex items-center"
+                      onClick={() => setLightbox(null)}>✕</button>
+            </div>
+          )}
         </div>
 
         {/* Packing */}

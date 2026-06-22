@@ -332,7 +332,6 @@ export default function PricingTiers() {
           <h2 className="text-sm font-semibold text-gray-700 mb-1">Customer Price Preview (HKD)</h2>
           <p className="text-xs text-gray-400 mb-4">
             All-in cost × each group's markup, rounded up. Customers with a per-customer override are priced at their own markup on publish.
-            {groups.length === 0 && <span className="block mt-1 text-amber-600">No pricing groups yet — <Link to="/components" className="underline">add groups</Link>. The Default {DEFAULT_MARKUP.toFixed(2)}× applies meanwhile.</span>}
           </p>
           <div className="overflow-x-auto -mx-5 px-5">
             <table className="text-sm border-separate border-spacing-0" style={{ minWidth: '420px' }}>

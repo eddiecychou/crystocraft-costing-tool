@@ -74,7 +74,7 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
           <div className="absolute top-1 left-1 z-10 bg-yellow-400 px-1 py-0.5 rounded text-white leading-none"><Star size={11} className="fill-current" /></div>
         )}
         {showVisibility && (
-          <div className={`absolute z-10 ${img.is_hero ? 'top-1 left-7' : 'top-1 left-1'} px-1.5 py-0.5 rounded text-[10px] font-medium leading-none ${visMeta?.cls || 'bg-gray-200 text-gray-600'}`}>
+          <div className={`absolute z-10 bottom-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-medium leading-none ${visMeta?.cls || 'bg-gray-200 text-gray-600'}`}>
             {visMeta?.short || vis}
           </div>
         )}

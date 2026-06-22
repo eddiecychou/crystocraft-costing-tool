@@ -107,12 +107,20 @@ function ProductCard({ product: p, onNavigate }) {
         {/* Pricing tiers */}
         {tiers && tiers.length > 0 && (
           <div className="mt-2 pt-2 border-t border-gray-100 flex flex-wrap gap-x-3 gap-y-1">
-            {tiers.map(t => (
-              <span key={t.quantity} className="text-xs text-gray-700">
-                <span className="font-semibold text-gray-900">{t.sell_currency || 'HKD'} {fmtTierPrice(t.sell_price ?? t.price_hkd, t.sell_currency || 'HKD')}</span>
-                <span className="text-gray-400"> @ {t.quantity.toLocaleString()} pcs</span>
-              </span>
-            ))}
+            {tiers.map(t => {
+              // Keep the currency label tied to the value we actually show: only use
+              // sell_currency when an explicit sell_price exists, otherwise price_hkd is
+              // (and must be labelled as) HKD — never an HKD number under a USD label.
+              const hasSell = t.sell_price != null && t.sell_currency
+              const cur = hasSell ? t.sell_currency : 'HKD'
+              const val = hasSell ? t.sell_price : t.price_hkd
+              return (
+                <span key={t.quantity} className="text-xs text-gray-700">
+                  <span className="font-semibold text-gray-900">{cur} {fmtTierPrice(val, cur)}</span>
+                  <span className="text-gray-400"> @ {t.quantity.toLocaleString()} pcs</span>
+                </span>
+              )
+            })}
           </div>
         )}
         {tiers && tiers.length === 0 && (
