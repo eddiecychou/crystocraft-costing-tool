@@ -36,6 +36,7 @@ import CataloguePreview from './pages/CataloguePreview'
 import BlogGenerator from './pages/BlogGenerator'
 import Dashboard from './pages/Dashboard'
 import ImportData from './pages/ImportData'
+import CatalogueBand from './pages/CatalogueBand'
 import ImportImages from './pages/ImportImages'
 import CustomerAccounts from './pages/CustomerAccounts'
 import Enquiries from './pages/Enquiries'
@@ -114,6 +115,7 @@ function AdminApp({ user }) {
                 <Route path="/customers/new" element={<CustomerForm />} />
                 <Route path="/customers/:id" element={<CustomerDetail />} />
                 <Route path="/customers/:id/edit" element={<CustomerForm />} />
+                <Route path="/catalogue-band" element={<CatalogueBand />} />
                 <Route path="/catalogues" element={<Catalogues />} />
                 <Route path="/catalogues/new" element={<CatalogueForm />} />
                 <Route path="/catalogues/:id" element={<CatalogueDetail />} />

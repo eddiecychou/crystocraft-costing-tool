@@ -5,6 +5,8 @@ import { db, auth } from '../firebase'
 import { Package } from 'lucide-react'
 import { useRates, fromHKD, fmtMoney } from '../currency'
 import { isNew, newFirst } from '../newArrivals'
+import CollectionBand from './CollectionBand'
+import { collectionProducts } from '../catalogueCollections'
 import FavHeart from './FavHeart'
 import LoadingBar from '../components/LoadingBar'
 
@@ -13,6 +15,7 @@ export default function CorporateShop({ profile }) {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [cat, setCat] = useState('')
+  const [coll, setColl] = useState(null)
   const rates = useRates()
   const cur = profile?.base_currency || 'USD'
 
@@ -30,11 +33,18 @@ export default function CorporateShop({ profile }) {
   }, [])
 
   const categories = useMemo(() => [...new Set(products.map(p => p.category).filter(Boolean))].sort(), [products])
-  const filtered = useMemo(() => products.filter(p => {
-    const q = search.toLowerCase()
-    const ms = !q || p.name?.toLowerCase().includes(q)
-    return ms && (!cat || p.category === cat)
-  }), [products, search, cat])
+  // Light list the Shop-by band can render image tiles from.
+  const bandItems = useMemo(() => products.map(p => ({
+    id: p.id, category: p.category || '', is_new: !!p.is_new, image: p.heroImage || '', name: p.name || '',
+  })), [products])
+  const filtered = useMemo(() => {
+    const base = coll ? collectionProducts(coll, products, 'corp_gift') : products
+    return base.filter(p => {
+      const q = search.toLowerCase()
+      const ms = !q || p.name?.toLowerCase().includes(q)
+      return ms && (coll || !cat || p.category === cat)
+    })
+  }, [products, coll, search, cat])
 
   return (
     <div>
@@ -47,10 +57,18 @@ export default function CorporateShop({ profile }) {
         Corporate gifts are made to order. Prices shown are indicative reference points only — final pricing varies
         by specification, quantity and customisation. Contact us for a quotation.
       </div>
+      <CollectionBand catalogue="corp_gift" products={bandItems} active={coll}
+        onApply={c => { setColl(c); setCat(''); window.scrollTo({ top: 0 }) }} />
+      {coll && (
+        <div className="flex items-center justify-between gap-2 mb-4 px-3 py-2 rounded-md bg-ink/5 border border-ivory-dark">
+          <span className="text-sm text-ink-80">Showing <span className="font-medium">{coll.title}</span></span>
+          <button onClick={() => setColl(null)} className="text-sm text-ink-60 hover:text-ink shrink-0">Clear</button>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row gap-2 mb-5">
         <input type="text" placeholder="Search products…" className="input w-full sm:flex-1"
           value={search} onChange={e => setSearch(e.target.value)} />
-        <select className="input sm:w-56" value={cat} onChange={e => setCat(e.target.value)}>
+        <select className="input sm:w-56" value={coll ? '' : cat} onChange={e => { setColl(null); setCat(e.target.value) }}>
           <option value="">All categories</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>

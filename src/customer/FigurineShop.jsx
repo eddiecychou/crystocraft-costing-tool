@@ -7,6 +7,8 @@ import { designNumber, brandLetter, bodyLetter, galleryUrl, RANGE_FORMAT_CODES, 
 import { useRates, fromUSD, fmtMoney } from '../currency'
 import { useFormatMoq } from '../formatMoq'
 import { newFirst } from '../newArrivals'
+import CollectionBand from './CollectionBand'
+import { collectionProducts } from '../catalogueCollections'
 import FavHeart from './FavHeart'
 import LoadingBar from '../components/LoadingBar'
 
@@ -30,6 +32,7 @@ export default function FigurineShop({ profile }) {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [cat, setCat] = useState('')
+  const [coll, setColl] = useState(null)   // applied Shop-by collection
   const [params, setParams] = useSearchParams()
   const { labels: formatLabels } = useFormatMoq()
   const designFilter = params.get('design') ? normDesign(params.get('design')) : ''
@@ -75,13 +78,18 @@ export default function FigurineShop({ profile }) {
   }), [products, rates, cur, disc])
 
   const categories = useMemo(() => [...new Set(items.map(s => s.design_type).filter(Boolean))].sort(), [items])
-  const filtered = useMemo(() => items.filter(s => {
-    const q = search.toLowerCase()
-    const ms = !q || s.name?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q)
-    const md = !designFilter || s.design_key === designFilter
-    const mf = !formatFilter || s.format_code === formatFilter
-    return ms && md && mf && (!cat || s.design_type === cat)
-  }).sort(newFirst), [items, search, cat, designFilter, formatFilter])
+  const filtered = useMemo(() => {
+    // A Shop-by collection narrows (and, for manual, orders) the base set.
+    const base = coll ? collectionProducts(coll, items, 'range') : items
+    const out = base.filter(s => {
+      const q = search.toLowerCase()
+      const ms = !q || s.name?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q)
+      const md = !designFilter || s.design_key === designFilter
+      const mf = !formatFilter || s.format_code === formatFilter
+      return ms && md && mf && (coll || !cat || s.design_type === cat)
+    })
+    return coll?.type === 'manual' ? out : out.sort(newFirst)   // keep manual pick order
+  }, [items, coll, search, cat, designFilter, formatFilter])
 
   const formatName = formatLabels[formatFilter] || FORMAT_LABEL[formatFilter] || `Format ${formatFilter}`
   const clearMoqFilter = () => {
@@ -105,6 +113,18 @@ export default function FigurineShop({ profile }) {
           {disc > 0 ? ` (your ${(disc * 100).toFixed(disc * 100 % 1 ? 1 : 0)}% discount applied)` : ''}
         </p>
       </div>
+      {!designFilter && !formatFilter && (
+        <CollectionBand catalogue="range" products={items} active={coll}
+          onApply={c => { setColl(c); setCat(''); window.scrollTo({ top: 0 }) }} />
+      )}
+      {coll && (
+        <div className="flex items-center justify-between gap-2 mb-4 px-3 py-2 rounded-md bg-ink/5 border border-ivory-dark">
+          <span className="text-sm text-ink-80">Showing <span className="font-medium">{coll.title}</span></span>
+          <button onClick={() => setColl(null)} className="inline-flex items-center gap-1 text-sm text-ink-60 hover:text-ink shrink-0">
+            <X size={14} /> Clear
+          </button>
+        </div>
+      )}
       {(designFilter || formatFilter) && (
         <div className="flex items-center justify-between gap-2 mb-4 px-3 py-2 rounded-md bg-amber-50 border border-amber-200">
           <span className="text-sm text-amber-800">
@@ -118,7 +138,7 @@ export default function FigurineShop({ profile }) {
       <div className="flex flex-col sm:flex-row gap-2 mb-5">
         <input type="text" placeholder="Search name or code…" className="input w-full sm:flex-1"
           value={search} onChange={e => setSearch(e.target.value)} />
-        <select className="input sm:w-56" value={cat} onChange={e => setCat(e.target.value)}>
+        <select className="input sm:w-56" value={coll ? '' : cat} onChange={e => { setColl(null); setCat(e.target.value) }}>
           <option value="">All categories</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
