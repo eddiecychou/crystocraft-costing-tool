@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   doc, getDoc, collection, getDocs, onSnapshot,
-  addDoc, updateDoc, deleteDoc, setDoc, writeBatch, orderBy, query, serverTimestamp,
+  addDoc, updateDoc, deleteDoc, setDoc, writeBatch, orderBy, query, serverTimestamp, deleteField,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { AlertTriangle, X, BadgeCheck } from 'lucide-react'
@@ -157,6 +157,8 @@ export default function PricingTiers() {
         updateDoc(doc(db, 'products', id, 'pricing_tiers', t.id), {
           price_hkd: Math.ceil(totalUnitCostAtQty(components, rates, t.quantity) * DEFAULT_MARKUP),
           sell_currency: 'HKD',
+          // Clear legacy fields from the old USD schema so stale values can't resurface.
+          sell_price: deleteField(),
         })
       ))
 
