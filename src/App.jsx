@@ -9,6 +9,7 @@ import PendingScreen from './customer/PendingScreen'
 import Products from './pages/Products'
 import Range from './pages/Range'
 import RangeForm from './pages/RangeForm'
+import RangeCosting from './pages/RangeCosting'
 import ProductForm from './pages/ProductForm'
 import ProductDetail from './pages/ProductDetail'
 import ComponentForm from './pages/ComponentForm'
@@ -85,6 +86,7 @@ function AdminApp({ user }) {
                 <Route path="/products" element={<Products />} />
                 <Route path="/range" element={<Range />} />
                 <Route path="/range/import-images" element={<ImportImages />} />
+                <Route path="/range/:id/costing" element={<RangeCosting />} />
                 <Route path="/range/:id" element={<RangeForm />} />
                 <Route path="/components" element={<ComponentsLib />} />
                 <Route path="/components/critical/new" element={<RangeComponentForm />} />

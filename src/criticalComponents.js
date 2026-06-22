@@ -26,6 +26,13 @@ const ASSEMBLY_WEEKS_DEFAULT = 2   // plate + assemble + pack when parts are on 
 const numOrNull = v =>
   v === '' || v == null || !Number.isFinite(Number(v)) ? null : Number(v)
 
+// Volume-tier rows on a component cost: [{ min_qty, unit_cost }], same shape as
+// corp-gift supplier quotes. Cleaned to valid numeric rows, sorted by min_qty.
+const normVolumeTiers = tiers => (Array.isArray(tiers) ? tiers : [])
+  .map(t => ({ min_qty: numOrNull(t.min_qty), unit_cost: numOrNull(t.unit_cost) }))
+  .filter(t => t.min_qty != null && t.min_qty > 0 && t.unit_cost != null)
+  .sort((a, b) => a.min_qty - b.min_qty)
+
 // Normalise a raw record (form or Firestore) into the canonical shape.
 export const normComponent = c => ({
   code: (c.code || '').trim().toUpperCase(),
@@ -37,6 +44,13 @@ export const normComponent = c => ({
   images: Array.isArray(c.images) ? c.images.filter(Boolean) : [],
   stock_qty: numOrNull(c.stock_qty),
   lead_time_weeks: numOrNull(c.lead_time_weeks),
+  // Cost — used by Range Costing. A component carries one supplier cost (optional
+  // volume tiers + one-time tooling). null cost means "not costed yet".
+  unit_cost: numOrNull(c.unit_cost),
+  unit_cost_currency: (c.unit_cost_currency || 'RMB').trim() || 'RMB',
+  volume_tiers: normVolumeTiers(c.volume_tiers),
+  tooling_sample_cost: numOrNull(c.tooling_sample_cost),
+  tooling_sample_cost_currency: (c.tooling_sample_cost_currency || c.unit_cost_currency || 'RMB').trim() || 'RMB',
 })
 
 const fromDoc = d => ({ id: d.id, ...normComponent(d.data()) })

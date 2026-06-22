@@ -683,7 +683,10 @@ export default function RangeForm() {
           <p className="eyebrow mb-1">Figurine Gifts {productCode && `· ${productCode}`}</p>
           <h1 className="text-xl md:text-2xl">{isNew ? 'New Product' : 'Edit Product'}</h1>
         </div>
-        <Link to="/range" className="btn-secondary text-sm">← Back</Link>
+        <div className="flex items-center gap-2">
+          {!isNew && <Link to={`/range/${routeId}/costing`} className="btn-secondary text-sm">Costing</Link>}
+          <Link to="/range" className="btn-secondary text-sm">← Back</Link>
+        </div>
       </div>
 
       {error && <div className="card p-3 mb-4 text-sm text-red-700 bg-red-50 border-red-200">{error}</div>}
