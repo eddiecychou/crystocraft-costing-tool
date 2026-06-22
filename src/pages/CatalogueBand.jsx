@@ -161,7 +161,8 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
     if (!file) return
     setUploading(true)
     try {
-      const r = storageRef(storage, `catalogue_band/${catalogue}/${Date.now()}_${file.name.replace(/[^\w.\-]/g, '_')}`)
+      // Upload under catalogues/* — an already-allowed Storage path (no rule change needed).
+      const r = storageRef(storage, `catalogues/band/${catalogue}/${Date.now()}_${file.name.replace(/[^\w.\-]/g, '_')}`)
       await uploadBytes(r, file)
       set('custom_url', await getDownloadURL(r))
       set('image_mode', 'custom')
@@ -266,7 +267,7 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
               )}
               {f.image_mode === 'custom' && f.custom_url && <img src={f.custom_url} alt="" className="w-10 h-10 object-cover rounded border border-ivory-dark" />}
             </div>
-            <p className="text-xs text-ink-50 mt-1">Templated tiles use a representative product photo on the accent colour. Custom uses your full-bleed image — keep a consistent look across tiles.</p>
+            <p className="text-xs text-ink-50 mt-1">Custom uses your full-bleed image with the title overlaid (best look — keep a consistent style across tiles). Templated falls back to a representative product photo on the accent colour.</p>
           </div>
 
           <label className="flex items-center gap-2 text-sm cursor-pointer select-none">

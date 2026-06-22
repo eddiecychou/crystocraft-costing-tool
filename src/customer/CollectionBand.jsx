@@ -30,20 +30,34 @@ export default function CollectionBand({ catalogue, products, active, onApply })
           const ac = accentOf(c.accent)
           const on = active?.id === c.id
           const custom = c.image_mode === 'custom' && c.custom_url
+          if (custom) {
+            // Full-bleed image with the label overlaid on a bottom scrim.
+            return (
+              <button key={c.id} onClick={() => onApply(c)}
+                      className={`group relative rounded-xl overflow-hidden border text-left transition-shadow hover:shadow-md ${on ? 'border-ink' : 'border-ivory-dark'}`}>
+                <div className="aspect-square overflow-hidden">
+                  <img src={c.custom_url} alt="" loading="lazy"
+                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+                </div>
+                <div className="absolute inset-x-0 bottom-0 px-2.5 py-2"
+                     style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.62), rgba(0,0,0,0))' }}>
+                  <p className="text-xs font-medium text-white truncate">{c.title}</p>
+                  {c.subtitle && <p className="text-[10px] text-white/80 truncate">{c.subtitle}</p>}
+                </div>
+              </button>
+            )
+          }
           return (
             <button key={c.id} onClick={() => onApply(c)}
                     className={`group rounded-xl overflow-hidden border text-left transition-shadow hover:shadow-md ${on ? 'border-ink' : 'border-ivory-dark'}`}>
-              <div className="aspect-square flex items-center justify-center overflow-hidden relative"
-                   style={{ background: custom ? undefined : ac.tile }}>
-                {custom
-                  ? <img src={c.custom_url} alt="" className="w-full h-full object-cover" loading="lazy" />
-                  : image
-                    ? <img src={image} alt="" className="w-[78%] h-[78%] object-contain" loading="lazy" />
-                    : <span className="text-2xl font-medium" style={{ color: ac.ink }}>{(c.title || '?').slice(0, 1)}</span>}
+              <div className="aspect-square flex items-center justify-center overflow-hidden relative" style={{ background: ac.tile }}>
+                {image
+                  ? <img src={image} alt="" className="w-[78%] h-[78%] object-contain" loading="lazy" />
+                  : <span className="text-2xl font-medium" style={{ color: ac.ink }}>{(c.title || '?').slice(0, 1)}</span>}
               </div>
-              <div className="px-2.5 py-2" style={{ background: custom ? undefined : ac.tile }}>
-                <p className="text-xs font-medium truncate" style={{ color: custom ? undefined : ac.ink }}>{c.title}</p>
-                {c.subtitle && <p className="text-[10px] truncate opacity-70" style={{ color: custom ? undefined : ac.ink }}>{c.subtitle}</p>}
+              <div className="px-2.5 py-2" style={{ background: ac.tile }}>
+                <p className="text-xs font-medium truncate" style={{ color: ac.ink }}>{c.title}</p>
+                {c.subtitle && <p className="text-[10px] truncate opacity-70" style={{ color: ac.ink }}>{c.subtitle}</p>}
               </div>
             </button>
           )
