@@ -1,5 +1,30 @@
 # Crystocraft Corporate Gift Costing Tool — Project Plan
 
+## Current Status — V3.x as of 2026-06-22
+
+**Live in production on Netlify.** This is the stable checkpoint backed up on GitHub
+immediately before starting the **Range Costing** build (see "Next Version" below).
+Backup reference: git tag `v3.1-pre-range-costing` (commit `c94f74b`).
+
+### What's new since V3.0 (figurine / UX work, up to 2026-06-22)
+- **WordPress image importer** (`/range/import-images`) — scans the catalogue blog pages
+  via the `scrape-images` edge function and matches each photo to a figurine product by
+  its item code, then bulk-adds matched photos to each product's gallery. Matching is
+  **brand-letter agnostic** (a product stored as `D0002-230-C` still matches a photo named
+  `U0002-230-CAB.jpg`) — compares on the `design-format-plating` core.
+- **Variant image picker** — figurine variant images are picked from the shared gallery /
+  uploaded / enlarged, with the image URL integrated into the picker (standalone "Image URL"
+  field removed). Variant uploads/URLs auto-add to the gallery, deduped.
+- **Range gallery click-to-enlarge** lightbox, matching corp-gift behaviour.
+- **Corp-gift admin price fix** — admin product card always shows `price_hkd` (HKD); the
+  legacy `sell_price` (old USD schema) is cleared on publish so stale values can't resurface.
+- **Figurine list scroll restore** — returning from a product edit scrolls the last-opened
+  card back into view instead of resetting to the top (`sessionStorage` `range-last-id`).
+- **Mobile menu** — bottom bar keeps 4 primary tabs; "More" now opens a 4-column icon-grid
+  sheet listing all 12 sections (grab handle + dimmed backdrop), reachable in one tap.
+
+---
+
 ## Current Status — V3.0 as of 2026-06-06
 
 **V3.0 is deployed to Netlify and live in production.**
@@ -475,6 +500,52 @@ After V1 is live, migrate existing products from the 3 Excel files:
 | `Stock-WSPrice-20250527.xlsx` | Reference only |
 
 Migration approach: manual entry for top 20–30 active corporate gift products first, then add concepts progressively as they are discussed with new clients.
+
+---
+
+## Next Version (Planned, NOT yet built) — Range / Figurine Costing
+
+> Documented here **before** building so the spec survives if the build fails or is
+> rolled back. Stable checkpoint is git tag `v3.1-pre-range-costing` (commit `c94f74b`).
+> If the build breaks, `git reset --hard v3.1-pre-range-costing` restores this state.
+
+**Goal:** cost a figurine the way corp gift is costed, but built from the existing
+**critical component** model. Opt-in per product — products left untouched keep their
+existing `ws_price_usd`; nothing recalculates automatically.
+
+**Decisions locked with the user (2026-06-22):**
+1. Cost source = **components + extra lines.** Each critical component carries a cost;
+   product cost = Σ(component cost × qty) + extra lines (plating, crystal, assembly, packaging).
+2. Variant precision = **base + plating/crystal adders.** One base cost plus a per-plating
+   adder (Gold vs Chrome) and a per-crystal-colour adder. Accurate per-variant without
+   re-entering each SKU.
+3. Currency/output = **HKD cost → markup → sell (match corp gift).** Uses FX rates from
+   `settings/exchange_rates` and the existing pricing-group markups.
+
+**Build steps (4 files, all additive — no migration):**
+1. **`range_components` gain cost fields** (`criticalComponents.js` + `RangeComponentForm.jsx`):
+   `unit_cost`, `unit_cost_currency` (RMB/USD/EUR/HKD), optional `volume_tiers`
+   (`[{ min_qty, unit_cost }]`, same shape as corp-gift quotes), optional `tooling_sample_cost`.
+   One shared body's cost then feeds every product that references it (as its stock already does).
+2. **Range product `costing` object** (written by the new page only):
+   - `extra_lines: [{ label, cost, currency }]` — base lines applied to all variants
+   - `plating_costs: { [plating_code]: { cost, currency } }` — per-plating adder
+   - `crystal_costs: { [crystal_code]: { cost, currency } }` — per-crystal adder
+   - `markup` (optional per-product override; else pricing-group / `DEFAULT_MARKUP`)
+   - `tiers: [{ quantity, lead_time_days }]` — optional volume breakpoints
+3. **New pure module `rangeCosting.js`** (mirrors `pricing.js`):
+   `rangeVariantCostHKD(product, lib, rates, variant, orderQty)` =
+   Σ(component cost at qty × qty_per_unit) + Σ extra lines + plating adder + crystal adder,
+   all → HKD; tooling amortised over qty; × markup → sell price.
+4. **New page `RangeCosting.jsx`** at `/range/:id/costing` (mirrors `PricingTiers.jsx`):
+   component cost breakdown → editable extra/plating/crystal adders → quantity tiers →
+   per-variant resolved cost + sell-price table → Publish. "Costing" button added to the
+   figurine editor.
+
+**Rollback note:** if anything regresses (range list, corp-gift pricing, or build),
+revert to tag `v3.1-pre-range-costing`. All changes are additive; the only schema additions
+are new optional fields on `range_components` and a new `costing` field on `range_products`,
+neither of which is read by existing code paths.
 
 ---
 
