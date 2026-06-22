@@ -593,3 +593,4 @@ neither of which is read by existing code paths.
 - **Client brief intake form** — shareable link for clients to submit requirements, auto-matches to products
 - **Analytics** — which products are most quoted, win rate per client, margin trends
 - **CRM light** — track follow-ups and status per client enquiry
+- **Catalogue Collections & Merchandising** — curated "Shop by…" band over the customer catalogue grid (one `Collection` concept: filter / manual / smart). Full spec in Obsidian: `Crystocraft/Operations/Catalogue_Collections_Spec.md`. Phased C0–C4; **C0 ("New In" badge + newest-first sort) built 2026-06-22** — C1+ blocked on the spec's §8 open decisions.
