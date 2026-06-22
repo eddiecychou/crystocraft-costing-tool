@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { db, auth } from '../firebase'
 import { Package } from 'lucide-react'
 import { useRates, fromHKD, fmtMoney } from '../currency'
-import { isNewArrival, byNewest } from '../newArrivals'
+import { isNew, newFirst } from '../newArrivals'
 import FavHeart from './FavHeart'
 import LoadingBar from '../components/LoadingBar'
 
@@ -22,7 +22,8 @@ export default function CorporateShop({ profile }) {
       setProducts(
         snap.docs.map(d => ({ id: d.id, ...d.data() }))
           .filter(p => p.status !== 'discontinued')
-          .sort(byNewest)   // newest-first (C0); query already orders, this is belt-and-braces
+          // New-tagged products first (C0), then alphabetical.
+          .sort((a, b) => newFirst(a, b) || (a.name || '').localeCompare(b.name || ''))
       )
       setLoading(false)
     }, () => setLoading(false))
@@ -84,8 +85,8 @@ function CorpCard({ p, cur, rates, profile }) {
         {p.heroImage
           ? <img src={p.heroImage} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
           : <Package size={32} strokeWidth={1.25} className="text-gray-300" />}
-        {isNewArrival(p.createdAt) && (
-          <span className="absolute top-1.5 left-1.5 badge bg-emerald-600 text-white" title="Recently added">New</span>
+        {isNew(p) && (
+          <span className="absolute top-1.5 left-1.5 badge bg-emerald-600 text-white" title="New arrival">New</span>
         )}
         <FavHeart item={{ type: 'corporate', id: p.id, name: p.name, code: '', image: p.heroImage || '' }}
           className="absolute top-1.5 right-1.5" />

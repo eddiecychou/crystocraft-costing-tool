@@ -6,7 +6,7 @@ import { Gem, X } from 'lucide-react'
 import { designNumber, brandLetter, bodyLetter, galleryUrl, RANGE_FORMAT_CODES, RANGE_STATUS_CUSTOMER } from '../constants'
 import { useRates, fromUSD, fmtMoney } from '../currency'
 import { useFormatMoq } from '../formatMoq'
-import { isNewArrival, byNewest } from '../newArrivals'
+import { newFirst } from '../newArrivals'
 import FavHeart from './FavHeart'
 import LoadingBar from '../components/LoadingBar'
 
@@ -66,7 +66,7 @@ export default function FigurineShop({ profile }) {
       name: p.description || p.design_name || code,
       design_type: p.design_type || p.category || '',
       status: p.status === 'stock' ? 'stock' : 'active',
-      createdAt: p.createdAt, isNew: isNewArrival(p.createdAt),
+      is_new: !!p.is_new,
       size: p.size, image,
       platings: [...new Set(variants.map(v => v.plating_name).filter(Boolean))],
       minNet: prices.length ? net(Math.min(...prices)) : null,
@@ -81,7 +81,7 @@ export default function FigurineShop({ profile }) {
     const md = !designFilter || s.design_key === designFilter
     const mf = !formatFilter || s.format_code === formatFilter
     return ms && md && mf && (!cat || s.design_type === cat)
-  }).sort(byNewest), [items, search, cat, designFilter, formatFilter])
+  }).sort(newFirst), [items, search, cat, designFilter, formatFilter])
 
   const formatName = formatLabels[formatFilter] || FORMAT_LABEL[formatFilter] || `Format ${formatFilter}`
   const clearMoqFilter = () => {
@@ -139,9 +139,9 @@ export default function FigurineShop({ profile }) {
                     {RANGE_STATUS_CUSTOMER[s.status].label}
                   </span>
                 )}
-                {s.isNew && (
+                {s.is_new && (
                   <span className={`absolute left-1.5 badge bg-emerald-600 text-white ${RANGE_STATUS_CUSTOMER[s.status] ? 'top-8' : 'top-1.5'}`}
-                        title="Recently added">New</span>
+                        title="New arrival">New</span>
                 )}
                 <FavHeart item={{ type: 'figurine', id: s.id, name: s.name, code: s.code, image: s.image }}
                   className="absolute top-1.5 right-1.5" />

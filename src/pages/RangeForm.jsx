@@ -46,7 +46,7 @@ const emptyPacking = () => ({
 const blankForm = () => ({
   design_no: '', body_code: '', design_name: '', description: '', marketing_description: '', category: '',
   design_type: '', product_type: 'Figurine', format_code: '001',
-  size: '', crystal_type: 'Bohemia', active: true, status: 'active',
+  size: '', crystal_type: 'Bohemia', active: true, status: 'active', is_new: false,
   moq: '', lead_time_weeks: '', delivery_note: '', critical_components: [],
   packing: emptyPacking(), gallery: [], variants: [emptyVariant()], plating_stock: {},
   crystal_mixes: {}, videos: [],
@@ -375,6 +375,7 @@ export default function RangeForm() {
           crystal_type: d.crystal_type || 'Bohemia',
           active: d.active !== false,
           status: d.status || 'active',
+          is_new: !!d.is_new,
           moq: d.moq ?? '',
           lead_time_weeks: d.lead_time_weeks ?? '',
           delivery_note: d.delivery_note || '',
@@ -602,6 +603,7 @@ export default function RangeForm() {
       crystal_type: form.crystal_type.trim(),
       active: form.active,
       status: form.status,
+      is_new: !!form.is_new,
       // Production / availability — drives the customer promise alongside stock.
       moq: intNum(form.moq),
       lead_time_weeks: num(form.lead_time_weeks),
@@ -748,6 +750,12 @@ export default function RangeForm() {
               </select>
             </div>
           </div>
+
+          <label className="flex items-center gap-2 cursor-pointer select-none w-fit">
+            <input type="checkbox" className="w-4 h-4 accent-emerald-600" checked={!!form.is_new}
+                   onChange={e => setForm(f => ({ ...f, is_new: e.target.checked }))} />
+            <span className="text-sm text-ink-80">New arrival <span className="text-ink-50 font-normal">— shows a green “New” badge in the shop and floats this product to the top. Untick when it's no longer new.</span></span>
+          </label>
 
           <div>
             <label className="label">Description</label>
