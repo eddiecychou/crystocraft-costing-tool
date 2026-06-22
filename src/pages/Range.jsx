@@ -180,6 +180,19 @@ export default function Range() {
     }
   }), [products])
 
+  // After returning from a product edit, scroll the last-opened card back into
+  // view instead of resetting to the top of the list.
+  useEffect(() => {
+    if (loading) return
+    const lastId = sessionStorage.getItem('range-last-id')
+    if (!lastId) return
+    const el = document.getElementById(`range-card-${lastId}`)
+    if (el) {
+      el.scrollIntoView({ block: 'center' })
+      sessionStorage.removeItem('range-last-id')
+    }
+  }, [loading, products])
+
   const categories = useMemo(() => [...new Set(items.map(s => s.design_type).filter(Boolean))].sort(), [items])
   const productTypes = useMemo(() => [...new Set(items.map(s => s.product_type).filter(Boolean))].sort(), [items])
 
@@ -321,7 +334,9 @@ function ProductCard({ s, colorLookup = {} }) {
   // dot; it must be selected in a variation to appear.
   const crystalCodes = [...new Set(s.colorCodes || [])]
   return (
-    <Link to={`/range/${s.id}`} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow group">
+    <Link to={`/range/${s.id}`} id={`range-card-${s.id}`}
+          onClick={() => sessionStorage.setItem('range-last-id', s.id)}
+          className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow group">
       <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
         {s.image
           ? <img src={s.image} alt={s.name} className="w-full h-full object-contain p-2" loading="lazy" />
