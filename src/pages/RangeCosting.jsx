@@ -294,8 +294,8 @@ export default function RangeCosting() {
 
       {/* Per-variant cost + sell table */}
       <div className="card p-5 mb-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-1">Per-variant cost &amp; sell <span className="font-normal text-ink-60">({markup.toFixed(2)}× markup)</span></h2>
-        <p className="text-xs text-gray-400 mb-3">All-in cost = components + extras + plating/crystal adder (+ tooling amortised). Sell = ⌈cost × markup⌉, HKD.</p>
+        <h2 className="text-sm font-semibold text-gray-700 mb-1">Per-variant cost &amp; sell <span className="font-normal text-ink-60">({markup.toFixed(2)}× markup, USD)</span></h2>
+        <p className="text-xs text-gray-400 mb-3">All-in cost = components + extras + plating/crystal adder (+ tooling amortised). Sell = ⌈cost × markup⌉. Converted from HKD at {rates.USD} HKD/USD.</p>
         <div className="overflow-x-auto -mx-5 px-5">
           <table className="text-sm border-separate border-spacing-0 w-full" style={{ minWidth: 360 + qtyCols.length * 120 + 'px' }}>
             <thead>
@@ -320,13 +320,13 @@ export default function RangeCosting() {
                       <p className="text-[11px] text-gray-400">{[v.plating_name, (v.crystal_colors || []).join('/')].filter(Boolean).join(' · ')}</p>
                     </td>
                     {qtyCols.map(q => {
-                      const cost = variantAllInCostHKD(draft, lib, rates, v, q)
-                      const sell = variantSellHKD(draft, lib, rates, v, q, markup)
+                      const costUSD = variantAllInCostHKD(draft, lib, rates, v, q) / (rates.USD || 7.78)
+                      const sellUSD = variantSellHKD(draft, lib, rates, v, q, markup) / (rates.USD || 7.78)
                       return (
                         <td key={q} className="py-2.5 px-3 text-right border-l border-gray-100 whitespace-nowrap">
-                          <span className="text-gray-500">{cost.toFixed(2)}</span>
+                          <span className="text-gray-500">{costUSD.toFixed(2)}</span>
                           <span className="text-gray-300"> → </span>
-                          <span className="font-semibold text-gray-900">{sell.toLocaleString()}</span>
+                          <span className="font-semibold text-gray-900">{sellUSD.toFixed(2)}</span>
                         </td>
                       )
                     })}
@@ -340,9 +340,9 @@ export default function RangeCosting() {
           </table>
         </div>
         <p className="mt-3 text-xs text-gray-400">
-          Rates: {Object.entries(rates).filter(([k, v]) => k !== 'HKD' && typeof v === 'number').map(([k, v]) => `${k}→HKD ${v}`).join(' · ')}
-          {' · '}<Link to="/settings" className="text-brand-500 hover:underline">Settings</Link>
-          {toolHKD > 0 && <> · Tooling HKD {toolHKD.toFixed(2)} amortised over qty</>}
+          Rates used: {Object.entries(rates).filter(([k, v]) => k !== 'HKD' && typeof v === 'number').map(([k, v]) => `1 ${k} = ${v} HKD`).join(' · ')}
+          {' · '}<Link to="/settings" className="text-brand-500 hover:underline">Update rates</Link>
+          {toolHKD > 0 && <> · Tooling USD {(toolHKD / (rates.USD || 7.78)).toFixed(2)} amortised over qty</>}
         </p>
       </div>
 
