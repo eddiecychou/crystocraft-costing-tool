@@ -11,6 +11,7 @@ import {
 import { CURRENCIES } from '../constants'
 import { FileInput, FolderOpen, FileText, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
+import PackingListEditor from './PackingListEditor'
 
 const blankHeader = {
   customer_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', order_date: '',
@@ -40,6 +41,7 @@ export default function ShipmentForm() {
   const [fetching, setFetching] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [tab, setTab] = useState('order')
 
   useEffect(() => {
     const preCustomerId = searchParams.get('customer_id')
@@ -208,12 +210,44 @@ export default function ShipmentForm() {
 
   return (
     <div className="p-4 md:p-6 max-w-4xl">
-      <div className="mb-6">
+      <div className="mb-4">
         <Link to="/shipments" className="text-sm text-brand-600 hover:underline">← Shipments</Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-1">{isEdit ? 'Shipment' : 'Import Proforma Invoice'}</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mt-1">
+          {isEdit ? (header.erp_pi_no || 'Shipment') : 'Import Proforma Invoice'}
+        </h1>
         {!isEdit && <p className="text-sm text-gray-500 mt-1">Upload a figurine PI — AI reads the header + line items, then you classify each line.</p>}
       </div>
 
+      {/* Tabs — only shown on edit (saved order) */}
+      {isEdit && (
+        <div className="flex gap-0 border-b border-gray-200 mb-5">
+          {[
+            { v: 'order',   label: 'Order & Lines' },
+            { v: 'packing', label: 'Packing List' },
+          ].map(t => (
+            <button
+              key={t.v}
+              type="button"
+              onClick={() => setTab(t.v)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                tab === t.v
+                  ? 'border-brand-600 text-brand-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Packing list tab */}
+      {isEdit && tab === 'packing' && (
+        <PackingListEditor orderId={id} orderLines={lines} />
+      )}
+
+      {/* Order tab (or new shipment form) */}
+      {(!isEdit || tab === 'order') && (
       <form onSubmit={isEdit ? handleSave : handleCreate} className="space-y-5">
         {/* PI upload (import only) */}
         {!isEdit && (
@@ -361,12 +395,13 @@ export default function ShipmentForm() {
             </button>
           )}
         </div>
-      </form>
 
       {confirmDelete && (
         <ConfirmDialog title="Delete shipment" message="Delete this shipment and all its lines? This cannot be undone."
           onConfirm={async () => { await deleteOrder(id); navigate('/shipments') }}
           onCancel={() => setConfirmDelete(false)} />
+      )}
+      </form>
       )}
     </div>
   )
