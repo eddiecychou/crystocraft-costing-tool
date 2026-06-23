@@ -169,15 +169,17 @@ export default function RangeCosting() {
           <p className="text-sm text-ink-50">No critical components on this product. Add them in the <Link to={`/range/${id}`} className="text-brand-600 hover:underline">product editor</Link>, then set each part's cost under <Link to="/components" className="text-brand-600 hover:underline">Components</Link>.</p>
         ) : (
           <div className="divide-y divide-gray-100">
-            {refs.map(r => {
+            {refs.map((r, i) => {
               const c = resolveRef(r, lib)
               const unit = componentCostAtQty(c, 1)
               const qty = Number(r.qty_per_unit) || 1
               const hk = unit != null ? unit * (rates[c.unit_cost_currency] || 1) * qty : null
+              const plat = (r.plating_code || '').trim().toUpperCase()
               return (
-                <div key={(r.id || r.code)} className="py-2.5 flex items-center justify-between gap-4">
+                <div key={`${r.id || r.code}::${plat}::${i}`} className="py-2.5 flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-sm text-gray-800">{c?.name || r.code}
+                      {plat && <span className="ml-1.5 text-xs font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">{plat}</span>}
                       {qty > 1 && <span className="ml-1.5 text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">×{qty}</span>}</p>
                     {unit != null ? (
                       <p className="text-xs text-gray-500">{c.code} · {unit} {c.unit_cost_currency}{qty > 1 ? ` × ${qty}` : ''}

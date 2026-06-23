@@ -14,6 +14,10 @@ import VideoUrlsEditor from '../components/VideoUrlsEditor'
 
 const BODY_NAME = Object.fromEntries(RANGE_BODY_TYPES.map(b => [b.code, b.name]))
 
+// Stable ephemeral id for critical-component form rows (React key + mutation
+// target). Form-only — never persisted.
+const refUid = () => 'r' + Math.random().toString(36).slice(2, 10)
+
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
 import { useCrystalColors, colorMap, ensureColors } from '../crystalColors'
@@ -201,32 +205,36 @@ export default function RangeForm() {
       ...f,
       critical_components: has
         ? list.filter(r => !sameRef(r, comp))
-        : [...list, { id: comp.id || '', code: comp.code, qty_per_unit: 1, plating_code: '' }],
+        : [...list, { _uid: refUid(), id: comp.id || '', code: comp.code, qty_per_unit: 1, plating_code: '' }],
     }
   })
-  // refKey includes plating_code suffix so two refs to the same component for
-  // different platings get distinct React keys and mutation targets.
-  const refKey = r => (r.id || r.code) + (r.plating_code ? '::' + r.plating_code.toUpperCase() : '')
-  const setComponentQty = (key, val) => setForm(f => ({
+  // Each form row carries a stable ephemeral _uid used as its React key and the
+  // mutation target, so two refs to the same component (different — or even the
+  // same — plating) never collide. _uid is form-only and stripped on save.
+  const setComponentQty = (uid, val) => setForm(f => ({
     ...f,
     critical_components: (f.critical_components || []).map(r =>
-      refKey(r) === key ? { ...r, qty_per_unit: val.replace(/[^\d]/g, '') } : r),
+      r._uid === uid ? { ...r, qty_per_unit: val.replace(/[^\d]/g, '') } : r),
   }))
-  const setComponentPlating = (key, val) => setForm(f => ({
+  const setComponentPlating = (uid, val) => setForm(f => ({
     ...f,
     critical_components: (f.critical_components || []).map(r =>
-      refKey(r) === key ? { ...r, plating_code: val.toUpperCase() } : r),
+      r._uid === uid ? { ...r, plating_code: val.toUpperCase() } : r),
   }))
-  // Duplicate a ref so the user can assign it to a second plating without re-searching.
-  const cloneComponentRef = r => setForm(f => ({
-    ...f,
-    critical_components: [...(f.critical_components || []), { ...r, plating_code: '' }],
-  }))
+  // Duplicate a ref so the user can assign it to another plating without re-
+  // searching. Default the copy to the first plating not already used by this
+  // component's refs (falls back to '' = all variants) to avoid a useless dupe.
+  const cloneComponentRef = src => setForm(f => {
+    const list = f.critical_components || []
+    const used = new Set(list.filter(r => sameRef(r, src)).map(r => (r.plating_code || '').toUpperCase()))
+    const next = formPlatings.find(p => !used.has(p.code))?.code || ''
+    return { ...f, critical_components: [...list, { ...src, _uid: refUid(), plating_code: next }] }
+  })
   // Remove a reference directly from the selected list (covers orphans that
   // have no matching library chip to un-tick).
-  const removeComponentRef = key => setForm(f => ({
+  const removeComponentRef = uid => setForm(f => ({
     ...f,
-    critical_components: (f.critical_components || []).filter(r => refKey(r) !== key),
+    critical_components: (f.critical_components || []).filter(r => r._uid !== uid),
   }))
 
   // Distinct plating codes from the current product variants — used to populate
@@ -405,7 +413,7 @@ export default function RangeForm() {
           lead_time_weeks: d.lead_time_weeks ?? '',
           delivery_note: d.delivery_note || '',
           critical_components: Array.isArray(d.critical_components)
-            ? d.critical_components.map(r => ({ id: r.id || '', code: (r.code || '').toUpperCase(), qty_per_unit: r.qty_per_unit || 1, plating_code: (r.plating_code || '').toUpperCase() }))
+            ? d.critical_components.map(r => ({ _uid: refUid(), id: r.id || '', code: (r.code || '').toUpperCase(), qty_per_unit: r.qty_per_unit || 1, plating_code: (r.plating_code || '').toUpperCase() }))
             : [],
           packing: { ...emptyPacking(), ...(d.packing || {}) },
           gallery: normGallery(d.gallery),
@@ -950,7 +958,7 @@ export default function RangeForm() {
                   </label>
                   {(form.critical_components || []).map(r => {
                     const c = resolveRef(r, libComponents)
-                    const key = refKey(r)
+                    const key = r._uid
                     return (
                       <div key={key} className="flex items-center gap-2 text-xs flex-wrap">
                         <span className="font-mono text-ink-80 w-24 shrink-0 truncate" title={c?.code || r.code}>{c?.code || r.code}</span>

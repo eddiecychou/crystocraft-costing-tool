@@ -251,38 +251,99 @@ export function resolveRef(ref, lib) {
 
 const refsOf = product => (Array.isArray(product?.critical_components) ? product.critical_components : [])
 const perUnit = r => { const n = Number(r?.qty_per_unit); return n > 0 ? n : 1 }
+const refPlating = r => (r.plating_code || '').trim().toUpperCase()
+const isShared = r => !refPlating(r)            // no plating tag ⇒ applies to all variants
+const platingsTagged = refs => [...new Set(refs.map(refPlating).filter(Boolean))]
 
-// How many finished pieces could be *assembled right now* from component stock,
-// limited by the scarcest critical part. Returns { qty, bottleneck } (qty null
-// when the product lists no critical components).
+// How many finished pieces could be *assembled right now* from component stock.
+// Returns { qty, bottleneck } (qty null when the product lists no critical parts).
+//
+// When some parts are plating-specific, a finished piece of plating P needs the
+// shared parts + the parts tagged P only — NOT the parts for other platings. We
+// roll up to one product number: total buildable = Σ over platings of the per-
+// plating buildable, capped by the shared-parts limit (a shared body pool is
+// consumed across every plating, so the product can never build more than the
+// shared stock allows in total). "Soonest plating wins" semantics.
 export function buildableFromComponents(product, lib) {
   const refs = refsOf(product)
   if (!refs.length) return { qty: null, bottleneck: null }
-  let qty = Infinity, bottleneck = null
-  for (const r of refs) {
+
+  // canMake for one ref: floor(stock / qty_per_unit), plus its code for bottleneck.
+  const canMakeOf = r => {
     const c = resolveRef(r, lib)
-    if (!c) continue
+    if (!c) return null
     const stock = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
-    const canMake = Math.floor(stock / perUnit(r))
-    if (canMake < qty) { qty = canMake; bottleneck = c.code }
+    return { n: Math.floor(stock / perUnit(r)), code: c.code }
   }
+  // Scarcest part across a list ⇒ { q, code } (q = Infinity when list is empty).
+  const minOver = list => {
+    let q = Infinity, code = null
+    for (const r of list) { const m = canMakeOf(r); if (!m) continue; if (m.n < q) { q = m.n; code = m.code } }
+    return { q, code }
+  }
+
+  // Fast path / unchanged behaviour: no plating-specific parts ⇒ one shared group.
+  const platings = platingsTagged(refs)
+  if (!platings.length) {
+    const { q, code } = minOver(refs)
+    return { qty: Number.isFinite(q) ? q : null, bottleneck: code }
+  }
+
+  const shared = minOver(refs.filter(isShared))
+  let sumTagged = 0, minTagged = Infinity, minTaggedCode = null
+  for (const p of platings) {
+    const tg = minOver(refs.filter(r => refPlating(r) === p))
+    if (!Number.isFinite(tg.q)) continue
+    sumTagged += Math.max(0, tg.q)
+    if (tg.q < minTagged) { minTagged = tg.q; minTaggedCode = tg.code }
+  }
+  // Cap the per-plating sum by the shared-parts ceiling (shared stock is shared).
+  const qty = Math.min(Number.isFinite(shared.q) ? shared.q : Infinity, sumTagged)
+  // Bottleneck = the shared part when it's the binding ceiling, else the scarcest
+  // plating-specific part.
+  const bottleneck = (Number.isFinite(shared.q) && shared.q <= sumTagged) ? shared.code : minTaggedCode
   return { qty: Number.isFinite(qty) ? qty : null, bottleneck }
 }
 
-// Longest lead among the critical parts that stock can't currently cover.
-// Returns { weeks, driver } — the limiting part governs the make-from-scratch
-// promise. weeks is null if every critical part is already in stock.
+// Lead weeks to make from scratch the scarce parts. Returns { weeks, driver };
+// weeks is null when at least one plating is fully covered by stock (nothing to
+// make). With plating-specific parts we report the SOONEST deliverable plating
+// (min across platings of its longest-uncovered lead) so a slow/zero plating
+// doesn't poison the promise for a plating we can ship faster.
 export function makeLeadWeeks(product, lib) {
-  let weeks = null, driver = null
-  for (const r of refsOf(product)) {
-    const c = resolveRef(r, lib)
-    if (!c) continue
-    const stock = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
-    if (stock >= perUnit(r)) continue            // this part is covered
-    const lw = Number.isFinite(c.lead_time_weeks) ? c.lead_time_weeks : 0
-    if (weeks == null || lw > weeks) { weeks = lw; driver = c.code }
+  const refs = refsOf(product)
+  if (!refs.length) return { weeks: null, driver: null }
+
+  // Longest-lead uncovered part in a list ⇒ { w, code } (w null when all covered).
+  const longestUncovered = list => {
+    let w = null, code = null
+    for (const r of list) {
+      const c = resolveRef(r, lib)
+      if (!c) continue
+      const stock = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
+      if (stock >= perUnit(r)) continue          // this part is covered
+      const lw = Number.isFinite(c.lead_time_weeks) ? c.lead_time_weeks : 0
+      if (w == null || lw > w) { w = lw; code = c.code }
+    }
+    return { w, code }
   }
-  return { weeks, driver }
+
+  const platings = platingsTagged(refs)
+  if (!platings.length) {
+    const { w, code } = longestUncovered(refs)
+    return { weeks: w, driver: code }
+  }
+
+  // Per plating: shared + that plating's tagged parts. Soonest plating wins.
+  const shared = refs.filter(isShared)
+  let best = null, driver = null
+  for (const p of platings) {
+    const tagged = refs.filter(r => refPlating(r) === p)
+    const u = longestUncovered([...shared, ...tagged])
+    const w = u.w == null ? 0 : u.w            // 0 ⇒ this plating fully covered
+    if (best == null || w < best) { best = w; driver = u.code }
+  }
+  return best === 0 ? { weeks: null, driver: null } : { weeks: best, driver }
 }
 
 // Finished, ready-to-ship pieces (already plated). Mirrors the Range list:
