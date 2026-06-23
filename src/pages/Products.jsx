@@ -43,22 +43,24 @@ export default function Products() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2 mb-5 flex-wrap">
+      <div className="flex flex-col sm:flex-row gap-2 mb-5">
         <input
           type="text"
           placeholder="Search…"
-          className="input flex-1 min-w-0"
+          className="input w-full sm:flex-1"
           value={search}
           onChange={e => setSearch(e.target.value)}
         />
-        <select className="input w-auto" value={filterCat} onChange={e => setFilterCat(e.target.value)}>
-          <option value="">All categories</option>
-          {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
-        <select className="input w-auto" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
-          <option value="">All statuses</option>
-          {PRODUCT_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-        </select>
+        <div className="flex gap-2">
+          <select className="input flex-1 sm:flex-none sm:w-auto" value={filterCat} onChange={e => setFilterCat(e.target.value)}>
+            <option value="">All categories</option>
+            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select className="input flex-1 sm:flex-none sm:w-auto" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+            <option value="">All statuses</option>
+            {PRODUCT_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+        </div>
       </div>
 
       {/* Grid */}

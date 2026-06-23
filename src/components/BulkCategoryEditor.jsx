@@ -2,6 +2,10 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { collection, query, orderBy, onSnapshot, doc, writeBatch, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { RANGE_DESIGN_TYPES, RANGE_PRODUCT_TYPES, designNumber, brandLetter, bodyLetter } from '../constants'
+
+// Canonical suggestions for the combobox (type-ahead only, not enforced)
+const DESIGN_SUGGESTIONS = RANGE_DESIGN_TYPES
+const PRODUCT_SUGGESTIONS = RANGE_PRODUCT_TYPES
 import { CheckSquare, Square } from 'lucide-react'
 import LoadingBar from './LoadingBar'
 
@@ -38,10 +42,9 @@ export default function BulkCategoryEditor() {
     }
   }), [products])
 
+  // Only categories actually on products — used for filter dropdowns
   const existingDesignTypes = useMemo(() => [...new Set(items.map(i => i.design_type).filter(Boolean))].sort(), [items])
   const existingProductTypes = useMemo(() => [...new Set(items.map(i => i.product_type).filter(Boolean))].sort(), [items])
-  const allDesignTypes = useMemo(() => [...new Set([...RANGE_DESIGN_TYPES, ...existingDesignTypes])].sort(), [existingDesignTypes])
-  const allProductTypes = useMemo(() => [...new Set([...RANGE_PRODUCT_TYPES, ...existingProductTypes])].sort(), [existingProductTypes])
 
   const filtered = useMemo(() => items.filter(item => {
     const q = search.toLowerCase()
@@ -104,7 +107,7 @@ export default function BulkCategoryEditor() {
         Filter to a subset, select rows, then apply a Design Type and/or Product Type to all selected at once.
       </p>
 
-      {/* Filters */}
+      {/* Filters — only show categories that actually exist on products */}
       <div className="flex flex-col sm:flex-row gap-2 mb-4">
         <input
           className="input flex-1"
@@ -114,28 +117,44 @@ export default function BulkCategoryEditor() {
         />
         <select className="input sm:w-48" value={filterDesign} onChange={e => setFilterDesign(e.target.value)}>
           <option value="">All design types</option>
-          {allDesignTypes.map(t => <option key={t} value={t}>{t}</option>)}
+          {existingDesignTypes.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
         <select className="input sm:w-48" value={filterProduct} onChange={e => setFilterProduct(e.target.value)}>
           <option value="">All product types</option>
-          {allProductTypes.map(t => <option key={t} value={t}>{t}</option>)}
+          {existingProductTypes.map(t => <option key={t} value={t}>{t}</option>)}
         </select>
       </div>
 
-      {/* Sticky action bar */}
+      {/* Sticky action bar — combobox inputs accept free text for renaming */}
       <div className="sticky top-0 z-20 bg-white border border-ivory-dark rounded-lg px-4 py-3 mb-4 flex flex-wrap items-center gap-3 shadow-sm">
         <span className="text-sm font-medium text-ink-80 min-w-[90px]">
           {nSelected > 0 ? `${nSelected} selected` : `${filtered.length} rows`}
         </span>
         <div className="flex gap-2 flex-1 flex-wrap">
-          <select className="input py-1.5 text-sm flex-1 min-w-[160px]" value={bulkDesignType} onChange={e => setBulkDesignType(e.target.value)}>
-            <option value="">— Set design type —</option>
-            {allDesignTypes.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
-          <select className="input py-1.5 text-sm flex-1 min-w-[160px]" value={bulkProductType} onChange={e => setBulkProductType(e.target.value)}>
-            <option value="">— Set product type —</option>
-            {allProductTypes.map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+          <div className="flex-1 min-w-[160px]">
+            <input
+              className="input py-1.5 text-sm w-full"
+              list="design-type-suggestions"
+              placeholder="Set design type (or type to rename)…"
+              value={bulkDesignType}
+              onChange={e => setBulkDesignType(e.target.value)}
+            />
+            <datalist id="design-type-suggestions">
+              {[...new Set([...DESIGN_SUGGESTIONS, ...existingDesignTypes])].sort().map(t => <option key={t} value={t} />)}
+            </datalist>
+          </div>
+          <div className="flex-1 min-w-[160px]">
+            <input
+              className="input py-1.5 text-sm w-full"
+              list="product-type-suggestions"
+              placeholder="Set product type (or type to rename)…"
+              value={bulkProductType}
+              onChange={e => setBulkProductType(e.target.value)}
+            />
+            <datalist id="product-type-suggestions">
+              {[...new Set([...PRODUCT_SUGGESTIONS, ...existingProductTypes])].sort().map(t => <option key={t} value={t} />)}
+            </datalist>
+          </div>
         </div>
         <button onClick={apply} disabled={!canApply || saving} className="btn-primary text-sm py-1.5 disabled:opacity-40 disabled:cursor-not-allowed">
           {saving ? 'Saving…' : `Apply to ${nSelected}`}

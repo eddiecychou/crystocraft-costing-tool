@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
-  doc, getDoc, deleteDoc, updateDoc, collection, query, where, getDocs,
+  doc, getDoc, deleteDoc, updateDoc, collection, query, where, orderBy, getDocs,
   onSnapshot, deleteDoc as deleteDocument, serverTimestamp,
 } from 'firebase/firestore'
 import { db, storage } from '../firebase'
@@ -9,7 +9,7 @@ import { ref as storageRef, deleteObject } from 'firebase/storage'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
-import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw } from 'lucide-react'
+import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
 
@@ -68,6 +68,7 @@ export default function CustomerDetail() {
 
   const [customer, setCustomer]         = useState(null)
   const [quotes, setQuotes]             = useState([])
+  const [orders, setOrders]             = useState([])
   const [accounts, setAccounts]         = useState([])
   const [enquiries, setEnquiries]       = useState([])
   const [loading, setLoading]           = useState(true)
@@ -98,9 +99,11 @@ export default function CustomerDetail() {
       getDocs(query(collection(db, 'client_quotes'), where('customer_id', '==', id))),
       getDocs(collection(db, 'products')),
       getDocs(query(collection(db, 'users'), where('customer_id', '==', id))),
-      loadBlogProducts('range'),  // Crystocraft range, normalized to a common shape
-    ]).then(([cSnap, qSnap, pSnap, uSnap, rangeProducts]) => {
+      loadBlogProducts('range'),
+      getDocs(query(collection(db, 'orders'), where('customer_id', '==', id), orderBy('order_date', 'desc'))),
+    ]).then(([cSnap, qSnap, pSnap, uSnap, rangeProducts, oSnap]) => {
       setAccounts(uSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+      setOrders(oSnap.docs.map(d => ({ id: d.id, ...d.data() })))
       if (cSnap.exists()) {
         const c = { id: cSnap.id, ...cSnap.data() }
         setCustomer(c)
@@ -377,6 +380,48 @@ export default function CustomerDetail() {
           <p className="text-sm text-gray-600 whitespace-pre-wrap">{customer.notes}</p>
         </div>
       )}
+
+      {/* PI Orders */}
+      <div className="card mb-4">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">PI Orders ({orders.length})</h2>
+          <Link to={`/shipments/new?customer_id=${id}`} className="btn-primary text-xs py-1.5 px-3">+ New PI</Link>
+        </div>
+        {orders.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">No PI orders for this customer.</p>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {orders.map(o => {
+              const piNo = o.erp_pi_no || o.erp_so_no || '—'
+              const dateStr = o.order_date
+                ? new Date(o.order_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                : '—'
+              const statusColour = {
+                draft:     'bg-gray-100 text-gray-600',
+                confirmed: 'bg-blue-100 text-blue-700',
+                shipped:   'bg-amber-100 text-amber-700',
+                delivered: 'bg-green-100 text-green-700',
+                cancelled: 'bg-red-100 text-red-600',
+              }[o.status] || 'bg-gray-100 text-gray-600'
+              return (
+                <Link key={o.id} to={`/shipments/${o.id}`} className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Package size={15} className="text-gray-400 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">{piNo}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{dateStr}{o.currency ? ` · ${o.currency}` : ''}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className={`badge ${statusColour}`}>{o.status || 'draft'}</span>
+                    <span className="text-xs text-gray-400">→</span>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Quote history */}
       <div className="card mb-4">

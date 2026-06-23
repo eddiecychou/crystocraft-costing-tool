@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { collection, getDocs, orderBy, query } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
@@ -22,8 +22,12 @@ export default function ShipmentForm() {
   const { id } = useParams()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
-  const [header, setHeader]   = useState(blankHeader)
+  const [header, setHeader]   = useState(() => {
+    const preCustomerId = searchParams.get('customer_id')
+    return preCustomerId ? { ...blankHeader, customer_id: preCustomerId } : blankHeader
+  })
   const [lines, setLines]     = useState([])
   const [customers, setCustomers] = useState([])
   const [rangeProducts, setRangeProducts] = useState([])
@@ -38,9 +42,17 @@ export default function ShipmentForm() {
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
+    const preCustomerId = searchParams.get('customer_id')
     const loads = [
-      getDocs(query(collection(db, 'customers'), orderBy('name'))).then(s =>
-        setCustomers(s.docs.map(d => ({ id: d.id, ...d.data() })))),
+      getDocs(query(collection(db, 'customers'), orderBy('name'))).then(s => {
+        const list = s.docs.map(d => ({ id: d.id, ...d.data() }))
+        setCustomers(list)
+        // Resolve customer name when pre-filled from URL
+        if (preCustomerId && !isEdit) {
+          const c = list.find(x => x.id === preCustomerId)
+          if (c) setHeader(h => ({ ...h, customer_name: c.name_cn ? `${c.name} (${c.name_cn})` : c.name }))
+        }
+      }),
       loadRangeProductsLite().then(setRangeProducts),
     ]
     if (isEdit) {
