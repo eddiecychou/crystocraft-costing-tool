@@ -12,7 +12,7 @@ const STATUS = {
   archived: { label: 'Archived', cls: 'bg-gray-100 text-gray-500' },
 }
 
-export default function Enquiries() {
+export default function Enquiries({ embedded = false }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('new')
@@ -44,7 +44,7 @@ export default function Enquiries() {
   return (
     <div className="p-4 md:p-6">
       {loading && <LoadingBar />}
-      <h1 className="text-xl md:text-2xl mb-1">Enquiries</h1>
+      {!embedded && <h1 className="text-xl md:text-2xl mb-1">Enquiries</h1>}
       <p className="text-sm text-ink-60 mb-4">Customer requests for quotation from the wholesale catalogue.</p>
 
       <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden mb-5">

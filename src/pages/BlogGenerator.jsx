@@ -1043,7 +1043,7 @@ function RoundupTab() {
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
-export default function BlogGenerator() {
+export default function BlogGenerator({ embedded = false }) {
   const { productId } = useParams()
   const [tab, setTab] = useState('spotlight')
   const [preloadedProduct, setPreloadedProduct] = useState(null)
@@ -1059,8 +1059,8 @@ export default function BlogGenerator() {
   return (
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
-        <Link to="/products" className="text-sm text-brand-600 hover:underline">← Products</Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-1">Blog Post Generator</h1>
+        {!embedded && <Link to="/products" className="text-sm text-brand-600 hover:underline">← Products</Link>}
+        {!embedded && <h1 className="text-2xl font-bold text-gray-900 mt-1">Blog Post Generator</h1>}
         <p className="text-sm text-gray-500 mt-1">Generate SEO-optimised blog content, preview it, then publish as a WordPress draft.</p>
       </div>
 

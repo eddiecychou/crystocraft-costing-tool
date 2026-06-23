@@ -10,7 +10,7 @@ const STATUS_STYLES = {
   published: 'bg-green-100 text-green-700',
 }
 
-export default function Catalogues() {
+export default function Catalogues({ embedded = false }) {
   const [catalogues, setCatalogues] = useState([])
   const [loading, setLoading]       = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(null)
@@ -34,7 +34,7 @@ export default function Catalogues() {
     <div className="p-4 md:p-6 max-w-4xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Catalogues</h1>
+          {!embedded && <h1 className="text-2xl font-bold text-gray-900">Catalogues</h1>}
           <p className="text-sm text-gray-500 mt-0.5">Seasonal product collections for customers</p>
         </div>
         <Link to="/catalogues/new" className="btn-primary">+ New Catalogue</Link>

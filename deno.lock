@@ -21,6 +21,7 @@
         "npm:autoprefixer@^10.4.21",
         "npm:exceljs@^4.4.0",
         "npm:firebase@^11.8.1",
+        "npm:lucide-react@^1.20.0",
         "npm:postcss@^8.5.3",
         "npm:react-dom@^18.3.1",
         "npm:react-router-dom@^6.30.0",

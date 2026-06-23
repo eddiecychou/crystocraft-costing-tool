@@ -252,7 +252,6 @@ export default function Range() {
           <p className="text-xs text-ink-60">Stock value ≈ ${Math.round(totalValue).toLocaleString()} USD (WS)</p>
         </div>
         <div className="flex gap-2 shrink-0 flex-wrap justify-end">
-          <Link to="/range/import-images" className="btn-secondary text-sm text-center">Import images</Link>
           <Link to="/range/new" className="btn-primary text-sm text-center">+ New product</Link>
         </div>
       </div>

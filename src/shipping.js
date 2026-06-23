@@ -73,7 +73,7 @@ export function matchRangeProduct(itemCode, rangeProducts) {
   for (const p of rangeProducts) {
     for (const key of rangeKeys(p)) {
       if (!key) continue
-      if (core === key || core.startsWith(key)) {
+      if (core === key || key.startsWith(core)) {
         // Prefer the longest key match (most specific design core).
         if (!best || key.length > best._keyLen) best = { ...p, _keyLen: key.length }
       }
@@ -91,6 +91,7 @@ export const normOrder = o => ({
   source: o.source === 'in_app_quote' ? 'in_app_quote' : 'imported_pi',
   client_quote_id: o.client_quote_id || null,
   erp_pi_no: str(o.erp_pi_no),
+  erp_so_no: str(o.erp_so_no),
   customer_id: o.customer_id || '',
   customer_name: str(o.customer_name),
   order_date: o.order_date || null,

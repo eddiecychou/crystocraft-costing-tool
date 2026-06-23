@@ -5,25 +5,21 @@ import { auth } from '../firebase'
 import logo from '../assets/logo.png'
 import {
   LayoutDashboard, Package, Gem, ClipboardList, Puzzle,
-  Factory, Building2, BookOpen, PenLine, Settings, MoreHorizontal, UserCheck, Inbox, LayoutGrid, Truck, PackageCheck,
+  Factory, Building2, Megaphone, Settings, MoreHorizontal, Users, Truck,
 } from 'lucide-react'
 
 const nav = [
-  { to: '/dashboard',  label: 'Dashboard',  short: 'Home',     Icon: LayoutDashboard, primary: true },
-  { to: '/products',   label: 'Corp Gifts', short: 'Corp',     Icon: Package, primary: true },
-  { to: '/range',      label: 'Figurine Gifts', short: 'Figurine', Icon: Gem, primary: true },
-  { to: '/components', label: 'Components', short: 'Components', Icon: Puzzle },
-  { to: '/suppliers',  label: 'Suppliers',  short: 'Suppliers',  Icon: Factory },
-  { to: '/customers',  label: 'Customers',  short: 'Customers',  Icon: Building2 },
-  { to: '/customer-accounts', label: 'Accounts', short: 'Accounts', Icon: UserCheck },
-  { to: '/enquiries',  label: 'Enquiries', short: 'Enquiries', Icon: Inbox },
-  { to: '/quotes',     label: 'Quotes',     short: 'Quotes',   Icon: ClipboardList, primary: true },
-  { to: '/catalogues', label: 'Catalogues', short: 'Catalogues', Icon: BookOpen },
-  { to: '/catalogue-band', label: 'Catalogue Band', short: 'Band', Icon: LayoutGrid },
-  { to: '/shipments',  label: 'Shipments',  short: 'Shipments', Icon: PackageCheck },
-  { to: '/logistics',  label: 'Logistics',  short: 'Logistics', Icon: Truck },
-  { to: '/blog-generator', label: 'Blog Writer', short: 'Blog Writer', Icon: PenLine },
-  { to: '/settings',   label: 'Settings',   short: 'Settings',   Icon: Settings },
+  { to: '/dashboard',  label: 'Dashboard',     short: 'Home',     Icon: LayoutDashboard, primary: true },
+  { to: '/products',   label: 'Corp Gifts',    short: 'Corp',     Icon: Package, primary: true },
+  { to: '/range',      label: 'Figurine Gifts',short: 'Figurine', Icon: Gem, primary: true },
+  { to: '/components', label: 'Components',    short: 'Comps',    Icon: Puzzle },
+  { to: '/suppliers',  label: 'Suppliers',     short: 'Suppliers',Icon: Factory },
+  { to: '/customers',  label: 'Customers',     short: 'Customers',Icon: Building2 },
+  { to: '/portal',     label: 'Portal',        short: 'Portal',   Icon: Users },
+  { to: '/quotes',     label: 'Quotes',        short: 'Quotes',   Icon: ClipboardList, primary: true },
+  { to: '/marketing',  label: 'Marketing',     short: 'Marketing',Icon: Megaphone },
+  { to: '/shipping',   label: 'Shipping',      short: 'Shipping', Icon: Truck },
+  { to: '/settings',   label: 'Settings',      short: 'Settings', Icon: Settings },
 ]
 
 const mainNav  = nav.filter(n => n.primary)

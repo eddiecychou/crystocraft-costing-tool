@@ -6,7 +6,7 @@ import { CUSTOMER_CURRENCIES } from '../currency'
 import LoadingBar from '../components/LoadingBar'
 import { ShieldCheck, Clock, UserCheck, Building2, X } from 'lucide-react'
 
-export default function CustomerAccounts() {
+export default function CustomerAccounts({ embedded = false }) {
   const [users, setUsers] = useState([])
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -44,7 +44,7 @@ export default function CustomerAccounts() {
   return (
     <div className="p-4 md:p-6">
       {loading && <LoadingBar />}
-      <h1 className="text-xl md:text-2xl mb-1">Customer Accounts</h1>
+      {!embedded && <h1 className="text-xl md:text-2xl mb-1">Customer Accounts</h1>}
       <p className="text-sm text-ink-60 mb-4">Approve sign-ups, set base currency and wholesale discount, and manage admins.</p>
 
       <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden mb-5">

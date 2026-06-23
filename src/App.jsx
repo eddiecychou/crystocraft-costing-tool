@@ -44,6 +44,9 @@ import Logistics from './pages/Logistics'
 import LogisticsVendorForm from './pages/LogisticsVendorForm'
 import Shipments from './pages/Shipments'
 import ShipmentForm from './pages/ShipmentForm'
+import Shipping from './pages/Shipping'
+import Portal from './pages/Portal'
+import Marketing from './pages/Marketing'
 
 export default function App() {
   const user = useAuthState()
@@ -120,6 +123,7 @@ function AdminApp({ user }) {
                 <Route path="/customers/:id" element={<CustomerDetail />} />
                 <Route path="/customers/:id/edit" element={<CustomerForm />} />
                 <Route path="/catalogue-band" element={<CatalogueBand />} />
+                <Route path="/marketing" element={<Marketing />} />
                 <Route path="/catalogues" element={<Catalogues />} />
                 <Route path="/catalogues/new" element={<CatalogueForm />} />
                 <Route path="/catalogues/:id" element={<CatalogueDetail />} />
@@ -128,14 +132,18 @@ function AdminApp({ user }) {
                 <Route path="/blog-generator" element={<BlogGenerator />} />
                 <Route path="/blog-generator/:productId" element={<BlogGenerator />} />
                 <Route path="/settings" element={<Settings />} />
-                <Route path="/shipments" element={<Shipments />} />
+                <Route path="/shipping" element={<Shipping />} />
                 <Route path="/shipments/new" element={<ShipmentForm />} />
                 <Route path="/shipments/:id" element={<ShipmentForm />} />
-                <Route path="/logistics" element={<Logistics />} />
                 <Route path="/logistics/new" element={<LogisticsVendorForm />} />
                 <Route path="/logistics/:id" element={<LogisticsVendorForm />} />
-                <Route path="/customer-accounts" element={<CustomerAccounts />} />
-                <Route path="/enquiries" element={<Enquiries />} />
+                <Route path="/portal" element={<Portal />} />
+                {/* Legacy redirects */}
+                <Route path="/shipments" element={<Navigate to="/shipping" replace />} />
+                <Route path="/logistics" element={<Navigate to="/shipping" replace />} />
+                <Route path="/customer-accounts" element={<Navigate to="/portal" replace />} />
+                <Route path="/enquiries" element={<Navigate to="/portal" replace />} />
+                <Route path="/catalogue-band" element={<Navigate to="/settings" replace />} />
                 <Route path="/import-data" element={<ImportData />} />
               </Routes>
             </Layout>

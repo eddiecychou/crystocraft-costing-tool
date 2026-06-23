@@ -13,7 +13,7 @@ import { FileInput, FolderOpen, FileText, Trash2, CheckCircle2, AlertTriangle } 
 import ConfirmDialog from '../components/ConfirmDialog'
 
 const blankHeader = {
-  customer_id: '', customer_name: '', erp_pi_no: '', order_date: '',
+  customer_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', order_date: '',
   currency: 'USD', incoterm: 'FOB', status: 'draft',
   destination: { country: '', city: '', address: '', port: '' }, notes: '',
 }
@@ -49,7 +49,8 @@ export default function ShipmentForm() {
         if (o) {
           setHeader({
             customer_id: o.customer_id, customer_name: o.customer_name,
-            erp_pi_no: o.erp_pi_no, order_date: o.order_date || '',
+            erp_pi_no: o.erp_pi_no, erp_so_no: o.erp_so_no || '',
+            order_date: o.order_date || '',
             currency: o.currency, incoterm: o.incoterm, status: o.status,
             destination: { ...blankHeader.destination, ...o.destination }, notes: o.notes,
           })
@@ -103,6 +104,7 @@ export default function ShipmentForm() {
       setHeader(h => ({
         ...h,
         erp_pi_no: data.pi_no || h.erp_pi_no,
+        erp_so_no: data.so_no || h.erp_so_no,
         customer_name: h.customer_id ? h.customer_name : (data.customer_name || h.customer_name),
         order_date: data.order_date || h.order_date,
         currency: ['USD', 'EUR', 'RMB', 'HKD'].includes(data.currency) ? data.currency : h.currency,
@@ -172,15 +174,19 @@ export default function ShipmentForm() {
   async function handleSave(e) {
     e.preventDefault()
     setSaving(true)
+    setExtractError('')
     try {
       await updateOrder(id, {
         customer_id: header.customer_id, customer_name: header.customer_name,
-        erp_pi_no: header.erp_pi_no, order_date: header.order_date || null,
+        erp_pi_no: header.erp_pi_no, erp_so_no: header.erp_so_no,
+        order_date: header.order_date || null,
         currency: header.currency, incoterm: header.incoterm, status: header.status,
         destination: header.destination, notes: header.notes,
       })
       await saveOrderLines(id, lines)
       navigate('/shipments')
+    } catch (err) {
+      setExtractError(err.message || 'Could not save shipment.')
     } finally {
       setSaving(false)
     }
@@ -231,9 +237,15 @@ export default function ShipmentForm() {
                 {customers.map(c => <option key={c.id} value={c.id}>{c.name}{c.name_cn ? ` (${c.name_cn})` : ''}</option>)}
               </select>
             </div>
-            <div>
-              <label className="label">PI Number</label>
-              <input className="input" value={header.erp_pi_no} onChange={setH('erp_pi_no')} placeholder="e.g. PI-2025-0481" />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="label">PI Number</label>
+                <input className="input" value={header.erp_pi_no} onChange={setH('erp_pi_no')} placeholder="e.g. PI-2025-0481" />
+              </div>
+              <div>
+                <label className="label">SO / Doc No</label>
+                <input className="input" value={header.erp_so_no} onChange={setH('erp_so_no')} placeholder="e.g. SO260017" />
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-4 gap-4">

@@ -11,6 +11,7 @@ export default async function handler(req) {
 Return ONLY a valid JSON object with these keys (use null when a value is not present):
 {
   "pi_no": string or null,
+  "so_no": string or null,                 // ERP Sales Order / Document No (e.g. "SO260017", "SO-2025-0017")
   "customer_name": string or null,
   "order_date": string or null,            // ISO date YYYY-MM-DD if determinable
   "currency": "USD" | "EUR" | "RMB" | "HKD" | null,
@@ -28,6 +29,7 @@ Return ONLY a valid JSON object with these keys (use null when a value is not pr
 }
 
 Rules:
+- so_no is the ERP Sales Order or Document number (often labelled "Document No", "SO No", "Order Ref"). Extract it exactly as printed.
 - Extract EVERY line item, including charges/fees (tooling, sample, freight, setup) — keep them as lines; do not silently drop them.
 - item_code is the supplier/article code (e.g. "D0002-230-C", "U0226", "P-PB007"). If a line has no code (e.g. a pure charge), use null.
 - qty_ordered is the ordered quantity as a number only (strip units).
