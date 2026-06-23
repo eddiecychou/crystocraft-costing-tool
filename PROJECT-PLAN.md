@@ -1,6 +1,6 @@
 # Crystocraft Corporate Gift Costing Tool — Project Plan
 
-## Current Status — V3.x as of 2026-06-22
+## Current Status — V3.x as of 2026-06-23
 
 **Live in production on Netlify.** Pre-costing stable checkpoint backed up on GitHub:
 git tag `v3.1-pre-range-costing` (commit `c94f74b`) — `git reset --hard` to it to roll back
@@ -35,6 +35,33 @@ The corp-gift supplier-quote flow, brought to figurine critical components.
   star + attachment preview instead of a single manual cost.
 - **Safe write** — saving the component editor writes descriptor fields only (merge), so it
   never clobbers quote-owned cost.
+
+### Catalogue Collections "Shop by" band — BUILT & deployed (2026-06-23)
+
+Curated entry section above the product grid in both customer shops (Corp Gift + Figurine).
+
+- **C0 — New In tag** — explicit `is_new` boolean on each product (checkbox in the editor),
+  not date-based. Drives a green "New" badge + new-first sort. Immune to re-import/retire.
+- **C1 — Admin CRUD** — `/catalogue-band` page. Per-catalogue switcher. Band settings
+  (show/hide, columns, max tiles). Collection list with up/down reorder. Editor modal:
+  title, subtitle, type (`filter` / `manual` / `smart`), filter value, manual product
+  picker (search + tick + image), smart rule, accent palette, image mode, image upload,
+  title colour (white/black), overlay colour (dark/light/none) + opacity slider.
+- **C2 — Customer band** — `CollectionBand` component above the filter bar. Tiles are
+  `aspect-square` (no label strip below); custom tiles: full-bleed `object-cover` image +
+  configurable gradient scrim + label overlay; templated tiles: accent-tinted background +
+  product image centred + label overlay. Tiles that resolve to zero products are hidden.
+  Ragged-row rule: only show complete rows (< 1 full row → band hidden). Clicking a tile
+  deep-links into the grid with an active collection chip + Clear button; category dropdown
+  clears the collection.
+- **Storage** — band images under `catalogues/band/…` (already in Storage rules allowlist).
+  Tile + settings data in `settings/catalogue_band` (single doc, covered by existing
+  `settings/*` Firestore rule — no new rule needed).
+- **Live WYSIWYG preview** in the editor mirrors the customer tile exactly as you adjust
+  overlay / title colour settings.
+- **Visual fix (2026-06-23)** — all tiles are `aspect-square` on the card itself; label is
+  an absolute overlay, not a strip below the image. Eliminates the height mismatch and the
+  thin line that appeared under custom tiles against a lighter background.
 
 ### What's new since V3.0 (figurine / UX work, up to 2026-06-22)
 - **WordPress image importer** (`/range/import-images`) — scans the catalogue blog pages
@@ -593,4 +620,4 @@ neither of which is read by existing code paths.
 - **Client brief intake form** — shareable link for clients to submit requirements, auto-matches to products
 - **Analytics** — which products are most quoted, win rate per client, margin trends
 - **CRM light** — track follow-ups and status per client enquiry
-- **Catalogue Collections & Merchandising** — curated "Shop by…" band over the customer catalogue grid (one `Collection` concept: filter / manual / smart). Full spec in Obsidian: `Crystocraft/Operations/Catalogue_Collections_Spec.md`. Phased C0–C4; **C0 built 2026-06-22** — explicit admin **"New arrival" tag** (`is_new` on each product, toggled in the editor) drives a green "New" badge + new-first sort in both customer shops (not date-inferred, since products are re-imported/retired). C1+ blocked on the spec's §8 open decisions.
+- **Catalogue Collections & Merchandising** — ✅ C0/C1/C2 **BUILT 2026-06-23**. C3 (seasonal date windows + `new_in` smart tile in the band) and C4 (best_sellers + account row) remain future phases. Full spec: `Crystocraft/Operations/Catalogue_Collections_Spec.md`.
