@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
@@ -19,6 +19,9 @@ export default function RangeComponentForm() {
   const { id: routeId } = useParams()
   const isNew = !routeId || routeId === 'new'
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const back = searchParams.get('back') || ''
+  const backQ = back ? `?back=${encodeURIComponent(back)}` : ''
 
   const [docId] = useState(() => (isNew ? newId() : routeId))
   const [form, setForm] = useState(blank)
@@ -164,14 +167,14 @@ export default function RangeComponentForm() {
         <div className="card p-5">
           <div className="flex items-center justify-between mb-1">
             <h2 className="text-base">Supplier quotes <span className="text-ink-60 font-normal text-sm">(drives figurine cost)</span></h2>
-            {!isNew && <Link to={`/components/critical/${routeId}/quotes/new`} className="btn-secondary text-sm">+ Add quote</Link>}
+            {!isNew && <Link to={`/components/critical/${routeId}/quotes/new${backQ}`} className="btn-secondary text-sm">+ Add quote</Link>}
           </div>
           <p className="text-xs text-ink-60 mb-3">Upload supplier screenshots / PDFs; AI extracts the price. Star one as preferred — its cost is used in costing.</p>
 
           {isNew ? (
             <p className="text-sm text-ink-50">Save the component first, then add supplier quotes with images.</p>
           ) : quotes.length === 0 ? (
-            <p className="text-sm text-ink-50">No quotes yet — <Link to={`/components/critical/${routeId}/quotes/new`} className="text-brand-600 hover:underline">add the first supplier quote</Link>.</p>
+            <p className="text-sm text-ink-50">No quotes yet — <Link to={`/components/critical/${routeId}/quotes/new${backQ}`} className="text-brand-600 hover:underline">add the first supplier quote</Link>.</p>
           ) : (
             <div className="divide-y divide-ivory-dark">
               {quotes.map(q => (
@@ -195,7 +198,7 @@ export default function RangeComponentForm() {
                   {q.attachments?.length > 0 && (q.attachments[0].file_type === 'image'
                     ? <img src={q.attachments[0].file_url} alt="" className="w-9 h-9 object-cover rounded border border-ivory-dark shrink-0" />
                     : <FileText size={16} className="text-red-400 shrink-0" />)}
-                  <Link to={`/components/critical/${routeId}/quotes/${q.id}`} className="text-xs text-brand-600 hover:underline shrink-0">Edit</Link>
+                  <Link to={`/components/critical/${routeId}/quotes/${q.id}${backQ}`} className="text-xs text-brand-600 hover:underline shrink-0">Edit</Link>
                 </div>
               ))}
             </div>

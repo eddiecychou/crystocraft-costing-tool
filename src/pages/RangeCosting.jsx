@@ -183,7 +183,7 @@ export default function RangeCosting() {
                       <p className="text-xs text-gray-500">{c.code} · {unit} {c.unit_cost_currency}{qty > 1 ? ` × ${qty}` : ''}
                         {c.volume_tiers?.length > 0 && <span className="ml-1.5 text-brand-500">· {c.volume_tiers.length} volume tier{c.volume_tiers.length > 1 ? 's' : ''}</span>}</p>
                     ) : (
-                      <Link to={`/components/critical/${c?.id || ''}`} className="text-xs text-red-400 hover:underline">
+                      <Link to={`/components/critical/${c?.id || ''}?back=/range/${id}/costing`} className="text-xs text-red-400 hover:underline">
                         <AlertTriangle size={12} className="inline align-[-2px] mr-1" />No cost set — click to add</Link>
                     )}
                   </div>

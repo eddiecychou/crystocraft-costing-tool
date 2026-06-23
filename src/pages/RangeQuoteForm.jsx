@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
@@ -19,6 +19,8 @@ export default function RangeQuoteForm() {
   const { id: componentId, quoteId } = useParams()
   const isEdit = Boolean(quoteId)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const backUrl = searchParams.get('back') || `/components/critical/${componentId}`
   const fileIdRef = useRef(0)
 
   const [component, setComponent] = useState(null)
@@ -133,7 +135,7 @@ export default function RangeQuoteForm() {
         volume_tiers: volumeTiers,
         attachments: [...existingAttachments, ...uploaded],
       })
-      navigate(`/components/critical/${componentId}`)
+      navigate(backUrl)
     } catch (err) {
       setExtractError(err.message || 'Save failed.')
       setSaving(false)
@@ -281,7 +283,7 @@ export default function RangeQuoteForm() {
         <div className="flex items-center justify-between pt-2">
           <div className="flex gap-3">
             <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Quote'}</button>
-            <button type="button" className="btn-secondary" onClick={() => navigate(`/components/critical/${componentId}`)}>Cancel</button>
+            <button type="button" className="btn-secondary" onClick={() => navigate(backUrl)}>Cancel</button>
           </div>
           {isEdit && <button type="button" className="text-sm text-red-500 hover:text-red-700" onClick={() => setConfirmDelete(true)}>Delete Quote</button>}
         </div>
@@ -289,7 +291,7 @@ export default function RangeQuoteForm() {
 
       {confirmDelete && (
         <ConfirmDialog title="Delete Quote" message="Delete this supplier quote? This cannot be undone."
-          onConfirm={async () => { await deleteComponentQuote(componentId, quoteId); navigate(`/components/critical/${componentId}`) }}
+          onConfirm={async () => { await deleteComponentQuote(componentId, quoteId); navigate(backUrl) }}
           onCancel={() => setConfirmDelete(false)} />
       )}
     </div>
