@@ -47,13 +47,13 @@ export default function ShipmentForm() {
   useEffect(() => {
     const preCustomerId = searchParams.get('customer_id')
     const loads = [
-      getDocs(query(collection(db, 'customers'), orderBy('name'))).then(s => {
+      getDocs(query(collection(db, 'customers'), orderBy('company_name'))).then(s => {
         const list = s.docs.map(d => ({ id: d.id, ...d.data() }))
         setCustomers(list)
         // Resolve customer name when pre-filled from URL
         if (preCustomerId && !isEdit) {
           const c = list.find(x => x.id === preCustomerId)
-          if (c) setHeader(h => ({ ...h, customer_name: c.name_cn ? `${c.name} (${c.name_cn})` : c.name }))
+          if (c) setHeader(h => ({ ...h, customer_name: c.company_name }))
         }
       }),
       loadRangeProductsLite().then(setRangeProducts),
@@ -88,11 +88,10 @@ export default function ShipmentForm() {
     const c = customers.find(x => x.id === e.target.value)
     setHeader(h => ({
       ...h, customer_id: e.target.value,
-      customer_name: c ? (c.name_cn ? `${c.name} (${c.name_cn})` : c.name) : h.customer_name,
-      incoterm: c?.default_incoterm && INCOTERMS.includes(c.default_incoterm) ? c.default_incoterm : h.incoterm,
+      customer_name: c ? c.company_name : h.customer_name,
       destination: c ? {
-        country: c.country || h.destination.country,
-        city: c.city || h.destination.city,
+        country: c.country || c.region || h.destination.country,
+        city: h.destination.city,
         address: c.address || h.destination.address,
         port: h.destination.port,
       } : h.destination,
@@ -126,12 +125,12 @@ export default function ShipmentForm() {
         if (!customer_id && data.customer_name) {
           const lower = data.customer_name.toLowerCase()
           const match = customers.find(c => {
-            const cn = (c.name || '').toLowerCase()
+            const cn = (c.company_name || '').toLowerCase()
             return cn && (lower.includes(cn) || cn.includes(lower))
           })
           if (match) {
             customer_id = match.id
-            customer_name = match.name_cn ? `${match.name} (${match.name_cn})` : match.name
+            customer_name = match.company_name
           }
         }
         return {
@@ -316,7 +315,7 @@ export default function ShipmentForm() {
               <label className="label">Customer</label>
               <select className="input" value={customers.find(c => c.id === header.customer_id) ? header.customer_id : ''} onChange={onCustomer}>
                 <option value="">— select customer —</option>
-                {customers.map(c => <option key={c.id} value={c.id}>{c.name}{c.name_cn ? ` (${c.name_cn})` : ''}</option>)}
+                {customers.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
               </select>
               {!header.customer_id && header.customer_name && (
                 <p className="text-xs text-amber-600 mt-1">From PI: "{header.customer_name}" — not linked to any customer. Select from list above.</p>
