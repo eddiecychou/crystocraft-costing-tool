@@ -36,6 +36,28 @@ The corp-gift supplier-quote flow, brought to figurine critical components.
 - **Safe write** — saving the component editor writes descriptor fields only (merge), so it
   never clobbers quote-owned cost.
 
+### Shipping & Logistics module — Phases 12.0 + 13.0 BUILT & deployed (2026-06-23)
+
+First two slices of the Shipping module (full spec: Obsidian `Shipping___Logistics_Module_Spec.md`).
+
+- **13.0 — Logistics vendor KB** (`/logistics`) — `logistics_vendors` CRUD with graded
+  coverage tags (region + strong/OK/avoid + per-region modes), freight modes, incoterms,
+  reliability rating (fragile-weighted), multi-contact, damage history. `freight_quotes`
+  cost-history data layer (HKD-normalised) ready for bootstrap import (13.1). No standing
+  rate cards (guardrail 7).
+- **12.0 — Order/PI anchor + figurine PI import** (`/shipments`) — upload a figurine
+  proforma invoice (PDF/image) → `extract-pi` Gemini edge function reads header + line
+  items. Brand-agnostic SKU matcher (`stripBrand` core compare, like Crystal-Bible import)
+  auto-links lines to `range_products`. Reconciliation screen classifies every line
+  (Figurine / Corp Gift / Ad-hoc / Charge) with manual override; non-product = charge,
+  excluded from packing. `orders` + `orders/{id}/lines` data layer. "Promote to catalogue"
+  deferred per decision; corp-gift PI import out of scope v1 (Path A covers corp gift).
+- **New collections** (admin-only Firestore rules added in console): `orders`,
+  `packing_lists`, `logistics_vendors`, `freight_quotes`, `freight_rfqs`. New Storage paths
+  `orders/*` + `freight_quotes/*` (pasted into Storage Rules tab). New edge function
+  `extract-pi` registered in `netlify.toml`.
+- **Next:** 13.1 WeChat freight-quote bootstrap, then 12.1 packing list (carton model).
+
 ### Catalogue Collections "Shop by" band — BUILT & deployed (2026-06-23)
 
 Curated entry section above the product grid in both customer shops (Corp Gift + Figurine).
