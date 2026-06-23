@@ -17,6 +17,7 @@ const blankHeader = {
   customer_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', order_date: '',
   currency: 'USD', incoterm: 'FOB', status: 'draft',
   destination: { country: '', city: '', address: '', port: '' }, notes: '',
+  subtotal: '', discount_pct: '', discount_amount: '', total_amount: '',
 }
 
 export default function ShipmentForm() {
@@ -67,6 +68,10 @@ export default function ShipmentForm() {
             order_date: o.order_date || '',
             currency: o.currency, incoterm: o.incoterm, status: o.status,
             destination: { ...blankHeader.destination, ...o.destination }, notes: o.notes,
+            subtotal:        o.subtotal        ?? '',
+            discount_pct:    o.discount_pct    ?? '',
+            discount_amount: o.discount_amount ?? '',
+            total_amount:    o.total_amount    ?? '',
           })
           setSourceFile(o.source_file || null)
           setLines(await getOrderLines(id))
@@ -123,6 +128,10 @@ export default function ShipmentForm() {
         order_date: data.order_date || h.order_date,
         currency: ['USD', 'EUR', 'RMB', 'HKD'].includes(data.currency) ? data.currency : h.currency,
         incoterm: INCOTERMS.includes(data.incoterm) ? data.incoterm : h.incoterm,
+        subtotal:        data.subtotal        != null ? data.subtotal        : h.subtotal,
+        discount_pct:    data.discount_pct    != null ? data.discount_pct    : h.discount_pct,
+        discount_amount: data.discount_amount != null ? data.discount_amount : h.discount_amount,
+        total_amount:    data.total_amount    != null ? data.total_amount    : h.total_amount,
       }))
       const matched = autoMatchLines(data.lines || [], rangeProducts)
       setLines(matched)
@@ -175,7 +184,14 @@ export default function ShipmentForm() {
         sf = { url: await getDownloadURL(r), name: pendingFile.name }
       }
       const orderId = await createOrderWithLines(
-        { ...header, source: 'imported_pi', source_file: sf },
+        {
+          ...header,
+          source: 'imported_pi', source_file: sf,
+          subtotal:        header.subtotal        !== '' ? parseFloat(header.subtotal)        : null,
+          discount_pct:    header.discount_pct    !== '' ? parseFloat(header.discount_pct)    : null,
+          discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : null,
+          total_amount:    header.total_amount    !== '' ? parseFloat(header.total_amount)    : null,
+        },
         lines,
       )
       navigate(`/shipments/${orderId}`)
@@ -196,6 +212,10 @@ export default function ShipmentForm() {
         order_date: header.order_date || null,
         currency: header.currency, incoterm: header.incoterm, status: header.status,
         destination: header.destination, notes: header.notes,
+        subtotal:        header.subtotal        !== '' ? parseFloat(header.subtotal)        : null,
+        discount_pct:    header.discount_pct    !== '' ? parseFloat(header.discount_pct)    : null,
+        discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : null,
+        total_amount:    header.total_amount    !== '' ? parseFloat(header.total_amount)    : null,
       })
       await saveOrderLines(id, lines)
       navigate('/shipments')
@@ -383,6 +403,82 @@ export default function ShipmentForm() {
             </div>
           </div>
         )}
+
+        {/* ── Order totals & discount ──────────────────────────────────── */}
+        {lines.length > 0 && (() => {
+          const computedSubtotal = lines.reduce((sum, l) => {
+            const qty = parseFloat(l.qty_ordered) || 0
+            const up  = parseFloat(l.unit_price)  || 0
+            return sum + qty * up
+          }, 0)
+          const piSubtotal   = parseFloat(header.subtotal) || null
+          const discPct      = parseFloat(header.discount_pct) || 0
+          const discAmt      = parseFloat(header.discount_amount) || (discPct > 0 ? +(computedSubtotal * discPct / 100).toFixed(2) : 0)
+          const piTotal      = parseFloat(header.total_amount) || null
+          const computedTotal = +(computedSubtotal - discAmt).toFixed(2)
+          const subtotalMatch = piSubtotal == null || Math.abs(computedSubtotal - piSubtotal) < 0.02
+          const fmt = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+          return (
+            <div className="card p-4">
+              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Order Totals</h2>
+              <div className="space-y-1.5 text-sm">
+                {/* Computed subtotal vs PI stated */}
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">Computed subtotal</span>
+                  <span className="font-mono font-medium text-gray-800">{header.currency} {fmt(computedSubtotal)}</span>
+                </div>
+                {piSubtotal != null && (
+                  <div className="flex justify-between items-center">
+                    <span className="flex items-center gap-1.5 text-gray-500">
+                      PI stated subtotal
+                      {subtotalMatch
+                        ? <span className="text-green-600 text-xs">✓ match</span>
+                        : <span className="text-amber-600 text-xs">⚠ mismatch</span>}
+                    </span>
+                    <span className={`font-mono text-sm ${subtotalMatch ? 'text-gray-500' : 'text-amber-600 font-medium'}`}>
+                      {header.currency} {fmt(piSubtotal)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Discount row */}
+                <div className="flex items-center justify-between pt-1 border-t border-gray-100 mt-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-gray-500">Discount</span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number" step="0.01" min="0" max="100"
+                        className="input py-0.5 text-xs w-16 text-right"
+                        value={header.discount_pct}
+                        onChange={e => {
+                          const pct = e.target.value
+                          const amt = pct !== '' ? +((parseFloat(piSubtotal || computedSubtotal) * parseFloat(pct) / 100)).toFixed(2) : ''
+                          setHeader(h => ({ ...h, discount_pct: pct, discount_amount: isNaN(amt) ? '' : amt }))
+                        }}
+                        placeholder="0"
+                      />
+                      <span className="text-xs text-gray-400">%</span>
+                    </div>
+                  </div>
+                  <span className="font-mono text-sm text-red-600">
+                    {discAmt > 0 ? `− ${header.currency} ${fmt(discAmt)}` : '—'}
+                  </span>
+                </div>
+
+                {/* Total */}
+                <div className="flex justify-between items-center pt-1.5 border-t border-gray-200 mt-0.5">
+                  <span className="font-semibold text-gray-800">Total Amount</span>
+                  <div className="text-right">
+                    <span className="font-mono font-bold text-gray-900 text-base">{header.currency} {fmt(computedTotal)}</span>
+                    {piTotal != null && Math.abs(computedTotal - piTotal) >= 0.02 && (
+                      <div className="text-xs text-amber-600">PI states {header.currency} {fmt(piTotal)}</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
 
         <div className="flex items-center gap-3 pt-1">
           <button type="submit" className="btn-primary" disabled={saving || (!isEdit && lines.length === 0)}>

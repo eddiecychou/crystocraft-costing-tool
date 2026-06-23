@@ -106,6 +106,10 @@ export const normOrder = o => ({
   status: ORDER_STATUSES.some(s => s.value === o.status) ? o.status : 'draft',
   source_file: o.source_file || null,
   notes: str(o.notes),
+  subtotal:        numOrNull(o.subtotal),
+  discount_pct:    numOrNull(o.discount_pct),
+  discount_amount: numOrNull(o.discount_amount),
+  total_amount:    numOrNull(o.total_amount),
 })
 
 export const normLine = l => {

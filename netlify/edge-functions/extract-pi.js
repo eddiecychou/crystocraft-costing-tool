@@ -16,6 +16,10 @@ Return ONLY a valid JSON object with these keys (use null when a value is not pr
   "order_date": string or null,            // ISO date YYYY-MM-DD if determinable
   "currency": "USD" | "EUR" | "RMB" | "HKD" | null,
   "incoterm": "EXW" | "FOB" | "CIF" | "DAP" | "DDP" | null,
+  "subtotal": number or null,              // sum of all line amounts before any discount
+  "discount_pct": number or null,          // order-level discount percentage (e.g. 30 for 30%)
+  "discount_amount": number or null,       // absolute discount value in document currency
+  "total_amount": number or null,          // final payable amount after discount
   "lines": [
     {
       "line_no": number or null,
@@ -36,6 +40,10 @@ Rules:
 - unit_price is the per-unit price as a number only (strip currency symbols).
 - Currency symbols: $ = USD, € = EUR, ¥ or 元 or RMB = RMB, HK$ = HKD.
 - Incoterm is often near the totals or shipping terms.
+- subtotal: sum of all line amounts printed on the document before any discount. Look for "Subtotal", "Sub-Total", "Amount Before Discount".
+- discount_pct: order-level discount percentage. Look for "Less X% Discount", "Trade Discount %". Extract the number only (e.g. 30 for "Less 30% Discount").
+- discount_amount: absolute monetary discount value. Look for "Less X% Discount:", "Discount Amount".
+- total_amount: final payable amount after discount. Look for "Total Amount", "Grand Total", "Amount Due".
 - Return ONLY the JSON object, no commentary.`
 
   async function callGemini(model) {
