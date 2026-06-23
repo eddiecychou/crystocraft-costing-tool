@@ -60,18 +60,18 @@ Rules:
               { inline_data: { mime_type: mimeType, data: image } },
             ],
           }],
-          generationConfig: { temperature: 0, responseMimeType: 'application/json', maxOutputTokens: 16384 },
+          generationConfig: { temperature: 0, responseMimeType: 'application/json', maxOutputTokens: 16384, thinkingConfig: { thinkingBudget: 0 } },
         }),
       }
     )
   }
 
   try {
-    // gemini-2.0-flash: fast non-thinking model, handles large PDFs well within 30s edge-fn timeout.
-    // gemini-2.5-flash is a thinking model and can exceed 30s on 70-line/5-page documents.
-    let res = await callGemini('gemini-2.0-flash')
+    // gemini-2.5-flash with thinkingBudget:0 — full PDF capability, no thinking overhead,
+    // stays well within the 30s edge-function wall-clock limit on large multi-page PIs.
+    let res = await callGemini('gemini-2.5-flash')
     if (res.status === 429 || res.status === 503) {
-      res = await callGemini('gemini-2.0-flash')
+      res = await callGemini('gemini-2.5-flash')
     }
     if (!res.ok) res = await callGemini('gemini-1.5-pro-latest')
 

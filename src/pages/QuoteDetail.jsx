@@ -508,7 +508,8 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
             <tr className="text-xs text-gray-400">
               <th className="text-left font-normal pb-1 w-36">Quantity</th>
               <th className="text-left font-normal pb-1 w-32">Unit Price ({currency})</th>
-              {costInQuoteCurrency != null && <th className="text-right font-normal pb-1 w-16">Margin</th>}
+              {recurringCost != null && <th className="text-right font-normal pb-1 w-24">All-in cost</th>}
+              {recurringCost != null && <th className="text-right font-normal pb-1 w-16">Margin</th>}
               <th className="text-right font-normal pb-1">Subtotal ({currency})</th>
               <th className="w-6"></th>
             </tr>
@@ -516,8 +517,9 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
           <tbody>
             {tiers.map((tier, i) => {
               const livePrice = localPrices[i] ?? tier.price
+              const tierAllIn = allInCost(tier.quantity)
               const margin = calcMargin(livePrice, tier.quantity)
-              const colSpan = 2 + (costInQuoteCurrency != null ? 1 : 0) + 2
+              const colSpan = 2 + (recurringCost != null ? 2 : 0) + 2
               return (
               <Fragment key={i}>
                 <tr className="group">
@@ -553,7 +555,12 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
                       onBlur={e => updateTier(i, 'price', e.target.value)}
                     />
                   </td>
-                  {costInQuoteCurrency != null && (
+                  {recurringCost != null && (
+                    <td className="text-right pt-1.5 pb-0 whitespace-nowrap text-xs text-gray-500">
+                      {tierAllIn != null ? tierAllIn.toFixed(2) : '—'}
+                    </td>
+                  )}
+                  {recurringCost != null && (
                     <td className="text-right pt-1.5 pb-0 whitespace-nowrap">
                       {margin != null ? (
                         <span className={`text-xs font-semibold ${marginColor(margin)}`}>{margin.toFixed(1)}%</span>

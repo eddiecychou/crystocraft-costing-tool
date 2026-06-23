@@ -314,7 +314,7 @@ export default function ShipmentForm() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Customer</label>
-              <select className="input" value={header.customer_id} onChange={onCustomer}>
+              <select className="input" value={customers.find(c => c.id === header.customer_id) ? header.customer_id : ''} onChange={onCustomer}>
                 <option value="">— select customer —</option>
                 {customers.map(c => <option key={c.id} value={c.id}>{c.name}{c.name_cn ? ` (${c.name_cn})` : ''}</option>)}
               </select>
