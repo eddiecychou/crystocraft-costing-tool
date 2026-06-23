@@ -90,6 +90,8 @@ export default function BulkCategoryEditor() {
       setSelected(new Set())
       setBulkDesignType('')
       setBulkProductType('')
+      setFilterDesign('')
+      setFilterProduct('')
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } finally {
