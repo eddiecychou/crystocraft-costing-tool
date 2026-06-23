@@ -87,8 +87,8 @@ export default function RangeComponentForm() {
     if (!form.code.trim()) { setError('Item code is required.'); return }
     setSaving(true); setError('')
     try {
-      await saveComponent(isNew ? docId : routeId, form)
-      navigate('/components')
+      const savedId = await saveComponent(isNew ? docId : routeId, form)
+      navigate(isNew ? `/components/critical/${savedId}` : '/components')
     } catch (err) { setError(err.message || 'Save failed.'); setSaving(false) }
   }
 

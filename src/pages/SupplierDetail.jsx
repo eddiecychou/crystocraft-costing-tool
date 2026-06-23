@@ -46,6 +46,7 @@ export default function SupplierDetail() {
   const [loading, setLoading]           = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [quotes, setQuotes]             = useState([])
+  const [rangeQuotes, setRangeQuotes]   = useState([])
   const [quotesLoading, setQuotesLoading] = useState(true)
   const [showAddQuote, setShowAddQuote] = useState(false)
   const [indexError, setIndexError]     = useState(false)
@@ -65,45 +66,65 @@ export default function SupplierDetail() {
       const snap = await getDocs(
         query(collectionGroup(db, 'supplier_quotes'), where('supplier_id', '==', id))
       )
-      // Parse productId + componentId from doc path: products/{pId}/components/{cId}/supplier_quotes/{qId}
-      const raw = snap.docs.map(d => {
+
+      // Separate corp-gift quotes (products/.../supplier_quotes/...)
+      // from range-component quotes (range_components/.../supplier_quotes/...)
+      const corpRaw = []
+      const rangeRaw = []
+      snap.docs.forEach(d => {
         const parts = d.ref.path.split('/')
-        return { id: d.id, productId: parts[1], componentId: parts[3], ...d.data() }
+        if (parts[0] === 'range_components') {
+          rangeRaw.push({ id: d.id, componentId: parts[1], ...d.data() })
+        } else {
+          corpRaw.push({ id: d.id, productId: parts[1], componentId: parts[3], ...d.data() })
+        }
       })
-      // Fetch product + component names for each unique combo
-      const productIds   = [...new Set(raw.map(r => r.productId))]
+
+      // ── Corp-gift: resolve product + component names ───────────────────
+      const productIds = [...new Set(corpRaw.map(r => r.productId))]
       const productNames = {}
       await Promise.all(productIds.map(pid =>
-        getDoc(doc(db, 'products', pid)).then(s => { productNames[pid] = s.data()?.name || pid })
+        getDoc(doc(db, 'products', pid)).then(s => { productNames[pid] = s.data()?.name || null })
       ))
-      const compKeys = [...new Set(raw.map(r => `${r.productId}::${r.componentId}`))]
+      const compKeys = [...new Set(corpRaw.map(r => `${r.productId}::${r.componentId}`))]
       const compNames = {}
       await Promise.all(compKeys.map(key => {
         const [pid, cid] = key.split('::')
         return getDoc(doc(db, 'products', pid, 'components', cid))
           .then(s => { compNames[key] = s.data()?.name || cid })
       }))
-      const enriched = raw.map(r => ({
+      const enrichedCorp = corpRaw.map(r => ({
         ...r,
         _productName:   productNames[r.productId] || '',
         _componentName: compNames[`${r.productId}::${r.componentId}`] || '',
       }))
 
-      // Auto-delete orphaned quotes (parent product was deleted)
-      const orphans = enriched.filter(r => !r._productName || r._productName === r.productId)
+      // Auto-delete orphaned corp-gift quotes (parent product deleted)
+      const orphans = enrichedCorp.filter(r => !productNames[r.productId])
       if (orphans.length) {
         const batch = writeBatch(db)
         orphans.forEach(r => {
           batch.delete(doc(db, 'products', r.productId, 'components', r.componentId, 'supplier_quotes', r.id))
         })
         await batch.commit()
-        console.log(`Cleaned up ${orphans.length} orphaned supplier quote(s)`)
       }
 
       setQuotes(
-        enriched
-          .filter(r => r._productName && r._productName !== r.productId)
+        enrichedCorp
+          .filter(r => productNames[r.productId])
           .sort((a, b) => a._productName.localeCompare(b._productName))
+      )
+
+      // ── Range components: resolve component names ──────────────────────
+      const rcIds = [...new Set(rangeRaw.map(r => r.componentId))]
+      const rcNames = {}
+      await Promise.all(rcIds.map(cid =>
+        getDoc(doc(db, 'range_components', cid)).then(s => { rcNames[cid] = s.data()?.name || s.data()?.code || cid })
+      ))
+      setRangeQuotes(
+        rangeRaw
+          .map(r => ({ ...r, _componentName: rcNames[r.componentId] || r.componentId }))
+          .sort((a, b) => a._componentName.localeCompare(b._componentName))
       )
     } catch (err) {
       console.error('Supplier quotes query error:', err.code, err.message)
@@ -174,7 +195,7 @@ export default function SupplierDetail() {
       <div className="card mb-6">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <h2 className="text-sm font-semibold text-gray-700">
-            Component Quotes {!quotesLoading && <span className="text-gray-400 font-normal">({quotes.length})</span>}
+            Corp Gift Component Quotes {!quotesLoading && <span className="text-gray-400 font-normal">({quotes.length})</span>}
           </h2>
           <button onClick={() => setShowAddQuote(true)} className="btn-primary text-xs py-1.5 px-3">
             + Add Quote
@@ -231,6 +252,42 @@ export default function SupplierDetail() {
           </div>
         )}
       </div>
+
+      {/* Range Component Quotes */}
+      {!quotesLoading && rangeQuotes.length > 0 && (
+        <div className="card mb-6">
+          <div className="px-5 py-4 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-700">
+              Figurine Range Component Quotes <span className="text-gray-400 font-normal">({rangeQuotes.length})</span>
+            </h2>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {rangeQuotes.map(q => (
+              <Link key={q.id} to={`/components/critical/${q.componentId}/quotes/${q.id}`}
+                    className="flex items-start justify-between px-5 py-3.5 gap-3 hover:bg-gray-50 transition-colors">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-medium text-gray-900 truncate">{q._componentName}</p>
+                    {q.is_preferred && (
+                      <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium shrink-0">
+                        <Star size={11} className="fill-current" />Preferred
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-400">
+                    {q.unit_cost != null && <span className="font-medium text-gray-700">{q.unit_cost} {q.unit_cost_currency}</span>}
+                    {q.moq && <span>MOQ {Number(q.moq).toLocaleString()}</span>}
+                    {q.production_lead_time_days && <span>Prod {q.production_lead_time_days}d</span>}
+                    {q.tooling_sample_cost != null && <span>Tooling {q.tooling_sample_cost} {q.tooling_sample_cost_currency}</span>}
+                  </div>
+                  {q.notes && <p className="text-xs text-gray-400 mt-0.5 italic truncate">{q.notes}</p>}
+                </div>
+                <span className="text-xs text-gray-400 shrink-0 mt-1">Edit →</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       <SupplierCatalogs supplierId={id} />
 

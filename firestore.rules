@@ -142,6 +142,9 @@ service cloud.firestore {
     }
     match /range_components/{componentId} {
       allow read, write: if isAdmin();
+      match /supplier_quotes/{quoteId} {
+        allow read, write: if isAdmin();
+      }
     }
 
     // ---- Shipping & Logistics module (admin only) -----------------------
