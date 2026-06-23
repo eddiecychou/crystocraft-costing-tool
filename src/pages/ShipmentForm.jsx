@@ -315,9 +315,12 @@ export default function ShipmentForm() {
             <div>
               <label className="label">Customer</label>
               <select className="input" value={header.customer_id} onChange={onCustomer}>
-                <option value="">{header.customer_name || '— select customer —'}</option>
+                <option value="">— select customer —</option>
                 {customers.map(c => <option key={c.id} value={c.id}>{c.name}{c.name_cn ? ` (${c.name_cn})` : ''}</option>)}
               </select>
+              {!header.customer_id && header.customer_name && (
+                <p className="text-xs text-amber-600 mt-1">From PI: "{header.customer_name}" — not linked to any customer. Select from list above.</p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>

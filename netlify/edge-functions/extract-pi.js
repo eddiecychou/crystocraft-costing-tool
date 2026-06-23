@@ -67,12 +67,13 @@ Rules:
   }
 
   try {
-    let res = await callGemini('gemini-2.5-flash')
+    // gemini-2.0-flash: fast non-thinking model, handles large PDFs well within 30s edge-fn timeout.
+    // gemini-2.5-flash is a thinking model and can exceed 30s on 70-line/5-page documents.
+    let res = await callGemini('gemini-2.0-flash')
     if (res.status === 429 || res.status === 503) {
-      await new Promise(r => setTimeout(r, 3000))
-      res = await callGemini('gemini-2.5-flash')
+      res = await callGemini('gemini-2.0-flash')
     }
-    if (!res.ok) res = await callGemini('gemini-2.5-pro')
+    if (!res.ok) res = await callGemini('gemini-1.5-pro-latest')
 
     const data = await res.json()
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '{}'
