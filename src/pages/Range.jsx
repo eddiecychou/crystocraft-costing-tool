@@ -40,11 +40,11 @@ function docVariants(p) {
 export default function Range() {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [cat, setCat] = useState('')
-  const [ptype, setPtype] = useState('')
-  const [status, setStatus] = useState('all')
-  const [stockOnly, setStockOnly] = useState(false)
+  const [search, setSearch]     = useState(() => sessionStorage.getItem('rf-search') || '')
+  const [cat, setCat]           = useState(() => sessionStorage.getItem('rf-cat')    || '')
+  const [ptype, setPtype]       = useState(() => sessionStorage.getItem('rf-ptype')  || '')
+  const [status, setStatus]     = useState(() => sessionStorage.getItem('rf-status') || 'all')
+  const [stockOnly, setStockOnly] = useState(() => sessionStorage.getItem('rf-stock') === '1')
   const [seeding, setSeeding] = useState(false)
   const { colors: libColors } = useCrystalColors()
   const colorLookup = useMemo(() => colorMap(libColors), [libColors])
@@ -263,7 +263,7 @@ export default function Range() {
           { v: 'all', label: 'All' },
           ...RANGE_STATUSES.map(s => ({ v: s.value, label: s.label })),
         ].map(t => (
-          <button key={t.v} onClick={() => setStatus(t.v)}
+          <button key={t.v} onClick={() => { setStatus(t.v); sessionStorage.setItem('rf-status', t.v) }}
                   className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark transition-colors
                     ${status === t.v ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory'}`}>
             {t.label} <span className="opacity-60">{statusCounts[t.v]}</span>
@@ -274,19 +274,19 @@ export default function Range() {
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-2 my-5 sm:flex-wrap sm:items-center">
         <input type="text" placeholder="Search name, code or SKU…" className="input w-full sm:flex-1 sm:min-w-0"
-               value={search} onChange={e => setSearch(e.target.value)} />
+               value={search} onChange={e => { setSearch(e.target.value); sessionStorage.setItem('rf-search', e.target.value) }} />
         <div className="flex gap-2">
-          <select className="input flex-1 sm:flex-none sm:w-auto min-w-0" value={ptype} onChange={e => setPtype(e.target.value)}>
+          <select className="input flex-1 sm:flex-none sm:w-auto min-w-0" value={ptype} onChange={e => { setPtype(e.target.value); sessionStorage.setItem('rf-ptype', e.target.value) }}>
             <option value="">All product cats</option>
             {productTypes.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <select className="input flex-1 sm:flex-none sm:w-auto min-w-0" value={cat} onChange={e => setCat(e.target.value)}>
+          <select className="input flex-1 sm:flex-none sm:w-auto min-w-0" value={cat} onChange={e => { setCat(e.target.value); sessionStorage.setItem('rf-cat', e.target.value) }}>
             <option value="">All design cats</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <label className="flex items-center gap-2 text-sm text-ink-80 sm:px-2 cursor-pointer select-none">
-          <input type="checkbox" checked={stockOnly} onChange={e => setStockOnly(e.target.checked)} />
+          <input type="checkbox" checked={stockOnly} onChange={e => { setStockOnly(e.target.checked); sessionStorage.setItem('rf-stock', e.target.checked ? '1' : '') }} />
           In stock only
         </label>
       </div>

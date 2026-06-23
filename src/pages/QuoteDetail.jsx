@@ -162,12 +162,16 @@ export default function QuoteDetail() {
         : { RMB: 1.09, USD: 7.78, EUR: 8.60 }) }
 
       let unit_cost_hkd = 0
+      let tooling_cost_hkd = 0
       await Promise.all(compSnap.docs.map(async cDoc => {
         const qSnap = await getDocs(collection(db, 'products', p.id, 'components', cDoc.id, 'supplier_quotes'))
         const preferred = qSnap.docs.map(d => d.data()).find(q => q.is_preferred)
         if (preferred?.unit_cost) {
           const qty = Number(cDoc.data().qty_per_product) || 1
           unit_cost_hkd += Number(preferred.unit_cost) * (fxRates[preferred.unit_cost_currency] || 1) * qty
+        }
+        if (preferred?.tooling_sample_cost) {
+          tooling_cost_hkd += Number(preferred.tooling_sample_cost) * (fxRates[preferred.tooling_sample_cost_currency] || 1)
         }
       }))
 
@@ -189,6 +193,7 @@ export default function QuoteDetail() {
         hero_image: p.heroImage || null,
         product_unit: p.unit || 'pcs',
         unit_cost_hkd: unit_cost_hkd || null,
+        tooling_cost_hkd: tooling_cost_hkd || null,
         tiers,
         status: p.status,
         createdAt: serverTimestamp(),
@@ -400,17 +405,24 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
   const [localPrices, setLocalPrices] = useState(() => baseTiers.map(t => t.price))
   const tiers = baseTiers
 
-  // Cost converted to quote currency for margin calc
-  const costInQuoteCurrency = (() => {
-    if (!item.unit_cost_hkd) return null
-    if (currency === 'HKD') return item.unit_cost_hkd
-    const rate = rates[currency] || 1   // rates[currency] = HKD per 1 unit of currency
-    return item.unit_cost_hkd / rate
-  })()
+  // Recurring unit cost in quote currency (excludes tooling)
+  const rate = rates[currency] || 1
+  const recurringCost = item.unit_cost_hkd ? item.unit_cost_hkd / (currency === 'HKD' ? 1 : rate) : null
+  const toolingHKD = item.tooling_cost_hkd || 0
+  const hasTooling = toolingHKD > 0
+  const costInQuoteCurrency = recurringCost  // kept for compatibility
 
-  function calcMargin(price) {
-    if (!costInQuoteCurrency || !price) return null
-    return ((price - costInQuoteCurrency) / price) * 100
+  // All-in cost per unit at a given tier qty (recurring + amortised tooling)
+  function allInCost(tierQty) {
+    if (recurringCost == null) return null
+    const toolingPerUnit = hasTooling && tierQty > 0 ? (toolingHKD / tierQty) / (currency === 'HKD' ? 1 : rate) : 0
+    return recurringCost + toolingPerUnit
+  }
+
+  function calcMargin(price, tierQty) {
+    const cost = allInCost(tierQty)
+    if (cost == null || !price) return null
+    return ((price - cost) / price) * 100
   }
 
   function updateTier(index, field, value) {
@@ -478,8 +490,11 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
             <p className="font-medium text-sm text-gray-900">{item.product_name}</p>
             <p className="text-xs text-gray-500">
               {item.product_category}
-              {costInQuoteCurrency != null && (
-                <span className="ml-2 text-gray-400">· Cost: {currency} {costInQuoteCurrency.toFixed(2)}</span>
+              {recurringCost != null && (
+                <span className="ml-2 text-gray-400">
+                  · Cost: {currency} {recurringCost.toFixed(2)}
+                  {hasTooling && <span className="text-amber-500"> +tooling</span>}
+                </span>
               )}
             </p>
           </div>
@@ -501,7 +516,7 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
           <tbody>
             {tiers.map((tier, i) => {
               const livePrice = localPrices[i] ?? tier.price
-              const margin = calcMargin(livePrice)
+              const margin = calcMargin(livePrice, tier.quantity)
               const colSpan = 2 + (costInQuoteCurrency != null ? 1 : 0) + 2
               return (
               <Fragment key={i}>
