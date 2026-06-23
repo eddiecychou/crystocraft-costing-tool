@@ -190,7 +190,9 @@ export default function RangeForm() {
 
   // Toggle a critical component on/off for this product. We store the stable
   // doc id (so renaming the component's code never breaks the link) plus the
-  // code for display / legacy fallback. qty defaults to 1.
+  // code for display / legacy fallback. qty defaults to 1, plating_code '' = all variants.
+  // Toggling off removes ALL refs for that component (regardless of plating_code);
+  // fine-grained per-plating control is done via the selected list below.
   const sameRef = (r, comp) => (comp.id && r.id === comp.id) || (!r.id && r.code === comp.code)
   const toggleComponent = comp => setForm(f => {
     const list = Array.isArray(f.critical_components) ? f.critical_components : []
@@ -199,14 +201,26 @@ export default function RangeForm() {
       ...f,
       critical_components: has
         ? list.filter(r => !sameRef(r, comp))
-        : [...list, { id: comp.id || '', code: comp.code, qty_per_unit: 1 }],
+        : [...list, { id: comp.id || '', code: comp.code, qty_per_unit: 1, plating_code: '' }],
     }
   })
-  const refKey = r => r.id || r.code
+  // refKey includes plating_code suffix so two refs to the same component for
+  // different platings get distinct React keys and mutation targets.
+  const refKey = r => (r.id || r.code) + (r.plating_code ? '::' + r.plating_code.toUpperCase() : '')
   const setComponentQty = (key, val) => setForm(f => ({
     ...f,
     critical_components: (f.critical_components || []).map(r =>
       refKey(r) === key ? { ...r, qty_per_unit: val.replace(/[^\d]/g, '') } : r),
+  }))
+  const setComponentPlating = (key, val) => setForm(f => ({
+    ...f,
+    critical_components: (f.critical_components || []).map(r =>
+      refKey(r) === key ? { ...r, plating_code: val.toUpperCase() } : r),
+  }))
+  // Duplicate a ref so the user can assign it to a second plating without re-searching.
+  const cloneComponentRef = r => setForm(f => ({
+    ...f,
+    critical_components: [...(f.critical_components || []), { ...r, plating_code: '' }],
   }))
   // Remove a reference directly from the selected list (covers orphans that
   // have no matching library chip to un-tick).
@@ -214,6 +228,17 @@ export default function RangeForm() {
     ...f,
     critical_components: (f.critical_components || []).filter(r => refKey(r) !== key),
   }))
+
+  // Distinct plating codes from the current product variants — used to populate
+  // the plating_code select in the selected components list.
+  const formPlatings = useMemo(() => {
+    const seen = new Map()
+    for (const v of (form.variants || [])) {
+      const code = (v.plating_code || '').trim().toUpperCase()
+      if (code && !seen.has(code)) seen.set(code, v.plating_name || code)
+    }
+    return [...seen.entries()].map(([code, name]) => ({ code, name }))
+  }, [form.variants])
 
   // Per-variant crystal-colour search (keyed by variant index).
   const [colorSearch, setColorSearch] = useState({})
@@ -380,7 +405,7 @@ export default function RangeForm() {
           lead_time_weeks: d.lead_time_weeks ?? '',
           delivery_note: d.delivery_note || '',
           critical_components: Array.isArray(d.critical_components)
-            ? d.critical_components.map(r => ({ id: r.id || '', code: (r.code || '').toUpperCase(), qty_per_unit: r.qty_per_unit || 1 }))
+            ? d.critical_components.map(r => ({ id: r.id || '', code: (r.code || '').toUpperCase(), qty_per_unit: r.qty_per_unit || 1, plating_code: (r.plating_code || '').toUpperCase() }))
             : [],
           packing: { ...emptyPacking(), ...(d.packing || {}) },
           gallery: normGallery(d.gallery),
@@ -615,6 +640,7 @@ export default function RangeForm() {
             id: r.id || c?.id || '',
             code: (c?.code || r.code || '').trim().toUpperCase(),
             qty_per_unit: Math.max(1, intNum(r.qty_per_unit) || 1),
+            plating_code: (r.plating_code || '').trim().toUpperCase(),
           }
         })
         .filter(r => r.id || r.code),
@@ -924,20 +950,36 @@ export default function RangeForm() {
                   </label>
                   {(form.critical_components || []).map(r => {
                     const c = resolveRef(r, libComponents)
+                    const key = refKey(r)
                     return (
-                      <div key={refKey(r)} className="flex items-center gap-2 text-xs">
-                        <span className="font-mono text-ink-80 w-28 shrink-0 truncate" title={c?.code || r.code}>{c?.code || r.code}</span>
+                      <div key={key} className="flex items-center gap-2 text-xs flex-wrap">
+                        <span className="font-mono text-ink-80 w-24 shrink-0 truncate" title={c?.code || r.code}>{c?.code || r.code}</span>
                         <span className="flex-1 min-w-0 truncate text-ink-70">{c?.name || <span className="text-amber-600">not in library</span>}</span>
+                        {/* Plating scope — blank means applies to all variants */}
+                        <select
+                          className="input text-xs py-1 w-28 shrink-0"
+                          value={r.plating_code || ''}
+                          onChange={e => setComponentPlating(key, e.target.value)}
+                          title="Which plating variant this component applies to (blank = all)"
+                        >
+                          <option value="">All variants</option>
+                          {formPlatings.map(p => (
+                            <option key={p.code} value={p.code}>{p.name} ({p.code})</option>
+                          ))}
+                        </select>
                         <label className="flex items-center gap-1 shrink-0">
                           <span className="text-ink-50">×</span>
                           <input className="input text-xs w-12 text-right tabular-nums py-1" inputMode="numeric"
-                                 value={r.qty_per_unit} onChange={e => setComponentQty(refKey(r), e.target.value)} placeholder="1" />
+                                 value={r.qty_per_unit} onChange={e => setComponentQty(key, e.target.value)} placeholder="1" />
                           <span className="text-ink-50">/unit</span>
                         </label>
-                        <span className="w-24 shrink-0 text-right text-ink-50 tabular-nums">
+                        <span className="w-20 shrink-0 text-right text-ink-50 tabular-nums">
                           {c ? `${c.stock_qty ?? 0} pcs · ${c.lead_time_weeks ?? '?'}wk` : '—'}
                         </span>
-                        <button type="button" onClick={() => removeComponentRef(refKey(r))}
+                        <button type="button" onClick={() => cloneComponentRef(r)}
+                                className="shrink-0 text-brand-400 hover:text-brand-600 px-1 text-base leading-none"
+                                title="Duplicate for another plating">+</button>
+                        <button type="button" onClick={() => removeComponentRef(key)}
                                 className="shrink-0 text-red-400 hover:text-red-600 px-1 text-base leading-none"
                                 title="Remove component">×</button>
                       </div>

@@ -38,9 +38,15 @@ export function componentCostAtQty(component, orderQty) {
 }
 
 // Recurring component cost (HKD) for one finished piece at a given order qty.
-export function componentsCostHKD(product, lib, rates, orderQty) {
+// When variant is provided, refs tagged with a plating_code only contribute if
+// their plating matches the variant. Untagged refs (plating_code absent or '')
+// always apply — they are shared parts (bodies, NFC chips, boxes, etc.).
+export function componentsCostHKD(product, lib, rates, orderQty, variant = null) {
   const refs = Array.isArray(product?.critical_components) ? product.critical_components : []
+  const platCode = variant ? (variant.plating_code || '').trim().toUpperCase() : null
   return refs.reduce((sum, r) => {
+    const refPlat = (r.plating_code || '').trim().toUpperCase()
+    if (platCode !== null && refPlat && refPlat !== platCode) return sum
     const c = resolveRef(r, lib)
     const unit = componentCostAtQty(c, orderQty)
     if (unit == null) return sum
@@ -74,10 +80,15 @@ export function variantAdderHKD(product, rates, variant) {
   return add + crystalAdd
 }
 
-// One-time tooling across all components (HKD), amortised by the caller.
-export function toolingHKD(product, lib, rates) {
+// One-time tooling across components (HKD), amortised by the caller.
+// Same plating filter as componentsCostHKD so tooling is not double-counted
+// across plating variants that each carry their own tooling cost.
+export function toolingHKD(product, lib, rates, variant = null) {
   const refs = Array.isArray(product?.critical_components) ? product.critical_components : []
+  const platCode = variant ? (variant.plating_code || '').trim().toUpperCase() : null
   return refs.reduce((sum, r) => {
+    const refPlat = (r.plating_code || '').trim().toUpperCase()
+    if (platCode !== null && refPlat && refPlat !== platCode) return sum
     const c = resolveRef(r, lib)
     if (!c || !c.tooling_sample_cost) return sum
     return sum + toHKD(c.tooling_sample_cost, c.tooling_sample_cost_currency, rates)
@@ -86,7 +97,7 @@ export function toolingHKD(product, lib, rates) {
 
 // Recurring (excludes tooling) unit cost in HKD for one variant at a qty.
 export function variantRecurringCostHKD(product, lib, rates, variant, orderQty) {
-  return componentsCostHKD(product, lib, rates, orderQty)
+  return componentsCostHKD(product, lib, rates, orderQty, variant)
     + extraLinesHKD(product, rates)
     + variantAdderHKD(product, rates, variant)
 }
@@ -94,7 +105,7 @@ export function variantRecurringCostHKD(product, lib, rates, variant, orderQty) 
 // All-in unit cost (recurring + amortised tooling) in HKD for a variant at qty.
 export function variantAllInCostHKD(product, lib, rates, variant, orderQty) {
   const recurring = variantRecurringCostHKD(product, lib, rates, variant, orderQty)
-  const tooling = toolingHKD(product, lib, rates)
+  const tooling = toolingHKD(product, lib, rates, variant)
   return recurring + (orderQty > 0 ? tooling / orderQty : 0)
 }
 
