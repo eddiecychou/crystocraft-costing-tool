@@ -10,9 +10,9 @@ import useScrollMemory from '../hooks/useScrollMemory'
 export default function Products() {
   const [products, setProducts] = useState([])
   const [loading, setLoading]   = useState(true)
-  const [search, setSearch]     = useState('')
-  const [filterCat, setFilterCat]       = useState('')
-  const [filterStatus, setFilterStatus] = useState('')
+  const [search, setSearch]         = useState(() => sessionStorage.getItem('pf-search') || '')
+  const [filterCat, setFilterCat]   = useState(() => sessionStorage.getItem('pf-cat')    || '')
+  const [filterStatus, setFilterStatus] = useState(() => sessionStorage.getItem('pf-status') || '')
   const remember = useScrollMemory('products', !loading)
 
   useEffect(() => {
@@ -49,14 +49,14 @@ export default function Products() {
           placeholder="Search…"
           className="input w-full sm:flex-1"
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => { setSearch(e.target.value); sessionStorage.setItem('pf-search', e.target.value) }}
         />
         <div className="flex gap-2">
-          <select className="input flex-1 sm:flex-none sm:w-auto" value={filterCat} onChange={e => setFilterCat(e.target.value)}>
+          <select className="input flex-1 sm:flex-none sm:w-auto" value={filterCat} onChange={e => { setFilterCat(e.target.value); sessionStorage.setItem('pf-cat', e.target.value) }}>
             <option value="">All categories</option>
             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          <select className="input flex-1 sm:flex-none sm:w-auto" value={filterStatus} onChange={e => setFilterStatus(e.target.value)}>
+          <select className="input flex-1 sm:flex-none sm:w-auto" value={filterStatus} onChange={e => { setFilterStatus(e.target.value); sessionStorage.setItem('pf-status', e.target.value) }}>
             <option value="">All statuses</option>
             {PRODUCT_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>

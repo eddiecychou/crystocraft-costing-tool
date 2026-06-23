@@ -34,7 +34,8 @@ Return ONLY a valid JSON object with these keys (use null when a value is not pr
 
 Rules:
 - so_no is the ERP Sales Order or Document number (often labelled "Document No", "SO No", "Order Ref"). Extract it exactly as printed.
-- Extract EVERY line item, including charges/fees (tooling, sample, freight, setup) — keep them as lines; do not silently drop them.
+- Extract EVERY product/service line item, including charges/fees (tooling, sample, freight, setup) — keep them as lines; do not silently drop them.
+- IMPORTANT: Do NOT include subtotal rows, discount rows ("Less X% Discount"), or grand-total/amount-due rows as line items. Those belong only in subtotal/discount_pct/discount_amount/total_amount fields.
 - item_code is the supplier/article code (e.g. "D0002-230-C", "U0226", "P-PB007"). If a line has no code (e.g. a pure charge), use null.
 - qty_ordered is the ordered quantity as a number only (strip units).
 - unit_price is the per-unit price as a number only (strip currency symbols).
@@ -59,7 +60,7 @@ Rules:
               { inline_data: { mime_type: mimeType, data: image } },
             ],
           }],
-          generationConfig: { temperature: 0, responseMimeType: 'application/json' },
+          generationConfig: { temperature: 0, responseMimeType: 'application/json', maxOutputTokens: 16384 },
         }),
       }
     )

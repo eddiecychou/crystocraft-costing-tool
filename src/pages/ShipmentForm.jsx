@@ -120,19 +120,35 @@ export default function ShipmentForm() {
       if (!res.ok) throw new Error('Extraction failed')
       const data = await res.json()
 
-      setHeader(h => ({
-        ...h,
-        erp_pi_no: data.pi_no || h.erp_pi_no,
-        erp_so_no: data.so_no || h.erp_so_no,
-        customer_name: h.customer_id ? h.customer_name : (data.customer_name || h.customer_name),
-        order_date: data.order_date || h.order_date,
-        currency: ['USD', 'EUR', 'RMB', 'HKD'].includes(data.currency) ? data.currency : h.currency,
-        incoterm: INCOTERMS.includes(data.incoterm) ? data.incoterm : h.incoterm,
-        subtotal:        data.subtotal        != null ? data.subtotal        : h.subtotal,
-        discount_pct:    data.discount_pct    != null ? data.discount_pct    : h.discount_pct,
-        discount_amount: data.discount_amount != null ? data.discount_amount : h.discount_amount,
-        total_amount:    data.total_amount    != null ? data.total_amount    : h.total_amount,
-      }))
+      setHeader(h => {
+        let customer_id = h.customer_id
+        let customer_name = h.customer_id ? h.customer_name : (data.customer_name || h.customer_name)
+        if (!customer_id && data.customer_name) {
+          const lower = data.customer_name.toLowerCase()
+          const match = customers.find(c => {
+            const cn = (c.name || '').toLowerCase()
+            return cn && (lower.includes(cn) || cn.includes(lower))
+          })
+          if (match) {
+            customer_id = match.id
+            customer_name = match.name_cn ? `${match.name} (${match.name_cn})` : match.name
+          }
+        }
+        return {
+          ...h,
+          customer_id,
+          customer_name,
+          erp_pi_no: data.pi_no || h.erp_pi_no,
+          erp_so_no: data.so_no || h.erp_so_no,
+          order_date: data.order_date || h.order_date,
+          currency: ['USD', 'EUR', 'RMB', 'HKD'].includes(data.currency) ? data.currency : h.currency,
+          incoterm: INCOTERMS.includes(data.incoterm) ? data.incoterm : h.incoterm,
+          subtotal:        data.subtotal        != null ? data.subtotal        : h.subtotal,
+          discount_pct:    data.discount_pct    != null ? data.discount_pct    : h.discount_pct,
+          discount_amount: data.discount_amount != null ? data.discount_amount : h.discount_amount,
+          total_amount:    data.total_amount    != null ? data.total_amount    : h.total_amount,
+        }
+      })
       const matched = autoMatchLines(data.lines || [], rangeProducts)
       setLines(matched)
       if (!matched.length) setExtractError('No line items found — check the file or add lines manually.')

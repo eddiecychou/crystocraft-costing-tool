@@ -197,6 +197,11 @@ export default function FigurineDetail({ profile }) {
                     selected={color === c} onClick={() => setColor(c)} />
                 ))}
               </div>
+              {colorValid && mixes[color] && Array.isArray(mixes[color]) && mixes[color].length > 0 && (
+                <p className="text-xs text-ink-50 mt-1.5">
+                  Mix: {mixes[color].map(c => lookup[c]?.name || c).join(' + ')}
+                </p>
+              )}
             </div>
           )}
 
