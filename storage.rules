@@ -46,5 +46,14 @@ service firebase.storage {
     match /range_components/{componentId}/{allPaths=**} {
       allow read, write: if isAuth();
     }
+
+    // Shipping module — imported PI files (orders/imports/…) + freight quote
+    // attachments. NOTE: reference copy — paste into the Storage Rules tab.
+    match /orders/{orderId}/{allPaths=**} {
+      allow read, write: if isAuth();
+    }
+    match /freight_quotes/{quoteId}/{allPaths=**} {
+      allow read, write: if isAuth();
+    }
   }
 }

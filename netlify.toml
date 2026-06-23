@@ -48,6 +48,10 @@
   function = "scrape-images"
   path = "/api/scrape-images"
 
+[[edge_functions]]
+  function = "extract-pi"
+  path = "/api/extract-pi"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

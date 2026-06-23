@@ -42,6 +42,8 @@ import CustomerAccounts from './pages/CustomerAccounts'
 import Enquiries from './pages/Enquiries'
 import Logistics from './pages/Logistics'
 import LogisticsVendorForm from './pages/LogisticsVendorForm'
+import Shipments from './pages/Shipments'
+import ShipmentForm from './pages/ShipmentForm'
 
 export default function App() {
   const user = useAuthState()
@@ -126,6 +128,9 @@ function AdminApp({ user }) {
                 <Route path="/blog-generator" element={<BlogGenerator />} />
                 <Route path="/blog-generator/:productId" element={<BlogGenerator />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/shipments" element={<Shipments />} />
+                <Route path="/shipments/new" element={<ShipmentForm />} />
+                <Route path="/shipments/:id" element={<ShipmentForm />} />
                 <Route path="/logistics" element={<Logistics />} />
                 <Route path="/logistics/new" element={<LogisticsVendorForm />} />
                 <Route path="/logistics/:id" element={<LogisticsVendorForm />} />
