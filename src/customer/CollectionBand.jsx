@@ -39,7 +39,7 @@ export default function CollectionBand({ catalogue, products, active, onApply })
             const shadow = c.title_color === 'black' ? 'none' : '0 1px 3px rgba(0,0,0,0.55)'
             return (
               <button key={c.id} onClick={() => onApply(c)}
-                      className={`group relative rounded-xl overflow-hidden border text-left transition-shadow hover:shadow-md ${on ? 'border-ink' : 'border-ivory-dark'}`}>
+                      className={`group relative rounded-xl overflow-hidden text-left transition-shadow hover:shadow-lg ${on ? 'ring-2 ring-inset ring-ink' : ''}`}>
                 <div className="aspect-square overflow-hidden">
                   <img src={c.custom_url} alt="" loading="lazy"
                        className="block w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
