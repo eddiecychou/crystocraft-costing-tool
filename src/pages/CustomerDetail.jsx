@@ -100,10 +100,14 @@ export default function CustomerDetail() {
       getDocs(collection(db, 'products')),
       getDocs(query(collection(db, 'users'), where('customer_id', '==', id))),
       loadBlogProducts('range'),
-      getDocs(query(collection(db, 'orders'), where('customer_id', '==', id), orderBy('order_date', 'desc'))),
+      getDocs(query(collection(db, 'orders'), where('customer_id', '==', id))),
     ]).then(([cSnap, qSnap, pSnap, uSnap, rangeProducts, oSnap]) => {
       setAccounts(uSnap.docs.map(d => ({ id: d.id, ...d.data() })))
-      setOrders(oSnap.docs.map(d => ({ id: d.id, ...d.data() })))
+      setOrders(
+        oSnap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (b.order_date || '').localeCompare(a.order_date || ''))
+      )
       if (cSnap.exists()) {
         const c = { id: cSnap.id, ...cSnap.data() }
         setCustomer(c)
