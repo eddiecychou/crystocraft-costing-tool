@@ -1,10 +1,63 @@
 # Crystocraft Corporate Gift Costing Tool — Project Plan
 
+> **Canonical plan lives in Obsidian:** `Crystocraft/Operations/Costing Tool - Project Plan.md`
+> and `Costing Tool - Issues & Bugs Log.md`. This in-repo copy is a convenience snapshot.
+
+## Current Status — V7.6 as of 2026-06-24
+
+**V7.6 deployed to Netlify (commit `56bce21`).** Live at https://ua-product-manager.netlify.app
+
+### V7.6 — Shipping/PI fixes, Quote margin, USD costing, Filter persistence (2026-06-24)
+Bug-fix + polish pass on the Shipping (PI import) and Quote modules.
+- **PI customer dropdown fixed** — `customers` collection keys on `company_name`, but
+  ShipmentForm queried `orderBy('name')`; Firestore silently returns **zero docs** when no
+  doc has the ordered field, so the dropdown was blank. Switched query/options/auto-match to
+  `company_name`; dropped references to non-existent fields (`name_cn`, `default_incoterm`, `city`).
+- **PI customer auto-link + inline "Add as new customer"** — fuzzy-match extracted name; if no
+  match, one-click create a customer stub without leaving the import flow.
+- **Marco Polo PI parses** — `gemini-2.5-flash` + `thinkingBudget: 0` (no 30s edge-fn timeout) +
+  `maxOutputTokens: 16384`; discount/total rows no longer leak in as line items.
+- **PI order totals** — subtotal/discount%/total card with computed-vs-stated subtotal check.
+- **Quote margin = all-in** — tooling summed into `tooling_cost_hkd`; new All-in cost column =
+  recurring + tooling/tier-qty; margin uses it per tier. (Re-add pre-V7.6 quote items to recompute.)
+- **Figurine costing shown in USD** (engine still HKD, converted at view layer).
+- **Product & Range list filters persist** across navigation via `sessionStorage` (`pf-*` / `rf-*`).
+
+**Lessons** (full write-ups in the Obsidian Issues & Bugs Log):
+- Firestore `orderBy(field)` is *also a filter* — drops docs missing the field, returns empty with no error.
+- Thinking models + 30s serverless timeouts don't mix — disable thinking, don't down-tier the model.
+- Convert currency at the view layer; amortise tooling into per-unit cost for correct per-tier margin.
+
+---
+
 ## Current Status — V3.x as of 2026-06-23
 
-**Live in production on Netlify.** Pre-costing stable checkpoint backed up on GitHub:
+**Live in production on Netlify (commit `5a95a13`, deployed 2026-06-23).**
+Pre-costing stable checkpoint backed up on GitHub:
 git tag `v3.1-pre-range-costing` (commit `c94f74b`) — `git reset --hard` to it to roll back
 the costing work below.
+
+### Bug fixes & UX improvements — deployed 2026-06-23 (this session)
+
+- **Login fixed for all users** — root cause was a direct `netlify-cli deploy --prod --dir=dist`
+  (local build) that bypassed Firestore's authorised domain list. Fixed by always deploying via
+  `git push origin main` → Netlify GitHub integration. Lesson logged in the Issues & Bugs log.
+- **Customer → PI Orders linkage** — CustomerDetail now has a **PI Orders** card that queries
+  `orders` by `customer_id`, sorted newest first. Each row shows PI number, order date, currency
+  and status badge, and links directly to `/shipments/:id`. **+ New PI** button opens ShipmentForm
+  pre-filled with the customer (via `?customer_id=` URL param).
+- **ShipmentForm customer pre-fill** — opening `/shipments/new?customer_id=...` now pre-selects
+  the customer dropdown and resolves the name as soon as the customers list loads.
+- **Bulk Category Editor — two bugs fixed:**
+  - Filter dropdowns now show only categories that are actually present on products (no stale
+    constants-list values like old "Figurines" mixed with current "Figurine").
+  - Apply fields are now comboboxes (`<input list>`) accepting free-text entry — type a new
+    name to bulk-rename a category across all selected products.
+  - Filters auto-reset after a successful apply, so the product type filter works immediately
+    without needing a manual clear (previously the stale `filterDesign` made it appear broken).
+- **Corp Gift Products — mobile search layout** — filter row now stacks on mobile: search input
+  takes its own full-width row, the two dropdowns share the row below side-by-side. No more
+  squeezed search box on narrow screens.
 
 ### Range / Figurine Costing — BUILT & deployed (2026-06-22)
 Cost a figurine from its critical components, mirroring corp gift. Opt-in per product —
