@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
-import { collection, getDocs, orderBy, query } from 'firebase/firestore'
+import { collection, getDocs, orderBy, query, addDoc, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
 import {
@@ -96,6 +96,31 @@ export default function ShipmentForm() {
         port: h.destination.port,
       } : h.destination,
     }))
+  }
+
+  const [addingCustomer, setAddingCustomer] = useState(false)
+  async function addNewCustomer() {
+    const nameRaw = (header.customer_name || '').trim()
+    if (!nameRaw) return
+    setAddingCustomer(true)
+    try {
+      const ref = await addDoc(collection(db, 'customers'), {
+        company_name: nameRaw,
+        country: header.destination.country || 'Hong Kong',
+        address: header.destination.address || '',
+        crm_status: 'Customer',
+        source: 'PI Import',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+      const newCustomer = { id: ref.id, company_name: nameRaw, country: header.destination.country || 'Hong Kong' }
+      setCustomers(list => [...list, newCustomer].sort((a, b) => (a.company_name || '').localeCompare(b.company_name || '')))
+      setHeader(h => ({ ...h, customer_id: ref.id, customer_name: nameRaw }))
+    } catch (err) {
+      setExtractError(err.message || 'Could not create customer.')
+    } finally {
+      setAddingCustomer(false)
+    }
   }
 
   // ── PI extraction ──────────────────────────────────────────────────────────
@@ -318,7 +343,13 @@ export default function ShipmentForm() {
                 {customers.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
               </select>
               {!header.customer_id && header.customer_name && (
-                <p className="text-xs text-amber-600 mt-1">From PI: "{header.customer_name}" — not linked to any customer. Select from list above.</p>
+                <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                  <p className="text-xs text-amber-600">From PI: "{header.customer_name}" — not linked to any customer.</p>
+                  <button type="button" onClick={addNewCustomer} disabled={addingCustomer}
+                          className="text-xs font-medium text-brand-600 hover:text-brand-700 hover:underline disabled:opacity-50">
+                    {addingCustomer ? 'Adding…' : '+ Add as new customer'}
+                  </button>
+                </div>
               )}
             </div>
             <div className="grid grid-cols-2 gap-2">
