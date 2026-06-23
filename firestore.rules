@@ -143,5 +143,31 @@ service cloud.firestore {
     match /range_components/{componentId} {
       allow read, write: if isAdmin();
     }
+
+    // ---- Shipping & Logistics module (admin only) -----------------------
+    // Orders/packing actuals + freight KB are internal cost data. The
+    // storefront never reads these. NOTE: this file is a reference copy —
+    // the live rules must be pasted into the Firebase console (no CLI).
+    match /orders/{orderId} {
+      allow read, write: if isAdmin();
+      match /{allPaths=**} {
+        allow read, write: if isAdmin();
+      }
+    }
+    match /packing_lists/{plId} {
+      allow read, write: if isAdmin();
+      match /{allPaths=**} {
+        allow read, write: if isAdmin();
+      }
+    }
+    match /logistics_vendors/{vendorId} {
+      allow read, write: if isAdmin();
+    }
+    match /freight_quotes/{quoteId} {
+      allow read, write: if isAdmin();
+    }
+    match /freight_rfqs/{rfqId} {
+      allow read, write: if isAdmin();
+    }
   }
 }
