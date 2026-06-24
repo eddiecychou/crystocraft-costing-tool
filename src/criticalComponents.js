@@ -49,6 +49,10 @@ export const normComponent = c => ({
   images: Array.isArray(c.images) ? c.images.filter(Boolean) : [],
   stock_qty: numOrNull(c.stock_qty),
   lead_time_weeks: numOrNull(c.lead_time_weeks),
+  // Product item codes that use this part as their main component — a display
+  // hint stamped by the stock-list import (the canonical BOM link lives on the
+  // product's critical_components). Not written by the component editor.
+  used_by: Array.isArray(c.used_by) ? c.used_by.filter(Boolean) : [],
   // Cost — used by Range Costing. A component carries one supplier cost (optional
   // volume tiers + one-time tooling). null cost means "not costed yet".
   unit_cost: numOrNull(c.unit_cost),
@@ -210,54 +214,106 @@ export async function bulkCreateComponents(rows) {
   return n
 }
 
-// Idempotent stock-take upsert (component master import). Rows:
-// [{ code, name, plating_code, stock_qty }]. Matched on `code`: existing →
-// update stock_qty + plating_code (and name only when currently blank, so a
-// good English name isn't clobbered by a CN description); new code → create.
-// Cost fields are never touched (owned by supplier quotes). Re-running with an
-// updated sheet is the routine stock-take. Returns { created, updated, rows }.
-export async function upsertComponentsFromRows(rows) {
+// Idempotent stock-list import (component master + BOM linking). Rows:
+// [{ product_item_code, plating_code, code, name, stock_qty }].
+//
+//  1. Upsert each component (keyed on `code`): existing → update stock_qty +
+//     plating_code (+ name only when blank, + used_by); new → create. Cost is
+//     never touched (owned by supplier quotes).
+//  2. Link products: each row's product_item_code is resolved via `matchProduct`
+//     (passed in to avoid a shipping↔components import cycle); the component is
+//     added to that product's critical_components[] (qty_per_unit 1, plating
+//     inferred from the component). Existing refs are preserved/de-duped by code.
+//  3. Stamp `used_by` (the product codes) onto the component for display.
+//
+// Safe to re-run as a stock-take. Returns { created, updated, productsMatched,
+// productsUnmatched, unmatched: [codes] }.
+export async function importStockList(rows, rangeProducts, matchProduct) {
+  const norm = s => (s == null ? '' : String(s)).trim().toUpperCase()
   const clean = (rows || []).map(r => ({
-    code: (r.code || '').trim().toUpperCase(),
+    product_item_code: norm(r.product_item_code),
+    plating_code: norm(r.plating_code),
+    code: norm(r.code),
     name: (r.name || '').trim(),
-    plating_code: (r.plating_code || '').trim().toUpperCase(),
     stock_qty: numOrNull(r.stock_qty),
   })).filter(r => r.code)
-  if (!clean.length) return { created: 0, updated: 0, rows: 0 }
+  if (!clean.length) return { created: 0, updated: 0, productsMatched: 0, productsUnmatched: 0, unmatched: [] }
+
+  // Dedupe components by code; collect the product codes that use each.
+  const compByCode = {}
+  for (const r of clean) {
+    let c = compByCode[r.code]
+    if (!c) c = compByCode[r.code] = { name: r.name, plating_code: r.plating_code, stock_qty: r.stock_qty, used_by: new Set() }
+    if (r.product_item_code) c.used_by.add(r.product_item_code)
+  }
 
   // Existing components by code → { id, hasName }.
   const snap = await getDocs(COL())
-  const byCode = {}
+  const existingByCode = {}
   for (const d of snap.docs) {
-    const code = (d.data().code || '').trim().toUpperCase()
-    if (code && !(code in byCode)) byCode[code] = { id: d.id, hasName: !!(d.data().name || '').trim() }
+    const code = norm(d.data().code)
+    if (code && !(code in existingByCode)) existingByCode[code] = { id: d.id, hasName: !!(d.data().name || '').trim() }
   }
 
-  const seen = new Set()
+  // Assign a doc id per code (reuse existing, or pre-generate for new ones so
+  // product refs can point at them in the same batch).
+  const codeToId = {}
+  const ops = []   // { ref, data, merge }
   let created = 0, updated = 0
-  for (let i = 0; i < clean.length; i += 400) {
-    const batch = writeBatch(db)
-    for (const r of clean.slice(i, i + 400)) {
-      if (seen.has(r.code)) continue              // a component repeats across products; first wins
-      seen.add(r.code)
-      const existing = byCode[r.code]
-      if (existing) {
-        const fields = { plating_code: r.plating_code, stock_qty: r.stock_qty, updatedAt: serverTimestamp() }
-        if (!existing.hasName && r.name) fields.name = r.name
-        batch.set(doc(db, 'range_components', existing.id), fields, { merge: true })
-        updated++
-      } else {
-        batch.set(doc(COL()), {
-          code: r.code, name: r.name, plating_code: r.plating_code, stock_qty: r.stock_qty,
-          category: '', supplierId: '', supplierName: '', notes: '', images: [],
-          createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-        })
-        created++
-      }
+  for (const [code, c] of Object.entries(compByCode)) {
+    const used_by = [...c.used_by]
+    const ex = existingByCode[code]
+    if (ex) {
+      codeToId[code] = ex.id
+      const data = { plating_code: c.plating_code, stock_qty: c.stock_qty, used_by, updatedAt: serverTimestamp() }
+      if (!ex.hasName && c.name) data.name = c.name
+      ops.push({ ref: doc(db, 'range_components', ex.id), data, merge: true })
+      updated++
+    } else {
+      const ref = doc(COL())
+      codeToId[code] = ref.id
+      ops.push({ ref, data: {
+        code, name: c.name, plating_code: c.plating_code, stock_qty: c.stock_qty, used_by,
+        category: '', supplierId: '', supplierName: '', notes: '', images: [],
+        createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+      }, merge: false })
+      created++
     }
+  }
+
+  // Resolve product links and merge refs into each matched product.
+  const productById = {}            // id → { product, codes:Set }
+  const unmatched = []
+  const seenUnmatched = new Set()
+  for (const r of clean) {
+    if (!r.product_item_code) continue
+    const p = matchProduct ? matchProduct(r.product_item_code, rangeProducts) : null
+    if (!p) {
+      if (!seenUnmatched.has(r.product_item_code)) { seenUnmatched.add(r.product_item_code); unmatched.push(r.product_item_code) }
+      continue
+    }
+    let pl = productById[p.id]
+    if (!pl) pl = productById[p.id] = { product: p, codes: new Set() }
+    pl.codes.add(r.code)
+  }
+  for (const { product, codes } of Object.values(productById)) {
+    const refs = Array.isArray(product.critical_components) ? product.critical_components : []
+    const have = new Set(refs.map(x => norm(x.code)))
+    const additions = [...codes].filter(code => !have.has(code))
+      .map(code => ({ id: codeToId[code] || '', code, qty_per_unit: 1 }))
+    if (additions.length) {
+      ops.push({ ref: doc(db, 'range_products', product.id), data: { critical_components: [...refs, ...additions] }, merge: true })
+    }
+  }
+
+  // Commit in batches of ≤400.
+  for (let i = 0; i < ops.length; i += 400) {
+    const batch = writeBatch(db)
+    for (const op of ops.slice(i, i + 400)) batch.set(op.ref, op.data, { merge: op.merge })
     await batch.commit()
   }
-  return { created, updated, rows: seen.size }
+
+  return { created, updated, productsMatched: Object.keys(productById).length, productsUnmatched: unmatched.length, unmatched }
 }
 
 // One-time migration of the old settings/components doc-array into the

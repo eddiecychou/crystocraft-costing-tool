@@ -2,7 +2,9 @@ import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import { useComponents, saveComponent, upsertComponentsFromRows } from '../criticalComponents'
+import { useComponents, saveComponent, importStockList } from '../criticalComponents'
+import { loadRangeProductsWithPacking } from '../packing'
+import { matchRangeProduct } from '../shipping'
 import { loadCrystalColors, saveCrystalColors } from '../crystalColors'
 import { RANGE_COMPONENT_CATEGORIES, RANGE_FORMAT_CODES } from '../constants'
 import { Puzzle, ArrowUp, ArrowDown, X, Minus, Plus, Check } from 'lucide-react'
@@ -86,9 +88,13 @@ function CriticalComponents() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm text-ink-90 truncate">{c.code}</span>
+                    {c.plating_code && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 shrink-0">{c.plating_code}</span>}
                     {c.category && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 shrink-0">{c.category}</span>}
                   </div>
-                  <p className="text-xs text-ink-60 truncate">{c.name || '—'}{c.supplierName ? ` · ${c.supplierName}` : ''}</p>
+                  <p className="text-xs text-ink-60 truncate">
+                    {c.name || '—'}{c.supplierName ? ` · ${c.supplierName}` : ''}
+                    {c.used_by?.length > 0 && <span className="text-ink-40"> · used by {c.used_by.slice(0, 2).join(', ')}{c.used_by.length > 2 ? ` +${c.used_by.length - 2}` : ''}</span>}
+                  </p>
                 </div>
               </Link>
               <StockEditor component={c} />
@@ -195,9 +201,12 @@ function StockListImportModal({ components, onClose }) {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
+  const [rangeProducts, setRangeProducts] = useState(null)   // null = loading
+
+  useEffect(() => { loadRangeProductsWithPacking().then(setRangeProducts).catch(() => setRangeProducts([])) }, [])
 
   const rows = useMemo(() => parseStockList(text), [text])
-  // Diff against the live library (dedupe incoming by component code).
+  // Diff against the live library (dedupe by component code) + product matching.
   const diff = useMemo(() => {
     const have = new Set(components.map(c => (c.code || '').toUpperCase()))
     const seen = new Set()
@@ -207,14 +216,26 @@ function StockListImportModal({ components, onClose }) {
       seen.add(r.code)
       have.has(r.code) ? updated++ : created++
     }
-    return { unique: seen.size, created, updated }
-  }, [rows, components])
+    // Product matching preview (only once products are loaded).
+    let matched = 0, unmatched = 0
+    if (rangeProducts) {
+      const seenP = new Set()
+      for (const r of rows) {
+        const code = (r.product_item_code || '').toUpperCase()
+        if (!code || seenP.has(code)) continue
+        seenP.add(code)
+        matchRangeProduct(code, rangeProducts) ? matched++ : unmatched++
+      }
+    }
+    return { unique: seen.size, created, updated, matched, unmatched }
+  }, [rows, components, rangeProducts])
 
   async function run() {
     setBusy(true)
     try {
-      const res = await upsertComponentsFromRows(rows)
-      setResult(`Done — ${res.created} created, ${res.updated} updated (${res.rows} components).`)
+      const res = await importStockList(rows, rangeProducts || [], matchRangeProduct)
+      setResult(`Done — ${res.created} new / ${res.updated} updated components; linked to ${res.productsMatched} products` +
+        (res.productsUnmatched ? `, ${res.productsUnmatched} product code(s) unmatched.` : '.'))
     } catch (e) { setResult('Error: ' + e.message) }
     finally { setBusy(false) }
   }
@@ -236,6 +257,12 @@ function StockListImportModal({ components, onClose }) {
           {rows.length} row{rows.length === 1 ? '' : 's'} · {diff.unique} unique component{diff.unique === 1 ? '' : 's'}
           {diff.unique > 0 && <> — <span className="text-green-600">{diff.created} new</span>, <span className="text-blue-600">{diff.updated} update</span></>}
         </p>
+        {diff.unique > 0 && (
+          <p className="text-xs text-ink-50">
+            {rangeProducts == null ? 'Loading products…'
+              : <>Products: <span className="text-green-600">{diff.matched} matched</span>{diff.unmatched > 0 && <>, <span className="text-amber-600">{diff.unmatched} unmatched</span> (skipped)</>}</>}
+          </p>
+        )}
         {result && <p className={`text-sm mt-2 ${result.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{result}</p>}
         <div className="flex items-center gap-3 mt-4">
           <button onClick={run} disabled={busy || !diff.unique} className="btn-primary text-sm">
