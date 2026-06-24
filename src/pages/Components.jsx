@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import { useComponents, bulkCreateComponents, saveComponent, upsertComponentsFromRows } from '../criticalComponents'
+import { useComponents, saveComponent, upsertComponentsFromRows } from '../criticalComponents'
 import { loadCrystalColors, saveCrystalColors } from '../crystalColors'
 import { RANGE_COMPONENT_CATEGORIES, RANGE_FORMAT_CODES } from '../constants'
 import { Puzzle, ArrowUp, ArrowDown, X, Minus, Plus, Check } from 'lucide-react'
@@ -38,7 +38,6 @@ function CriticalComponents() {
   const { components, loading } = useComponents()
   const [search, setSearch] = useState('')
   const [cat, setCat] = useState('')
-  const [importing, setImporting] = useState(false)
   const [stockImport, setStockImport] = useState(false)
 
   const filtered = useMemo(() => {
@@ -64,7 +63,6 @@ function CriticalComponents() {
           <option value="">All categories</option>
           {cats.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
-        <button onClick={() => setImporting(true)} className="btn-secondary text-sm">Import CSV</button>
         <button onClick={() => setStockImport(true)} className="btn-secondary text-sm">Import stock list</button>
         <Link to="/components/critical/new" className="btn-primary text-sm">+ New</Link>
       </div>
@@ -75,7 +73,7 @@ function CriticalComponents() {
 
       {!loading && components.length === 0 ? (
         <div className="card p-6 text-center text-sm text-ink-60">
-          No components yet. Add your long-lead / tooling parts, or <button onClick={() => setImporting(true)} className="text-brand-600 hover:underline">import from CSV</button>.
+          No components yet. Add your long-lead / tooling parts, or <button onClick={() => setStockImport(true)} className="text-brand-600 hover:underline">import a stock list</button>.
         </div>
       ) : (
         <div className="card divide-y divide-ivory-dark overflow-hidden">
@@ -99,7 +97,6 @@ function CriticalComponents() {
         </div>
       )}
 
-      {importing && <ImportModal onClose={() => setImporting(false)} />}
       {stockImport && <StockListImportModal components={components} onClose={() => setStockImport(false)} />}
     </div>
   )
@@ -163,47 +160,6 @@ function StockEditor({ component: c }) {
           : saved
             ? <p className="inline-flex items-center gap-0.5 text-[10px] text-green-600"><Check size={11} />saved</p>
             : <p className="text-[10px] text-ink-50">{c.lead_time_weeks != null ? `${c.lead_time_weeks}wk lead` : '—'}</p>}
-      </div>
-    </div>
-  )
-}
-
-// Simple CSV importer — paste rows: code,name,category,stock,lead,notes
-function ImportModal({ onClose }) {
-  const [text, setText] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [result, setResult] = useState(null)
-
-  const parsed = useMemo(() => parseCsv(text), [text])
-
-  async function run() {
-    setBusy(true)
-    try {
-      const n = await bulkCreateComponents(parsed)
-      setResult(`Imported ${n} component${n === 1 ? '' : 's'}.`)
-    } catch (e) { setResult('Error: ' + e.message) }
-    finally { setBusy(false) }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-md shadow-lg w-full max-w-lg p-5" onClick={e => e.stopPropagation()}>
-        <h2 className="text-base font-semibold mb-1">Import components from CSV</h2>
-        <p className="text-xs text-ink-60 mb-3">
-          One row per component. Columns: <code className="text-ink-80">code, name, category, stock, lead_weeks, notes</code>.
-          A header row is auto-detected and skipped. Paste straight from Excel (tabs or commas).
-        </p>
-        <textarea className="input min-h-[160px] font-mono text-xs" value={text}
-                  onChange={e => setText(e.target.value)}
-                  placeholder={'U0002-BODY,Owl body,Figurine Body,120,8,\nMB-18,18-note movement,Music Box,40,10,'} />
-        <p className="text-xs text-ink-50 mt-1">{parsed.length} valid row{parsed.length === 1 ? '' : 's'} detected.</p>
-        {result && <p className={`text-sm mt-2 ${result.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{result}</p>}
-        <div className="flex items-center gap-3 mt-4">
-          <button onClick={run} disabled={busy || !parsed.length} className="btn-primary text-sm">
-            {busy ? 'Importing…' : `Import ${parsed.length || ''}`}
-          </button>
-          <button onClick={onClose} className="btn-secondary text-sm">{result ? 'Done' : 'Cancel'}</button>
-        </div>
       </div>
     </div>
   )
@@ -290,22 +246,6 @@ function StockListImportModal({ components, onClose }) {
       </div>
     </div>
   )
-}
-
-function parseCsv(text) {
-  const lines = (text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
-  const out = []
-  for (let i = 0; i < lines.length; i++) {
-    const cells = lines[i].split(/\t|,/).map(s => s.trim())
-    const code = (cells[0] || '').toUpperCase()
-    if (!code) continue
-    if (i === 0 && /^(code|item)/i.test(code)) continue   // skip header row
-    out.push({
-      code, name: cells[1] || '', category: cells[2] || '',
-      stock_qty: cells[3] || '', lead_time_weeks: cells[4] || '', notes: cells[5] || '',
-    })
-  }
-  return out
 }
 
 // ── Crystal Colours tab ─────────────────────────────────────────────────────
