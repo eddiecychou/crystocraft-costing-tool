@@ -103,25 +103,40 @@ export function buildFullCartonPlan(packableLines, rangeProducts) {
 
 // ── Packed-vs-ordered reconciliation ─────────────────────────────────────────
 // Returns array of { key, item_code, description, ordered, packed } per packable line.
-// Packed qty = Σ(content.qty × carton.carton_count) matched by order_line_id or item_code.
+// Packed qty = Σ(content.qty × carton.carton_count), matched to an ordered line.
+//
+// Imported PI lines key on their Firestore doc id, but mixed-carton contents the
+// user types have no order_line_id — so they could only ever key on item_code.
+// We bridge the two: a content resolves to a line by its explicit order_line_id,
+// else via a normalised item_code → line.id map. Without this, any mixed-carton
+// entry falsely shows "0 packed / quantity mismatch" even when the code matches.
+const normCode = s => (s == null ? '' : String(s)).trim().toUpperCase()
+
 export function calcPackedVsOrdered(packableLines, cartons) {
+  const packable = packableLines.filter(l => l.packable)
+  // Map each ordered line's item_code back to its line id (first one wins).
+  const codeToLineId = {}
+  for (const l of packable) {
+    const code = normCode(l.item_code)
+    if (code && l.id && !(code in codeToLineId)) codeToLineId[code] = l.id
+  }
   const tally = {}
   for (const c of cartons) {
     const count = parseInt(c.carton_count) || 1
     for (const item of (c.contents || [])) {
-      const key = item.order_line_id || item.item_code
+      const code = normCode(item.item_code)
+      const key = item.order_line_id || codeToLineId[code] || code
+      if (!key) continue
       tally[key] = (tally[key] || 0) + (parseFloat(item.qty) || 0) * count
     }
   }
-  return packableLines
-    .filter(l => l.packable)
-    .map(l => ({
-      key:         l.id || l.item_code,
-      item_code:   l.item_code,
-      description: l.description,
-      ordered:     parseFloat(l.qty_ordered) || 0,
-      packed:      tally[l.id || l.item_code] || 0,
-    }))
+  return packable.map(l => ({
+    key:         l.id || l.item_code,
+    item_code:   l.item_code,
+    description: l.description,
+    ordered:     parseFloat(l.qty_ordered) || 0,
+    packed:      tally[l.id || normCode(l.item_code)] || 0,
+  }))
 }
 
 // ── Load range products with packing data ─────────────────────────────────────
