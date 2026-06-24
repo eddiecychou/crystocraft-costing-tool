@@ -3,9 +3,26 @@
 > **Canonical plan lives in Obsidian:** `Crystocraft/Operations/Costing Tool - Project Plan.md`
 > and `Costing Tool - Issues & Bugs Log.md`. This in-repo copy is a convenience snapshot.
 
-## Current Status — V7.7 as of 2026-06-24
+## Current Status — V7.7.1 as of 2026-06-24
 
-**V7.7 deployed to Netlify (commit `a39e060`).** Live at https://ua-product-manager.netlify.app
+**V7.7.1 deployed to Netlify (commit `5d04b7d`).** Live at https://ua-product-manager.netlify.app
+
+### V7.7.1 — Crash fix + page error boundary (2026-06-24)
+- 🔴 **White-screen crash opening any existing figurine card** (`5df607a`). The `formPlatings`
+  `useMemo` added in V7.7 read `form.variants` while `form` is `null` (existing products load
+  async); hooks run before the `if (!form) return` / `if (fetching) return <LoadingBar/>`
+  guards, so it threw on first render — blank screen with **no loading bar**. New products were
+  fine (`form` starts non-null). Fixed with `form?.variants`. **Third V7.7 regression** — all
+  runtime-only, all shipped green (sandboxed CI can't run a live preview).
+- 🟢 **Page-level error boundary** (`5d04b7d`, `src/components/ErrorBoundary.jsx`). Wrapped the
+  `<Routes>` inside both the admin Layout (`home="/dashboard"`) and customer Storefront
+  (`home="/shop/figurine"`). A render/lifecycle throw now shows a recoverable fallback card with
+  the error message (nav intact) instead of unmounting to a white screen; resets on navigation
+  via a `pathname` key. Caveat: does not catch async errors in handlers/promises.
+
+**Lessons**: a thrown hook beats every guard — hooks run before any early `return`, so new
+top-of-component hooks must tolerate not-yet-loaded state (`form?.x`). Build-passing ≠ working
+for runtime crashes; a page error boundary is the cheapest net when CI has no live preview.
 
 ### V7.7 — Plating-specific critical components (2026-06-24)
 Figurine metal parts that differ by plating (e.g. Gold `…-G` and Chrome `…-C` carry
