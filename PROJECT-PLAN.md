@@ -3,9 +3,52 @@
 > **Canonical plan lives in Obsidian:** `Crystocraft/Operations/Costing Tool - Project Plan.md`
 > and `Costing Tool - Issues & Bugs Log.md`. This in-repo copy is a convenience snapshot.
 
-## Current Status — V7.6 as of 2026-06-24
+## Current Status — V7.7 as of 2026-06-24
 
-**V7.6 deployed to Netlify (commit `56bce21`).** Live at https://ua-product-manager.netlify.app
+**V7.7 deployed to Netlify (commit `a39e060`).** Live at https://ua-product-manager.netlify.app
+
+### V7.7 — Plating-specific critical components (2026-06-24)
+Figurine metal parts that differ by plating (e.g. Gold `…-G` and Chrome `…-C` carry
+**different ERP item codes, stock, and cost**) can now be wired to the specific plating
+variant they belong to. Solves two problems: (1) component-level stock directed to the
+relevant plating; (2) costing wires the right component cost to the right variant.
+
+- **Data model (backward-compatible, no migration):** each ref in a product's
+  `critical_components[]` gains an optional `plating_code`. Blank = applies to **all
+  variants** (shared parts — bodies, NFC chips, boxes). Tagged = applies only to the
+  matching plating variant. Existing untagged products behave exactly as before.
+- **Costing (`rangeCosting.js`):** `componentsCostHKD` / `toolingHKD` now take the
+  variant and filter refs by `plating_code`, so the per-variant cost table charges the
+  correct plating's part and **tooling is no longer double-counted** across platings.
+- **Stock & lead promise (`criticalComponents.js`):** `buildableFromComponents` and
+  `makeLeadWeeks` are now plating-aware with **"soonest plating wins"** semantics — a
+  zero-stock Chrome no longer poisons the Gold buildable/lead. Per-plating buildable is
+  summed and **capped by the shared-parts ceiling** (shared body stock is finite). No
+  plating tags ⇒ behaviour byte-identical to before.
+- **Editor UI (`RangeForm.jsx`):** each selected component row has a **plating-scope
+  dropdown** (All variants / Gold / Chrome / …) and a **clone (+) button** that defaults
+  the copy to the first unused plating. Rows now carry a stable ephemeral `_uid` (form-
+  only, stripped on save) used as React key + mutation target.
+- **Costing breakdown (`RangeCosting.jsx`):** each row shows a plating badge.
+
+**Bugs found & fixed in the same session** (post-first-push review, commit `a39e060`):
+- 🔴 Stock/lead functions were NOT plating-aware in the first push (`6b8765b`) — a
+  product with 500 Gold + 0 Chrome parts wrongly reported **0 buildable (bottleneck:
+  Chrome)**. Now reports **100 buildable** (capped by the shared body). Costing itself
+  was correct in the first push; only the production-signal functions lagged.
+- 🟠 Clone/duplicate React-key collision (`refKey = id||code` matched two rows) → edits
+  hit both rows + duplicate-key warnings. Fixed with the stable `_uid`.
+- 🟠 Two refs for the same (component, plating) could double-count cost — clone now
+  defaults to an unused plating to prevent it.
+
+**Lessons** (full write-ups in the Obsidian Issues & Bugs Log):
+- A "fix all surfaces" change must enumerate **every** consumer up front — costing,
+  stock, lead, and UI are separate call sites; fixing the cost path while leaving the
+  stock/lead path produces silent wrong numbers.
+- Deriving a React key from business fields (`id||code`) breaks the moment one entity can
+  appear in a list more than once; use a stable per-row id instead.
+- Rolling a per-variant quantity into a single product promise needs an explicit rule
+  (here: soonest plating wins, shared-capped) — don't let it default to an accidental min.
 
 ### V7.6 — Shipping/PI fixes, Quote margin, USD costing, Filter persistence (2026-06-24)
 Bug-fix + polish pass on the Shipping (PI import) and Quote modules.
