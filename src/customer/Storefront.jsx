@@ -7,12 +7,14 @@ import CorporateDetail from './CorporateDetail'
 import FavouritesPage from './FavouritesPage'
 import EnquiryPage from './EnquiryPage'
 import { CartProvider, FavouritesProvider } from './store'
+import ErrorBoundary from '../components/ErrorBoundary'
 
 export default function Storefront({ profile }) {
   return (
     <FavouritesProvider uid={profile?.id}>
       <CartProvider>
         <CustomerLayout profile={profile}>
+          <ErrorBoundary home="/shop/figurine">
           <Routes>
             <Route path="/shop/figurine" element={<FigurineShop profile={profile} />} />
             <Route path="/shop/figurine/:id" element={<FigurineDetail profile={profile} />} />
@@ -22,6 +24,7 @@ export default function Storefront({ profile }) {
             <Route path="/shop/enquiry" element={<EnquiryPage profile={profile} />} />
             <Route path="*" element={<Navigate to="/shop/figurine" replace />} />
           </Routes>
+          </ErrorBoundary>
         </CustomerLayout>
       </CartProvider>
     </FavouritesProvider>

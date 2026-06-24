@@ -3,6 +3,7 @@ import { useAuthState } from './hooks/useAuthState'
 import { useProfile, isAdmin, isApproved, isPending } from './hooks/useProfile'
 import Layout from './components/Layout'
 import LoadingBar from './components/LoadingBar'
+import ErrorBoundary from './components/ErrorBoundary'
 import Login from './pages/Login'
 import Storefront from './customer/Storefront'
 import PendingScreen from './customer/PendingScreen'
@@ -89,6 +90,7 @@ function AppRoutes({ user }) {
 function AdminApp({ user }) {
   return (
             <Layout user={user}>
+              <ErrorBoundary home="/dashboard">
               <Routes>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 <Route path="/dashboard" element={<Dashboard />} />
@@ -146,6 +148,7 @@ function AdminApp({ user }) {
                 <Route path="/catalogue-band" element={<Navigate to="/settings" replace />} />
                 <Route path="/import-data" element={<ImportData />} />
               </Routes>
+              </ErrorBoundary>
             </Layout>
   )
 }
