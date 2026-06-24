@@ -241,12 +241,14 @@ export default function RangeForm() {
   // the plating_code select in the selected components list.
   const formPlatings = useMemo(() => {
     const seen = new Map()
-    for (const v of (form.variants || [])) {
+    // `form` is null until an existing product finishes loading; this hook runs
+    // before the `if (!form) return` guard below, so it must tolerate null.
+    for (const v of (form?.variants || [])) {
       const code = (v.plating_code || '').trim().toUpperCase()
       if (code && !seen.has(code)) seen.set(code, v.plating_name || code)
     }
     return [...seen.entries()].map(([code, name]) => ({ code, name }))
-  }, [form.variants])
+  }, [form?.variants])
 
   // Per-variant crystal-colour search (keyed by variant index).
   const [colorSearch, setColorSearch] = useState({})
