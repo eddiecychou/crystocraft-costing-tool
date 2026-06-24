@@ -80,6 +80,15 @@ function FullCartonRow({ carton, idx, onChange, onRemove, packableLines }) {
   const seqEnd = parseInt(c.carton_seq) + parseInt(c.carton_count || 1) - 1
   const seqLabel = parseInt(c.carton_count) > 1 ? `${c.carton_seq}–${seqEnd}` : String(c.carton_seq)
   const content  = c.contents?.[0]
+  const extraItems = Math.max(0, (c.contents?.length || 0) - 1)
+
+  // Interim guard (pre P-1): the single-line view only manages contents[0], but
+  // must NOT discard any further items a carton already holds (e.g. entered in
+  // mixed mode). Patch the first content in place and keep the tail intact.
+  function patchFirstContent(patch) {
+    const list = c.contents?.length ? c.contents : [newContent()]
+    onChange({ ...c, contents: list.map((it, i) => (i === 0 ? { ...it, ...patch } : it)) })
+  }
 
   function patchDims(field, val) {
     const updated = { ...c, [field]: val === '' ? null : parseFloat(val) || null }
@@ -97,15 +106,21 @@ function FullCartonRow({ carton, idx, onChange, onRemove, packableLines }) {
         <input
           className="input py-1 text-xs font-mono w-28"
           value={content?.item_code || ''}
-          onChange={e => onChange({ ...c, contents: [{ ...(content || newContent()), item_code: e.target.value }] })}
+          onChange={e => patchFirstContent({ item_code: e.target.value })}
           placeholder="Item code"
         />
+        {extraItems > 0 && (
+          <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-700"
+                title="This carton holds more items — switch to mixed mode to see them all">
+            +{extraItems} more
+          </span>
+        )}
       </td>
       <td className="px-3 py-2 min-w-[140px]">
         <input
           className="input py-1 text-xs w-full"
           value={content?.description || ''}
-          onChange={e => onChange({ ...c, contents: [{ ...(content || newContent()), description: e.target.value }] })}
+          onChange={e => patchFirstContent({ description: e.target.value })}
           placeholder="Description"
         />
       </td>
@@ -114,7 +129,7 @@ function FullCartonRow({ carton, idx, onChange, onRemove, packableLines }) {
           className="input py-1 text-xs w-16 text-right"
           type="number" min="1"
           value={content?.qty || ''}
-          onChange={e => onChange({ ...c, contents: [{ ...(content || newContent()), qty: e.target.value }] })}
+          onChange={e => patchFirstContent({ qty: e.target.value })}
           placeholder="48"
         />
       </td>
