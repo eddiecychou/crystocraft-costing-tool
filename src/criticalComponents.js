@@ -210,6 +210,56 @@ export async function bulkCreateComponents(rows) {
   return n
 }
 
+// Idempotent stock-take upsert (component master import). Rows:
+// [{ code, name, plating_code, stock_qty }]. Matched on `code`: existing →
+// update stock_qty + plating_code (and name only when currently blank, so a
+// good English name isn't clobbered by a CN description); new code → create.
+// Cost fields are never touched (owned by supplier quotes). Re-running with an
+// updated sheet is the routine stock-take. Returns { created, updated, rows }.
+export async function upsertComponentsFromRows(rows) {
+  const clean = (rows || []).map(r => ({
+    code: (r.code || '').trim().toUpperCase(),
+    name: (r.name || '').trim(),
+    plating_code: (r.plating_code || '').trim().toUpperCase(),
+    stock_qty: numOrNull(r.stock_qty),
+  })).filter(r => r.code)
+  if (!clean.length) return { created: 0, updated: 0, rows: 0 }
+
+  // Existing components by code → { id, hasName }.
+  const snap = await getDocs(COL())
+  const byCode = {}
+  for (const d of snap.docs) {
+    const code = (d.data().code || '').trim().toUpperCase()
+    if (code && !(code in byCode)) byCode[code] = { id: d.id, hasName: !!(d.data().name || '').trim() }
+  }
+
+  const seen = new Set()
+  let created = 0, updated = 0
+  for (let i = 0; i < clean.length; i += 400) {
+    const batch = writeBatch(db)
+    for (const r of clean.slice(i, i + 400)) {
+      if (seen.has(r.code)) continue              // a component repeats across products; first wins
+      seen.add(r.code)
+      const existing = byCode[r.code]
+      if (existing) {
+        const fields = { plating_code: r.plating_code, stock_qty: r.stock_qty, updatedAt: serverTimestamp() }
+        if (!existing.hasName && r.name) fields.name = r.name
+        batch.set(doc(db, 'range_components', existing.id), fields, { merge: true })
+        updated++
+      } else {
+        batch.set(doc(COL()), {
+          code: r.code, name: r.name, plating_code: r.plating_code, stock_qty: r.stock_qty,
+          category: '', supplierId: '', supplierName: '', notes: '', images: [],
+          createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+        })
+        created++
+      }
+    }
+    await batch.commit()
+  }
+  return { created, updated, rows: seen.size }
+}
+
 // One-time migration of the old settings/components doc-array into the
 // collection. Idempotent: does nothing if the collection already has rows.
 export async function migrateLegacyComponents() {

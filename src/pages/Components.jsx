@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import { useComponents, bulkCreateComponents, saveComponent } from '../criticalComponents'
+import { useComponents, bulkCreateComponents, saveComponent, upsertComponentsFromRows } from '../criticalComponents'
 import { loadCrystalColors, saveCrystalColors } from '../crystalColors'
 import { RANGE_COMPONENT_CATEGORIES, RANGE_FORMAT_CODES } from '../constants'
 import { Puzzle, ArrowUp, ArrowDown, X, Minus, Plus, Check } from 'lucide-react'
@@ -39,6 +39,7 @@ function CriticalComponents() {
   const [search, setSearch] = useState('')
   const [cat, setCat] = useState('')
   const [importing, setImporting] = useState(false)
+  const [stockImport, setStockImport] = useState(false)
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -64,6 +65,7 @@ function CriticalComponents() {
           {cats.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         <button onClick={() => setImporting(true)} className="btn-secondary text-sm">Import CSV</button>
+        <button onClick={() => setStockImport(true)} className="btn-secondary text-sm">Import stock list</button>
         <Link to="/components/critical/new" className="btn-primary text-sm">+ New</Link>
       </div>
 
@@ -98,6 +100,7 @@ function CriticalComponents() {
       )}
 
       {importing && <ImportModal onClose={() => setImporting(false)} />}
+      {stockImport && <StockListImportModal components={components} onClose={() => setStockImport(false)} />}
     </div>
   )
 }
@@ -198,6 +201,89 @@ function ImportModal({ onClose }) {
         <div className="flex items-center gap-3 mt-4">
           <button onClick={run} disabled={busy || !parsed.length} className="btn-primary text-sm">
             {busy ? 'Importing…' : `Import ${parsed.length || ''}`}
+          </button>
+          <button onClick={onClose} className="btn-secondary text-sm">{result ? 'Done' : 'Cancel'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Parse the staff "Component List with Stock" sheet, pasted from Excel.
+// Columns: Product Item Code · Plating · Component Main Item Code · Description · Qty.
+// The component master keys on the Component Main Item Code (col 3); plating is the
+// (X) letter in col 2; Qty (col 5) is stock. Split on TAB (Excel paste) so commas
+// inside CN descriptions (e.g. "彎釘,蜂鳥") survive.
+function parseStockList(text) {
+  const lines = (text || '').split(/\r?\n/).filter(l => l.trim())
+  const out = []
+  for (let i = 0; i < lines.length; i++) {
+    const cells = (lines[i].includes('\t') ? lines[i].split('\t') : lines[i].split(',')).map(s => s.trim())
+    const product = (cells[0] || '').toUpperCase()
+    const code = (cells[2] || '').toUpperCase()
+    if (i === 0 && /product\s*item|item\s*code/i.test(product)) continue   // header row
+    if (!code) continue
+    const m = (cells[1] || '').match(/\(([A-Za-z])\)/)
+    out.push({
+      product_item_code: product,
+      plating_code: (m ? m[1] : '').toUpperCase(),
+      code,
+      name: cells[3] || '',
+      stock_qty: cells[4] || '',
+    })
+  }
+  return out
+}
+
+function StockListImportModal({ components, onClose }) {
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState(null)
+
+  const rows = useMemo(() => parseStockList(text), [text])
+  // Diff against the live library (dedupe incoming by component code).
+  const diff = useMemo(() => {
+    const have = new Set(components.map(c => (c.code || '').toUpperCase()))
+    const seen = new Set()
+    let created = 0, updated = 0
+    for (const r of rows) {
+      if (seen.has(r.code)) continue
+      seen.add(r.code)
+      have.has(r.code) ? updated++ : created++
+    }
+    return { unique: seen.size, created, updated }
+  }, [rows, components])
+
+  async function run() {
+    setBusy(true)
+    try {
+      const res = await upsertComponentsFromRows(rows)
+      setResult(`Done — ${res.created} created, ${res.updated} updated (${res.rows} components).`)
+    } catch (e) { setResult('Error: ' + e.message) }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-md shadow-lg w-full max-w-lg p-5" onClick={e => e.stopPropagation()}>
+        <h2 className="text-base font-semibold mb-1">Import component stock list</h2>
+        <p className="text-xs text-ink-60 mb-3">
+          Paste straight from your Excel (select the data, copy). Columns:
+          {' '}<code className="text-ink-80">Product Item Code · Plating · Component Main Item Code · Description · Qty</code>.
+          Components key on the <b>main item code</b>; stock and plating update in place — safe to
+          re-run as a stock-take. Cost is never touched.
+        </p>
+        <textarea className="input min-h-[160px] font-mono text-xs" value={text}
+                  onChange={e => setText(e.target.value)}
+                  placeholder={'D0001-001-C\tChrome (C)\tFM-KB(1)-ORNT(C)\t蝴蝶\t44.65'} />
+        <p className="text-xs text-ink-50 mt-1">
+          {rows.length} row{rows.length === 1 ? '' : 's'} · {diff.unique} unique component{diff.unique === 1 ? '' : 's'}
+          {diff.unique > 0 && <> — <span className="text-green-600">{diff.created} new</span>, <span className="text-blue-600">{diff.updated} update</span></>}
+        </p>
+        {result && <p className={`text-sm mt-2 ${result.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{result}</p>}
+        <div className="flex items-center gap-3 mt-4">
+          <button onClick={run} disabled={busy || !diff.unique} className="btn-primary text-sm">
+            {busy ? 'Importing…' : `Import ${diff.unique || ''}`}
           </button>
           <button onClick={onClose} className="btn-secondary text-sm">{result ? 'Done' : 'Cancel'}</button>
         </div>
