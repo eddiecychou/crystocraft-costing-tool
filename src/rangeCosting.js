@@ -45,9 +45,10 @@ export function componentsCostHKD(product, lib, rates, orderQty, variant = null)
   const refs = Array.isArray(product?.critical_components) ? product.critical_components : []
   const platCode = variant ? (variant.plating_code || '').trim().toUpperCase() : null
   return refs.reduce((sum, r) => {
-    const refPlat = (r.plating_code || '').trim().toUpperCase()
-    if (platCode !== null && refPlat && refPlat !== platCode) return sum
     const c = resolveRef(r, lib)
+    // Plating: ref override wins, else inferred from the component (Decision 2).
+    const refPlat = (r.plating_code || c?.plating_code || '').trim().toUpperCase()
+    if (platCode !== null && refPlat && refPlat !== platCode) return sum
     const unit = componentCostAtQty(c, orderQty)
     if (unit == null) return sum
     return sum + toHKD(unit, c.unit_cost_currency, rates) * perUnit(r)
@@ -87,9 +88,9 @@ export function toolingHKD(product, lib, rates, variant = null) {
   const refs = Array.isArray(product?.critical_components) ? product.critical_components : []
   const platCode = variant ? (variant.plating_code || '').trim().toUpperCase() : null
   return refs.reduce((sum, r) => {
-    const refPlat = (r.plating_code || '').trim().toUpperCase()
-    if (platCode !== null && refPlat && refPlat !== platCode) return sum
     const c = resolveRef(r, lib)
+    const refPlat = (r.plating_code || c?.plating_code || '').trim().toUpperCase()
+    if (platCode !== null && refPlat && refPlat !== platCode) return sum
     if (!c || !c.tooling_sample_cost) return sum
     return sum + toHKD(c.tooling_sample_cost, c.tooling_sample_cost_currency, rates)
   }, 0)

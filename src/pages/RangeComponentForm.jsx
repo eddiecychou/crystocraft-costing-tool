@@ -4,11 +4,11 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
 import { getComponent, saveComponent, deleteComponent, loadComponentQuotes, setPreferredQuote } from '../criticalComponents'
-import { RANGE_COMPONENT_CATEGORIES } from '../constants'
+import { RANGE_COMPONENT_CATEGORIES, RANGE_PLATINGS } from '../constants'
 import { Star, FileText } from 'lucide-react'
 
 const blank = {
-  code: '', name: '', category: '', stock_qty: '', lead_time_weeks: '',
+  code: '', name: '', category: '', plating_code: '', stock_qty: '', lead_time_weeks: '',
   supplierId: '', supplierName: '', notes: '', images: [],
 }
 
@@ -49,7 +49,7 @@ export default function RangeComponentForm() {
     if (isNew) return
     getComponent(routeId).then(c => {
       if (c) setForm({
-        code: c.code, name: c.name, category: c.category || '',
+        code: c.code, name: c.name, category: c.category || '', plating_code: c.plating_code || '',
         stock_qty: c.stock_qty ?? '', lead_time_weeks: c.lead_time_weeks ?? '',
         supplierId: c.supplierId || '', supplierName: c.supplierName || '',
         notes: c.notes || '', images: c.images || [],
@@ -133,6 +133,14 @@ export default function RangeComponentForm() {
             <label className="label">Name / description</label>
             <input className="input" value={form.name} onChange={set('name')}
                    placeholder="Owl body / 18-note music-box movement" />
+          </div>
+
+          <div>
+            <label className="label">Plating <span className="text-ink-60 font-normal">(Gold/Chrome parts have distinct codes; blank = shared across all platings)</span></label>
+            <select className="input" value={form.plating_code} onChange={set('plating_code')}>
+              <option value="">Shared — all platings</option>
+              {RANGE_PLATINGS.map(p => <option key={p.code} value={p.code}>{p.name} ({p.code})</option>)}
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

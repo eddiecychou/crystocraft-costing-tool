@@ -38,6 +38,11 @@ export const normComponent = c => ({
   code: (c.code || '').trim().toUpperCase(),
   name: (c.name || '').trim(),
   category: (c.category || '').trim(),
+  // Plating this component belongs to (G/C/R/A/…); blank = shared across every
+  // plating (bodies, NFC chips, gift boxes). A product ref may still override,
+  // but normally plating is a property of the component (gold/chrome are distinct
+  // ERP item codes with distinct cost). See Procurement spec §0.2 Decision 2.
+  plating_code: (c.plating_code || '').trim().toUpperCase(),
   supplierId: c.supplierId || '',
   supplierName: (c.supplierName || '').trim(),
   notes: (c.notes || '').trim(),
@@ -78,6 +83,7 @@ const descriptorOf = c => {
   const n = normComponent(c)
   return {
     code: n.code, name: n.name, category: n.category,
+    plating_code: n.plating_code,
     supplierId: n.supplierId, supplierName: n.supplierName,
     notes: n.notes, images: n.images,
     stock_qty: n.stock_qty, lead_time_weeks: n.lead_time_weeks,
@@ -251,9 +257,12 @@ export function resolveRef(ref, lib) {
 
 const refsOf = product => (Array.isArray(product?.critical_components) ? product.critical_components : [])
 const perUnit = r => { const n = Number(r?.qty_per_unit); return n > 0 ? n : 1 }
-const refPlating = r => (r.plating_code || '').trim().toUpperCase()
-const isShared = r => !refPlating(r)            // no plating tag ⇒ applies to all variants
-const platingsTagged = refs => [...new Set(refs.map(refPlating).filter(Boolean))]
+// Effective plating of a ref: the ref's explicit override wins; otherwise it is
+// inferred from the resolved component's own plating_code (Decision 2). Blank ⇒
+// shared part. `lib` is needed for the inference.
+const refPlating = (r, lib) => (r.plating_code || resolveRef(r, lib)?.plating_code || '').trim().toUpperCase()
+const isShared = (r, lib) => !refPlating(r, lib) // no plating ⇒ applies to all variants
+const platingsTagged = (refs, lib) => [...new Set(refs.map(r => refPlating(r, lib)).filter(Boolean))]
 
 // How many finished pieces could be *assembled right now* from component stock.
 // Returns { qty, bottleneck } (qty null when the product lists no critical parts).
@@ -283,16 +292,16 @@ export function buildableFromComponents(product, lib) {
   }
 
   // Fast path / unchanged behaviour: no plating-specific parts ⇒ one shared group.
-  const platings = platingsTagged(refs)
+  const platings = platingsTagged(refs, lib)
   if (!platings.length) {
     const { q, code } = minOver(refs)
     return { qty: Number.isFinite(q) ? q : null, bottleneck: code }
   }
 
-  const shared = minOver(refs.filter(isShared))
+  const shared = minOver(refs.filter(r => isShared(r, lib)))
   let sumTagged = 0, minTagged = Infinity, minTaggedCode = null
   for (const p of platings) {
-    const tg = minOver(refs.filter(r => refPlating(r) === p))
+    const tg = minOver(refs.filter(r => refPlating(r, lib) === p))
     if (!Number.isFinite(tg.q)) continue
     sumTagged += Math.max(0, tg.q)
     if (tg.q < minTagged) { minTagged = tg.q; minTaggedCode = tg.code }
@@ -328,17 +337,17 @@ export function makeLeadWeeks(product, lib) {
     return { w, code }
   }
 
-  const platings = platingsTagged(refs)
+  const platings = platingsTagged(refs, lib)
   if (!platings.length) {
     const { w, code } = longestUncovered(refs)
     return { weeks: w, driver: code }
   }
 
   // Per plating: shared + that plating's tagged parts. Soonest plating wins.
-  const shared = refs.filter(isShared)
+  const shared = refs.filter(r => isShared(r, lib))
   let best = null, driver = null
   for (const p of platings) {
-    const tagged = refs.filter(r => refPlating(r) === p)
+    const tagged = refs.filter(r => refPlating(r, lib) === p)
     const u = longestUncovered([...shared, ...tagged])
     const w = u.w == null ? 0 : u.w            // 0 ⇒ this plating fully covered
     if (best == null || w < best) { best = w; driver = u.code }
