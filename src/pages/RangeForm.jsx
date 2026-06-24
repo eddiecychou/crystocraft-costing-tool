@@ -1119,6 +1119,11 @@ export default function RangeForm() {
               <h3 className="text-sm font-medium">Stock by plating</h3>
               <span className="text-xs text-ink-60">Total {platingStockTotal} pcs</span>
             </div>
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-2 leading-tight">
+              <b>Legacy — B2C finished stock.</b> This is the WooCommerce finished-goods pool and is
+              moving to component stock. Don't rely on it for B2B availability; figurine availability
+              will be driven by critical-component stock.
+            </p>
             <p className="text-[11px] text-ink-60 mb-2 leading-tight">
               Stock is counted per plating and shared by all crystal-colour / running-no
               variants of that plating. A variant can still set its own count below to
