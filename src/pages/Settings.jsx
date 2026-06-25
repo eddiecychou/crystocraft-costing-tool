@@ -84,10 +84,37 @@ export default function Settings() {
 }
 
 function ProductDefaults() {
+  // Global: parts lead time for products with no components tracked (saved live to Firestore)
+  const [partsLead, setPartsLead] = useState('6')
+  const [partsLeadSaved, setPartsLeadSaved] = useState(false)
+  const [partsLeadBusy, setPartsLeadBusy] = useState(false)
+
+  // Batch: bulk-apply assembly lead + MOQ to products missing them
   const [leadTime, setLeadTime] = useState('3')
   const [moq, setMoq] = useState('100')
   const [busy, setBusy] = useState(false)
   const [log, setLog] = useState('')
+
+  // Load saved parts lead time from Firestore on mount
+  useEffect(() => {
+    getDoc(doc(db, 'settings', 'productDefaults')).then(snap => {
+      if (snap.exists() && snap.data().default_parts_lead_weeks) {
+        setPartsLead(String(snap.data().default_parts_lead_weeks))
+      }
+    })
+  }, [])
+
+  async function savePartsLead() {
+    const v = Number(partsLead)
+    if (!v || v < 1) return
+    setPartsLeadBusy(true)
+    try {
+      await setDoc(doc(db, 'settings', 'productDefaults'), { default_parts_lead_weeks: v }, { merge: true })
+      setPartsLeadSaved(true)
+      setTimeout(() => setPartsLeadSaved(false), 2000)
+    } catch (e) { alert('Error: ' + e.message) }
+    finally { setPartsLeadBusy(false) }
+  }
 
   async function apply() {
     const lt = Number(leadTime)
@@ -116,13 +143,42 @@ function ProductDefaults() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-lg">
-      <h2 className="text-lg font-semibold mb-1">Product Defaults</h2>
-      <p className="text-sm text-ink-60 mb-4">
-        Apply default assembly lead time and MOQ to all figurine products that do not already have these fields set.
-        Products with existing values are left untouched — override them individually in the product editor.
-      </p>
+    <div className="p-4 md:p-6 max-w-lg space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold mb-1">Product Defaults</h2>
+        <p className="text-sm text-ink-60">Global settings that apply across all figurine products.</p>
+      </div>
+
+      {/* Global: parts lead time for products with no components */}
+      <div className="card p-5 space-y-3">
+        <div>
+          <h3 className="font-medium text-sm mb-0.5">Default parts lead time</h3>
+          <p className="text-[12px] text-ink-60">
+            When a product has no critical components listed, this is the assumed time to source parts.
+            Total lead time shown to customers = parts lead + per-product assembly lead. Applies immediately to all products without tracked components.
+          </p>
+        </div>
+        <div className="flex items-end gap-3">
+          <div className="w-32">
+            <label className="label">Weeks</label>
+            <input className="input" type="number" min="1" value={partsLead}
+                   onChange={e => { setPartsLead(e.target.value); setPartsLeadSaved(false) }} />
+          </div>
+          <button onClick={savePartsLead} disabled={partsLeadBusy} className="btn-primary text-sm mb-0.5">
+            {partsLeadBusy ? 'Saving…' : partsLeadSaved ? 'Saved ✓' : 'Save'}
+          </button>
+        </div>
+      </div>
+
+      {/* Batch: apply assembly lead + MOQ to products missing them */}
       <div className="card p-5 space-y-4">
+        <div>
+          <h3 className="font-medium text-sm mb-0.5">Bulk-apply assembly lead time &amp; MOQ</h3>
+          <p className="text-[12px] text-ink-60">
+            Set assembly lead time and MOQ on all products that do not already have these values.
+            Products with existing values are left untouched — override them individually in the product editor.
+          </p>
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="label">Assembly lead time <span className="text-ink-60 font-normal">(weeks)</span></label>

@@ -23,6 +23,7 @@ import LoadingBar from '../components/LoadingBar'
 import { useCrystalColors, colorMap, ensureColors } from '../crystalColors'
 import { buildRangeSku, rangePrice } from '../rangeSku'
 import { useComponents, resolveRef, productAvailability } from '../criticalComponents'
+import { useProductDefaults } from '../useProductDefaults'
 import { Puzzle, Gem, Check, Download, Plus, X, Sparkles, RotateCcw } from 'lucide-react'
 import CRYSTAL_MIXES from '../data/crystalMixes.json'
 
@@ -191,6 +192,7 @@ export default function RangeForm() {
   const { colors: libColors, setColors: setLibColors } = useCrystalColors()
   const colorLookup = colorMap(libColors)
   const { components: libComponents } = useComponents()
+  const prodDefaults = useProductDefaults()
 
   // Toggle a critical component on/off for this product. We store the stable
   // doc id (so renaming the component's code never breaks the link) plus the
@@ -712,7 +714,7 @@ export default function RangeForm() {
     status: form.status, moq: form.moq, lead_time_weeks: form.lead_time_weeks,
     delivery_note: form.delivery_note, critical_components: form.critical_components,
     plating_stock: form.plating_stock, variants: form.variants,
-  }, libComponents)
+  }, libComponents, prodDefaults)
 
   return (
     <div className="p-4 md:p-6 max-w-3xl">

@@ -22,6 +22,7 @@ const COL = () => collection(db, 'range_components')
 const LEGACY_DOC = () => doc(db, 'settings', 'components')
 
 const ASSEMBLY_WEEKS_DEFAULT = 2   // plate + assemble + pack when parts are on hand
+const PARTS_LEAD_DEFAULT = 6       // assumed procurement lead for products with no components tracked
 
 const numOrNull = v =>
   v === '' || v == null || !Number.isFinite(Number(v)) ? null : Number(v)
@@ -545,7 +546,7 @@ export function finishedStockOf(product) {
 // availability. A non-empty product.delivery_note overrides everything.
 // Returns { promise, leadWeeks, finished, buildable, bottleneck, effectiveMoq }.
 // effectiveMoq: 0 for last-stock (sell whatever remains, no minimum), else product.moq.
-export function productAvailability(product, lib) {
+export function productAvailability(product, lib, { defaultPartsLeadWeeks = PARTS_LEAD_DEFAULT } = {}) {
   const status = product?.status === 'stock' ? 'stock' : 'active'   // 'active' = Made to Order
   const finished = finishedStockOf(product)
   const refs = refsOf(product)
@@ -572,10 +573,11 @@ export function productAvailability(product, lib) {
         : 'Sold out — no parts remaining.'
     }
     leadWeeks = buildable > 0 ? assembly : null
-  } else if (!refs.length) {                       // no critical parts tracked — pure MTO
+  } else if (!refs.length) {                       // no critical parts tracked — assume default parts lead
     effectiveMoq = moq ?? 0
-    promise = `Made to order — ~${assembly} weeks${moqTxt}.`
-    leadWeeks = assembly
+    const w = defaultPartsLeadWeeks + assembly
+    promise = `Made to order — ~${w} weeks${moqTxt}.`
+    leadWeeks = w
   } else if (buildable && buildable > 0) {         // parts on hand, just assemble
     effectiveMoq = moq ?? 0
     promise = `Made to order — ~${assembly} weeks${moqTxt} (${buildable} buildable from stock now).`

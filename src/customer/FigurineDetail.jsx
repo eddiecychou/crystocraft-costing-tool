@@ -17,6 +17,7 @@ const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.l
 import LoadingBar from '../components/LoadingBar'
 import VideoEmbed from '../components/VideoEmbed'
 import { useComponents, productAvailability } from '../criticalComponents'
+import { useProductDefaults } from '../useProductDefaults'
 
 function docVariants(p) {
   if (Array.isArray(p.variants) && p.variants.length) return p.variants
@@ -40,6 +41,7 @@ export default function FigurineDetail({ profile }) {
   const cart = useCart()
   const { moq: formatMoqMap, labels: formatLabels } = useFormatMoq()
   const { components: compLib } = useComponents()
+  const prodDefaults = useProductDefaults()
   const cur = profile?.base_currency || 'USD'
   const disc = Math.max(0, Math.min(100, Number(profile?.ws_discount_pct) || 0)) / 100
 
@@ -50,7 +52,7 @@ export default function FigurineDetail({ profile }) {
   useEffect(() => {
     if (!p || p.status !== 'stock') return
     const vars = docVariants(p)
-    const av = productAvailability(p, compLib)
+    const av = productAvailability(p, compLib, prodDefaults)
     if (!av?.byPlating || !Object.keys(av.byPlating).length) return
     const isOut = v => {
       const pc = (v?.plating_code || '').trim().toUpperCase()
@@ -102,7 +104,7 @@ export default function FigurineDetail({ profile }) {
   // Last-stock: no MOQ (sell whatever is buildable); active: use product moq field.
   const moq = isLastStock ? 0 : (Number(p.moq) || 0)
   // Always compute availability — drives both the promise text and last-stock caps.
-  const avail = productAvailability(p, compLib)
+  const avail = productAvailability(p, compLib, prodDefaults)
   const selPlating = (selVariant.plating_code || '').trim().toUpperCase()
   // Per-plating buildable: used for last-stock caps and variant availability chips.
   const platBuildable = p2 => {
