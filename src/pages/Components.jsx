@@ -191,6 +191,7 @@ function parseStockList(text) {
       code,
       name: cells[3] || '',
       stock_qty: cells[4] || '',
+      lead_time_weeks: cells[5] || '',
     })
   }
   return out
@@ -248,13 +249,13 @@ function StockListImportModal({ components, onClose }) {
         <h2 className="text-base font-semibold mb-1">Import component stock list</h2>
         <p className="text-xs text-ink-60 mb-3">
           Paste straight from your Excel (select the data, copy). Columns:
-          {' '}<code className="text-ink-80">Product Item Code · Plating · Component Main Item Code · Description · Qty</code>.
-          Components key on the <b>main item code</b>; stock and plating update in place — safe to
-          re-run as a stock-take. Cost is never touched.
+          {' '}<code className="text-ink-80">Product Item Code · Plating · Component Main Item Code · Description · Qty · Lead Time (wks)</code>.
+          Components key on the <b>main item code</b>; stock, plating, and lead time update in place — safe to
+          re-run as a stock-take. Cost is never touched. Lead time &lt; 4 wks = not a buildable bottleneck.
         </p>
         <textarea className="input min-h-[160px] font-mono text-xs" value={text}
                   onChange={e => setText(e.target.value)}
-                  placeholder={'D0001-001-C\tChrome (C)\tFM-KB(1)-ORNT(C)\t蝴蝶\t44.65'} />
+                  placeholder={'D0001-001-C\tChrome (C)\tFM-KB(1)-ORNT(C)\t蝴蝶\t44.65\t6'} />
         <p className="text-xs text-ink-50 mt-1">
           {rows.length} row{rows.length === 1 ? '' : 's'} · {diff.unique} unique component{diff.unique === 1 ? '' : 's'}
           {diff.unique > 0 && <> — <span className="text-green-600">{diff.created} new</span>, <span className="text-blue-600">{diff.updated} update</span></>}

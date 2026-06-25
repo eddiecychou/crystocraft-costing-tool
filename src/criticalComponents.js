@@ -280,6 +280,7 @@ export async function importStockList(rows, rangeProducts) {
     code: norm(r.code),
     name: (r.name || '').trim(),
     stock_qty: numOrNull(r.stock_qty),
+    lead_time_weeks: numOrNull(r.lead_time_weeks),
   })).filter(r => r.code)
   if (!clean.length) return { created: 0, updated: 0, productsMatched: 0, productsUnmatched: 0, unmatched: [] }
 
@@ -287,7 +288,8 @@ export async function importStockList(rows, rangeProducts) {
   const compByCode = {}
   for (const r of clean) {
     let c = compByCode[r.code]
-    if (!c) c = compByCode[r.code] = { name: r.name, plating_code: r.plating_code, stock_qty: r.stock_qty, used_by: new Set() }
+    if (!c) c = compByCode[r.code] = { name: r.name, plating_code: r.plating_code, stock_qty: r.stock_qty, lead_time_weeks: r.lead_time_weeks, used_by: new Set() }
+    else if (r.lead_time_weeks != null) c.lead_time_weeks = r.lead_time_weeks   // last non-null wins on dedup
     if (r.product_item_code) c.used_by.add(r.product_item_code)
   }
 
@@ -310,6 +312,7 @@ export async function importStockList(rows, rangeProducts) {
     if (ex) {
       codeToId[code] = ex.id
       const data = { plating_code: c.plating_code, stock_qty: c.stock_qty, used_by, updatedAt: serverTimestamp() }
+      if (c.lead_time_weeks != null) data.lead_time_weeks = c.lead_time_weeks
       if (!ex.hasName && c.name) data.name = c.name
       ops.push({ ref: doc(db, 'range_components', ex.id), data, merge: true })
       updated++
@@ -317,7 +320,8 @@ export async function importStockList(rows, rangeProducts) {
       const ref = doc(COL())
       codeToId[code] = ref.id
       ops.push({ ref, data: {
-        code, name: c.name, plating_code: c.plating_code, stock_qty: c.stock_qty, used_by,
+        code, name: c.name, plating_code: c.plating_code, stock_qty: c.stock_qty,
+        lead_time_weeks: c.lead_time_weeks ?? null, used_by,
         category: '', supplierId: '', supplierName: '', notes: '', images: [],
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
       }, merge: false })
@@ -434,9 +438,14 @@ export function buildableFromComponents(product, lib) {
   if (!refs.length) return { qty: null, bottleneck: null }
 
   // canMake for one ref: floor(stock / qty_per_unit), plus its code for bottleneck.
+  // Components with a known short lead time (1–3 weeks) can be quickly reordered
+  // and are never the limiting factor — treat as unlimited supply.
+  const FAST_LEAD_WEEKS = 4   // strictly less than this = non-limiting
   const canMakeOf = r => {
     const c = resolveRef(r, lib)
     if (!c) return null
+    const lt = Number(c.lead_time_weeks)
+    if (lt > 0 && lt < FAST_LEAD_WEEKS) return { n: Infinity, code: c.code }
     const stock = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
     return { n: Math.floor(stock / perUnit(r)), code: c.code }
   }
