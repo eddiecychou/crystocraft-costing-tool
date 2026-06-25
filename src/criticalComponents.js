@@ -219,7 +219,12 @@ export async function bulkCreateComponents(rows) {
 // format "001" + plating "C". We match on design+format, brand-agnostically
 // (the sheet's brand letter — D/U/A/M — may differ from the stored product's),
 // so we also index the brand-stripped key.
-const stripBrandLetters = s => (s == null ? '' : String(s)).toUpperCase().replace(/[\s_]/g, '').replace(/^[A-Z]+/, '')
+//
+// Strip ONLY the leading brand letter (one char). The app's convention is
+// brand = first letter, an optional 2nd letter is the *body* type which is part
+// of the design identity — so "UA001"/"UB001" must stay distinct from "U0001"
+// and from each other (matching constants.brandLetter / bodyLetter).
+const stripBrandLetters = s => (s == null ? '' : String(s)).toUpperCase().replace(/[\s_]/g, '').replace(/^[A-Z]/, '')
 
 export function buildProductIndex(rangeProducts) {
   const idx = {}
@@ -244,7 +249,7 @@ export function matchProductCode(itemCode, index) {
   if (!code || !index) return null
   const parts = code.split('-')
   const p0 = parts[0] || '', p1 = parts[1] || ''
-  const s0 = p0.replace(/^[A-Z]+/, '')
+  const s0 = p0.replace(/^[A-Z]/, '')   // strip only the brand letter (keep body letter)
   const cands = []
   if (p1) cands.push(`${p0}-${p1}`, `${s0}-${p1}`)   // design+format (brand & brand-stripped)
   cands.push(p0, s0)                                  // design only (fallback)
