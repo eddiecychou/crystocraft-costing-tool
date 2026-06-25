@@ -200,6 +200,7 @@ function StockListImportModal({ components, onClose }) {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
+  const [unmatched, setUnmatched] = useState([])
   const [rangeProducts, setRangeProducts] = useState(null)   // null = loading
 
   useEffect(() => { loadRangeProductsWithPacking().then(setRangeProducts).catch(() => setRangeProducts([])) }, [])
@@ -236,6 +237,7 @@ function StockListImportModal({ components, onClose }) {
       const res = await importStockList(rows, rangeProducts || [])
       setResult(`Done — ${res.created} new / ${res.updated} updated components; linked to ${res.productsMatched} products` +
         (res.productsUnmatched ? `, ${res.productsUnmatched} product code(s) unmatched.` : '.'))
+      setUnmatched(res.unmatched || [])
     } catch (e) { setResult('Error: ' + e.message) }
     finally { setBusy(false) }
   }
@@ -264,6 +266,14 @@ function StockListImportModal({ components, onClose }) {
           </p>
         )}
         {result && <p className={`text-sm mt-2 ${result.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{result}</p>}
+        {unmatched.length > 0 && (
+          <details className="mt-2">
+            <summary className="text-xs text-amber-700 cursor-pointer">{unmatched.length} unmatched product code{unmatched.length === 1 ? '' : 's'} (not found in Figurine products) — view</summary>
+            <div className="mt-1 max-h-32 overflow-auto border border-ivory-dark rounded p-2 font-mono text-[11px] text-ink-60">
+              {unmatched.join(', ')}
+            </div>
+          </details>
+        )}
         <div className="flex items-center gap-3 mt-4">
           <button onClick={run} disabled={busy || !diff.unique} className="btn-primary text-sm">
             {busy ? 'Importing…' : `Import ${diff.unique || ''}`}
