@@ -872,10 +872,10 @@ export default function RangeForm() {
           </div>
           {form.status === 'stock' ? (
             <p className="text-xs text-ink-60 mb-3">
-              <strong>Last Stock</strong> — retired design, no re-runs. Critical components and MOQ
-              don't apply; the only thing that matters is how many finished units are left. Enter the
-              remaining units in <strong>Variations &amp; Stock → Stock by plating</strong> below —
-              that's the single source of truth for this item.
+              <strong>Last Stock</strong> — retired design, no re-runs. Availability is driven by
+              how many units can still be built from remaining component stock. Tick the critical
+              components below and keep their stock counts up to date — that's the single source
+              of truth for this item.
             </p>
           ) : (
             <p className="text-xs text-ink-60 mb-3">
@@ -1012,11 +1012,11 @@ export default function RangeForm() {
           <div className="mt-3 rounded-md bg-ivory/60 border border-ivory-dark p-3">
             <p className="text-[10px] uppercase tracking-wide text-ink-50 mb-1">What the customer sees</p>
             <p className="text-sm text-ink-80">{availability.promise}</p>
-            {form.status !== 'stock' && availability.buildable != null && (
+            {availability.buildable != null && (
               <p className="text-[11px] text-ink-50 mt-1">
-                Buildable now from component stock: <b>{availability.buildable}</b>
-                {availability.bottleneck ? ` (limited by ${availability.bottleneck})` : ''} ·
-                {' '}Ready stock: <b>{availability.finished}</b>
+                Buildable from component stock: <b>{availability.buildable}</b>
+                {availability.bottleneck ? ` (limited by ${availability.bottleneck})` : ''}
+                {form.status !== 'stock' && <> · Ready stock: <b>{availability.finished}</b></>}
               </p>
             )}
           </div>

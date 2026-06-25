@@ -9,6 +9,7 @@ const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.n
 import LoadingBar from '../components/LoadingBar'
 import { Gem } from 'lucide-react'
 import { useCrystalColors, colorMap } from '../crystalColors'
+import { useComponents, buildableFromComponents } from '../criticalComponents'
 
 const PLATING_DOT = Object.fromEntries(RANGE_PLATINGS.map(p => [p.name, p.dot]))
 const STATUS_META = Object.fromEntries(RANGE_STATUSES.map(s => [s.value, s]))
@@ -47,6 +48,7 @@ export default function Range() {
   const [stockOnly, setStockOnly] = useState(() => sessionStorage.getItem('rf-stock') === '1')
   const [seeding, setSeeding] = useState(false)
   const { colors: libColors } = useCrystalColors()
+  const { lib: compLib } = useComponents()
   const colorLookup = useMemo(() => colorMap(libColors), [libColors])
   const [seedLog, setSeedLog] = useState('')
 
@@ -142,12 +144,18 @@ export default function Range() {
     const body = p.body_code || bodyLetter(p.design_code)
     const variants = docVariants(p)
     const prices = variants.map(v => v.ws_price_usd).filter(x => x != null)
-    // Plated variants pool by plating; unplated variants count stock per SKU.
-    const pool = p.plating_stock && Object.keys(p.plating_stock).length ? p.plating_stock : null
-    const totalStock = pool
-      ? Object.values(pool).reduce((s, n) => s + (Number(n) > 0 ? Number(n) : 0), 0)
-        + variants.reduce((s, v) => s + (!(v.plating_code || '').trim() && v.stock_finished > 0 ? v.stock_finished : 0), 0)
-      : variants.reduce((s, v) => s + (v.stock_finished > 0 ? v.stock_finished : 0), 0)
+    // Last-stock: availability = buildable from remaining parts (component-driven).
+    // Active: finished surplus from plating pool or per-SKU stock_finished.
+    const isLastStock = p.status === 'stock'
+    const totalStock = isLastStock
+      ? (buildableFromComponents(p, compLib).qty ?? 0)
+      : (() => {
+          const pool = p.plating_stock && Object.keys(p.plating_stock).length ? p.plating_stock : null
+          return pool
+            ? Object.values(pool).reduce((s, n) => s + (Number(n) > 0 ? Number(n) : 0), 0)
+              + variants.reduce((s, v) => s + (!(v.plating_code || '').trim() && v.stock_finished > 0 ? v.stock_finished : 0), 0)
+            : variants.reduce((s, v) => s + (v.stock_finished > 0 ? v.stock_finished : 0), 0)
+        })()
     const platings = [...new Set(variants.map(v => v.plating_name).filter(Boolean))]
     const brands = [...new Set(variants.map(v => v.brand_code || fallbackBrand).filter(Boolean))]
     // The first gallery image is the chosen hero (MAIN badge in the editor);
@@ -178,7 +186,7 @@ export default function Range() {
       colorCount: new Set(variants.flatMap(v => Array.isArray(v.crystal_colors) ? v.crystal_colors : [])).size,
       mixes: p.crystal_mixes && typeof p.crystal_mixes === 'object' ? p.crystal_mixes : {},
     }
-  }), [products])
+  }), [products, compLib])
 
   // After returning from a product edit, scroll the last-opened card back into
   // view instead of resetting to the top of the list.
