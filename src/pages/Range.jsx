@@ -326,10 +326,10 @@ function Swatch({ code, mixes, lookup }) {
 }
 
 function ProductCard({ s, colorLookup = {} }) {
-  // Stock chips only for last-stock products. Show per-plating breakdown when
-  // available (C: 180 · G: 237), else fall back to a single total badge.
-  const platingEntries = s.status === 'stock' ? Object.entries(s.stockByPlating || {}) : []
-  const sb = s.status === 'stock' && !platingEntries.length ? stockBadge(s.totalStock) : null
+  // Show buildable chips for any product with component stock data.
+  // Last-stock: fixed pool. MTO: parts ready for fast assembly, reorderable when 0.
+  const platingEntries = Object.entries(s.stockByPlating || {})
+  const sb = !platingEntries.length && s.totalStock > 0 ? stockBadge(s.totalStock) : null
   // Only the codes actually ticked on this product's variations are shown.
   // A ticked code may be a single colour (library hex) or a mix code (composed
   // from this product's recipe in s.mixes) — but a mix recipe alone never adds a

@@ -1018,11 +1018,19 @@ export default function RangeForm() {
             {availability.buildable != null && (
               <p className="text-[11px] text-ink-50 mt-1">
                 {availability.byPlating && Object.keys(availability.byPlating).length ? (
-                  <>Buildable: {Object.entries(availability.byPlating).map(([p, n]) => <span key={p}><b>{p}: {n}</b></span>).reduce((a, b) => <>{a} · {b}</>)}</>
+                  <>
+                    Buildable:{' '}
+                    {Object.entries(availability.byPlating).map(([p, n], i) => (
+                      <span key={p}>
+                        {i > 0 && ' · '}
+                        <b>{p}: {n}</b>
+                        {availability.bottleneckByPlating?.[p] ? ` (ltd by ${availability.bottleneckByPlating[p]})` : ''}
+                      </span>
+                    ))}
+                  </>
                 ) : (
-                  <>Buildable: <b>{availability.buildable}</b></>
+                  <>Buildable: <b>{availability.buildable}</b>{availability.bottleneck ? ` (ltd by ${availability.bottleneck})` : ''}</>
                 )}
-                {availability.bottleneck ? ` (limited by ${availability.bottleneck})` : ''}
               </p>
             )}
           </div>

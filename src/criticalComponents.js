@@ -457,21 +457,24 @@ export function buildableFromComponents(product, lib) {
   const sharedCeiling = minOver(refs.filter(r => isShared(r, lib)))
   const sharedCap = Number.isFinite(sharedCeiling.q) ? sharedCeiling.q : Infinity
 
-  // Per-plating buildable: tagged parts for plating P + shared cap.
+  // Per-plating buildable: tagged parts for plating P capped by shared ceiling.
+  // Also track the bottleneck per plating (shared part wins when it's the binding cap).
   const byPlating = {}
+  const bottleneckByPlating = {}
   let sumTagged = 0, minTagged = Infinity, minTaggedCode = null
   for (const p of platings) {
     const tg = minOver(refs.filter(r => refPlating(r, lib) === p))
     if (!Number.isFinite(tg.q)) continue
     const platBuildable = Math.min(Math.max(0, tg.q), sharedCap)
     byPlating[p] = platBuildable
+    bottleneckByPlating[p] = (Number.isFinite(sharedCeiling.q) && sharedCeiling.q <= tg.q)
+      ? sharedCeiling.code : tg.code
     sumTagged += Math.max(0, tg.q)
     if (tg.q < minTagged) { minTagged = tg.q; minTaggedCode = tg.code }
   }
-  // Total = sum of per-plating buildable, capped by shared ceiling.
   const qty = Math.min(sharedCap, sumTagged)
   const bottleneck = (Number.isFinite(sharedCeiling.q) && sharedCeiling.q <= sumTagged) ? sharedCeiling.code : minTaggedCode
-  return { qty: Number.isFinite(qty) ? qty : null, bottleneck, byPlating }
+  return { qty: Number.isFinite(qty) ? qty : null, bottleneck, byPlating, bottleneckByPlating }
 }
 
 // Lead weeks to make from scratch the scarce parts. Returns { weeks, driver };
@@ -537,14 +540,14 @@ export function productAvailability(product, lib) {
   const status = product?.status === 'stock' ? 'stock' : 'active'   // 'active' = Made to Order
   const finished = finishedStockOf(product)
   const refs = refsOf(product)
-  const { qty: buildable, bottleneck, byPlating } = buildableFromComponents(product, lib)
+  const { qty: buildable, bottleneck, byPlating, bottleneckByPlating } = buildableFromComponents(product, lib)
   const make = makeLeadWeeks(product, lib)
   const assembly = numOrNull(product?.lead_time_weeks) ?? ASSEMBLY_WEEKS_DEFAULT
   const moq = numOrNull(product?.moq)
   const moqTxt = moq ? `, MOQ ${moq}` : ''
 
   const note = (product?.delivery_note || '').trim()
-  if (note) return { promise: note, leadWeeks: null, finished, buildable, bottleneck, byPlating, effectiveMoq: moq ?? 0 }
+  if (note) return { promise: note, leadWeeks: null, finished, buildable, bottleneck, byPlating, bottleneckByPlating, effectiveMoq: moq ?? 0 }
 
   let promise, leadWeeks, effectiveMoq
   if (status === 'stock') {                       // Last Stock — retired; availability from remaining parts
@@ -575,5 +578,5 @@ export function productAvailability(product, lib) {
     promise = `Made to order — ~${w} weeks${moqTxt}${drv}.`
     leadWeeks = w
   }
-  return { promise, leadWeeks, finished, buildable, bottleneck, byPlating, effectiveMoq }
+  return { promise, leadWeeks, finished, buildable, bottleneck, byPlating, bottleneckByPlating, effectiveMoq }
 }
