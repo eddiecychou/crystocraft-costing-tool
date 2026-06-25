@@ -145,7 +145,8 @@ export default function Range() {
     const variants = docVariants(p)
     const prices = variants.map(v => v.ws_price_usd).filter(x => x != null)
     // Availability is always component-driven (finished-goods pool removed).
-    const totalStock = buildableFromComponents(p, compLib).qty ?? 0
+    const { qty: totalStock, byPlating: stockByPlating } = buildableFromComponents(p, compLib)
+    const totalStockQty = totalStock ?? 0
     const platings = [...new Set(variants.map(v => v.plating_name).filter(Boolean))]
     const brands = [...new Set(variants.map(v => v.brand_code || fallbackBrand).filter(Boolean))]
     // The first gallery image is the chosen hero (MAIN badge in the editor);
@@ -170,7 +171,8 @@ export default function Range() {
       skus: variants.map(v => v.sku).filter(Boolean),
       minPrice: prices.length ? Math.min(...prices) : null,
       maxPrice: prices.length ? Math.max(...prices) : null,
-      totalStock,
+      totalStock: totalStockQty,
+      stockByPlating: stockByPlating || {},
       skuCount: variants.length,
       colorCodes: [...new Set(variants.flatMap(v => Array.isArray(v.crystal_colors) ? v.crystal_colors : []))],
       colorCount: new Set(variants.flatMap(v => Array.isArray(v.crystal_colors) ? v.crystal_colors : [])).size,
@@ -202,7 +204,7 @@ export default function Range() {
     const matchPtype = !ptype || s.product_type === ptype
     const matchPlating = true
     const matchStatus = status === 'all' || s.status === status
-    const matchStock = !stockOnly || s.status === 'stock'
+    const matchStock = !stockOnly || s.status === 'stock' && s.totalStock > 0
     return matchSearch && matchCat && matchPtype && matchPlating && matchStatus && matchStock
   }), [items, search, cat, ptype, status, stockOnly])
 
@@ -324,9 +326,10 @@ function Swatch({ code, mixes, lookup }) {
 }
 
 function ProductCard({ s, colorLookup = {} }) {
-  // Stock badge only for last-stock (retired) products — active products are MTO,
-  // a count is meaningless without an order context.
-  const sb = s.status === 'stock' ? stockBadge(s.totalStock) : null
+  // Stock chips only for last-stock products. Show per-plating breakdown when
+  // available (C: 180 · G: 237), else fall back to a single total badge.
+  const platingEntries = s.status === 'stock' ? Object.entries(s.stockByPlating || {}) : []
+  const sb = s.status === 'stock' && !platingEntries.length ? stockBadge(s.totalStock) : null
   // Only the codes actually ticked on this product's variations are shown.
   // A ticked code may be a single colour (library hex) or a mix code (composed
   // from this product's recipe in s.mixes) — but a mix recipe alone never adds a
@@ -384,6 +387,15 @@ function ProductCard({ s, colorLookup = {} }) {
         )}
         <div className="mt-auto pt-1.5 flex items-center justify-between gap-2 flex-wrap">
           <span className="text-base text-ink truncate">{priceRange(s.minPrice, s.maxPrice)}</span>
+          {platingEntries.length > 0 && (
+            <div className="flex items-center gap-1 flex-wrap justify-end">
+              {platingEntries.map(([p, n]) => (
+                <span key={p} className={`badge whitespace-nowrap shrink-0 text-[10px] ${n <= 0 ? 'bg-red-100 text-red-700' : n < 50 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                  {p}: {n}
+                </span>
+              ))}
+            </div>
+          )}
           {sb && <span className={`badge whitespace-nowrap shrink-0 ${sb.cls}`}>{sb.label}</span>}
         </div>
       </div>

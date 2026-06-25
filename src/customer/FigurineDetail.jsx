@@ -83,9 +83,14 @@ export default function FigurineDetail({ profile }) {
   const isLastStock = p.status === 'stock'
   // Last-stock: no MOQ (sell whatever is buildable); active: use product moq field.
   const moq = isLastStock ? 0 : (Number(p.moq) || 0)
-  // For last-stock, cap the order at however many can still be built from parts.
+  // For last-stock, cap at the selected plating's buildable (not the combined total).
   const avail = isLastStock ? productAvailability(p, compLib) : null
-  const maxPcs = isLastStock ? (avail?.buildable ?? 0) : Infinity
+  const selPlating = (selVariant.plating_code || '').trim().toUpperCase()
+  const maxPcs = isLastStock
+    ? (avail?.byPlating && selPlating && avail.byPlating[selPlating] != null
+        ? avail.byPlating[selPlating]
+        : avail?.buildable ?? 0)
+    : Infinity
   const maxCartons = ppc > 0 ? (maxPcs > 0 ? Math.ceil(maxPcs / ppc) : 0) : maxPcs
   const pcs = ppc > 0 ? cartons * ppc : cartons           // total pieces ordered (this selection)
   // MOQ applies across every variation AND format of this design (same body /

@@ -1017,7 +1017,11 @@ export default function RangeForm() {
             <p className="text-sm text-ink-80">{availability.promise}</p>
             {availability.buildable != null && (
               <p className="text-[11px] text-ink-50 mt-1">
-                Buildable from component stock: <b>{availability.buildable}</b>
+                {availability.byPlating && Object.keys(availability.byPlating).length ? (
+                  <>Buildable: {Object.entries(availability.byPlating).map(([p, n]) => <span key={p}><b>{p}: {n}</b></span>).reduce((a, b) => <>{a} · {b}</>)}</>
+                ) : (
+                  <>Buildable: <b>{availability.buildable}</b></>
+                )}
                 {availability.bottleneck ? ` (limited by ${availability.bottleneck})` : ''}
               </p>
             )}

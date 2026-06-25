@@ -454,20 +454,24 @@ export function buildableFromComponents(product, lib) {
     return { qty: Number.isFinite(q) ? q : null, bottleneck: code }
   }
 
-  const shared = minOver(refs.filter(r => isShared(r, lib)))
+  const sharedCeiling = minOver(refs.filter(r => isShared(r, lib)))
+  const sharedCap = Number.isFinite(sharedCeiling.q) ? sharedCeiling.q : Infinity
+
+  // Per-plating buildable: tagged parts for plating P + shared cap.
+  const byPlating = {}
   let sumTagged = 0, minTagged = Infinity, minTaggedCode = null
   for (const p of platings) {
     const tg = minOver(refs.filter(r => refPlating(r, lib) === p))
     if (!Number.isFinite(tg.q)) continue
+    const platBuildable = Math.min(Math.max(0, tg.q), sharedCap)
+    byPlating[p] = platBuildable
     sumTagged += Math.max(0, tg.q)
     if (tg.q < minTagged) { minTagged = tg.q; minTaggedCode = tg.code }
   }
-  // Cap the per-plating sum by the shared-parts ceiling (shared stock is shared).
-  const qty = Math.min(Number.isFinite(shared.q) ? shared.q : Infinity, sumTagged)
-  // Bottleneck = the shared part when it's the binding ceiling, else the scarcest
-  // plating-specific part.
-  const bottleneck = (Number.isFinite(shared.q) && shared.q <= sumTagged) ? shared.code : minTaggedCode
-  return { qty: Number.isFinite(qty) ? qty : null, bottleneck }
+  // Total = sum of per-plating buildable, capped by shared ceiling.
+  const qty = Math.min(sharedCap, sumTagged)
+  const bottleneck = (Number.isFinite(sharedCeiling.q) && sharedCeiling.q <= sumTagged) ? sharedCeiling.code : minTaggedCode
+  return { qty: Number.isFinite(qty) ? qty : null, bottleneck, byPlating }
 }
 
 // Lead weeks to make from scratch the scarce parts. Returns { weeks, driver };
@@ -533,21 +537,28 @@ export function productAvailability(product, lib) {
   const status = product?.status === 'stock' ? 'stock' : 'active'   // 'active' = Made to Order
   const finished = finishedStockOf(product)
   const refs = refsOf(product)
-  const { qty: buildable, bottleneck } = buildableFromComponents(product, lib)
+  const { qty: buildable, bottleneck, byPlating } = buildableFromComponents(product, lib)
   const make = makeLeadWeeks(product, lib)
   const assembly = numOrNull(product?.lead_time_weeks) ?? ASSEMBLY_WEEKS_DEFAULT
   const moq = numOrNull(product?.moq)
   const moqTxt = moq ? `, MOQ ${moq}` : ''
 
   const note = (product?.delivery_note || '').trim()
-  if (note) return { promise: note, leadWeeks: null, finished, buildable, bottleneck, effectiveMoq: moq ?? 0 }
+  if (note) return { promise: note, leadWeeks: null, finished, buildable, bottleneck, byPlating, effectiveMoq: moq ?? 0 }
 
   let promise, leadWeeks, effectiveMoq
   if (status === 'stock') {                       // Last Stock — retired; availability from remaining parts
-    effectiveMoq = 0                              // no minimum — sell whatever can still be built
-    promise = buildable > 0
-      ? `Final stock — ${buildable} buildable from remaining parts, no re-runs.`
-      : 'Sold out — no parts remaining.'
+    effectiveMoq = 0
+    if (byPlating && Object.keys(byPlating).length) {
+      const parts = Object.entries(byPlating).map(([p, n]) => `${p}: ${n}`).join(' · ')
+      promise = buildable > 0
+        ? `Final stock — no re-runs. (${parts})`
+        : 'Sold out — no parts remaining.'
+    } else {
+      promise = buildable > 0
+        ? `Final stock — ${buildable} buildable from remaining parts, no re-runs.`
+        : 'Sold out — no parts remaining.'
+    }
     leadWeeks = buildable > 0 ? assembly : null
   } else if (!refs.length) {                       // no critical parts tracked — pure MTO
     effectiveMoq = moq ?? 0
@@ -564,5 +575,5 @@ export function productAvailability(product, lib) {
     promise = `Made to order — ~${w} weeks${moqTxt}${drv}.`
     leadWeeks = w
   }
-  return { promise, leadWeeks, finished, buildable, bottleneck, effectiveMoq }
+  return { promise, leadWeeks, finished, buildable, bottleneck, byPlating, effectiveMoq }
 }
