@@ -881,9 +881,8 @@ export default function RangeForm() {
             <p className="text-xs text-ink-60 mb-3">
               Tick the <strong>critical</strong> parts this product needs (long-lead, tooling, MOQ, or
               supply-risk items only — not plating/crystal/boxes). Stock &amp; lead time live on each
-              component and are shared across products. Any units entered under <strong>Stock by
-              plating</strong> count as finished surplus that ships first. The customer promise below
-              is computed from status + ready stock + component availability.
+              component and are shared across products. The customer promise below is computed from
+              status + component stock.
             </p>
           )}
 
@@ -1016,7 +1015,6 @@ export default function RangeForm() {
               <p className="text-[11px] text-ink-50 mt-1">
                 Buildable from component stock: <b>{availability.buildable}</b>
                 {availability.bottleneck ? ` (limited by ${availability.bottleneck})` : ''}
-                {form.status !== 'stock' && <> · Ready stock: <b>{availability.finished}</b></>}
               </p>
             )}
           </div>

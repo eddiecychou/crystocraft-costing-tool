@@ -543,11 +543,7 @@ export function productAvailability(product, lib) {
       ? `Final stock — ${buildable} buildable from remaining parts, no re-runs.`
       : 'Sold out — no parts remaining.'
     leadWeeks = buildable > 0 ? assembly : null
-  } else if (finished > 0) {                       // Made to Order, but we have ready stock
-    effectiveMoq = moq ?? 0
-    promise = 'In stock — ships in ~1 week.'
-    leadWeeks = 1
-  } else if (!refs.length) {                       // no critical parts tracked
+  } else if (!refs.length) {                       // no critical parts tracked — pure MTO
     effectiveMoq = moq ?? 0
     promise = `Made to order — ~${assembly} weeks${moqTxt}.`
     leadWeeks = assembly
@@ -555,7 +551,7 @@ export function productAvailability(product, lib) {
     effectiveMoq = moq ?? 0
     promise = `Made to order — ~${assembly} weeks${moqTxt} (${buildable} buildable from stock now).`
     leadWeeks = assembly
-  } else {                                         // must produce the scarce part first
+  } else {                                         // must source the scarce part first
     effectiveMoq = moq ?? 0
     const w = make.weeks != null ? make.weeks : assembly
     const drv = make.driver ? ` — lead set by ${make.driver}` : ''

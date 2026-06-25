@@ -144,18 +144,8 @@ export default function Range() {
     const body = p.body_code || bodyLetter(p.design_code)
     const variants = docVariants(p)
     const prices = variants.map(v => v.ws_price_usd).filter(x => x != null)
-    // Last-stock: availability = buildable from remaining parts (component-driven).
-    // Active: finished surplus from plating pool or per-SKU stock_finished.
-    const isLastStock = p.status === 'stock'
-    const totalStock = isLastStock
-      ? (buildableFromComponents(p, compLib).qty ?? 0)
-      : (() => {
-          const pool = p.plating_stock && Object.keys(p.plating_stock).length ? p.plating_stock : null
-          return pool
-            ? Object.values(pool).reduce((s, n) => s + (Number(n) > 0 ? Number(n) : 0), 0)
-              + variants.reduce((s, v) => s + (!(v.plating_code || '').trim() && v.stock_finished > 0 ? v.stock_finished : 0), 0)
-            : variants.reduce((s, v) => s + (v.stock_finished > 0 ? v.stock_finished : 0), 0)
-        })()
+    // Availability is always component-driven (finished-goods pool removed).
+    const totalStock = buildableFromComponents(p, compLib).qty ?? 0
     const platings = [...new Set(variants.map(v => v.plating_name).filter(Boolean))]
     const brands = [...new Set(variants.map(v => v.brand_code || fallbackBrand).filter(Boolean))]
     // The first gallery image is the chosen hero (MAIN badge in the editor);
