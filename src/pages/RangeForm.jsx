@@ -886,8 +886,8 @@ export default function RangeForm() {
             </p>
           )}
 
-          {form.status !== 'stock' && (
           <>
+          {form.status !== 'stock' && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4 [&_label.label]:min-h-[2.2rem] [&_label.label]:flex [&_label.label]:items-end">
             <div>
               <label className="label">MOQ <span className="text-ink-60 font-normal">(made-to-order)</span></label>
@@ -902,6 +902,7 @@ export default function RangeForm() {
                      placeholder="2" />
             </div>
           </div>
+          )}
 
           {/* Critical components multi-select */}
           {libComponents.length === 0 ? (
@@ -999,7 +1000,6 @@ export default function RangeForm() {
             </>
           )}
           </>
-          )}
 
           {/* Optional override + computed customer promise */}
           <div className="mt-4">
