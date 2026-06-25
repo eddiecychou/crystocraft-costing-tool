@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { collection, query, orderBy, onSnapshot, addDoc, getDocs, deleteDoc, doc, serverTimestamp, writeBatch } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, addDoc, getDocs, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import rangeData from '../data/rangeProducts.json'
@@ -215,36 +215,6 @@ export default function Range() {
     stock: items.filter(s => s.status === 'stock').length,
   }), [items])
 
-  const [applyingDefaults, setApplyingDefaults] = useState(false)
-
-  async function applyProductDefaults() {
-    if (!window.confirm(
-      'Set lead_time_weeks = 3 and moq = 100 on all products that do not already have these values?\n\nYou can override individual products afterward.'
-    )) return
-    setApplyingDefaults(true)
-    try {
-      const snap = await getDocs(collection(db, 'range_products'))
-      const toUpdate = snap.docs.filter(d => {
-        const lt = Number(d.data().lead_time_weeks)
-        const moq = Number(d.data().moq)
-        return !(lt > 0) || !(moq > 0)
-      })
-      // Firestore batch limit = 500 writes
-      for (let i = 0; i < toUpdate.length; i += 500) {
-        const batch = writeBatch(db)
-        for (const d of toUpdate.slice(i, i + 500)) {
-          const data = {}
-          if (!(Number(d.data().lead_time_weeks) > 0)) data.lead_time_weeks = 3
-          if (!(Number(d.data().moq) > 0)) data.moq = 100
-          batch.update(doc(db, 'range_products', d.id), data)
-        }
-        await batch.commit()
-      }
-      alert(`Done — updated ${toUpdate.length} products.`)
-    } catch (e) { alert('Error: ' + e.message) }
-    finally { setApplyingDefaults(false) }
-  }
-
   const totalSkus = items.reduce((n, s) => n + s.skuCount, 0)
   const totalValue = filtered.reduce((sum, s) =>
     sum + s.variants.reduce((a, v) => a + (v.ws_price_usd && v.stock_finished > 0 ? v.ws_price_usd * v.stock_finished : 0), 0), 0)
@@ -283,10 +253,6 @@ export default function Range() {
           <p className="text-xs text-ink-60">Stock value ≈ ${Math.round(totalValue).toLocaleString()} USD (WS)</p>
         </div>
         <div className="flex gap-2 shrink-0 flex-wrap justify-end">
-          <button onClick={applyProductDefaults} disabled={applyingDefaults}
-                  className="btn-secondary text-sm" title="Set lead time = 3 wks and MOQ = 100 on products missing these values">
-            {applyingDefaults ? 'Applying…' : 'Apply defaults'}
-          </button>
           <Link to="/range/new" className="btn-primary text-sm text-center">+ New product</Link>
         </div>
       </div>

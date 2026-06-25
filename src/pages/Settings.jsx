@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs, writeBatch } from 'firebase/firestore'
 import { db } from '../firebase'
 import { RefreshCw } from 'lucide-react'
 import CatalogueBand from './CatalogueBand'
@@ -17,6 +17,7 @@ const PRODUCT_TABS = [
   { v: 'band',       label: 'Catalogue Band' },
   { v: 'images',     label: 'Import Images' },
   { v: 'categories', label: 'Bulk Categories' },
+  { v: 'defaults',   label: 'Defaults' },
 ]
 
 export default function Settings() {
@@ -74,9 +75,75 @@ export default function Settings() {
                 <BulkCategoryEditor />
               </div>
             )}
+            {productTab === 'defaults' && <ProductDefaults />}
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+function ProductDefaults() {
+  const [leadTime, setLeadTime] = useState('3')
+  const [moq, setMoq] = useState('100')
+  const [busy, setBusy] = useState(false)
+  const [log, setLog] = useState('')
+
+  async function apply() {
+    const lt = Number(leadTime)
+    const mq = Number(moq)
+    if (!lt || !mq) { setLog('Please enter valid values for both fields.'); return }
+    if (!window.confirm(
+      `Set assembly lead time = ${lt} weeks and MOQ = ${mq} pcs on all products that do not already have these values?\n\nYou can override individual products afterward.`
+    )) return
+    setBusy(true); setLog('')
+    try {
+      const snap = await getDocs(collection(db, 'range_products'))
+      const toUpdate = snap.docs.filter(d => !(Number(d.data().lead_time_weeks) > 0) || !(Number(d.data().moq) > 0))
+      for (let i = 0; i < toUpdate.length; i += 500) {
+        const batch = writeBatch(db)
+        for (const d of toUpdate.slice(i, i + 500)) {
+          const data = {}
+          if (!(Number(d.data().lead_time_weeks) > 0)) data.lead_time_weeks = lt
+          if (!(Number(d.data().moq) > 0)) data.moq = mq
+          batch.update(doc(db, 'range_products', d.id), data)
+        }
+        await batch.commit()
+      }
+      setLog(`Done — updated ${toUpdate.length} product${toUpdate.length !== 1 ? 's' : ''}.`)
+    } catch (e) { setLog('Error: ' + e.message) }
+    finally { setBusy(false) }
+  }
+
+  return (
+    <div className="p-4 md:p-6 max-w-lg">
+      <h2 className="text-lg font-semibold mb-1">Product Defaults</h2>
+      <p className="text-sm text-ink-60 mb-4">
+        Apply default assembly lead time and MOQ to all figurine products that do not already have these fields set.
+        Products with existing values are left untouched — override them individually in the product editor.
+      </p>
+      <div className="card p-5 space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="label">Assembly lead time <span className="text-ink-60 font-normal">(weeks)</span></label>
+            <input className="input" type="number" min="1" value={leadTime}
+                   onChange={e => setLeadTime(e.target.value)} placeholder="3" />
+            <p className="text-[11px] text-ink-50 mt-1">Weeks to assemble when components are on hand</p>
+          </div>
+          <div>
+            <label className="label">MOQ <span className="text-ink-60 font-normal">(pcs)</span></label>
+            <input className="input" type="number" min="1" value={moq}
+                   onChange={e => setMoq(e.target.value)} placeholder="100" />
+            <p className="text-[11px] text-ink-50 mt-1">Minimum order quantity for made-to-order</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
+          <button onClick={apply} disabled={busy} className="btn-primary text-sm">
+            {busy ? 'Applying…' : 'Apply to products without values'}
+          </button>
+          {log && <p className={`text-sm ${log.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{log}</p>}
+        </div>
+      </div>
     </div>
   )
 }
