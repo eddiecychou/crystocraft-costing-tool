@@ -202,7 +202,7 @@ export default function Range() {
     const matchPtype = !ptype || s.product_type === ptype
     const matchPlating = true
     const matchStatus = status === 'all' || s.status === status
-    const matchStock = !stockOnly || s.totalStock > 0
+    const matchStock = !stockOnly || s.status === 'stock'
     return matchSearch && matchCat && matchPtype && matchPlating && matchStatus && matchStock
   }), [items, search, cat, ptype, status, stockOnly])
 
@@ -324,7 +324,9 @@ function Swatch({ code, mixes, lookup }) {
 }
 
 function ProductCard({ s, colorLookup = {} }) {
-  const sb = stockBadge(s.variants.length ? s.totalStock : null)
+  // Stock badge only for last-stock (retired) products — active products are MTO,
+  // a count is meaningless without an order context.
+  const sb = s.status === 'stock' ? stockBadge(s.totalStock) : null
   // Only the codes actually ticked on this product's variations are shown.
   // A ticked code may be a single colour (library hex) or a mix code (composed
   // from this product's recipe in s.mixes) — but a mix recipe alone never adds a
@@ -382,7 +384,7 @@ function ProductCard({ s, colorLookup = {} }) {
         )}
         <div className="mt-auto pt-1.5 flex items-center justify-between gap-2 flex-wrap">
           <span className="text-base text-ink truncate">{priceRange(s.minPrice, s.maxPrice)}</span>
-          <span className={`badge whitespace-nowrap shrink-0 ${sb.cls}`}>{sb.label}</span>
+          {sb && <span className={`badge whitespace-nowrap shrink-0 ${sb.cls}`}>{sb.label}</span>}
         </div>
       </div>
     </Link>
