@@ -967,7 +967,11 @@ export default function RangeForm() {
                     const inferredPlating = !r.plating_code && c?.plating_code ? c.plating_code : ''
                     return (
                       <div key={key} className="flex items-center gap-2 text-xs flex-wrap">
-                        <span className="font-mono text-ink-80 w-24 shrink-0 truncate" title={c?.code || r.code}>{c?.code || r.code}</span>
+                        <span className="font-mono text-ink-80 shrink-0 max-w-[7rem] truncate cursor-help select-all"
+                              title={c?.code || r.code}
+                              onClick={e => { e.currentTarget.style.maxWidth = e.currentTarget.style.maxWidth === 'none' ? '7rem' : 'none'; e.currentTarget.classList.toggle('truncate') }}>
+                          {c?.code || r.code}
+                        </span>
                         <span className="flex-1 min-w-0 truncate text-ink-70">{c?.name || <span className="text-amber-600">not in library</span>}</span>
                         {/* Plating scope — blank = infer from component (shown as auto label) */}
                         <select

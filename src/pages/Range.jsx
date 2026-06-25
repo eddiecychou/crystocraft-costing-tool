@@ -145,7 +145,7 @@ export default function Range() {
     const variants = docVariants(p)
     const prices = variants.map(v => v.ws_price_usd).filter(x => x != null)
     // Availability is always component-driven (finished-goods pool removed).
-    const { qty: totalStock, byPlating: stockByPlating } = buildableFromComponents(p, compLib)
+    const { qty: totalStock, byPlating: stockByPlating, bottleneckByPlating: stockBottleneckByPlating } = buildableFromComponents(p, compLib)
     const totalStockQty = totalStock ?? 0
     const platings = [...new Set(variants.map(v => v.plating_name).filter(Boolean))]
     const brands = [...new Set(variants.map(v => v.brand_code || fallbackBrand).filter(Boolean))]
@@ -173,6 +173,7 @@ export default function Range() {
       maxPrice: prices.length ? Math.max(...prices) : null,
       totalStock: totalStockQty,
       stockByPlating: stockByPlating || {},
+      stockBottleneckByPlating: stockBottleneckByPlating || {},
       skuCount: variants.length,
       colorCodes: [...new Set(variants.flatMap(v => Array.isArray(v.crystal_colors) ? v.crystal_colors : []))],
       colorCount: new Set(variants.flatMap(v => Array.isArray(v.crystal_colors) ? v.crystal_colors : [])).size,
@@ -389,11 +390,16 @@ function ProductCard({ s, colorLookup = {} }) {
           <span className="text-base text-ink truncate">{priceRange(s.minPrice, s.maxPrice)}</span>
           {platingEntries.length > 0 && (
             <div className="flex items-center gap-1 flex-wrap justify-end">
-              {platingEntries.map(([p, n]) => (
-                <span key={p} className={`badge whitespace-nowrap shrink-0 text-[10px] ${n <= 0 ? 'bg-red-100 text-red-700' : n < 50 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                  {p}: {n}
-                </span>
-              ))}
+              {platingEntries.map(([p, n]) => {
+                const bn = s.stockBottleneckByPlating?.[p]
+                const tip = bn ? `Limited by ${bn}` : `${p}: ${n} buildable`
+                return (
+                  <span key={p} title={tip}
+                        className={`badge whitespace-nowrap shrink-0 text-[10px] cursor-help ${n <= 0 ? 'bg-red-100 text-red-700' : n < 50 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                    {p}: {n}
+                  </span>
+                )
+              })}
             </div>
           )}
           {sb && <span className={`badge whitespace-nowrap shrink-0 ${sb.cls}`}>{sb.label}</span>}
