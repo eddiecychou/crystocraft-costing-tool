@@ -16,6 +16,7 @@ import { RANGE_FORMAT_CODES } from '../constants'
 const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.label]))
 import LoadingBar from '../components/LoadingBar'
 import VideoEmbed from '../components/VideoEmbed'
+import { useComponents, productAvailability } from '../criticalComponents'
 
 function docVariants(p) {
   if (Array.isArray(p.variants) && p.variants.length) return p.variants
@@ -36,6 +37,7 @@ export default function FigurineDetail({ profile }) {
   const lookup = useMemo(() => colorMap(libColors), [libColors])
   const cart = useCart()
   const { moq: formatMoqMap, labels: formatLabels } = useFormatMoq()
+  const { lib: compLib } = useComponents()
   const cur = profile?.base_currency || 'USD'
   const disc = Math.max(0, Math.min(100, Number(profile?.ws_discount_pct) || 0)) / 100
 
@@ -78,7 +80,13 @@ export default function FigurineDetail({ profile }) {
   })
 
   const ppc = Number(p.packing?.pcs_per_carton) || 0    // pcs per carton (0 = unknown)
-  const moq = Number(p.moq) || 0                          // design-level made-to-order minimum
+  const isLastStock = p.status === 'stock'
+  // Last-stock: no MOQ (sell whatever is buildable); active: use product moq field.
+  const moq = isLastStock ? 0 : (Number(p.moq) || 0)
+  // For last-stock, cap the order at however many can still be built from parts.
+  const avail = isLastStock ? productAvailability(p, compLib) : null
+  const maxPcs = isLastStock ? (avail?.buildable ?? 0) : Infinity
+  const maxCartons = ppc > 0 ? (maxPcs > 0 ? Math.ceil(maxPcs / ppc) : 0) : maxPcs
   const pcs = ppc > 0 ? cartons * ppc : cartons           // total pieces ordered (this selection)
   // MOQ applies across every variation AND format of this design (same body /
   // design number — freestand, music box, bible, …), so include any pieces of
@@ -215,10 +223,10 @@ export default function FigurineDetail({ profile }) {
                 <div className="inline-flex items-center border border-ivory-dark rounded-md overflow-hidden">
                   <button type="button" onClick={() => setCartons(c => Math.max(1, c - 1))}
                     className="px-2.5 py-2 hover:bg-ivory text-ink-70" aria-label="Decrease"><Minus size={14} /></button>
-                  <input type="number" min="1" value={cartons}
-                    onChange={e => setCartons(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+                  <input type="number" min="1" max={maxCartons < Infinity ? maxCartons : undefined} value={cartons}
+                    onChange={e => setCartons(Math.min(maxCartons, Math.max(1, Math.floor(Number(e.target.value) || 1))))}
                     className="w-14 text-center text-sm py-1.5 outline-none border-x border-ivory-dark" />
-                  <button type="button" onClick={() => setCartons(c => c + 1)}
+                  <button type="button" onClick={() => setCartons(c => Math.min(maxCartons, c + 1))}
                     className="px-2.5 py-2 hover:bg-ivory text-ink-70" aria-label="Increase"><Plus size={14} /></button>
                 </div>
                 <span className="text-sm text-ink-60">

@@ -521,7 +521,8 @@ export function finishedStockOf(product) {
 
 // Compose the single customer-facing promise from lifecycle status + live
 // availability. A non-empty product.delivery_note overrides everything.
-// Returns { promise, leadWeeks, finished, buildable, bottleneck }.
+// Returns { promise, leadWeeks, finished, buildable, bottleneck, effectiveMoq }.
+// effectiveMoq: 0 for last-stock (sell whatever remains, no minimum), else product.moq.
 export function productAvailability(product, lib) {
   const status = product?.status === 'stock' ? 'stock' : 'active'   // 'active' = Made to Order
   const finished = finishedStockOf(product)
@@ -533,26 +534,33 @@ export function productAvailability(product, lib) {
   const moqTxt = moq ? `, MOQ ${moq}` : ''
 
   const note = (product?.delivery_note || '').trim()
-  if (note) return { promise: note, leadWeeks: null, finished, buildable, bottleneck }
+  if (note) return { promise: note, leadWeeks: null, finished, buildable, bottleneck, effectiveMoq: moq ?? 0 }
 
-  let promise, leadWeeks
-  if (status === 'stock') {                       // Last Stock — retired
-    promise = finished > 0 ? `Final stock — only ${finished} left, no re-runs.` : 'Sold out — discontinued.'
-    leadWeeks = finished > 0 ? 1 : null
+  let promise, leadWeeks, effectiveMoq
+  if (status === 'stock') {                       // Last Stock — retired; availability from remaining parts
+    effectiveMoq = 0                              // no minimum — sell whatever can still be built
+    promise = buildable > 0
+      ? `Final stock — ${buildable} buildable from remaining parts, no re-runs.`
+      : 'Sold out — no parts remaining.'
+    leadWeeks = buildable > 0 ? assembly : null
   } else if (finished > 0) {                       // Made to Order, but we have ready stock
+    effectiveMoq = moq ?? 0
     promise = 'In stock — ships in ~1 week.'
     leadWeeks = 1
   } else if (!refs.length) {                       // no critical parts tracked
+    effectiveMoq = moq ?? 0
     promise = `Made to order — ~${assembly} weeks${moqTxt}.`
     leadWeeks = assembly
   } else if (buildable && buildable > 0) {         // parts on hand, just assemble
+    effectiveMoq = moq ?? 0
     promise = `Made to order — ~${assembly} weeks${moqTxt} (${buildable} buildable from stock now).`
     leadWeeks = assembly
   } else {                                         // must produce the scarce part first
+    effectiveMoq = moq ?? 0
     const w = make.weeks != null ? make.weeks : assembly
     const drv = make.driver ? ` — lead set by ${make.driver}` : ''
     promise = `Made to order — ~${w} weeks${moqTxt}${drv}.`
     leadWeeks = w
   }
-  return { promise, leadWeeks, finished, buildable, bottleneck }
+  return { promise, leadWeeks, finished, buildable, bottleneck, effectiveMoq }
 }

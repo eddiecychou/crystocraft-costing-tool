@@ -1112,41 +1112,6 @@ export default function RangeForm() {
           </div>
           <p className="text-xs text-ink-60 mb-3">One row per plating. Tick the crystal colours each plating can be made in — colours don't create separate SKUs, stock, or price changes; the SKU is built at quote time. For a colour that costs more, add a separate variation with its own price.</p>
 
-          {/* Stock pool, held per plating (the binding constraint), shared across
-              that plating's crystal-colour / running-no variants. */}
-          <div className="border border-ivory-dark rounded-md p-3 mb-4 bg-ivory/40">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-medium">Stock by plating</h3>
-              <span className="text-xs text-ink-60">Total {platingStockTotal} pcs</span>
-            </div>
-            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5 mb-2 leading-tight">
-              <b>Legacy — B2C finished stock.</b> This is the WooCommerce finished-goods pool and is
-              moving to component stock. Don't rely on it for B2B availability; figurine availability
-              will be driven by critical-component stock.
-            </p>
-            <p className="text-[11px] text-ink-60 mb-2 leading-tight">
-              Stock is counted per plating and shared by all crystal-colour / running-no
-              variants of that plating. A variant can still set its own count below to
-              override the pool for that specific SKU. Variants with <b>no plating</b>
-              {' '}(e.g. crystal-body items) track stock per SKU in the rows below instead.
-            </p>
-            {platingsUsed(form.variants).length === 0 ? (
-              <p className="text-xs text-ink-60">No plated variants — stock is entered per SKU in the rows below.</p>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {platingsUsed(form.variants).map(code => (
-                  <div key={code || '_none'}>
-                    <label className="label">
-                      {code ? `${code}${PLATING_NAME[code] ? ' · ' + PLATING_NAME[code] : ''}` : '(no plating)'}
-                    </label>
-                    <input className="input text-xs" inputMode="numeric"
-                           value={form.plating_stock[code] ?? ''} onChange={setPlatingStock(code)}
-                           placeholder="0" />
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
 
           <div className="space-y-4">
             {form.variants.map((v, i) => {
@@ -1255,17 +1220,6 @@ export default function RangeForm() {
                         <div>
                           <label className="label">WS Price USD</label>
                           <input className="input text-xs" type="number" step="0.01" value={v.ws_price_usd} onChange={setVariant(i, 'ws_price_usd')} />
-                        </div>
-                        <div>
-                          <label className="label">
-                            {platingKey(v)
-                              ? <>Stock <span className="text-ink-60 font-normal">(opt.)</span></>
-                              : 'Stock (pcs)'}
-                          </label>
-                          <input className="input text-xs" inputMode="numeric"
-                                 value={v.stock_finished}
-                                 placeholder={platingKey(v) ? 'pool' : '0'}
-                                 onChange={e => patchVariant(i, { stock_finished: e.target.value.replace(/[^\d]/g, '') })} />
                         </div>
                         <div>
                           <label className="label">Packaging</label>
