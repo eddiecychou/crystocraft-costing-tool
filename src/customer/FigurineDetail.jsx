@@ -32,6 +32,7 @@ export default function FigurineDetail({ profile }) {
   const [finishIdx, setFinishIdx] = useState(0)
   const [color, setColor] = useState(null)
   const [cartons, setCartons] = useState(1)
+  const [stockPcs, setStockPcs] = useState(1)   // pcs input used for last-stock orders
   const rates = useRates()
   const { colors: libColors } = useCrystalColors()
   const lookup = useMemo(() => colorMap(libColors), [libColors])
@@ -111,8 +112,10 @@ export default function FigurineDetail({ profile }) {
   const maxPcs = isLastStock
     ? (platBuildable(selPlating) ?? avail?.buildable ?? 0)
     : Infinity
-  const maxCartons = ppc > 0 ? (maxPcs > 0 ? Math.ceil(maxPcs / ppc) : 0) : maxPcs
-  const pcs = ppc > 0 ? cartons * ppc : cartons           // total pieces ordered (this selection)
+  const maxCartons = ppc > 0 ? Math.floor(maxPcs / ppc) : maxPcs
+  // Last-stock orders are in pcs directly (no carton rounding that could exceed remaining stock).
+  // MTO orders are in cartons as usual.
+  const pcs = isLastStock ? stockPcs : (ppc > 0 ? cartons * ppc : cartons)
   // MOQ applies across every variation AND format of this design (same body /
   // design number — freestand, music box, bible, …), so include any pieces of
   // the same design already sitting in the enquiry cart.
@@ -141,6 +144,7 @@ export default function FigurineDetail({ profile }) {
     const v = variants[i] || {}
     const fc = (Array.isArray(v.crystal_colors) && v.crystal_colors.length) ? v.crystal_colors : colorCodes
     setColor(c => (c && fc.includes(c)) ? c : null)
+    setStockPcs(1)   // reset pcs when plating changes (different stock cap)
   }
 
   const addToEnquiry = () => {
@@ -249,24 +253,42 @@ export default function FigurineDetail({ profile }) {
             </div>
           )}
 
-          {/* Quantity — wholesale, ordered by carton */}
+          {/* Quantity */}
           {!inCart && (
             <div className="mt-4">
               <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-1.5">
-                Quantity {ppc > 0 && <span className="normal-case text-ink-40">· {ppc} pcs/carton</span>}
+                {isLastStock
+                  ? <>Quantity <span className="normal-case text-ink-40">· pcs (max {maxPcs})</span></>
+                  : <>Quantity {ppc > 0 && <span className="normal-case text-ink-40">· {ppc} pcs/carton</span>}</>}
               </p>
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="inline-flex items-center border border-ivory-dark rounded-md overflow-hidden">
-                  <button type="button" onClick={() => setCartons(c => Math.max(1, c - 1))}
-                    className="px-2.5 py-2 hover:bg-ivory text-ink-70" aria-label="Decrease"><Minus size={14} /></button>
-                  <input type="number" min="1" max={maxCartons < Infinity ? maxCartons : undefined} value={cartons}
-                    onChange={e => setCartons(Math.min(maxCartons, Math.max(1, Math.floor(Number(e.target.value) || 1))))}
-                    className="w-14 text-center text-sm py-1.5 outline-none border-x border-ivory-dark" />
-                  <button type="button" onClick={() => setCartons(c => Math.min(maxCartons, c + 1))}
-                    className="px-2.5 py-2 hover:bg-ivory text-ink-70" aria-label="Increase"><Plus size={14} /></button>
+                  {isLastStock ? (
+                    <>
+                      <button type="button" onClick={() => setStockPcs(n => Math.max(1, n - 1))}
+                        className="px-2.5 py-2 hover:bg-ivory text-ink-70" aria-label="Decrease"><Minus size={14} /></button>
+                      <input type="number" min="1" max={maxPcs > 0 ? maxPcs : 1} value={stockPcs}
+                        onChange={e => setStockPcs(Math.min(maxPcs, Math.max(1, Math.floor(Number(e.target.value) || 1))))}
+                        className="w-16 text-center text-sm py-1.5 outline-none border-x border-ivory-dark" />
+                      <button type="button" onClick={() => setStockPcs(n => Math.min(maxPcs, n + 1))}
+                        className="px-2.5 py-2 hover:bg-ivory text-ink-70" aria-label="Increase"><Plus size={14} /></button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" onClick={() => setCartons(c => Math.max(1, c - 1))}
+                        className="px-2.5 py-2 hover:bg-ivory text-ink-70" aria-label="Decrease"><Minus size={14} /></button>
+                      <input type="number" min="1" max={maxCartons < Infinity ? maxCartons : undefined} value={cartons}
+                        onChange={e => setCartons(Math.min(maxCartons, Math.max(1, Math.floor(Number(e.target.value) || 1))))}
+                        className="w-14 text-center text-sm py-1.5 outline-none border-x border-ivory-dark" />
+                      <button type="button" onClick={() => setCartons(c => Math.min(maxCartons, c + 1))}
+                        className="px-2.5 py-2 hover:bg-ivory text-ink-70" aria-label="Increase"><Plus size={14} /></button>
+                    </>
+                  )}
                 </div>
                 <span className="text-sm text-ink-60">
-                  {ppc > 0 ? `${cartons} carton${cartons > 1 ? 's' : ''} = ${pcs.toLocaleString()} pcs` : `${pcs.toLocaleString()} pcs`}
+                  {isLastStock
+                    ? `${stockPcs.toLocaleString()} pcs`
+                    : ppc > 0 ? `${cartons} carton${cartons > 1 ? 's' : ''} = ${pcs.toLocaleString()} pcs` : `${pcs.toLocaleString()} pcs`}
                 </span>
               </div>
               {selVariant.ws_price_usd != null && colorValid && (

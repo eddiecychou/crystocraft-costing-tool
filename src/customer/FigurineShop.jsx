@@ -13,6 +13,8 @@ import FavHeart from './FavHeart'
 import LoadingBar from '../components/LoadingBar'
 
 const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.label]))
+// B-prefix = non-figurine accessories (MagSafe cases, etc.) — sort after main figurine range
+const BRAND_SORT_ORDER = { D: 0, A: 1, M: 2, H: 3, U: 4, UA: 4, B: 9 }
 // Normalise a design number the same way designGroupKey does (strip leading zeros).
 const normDesign = raw => {
   const s = String(raw ?? '').trim()
@@ -61,11 +63,12 @@ export default function FigurineShop({ profile }) {
     const prices = variants.map(v => v.ws_price_usd).filter(x => x != null)
     // First gallery image is the chosen hero; variant image is only a fallback.
     const image = galleryUrl(p.gallery?.[0]) || variants.find(v => v.image)?.image || ''
-    // Always use fallbackBrand as prefix — multi-brand products still have a single
-    // design identity (e.g. D0002) that staff search by.
-    const code = [`${fallbackBrand}${body}${designNo}`, p.format_code].filter(Boolean).join('-')
+    // Use variant brand_code (single-brand) or fallbackBrand (multi-brand) as prefix.
+    // Never include body in the listing code — product codes are brand+design+format only.
+    const brandPrefix = brands.length === 1 ? brands[0] : fallbackBrand
+    const code = [`${brandPrefix}${designNo}`, p.format_code].filter(Boolean).join('-')
     return {
-      id: p.id, code,
+      id: p.id, code, brandPrefix,
       design_key: normDesign(designNo),
       format_code: String(p.format_code || '').trim(),
       name: p.description || p.design_name || code,
@@ -90,7 +93,13 @@ export default function FigurineShop({ profile }) {
       const mf = !formatFilter || s.format_code === formatFilter
       return ms && md && mf && (coll || !cat || s.design_type === cat)
     })
-    return coll?.type === 'manual' ? out : out.sort(newFirst)   // keep manual pick order
+    if (coll?.type === 'manual') return out
+    return out.sort((a, b) => {
+      const ap = BRAND_SORT_ORDER[a.brandPrefix] ?? 5
+      const bp = BRAND_SORT_ORDER[b.brandPrefix] ?? 5
+      if (ap !== bp) return ap - bp
+      return newFirst(a, b)
+    })
   }, [items, coll, search, cat, designFilter, formatFilter])
 
   const formatName = formatLabels[formatFilter] || FORMAT_LABEL[formatFilter] || `Format ${formatFilter}`
