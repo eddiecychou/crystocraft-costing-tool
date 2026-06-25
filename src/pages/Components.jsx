@@ -255,7 +255,7 @@ function StockListImportModal({ components, onClose }) {
         </p>
         <textarea className="input min-h-[160px] font-mono text-xs" value={text}
                   onChange={e => setText(e.target.value)}
-                  placeholder={'D0001-001-C\tChrome (C)\tFM-KB(1)-ORNT(C)\t蝴蝶\t44.65\t6'} />
+                  placeholder={'D0001-001-C | Chrome (C) | FM-KB(1)-ORNT(C) | 蝴蝶 | 44 | 6'} />
         <p className="text-xs text-ink-50 mt-1">
           {rows.length} row{rows.length === 1 ? '' : 's'} · {diff.unique} unique component{diff.unique === 1 ? '' : 's'}
           {diff.unique > 0 && <> — <span className="text-green-600">{diff.created} new</span>, <span className="text-blue-600">{diff.updated} update</span></>}

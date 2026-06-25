@@ -582,8 +582,9 @@ export function productAvailability(product, lib) {
     leadWeeks = assembly
   } else {                                         // must source the scarce part first
     effectiveMoq = moq ?? 0
-    const w = make.weeks != null ? make.weeks : assembly
-    const drv = make.driver ? ` — lead set by ${make.driver}` : ''
+    // Total = component procurement lead + assembly. If no component data, fall back to assembly alone.
+    const w = make.weeks != null ? make.weeks + assembly : assembly
+    const drv = make.driver ? ` — waiting on ${make.driver}` : ''
     promise = `Made to order — ~${w} weeks${moqTxt}${drv}.`
     leadWeeks = w
   }
