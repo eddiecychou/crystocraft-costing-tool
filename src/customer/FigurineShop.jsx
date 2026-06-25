@@ -61,7 +61,9 @@ export default function FigurineShop({ profile }) {
     const prices = variants.map(v => v.ws_price_usd).filter(x => x != null)
     // First gallery image is the chosen hero; variant image is only a fallback.
     const image = galleryUrl(p.gallery?.[0]) || variants.find(v => v.image)?.image || ''
-    const code = [`${brands.length === 1 ? brands[0] : ''}${body}${designNo}`, p.format_code].filter(Boolean).join('-')
+    // Always use fallbackBrand as prefix — multi-brand products still have a single
+    // design identity (e.g. D0002) that staff search by.
+    const code = [`${fallbackBrand}${body}${designNo}`, p.format_code].filter(Boolean).join('-')
     return {
       id: p.id, code,
       design_key: normDesign(designNo),

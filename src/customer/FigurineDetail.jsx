@@ -44,6 +44,22 @@ export default function FigurineDetail({ profile }) {
   useEffect(() => onSnapshot(doc(db, 'range_products', id),
     s => setP(s.exists() ? { id: s.id, ...s.data() } : null), () => setP(null)), [id])
 
+  // If the currently selected variant is sold out (last-stock, buildable=0), auto-advance.
+  useEffect(() => {
+    if (!p || p.status !== 'stock') return
+    const vars = docVariants(p)
+    const av = productAvailability(p, compLib)
+    if (!av?.byPlating || !Object.keys(av.byPlating).length) return
+    const isOut = v => {
+      const pc = (v?.plating_code || '').trim().toUpperCase()
+      return pc && (av.byPlating[pc] ?? 1) <= 0
+    }
+    if (isOut(vars[finishIdx])) {
+      const next = vars.findIndex(v => !isOut(v))
+      if (next >= 0) setFinishIdx(next)
+    }
+  }, [p, compLib, finishIdx])
+
   if (p === undefined) return <LoadingBar />
   if (p === null) return <NotFound />
 
@@ -83,13 +99,17 @@ export default function FigurineDetail({ profile }) {
   const isLastStock = p.status === 'stock'
   // Last-stock: no MOQ (sell whatever is buildable); active: use product moq field.
   const moq = isLastStock ? 0 : (Number(p.moq) || 0)
-  // For last-stock, cap at the selected plating's buildable (not the combined total).
-  const avail = isLastStock ? productAvailability(p, compLib) : null
+  // Always compute availability — drives both the promise text and last-stock caps.
+  const avail = productAvailability(p, compLib)
   const selPlating = (selVariant.plating_code || '').trim().toUpperCase()
+  // Per-plating buildable: used for last-stock caps and variant availability chips.
+  const platBuildable = p2 => {
+    if (!avail?.byPlating || !Object.keys(avail.byPlating).length) return null
+    const pc = (p2 || '').trim().toUpperCase()
+    return pc ? (avail.byPlating[pc] ?? null) : null
+  }
   const maxPcs = isLastStock
-    ? (avail?.byPlating && selPlating && avail.byPlating[selPlating] != null
-        ? avail.byPlating[selPlating]
-        : avail?.buildable ?? 0)
+    ? (platBuildable(selPlating) ?? avail?.buildable ?? 0)
     : Infinity
   const maxCartons = ppc > 0 ? (maxPcs > 0 ? Math.ceil(maxPcs / ppc) : 0) : maxPcs
   const pcs = ppc > 0 ? cartons * ppc : cartons           // total pieces ordered (this selection)
@@ -158,8 +178,10 @@ export default function FigurineDetail({ profile }) {
             const st = RANGE_STATUS_CUSTOMER[p.status === 'stock' ? 'stock' : 'active']
             return (
               <div className="mb-2">
-                <span className={`badge ${st.cls}`} title={st.tip}>{st.label}</span>
-                <p className="text-xs text-ink-50 mt-1">{st.tip}</p>
+                <span className={`badge ${st.cls}`}>{st.label}</span>
+                <p className="text-xs text-ink-50 mt-1">
+                  {avail?.promise || st.tip}
+                </p>
               </div>
             )
           })()}
@@ -177,6 +199,10 @@ export default function FigurineDetail({ profile }) {
             <div className="card divide-y divide-ivory-dark">
               {variants.map((v, i) => {
                 const sel = i === finishIdx
+                const vPlat = (v.plating_code || '').trim().toUpperCase()
+                const vStock = isLastStock ? platBuildable(vPlat) : null
+                const soldOut = isLastStock && vStock != null && vStock <= 0
+                if (soldOut) return null   // hide sold-out platings for last-stock
                 return (
                   <button key={i} type="button" onClick={() => pickFinish(i)}
                     className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-left transition-colors ${sel ? 'bg-brand-50' : 'hover:bg-ivory'}`}>
@@ -189,6 +215,11 @@ export default function FigurineDetail({ profile }) {
                         {multiBrand && (v.brand_name || BRAND_NAME[v.brand_code || fallbackBrand]) &&
                           <span className="text-ink-50"> · {v.brand_name || BRAND_NAME[v.brand_code || fallbackBrand]}</span>}
                       </span>
+                      {isLastStock && vStock != null && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${vStock < 50 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                          {vStock} left
+                        </span>
+                      )}
                     </span>
                     <span className="text-ink font-medium shrink-0">{fmtMoney(net(v.ws_price_usd), cur)}</span>
                   </button>
