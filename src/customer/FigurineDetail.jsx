@@ -110,7 +110,12 @@ export default function FigurineDetail({ profile }) {
     const pc = (p2 || '').trim().toUpperCase()
     return pc ? (avail.byPlating[pc] ?? null) : null
   }
-  const selBuildable = platBuildable(selPlating) ?? avail?.buildable ?? 0
+  // When per-plating data exists, a plating NOT in byPlating has 0 stock (not total fallback).
+  // Only fall back to avail.buildable when there is NO per-plating breakdown at all.
+  const hasByPlating = avail?.byPlating && Object.keys(avail.byPlating).length > 0
+  const selBuildable = hasByPlating
+    ? (avail.byPlating[selPlating] ?? 0)
+    : (avail?.buildable ?? 0)
   const hasSelStock = !isLastStock && selBuildable > 0   // MTO product with parts on hand for this plating
   // Effective order mode: last-stock always uses stock (pcs); MTO uses the toggle
   const effectiveMode = isLastStock ? 'stock' : (hasSelStock ? orderMode : 'mto')
