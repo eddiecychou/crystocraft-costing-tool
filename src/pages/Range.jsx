@@ -48,7 +48,7 @@ export default function Range() {
   const [stockOnly, setStockOnly] = useState(() => sessionStorage.getItem('rf-stock') === '1')
   const [seeding, setSeeding] = useState(false)
   const { colors: libColors } = useCrystalColors()
-  const { lib: compLib } = useComponents()
+  const { components: compLib } = useComponents()
   const colorLookup = useMemo(() => colorMap(libColors), [libColors])
   const [seedLog, setSeedLog] = useState('')
 

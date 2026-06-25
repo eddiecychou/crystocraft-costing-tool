@@ -37,7 +37,7 @@ export default function FigurineDetail({ profile }) {
   const lookup = useMemo(() => colorMap(libColors), [libColors])
   const cart = useCart()
   const { moq: formatMoqMap, labels: formatLabels } = useFormatMoq()
-  const { lib: compLib } = useComponents()
+  const { components: compLib } = useComponents()
   const cur = profile?.base_currency || 'USD'
   const disc = Math.max(0, Math.min(100, Number(profile?.ws_discount_pct) || 0)) / 100
 
