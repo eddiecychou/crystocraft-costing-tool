@@ -342,11 +342,17 @@ export async function importStockList(rows, rangeProducts) {
   }
   for (const { product, codes } of Object.values(productById)) {
     const refs = Array.isArray(product.critical_components) ? product.critical_components : []
+    // Patch plating_code on existing refs that were linked without it (old import).
+    const patchedRefs = refs.map(r => {
+      if (r.plating_code) return r                        // already has an explicit override — leave it
+      const comp = compByCode[norm(r.code)]
+      return comp?.plating_code ? { ...r, plating_code: comp.plating_code } : r
+    })
     const have = new Set(refs.map(x => norm(x.code)))
     const additions = [...codes].filter(code => !have.has(code))
-      .map(code => ({ id: codeToId[code] || '', code, qty_per_unit: 1 }))
-    if (additions.length) {
-      ops.push({ ref: doc(db, 'range_products', product.id), data: { critical_components: [...refs, ...additions] }, merge: true })
+      .map(code => ({ id: codeToId[code] || '', code, qty_per_unit: 1, plating_code: compByCode[code]?.plating_code || '' }))
+    if (additions.length || patchedRefs.some((r, i) => r !== refs[i])) {
+      ops.push({ ref: doc(db, 'range_products', product.id), data: { critical_components: [...patchedRefs, ...additions] }, merge: true })
     }
   }
 

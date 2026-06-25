@@ -961,18 +961,22 @@ export default function RangeForm() {
                   {(form.critical_components || []).map(r => {
                     const c = resolveRef(r, libComponents)
                     const key = r._uid
+                    // If the ref has no plating override, plating is inferred from the
+                    // component record at compute time. Show it so the user understands why
+                    // Chrome/Gold bodies aren't treated as shared parts.
+                    const inferredPlating = !r.plating_code && c?.plating_code ? c.plating_code : ''
                     return (
                       <div key={key} className="flex items-center gap-2 text-xs flex-wrap">
                         <span className="font-mono text-ink-80 w-24 shrink-0 truncate" title={c?.code || r.code}>{c?.code || r.code}</span>
                         <span className="flex-1 min-w-0 truncate text-ink-70">{c?.name || <span className="text-amber-600">not in library</span>}</span>
-                        {/* Plating scope — blank means applies to all variants */}
+                        {/* Plating scope — blank = infer from component (shown as auto label) */}
                         <select
-                          className="input text-xs py-1 w-28 shrink-0"
+                          className="input text-xs py-1 w-36 shrink-0"
                           value={r.plating_code || ''}
                           onChange={e => setComponentPlating(key, e.target.value)}
-                          title="Which plating variant this component applies to (blank = all)"
+                          title="Which plating variant this component applies to (blank = inferred from component)"
                         >
-                          <option value="">All variants</option>
+                          <option value="">{inferredPlating ? `Auto (${inferredPlating})` : 'All variants'}</option>
                           {formPlatings.map(p => (
                             <option key={p.code} value={p.code}>{p.name} ({p.code})</option>
                           ))}
