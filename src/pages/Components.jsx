@@ -2,9 +2,8 @@ import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import { useComponents, saveComponent, importStockList } from '../criticalComponents'
+import { useComponents, saveComponent, importStockList, buildProductIndex, matchProductCode } from '../criticalComponents'
 import { loadRangeProductsWithPacking } from '../packing'
-import { matchRangeProduct } from '../shipping'
 import { loadCrystalColors, saveCrystalColors } from '../crystalColors'
 import { RANGE_COMPONENT_CATEGORIES, RANGE_FORMAT_CODES } from '../constants'
 import { Puzzle, ArrowUp, ArrowDown, X, Minus, Plus, Check } from 'lucide-react'
@@ -219,12 +218,13 @@ function StockListImportModal({ components, onClose }) {
     // Product matching preview (only once products are loaded).
     let matched = 0, unmatched = 0
     if (rangeProducts) {
+      const index = buildProductIndex(rangeProducts)
       const seenP = new Set()
       for (const r of rows) {
         const code = (r.product_item_code || '').toUpperCase()
         if (!code || seenP.has(code)) continue
         seenP.add(code)
-        matchRangeProduct(code, rangeProducts) ? matched++ : unmatched++
+        matchProductCode(code, index) ? matched++ : unmatched++
       }
     }
     return { unique: seen.size, created, updated, matched, unmatched }
@@ -233,7 +233,7 @@ function StockListImportModal({ components, onClose }) {
   async function run() {
     setBusy(true)
     try {
-      const res = await importStockList(rows, rangeProducts || [], matchRangeProduct)
+      const res = await importStockList(rows, rangeProducts || [])
       setResult(`Done — ${res.created} new / ${res.updated} updated components; linked to ${res.productsMatched} products` +
         (res.productsUnmatched ? `, ${res.productsUnmatched} product code(s) unmatched.` : '.'))
     } catch (e) { setResult('Error: ' + e.message) }

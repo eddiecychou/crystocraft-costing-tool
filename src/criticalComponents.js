@@ -214,6 +214,44 @@ export async function bulkCreateComponents(rows) {
   return n
 }
 
+// ── Product matching for the stock-list import ───────────────────────────────
+// Figurine item codes are structured: "D0001-001-C" = design_code "D0001" +
+// format "001" + plating "C". We match on design+format, brand-agnostically
+// (the sheet's brand letter — D/U/A/M — may differ from the stored product's),
+// so we also index the brand-stripped key.
+const stripBrandLetters = s => (s == null ? '' : String(s)).toUpperCase().replace(/[\s_]/g, '').replace(/^[A-Z]+/, '')
+
+export function buildProductIndex(rangeProducts) {
+  const idx = {}
+  const put = (k, p) => { const key = (k || '').trim().toUpperCase(); if (key && !(key in idx)) idx[key] = p }
+  for (const p of rangeProducts || []) {
+    const fc = (p.format_code || '').toUpperCase()
+    const bases = new Set()
+    if (p.design_code) bases.add(p.design_code)
+    if (p.brand_code || p.design_no) bases.add(`${p.brand_code || ''}${p.design_no || ''}`)
+    if (p.design_no) bases.add(p.design_no)
+    for (const b of bases) {
+      const B = String(b).toUpperCase(), S = stripBrandLetters(b)
+      put(`${B}-${fc}`, p); put(B, p)
+      if (S) { put(`${S}-${fc}`, p); put(S, p) }
+    }
+  }
+  return idx
+}
+
+export function matchProductCode(itemCode, index) {
+  const code = (itemCode == null ? '' : String(itemCode)).trim().toUpperCase()
+  if (!code || !index) return null
+  const parts = code.split('-')
+  const p0 = parts[0] || '', p1 = parts[1] || ''
+  const s0 = p0.replace(/^[A-Z]+/, '')
+  const cands = []
+  if (p1) cands.push(`${p0}-${p1}`, `${s0}-${p1}`)   // design+format (brand & brand-stripped)
+  cands.push(p0, s0)                                  // design only (fallback)
+  for (const c of cands) { if (c && index[c]) return index[c] }
+  return null
+}
+
 // Idempotent stock-list import (component master + BOM linking). Rows:
 // [{ product_item_code, plating_code, code, name, stock_qty }].
 //
@@ -228,8 +266,9 @@ export async function bulkCreateComponents(rows) {
 //
 // Safe to re-run as a stock-take. Returns { created, updated, productsMatched,
 // productsUnmatched, unmatched: [codes] }.
-export async function importStockList(rows, rangeProducts, matchProduct) {
+export async function importStockList(rows, rangeProducts) {
   const norm = s => (s == null ? '' : String(s)).trim().toUpperCase()
+  const productIndex = buildProductIndex(rangeProducts)
   const clean = (rows || []).map(r => ({
     product_item_code: norm(r.product_item_code),
     plating_code: norm(r.plating_code),
@@ -287,7 +326,7 @@ export async function importStockList(rows, rangeProducts, matchProduct) {
   const seenUnmatched = new Set()
   for (const r of clean) {
     if (!r.product_item_code) continue
-    const p = matchProduct ? matchProduct(r.product_item_code, rangeProducts) : null
+    const p = matchProductCode(r.product_item_code, productIndex)
     if (!p) {
       if (!seenUnmatched.has(r.product_item_code)) { seenUnmatched.add(r.product_item_code); unmatched.push(r.product_item_code) }
       continue
