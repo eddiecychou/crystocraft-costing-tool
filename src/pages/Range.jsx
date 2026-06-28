@@ -158,10 +158,15 @@ export default function Range() {
     // brand_code already carries the full prefix (e.g. "UA"); never append a body
     // letter or it doubles up (UA + A + 062 = UAA062).
     const code = [`${brandPrefix}${designNo}`, p.format_code].filter(Boolean).join('-')
+    // Sort by the best (lowest) rank among the product's brands, so a multi-brand
+    // design (e.g. D / A) sorts with its primary series instead of falling into
+    // the default bucket after U/UA.
+    const sortRank = brands.length ? Math.min(...brands.map(brandSortRank)) : brandSortRank(brandPrefix)
     return {
       id: p.id,
       code,
       brandPrefix,
+      sortRank,
       multiBrand: brands.length > 1,
       name: p.description || p.design_name || code,
       design_type: p.design_type || p.category || '',
@@ -212,7 +217,7 @@ export default function Range() {
   })
     // B-series accessories sort after the classic figurine series; stable sort
     // keeps the Firestore design_code order within each brand-priority group.
-    .sort((a, b) => brandSortRank(a.brandPrefix) - brandSortRank(b.brandPrefix)),
+    .sort((a, b) => a.sortRank - b.sortRank),
   [items, search, cat, ptype, status, stockOnly])
 
   const statusCounts = useMemo(() => ({
