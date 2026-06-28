@@ -16,6 +16,7 @@ import { db } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { Star, X, Camera } from 'lucide-react'
 import { loadBlogProducts, loadBlogImages, PRODUCT_SOURCES } from '../productSource'
+import { MARKETING_DESC_MAXLEN } from '../constants'
 
 // ── Auto layout label ─────────────────────────────────────────────────────────
 function layoutLabel(count) {
@@ -185,6 +186,7 @@ function CatalogueItem({ item, onUpdate, onDelete }) {
         <textarea
           className="input text-sm resize-none"
           rows={2}
+          maxLength={MARKETING_DESC_MAXLEN}
           defaultValue={item.marketing_description || item.product_marketing_description || ''}
           key={`md-${item.id}`}
           placeholder="Evocative sell-copy for this product in the catalogue…"

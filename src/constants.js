@@ -102,6 +102,10 @@ export const bodyLetter  = code => (((code || '').match(/^[A-Za-z]+/) || [''])[0
 export const BRAND_SORT_ORDER = { D: 0, A: 0, U: 0, H: 0, M: 0, UA: 1, UB: 2, B: 4 }
 export const brandSortRank = prefix => BRAND_SORT_ORDER[prefix] ?? 3
 
+// Max length for customer-facing marketing copy so it stays short and fits the
+// catalogue cards / storefront layout (≈45–50 words). Enforced in the editors.
+export const MARKETING_DESC_MAXLEN = 300
+
 // Optional 2nd prefix letter = the design's body / type. Blank = normal metal.
 export const RANGE_BODY_TYPES = [
   { code: '',  name: 'Metal' },

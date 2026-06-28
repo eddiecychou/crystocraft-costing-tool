@@ -7,7 +7,7 @@ import {
   RANGE_DESIGN_TYPES, RANGE_PRODUCT_TYPES, RANGE_FORMAT_CODES,
   RANGE_PLATINGS, RANGE_CRYSTAL_COLORS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS,
   RANGE_BODY_TYPES, RANGE_COMPONENT_CATEGORIES, designNumber, brandLetter, bodyLetter,
-  normGallery, normVideos,
+  normGallery, normVideos, MARKETING_DESC_MAXLEN,
 } from '../constants'
 import { resizeToJpeg } from '../imageResize'
 import VideoUrlsEditor from '../components/VideoUrlsEditor'
@@ -828,7 +828,9 @@ export default function RangeForm() {
               </div>
             )}
             <textarea className="input min-h-[96px]" value={form.marketing_description} onChange={set('marketing_description')}
+              maxLength={MARKETING_DESC_MAXLEN}
               placeholder="Customer-facing sell-copy for catalogues and the storefront… or click AI Write to generate" />
+            <p className="text-[11px] text-ink-40 mt-0.5 text-right">{(form.marketing_description || '').length}/{MARKETING_DESC_MAXLEN}</p>
             {aiError && <p className="text-xs text-red-500 mt-1">{aiError}</p>}
             {!form.design_name && <p className="text-xs text-ink-50 mt-1">Enter a design name first to enable AI writing</p>}
             {form.marketing_description && !rewriteOpen && (

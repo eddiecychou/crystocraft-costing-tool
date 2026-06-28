@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import { CATEGORIES, PRODUCT_STATUSES, normVideos } from '../constants'
+import { CATEGORIES, PRODUCT_STATUSES, normVideos, MARKETING_DESC_MAXLEN } from '../constants'
 import { Sparkles, RotateCcw } from 'lucide-react'
 import VideoUrlsEditor from '../components/VideoUrlsEditor'
 
@@ -189,8 +189,10 @@ export default function ProductForm() {
             rows={4}
             value={form.marketing_description}
             onChange={set('marketing_description')}
+            maxLength={MARKETING_DESC_MAXLEN}
             placeholder="Sell-copy for catalogues — evocative, customer-facing language… or click AI Write to generate"
           />
+          <p className="text-[11px] text-gray-400 mt-0.5 text-right">{(form.marketing_description || '').length}/{MARKETING_DESC_MAXLEN}</p>
           {aiError && <p className="text-xs text-red-500 mt-1">{aiError}</p>}
           {!form.name && <p className="text-xs text-gray-400 mt-1">Enter a product name first to enable AI writing</p>}
           {form.marketing_description && !rewriteOpen && (
