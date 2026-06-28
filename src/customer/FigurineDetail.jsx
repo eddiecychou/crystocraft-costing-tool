@@ -203,6 +203,9 @@ export default function FigurineDetail({ profile }) {
           <p className="text-sm text-ink-60 font-mono mt-1">{code}</p>
           {p.size && <p className="text-sm text-ink-60 mt-1">{p.size}</p>}
           {p.design_type && <p className="text-xs text-ink-50 mt-1">{p.design_type}</p>}
+          {p.marketing_description && (
+            <p className="text-sm text-ink-70 leading-relaxed mt-3">{p.marketing_description}</p>
+          )}
 
           {/* Plating finish — select one (doubles as price list) */}
           <div className="mt-5">

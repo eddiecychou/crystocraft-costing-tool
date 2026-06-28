@@ -464,6 +464,12 @@ const catalogueCSS = `
     break-after: page;
     box-sizing: border-box;
   }
+  /* The last page must NOT force a page break, or a blank page is appended. */
+  .catalogue-page:last-child {
+    page-break-after: avoid;
+    break-after: avoid;
+    margin-bottom: 0;
+  }
 
   /* ── Cover ── */
   .cover-page {
@@ -911,6 +917,11 @@ const catalogueCSS = `
       page-break-after: always !important;
       break-after: page !important;
       overflow: hidden !important;
+    }
+    /* No trailing break on the last page → no blank final page in the PDF. */
+    .catalogue-page:last-child {
+      page-break-after: avoid !important;
+      break-after: avoid !important;
     }
   }
 `
