@@ -70,7 +70,7 @@ export default function CustomerAccounts({ embedded = false }) {
 
 function Row({ u, tab, set, customers }) {
   const [cur, setCur] = useState(u.base_currency || 'USD')
-  const [disc, setDisc] = useState(u.ws_discount_pct ?? 0)
+  const [disc, setDisc] = useState(Number(u.ws_discount_pct) > 0 ? u.ws_discount_pct : 100)
   const [override, setOverride] = useState(u.corp_markup_override ?? '')
   const [status, setStatus] = useState(null) // 'saving' | 'saved' | error string
 
@@ -82,7 +82,7 @@ function Row({ u, tab, set, customers }) {
   async function save(extra = {}) {
     setStatus('saving')
     try {
-      await set(u.id, { base_currency: cur, ws_discount_pct: Number(disc) || 0, ...pricingPatch, ...extra })
+      await set(u.id, { base_currency: cur, ws_discount_pct: Number(disc) > 0 ? Number(disc) : 100, ...pricingPatch, ...extra })
       setStatus('saved')
       setTimeout(() => setStatus(s => (s === 'saved' ? null : s)), 2500)
     } catch (e) {
@@ -110,11 +110,11 @@ function Row({ u, tab, set, customers }) {
             </select>
           </label>
 
-          {/* Figurine Gift Catalogue — wholesale list price less a discount % */}
+          {/* Figurine Gift Catalogue — % of list (ex-factory) price the customer pays */}
           <div className="flex items-center gap-2 pl-3 border-l border-ivory-dark">
             <span className="text-[10px] uppercase tracking-wide text-ink-40">Figurine Gift Catalogue</span>
-            <label className="text-xs text-ink-60">WS %
-              <input type="number" min="0" max="100" step="0.5" className="input py-1 ml-1 w-20 inline-block"
+            <label className="text-xs text-ink-60" title="Percentage of the list (ex-factory) price this customer pays. 100 = list price, 130 = +30% markup, 90 = 10% discount.">WS %
+              <input type="number" min="1" step="0.5" placeholder="100" className="input py-1 ml-1 w-20 inline-block"
                 value={disc} onChange={e => setDisc(e.target.value)} />
             </label>
           </div>

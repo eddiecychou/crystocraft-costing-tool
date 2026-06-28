@@ -6,7 +6,7 @@ import { Gem, Package, Trash2, ClipboardList, CheckCircle2, Plus, Minus } from '
 import { useCart, designGroupKey, formatGroupKey, formatCodeOf, designNumberOf } from './store'
 import { useFormatMoq } from '../formatMoq'
 import { RANGE_FORMAT_CODES } from '../constants'
-import { useRates, fromUSD, fmtMoney } from '../currency'
+import { useRates, fromUSD, fmtMoney, wsPriceFactor } from '../currency'
 
 const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.label]))
 
@@ -15,16 +15,16 @@ export default function EnquiryPage({ profile }) {
   const { moq: formatMoqMap, labels: formatLabels } = useFormatMoq()
   const rates = useRates()
   const cur = profile?.base_currency || 'USD'
-  const disc = Math.max(0, Math.min(100, Number(profile?.ws_discount_pct) || 0)) / 100
+  const factor = wsPriceFactor(profile)
   const [message, setMessage] = useState('')
   const [sending, setSending] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState('')
   const items = cart?.items || []
 
-  // Unit price (customer currency, discount applied) for figurine lines.
+  // Unit price (customer currency, account WS factor applied) for figurine lines.
   const unitPrice = i => (i.type === 'figurine' && i.ws_price_usd != null)
-    ? fromUSD(Number(i.ws_price_usd) * (1 - disc), cur, rates) : null
+    ? fromUSD(Number(i.ws_price_usd) * factor, cur, rates) : null
   const lineTotal = i => { const u = unitPrice(i); return u == null ? null : u * (Number(i.qty) || 1) }
   const total = items.reduce((s, i) => s + (lineTotal(i) || 0), 0)
   const hasIndicative = items.some(i => unitPrice(i) == null)

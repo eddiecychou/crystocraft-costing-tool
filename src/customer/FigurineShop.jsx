@@ -4,7 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { db } from '../firebase'
 import { Gem, X } from 'lucide-react'
 import { designNumber, brandLetter, bodyLetter, galleryUrl, RANGE_FORMAT_CODES, RANGE_STATUS_CUSTOMER } from '../constants'
-import { useRates, fromUSD, fmtMoney } from '../currency'
+import { useRates, fromUSD, fmtMoney, wsPriceFactor } from '../currency'
 import { useFormatMoq } from '../formatMoq'
 import { newFirst } from '../newArrivals'
 import CollectionBand from './CollectionBand'
@@ -41,7 +41,7 @@ export default function FigurineShop({ profile }) {
   const formatFilter = params.get('format') || ''
   const rates = useRates()
   const cur = profile?.base_currency || 'USD'
-  const disc = Math.max(0, Math.min(100, Number(profile?.ws_discount_pct) || 0)) / 100
+  const factor = wsPriceFactor(profile)
 
   useEffect(() => {
     const q = query(collection(db, 'range_products'), orderBy('design_code'))
@@ -52,7 +52,7 @@ export default function FigurineShop({ profile }) {
     }, () => setLoading(false))
   }, [])
 
-  const net = usd => usd == null ? null : fromUSD(usd * (1 - disc), cur, rates)
+  const net = usd => usd == null ? null : fromUSD(usd * factor, cur, rates)
 
   const items = useMemo(() => products.map(p => {
     const designNo = p.design_no || designNumber(p.design_code)
@@ -80,7 +80,7 @@ export default function FigurineShop({ profile }) {
       minNet: prices.length ? net(Math.min(...prices)) : null,
       maxNet: prices.length ? net(Math.max(...prices)) : null,
     }
-  }), [products, rates, cur, disc])
+  }), [products, rates, cur, factor])
 
   const categories = useMemo(() => [...new Set(items.map(s => s.design_type).filter(Boolean))].sort(), [items])
   const filtered = useMemo(() => {
