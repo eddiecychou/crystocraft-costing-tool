@@ -187,9 +187,7 @@ export default function EnquiryPage({ profile }) {
           <span className="text-lg font-medium text-ink">{fmtMoney(total, cur)}</span>
         </div>
         <p className="text-[11px] text-ink-40 mt-2">
-          {profile?.ws_discount_pct > 0
-            ? `Wholesale prices with your ${Number(profile.ws_discount_pct)}% discount applied. `
-            : 'Indicative wholesale prices. '}
+          Ex-factory prices — freight not included.{' '}
           {hasIndicative && 'Made-to-order corporate items are quoted separately and not included in this total. '}
           Final pricing, MOQ and availability are confirmed on quotation.
         </p>

@@ -207,7 +207,7 @@ export default function FigurineDetail({ profile }) {
           <div className="mt-5">
             <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-2">
               Plating finish {!inCart && <span className="text-red-500">*</span>}
-              <span className="normal-case text-ink-40"> · {cur}{disc > 0 ? `, your ${(disc * 100).toFixed(disc * 100 % 1 ? 1 : 0)}% discount` : ''}</span>
+              <span className="normal-case text-ink-40"> · Ex-factory price ({cur})</span>
             </p>
             <div className="card divide-y divide-ivory-dark">
               {variants.map((v, i) => {
@@ -347,7 +347,7 @@ export default function FigurineDetail({ profile }) {
           </div>
 
           <p className="text-[11px] text-ink-40 mt-3">
-            Prices are indicative wholesale rates. Final pricing and availability confirmed on enquiry.
+            Ex-factory prices — freight not included. Final pricing and availability confirmed on enquiry.
           </p>
         </div>
       </div>

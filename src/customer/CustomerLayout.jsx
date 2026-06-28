@@ -50,7 +50,7 @@ export default function CustomerLayout({ children, profile }) {
       </header>
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6">{children}</main>
       <footer className="text-center text-xs text-ink-40 py-6">
-        Prices shown in {profile?.base_currency}. Corporate gift prices are indicative — made to order.
+        Ex-factory prices shown in {profile?.base_currency} — freight not included. Corporate gift prices are indicative — made to order.
       </footer>
     </div>
   )

@@ -90,7 +90,7 @@ export default function CorporateDetail({ profile }) {
 
           {tiers.length > 0 && (
             <div className="mt-6">
-              <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-2">Indicative prices ({cur})</p>
+              <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-2">Indicative ex-factory prices ({cur})</p>
               <div className="card divide-y divide-ivory-dark">
                 {tiers.map((t, i) => (
                   <div key={i} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">

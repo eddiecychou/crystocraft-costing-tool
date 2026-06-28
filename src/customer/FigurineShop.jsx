@@ -120,8 +120,7 @@ export default function FigurineShop({ profile }) {
       <div className="mb-4">
         <h1 className="text-xl md:text-2xl">Figurine Gifts</h1>
         <p className="text-sm text-ink-60 mt-0.5">
-          {filtered.length} designs · wholesale prices in {cur}
-          {disc > 0 ? ` (your ${(disc * 100).toFixed(disc * 100 % 1 ? 1 : 0)}% discount applied)` : ''}
+          {filtered.length} designs · ex-factory prices in {cur}
         </p>
       </div>
       {!designFilter && !formatFilter && (
