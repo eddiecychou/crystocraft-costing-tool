@@ -3,7 +3,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, getDocs, deleteDoc, doc
 import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import rangeData from '../data/rangeProducts.json'
-import { RANGE_PLATINGS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS, designNumber, brandLetter, galleryUrl } from '../constants'
+import { RANGE_PLATINGS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS, designNumber, brandLetter, galleryUrl, brandSortRank } from '../constants'
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
@@ -161,6 +161,7 @@ export default function Range() {
     return {
       id: p.id,
       code,
+      brandPrefix,
       multiBrand: brands.length > 1,
       name: p.description || p.design_name || code,
       design_type: p.design_type || p.category || '',
@@ -208,7 +209,11 @@ export default function Range() {
     const matchStatus = status === 'all' || s.status === status
     const matchStock = !stockOnly || s.status === 'stock' && s.totalStock > 0
     return matchSearch && matchCat && matchPtype && matchPlating && matchStatus && matchStock
-  }), [items, search, cat, ptype, status, stockOnly])
+  })
+    // B-series accessories sort after the classic figurine series; stable sort
+    // keeps the Firestore design_code order within each brand-priority group.
+    .sort((a, b) => brandSortRank(a.brandPrefix) - brandSortRank(b.brandPrefix)),
+  [items, search, cat, ptype, status, stockOnly])
 
   const statusCounts = useMemo(() => ({
     all: items.length,

@@ -3,7 +3,7 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { Link, useSearchParams } from 'react-router-dom'
 import { db } from '../firebase'
 import { Gem, X } from 'lucide-react'
-import { designNumber, brandLetter, galleryUrl, RANGE_FORMAT_CODES, RANGE_STATUS_CUSTOMER } from '../constants'
+import { designNumber, brandLetter, galleryUrl, RANGE_FORMAT_CODES, RANGE_STATUS_CUSTOMER, brandSortRank } from '../constants'
 import { useRates, fromUSD, fmtMoney, wsPriceFactor } from '../currency'
 import { useFormatMoq } from '../formatMoq'
 import { newFirst } from '../newArrivals'
@@ -13,8 +13,6 @@ import FavHeart from './FavHeart'
 import LoadingBar from '../components/LoadingBar'
 
 const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.label]))
-// B-prefix = non-figurine accessories (MagSafe cases, etc.) — sort after main figurine range
-const BRAND_SORT_ORDER = { D: 0, A: 1, M: 2, H: 3, U: 4, UA: 4, B: 9 }
 // Normalise a design number the same way designGroupKey does (strip leading zeros).
 const normDesign = raw => {
   const s = String(raw ?? '').trim()
@@ -94,8 +92,8 @@ export default function FigurineShop({ profile }) {
     })
     if (coll?.type === 'manual') return out
     return out.sort((a, b) => {
-      const ap = BRAND_SORT_ORDER[a.brandPrefix] ?? 5
-      const bp = BRAND_SORT_ORDER[b.brandPrefix] ?? 5
+      const ap = brandSortRank(a.brandPrefix)
+      const bp = brandSortRank(b.brandPrefix)
       if (ap !== bp) return ap - bp
       return newFirst(a, b)
     })
