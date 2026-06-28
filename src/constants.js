@@ -94,12 +94,13 @@ export const designNumber = code => (code || '').replace(/^[A-Za-z]+/, '')
 export const brandLetter = code => ((code || '').match(/^[A-Za-z]/) || [''])[0]
 export const bodyLetter  = code => (((code || '').match(/^[A-Za-z]+/) || [''])[0]).slice(1)
 
-// Catalogue ordering by brand prefix. Classic figurine series first
-// (D/A/M/H/U/UA), B-series accessories (MagSafe cases, etc.) last. Unknown or
-// multi-brand prefixes fall between (default 5). Shared by the customer shop and
-// the admin product manager so both order identically.
-export const BRAND_SORT_ORDER = { D: 0, A: 1, M: 2, H: 3, U: 4, UA: 4, B: 9 }
-export const brandSortRank = prefix => BRAND_SORT_ORDER[prefix] ?? 5
+// Catalogue ordering by brand prefix. The classic figurine series (D/A/U/H/M)
+// are all the same product type and rank together first; then the UA series,
+// then UB, then B-series accessories last. Unknown prefixes fall just before the
+// accessories (default 3). Shared by the customer shop and the admin product
+// manager so both order identically.
+export const BRAND_SORT_ORDER = { D: 0, A: 0, U: 0, H: 0, M: 0, UA: 1, UB: 2, B: 4 }
+export const brandSortRank = prefix => BRAND_SORT_ORDER[prefix] ?? 3
 
 // Optional 2nd prefix letter = the design's body / type. Blank = normal metal.
 export const RANGE_BODY_TYPES = [

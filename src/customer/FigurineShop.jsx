@@ -64,8 +64,11 @@ export default function FigurineShop({ profile }) {
     // Never include body in the listing code — product codes are brand+design+format only.
     const brandPrefix = brands.length === 1 ? brands[0] : fallbackBrand
     const code = [`${brandPrefix}${designNo}`, p.format_code].filter(Boolean).join('-')
+    // Rank by the best (lowest) rank among the product's brands so a multi-brand
+    // design sorts with its primary series. Matches the admin product manager.
+    const sortRank = brands.length ? Math.min(...brands.map(brandSortRank)) : brandSortRank(brandPrefix)
     return {
-      id: p.id, code, brandPrefix,
+      id: p.id, code, brandPrefix, sortRank,
       design_key: normDesign(designNo),
       format_code: String(p.format_code || '').trim(),
       name: p.description || p.design_name || code,
@@ -92,9 +95,7 @@ export default function FigurineShop({ profile }) {
     })
     if (coll?.type === 'manual') return out
     return out.sort((a, b) => {
-      const ap = brandSortRank(a.brandPrefix)
-      const bp = brandSortRank(b.brandPrefix)
-      if (ap !== bp) return ap - bp
+      if (a.sortRank !== b.sortRank) return a.sortRank - b.sortRank
       return newFirst(a, b)
     })
   }, [items, coll, search, cat, designFilter, formatFilter])
