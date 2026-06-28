@@ -3,7 +3,7 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { useParams, Link } from 'react-router-dom'
 import { db } from '../firebase'
 import { Gem, ArrowLeft, Check, Plus, Minus } from 'lucide-react'
-import { designNumber, brandLetter, bodyLetter, RANGE_CRYSTAL_BRANDS, normGallery, RANGE_STATUS_CUSTOMER, normVideos, youtubeEmbed } from '../constants'
+import { designNumber, brandLetter, RANGE_CRYSTAL_BRANDS, normGallery, RANGE_STATUS_CUSTOMER, normVideos, youtubeEmbed } from '../constants'
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import { useRates, fromUSD, fmtMoney, wsPriceFactor } from '../currency'
@@ -71,11 +71,12 @@ export default function FigurineDetail({ profile }) {
   const variants = docVariants(p)
   const fallbackBrand = brandLetter(p.design_code) || 'D'
   const designNo = p.design_no || designNumber(p.design_code)
-  const body = p.body_code || bodyLetter(p.design_code)
   const brands = [...new Set(variants.map(v => v.brand_code || fallbackBrand).filter(Boolean))]
   const multiBrand = brands.length > 1
   // Product-level base code (brand prefix only when the design is single-brand).
-  const baseCode = [`${multiBrand ? '' : brands[0] || ''}${body}${designNo}`, p.format_code].filter(Boolean).join('-')
+  // brand_code already carries the full prefix (e.g. "UA"); never append a body
+  // letter or it doubles up (UA + A + 062 = UAA062).
+  const baseCode = [`${multiBrand ? '' : brands[0] || ''}${designNo}`, p.format_code].filter(Boolean).join('-')
   const name = p.description || p.design_name || baseCode
   const gallery = normGallery(p.gallery)
   // First gallery image is the chosen hero; variant image is only a fallback.
@@ -86,7 +87,7 @@ export default function FigurineDetail({ profile }) {
   const selVariant = variants[finishIdx] || variants[0] || {}
   // Selected-finish SKU code carries the chosen brand prefix (e.g. D0002-001).
   const selBrand = selVariant.brand_code || fallbackBrand
-  const code = [`${selBrand}${body}${designNo}`, p.format_code].filter(Boolean).join('-')
+  const code = [`${selBrand}${designNo}`, p.format_code].filter(Boolean).join('-')
   const finishColors = (Array.isArray(selVariant.crystal_colors) && selVariant.crystal_colors.length)
     ? selVariant.crystal_colors : colorCodes
   const needsColor = colorCodes.length > 0

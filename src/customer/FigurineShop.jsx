@@ -3,7 +3,7 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { Link, useSearchParams } from 'react-router-dom'
 import { db } from '../firebase'
 import { Gem, X } from 'lucide-react'
-import { designNumber, brandLetter, bodyLetter, galleryUrl, RANGE_FORMAT_CODES, RANGE_STATUS_CUSTOMER } from '../constants'
+import { designNumber, brandLetter, galleryUrl, RANGE_FORMAT_CODES, RANGE_STATUS_CUSTOMER } from '../constants'
 import { useRates, fromUSD, fmtMoney, wsPriceFactor } from '../currency'
 import { useFormatMoq } from '../formatMoq'
 import { newFirst } from '../newArrivals'
@@ -56,7 +56,6 @@ export default function FigurineShop({ profile }) {
 
   const items = useMemo(() => products.map(p => {
     const designNo = p.design_no || designNumber(p.design_code)
-    const body = p.body_code || bodyLetter(p.design_code)
     const variants = docVariants(p)
     const fallbackBrand = brandLetter(p.design_code) || 'D'
     const brands = [...new Set(variants.map(v => v.brand_code || fallbackBrand).filter(Boolean))]

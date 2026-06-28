@@ -3,7 +3,7 @@ import { collection, query, orderBy, onSnapshot, addDoc, getDocs, deleteDoc, doc
 import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import rangeData from '../data/rangeProducts.json'
-import { RANGE_PLATINGS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS, designNumber, brandLetter, bodyLetter, galleryUrl } from '../constants'
+import { RANGE_PLATINGS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS, designNumber, brandLetter, galleryUrl } from '../constants'
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
@@ -141,7 +141,6 @@ export default function Range() {
   const items = useMemo(() => products.map(p => {
     const fallbackBrand = brandLetter(p.design_code) || 'D'
     const designNo = p.design_no || designNumber(p.design_code)
-    const body = p.body_code || bodyLetter(p.design_code)
     const variants = docVariants(p)
     const prices = variants.map(v => v.ws_price_usd).filter(x => x != null)
     // Availability is always component-driven (finished-goods pool removed).
@@ -156,7 +155,9 @@ export default function Range() {
     // (e.g. UA061-231, D0002-001). Multi-brand designs show the shared base
     // code + per-brand chips so the prefix letters aren't lost.
     const brandPrefix = brands.length === 1 ? brands[0] : ''
-    const code = [`${brandPrefix}${body}${designNo}`, p.format_code].filter(Boolean).join('-')
+    // brand_code already carries the full prefix (e.g. "UA"); never append a body
+    // letter or it doubles up (UA + A + 062 = UAA062).
+    const code = [`${brandPrefix}${designNo}`, p.format_code].filter(Boolean).join('-')
     return {
       id: p.id,
       code,
