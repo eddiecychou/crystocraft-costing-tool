@@ -424,6 +424,14 @@ const perUnit = r => { const n = Number(r?.qty_per_unit); return n > 0 ? n : 1 }
 const refPlating = (r, lib) => (r.plating_code || resolveRef(r, lib)?.plating_code || '').trim().toUpperCase()
 const isShared = (r, lib) => !refPlating(r, lib) // no plating ⇒ applies to all variants
 const platingsTagged = (refs, lib) => [...new Set(refs.map(r => refPlating(r, lib)).filter(Boolean))]
+// Plating codes the product actually offers (from its variants array).
+// Returns an empty Set when no variants carry plating_code (old format → no filter applied).
+const variantPlatings = product => {
+  const codes = (product?.variants || [])
+    .map(v => (v.plating_code || '').trim().toUpperCase())
+    .filter(Boolean)
+  return new Set(codes)
+}
 
 // How many finished pieces could be *assembled right now* from component stock.
 // Returns { qty, bottleneck } (qty null when the product lists no critical parts).
@@ -467,12 +475,18 @@ export function buildableFromComponents(product, lib) {
   const sharedCeiling = minOver(refs.filter(r => isShared(r, lib)))
   const sharedCap = Number.isFinite(sharedCeiling.q) ? sharedCeiling.q : Infinity
 
+  // Only compute buildable for platings the product actually offers. This prevents
+  // a stale or mislinked component (e.g. a GM body on a C/G-only product) from
+  // creating phantom availability for a plating the product never ships in.
+  const vpSet = variantPlatings(product)
+  const activePlatings = vpSet.size > 0 ? platings.filter(p => vpSet.has(p)) : platings
+
   // Per-plating buildable: tagged parts for plating P capped by shared ceiling.
   // Also track the bottleneck per plating (shared part wins when it's the binding cap).
   const byPlating = {}
   const bottleneckByPlating = {}
   let sumTagged = 0, minTagged = Infinity, minTaggedCode = null
-  for (const p of platings) {
+  for (const p of activePlatings) {
     const tg = minOver(refs.filter(r => refPlating(r, lib) === p))
     if (!Number.isFinite(tg.q)) continue
     const platBuildable = Math.min(Math.max(0, tg.q), sharedCap)
@@ -492,11 +506,14 @@ export function buildableFromComponents(product, lib) {
 // make). With plating-specific parts we report the SOONEST deliverable plating
 // (min across platings of its longest-uncovered lead) so a slow/zero plating
 // doesn't poison the promise for a plating we can ship faster.
-export function makeLeadWeeks(product, lib) {
+export function makeLeadWeeks(product, lib, { defaultPartsLeadWeeks = PARTS_LEAD_DEFAULT } = {}) {
   const refs = refsOf(product)
   if (!refs.length) return { weeks: null, driver: null }
 
   // Longest-lead uncovered part in a list ⇒ { w, code } (w null when all covered).
+  // When lead_time_weeks is 0 or unset on an out-of-stock component, we use
+  // defaultPartsLeadWeeks as a conservative fallback — never silently promise a
+  // fast turnaround on a part we have no lead time data for.
   const longestUncovered = list => {
     let w = null, code = null
     for (const r of list) {
@@ -504,7 +521,8 @@ export function makeLeadWeeks(product, lib) {
       if (!c) continue
       const stock = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
       if (stock >= perUnit(r)) continue          // this part is covered
-      const lw = Number.isFinite(c.lead_time_weeks) ? c.lead_time_weeks : 0
+      const rawLt = Number(c.lead_time_weeks)
+      const lw = rawLt > 0 ? rawLt : defaultPartsLeadWeeks
       if (w == null || lw > w) { w = lw; code = c.code }
     }
     return { w, code }
@@ -516,10 +534,14 @@ export function makeLeadWeeks(product, lib) {
     return { weeks: w, driver: code }
   }
 
+  // Only consider platings the product actually ships in (same guard as buildableFromComponents).
+  const vpSet = variantPlatings(product)
+  const activePlatings = vpSet.size > 0 ? platings.filter(p => vpSet.has(p)) : platings
+
   // Per plating: shared + that plating's tagged parts. Soonest plating wins.
   const shared = refs.filter(r => isShared(r, lib))
   let best = null, driver = null
-  for (const p of platings) {
+  for (const p of activePlatings) {
     const tagged = refs.filter(r => refPlating(r, lib) === p)
     const u = longestUncovered([...shared, ...tagged])
     const w = u.w == null ? 0 : u.w            // 0 ⇒ this plating fully covered
@@ -551,7 +573,7 @@ export function productAvailability(product, lib, { defaultPartsLeadWeeks = PART
   const finished = finishedStockOf(product)
   const refs = refsOf(product)
   const { qty: buildable, bottleneck, byPlating, bottleneckByPlating } = buildableFromComponents(product, lib)
-  const make = makeLeadWeeks(product, lib)
+  const make = makeLeadWeeks(product, lib, { defaultPartsLeadWeeks })
   const assembly = numOrNull(product?.lead_time_weeks) ?? ASSEMBLY_WEEKS_DEFAULT
   const moq = numOrNull(product?.moq)
   const moqTxt = moq ? `, MOQ ${moq}` : ''
