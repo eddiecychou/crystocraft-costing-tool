@@ -55,7 +55,7 @@ export default async function handler(req) {
 
   let payload
   try { payload = await req.json() } catch { return json({ error: 'Invalid JSON body' }, 400) }
-  const { imageUrl, image, mimeType, mode = 'clean' } = payload || {}
+  const { imageUrl, image, mimeType, mode = 'clean', colorHint = '' } = payload || {}
 
   // Resolve the source image to base64 (accept a Storage URL or inline base64).
   let dataB64 = image
@@ -72,7 +72,10 @@ export default async function handler(req) {
   }
   if (!dataB64) return json({ error: 'No image provided (imageUrl or image required)' }, 400)
 
-  const prompt = PROMPTS[mode] || PROMPTS.clean
+  const colorHintBlock = colorHint.trim()
+    ? `\nUSER-PROVIDED COLOUR DESCRIPTION (trust this — it describes the real product):\n"${colorHint.trim()}"\nUse this to confirm which colours belong to the product and must be preserved exactly.\n`
+    : ''
+  const prompt = (PROMPTS[mode] || PROMPTS.clean) + colorHintBlock
   const body = {
     contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mime, data: dataB64 } }] }],
     generationConfig: { responseModalities: ['IMAGE'], temperature: 0.2 },

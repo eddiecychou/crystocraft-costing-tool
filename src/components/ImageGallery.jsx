@@ -238,14 +238,15 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
   const [lightbox, setLightbox]           = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [dragOver, setDragOver]           = useState(false)
-  const [enh, setEnh]                     = useState(null)  // { img, before, after, mode, busy, error }
+  const [enh, setEnh]                     = useState(null)  // { img, before, after, mode, busy, error, colorWarning }
+  const [colorHint, setColorHint]         = useState('')
 
   async function runEnhance(img, mode) {
     setEnh({ img, before: img.file_url, after: null, mode, busy: true, error: '', colorWarning: false })
     try {
       const res = await fetch('/api/enhance-image', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl: img.file_url, mode }),
+        body: JSON.stringify({ imageUrl: img.file_url, mode, colorHint }),
       })
       const data = await res.json()
       if (!res.ok || !data.image) throw new Error(data.error || 'Enhancement failed')
@@ -436,6 +437,19 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                     : <span className="text-xs text-gray-400">Pick a mode below</span>}
                 </div>
               </div>
+            </div>
+            {/* Colour hint — shown before first enhancement and persists */}
+            <div className="mt-3">
+              <label className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">
+                Describe product colours <span className="normal-case font-normal text-gray-400">(optional — helps AI preserve them)</span>
+              </label>
+              <input
+                className="input mt-1 text-sm"
+                placeholder="e.g. red body with gold trim, blue inner heart, clear crystal base"
+                value={colorHint}
+                onChange={e => setColorHint(e.target.value)}
+                disabled={enh.busy}
+              />
             </div>
             {enh.error && <p className="text-xs text-red-500 mt-2">{enh.error}</p>}
             {enh.colorWarning && (
