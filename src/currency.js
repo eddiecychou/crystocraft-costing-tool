@@ -47,6 +47,21 @@ export const convertFromUSD = (amountUSD, profile, rates) => {
   return fromUSD(amountUSD, profile?.base_currency || 'USD', rates)
 }
 
+// Convert a HKD amount into the customer's display currency, honouring the same
+// per-account fixed rate. The lock is defined as USD→display (profile.fx_rate),
+// so corp-gift HKD prices are first bridged to USD via the live pivot (HKD is
+// USD-pegged, so this is effectively stable) then converted at the locked rate.
+// Blank/0 fx_rate falls back to the live HKD→currency conversion.
+export const convertFromHKD = (amountHKD, profile, rates) => {
+  if (amountHKD == null) return null
+  const fx = Number(profile?.fx_rate)
+  if (Number.isFinite(fx) && fx > 0) {
+    const usd = Number(amountHKD) / (rates.USD || DEFAULT_RATES.USD)  // HKD → USD (pegged)
+    return usd * fx                                                   // USD → display (locked)
+  }
+  return fromHKD(amountHKD, profile?.base_currency || 'USD', rates)
+}
+
 // The account's "WS %" is the percentage of the list (ex-factory) price the
 // customer pays: 100 = list price as-is, 130 = +30% markup, 90 = 10% discount.
 // Stored on profile.ws_discount_pct (legacy field name). Blank / 0 / invalid ⇒

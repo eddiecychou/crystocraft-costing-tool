@@ -3,7 +3,7 @@ import { collection, query, orderBy, onSnapshot, doc, getDoc } from 'firebase/fi
 import { Link } from 'react-router-dom'
 import { db, auth } from '../firebase'
 import { Package } from 'lucide-react'
-import { useRates, fromHKD, fmtMoney } from '../currency'
+import { useRates, convertFromHKD, fmtMoney } from '../currency'
 import { isNew, newFirst } from '../newArrivals'
 import CollectionBand from './CollectionBand'
 import { collectionProducts } from '../catalogueCollections'
@@ -92,10 +92,10 @@ function CorpCard({ p, cur, rates, profile }) {
     getDoc(doc(db, 'products', p.id, 'customer_prices', uid))
       .then(s => {
         const hkds = (s.exists() ? (s.data().tiers || []) : []).map(t => t.price_hkd).filter(v => v != null).map(Number)
-        setFromPrice(hkds.length ? fromHKD(Math.min(...hkds), cur, rates) : null)
+        setFromPrice(hkds.length ? convertFromHKD(Math.min(...hkds), profile, rates) : null)
       })
       .catch(() => setFromPrice(null))
-  }, [p.id, cur, rates, profile?.id])
+  }, [p.id, cur, rates, profile?.id, profile?.fx_rate])
 
   return (
     <Link to={`/shop/corporate/${p.id}`} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">

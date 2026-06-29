@@ -3,7 +3,7 @@ import { doc, onSnapshot, getDoc, collection, query, orderBy } from 'firebase/fi
 import { useParams, Link } from 'react-router-dom'
 import { db, auth } from '../firebase'
 import { Package, ArrowLeft, Check, Plus } from 'lucide-react'
-import { useRates, fromHKD, fmtMoney } from '../currency'
+import { useRates, convertFromHKD, fmtMoney } from '../currency'
 import FavHeart from './FavHeart'
 import { useCart } from './store'
 import LoadingBar from '../components/LoadingBar'
@@ -95,7 +95,7 @@ export default function CorporateDetail({ profile }) {
                 {tiers.map((t, i) => (
                   <div key={i} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
                     <span className="text-ink-60">{Number(t.quantity).toLocaleString()} pcs</span>
-                    <span className="text-ink font-medium">{fmtMoney(fromHKD(t.price_hkd, cur, rates), cur)}</span>
+                    <span className="text-ink font-medium">{fmtMoney(convertFromHKD(t.price_hkd, profile, rates), cur)}</span>
                   </div>
                 ))}
               </div>
