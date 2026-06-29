@@ -71,7 +71,8 @@ export default function CorporateDetail({ profile }) {
         <div>
           <h1 className="text-xl md:text-2xl text-ink">{p.name}</h1>
           {p.category && <p className="text-sm text-ink-50 mt-1">{p.category}</p>}
-          {p.description && <p className="text-sm text-ink-70 mt-3">{p.description}</p>}
+          {p.marketing_description && <p className="text-sm text-ink-70 leading-relaxed mt-3">{p.marketing_description}</p>}
+          {p.description && <p className="text-sm text-ink-60 mt-3">{p.description}</p>}
 
           <div className="rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2 mt-4">
             Made to order. Prices below are indicative reference points only — final pricing varies by
