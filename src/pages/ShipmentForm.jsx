@@ -12,6 +12,7 @@ import { CURRENCIES } from '../constants'
 import { FileInput, FolderOpen, FileText, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
 import PackingListEditor from './PackingListEditor'
+import FreightComparison from './FreightComparison'
 
 const blankHeader = {
   customer_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', order_date: '',
@@ -284,6 +285,7 @@ export default function ShipmentForm() {
           {[
             { v: 'order',   label: 'Order & Lines' },
             { v: 'packing', label: 'Packing List' },
+            { v: 'freight', label: 'Freight' },
           ].map(t => (
             <button
               key={t.v}
@@ -304,6 +306,11 @@ export default function ShipmentForm() {
       {/* Packing list tab */}
       {isEdit && tab === 'packing' && (
         <PackingListEditor orderId={id} orderLines={lines} />
+      )}
+
+      {/* Freight comparison tab */}
+      {isEdit && tab === 'freight' && (
+        <FreightComparison orderId={id} />
       )}
 
       {/* Order tab (or new shipment form) */}

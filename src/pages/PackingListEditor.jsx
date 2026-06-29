@@ -73,13 +73,43 @@ function PackedVsOrdered({ packableLines, cartons }) {
   )
 }
 
-// ── Per-carton card (P-1) ─────────────────────────────────────────────────────
+// ── Per-carton card (P-1 + P-2) ──────────────────────────────────────────────
 // One mode-aware card per carton. `single` shows a single content line (but never
 // discards extra contents the carton already holds); `mixed` shows the full
 // multi-item editor. Switching mode never truncates contents — this removes the
 // Bug 2 contents[0] collapse, which came from a LIST-level mode reinterpreting
 // every carton's data.
-function CartonCard({ carton, onChange, onRemove }) {
+//
+// P-2: `packableLines` enables the order-line picker in both modes. Selecting a
+// packable line auto-fills item_code, description, and stamps order_line_id.
+// Picking "– free text –" clears the stamp; free-text always works.
+function LinePicker({ packableLines, orderLineId, itemCode, onSelect }) {
+  if (!packableLines?.length) return null
+  // Resolve: the picker shows the currently linked line (by id) or falls back to
+  // a matching item_code so pre-generated single-carton rows look linked.
+  const matchedId = orderLineId ||
+    packableLines.find(l => l.item_code && l.item_code === itemCode)?.id || ''
+  return (
+    <select
+      className="input py-1 text-xs w-44 shrink-0"
+      value={matchedId}
+      onChange={e => {
+        const line = packableLines.find(l => l.id === e.target.value)
+        onSelect(line || null)
+      }}
+      title="Pick from order lines — auto-fills code & description"
+    >
+      <option value="">– free text –</option>
+      {packableLines.map(l => (
+        <option key={l.id} value={l.id}>
+          {[l.item_code, l.description].filter(Boolean).join(' · ')}
+        </option>
+      ))}
+    </select>
+  )
+}
+
+function CartonCard({ carton, packableLines, onChange, onRemove }) {
   const c = carton
   const mode = c.pack_mode === 'mixed' ? 'mixed' : 'single'
   const seqEnd = parseInt(c.carton_seq) + parseInt(c.carton_count || 1) - 1
@@ -169,14 +199,23 @@ function CartonCard({ carton, onChange, onRemove }) {
 
       {/* Contents */}
       {mode === 'single' ? (
-        <div className="px-4 py-2.5 flex items-center gap-2">
+        <div className="px-4 py-2.5 flex items-center gap-2 flex-wrap">
+          <LinePicker
+            packableLines={packableLines}
+            orderLineId={contents[0]?.order_line_id}
+            itemCode={contents[0]?.item_code}
+            onSelect={line => patchFirstContent(line
+              ? { item_code: line.item_code || '', description: line.description || '', order_line_id: line.id }
+              : { order_line_id: '' }
+            )}
+          />
           <input
             className="input py-1 text-xs font-mono w-32"
             value={contents[0]?.item_code || ''} placeholder="Item code"
             onChange={e => patchFirstContent({ item_code: e.target.value })}
           />
           <input
-            className="input py-1 text-xs flex-1"
+            className="input py-1 text-xs flex-1 min-w-[120px]"
             value={contents[0]?.description || ''} placeholder="Description"
             onChange={e => patchFirstContent({ description: e.target.value })}
           />
@@ -197,14 +236,23 @@ function CartonCard({ carton, onChange, onRemove }) {
       ) : (
         <div className="px-4 py-2 space-y-1.5">
           {contents.map((item, i) => (
-            <div key={item._localId || i} className="flex items-center gap-2">
+            <div key={item._localId || i} className="flex items-center gap-2 flex-wrap">
+              <LinePicker
+                packableLines={packableLines}
+                orderLineId={item.order_line_id}
+                itemCode={item.item_code}
+                onSelect={line => updateItem(i, line
+                  ? { item_code: line.item_code || '', description: line.description || '', order_line_id: line.id }
+                  : { order_line_id: '' }
+                )}
+              />
               <input
                 className="input py-1 text-xs font-mono w-32"
                 value={item.item_code} placeholder="Item code"
                 onChange={e => updateItem(i, { item_code: e.target.value })}
               />
               <input
-                className="input py-1 text-xs flex-1"
+                className="input py-1 text-xs flex-1 min-w-[120px]"
                 value={item.description} placeholder="Description"
                 onChange={e => updateItem(i, { description: e.target.value })}
               />
@@ -511,6 +559,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
           <CartonCard
             key={c._localId}
             carton={c}
+            packableLines={packableLines}
             onChange={patch => updateCarton(c._localId, patch)}
             onRemove={() => removeCarton(c._localId)}
           />

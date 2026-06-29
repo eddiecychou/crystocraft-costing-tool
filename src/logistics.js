@@ -145,6 +145,8 @@ export const normFreightQuote = (q, rates) => {
     vendor_id: str(q.vendor_id),
     vendor_name: str(q.vendor_name),
     order_id: q.order_id || null,
+    scenario_id: q.scenario_id || null,
+    scenario_label: str(q.scenario_label),
     lane: {
       origin: str(q.lane?.origin) || 'Shenzhen',
       dest_country: str(q.lane?.dest_country),
@@ -191,6 +193,16 @@ export async function saveFreightQuote(id, data, rates) {
 
 export async function deleteFreightQuote(id) {
   await deleteDoc(doc(db, 'freight_quotes', id))
+}
+
+// All freight quotes for a specific order (feeds P-3 comparison matrix).
+export async function loadOrderQuotes(orderId) {
+  try {
+    const snap = await getDocs(query(QUOTES(), where('order_id', '==', orderId), orderBy('createdAt', 'desc')))
+    return snap.docs.map(quoteFromDoc)
+  } catch {
+    return []
+  }
 }
 
 // Cost history for a vendor, or for a lane (dest country) — both feed routing.
