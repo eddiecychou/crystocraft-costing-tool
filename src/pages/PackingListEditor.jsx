@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { CheckCircle2, AlertTriangle, Plus, Trash2, RefreshCw, Package } from 'lucide-react'
 import {
-  PL_STATUSES, PACK_MODES,
+  PL_STATUSES, CARTON_MODES,
   buildFullCartonPlan, calcPackedVsOrdered, derivedCbm,
   loadRangeProductsWithPacking,
   getPackingListByOrder, createPackingList, updatePackingList,
@@ -9,10 +9,11 @@ import {
 } from '../packing'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function newCarton(seq = 1) {
+function newCarton(seq = 1, pack_mode = 'single') {
   return {
     _localId: crypto.randomUUID(), id: null,
     carton_seq: seq, carton_count: 1,
+    pack_mode,
     packaging_code: '',
     gw_kg_standard: null, gw_kg_actual: null,
     length_cm: null, width_cm: null, height_cm: null,
@@ -71,141 +72,55 @@ function PackedVsOrdered({ packableLines, cartons }) {
   )
 }
 
-// ── Full-carton mode row ──────────────────────────────────────────────────────
-function FullCartonRow({ carton, idx, onChange, onRemove, packableLines }) {
+// ── Per-carton card (P-1) ─────────────────────────────────────────────────────
+// One mode-aware card per carton. `single` shows a single content line (but never
+// discards extra contents the carton already holds); `mixed` shows the full
+// multi-item editor. Switching mode never truncates contents — this removes the
+// Bug 2 contents[0] collapse, which came from a LIST-level mode reinterpreting
+// every carton's data.
+function CartonCard({ carton, onChange, onRemove }) {
   const c = carton
-  const gw    = c.gw_kg_actual ?? c.gw_kg_standard ?? ''
-  const isAct = c.gw_kg_actual !== null || !c.is_estimate
-  const cbm   = derivedCbm(c)
+  const mode = c.pack_mode === 'mixed' ? 'mixed' : 'single'
   const seqEnd = parseInt(c.carton_seq) + parseInt(c.carton_count || 1) - 1
-  const seqLabel = parseInt(c.carton_count) > 1 ? `${c.carton_seq}–${seqEnd}` : String(c.carton_seq)
-  const content  = c.contents?.[0]
-  const extraItems = Math.max(0, (c.contents?.length || 0) - 1)
-
-  // Interim guard (pre P-1): the single-line view only manages contents[0], but
-  // must NOT discard any further items a carton already holds (e.g. entered in
-  // mixed mode). Patch the first content in place and keep the tail intact.
-  function patchFirstContent(patch) {
-    const list = c.contents?.length ? c.contents : [newContent()]
-    onChange({ ...c, contents: list.map((it, i) => (i === 0 ? { ...it, ...patch } : it)) })
-  }
-
-  function patchDims(field, val) {
-    const updated = { ...c, [field]: val === '' ? null : parseFloat(val) || null }
-    const l = parseFloat(updated.length_cm), w = parseFloat(updated.width_cm), h = parseFloat(updated.height_cm)
-    onChange({ ...updated, cbm_per_carton: l && w && h ? Math.round(l * w * h / 1e6 * 1e6) / 1e6 : c.cbm_per_carton, is_estimate: false })
-  }
-  function patchActualGw(val) {
-    onChange({ ...c, gw_kg_actual: val === '' ? null : parseFloat(val) || null, is_estimate: false })
-  }
-
-  return (
-    <tr className={`border-b border-gray-100 ${!c.is_estimate ? 'bg-green-50/30' : ''}`}>
-      <td className="px-3 py-2 text-xs font-mono text-gray-500 whitespace-nowrap">{seqLabel}</td>
-      <td className="px-3 py-2">
-        <input
-          className="input py-1 text-xs font-mono w-28"
-          value={content?.item_code || ''}
-          onChange={e => patchFirstContent({ item_code: e.target.value })}
-          placeholder="Item code"
-        />
-        {extraItems > 0 && (
-          <span className="ml-1 text-[10px] px-1 py-0.5 rounded bg-amber-100 text-amber-700"
-                title="This carton holds more items — switch to mixed mode to see them all">
-            +{extraItems} more
-          </span>
-        )}
-      </td>
-      <td className="px-3 py-2 min-w-[140px]">
-        <input
-          className="input py-1 text-xs w-full"
-          value={content?.description || ''}
-          onChange={e => patchFirstContent({ description: e.target.value })}
-          placeholder="Description"
-        />
-      </td>
-      <td className="px-3 py-2">
-        <input
-          className="input py-1 text-xs w-16 text-right"
-          type="number" min="1"
-          value={content?.qty || ''}
-          onChange={e => patchFirstContent({ qty: e.target.value })}
-          placeholder="48"
-        />
-      </td>
-      <td className="px-3 py-2">
-        <input
-          className="input py-1 text-xs w-16 text-right"
-          type="number" min="1"
-          value={c.carton_count || ''}
-          onChange={e => onChange({ ...c, carton_count: parseInt(e.target.value) || 1 })}
-        />
-      </td>
-      <td className="px-3 py-2">
-        <input
-          className={`input py-1 text-xs w-20 text-right ${isAct ? 'border-green-400' : ''}`}
-          type="number" step="0.1" min="0"
-          value={c.gw_kg_actual ?? c.gw_kg_standard ?? ''}
-          onChange={e => patchActualGw(e.target.value)}
-          placeholder="kg"
-          title={c.gw_kg_standard ? `Standard: ${c.gw_kg_standard} kg` : ''}
-        />
-      </td>
-      <td className="px-3 py-2">
-        <div className="flex items-center gap-1">
-          {(['length_cm', 'width_cm', 'height_cm']).map(f => (
-            <input
-              key={f}
-              className={`input py-1 text-xs w-14 text-right ${!c.is_estimate ? 'border-green-400' : ''}`}
-              type="number" step="0.1" min="0"
-              value={c[f] ?? ''}
-              onChange={e => patchDims(f, e.target.value)}
-              placeholder={f === 'length_cm' ? 'L' : f === 'width_cm' ? 'W' : 'H'}
-            />
-          ))}
-        </div>
-      </td>
-      <td className="px-3 py-2 text-xs text-right text-gray-600 whitespace-nowrap">
-        {cbm ? cbm.toFixed(4) : '—'}
-      </td>
-      <td className="px-3 py-2 text-center">
-        {c.is_estimate
-          ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-600">Est</span>
-          : <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">Actual</span>}
-      </td>
-      <td className="px-3 py-2">
-        <button type="button" onClick={onRemove} className="text-gray-300 hover:text-red-500">
-          <Trash2 size={14} />
-        </button>
-      </td>
-    </tr>
-  )
-}
-
-// ── Mixed mode carton card ────────────────────────────────────────────────────
-function MixedCartonCard({ carton, onChange, onRemove, packableLines }) {
-  const c = carton
-  const seqEnd = parseInt(c.carton_seq) + parseInt(c.carton_count || 1) - 1
-  const seqLabel = parseInt(c.carton_count) > 1 ? `${c.carton_seq}–${seqEnd}` : `CTN ${c.carton_seq}`
-
-  function patchDims(field, val) {
-    const updated = { ...c, [field]: val === '' ? null : parseFloat(val) || null }
-    const l = parseFloat(updated.length_cm), w = parseFloat(updated.width_cm), h = parseFloat(updated.height_cm)
-    onChange({ ...updated, cbm_per_carton: l && w && h ? Math.round(l * w * h / 1e6 * 1e6) / 1e6 : c.cbm_per_carton, is_estimate: false })
-  }
+  const seqLabel = parseInt(c.carton_count) > 1 ? `CTN ${c.carton_seq}–${seqEnd}` : `CTN ${c.carton_seq}`
   const cbm = derivedCbm(c)
+  const contents = c.contents?.length ? c.contents : [newContent()]
+  const extraItems = Math.max(0, contents.length - 1)
 
-  function addItem() { onChange({ ...c, contents: [...(c.contents || []), newContent()] }) }
-  function updateItem(i, patch) {
-    onChange({ ...c, contents: c.contents.map((it, j) => j === i ? { ...it, ...patch } : it) })
+  function patchDims(field, val) {
+    const updated = { ...c, [field]: val === '' ? null : parseFloat(val) || null }
+    const l = parseFloat(updated.length_cm), w = parseFloat(updated.width_cm), h = parseFloat(updated.height_cm)
+    onChange({ ...updated, cbm_per_carton: l && w && h ? Math.round(l * w * h / 1e6 * 1e6) / 1e6 : c.cbm_per_carton, is_estimate: false })
   }
-  function removeItem(i) { onChange({ ...c, contents: c.contents.filter((_, j) => j !== i) }) }
+  // Single-mode edits patch contents[0] in place and keep the tail intact.
+  function patchFirstContent(patch) {
+    onChange({ ...c, contents: contents.map((it, i) => (i === 0 ? { ...it, ...patch } : it)) })
+  }
+  function setMode(next) {
+    // Never drop contents on a mode switch.
+    onChange({ ...c, pack_mode: next, contents: c.contents?.length ? c.contents : [newContent()] })
+  }
+  function addItem() { onChange({ ...c, contents: [...contents, newContent()] }) }
+  function updateItem(i, patch) { onChange({ ...c, contents: contents.map((it, j) => (j === i ? { ...it, ...patch } : it)) }) }
+  function removeItem(i) {
+    const next = contents.filter((_, j) => j !== i)
+    onChange({ ...c, contents: next.length ? next : [newContent()] })
+  }
 
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden mb-3">
       {/* Carton header */}
       <div className="bg-gray-50 px-4 py-3 flex flex-wrap items-center gap-3">
-        <span className="text-sm font-medium text-gray-700 min-w-[70px]">{seqLabel}</span>
+        <span className="text-sm font-medium text-gray-700 min-w-[78px]">{seqLabel}</span>
+        {/* Per-carton mode toggle */}
+        <div className="flex rounded-md border border-gray-200 overflow-hidden text-[11px]">
+          {CARTON_MODES.map(m => (
+            <button key={m.value} type="button" onClick={() => setMode(m.value)} title={m.desc}
+              className={`px-2 py-1 font-medium transition-colors ${mode === m.value ? 'bg-ink text-white' : 'bg-white text-gray-500 hover:bg-gray-100'}`}>
+              {m.label}
+            </button>
+          ))}
+        </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           <div className="flex items-center gap-1">
             <span className="text-xs text-gray-500">GW</span>
@@ -214,6 +129,7 @@ function MixedCartonCard({ carton, onChange, onRemove, packableLines }) {
               type="number" step="0.1" min="0" placeholder="kg"
               value={c.gw_kg_actual ?? c.gw_kg_standard ?? ''}
               onChange={e => onChange({ ...c, gw_kg_actual: e.target.value === '' ? null : parseFloat(e.target.value) || null, is_estimate: false })}
+              title={c.gw_kg_standard ? `Standard: ${c.gw_kg_standard} kg` : ''}
             />
             <span className="text-xs text-gray-400">kg</span>
           </div>
@@ -222,7 +138,7 @@ function MixedCartonCard({ carton, onChange, onRemove, packableLines }) {
               <input
                 key={f}
                 className={`input py-1 text-xs w-14 text-right ${!c.is_estimate ? 'border-green-400' : ''}`}
-                type="number" step="0.1" min="0" placeholder={f==='length_cm'?'L':f==='width_cm'?'W':'H'}
+                type="number" step="0.1" min="0" placeholder={f === 'length_cm' ? 'L' : f === 'width_cm' ? 'W' : 'H'}
                 value={c[f] ?? ''}
                 onChange={e => patchDims(f, e.target.value)}
               />
@@ -249,39 +165,64 @@ function MixedCartonCard({ carton, onChange, onRemove, packableLines }) {
           </button>
         </div>
       </div>
+
       {/* Contents */}
-      <div className="px-4 py-2 space-y-1.5">
-        {(c.contents || []).map((item, i) => (
-          <div key={item._localId || i} className="flex items-center gap-2">
-            <input
-              className="input py-1 text-xs font-mono w-28"
-              value={item.item_code} placeholder="Item code"
-              onChange={e => updateItem(i, { item_code: e.target.value })}
-            />
-            <input
-              className="input py-1 text-xs flex-1"
-              value={item.description} placeholder="Description"
-              onChange={e => updateItem(i, { description: e.target.value })}
-            />
-            <input
-              className="input py-1 text-xs w-20 text-right"
-              type="number" min="0" value={item.qty} placeholder="Qty"
-              onChange={e => updateItem(i, { qty: e.target.value })}
-            />
-            <span className="text-xs text-gray-400">pcs</span>
-            <button type="button" onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-500">
-              <Trash2 size={13} />
+      {mode === 'single' ? (
+        <div className="px-4 py-2.5 flex items-center gap-2">
+          <input
+            className="input py-1 text-xs font-mono w-32"
+            value={contents[0]?.item_code || ''} placeholder="Item code"
+            onChange={e => patchFirstContent({ item_code: e.target.value })}
+          />
+          <input
+            className="input py-1 text-xs flex-1"
+            value={contents[0]?.description || ''} placeholder="Description"
+            onChange={e => patchFirstContent({ description: e.target.value })}
+          />
+          <input
+            className="input py-1 text-xs w-20 text-right"
+            type="number" min="0" value={contents[0]?.qty || ''} placeholder="Pcs/ctn"
+            onChange={e => patchFirstContent({ qty: e.target.value })}
+          />
+          <span className="text-xs text-gray-400">pcs</span>
+          {extraItems > 0 && (
+            <button type="button" onClick={() => setMode('mixed')}
+              className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 hover:bg-amber-200"
+              title="This carton holds more items — switch to mixed to see them all">
+              +{extraItems} more — show
             </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          onClick={addItem}
-          className="mt-1 flex items-center gap-1 text-xs text-brand-600 hover:text-brand-800"
-        >
-          <Plus size={12} /> Add item
-        </button>
-      </div>
+          )}
+        </div>
+      ) : (
+        <div className="px-4 py-2 space-y-1.5">
+          {contents.map((item, i) => (
+            <div key={item._localId || i} className="flex items-center gap-2">
+              <input
+                className="input py-1 text-xs font-mono w-32"
+                value={item.item_code} placeholder="Item code"
+                onChange={e => updateItem(i, { item_code: e.target.value })}
+              />
+              <input
+                className="input py-1 text-xs flex-1"
+                value={item.description} placeholder="Description"
+                onChange={e => updateItem(i, { description: e.target.value })}
+              />
+              <input
+                className="input py-1 text-xs w-20 text-right"
+                type="number" min="0" value={item.qty} placeholder="Qty"
+                onChange={e => updateItem(i, { qty: e.target.value })}
+              />
+              <span className="text-xs text-gray-400">pcs</span>
+              <button type="button" onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-500">
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))}
+          <button type="button" onClick={addItem} className="mt-1 flex items-center gap-1 text-xs text-brand-600 hover:text-brand-800">
+            <Plus size={12} /> Add item
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -293,7 +234,6 @@ export default function PackingListEditor({ orderId, orderLines }) {
 
   const [pl, setPl]             = useState(null)       // packing_list doc
   const [cartons, setCartons]   = useState([])          // carton rows with contents
-  const [mode, setMode]         = useState('full_carton')
   const [loading, setLoading]   = useState(true)
   const [saving, setSaving]     = useState(false)
   const [saved, setSaved]       = useState(false)
@@ -313,7 +253,6 @@ export default function PackingListEditor({ orderId, orderLines }) {
       setRangeProducts(products)
       if (found) {
         setPl(found)
-        setMode(found.mode || 'full_carton')
         setCartons(await getCartonsWithContents(found.id))
       }
       setLoading(false)
@@ -346,8 +285,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
 
   async function generateFromStandard() {
     const plan = buildFullCartonPlan(packableLines, rangeProducts)
-    setCartons(plan)
-    setMode('full_carton')
+    setCartons(plan.map(c => ({ ...c, pack_mode: 'single' })))
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────
@@ -368,16 +306,15 @@ export default function PackingListEditor({ orderId, orderLines }) {
     try {
       let plId = pl?.id
       if (!plId) {
-        plId = await createPackingList(orderId, { mode })
+        plId = await createPackingList(orderId, {})
         const found = await getPackingListByOrder(orderId)
         setPl(found)
       }
-      if (mode !== pl?.mode || promoteToFinal !== (pl?.status === 'final')) {
+      if (promoteToFinal !== (pl?.status === 'final')) {
         await updatePackingList(plId, {
-          mode,
           status: promoteToFinal ? 'final' : (pl?.status || 'estimate'),
         })
-        setPl(p => ({ ...p, mode, status: promoteToFinal ? 'final' : (p?.status || 'estimate') }))
+        setPl(p => ({ ...p, status: promoteToFinal ? 'final' : (p?.status || 'estimate') }))
       }
       await saveCartonsWithContents(plId, cartons)
       // Reload cartons to get Firestore IDs
@@ -441,10 +378,10 @@ export default function PackingListEditor({ orderId, orderLines }) {
           </button>
           <button
             type="button"
-            onClick={() => { setCartons([newCarton(1)]); setMode('mixed') }}
+            onClick={() => setCartons([newCarton(1, 'mixed')])}
             className="btn-secondary"
           >
-            Start manually (mixed mode)
+            Start manually (mixed carton)
           </button>
         </div>
       </div>
@@ -455,26 +392,10 @@ export default function PackingListEditor({ orderId, orderLines }) {
     <div className="space-y-5">
       {/* Header bar */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
-          {PACK_MODES.map(m => (
-            <button
-              key={m.value}
-              type="button"
-              onClick={() => setMode(m.value)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
-                mode === m.value
-                  ? 'bg-ink text-white border-ink'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
-              }`}
-            >
-              {m.label}
-            </button>
-          ))}
-        </div>
         <button
           type="button"
           onClick={generateFromStandard}
-          className="flex items-center gap-1.5 text-xs text-brand-600 hover:text-brand-800 ml-1"
+          className="flex items-center gap-1.5 text-xs text-brand-600 hover:text-brand-800"
           title="Replace current cartons with standard-packing pre-fill"
         >
           <RefreshCw size={13} /> Re-generate from standard
@@ -487,82 +408,24 @@ export default function PackingListEditor({ orderId, orderLines }) {
         </div>
       </div>
 
-      {/* ── Full-carton table ── */}
-      {mode === 'full_carton' && (
-        <div className="card overflow-x-auto">
-          <table className="w-full text-sm min-w-[800px]">
-            <thead>
-              <tr className="border-b border-gray-100 text-xs text-gray-500 uppercase tracking-wide">
-                <th className="px-3 py-2 text-left">CTN No</th>
-                <th className="px-3 py-2 text-left">Item Code</th>
-                <th className="px-3 py-2 text-left">Description</th>
-                <th className="px-3 py-2 text-right">Pcs/Ctn</th>
-                <th className="px-3 py-2 text-right">Ctns</th>
-                <th className="px-3 py-2 text-right">GW (kg)</th>
-                <th className="px-3 py-2 text-left">L × W × H (cm)</th>
-                <th className="px-3 py-2 text-right">CBM</th>
-                <th className="px-3 py-2 text-center">Status</th>
-                <th className="px-3 py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {cartons.map((c, i) => (
-                <FullCartonRow
-                  key={c._localId}
-                  carton={c}
-                  idx={i}
-                  onChange={patch => updateCarton(c._localId, patch)}
-                  onRemove={() => removeCarton(c._localId)}
-                  packableLines={packableLines}
-                />
-              ))}
-            </tbody>
-            {cartons.length > 0 && (
-              <tfoot>
-                <tr className="border-t-2 border-gray-200 bg-gray-50 text-xs font-medium text-gray-700">
-                  <td colSpan={4} className="px-3 py-2" />
-                  <td className="px-3 py-2 text-right">{totals.totalCartons}</td>
-                  <td className="px-3 py-2 text-right">{totals.totalGw} kg</td>
-                  <td className="px-3 py-2" />
-                  <td className="px-3 py-2 text-right">{totals.totalCbm}</td>
-                  <td colSpan={2} className="px-3 py-2" />
-                </tr>
-              </tfoot>
-            )}
-          </table>
-          <div className="px-4 py-3 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={addCarton}
-              className="flex items-center gap-1.5 text-sm text-brand-600 hover:text-brand-800"
-            >
-              <Plus size={14} /> Add carton row
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Mixed mode cards ── */}
-      {mode === 'mixed' && (
-        <div>
-          {cartons.map(c => (
-            <MixedCartonCard
-              key={c._localId}
-              carton={c}
-              onChange={patch => updateCarton(c._localId, patch)}
-              onRemove={() => removeCarton(c._localId)}
-              packableLines={packableLines}
-            />
-          ))}
-          <button
-            type="button"
-            onClick={addCarton}
-            className="flex items-center gap-2 text-sm text-brand-600 hover:text-brand-800 mt-2"
-          >
-            <Plus size={15} /> Add carton
-          </button>
-        </div>
-      )}
+      {/* ── Cartons (per-carton single/mixed mode) ── */}
+      <div>
+        {cartons.map(c => (
+          <CartonCard
+            key={c._localId}
+            carton={c}
+            onChange={patch => updateCarton(c._localId, patch)}
+            onRemove={() => removeCarton(c._localId)}
+          />
+        ))}
+        <button
+          type="button"
+          onClick={addCarton}
+          className="flex items-center gap-2 text-sm text-brand-600 hover:text-brand-800 mt-2"
+        >
+          <Plus size={15} /> Add carton
+        </button>
+      </div>
 
       {/* ── Packed vs ordered ── */}
       {packableLines.length > 0 && cartons.length > 0 && (

@@ -24,6 +24,14 @@ export const PACK_MODES = [
   { value: 'mixed',       label: 'Mixed / flat',  desc: 'Multiple SKUs per carton — enter contents manually' },
 ]
 
+// Per-carton mode (P-1). `mode` on the list is deprecated — each carton owns its
+// pack_mode so one list can hold both single-SKU and mixed cartons without the
+// old destructive contents[0] reinterpretation.
+export const CARTON_MODES = [
+  { value: 'single', label: 'Single SKU', desc: 'One product in this carton' },
+  { value: 'mixed',  label: 'Mixed',      desc: 'Several SKUs in this carton' },
+]
+
 // ── Dimension helpers ─────────────────────────────────────────────────────────
 // Parse "50 x 40 x 30 cm" or "50x40x30" → { l, w, h } or null
 export function parseDims(str) {
@@ -177,11 +185,16 @@ export async function getCartonsWithContents(plId) {
   const csnap = await getDocs(query(CTN_COL(plId), orderBy('carton_seq')))
   return Promise.all(csnap.docs.map(async cd => {
     const conts = await getDocs(CONT_COL(plId, cd.id))
+    const data = cd.data()
+    const contents = conts.docs.map(d => ({ id: d.id, _localId: d.id, ...d.data() }))
     return {
       id: cd.id,
       _localId: cd.id,
-      ...cd.data(),
-      contents: conts.docs.map(d => ({ id: d.id, _localId: d.id, ...d.data() })),
+      ...data,
+      // Per-carton mode (P-1). Auto-migrate legacy cartons: those with >1 content
+      // are mixed, otherwise single. Persisted on next save.
+      pack_mode: data.pack_mode || (contents.length > 1 ? 'mixed' : 'single'),
+      contents,
     }
   }))
 }
@@ -206,6 +219,7 @@ export async function saveCartonsWithContents(plId, cartons) {
     const normRest = {
       carton_seq:     parseInt(rest.carton_seq) || 1,
       carton_count:   parseInt(rest.carton_count) || 1,
+      pack_mode:      rest.pack_mode === 'mixed' ? 'mixed' : 'single',
       packaging_code: rest.packaging_code || '',
       gw_kg_standard: parseFloat(rest.gw_kg_standard) || null,
       gw_kg_actual:   parseFloat(rest.gw_kg_actual) || null,
