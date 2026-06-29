@@ -711,8 +711,27 @@ export default function RangeForm() {
     try {
       const blob = await (await fetch(enh.after)).blob()
       const file = new File([blob], `enhanced-${Date.now()}.png`, { type: blob.type || 'image/png' })
-      const url = await uploadFile(file)   // resize → white JPEG → Storage
+      const url = await uploadFile(file)
       setForm(f => ({ ...f, gallery: f.gallery.map((g, j) => (j === enh.i ? { ...g, url } : g)) }))
+      setEnh(null)
+    } catch (err) {
+      setEnh(e => ({ ...e, busy: false, error: err.message }))
+    }
+  }
+
+  async function saveEnhancedAsNew() {
+    if (!enh?.after) return
+    setEnh(e => ({ ...e, busy: true }))
+    try {
+      const blob = await (await fetch(enh.after)).blob()
+      const file = new File([blob], `enhanced-${Date.now()}.png`, { type: blob.type || 'image/png' })
+      const url = await uploadFile(file)
+      // Append as a new gallery entry after the original
+      setForm(f => {
+        const next = [...f.gallery]
+        next.splice(enh.i + 1, 0, { url, caption: '' })
+        return { ...f, gallery: next }
+      })
       setEnh(null)
     } catch (err) {
       setEnh(e => ({ ...e, busy: false, error: err.message }))
@@ -1332,8 +1351,11 @@ export default function RangeForm() {
                           className="btn-secondary text-sm">Enhance (lighting + colour)</button>
                   <div className="flex-1" />
                   <button type="button" disabled={enh.busy} onClick={() => setEnh(null)} className="text-sm text-ink-50 hover:text-ink px-2">Discard</button>
+                  <button type="button" disabled={enh.busy || !enh.after} onClick={saveEnhancedAsNew} className="btn-secondary text-sm inline-flex items-center gap-1">
+                    <Plus size={14} /> {enh.busy ? 'Saving…' : 'Save as new'}
+                  </button>
                   <button type="button" disabled={enh.busy || !enh.after} onClick={keepEnhanced} className="btn-primary text-sm inline-flex items-center gap-1">
-                    <Check size={14} /> {enh.busy ? 'Saving…' : 'Keep & replace'}
+                    <Check size={14} /> {enh.busy ? 'Saving…' : 'Replace original'}
                   </button>
                 </div>
                 <p className="text-[11px] text-ink-40 mt-2">AI re-renders the image — check the shape, plating colour and stone colours match the real product before keeping. The original isn't changed until you Keep.</p>

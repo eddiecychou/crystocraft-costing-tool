@@ -10,7 +10,7 @@ import {
   SortableContext, rectSortingStrategy, useSortable, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Star, X, Download, Paperclip, FolderOpen, Sparkles, Check, AlertTriangle } from 'lucide-react'
+import { Star, X, Download, Paperclip, FolderOpen, Sparkles, Check, AlertTriangle, Plus } from 'lucide-react'
 import { IMAGE_ORIENTATIONS, IMAGE_VISIBILITY, imageVisibility } from '../constants'
 
 // Sample both images at 150×150 and count pixels that were clearly coloured in
@@ -316,6 +316,35 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
     }
   }
 
+  async function saveAsNew() {
+    if (!enh?.after) return
+    setEnh(e => ({ ...e, busy: true }))
+    try {
+      const blob = await (await fetch(enh.after)).blob()
+      const file = new File([blob], `enhanced-${Date.now()}.png`, { type: blob.type || 'image/png' })
+      const { blob: outBlob, orientation } = await resizeToJpeg(file)
+      const path = `${storagePath}/${Date.now()}_${++fileIdRef.current}.jpg`
+      const sRef = storageRef(storage, path)
+      await uploadBytes(sRef, outBlob, { contentType: 'image/jpeg' })
+      const url = await getDownloadURL(sRef)
+      // Copy metadata from the original, but without hero status
+      const old = enh.img
+      await addDoc(collection(db, ...firestorePath.split('/')), {
+        file_url: url, storage_path: path, orientation,
+        file_name: `enhanced-${old.file_name || 'image'}.jpg`,
+        type: old.type || typeOptions?.[0]?.value || 'hero',
+        caption: old.caption || '',
+        ...(showVisibility ? { visibility: old.visibility || 'internal' } : {}),
+        is_hero: false,
+        sort_order: images.length,
+        uploaded_at: serverTimestamp(),
+      })
+      setEnh(null)
+    } catch (err) {
+      setEnh(e => ({ ...e, busy: false, error: err.message }))
+    }
+  }
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   async function uploadFiles(files) {
@@ -560,8 +589,11 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
               <button type="button" disabled={enh.busy} onClick={() => runEnhance(enh.img, 'enhance')} className="btn-secondary text-sm">Enhance (lighting + colour)</button>
               <div className="flex-1" />
               <button type="button" disabled={enh.busy} onClick={() => setEnh(null)} className="text-sm text-gray-500 hover:text-gray-800 px-2">Discard</button>
+              <button type="button" disabled={enh.busy || !enh.after} onClick={saveAsNew} className="btn-secondary text-sm inline-flex items-center gap-1">
+                <Plus size={14} /> {enh.busy ? 'Saving…' : 'Save as new'}
+              </button>
               <button type="button" disabled={enh.busy || !enh.after} onClick={keepEnhanced} className="btn-primary text-sm inline-flex items-center gap-1">
-                <Check size={14} /> {enh.busy ? 'Saving…' : 'Keep & replace'}
+                <Check size={14} /> {enh.busy ? 'Saving…' : 'Replace original'}
               </button>
             </div>
             <p className="text-[11px] text-gray-400 mt-2">AI re-renders the image — check the shape and colours match the real product before keeping. The original isn’t changed until you Keep.</p>
