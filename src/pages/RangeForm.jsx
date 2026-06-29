@@ -24,8 +24,40 @@ import { useCrystalColors, colorMap, ensureColors } from '../crystalColors'
 import { buildRangeSku, rangePrice } from '../rangeSku'
 import { useComponents, resolveRef, productAvailability } from '../criticalComponents'
 import { useProductDefaults } from '../useProductDefaults'
-import { Puzzle, Gem, Check, Download, Plus, X, Sparkles, RotateCcw } from 'lucide-react'
+import { Puzzle, Gem, Check, Download, Plus, X, Sparkles, RotateCcw, AlertTriangle } from 'lucide-react'
 import CRYSTAL_MIXES from '../data/crystalMixes.json'
+
+// Detect whether the AI has bleached product colours (see ImageGallery.jsx for
+// the same function used in the corp-gift flow).
+async function detectColorLoss(originalSrc, enhancedDataUrl) {
+  try {
+    const loadImg = src => new Promise((res, rej) => {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => res(img)
+      img.onerror = rej
+      img.src = src
+    })
+    const [origImg, enhImg] = await Promise.all([loadImg(originalSrc), loadImg(enhancedDataUrl)])
+    const W = 150, H = 150
+    const canvas = document.createElement('canvas')
+    canvas.width = W; canvas.height = H
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(origImg, 0, 0, W, H)
+    const origPx = ctx.getImageData(0, 0, W, H).data
+    ctx.clearRect(0, 0, W, H)
+    ctx.drawImage(enhImg, 0, 0, W, H)
+    const enhPx = ctx.getImageData(0, 0, W, H).data
+    let coloured = 0, lost = 0
+    for (let i = 0; i < origPx.length; i += 4) {
+      const [or, og, ob] = [origPx[i], origPx[i+1], origPx[i+2]]
+      const [er, eg, eb] = [enhPx[i], enhPx[i+1], enhPx[i+2]]
+      const wasColoured = !(or > 225 && og > 225 && ob > 225) && !(or < 35 && og < 35 && ob < 35)
+      if (wasColoured) { coloured++; if (er > 225 && eg > 225 && eb > 225) lost++ }
+    }
+    return coloured > 0 && (lost / coloured) > 0.04
+  } catch { return false }
+}
 
 // A "mix" code is an assorted/multi-crystal bucket (MX, M1–M9, AX, A1–A9,
 // GX, G1–G9). These live in the Crystal Colour Library like any other code so
@@ -612,21 +644,25 @@ export default function RangeForm() {
   })
 
   // ── AI image enhancement (Gemini image model) ──────────────────────────────
-  // enh: { i, before, after, mode, busy, error }. Result is reviewed before it
-  // ever replaces the original (Keep/Discard); output is solid-white.
+  // enh: { i, before, after, mode, busy, error, colorWarning }. Result is reviewed
+  // before it ever replaces the original (Keep/Discard); output is solid-white.
   const [enh, setEnh] = useState(null)
+  const [colorHint, setColorHint] = useState('')
+
   async function runEnhance(i, mode) {
     const g = form.gallery[i]
     if (!g?.url) return
-    setEnh({ i, before: g.url, after: null, mode, busy: true, error: '' })
+    setEnh({ i, before: g.url, after: null, mode, busy: true, error: '', colorWarning: false })
     try {
       const res = await fetch('/api/enhance-image', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl: g.url, mode }),
+        body: JSON.stringify({ imageUrl: g.url, mode, colorHint }),
       })
       const data = await res.json()
       if (!res.ok || !data.image) throw new Error(data.error || 'Enhancement failed')
-      setEnh(e => (e && e.i === i ? { ...e, after: `data:${data.mimeType || 'image/png'};base64,${data.image}`, busy: false } : e))
+      const afterUrl = `data:${data.mimeType || 'image/png'};base64,${data.image}`
+      const colorWarning = await detectColorLoss(g.url, afterUrl)
+      setEnh(e => (e && e.i === i ? { ...e, after: afterUrl, busy: false, colorWarning } : e))
     } catch (err) {
       setEnh(e => (e && e.i === i ? { ...e, busy: false, error: err.message } : e))
     }
@@ -1174,7 +1210,29 @@ export default function RangeForm() {
                     </div>
                   </div>
                 </div>
+                <div className="mt-3">
+                  <label className="text-[11px] font-medium text-ink-50 uppercase tracking-wide">
+                    Describe product colours <span className="normal-case font-normal text-ink-40">(optional — helps AI preserve them)</span>
+                  </label>
+                  <input
+                    className="input mt-1 text-sm"
+                    placeholder="e.g. gold chrome body, clear crystal stones, red enamel base"
+                    value={colorHint}
+                    onChange={e => setColorHint(e.target.value)}
+                    disabled={enh.busy}
+                  />
+                </div>
                 {enh.error && <p className="text-xs text-red-500 mt-2">{enh.error}</p>}
+                {enh.colorWarning && (
+                  <div className="flex items-start gap-2 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5">
+                    <AlertTriangle size={14} className="text-amber-600 mt-0.5 shrink-0" />
+                    <p className="text-xs text-amber-800 leading-snug">
+                      <span className="font-semibold">Possible colour change detected.</span>{' '}
+                      Parts of the product that were coloured in the original appear white or transparent in the enhanced version.
+                      Describe the product colours above and try again, or discard and use the original.
+                    </p>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 mt-4 flex-wrap">
                   <button type="button" disabled={enh.busy} onClick={() => runEnhance(enh.i, 'clean')}
                           className="btn-secondary text-sm">Clean (white bg, faithful)</button>
