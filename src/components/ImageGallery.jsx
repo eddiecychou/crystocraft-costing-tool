@@ -10,7 +10,7 @@ import {
   SortableContext, rectSortingStrategy, useSortable, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Star, X, Download, Paperclip, FolderOpen } from 'lucide-react'
+import { Star, X, Download, Paperclip, FolderOpen, Sparkles, Check } from 'lucide-react'
 import { IMAGE_ORIENTATIONS, IMAGE_VISIBILITY, imageVisibility } from '../constants'
 
 const ORIENTATION_STYLES = {
@@ -34,7 +34,7 @@ function downloadImage(img, filename) {
   document.body.removeChild(a)
 }
 
-function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility, onHeroChange, onDelete, onLightbox, downloadPrefix, firestorePath }) {
+function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility, onHeroChange, onDelete, onLightbox, downloadPrefix, firestorePath, onEnhance }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: img.id })
 
@@ -116,6 +116,14 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
                 title="Set as hero image"
               ><Star size={13} /></button>
             )}
+            {onEnhance && (
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); onEnhance(img) }}
+                className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-brand-600 hover:bg-white"
+                title="Enhance image — white background + lighting (AI, review before replacing)"
+              ><Sparkles size={13} /></button>
+            )}
             <button
               type="button"
               onClick={e => { e.stopPropagation(); downloadImage(img, makeDownloadName(downloadPrefix, idx)) }}
@@ -181,12 +189,48 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
   )
 }
 
-export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, captionable, showVisibility, onHeroChange, downloadPrefix }) {
+export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, captionable, showVisibility, onHeroChange, downloadPrefix, enhanceable }) {
   const fileIdRef = useRef(0)
   const [uploading, setUploading]         = useState(false)
   const [lightbox, setLightbox]           = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [dragOver, setDragOver]           = useState(false)
+  const [enh, setEnh]                     = useState(null)  // { img, before, after, mode, busy, error }
+
+  async function runEnhance(img, mode) {
+    setEnh({ img, before: img.file_url, after: null, mode, busy: true, error: '' })
+    try {
+      const res = await fetch('/api/enhance-image', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl: img.file_url, mode }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.image) throw new Error(data.error || 'Enhancement failed')
+      setEnh(e => (e && e.img.id === img.id ? { ...e, after: `data:${data.mimeType || 'image/png'};base64,${data.image}`, busy: false } : e))
+    } catch (err) {
+      setEnh(e => (e && e.img.id === img.id ? { ...e, busy: false, error: err.message } : e))
+    }
+  }
+  async function keepEnhanced() {
+    if (!enh?.after) return
+    setEnh(e => ({ ...e, busy: true }))
+    try {
+      const blob = await (await fetch(enh.after)).blob()
+      const file = new File([blob], `enhanced-${Date.now()}.png`, { type: blob.type || 'image/png' })
+      const { blob: outBlob, orientation } = await resizeToJpeg(file)
+      const path = `${storagePath}/${Date.now()}_${++fileIdRef.current}.jpg`
+      const sRef = storageRef(storage, path)
+      await uploadBytes(sRef, outBlob, { contentType: 'image/jpeg' })
+      const url = await getDownloadURL(sRef)
+      const old = enh.img
+      await updateDoc(doc(db, ...firestorePath.split('/'), old.id), { file_url: url, storage_path: path, orientation })
+      try { if (old.storage_path) await deleteObject(storageRef(storage, old.storage_path)) } catch {}
+      if (onHeroChange && old.is_hero) onHeroChange(url)
+      setEnh(null)
+    } catch (err) {
+      setEnh(e => ({ ...e, busy: false, error: err.message }))
+    }
+  }
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
@@ -301,6 +345,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                     onLightbox={setLightbox}
                     downloadPrefix={downloadPrefix}
                     firestorePath={firestorePath}
+                    onEnhance={enhanceable ? (img => runEnhance(img, 'clean')) : null}
                   />
                 ))}
               </div>
@@ -320,6 +365,44 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
               className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm"
             ><span className="inline-flex items-center gap-1"><Download size={14} />Download</span></button>
             <button className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm inline-flex items-center" onClick={() => setLightbox(null)}><X size={16} /></button>
+          </div>
+        </div>
+      )}
+
+      {enh && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={() => !enh.busy && setEnh(null)}>
+          <div className="bg-white rounded-xl max-w-3xl w-full p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5"><Sparkles size={15} /> Enhance image — review before replacing</h3>
+              <button type="button" onClick={() => !enh.busy && setEnh(null)} className="text-gray-400 hover:text-gray-700"><X size={16} /></button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Original</p>
+                <div className="aspect-square bg-gray-100 border border-gray-200 rounded flex items-center justify-center overflow-hidden">
+                  <img src={enh.before} alt="" className="w-full h-full object-contain" />
+                </div>
+              </div>
+              <div>
+                <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Enhanced {enh.after && `· ${enh.mode}`}</p>
+                <div className="aspect-square bg-gray-100 border border-gray-200 rounded flex items-center justify-center overflow-hidden">
+                  {enh.busy ? <span className="text-xs text-gray-500">Working… (AI, ~10–20s)</span>
+                    : enh.after ? <img src={enh.after} alt="" className="w-full h-full object-contain" />
+                    : <span className="text-xs text-gray-400">Pick a mode below</span>}
+                </div>
+              </div>
+            </div>
+            {enh.error && <p className="text-xs text-red-500 mt-2">{enh.error}</p>}
+            <div className="flex items-center gap-2 mt-4 flex-wrap">
+              <button type="button" disabled={enh.busy} onClick={() => runEnhance(enh.img, 'clean')} className="btn-secondary text-sm">Clean (white bg, faithful)</button>
+              <button type="button" disabled={enh.busy} onClick={() => runEnhance(enh.img, 'enhance')} className="btn-secondary text-sm">Enhance (lighting + colour)</button>
+              <div className="flex-1" />
+              <button type="button" disabled={enh.busy} onClick={() => setEnh(null)} className="text-sm text-gray-500 hover:text-gray-800 px-2">Discard</button>
+              <button type="button" disabled={enh.busy || !enh.after} onClick={keepEnhanced} className="btn-primary text-sm inline-flex items-center gap-1">
+                <Check size={14} /> {enh.busy ? 'Saving…' : 'Keep & replace'}
+              </button>
+            </div>
+            <p className="text-[11px] text-gray-400 mt-2">AI re-renders the image — check the shape and colours match the real product before keeping. The original isn’t changed until you Keep.</p>
           </div>
         </div>
       )}

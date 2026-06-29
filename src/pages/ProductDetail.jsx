@@ -256,6 +256,7 @@ export default function ProductDetail() {
               showVisibility
               onHeroChange={handleHeroChange}
               downloadPrefix={product?.name}
+              enhanceable
             />
           </div>
         </div>
