@@ -153,19 +153,37 @@ export async function loadRangeProductsWithPacking() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
 
-// ── Packing list CRUD ─────────────────────────────────────────────────────────
-export async function getPackingListByOrder(orderId) {
+// ── Packing list / scenario CRUD ──────────────────────────────────────────────
+// An order may have MANY packing lists ("scenarios"), each labelled (e.g.
+// "Standard carton", "Flat pack"). Exactly one is `selected` (the working plan
+// used downstream for export/shipment).
+
+// All scenarios for an order, oldest first (stable switcher order).
+export async function getPackingScenariosByOrder(orderId) {
   const snap = await getDocs(query(PL_COL(), where('order_id', '==', orderId)))
-  if (snap.empty) return null
-  const d = snap.docs[0]
-  return { id: d.id, ...d.data() }
+  const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  rows.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0))
+  // Back-compat: a legacy list with no label/selected is the implicit Standard scenario.
+  return rows.map((r, i) => ({
+    ...r,
+    label: r.label || 'Standard carton',
+    selected: r.selected ?? (rows.every(x => !x.selected) && i === 0),
+  }))
 }
 
-export async function createPackingList(orderId, fields) {
+// Kept for any single-list callers — returns the selected (or first) scenario.
+export async function getPackingListByOrder(orderId) {
+  const rows = await getPackingScenariosByOrder(orderId)
+  if (!rows.length) return null
+  return rows.find(r => r.selected) || rows[0]
+}
+
+export async function createPackingList(orderId, fields = {}) {
   const ref = await addDoc(PL_COL(), {
     order_id:       orderId,
+    label:          fields.label || 'Standard carton',
+    selected:       fields.selected ?? false,
     status:         'estimate',
-    mode:           fields.mode || 'full_carton',
     pallets_used:   false,
     consignee_name: fields.consignee_name || '',
     case_mark:      fields.case_mark || '',
@@ -178,6 +196,27 @@ export async function createPackingList(orderId, fields) {
 
 export async function updatePackingList(plId, patch) {
   await updateDoc(PL_DOC(plId), { ...patch, updatedAt: serverTimestamp() })
+}
+
+// Mark one scenario selected and clear the rest (exactly-one invariant).
+export async function selectScenario(orderId, scenarioId) {
+  const snap = await getDocs(query(PL_COL(), where('order_id', '==', orderId)))
+  const batch = writeBatch(db)
+  snap.docs.forEach(d => batch.update(d.ref, { selected: d.id === scenarioId, updatedAt: serverTimestamp() }))
+  await batch.commit()
+}
+
+// Delete a scenario and all its cartons/contents.
+export async function deleteScenario(plId) {
+  const cs = await getDocs(CTN_COL(plId))
+  for (const cd of cs.docs) {
+    const conts = await getDocs(CONT_COL(plId, cd.id))
+    const b = writeBatch(db)
+    conts.docs.forEach(d => b.delete(d.ref))
+    b.delete(cd.ref)
+    await b.commit()
+  }
+  await deleteDoc(PL_DOC(plId))
 }
 
 // ── Carton CRUD ───────────────────────────────────────────────────────────────

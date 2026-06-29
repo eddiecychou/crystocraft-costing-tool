@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
-import { CheckCircle2, AlertTriangle, Plus, Trash2, RefreshCw, Package } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, Plus, Trash2, RefreshCw, Package, Star, Pencil, Copy } from 'lucide-react'
 import {
   PL_STATUSES, CARTON_MODES,
   buildFullCartonPlan, calcPackedVsOrdered, derivedCbm,
   loadRangeProductsWithPacking,
-  getPackingListByOrder, createPackingList, updatePackingList,
+  getPackingScenariosByOrder, createPackingList, updatePackingList,
+  selectScenario, deleteScenario,
   saveCartonsWithContents, getCartonsWithContents,
 } from '../packing'
 
@@ -232,33 +233,87 @@ export default function PackingListEditor({ orderId, orderLines }) {
   const packableLines = useMemo(() => (orderLines || []).filter(l => l.packable), [orderLines])
   const unclassified  = useMemo(() => (orderLines || []).filter(l => !l.line_type).length, [orderLines])
 
-  const [pl, setPl]             = useState(null)       // packing_list doc
-  const [cartons, setCartons]   = useState([])          // carton rows with contents
-  const [loading, setLoading]   = useState(true)
-  const [saving, setSaving]     = useState(false)
-  const [saved, setSaved]       = useState(false)
+  const [scenarios, setScenarios] = useState([])        // all packing lists for this order
+  const [activeId, setActiveId]   = useState(null)      // current scenario doc id
+  const [cartons, setCartons]     = useState([])         // carton rows with contents (active scenario)
+  const [loading, setLoading]     = useState(true)
+  const [saving, setSaving]       = useState(false)
+  const [saved, setSaved]         = useState(false)
   const [rangeProducts, setRangeProducts] = useState([])
-  const [error, setError]       = useState('')
+  const [error, setError]         = useState('')
 
-  // Load packing list + range products
+  const pl = useMemo(() => scenarios.find(s => s.id === activeId) || null, [scenarios, activeId])
+
+  // Load all scenarios + range products
   useEffect(() => {
     if (!orderId) return
     let alive = true
     ;(async () => {
-      const [found, products] = await Promise.all([
-        getPackingListByOrder(orderId),
+      const [rows, products] = await Promise.all([
+        getPackingScenariosByOrder(orderId),
         loadRangeProductsWithPacking(),
       ])
       if (!alive) return
       setRangeProducts(products)
-      if (found) {
-        setPl(found)
-        setCartons(await getCartonsWithContents(found.id))
+      setScenarios(rows)
+      if (rows.length) {
+        const active = rows.find(r => r.selected) || rows[0]
+        setActiveId(active.id)
+        setCartons(await getCartonsWithContents(active.id))
       }
       setLoading(false)
     })()
     return () => { alive = false }
   }, [orderId])
+
+  // Switch the active scenario, loading its cartons.
+  async function switchScenario(id) {
+    if (id === activeId) return
+    setActiveId(id)
+    setError(''); setSaved(false)
+    setCartons(await getCartonsWithContents(id))
+  }
+
+  // Create a new scenario doc and make it active (with optional starting cartons).
+  async function createScenario(label, startCartons = []) {
+    const selected = scenarios.length === 0   // first scenario is the selected one
+    const id = await createPackingList(orderId, { label, selected })
+    const rows = await getPackingScenariosByOrder(orderId)
+    setScenarios(rows)
+    setActiveId(id)
+    setCartons(startCartons)
+    return id
+  }
+
+  async function duplicateScenario() {
+    if (!pl) return
+    const copyCartons = cartons.map(c => ({
+      ...c, _localId: crypto.randomUUID(), id: null,
+      contents: (c.contents || []).map(it => ({ ...it, _localId: crypto.randomUUID(), id: null })),
+    }))
+    await createScenario(`${pl.label} copy`, copyCartons)
+  }
+
+  async function renameScenario(id, label) {
+    await updatePackingList(id, { label })
+    setScenarios(prev => prev.map(s => (s.id === id ? { ...s, label } : s)))
+  }
+
+  async function chooseScenario(id) {
+    await selectScenario(orderId, id)
+    setScenarios(prev => prev.map(s => ({ ...s, selected: s.id === id })))
+  }
+
+  async function removeScenario(id) {
+    if (!confirm('Delete this packing scenario and all its cartons? This cannot be undone.')) return
+    await deleteScenario(id)
+    const rows = await getPackingScenariosByOrder(orderId)
+    setScenarios(rows)
+    if (id === activeId) {
+      if (rows.length) { setActiveId(rows[0].id); setCartons(await getCartonsWithContents(rows[0].id)) }
+      else { setActiveId(null); setCartons([]) }
+    }
+  }
 
   // Re-sequence carton_seq across all cartons whenever carton_count changes
   function resequence(rows) {
@@ -284,8 +339,9 @@ export default function PackingListEditor({ orderId, orderLines }) {
   }
 
   async function generateFromStandard() {
-    const plan = buildFullCartonPlan(packableLines, rangeProducts)
-    setCartons(plan.map(c => ({ ...c, pack_mode: 'single' })))
+    const plan = buildFullCartonPlan(packableLines, rangeProducts).map(c => ({ ...c, pack_mode: 'single' }))
+    if (!activeId) await createScenario('Standard carton', plan)
+    else setCartons(plan)
   }
 
   // ── Save ──────────────────────────────────────────────────────────────────
@@ -304,22 +360,19 @@ export default function PackingListEditor({ orderId, orderLines }) {
     }
     setSaving(true)
     try {
-      let plId = pl?.id
-      if (!plId) {
-        plId = await createPackingList(orderId, {})
-        const found = await getPackingListByOrder(orderId)
-        setPl(found)
-      }
-      if (promoteToFinal !== (pl?.status === 'final')) {
-        await updatePackingList(plId, {
-          status: promoteToFinal ? 'final' : (pl?.status || 'estimate'),
-        })
-        setPl(p => ({ ...p, status: promoteToFinal ? 'final' : (p?.status || 'estimate') }))
-      }
+      let plId = activeId
+      if (!plId) plId = await createScenario(pl?.label || 'Standard carton', cartons)
+      const status = promoteToFinal ? 'final' : (pl?.status || 'estimate')
+      // Persist status + denormalised totals on the scenario (totals feed the
+      // freight comparison matrix in P-3).
+      await updatePackingList(plId, {
+        status,
+        totals: { carton_count: totals.totalCartons, cbm: totals.totalCbm, chargeable_weight_kg: totals.totalGw },
+      })
       await saveCartonsWithContents(plId, cartons)
-      // Reload cartons to get Firestore IDs
-      const fresh = await getCartonsWithContents(plId)
+      const [fresh, rows] = await Promise.all([getCartonsWithContents(plId), getPackingScenariosByOrder(orderId)])
       setCartons(fresh)
+      setScenarios(rows)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
     } catch (err) {
@@ -359,13 +412,14 @@ export default function PackingListEditor({ orderId, orderLines }) {
 
   if (loading) return <div className="py-8 text-center text-sm text-gray-400">Loading packing list…</div>
 
-  if (!pl && cartons.length === 0) {
+  if (!scenarios.length && cartons.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-gray-300 p-10 text-center">
         <Package size={36} strokeWidth={1.25} className="mx-auto mb-3 text-gray-300" />
-        <p className="text-gray-500 text-sm mb-1">No packing list yet for this shipment.</p>
+        <p className="text-gray-500 text-sm mb-1">No packing scenario yet for this shipment.</p>
         <p className="text-xs text-gray-400 mb-5">
           {packableLines.length} packable line{packableLines.length !== 1 ? 's' : ''} from the order will be included.
+          You can pack it more than one way (e.g. Standard carton vs Flat pack) and compare.
         </p>
         <div className="flex justify-center gap-3">
           <button
@@ -378,7 +432,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
           </button>
           <button
             type="button"
-            onClick={() => setCartons([newCarton(1, 'mixed')])}
+            onClick={() => createScenario('Standard carton', [newCarton(1, 'mixed')])}
             className="btn-secondary"
           >
             Start manually (mixed carton)
@@ -388,8 +442,51 @@ export default function PackingListEditor({ orderId, orderLines }) {
     )
   }
 
+  const SOFT_CAP = 3
+
   return (
     <div className="space-y-5">
+      {/* Scenario switcher */}
+      <div className="flex flex-wrap items-center gap-2">
+        {scenarios.map(s => {
+          const isActive = s.id === activeId
+          return (
+            <div key={s.id}
+              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm transition-colors ${
+                isActive ? 'border-ink bg-ink/5' : 'border-gray-200 hover:border-gray-400'}`}>
+              <button type="button" onClick={() => chooseScenario(s.id)}
+                title={s.selected ? 'Selected plan (used for export/shipment)' : 'Use this scenario as the selected plan'}
+                className={s.selected ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-500'}>
+                <Star size={14} className={s.selected ? 'fill-current' : ''} />
+              </button>
+              <button type="button" onClick={() => switchScenario(s.id)} className="font-medium text-gray-700">
+                {s.label}
+              </button>
+              <button type="button" onClick={() => { const l = prompt('Rename scenario', s.label); if (l && l.trim()) renameScenario(s.id, l.trim()) }}
+                className="text-gray-300 hover:text-brand-600" title="Rename"><Pencil size={12} /></button>
+              {scenarios.length > 1 && (
+                <button type="button" onClick={() => removeScenario(s.id)} className="text-gray-300 hover:text-red-500" title="Delete scenario"><Trash2 size={12} /></button>
+              )}
+            </div>
+          )
+        })}
+        {scenarios.length < SOFT_CAP && (
+          <button type="button" onClick={() => createScenario(`Scenario ${scenarios.length + 1}`, [newCarton(1)])}
+            className="flex items-center gap-1 rounded-lg border border-dashed border-gray-300 px-2.5 py-1.5 text-sm text-gray-500 hover:border-brand-400 hover:text-brand-600">
+            <Plus size={13} /> New scenario
+          </button>
+        )}
+        {pl && (
+          <button type="button" onClick={duplicateScenario}
+            className="flex items-center gap-1 text-xs text-brand-600 hover:text-brand-800" title="Duplicate this scenario as a starting point">
+            <Copy size={12} /> Duplicate
+          </button>
+        )}
+        {scenarios.length >= SOFT_CAP && (
+          <span className="text-[11px] text-gray-400">Keep scenarios to a few for a clean comparison.</span>
+        )}
+      </div>
+
       {/* Header bar */}
       <div className="flex flex-wrap items-center gap-3">
         <button
