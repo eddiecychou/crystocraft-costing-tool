@@ -103,39 +103,43 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
           onClick={() => onLightbox(img)}
         />
 
+        {/* Darken + click-to-zoom layer */}
         <div
           className="absolute inset-0 rounded-lg transition-all pointer-events-none group-hover:pointer-events-auto group-hover:bg-black/30 cursor-pointer"
           onClick={() => onLightbox(img)}
-        >
-          <div className="flex justify-end gap-1 p-1.5 opacity-0 group-hover:opacity-100 transition-opacity pr-7">
-            {onHeroChange && (
-              <button
-                type="button"
-                onClick={e => { e.stopPropagation(); onHeroChange(img) }}
-                className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-yellow-600 hover:bg-white"
-                title="Set as hero image"
-              ><Star size={13} /></button>
-            )}
-            {onEnhance && (
-              <button
-                type="button"
-                onClick={e => { e.stopPropagation(); onEnhance(img) }}
-                className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-brand-600 hover:bg-white"
-                title="Enhance image — white background + lighting (AI, review before replacing)"
-              ><Sparkles size={13} /></button>
-            )}
+        />
+
+        {/* Action buttons — anchored bottom-right, clear of the hero star (top-left),
+            drag handle (top-right) and visibility badge (bottom-left). */}
+        <div className="absolute bottom-1 right-1 z-20 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none group-hover:pointer-events-auto">
+          {onHeroChange && (
             <button
               type="button"
-              onClick={e => { e.stopPropagation(); downloadImage(img, makeDownloadName(downloadPrefix, idx)) }}
-              className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-blue-600 hover:bg-white"
-              title="Download image"
-            ><Download size={13} /></button>
+              onClick={e => { e.stopPropagation(); onHeroChange(img) }}
+              className="bg-white/90 text-xs p-1 rounded text-yellow-600 hover:bg-white shadow-sm"
+              title="Set as hero image"
+            ><Star size={13} /></button>
+          )}
+          {onEnhance && (
             <button
               type="button"
-              onClick={e => { e.stopPropagation(); onDelete(img) }}
-              className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-red-600 hover:bg-white"
-            ><X size={13} /></button>
-          </div>
+              onClick={e => { e.stopPropagation(); onEnhance(img) }}
+              className="bg-white/90 text-xs p-1 rounded text-brand-600 hover:bg-white shadow-sm"
+              title="Enhance image — white background + lighting (AI, review before replacing)"
+            ><Sparkles size={13} /></button>
+          )}
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); downloadImage(img, makeDownloadName(downloadPrefix, idx)) }}
+            className="bg-white/90 text-xs p-1 rounded text-blue-600 hover:bg-white shadow-sm"
+            title="Download image"
+          ><Download size={13} /></button>
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); onDelete(img) }}
+            className="bg-white/90 text-xs p-1 rounded text-red-600 hover:bg-white shadow-sm"
+            title="Delete image"
+          ><X size={13} /></button>
         </div>
       </div>
 
