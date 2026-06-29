@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { collection, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { Link } from 'react-router-dom'
 import { db } from '../firebase'
-import { CUSTOMER_CURRENCIES } from '../currency'
+import { CUSTOMER_CURRENCIES, useRates, fromUSD } from '../currency'
 import LoadingBar from '../components/LoadingBar'
 import { ShieldCheck, Clock, UserCheck, Building2, X } from 'lucide-react'
 
@@ -72,7 +72,11 @@ function Row({ u, tab, set, customers }) {
   const [cur, setCur] = useState(u.base_currency || 'USD')
   const [disc, setDisc] = useState(Number(u.ws_discount_pct) > 0 ? u.ws_discount_pct : 100)
   const [override, setOverride] = useState(u.corp_markup_override ?? '')
+  const [fxRate, setFxRate] = useState(u.fx_rate ?? '')
   const [status, setStatus] = useState(null) // 'saving' | 'saved' | error string
+  const rates = useRates()
+  // Live USD→display-currency rate, shown as the placeholder when no rate is fixed.
+  const liveRate = cur === 'USD' ? 1 : fromUSD(1, cur, rates)
 
   // Corp pricing is driven by a per-customer markup for now (no groups UI).
   const pricingPatch = {
@@ -82,7 +86,12 @@ function Row({ u, tab, set, customers }) {
   async function save(extra = {}) {
     setStatus('saving')
     try {
-      await set(u.id, { base_currency: cur, ws_discount_pct: Number(disc) > 0 ? Number(disc) : 100, ...pricingPatch, ...extra })
+      await set(u.id, {
+        base_currency: cur,
+        ws_discount_pct: Number(disc) > 0 ? Number(disc) : 100,
+        fx_rate: fxRate === '' ? 0 : Number(fxRate) || 0,
+        ...pricingPatch, ...extra,
+      })
       setStatus('saved')
       setTimeout(() => setStatus(s => (s === 'saved' ? null : s)), 2500)
     } catch (e) {
@@ -109,6 +118,16 @@ function Row({ u, tab, set, customers }) {
               {CUSTOMER_CURRENCIES.map(c => <option key={c}>{c}</option>)}
             </select>
           </label>
+
+          {cur !== 'USD' && (
+            <label className="text-xs text-ink-60"
+              title={`Fixed rate: how many ${cur} per 1 USD. Locks this customer's prices regardless of daily rates. Leave blank to use the live rate (currently ≈ ${liveRate.toFixed(4)}).`}>
+              Fixed {cur}/USD
+              <input type="number" min="0" step="0.0001" placeholder={liveRate ? liveRate.toFixed(4) : 'live'}
+                className="input py-1 ml-1 w-24 inline-block"
+                value={fxRate} onChange={e => setFxRate(e.target.value)} />
+            </label>
+          )}
 
           {/* Figurine Gift Catalogue — % of list (ex-factory) price the customer pays */}
           <div className="flex items-center gap-2 pl-3 border-l border-ivory-dark">

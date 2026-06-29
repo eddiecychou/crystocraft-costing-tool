@@ -4,7 +4,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import { db } from '../firebase'
 import { Gem, X } from 'lucide-react'
 import { designNumber, brandLetter, galleryUrl, RANGE_FORMAT_CODES, RANGE_STATUS_CUSTOMER, brandSortRank } from '../constants'
-import { useRates, fromUSD, fmtMoney, wsPriceFactor } from '../currency'
+import { useRates, convertFromUSD, fmtMoney, wsPriceFactor } from '../currency'
 import { useFormatMoq } from '../formatMoq'
 import { newFirst } from '../newArrivals'
 import CollectionBand from './CollectionBand'
@@ -50,7 +50,7 @@ export default function FigurineShop({ profile }) {
     }, () => setLoading(false))
   }, [])
 
-  const net = usd => usd == null ? null : fromUSD(usd * factor, cur, rates)
+  const net = usd => usd == null ? null : convertFromUSD(usd * factor, profile, rates)
 
   const items = useMemo(() => products.map(p => {
     const designNo = p.design_no || designNumber(p.design_code)

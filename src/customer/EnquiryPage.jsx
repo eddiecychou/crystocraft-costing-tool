@@ -6,7 +6,7 @@ import { Gem, Package, Trash2, ClipboardList, CheckCircle2, Plus, Minus } from '
 import { useCart, designGroupKey, formatGroupKey, formatCodeOf, designNumberOf } from './store'
 import { useFormatMoq } from '../formatMoq'
 import { RANGE_FORMAT_CODES } from '../constants'
-import { useRates, fromUSD, fmtMoney, wsPriceFactor } from '../currency'
+import { useRates, convertFromUSD, fmtMoney, wsPriceFactor } from '../currency'
 
 const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.label]))
 
@@ -24,7 +24,7 @@ export default function EnquiryPage({ profile }) {
 
   // Unit price (customer currency, account WS factor applied) for figurine lines.
   const unitPrice = i => (i.type === 'figurine' && i.ws_price_usd != null)
-    ? fromUSD(Number(i.ws_price_usd) * factor, cur, rates) : null
+    ? convertFromUSD(Number(i.ws_price_usd) * factor, profile, rates) : null
   const lineTotal = i => { const u = unitPrice(i); return u == null ? null : u * (Number(i.qty) || 1) }
   const total = items.reduce((s, i) => s + (lineTotal(i) || 0), 0)
   const hasIndicative = items.some(i => unitPrice(i) == null)

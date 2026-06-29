@@ -6,7 +6,7 @@ import { Gem, ArrowLeft, Check, Plus, Minus } from 'lucide-react'
 import { designNumber, brandLetter, RANGE_CRYSTAL_BRANDS, normGallery, RANGE_STATUS_CUSTOMER, normVideos, youtubeEmbed } from '../constants'
 
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
-import { useRates, fromUSD, fmtMoney, wsPriceFactor } from '../currency'
+import { useRates, convertFromUSD, fmtMoney, wsPriceFactor } from '../currency'
 import { useCrystalColors, colorMap } from '../crystalColors'
 import FavHeart from './FavHeart'
 import { useCart, designGroupKey, formatGroupKey } from './store'
@@ -67,7 +67,7 @@ export default function FigurineDetail({ profile }) {
   if (p === undefined) return <LoadingBar />
   if (p === null) return <NotFound />
 
-  const net = usd => usd == null ? null : fromUSD(usd * factor, cur, rates)
+  const net = usd => usd == null ? null : convertFromUSD(usd * factor, profile, rates)
   const variants = docVariants(p)
   const fallbackBrand = brandLetter(p.design_code) || 'D'
   const designNo = p.design_no || designNumber(p.design_code)

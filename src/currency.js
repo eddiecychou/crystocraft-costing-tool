@@ -35,6 +35,18 @@ export const fromUSD = (amountUSD, cur, rates) => {
   return fromHKD(hkd, cur, rates)
 }
 
+// Convert a USD (ex-factory base) amount into the customer's display currency,
+// honouring a per-account FIXED rate when set. profile.fx_rate = units of the
+// customer's base_currency per 1 USD (e.g. HKD 7.80, EUR 0.92). When set (>0) it
+// locks the customer's prices regardless of the live daily rates; blank/0 falls
+// back to the live global conversion. Customer-facing use only.
+export const convertFromUSD = (amountUSD, profile, rates) => {
+  if (amountUSD == null) return null
+  const fx = Number(profile?.fx_rate)
+  if (Number.isFinite(fx) && fx > 0) return Number(amountUSD) * fx
+  return fromUSD(amountUSD, profile?.base_currency || 'USD', rates)
+}
+
 // The account's "WS %" is the percentage of the list (ex-factory) price the
 // customer pays: 100 = list price as-is, 130 = +30% markup, 90 = 10% discount.
 // Stored on profile.ws_discount_pct (legacy field name). Blank / 0 / invalid ⇒
