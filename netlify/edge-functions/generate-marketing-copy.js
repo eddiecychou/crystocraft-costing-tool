@@ -48,7 +48,7 @@ ${imagePart ? `- A product image is provided. You MAY describe visual qualities 
 
   const commonReqs = `REQUIREMENTS:
 - Tone: ${tone}
-- Length: 2–4 sentences (50–100 words)
+- Length: STRICTLY under 300 characters (including spaces and punctuation). This is a hard limit — count carefully. Aim for 2 short sentences, ~40–50 words maximum.
 - Do NOT mention prices
 - Write in English only
 - Output ONLY the marketing copy — no headings, no labels, no extra text
@@ -120,8 +120,15 @@ Marketing description:`
         continue
       }
       const data = await res.json()
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+      let text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
       if (!text) { console.error(`Gemini ${model} empty response:`, JSON.stringify(data)); continue }
+
+      // Hard backstop: truncate at the last word boundary within 300 chars.
+      const MAX = 300
+      if (text.length > MAX) {
+        text = text.slice(0, MAX).replace(/\s+\S*$/, '').trimEnd()
+        if (!text.endsWith('.')) text += '…'
+      }
 
       return new Response(JSON.stringify({ marketing_description: text }), {
         headers: { 'Content-Type': 'application/json' },

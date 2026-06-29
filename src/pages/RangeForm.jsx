@@ -463,7 +463,8 @@ export default function RangeForm() {
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-      setForm(f => ({ ...f, marketing_description: data.marketing_description }))
+      const desc = (data.marketing_description || '').slice(0, MARKETING_DESC_MAXLEN)
+      setForm(f => ({ ...f, marketing_description: desc }))
     } catch (err) {
       setAiError(err.message || 'Generation failed — please try again.')
     } finally {
