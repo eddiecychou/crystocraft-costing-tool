@@ -408,14 +408,27 @@ function Swatch({ code, mixes, lookup, selected, onClick }) {
     } else if (cols.length === 1) bg = cols[0]
     title = `${code} (mix): ${mixes[code].join(', ')}`
   }
-  // Read-only swatch (no onClick): small inline dot.
+  // Faceted-gem swatch: octagon clip + a diagonal gloss overlay so it reads as
+  // cut crystal. The outer frame (padding + clip) doubles as the border/selected
+  // ring, since a clip-path would otherwise clip a normal box-shadow ring.
+  const OCT = 'polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%)'
+  const GLOSS = 'linear-gradient(135deg, rgba(255,255,255,.55) 0 38%, rgba(255,255,255,0) 39% 60%, rgba(0,0,0,.10) 61% 100%)'
+  // Read-only swatch (no onClick): small inline gem.
   if (!onClick) {
-    return <span className="inline-block w-4 h-4 rounded-full border border-black/10" style={{ background: bg }} title={title} />
+    return (
+      <span className="inline-block" title={title}
+        style={{ width: 16, height: 16, clipPath: OCT, background: bg }} />
+    )
   }
   return (
     <button type="button" onClick={onClick} title={title} aria-label={title}
-      className={`w-7 h-7 rounded-full transition-transform hover:scale-110 ${selected ? 'ring-2 ring-brand-500 ring-offset-2' : 'ring-1 ring-black/10'}`}
-      style={{ background: bg }} />
+      className="transition-transform hover:scale-110"
+      style={{ width: 30, height: 30, padding: 2, clipPath: OCT,
+               background: selected ? '#c8a951' : 'rgba(0,0,0,0.14)' }}>
+      <span style={{ display: 'block', width: '100%', height: '100%', clipPath: OCT, background: bg, position: 'relative' }}>
+        <span style={{ position: 'absolute', inset: 0, clipPath: OCT, background: GLOSS }} />
+      </span>
+    </button>
   )
 }
 

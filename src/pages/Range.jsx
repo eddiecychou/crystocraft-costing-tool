@@ -333,8 +333,10 @@ function Swatch({ code, mixes, lookup }) {
     }
     title = `${code} (mix): ${mixes[code].join(', ')}`
   }
-  return <span className="inline-block w-3 h-3 rounded-full shrink-0 border border-black/10"
-               style={{ background: bg }} title={title} />
+  // Faceted-gem octagon to read as cut crystal (matches the customer storefront).
+  const OCT = 'polygon(30% 0,70% 0,100% 30%,100% 70%,70% 100%,30% 100%,0 70%,0 30%)'
+  return <span className="inline-block shrink-0"
+               style={{ width: 14, height: 14, clipPath: OCT, background: bg }} title={title} />
 }
 
 function ProductCard({ s, colorLookup = {} }) {
