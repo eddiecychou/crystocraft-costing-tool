@@ -19,16 +19,30 @@ function bytesToBase64(bytes) {
   return btoa(binary)
 }
 
+const COLOR_RULES =
+  `COLOR PRESERVATION (absolute — never violate these): ` +
+  `Every coloured part of the product must keep its exact original hue in the output. ` +
+  `Red areas must stay red, not become white or pink. ` +
+  `Blue areas must stay blue, not become clear or white. ` +
+  `Gold/chrome plating must keep its metallic colour. ` +
+  `Crystal stones must keep their tint (clear, amber, rose, green, etc). ` +
+  `If any area of the product is the same colour as white, leave it white — but do NOT whiten areas that are coloured in the original. ` +
+  `When the product contains transparent or translucent areas, preserve those as transparent/translucent — do not fill them white.`
+
 const PROMPTS = {
   clean:
     `Edit this product photo of a Crystocraft crystal giftware / corporate gift item. ` +
-    `Replace the background with a clean, pure solid WHITE studio background (#FFFFFF), evenly lit, no shadows behind the object, no props, no reflections of the old scene. ` +
-    `CRITICAL: keep the product itself IDENTICAL — do not change its shape, proportions, facets, engraving, metal plating colour, or crystal/stone colours. Do not add, remove, or redraw any detail. Preserve a soft natural contact shadow under the object. Output only the edited image.`,
+    `Replace ONLY the background with a clean, pure solid WHITE studio background (#FFFFFF), evenly lit, no shadows behind the object, no props, no reflections of the old scene. ` +
+    `CRITICAL: keep the product itself PIXEL-IDENTICAL — do not change its shape, proportions, facets, engraving, or any colours. ` +
+    `${COLOR_RULES} ` +
+    `Preserve a soft natural contact shadow under the object. Output only the edited image.`,
   enhance:
     `Edit this product photo of a Crystocraft crystal giftware / corporate gift item for a premium wholesale catalogue. ` +
     `Place it on a clean pure solid WHITE studio background (#FFFFFF) with soft, even, professional product lighting and a subtle natural contact shadow. ` +
     `Gently enhance clarity and make the metal plating (gold or chrome) and the crystal stones read richer and truer to a polished studio shot — improve lighting and sparkle only. ` +
-    `CRITICAL: stay faithful to the REAL product — keep the exact shape, proportions, facets, engraving, the SAME plating colour and the SAME crystal/stone colours. Do NOT invent, add, remove, or restyle any detail, and do not change the design. Output only the edited image.`,
+    `CRITICAL: stay faithful to the REAL product — keep the exact shape, proportions, facets, engraving, and all colours. ` +
+    `${COLOR_RULES} ` +
+    `Do NOT invent, add, remove, or restyle any detail. Output only the edited image.`,
 }
 
 export default async function handler(req) {

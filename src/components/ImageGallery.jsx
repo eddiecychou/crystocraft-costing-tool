@@ -10,8 +10,47 @@ import {
   SortableContext, rectSortingStrategy, useSortable, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Star, X, Download, Paperclip, FolderOpen, Sparkles, Check } from 'lucide-react'
+import { Star, X, Download, Paperclip, FolderOpen, Sparkles, Check, AlertTriangle } from 'lucide-react'
 import { IMAGE_ORIENTATIONS, IMAGE_VISIBILITY, imageVisibility } from '../constants'
+
+// Sample both images at 150×150 and count pixels that were clearly coloured in
+// the original but became near-white in the enhanced version — that's colour loss.
+// Returns true when >4% of originally-coloured pixels turned white.
+async function detectColorLoss(originalSrc, enhancedDataUrl) {
+  try {
+    const loadImg = src => new Promise((res, rej) => {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => res(img)
+      img.onerror = rej
+      img.src = src
+    })
+    const [origImg, enhImg] = await Promise.all([loadImg(originalSrc), loadImg(enhancedDataUrl)])
+    const W = 150, H = 150
+    const canvas = document.createElement('canvas')
+    canvas.width = W; canvas.height = H
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(origImg, 0, 0, W, H)
+    const origPx = ctx.getImageData(0, 0, W, H).data
+    ctx.clearRect(0, 0, W, H)
+    ctx.drawImage(enhImg, 0, 0, W, H)
+    const enhPx = ctx.getImageData(0, 0, W, H).data
+    let coloured = 0, lost = 0
+    for (let i = 0; i < origPx.length; i += 4) {
+      const [or, og, ob] = [origPx[i], origPx[i+1], origPx[i+2]]
+      const [er, eg, eb] = [enhPx[i], enhPx[i+1], enhPx[i+2]]
+      // "Coloured" = not near-white and not near-black in the original
+      const wasColoured = !(or > 225 && og > 225 && ob > 225) && !(or < 35 && og < 35 && ob < 35)
+      if (wasColoured) {
+        coloured++
+        if (er > 225 && eg > 225 && eb > 225) lost++
+      }
+    }
+    return coloured > 0 && (lost / coloured) > 0.04
+  } catch {
+    return false
+  }
+}
 
 const ORIENTATION_STYLES = {
   landscape: 'bg-blue-100 text-blue-700',
@@ -202,7 +241,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
   const [enh, setEnh]                     = useState(null)  // { img, before, after, mode, busy, error }
 
   async function runEnhance(img, mode) {
-    setEnh({ img, before: img.file_url, after: null, mode, busy: true, error: '' })
+    setEnh({ img, before: img.file_url, after: null, mode, busy: true, error: '', colorWarning: false })
     try {
       const res = await fetch('/api/enhance-image', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -210,7 +249,9 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
       })
       const data = await res.json()
       if (!res.ok || !data.image) throw new Error(data.error || 'Enhancement failed')
-      setEnh(e => (e && e.img.id === img.id ? { ...e, after: `data:${data.mimeType || 'image/png'};base64,${data.image}`, busy: false } : e))
+      const afterUrl = `data:${data.mimeType || 'image/png'};base64,${data.image}`
+      const colorWarning = await detectColorLoss(img.file_url, afterUrl)
+      setEnh(e => (e && e.img.id === img.id ? { ...e, after: afterUrl, busy: false, colorWarning } : e))
     } catch (err) {
       setEnh(e => (e && e.img.id === img.id ? { ...e, busy: false, error: err.message } : e))
     }
@@ -397,6 +438,18 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
               </div>
             </div>
             {enh.error && <p className="text-xs text-red-500 mt-2">{enh.error}</p>}
+            {enh.colorWarning && (
+              <div className="flex items-start gap-2 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5">
+                <AlertTriangle size={14} className="text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-800 leading-snug">
+                  <span className="font-semibold">Possible colour change detected.</span>{' '}
+                  Parts of the product that were coloured in the original appear white or transparent in the enhanced version
+                  (e.g. a red body became white, or a blue crystal detail became clear).
+                  This is a known AI limitation with certain product colours.
+                  Check carefully — if colours are wrong, discard and try again or use the original.
+                </p>
+              </div>
+            )}
             <div className="flex items-center gap-2 mt-4 flex-wrap">
               <button type="button" disabled={enh.busy} onClick={() => runEnhance(enh.img, 'clean')} className="btn-secondary text-sm">Clean (white bg, faithful)</button>
               <button type="button" disabled={enh.busy} onClick={() => runEnhance(enh.img, 'enhance')} className="btn-secondary text-sm">Enhance (lighting + colour)</button>
