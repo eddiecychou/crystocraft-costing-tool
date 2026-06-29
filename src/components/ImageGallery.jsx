@@ -391,7 +391,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                     onLightbox={setLightbox}
                     downloadPrefix={downloadPrefix}
                     firestorePath={firestorePath}
-                    onEnhance={enhanceable ? (img => runEnhance(img, 'clean')) : null}
+                    onEnhance={enhanceable ? (img => setEnh({ img, before: img.file_url, after: null, mode: null, busy: false, error: '', colorWarning: false })) : null}
                   />
                 ))}
               </div>
@@ -434,7 +434,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                 <div className="aspect-square bg-gray-100 border border-gray-200 rounded flex items-center justify-center overflow-hidden">
                   {enh.busy ? <span className="text-xs text-gray-500">Working… (AI, ~10–20s)</span>
                     : enh.after ? <img src={enh.after} alt="" className="w-full h-full object-contain" />
-                    : <span className="text-xs text-gray-400">Pick a mode below</span>}
+                    : <span className="text-xs text-gray-400">Describe colours below, then pick Clean or Enhance</span>}
                 </div>
               </div>
             </div>

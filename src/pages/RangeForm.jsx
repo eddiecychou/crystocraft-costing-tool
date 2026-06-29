@@ -1148,8 +1148,9 @@ export default function RangeForm() {
                               className="text-ink-40 hover:text-brand-600 px-1" title="Set as main (card) image">★</button>
                     )}
                     {g.url && (
-                      <button type="button" onClick={() => runEnhance(i, 'clean')}
-                              className="text-ink-40 hover:text-brand-600 px-1" title="Enhance image — white background + lighting (AI, review before replacing)">
+                      <button type="button"
+                              onClick={() => setEnh({ i, before: g.url, after: null, mode: null, busy: false, error: '', colorWarning: false })}
+                              className="text-ink-40 hover:text-brand-600 px-1" title="Enhance image — describe colours, then pick Clean or Enhance (AI, review before replacing)">
                         <Sparkles size={14} />
                       </button>
                     )}
@@ -1206,7 +1207,7 @@ export default function RangeForm() {
                     <div className="aspect-square bg-gray-100 border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
                       {enh.busy ? <span className="text-xs text-ink-50">Working… (AI, ~10–20s)</span>
                         : enh.after ? <img src={enh.after} alt="" className="w-full h-full object-contain" />
-                        : <span className="text-xs text-ink-40">Pick a mode below</span>}
+                        : <span className="text-xs text-ink-40">Describe colours below, then pick Clean or Enhance</span>}
                     </div>
                   </div>
                 </div>
