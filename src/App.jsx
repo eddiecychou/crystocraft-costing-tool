@@ -28,6 +28,7 @@ import Customers from './pages/Customers'
 import CustomerForm from './pages/CustomerForm'
 import CustomerDetail from './pages/CustomerDetail'
 import Settings from './pages/Settings'
+import SchemaAudit from './pages/SchemaAudit'
 import ComponentsLib from './pages/Components'
 import RangeComponentForm from './pages/RangeComponentForm'
 import Catalogues from './pages/Catalogues'
@@ -134,6 +135,7 @@ function AdminApp({ user }) {
                 <Route path="/blog-generator" element={<BlogGenerator />} />
                 <Route path="/blog-generator/:productId" element={<BlogGenerator />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/schema-audit" element={<SchemaAudit />} />
                 <Route path="/shipping" element={<Shipping />} />
                 <Route path="/shipments/new" element={<ShipmentForm />} />
                 <Route path="/shipments/:id" element={<ShipmentForm />} />

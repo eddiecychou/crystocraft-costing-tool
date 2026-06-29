@@ -5,6 +5,7 @@ import { RefreshCw } from 'lucide-react'
 import CatalogueBand from './CatalogueBand'
 import ImportImages from './ImportImages'
 import BulkCategoryEditor from '../components/BulkCategoryEditor'
+import SchemaAudit from './SchemaAudit'
 
 const CURRENCIES = ['RMB', 'USD', 'EUR']
 const LABELS = { RMB: 'RMB → HKD', USD: 'USD → HKD', EUR: 'EUR → HKD' }
@@ -12,6 +13,7 @@ const LABELS = { RMB: 'RMB → HKD', USD: 'USD → HKD', EUR: 'EUR → HKD' }
 const TABS = [
   { v: 'fx',       label: 'Exchange Rates' },
   { v: 'products', label: 'Products' },
+  { v: 'audit',    label: 'Schema Audit' },
 ]
 const PRODUCT_TABS = [
   { v: 'band',       label: 'Catalogue Band' },
@@ -47,6 +49,8 @@ export default function Settings() {
       </div>
 
       {tab === 'fx' && <ExchangeRatesPanel />}
+
+      {tab === 'audit' && <SchemaAudit />}
 
       {tab === 'products' && (
         <div>
