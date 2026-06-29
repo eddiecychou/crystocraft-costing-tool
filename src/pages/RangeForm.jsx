@@ -610,6 +610,40 @@ export default function RangeForm() {
     return { ...f, gallery: next }
   })
 
+  // ── AI image enhancement (Gemini image model) ──────────────────────────────
+  // enh: { i, before, after, mode, busy, error }. Result is reviewed before it
+  // ever replaces the original (Keep/Discard); output is solid-white.
+  const [enh, setEnh] = useState(null)
+  async function runEnhance(i, mode) {
+    const g = form.gallery[i]
+    if (!g?.url) return
+    setEnh({ i, before: g.url, after: null, mode, busy: true, error: '' })
+    try {
+      const res = await fetch('/api/enhance-image', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageUrl: g.url, mode }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.image) throw new Error(data.error || 'Enhancement failed')
+      setEnh(e => (e && e.i === i ? { ...e, after: `data:${data.mimeType || 'image/png'};base64,${data.image}`, busy: false } : e))
+    } catch (err) {
+      setEnh(e => (e && e.i === i ? { ...e, busy: false, error: err.message } : e))
+    }
+  }
+  async function keepEnhanced() {
+    if (!enh?.after) return
+    setEnh(e => ({ ...e, busy: true }))
+    try {
+      const blob = await (await fetch(enh.after)).blob()
+      const file = new File([blob], `enhanced-${Date.now()}.png`, { type: blob.type || 'image/png' })
+      const url = await uploadFile(file)   // resize → white JPEG → Storage
+      setForm(f => ({ ...f, gallery: f.gallery.map((g, j) => (j === enh.i ? { ...g, url } : g)) }))
+      setEnh(null)
+    } catch (err) {
+      setEnh(e => ({ ...e, busy: false, error: err.message }))
+    }
+  }
+
   const num = v => (v === '' || v == null ? null : (Number.isFinite(Number(v)) ? Number(v) : null))
   const intNum = v => { const n = num(v); return n == null ? null : Math.round(n) }
 
@@ -1077,6 +1111,12 @@ export default function RangeForm() {
                               className="text-ink-40 hover:text-brand-600 px-1" title="Set as main (card) image">★</button>
                     )}
                     {g.url && (
+                      <button type="button" onClick={() => runEnhance(i, 'clean')}
+                              className="text-ink-40 hover:text-brand-600 px-1" title="Enhance image — white background + lighting (AI, review before replacing)">
+                        <Sparkles size={14} />
+                      </button>
+                    )}
+                    {g.url && (
                       <button type="button" onClick={() => downloadRangeImage(g.url, g.caption || form.design_name)}
                               className="text-ink-40 hover:text-brand-600 px-1" title={`Download image as ${g.caption || 'image'}`}>
                         <Download size={14} />
@@ -1107,6 +1147,46 @@ export default function RangeForm() {
               <img src={lightbox.url} alt={lightbox.caption || ''} className="max-w-full max-h-full rounded-lg object-contain" onClick={e => e.stopPropagation()} />
               <button type="button" className="absolute top-4 right-4 text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm inline-flex items-center"
                       onClick={() => setLightbox(null)}>✕</button>
+            </div>
+          )}
+
+          {enh && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={() => !enh.busy && setEnh(null)}>
+              <div className="bg-white rounded-xl max-w-3xl w-full p-5" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5"><Sparkles size={15} /> Enhance image — review before replacing</h3>
+                  <button type="button" onClick={() => !enh.busy && setEnh(null)} className="text-ink-40 hover:text-ink"><X size={16} /></button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-ink-50 mb-1">Original</p>
+                    <div className="aspect-square bg-gray-100 border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
+                      <img src={enh.before} alt="" className="w-full h-full object-contain" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[11px] uppercase tracking-wide text-ink-50 mb-1">Enhanced {enh.after && `· ${enh.mode}`}</p>
+                    <div className="aspect-square bg-gray-100 border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
+                      {enh.busy ? <span className="text-xs text-ink-50">Working… (AI, ~10–20s)</span>
+                        : enh.after ? <img src={enh.after} alt="" className="w-full h-full object-contain" />
+                        : <span className="text-xs text-ink-40">Pick a mode below</span>}
+                    </div>
+                  </div>
+                </div>
+                {enh.error && <p className="text-xs text-red-500 mt-2">{enh.error}</p>}
+                <div className="flex items-center gap-2 mt-4 flex-wrap">
+                  <button type="button" disabled={enh.busy} onClick={() => runEnhance(enh.i, 'clean')}
+                          className="btn-secondary text-sm">Clean (white bg, faithful)</button>
+                  <button type="button" disabled={enh.busy} onClick={() => runEnhance(enh.i, 'enhance')}
+                          className="btn-secondary text-sm">Enhance (lighting + colour)</button>
+                  <div className="flex-1" />
+                  <button type="button" disabled={enh.busy} onClick={() => setEnh(null)} className="text-sm text-ink-50 hover:text-ink px-2">Discard</button>
+                  <button type="button" disabled={enh.busy || !enh.after} onClick={keepEnhanced} className="btn-primary text-sm inline-flex items-center gap-1">
+                    <Check size={14} /> {enh.busy ? 'Saving…' : 'Keep & replace'}
+                  </button>
+                </div>
+                <p className="text-[11px] text-ink-40 mt-2">AI re-renders the image — check the shape, plating colour and stone colours match the real product before keeping. The original isn't changed until you Keep.</p>
+              </div>
             </div>
           )}
         </div>

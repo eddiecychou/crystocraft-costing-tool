@@ -52,6 +52,10 @@
   function = "extract-pi"
   path = "/api/extract-pi"
 
+[[edge_functions]]
+  function = "enhance-image"
+  path = "/api/enhance-image"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
