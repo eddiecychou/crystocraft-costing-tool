@@ -52,6 +52,39 @@ async function detectColorLoss(originalSrc, enhancedDataUrl) {
   }
 }
 
+const PLATING_OPTIONS = [
+  { value: '',          label: '— select —' },
+  { value: 'gold',      label: 'Gold' },
+  { value: 'silver / chrome',  label: 'Silver / Chrome' },
+  { value: 'rose gold',        label: 'Rose Gold' },
+  { value: 'black / gunmetal', label: 'Black / Gunmetal' },
+  { value: 'copper / bronze',  label: 'Copper / Bronze' },
+]
+
+const CRYSTAL_COLOR_OPTIONS = [
+  { value: '',        label: '— select —' },
+  { value: 'clear / crystal',  label: 'Clear / Crystal' },
+  { value: 'red / ruby',       label: 'Red / Ruby' },
+  { value: 'blue / sapphire',  label: 'Blue / Sapphire' },
+  { value: 'green / emerald',  label: 'Green / Emerald' },
+  { value: 'purple / amethyst',label: 'Purple / Amethyst' },
+  { value: 'pink / rose',      label: 'Pink / Rose' },
+  { value: 'amber / yellow',   label: 'Amber / Yellow' },
+  { value: 'black / jet',      label: 'Black / Jet' },
+  { value: 'aurora borealis (iridescent)', label: 'Aurora Borealis' },
+]
+
+function buildRecolorInstructions(platFrom, platTo, crystalFrom, crystalTo) {
+  const parts = []
+  if (platFrom && platTo) parts.push(`Change the metal plating from ${platFrom} to ${platTo}.`)
+  if (crystalFrom && crystalTo) parts.push(`Change the crystal/stone colour from ${crystalFrom} to ${crystalTo}.`)
+  const kept = []
+  if (!platFrom || !platTo) kept.push('metal plating colour')
+  if (!crystalFrom || !crystalTo) kept.push('crystal/stone colours')
+  if (kept.length && parts.length) parts.push(`Keep the ${kept.join(' and ')} exactly as they are.`)
+  return parts.join('\n')
+}
+
 const ORIENTATION_STYLES = {
   landscape: 'bg-blue-100 text-blue-700',
   square:    'bg-purple-100 text-purple-700',
@@ -240,13 +273,18 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
   const [dragOver, setDragOver]           = useState(false)
   const [enh, setEnh]                     = useState(null)  // { img, before, after, mode, busy, error, colorWarning }
   const [colorHint, setColorHint]         = useState('')
+  const [recolorOpen, setRecolorOpen]     = useState(false)
+  const [platFrom, setPlatFrom]           = useState('')
+  const [platTo, setPlatTo]               = useState('')
+  const [crystalFrom, setCrystalFrom]     = useState('')
+  const [crystalTo, setCrystalTo]         = useState('')
 
-  async function runEnhance(img, mode) {
+  async function runEnhance(img, mode, recolorInstructions = '') {
     setEnh({ img, before: img.file_url, after: null, mode, busy: true, error: '', colorWarning: false })
     try {
       const res = await fetch('/api/enhance-image', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl: img.file_url, mode, colorHint }),
+        body: JSON.stringify({ imageUrl: img.file_url, mode, colorHint, recolorInstructions }),
       })
       const data = await res.json()
       if (!res.ok || !data.image) throw new Error(data.error || 'Enhancement failed')
@@ -450,6 +488,59 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                 onChange={e => setColorHint(e.target.value)}
                 disabled={enh.busy}
               />
+            </div>
+            {/* Recolor panel */}
+            <div className="mt-3 border border-gray-200 rounded-lg overflow-hidden">
+              <button type="button"
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-gray-500 hover:bg-gray-50"
+                onClick={() => setRecolorOpen(o => !o)}>
+                <span className="flex items-center gap-1.5"><Sparkles size={12} /> Change plating or crystal colour</span>
+                <span className="text-gray-400">{recolorOpen ? '▲' : '▼'}</span>
+              </button>
+              {recolorOpen && (
+                <div className="px-3 pb-3 pt-1 bg-gray-50 space-y-2">
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <div>
+                      <p className="text-[10px] text-gray-500 mb-1">Plating — from</p>
+                      <select className="input text-xs py-1" value={platFrom} onChange={e => setPlatFrom(e.target.value)} disabled={enh.busy}>
+                        {PLATING_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    </div>
+                    <span className="text-gray-400 mt-4">→</span>
+                    <div>
+                      <p className="text-[10px] text-gray-500 mb-1">to</p>
+                      <select className="input text-xs py-1" value={platTo} onChange={e => setPlatTo(e.target.value)} disabled={enh.busy}>
+                        {PLATING_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <div>
+                      <p className="text-[10px] text-gray-500 mb-1">Crystal colour — from</p>
+                      <select className="input text-xs py-1" value={crystalFrom} onChange={e => setCrystalFrom(e.target.value)} disabled={enh.busy}>
+                        {CRYSTAL_COLOR_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    </div>
+                    <span className="text-gray-400 mt-4">→</span>
+                    <div>
+                      <p className="text-[10px] text-gray-500 mb-1">to</p>
+                      <select className="input text-xs py-1" value={crystalTo} onChange={e => setCrystalTo(e.target.value)} disabled={enh.busy}>
+                        {CRYSTAL_COLOR_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <button type="button"
+                    disabled={enh.busy || (!platTo && !crystalTo)}
+                    onClick={() => {
+                      const instructions = buildRecolorInstructions(platFrom, platTo, crystalFrom, crystalTo)
+                      if (instructions) runEnhance(enh.img, 'recolor', instructions)
+                    }}
+                    className="btn-primary text-xs py-1.5 disabled:opacity-40">
+                    {enh.busy ? 'Working…' : 'Apply recolor'}
+                  </button>
+                  <p className="text-[10px] text-gray-400 leading-snug">AI changes only the selected colours — shape, background, and unselected colours stay the same. Always review before keeping.</p>
+                </div>
+              )}
             </div>
             {enh.error && <p className="text-xs text-red-500 mt-2">{enh.error}</p>}
             {enh.colorWarning && (

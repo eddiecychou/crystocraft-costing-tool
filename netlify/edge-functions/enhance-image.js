@@ -19,6 +19,19 @@ function bytesToBase64(bytes) {
   return btoa(binary)
 }
 
+// Plating and crystal recolor — targeted change, everything else preserved.
+const RECOLOR_PROMPT = instructions =>
+  `You are editing a product photo of a Crystocraft crystal giftware item. ` +
+  `Apply ONLY the following colour change(s) to the product — do not alter anything else:\n\n` +
+  `${instructions}\n\n` +
+  `CRITICAL — keep ALL of the following IDENTICAL:\n` +
+  `- Background (colour, style, and any shadows exactly as-is)\n` +
+  `- Product shape, proportions, and silhouette\n` +
+  `- All surface facets, engravings, and fine details\n` +
+  `- Lighting direction and intensity\n` +
+  `- Every colour NOT explicitly mentioned in the change instructions above\n` +
+  `Output only the edited image.`
+
 const COLOR_RULES =
   `COLOR PRESERVATION (absolute — never violate these): ` +
   `Every coloured part of the product must keep its exact original hue in the output. ` +
@@ -55,7 +68,7 @@ export default async function handler(req) {
 
   let payload
   try { payload = await req.json() } catch { return json({ error: 'Invalid JSON body' }, 400) }
-  const { imageUrl, image, mimeType, mode = 'clean', colorHint = '' } = payload || {}
+  const { imageUrl, image, mimeType, mode = 'clean', colorHint = '', recolorInstructions = '' } = payload || {}
 
   // Resolve the source image to base64 (accept a Storage URL or inline base64).
   let dataB64 = image
@@ -72,10 +85,15 @@ export default async function handler(req) {
   }
   if (!dataB64) return json({ error: 'No image provided (imageUrl or image required)' }, 400)
 
-  const colorHintBlock = colorHint.trim()
-    ? `\nUSER-PROVIDED COLOUR DESCRIPTION (trust this — it describes the real product):\n"${colorHint.trim()}"\nUse this to confirm which colours belong to the product and must be preserved exactly.\n`
-    : ''
-  const prompt = (PROMPTS[mode] || PROMPTS.clean) + colorHintBlock
+  let prompt
+  if (mode === 'recolor' && recolorInstructions.trim()) {
+    prompt = RECOLOR_PROMPT(recolorInstructions.trim())
+  } else {
+    const colorHintBlock = colorHint.trim()
+      ? `\nUSER-PROVIDED COLOUR DESCRIPTION (trust this — it describes the real product):\n"${colorHint.trim()}"\nUse this to confirm which colours belong to the product and must be preserved exactly.\n`
+      : ''
+    prompt = (PROMPTS[mode] || PROMPTS.clean) + colorHintBlock
+  }
   const body = {
     contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mime, data: dataB64 } }] }],
     generationConfig: { responseModalities: ['IMAGE'], temperature: 0.2 },
