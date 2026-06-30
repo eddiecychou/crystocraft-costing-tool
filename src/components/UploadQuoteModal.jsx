@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { collection, addDoc, updateDoc, doc, getDocs, query, orderBy, serverTimestamp } from 'firebase/firestore'
+import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
 import { CURRENCIES } from '../constants'
+import { loadCustomers } from '../domain/customer'
 import { Image as ImageIcon, FileText, X, Paperclip } from 'lucide-react'
 
 const todayISO = () => new Date().toISOString().split('T')[0]
@@ -21,9 +22,7 @@ export default function UploadQuoteModal({ onClose, onCreated }) {
   const fileInputRef = useRef(null)
 
   useEffect(() => {
-    getDocs(query(collection(db, 'customers'), orderBy('company_name'))).then(snap =>
-      setCustomers(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    )
+    loadCustomers().then(setCustomers)
   }, [])
 
   function set(field) { return e => setForm(f => ({ ...f, [field]: e.target.value })) }

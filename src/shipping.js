@@ -4,6 +4,7 @@ import {
   onSnapshot, query, orderBy, serverTimestamp, writeBatch,
 } from 'firebase/firestore'
 import { db } from './firebase'
+import { numOrNull, str, trimUpper, result, addWarning, addInfo, merge } from './domain/validation'
 
 // Shipping module — Phase 12.0. An `order` is the commercial anchor for a
 // shipment, sourced from an in-app won quote (Path A) or an imported ERP
@@ -39,10 +40,6 @@ export const LINE_TYPES = [
 ]
 export const lineTypeOf = v => LINE_TYPES.find(t => t.value === v) || LINE_TYPES[2]
 export const isPackable = v => lineTypeOf(v).packable
-
-const numOrNull = v =>
-  v === '' || v == null || !Number.isFinite(Number(v)) ? null : Number(v)
-const str = v => (v == null ? '' : String(v)).trim()
 
 // ── SKU matcher (PI line → figurine product) ─────────────────────────────────
 // PI item codes are messy ("D0002-230-C", "U0226", "D231"). We match brand-
@@ -223,4 +220,55 @@ export function autoMatchLines(lines, rangeProducts) {
     }
     return { ...l, line_no: l.line_no ?? i + 1, line_type: null, match_status: 'unmatched' }
   })
+}
+
+// ── Validators (shared guardrail result format) ───────────────────────────────
+// validateOrder / validateOrderLine return { ok, errors, warnings, infos } so the
+// write path and the read-only Schema Audit page share one set of rules. These
+// are advisory for now (warnings/infos) — the spec's hard blocks on unresolved
+// figurine plating land with the A-1 procurement build, not this foundation pass.
+
+const PLATING_SUFFIXES = ['C', 'G', 'R', 'A', 'M']
+// Plating inferred from the trailing item-code segment ('D0002-230-C' → 'C').
+const platingOf = code => {
+  const parts = trimUpper(code).split('-')
+  const last = parts[parts.length - 1]
+  return PLATING_SUFFIXES.includes(last) ? last : ''
+}
+
+export function validateOrderLine(line) {
+  const r = result()
+  const l = normLine(line || {})
+  const label = l.item_code || (l.line_no != null ? `line ${l.line_no}` : 'line')
+  if (l.line_type === 'range') {
+    if (!l.matched_product_ref && l.match_status !== 'manual')
+      addWarning(r, 'orderline.range.match_missing', 'matched_product_ref',
+        `${label}: figurine line not matched to a product`)
+    if (!platingOf(l.item_code))
+      addInfo(r, 'orderline.range.plating_unresolved', 'item_code',
+        `${label}: plating not resolved from item code`)
+  }
+  return r
+}
+
+// validateOrder(order[, lines]). When lines are supplied, line-level results and
+// a parsed-vs-computed total discrepancy are folded in. Parsed totals are never
+// overwritten — a mismatch is surfaced as info (spec: snapshot historical records).
+export function validateOrder(order, lines = null) {
+  const o = normOrder(order || {})
+  const r = result()
+  if (!o.customer_id) addWarning(r, 'order.customer.unresolved', 'customer_id',
+    'Order not linked to a customer')
+
+  if (Array.isArray(lines) && lines.length) {
+    const lineResults = lines.map(validateOrderLine)
+    const lineSum = lines.reduce((s, l) =>
+      s + (numOrNull(l.qty_ordered) || 0) * (numOrNull(l.unit_price) || 0), 0)
+    const ref = o.subtotal != null ? o.subtotal : o.total_amount
+    if (ref != null && lineSum > 0 && Math.abs(ref - lineSum) > Math.max(1, ref * 0.005))
+      addInfo(r, 'order.total.discrepancy', 'total_amount',
+        `Parsed total ${ref} differs from line sum ${lineSum.toFixed(2)}`)
+    return merge(r, ...lineResults)
+  }
+  return r
 }

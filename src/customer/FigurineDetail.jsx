@@ -35,6 +35,7 @@ export default function FigurineDetail({ profile }) {
   const [cartons, setCartons] = useState(1)
   const [stockPcs, setStockPcs] = useState(1)
   const [orderMode, setOrderMode] = useState('stock')  // 'stock' | 'mto' — for MTO products with available parts
+  const [showMoqInfo, setShowMoqInfo] = useState(false)  // expandable "how minimums work"
   const rates = useRates()
   const { colors: libColors } = useCrystalColors()
   const lookup = useMemo(() => colorMap(libColors), [libColors])
@@ -194,7 +195,7 @@ export default function FigurineDetail({ profile }) {
               <div className="mb-2">
                 <span className={`badge ${st.cls}`}>{st.label}</span>
                 <p className="text-xs text-ink-50 mt-1">
-                  {avail?.promise || st.tip}
+                  {avail?.customerPromise || avail?.promise || st.tip}
                 </p>
               </div>
             )
@@ -325,17 +326,27 @@ export default function FigurineDetail({ profile }) {
                   Fulfilling from available stock — no minimum quantity applies.
                 </p>
               )}
-              {effectiveMode === 'mto' && moq > 0 && (
-                <p className={`text-[11px] mt-1.5 ${belowMoq ? 'text-amber-700' : 'text-ink-50'}`}>
-                  Made to order · minimum {moq.toLocaleString()} pcs per design
-                  {belowMoq && ' — below the minimum, we will confirm feasibility on quotation'}
-                </p>
-              )}
-              {effectiveMode === 'mto' && fmtMoq > 0 && (
-                <p className={`text-[11px] mt-1 ${belowFormatMoq ? 'text-amber-700' : 'text-ink-50'}`}>
-                  {fmtLabel} base · minimum {fmtMoq.toLocaleString()} pcs across all designs
-                  {belowFormatMoq && ' — combine with other ' + fmtLabel.toLowerCase() + ' designs to reach it'}
-                </p>
+              {effectiveMode === 'mto' && (moq > 0 || fmtMoq > 0) && (
+                <div className="text-[11px] mt-1.5">
+                  {/* Concise headline — the numbers customers scan for */}
+                  <p className={belowMoq || belowFormatMoq ? 'text-amber-700' : 'text-ink-50'}>
+                    Made to order
+                    {moq > 0 && <> · min <span className="font-medium">{moq.toLocaleString()}</span>/design</>}
+                    {fmtMoq > 0 && <> · {fmtLabel} min <span className="font-medium">{fmtMoq.toLocaleString()}</span> (shared)</>}
+                    {(belowMoq || belowFormatMoq) && <span> — below minimum</span>}
+                    <button type="button" onClick={() => setShowMoqInfo(v => !v)}
+                      className="ml-1.5 underline text-ink-40 hover:text-ink-60">
+                      {showMoqInfo ? 'less' : 'how minimums work'}
+                    </button>
+                  </p>
+                  {/* The nuance, tucked away */}
+                  {showMoqInfo && (
+                    <ul className="mt-1 space-y-0.5 text-ink-50 list-disc list-inside">
+                      {moq > 0 && <li>Minimum {moq.toLocaleString()} pcs per design. Below this we confirm feasibility on your quotation.</li>}
+                      {fmtMoq > 0 && <li>{fmtLabel} base needs {fmtMoq.toLocaleString()} pcs total — combine with other {fmtLabel.toLowerCase()} designs to reach it.</li>}
+                    </ul>
+                  )}
+                </div>
               )}
             </div>
           )}

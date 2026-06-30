@@ -4,6 +4,7 @@ import { db } from '../firebase'
 import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
+import { normalizeCustomer } from '../domain/customer'
 import {
   AlertTriangle, ClipboardList, Factory, Trophy, Calendar, Check,
   Store, ShoppingCart, Gift, Sparkles, Smartphone, X, RefreshCw, ChevronUp,
@@ -96,7 +97,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     const unsubCustomers = onSnapshot(query(collection(db, 'customers')), snap => {
-      setCustomers(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      setCustomers(snap.docs.map(d => ({ id: d.id, ...normalizeCustomer(d.data()) })))
     })
     const unsubQuotes = onSnapshot(query(collection(db, 'client_quotes')), snap => {
       setQuotes(snap.docs.map(d => ({ id: d.id, ...d.data() })))
@@ -116,7 +117,7 @@ export default function Dashboard() {
             customerId:   c.id,
             customerName: c.contact_name || '',
             companyName:  c.company_name || '',
-            channel:      d.data().channel || c.primary_channel || '',
+            channel:      d.data().channel || c.channels?.[0] || '',
           }))
         )
       )

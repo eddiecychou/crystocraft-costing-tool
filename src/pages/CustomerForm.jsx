@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { doc, getDoc, addDoc, updateDoc, collection, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
-import { Store, ShoppingCart, Gift, Sparkles, Check, Star } from 'lucide-react'
+import { Store, ShoppingCart, Gift, Sparkles, Check, Star, AlertCircle, AlertTriangle } from 'lucide-react'
+import { saveCustomer, CRM_STATUSES, CRM_CATEGORIES, CHANNELS, CUSTOMER_SOURCES } from '../domain/customer'
 
 function toArray(val) {
   if (Array.isArray(val)) return val.length ? val : ['']
@@ -61,11 +62,10 @@ const COUNTRIES = [
   'Other',
 ]
 
-const CRM_CATEGORIES = ['Distributor', 'Small B2B', 'Gift / OEM', 'Crystal Fabric']
+// Enum vocabularies (CRM_CATEGORIES / CHANNELS / CRM_STATUSES / CUSTOMER_SOURCES)
+// are the canonical lists imported from the domain module so the form and the
+// validator never drift.
 const CATEGORY_ICON  = { 'Distributor': Store, 'Small B2B': ShoppingCart, 'Gift / OEM': Gift, 'Crystal Fabric': Sparkles }
-const CHANNELS = ['Email', 'WhatsApp Business', 'Alibaba', 'Personal WhatsApp']
-const SOURCES  = ['Alibaba', 'Website', 'Email Marketing', 'Referral', 'Trade Show', 'BNI', 'Direct']
-const CRM_STATUSES = ['Active', 'Prospect', 'Dormant', 'Inactive']
 
 const TAG_GROUPS = [
   {
@@ -116,6 +116,7 @@ export default function CustomerForm() {
   const [isPersonalWa, setIsPersonalWa] = useState(false)
   const [isVip, setIsVip]             = useState(false)
   const [loading, setLoading]         = useState(false)
+  const [issues, setIssues]           = useState(null)   // validation result on failed save
   const [countrySearch, setCountrySearch] = useState('')
   const [countryOpen, setCountryOpen]     = useState(false)
   const [fetching, setFetching]       = useState(isEdit)
@@ -179,29 +180,24 @@ export default function CustomerForm() {
   async function handleSubmit(e) {
     e.preventDefault()
     setLoading(true)
+    setIssues(null)
     try {
-      const payload = {
+      // All shaping (canonical fields + denormalized mirrors) and validation lives
+      // in saveCustomer — the form just hands over its raw state.
+      const input = {
         ...form,
         tags,
         channels,
-        primary_channel: channels[0] || '',  // backwards compat
         is_personal_wa: isPersonalWa,
         is_vip: isVip,
         contact_emails: emails.filter(Boolean),
         contact_phones: phones.filter(Boolean),
         contact_whatsapps: whatsapps.filter(Boolean),
         contact_wechats: wechats.filter(Boolean),
-        contact_email: emails.filter(Boolean)[0] || '',
-        contact_phone: phones.filter(Boolean)[0] || '',
-        updatedAt: serverTimestamp(),
       }
-      if (isEdit) {
-        await updateDoc(doc(db, 'customers', id), payload)
-        navigate(`/customers/${id}`)
-      } else {
-        const ref = await addDoc(collection(db, 'customers'), { ...payload, createdAt: serverTimestamp() })
-        navigate(`/customers/${ref.id}`)
-      }
+      const res = await saveCustomer(isEdit ? id : null, input)
+      if (!res.ok) { setIssues(res.result); return }
+      navigate(`/customers/${res.id}`)
     } finally {
       setLoading(false)
     }
@@ -414,7 +410,7 @@ export default function CustomerForm() {
               <label className="label">Source</label>
               <select className="input" value={form.source} onChange={set('source')}>
                 <option value="">— Select —</option>
-                {SOURCES.map(s => <option key={s}>{s}</option>)}
+                {CUSTOMER_SOURCES.map(s => <option key={s}>{s}</option>)}
               </select>
             </div>
           </div>
@@ -446,6 +442,21 @@ export default function CustomerForm() {
           <label className="label">Notes</label>
           <textarea className="input" rows={3} value={form.notes} onChange={set('notes')} placeholder="Preferences, key occasions, gifting history, special requirements…" />
         </div>
+
+        {issues && (issues.errors.length > 0 || issues.warnings.length > 0) && (
+          <div className="card p-4 border border-red-200 bg-red-50/50 space-y-1.5">
+            {issues.errors.map((it, i) => (
+              <p key={`e${i}`} className="text-sm text-red-700 flex items-start gap-2">
+                <AlertCircle size={15} className="shrink-0 mt-0.5" /> {it.message}
+              </p>
+            ))}
+            {issues.warnings.map((it, i) => (
+              <p key={`w${i}`} className="text-sm text-amber-700 flex items-start gap-2">
+                <AlertTriangle size={15} className="shrink-0 mt-0.5" /> {it.message}
+              </p>
+            ))}
+          </div>
+        )}
 
         <div className="flex gap-3">
           <button type="submit" className="btn-primary" disabled={loading}>{loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Customer'}</button>

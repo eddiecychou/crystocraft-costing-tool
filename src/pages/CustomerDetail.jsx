@@ -12,6 +12,7 @@ import EnquiryForm from './EnquiryForm'
 import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
+import { normalizeCustomer } from '../domain/customer'
 
 function toArray(val) {
   if (Array.isArray(val)) return val.filter(Boolean)
@@ -109,7 +110,7 @@ export default function CustomerDetail() {
           .sort((a, b) => (b.order_date || '').localeCompare(a.order_date || ''))
       )
       if (cSnap.exists()) {
-        const c = { id: cSnap.id, ...cSnap.data() }
+        const c = { id: cSnap.id, ...normalizeCustomer(cSnap.data()) }
         setCustomer(c)
         setComposeChannel(c.channels?.[0] || c.primary_channel || '')
       }

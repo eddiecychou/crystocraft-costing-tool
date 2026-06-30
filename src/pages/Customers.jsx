@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react'
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
-import { db } from '../firebase'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import { Store, ShoppingCart, Gift, Sparkles, Building2, Star, Smartphone } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
+import { useCustomers } from '../domain/customer'
 
 const COUNTRIES = [
   'Hong Kong', 'China (Mainland)', 'Macau', 'Taiwan',
@@ -32,22 +31,13 @@ const CATEGORY_TABS = [
 ]
 
 export default function Customers() {
-  const [customers, setCustomers]       = useState([])
-  const [loading, setLoading]           = useState(true)
+  const { customers, loading }          = useCustomers()
   const [search, setSearch]             = useState('')
   const [filterCountry, setFilterCountry] = useState('')
   const [filterChannel, setFilterChannel]   = useState('')
   const [filterStatus, setFilterStatus]     = useState('')
   const [filterCategory, setFilterCategory] = useState('')
   const remember = useScrollMemory('customers', !loading)
-
-  useEffect(() => {
-    const q = query(collection(db, 'customers'), orderBy('company_name'))
-    return onSnapshot(q, snap => {
-      setCustomers(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-      setLoading(false)
-    })
-  }, [])
 
   const filtered = customers.filter(c => {
     const searchLower = search.toLowerCase()

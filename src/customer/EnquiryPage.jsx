@@ -124,10 +124,10 @@ export default function EnquiryPage({ profile }) {
           const setCartons = n => { const c = Math.max(1, Math.floor(n) || 1); cart.update(i.key, { cartons: c, qty: c * ppc }) }
           const setPcs = n => cart.update(i.key, { qty: Math.max(1, Math.floor(n) || 1) })
           return (
-            <div key={i.key} className="flex items-center gap-3 p-3">
-              <div className="w-14 h-14 bg-white border border-ivory-dark rounded flex items-center justify-center overflow-hidden shrink-0">
-                {i.image ? <img src={i.image} alt={i.name} className="w-full h-full object-contain" />
-                  : <Icon size={20} className="text-gray-300" />}
+            <div key={i.key} className="flex items-start gap-3 p-3">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 bg-white border border-ivory-dark rounded flex items-center justify-center overflow-hidden shrink-0">
+                {i.image ? <img src={i.image} alt={i.name} className="w-full h-full object-contain p-1" />
+                  : <Icon size={28} className="text-gray-300" />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-ink truncate">{i.name}</p>
@@ -170,8 +170,8 @@ export default function EnquiryPage({ profile }) {
                 <span className="text-sm text-ink font-medium">
                   {lineTotal(i) != null ? fmtMoney(lineTotal(i), cur) : '—'}
                 </span>
-                {belowMoq && <Link to={`/shop/figurine?design=${designNumberOf(i)}`} title="Find more items of this design to reach the minimum" className="text-[10px] text-amber-700 hover:text-amber-900 underline decoration-dotted text-right">Design total {designTotal.toLocaleString()} / min {moq.toLocaleString()} pcs — add more</Link>}
-                {belowFormatMoq && <Link to={`/shop/figurine?format=${fmtCode}`} title={`Find more ${fmtLabel} designs to reach the minimum`} className="text-[10px] text-amber-700 hover:text-amber-900 underline decoration-dotted text-right">{fmtLabel} total {formatTotal.toLocaleString()} / min {fmtMoq.toLocaleString()} pcs — add more</Link>}
+                {belowMoq && <Link to={`/shop/figurine?design=${designNumberOf(i)}`} title={`Design total ${designTotal.toLocaleString()} of ${moq.toLocaleString()} min — add more of this design to reach it`} className="text-[10px] text-amber-700 hover:text-amber-900 underline decoration-dotted text-right">Design {designTotal.toLocaleString()}/{moq.toLocaleString()} · add more</Link>}
+                {belowFormatMoq && <Link to={`/shop/figurine?format=${fmtCode}`} title={`${fmtLabel} total ${formatTotal.toLocaleString()} of ${fmtMoq.toLocaleString()} min — combine ${fmtLabel} designs to reach it`} className="text-[10px] text-amber-700 hover:text-amber-900 underline decoration-dotted text-right">{fmtLabel} {formatTotal.toLocaleString()}/{fmtMoq.toLocaleString()} · add more</Link>}
                 <button onClick={() => cart.remove(i.key)} className="text-ink-40 hover:text-red-500" aria-label="Remove">
                   <Trash2 size={15} />
                 </button>

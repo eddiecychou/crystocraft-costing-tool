@@ -4,6 +4,7 @@ import {
   onSnapshot, query, orderBy, serverTimestamp, writeBatch,
 } from 'firebase/firestore'
 import { db } from './firebase'
+import { numOrNull, trimUpper, result, addError, addWarning, addInfo, merge } from './domain/validation'
 
 // Critical Components Library — promoted from a single settings doc-array to a
 // proper per-document collection so it scales to hundreds of parts, each with
@@ -24,8 +25,8 @@ const LEGACY_DOC = () => doc(db, 'settings', 'components')
 const ASSEMBLY_WEEKS_DEFAULT = 2   // plate + assemble + pack when parts are on hand
 const PARTS_LEAD_DEFAULT = 6       // assumed procurement lead for products with no components tracked
 
-const numOrNull = v =>
-  v === '' || v == null || !Number.isFinite(Number(v)) ? null : Number(v)
+// Valid plating codes ('' = shared/unplated). Single source for the validators below.
+export const VALID_PLATINGS = ['', 'C', 'G', 'R', 'A', 'M']
 
 // Volume-tier rows on a component cost: [{ min_qty, unit_cost }], same shape as
 // corp-gift supplier quotes. Cleaned to valid numeric rows, sorted by min_qty.
@@ -578,10 +579,20 @@ export function productAvailability(product, lib, { defaultPartsLeadWeeks = PART
   const moq = numOrNull(product?.moq)
   const moqTxt = moq ? `, MOQ ${moq}` : ''
 
-  const note = (product?.delivery_note || '').trim()
-  if (note) return { promise: note, leadWeeks: null, finished, buildable, bottleneck, byPlating, bottleneckByPlating, effectiveMoq: moq ?? 0 }
+  // Canonical availability status (spec: ProductAvailabilityResult). Additive —
+  // it sits alongside the human-readable promise and changes no existing string.
+  const availStatus =
+    status === 'stock' ? (buildable > 0 ? 'last_stock_only' : 'sold_out')
+      : !refs.length    ? 'buildable_mto'
+      : buildable == null ? 'review_needed'
+      : 'buildable_mto'
 
-  let promise, leadWeeks, effectiveMoq
+  const note = (product?.delivery_note || '').trim()
+  if (note) return { promise: note, customerPromise: note, status: availStatus, leadWeeks: null, finished, buildable, bottleneck, byPlating, bottleneckByPlating, effectiveMoq: moq ?? 0 }
+
+  // `promise` is the internal/admin string (may name the bottleneck part code).
+  // `customerPromise` is the portal-safe version — same facts, never an ERP code.
+  let promise, leadWeeks, effectiveMoq, customerPromise
   if (status === 'stock') {                       // Last Stock — retired; availability from remaining parts
     effectiveMoq = 0
     if (byPlating && Object.keys(byPlating).length) {
@@ -610,7 +621,113 @@ export function productAvailability(product, lib, { defaultPartsLeadWeeks = PART
     const w = make.weeks != null ? make.weeks + assembly : assembly
     const drv = make.driver ? ` — waiting on ${make.driver}` : ''
     promise = `Made to order — ~${w} weeks${moqTxt}${drv}.`
+    customerPromise = `Made to order — ~${w} weeks${moqTxt}.`   // no internal part code
     leadWeeks = w
   }
-  return { promise, leadWeeks, finished, buildable, bottleneck, byPlating, bottleneckByPlating, effectiveMoq }
+  // Other branches carry no internal code, so the customer string matches the promise.
+  if (customerPromise == null) customerPromise = promise
+  return { promise, customerPromise, status: availStatus, leadWeeks, finished, buildable, bottleneck, byPlating, bottleneckByPlating, effectiveMoq }
+}
+
+// ── Validators (shared guardrail result format) ───────────────────────────────
+// Used by the write path and the read-only Schema Audit page so both share one
+// rule set. Returns { ok, errors, warnings, infos } from domain/validation.
+
+export function validateComponent(c) {
+  const r = result()
+  const n = normComponent(c || {})
+  if (!n.code) addError(r, 'rangecomponent.code.required', 'code', 'Component code is required (upsert key)')
+  if (c?.stock_qty != null && c.stock_qty !== '' && n.stock_qty == null)
+    addWarning(r, 'rangecomponent.stockqty.nonnumeric', 'stock_qty', `stock_qty not numeric (${c.stock_qty})`)
+  if (!VALID_PLATINGS.includes(n.plating_code))
+    addWarning(r, 'rangecomponent.platingcode.invalid', 'plating_code',
+      `plating_code "${n.plating_code}" not one of C/G/R/A/M/blank`)
+  if (n.lead_time_weeks == null || n.lead_time_weeks <= 0)
+    addInfo(r, 'rangecomponent.leadtime.missing', 'lead_time_weeks', 'no lead_time_weeks (uses default parts lead)')
+  return r
+}
+
+// One product critical-component ref. `lib` is the components library (for orphan
+// resolution). Duplicate component+plating pairs are checked by validateCriticalRefs.
+export function validateCriticalRef(ref, lib) {
+  const r = result()
+  const code = trimUpper(ref?.code)
+  const id = ref?.id
+  const label = ref?.code || ref?.id || '(unnamed)'
+  if (!code && !id) {
+    addError(r, 'rangeproduct.criticalcomponent.missing_id', 'critical_components', 'component ref has no code or id')
+    return r
+  }
+  if (!resolveRef(ref, lib))
+    addError(r, 'rangeproduct.criticalcomponent.orphan', 'critical_components',
+      `component "${label}" does not resolve to a Components record (orphan)`)
+  if (ref?.qty_per_unit != null && ref.qty_per_unit !== '') {
+    const q = Number(ref.qty_per_unit)
+    if (!Number.isFinite(q) || q <= 0)
+      addError(r, 'rangeproduct.criticalcomponent.qty_invalid', 'qty_per_unit',
+        `component "${label}" has qty_per_unit ${ref.qty_per_unit} (must be > 0)`)
+  }
+  const rp = trimUpper(ref?.plating_code)
+  if (rp && !VALID_PLATINGS.includes(rp))
+    addWarning(r, 'rangeproduct.criticalcomponent.plating_invalid', 'plating_code',
+      `component ref plating "${ref.plating_code}" invalid`)
+  return r
+}
+
+// All of a product's critical refs, including duplicate component+plating pairs.
+export function validateCriticalRefs(refs, lib) {
+  const list = Array.isArray(refs) ? refs : []
+  const parts = list.map(ref => validateCriticalRef(ref, lib))
+  const dup = result()
+  const seen = new Map()
+  for (const ref of list) {
+    const base = trimUpper(ref?.code) || ref?.id || ''
+    if (!base) continue
+    const key = `${base}|${trimUpper(ref?.plating_code)}`
+    seen.set(key, (seen.get(key) || 0) + 1)
+    if (seen.get(key) === 2)
+      addWarning(dup, 'rangeproduct.criticalcomponent.duplicate_pair', 'critical_components',
+        `duplicate component+plating ref (${ref?.code || ref?.id})`)
+  }
+  return merge(dup, ...parts)
+}
+
+// ── Forward-looking canonical contracts (A-1 / A-2) ───────────────────────────
+// ProcurementLine and SupplierPO have no data or UI yet, so only their canonical
+// shape (JSDoc) and a minimal validator stub are defined here — enough to anchor
+// the contract the netting and PO builds will implement. No repository.
+//
+// @typedef {Object} ProcurementLine
+// @property {string} order_id
+// @property {string} order_line_id
+// @property {string} component_id
+// @property {string} componentcode_snapshot
+// @property {number} required_qty
+// @property {number} reserved_qty
+// @property {number} covered_qty
+// @property {number} to_purchase_qty
+// @property {'covered'|'shortage'|'draft_po'|'ordered'|'confirmed'|'inproduction'|'partreceived'|'received'|'issue'|'cancelled'} status
+// @property {'ontrack'|'watch'|'late'|'blocked'} risk_status
+export function validateProcurementLine(line) {
+  const r = result()
+  const l = line || {}
+  if (!l.order_id) addError(r, 'procurementline.orderid.required', 'order_id', 'order_id is required')
+  if (!l.component_id && !l.componentcode_snapshot)
+    addError(r, 'procurementline.component.required', 'component_id', 'component reference is required')
+  return r
+}
+
+// @typedef {Object} SupplierPO
+// @property {string} po_number
+// @property {string} supplier_id
+// @property {string} suppliername_snapshot
+// @property {string} currency
+// @property {string[]} order_ids
+// @property {string[]} procurementline_ids
+export function validateSupplierPO(po) {
+  const r = result()
+  const p = po || {}
+  if (!p.po_number) addError(r, 'supplierpo.ponumber.required', 'po_number', 'PO number is required')
+  if (!p.supplier_id) addError(r, 'supplierpo.supplier.required', 'supplier_id', 'supplier is required')
+  return r
 }

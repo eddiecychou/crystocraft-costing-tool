@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
-import { collection, getDocs, orderBy, query, addDoc, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { db, storage } from '../firebase'
+import { storage } from '../firebase'
 import {
   INCOTERMS, ORDER_STATUSES, LINE_TYPES, lineTypeOf, isPackable,
   getOrder, getOrderLines, createOrderWithLines, updateOrder, saveOrderLines, deleteOrder,
-  loadRangeProductsLite, autoMatchLines, matchRangeProduct,
+  loadRangeProductsLite, autoMatchLines, matchRangeProduct, validateOrder,
 } from '../shipping'
+import { loadCustomers, saveCustomer } from '../domain/customer'
 import { CURRENCIES } from '../constants'
 import { FileInput, FolderOpen, FileText, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -48,8 +48,7 @@ export default function ShipmentForm() {
   useEffect(() => {
     const preCustomerId = searchParams.get('customer_id')
     const loads = [
-      getDocs(query(collection(db, 'customers'), orderBy('company_name'))).then(s => {
-        const list = s.docs.map(d => ({ id: d.id, ...d.data() }))
+      loadCustomers().then(list => {
         setCustomers(list)
         // Resolve customer name when pre-filled from URL
         if (preCustomerId && !isEdit) {
@@ -105,18 +104,19 @@ export default function ShipmentForm() {
     if (!nameRaw) return
     setAddingCustomer(true)
     try {
-      const ref = await addDoc(collection(db, 'customers'), {
+      // Route through the canonical save path (normalize + validate). Use valid
+      // enum values so the new record is clean from the start.
+      const res = await saveCustomer(null, {
         company_name: nameRaw,
         country: header.destination.country || 'Hong Kong',
         address: header.destination.address || '',
-        crm_status: 'Customer',
-        source: 'PI Import',
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        crm_status: 'Active',
+        source: 'Direct',
       })
-      const newCustomer = { id: ref.id, company_name: nameRaw, country: header.destination.country || 'Hong Kong' }
+      if (!res.ok) { setExtractError(res.result.errors[0]?.message || 'Could not create customer.'); return }
+      const newCustomer = { id: res.id, company_name: nameRaw, country: header.destination.country || 'Hong Kong' }
       setCustomers(list => [...list, newCustomer].sort((a, b) => (a.company_name || '').localeCompare(b.company_name || '')))
-      setHeader(h => ({ ...h, customer_id: ref.id, customer_name: nameRaw }))
+      setHeader(h => ({ ...h, customer_id: res.id, customer_name: nameRaw }))
     } catch (err) {
       setExtractError(err.message || 'Could not create customer.')
     } finally {
@@ -224,17 +224,17 @@ export default function ShipmentForm() {
         await uploadBytes(r, pendingFile, { contentType: pendingFile.type || 'application/octet-stream' })
         sf = { url: await getDownloadURL(r), name: pendingFile.name }
       }
-      const orderId = await createOrderWithLines(
-        {
-          ...header,
-          source: 'imported_pi', source_file: sf,
-          subtotal:        header.subtotal        !== '' ? parseFloat(header.subtotal)        : null,
-          discount_pct:    header.discount_pct    !== '' ? parseFloat(header.discount_pct)    : null,
-          discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : null,
-          total_amount:    header.total_amount    !== '' ? parseFloat(header.total_amount)    : null,
-        },
-        lines,
-      )
+      const orderData = {
+        ...header,
+        source: 'imported_pi', source_file: sf,
+        subtotal:        header.subtotal        !== '' ? parseFloat(header.subtotal)        : null,
+        discount_pct:    header.discount_pct    !== '' ? parseFloat(header.discount_pct)    : null,
+        discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : null,
+        total_amount:    header.total_amount    !== '' ? parseFloat(header.total_amount)    : null,
+      }
+      const v = validateOrder(orderData, lines)
+      if (!v.ok) { setExtractError(v.errors.map(x => x.message).join(' · ')); setSaving(false); return }
+      const orderId = await createOrderWithLines(orderData, lines)
       navigate(`/shipments/${orderId}`)
     } catch (err) {
       setExtractError(err.message || 'Could not create shipment.')
@@ -247,6 +247,8 @@ export default function ShipmentForm() {
     setSaving(true)
     setExtractError('')
     try {
+      const v = validateOrder(header, lines)
+      if (!v.ok) { setExtractError(v.errors.map(x => x.message).join(' · ')); setSaving(false); return }
       await updateOrder(id, {
         customer_id: header.customer_id, customer_name: header.customer_name,
         erp_pi_no: header.erp_pi_no, erp_so_no: header.erp_so_no,

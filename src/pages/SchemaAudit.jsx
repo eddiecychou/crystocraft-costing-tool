@@ -4,6 +4,10 @@ import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import LoadingBar from '../components/LoadingBar'
 import { AlertTriangle, AlertCircle, Info, CheckCircle2, RefreshCw } from 'lucide-react'
+import { validateCustomer } from '../domain/customer'
+import { validateComponent, validateCriticalRefs } from '../criticalComponents'
+import { validateOrder } from '../shipping'
+import { allIssues } from '../domain/validation'
 
 // Read-only schema audit. Scans the main collections against the canonical shapes
 // in the product-manager guardrail spec and reports problems by severity:
@@ -11,10 +15,14 @@ import { AlertTriangle, AlertCircle, Info, CheckCircle2, RefreshCw } from 'lucid
 //   warning — risky / non-canonical (legacy field, odd value)
 //   info    — soft default applies (no MOQ / lead time set)
 // Nothing is written; this is a diagnostics surface only.
+//
+// The customer / component / critical-ref / order checks call the SAME validators
+// the write path uses (domain/customer, criticalComponents, shipping), so audit
+// and save can never drift. Entities without a domain module yet (customer-account
+// logins, range-product top-level fields, corp products) keep inline checks here.
 
 const num = v => (v === '' || v == null ? NaN : Number(v))
 const isNum = v => Number.isFinite(num(v))
-const PLATINGS = ['', 'C', 'G', 'R', 'A', 'M']          // blank = shared / unplated
 
 // Severity weight for sorting
 const SEV = { error: 0, warning: 1, info: 2 }
@@ -35,23 +43,22 @@ export default function SchemaAudit() {
       getDocs(collection(db, 'orders')),
     ])
 
-    const compCodes = new Set()
-    const compIds = new Set()
-    rComps.docs.forEach(d => { const c = d.data(); if (c.code) compCodes.add(String(c.code).trim().toUpperCase()); compIds.add(d.id) })
+    // Components library for orphan resolution (id + uppercased code).
+    const lib = rComps.docs.map(d => ({ id: d.id, code: String(d.data().code || '').trim().toUpperCase() }))
 
     const out = []
     const grp = (name, total, issues, hint) => out.push({ name, total, issues, hint })
     const add = (issues, sev, id, label, msg, link) => issues.push({ sev, id, label, msg, link })
+    // Map a shared validation result onto the audit's issue rows.
+    const addResult = (issues, res, id, label, link) =>
+      allIssues(res).forEach(it => issues.push({ sev: it.severity, id, label, msg: it.message, link }))
 
     // ── customers ─────────────────────────────────────────────────────────────
     {
       const issues = []
       customers.docs.forEach(d => {
         const c = d.data(), label = c.company_name || c.name || d.id
-        if (!String(c.company_name || '').trim()) {
-          if (String(c.name || '').trim()) add(issues, 'warning', d.id, label, "has legacy `name` but no `company_name` — won't appear in dropdowns/queries", `/customers/${d.id}`)
-          else add(issues, 'error', d.id, label, 'missing `company_name` (canonical key)', `/customers/${d.id}`)
-        }
+        addResult(issues, validateCustomer(c), d.id, label, `/customers/${d.id}`)
       })
       grp('Customers (CRM)', customers.size, issues, 'Canonical key is `company_name`, never `name`.')
     }
@@ -79,11 +86,7 @@ export default function SchemaAudit() {
       const issues = []
       rComps.docs.forEach(d => {
         const c = d.data(), label = c.code || c.name || d.id
-        if (!String(c.code || '').trim()) add(issues, 'error', d.id, label, 'missing `code` (upsert key)', '/components')
-        if (c.stock_qty != null && !isNum(c.stock_qty)) add(issues, 'warning', d.id, label, `stock_qty not numeric (${c.stock_qty})`, '/components')
-        const pc = String(c.plating_code || '').trim().toUpperCase()
-        if (!PLATINGS.includes(pc)) add(issues, 'warning', d.id, label, `plating_code "${c.plating_code}" not one of C/G/R/A/M/blank`, '/components')
-        if (!isNum(c.lead_time_weeks) || num(c.lead_time_weeks) <= 0) add(issues, 'info', d.id, label, 'no lead_time_weeks (uses default parts lead)', '/components')
+        addResult(issues, validateComponent(c), d.id, label, '/components')
       })
       grp('Range Components', rComps.size, issues, '`code` is the upsert key; plating lives here.')
     }
@@ -99,14 +102,7 @@ export default function SchemaAudit() {
         if (!isNum(p.moq) || num(p.moq) <= 0) add(issues, 'info', d.id, label, 'no MOQ set', `/range/${d.id}`)
         if (!isNum(p.lead_time_weeks) || num(p.lead_time_weeks) <= 0) add(issues, 'info', d.id, label, 'no assembly lead_time_weeks set', `/range/${d.id}`)
         const refs = Array.isArray(p.critical_components) ? p.critical_components : []
-        refs.forEach((r, i) => {
-          const code = String(r.code || '').trim().toUpperCase()
-          if (!code && !r.id) add(issues, 'error', d.id, label, `critical component #${i + 1} has no code or id`, `/range/${d.id}`)
-          else if (!(code && compCodes.has(code)) && !(r.id && compIds.has(r.id)))
-            add(issues, 'error', d.id, label, `critical component "${r.code || r.id}" does not resolve to a Components record (orphan)`, `/range/${d.id}`)
-          const rp = String(r.plating_code || '').trim().toUpperCase()
-          if (rp && !PLATINGS.includes(rp)) add(issues, 'warning', d.id, label, `component ref plating "${r.plating_code}" invalid`, `/range/${d.id}`)
-        })
+        addResult(issues, validateCriticalRefs(refs, lib), d.id, label, `/range/${d.id}`)
       })
       grp('Range Products (figurines)', rProducts.size, issues, 'Variants, MOQ/lead, and component refs.')
     }
@@ -125,8 +121,8 @@ export default function SchemaAudit() {
     {
       const issues = []
       orders.docs.forEach(d => {
-        const o = d.data(), label = o.order_number || o.ordernumber || d.id
-        if (!o.customer_id && !o.customerid) add(issues, 'warning', d.id, label, 'no customer_id — not linked to a customer', '/shipping')
+        const o = d.data(), label = o.order_number || o.ordernumber || o.erp_pi_no || d.id
+        addResult(issues, validateOrder(o), d.id, label, '/shipping')
       })
       grp('Orders (PI)', orders.size, issues, 'Each order should link to a customer.')
     }

@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
-import { collection, addDoc, serverTimestamp, getDoc, getDocs, doc, query, orderBy } from 'firebase/firestore'
+import { collection, addDoc, serverTimestamp, getDoc, doc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { CURRENCIES } from '../constants'
+import { loadCustomers } from '../domain/customer'
 
 const DEFAULT_RATES = { rmb_to_hkd: 1.09, usd_to_hkd: 7.78, eur_to_hkd: 8.60 }
 
@@ -28,9 +29,7 @@ export default function QuoteForm() {
 
   // Load customers list + exchange rates
   useEffect(() => {
-    getDocs(query(collection(db, 'customers'), orderBy('company_name'))).then(snap =>
-      setCustomers(snap.docs.map(d => ({ id: d.id, ...d.data() })))
-    )
+    loadCustomers().then(setCustomers)
     getDoc(doc(db, 'settings', 'exchange_rates')).then(s => {
       if (s.exists()) {
         const d = s.data()
