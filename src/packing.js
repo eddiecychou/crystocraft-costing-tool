@@ -188,6 +188,8 @@ export async function createPackingList(orderId, fields = {}) {
     consignee_name: fields.consignee_name || '',
     case_mark:      fields.case_mark || '',
     pl_date:        null,
+    shipped_per:    fields.shipped_per || '',
+    pallets:        fields.pallets || [],
     createdAt:      serverTimestamp(),
     updatedAt:      serverTimestamp(),
   })
@@ -258,6 +260,7 @@ export async function saveCartonsWithContents(plId, cartons) {
     const normRest = {
       carton_seq:     parseInt(rest.carton_seq) || 1,
       carton_count:   parseInt(rest.carton_count) || 1,
+      pallet_no:      parseInt(rest.pallet_no) || 1,
       pack_mode:      rest.pack_mode === 'mixed' ? 'mixed' : 'single',
       packaging_code: rest.packaging_code || '',
       gw_kg_standard: parseFloat(rest.gw_kg_standard) || null,

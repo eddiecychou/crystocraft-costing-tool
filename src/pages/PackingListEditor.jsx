@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { CheckCircle2, AlertTriangle, Plus, Trash2, RefreshCw, Package, Star, Pencil, Copy } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, Plus, Trash2, RefreshCw, Package, Star, Pencil, Copy, FileText } from 'lucide-react'
 import {
   PL_STATUSES, CARTON_MODES,
   buildFullCartonPlan, calcPackedVsOrdered, derivedCbm,
@@ -14,6 +14,7 @@ function newCarton(seq = 1, pack_mode = 'single') {
   return {
     _localId: crypto.randomUUID(), id: null,
     carton_seq: seq, carton_count: 1,
+    pallet_no: 1,
     pack_mode,
     packaging_code: '',
     gw_kg_standard: null, gw_kg_actual: null,
@@ -73,20 +74,9 @@ function PackedVsOrdered({ packableLines, cartons }) {
   )
 }
 
-// ── Per-carton card (P-1 + P-2) ──────────────────────────────────────────────
-// One mode-aware card per carton. `single` shows a single content line (but never
-// discards extra contents the carton already holds); `mixed` shows the full
-// multi-item editor. Switching mode never truncates contents — this removes the
-// Bug 2 contents[0] collapse, which came from a LIST-level mode reinterpreting
-// every carton's data.
-//
-// P-2: `packableLines` enables the order-line picker in both modes. Selecting a
-// packable line auto-fills item_code, description, and stamps order_line_id.
-// Picking "– free text –" clears the stamp; free-text always works.
+// ── Per-carton card ───────────────────────────────────────────────────────────
 function LinePicker({ packableLines, orderLineId, itemCode, onSelect }) {
   if (!packableLines?.length) return null
-  // Resolve: the picker shows the currently linked line (by id) or falls back to
-  // a matching item_code so pre-generated single-carton rows look linked.
   const matchedId = orderLineId ||
     packableLines.find(l => l.item_code && l.item_code === itemCode)?.id || ''
   return (
@@ -109,7 +99,7 @@ function LinePicker({ packableLines, orderLineId, itemCode, onSelect }) {
   )
 }
 
-function CartonCard({ carton, packableLines, onChange, onRemove }) {
+function CartonCard({ carton, packableLines, palletCount, onChange, onRemove }) {
   const c = carton
   const mode = c.pack_mode === 'mixed' ? 'mixed' : 'single'
   const seqEnd = parseInt(c.carton_seq) + parseInt(c.carton_count || 1) - 1
@@ -123,12 +113,10 @@ function CartonCard({ carton, packableLines, onChange, onRemove }) {
     const l = parseFloat(updated.length_cm), w = parseFloat(updated.width_cm), h = parseFloat(updated.height_cm)
     onChange({ ...updated, cbm_per_carton: l && w && h ? Math.round(l * w * h / 1e6 * 1e6) / 1e6 : c.cbm_per_carton, is_estimate: false })
   }
-  // Single-mode edits patch contents[0] in place and keep the tail intact.
   function patchFirstContent(patch) {
     onChange({ ...c, contents: contents.map((it, i) => (i === 0 ? { ...it, ...patch } : it)) })
   }
   function setMode(next) {
-    // Never drop contents on a mode switch.
     onChange({ ...c, pack_mode: next, contents: c.contents?.length ? c.contents : [newContent()] })
   }
   function addItem() { onChange({ ...c, contents: [...contents, newContent()] }) }
@@ -138,11 +126,30 @@ function CartonCard({ carton, packableLines, onChange, onRemove }) {
     onChange({ ...c, contents: next.length ? next : [newContent()] })
   }
 
+  // Build pallet number options: at least 1..current, plus up to palletCount
+  const maxPallet = Math.max(palletCount, parseInt(c.pallet_no) || 1)
+  const palletOptions = Array.from({ length: maxPallet }, (_, i) => i + 1)
+
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden mb-3">
       {/* Carton header */}
       <div className="bg-gray-50 px-4 py-3 flex flex-wrap items-center gap-3">
         <span className="text-sm font-medium text-gray-700 min-w-[78px]">{seqLabel}</span>
+
+        {/* Pallet assignment */}
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-gray-500">Plt</span>
+          <select
+            className="input py-1 text-xs w-14"
+            value={c.pallet_no || 1}
+            onChange={e => onChange({ ...c, pallet_no: parseInt(e.target.value) || 1 })}
+            title="Pallet number"
+          >
+            {palletOptions.map(n => <option key={n} value={n}>{n}</option>)}
+            <option value={maxPallet + 1}>+ new</option>
+          </select>
+        </div>
+
         {/* Per-carton mode toggle */}
         <div className="flex rounded-md border border-gray-200 overflow-hidden text-[11px]">
           {CARTON_MODES.map(m => (
@@ -276,21 +283,49 @@ function CartonCard({ carton, packableLines, onChange, onRemove }) {
   )
 }
 
+// ── Pallets dimensions editor ─────────────────────────────────────────────────
+function PalletsEditor({ pallets, onChange }) {
+  // pallets: [{ pallet_no, length_m, width_m, height_m }]
+  function update(no, field, val) {
+    const exists = pallets.find(p => p.pallet_no === no)
+    if (exists) {
+      onChange(pallets.map(p => p.pallet_no === no ? { ...p, [field]: val } : p))
+    } else {
+      onChange([...pallets, { pallet_no: no, length_m: '', width_m: '', height_m: '', [field]: val }])
+    }
+  }
+  function get(no, field) {
+    return pallets.find(p => p.pallet_no === no)?.[field] ?? ''
+  }
+
+  return { update, get }
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 export default function PackingListEditor({ orderId, orderLines }) {
   const packableLines = useMemo(() => (orderLines || []).filter(l => l.packable), [orderLines])
   const unclassified  = useMemo(() => (orderLines || []).filter(l => !l.line_type).length, [orderLines])
 
-  const [scenarios, setScenarios] = useState([])        // all packing lists for this order
-  const [activeId, setActiveId]   = useState(null)      // current scenario doc id
-  const [cartons, setCartons]     = useState([])         // carton rows with contents (active scenario)
+  const [scenarios, setScenarios] = useState([])
+  const [activeId, setActiveId]   = useState(null)
+  const [cartons, setCartons]     = useState([])
   const [loading, setLoading]     = useState(true)
   const [saving, setSaving]       = useState(false)
   const [saved, setSaved]         = useState(false)
   const [rangeProducts, setRangeProducts] = useState([])
   const [error, setError]         = useState('')
 
+  // Per-scenario header fields
+  const [shippedPer, setShippedPer] = useState('')
+  const [pallets, setPallets]       = useState([])   // [{ pallet_no, length_m, width_m, height_m }]
+
   const pl = useMemo(() => scenarios.find(s => s.id === activeId) || null, [scenarios, activeId])
+
+  // Unique pallet numbers in use
+  const palletNums = useMemo(() => {
+    const nums = new Set(cartons.map(c => parseInt(c.pallet_no) || 1))
+    return Array.from(nums).sort((a, b) => a - b)
+  }, [cartons])
 
   // Load all scenarios + range products
   useEffect(() => {
@@ -307,6 +342,8 @@ export default function PackingListEditor({ orderId, orderLines }) {
       if (rows.length) {
         const active = rows.find(r => r.selected) || rows[0]
         setActiveId(active.id)
+        setShippedPer(active.shipped_per || '')
+        setPallets(active.pallets || [])
         setCartons(await getCartonsWithContents(active.id))
       }
       setLoading(false)
@@ -314,21 +351,24 @@ export default function PackingListEditor({ orderId, orderLines }) {
     return () => { alive = false }
   }, [orderId])
 
-  // Switch the active scenario, loading its cartons.
   async function switchScenario(id) {
     if (id === activeId) return
     setActiveId(id)
     setError(''); setSaved(false)
+    const scenario = scenarios.find(s => s.id === id)
+    setShippedPer(scenario?.shipped_per || '')
+    setPallets(scenario?.pallets || [])
     setCartons(await getCartonsWithContents(id))
   }
 
-  // Create a new scenario doc and make it active (with optional starting cartons).
   async function createScenario(label, startCartons = []) {
-    const selected = scenarios.length === 0   // first scenario is the selected one
+    const selected = scenarios.length === 0
     const id = await createPackingList(orderId, { label, selected })
     const rows = await getPackingScenariosByOrder(orderId)
     setScenarios(rows)
     setActiveId(id)
+    setShippedPer('')
+    setPallets([])
     setCartons(startCartons)
     return id
   }
@@ -358,12 +398,18 @@ export default function PackingListEditor({ orderId, orderLines }) {
     const rows = await getPackingScenariosByOrder(orderId)
     setScenarios(rows)
     if (id === activeId) {
-      if (rows.length) { setActiveId(rows[0].id); setCartons(await getCartonsWithContents(rows[0].id)) }
-      else { setActiveId(null); setCartons([]) }
+      if (rows.length) {
+        setActiveId(rows[0].id)
+        setShippedPer(rows[0].shipped_per || '')
+        setPallets(rows[0].pallets || [])
+        setCartons(await getCartonsWithContents(rows[0].id))
+      } else {
+        setActiveId(null); setCartons([])
+        setShippedPer(''); setPallets([])
+      }
     }
   }
 
-  // Re-sequence carton_seq across all cartons whenever carton_count changes
   function resequence(rows) {
     let seq = 1
     return rows.map(c => {
@@ -382,15 +428,19 @@ export default function PackingListEditor({ orderId, orderLines }) {
   function addCarton() {
     setCartons(prev => {
       const seq = nextSeq(prev)
-      return [...prev, newCarton(seq)]
+      const lastPallet = prev.length ? (parseInt(prev[prev.length - 1].pallet_no) || 1) : 1
+      return [...prev, { ...newCarton(seq), pallet_no: lastPallet }]
     })
   }
 
   async function generateFromStandard() {
-    const plan = buildFullCartonPlan(packableLines, rangeProducts).map(c => ({ ...c, pack_mode: 'single' }))
+    const plan = buildFullCartonPlan(packableLines, rangeProducts).map(c => ({ ...c, pack_mode: 'single', pallet_no: 1 }))
     if (!activeId) await createScenario('Standard carton', plan)
     else setCartons(plan)
   }
+
+  // ── Pallet helpers ────────────────────────────────────────────────────────
+  const { update: updatePallet, get: getPallet } = PalletsEditor({ pallets, onChange: setPallets })
 
   // ── Save ──────────────────────────────────────────────────────────────────
   async function handleSave(promoteToFinal = false) {
@@ -411,10 +461,10 @@ export default function PackingListEditor({ orderId, orderLines }) {
       let plId = activeId
       if (!plId) plId = await createScenario(pl?.label || 'Standard carton', cartons)
       const status = promoteToFinal ? 'final' : (pl?.status || 'estimate')
-      // Persist status + denormalised totals on the scenario (totals feed the
-      // freight comparison matrix in P-3).
       await updatePackingList(plId, {
         status,
+        shipped_per: shippedPer,
+        pallets,
         totals: { carton_count: totals.totalCartons, cbm: totals.totalCbm, chargeable_weight_kg: totals.totalGw },
       })
       await saveCartonsWithContents(plId, cartons)
@@ -553,6 +603,17 @@ export default function PackingListEditor({ orderId, orderLines }) {
         </div>
       </div>
 
+      {/* Shipped Per (vessel / carrier) */}
+      <div className="flex items-center gap-2">
+        <label className="text-xs text-gray-500 whitespace-nowrap">Shipped per (vessel / carrier)</label>
+        <input
+          className="input py-1 text-sm flex-1 max-w-xs"
+          value={shippedPer}
+          onChange={e => setShippedPer(e.target.value)}
+          placeholder="e.g. CMA CGM MARCO POLO"
+        />
+      </div>
+
       {/* ── Cartons (per-carton single/mixed mode) ── */}
       <div>
         {cartons.map(c => (
@@ -560,6 +621,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
             key={c._localId}
             carton={c}
             packableLines={packableLines}
+            palletCount={palletNums.length}
             onChange={patch => updateCarton(c._localId, patch)}
             onRemove={() => removeCarton(c._localId)}
           />
@@ -572,6 +634,52 @@ export default function PackingListEditor({ orderId, orderLines }) {
           <Plus size={15} /> Add carton
         </button>
       </div>
+
+      {/* ── Pallet dimensions ── */}
+      {palletNums.length > 0 && (
+        <div className="border border-gray-200 rounded-lg p-4 space-y-3">
+          <p className="text-sm font-medium text-gray-700">Pallet dimensions</p>
+          <div className="space-y-2">
+            {palletNums.map(no => {
+              const palletCartons = cartons.filter(c => (parseInt(c.pallet_no) || 1) === no)
+              const firstSeq = palletCartons[0]?.carton_seq ?? '—'
+              const lastCarton = palletCartons[palletCartons.length - 1]
+              const lastSeq = lastCarton
+                ? (parseInt(lastCarton.carton_seq) || 0) + (parseInt(lastCarton.carton_count) || 1) - 1
+                : '—'
+              const palletCbm = palletCartons.reduce((s, c) => s + (derivedCbm(c) || 0) * (parseInt(c.carton_count) || 1), 0)
+              const palletCtns = palletCartons.reduce((s, c) => s + (parseInt(c.carton_count) || 1), 0)
+              return (
+                <div key={no} className="flex items-center gap-3 flex-wrap">
+                  <span className="text-sm text-gray-600 w-20 shrink-0">Pallet {no}</span>
+                  <span className="text-xs text-gray-400 w-32 shrink-0">
+                    CTN {firstSeq}–{lastSeq} ({palletCtns} ctns, {palletCbm.toFixed(4)} CBM)
+                  </span>
+                  <div className="flex items-center gap-1">
+                    {(['length_m','width_m','height_m']).map((f, fi) => (
+                      <input
+                        key={f}
+                        className="input py-1 text-xs w-16 text-right"
+                        type="number" step="0.01" min="0"
+                        placeholder={['L','W','H'][fi]}
+                        value={getPallet(no, f)}
+                        onChange={e => updatePallet(no, f, e.target.value)}
+                      />
+                    ))}
+                    <span className="text-xs text-gray-400">m</span>
+                  </div>
+                  {getPallet(no, 'length_m') && getPallet(no, 'width_m') && getPallet(no, 'height_m') && (
+                    <span className="text-xs text-gray-500">
+                      {getPallet(no, 'length_m')} × {getPallet(no, 'width_m')} × {getPallet(no, 'height_m')} m
+                    </span>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+          <p className="text-[11px] text-gray-400">Pallet dimensions print on the exported PDF.</p>
+        </div>
+      )}
 
       {/* ── Packed vs ordered ── */}
       {packableLines.length > 0 && cartons.length > 0 && (
@@ -608,6 +716,16 @@ export default function PackingListEditor({ orderId, orderLines }) {
         >
           Mark as Final
         </button>
+        {activeId && (
+          <button
+            type="button"
+            onClick={() => window.open(`/packing/${activeId}/print`, '_blank')}
+            className="flex items-center gap-1.5 btn-secondary"
+            title="Export as PDF"
+          >
+            <FileText size={14} /> Export PDF
+          </button>
+        )}
         {saved && <span className="text-xs text-green-600">Saved ✓</span>}
         {!canFinal && cartons.length > 0 && pl?.status !== 'final' && (
           <span className="text-xs text-gray-400">

@@ -49,6 +49,7 @@ import ShipmentForm from './pages/ShipmentForm'
 import Shipping from './pages/Shipping'
 import Portal from './pages/Portal'
 import Marketing from './pages/Marketing'
+import PackingListPrint from './pages/PackingListPrint'
 
 export default function App() {
   const user = useAuthState()
@@ -90,6 +91,11 @@ function AppRoutes({ user }) {
 
 function AdminApp({ user }) {
   return (
+    <Routes>
+      {/* Print routes — no Layout wrapper */}
+      <Route path="/packing/:plId/print" element={<PackingListPrint />} />
+      {/* All other admin routes wrapped in Layout */}
+      <Route path="/*" element={
             <Layout user={user}>
               <ErrorBoundary home="/dashboard">
               <Routes>
@@ -152,5 +158,7 @@ function AdminApp({ user }) {
               </Routes>
               </ErrorBoundary>
             </Layout>
+      } />
+    </Routes>
   )
 }
