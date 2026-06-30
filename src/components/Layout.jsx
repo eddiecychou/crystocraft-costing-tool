@@ -88,7 +88,7 @@ export default function Layout({ children, user }) {
         </header>
 
         {/* Page content — add bottom padding on mobile for tab bar */}
-        <main id="main-scroll" className="flex-1 overflow-auto pb-20 md:pb-0">
+        <main id="main-scroll" className="flex-1 overflow-y-auto overflow-x-hidden pb-20 md:pb-0">
           {children}
         </main>
 
