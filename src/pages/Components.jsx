@@ -5,7 +5,9 @@ import { db } from '../firebase'
 import { useComponents, saveComponent, importStockList, buildProductIndex, matchProductCode } from '../criticalComponents'
 import { loadRangeProductsWithPacking } from '../packing'
 import { loadCrystalColors, saveCrystalColors } from '../crystalColors'
-import { RANGE_COMPONENT_CATEGORIES, RANGE_FORMAT_CODES } from '../constants'
+import { CURRENCIES, RANGE_FORMAT_CODES } from '../constants'
+import { useComponentCategories, saveComponentCategories } from '../componentCategories'
+import { useCrystalUnitCosts, saveCrystalUnitCosts } from '../crystalCosting'
 import { Puzzle, ArrowUp, ArrowDown, X, Minus, Plus, Check } from 'lucide-react'
 
 export default function Components() {
@@ -15,11 +17,11 @@ export default function Components() {
       <h1 className="text-xl font-semibold mb-1">Components</h1>
       <p className="text-sm text-ink-60 mb-4">
         Shared libraries for the Figurine range — the critical parts that drive the production
-        promise, and the crystal colours used as a product attribute.
+        promise, crystal colours (a display attribute), and crystal unit costs by size &amp; brand.
       </p>
 
       <div className="flex gap-1 border-b border-ivory-dark mb-5">
-        {[['critical', 'Critical Components'], ['colours', 'Crystal Colours'], ['formatmoq', 'Format MOQs']].map(([k, label]) => (
+        {[['critical', 'Critical Components'], ['colours', 'Crystal Colours'], ['crystalcosts', 'Crystal Costs'], ['formatmoq', 'Format MOQs'], ['categories', 'Categories']].map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
               tab === k ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-80'}`}>
@@ -28,7 +30,136 @@ export default function Components() {
         ))}
       </div>
 
-      {tab === 'critical' ? <CriticalComponents /> : tab === 'colours' ? <CrystalColours /> : <FormatMoqs />}
+      {tab === 'critical' ? <CriticalComponents />
+        : tab === 'colours' ? <CrystalColours />
+        : tab === 'crystalcosts' ? <CrystalCosts />
+        : tab === 'formatmoq' ? <FormatMoqs />
+        : <ComponentCategories />}
+    </div>
+  )
+}
+
+// ── Categories tab ───────────────────────────────────────────────────────────
+
+function ComponentCategories() {
+  const { categories, loading } = useComponentCategories()
+  const [list, setList] = useState(null)   // null until hydrated from the store
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  useEffect(() => { if (!loading && list === null) setList(categories) }, [loading, categories, list])
+  const rows = list ?? []
+  const update = (i, v) => setList(rows.map((c, j) => (j === i ? v : c)))
+  const add = () => setList([...rows, ''])
+  const remove = i => setList(rows.filter((_, j) => j !== i))
+  const move = (i, d) => {
+    const j = i + d
+    if (j < 0 || j >= rows.length) return
+    const next = [...rows]; [next[i], next[j]] = [next[j], next[i]]; setList(next)
+  }
+  async function save() {
+    setSaving(true); setMsg('')
+    try { await saveComponentCategories(rows); setMsg('Categories saved.'); setTimeout(() => setMsg(''), 3000) }
+    catch (e) { setMsg('Error: ' + e.message) }
+    finally { setSaving(false) }
+  }
+
+  if (loading && list === null) return <p className="text-sm text-ink-50">Loading…</p>
+
+  return (
+    <div className="max-w-lg">
+      <p className="text-sm text-ink-60 mb-3">
+        Categories offered when tagging a component. Existing components keep their saved
+        category even if you rename or remove one here — re-tag them to move them across.
+      </p>
+      <div className="space-y-2">
+        {rows.map((c, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <input className="input text-sm flex-1" value={c} onChange={e => update(i, e.target.value)} placeholder="Category name" />
+            <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="text-ink-40 hover:text-ink disabled:opacity-30" title="Move up"><ArrowUp size={15} /></button>
+            <button type="button" onClick={() => move(i, 1)} disabled={i === rows.length - 1} className="text-ink-40 hover:text-ink disabled:opacity-30" title="Move down"><ArrowDown size={15} /></button>
+            <button type="button" onClick={() => remove(i)} className="text-red-300 hover:text-red-500" title="Remove"><X size={15} /></button>
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={add} className="mt-2 text-xs text-brand-600 hover:underline">+ Add category</button>
+      <div className="mt-4 flex items-center gap-3">
+        <button onClick={save} disabled={saving} className="btn-primary text-sm">{saving ? 'Saving…' : 'Save Categories'}</button>
+        {msg && <span className={`text-xs ${msg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{msg}</span>}
+      </div>
+    </div>
+  )
+}
+
+// ── Crystal Costs tab ────────────────────────────────────────────────────────
+// A flat, freely editable price list (size, brand, cost, currency) — NOT a
+// fixed size×brand grid, because the brand set differs by stone type: facet
+// stones (Octagon/Heart) are Bohemia/Asfour/Swarovski, small pavé stones
+// (PP18/26/32) are Swarovski/Preciosa. Read by rangeCosting.js's crystal BOM.
+
+const newCcId = () => 'cc_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+
+function CrystalCosts() {
+  const { items, loading } = useCrystalUnitCosts()
+  const [rows, setRows] = useState(null)   // null until hydrated
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  useEffect(() => { if (!loading && rows === null) setRows(items) }, [loading, items, rows])
+  const list = rows ?? []
+  const update = (i, patch) => setRows(list.map((r, j) => (j === i ? { ...r, ...patch } : r)))
+  const add = () => setRows([...list, { id: newCcId(), size: '', brand: '', cost: '', currency: 'RMB' }])
+  const remove = i => setRows(list.filter((_, j) => j !== i))
+  async function save() {
+    setSaving(true); setMsg('')
+    try { await saveCrystalUnitCosts(list); setMsg('Crystal costs saved.'); setTimeout(() => setMsg(''), 3000) }
+    catch (e) { setMsg('Error: ' + e.message) }
+    finally { setSaving(false) }
+  }
+
+  if (loading && rows === null) return <p className="text-sm text-ink-50">Loading…</p>
+
+  // Grouped by size purely for readability — still one flat list underneath.
+  const bySize = new Map()
+  list.forEach((r, i) => { const k = r.size || '—'; if (!bySize.has(k)) bySize.set(k, []); bySize.get(k).push(i) })
+
+  return (
+    <div className="max-w-2xl">
+      <p className="text-sm text-ink-60 mb-3">
+        Unit price per stone, by size and brand. Add a row for any new size or brand — this list
+        drives the Crystal cost BOM on each figurine's costing page (qty × unit cost).
+      </p>
+      <div className="space-y-4">
+        {[...bySize.entries()].map(([size, idxs]) => (
+          <div key={size}>
+            <p className="text-xs font-semibold text-ink-50 uppercase tracking-wide mb-1.5">{size}</p>
+            <div className="space-y-2">
+              {idxs.map(i => {
+                const r = list[i]
+                return (
+                  <div key={r.id} className="flex items-center gap-2 flex-wrap">
+                    <input className="input text-sm flex-1 min-w-[140px]" value={r.size}
+                           onChange={e => update(i, { size: e.target.value })} placeholder="Size, e.g. 14mm Octagon" />
+                    <input className="input text-sm flex-1 min-w-[140px]" value={r.brand}
+                           onChange={e => update(i, { brand: e.target.value })} placeholder="Brand, e.g. Bohemia" />
+                    <input className="input text-sm w-24" inputMode="decimal" value={r.cost ?? ''}
+                           onChange={e => update(i, { cost: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" />
+                    <select className="input text-sm w-20" value={r.currency} onChange={e => update(i, { currency: e.target.value })}>
+                      {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    <button type="button" onClick={() => remove(i)} className="text-red-300 hover:text-red-500" title="Remove"><X size={15} /></button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={add} className="mt-3 text-xs text-brand-600 hover:underline">+ Add row</button>
+      <div className="mt-4 flex items-center gap-3">
+        <button onClick={save} disabled={saving} className="btn-primary text-sm">{saving ? 'Saving…' : 'Save Crystal Costs'}</button>
+        {msg && <span className={`text-xs ${msg.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{msg}</span>}
+      </div>
     </div>
   )
 }
@@ -50,10 +181,10 @@ function CriticalComponents() {
     })
   }, [components, search, cat])
 
-  const cats = useMemo(() => {
-    const used = new Set(components.map(c => c.category).filter(Boolean))
-    return RANGE_COMPONENT_CATEGORIES.filter(c => used.has(c))
-  }, [components])
+  // Filter shows every category actually present in the data (incl. custom ones).
+  const cats = useMemo(() =>
+    [...new Set(components.map(c => c.category).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+  [components])
 
   return (
     <div>

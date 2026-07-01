@@ -6,7 +6,7 @@ import { db, storage } from '../firebase'
 import {
   RANGE_DESIGN_TYPES, RANGE_PRODUCT_TYPES, RANGE_FORMAT_CODES,
   RANGE_PLATINGS, RANGE_CRYSTAL_COLORS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS,
-  RANGE_BODY_TYPES, RANGE_COMPONENT_CATEGORIES, designNumber, brandLetter, bodyLetter,
+  RANGE_BODY_TYPES, designNumber, brandLetter, bodyLetter,
   normGallery, normVideos, MARKETING_DESC_MAXLEN,
 } from '../constants'
 import { resizeToJpeg } from '../imageResize'
@@ -292,10 +292,9 @@ export default function RangeForm() {
   // Search-driven component picker (scales to hundreds of parts).
   const [compSearch, setCompSearch] = useState('')
   const [compCat, setCompCat] = useState('')
-  const compCats = useMemo(() => {
-    const used = new Set(libComponents.map(c => c.category).filter(Boolean))
-    return RANGE_COMPONENT_CATEGORIES.filter(c => used.has(c))
-  }, [libComponents])
+  const compCats = useMemo(() =>
+    [...new Set(libComponents.map(c => c.category).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+  [libComponents])
   const compResults = useMemo(() => {
     const q = compSearch.trim().toLowerCase()
     if (!q && !compCat) return []
@@ -475,7 +474,7 @@ export default function RangeForm() {
       .map(v => [v.plating_name, v.crystal_name].filter(Boolean).join(' / '))
       .filter(Boolean))].join('; ')
     return {
-      name: form.design_name,
+      name: form.design_name || form.description,
       category: form.design_type || form.category || form.product_type || 'Crystocraft Range',
       description: form.description,
       size: form.size,
@@ -485,8 +484,12 @@ export default function RangeForm() {
     }
   }
 
+  // The visible "name" of a range product is entered in the Description field
+  // (there is no separate design-name input), so AI writing keys off either.
+  const aiName = (form.design_name || form.description || '').trim()
+
   async function handleGenerateCopy() {
-    if (!form.design_name) return
+    if (!aiName) return
     setAiLoading(true); setAiError('')
     try {
       const res = await fetch('/api/generate-marketing-copy', {
@@ -516,7 +519,7 @@ export default function RangeForm() {
           section_type: 'marketing_description',
           body: form.marketing_description,
           guidance: rewriteGuide,
-          context: `Crystocraft range design: ${form.design_name}\nType: ${form.design_type || form.product_type}\nSpec: ${form.description}`,
+          context: `Crystocraft range design: ${form.design_name || form.description}\nType: ${form.design_type || form.product_type}\nSpec: ${form.description}`,
         }),
       })
       const data = await res.json()
@@ -902,7 +905,7 @@ export default function RangeForm() {
                   className="text-xs text-ink-50 hover:text-brand-600 transition-colors">
                   {guideOpen ? 'Hide instructions' : '+ Instructions'}
                 </button>
-                <button type="button" onClick={handleGenerateCopy} disabled={!form.design_name || aiLoading}
+                <button type="button" onClick={handleGenerateCopy} disabled={!aiName || aiLoading}
                   className="text-xs px-2.5 py-1 rounded-md bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1">
                   {aiLoading ? 'Writing…' : <span className="inline-flex items-center gap-1"><Sparkles size={13} />AI Write</span>}
                 </button>
@@ -925,7 +928,7 @@ export default function RangeForm() {
               placeholder="Customer-facing sell-copy for catalogues and the storefront… or click AI Write to generate" />
             <p className="text-[11px] text-ink-40 mt-0.5 text-right">{(form.marketing_description || '').length}/{MARKETING_DESC_MAXLEN}</p>
             {aiError && <p className="text-xs text-red-500 mt-1">{aiError}</p>}
-            {!form.design_name && <p className="text-xs text-ink-50 mt-1">Enter a design name first to enable AI writing</p>}
+            {!aiName && <p className="text-xs text-ink-50 mt-1">Enter a description (product name) first to enable AI writing</p>}
             {form.marketing_description && !rewriteOpen && (
               <button type="button" onClick={() => setRewriteOpen(true)}
                 className="text-xs text-ink-50 hover:text-brand-600 transition-colors mt-1 flex items-center gap-1">

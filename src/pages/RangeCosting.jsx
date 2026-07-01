@@ -4,27 +4,31 @@ import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { X, AlertTriangle, BadgeCheck } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
-import { CURRENCIES } from '../constants'
+import { CURRENCIES, RANGE_CRYSTAL_BRANDS } from '../constants'
 import { useComponents, resolveRef } from '../criticalComponents'
-import { useCrystalColors, colorMap } from '../crystalColors'
+import { useCrystalUnitCosts, crystalSizesOf, crystalBrandsForSize } from '../crystalCosting'
 import { DEFAULT_MARKUP } from '../pricing'
 import {
-  componentCostAtQty, componentsCostHKD, extraLinesHKD, variantAdderHKD,
+  componentCostAtQty, componentsCostHKD, extraLinesHKD,
   toolingHKD, variantAllInCostHKD, variantSellHKD, productMarkup,
+  crystalBomCostHKD, missingCrystalLines,
 } from '../rangeCosting'
 
 const DEFAULT_RATES = { RMB: 1.09, USD: 7.78, EUR: 8.60, HKD: 1 }
-const blankCosting = () => ({ extra_lines: [], plating_costs: {}, crystal_costs: {}, markup: '', tiers: [] })
+const newLineId = () => 'l_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+const blankCosting = () => ({ extra_lines: [], plating_costs: {}, crystal_bom: [], markup: '', tiers: [] })
 
 // Build the editable costing state from a stored product, listing every plating
-// and crystal the product actually uses so the user only fills relevant adders.
+// the product actually uses so the user only fills relevant adders. Crystal
+// cost is a bill-of-materials (qty per stone size), not a per-attribute adder.
 function hydrate(product) {
   const c = product?.costing || {}
   return {
     extra_lines: Array.isArray(c.extra_lines)
       ? c.extra_lines.map(l => ({ label: l.label || '', cost: l.cost ?? '', currency: l.currency || 'RMB' })) : [],
     plating_costs: c.plating_costs && typeof c.plating_costs === 'object' ? { ...c.plating_costs } : {},
-    crystal_costs: c.crystal_costs && typeof c.crystal_costs === 'object' ? { ...c.crystal_costs } : {},
+    crystal_bom: Array.isArray(c.crystal_bom)
+      ? c.crystal_bom.map(l => ({ id: newLineId(), size: l.size || '', brand: l.brand || '', qty: l.qty ?? '' })) : [],
     markup: c.markup ?? '',
     tiers: Array.isArray(c.tiers)
       ? c.tiers.map(t => ({ quantity: t.quantity ?? '', lead_time_days: t.lead_time_days ?? '' })) : [],
@@ -43,7 +47,9 @@ function serialize(state) {
       .map(l => ({ label: (l.label || '').trim(), cost: num(l.cost), currency: l.currency || 'RMB' }))
       .filter(l => l.cost != null && l.label),
     plating_costs: cleanMap(state.plating_costs),
-    crystal_costs: cleanMap(state.crystal_costs),
+    crystal_bom: (state.crystal_bom || [])
+      .map(l => ({ size: (l.size || '').trim(), brand: (l.brand || '').trim(), qty: num(l.qty) }))
+      .filter(l => l.size && l.qty != null && l.qty > 0),
     markup: num(state.markup),
     tiers: (state.tiers || [])
       .map(t => ({ quantity: num(t.quantity), lead_time_days: num(t.lead_time_days) }))
@@ -62,8 +68,8 @@ export default function RangeCosting() {
   const [msg, setMsg] = useState(null)
 
   const { components: lib } = useComponents()
-  const { colors: libColors } = useCrystalColors()
-  const colorLookup = useMemo(() => colorMap(libColors), [libColors])
+  const { items: crystalItems } = useCrystalUnitCosts()
+  const crystalSizes = useMemo(() => crystalSizesOf(crystalItems), [crystalItems])
 
   useEffect(() => {
     getDoc(doc(db, 'range_products', id)).then(s => {
@@ -87,23 +93,27 @@ export default function RangeCosting() {
     }
     return [...seen.entries()].map(([code, name]) => ({ code, name }))
   }, [variants])
-  const crystals = useMemo(() => {
-    const set = new Set()
+  // Distinct crystal brands this product actually ships in (drives the
+  // per-brand crystal cost preview — same brand set the variant table uses).
+  const productBrands = useMemo(() => {
+    const seen = new Map()
     for (const v of variants) {
-      for (const c of (Array.isArray(v.crystal_colors) ? v.crystal_colors : [])) {
-        const code = (c || '').trim().toUpperCase()
-        if (code) set.add(code)
-      }
-      const single = (v.crystal_code || '').trim().toUpperCase()
-      if (single) set.add(single)
+      const code = (v.brand_code || '').trim().toUpperCase()
+      const known = RANGE_CRYSTAL_BRANDS.find(b => b.code === code)
+      if (code && !seen.has(code)) seen.set(code, known?.name || code)
     }
-    return [...set]
+    return [...seen.entries()].map(([code, name]) => ({ code, name }))
   }, [variants])
 
   // A live product clone carrying the current (unsaved) costing edits, so every
   // preview number reflects what the user is typing before they save.
   const draft = useMemo(() => ({ ...product, costing: serialize(state) }), [product, state])
   const refs = Array.isArray(product?.critical_components) ? product.critical_components : []
+  // Effective plating of a ref (override, else inferred from the component).
+  const refPlatOf = r => (r.plating_code || resolveRef(r, lib)?.plating_code || '').trim().toUpperCase()
+  // When any part is plating-specific, a single "sum of all parts" is wrong (a
+  // Chrome piece never also uses the Gold part) — show a per-plating subtotal.
+  const hasPlatingParts = refs.some(refPlatOf)
   const compCostHKD = componentsCostHKD(draft, lib, rates, 1)
   const extraHKD = extraLinesHKD(draft, rates)
   const toolHKD = toolingHKD(draft, lib, rates)
@@ -122,6 +132,13 @@ export default function RangeCosting() {
     ...s,
     [bucket]: { ...s[bucket], [code]: { ...(s[bucket][code] || { currency: 'RMB' }), [key]: key === 'cost' ? e.target.value.replace(/[^\d.]/g, '') : e.target.value } },
   }))
+
+  const setCrystalLine = (i, key) => e => setState(s => ({
+    ...s, crystal_bom: s.crystal_bom.map((l, j) => j === i
+      ? { ...l, [key]: key === 'qty' ? e.target.value.replace(/[^\d.]/g, '') : e.target.value } : l),
+  }))
+  const addCrystalLine = () => setState(s => ({ ...s, crystal_bom: [...s.crystal_bom, { id: newLineId(), size: '', brand: '', qty: '' }] }))
+  const removeCrystalLine = i => setState(s => ({ ...s, crystal_bom: s.crystal_bom.filter((_, j) => j !== i) }))
 
   const setTier = (i, key) => e => setState(s => ({
     ...s, tiers: s.tiers.map((t, j) => j === i ? { ...t, [key]: e.target.value.replace(/[^\d]/g, '') } : t),
@@ -150,7 +167,6 @@ export default function RangeCosting() {
   if (!product) return <div className="p-6 text-ink-60">Product not found. <Link to="/range" className="text-brand-600">Back</Link></div>
 
   const productCode = [product.design_no, product.format_code].filter(Boolean).join('-')
-  const colourName = code => colorLookup[code]?.name || code
 
   return (
     <div className="p-4 md:p-6 max-w-3xl">
@@ -193,10 +209,29 @@ export default function RangeCosting() {
                 </div>
               )
             })}
-            <div className="py-2.5 flex items-center justify-between border-t border-gray-200">
-              <p className="text-sm font-semibold text-gray-700">Component subtotal</p>
-              <p className="text-sm font-bold text-gray-900">HKD {compCostHKD.toFixed(2)}</p>
-            </div>
+            {hasPlatingParts && platings.length ? (
+              <>
+                {platings.map(p => (
+                  <div key={p.code} className="py-2.5 flex items-center justify-between border-t border-gray-200">
+                    <p className="text-sm font-semibold text-gray-700">
+                      {p.name} <span className="font-mono text-ink-40">{p.code}</span> component subtotal
+                    </p>
+                    <p className="text-sm font-bold text-gray-900">
+                      HKD {componentsCostHKD(draft, lib, rates, 1, { plating_code: p.code }).toFixed(2)}
+                    </p>
+                  </div>
+                ))}
+                <p className="pt-2 text-[11px] text-ink-50">
+                  Plating-specific parts count only toward their own variant — one piece never uses both.
+                  Shared (blank-plating) parts are included in every variant.
+                </p>
+              </>
+            ) : (
+              <div className="py-2.5 flex items-center justify-between border-t border-gray-200">
+                <p className="text-sm font-semibold text-gray-700">Component subtotal</p>
+                <p className="text-sm font-bold text-gray-900">HKD {compCostHKD.toFixed(2)}</p>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -227,43 +262,80 @@ export default function RangeCosting() {
         <p className="text-xs text-ink-60 mt-3">Extra subtotal: <span className="font-medium text-gray-800">HKD {extraHKD.toFixed(2)}</span></p>
       </div>
 
-      {/* Plating + crystal adders */}
-      <div className="grid sm:grid-cols-2 gap-5 mb-5">
-        <div className="card p-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Plating adder</h2>
-          {platings.length === 0 ? <p className="text-xs text-ink-50">No platings on this product.</p> : (
-            <div className="space-y-2">
-              {platings.map(p => (
-                <div key={p.code} className="flex items-center gap-2">
-                  <span className="text-xs text-ink-70 w-24 truncate" title={p.name}>{p.name} <span className="text-ink-40 font-mono">{p.code}</span></span>
-                  <input className="input py-1.5 text-sm w-24" inputMode="decimal"
-                         value={state.plating_costs[p.code]?.cost ?? ''} onChange={setAdder('plating_costs', p.code, 'cost')} placeholder="0.00" />
-                  <select className="input py-1.5 text-sm w-20" value={state.plating_costs[p.code]?.currency || 'RMB'} onChange={setAdder('plating_costs', p.code, 'currency')}>
-                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* Plating adder */}
+      <div className="card p-5 mb-5">
+        <h2 className="text-sm font-semibold text-gray-700 mb-3">Plating adder</h2>
+        {platings.length === 0 ? <p className="text-xs text-ink-50">No platings on this product.</p> : (
+          <div className="space-y-2">
+            {platings.map(p => (
+              <div key={p.code} className="flex items-center gap-2">
+                <span className="text-xs text-ink-70 w-24 truncate" title={p.name}>{p.name} <span className="text-ink-40 font-mono">{p.code}</span></span>
+                <input className="input py-1.5 text-sm w-24" inputMode="decimal"
+                       value={state.plating_costs[p.code]?.cost ?? ''} onChange={setAdder('plating_costs', p.code, 'cost')} placeholder="0.00" />
+                <select className="input py-1.5 text-sm w-20" value={state.plating_costs[p.code]?.currency || 'RMB'} onChange={setAdder('plating_costs', p.code, 'currency')}>
+                  {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Crystal cost — bill of materials (qty per stone size × shared unit-cost library) */}
+      <div className="card p-5 mb-5">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-sm font-semibold text-gray-700">Crystal cost</h2>
+          <Link to="/components" className="text-xs text-brand-600 hover:underline">Manage crystal cost list →</Link>
         </div>
-        <div className="card p-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Crystal adder</h2>
-          {crystals.length === 0 ? <p className="text-xs text-ink-50">No crystal colours selected on this product.</p> : (
-            <div className="space-y-2">
-              {crystals.map(code => (
-                <div key={code} className="flex items-center gap-2">
-                  <span className="text-xs text-ink-70 w-24 truncate" title={colourName(code)}>{colourName(code)} <span className="text-ink-40 font-mono">{code}</span></span>
-                  <input className="input py-1.5 text-sm w-24" inputMode="decimal"
-                         value={state.crystal_costs[code]?.cost ?? ''} onChange={setAdder('crystal_costs', code, 'cost')} placeholder="0.00" />
-                  <select className="input py-1.5 text-sm w-20" value={state.crystal_costs[code]?.currency || 'RMB'} onChange={setAdder('crystal_costs', code, 'currency')}>
-                    {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+        <p className="text-xs text-ink-60 mb-3">
+          How many stones of each size this design uses — the count is the same across every brand/plating.
+          Unit price comes from the shared crystal cost list (Components → Crystal Costs).
+        </p>
+        <datalist id="crystal-size-options">{crystalSizes.map(s => <option key={s} value={s} />)}</datalist>
+        {state.crystal_bom.length === 0 ? (
+          <p className="text-xs text-ink-50">No crystal stones on this design yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {state.crystal_bom.map((l, i) => {
+              const brandOptions = l.size ? crystalBrandsForSize(crystalItems, l.size) : []
+              return (
+                <div key={l.id} className="flex items-center gap-2 flex-wrap">
+                  <input className="input py-1.5 text-sm flex-1 min-w-[140px]" list="crystal-size-options"
+                         value={l.size} onChange={setCrystalLine(i, 'size')} placeholder="Size, e.g. 14mm Octagon" />
+                  <input className="input py-1.5 text-sm flex-1 min-w-[160px]" list={`crystal-brand-options-${i}`}
+                         value={l.brand} onChange={setCrystalLine(i, 'brand')} placeholder="Brand — blank = same as variant" />
+                  <datalist id={`crystal-brand-options-${i}`}>{brandOptions.map(b => <option key={b} value={b} />)}</datalist>
+                  <input className="input py-1.5 text-sm w-20" inputMode="numeric"
+                         value={l.qty} onChange={setCrystalLine(i, 'qty')} placeholder="Qty" />
+                  <button type="button" onClick={() => removeCrystalLine(i)} className="text-red-300 hover:text-red-500" title="Remove"><X size={14} /></button>
                 </div>
-              ))}
-              <p className="text-[11px] text-ink-50 pt-1">A variant with several colours is costed at its dearest colour.</p>
-            </div>
-          )}
-        </div>
+              )
+            })}
+          </div>
+        )}
+        <button type="button" onClick={addCrystalLine} className="mt-2 text-xs text-brand-600 hover:underline">+ Add crystal line</button>
+
+        {state.crystal_bom.length > 0 && productBrands.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-gray-100 space-y-1.5">
+            {productBrands.map(b => {
+              const missing = missingCrystalLines(draft, { brand_code: b.code }, crystalItems)
+              return (
+                <div key={b.code}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-ink-70">{b.name} crystal subtotal</span>
+                    <span className="font-medium text-gray-900">HKD {crystalBomCostHKD(draft, rates, { brand_code: b.code }, crystalItems).toFixed(2)}</span>
+                  </div>
+                  {missing.length > 0 && (
+                    <p className="text-[11px] text-red-500 flex items-center gap-1 mt-0.5">
+                      <AlertTriangle size={11} /> No price for {missing.map(m => `${m.size}${m.brand ? ` (${m.brand})` : ` × ${b.name}`}`).join(', ')} — set it in{' '}
+                      <Link to="/components" className="underline">Components → Crystal Costs</Link>.
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Markup + tiers */}
@@ -297,7 +369,7 @@ export default function RangeCosting() {
       {/* Per-variant cost + sell table */}
       <div className="card p-5 mb-5">
         <h2 className="text-sm font-semibold text-gray-700 mb-1">Per-variant cost &amp; sell <span className="font-normal text-ink-60">({markup.toFixed(2)}× markup, USD)</span></h2>
-        <p className="text-xs text-gray-400 mb-3">All-in cost = components + extras + plating/crystal adder (+ tooling amortised). Sell = ⌈cost × markup⌉. Converted from HKD at {rates.USD} HKD/USD.</p>
+        <p className="text-xs text-gray-400 mb-3">All-in cost = components + extras + plating adder + crystal cost (+ tooling amortised). Sell = ⌈cost × markup⌉. Converted from HKD at {rates.USD} HKD/USD.</p>
         <div className="overflow-x-auto -mx-5 px-5">
           <table className="text-sm border-separate border-spacing-0 w-full" style={{ minWidth: 360 + qtyCols.length * 120 + 'px' }}>
             <thead>
@@ -322,8 +394,8 @@ export default function RangeCosting() {
                       <p className="text-[11px] text-gray-400">{[v.plating_name, (v.crystal_colors || []).join('/')].filter(Boolean).join(' · ')}</p>
                     </td>
                     {qtyCols.map(q => {
-                      const costUSD = variantAllInCostHKD(draft, lib, rates, v, q) / (rates.USD || 7.78)
-                      const sellUSD = variantSellHKD(draft, lib, rates, v, q, markup) / (rates.USD || 7.78)
+                      const costUSD = variantAllInCostHKD(draft, lib, rates, v, q, crystalItems) / (rates.USD || 7.78)
+                      const sellUSD = variantSellHKD(draft, lib, rates, v, q, markup, crystalItems) / (rates.USD || 7.78)
                       return (
                         <td key={q} className="py-2.5 px-3 text-right border-l border-gray-100 whitespace-nowrap">
                           <span className="text-gray-500">{costUSD.toFixed(2)}</span>

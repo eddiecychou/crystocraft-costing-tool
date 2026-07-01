@@ -7,17 +7,32 @@
 //   {
 //     extra_lines:   [{ label, cost, currency }],          // applied to all variants
 //     plating_costs: { [plating_code]: { cost, currency }},// per-plating adder
-//     crystal_costs: { [crystal_code]: { cost, currency }},// per-crystal adder
+//     crystal_bom:   [{ size, brand, qty }],                // stone quantities (see below)
 //     markup:        number | null,                        // per-product override
 //     tiers:         [{ quantity, lead_time_days }],
 //   }
 //
+// Crystal cost is a bill-of-materials, not a flat adder: `crystal_bom` declares
+// how many stones of each SIZE the design physically uses (e.g. 6× "14mm
+// Octagon"). Stone COUNT doesn't change when the same design ships in a
+// different crystal brand — only the unit price does — so quantity is entered
+// once per product. Each BOM line resolves its unit price from the shared
+// `crystal_unit_costs` library (crystalCosting.js): a blank `brand` follows the
+// variant's own crystal brand (D/A/U/M, matching RANGE_CRYSTAL_BRANDS); an
+// explicit `brand` pins to one price regardless of variant (used for small
+// pavé stones like PP18/26/32, which are priced Swarovski/Preciosa — an axis
+// unrelated to the figurine's own crystal brand). Superseded per-colour
+// `crystal_costs` adder is no longer read; colour remains a display-only
+// attribute (crystalColors.js).
+//
 // Cost = Σ(component cost at qty × qty_per_unit) + Σ extra lines
-//        + plating adder + crystal adder  (+ tooling amortised over qty)
+//        + plating adder + crystal BOM cost  (+ tooling amortised over qty)
 // Sell = ceil(cost × markup).
 
 import { resolveRef } from './criticalComponents'
 import { DEFAULT_MARKUP } from './pricing'
+import { RANGE_CRYSTAL_BRANDS } from './constants'
+import { resolveCrystalCost } from './crystalCosting'
 
 const toHKD = (amount, currency, rates) =>
   (Number(amount) || 0) * (rates?.[currency] || 1)
@@ -62,23 +77,49 @@ export function extraLinesHKD(product, rates) {
   return lines.reduce((s, l) => s + toHKD(l.cost, l.currency, rates), 0)
 }
 
-// Per-plating / per-crystal adder (HKD) for a specific variant.
-export function variantAdderHKD(product, rates, variant) {
+// Crystal BOM cost (HKD) for one finished piece of a specific variant. Each
+// line's qty is fixed per design; unit price is resolved per variant brand
+// (blank line.brand) or pinned (explicit line.brand, e.g. pavé stones).
+// Missing/unpriced lines contribute 0 — callers that need to warn about that
+// should check `missingCrystalLines` instead of relying on a silent zero.
+export function crystalBomCostHKD(product, rates, variant, crystalLib) {
+  const bom = Array.isArray(product?.costing?.crystal_bom) ? product.costing.crystal_bom : []
+  if (!bom.length) return 0
+  const variantBrandName = RANGE_CRYSTAL_BRANDS.find(b => b.code === (variant?.brand_code || '').trim().toUpperCase())?.name || ''
+  return bom.reduce((sum, line) => {
+    const qty = Number(line.qty) || 0
+    if (!qty || !line.size) return sum
+    const brand = (line.brand || '').trim() || variantBrandName
+    if (!brand) return sum
+    const item = resolveCrystalCost(crystalLib, line.size, brand)
+    if (!item || item.cost == null) return sum
+    return sum + toHKD(item.cost, item.currency, rates) * qty
+  }, 0)
+}
+
+// BOM lines that resolve to no price for a given variant — surfaced by the
+// costing UI so a missing price is visible, not a silent zero.
+export function missingCrystalLines(product, variant, crystalLib) {
+  const bom = Array.isArray(product?.costing?.crystal_bom) ? product.costing.crystal_bom : []
+  const variantBrandName = RANGE_CRYSTAL_BRANDS.find(b => b.code === (variant?.brand_code || '').trim().toUpperCase())?.name || ''
+  return bom.filter(line => {
+    const qty = Number(line.qty) || 0
+    if (!qty || !line.size) return false
+    const brand = (line.brand || '').trim() || variantBrandName
+    if (!brand) return true
+    const item = resolveCrystalCost(crystalLib, line.size, brand)
+    return !item || item.cost == null
+  })
+}
+
+// Per-plating adder + crystal BOM cost (HKD) for a specific variant.
+export function variantAdderHKD(product, rates, variant, crystalLib) {
   const c = product?.costing || {}
   let add = 0
   const pc = c.plating_costs?.[(variant?.plating_code || '').trim().toUpperCase()]
   if (pc) add += toHKD(pc.cost, pc.currency, rates)
-  // A variant may carry several selectable crystal colours; charge the dearest
-  // so the quoted cost is never understated.
-  const crystals = Array.isArray(variant?.crystal_colors) && variant.crystal_colors.length
-    ? variant.crystal_colors
-    : (variant?.crystal_code ? [variant.crystal_code] : [])
-  let crystalAdd = 0
-  for (const code of crystals) {
-    const cc = c.crystal_costs?.[(code || '').trim().toUpperCase()]
-    if (cc) crystalAdd = Math.max(crystalAdd, toHKD(cc.cost, cc.currency, rates))
-  }
-  return add + crystalAdd
+  add += crystalBomCostHKD(product, rates, variant, crystalLib)
+  return add
 }
 
 // One-time tooling across components (HKD), amortised by the caller.
@@ -97,15 +138,15 @@ export function toolingHKD(product, lib, rates, variant = null) {
 }
 
 // Recurring (excludes tooling) unit cost in HKD for one variant at a qty.
-export function variantRecurringCostHKD(product, lib, rates, variant, orderQty) {
+export function variantRecurringCostHKD(product, lib, rates, variant, orderQty, crystalLib) {
   return componentsCostHKD(product, lib, rates, orderQty, variant)
     + extraLinesHKD(product, rates)
-    + variantAdderHKD(product, rates, variant)
+    + variantAdderHKD(product, rates, variant, crystalLib)
 }
 
 // All-in unit cost (recurring + amortised tooling) in HKD for a variant at qty.
-export function variantAllInCostHKD(product, lib, rates, variant, orderQty) {
-  const recurring = variantRecurringCostHKD(product, lib, rates, variant, orderQty)
+export function variantAllInCostHKD(product, lib, rates, variant, orderQty, crystalLib) {
+  const recurring = variantRecurringCostHKD(product, lib, rates, variant, orderQty, crystalLib)
   const tooling = toolingHKD(product, lib, rates, variant)
   return recurring + (orderQty > 0 ? tooling / orderQty : 0)
 }
@@ -117,9 +158,9 @@ export function productMarkup(product) {
 }
 
 // Sell price (HKD, rounded up) for a variant at a qty under a given markup.
-export function variantSellHKD(product, lib, rates, variant, orderQty, markup) {
+export function variantSellHKD(product, lib, rates, variant, orderQty, markup, crystalLib) {
   const mk = Number.isFinite(markup) && markup > 0 ? markup : productMarkup(product)
-  return Math.ceil(variantAllInCostHKD(product, lib, rates, variant, orderQty) * mk)
+  return Math.ceil(variantAllInCostHKD(product, lib, rates, variant, orderQty, crystalLib) * mk)
 }
 
 // True when a product has any usable costing data to publish.

@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { db, storage } from '../firebase'
+import { storage } from '../firebase'
 import { getComponent, saveComponent, deleteComponent, loadComponentQuotes, setPreferredQuote } from '../criticalComponents'
-import { RANGE_COMPONENT_CATEGORIES, RANGE_PLATINGS } from '../constants'
+import { RANGE_PLATINGS } from '../constants'
+import { useComponentCategories } from '../componentCategories'
 import { Star, FileText } from 'lucide-react'
 
 const blank = {
@@ -25,17 +25,12 @@ export default function RangeComponentForm() {
 
   const [docId] = useState(() => (isNew ? newId() : routeId))
   const [form, setForm] = useState(blank)
-  const [suppliers, setSuppliers] = useState([])
   const [loading, setLoading] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState('')
   const [quotes, setQuotes] = useState([])
-
-  useEffect(() => {
-    const q = query(collection(db, 'suppliers'), orderBy('name'))
-    return onSnapshot(q, snap => setSuppliers(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
-  }, [])
+  const { categories: catOptions } = useComponentCategories()
 
   const refreshQuotes = () => { if (!isNew) loadComponentQuotes(routeId).then(setQuotes) }
   useEffect(() => { refreshQuotes() }, [routeId, isNew])
@@ -60,12 +55,6 @@ export default function RangeComponentForm() {
 
   const set = key => e => setForm(f => ({ ...f, [key]: e.target.value }))
   const setNum = key => e => setForm(f => ({ ...f, [key]: e.target.value.replace(/[^\d.]/g, '') }))
-
-  const onSupplier = e => {
-    const sid = e.target.value
-    const s = suppliers.find(x => x.id === sid)
-    setForm(f => ({ ...f, supplierId: sid, supplierName: s ? (s.name || '') : '' }))
-  }
 
   async function handleUpload(files) {
     if (!files || !files.length) return
@@ -124,7 +113,9 @@ export default function RangeComponentForm() {
               <label className="label">Category</label>
               <select className="input" value={form.category} onChange={set('category')}>
                 <option value="">— none —</option>
-                {RANGE_COMPONENT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                {/* Keep the saved value visible even if it was later renamed/removed. */}
+                {(form.category && !catOptions.includes(form.category) ? [form.category, ...catOptions] : catOptions)
+                  .map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
           </div>
@@ -154,14 +145,6 @@ export default function RangeComponentForm() {
               <input className="input" inputMode="numeric" value={form.lead_time_weeks}
                      onChange={setNum('lead_time_weeks')} placeholder="e.g. 8" />
             </div>
-          </div>
-
-          <div>
-            <label className="label">Supplier</label>
-            <select className="input" value={form.supplierId} onChange={onSupplier}>
-              <option value="">— none —</option>
-              {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
           </div>
 
           <div>
