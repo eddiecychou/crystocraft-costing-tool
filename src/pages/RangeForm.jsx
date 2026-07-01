@@ -486,7 +486,10 @@ export default function RangeForm() {
 
   // The visible "name" of a range product is entered in the Description field
   // (there is no separate design-name input), so AI writing keys off either.
-  const aiName = (form.design_name || form.description || '').trim()
+  // `form` is null while an existing product is still loading (before the
+  // `if (!form) return` guard below) — this line runs on every render, so it
+  // must tolerate null (V7.7.1 lesson: hooks/top-level consts run before guards).
+  const aiName = (form?.design_name || form?.description || '').trim()
 
   async function handleGenerateCopy() {
     if (!aiName) return
