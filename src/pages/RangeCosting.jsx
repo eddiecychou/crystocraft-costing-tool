@@ -28,7 +28,7 @@ function hydrate(product) {
       ? c.extra_lines.map(l => ({ label: l.label || '', cost: l.cost ?? '', currency: l.currency || 'RMB' })) : [],
     plating_costs: c.plating_costs && typeof c.plating_costs === 'object' ? { ...c.plating_costs } : {},
     crystal_bom: Array.isArray(c.crystal_bom)
-      ? c.crystal_bom.map(l => ({ id: newLineId(), size: l.size || '', brand: l.brand || '', qty: l.qty ?? '' })) : [],
+      ? c.crystal_bom.map(l => ({ id: newLineId(), size: l.size || '', scope: l.scope || '', brand: l.brand || '', qty: l.qty ?? '' })) : [],
     markup: c.markup ?? '',
     tiers: Array.isArray(c.tiers)
       ? c.tiers.map(t => ({ quantity: t.quantity ?? '', lead_time_days: t.lead_time_days ?? '' })) : [],
@@ -48,7 +48,7 @@ function serialize(state) {
       .filter(l => l.cost != null && l.label),
     plating_costs: cleanMap(state.plating_costs),
     crystal_bom: (state.crystal_bom || [])
-      .map(l => ({ size: (l.size || '').trim(), brand: (l.brand || '').trim(), qty: num(l.qty) }))
+      .map(l => ({ size: (l.size || '').trim(), scope: (l.scope || '').trim().toUpperCase(), brand: (l.brand || '').trim(), qty: num(l.qty) }))
       .filter(l => l.size && l.qty != null && l.qty > 0),
     markup: num(state.markup),
     tiers: (state.tiers || [])
@@ -293,12 +293,13 @@ export default function RangeCosting() {
           <Link to="/components" className="text-xs text-brand-600 hover:underline">Manage crystal cost list →</Link>
         </div>
         <p className="text-xs text-ink-60 mb-3">
-          How many stones of each size this design uses — the count is the same across every brand/plating.
-          Unit price comes from the shared crystal cost list (Components → Crystal Costs).
-          Set <b>Brand</b> to <b>"Same as variant"</b> when the stone brand follows this design's own
-          crystal brand (e.g. Bohemia/Asfour/Swarovski octagons) — each variant is then priced with its
-          own brand's rate automatically. Pin an explicit brand only for stones that never change with
-          the design's brand, such as Swarovski/Preciosa pavé.
+          How many stones of each size this design uses. Each line is explicit about two things:
+          <b> Applies to</b> — "All variants" for a stone that's the same across every plating/brand
+          (e.g. Swarovski PP18 pavé, used regardless of whether the design is a Bohemia/Asfour/Swarovski
+          SKU), or one specific variant only, when that size is genuinely a different brand per variant
+          (add one line per variant, e.g. Bohemia's own 14mm Octagons vs Asfour's) — and
+          <b> Brand</b>, which priced row in the shared crystal cost list (Components → Crystal Costs)
+          to charge. A line never applies outside its chosen scope — nothing is guessed.
         </p>
         <datalist id="crystal-size-options">{crystalSizes.map(s => <option key={s} value={s} />)}</datalist>
         {state.crystal_bom.length === 0 ? (
@@ -311,10 +312,14 @@ export default function RangeCosting() {
                 <div key={l.id} className="flex items-center gap-2 flex-wrap">
                   <input className="input py-1.5 text-sm flex-1 min-w-[140px]" list="crystal-size-options"
                          value={l.size} onChange={setCrystalLine(i, 'size')} placeholder="Size, e.g. 14mm Octagon" />
-                  <select className="input py-1.5 text-sm flex-1 min-w-[190px]" value={l.brand} onChange={setCrystalLine(i, 'brand')}>
-                    <option value="">Same as variant's brand (auto)</option>
-                    {brandOptions.map(b => <option key={b} value={b}>{b} (fixed)</option>)}
-                    {l.brand && !brandOptions.includes(l.brand) && <option value={l.brand}>{l.brand} (fixed)</option>}
+                  <select className="input py-1.5 text-sm flex-1 min-w-[160px]" value={l.scope} onChange={setCrystalLine(i, 'scope')}>
+                    <option value="">All variants (shared)</option>
+                    {productBrands.map(b => <option key={b.code} value={b.code}>{b.name} ({b.code}) only</option>)}
+                  </select>
+                  <select className="input py-1.5 text-sm flex-1 min-w-[150px]" value={l.brand} onChange={setCrystalLine(i, 'brand')}>
+                    <option value="">— Select brand —</option>
+                    {brandOptions.map(b => <option key={b} value={b}>{b}</option>)}
+                    {l.brand && !brandOptions.includes(l.brand) && <option value={l.brand}>{l.brand}</option>}
                   </select>
                   <input className="input py-1.5 text-sm w-20" inputMode="numeric"
                          value={l.qty} onChange={setCrystalLine(i, 'qty')} placeholder="Qty" />
@@ -338,7 +343,7 @@ export default function RangeCosting() {
                   </div>
                   {missing.length > 0 && (
                     <p className="text-[11px] text-red-500 flex items-center gap-1 mt-0.5">
-                      <AlertTriangle size={11} /> No price for {missing.map(m => `${m.size}${m.brand ? ` (${m.brand})` : ` × ${b.name}`}`).join(', ')} — set it in{' '}
+                      <AlertTriangle size={11} /> {missing.map(m => m.brand ? `No price for ${m.size} × ${m.brand}` : `${m.size} — brand not selected`).join(', ')} — set it in{' '}
                       <Link to="/components" className="underline">Components → Crystal Costs</Link>.
                     </p>
                   )}

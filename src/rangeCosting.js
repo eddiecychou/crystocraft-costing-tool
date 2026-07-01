@@ -7,23 +7,32 @@
 //   {
 //     extra_lines:   [{ label, cost, currency }],          // applied to all variants
 //     plating_costs: { [plating_code]: { cost, currency }},// per-plating adder
-//     crystal_bom:   [{ size, brand, qty }],                // stone quantities (see below)
+//     crystal_bom:   [{ size, scope, brand, qty }],         // stone quantities (see below)
 //     markup:        number | null,                        // per-product override
 //     tiers:         [{ quantity, lead_time_days }],
 //   }
 //
 // Crystal cost is a bill-of-materials, not a flat adder: `crystal_bom` declares
 // how many stones of each SIZE the design physically uses (e.g. 6× "14mm
-// Octagon"). Stone COUNT doesn't change when the same design ships in a
-// different crystal brand — only the unit price does — so quantity is entered
-// once per product. Each BOM line resolves its unit price from the shared
-// `crystal_unit_costs` library (crystalCosting.js): a blank `brand` follows the
-// variant's own crystal brand (D/A/U/M, matching RANGE_CRYSTAL_BRANDS); an
-// explicit `brand` pins to one price regardless of variant (used for small
-// pavé stones like PP18/26/32, which are priced Swarovski/Preciosa — an axis
-// unrelated to the figurine's own crystal brand). Superseded per-colour
-// `crystal_costs` adder is no longer read; colour remains a display-only
-// attribute (crystalColors.js).
+// Octagon"). Each line is always explicit about two independent things —
+// never inferred/guessed, because a stone's brand does not reliably follow
+// the figurine's own crystal brand (pavé stones like PP18 are physically
+// Swarovski/Preciosa regardless of whether the design itself is sold as a
+// Bohemia/Asfour/Swarovski SKU):
+//   - `scope`: '' = applies to every variant (a shared stone, e.g. PP18
+//     Swarovski used across every D/A/U SKU); or a variant brand_code
+//     (D/A/U/M) = this line applies ONLY to that one variant (used when the
+//     same stone size is genuinely a different brand per variant, e.g. the
+//     Bohemia SKU's 14mm Octagons vs the Asfour SKU's — three separate lines,
+//     one per variant).
+//   - `brand`: which priced row in the shared `crystal_unit_costs` library
+//     (crystalCosting.js) to charge for this line — always an explicit pick,
+//     never auto-matched against the variant's own brand name.
+// A line that doesn't apply to a given variant (scope set to a different
+// brand) contributes 0 to that variant with no warning — it's an intentional
+// exclusion, not a missing price. Superseded per-colour `crystal_costs`
+// adder is no longer read; colour remains a display-only attribute
+// (crystalColors.js).
 //
 // Cost = Σ(component cost at qty × qty_per_unit) + Σ extra lines
 //        + plating adder + crystal BOM cost  (+ tooling amortised over qty)
@@ -31,7 +40,6 @@
 
 import { resolveRef } from './criticalComponents'
 import { DEFAULT_MARKUP } from './pricing'
-import { RANGE_CRYSTAL_BRANDS } from './constants'
 import { resolveCrystalCost } from './crystalCosting'
 
 const toHKD = (amount, currency, rates) =>
@@ -77,19 +85,28 @@ export function extraLinesHKD(product, rates) {
   return lines.reduce((s, l) => s + toHKD(l.cost, l.currency, rates), 0)
 }
 
+// True when a BOM line applies to a given variant: unscoped (shared) lines
+// always apply; scoped lines apply only to the matching variant brand_code.
+const lineAppliesTo = (line, variantBrandCode) => {
+  const scope = (line.scope || '').trim().toUpperCase()
+  return !scope || scope === variantBrandCode
+}
+
 // Crystal BOM cost (HKD) for one finished piece of a specific variant. Each
-// line's qty is fixed per design; unit price is resolved per variant brand
-// (blank line.brand) or pinned (explicit line.brand, e.g. pavé stones).
-// Missing/unpriced lines contribute 0 — callers that need to warn about that
-// should check `missingCrystalLines` instead of relying on a silent zero.
+// line's qty is fixed per design; a line out of scope for this variant (see
+// `lineAppliesTo`) contributes 0 — that's an intentional exclusion, not a
+// missing price. A line in scope with no resolvable (size, brand) price also
+// contributes 0 — callers that need to warn about that should check
+// `missingCrystalLines` instead of relying on a silent zero.
 export function crystalBomCostHKD(product, rates, variant, crystalLib) {
   const bom = Array.isArray(product?.costing?.crystal_bom) ? product.costing.crystal_bom : []
   if (!bom.length) return 0
-  const variantBrandName = RANGE_CRYSTAL_BRANDS.find(b => b.code === (variant?.brand_code || '').trim().toUpperCase())?.name || ''
+  const variantBrandCode = (variant?.brand_code || '').trim().toUpperCase()
   return bom.reduce((sum, line) => {
     const qty = Number(line.qty) || 0
     if (!qty || !line.size) return sum
-    const brand = (line.brand || '').trim() || variantBrandName
+    if (!lineAppliesTo(line, variantBrandCode)) return sum
+    const brand = (line.brand || '').trim()
     if (!brand) return sum
     const item = resolveCrystalCost(crystalLib, line.size, brand)
     if (!item || item.cost == null) return sum
@@ -97,15 +114,18 @@ export function crystalBomCostHKD(product, rates, variant, crystalLib) {
   }, 0)
 }
 
-// BOM lines that resolve to no price for a given variant — surfaced by the
-// costing UI so a missing price is visible, not a silent zero.
+// BOM lines that apply to this variant but resolve to no price (or have no
+// brand chosen yet) — surfaced by the costing UI so it's visible, not a
+// silent zero. Lines out of scope for this variant are excluded entirely
+// (not "missing" — they were never meant to apply here).
 export function missingCrystalLines(product, variant, crystalLib) {
   const bom = Array.isArray(product?.costing?.crystal_bom) ? product.costing.crystal_bom : []
-  const variantBrandName = RANGE_CRYSTAL_BRANDS.find(b => b.code === (variant?.brand_code || '').trim().toUpperCase())?.name || ''
+  const variantBrandCode = (variant?.brand_code || '').trim().toUpperCase()
   return bom.filter(line => {
     const qty = Number(line.qty) || 0
     if (!qty || !line.size) return false
-    const brand = (line.brand || '').trim() || variantBrandName
+    if (!lineAppliesTo(line, variantBrandCode)) return false
+    const brand = (line.brand || '').trim()
     if (!brand) return true
     const item = resolveCrystalCost(crystalLib, line.size, brand)
     return !item || item.cost == null
