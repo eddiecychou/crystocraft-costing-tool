@@ -177,6 +177,7 @@ export default function FigurineDetail({ profile }) {
       cartons: ppc > 0 ? cartons : 0,
       qty: pcs,
       moq,
+      status: p.status || '',   // 'concept' flags this line as an interest estimate, not orderable
     })
   }
 

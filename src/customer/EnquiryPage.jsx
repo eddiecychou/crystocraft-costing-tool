@@ -22,17 +22,25 @@ export default function EnquiryPage({ profile }) {
   const [error, setError] = useState('')
   const items = cart?.items || []
 
+  const isConcept = i => i.status === 'concept'
+
   // Unit price (customer currency, account WS factor applied) for figurine lines.
+  // Concept items keep their indicative unit price on display, but never
+  // contribute to the line/grand total — they're not tooled or orderable yet,
+  // just an estimate of interest.
   const unitPrice = i => (i.type === 'figurine' && i.ws_price_usd != null)
     ? convertFromUSD(Number(i.ws_price_usd) * factor, profile, rates) : null
-  const lineTotal = i => { const u = unitPrice(i); return u == null ? null : u * (Number(i.qty) || 1) }
+  const lineTotal = i => { if (isConcept(i)) return null; const u = unitPrice(i); return u == null ? null : u * (Number(i.qty) || 1) }
   const total = items.reduce((s, i) => s + (lineTotal(i) || 0), 0)
-  const hasIndicative = items.some(i => unitPrice(i) == null)
+  const hasIndicative = items.some(i => !isConcept(i) && unitPrice(i) == null)
+  const hasConcept = items.some(isConcept)
 
   // MOQ is a per-design (metal-part) minimum. All plating/colour variations AND
   // formats (freestand, music box, bible…) that share the same design number
-  // count toward it together, so aggregate pieces by design group.
-  const designPcs = items.reduce((m, i) => {
+  // count toward it together, so aggregate pieces by design group. Concept
+  // lines are an interest estimate, not a real order — excluded so they can
+  // never silently help a real order reach a manufacturing minimum.
+  const designPcs = items.filter(i => !isConcept(i)).reduce((m, i) => {
     const k = designGroupKey(i)
     m[k] = (m[k] || 0) + Math.max(1, Number(i.qty) || 1)
     return m
@@ -40,7 +48,7 @@ export default function EnquiryPage({ profile }) {
 
   // Second MOQ floor: the format base component (music box, bible…) pools across
   // every design sharing that format. Minimums come from admin Settings.
-  const formatPcs = items.reduce((m, i) => {
+  const formatPcs = items.filter(i => !isConcept(i)).reduce((m, i) => {
     const k = formatGroupKey(i)
     m[k] = (m[k] || 0) + Math.max(1, Number(i.qty) || 1)
     return m
@@ -64,6 +72,7 @@ export default function EnquiryPage({ profile }) {
           pcs_per_carton: Number(i.pcs_per_carton) || 0,
           cartons: Number(i.cartons) || 0,
           moq: Number(i.moq) || 0,
+          status: i.status || '',   // 'concept' = interest estimate, not an order line
           unit_price: unitPrice(i), line_total: lineTotal(i),
         })),
         currency: cur,
@@ -110,6 +119,7 @@ export default function EnquiryPage({ profile }) {
       <div className="card divide-y divide-ivory-dark mb-5">
         {items.map(i => {
           const Icon = i.type === 'figurine' ? Gem : Package
+          const concept = isConcept(i)
           const ppc = Number(i.pcs_per_carton) || 0
           const moq = Number(i.moq) || 0
           const qtyPcs = Math.max(1, Number(i.qty) || 1)
@@ -130,8 +140,16 @@ export default function EnquiryPage({ profile }) {
                   : <Icon size={28} className="text-gray-300" />}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-ink truncate">{i.name}</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="text-sm text-ink truncate">{i.name}</p>
+                  {concept && <span className="badge bg-purple-100 text-purple-700 shrink-0">Concept</span>}
+                </div>
                 {i.code && <p className="text-[11px] text-ink-50 font-mono">{i.code}</p>}
+                {concept && (
+                  <p className="text-[11px] text-purple-600 mt-0.5">
+                    Under development — not yet in production. Let us know your estimated interest below.
+                  </p>
+                )}
                 {(i.finish || i.color_name || i.color) && (
                   <p className="text-[11px] text-ink-60 mt-0.5">
                     {i.finish && <span>{i.finish}</span>}
@@ -161,14 +179,15 @@ export default function EnquiryPage({ profile }) {
                     <span className="text-[10px] text-ink-50">{cartons} ctn · {qtyPcs.toLocaleString()} pcs</span>
                   </div>
                 ) : (
-                  <label className="text-[11px] text-ink-50">Qty (pcs)
+                  <label className="text-[11px] text-ink-50">{concept ? 'Estimated qty' : 'Qty (pcs)'}
                     <input type="number" min="1" value={qtyPcs}
                       onChange={e => setPcs(Number(e.target.value))}
                       className="input py-1 w-20 ml-1 inline-block" />
                   </label>
                 )}
                 <span className="text-sm text-ink font-medium">
-                  {lineTotal(i) != null ? fmtMoney(lineTotal(i), cur) : '—'}
+                  {concept ? <span className="text-ink-40 font-normal text-xs">Not in total</span>
+                    : lineTotal(i) != null ? fmtMoney(lineTotal(i), cur) : '—'}
                 </span>
                 {belowMoq && <Link to={`/shop/figurine?design=${designNumberOf(i)}`} title={`Design total ${designTotal.toLocaleString()} of ${moq.toLocaleString()} min — add more of this design to reach it`} className="text-[10px] text-amber-700 hover:text-amber-900 underline decoration-dotted text-right">Design {designTotal.toLocaleString()}/{moq.toLocaleString()} · add more</Link>}
                 {belowFormatMoq && <Link to={`/shop/figurine?format=${fmtCode}`} title={`${fmtLabel} total ${formatTotal.toLocaleString()} of ${fmtMoq.toLocaleString()} min — combine ${fmtLabel} designs to reach it`} className="text-[10px] text-amber-700 hover:text-amber-900 underline decoration-dotted text-right">{fmtLabel} {formatTotal.toLocaleString()}/{fmtMoq.toLocaleString()} · add more</Link>}
@@ -189,6 +208,7 @@ export default function EnquiryPage({ profile }) {
         <p className="text-[11px] text-ink-40 mt-2">
           Ex-factory prices — freight not included.{' '}
           {hasIndicative && 'Made-to-order corporate items are quoted separately and not included in this total. '}
+          {hasConcept && 'Concept items are not yet in production and are excluded from this total — they register your estimated interest only. '}
           Final pricing, MOQ and availability are confirmed on quotation.
         </p>
       </div>
