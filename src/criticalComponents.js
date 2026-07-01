@@ -570,6 +570,12 @@ export function finishedStockOf(product) {
 // Returns { promise, leadWeeks, finished, buildable, bottleneck, effectiveMoq }.
 // effectiveMoq: 0 for last-stock (sell whatever remains, no minimum), else product.moq.
 export function productAvailability(product, lib, { defaultPartsLeadWeeks = PARTS_LEAD_DEFAULT } = {}) {
+  // Concept — not tooled, no stock. No buildable/lead/MOQ math; enquiry only.
+  if (product?.status === 'concept') {
+    const promise = 'Concept — enquire to register interest.'
+    return { promise, customerPromise: promise, status: 'concept', leadWeeks: null,
+      finished: 0, buildable: null, bottleneck: null, byPlating: {}, bottleneckByPlating: {}, effectiveMoq: 0 }
+  }
   const status = product?.status === 'stock' ? 'stock' : 'active'   // 'active' = Made to Order
   const finished = finishedStockOf(product)
   const refs = refsOf(product)

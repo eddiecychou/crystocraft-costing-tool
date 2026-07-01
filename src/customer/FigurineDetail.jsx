@@ -103,8 +103,9 @@ export default function FigurineDetail({ profile }) {
 
   const ppc = Number(p.packing?.pcs_per_carton) || 0    // pcs per carton (0 = unknown)
   const isLastStock = p.status === 'stock'
-  // Last-stock: no MOQ (sell whatever is buildable); active: use product moq field.
-  const moq = isLastStock ? 0 : (Number(p.moq) || 0)
+  const isConcept = p.status === 'concept'
+  // Last-stock / concept: no MOQ; active (Made to Order): use the product moq field.
+  const moq = (isLastStock || isConcept) ? 0 : (Number(p.moq) || 0)
   // Always compute availability — drives both the promise text and last-stock caps.
   const avail = productAvailability(p, compLib, prodDefaults)
   const selPlating = (selVariant.plating_code || '').trim().toUpperCase()
@@ -122,8 +123,9 @@ export default function FigurineDetail({ profile }) {
     : (avail?.buildable ?? 0)
   const hasSelStock = !isLastStock && selBuildable > 0   // MTO product with parts on hand for this plating
   // Effective order mode: last-stock always uses stock (pcs); MTO uses the toggle
-  const effectiveMode = isLastStock ? 'stock' : (hasSelStock ? orderMode : 'mto')
-  const maxPcs = (isLastStock || effectiveMode === 'stock') ? selBuildable : Infinity
+  // Concept has no stock and no MOQ — plain optional pcs input.
+  const effectiveMode = (isLastStock || isConcept) ? 'stock' : (hasSelStock ? orderMode : 'mto')
+  const maxPcs = isConcept ? Infinity : ((isLastStock || effectiveMode === 'stock') ? selBuildable : Infinity)
   const maxCartons = ppc > 0 ? Math.floor(maxPcs / ppc) : maxPcs
   const pcs = effectiveMode === 'stock' ? stockPcs : (ppc > 0 ? cartons * ppc : cartons)
   // MOQ applies across every variation AND format of this design (same body /
@@ -190,7 +192,7 @@ export default function FigurineDetail({ profile }) {
         </div>
         <div>
           {(() => {
-            const st = RANGE_STATUS_CUSTOMER[p.status === 'stock' ? 'stock' : 'active']
+            const st = RANGE_STATUS_CUSTOMER[p.status] || RANGE_STATUS_CUSTOMER.active
             return (
               <div className="mb-2">
                 <span className={`badge ${st.cls}`}>{st.label}</span>
@@ -285,7 +287,7 @@ export default function FigurineDetail({ profile }) {
               )}
               <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-1.5">
                 {effectiveMode === 'stock'
-                  ? <>Quantity <span className="normal-case text-ink-40">· pcs{isLastStock ? ` (max ${maxPcs})` : ''}</span></>
+                  ? <>Quantity <span className="normal-case text-ink-40">· pcs{isLastStock ? ` (max ${maxPcs})` : isConcept ? ' · optional' : ''}</span></>
                   : <>Quantity {ppc > 0 && <span className="normal-case text-ink-40">· {ppc} pcs/carton</span>}</>}
               </p>
               <div className="flex items-center gap-3 flex-wrap">
@@ -321,9 +323,14 @@ export default function FigurineDetail({ profile }) {
               {selVariant.ws_price_usd != null && colorValid && (
                 <p className="text-sm text-ink mt-2">Subtotal: <span className="font-medium">{fmtMoney(net(selVariant.ws_price_usd) * pcs, cur)}</span></p>
               )}
-              {effectiveMode === 'stock' && !isLastStock && (
+              {effectiveMode === 'stock' && !isLastStock && !isConcept && (
                 <p className="text-[11px] mt-1.5 text-sky-700">
                   Fulfilling from available stock — no minimum quantity applies.
+                </p>
+              )}
+              {isConcept && (
+                <p className="text-[11px] mt-1.5 text-purple-700">
+                  Concept design — add to enquiry to register interest; quantity is optional.
                 </p>
               )}
               {effectiveMode === 'mto' && (moq > 0 || fmtMoq > 0) && (

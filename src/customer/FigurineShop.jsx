@@ -3,7 +3,7 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { Link, useSearchParams } from 'react-router-dom'
 import { db } from '../firebase'
 import { Gem, X } from 'lucide-react'
-import { designNumber, brandLetter, galleryUrl, RANGE_FORMAT_CODES, RANGE_STATUS_CUSTOMER, brandSortRank } from '../constants'
+import { designNumber, brandLetter, galleryUrl, RANGE_FORMAT_CODES, RANGE_STATUS_CUSTOMER, RANGE_STATUSES, brandSortRank } from '../constants'
 import { useRates, convertFromUSD, fmtMoney, wsPriceFactor } from '../currency'
 import { useFormatMoq } from '../formatMoq'
 import { newFirst } from '../newArrivals'
@@ -32,6 +32,7 @@ export default function FigurineShop({ profile }) {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [cat, setCat] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')   // '' = all lifecycle statuses
   const [coll, setColl] = useState(null)   // applied Shop-by collection
   const [params, setParams] = useSearchParams()
   const { labels: formatLabels } = useFormatMoq()
@@ -73,7 +74,7 @@ export default function FigurineShop({ profile }) {
       format_code: String(p.format_code || '').trim(),
       name: p.description || p.design_name || code,
       design_type: p.design_type || p.category || '',
-      status: p.status === 'stock' ? 'stock' : 'active',
+      status: ['stock', 'concept'].includes(p.status) ? p.status : 'active',
       is_new: !!p.is_new,
       size: p.size, image,
       platings: [...new Set(variants.map(v => v.plating_name).filter(Boolean))],
@@ -91,14 +92,15 @@ export default function FigurineShop({ profile }) {
       const ms = !q || s.name?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q)
       const md = !designFilter || s.design_key === designFilter
       const mf = !formatFilter || s.format_code === formatFilter
-      return ms && md && mf && (coll || !cat || s.design_type === cat)
+      const mst = !statusFilter || s.status === statusFilter
+      return ms && md && mf && mst && (coll || !cat || s.design_type === cat)
     })
     if (coll?.type === 'manual') return out
     return out.sort((a, b) => {
       if (a.sortRank !== b.sortRank) return a.sortRank - b.sortRank
       return newFirst(a, b)
     })
-  }, [items, coll, search, cat, designFilter, formatFilter])
+  }, [items, coll, search, cat, statusFilter, designFilter, formatFilter])
 
   const formatName = formatLabels[formatFilter] || FORMAT_LABEL[formatFilter] || `Format ${formatFilter}`
   const clearMoqFilter = () => {
@@ -150,6 +152,18 @@ export default function FigurineShop({ profile }) {
           <option value="">All categories</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
+      </div>
+      {/* Lifecycle status filter — All / Made to Order / Last Stock / Concept */}
+      <div className="flex flex-wrap gap-1.5 mb-5">
+        {[{ value: '', label: 'All' }, ...RANGE_STATUSES].map(s => (
+          <button key={s.value || 'all'} onClick={() => setStatusFilter(s.value)}
+            className={`px-3 py-1 rounded-full text-xs border transition-colors ${
+              statusFilter === s.value
+                ? 'bg-ink text-white border-ink'
+                : 'bg-white text-ink-70 border-ivory-dark hover:bg-ivory'}`}>
+            {s.label}
+          </button>
+        ))}
       </div>
       {filtered.length === 0 ? (
         <div className="text-center py-20 text-ink-60">No designs match your search.</div>

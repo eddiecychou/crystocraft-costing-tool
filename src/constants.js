@@ -115,13 +115,16 @@ export const RANGE_BODY_TYPES = [
 ]
 
 // Lifecycle status (drives the customer promise together with live stock):
-//  • 'active' = Made to Order — tooling exists, stock may or may not be on hand,
-//               MOQ may apply. The current, orderable range.
-//  • 'stock'  = Last Stock    — retired design, only remaining inventory; no re-runs.
+//  • 'active'  = Made to Order — tooling exists, stock may or may not be on hand,
+//                MOQ may apply. The current, orderable range.
+//  • 'stock'   = Last Stock    — retired design, only remaining inventory; no re-runs.
+//  • 'concept' = Concept       — not yet tooled, no stock; shown like any product
+//                (price/size/images/description) but enquiry-only, no MOQ/lead.
 // Stored keys are kept as 'active' / 'stock' for back-compat; only labels changed.
 export const RANGE_STATUSES = [
-  { value: 'active', label: 'Made to Order', badge: 'bg-emerald-100 text-emerald-700' },
-  { value: 'stock',  label: 'Last Stock',    badge: 'bg-amber-100 text-amber-700' },
+  { value: 'active',  label: 'Made to Order', badge: 'bg-emerald-100 text-emerald-700' },
+  { value: 'stock',   label: 'Last Stock',    badge: 'bg-amber-100 text-amber-700' },
+  { value: 'concept', label: 'Concept',       badge: 'bg-purple-100 text-purple-700' },
 ]
 
 // Customer-facing availability labels + explanatory tooltips for range figurines.
@@ -135,6 +138,11 @@ export const RANGE_STATUS_CUSTOMER = {
     label: 'Last Stock',
     cls: 'bg-amber-100 text-amber-700',
     tip: 'Retired design — limited remaining stock, available while supplies last.',
+  },
+  concept: {
+    label: 'Concept',
+    cls: 'bg-purple-100 text-purple-700',
+    tip: 'Concept design — not yet in production. Enquire to register your interest.',
   },
 }
 

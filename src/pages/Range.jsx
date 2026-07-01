@@ -173,7 +173,7 @@ export default function Range() {
       product_type: p.product_type || '',
       size: p.size,
       active: p.active !== false,
-      status: p.status === 'stock' ? 'stock' : 'active',
+      status: ['stock', 'concept'].includes(p.status) ? p.status : 'active',
       variants, platings, brands, image,
       skus: variants.map(v => v.sku).filter(Boolean),
       minPrice: prices.length ? Math.min(...prices) : null,
@@ -224,6 +224,7 @@ export default function Range() {
     all: items.length,
     active: items.filter(s => s.status === 'active').length,
     stock: items.filter(s => s.status === 'stock').length,
+    concept: items.filter(s => s.status === 'concept').length,
   }), [items])
 
   const totalSkus = items.reduce((n, s) => n + s.skuCount, 0)
