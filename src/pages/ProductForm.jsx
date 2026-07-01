@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import { CATEGORIES, PRODUCT_STATUSES, normVideos, MARKETING_DESC_MAXLEN } from '../constants'
+import { CATEGORIES, PRODUCT_STATUSES, productStatusOf, normVideos, MARKETING_DESC_MAXLEN } from '../constants'
 import { Sparkles, RotateCcw } from 'lucide-react'
 import VideoUrlsEditor from '../components/VideoUrlsEditor'
 
@@ -31,7 +31,9 @@ export default function ProductForm() {
     getDoc(doc(db, 'products', id)).then(snap => {
       if (snap.exists()) {
         const d = snap.data()
-        setForm(f => ({ ...f, ...d, videos: normVideos(d.videos, d.video_url) }))
+        // Fold the legacy 'discontinued' status into 'retired' on load; never
+        // written back until the form is saved again (then it's canonical).
+        setForm(f => ({ ...f, ...d, status: productStatusOf(d.status).value, videos: normVideos(d.videos, d.video_url) }))
       }
       setFetching(false)
     })

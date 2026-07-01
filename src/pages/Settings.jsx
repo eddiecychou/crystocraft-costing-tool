@@ -5,6 +5,7 @@ import { RefreshCw } from 'lucide-react'
 import CatalogueBand from './CatalogueBand'
 import ImportImages from './ImportImages'
 import BulkCategoryEditor from '../components/BulkCategoryEditor'
+import BulkVideoEditor from '../components/BulkVideoEditor'
 import SchemaAudit from './SchemaAudit'
 
 const CURRENCIES = ['RMB', 'USD', 'EUR']
@@ -19,6 +20,7 @@ const PRODUCT_TABS = [
   { v: 'band',       label: 'Catalogue Band' },
   { v: 'images',     label: 'Import Images' },
   { v: 'categories', label: 'Bulk Categories' },
+  { v: 'video',      label: 'Bulk Video' },
   { v: 'defaults',   label: 'Defaults' },
 ]
 
@@ -77,6 +79,12 @@ export default function Settings() {
               <div className="p-4 md:p-6">
                 <h2 className="text-lg font-semibold mb-1">Bulk Categories</h2>
                 <BulkCategoryEditor />
+              </div>
+            )}
+            {productTab === 'video' && (
+              <div className="p-4 md:p-6">
+                <h2 className="text-lg font-semibold mb-1">Bulk Video</h2>
+                <BulkVideoEditor />
               </div>
             )}
             {productTab === 'defaults' && <ProductDefaults />}

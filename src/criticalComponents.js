@@ -576,6 +576,12 @@ export function productAvailability(product, lib, { defaultPartsLeadWeeks = PART
     return { promise, customerPromise: promise, status: 'concept', leadWeeks: null,
       finished: 0, buildable: null, bottleneck: null, byPlating: {}, bottleneckByPlating: {}, effectiveMoq: 0 }
   }
+  // Retired — last-stock has fully sold out; no stock left and no re-run.
+  if (product?.status === 'retired') {
+    const promise = 'Retired — no stock remaining.'
+    return { promise, customerPromise: promise, status: 'retired', leadWeeks: null,
+      finished: 0, buildable: 0, bottleneck: null, byPlating: {}, bottleneckByPlating: {}, effectiveMoq: 0 }
+  }
   const status = product?.status === 'stock' ? 'stock' : 'active'   // 'active' = Made to Order
   const finished = finishedStockOf(product)
   const refs = refsOf(product)

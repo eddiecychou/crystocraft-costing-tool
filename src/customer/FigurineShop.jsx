@@ -45,8 +45,9 @@ export default function FigurineShop({ profile }) {
   useEffect(() => {
     const q = query(collection(db, 'range_products'), orderBy('design_code'))
     return onSnapshot(q, snap => {
-      // Only show active/published designs to customers.
-      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.active !== false))
+      // Only show active/published designs to customers — retired (fully sold
+      // out, no re-run) is dropped, mirroring the corp-gift shop's treatment.
+      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.active !== false && p.status !== 'retired'))
       setLoading(false)
     }, () => setLoading(false))
   }, [])
@@ -74,6 +75,7 @@ export default function FigurineShop({ profile }) {
       format_code: String(p.format_code || '').trim(),
       name: p.description || p.design_name || code,
       design_type: p.design_type || p.category || '',
+      // Retired designs never reach this point (filtered out above).
       status: ['stock', 'concept'].includes(p.status) ? p.status : 'active',
       is_new: !!p.is_new,
       size: p.size, image,
@@ -155,7 +157,9 @@ export default function FigurineShop({ profile }) {
       </div>
       {/* Lifecycle status filter — All / Made to Order / Last Stock / Concept */}
       <div className="flex flex-wrap gap-1.5 mb-5">
-        {[{ value: '', label: 'All' }, ...RANGE_STATUSES].map(s => (
+        {/* Retired designs never reach `products` (filtered out above), so
+            offering a Retired chip here would always show zero results. */}
+        {[{ value: '', label: 'All' }, ...RANGE_STATUSES.filter(s => s.value !== 'retired')].map(s => (
           <button key={s.value || 'all'} onClick={() => setStatusFilter(s.value)}
             className={`px-3 py-1 rounded-full text-xs border transition-colors ${
               statusFilter === s.value

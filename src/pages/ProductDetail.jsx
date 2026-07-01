@@ -5,7 +5,7 @@ import { db } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import ImageGallery from '../components/ImageGallery'
-import { IMAGE_TYPES } from '../constants'
+import { IMAGE_TYPES, productStatusOf } from '../constants'
 import { Star, X } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 
@@ -156,7 +156,7 @@ export default function ProductDetail() {
           <div>
             <h1 className="text-xl md:text-2xl font-bold text-gray-900">{product.name}</h1>
             <div className="flex items-center gap-2 mt-1">
-              <span className={`badge-${product.status}`}>{product.status}</span>
+              <span className={`badge-${productStatusOf(product.status).value}`}>{productStatusOf(product.status).label}</span>
               <span className="text-sm text-gray-500">{product.category}</span>
             </div>
           </div>

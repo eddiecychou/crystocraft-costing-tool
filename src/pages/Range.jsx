@@ -173,7 +173,7 @@ export default function Range() {
       product_type: p.product_type || '',
       size: p.size,
       active: p.active !== false,
-      status: ['stock', 'concept'].includes(p.status) ? p.status : 'active',
+      status: ['stock', 'concept', 'retired'].includes(p.status) ? p.status : 'active',
       variants, platings, brands, image,
       skus: variants.map(v => v.sku).filter(Boolean),
       minPrice: prices.length ? Math.min(...prices) : null,
@@ -225,6 +225,7 @@ export default function Range() {
     active: items.filter(s => s.status === 'active').length,
     stock: items.filter(s => s.status === 'stock').length,
     concept: items.filter(s => s.status === 'concept').length,
+    retired: items.filter(s => s.status === 'retired').length,
   }), [items])
 
   const totalSkus = items.reduce((n, s) => n + s.skuCount, 0)
@@ -350,10 +351,11 @@ function ProductCard({ s, colorLookup = {} }) {
   // from this product's recipe in s.mixes) — but a mix recipe alone never adds a
   // dot; it must be selected in a variation to appear.
   const crystalCodes = [...new Set(s.colorCodes || [])]
+  const isRetired = s.status === 'retired'
   return (
     <Link to={`/range/${s.id}`} id={`range-card-${s.id}`}
           onClick={() => sessionStorage.setItem('range-last-id', s.id)}
-          className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow group">
+          className={`card overflow-hidden flex flex-col hover:shadow-md transition-shadow group ${isRetired ? 'opacity-50 grayscale' : ''}`}>
       <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
         {s.image
           ? <img src={s.image} alt={s.name} className="w-full h-full object-contain p-2" loading="lazy" />

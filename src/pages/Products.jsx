@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { collection, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Link } from 'react-router-dom'
-import { CATEGORIES, PRODUCT_STATUSES } from '../constants'
+import { CATEGORIES, PRODUCT_STATUSES, productStatusOf } from '../constants'
 import LoadingBar from '../components/LoadingBar'
 import { Package } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
@@ -26,7 +26,7 @@ export default function Products() {
   const filtered = products.filter(p => {
     const matchSearch = !search || p.name?.toLowerCase().includes(search.toLowerCase())
     const matchCat    = !filterCat || p.category === filterCat
-    const matchStatus = !filterStatus || p.status === filterStatus
+    const matchStatus = !filterStatus || productStatusOf(p.status).value === filterStatus
     return matchSearch && matchCat && matchStatus
   })
 
@@ -84,6 +84,8 @@ const fmtTierPrice = (val, cur) => {
 
 function ProductCard({ product: p, onNavigate }) {
   const [tiers, setTiers] = useState(null)
+  const status = productStatusOf(p.status)
+  const isRetired = status.value === 'retired'
 
   useEffect(() => {
     getDocs(query(collection(db, 'products', p.id, 'pricing_tiers'), orderBy('quantity')))
@@ -91,7 +93,8 @@ function ProductCard({ product: p, onNavigate }) {
   }, [p.id])
 
   return (
-    <Link to={`/products/${p.id}`} onClick={onNavigate} className="card hover:shadow-md transition-shadow overflow-hidden flex flex-col">
+    <Link to={`/products/${p.id}`} onClick={onNavigate}
+      className={`card hover:shadow-md transition-shadow overflow-hidden flex flex-col ${isRetired ? 'opacity-50 grayscale' : ''}`}>
       <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
         {p.heroImage
           ? <img src={p.heroImage} alt={p.name} className="w-full h-full object-cover" />
@@ -101,7 +104,7 @@ function ProductCard({ product: p, onNavigate }) {
       <div className="p-4 flex flex-col gap-1 flex-1">
         <div className="flex items-start justify-between gap-2">
           <h3 className="font-semibold text-gray-900 text-sm leading-tight">{p.name}</h3>
-          <span className={`badge-${p.status} shrink-0`}>{p.status}</span>
+          <span className={`badge-${status.value} shrink-0`}>{status.label}</span>
         </div>
         <p className="text-xs text-gray-500">{p.category}</p>
         {p.description && <p className="text-xs text-gray-600 mt-1 line-clamp-2">{p.description}</p>}

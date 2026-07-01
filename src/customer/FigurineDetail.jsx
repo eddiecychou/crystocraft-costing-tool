@@ -104,8 +104,9 @@ export default function FigurineDetail({ profile }) {
   const ppc = Number(p.packing?.pcs_per_carton) || 0    // pcs per carton (0 = unknown)
   const isLastStock = p.status === 'stock'
   const isConcept = p.status === 'concept'
-  // Last-stock / concept: no MOQ; active (Made to Order): use the product moq field.
-  const moq = (isLastStock || isConcept) ? 0 : (Number(p.moq) || 0)
+  const isRetired = p.status === 'retired'
+  // Last-stock / concept / retired: no MOQ; active (Made to Order): use the product moq field.
+  const moq = (isLastStock || isConcept || isRetired) ? 0 : (Number(p.moq) || 0)
   // Always compute availability — drives both the promise text and last-stock caps.
   const avail = productAvailability(p, compLib, prodDefaults)
   const selPlating = (selVariant.plating_code || '').trim().toUpperCase()
@@ -122,10 +123,10 @@ export default function FigurineDetail({ profile }) {
     ? (avail.byPlating[selPlating] ?? 0)
     : (avail?.buildable ?? 0)
   const hasSelStock = !isLastStock && selBuildable > 0   // MTO product with parts on hand for this plating
-  // Effective order mode: last-stock always uses stock (pcs); MTO uses the toggle
-  // Concept has no stock and no MOQ — plain optional pcs input.
-  const effectiveMode = (isLastStock || isConcept) ? 'stock' : (hasSelStock ? orderMode : 'mto')
-  const maxPcs = isConcept ? Infinity : ((isLastStock || effectiveMode === 'stock') ? selBuildable : Infinity)
+  // Effective order mode: last-stock always uses stock (pcs); MTO uses the toggle.
+  // Concept/retired have no stock and no MOQ — plain optional pcs input.
+  const effectiveMode = (isLastStock || isConcept || isRetired) ? 'stock' : (hasSelStock ? orderMode : 'mto')
+  const maxPcs = (isConcept || isRetired) ? Infinity : ((isLastStock || effectiveMode === 'stock') ? selBuildable : Infinity)
   const maxCartons = ppc > 0 ? Math.floor(maxPcs / ppc) : maxPcs
   const pcs = effectiveMode === 'stock' ? stockPcs : (ppc > 0 ? cartons * ppc : cartons)
   // MOQ applies across every variation AND format of this design (same body /
@@ -287,7 +288,7 @@ export default function FigurineDetail({ profile }) {
               )}
               <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-1.5">
                 {effectiveMode === 'stock'
-                  ? <>Quantity <span className="normal-case text-ink-40">· pcs{isLastStock ? ` (max ${maxPcs})` : isConcept ? ' · optional' : ''}</span></>
+                  ? <>Quantity <span className="normal-case text-ink-40">· pcs{isLastStock ? ` (max ${maxPcs})` : (isConcept || isRetired) ? ' · optional' : ''}</span></>
                   : <>Quantity {ppc > 0 && <span className="normal-case text-ink-40">· {ppc} pcs/carton</span>}</>}
               </p>
               <div className="flex items-center gap-3 flex-wrap">
@@ -323,7 +324,7 @@ export default function FigurineDetail({ profile }) {
               {selVariant.ws_price_usd != null && colorValid && (
                 <p className="text-sm text-ink mt-2">Subtotal: <span className="font-medium">{fmtMoney(net(selVariant.ws_price_usd) * pcs, cur)}</span></p>
               )}
-              {effectiveMode === 'stock' && !isLastStock && !isConcept && (
+              {effectiveMode === 'stock' && !isLastStock && !isConcept && !isRetired && (
                 <p className="text-[11px] mt-1.5 text-sky-700">
                   Fulfilling from available stock — no minimum quantity applies.
                 </p>
@@ -331,6 +332,11 @@ export default function FigurineDetail({ profile }) {
               {isConcept && (
                 <p className="text-[11px] mt-1.5 text-purple-700">
                   Concept design — add to enquiry to register interest; quantity is optional.
+                </p>
+              )}
+              {isRetired && (
+                <p className="text-[11px] mt-1.5 text-ink-50">
+                  Retired design — no stock remaining and no further production. Enquire if you'd like us to check for any remaining pieces.
                 </p>
               )}
               {effectiveMode === 'mto' && (moq > 0 || fmtMoq > 0) && (

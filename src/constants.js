@@ -12,11 +12,18 @@ export const SUPPLIER_CATEGORIES = [
 ]
 
 export const PRODUCT_STATUSES = [
-  { value: 'concept',      label: 'Concept' },
-  { value: 'sampled',      label: 'Sampled' },
-  { value: 'active',       label: 'Active' },
-  { value: 'discontinued', label: 'Discontinued' },
+  { value: 'concept',  label: 'Concept' },
+  { value: 'sampled',  label: 'Sampled' },
+  { value: 'active',   label: 'Active' },
+  { value: 'retired',  label: 'Retired' },
 ]
+
+// Legacy value -> canonical value. `discontinued` was renamed to `retired`;
+// old docs keep the stored value, but every read goes through productStatusOf
+// so they display/behave identically. Never write the legacy value back.
+const PRODUCT_STATUS_ALIASES = { discontinued: 'retired' }
+export const productStatusOf = v =>
+  PRODUCT_STATUSES.find(s => s.value === (PRODUCT_STATUS_ALIASES[v] || v)) || PRODUCT_STATUSES[0]
 
 export const CATEGORIES = [
   'ESG & Sustainable Gifts',
@@ -115,16 +122,19 @@ export const RANGE_BODY_TYPES = [
 ]
 
 // Lifecycle status (drives the customer promise together with live stock):
-//  • 'active'  = Made to Order — tooling exists, stock may or may not be on hand,
-//                MOQ may apply. The current, orderable range.
-//  • 'stock'   = Last Stock    — retired design, only remaining inventory; no re-runs.
-//  • 'concept' = Concept       — not yet tooled, no stock; shown like any product
-//                (price/size/images/description) but enquiry-only, no MOQ/lead.
+//  • 'active'   = Made to Order — tooling exists, stock may or may not be on hand,
+//                 MOQ may apply. The current, orderable range.
+//  • 'stock'    = Last Stock    — no re-runs; sells the remaining inventory.
+//  • 'concept'  = Concept       — not yet tooled, no stock; shown like any product
+//                 (price/size/images/description) but enquiry-only, no MOQ/lead.
+//  • 'retired'  = Retired       — last-stock has fully sold out; no stock, no
+//                 re-run. Greyed out in the admin list; kept for history/reference.
 // Stored keys are kept as 'active' / 'stock' for back-compat; only labels changed.
 export const RANGE_STATUSES = [
   { value: 'active',  label: 'Made to Order', badge: 'bg-emerald-100 text-emerald-700' },
   { value: 'stock',   label: 'Last Stock',    badge: 'bg-amber-100 text-amber-700' },
   { value: 'concept', label: 'Concept',       badge: 'bg-purple-100 text-purple-700' },
+  { value: 'retired', label: 'Retired',       badge: 'bg-gray-200 text-gray-600' },
 ]
 
 // Customer-facing availability labels + explanatory tooltips for range figurines.
@@ -143,6 +153,11 @@ export const RANGE_STATUS_CUSTOMER = {
     label: 'Concept',
     cls: 'bg-purple-100 text-purple-700',
     tip: 'Concept design — not yet in production. Enquire to register your interest.',
+  },
+  retired: {
+    label: 'Retired',
+    cls: 'bg-gray-200 text-gray-600',
+    tip: 'Retired — no stock remaining. This design will not be produced again.',
   },
 }
 

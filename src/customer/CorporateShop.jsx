@@ -5,6 +5,7 @@ import { db, auth } from '../firebase'
 import { Package } from 'lucide-react'
 import { useRates, convertFromHKD, fmtMoney } from '../currency'
 import { isNew, newFirst } from '../newArrivals'
+import { productStatusOf } from '../constants'
 import CollectionBand from './CollectionBand'
 import { collectionProducts } from '../catalogueCollections'
 import FavHeart from './FavHeart'
@@ -24,7 +25,7 @@ export default function CorporateShop({ profile }) {
     return onSnapshot(q, snap => {
       setProducts(
         snap.docs.map(d => ({ id: d.id, ...d.data() }))
-          .filter(p => p.status !== 'discontinued')
+          .filter(p => productStatusOf(p.status).value !== 'retired')
           // New-tagged products first (C0), then alphabetical.
           .sort((a, b) => newFirst(a, b) || (a.name || '').localeCompare(b.name || ''))
       )

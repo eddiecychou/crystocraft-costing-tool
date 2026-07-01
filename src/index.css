@@ -82,8 +82,8 @@
   .badge-active {
     @apply badge bg-emerald-100 text-emerald-700;
   }
-  .badge-discontinued {
-    @apply badge bg-gray-100 text-gray-500;
+  .badge-retired {
+    @apply badge bg-gray-200 text-gray-600;
   }
 
   /* ── Eyebrow / section kicker — Work Sans caps ────────── */
