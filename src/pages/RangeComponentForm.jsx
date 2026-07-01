@@ -80,14 +80,14 @@ export default function RangeComponentForm() {
     setSaving(true); setError('')
     try {
       const savedId = await saveComponent(isNew ? docId : routeId, form)
-      navigate(isNew ? `/components/critical/${savedId}` : '/components')
+      navigate(isNew ? `/components/critical/${savedId}${backQ}` : (back || '/components'))
     } catch (err) { setError(err.message || 'Save failed.'); setSaving(false) }
   }
 
   async function handleDelete() {
     if (!window.confirm(`Delete component ${form.code}? This cannot be undone.`)) return
     setSaving(true)
-    try { await deleteComponent(routeId); navigate('/components') }
+    try { await deleteComponent(routeId); navigate(back || '/components') }
     catch (err) { setError(err.message || 'Delete failed.'); setSaving(false) }
   }
 
@@ -95,7 +95,9 @@ export default function RangeComponentForm() {
 
   return (
     <div className="max-w-2xl mx-auto p-4 sm:p-6">
-      <Link to="/components" className="text-xs text-brand-600 hover:underline">← Components</Link>
+      <Link to={back || '/components'} className="text-xs text-brand-600 hover:underline">
+        {back ? '← Back' : '← Components'}
+      </Link>
       <h1 className="text-xl font-semibold mt-1 mb-4">
         {isNew ? 'New Component' : form.code || 'Component'}
       </h1>
@@ -225,7 +227,7 @@ export default function RangeComponentForm() {
           <button type="submit" disabled={saving || uploading} className="btn-primary">
             {saving ? 'Saving…' : 'Save Component'}
           </button>
-          <Link to="/components" className="btn-secondary">Cancel</Link>
+          <Link to={back || '/components'} className="btn-secondary">Cancel</Link>
           {!isNew && (
             <button type="button" onClick={handleDelete} disabled={saving}
                     className="ml-auto text-sm text-red-500 hover:text-red-700">Delete</button>

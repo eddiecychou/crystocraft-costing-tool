@@ -194,15 +194,20 @@ export default function RangeCosting() {
               return (
                 <div key={`${r.id || r.code}::${plat}::${i}`} className="py-2.5 flex items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="text-sm text-gray-800">{c?.name || r.code}
+                    <p className="text-sm text-gray-800">
+                      {c?.id ? (
+                        <Link to={`/components/critical/${c.id}?back=${encodeURIComponent(`/range/${id}/costing`)}`}
+                              className="text-brand-600 hover:underline" title="Open component — edit details or add a supplier quote">
+                          {c.name || r.code}
+                        </Link>
+                      ) : (c?.name || r.code)}
                       {plat && <span className="ml-1.5 text-xs font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">{plat}</span>}
                       {qty > 1 && <span className="ml-1.5 text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">×{qty}</span>}</p>
                     {unit != null ? (
                       <p className="text-xs text-gray-500">{c.code} · {unit} {c.unit_cost_currency}{qty > 1 ? ` × ${qty}` : ''}
                         {c.volume_tiers?.length > 0 && <span className="ml-1.5 text-brand-500">· {c.volume_tiers.length} volume tier{c.volume_tiers.length > 1 ? 's' : ''}</span>}</p>
                     ) : (
-                      <Link to={`/components/critical/${c?.id || ''}?back=/range/${id}/costing`} className="text-xs text-red-400 hover:underline">
-                        <AlertTriangle size={12} className="inline align-[-2px] mr-1" />No cost set — click to add</Link>
+                      <p className="text-xs text-red-400"><AlertTriangle size={12} className="inline align-[-2px] mr-1" />No cost set — click the name above to add a supplier quote</p>
                     )}
                   </div>
                   <p className="text-sm font-medium text-gray-900 shrink-0">{hk != null ? `HKD ${hk.toFixed(2)}` : '—'}</p>
@@ -290,6 +295,10 @@ export default function RangeCosting() {
         <p className="text-xs text-ink-60 mb-3">
           How many stones of each size this design uses — the count is the same across every brand/plating.
           Unit price comes from the shared crystal cost list (Components → Crystal Costs).
+          Set <b>Brand</b> to <b>"Same as variant"</b> when the stone brand follows this design's own
+          crystal brand (e.g. Bohemia/Asfour/Swarovski octagons) — each variant is then priced with its
+          own brand's rate automatically. Pin an explicit brand only for stones that never change with
+          the design's brand, such as Swarovski/Preciosa pavé.
         </p>
         <datalist id="crystal-size-options">{crystalSizes.map(s => <option key={s} value={s} />)}</datalist>
         {state.crystal_bom.length === 0 ? (
@@ -302,9 +311,11 @@ export default function RangeCosting() {
                 <div key={l.id} className="flex items-center gap-2 flex-wrap">
                   <input className="input py-1.5 text-sm flex-1 min-w-[140px]" list="crystal-size-options"
                          value={l.size} onChange={setCrystalLine(i, 'size')} placeholder="Size, e.g. 14mm Octagon" />
-                  <input className="input py-1.5 text-sm flex-1 min-w-[160px]" list={`crystal-brand-options-${i}`}
-                         value={l.brand} onChange={setCrystalLine(i, 'brand')} placeholder="Brand — blank = same as variant" />
-                  <datalist id={`crystal-brand-options-${i}`}>{brandOptions.map(b => <option key={b} value={b} />)}</datalist>
+                  <select className="input py-1.5 text-sm flex-1 min-w-[190px]" value={l.brand} onChange={setCrystalLine(i, 'brand')}>
+                    <option value="">Same as variant's brand (auto)</option>
+                    {brandOptions.map(b => <option key={b} value={b}>{b} (fixed)</option>)}
+                    {l.brand && !brandOptions.includes(l.brand) && <option value={l.brand}>{l.brand} (fixed)</option>}
+                  </select>
                   <input className="input py-1.5 text-sm w-20" inputMode="numeric"
                          value={l.qty} onChange={setCrystalLine(i, 'qty')} placeholder="Qty" />
                   <button type="button" onClick={() => removeCrystalLine(i)} className="text-red-300 hover:text-red-500" title="Remove"><X size={14} /></button>

@@ -37,11 +37,12 @@ function isWithinDays(ts, days) {
   return d >= new Date(now.setHours(0, 0, 0, 0)) && d <= end
 }
 
-function isThisMonth(ts) {
+function isLast30Days(ts) {
   if (!ts) return false
   const d = ts.toDate ? ts.toDate() : new Date(ts.seconds * 1000)
   const now = new Date()
-  return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+  const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+  return d >= start && d <= now
 }
 
 const CHANNEL_BADGE = {
@@ -160,7 +161,7 @@ export default function Dashboard() {
   const overdueList      = byCat(latestEnquiries.filter(e => e.follow_up_date && isOverdue(e.follow_up_date)))
   const pipelineList     = byCat(latestEnquiries.filter(e => e.status === 'Open' || e.status === 'Quoted'))
   const inProductionList = byCat(latestEnquiries.filter(e => e.status === 'In Production'))
-  const wonList          = byCat(latestEnquiries.filter(e => e.status === 'Confirmed' && isThisMonth(e.date)))
+  const wonList          = byCat(latestEnquiries.filter(e => e.status === 'Confirmed' && isLast30Days(e.date)))
 
   // Default follow-up list (overdue + next 7 days, latest per customer, category-filtered)
   const priorityFollowUps = byCat(latestEnquiries
@@ -189,8 +190,8 @@ export default function Dashboard() {
       type: 'enquiry',
     },
     won: {
-      title: `New Orders This Month (${new Date().toLocaleDateString('en-GB', { month: 'long' })})`, Icon: Trophy,
-      empty: 'No confirmed orders this month yet',
+      title: 'New Orders — Last 30 Days', Icon: Trophy,
+      empty: 'No confirmed orders in the last 30 days',
       items: wonList.sort((a, b) => (b.date?.seconds || 0) - (a.date?.seconds || 0)),
       type: 'enquiry',
     },
@@ -247,7 +248,7 @@ export default function Dashboard() {
           label="New Orders"
           value={wonList.length}
           colour="green"
-          note={new Date().toLocaleDateString('en-GB', { month: 'short' })}
+          note="last 30 days"
           active={activeFilter === 'won'}
           onClick={() => toggleFilter('won')}
         />

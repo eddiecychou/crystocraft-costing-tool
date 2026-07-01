@@ -1075,7 +1075,14 @@ export default function RangeForm() {
                               onClick={e => { e.currentTarget.style.maxWidth = e.currentTarget.style.maxWidth === 'none' ? '7rem' : 'none'; e.currentTarget.classList.toggle('truncate') }}>
                           {c?.code || r.code}
                         </span>
-                        <span className="flex-1 min-w-0 truncate text-ink-70">{c?.name || <span className="text-amber-600">not in library</span>}</span>
+                        {c?.id && !isNew ? (
+                          <Link to={`/components/critical/${c.id}?back=${encodeURIComponent(`/range/${routeId}`)}`}
+                                className="flex-1 min-w-0 truncate text-brand-600 hover:underline" title="Open component — edit details or add a supplier quote">
+                            {c.name || c.code}
+                          </Link>
+                        ) : (
+                          <span className="flex-1 min-w-0 truncate text-ink-70">{c?.name || <span className="text-amber-600">not in library</span>}</span>
+                        )}
                         {/* Plating scope — blank = infer from component (shown as auto label) */}
                         <select
                           className="input text-xs py-1 w-36 shrink-0"
