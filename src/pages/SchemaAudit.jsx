@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import LoadingBar from '../components/LoadingBar'
-import { AlertTriangle, AlertCircle, Info, CheckCircle2, RefreshCw } from 'lucide-react'
+import { AlertTriangle, AlertCircle, Info, CheckCircle2, RefreshCw, Copy } from 'lucide-react'
 import { validateCustomer } from '../domain/customer'
 import { validateComponent, validateCriticalRefs } from '../criticalComponents'
 import { validateOrder } from '../shipping'
@@ -31,6 +31,7 @@ export default function SchemaAudit() {
   const [loading, setLoading] = useState(true)
   const [groups, setGroups] = useState([])
   const [ranAt, setRanAt] = useState(null)
+  const [copied, setCopied] = useState(false)
 
   async function run() {
     setLoading(true)
@@ -103,6 +104,16 @@ export default function SchemaAudit() {
         if (!isNum(p.lead_time_weeks) || num(p.lead_time_weeks) <= 0) add(issues, 'info', d.id, label, 'no assembly lead_time_weeks set', `/range/${d.id}`)
         const refs = Array.isArray(p.critical_components) ? p.critical_components : []
         addResult(issues, validateCriticalRefs(refs, lib), d.id, label, `/range/${d.id}`)
+        // Pre-launch: an orderable product (Last Stock or Made to Order) with no
+        // components can't compute buildable stock / lead / cost. Concept and
+        // retired products are exempt (not tooled / sold out).
+        const st = String(p.status || '').trim()
+        if (st !== 'concept' && st !== 'retired' && refs.length === 0) {
+          const lastStock = st === 'stock'
+          add(issues, lastStock ? 'error' : 'warning', d.id, label,
+            `${lastStock ? 'Last Stock' : 'Made to Order'} product has no critical components entered — ${lastStock ? 'buildable stock' : 'cost & lead time'} can’t be computed`,
+            `/range/${d.id}`)
+        }
       })
       grp('Range Products (figurines)', rProducts.size, issues, 'Variants, MOQ/lead, and component refs.')
     }
@@ -141,13 +152,33 @@ export default function SchemaAudit() {
   }, {})
   const grandTotal = (totals.error || 0) + (totals.warning || 0) + (totals.info || 0)
 
+  // Plain-text export so the list can be pasted into an email/message to a colleague.
+  function copyReport() {
+    const lines = [`Schema Audit — ${new Date().toLocaleString()}`, '']
+    groups.forEach(g => {
+      if (!g.issues.length) return
+      lines.push(`## ${g.name} (${g.issues.length} issue${g.issues.length > 1 ? 's' : ''})`)
+      g.issues.forEach(it => lines.push(`- [${it.sev}] ${it.label} — ${it.msg}`))
+      lines.push('')
+    })
+    const text = lines.length > 2 ? lines.join('\n') : 'No issues found.'
+    navigator.clipboard?.writeText(text).then(() => {
+      setCopied(true); setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {})
+  }
+
   if (loading) return <LoadingBar />
 
   return (
     <div className="p-4 md:p-6 max-w-4xl">
       <div className="flex items-center justify-between mb-1">
         <h1 className="text-xl md:text-2xl">Schema Audit</h1>
-        <button onClick={run} className="btn-secondary text-sm inline-flex items-center gap-1.5"><RefreshCw size={14} /> Re-run</button>
+        <div className="flex items-center gap-2">
+          <button onClick={copyReport} className="btn-secondary text-sm inline-flex items-center gap-1.5" disabled={grandTotal === 0}>
+            <Copy size={14} /> {copied ? 'Copied ✓' : 'Copy report'}
+          </button>
+          <button onClick={run} className="btn-secondary text-sm inline-flex items-center gap-1.5"><RefreshCw size={14} /> Re-run</button>
+        </div>
       </div>
       <p className="text-sm text-ink-60 mb-4">
         Read-only check of every main collection against the canonical data shapes. Nothing is changed.

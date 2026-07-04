@@ -53,6 +53,27 @@ async function detectColorLoss(originalSrc, enhancedDataUrl) {
 }
 
 
+// Downscale the source before sending it to the enhance model. Big phone
+// photos (4000px+) make the image model overrun the edge-function timeout.
+// The model sets its OWN output resolution (~1024px) regardless of input size,
+// so this only cuts latency — it does not reduce the saved/enhanced image.
+async function resizeToBase64(src, maxPx = 1536, quality = 0.9) {
+  const img = await new Promise((res, rej) => {
+    const i = new Image()
+    i.crossOrigin = 'anonymous'
+    i.onload = () => res(i)
+    i.onerror = rej
+    i.src = src
+  })
+  const scale = Math.min(1, maxPx / Math.max(img.naturalWidth, img.naturalHeight))
+  const w = Math.max(1, Math.round(img.naturalWidth * scale))
+  const h = Math.max(1, Math.round(img.naturalHeight * scale))
+  const canvas = document.createElement('canvas')
+  canvas.width = w; canvas.height = h
+  canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+  return { base64: canvas.toDataURL('image/jpeg', quality).split(',')[1], mimeType: 'image/jpeg' }
+}
+
 const ORIENTATION_STYLES = {
   landscape: 'bg-blue-100 text-blue-700',
   square:    'bg-purple-100 text-purple-700',
@@ -247,11 +268,31 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
   async function runEnhance(img, mode, recolorInstructions = '') {
     setEnh({ img, before: img.file_url, after: null, mode, busy: true, error: '', colorWarning: false })
     try {
+      // Send a downscaled inline copy so the model doesn't overrun the edge
+      // timeout (and it skips the server-side fetch). Fall back to the URL if
+      // the resize fails (e.g. an odd format or a CORS hiccup).
+      let sendBody = { imageUrl: img.file_url, mode, colorHint, recolorInstructions }
+      try {
+        const { base64, mimeType } = await resizeToBase64(img.file_url, 1536, 0.9)
+        sendBody = { image: base64, mimeType, mode, colorHint, recolorInstructions }
+      } catch { /* keep the URL fallback */ }
+
       const res = await fetch('/api/enhance-image', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl: img.file_url, mode, colorHint, recolorInstructions }),
+        body: JSON.stringify(sendBody),
       })
-      const data = await res.json()
+      // Read as text first: on a timeout/platform failure Netlify returns a
+      // plain-text error (not our JSON), which res.json() would blow up on with
+      // a cryptic "Unexpected token" parse error.
+      const raw = await res.text()
+      let data = {}
+      try { data = raw ? JSON.parse(raw) : {} }
+      catch {
+        const timedOut = /time( |d )?out|edge function/i.test(raw)
+        throw new Error(timedOut
+          ? 'The AI image server timed out — the image was too large or the model was slow. Try again, or use a smaller/simpler image.'
+          : `Image service error: ${raw.slice(0, 120)}`)
+      }
       if (!res.ok || !data.image) throw new Error(data.error || 'Enhancement failed')
       const afterUrl = `data:${data.mimeType || 'image/png'};base64,${data.image}`
       const colorWarning = await detectColorLoss(img.file_url, afterUrl)
