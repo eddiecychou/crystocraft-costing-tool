@@ -3,6 +3,78 @@
 > **Canonical plan lives in Obsidian:** `Crystocraft/Operations/Costing Tool - Project Plan.md`
 > and `Costing Tool - Issues & Bugs Log.md`. This in-repo copy is a convenience snapshot.
 
+## Current Status — V7.10 as of 2026-07-04
+
+**Deployed to Netlify (live `09bd6f4`).** A pre-launch bug batch + Portal account
+management rework + a customer email notification system. Commit chain on `main`:
+`2a2ab7f` → `2a3fb2f` → `6a6b1af` → `a1b308d` → `8ae50b4` → `09bd6f4`.
+
+### Portal account management (`CustomerAccounts.jsx` rewrite + new `AccountEdit.jsx`)
+- **Accounts list** is now a compact, clickable list showing the **linked CRM
+  customer's name** (falls back to the account's own), the full **login email**,
+  **country**, and a **Customer / Internal** category badge. Row → opens the edit page.
+- **New edit page** `/portal/accounts/:id` holds all per-account settings that used to
+  crowd the list row: link-to-customer, account category, currency, fixed FX, Figurine
+  WS %, Corp markup, plus the lifecycle actions. Shows the account **UID** (for
+  reconciling duplicates against Firebase Auth).
+- **`account_type`** field on the `users` doc (`customer` | `internal`, default customer,
+  no migration) + a **type filter** on the list.
+- **New `suspended` status + Suspended tab.** Suspend moves a customer out of the active
+  list (reversible via **Restore**, keeps their settings) instead of dumping them back
+  into Pending.
+- **Delete** lives only on the edit page and works for any **non-self** account
+  **including admins** (self-delete guarded). Enables removing orphaned/duplicate `users`
+  docs in-app. Firestore rules already allow admin delete.
+- **Duplicate-email flag** on the list. Root cause of "duplicate accounts": `users` is
+  keyed by Auth UID and Firebase blocks a second password signup on the same email, so a
+  duplicate = an **orphaned `users` doc** (old Auth deleted but doc left, or a
+  console-created stub). Reconcile by keeping the doc whose ID == the Auth UID.
+- **Mobile:** the tab strip (Pending/Customers/Suspended/Admins) horizontal-scrolls.
+
+### Auth self-heal (`App.jsx`)
+- A signed-in Auth user with **no `users` doc** now auto-creates a pending-customer doc
+  on sign-in (allowed by the self-create rule; stamped `self_healed: true`) so they appear
+  in Pending for approval. Fixes "has a login but is invisible to admins." Note: an admin
+  cannot create a doc for another UID (rule is self-only) — the user must sign in once.
+
+### Signup pending-screen fix (`Login.jsx`)
+- Removed the post-signup `signOut`; new signups stay signed-in as pending and land on the
+  "Awaiting approval" screen instead of flashing back to the login form.
+
+### Customer email notifications via Resend (new)
+- **`netlify/edge-functions/send-email.js`** (`/api/send-email`) + **`src/notify.js`**
+  (`notifyEmail`, fire-and-forget). Events: **enquiry** (customer confirmation with item
+  table + admin alert), **account_approved** (customer), **signup** (customer + admin).
+  Branded HTML templates, **reply-to routing** (customer mail → sales inbox; admin alerts →
+  the customer). Triggers in `EnquiryPage.submit`, `Login.handleSignUp`, `AccountEdit`
+  approve. Dormant until `RESEND_API_KEY` is set (returns `skipped`).
+- **Env vars:** `RESEND_API_KEY` (secret), `MAIL_FROM` (`Crystocraft <noreply@crystocraft.com>`),
+  `MAIL_ADMIN`, `MAIL_REPLY_TO` (optional), `PORTAL_URL`.
+- **Domain `crystocraft.com` verified in Resend** (Tokyo region) via DKIM `resend._domainkey`
+  + `send` MX/SPF at host DNS (existing mail untouched). **All 4 email types confirmed live.**
+
+### Image enhancement timeout fix (`ImageGallery.jsx`)
+- The `Unexpected token 'h'… JSON` error was a **Netlify edge-function timeout** (not a
+  token/quota limit) — large source photos made `gemini-2.5-flash-image` overrun the ~30s
+  edge cap, and Netlify's plain-text error broke `res.json()`. Fix: **downscale the source
+  to max 1536px / JPEG q0.9 and send inline** (skips the server fetch) before
+  `/api/enhance-image`, + defensive text-parse for a clear message on any residual timeout.
+  Model output res (~1024px) is unchanged and Keep stores ≤1800px, so the **≥1000px
+  standard is preserved**.
+
+### Mobile layout fixes
+- `RangeCosting.jsx` crystal-BOM rows stack full-width on mobile (were clipped by
+  `<main>`'s `overflow-x-hidden`, hiding the dropdowns).
+- `Components.jsx` tab strip is horizontal-swipe only; list rows stack so component names
+  aren't crushed by the fixed-width stock stepper.
+
+### Schema Audit pre-launch check (`SchemaAudit.jsx`)
+- Flags orderable `range_products` with **empty `critical_components`**: Last Stock
+  (`status: 'stock'`) = error, Made to Order (else) = warning; concept/retired exempt.
+  New **Copy report** button exports the issue list as plain text.
+
+---
+
 ## Current Status — V7.7.1 as of 2026-06-24
 
 **V7.7.1 deployed to Netlify (commit `5d04b7d`).** Live at https://ua-product-manager.netlify.app
