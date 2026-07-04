@@ -7,6 +7,7 @@ import { useCart, designGroupKey, formatGroupKey, formatCodeOf, designNumberOf }
 import { useFormatMoq } from '../formatMoq'
 import { RANGE_FORMAT_CODES } from '../constants'
 import { useRates, convertFromUSD, fmtMoney, wsPriceFactor } from '../currency'
+import { notifyEmail } from '../notify'
 
 const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.label]))
 
@@ -80,6 +81,14 @@ export default function EnquiryPage({ profile }) {
         message,
         status: 'new',
         createdAt: serverTimestamp(),
+      })
+      notifyEmail('enquiry', {
+        company_name: profile?.company_name || '',
+        contact_name: profile?.contact_name || '',
+        email: profile?.email || auth.currentUser?.email || '',
+        currency: cur,
+        estimated_total: total,
+        items: items.map(i => ({ name: i.name || i.code || '', qty: Number(i.qty) || 1 })),
       })
       cart.clear()
       setSent(true)

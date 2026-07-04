@@ -6,6 +6,7 @@ import {
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 import { CUSTOMER_CURRENCIES } from '../currency'
+import { notifyEmail } from '../notify'
 import logo from '../assets/logo.png'
 
 export default function Login() {
@@ -49,8 +50,10 @@ export default function Login() {
         ws_discount_pct: 0,
         createdAt: serverTimestamp(),
       })
-      // Sign out immediately — account is unusable until an admin approves it.
-      await signOut(auth)
+      notifyEmail('signup', { company_name: company, contact_name: contact, email })
+      // Keep them signed in as a pending customer so they land on the
+      // "Awaiting approval" screen (PendingScreen) instead of flashing back to
+      // the login form. A pending account has no pricing access until approved.
       setSignedUp(true)
     } catch (err) {
       setError(err?.code === 'auth/email-already-in-use'

@@ -5,6 +5,7 @@ import { db, auth } from '../firebase'
 import { useCustomers } from '../domain/customer'
 import { CUSTOMER_CURRENCIES, useRates, fromUSD } from '../currency'
 import { CustomerPicker, TypeBadge } from './CustomerAccounts'
+import { notifyEmail } from '../notify'
 import LoadingBar from '../components/LoadingBar'
 import { ArrowLeft } from 'lucide-react'
 
@@ -189,7 +190,10 @@ export default function AccountEdit() {
         <h2 className="text-sm font-semibold text-gray-700 mb-3">Account status</h2>
         <div className="flex flex-wrap items-center gap-3">
           {isPending && (
-            <button className="btn-primary text-sm" onClick={() => apply({ status: 'approved' }, { back: true })}>Approve</button>
+            <button className="btn-primary text-sm"
+              onClick={() => { notifyEmail('account_approved', { email: u.email, company_name: displayName, contact_name: u.contact_name }); apply({ status: 'approved' }, { back: true }) }}>
+              Approve
+            </button>
           )}
           {isApproved && (
             <>

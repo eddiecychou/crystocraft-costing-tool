@@ -56,6 +56,10 @@
   function = "enhance-image"
   path = "/api/enhance-image"
 
+[[edge_functions]]
+  function = "send-email"
+  path = "/api/send-email"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
