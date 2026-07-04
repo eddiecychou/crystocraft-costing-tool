@@ -69,14 +69,16 @@ export default function CustomerAccounts({ embedded = false }) {
       {!embedded && <h1 className="text-xl md:text-2xl mb-1">Customer Accounts</h1>}
       <p className="text-sm text-ink-60 mb-4">Approve sign-ups and manage portal logins. Click an account to edit its currency, pricing and category.</p>
 
-      <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden mb-4">
-        {tabs.map(t => (
-          <button key={t.v} onClick={() => setTab(t.v)}
-            className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark transition-colors flex items-center gap-1.5
-              ${tab === t.v ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory'}`}>
-            <t.Icon size={14} /> {t.label} <span className="opacity-60">{t.n}</span>
-          </button>
-        ))}
+      <div className="overflow-x-auto overflow-y-hidden mb-4">
+        <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden">
+          {tabs.map(t => (
+            <button key={t.v} onClick={() => setTab(t.v)}
+              className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0
+                ${tab === t.v ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory'}`}>
+              <t.Icon size={14} /> {t.label} <span className="opacity-60">{t.n}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {showTypeFilter && (
