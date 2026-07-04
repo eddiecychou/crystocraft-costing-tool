@@ -1,4 +1,7 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { db } from './firebase'
 import { useAuthState } from './hooks/useAuthState'
 import { useProfile, isAdmin, isApproved, isPending } from './hooks/useProfile'
 import Layout from './components/Layout'
@@ -63,6 +66,28 @@ export default function App() {
 
 function AppRoutes({ user }) {
   const { profile } = useProfile(user)
+
+  // Self-heal: a signed-in Auth user with no users doc (e.g. created directly
+  // in the Firebase console, or a signup that failed after the auth step) would
+  // otherwise be stuck on the pending screen AND invisible to admins, since no
+  // doc exists to show in the Pending tab. Create a pending-customer doc for
+  // them — the Firestore rules allow a user to self-create their own pending
+  // doc — so an admin can see and approve them.
+  useEffect(() => {
+    if (user && profile?.missing && !profile.error) {
+      setDoc(doc(db, 'users', user.uid), {
+        role: 'customer',
+        status: 'pending',
+        email: user.email || '',
+        company_name: '',
+        contact_name: user.displayName || '',
+        base_currency: 'USD',
+        ws_discount_pct: 0,
+        createdAt: serverTimestamp(),
+        self_healed: true,
+      }, { merge: true }).catch(() => {})
+    }
+  }, [user, profile])
 
   if (user === undefined) return <LoadingBar />
   if (user && profile === undefined) return <LoadingBar />
