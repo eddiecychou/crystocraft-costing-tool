@@ -116,7 +116,7 @@ function Row({ u, linked, dup }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="font-medium text-ink truncate">{name}</p>
-          <TypeBadge type={type} />
+          {u.role === 'customer' && <TypeBadge type={type} />}
           {dup && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 uppercase tracking-wide" title="Another account uses this same email — likely an orphaned or duplicate login to reconcile">Duplicate email</span>}
           {!linked && <span className="text-[10px] uppercase tracking-wide text-amber-600">Not linked</span>}
         </div>

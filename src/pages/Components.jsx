@@ -20,7 +20,7 @@ export default function Components() {
         promise, crystal colours (a display attribute), and crystal unit costs by size &amp; brand.
       </p>
 
-      <div className="flex gap-1 border-b border-ivory-dark mb-5 overflow-x-auto whitespace-nowrap">
+      <div className="flex gap-1 border-b border-ivory-dark mb-5 overflow-x-auto overflow-y-hidden whitespace-nowrap">
         {[['critical', 'Critical Components'], ['colours', 'Crystal Colours'], ['crystalcosts', 'Crystal Costs'], ['formatmoq', 'Format MOQs'], ['categories', 'Categories']].map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 shrink-0 transition-colors ${

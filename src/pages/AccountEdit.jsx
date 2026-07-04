@@ -50,7 +50,7 @@ export default function AccountEdit() {
   const isPending   = u.role === 'customer' && u.status !== 'approved' && u.status !== 'suspended'
   const isApproved  = u.role === 'customer' && u.status === 'approved'
   const isSuspended = u.role === 'customer' && u.status === 'suspended'
-  const canDelete = !isSelf && u.role === 'customer' && (isPending || isSuspended)
+  const canDelete = !isSelf   // any account but your own (deliberate, confirmed)
 
   const linked = customerId ? customers.find(c => c.id === customerId) : null
   const displayName = linked?.company_name || u.company_name || u.email || '—'
@@ -80,7 +80,7 @@ export default function AccountEdit() {
   })
 
   async function del() {
-    if (!confirm(`Delete the portal login for ${displayName}? This removes their access and settings. Note: their sign-in credential still exists (it can only be fully removed from the Firebase console), but they will have no access until re-approved.`)) return
+    if (!confirm(`Delete the portal login for ${displayName}${isAdmin ? ' (ADMIN)' : ''}? This removes their portal access and settings. Note: their sign-in credential still exists (it can only be fully removed from the Firebase console), but they will have no access here.`)) return
     setStatus('saving')
     try { await deleteDoc(doc(db, 'users', id)); navigate('/portal') }
     catch (e) { setStatus('Error: ' + (e?.message || 'could not delete')) }
@@ -217,11 +217,9 @@ export default function AccountEdit() {
           )}
           {isAdmin && isSelf && <span className="text-sm text-ink-50">This is your own admin account.</span>}
 
-          {canDelete ? (
+          {canDelete && (
             <button className="text-sm text-ink-60 hover:text-red-600 sm:ml-auto" onClick={del}>Delete account</button>
-          ) : (!isSelf && u.role === 'customer' && (
-            <span className="text-xs text-ink-40 sm:ml-auto">Suspend before deleting.</span>
-          ))}
+          )}
         </div>
       </div>
     </div>
