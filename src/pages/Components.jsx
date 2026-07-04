@@ -20,10 +20,10 @@ export default function Components() {
         promise, crystal colours (a display attribute), and crystal unit costs by size &amp; brand.
       </p>
 
-      <div className="flex gap-1 border-b border-ivory-dark mb-5">
+      <div className="flex gap-1 border-b border-ivory-dark mb-5 overflow-x-auto whitespace-nowrap">
         {[['critical', 'Critical Components'], ['colours', 'Crystal Colours'], ['crystalcosts', 'Crystal Costs'], ['formatmoq', 'Format MOQs'], ['categories', 'Categories']].map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
-            className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 transition-colors ${
+            className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 shrink-0 transition-colors ${
               tab === k ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-80'}`}>
             {label}
           </button>
@@ -210,7 +210,7 @@ function CriticalComponents() {
       ) : (
         <div className="card divide-y divide-ivory-dark overflow-hidden">
           {filtered.map(c => (
-            <div key={c.id} className="flex items-center gap-3 px-3 py-2.5 hover:bg-ivory/50 transition-colors">
+            <div key={c.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 py-2.5 hover:bg-ivory/50 transition-colors">
               <Link to={`/components/critical/${c.id}`} className="flex items-center gap-3 min-w-0 flex-1">
                 <div className="w-11 h-11 shrink-0 bg-white border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
                   {c.images[0] ? <img src={c.images[0]} alt="" className="w-full h-full object-contain p-0.5" /> : <Puzzle size={18} className="text-gray-300" />}
@@ -227,7 +227,9 @@ function CriticalComponents() {
                   </p>
                 </div>
               </Link>
-              <StockEditor component={c} />
+              <div className="flex justify-end shrink-0 pl-14 sm:pl-0">
+                <StockEditor component={c} />
+              </div>
             </div>
           ))}
         </div>

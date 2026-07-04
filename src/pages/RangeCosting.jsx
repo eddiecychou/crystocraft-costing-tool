@@ -309,21 +309,23 @@ export default function RangeCosting() {
             {state.crystal_bom.map((l, i) => {
               const brandOptions = l.size ? crystalBrandsForSize(crystalItems, l.size) : []
               return (
-                <div key={l.id} className="flex items-center gap-2 flex-wrap">
-                  <input className="input py-1.5 text-sm flex-1 min-w-[140px]" list="crystal-size-options"
+                <div key={l.id} className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 pb-2 border-b border-gray-100 sm:pb-0 sm:border-b-0">
+                  <input className="input py-1.5 text-sm w-full sm:flex-1 sm:min-w-[140px]" list="crystal-size-options"
                          value={l.size} onChange={setCrystalLine(i, 'size')} placeholder="Size, e.g. 14mm Octagon" />
-                  <select className="input py-1.5 text-sm flex-1 min-w-[160px]" value={l.scope} onChange={setCrystalLine(i, 'scope')}>
+                  <select className="input py-1.5 text-sm w-full sm:flex-1 sm:min-w-[160px]" value={l.scope} onChange={setCrystalLine(i, 'scope')}>
                     <option value="">All variants (shared)</option>
                     {productBrands.map(b => <option key={b.code} value={b.code}>{b.name} ({b.code}) only</option>)}
                   </select>
-                  <select className="input py-1.5 text-sm flex-1 min-w-[150px]" value={l.brand} onChange={setCrystalLine(i, 'brand')}>
+                  <select className="input py-1.5 text-sm w-full sm:flex-1 sm:min-w-[150px]" value={l.brand} onChange={setCrystalLine(i, 'brand')}>
                     <option value="">— Select brand —</option>
                     {brandOptions.map(b => <option key={b} value={b}>{b}</option>)}
                     {l.brand && !brandOptions.includes(l.brand) && <option value={l.brand}>{l.brand}</option>}
                   </select>
-                  <input className="input py-1.5 text-sm w-20" inputMode="numeric"
-                         value={l.qty} onChange={setCrystalLine(i, 'qty')} placeholder="Qty" />
-                  <button type="button" onClick={() => removeCrystalLine(i)} className="text-red-300 hover:text-red-500" title="Remove"><X size={14} /></button>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <input className="input py-1.5 text-sm flex-1 sm:flex-none sm:w-20" inputMode="numeric"
+                           value={l.qty} onChange={setCrystalLine(i, 'qty')} placeholder="Qty" />
+                    <button type="button" onClick={() => removeCrystalLine(i)} className="text-red-300 hover:text-red-500 shrink-0" title="Remove"><X size={14} /></button>
+                  </div>
                 </div>
               )
             })}

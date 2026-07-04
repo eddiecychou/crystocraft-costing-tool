@@ -1,53 +1,75 @@
 import { useState, useEffect, useRef } from 'react'
-import { collection, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, onSnapshot } from 'firebase/firestore'
 import { Link } from 'react-router-dom'
 import { db } from '../firebase'
-import { CUSTOMER_CURRENCIES, useRates, fromUSD } from '../currency'
 import LoadingBar from '../components/LoadingBar'
-import { ShieldCheck, Clock, UserCheck, Building2, X } from 'lucide-react'
+import { ShieldCheck, Clock, UserCheck, Building2, Ban, X, ChevronRight } from 'lucide-react'
+
+// Account category — accounts default to real "customer"; "internal" is for
+// our own test / checking logins so they can be told apart at a glance.
+export const accountTypeOf = u => (u?.account_type === 'internal' ? 'internal' : 'customer')
 
 export default function CustomerAccounts({ embedded = false }) {
   const [users, setUsers] = useState([])
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState('pending')
+  const [tab, setTab] = useState('approved')
+  const [typeFilter, setTypeFilter] = useState('all') // all | customer | internal
 
   useEffect(() => {
     return onSnapshot(collection(db, 'users'), snap => {
       setUsers(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       setLoading(false)
-    }, () => setLoading(false))
+    })
   }, [])
 
   useEffect(() => {
     return onSnapshot(collection(db, 'customers'), snap => {
-      setCustomers(
-        snap.docs.map(d => ({ id: d.id, company_name: d.data().company_name || '(unnamed)' }))
-          .sort((a, b) => a.company_name.localeCompare(b.company_name))
-      )
+      setCustomers(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     })
   }, [])
 
-  const set = (id, patch) => updateDoc(doc(db, 'users', id), { ...patch, updatedAt: serverTimestamp() })
+  const customersById = new Map(customers.map(c => [c.id, c]))
 
-  const pending  = users.filter(u => u.role === 'customer' && u.status !== 'approved')
-  const approved = users.filter(u => u.role === 'customer' && u.status === 'approved')
-  const admins   = users.filter(u => u.role === 'admin')
+  // Flag accounts whose login email is shared by more than one users doc —
+  // these are usually orphaned/hand-made duplicates that need reconciling
+  // (the real one's doc ID matches the uid in Firebase Console → Authentication).
+  const emailCount = new Map()
+  for (const usr of users) {
+    const e = (usr.email || '').trim().toLowerCase()
+    if (e) emailCount.set(e, (emailCount.get(e) || 0) + 1)
+  }
+  const isDup = usr => {
+    const e = (usr.email || '').trim().toLowerCase()
+    return !!e && emailCount.get(e) > 1
+  }
+
+  const pending   = users.filter(u => u.role === 'customer' && u.status !== 'approved' && u.status !== 'suspended')
+  const approved  = users.filter(u => u.role === 'customer' && u.status === 'approved')
+  const suspended = users.filter(u => u.role === 'customer' && u.status === 'suspended')
+  const admins    = users.filter(u => u.role === 'admin')
 
   const tabs = [
-    { v: 'pending',  label: 'Pending',  Icon: Clock,       n: pending.length },
-    { v: 'approved', label: 'Customers', Icon: UserCheck,  n: approved.length },
-    { v: 'admins',   label: 'Admins',   Icon: ShieldCheck, n: admins.length },
+    { v: 'pending',   label: 'Pending',   Icon: Clock,       n: pending.length },
+    { v: 'approved',  label: 'Customers', Icon: UserCheck,   n: approved.length },
+    { v: 'suspended', label: 'Suspended', Icon: Ban,         n: suspended.length },
+    { v: 'admins',    label: 'Admins',    Icon: ShieldCheck, n: admins.length },
   ]
-  const rows = tab === 'pending' ? pending : tab === 'approved' ? approved : admins
+  let rows = tab === 'pending' ? pending
+    : tab === 'approved' ? approved
+    : tab === 'suspended' ? suspended
+    : admins
+
+  const showTypeFilter = tab !== 'admins'
+  if (showTypeFilter && typeFilter !== 'all') rows = rows.filter(u => accountTypeOf(u) === typeFilter)
 
   return (
     <div className="p-4 md:p-6">
       {loading && <LoadingBar />}
       {!embedded && <h1 className="text-xl md:text-2xl mb-1">Customer Accounts</h1>}
-      <p className="text-sm text-ink-60 mb-4">Approve sign-ups, set base currency and wholesale discount, and manage admins.</p>
+      <p className="text-sm text-ink-60 mb-4">Approve sign-ups and manage portal logins. Click an account to edit its currency, pricing and category.</p>
 
-      <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden mb-5">
+      <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden mb-4">
         {tabs.map(t => (
           <button key={t.v} onClick={() => setTab(t.v)}
             className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark transition-colors flex items-center gap-1.5
@@ -57,139 +79,66 @@ export default function CustomerAccounts({ embedded = false }) {
         ))}
       </div>
 
+      {showTypeFilter && (
+        <div className="flex items-center gap-2 mb-4 text-xs">
+          <span className="uppercase tracking-wide text-ink-40">Show</span>
+          {[['all', 'All'], ['customer', 'Customers'], ['internal', 'Internal']].map(([v, label]) => (
+            <button key={v} onClick={() => setTypeFilter(v)}
+              className={`px-2.5 py-1 rounded-full border transition-colors ${
+                typeFilter === v ? 'border-brand-600 text-brand-700 bg-brand-50' : 'border-ivory-dark text-ink-60 hover:bg-ivory'}`}>
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {rows.length === 0 ? (
         <div className="text-center py-16 text-ink-60">Nothing here.</div>
       ) : (
         <div className="space-y-2">
-          {rows.map(u => <Row key={u.id} u={u} tab={tab} set={set} customers={customers} />)}
+          {rows.map(u => <Row key={u.id} u={u} linked={u.customer_id ? customersById.get(u.customer_id) : null} dup={isDup(u)} />)}
         </div>
       )}
     </div>
   )
 }
 
-function Row({ u, tab, set, customers }) {
-  const [cur, setCur] = useState(u.base_currency || 'USD')
-  const [disc, setDisc] = useState(Number(u.ws_discount_pct) > 0 ? u.ws_discount_pct : 100)
-  const [override, setOverride] = useState(u.corp_markup_override ?? '')
-  const [fxRate, setFxRate] = useState(u.fx_rate ?? '')
-  const [status, setStatus] = useState(null) // 'saving' | 'saved' | error string
-  const rates = useRates()
-  // Live USD→display-currency rate, shown as the placeholder when no rate is fixed.
-  const liveRate = cur === 'USD' ? 1 : fromUSD(1, cur, rates)
-
-  // Corp pricing is driven by a per-customer markup for now (no groups UI).
-  const pricingPatch = {
-    corp_markup_override: override === '' ? 0 : Number(override) || 0,
-  }
-
-  async function save(extra = {}) {
-    setStatus('saving')
-    try {
-      await set(u.id, {
-        base_currency: cur,
-        ws_discount_pct: Number(disc) > 0 ? Number(disc) : 100,
-        fx_rate: fxRate === '' ? 0 : Number(fxRate) || 0,
-        ...pricingPatch, ...extra,
-      })
-      setStatus('saved')
-      setTimeout(() => setStatus(s => (s === 'saved' ? null : s)), 2500)
-    } catch (e) {
-      setStatus('Error: ' + (e?.message || 'could not save'))
-    }
-  }
+// Compact, clickable summary — name (from linked customer when available),
+// login email, country, and category. Editing happens on the account page.
+function Row({ u, linked, dup }) {
+  const name    = linked?.company_name || u.company_name || '—'
+  const country = linked?.country || linked?.region || u.country || ''
+  const type    = accountTypeOf(u)
 
   return (
-    <div className="card p-4 flex flex-col md:flex-row md:items-center gap-3">
+    <Link to={`/portal/accounts/${u.id}`}
+      className="card p-4 flex items-center gap-3 hover:bg-ivory/40 transition-colors">
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-ink truncate">{u.company_name || '—'}</p>
-        <p className="text-xs text-ink-60 truncate">{u.contact_name ? `${u.contact_name} · ` : ''}{u.email}</p>
-        <CustomerPicker
-          customers={customers}
-          value={u.customer_id || ''}
-          onChange={cid => set(u.id, { customer_id: cid || null })}
-        />
-      </div>
-
-      {tab !== 'admins' && (
-        <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-          <label className="text-xs text-ink-60">Currency
-            <select className="input py-1 ml-1 w-24 inline-block" value={cur} onChange={e => setCur(e.target.value)}>
-              {CUSTOMER_CURRENCIES.map(c => <option key={c}>{c}</option>)}
-            </select>
-          </label>
-
-          {cur !== 'USD' && (
-            <label className="text-xs text-ink-60"
-              title={`Fixed rate: how many ${cur} per 1 USD. Locks this customer's prices regardless of daily rates. Leave blank to use the live rate (currently ≈ ${liveRate.toFixed(4)}).`}>
-              Fixed {cur}/USD
-              <input type="number" min="0" step="0.0001" placeholder={liveRate ? liveRate.toFixed(4) : 'live'}
-                className="input py-1 ml-1 w-24 inline-block"
-                value={fxRate} onChange={e => setFxRate(e.target.value)} />
-            </label>
-          )}
-
-          {/* Figurine Gift Catalogue — % of list (ex-factory) price the customer pays */}
-          <div className="flex items-center gap-2 pl-3 border-l border-ivory-dark">
-            <span className="text-[10px] uppercase tracking-wide text-ink-40">Figurine Gift Catalogue</span>
-            <label className="text-xs text-ink-60" title="Percentage of the list (ex-factory) price this customer pays. 100 = list price, 130 = +30% markup, 90 = 10% discount.">WS %
-              <input type="number" min="1" step="0.5" placeholder="100" className="input py-1 ml-1 w-20 inline-block"
-                value={disc} onChange={e => setDisc(e.target.value)} />
-            </label>
-          </div>
-
-          {/* Corp Gift Catalogue — made-to-order, priced as cost × markup */}
-          <div className="flex items-center gap-2 pl-3 border-l border-ivory-dark">
-            <span className="text-[10px] uppercase tracking-wide text-ink-40">Corp Gift Catalogue</span>
-            <label className="text-xs text-ink-60" title="Sell price = product cost × this markup (e.g. 2.0 = cost doubled).">Markup ×
-              <input type="number" min="0" step="0.05" placeholder="2.0" className="input py-1 ml-1 w-20 inline-block"
-                value={override} onChange={e => setOverride(e.target.value)} />
-            </label>
-          </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-medium text-ink truncate">{name}</p>
+          <TypeBadge type={type} />
+          {dup && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 uppercase tracking-wide" title="Another account uses this same email — likely an orphaned or duplicate login to reconcile">Duplicate email</span>}
+          {!linked && <span className="text-[10px] uppercase tracking-wide text-amber-600">Not linked</span>}
         </div>
-      )}
-
-      <div className="flex items-center gap-2 shrink-0">
-        {tab === 'pending' && (
-          <button className="btn-primary text-sm" disabled={status === 'saving'}
-            onClick={() => save({ status: 'approved' })}>
-            {status === 'saving' ? 'Approving…' : 'Approve'}
-          </button>
-        )}
-        {tab === 'approved' && (
-          <>
-            <button className="btn-secondary text-sm" disabled={status === 'saving'} onClick={() => save()}>
-              {status === 'saving' ? 'Saving…' : 'Save'}
-            </button>
-            <button className="text-xs text-ink-50 hover:text-amber-600"
-              onClick={() => { if (confirm('Suspend this customer? They will lose pricing access.')) set(u.id, { status: 'pending' }) }}>
-              Suspend
-            </button>
-            <button className="text-xs text-ink-50 hover:text-brand-600"
-              onClick={() => { if (confirm('Promote this customer to ADMIN? They get full access to the costing tool.')) set(u.id, { role: 'admin' }) }}>
-              Make admin
-            </button>
-          </>
-        )}
-        {tab === 'admins' && (
-          <button className="text-xs text-ink-50 hover:text-red-600"
-            onClick={() => { if (confirm('Remove admin access? They become a pending customer.')) set(u.id, { role: 'customer', status: 'pending' }) }}>
-            Revoke admin
-          </button>
-        )}
-        {status && status !== 'saving' && (
-          <span className={`text-xs ${status === 'saved' ? 'text-green-600' : 'text-red-600'}`}>
-            {status === 'saved' ? 'Saved ✓' : status}
-          </span>
-        )}
+        <p className="text-xs text-ink-70 break-all">{u.email || '—'}</p>
+        <p className="text-xs text-ink-50">{country || <span className="text-ink-30">No country</span>}</p>
       </div>
-    </div>
+      <ChevronRight size={18} className="text-ink-30 shrink-0" />
+    </Link>
+  )
+}
+
+export function TypeBadge({ type }) {
+  return type === 'internal' ? (
+    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase tracking-wide">Internal</span>
+  ) : (
+    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 uppercase tracking-wide">Customer</span>
   )
 }
 
 // Searchable picker that links this login account to a CRM customer record.
 // One customer can be linked to many accounts (the link lives on the account).
-function CustomerPicker({ customers, value, onChange }) {
+export function CustomerPicker({ customers, value, onChange }) {
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
   const ref = useRef(null)
@@ -203,47 +152,47 @@ function CustomerPicker({ customers, value, onChange }) {
   }, [open])
 
   const matches = search
-    ? customers.filter(c => c.company_name.toLowerCase().includes(search.toLowerCase())).slice(0, 30)
+    ? customers.filter(c => (c.company_name || '').toLowerCase().includes(search.toLowerCase())).slice(0, 30)
     : customers.slice(0, 30)
 
   if (selected) {
     return (
-      <div className="mt-1 inline-flex items-center gap-1 text-xs">
-        <Building2 size={12} className="text-ink-40" />
-        <Link to={`/customers/${selected.id}`} className="text-brand-600 hover:underline truncate max-w-[180px]">
+      <div className="inline-flex items-center gap-1 text-sm">
+        <Building2 size={14} className="text-ink-40" />
+        <Link to={`/customers/${selected.id}`} className="text-brand-600 hover:underline truncate max-w-[220px]">
           {selected.company_name}
         </Link>
-        <button onClick={() => onChange('')} className="text-ink-30 hover:text-red-500" title="Unlink"><X size={12} /></button>
+        <button onClick={() => onChange('')} className="text-ink-30 hover:text-red-500" title="Unlink"><X size={13} /></button>
       </div>
     )
   }
 
   return (
-    <div className="mt-1 relative inline-block" ref={ref}>
+    <div className="relative inline-block" ref={ref}>
       {open ? (
         <div className="relative">
           <input
             autoFocus
-            className="input py-1 text-xs w-56"
+            className="input py-1 text-sm w-64"
             placeholder="Search customer to link…"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-          <div className="absolute z-20 mt-1 w-64 max-h-56 overflow-auto bg-white border border-ivory-dark rounded-lg shadow-lg">
+          <div className="absolute z-20 mt-1 w-72 max-h-56 overflow-auto bg-white border border-ivory-dark rounded-lg shadow-lg">
             {matches.length === 0 ? (
               <p className="text-xs text-ink-40 px-3 py-2">No customers found.</p>
             ) : matches.map(c => (
               <button key={c.id}
                 onClick={() => { onChange(c.id); setOpen(false); setSearch('') }}
-                className="block w-full text-left px-3 py-1.5 text-xs hover:bg-ivory border-b border-ivory-dark last:border-0">
+                className="block w-full text-left px-3 py-1.5 text-sm hover:bg-ivory border-b border-ivory-dark last:border-0">
                 {c.company_name}
               </button>
             ))}
           </div>
         </div>
       ) : (
-        <button onClick={() => setOpen(true)} className="text-xs text-ink-40 hover:text-brand-600 inline-flex items-center gap-1">
-          <Building2 size={12} /> Link to customer
+        <button onClick={() => setOpen(true)} className="text-sm text-ink-40 hover:text-brand-600 inline-flex items-center gap-1">
+          <Building2 size={14} /> Link to customer
         </button>
       )}
     </div>

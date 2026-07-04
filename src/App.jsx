@@ -41,6 +41,7 @@ import ImportData from './pages/ImportData'
 import CatalogueBand from './pages/CatalogueBand'
 import ImportImages from './pages/ImportImages'
 import CustomerAccounts from './pages/CustomerAccounts'
+import AccountEdit from './pages/AccountEdit'
 import Enquiries from './pages/Enquiries'
 import Logistics from './pages/Logistics'
 import LogisticsVendorForm from './pages/LogisticsVendorForm'
@@ -148,6 +149,7 @@ function AdminApp({ user }) {
                 <Route path="/logistics/new" element={<LogisticsVendorForm />} />
                 <Route path="/logistics/:id" element={<LogisticsVendorForm />} />
                 <Route path="/portal" element={<Portal />} />
+                <Route path="/portal/accounts/:id" element={<AccountEdit />} />
                 {/* Legacy redirects */}
                 <Route path="/shipments" element={<Navigate to="/shipping" replace />} />
                 <Route path="/logistics" element={<Navigate to="/shipping" replace />} />
