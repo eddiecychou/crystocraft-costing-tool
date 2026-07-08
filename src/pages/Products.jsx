@@ -5,7 +5,6 @@ import { Link } from 'react-router-dom'
 import { CATEGORIES, PRODUCT_STATUSES, productStatusOf } from '../constants'
 import LoadingBar from '../components/LoadingBar'
 import { Package } from 'lucide-react'
-import useScrollMemory from '../hooks/useScrollMemory'
 
 export default function Products() {
   const [products, setProducts] = useState([])
@@ -13,7 +12,6 @@ export default function Products() {
   const [search, setSearch]         = useState(() => sessionStorage.getItem('pf-search') || '')
   const [filterCat, setFilterCat]   = useState(() => sessionStorage.getItem('pf-cat')    || '')
   const [filterStatus, setFilterStatus] = useState(() => sessionStorage.getItem('pf-status') || '')
-  const remember = useScrollMemory('products', !loading)
 
   useEffect(() => {
     const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'))
@@ -22,6 +20,21 @@ export default function Products() {
       setLoading(false)
     })
   }, [])
+
+  // After returning from a product (or its sub-pages like pricing), scroll the
+  // last-opened card back into view instead of resetting to the top — so you can
+  // work through products one by one. Id-based (scrollIntoView) rather than a
+  // pixel scrollTop, so it survives the list height settling and deep nav.
+  useEffect(() => {
+    if (loading) return
+    const lastId = sessionStorage.getItem('products-last-id')
+    if (!lastId) return
+    const el = document.getElementById(`product-card-${lastId}`)
+    if (el) {
+      el.scrollIntoView({ block: 'center' })
+      sessionStorage.removeItem('products-last-id')
+    }
+  }, [loading, products])
 
   const filtered = products.filter(p => {
     const matchSearch = !search || p.name?.toLowerCase().includes(search.toLowerCase())
@@ -70,7 +83,7 @@ export default function Products() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filtered.map(p => <ProductCard key={p.id} product={p} onNavigate={remember} />)}
+          {filtered.map(p => <ProductCard key={p.id} product={p} />)}
         </div>
       )}
     </div>
@@ -82,7 +95,7 @@ const fmtTierPrice = (val, cur) => {
   return (Number(val) || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: dp })
 }
 
-function ProductCard({ product: p, onNavigate }) {
+function ProductCard({ product: p }) {
   const [tiers, setTiers] = useState(null)
   const status = productStatusOf(p.status)
   const isRetired = status.value === 'retired'
@@ -93,7 +106,8 @@ function ProductCard({ product: p, onNavigate }) {
   }, [p.id])
 
   return (
-    <Link to={`/products/${p.id}`} onClick={onNavigate}
+    <Link to={`/products/${p.id}`} id={`product-card-${p.id}`}
+      onClick={() => sessionStorage.setItem('products-last-id', p.id)}
       className={`card hover:shadow-md transition-shadow overflow-hidden flex flex-col ${isRetired ? 'opacity-50 grayscale' : ''}`}>
       <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
         {p.heroImage
