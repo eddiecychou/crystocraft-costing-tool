@@ -229,6 +229,7 @@ export default function ShipmentForm() {
   async function handleCreate(e) {
     e.preventDefault()
     setSaving(true)
+    setExtractError('')
     try {
       // Upload PI under a stable import path first, then anchor it on the order.
       let sf = null
@@ -246,12 +247,17 @@ export default function ShipmentForm() {
         total_amount:    header.total_amount    !== '' ? parseFloat(header.total_amount)    : null,
       }
       const v = validateOrder(orderData, lines)
-      if (!v.ok) { setExtractError(v.errors.map(x => x.message).join(' · ')); setSaving(false); return }
+      if (!v.ok) { setExtractError(v.errors.map(x => x.message).join(' · ')); return }
       const { id: orderId, commit } = createOrderWithLines(orderData, lines)
       await raceWrite(commit)   // throws only on a fast rejection; otherwise proceeds
       navigate(`/shipments/${orderId}`)
     } catch (err) {
       setExtractError(err.message || 'Could not create shipment.')
+    } finally {
+      // Always clear — navigating /shipments/new → /shipments/:id reuses this
+      // component instance (same element, no key), so it does NOT unmount and
+      // `saving` would otherwise stay stuck on "Saving…" even though the order
+      // was created. This is the real cause of the hung Save button.
       setSaving(false)
     }
   }
