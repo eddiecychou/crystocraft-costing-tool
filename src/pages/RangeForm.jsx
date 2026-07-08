@@ -10,6 +10,7 @@ import {
   normGallery, normVideos, MARKETING_DESC_MAXLEN,
 } from '../constants'
 import { resizeToJpeg } from '../imageResize'
+import { enhanceProductImage } from '../enhanceImage'
 import VideoUrlsEditor from '../components/VideoUrlsEditor'
 
 const BODY_NAME = Object.fromEntries(RANGE_BODY_TYPES.map(b => [b.code, b.name]))
@@ -663,12 +664,7 @@ export default function RangeForm() {
     if (!g?.url) return
     setEnh({ i, before: g.url, after: null, mode, busy: true, error: '', colorWarning: false })
     try {
-      const res = await fetch('/api/enhance-image', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageUrl: g.url, mode, colorHint, recolorInstructions }),
-      })
-      const data = await res.json()
-      if (!res.ok || !data.image) throw new Error(data.error || 'Enhancement failed')
+      const data = await enhanceProductImage(g.url, { mode, colorHint, recolorInstructions })
       const afterUrl = `data:${data.mimeType || 'image/png'};base64,${data.image}`
       const colorWarning = await detectColorLoss(g.url, afterUrl)
       setEnh(e => (e && e.i === i ? { ...e, after: afterUrl, busy: false, colorWarning } : e))

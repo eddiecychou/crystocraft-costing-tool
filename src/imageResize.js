@@ -12,6 +12,27 @@ export function detectOrientation(width, height) {
   return ratio > 1 ? 'landscape' : 'portrait'
 }
 
+// Load a (possibly remote) image URL, downscale to a max edge, and return a
+// base64 JPEG. Used to send a light inline copy to the AI enhance endpoint so
+// the edge function doesn't have to fetch the Storage URL itself. Requires the
+// source to be CORS-readable (Firebase Storage download URLs are).
+export async function urlToResizedBase64(src, maxPx = 1536, quality = 0.9) {
+  const img = await new Promise((res, rej) => {
+    const i = new Image()
+    i.crossOrigin = 'anonymous'
+    i.onload = () => res(i)
+    i.onerror = rej
+    i.src = src
+  })
+  const scale = Math.min(1, maxPx / Math.max(img.naturalWidth, img.naturalHeight))
+  const w = Math.max(1, Math.round(img.naturalWidth * scale))
+  const h = Math.max(1, Math.round(img.naturalHeight * scale))
+  const canvas = document.createElement('canvas')
+  canvas.width = w; canvas.height = h
+  canvas.getContext('2d').drawImage(img, 0, 0, w, h)
+  return { base64: canvas.toDataURL('image/jpeg', quality).split(',')[1], mimeType: 'image/jpeg' }
+}
+
 export async function resizeToJpeg(file, { maxPx = 1800, maxBytes = 600 * 1024 } = {}) {
   try {
     if (typeof createImageBitmap !== 'function' || typeof OffscreenCanvas !== 'function') {
