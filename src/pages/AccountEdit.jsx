@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { doc, getDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, deleteDoc, serverTimestamp, collection, getDocs, query, where } from 'firebase/firestore'
 import { db, auth } from '../firebase'
 import { useCustomers } from '../domain/customer'
 import { CUSTOMER_CURRENCIES, useRates, fromUSD } from '../currency'
@@ -8,6 +8,11 @@ import { CustomerPicker, TypeBadge } from './CustomerAccounts'
 import { notifyEmail } from '../notify'
 import LoadingBar from '../components/LoadingBar'
 import { ArrowLeft } from 'lucide-react'
+
+const fmtDate = ts => {
+  const d = ts?.toDate?.() || (ts instanceof Date ? ts : null)
+  return d ? d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
+}
 
 export default function AccountEdit() {
   const { id } = useParams()
@@ -26,6 +31,7 @@ export default function AccountEdit() {
   const [override, setOverride] = useState('')
   const [type, setType]         = useState('customer')
   const [customerId, setCustomerId] = useState('')
+  const [enquiries, setEnquiries] = useState([])
 
   useEffect(() => {
     getDoc(doc(db, 'users', id)).then(s => {
@@ -41,6 +47,14 @@ export default function AccountEdit() {
       }
       setLoading(false)
     })
+    // Enquiry activity for this login. Equality-only query (no orderBy) so it
+    // needs no composite index; sort newest-first client-side.
+    getDocs(query(collection(db, 'enquiries'), where('uid', '==', id)))
+      .then(snap => setEnquiries(
+        snap.docs.map(d => ({ id: d.id, ...d.data() }))
+          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+      ))
+      .catch(() => {})
   }, [id])
 
   if (loading) return <LoadingBar />
@@ -109,6 +123,35 @@ export default function AccountEdit() {
         {u.contact_name && <p className="text-sm text-ink-50">{u.contact_name}</p>}
         {linked?.country && <p className="text-sm text-ink-50">{linked.country}</p>}
         <p className="text-[11px] text-ink-40 mt-1 font-mono break-all" title="Account (users doc) ID — matches the User UID in Firebase Console → Authentication for a real login. An orphaned/hand-made duplicate won't match any Auth user.">ID: {u.id}</p>
+      </div>
+
+      {/* Activity */}
+      <div className="card p-5 mb-5">
+        <h2 className="text-sm font-semibold text-gray-700 mb-3">Activity</h2>
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <Stat label="Registered" value={fmtDate(u.createdAt)} />
+          <Stat label="Last sign-in" value={fmtDate(u.last_login_at)} />
+          <Stat label="Sign-ins" value={u.login_count ?? 0} />
+        </div>
+        <p className="text-[10px] uppercase tracking-wide text-ink-40 mb-2">Enquiries ({enquiries.length})</p>
+        {enquiries.length === 0 ? (
+          <p className="text-sm text-ink-50">{isAdmin ? 'No enquiries.' : 'No enquiries yet — a good candidate to follow up with.'}</p>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {enquiries.slice(0, 8).map(e => (
+              <div key={e.id} className="py-2 flex items-center justify-between gap-3 text-sm">
+                <span className="text-ink-70">
+                  {fmtDate(e.createdAt)} · {e.items?.length || 0} item{(e.items?.length || 0) === 1 ? '' : 's'}
+                </span>
+                <span className="flex items-center gap-2 shrink-0">
+                  {e.estimated_total != null && <span className="text-ink-90">{e.currency || ''} {Number(e.estimated_total).toLocaleString()}</span>}
+                  {e.status && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 uppercase tracking-wide">{e.status}</span>}
+                </span>
+              </div>
+            ))}
+            {enquiries.length > 8 && <p className="text-xs text-ink-40 pt-2">…and {enquiries.length - 8} more.</p>}
+          </div>
+        )}
       </div>
 
       {/* Linked customer */}
@@ -226,6 +269,15 @@ export default function AccountEdit() {
           )}
         </div>
       </div>
+    </div>
+  )
+}
+
+function Stat({ label, value }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wide text-ink-40">{label}</p>
+      <p className="text-sm text-ink-90 mt-0.5">{value}</p>
     </div>
   )
 }

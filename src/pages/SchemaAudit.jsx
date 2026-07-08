@@ -108,14 +108,25 @@ export default function SchemaAudit() {
         // components can't compute buildable stock / lead / cost. Concept and
         // retired products are exempt (not tooled / sold out).
         const st = String(p.status || '').trim()
-        if (st !== 'concept' && st !== 'retired' && refs.length === 0) {
-          const lastStock = st === 'stock'
-          add(issues, lastStock ? 'error' : 'warning', d.id, label,
-            `${lastStock ? 'Last Stock' : 'Made to Order'} product has no critical components entered — ${lastStock ? 'buildable stock' : 'cost & lead time'} can’t be computed`,
-            `/range/${d.id}`)
+        if (refs.length === 0 && st !== 'concept' && st !== 'retired') {
+          if (st === 'stock')
+            // Last Stock has no tooling/re-runs — availability is ONLY remaining part
+            // stock, so with no components it computes to 0 → shows SOLD OUT.
+            add(issues, 'error', d.id, label,
+              'Last Stock: no components — availability comes only from remaining part stock, so the shop shows it SOLD OUT. Add the components + their stock.',
+              `/range/${d.id}`)
+          else
+            // Made to Order has tooling — it stays sellable on a default lead time,
+            // but with no BOM it can’t be costed and the lead time is only a guess.
+            add(issues, 'warning', d.id, label,
+              'Made to Order: no components/BOM — still sellable at a default lead time, but can’t be costed and the lead time is only a generic estimate. Add the tooling/critical parts.',
+              `/range/${d.id}`)
         }
+        // No product images — the shop shows gallery[0] or a variant image.
+        const hasImg = (Array.isArray(p.gallery) && p.gallery.length > 0) || variants.some(v => v && v.image)
+        if (!hasImg && st !== 'retired') add(issues, 'warning', d.id, label, 'no product images (gallery empty)', `/range/${d.id}`)
       })
-      grp('Range Products (figurines)', rProducts.size, issues, 'Variants, MOQ/lead, and component refs.')
+      grp('Range Products (figurines)', rProducts.size, issues, 'Variants, MOQ/lead, component refs, and images.')
     }
 
     // ── corp products ───────────────────────────────────────────────────────────
@@ -124,8 +135,9 @@ export default function SchemaAudit() {
       products.docs.forEach(d => {
         const p = d.data(), label = p.name || d.id
         if (!String(p.name || '').trim()) add(issues, 'error', d.id, label, 'missing `name`', `/products/${d.id}`)
+        if (!String(p.heroImage || '').trim()) add(issues, 'warning', d.id, label, 'no hero image — won’t show a photo in listings', `/products/${d.id}`)
       })
-      grp('Corp Gift Products', products.size, issues, 'Name is required.')
+      grp('Corp Gift Products', products.size, issues, 'Name and a hero image are required to display.')
     }
 
     // ── orders ──────────────────────────────────────────────────────────────────

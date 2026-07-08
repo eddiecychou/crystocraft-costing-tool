@@ -3,7 +3,7 @@ import {
   signInWithEmailAndPassword, sendPasswordResetEmail,
   createUserWithEmailAndPassword, signOut,
 } from 'firebase/auth'
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, updateDoc, serverTimestamp, increment } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 import { CUSTOMER_CURRENCIES } from '../currency'
 import { notifyEmail } from '../notify'
@@ -25,7 +25,13 @@ export default function Login() {
     e.preventDefault()
     setError(''); setLoading(true)
     try {
-      await signInWithEmailAndPassword(auth, email, password)
+      const cred = await signInWithEmailAndPassword(auth, email, password)
+      // Best-effort activity stamp for admin follow-up. Self-update (leaves
+      // role/status/pricing untouched, so the rules allow it); never blocks login.
+      updateDoc(doc(db, 'users', cred.user.uid), {
+        last_login_at: serverTimestamp(),
+        login_count: increment(1),
+      }).catch(() => {})
     } catch {
       setError('Invalid email or password.')
     } finally {
