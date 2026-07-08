@@ -247,6 +247,27 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
   const [recolorPrompt, setRecolorPrompt] = useState('')
   const [editTab, setEditTab]             = useState('ai')  // 'ai' | 'adjust'
 
+  // Preserve the page's scroll position across an image edit, so replacing one
+  // image doesn't jump the product page back to the top — you can edit images
+  // one-by-one. Captured when the editor opens, restored when it closes (after
+  // the replaced image reloads and the grid reflows, hence the rAF retry).
+  const scrollBeforeEdit = useRef(0)
+  function captureScroll() {
+    scrollBeforeEdit.current = document.getElementById('main-scroll')?.scrollTop || 0
+  }
+  function closeEditor() {
+    setEnh(null)
+    const el = document.getElementById('main-scroll')
+    if (!el) return
+    const target = scrollBeforeEdit.current
+    let tries = 0
+    const tick = () => {
+      el.scrollTop = target
+      if (Math.abs(el.scrollTop - target) > 2 && tries++ < 20) requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  }
+
   async function runEnhance(img, mode, recolorInstructions = '') {
     setEnh({ img, before: img.file_url, after: null, mode, busy: true, error: '', colorWarning: false })
     try {
@@ -273,7 +294,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
       await updateDoc(doc(db, ...firestorePath.split('/'), old.id), { file_url: url, storage_path: path, orientation })
       try { if (old.storage_path) await deleteObject(storageRef(storage, old.storage_path)) } catch {}
       if (onHeroChange && old.is_hero) onHeroChange(url)
-      setEnh(null)
+      closeEditor()
     } catch (err) {
       setEnh(e => ({ ...e, busy: false, error: err.message }))
     }
@@ -302,7 +323,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
         sort_order: images.length,
         uploaded_at: serverTimestamp(),
       })
-      setEnh(null)
+      closeEditor()
     } catch (err) {
       setEnh(e => ({ ...e, busy: false, error: err.message }))
     }
@@ -421,7 +442,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                     onLightbox={setLightbox}
                     downloadPrefix={downloadPrefix}
                     firestorePath={firestorePath}
-                    onEnhance={enhanceable ? (img => { setEditTab('ai'); setEnh({ img, before: img.file_url, after: null, mode: null, busy: false, error: '', colorWarning: false }) }) : null}
+                    onEnhance={enhanceable ? (img => { captureScroll(); setEditTab('ai'); setEnh({ img, before: img.file_url, after: null, mode: null, busy: false, error: '', colorWarning: false }) }) : null}
                   />
                 ))}
               </div>
@@ -446,11 +467,11 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
       )}
 
       {enh && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={() => !enh.busy && setEnh(null)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={() => !enh.busy && closeEditor()}>
           <div className="bg-white rounded-xl max-w-3xl w-full p-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5"><Sparkles size={15} /> Edit image — review before replacing</h3>
-              <button type="button" onClick={() => !enh.busy && setEnh(null)} className="text-gray-400 hover:text-gray-700"><X size={16} /></button>
+              <button type="button" onClick={() => !enh.busy && closeEditor()} className="text-gray-400 hover:text-gray-700"><X size={16} /></button>
             </div>
 
             {/* Tabs: AI enhance vs manual adjust */}
@@ -562,7 +583,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                 <button type="button" disabled={enh.busy} onClick={() => runEnhance(enh.img, 'enhance')} className="btn-secondary text-sm">Enhance (lighting + colour)</button>
               </>}
               <div className="flex-1" />
-              <button type="button" disabled={enh.busy} onClick={() => setEnh(null)} className="text-sm text-gray-500 hover:text-gray-800 px-2">Discard</button>
+              <button type="button" disabled={enh.busy} onClick={closeEditor} className="text-sm text-gray-500 hover:text-gray-800 px-2">Discard</button>
               <button type="button" disabled={enh.busy || !enh.after} onClick={saveAsNew} className="btn-secondary text-sm inline-flex items-center gap-1">
                 <Plus size={14} /> {enh.busy ? 'Saving…' : 'Save as new'}
               </button>

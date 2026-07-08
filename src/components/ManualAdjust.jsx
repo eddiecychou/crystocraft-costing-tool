@@ -61,42 +61,49 @@ export function isNeutral(s) {
 // data URL via onResult so the parent's existing Keep / Save-as-new pipeline
 // (which fetches a data URL) works unchanged.
 export default function ManualAdjust({ src, onResult, disabled }) {
-  const [s, setS]       = useState(NEUTRAL)
-  const [bitmap, setBitmap] = useState(null)
-  const [error, setError]   = useState('')
+  const [s, setS]     = useState(NEUTRAL)
+  const [img, setImg] = useState(null)   // HTMLImageElement (CORS-clean)
+  const [error, setError] = useState('')
   const canvasRef = useRef(null)
   const rafRef    = useRef(0)
 
-  // Load the source once, via blob → bitmap (same-origin, avoids canvas taint
-  // so toDataURL works even for cross-origin Storage URLs).
+  // Load the source as a CORS-enabled <img> (the same approach urlToResizedBase64
+  // uses — Firebase Storage download URLs are CORS-readable this way, unlike a
+  // bare fetch(), which the browser blocks). If the direct load fails (odd CORS
+  // case), retry through the same-origin image proxy so the canvas stays clean
+  // and toDataURL() keeps working.
   useEffect(() => {
     let cancelled = false
-    setError(''); setBitmap(null)
-    ;(async () => {
-      try {
-        const blob = await (await fetch(src)).blob()
-        const bmp  = await createImageBitmap(blob)
-        if (!cancelled) setBitmap(bmp)
-      } catch {
-        if (!cancelled) setError('Could not load image for editing.')
+    setError(''); setImg(null)
+    const load = (url, isFallback) => {
+      const i = new Image()
+      i.crossOrigin = 'anonymous'
+      i.onload  = () => { if (!cancelled) setImg(i) }
+      i.onerror = () => {
+        if (cancelled) return
+        if (!isFallback) load(`/api/image-proxy?url=${encodeURIComponent(src)}`, true)
+        else setError('Could not load image for editing.')
       }
-    })()
+      i.src = url
+    }
+    load(src, false)
     return () => { cancelled = true }
   }, [src])
 
   // Render pipeline: filters (brightness/contrast/saturation) via ctx.filter,
   // then warmth + sharpen as pixel passes. Throttled to one frame.
   const render = useCallback(() => {
-    const bmp = bitmap, canvas = canvasRef.current
-    if (!bmp || !canvas) return
+    const el = img, canvas = canvasRef.current
+    if (!el || !canvas) return
+    const iw = el.naturalWidth, ih = el.naturalHeight
     const max = 1400
-    const scale = Math.min(1, max / Math.max(bmp.width, bmp.height))
-    const w = Math.round(bmp.width * scale)
-    const h = Math.round(bmp.height * scale)
+    const scale = Math.min(1, max / Math.max(iw, ih))
+    const w = Math.max(1, Math.round(iw * scale))
+    const h = Math.max(1, Math.round(ih * scale))
     canvas.width = w; canvas.height = h
     const ctx = canvas.getContext('2d')
     ctx.filter = `brightness(${s.brightness}%) contrast(${s.contrast}%) saturate(${s.saturation}%)`
-    ctx.drawImage(bmp, 0, 0, w, h)
+    ctx.drawImage(el, 0, 0, w, h)
     ctx.filter = 'none'
     if (s.warmth || s.sharpness) {
       const imgData = ctx.getImageData(0, 0, w, h)
@@ -105,7 +112,7 @@ export default function ManualAdjust({ src, onResult, disabled }) {
       ctx.putImageData(imgData, 0, 0)
     }
     onResult?.(canvas.toDataURL('image/jpeg', 0.92))
-  }, [bitmap, s, onResult])
+  }, [img, s, onResult])
 
   useEffect(() => {
     cancelAnimationFrame(rafRef.current)
@@ -136,7 +143,7 @@ export default function ManualAdjust({ src, onResult, disabled }) {
           <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Adjusted</p>
           <div className="aspect-square bg-gray-100 border border-gray-200 rounded flex items-center justify-center overflow-hidden">
             {error ? <span className="text-xs text-red-500 px-3 text-center">{error}</span>
-              : !bitmap ? <span className="text-xs text-gray-400">Loading…</span>
+              : !img ? <span className="text-xs text-gray-400">Loading…</span>
               : <canvas ref={canvasRef} className="w-full h-full object-contain" />}
           </div>
         </div>
@@ -148,7 +155,7 @@ export default function ManualAdjust({ src, onResult, disabled }) {
             <label className="w-20 text-xs font-medium text-gray-500 shrink-0">{label}</label>
             <input
               type="range" min={min} max={max} value={s[key]} onChange={set(key)}
-              disabled={disabled || !bitmap}
+              disabled={disabled || !img}
               className="flex-1 accent-brand-600"
             />
             <span className={`w-10 text-right text-xs tabular-nums ${s[key] === mid ? 'text-gray-400' : 'text-gray-700 font-medium'}`}>
