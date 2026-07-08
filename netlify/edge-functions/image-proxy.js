@@ -5,13 +5,20 @@ export default async function handler(req) {
   const urlParam = new URL(req.url).searchParams.get('url')
   if (!urlParam) return new Response('Missing url param', { status: 400 })
 
-  // Only allow Firebase Storage and Firebase App Hosting domains
+  // Only allow Firebase Storage / App Hosting, plus our own WordPress site
+  // (crystocraft.com) — figurine gallery photos imported from the catalogue
+  // blog are hosted there and otherwise can't be loaded into a canvas for the
+  // manual image editor (WordPress serves no CORS headers).
   let parsed
   try { parsed = new URL(urlParam) } catch {
     return new Response('Invalid URL', { status: 400 })
   }
-  if (!parsed.hostname.endsWith('firebasestorage.googleapis.com') &&
-      !parsed.hostname.endsWith('firebaseapp.com')) {
+  const host = parsed.hostname
+  const allowed =
+    host.endsWith('firebasestorage.googleapis.com') ||
+    host.endsWith('firebaseapp.com') ||
+    host === 'crystocraft.com' || host.endsWith('.crystocraft.com')
+  if (!allowed) {
     return new Response('Forbidden', { status: 403 })
   }
 
