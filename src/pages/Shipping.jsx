@@ -4,9 +4,11 @@ import LoadingBar from '../components/LoadingBar'
 import { useOrders, orderStatusOf } from '../shipping'
 import { useVendors, FREIGHT_MODES, modeLabel, strengthOf } from '../logistics'
 import { MapPin, FileInput, ClipboardCheck, MessageCircle, Star, Truck } from 'lucide-react'
+import ComponentRequirements from './ComponentRequirements'
 
 const TABS = [
   { v: 'shipments', label: 'Shipments' },
+  { v: 'requirements', label: 'Requirements' },
   { v: 'logistics', label: 'Logistics' },
 ]
 
@@ -16,7 +18,7 @@ export default function Shipping() {
   return (
     <div>
       <div className="px-4 md:px-6 pt-4 md:pt-6 pb-0 border-b border-ivory-dark">
-        <h1 className="text-xl md:text-2xl mb-4">Shipping</h1>
+        <h1 className="text-xl md:text-2xl mb-4">Production</h1>
         <div className="flex gap-0">
           {TABS.map(t => (
             <button key={t.v} onClick={() => setTab(t.v)}
@@ -30,6 +32,7 @@ export default function Shipping() {
       </div>
 
       {tab === 'shipments' && <ShipmentsList />}
+      {tab === 'requirements' && <ComponentRequirements />}
       {tab === 'logistics' && <LogisticsList />}
     </div>
   )

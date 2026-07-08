@@ -18,7 +18,7 @@ const nav = [
   { to: '/portal',     label: 'Portal',        short: 'Portal',   Icon: Users },
   { to: '/quotes',     label: 'Quotes',        short: 'Quotes',   Icon: ClipboardList, primary: true },
   { to: '/marketing',  label: 'Marketing',     short: 'Marketing',Icon: Megaphone },
-  { to: '/shipping',   label: 'Shipping',      short: 'Shipping', Icon: Truck },
+  { to: '/shipping',   label: 'Production',    short: 'Prod',     Icon: Truck },
   { to: '/settings',   label: 'Settings',      short: 'Settings', Icon: Settings },
 ]
 
