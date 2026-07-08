@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import LoadingBar from '../components/LoadingBar'
-import { AlertTriangle, AlertCircle, Info, CheckCircle2, RefreshCw, Copy } from 'lucide-react'
+import { AlertTriangle, AlertCircle, Info, CheckCircle2, RefreshCw, Copy, ChevronDown, ChevronRight } from 'lucide-react'
 import { validateCustomer } from '../domain/customer'
 import { validateComponent, validateCriticalRefs } from '../criticalComponents'
 import { validateOrder } from '../shipping'
@@ -27,11 +27,25 @@ const isNum = v => Number.isFinite(num(v))
 // Severity weight for sorting
 const SEV = { error: 0, warning: 1, info: 2 }
 
+// Group → top-level category, for the audit's tab navigation.
+const CATEGORY_ORDER = ['Range Products', 'Range Components', 'Customers', 'Accounts', 'Corp Gifts', 'Orders', 'Other']
+const categoryOf = name =>
+  name.startsWith('Range —') ? 'Range Products'
+    : /component/i.test(name) ? 'Range Components'
+    : name.startsWith('Customer Accounts') ? 'Accounts'
+    : name.startsWith('Customers') ? 'Customers'
+    : name.startsWith('Corp') ? 'Corp Gifts'
+    : name.startsWith('Orders') ? 'Orders'
+    : 'Other'
+
 export default function SchemaAudit() {
   const [loading, setLoading] = useState(true)
   const [groups, setGroups] = useState([])
   const [ranAt, setRanAt] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [copiedGroup, setCopiedGroup] = useState(null)
+  const [activeCat, setActiveCat] = useState(null)
+  const [expanded, setExpanded] = useState(() => new Set())
 
   async function run() {
     setLoading(true)
@@ -92,11 +106,20 @@ export default function SchemaAudit() {
       grp('Range Components', rComps.size, issues, '`code` is the upsert key; plating lives here.')
     }
 
-    // ── range products ──────────────────────────────────────────────────────────
+    // ── range products — split by lifecycle so findings route to the right staff ──
     {
-      const issues = []
+      const buckets = {
+        mto:     { name: 'Range — Made to Order', hint: 'Made-to-order figurines: variants, MOQ/lead, BOM, and images.', total: 0, issues: [] },
+        stock:   { name: 'Range — Last Stock',    hint: 'Last Stock: components ARE the inventory — missing components shows the design SOLD OUT.', total: 0, issues: [] },
+        concept: { name: 'Range — Concept',       hint: 'Concept figurines: in development (not tooled).', total: 0, issues: [] },
+        retired: { name: 'Range — Retired',       hint: 'Retired figurines: sold out, excluded from the shops.', total: 0, issues: [] },
+      }
       rProducts.docs.forEach(d => {
         const p = d.data(), label = p.design_no ? `${p.design_no}${p.format_code ? '-' + p.format_code : ''}` : (p.design_name || d.id)
+        const st = String(p.status || '').trim()
+        const bucket = buckets[st === 'stock' ? 'stock' : st === 'concept' ? 'concept' : st === 'retired' ? 'retired' : 'mto']
+        bucket.total++
+        const issues = bucket.issues
         const variants = Array.isArray(p.variants) ? p.variants : (Array.isArray(p.finishes) ? p.finishes : [])
         if (!String(p.design_no || '').trim() && !String(p.design_code || '').trim()) add(issues, 'error', d.id, label, 'missing design_no / design_code', `/range/${d.id}`)
         if (!variants.length) add(issues, 'error', d.id, label, 'no variants', `/range/${d.id}`)
@@ -104,29 +127,23 @@ export default function SchemaAudit() {
         if (!isNum(p.lead_time_weeks) || num(p.lead_time_weeks) <= 0) add(issues, 'info', d.id, label, 'no assembly lead_time_weeks set', `/range/${d.id}`)
         const refs = Array.isArray(p.critical_components) ? p.critical_components : []
         addResult(issues, validateCriticalRefs(refs, lib), d.id, label, `/range/${d.id}`)
-        // Pre-launch: an orderable product (Last Stock or Made to Order) with no
-        // components can't compute buildable stock / lead / cost. Concept and
-        // retired products are exempt (not tooled / sold out).
-        const st = String(p.status || '').trim()
+        // Missing components: for Last Stock it means SOLD OUT (error); for MTO it
+        // stays sellable at a default lead but can't be costed (warning).
         if (refs.length === 0 && st !== 'concept' && st !== 'retired') {
           if (st === 'stock')
-            // Last Stock has no tooling/re-runs — availability is ONLY remaining part
-            // stock, so with no components it computes to 0 → shows SOLD OUT.
-            add(issues, 'error', d.id, label,
-              'Last Stock: no components — availability comes only from remaining part stock, so the shop shows it SOLD OUT. Add the components + their stock.',
-              `/range/${d.id}`)
+            add(issues, 'error', d.id, label, 'no components — availability comes only from remaining part stock, so the shop shows it SOLD OUT. Add the components + their stock.', `/range/${d.id}`)
           else
-            // Made to Order has tooling — it stays sellable on a default lead time,
-            // but with no BOM it can’t be costed and the lead time is only a guess.
-            add(issues, 'warning', d.id, label,
-              'Made to Order: no components/BOM — still sellable at a default lead time, but can’t be costed and the lead time is only a generic estimate. Add the tooling/critical parts.',
-              `/range/${d.id}`)
+            add(issues, 'warning', d.id, label, 'no components/BOM — still sellable at a default lead time, but can’t be costed and the lead time is only a generic estimate. Add the tooling/critical parts.', `/range/${d.id}`)
         }
         // No product images — the shop shows gallery[0] or a variant image.
         const hasImg = (Array.isArray(p.gallery) && p.gallery.length > 0) || variants.some(v => v && v.image)
         if (!hasImg && st !== 'retired') add(issues, 'warning', d.id, label, 'no product images (gallery empty)', `/range/${d.id}`)
       })
-      grp('Range Products (figurines)', rProducts.size, issues, 'Variants, MOQ/lead, component refs, and images.')
+      // Always surface the two orderable types; show Concept/Retired only if present.
+      grp(buckets.mto.name, buckets.mto.total, buckets.mto.issues, buckets.mto.hint)
+      grp(buckets.stock.name, buckets.stock.total, buckets.stock.issues, buckets.stock.hint)
+      if (buckets.concept.total) grp(buckets.concept.name, buckets.concept.total, buckets.concept.issues, buckets.concept.hint)
+      if (buckets.retired.total) grp(buckets.retired.name, buckets.retired.total, buckets.retired.issues, buckets.retired.hint)
     }
 
     // ── last-stock-only components (review list) ────────────────────────────────
@@ -212,7 +229,25 @@ export default function SchemaAudit() {
     }).catch(() => {})
   }
 
+  // Copy one group's FULL list (all rows, not the on-screen 100-row cap).
+  function copyGroup(g) {
+    const lines = [`## ${g.name} (${g.issues.length} issue${g.issues.length > 1 ? 's' : ''})`]
+    g.issues.forEach(it => lines.push(`- [${it.sev}] ${it.label} — ${it.msg}`))
+    navigator.clipboard?.writeText(lines.join('\n')).then(() => {
+      setCopiedGroup(g.name); setTimeout(() => setCopiedGroup(c => (c === g.name ? null : c)), 2000)
+    }).catch(() => {})
+  }
+
+  const toggle = name => setExpanded(s => { const n = new Set(s); n.has(name) ? n.delete(name) : n.add(name); return n })
+
   if (loading) return <LoadingBar />
+
+  // Tab categories present, the active one, per-category issue counts, and the
+  // groups shown under the active tab.
+  const cats = CATEGORY_ORDER.filter(c => groups.some(g => categoryOf(g.name) === c))
+  const active = cats.includes(activeCat) ? activeCat : cats[0]
+  const catCounts = groups.reduce((m, g) => { const c = categoryOf(g.name); m[c] = (m[c] || 0) + g.issues.length; return m }, {})
+  const visibleGroups = groups.filter(g => categoryOf(g.name) === active)
 
   return (
     <div className="p-4 md:p-6 max-w-4xl">
@@ -242,34 +277,67 @@ export default function SchemaAudit() {
         </div>
       )}
 
-      <div className="space-y-4">
-        {groups.map(g => (
-          <div key={g.name} className="card p-4">
-            <div className="flex items-center justify-between mb-1">
-              <h2 className="text-sm font-semibold text-gray-700">{g.name} <span className="font-normal text-ink-40">· {g.total} records</span></h2>
-              {g.issues.length === 0
-                ? <span className="text-xs text-green-600 inline-flex items-center gap-1"><CheckCircle2 size={13} /> clean</span>
-                : <span className="text-xs text-ink-50">{g.issues.length} issue{g.issues.length > 1 ? 's' : ''}</span>}
-            </div>
-            <p className="text-[11px] text-ink-40 mb-2">{g.hint}</p>
-            {g.issues.length > 0 && (
-              <div className="divide-y divide-gray-100">
-                {g.issues.slice(0, 100).map((it, i) => (
-                  <div key={i} className="py-1.5 flex items-start gap-2 text-sm">
-                    <SevIcon sev={it.sev} />
-                    <div className="min-w-0">
-                      {it.link
-                        ? <Link to={it.link} className="font-mono text-xs text-brand-600 hover:underline">{it.label}</Link>
-                        : <span className="font-mono text-xs text-ink-70">{it.label}</span>}
-                      <span className="text-ink-70"> — {it.msg}</span>
-                    </div>
-                  </div>
-                ))}
-                {g.issues.length > 100 && <p className="text-xs text-ink-40 pt-2">…and {g.issues.length - 100} more.</p>}
+      {cats.length > 0 && (
+        <div className="flex gap-1 border-b border-ivory-dark mb-4 overflow-x-auto overflow-y-hidden whitespace-nowrap">
+          {cats.map(c => (
+            <button key={c} onClick={() => setActiveCat(c)}
+              className={`px-3 py-2 text-sm font-medium -mb-px border-b-2 shrink-0 transition-colors ${
+                active === c ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-80'}`}>
+              {c}
+              {catCounts[c] > 0 && <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${active === c ? 'bg-brand-50 text-brand-700' : 'bg-ivory text-ink-50'}`}>{catCounts[c]}</span>}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {visibleGroups.map(g => {
+          const open = expanded.has(g.name)
+          const hasIssues = g.issues.length > 0
+          return (
+            <div key={g.name} className="card p-4">
+              <div className="flex items-center justify-between gap-3">
+                <button onClick={() => hasIssues && toggle(g.name)} className={`flex items-center gap-2 text-left min-w-0 ${hasIssues ? '' : 'cursor-default'}`}>
+                  {hasIssues
+                    ? (open ? <ChevronDown size={15} className="text-ink-40 shrink-0" /> : <ChevronRight size={15} className="text-ink-40 shrink-0" />)
+                    : <span className="w-[15px] shrink-0" />}
+                  <h2 className="text-sm font-semibold text-gray-700 truncate">{g.name} <span className="font-normal text-ink-40">· {g.total} records</span></h2>
+                </button>
+                <div className="flex items-center gap-3 shrink-0">
+                  {hasIssues ? (
+                    <>
+                      <span className="text-xs text-ink-50">{g.issues.length} issue{g.issues.length > 1 ? 's' : ''}</span>
+                      <button onClick={() => copyGroup(g)} className="text-xs text-brand-600 hover:underline inline-flex items-center gap-1" title="Copy this list (all rows) to send to staff">
+                        <Copy size={12} /> {copiedGroup === g.name ? 'Copied ✓' : 'Copy'}
+                      </button>
+                    </>
+                  ) : (
+                    <span className="text-xs text-green-600 inline-flex items-center gap-1"><CheckCircle2 size={13} /> clean</span>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
-        ))}
+              {open && hasIssues && (
+                <>
+                  <p className="text-[11px] text-ink-40 mt-2 mb-1">{g.hint}</p>
+                  <div className="divide-y divide-gray-100">
+                    {g.issues.slice(0, 100).map((it, i) => (
+                      <div key={i} className="py-1.5 flex items-start gap-2 text-sm">
+                        <SevIcon sev={it.sev} />
+                        <div className="min-w-0">
+                          {it.link
+                            ? <Link to={it.link} className="font-mono text-xs text-brand-600 hover:underline">{it.label}</Link>
+                            : <span className="font-mono text-xs text-ink-70">{it.label}</span>}
+                          <span className="text-ink-70"> — {it.msg}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {g.issues.length > 100 && <p className="text-xs text-ink-40 pt-2">…and {g.issues.length - 100} more — use Copy for the full list.</p>}
+                  </div>
+                </>
+              )}
+            </div>
+          )
+        })}
       </div>
     </div>
   )
