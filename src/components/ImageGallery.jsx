@@ -13,6 +13,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { Star, X, Download, Paperclip, FolderOpen, Sparkles, Check, AlertTriangle, Plus } from 'lucide-react'
 import { IMAGE_ORIENTATIONS, IMAGE_VISIBILITY, imageVisibility } from '../constants'
 import { enhanceProductImage } from '../enhanceImage'
+import ManualAdjust from './ManualAdjust'
 
 // Sample both images at 150×150 and count pixels that were clearly coloured in
 // the original but became near-white in the enhanced version — that's colour loss.
@@ -244,6 +245,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
   const [colorHint, setColorHint]         = useState('')
   const [recolorOpen, setRecolorOpen]     = useState(false)
   const [recolorPrompt, setRecolorPrompt] = useState('')
+  const [editTab, setEditTab]             = useState('ai')  // 'ai' | 'adjust'
 
   async function runEnhance(img, mode, recolorInstructions = '') {
     setEnh({ img, before: img.file_url, after: null, mode, busy: true, error: '', colorWarning: false })
@@ -419,7 +421,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                     onLightbox={setLightbox}
                     downloadPrefix={downloadPrefix}
                     firestorePath={firestorePath}
-                    onEnhance={enhanceable ? (img => setEnh({ img, before: img.file_url, after: null, mode: null, busy: false, error: '', colorWarning: false })) : null}
+                    onEnhance={enhanceable ? (img => { setEditTab('ai'); setEnh({ img, before: img.file_url, after: null, mode: null, busy: false, error: '', colorWarning: false }) }) : null}
                   />
                 ))}
               </div>
@@ -447,9 +449,40 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={() => !enh.busy && setEnh(null)}>
           <div className="bg-white rounded-xl max-w-3xl w-full p-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5"><Sparkles size={15} /> Enhance image — review before replacing</h3>
+              <h3 className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5"><Sparkles size={15} /> Edit image — review before replacing</h3>
               <button type="button" onClick={() => !enh.busy && setEnh(null)} className="text-gray-400 hover:text-gray-700"><X size={16} /></button>
             </div>
+
+            {/* Tabs: AI enhance vs manual adjust */}
+            <div className="flex gap-1 mb-3 border-b border-gray-100">
+              {[
+                { key: 'ai',     label: 'AI enhance' },
+                { key: 'adjust', label: 'Adjust (manual)' },
+              ].map(t => (
+                <button
+                  key={t.key}
+                  type="button"
+                  disabled={enh.busy}
+                  onClick={() => { setEditTab(t.key); setEnh(e => e ? { ...e, after: null, mode: null, colorWarning: false, error: '' } : e) }}
+                  className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                    editTab === t.key
+                      ? 'border-brand-600 text-brand-700'
+                      : 'border-transparent text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {editTab === 'adjust' ? (
+              <ManualAdjust
+                src={enh.before}
+                disabled={enh.busy}
+                onResult={dataUrl => setEnh(e => e ? { ...e, after: dataUrl, mode: 'adjust' } : e)}
+              />
+            ) : (
+            <>
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Original</p>
@@ -519,9 +552,15 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                 </p>
               </div>
             )}
+            </>
+            )}
+
+            {/* Shared footer — actions apply to whatever the active tab produced */}
             <div className="flex items-center gap-2 mt-4 flex-wrap">
-              <button type="button" disabled={enh.busy} onClick={() => runEnhance(enh.img, 'clean')} className="btn-secondary text-sm">Clean (white bg, faithful)</button>
-              <button type="button" disabled={enh.busy} onClick={() => runEnhance(enh.img, 'enhance')} className="btn-secondary text-sm">Enhance (lighting + colour)</button>
+              {editTab === 'ai' && <>
+                <button type="button" disabled={enh.busy} onClick={() => runEnhance(enh.img, 'clean')} className="btn-secondary text-sm">Clean (white bg, faithful)</button>
+                <button type="button" disabled={enh.busy} onClick={() => runEnhance(enh.img, 'enhance')} className="btn-secondary text-sm">Enhance (lighting + colour)</button>
+              </>}
               <div className="flex-1" />
               <button type="button" disabled={enh.busy} onClick={() => setEnh(null)} className="text-sm text-gray-500 hover:text-gray-800 px-2">Discard</button>
               <button type="button" disabled={enh.busy || !enh.after} onClick={saveAsNew} className="btn-secondary text-sm inline-flex items-center gap-1">
@@ -531,7 +570,11 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                 <Check size={14} /> {enh.busy ? 'Saving…' : 'Replace original'}
               </button>
             </div>
-            <p className="text-[11px] text-gray-400 mt-2">AI re-renders the image — check the shape and colours match the real product before keeping. The original isn’t changed until you Keep.</p>
+            <p className="text-[11px] text-gray-400 mt-2">
+              {editTab === 'ai'
+                ? 'AI re-renders the image — check the shape and colours match the real product before keeping. The original isn’t changed until you Keep.'
+                : 'Adjustments are applied exactly as shown. The original isn’t changed until you Keep.'}
+            </p>
           </div>
         </div>
       )}
