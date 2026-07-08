@@ -3,11 +3,18 @@
 > **Canonical plan lives in Obsidian:** `Crystocraft/Operations/Costing Tool - Project Plan.md`
 > and `Costing Tool - Issues & Bugs Log.md`. This in-repo copy is a convenience snapshot.
 
-## Current Status — V7.10 as of 2026-07-04
+## Current Status — V7.10 CLOSED as of 2026-07-08
 
-**Deployed to Netlify (live `09bd6f4`).** A pre-launch bug batch + Portal account
-management rework + a customer email notification system. Commit chain on `main`:
-`2a2ab7f` → `2a3fb2f` → `6a6b1af` → `a1b308d` → `8ae50b4` → `09bd6f4`.
+**Deployed to Netlify (live `0ad1f23`).** A pre-launch bug batch + Portal account
+management rework + customer email notification system + account activity tracking +
+an expanded, tabbed Schema Audit + an image-enhancement reliability fix. Commit chain on
+`main`: `2a2ab7f` → `2a3fb2f` → `6a6b1af` → `a1b308d` → `8ae50b4` → `09bd6f4` → `49594ec`
+→ `b631b12` → `4edc8a2` → `00761a7` → `0ad1f23`.
+
+**V7.11 begins fresh in a new conversation.** No open threads from V7.10 — all fixes
+verified via build + headless smoke tests and confirmed live (email system tested
+end-to-end by the owner). Next likely focus: **Supplier Module A-0** (spec held from
+earlier sessions), or a fresh bug/feature batch as raised.
 
 ### Portal account management (`CustomerAccounts.jsx` rewrite + new `AccountEdit.jsx`)
 - **Accounts list** is now a compact, clickable list showing the **linked CRM
@@ -53,25 +60,72 @@ management rework + a customer email notification system. Commit chain on `main`
 - **Domain `crystocraft.com` verified in Resend** (Tokyo region) via DKIM `resend._domainkey`
   + `send` MX/SPF at host DNS (existing mail untouched). **All 4 email types confirmed live.**
 
-### Image enhancement timeout fix (`ImageGallery.jsx`)
-- The `Unexpected token 'h'… JSON` error was a **Netlify edge-function timeout** (not a
-  token/quota limit) — large source photos made `gemini-2.5-flash-image` overrun the ~30s
-  edge cap, and Netlify's plain-text error broke `res.json()`. Fix: **downscale the source
-  to max 1536px / JPEG q0.9 and send inline** (skips the server fetch) before
-  `/api/enhance-image`, + defensive text-parse for a clear message on any residual timeout.
+### Image enhancement timeout fix — two rounds (`enhanceImage.js` new, `ImageGallery.jsx`, `RangeForm.jsx`)
+- The `Unexpected token 'h'… JSON` error is a **Netlify edge-function timeout** (not a
+  token/quota limit) — `gemini-2.5-flash-image` is a slow, unpredictable job running against
+  a hard **~30s edge-function ceiling**; when it loses that race, Netlify (not our code)
+  returns a plain-text error that broke a blind `res.json()`.
+- **Round 1** fixed only the corp-gift path (`ImageGallery.jsx`): downscale the source to
+  max 1536px/JPEG q0.9 and send inline (skips the server-side Storage fetch) + defensive
+  text-parse for a legible message.
+- **Round 2** found the **figurine editor (`RangeForm.jsx`) had its own separate, unfixed
+  copy** of the same handler — hence the bug "still happening often" even on a small
+  (1000px/500KB) image, since that path still blind-parsed JSON and had no downscale.
+  Extracted one shared **`enhanceProductImage()`** (`src/enhanceImage.js`) used by both
+  `RangeForm` and `ImageGallery` so they can't drift apart again; added a **one-time retry
+  on timeout** (the model is intermittently slow — a retry recovers most transient cases).
   Model output res (~1024px) is unchanged and Keep stores ≤1800px, so the **≥1000px
   standard is preserved**.
+- **Ceiling not eliminated** — a hard architectural limit remains (Netlify edge functions
+  cap at ~30s regardless of code). If timeouts recur often after this fix, the real cure is
+  moving enhancement to a Netlify **background function** (up to 15 min budget, client
+  polls for the result) or a small **Fly.io** service (long-running, no platform-imposed
+  time limit) — not attempted this round.
 
 ### Mobile layout fixes
 - `RangeCosting.jsx` crystal-BOM rows stack full-width on mobile (were clipped by
   `<main>`'s `overflow-x-hidden`, hiding the dropdowns).
-- `Components.jsx` tab strip is horizontal-swipe only; list rows stack so component names
-  aren't crushed by the fixed-width stock stepper.
+- `Components.jsx` tab strip is horizontal-swipe only (`overflow-x-auto overflow-y-hidden`);
+  list rows stack so component names aren't crushed by the fixed-width stock stepper.
+- `CustomerAccounts.jsx` Pending/Customers/Suspended/Admins tab strip is horizontal-scroll
+  only — was overflowing/clipping on narrow phones.
 
-### Schema Audit pre-launch check (`SchemaAudit.jsx`)
-- Flags orderable `range_products` with **empty `critical_components`**: Last Stock
-  (`status: 'stock'`) = error, Made to Order (else) = warning; concept/retired exempt.
-  New **Copy report** button exports the issue list as plain text.
+### Account activity log (`AccountEdit.jsx`, `Login.jsx`)
+- New **Activity** card on `/portal/accounts/:id`: **Registered** date, **Last sign-in**,
+  **Sign-in count**, and the account's full **enquiry history** (date, item count,
+  estimated total, status) — the strongest signal for "should I follow up with this
+  customer?". `Login.handleSignIn` stamps `last_login_at`/`login_count` on the `users` doc
+  (self-update, fire-and-forget, never blocks login). No backfill — login tracking starts
+  from this deploy; enquiry history is complete (pre-existing data).
+- Known limits (accepted): no IP/device/session-duration (would need Admin SDK); "last
+  sign-in" only reflects explicit logins, not session activity.
+
+### Schema Audit — pre-launch checks, review lists, and a tabbed/collapsible redesign (`SchemaAudit.jsx`)
+- **Missing-components check, split by consequence**: Last Stock with no components =
+  **error** ("availability comes only from remaining part stock → shop shows it SOLD OUT");
+  Made to Order with no components = **warning** ("sellable at a default lead time, but
+  can't be costed"). Concept/Retired exempt. (Confirmed with owner: Last Stock availability
+  IS component/part-stock-driven — this isn't a separate finished-units counter.)
+- **Missing-images checks**: range products with no `gallery[]` AND no variant image
+  (retired exempt) → warning; corp products with no `heroImage` (won't show a photo in
+  listings) → warning.
+- **"Last-stock-only components" review list** (info severity): components referenced
+  *only* by Last Stock/Retired designs (excludes any also used by an MTO or concept
+  product, and unused ones), each annotated with stock qty + lead time. Read-only —
+  the hint explicitly warns that deleting these breaks the SOLD OUT signal, since
+  last-stock availability is computed from component stock, not a separate counter.
+- **Category tabs + collapsible groups**: the ~10 groups (was one long stacked list) are
+  now organised under tabs — **Range Products, Range Components, Customers, Accounts,
+  Corp Gifts, Orders** — each with an issue-count badge; only present categories show a
+  tab. Each group card is **collapsed by default** (name/count/Copy only) and expands on
+  click, so the page reads as concise instead of overwhelming.
+- **Range Products split into separate cards** by lifecycle: **Range — Made to Order**,
+  **Range — Last Stock**, plus **Range — Concept** / **Range — Retired** shown only when
+  those exist — so findings route to the right staff by product type.
+- **Per-group Copy button** on every card (in addition to the page-level "Copy report"):
+  copies that group's **entire** issue list as plain text — including rows past the
+  on-screen 100-row display cap — so a colleague gets the full list even when truncated
+  on screen.
 
 ---
 
