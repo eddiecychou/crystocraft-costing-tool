@@ -8,7 +8,7 @@ import { db, storage } from '../firebase'
 import { ref as storageRef, deleteObject } from 'firebase/storage'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
-import EnquiryForm from './EnquiryForm'
+import EnquiryForm, { TOPICS } from './EnquiryForm'
 import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
@@ -41,6 +41,15 @@ const ENQUIRY_STATUS_DOT = {
   Won:       'bg-green-500',
   Lost:      'bg-red-500',
   'On Hold': 'bg-gray-400',
+}
+
+const RESOLVED_STATUSES = ['Completed', 'Lost']
+
+const TOPIC_BADGE = {
+  General:    'bg-gray-100 text-gray-500',
+  'New Order': 'bg-indigo-100 text-indigo-700',
+  Production: 'bg-orange-100 text-orange-700',
+  Support:    'bg-teal-100 text-teal-700',
 }
 
 const CRM_STATUS_STYLES = {
@@ -137,9 +146,13 @@ export default function CustomerDetail() {
   useEffect(() => {
     const q = query(collection(db, 'customers', id, 'enquiries'))
     return onSnapshot(q, snap => {
-      const sorted = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .sort((a, b) => (b.date?.seconds || 0) - (a.date?.seconds || 0))
+      const byDateDesc = (a, b) => (b.date?.seconds || 0) - (a.date?.seconds || 0)
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      // Active threads (not yet Completed/Lost) pinned above resolved history,
+      // so wrapping up one thread doesn't visually bury a still-open one.
+      const active   = all.filter(e => !RESOLVED_STATUSES.includes(e.status)).sort(byDateDesc)
+      const resolved = all.filter(e =>  RESOLVED_STATUSES.includes(e.status)).sort(byDateDesc)
+      const sorted = [...active, ...resolved]
       setEnquiries(sorted)
       // Auto-fill compose context from latest enquiry (once only)
       if (!contextAutoFilled && sorted.length > 0 && sorted[0].description) {
@@ -475,14 +488,34 @@ export default function CustomerDetail() {
           <p className="text-sm text-gray-400 text-center py-8">No interactions logged yet.</p>
         ) : (
           <div className="divide-y divide-gray-100">
-            {enquiries.map(enq => (
-              <div key={enq.id} className="px-5 py-4">
+            {(() => {
+              const hasResolved = enquiries.some(e => RESOLVED_STATUSES.includes(e.status))
+              const hasActive   = enquiries.some(e => !RESOLVED_STATUSES.includes(e.status))
+              const showSections = hasResolved && hasActive
+              let printedResolvedHeader = false
+              return enquiries.map((enq, i) => {
+                const isResolved = RESOLVED_STATUSES.includes(enq.status)
+                const showHeader = showSections && ((i === 0 && !isResolved) || (isResolved && !printedResolvedHeader))
+                if (isResolved) printedResolvedHeader = true
+                return (
+              <div key={enq.id}>
+                {showHeader && (
+                  <div className="px-5 pt-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50">
+                    {isResolved ? 'History' : 'Active'}
+                  </div>
+                )}
+              <div className="px-5 py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    {/* Date · Channel · Status */}
+                    {/* Date · Channel · Topic · Status */}
                     <div className="flex items-center gap-2 flex-wrap mb-1.5">
                       <span className="text-xs text-gray-500">{fmtDate(enq.date)}</span>
                       {enq.channel && <span className="text-xs text-gray-400">· {enq.channel}</span>}
+                      {enq.topic && (
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${TOPIC_BADGE[enq.topic] || 'bg-gray-100 text-gray-500'}`}>
+                          {enq.topic}
+                        </span>
+                      )}
                       {enq.status && (
                         <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${ENQUIRY_STATUS_STYLES[enq.status] || 'bg-gray-100 text-gray-500'}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${ENQUIRY_STATUS_DOT[enq.status] || 'bg-gray-400'}`} />
@@ -568,7 +601,10 @@ export default function CustomerDetail() {
                   </div>
                 </div>
               </div>
-            ))}
+              </div>
+                )
+              })
+            })()}
           </div>
         )}
       </div>

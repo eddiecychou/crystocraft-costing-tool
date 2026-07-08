@@ -7,6 +7,7 @@ import { loadBlogProducts } from '../productSource'
 
 const CHANNELS  = ['Email', 'WhatsApp', 'Alibaba', 'Personal WhatsApp']
 const STATUSES  = ['Open', 'Quoted', 'Confirmed', 'In Production', 'Completed', 'Lost', 'On Hold']
+export const TOPICS = ['General', 'New Order', 'Production', 'Support']
 
 function todayStr() {
   return new Date().toISOString().split('T')[0]
@@ -25,6 +26,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
   const [description, setDescription] = useState('')
   const [channel, setChannel]         = useState('')
   const [status, setStatus]           = useState('Open')
+  const [topic, setTopic]             = useState('General')
   const [followUpDate, setFollowUpDate] = useState('')
   const [outcomeNotes, setOutcomeNotes] = useState('')
   const [linkedQuoteIds, setLinkedQuoteIds] = useState([])
@@ -61,6 +63,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
     setDescription(enquiry.description || '')
     setChannel(enquiry.channel || '')
     setStatus(enquiry.status || 'Open')
+    setTopic(enquiry.topic || 'General')
     setFollowUpDate(tsToDateStr(enquiry.follow_up_date) || '')
     setOutcomeNotes(enquiry.outcome_notes || '')
     setLinkedQuoteIds(enquiry.linked_quote_ids || [])
@@ -133,6 +136,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
         product_interest: selectedProducts,
         channel,
         status,
+        topic,
         follow_up_date:   followUpDate ? Timestamp.fromDate(new Date(followUpDate)) : null,
         outcome_notes:    outcomeNotes.trim(),
         linked_quote_ids: linkedQuoteIds,
@@ -214,6 +218,27 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
               placeholder="e.g. Asked about crystal fabric roses for Arribas Disney — confirmed 3 sample colours"
               required
             />
+          </div>
+
+          {/* Topic — which thread this interaction belongs to */}
+          <div>
+            <label className="label">Topic <span className="text-gray-400 font-normal">(which thread is this?)</span></label>
+            <div className="flex flex-wrap gap-2">
+              {TOPICS.map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTopic(t)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                    topic === t
+                      ? 'border-brand-400 bg-brand-50 text-brand-700'
+                      : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Status */}
