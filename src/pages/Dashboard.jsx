@@ -5,6 +5,11 @@ import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
 import { normalizeCustomer } from '../domain/customer'
+import { orderStatusOf } from '../shipping'
+
+// Orders in these statuses are "in production" — committed and being made, but
+// not yet shipped. Closing out = set the order to Shipped (it then drops off).
+const IN_PRODUCTION_ORDER_STATUSES = ['confirmed', 'packing', 'ready']
 import {
   AlertTriangle, ClipboardList, Factory, Trophy, Calendar, Check,
   Store, ShoppingCart, Gift, Sparkles, Smartphone, X, RefreshCw, ChevronUp,
@@ -37,9 +42,11 @@ function isWithinDays(ts, days) {
   return d >= new Date(now.setHours(0, 0, 0, 0)) && d <= end
 }
 
-function isLast30Days(ts) {
-  if (!ts) return false
-  const d = ts.toDate ? ts.toDate() : new Date(ts.seconds * 1000)
+// Last-30-days window for an order_date stored as a 'YYYY-MM-DD' string.
+function isDateStrLast30Days(s) {
+  if (!s) return false
+  const d = new Date(s)
+  if (isNaN(d)) return false
   const now = new Date()
   const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
   return d >= start && d <= now
@@ -60,6 +67,7 @@ const QUOTE_STATUS_BADGE = {
 export default function Dashboard() {
   const [customers, setCustomers]       = useState([])
   const [quotes, setQuotes]             = useState([])
+  const [orders, setOrders]             = useState([])
   const [allEnquiries, setAllEnquiries] = useState([])
   const [loading, setLoading]           = useState(true)
   const [refreshKey, setRefreshKey]     = useState(0)
@@ -103,7 +111,10 @@ export default function Dashboard() {
     const unsubQuotes = onSnapshot(query(collection(db, 'client_quotes')), snap => {
       setQuotes(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     })
-    return () => { unsubCustomers(); unsubQuotes() }
+    const unsubOrders = onSnapshot(query(collection(db, 'orders')), snap => {
+      setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    })
+    return () => { unsubCustomers(); unsubQuotes(); unsubOrders() }
   }, [])
 
   useEffect(() => {
@@ -140,16 +151,17 @@ export default function Dashboard() {
 
   const customerMap = Object.fromEntries(customers.map(c => [c.id, c]))
 
-  // Latest enquiry per customer (by date descending)
-  const latestEnquiries = Object.values(
-    allEnquiries.reduce((acc, e) => {
-      const existing = acc[e.customerId]
-      if (!existing || (e.date?.seconds || 0) > (existing.date?.seconds || 0)) {
-        acc[e.customerId] = e
-      }
-      return acc
-    }, {})
-  )
+  // Dedupe a list to one enquiry per customer — the most recent by date.
+  // Applied *within* a single status class (see below), never globally.
+  function latestPerCustomer(list) {
+    return Object.values(
+      list.reduce((acc, e) => {
+        const ex = acc[e.customerId]
+        if (!ex || (e.date?.seconds || 0) > (ex.date?.seconds || 0)) acc[e.customerId] = e
+        return acc
+      }, {})
+    )
+  }
 
   // Apply category filter to any enquiry list
   function byCat(list) {
@@ -157,14 +169,42 @@ export default function Dashboard() {
     return list.filter(e => customerMap[e.customerId]?.crm_category === categoryFilter)
   }
 
-  // Stat card data — use latestEnquiries so each customer appears once with current status
-  const overdueList      = byCat(latestEnquiries.filter(e => e.follow_up_date && isOverdue(e.follow_up_date)))
-  const pipelineList     = byCat(latestEnquiries.filter(e => e.status === 'Open' || e.status === 'Quoted'))
-  const inProductionList = byCat(latestEnquiries.filter(e => e.status === 'In Production'))
-  const wonList          = byCat(latestEnquiries.filter(e => e.status === 'Confirmed' && isLast30Days(e.date)))
+  // Same, for orders (which key on customer_id, not customerId)
+  function byCatOrder(list) {
+    if (!categoryFilter) return list
+    return list.filter(o => customerMap[o.customer_id]?.crm_category === categoryFilter)
+  }
 
-  // Default follow-up list (overdue + next 7 days, latest per customer, category-filtered)
-  const priorityFollowUps = byCat(latestEnquiries
+  // Pipeline / New Orders are enquiry-based, each derived from the FULL enquiry
+  // set and deduped within its own status class — so a customer with a live
+  // production order AND a separate new-order enquiry appears independently in
+  // each. (Previously every customer was collapsed to a single "latest" enquiry
+  // first, which hid whichever thread wasn't the most recent.)
+  const pipelineList = latestPerCustomer(byCat(allEnquiries.filter(e => e.status === 'Open' || e.status === 'Quoted')))
+
+  // In Production and New Orders are both ORDER-based, not enquiry-based.
+  // Production/shipment is an order lifecycle (Confirmed → Packing → Ready →
+  // Shipped), updated in place on the order in the Shipping module — not a dated
+  // log entry you rewrite. An order drops off In Production the moment it's
+  // marked Shipped/Delivered.
+  const inProductionOrders = byCatOrder(
+    orders.filter(o => IN_PRODUCTION_ORDER_STATUSES.includes(o.status))
+  ).sort((a, b) => (b.order_date || '').localeCompare(a.order_date || ''))
+
+  // New Orders = actual orders received (by PI date) in the last 30 days — the
+  // real order record, not the enquiry's "Confirmed" pipeline signal.
+  const newOrdersList = byCatOrder(
+    orders.filter(o => isDateStrLast30Days(o.order_date))
+  ).sort((a, b) => (b.order_date || '').localeCompare(a.order_date || ''))
+
+  // Follow-ups are task-driven: any thread with an outstanding follow-up date is
+  // a distinct actionable item, so these are NOT collapsed per customer — a
+  // customer chasing two threads shows both. Filtering on follow_up_date first
+  // also means a follow-up on a non-latest thread is no longer hidden.
+  const overdueList = byCat(allEnquiries.filter(e => e.follow_up_date && isOverdue(e.follow_up_date)))
+
+  // Default follow-up list (overdue + next 7 days, per thread, category-filtered)
+  const priorityFollowUps = byCat(allEnquiries
     .filter(e => e.follow_up_date && (isOverdue(e.follow_up_date) || isWithinDays(e.follow_up_date, 7))))
     .sort((a, b) => (a.follow_up_date?.seconds || 0) - (b.follow_up_date?.seconds || 0))
     .slice(0, 10)
@@ -185,15 +225,15 @@ export default function Dashboard() {
     },
     quotes: {
       title: 'In Production', Icon: Factory,
-      empty: 'Nothing currently in production',
-      items: inProductionList.sort((a, b) => (b.date?.seconds || 0) - (a.date?.seconds || 0)),
-      type: 'enquiry',
+      empty: 'No orders currently in production',
+      items: inProductionOrders,
+      type: 'order',
     },
     won: {
       title: 'New Orders — Last 30 Days', Icon: Trophy,
-      empty: 'No confirmed orders in the last 30 days',
-      items: wonList.sort((a, b) => (b.date?.seconds || 0) - (a.date?.seconds || 0)),
-      type: 'enquiry',
+      empty: 'No orders received in the last 30 days',
+      items: newOrdersList,
+      type: 'order',
     },
   }
 
@@ -238,7 +278,7 @@ export default function Dashboard() {
         />
         <StatCard
           label="In Production"
-          value={inProductionList.length}
+          value={inProductionOrders.length}
           colour="blue"
           note="active orders"
           active={activeFilter === 'quotes'}
@@ -246,7 +286,7 @@ export default function Dashboard() {
         />
         <StatCard
           label="New Orders"
-          value={wonList.length}
+          value={newOrdersList.length}
           colour="green"
           note="last 30 days"
           active={activeFilter === 'won'}
@@ -297,6 +337,32 @@ export default function Dashboard() {
           </div>
           {filterConfig[activeFilter].items.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">{filterConfig[activeFilter].empty}</p>
+          ) : filterConfig[activeFilter].type === 'order' ? (
+            <div className="divide-y divide-gray-100">
+              {filterConfig[activeFilter].items.map(o => {
+                const cust = customerMap[o.customer_id]
+                const st = orderStatusOf(o.status)
+                const dateStr = o.order_date
+                  ? new Date(o.order_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+                  : '—'
+                return (
+                  <Link
+                    key={o.id}
+                    to={`/shipments/${o.id}`}
+                    className="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-gray-900">{cust?.company_name || o.customer_name || '—'}</p>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${st.style}`}>{st.label}</span>
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">{o.erp_pi_no ? `PI ${o.erp_pi_no}` : o.id}</p>
+                    </div>
+                    <p className="text-xs text-gray-400 shrink-0">{dateStr}</p>
+                  </Link>
+                )
+              })}
+            </div>
           ) : filterConfig[activeFilter].type === 'quote' ? (
             <div className="divide-y divide-gray-100">
               {filterConfig[activeFilter].items.map(q => {

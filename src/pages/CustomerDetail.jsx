@@ -8,7 +8,7 @@ import { db, storage } from '../firebase'
 import { ref as storageRef, deleteObject } from 'firebase/storage'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
-import EnquiryForm, { TOPICS } from './EnquiryForm'
+import EnquiryForm from './EnquiryForm'
 import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
@@ -30,27 +30,29 @@ const STATUS_STYLES = {
 const ENQUIRY_STATUS_STYLES = {
   Open:      'bg-amber-100 text-amber-700',
   Quoted:    'bg-blue-100 text-blue-700',
-  Won:       'bg-green-100 text-green-700',
+  Confirmed: 'bg-green-100 text-green-700',
   Lost:      'bg-red-100 text-red-600',
   'On Hold': 'bg-gray-100 text-gray-500',
+  // Legacy statuses (no longer offered) — kept so old records still render
+  Won:            'bg-green-100 text-green-700',
+  Completed:      'bg-teal-100 text-teal-700',
+  'In Production':'bg-purple-100 text-purple-700',
 }
 
 const ENQUIRY_STATUS_DOT = {
   Open:      'bg-amber-400',
   Quoted:    'bg-blue-500',
-  Won:       'bg-green-500',
+  Confirmed: 'bg-green-500',
   Lost:      'bg-red-500',
   'On Hold': 'bg-gray-400',
+  Won:            'bg-green-500',
+  Completed:      'bg-teal-500',
+  'In Production':'bg-purple-500',
 }
 
-const RESOLVED_STATUSES = ['Completed', 'Lost']
-
-const TOPIC_BADGE = {
-  General:    'bg-gray-100 text-gray-500',
-  'New Order': 'bg-indigo-100 text-indigo-700',
-  Production: 'bg-orange-100 text-orange-700',
-  Support:    'bg-teal-100 text-teal-700',
-}
+// Terminal statuses → sorted into "History" below the active pipeline.
+// Confirmed = won (now an Order); Completed/Won kept for legacy records.
+const RESOLVED_STATUSES = ['Confirmed', 'Won', 'Completed', 'Lost']
 
 const CRM_STATUS_STYLES = {
   Active:   'bg-green-100 text-green-700',
@@ -507,15 +509,10 @@ export default function CustomerDetail() {
               <div className="px-5 py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    {/* Date · Channel · Topic · Status */}
+                    {/* Date · Channel · Status */}
                     <div className="flex items-center gap-2 flex-wrap mb-1.5">
                       <span className="text-xs text-gray-500">{fmtDate(enq.date)}</span>
                       {enq.channel && <span className="text-xs text-gray-400">· {enq.channel}</span>}
-                      {enq.topic && (
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${TOPIC_BADGE[enq.topic] || 'bg-gray-100 text-gray-500'}`}>
-                          {enq.topic}
-                        </span>
-                      )}
                       {enq.status && (
                         <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${ENQUIRY_STATUS_STYLES[enq.status] || 'bg-gray-100 text-gray-500'}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${ENQUIRY_STATUS_DOT[enq.status] || 'bg-gray-400'}`} />
