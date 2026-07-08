@@ -138,7 +138,12 @@ export async function getOrderLines(orderId) {
 }
 
 // Create an order with its lines in one batch. Returns the new order id.
-export async function createOrderWithLines(orderData, lines) {
+// Returns the new order id synchronously (available before the write lands) plus
+// the commit promise. With persistentLocalCache the write is durable in the
+// local cache immediately and syncs in the background, so callers can navigate
+// optimistically instead of blocking on the server ack (which can hang if the
+// network stalls — the doc is already "saved" locally either way).
+export function createOrderWithLines(orderData, lines) {
   const orderRef = doc(ORDERS())
   const batch = writeBatch(db)
   batch.set(orderRef, { ...normOrder(orderData), createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
@@ -147,8 +152,7 @@ export async function createOrderWithLines(orderData, lines) {
     if (n.line_no == null) n.line_no = i + 1
     batch.set(doc(LINES(orderRef.id)), n)
   })
-  await batch.commit()
-  return orderRef.id
+  return { id: orderRef.id, commit: batch.commit() }
 }
 
 export async function updateOrder(id, patch) {

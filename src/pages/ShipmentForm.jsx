@@ -21,6 +21,19 @@ const blankHeader = {
   subtotal: '', discount_pct: '', discount_amount: '', total_amount: '',
 }
 
+// Firestore writes with persistentLocalCache resolve only when the SERVER acks —
+// but the write is already durable in the local cache and syncs on its own. So we
+// don't block the UI forever on the round-trip: proceed after a short grace period
+// while still surfacing an error if the write rejects quickly (e.g. permissions).
+// A late rejection after we've moved on is swallowed (the .catch below).
+function raceWrite(promise, ms = 6000) {
+  promise.catch(() => {})   // prevent an unhandled rejection if it settles late
+  return Promise.race([
+    promise.then(() => false),                               // committed: not pending
+    new Promise(resolve => setTimeout(() => resolve(true), ms)), // timed out: assume cached
+  ])
+}
+
 export default function ShipmentForm() {
   const { id } = useParams()
   const isEdit = Boolean(id)
@@ -234,7 +247,8 @@ export default function ShipmentForm() {
       }
       const v = validateOrder(orderData, lines)
       if (!v.ok) { setExtractError(v.errors.map(x => x.message).join(' · ')); setSaving(false); return }
-      const orderId = await createOrderWithLines(orderData, lines)
+      const { id: orderId, commit } = createOrderWithLines(orderData, lines)
+      await raceWrite(commit)   // throws only on a fast rejection; otherwise proceeds
       navigate(`/shipments/${orderId}`)
     } catch (err) {
       setExtractError(err.message || 'Could not create shipment.')
@@ -249,18 +263,21 @@ export default function ShipmentForm() {
     try {
       const v = validateOrder(header, lines)
       if (!v.ok) { setExtractError(v.errors.map(x => x.message).join(' · ')); setSaving(false); return }
-      await updateOrder(id, {
-        customer_id: header.customer_id, customer_name: header.customer_name,
-        erp_pi_no: header.erp_pi_no, erp_so_no: header.erp_so_no,
-        order_date: header.order_date || null,
-        currency: header.currency, incoterm: header.incoterm, status: header.status,
-        destination: header.destination, notes: header.notes,
-        subtotal:        header.subtotal        !== '' ? parseFloat(header.subtotal)        : null,
-        discount_pct:    header.discount_pct    !== '' ? parseFloat(header.discount_pct)    : null,
-        discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : null,
-        total_amount:    header.total_amount    !== '' ? parseFloat(header.total_amount)    : null,
-      })
-      await saveOrderLines(id, lines)
+      const write = Promise.all([
+        updateOrder(id, {
+          customer_id: header.customer_id, customer_name: header.customer_name,
+          erp_pi_no: header.erp_pi_no, erp_so_no: header.erp_so_no,
+          order_date: header.order_date || null,
+          currency: header.currency, incoterm: header.incoterm, status: header.status,
+          destination: header.destination, notes: header.notes,
+          subtotal:        header.subtotal        !== '' ? parseFloat(header.subtotal)        : null,
+          discount_pct:    header.discount_pct    !== '' ? parseFloat(header.discount_pct)    : null,
+          discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : null,
+          total_amount:    header.total_amount    !== '' ? parseFloat(header.total_amount)    : null,
+        }),
+        saveOrderLines(id, lines),
+      ])
+      await raceWrite(write)   // throws only on a fast rejection; otherwise proceeds
       navigate('/shipments')
     } catch (err) {
       setExtractError(err.message || 'Could not save shipment.')
