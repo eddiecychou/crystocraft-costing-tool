@@ -129,6 +129,39 @@ export default function SchemaAudit() {
       grp('Range Products (figurines)', rProducts.size, issues, 'Variants, MOQ/lead, component refs, and images.')
     }
 
+    // ── last-stock-only components (review list) ────────────────────────────────
+    {
+      const issues = []
+      // Resolve each critical-component ref to a component code, and record the
+      // status of every product that references it.
+      const libById = new Map(rComps.docs.map(d => [d.id, String(d.data().code || '').trim().toUpperCase()]))
+      const compStatuses = new Map()   // code -> Set<product status>
+      rProducts.docs.forEach(d => {
+        const p = d.data()
+        const st = String(p.status || '').trim() || 'active'
+        const refs = Array.isArray(p.critical_components) ? p.critical_components : []
+        refs.forEach(r => {
+          const code = String(r.code || libById.get(r.id) || '').trim().toUpperCase()
+          if (!code) return
+          if (!compStatuses.has(code)) compStatuses.set(code, new Set())
+          compStatuses.get(code).add(st)
+        })
+      })
+      const NO_RERUN = new Set(['stock', 'retired'])   // last-stock lifecycle
+      rComps.docs.forEach(d => {
+        const c = d.data()
+        const code = String(c.code || '').trim().toUpperCase()
+        const sts = code ? compStatuses.get(code) : null
+        if (!sts || sts.size === 0) return               // unused by any product — separate concern
+        if (![...sts].every(s => NO_RERUN.has(s))) return // also used by MTO/concept — keep
+        const stock = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
+        const lead = (c.lead_time_weeks != null && c.lead_time_weeks !== '') ? `${c.lead_time_weeks}wk lead` : 'no lead time'
+        add(issues, 'info', d.id, code || c.name || d.id, `used only by last-stock/retired designs — stock ${stock}, ${lead}`, '/components')
+      })
+      grp('Last-stock-only components', rComps.size, issues,
+        'Components referenced only by Last Stock / Retired designs — review only. Deleting these makes those designs show SOLD OUT (last-stock availability comes from component stock).')
+    }
+
     // ── corp products ───────────────────────────────────────────────────────────
     {
       const issues = []
