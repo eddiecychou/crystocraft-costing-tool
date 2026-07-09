@@ -487,7 +487,14 @@ export default function PackingListEditor({ orderId, orderLines }) {
       const count = parseInt(c.carton_count) || 1
       totalCartons += count
       totalCbm += (derivedCbm(c) || 0) * count
-      totalGw  += ((parseFloat(c.gw_kg_actual) ?? parseFloat(c.gw_kg_standard) ?? 0)) * count
+      // parseFloat('') / parseFloat(undefined) is NaN, not null/undefined, so
+      // `??` never falls through to the next field — an unset gw_kg_actual (an
+      // empty string, the normal "not entered" state) poisoned the whole running
+      // total to NaN. Explicitly check finiteness at each fallback step instead.
+      const actualGw = parseFloat(c.gw_kg_actual)
+      const stdGw = parseFloat(c.gw_kg_standard)
+      const gw = Number.isFinite(actualGw) ? actualGw : (Number.isFinite(stdGw) ? stdGw : 0)
+      totalGw += gw * count
     }
     return { totalCartons, totalCbm: Math.round(totalCbm * 1e4) / 1e4, totalGw: Math.round(totalGw * 10) / 10 }
   }, [cartons])
