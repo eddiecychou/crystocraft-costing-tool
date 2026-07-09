@@ -3,6 +3,191 @@
 > **Canonical plan lives in Obsidian:** `Crystocraft/Operations/Costing Tool - Project Plan.md`
 > and `Costing Tool - Issues & Bugs Log.md`. This in-repo copy is a convenience snapshot.
 
+## Current Status — V7.11 CLOSED as of 2026-07-09
+
+**Deployed to Netlify (live `4e9af3f`).** CRM pipeline/fulfilment split + a
+manual (non-AI) image editor with crop/rotate + a new **Production module**
+(renamed from Shipping) carrying a light-MRP Component Requirements report +
+a real bug hunt across PI save/reconciliation/packing that turned up and
+fixed four separate root causes. Commit chain on `main`: `6153ceb` →
+`5363988` → `1e51845` → `149a3c5` → `8e37f83` → `1cbfcf6` → `a8c3e44` →
+`97a3143` → `8ce7c3e` → `cc82008` → `be856c3` → `21a9473` → `85588bd` →
+`7c27f03` → `1d3e4b9` → `d6ac1ff` → `ba9e600` → `4e9af3f`.
+
+**V7.12 begins fresh in a new conversation.** No open threads from V7.11 —
+every fix in this batch was headlessly tested (pure-logic modules) or
+build-verified; the handful of purely-visual pieces (crop drag feel, table
+layout) were confirmed live by the owner. Next likely focus: **MRP Phase 2 —
+deduct component stock on order confirmation** (idempotency + negative-stock
+decisions flagged, not yet made), or a fresh bug/feature batch as raised.
+
+### CRM: sales pipeline vs. order fulfilment (Dashboard, CustomerDetail, EnquiryForm)
+- **Root problem:** a customer with a live production order *and* a separate
+  new-order enquiry only showed one of the two on the Dashboard — every
+  customer was collapsed to their single "latest" enquiry before any stat
+  card saw the data, so whichever thread wasn't newest was silently hidden.
+  Separately, production status lived on a dated interaction-log entry, so
+  "closing" a production job meant editing history — which a time-based log
+  should never require.
+- **Fix — Dashboard cards now read from the right source per concern:**
+  **In Production** and **New Orders — 30 Days** are now **order-based**
+  (`orders` collection, status Confirmed/Packing/Ready and PI date in the
+  last 30 days respectively) instead of enquiry-based, so a customer can
+  appear in both cards independently and closing a job = marking its order
+  **Shipped** (in the Shipping/Production module) — no log editing, ever.
+  **Pipeline** stays enquiry-based but is now deduped *within* each status
+  class rather than globally, so parallel threads never hide one another.
+  Follow-ups are task-driven (any thread with a due date surfaces, latest or
+  not).
+- **Interaction-log status redesign:** trimmed to a pure sales-pipeline
+  vocabulary — **Open / Quoted / Confirmed / Lost / On Hold** — dropping
+  **In Production** and **Completed** (those are fulfilment, now owned
+  exclusively by the Order). Confirmed/legacy terminal states sort into a
+  **History** section below still-active threads (active pinned on top,
+  each group newest-first). Fixed a pre-existing bug where **Confirmed**
+  rendered as a plain grey badge instead of green ("won").
+- **Topic tags** (thread labels: General/New Order/Production/Support) were
+  built, shipped, then removed same-session per owner feedback ("very
+  distracting") — the active/history pinning and dashboard fix, which
+  actually solved the reported problem, were kept.
+- **Lesson:** a flat, date-sorted log conflates *when something happened*
+  with *what state it's in* — resolving one thread's status must never be
+  able to visually or structurally bury a different, still-open thread.
+  Production/fulfilment state belongs on the entity it describes (the
+  Order), not on a diary entry about it.
+
+### Image editor: manual Adjust tab + crop/rotate (non-AI)
+Built in response to the AI enhance/background tool being unpredictable,
+slow (~30s edge-function ceiling), and overkill for small touch-ups —
+deterministic pixel edits don't need AI at all.
+- **Stage 1 — Adjustments** (`src/components/ManualAdjust.jsx`, new): live
+  Brightness / Contrast / Saturation / Warmth / Sharpness sliders with
+  before/after preview and Reset, rendered via canvas (`ctx.filter` for the
+  first three, hand-written pixel passes for warmth + unsharp-mask
+  sharpen — both covered by headless pixel-math tests). Wired as an
+  **"Adjust (manual)"** tab alongside AI enhance in **both** image editors:
+  the shared corp-gift/component `ImageGallery` and the figurine `RangeForm`
+  (which has its own separate modal — would otherwise have been missed).
+- **Stage 2 — Crop & rotate**: added `react-easy-crop` (interactive drag
+  delegated to a proven library) + a new pure `src/imageCrop.js`
+  (`getCroppedCanvas`, rotation/bounding-box math — headlessly tested) for
+  aspect presets (Square/4:3/3:4/16:9/Original), 90° rotate, and a ±45°
+  straighten slider. **Two follow-up bugs caught after initial ship:**
+  the library's required CSS was never imported (cropper mounted unstyled,
+  undraggable) — fixed with one import line; and a `fetch(src)` CORS block
+  meant the editor couldn't load images at all — fixed by loading via a
+  `crossOrigin` `<img>` (the same approach the AI path already used) with a
+  same-origin `/api/image-proxy` fallback.
+- **`image-proxy` allowlist widened** to `crystocraft.com` (WordPress) in
+  addition to Firebase Storage — figurine photos imported from the
+  catalogue blog live there and the proxy fallback was 403-ing on them.
+- **Corp-gift component (BOM) images could never reach any of this** —
+  `ComponentDetail.jsx`'s `ImageGallery` never had the `enhanceable` prop set
+  (unlike the main product gallery), so those images had no edit button at
+  all. Added.
+- **Scroll position preserved across an image edit** (`ImageGallery.jsx`):
+  captured on open, restored on close (Keep/Save-as-new/Discard/✕/backdrop),
+  so replacing one image doesn't bounce the whole product page back to the
+  top — lets you edit a gallery one image at a time.
+- **Corp-gift product list** (`Products.jsx`) ported the figurine list's
+  proven **id-based `scrollIntoView`** restore (was a fragile pixel
+  `scrollTop`) — returning from a deep edit (e.g. Pricing) now lands back on
+  the exact product card instead of the top of the list.
+
+### Production module (renamed from Shipping) + Component Requirements (light MRP v1)
+- **"Shipping" → "Production"** label rename (nav + page heading) — this
+  module is now more production-planning than shipping-only. Route path
+  `/shipping` and the internal `ShipmentForm` component name were
+  deliberately left alone (invisible plumbing; renaming risks breaking
+  links for no user benefit). Later, all remaining user-facing "Shipment"
+  wording on the order page (title fallback, back link, save/delete
+  buttons, error messages) was cleaned up to "Order" for the same reason —
+  a half-renamed term is more confusing than an unrenamed one.
+- **New "Requirements" tab** (`src/pages/ComponentRequirements.jsx` +
+  pure engine `src/mrp.js`): select one or more confirmed PIs → explode
+  each figurine line into its critical components (plating-aware, parsed
+  from the item code) → aggregate gross requirement per component code
+  across all lines/PIs → deduct current stock → shortage-to-order report,
+  worst-first, with a shortages-only toggle and CSV export. **Read-only v1
+  — no stock is mutated** (deduct-on-confirm is Phase 2, deferred by design
+  per owner: no separate WIP-warehouse/reservation layer, matching the
+  "revert to a single stock number, deduct on confirm" decision).
+- **"Always needed" BOM scope** (`all_variants` flag, `criticalComponents.js`):
+  fixed a real modelling gap — some figurine parts are fixed-finish but
+  required on *every* variant (e.g. a gun-colour base), which the existing
+  plating-inference logic wrongly treated as "only for that plating's SKU"
+  and filtered out of other-plating orders. The new explicit scope overrides
+  the inferred plating; centralized into `refScopePlating`/`refApplies` so
+  MRP, `buildableFromComponents`, and `rangeCosting` all agree (previously
+  each had its own copy of the plating filter).
+- **"Not in product range" flagged loudly**: a PI line whose item code looks
+  like a real figurine SKU but matches no product now surfaces in a **red**
+  panel (code · qty · PI · description) instead of disappearing into the
+  same quiet bucket as genuine non-figurine (corp-gift/charge) lines.
+- **Reconciliation matcher bug (the real root cause of most of the above
+  looking broken):** `matchRangeProduct` matched on the **design core only**
+  and ignored `format_code`, so two different products sharing a design
+  number (e.g. `D0355-001` "Mini Rose Freestand" vs `D0355-230` "Mini Rose
+  with Crystal Bible") collapsed to one match key and picked a match
+  arbitrarily — reconciliation had been silently linking some PI lines to
+  the wrong product. Unified reconciliation with the same format-aware
+  `matchProductCode` already used by the stock-list import and MRP (one
+  matcher, no drift); `loadRangeProductsLite` was also missing
+  `format_code` entirely, which would have silently defeated the fix.
+  MRP itself is robust to this even for **already-saved** bad matches — it
+  re-derives each line's product from the item code (unless the user
+  explicitly confirmed a manual match).
+- **"Re-match" button** on PI reconciliation: re-runs auto-match with the
+  corrected matcher on an already-loaded PI, preserving any line the user
+  classified manually — the one-click fix for PIs matched before this
+  patch.
+- **Blank product names in reconciliation + MRP:** range products have no
+  dedicated name field — the display name is entered via **Description**
+  (confirmed by RangeForm's own code comment: no separate name input
+  exists). `loadRangeProductsLite` built its name from legacy
+  `design_name`/`name` fields only, never checking `description`, so any
+  recently-created product came back blank and reconciliation showed the
+  confusing literal word **"matched"** instead of a name. Fixed in both
+  `loadRangeProductsLite` (reconciliation) and a new shared `productLabel()`
+  helper in `mrp.js` (the "Used by" column had the identical gap).
+- **Orders tab** (was "Shipments"): rebuilt as a proper staff-facing table
+  — Order Date · PI # · SO # · Customer · Currency · Order Value · Status —
+  sorted by order date, row-click to open.
+- **Order Value showing blank for some PIs:** the on-screen "Order Totals"
+  card computes a subtotal/discount/total live from line items but never
+  persisted it — `total_amount`/`subtotal` only got written when the PI
+  extraction happened to capture a stated total from the PDF. Extracted the
+  calculation into a shared `computeOrderTotals()` and both save paths now
+  fall back to it when no PI-stated total exists. Existing blank orders
+  need one re-save (open + Save Changes) to pick it up.
+- **Packing list showing `NaN kg GW`:** `parseFloat('') ?? parseFloat(x) ?? 0`
+  doesn't work as a fallback chain — `parseFloat` returns `NaN`, not
+  `null`/`undefined`, so `??` never triggers and an unset "actual weight"
+  (the normal not-yet-entered state) poisoned the whole shipment's running
+  total. Fixed with explicit `Number.isFinite` checks at each step.
+
+### PI Save button hanging forever
+Reported as "button hangs but the PI **is** saved" — two distinct root
+causes, found in sequence:
+1. **First fix (real, but not the reported bug):** with `persistentLocalCache`,
+   a Firestore write promise resolves only on server ack, though the write
+   is durable in the local cache immediately — a network stall could hang
+   the button forever even though the order was safely cached. Added a
+   `raceWrite` helper (proceed after a 6s grace period; still surface a fast
+   rejection as an error).
+2. **Actual cause:** `/shipments/new` and `/shipments/:id` render the same
+   `<ShipmentForm>` with no `key`, so React **reuses the component instance**
+   across the create → edit navigation instead of remounting it — the
+   `saving` state flag, which relied on unmount to reset, simply never
+   cleared. Fixed with a `finally { setSaving(false) }`.
+- **Lesson:** the first fix was a plausible, well-tested guess that didn't
+  match the actual symptom closely enough — confirmed live by the owner as
+  still broken, which is what surfaced the real (structural, not
+  network-timing) cause. Worth remembering: "hangs but the data is saved"
+  is more often a stuck UI state than a stuck promise.
+
+---
+
 ## Current Status — V7.10 CLOSED as of 2026-07-08
 
 **Deployed to Netlify (live `0ad1f23`).** A pre-launch bug batch + Portal account
