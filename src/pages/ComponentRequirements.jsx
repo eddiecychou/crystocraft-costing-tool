@@ -32,6 +32,7 @@ export default function ComponentRequirements() {
   const [result, setResult] = useState(null)
   const [computing, setComputing] = useState(false)
   const [onlyShort, setOnlyShort] = useState(true)
+  const [showAll, setShowAll] = useState(false)   // false = live-demand orders only
 
   // Load products (with BOMs) + component library once.
   useEffect(() => {
@@ -53,6 +54,14 @@ export default function ComponentRequirements() {
   const sortedOrders = useMemo(
     () => [...orders].sort((a, b) => (b.order_date || '').localeCompare(a.order_date || '')),
     [orders],
+  )
+  // Default view = live-demand orders only (Confirmed/Packing/Ready), so the
+  // picker opens showing exactly the orders you'd plan against — not 11 already-
+  // shipped/delivered ones buried in a scroll box. Toggle reveals everything.
+  const demandCount = useMemo(() => sortedOrders.filter(o => DEMAND.includes(o.status)).length, [sortedOrders])
+  const visibleOrders = useMemo(
+    () => (showAll ? sortedOrders : sortedOrders.filter(o => DEMAND.includes(o.status))),
+    [sortedOrders, showAll],
   )
 
   function toggle(id) {
@@ -98,17 +107,26 @@ export default function ComponentRequirements() {
       {/* Order picker */}
       <div className="card mb-4">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5"><Boxes size={15} /> Orders ({selected.size} selected · {sortedOrders.length} total)</h2>
+          <h2 className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5">
+            <Boxes size={15} /> Orders
+            <span className="font-normal text-gray-400">· {selected.size} selected · showing {visibleOrders.length} of {sortedOrders.length}</span>
+          </h2>
           <div className="flex gap-3 text-xs">
-            <button onClick={() => setSelected(new Set(orders.filter(o => DEMAND.includes(o.status)).map(o => o.id)))} className="text-brand-600 hover:underline">Confirmed +</button>
+            <button onClick={() => setShowAll(s => !s)} className="text-brand-600 hover:underline">
+              {showAll ? 'Confirmed + only' : `Show all (${sortedOrders.length})`}
+            </button>
+            <button onClick={() => setSelected(new Set(orders.filter(o => DEMAND.includes(o.status)).map(o => o.id)))} className="text-brand-600 hover:underline">Select demand</button>
             <button onClick={() => { setSelected(new Set()); setResult(null) }} className="text-gray-500 hover:underline">Clear</button>
           </div>
         </div>
-        {sortedOrders.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">No orders yet.</p>
+        {visibleOrders.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">
+            {sortedOrders.length === 0 ? 'No orders yet.' : `No confirmed / packing / ready orders. `}
+            {sortedOrders.length > 0 && <button onClick={() => setShowAll(true)} className="text-brand-600 hover:underline">Show all {sortedOrders.length}</button>}
+          </p>
         ) : (
-          <div className="max-h-64 overflow-y-auto divide-y divide-gray-100">
-            {sortedOrders.map(o => {
+          <div className="divide-y divide-gray-100">
+            {visibleOrders.map(o => {
               const st = orderStatusOf(o.status)
               return (
                 <label key={o.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 cursor-pointer">
