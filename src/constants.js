@@ -40,6 +40,65 @@ export const CATEGORIES = [
 
 export const CURRENCIES = ['RMB', 'HKD', 'USD', 'EUR']
 
+// ── Purchase Order module ────────────────────────────────────────────────────
+// Payment terms seen on the real ERP POs (月結30天 net-30, cash, deposit splits).
+// Free-text is still allowed on the PO, these are just the quick-pick defaults.
+export const PO_PAYMENT_TERMS = [
+  { value: 'net30',   label: 'Net 30 (月結30天)' },
+  { value: 'net60',   label: 'Net 60 (月結60天)' },
+  { value: 'cash',    label: 'Cash (現金)' },
+  { value: 'deposit', label: 'Deposit + balance (訂金+尾數)' },
+  { value: 'prepaid', label: 'Prepaid (預付)' },
+]
+export const PO_PAYMENT_TERM_LABEL = Object.fromEntries(PO_PAYMENT_TERMS.map(t => [t.value, t.label]))
+
+// Purchase units — most parts are pcs; a few ERP items buy by length/weight.
+export const PO_UNITS = ['pcs', 'set', 'm', 'kg', 'roll', 'sheet', 'pair']
+
+export const PO_STATUSES = [
+  { value: 'draft',  label: 'Draft',  badge: 'bg-gray-100 text-gray-600' },
+  { value: 'issued', label: 'Issued', badge: 'bg-emerald-100 text-emerald-700' },
+]
+
+// Spell a money amount into English words for the PO footer (e.g. "SAY HONG
+// KONG DOLLARS SIX THOUSAND SEVEN HUNDRED NINETY ONLY"). Cents rendered as
+// "AND xx CENTS". Whole-number ERP POs are the norm, but we handle decimals.
+const CURRENCY_WORDS = {
+  HKD: 'HONG KONG DOLLARS', USD: 'US DOLLARS', RMB: 'REN MIN BI', EUR: 'EURO',
+}
+export function amountInWords(amount, currency) {
+  const n = Number(amount)
+  if (!Number.isFinite(n)) return ''
+  const ones = ['', 'ONE', 'TWO', 'THREE', 'FOUR', 'FIVE', 'SIX', 'SEVEN', 'EIGHT', 'NINE',
+    'TEN', 'ELEVEN', 'TWELVE', 'THIRTEEN', 'FOURTEEN', 'FIFTEEN', 'SIXTEEN', 'SEVENTEEN', 'EIGHTEEN', 'NINETEEN']
+  const tens = ['', '', 'TWENTY', 'THIRTY', 'FORTY', 'FIFTY', 'SIXTY', 'SEVENTY', 'EIGHTY', 'NINETY']
+  const under1000 = num => {
+    let w = ''
+    if (num >= 100) { w += ones[Math.floor(num / 100)] + ' HUNDRED'; num %= 100; if (num) w += ' ' }
+    if (num >= 20) { w += tens[Math.floor(num / 10)]; num %= 10; if (num) w += ' ' }
+    if (num > 0) w += ones[num]
+    return w
+  }
+  const whole = Math.floor(Math.abs(n))
+  const cents = Math.round((Math.abs(n) - whole) * 100)
+  let words = ''
+  if (whole === 0) words = 'ZERO'
+  else {
+    const scales = [[1e9, 'BILLION'], [1e6, 'MILLION'], [1e3, 'THOUSAND'], [1, '']]
+    let rem = whole
+    for (const [value, name] of scales) {
+      if (rem >= value) {
+        const chunk = Math.floor(rem / value)
+        words += (words ? ' ' : '') + under1000(chunk) + (name ? ' ' + name : '')
+        rem %= value
+      }
+    }
+  }
+  const cur = CURRENCY_WORDS[currency] || (currency || '')
+  const centsPart = cents > 0 ? ` AND ${under1000(cents)} CENTS` : ''
+  return `SAY ${cur} ${words}${centsPart} ONLY`.replace(/\s+/g, ' ').trim()
+}
+
 export const IMAGE_TYPES = [
   { value: 'hero',           label: 'Hero' },
   { value: 'product_detail', label: 'Product Detail' },

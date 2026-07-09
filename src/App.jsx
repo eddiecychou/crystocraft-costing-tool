@@ -24,6 +24,10 @@ import PricingTiers from './pages/PricingTiers'
 import Suppliers from './pages/Suppliers'
 import SupplierForm from './pages/SupplierForm'
 import SupplierDetail from './pages/SupplierDetail'
+import PurchaseOrders from './pages/PurchaseOrders'
+import PurchaseOrderForm from './pages/PurchaseOrderForm'
+import PurchaseOrderDetail from './pages/PurchaseOrderDetail'
+import PurchaseOrderPrint from './pages/PurchaseOrderPrint'
 import Quotes from './pages/Quotes'
 import QuoteForm from './pages/QuoteForm'
 import QuoteDetail from './pages/QuoteDetail'
@@ -120,6 +124,7 @@ function AdminApp({ user }) {
     <Routes>
       {/* Print routes — no Layout wrapper */}
       <Route path="/packing/:plId/print" element={<PackingListPrint />} />
+      <Route path="/purchase-orders/:id/print" element={<PurchaseOrderPrint />} />
       {/* All other admin routes wrapped in Layout */}
       <Route path="/*" element={
             <Layout user={user}>
@@ -150,6 +155,10 @@ function AdminApp({ user }) {
                 <Route path="/suppliers/new" element={<SupplierForm />} />
                 <Route path="/suppliers/:id" element={<SupplierDetail />} />
                 <Route path="/suppliers/:id/edit" element={<SupplierForm />} />
+                <Route path="/purchase-orders" element={<PurchaseOrders />} />
+                <Route path="/purchase-orders/new" element={<PurchaseOrderForm />} />
+                <Route path="/purchase-orders/:id" element={<PurchaseOrderDetail />} />
+                <Route path="/purchase-orders/:id/edit" element={<PurchaseOrderForm />} />
                 <Route path="/quotes" element={<Quotes />} />
                 <Route path="/quotes/new" element={<QuoteForm />} />
                 <Route path="/quotes/:id" element={<QuoteDetail />} />

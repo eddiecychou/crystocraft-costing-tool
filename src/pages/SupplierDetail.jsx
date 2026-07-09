@@ -6,7 +6,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import SupplierCatalogs from '../components/SupplierCatalogs'
 import SupplierAddQuoteModal from '../components/SupplierAddQuoteModal'
-import { SUPPLIER_CATEGORIES } from '../constants'
+import { SUPPLIER_CATEGORIES, PO_PAYMENT_TERM_LABEL } from '../constants'
 import { AlertTriangle, Star } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 
@@ -167,6 +167,7 @@ export default function SupplierDetail() {
           })()}
         </div>
         <div className="flex gap-2">
+          <Link to={`/purchase-orders/new?supplier=${id}`} className="btn-primary">+ New PO</Link>
           <Link to={`/suppliers/${id}/edit`} onClick={remember} className="btn-secondary">Edit</Link>
           <button className="btn-danger" onClick={() => setConfirmDelete(true)}>Delete</button>
         </div>
@@ -183,6 +184,8 @@ export default function SupplierDetail() {
         <InfoRow label="WhatsApp" value={supplier.whatsapp} />
         <MultiRow label="Email" values={supplier.emails ?? supplier.email}
           render={v => <a href={`mailto:${v}`} className="text-brand-600 hover:underline">{v}</a>} />
+        <InfoRow label="Default Currency" value={supplier.default_currency} />
+        <InfoRow label="Payment Terms" value={PO_PAYMENT_TERM_LABEL[supplier.default_payment_terms] || supplier.default_payment_terms} />
         {supplier.notes && (
           <div className="pt-3 mt-2 border-t border-gray-100">
             <p className="text-xs text-gray-500 mb-1">Notes</p>

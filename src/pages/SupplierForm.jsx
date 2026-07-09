@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import { SUPPLIER_CATEGORIES } from '../constants'
+import { SUPPLIER_CATEGORIES, CURRENCIES, PO_PAYMENT_TERMS } from '../constants'
 
 // Convert old string or existing array → clean array with at least one entry
 function toArray(val) {
@@ -47,6 +47,7 @@ export default function SupplierForm() {
   const [form, setForm] = useState({
     name: '', name_cn: '', erp_code: '', category: '', country: 'China', city: '',
     address: '', wechat_id: '', whatsapp: '', contact_person: '', notes: '',
+    default_currency: '', default_payment_terms: '',
   })
   const [phones, setPhones] = useState([''])
   const [emails, setEmails] = useState([''])
@@ -66,6 +67,7 @@ export default function SupplierForm() {
           address: d.address || '', wechat_id: d.wechat_id || '',
           whatsapp: d.whatsapp || '', contact_person: d.contact_person || '',
           notes: d.notes || '',
+          default_currency: d.default_currency || '', default_payment_terms: d.default_payment_terms || '',
         }))
         setPhones(toArray(d.phones ?? d.phone))
         setEmails(toArray(d.emails ?? d.email))
@@ -181,6 +183,27 @@ export default function SupplierForm() {
               <input className="input" value={form.whatsapp} onChange={set('whatsapp')} placeholder="+86 xxx xxxx xxxx" />
             </div>
             <MultiInput label="Email" values={emails} onChange={setEmails} type="email" placeholder="supplier@example.com" />
+          </div>
+        </div>
+
+        <div className="border-t border-gray-100 pt-4">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Purchasing Defaults</p>
+          <p className="text-xs text-gray-400 mb-3">Pre-fill new purchase orders for this supplier. Both are overridable per PO.</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">Default Currency</label>
+              <select className="input" value={form.default_currency} onChange={set('default_currency')}>
+                <option value="">— none —</option>
+                {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="label">Default Payment Terms</label>
+              <select className="input" value={form.default_payment_terms} onChange={set('default_payment_terms')}>
+                <option value="">— none —</option>
+                {PO_PAYMENT_TERMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
           </div>
         </div>
 
