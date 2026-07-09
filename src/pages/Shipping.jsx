@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import { useOrders, orderStatusOf } from '../shipping'
 import { useVendors, FREIGHT_MODES, modeLabel, strengthOf } from '../logistics'
@@ -39,6 +39,7 @@ export default function Shipping() {
 }
 
 function ShipmentsList() {
+  const navigate = useNavigate()
   const { orders, loading } = useOrders()
   const [search, setSearch] = useState('')
 
@@ -70,42 +71,73 @@ function ShipmentsList() {
             : 'No shipments match your search.'}
         </div>
       ) : (
-        <div className="card divide-y divide-gray-100">
-          {filtered.map(o => {
-            const st = orderStatusOf(o.status)
-            const needsReconcile = (o._raw?.lines_unreconciled ?? 0) > 0
-            return (
-              <Link key={o.id} to={`/shipments/${o.id}`}
-                className="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium text-gray-900 text-sm">{o.customer_name || 'Unnamed customer'}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${st.style}`}>{st.label}</span>
-                    {o.erp_pi_no && <span className="text-xs text-gray-400">PI {o.erp_pi_no}</span>}
-                    {o.erp_so_no && <span className="text-xs text-gray-400">SO {o.erp_so_no}</span>}
-                    {needsReconcile && (
-                      <span className="inline-flex items-center gap-1 text-xs text-amber-600">
-                        <ClipboardCheck size={12} /> needs reconcile
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-3 mt-1 text-xs text-gray-400 flex-wrap">
-                    <span className="font-medium text-gray-500">{o.incoterm}</span>
-                    {(o.destination?.country || o.destination?.city) && (
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin size={12} />{[o.destination.city, o.destination.country].filter(Boolean).join(', ')}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <span className="text-xs text-gray-400 ml-3">→</span>
-              </Link>
-            )
-          })}
+        <div className="card overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                <th className="px-4 py-2.5 font-medium whitespace-nowrap">Order Date</th>
+                <th className="px-4 py-2.5 font-medium whitespace-nowrap">PI #</th>
+                <th className="px-4 py-2.5 font-medium whitespace-nowrap">SO #</th>
+                <th className="px-4 py-2.5 font-medium">Customer</th>
+                <th className="px-4 py-2.5 font-medium whitespace-nowrap">Currency</th>
+                <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Order Value</th>
+                <th className="px-4 py-2.5 font-medium whitespace-nowrap">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {filtered.map(o => {
+                const st = orderStatusOf(o.status)
+                const needsReconcile = (o._raw?.lines_unreconciled ?? 0) > 0
+                const value = o.total_amount ?? o.subtotal
+                return (
+                  <tr key={o.id} className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => navigate(`/shipments/${o.id}`)}>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{fmtOrderDate(o.order_date)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{o.erp_pi_no || '—'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{o.erp_so_no || '—'}</td>
+                    <td className="px-4 py-3 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-gray-900 truncate">{o.customer_name || 'Unnamed customer'}</span>
+                        {needsReconcile && (
+                          <span title="Needs reconcile" className="inline-flex items-center text-amber-600">
+                            <ClipboardCheck size={12} />
+                          </span>
+                        )}
+                      </div>
+                      {(o.destination?.country || o.destination?.city) && (
+                        <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                          <MapPin size={11} />{[o.destination.city, o.destination.country].filter(Boolean).join(', ')}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">{o.currency}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-800">
+                      {value != null ? fmtValue(value) : <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${st.style}`}>{st.label}</span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
   )
+}
+
+function fmtOrderDate(d) {
+  if (!d) return '—'
+  const dt = new Date(d)
+  if (isNaN(dt)) return d
+  return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+function fmtValue(v) {
+  const n = Number(v)
+  return Number.isFinite(n) ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
 }
 
 function LogisticsList() {
