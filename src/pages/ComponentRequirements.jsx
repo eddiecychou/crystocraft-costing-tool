@@ -98,7 +98,7 @@ export default function ComponentRequirements() {
       {/* Order picker */}
       <div className="card mb-4">
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5"><Boxes size={15} /> Orders ({selected.size} selected)</h2>
+          <h2 className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5"><Boxes size={15} /> Orders ({selected.size} selected · {sortedOrders.length} total)</h2>
           <div className="flex gap-3 text-xs">
             <button onClick={() => setSelected(new Set(orders.filter(o => DEMAND.includes(o.status)).map(o => o.id)))} className="text-brand-600 hover:underline">Confirmed +</button>
             <button onClick={() => { setSelected(new Set()); setResult(null) }} className="text-gray-500 hover:underline">Clear</button>
