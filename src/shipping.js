@@ -5,6 +5,7 @@ import {
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { numOrNull, str, trimUpper, result, addWarning, addInfo, merge } from './domain/validation'
+import { buildProductIndex, matchProductCode } from './criticalComponents'
 
 // Shipping module — Phase 12.0. An `order` is the commercial anchor for a
 // shipment, sourced from an in-app won quote (Path A) or an imported ERP
@@ -42,41 +43,14 @@ export const lineTypeOf = v => LINE_TYPES.find(t => t.value === v) || LINE_TYPES
 export const isPackable = v => lineTypeOf(v).packable
 
 // ── SKU matcher (PI line → figurine product) ─────────────────────────────────
-// PI item codes are messy ("D0002-230-C", "U0226", "D231"). We match brand-
-// agnostically (the photo/PI may use a different brand letter than the stored
-// product) on the design core, mirroring the Crystal-Bible image import.
-
-// Strip a leading brand letter run so "D0002" and "U0002" compare equal.
-const stripBrand = code => str(code).toUpperCase().replace(/[\s_]/g, '').replace(/^[A-Z]+/, '')
-
-// Candidate match keys for a range product: its base code (brand+design_no),
-// the design_no alone, and any explicit design_code — all brand-stripped.
-function rangeKeys(p) {
-  const keys = new Set()
-  const add = v => { const k = stripBrand(v); if (k) keys.add(k) }
-  add(`${p.brand_code || ''}${p.design_no || ''}`)
-  add(p.design_no)
-  add(p.design_code)
-  return keys
-}
-
-// Try to match one PI item_code to a figurine product. Returns the product or
-// null. A hit = the PI code, brand-stripped, starts with the product's design
-// core (so "0002-230-C" matches product core "0002").
+// Delegates to the shared, format-aware matcher (buildProductIndex +
+// matchProductCode) so PI reconciliation, the stock-list import, and the MRP
+// explosion all agree. Matching on design core ALONE is wrong: "D0355-001"
+// (Mini Rose Freestand, format 001) and "D0355-230" (Mini Rose w/ Crystal Bible,
+// format 230) share design 0355 but are different products — the format
+// disambiguates them.
 export function matchRangeProduct(itemCode, rangeProducts) {
-  const core = stripBrand(itemCode)
-  if (!core) return null
-  let best = null
-  for (const p of rangeProducts) {
-    for (const key of rangeKeys(p)) {
-      if (!key) continue
-      if (core === key || key.startsWith(core)) {
-        // Prefer the longest key match (most specific design core).
-        if (!best || key.length > best._keyLen) best = { ...p, _keyLen: key.length }
-      }
-    }
-  }
-  return best
+  return itemCode ? matchProductCode(itemCode, buildProductIndex(rangeProducts)) : null
 }
 
 // ── orders ────────────────────────────────────────────────────────────────────
@@ -201,6 +175,7 @@ export async function loadRangeProductsLite() {
         brand_code: x.brand_code || '',
         design_no: x.design_no || '',
         design_code: x.design_code || '',
+        format_code: x.format_code || '',   // required to disambiguate same-design products by format
       }
     })
   } catch {
@@ -212,8 +187,9 @@ export async function loadRangeProductsLite() {
 // matched_product_ref + match_status on hits; leaves the rest unmatched for the
 // user to classify (ad_hoc / non_product). "Promote to catalogue" is deferred.
 export function autoMatchLines(lines, rangeProducts) {
+  const index = buildProductIndex(rangeProducts)   // build once, reuse per line
   return (lines || []).map((l, i) => {
-    const p = l.item_code ? matchRangeProduct(l.item_code, rangeProducts) : null
+    const p = l.item_code ? matchProductCode(l.item_code, index) : null
     if (p) {
       return {
         ...l, line_no: l.line_no ?? i + 1,
@@ -223,6 +199,26 @@ export function autoMatchLines(lines, rangeProducts) {
       }
     }
     return { ...l, line_no: l.line_no ?? i + 1, line_type: null, match_status: 'unmatched' }
+  })
+}
+
+// Re-run auto-match on already-loaded lines, PRESERVING any line the user
+// classified manually (match_status 'manual'). Used by the reconciliation
+// "Re-match" button to correct PIs that were auto-matched by the old matcher.
+export function rematchLines(lines, rangeProducts) {
+  const index = buildProductIndex(rangeProducts)
+  return (lines || []).map((l, i) => {
+    if (l.match_status === 'manual') return l
+    const p = l.item_code ? matchProductCode(l.item_code, index) : null
+    if (p) {
+      return {
+        ...l, line_no: l.line_no ?? i + 1,
+        line_type: 'range', packable: true,
+        matched_product_ref: { collection: 'range_products', id: p.id, name: p.name },
+        match_status: 'matched',
+      }
+    }
+    return { ...l, line_no: l.line_no ?? i + 1, line_type: null, matched_product_ref: null, match_status: 'unmatched' }
   })
 }
 

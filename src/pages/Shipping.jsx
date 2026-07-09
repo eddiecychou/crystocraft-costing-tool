@@ -7,7 +7,7 @@ import { MapPin, FileInput, ClipboardCheck, MessageCircle, Star, Truck } from 'l
 import ComponentRequirements from './ComponentRequirements'
 
 const TABS = [
-  { v: 'shipments', label: 'Shipments' },
+  { v: 'shipments', label: 'Orders' },
   { v: 'requirements', label: 'Requirements' },
   { v: 'logistics', label: 'Logistics' },
 ]
@@ -42,11 +42,13 @@ function ShipmentsList() {
   const { orders, loading } = useOrders()
   const [search, setSearch] = useState('')
 
-  const filtered = orders.filter(o => {
-    if (!search) return true
-    const hay = `${o.customer_name} ${o.erp_pi_no} ${o.erp_so_no} ${o.destination?.country} ${o.destination?.city}`.toLowerCase()
-    return hay.includes(search.toLowerCase())
-  })
+  const filtered = orders
+    .filter(o => {
+      if (!search) return true
+      const hay = `${o.customer_name} ${o.erp_pi_no} ${o.erp_so_no} ${o.destination?.country} ${o.destination?.city}`.toLowerCase()
+      return hay.includes(search.toLowerCase())
+    })
+    .sort((a, b) => (b.order_date || '').localeCompare(a.order_date || ''))   // newest order date first
 
   return (
     <div className="p-4 md:p-6">

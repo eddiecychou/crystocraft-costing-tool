@@ -5,10 +5,10 @@
 // across all lines/PIs, subtract current component stock, and report the net
 // shortage to order. Read-only — no stock is mutated here (that is Phase 2).
 //
-// Pure and dependency-light so the core is headless-testable. Relies only on
-// resolveRef + VALID_PLATINGS from criticalComponents.
+// Pure and dependency-light so the core is headless-testable. Plating inclusion
+// goes through the shared refApplies helper so MRP agrees with buildable/costing.
 
-import { resolveRef, VALID_PLATINGS } from './criticalComponents'
+import { resolveRef, refApplies, refScopePlating, buildProductIndex, matchProductCode, VALID_PLATINGS } from './criticalComponents'
 
 const PLATING_LETTERS = new Set(VALID_PLATINGS.filter(Boolean))  // C,G,R,A,M
 
@@ -23,23 +23,43 @@ export function platingFromItemCode(itemCode) {
 }
 
 const perUnit = r => { const n = Number(r?.qty_per_unit); return n > 0 ? n : 1 }
-// Effective plating of a component ref: explicit override wins, else the resolved
-// component's own plating. Blank ⇒ shared part (applies to every plating).
-const refPlating = (r, lib) => (r.plating_code || resolveRef(r, lib)?.plating_code || '').trim().toUpperCase()
 
-// A line references a range_product via matched_product_ref { collection, id, name }.
-const lineProductId = l => (l?.matched_product_ref?.collection === 'range_products' ? l.matched_product_ref.id : null)
+// Does this item code look like a figurine SKU (brand letter(s) + design digits)?
+// Used to tell a genuine-but-unknown figurine (flag loudly) from a corp-gift /
+// charge / ad-hoc line that legitimately has no figurine code (skip quietly).
+export function looksLikeFigurineCode(code) {
+  return /^[A-Z]{1,2}\d{3,4}/.test(String(code || '').trim().toUpperCase())
+}
+
+// A line's range_product. A user-confirmed MANUAL match wins; otherwise we
+// re-derive from the item code with the current format-aware matcher (auto
+// matches may be stale/wrong from the old core-only matcher, and unreconciled
+// lines have no ref at all). Falls back to any stored ref if the code matches
+// nothing.
+function lineProduct(l, productsById, index) {
+  const ref = l?.matched_product_ref
+  const stored = (ref?.collection === 'range_products' && ref.id && productsById[ref.id]) ? productsById[ref.id] : null
+  if (l?.match_status === 'manual' && stored) return stored
+  const m = matchProductCode(l.item_code, index)
+  if (m && productsById[m.id]) return productsById[m.id]
+  return stored
+}
 
 // Compute component requirements + shortages for a set of order lines.
-//   lines        : order lines across the selected PIs, each optionally tagged
-//                  with `order_label` for traceability
-//   productsById : { [range_product id]: product }  (product.critical_components[])
-//   lib          : range_components array (stock_qty, lead_time_weeks, plating_code)
+//   lines    : order lines across the selected PIs, each optionally tagged with
+//              `order_label` for traceability
+//   products : range_products array (each with critical_components[])
+//   lib      : range_components array (stock_qty, lead_time_weeks, plating_code)
 // Returns { rows, warnings, skipped }.
-export function computeRequirements({ lines = [], productsById = {}, lib = [] }) {
+export function computeRequirements({ lines = [], products = [], lib = [] }) {
+  const productsById = {}
+  for (const p of products) if (p?.id) productsById[p.id] = p
+  const index = buildProductIndex(products)
+
   const req = {}          // code → { code, name, plating_code, required, leadWeeks, usedBy:Set }
   const warnings = []     // { item_code, order, reason }
-  const skipped = []      // non-figurine / unmatched lines (informational)
+  const unmatched = []    // figurine-looking codes NOT in the product range (flag loudly)
+  const skipped = []      // genuinely non-figurine lines (corp gift / charge) — informational
 
   const bump = (comp, qty, productName) => {
     const key = comp.code
@@ -50,37 +70,40 @@ export function computeRequirements({ lines = [], productsById = {}, lib = [] })
 
   for (const l of lines) {
     const qty = Number(l.qty_ordered)
-    const pid = lineProductId(l)
     const order = l.order_label || ''
-    if (!pid) { skipped.push({ item_code: l.item_code || '', order, reason: 'not a matched figurine line' }); continue }
+    const product = lineProduct(l, productsById, index)
+    if (!product) {
+      const code = (l.item_code || '').trim()
+      if (looksLikeFigurineCode(code)) {
+        unmatched.push({ item_code: code, description: l.description || '', qty: numOrNull(l.qty_ordered), order })
+      } else {
+        skipped.push({ item_code: code, order, reason: 'not a figurine line (no matching code)' })
+      }
+      continue
+    }
     if (!(qty > 0)) { warnings.push({ item_code: l.item_code || '', order, reason: 'no order quantity' }); continue }
-    const product = productsById[pid]
-    if (!product) { warnings.push({ item_code: l.item_code || '', order, reason: 'matched product not found' }); continue }
 
     const refs = Array.isArray(product.critical_components) ? product.critical_components : []
-    if (!refs.length) { warnings.push({ item_code: l.item_code || '', order, reason: `no critical components on ${product.name || pid}` }); continue }
+    if (!refs.length) { warnings.push({ item_code: l.item_code || '', order, reason: `no critical components on ${product.name || product.id}` }); continue }
 
     const plating = platingFromItemCode(l.item_code)
-    const taggedPlatings = new Set(refs.map(r => refPlating(r, lib)).filter(Boolean))
-    // Plating couldn't be parsed but this product HAS plating-specific parts →
-    // we can only count shared parts; flag so nothing is silently under-ordered.
-    if (!plating && taggedPlatings.size) {
-      warnings.push({ item_code: l.item_code || '', order, reason: `plating not determined — plating-specific parts not counted for ${product.name || pid}` })
+    // Refs scoped to a specific plating (alternatives). `all_variants` / shared
+    // parts have scope '' and always apply, so they are excluded here.
+    const scoped = refs.filter(r => refScopePlating(r, lib))
+    if (!plating && scoped.length) {
+      warnings.push({ item_code: l.item_code || '', order, reason: `plating not determined — plating-specific parts not counted for ${product.name || product.id}` })
     }
 
-    let matchedAnyPlatingPart = false
+    let matchedScoped = false
     for (const ref of refs) {
-      const refPl = refPlating(ref, lib)
-      const include = !refPl || (plating && refPl === plating)   // shared, or this SKU's plating
-      if (!include) continue
-      if (refPl) matchedAnyPlatingPart = true
+      if (!refApplies(ref, lib, plating)) continue
+      if (refScopePlating(ref, lib)) matchedScoped = true
       const comp = resolveRef(ref, lib)
       if (!comp || !comp.code) { warnings.push({ item_code: l.item_code || '', order, reason: `component ${ref.code || ref.id || '?'} not found` }); continue }
-      bump(comp, qty * perUnit(ref), product.name || product.design_code || pid)
+      bump(comp, qty * perUnit(ref), product.name || product.design_code || product.id)
     }
-    // Parsed a plating, product has plating-tagged parts, but none matched it.
-    if (plating && taggedPlatings.size && !matchedAnyPlatingPart) {
-      warnings.push({ item_code: l.item_code || '', order, reason: `no components tagged for plating ${plating} on ${product.name || pid}` })
+    if (plating && scoped.length && !matchedScoped) {
+      warnings.push({ item_code: l.item_code || '', order, reason: `no components tagged for plating ${plating} on ${product.name || product.id}` })
     }
   }
 
@@ -96,7 +119,7 @@ export function computeRequirements({ lines = [], productsById = {}, lib = [] })
     }
   }).sort((a, b) => (b.shortage - a.shortage) || a.code.localeCompare(b.code))
 
-  return { rows, warnings, skipped }
+  return { rows, warnings, unmatched, skipped }
 }
 
 function numOrNull(v) { const n = Number(v); return Number.isFinite(n) ? n : null }

@@ -70,7 +70,7 @@ export default function ComponentRequirements() {
         const label = orderLabel(o)
         ls.forEach(l => lines.push({ ...l, order_label: label }))
       }
-      setResult(computeRequirements({ lines, productsById, lib }))
+      setResult(computeRequirements({ lines, products: Object.values(productsById), lib }))
     } finally {
       setComputing(false)
     }
@@ -139,6 +139,7 @@ export default function ComponentRequirements() {
             <p className="text-sm text-gray-600">
               <span className="font-semibold text-gray-900">{shortCount}</span> component{shortCount === 1 ? '' : 's'} short
               <span className="text-gray-400"> · {result.rows.length} required in total</span>
+              {result.unmatched.length > 0 && <span className="text-red-600 font-medium"> · {result.unmatched.length} not in range</span>}
             </p>
             <div className="flex items-center gap-3">
               <label className="text-xs text-gray-500 inline-flex items-center gap-1.5 cursor-pointer">
@@ -190,6 +191,27 @@ export default function ComponentRequirements() {
               </div>
             )}
           </div>
+
+          {/* Not in product range — figurine codes we couldn't match. Flagged
+              loudly so they aren't silently left out of the order plan. */}
+          {result.unmatched.length > 0 && (
+            <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 mb-3">
+              <p className="text-xs font-semibold text-red-700 inline-flex items-center gap-1.5 mb-1.5">
+                <AlertTriangle size={13} /> {result.unmatched.length} item{result.unmatched.length === 1 ? '' : 's'} not in the product range — components can’t be computed
+              </p>
+              <p className="text-[11px] text-red-600/80 mb-1.5">Add these to Figurine Gifts (with their critical components), or check the item code, then recompute.</p>
+              <ul className="space-y-0.5">
+                {result.unmatched.map((u, i) => (
+                  <li key={i} className="text-xs text-red-800">
+                    <span className="font-mono font-medium">{u.item_code || '(no code)'}</span>
+                    {u.qty != null && <span className="text-red-600"> · {u.qty} pcs</span>}
+                    {u.order && <span className="text-red-500"> · {u.order}</span>}
+                    {u.description && <span className="text-red-600/80"> — {u.description.slice(0, 70)}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           {/* Warnings — things that couldn't be exploded cleanly */}
           {result.warnings.length > 0 && (

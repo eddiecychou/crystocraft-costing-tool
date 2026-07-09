@@ -253,10 +253,16 @@ export default function RangeForm() {
     critical_components: (f.critical_components || []).map(r =>
       r._uid === uid ? { ...r, qty_per_unit: val.replace(/[^\d]/g, '') } : r),
   }))
+  // Scope select: '__ALL__' = always needed (overrides the component's own
+  // plating), a plating code = that variant only, '' = auto (infer from component).
   const setComponentPlating = (uid, val) => setForm(f => ({
     ...f,
     critical_components: (f.critical_components || []).map(r =>
-      r._uid === uid ? { ...r, plating_code: val.toUpperCase() } : r),
+      r._uid === uid
+        ? (val === '__ALL__'
+            ? { ...r, all_variants: true, plating_code: '' }
+            : { ...r, all_variants: false, plating_code: val.toUpperCase() })
+        : r),
   }))
   // Duplicate a ref so the user can assign it to another plating without re-
   // searching. Default the copy to the first plating not already used by this
@@ -451,7 +457,7 @@ export default function RangeForm() {
           lead_time_weeks: d.lead_time_weeks ?? '',
           delivery_note: d.delivery_note || '',
           critical_components: Array.isArray(d.critical_components)
-            ? d.critical_components.map(r => ({ _uid: refUid(), id: r.id || '', code: (r.code || '').toUpperCase(), qty_per_unit: r.qty_per_unit || 1, plating_code: (r.plating_code || '').toUpperCase() }))
+            ? d.critical_components.map(r => ({ _uid: refUid(), id: r.id || '', code: (r.code || '').toUpperCase(), qty_per_unit: r.qty_per_unit || 1, plating_code: (r.plating_code || '').toUpperCase(), all_variants: !!r.all_variants }))
             : [],
           packing: { ...emptyPacking(), ...(d.packing || {}) },
           gallery: normGallery(d.gallery),
@@ -750,6 +756,7 @@ export default function RangeForm() {
             code: (c?.code || r.code || '').trim().toUpperCase(),
             qty_per_unit: Math.max(1, intNum(r.qty_per_unit) || 1),
             plating_code: (r.plating_code || '').trim().toUpperCase(),
+            all_variants: !!r.all_variants,
           }
         })
         .filter(r => r.id || r.code),
@@ -1081,13 +1088,15 @@ export default function RangeForm() {
                         ) : (
                           <span className="flex-1 min-w-0 truncate text-ink-70">{c?.name || <span className="text-amber-600">not in library</span>}</span>
                         )}
-                        {/* Plating scope — blank = infer from component (shown as auto label) */}
+                        {/* Plating scope. Always needed = counts for every variant even
+                            when the part has a fixed finish (e.g. a gun-colour base). */}
                         <select
-                          className="input text-xs py-1 w-36 shrink-0"
-                          value={r.plating_code || ''}
+                          className="input text-xs py-1 w-40 shrink-0"
+                          value={r.all_variants ? '__ALL__' : (r.plating_code || '')}
                           onChange={e => setComponentPlating(key, e.target.value)}
-                          title="Which plating variant this component applies to (blank = inferred from component)"
+                          title="Which variant this part applies to. 'Always needed' = every variant (overrides the part's own plating)."
                         >
+                          <option value="__ALL__">Always needed</option>
                           <option value="">{inferredPlating ? `Auto (${inferredPlating})` : 'All variants'}</option>
                           {formPlatings.map(p => (
                             <option key={p.code} value={p.code}>{p.name} ({p.code})</option>

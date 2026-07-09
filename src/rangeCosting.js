@@ -69,8 +69,9 @@ export function componentsCostHKD(product, lib, rates, orderQty, variant = null)
   const platCode = variant ? (variant.plating_code || '').trim().toUpperCase() : null
   return refs.reduce((sum, r) => {
     const c = resolveRef(r, lib)
-    // Plating: ref override wins, else inferred from the component (Decision 2).
-    const refPlat = (r.plating_code || c?.plating_code || '').trim().toUpperCase()
+    // Plating scope: `all_variants` forces shared; else ref override, else the
+    // component's own plating (Decision 2). '' ⇒ applies to every variant.
+    const refPlat = r.all_variants ? '' : (r.plating_code || c?.plating_code || '').trim().toUpperCase()
     if (platCode !== null && refPlat && refPlat !== platCode) return sum
     const unit = componentCostAtQty(c, orderQty)
     if (unit == null) return sum
@@ -150,7 +151,7 @@ export function toolingHKD(product, lib, rates, variant = null) {
   const platCode = variant ? (variant.plating_code || '').trim().toUpperCase() : null
   return refs.reduce((sum, r) => {
     const c = resolveRef(r, lib)
-    const refPlat = (r.plating_code || c?.plating_code || '').trim().toUpperCase()
+    const refPlat = r.all_variants ? '' : (r.plating_code || c?.plating_code || '').trim().toUpperCase()
     if (platCode !== null && refPlat && refPlat !== platCode) return sum
     if (!c || !c.tooling_sample_cost) return sum
     return sum + toHKD(c.tooling_sample_cost, c.tooling_sample_cost_currency, rates)

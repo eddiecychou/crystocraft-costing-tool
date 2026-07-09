@@ -5,11 +5,11 @@ import { storage } from '../firebase'
 import {
   INCOTERMS, ORDER_STATUSES, LINE_TYPES, lineTypeOf, isPackable,
   getOrder, getOrderLines, createOrderWithLines, updateOrder, saveOrderLines, deleteOrder,
-  loadRangeProductsLite, autoMatchLines, matchRangeProduct, validateOrder,
+  loadRangeProductsLite, autoMatchLines, matchRangeProduct, rematchLines, validateOrder,
 } from '../shipping'
 import { loadCustomers, saveCustomer } from '../domain/customer'
 import { CURRENCIES } from '../constants'
-import { FileInput, FolderOpen, FileText, Trash2, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { FileInput, FolderOpen, FileText, Trash2, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
 import PackingListEditor from './PackingListEditor'
 import FreightComparison from './FreightComparison'
@@ -432,7 +432,14 @@ export default function ShipmentForm() {
           <div className="card p-4 md:p-6">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-gray-700">Line items &amp; reconciliation</h2>
-              <button type="button" onClick={addBlankLine} className="text-xs text-brand-600 hover:text-brand-800">+ Add line</button>
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={() => setLines(ls => rematchLines(ls, rangeProducts))}
+                  className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1"
+                  title="Re-run product matching by item code (keeps lines you classified manually)">
+                  <RefreshCw size={12} /> Re-match
+                </button>
+                <button type="button" onClick={addBlankLine} className="text-xs text-brand-600 hover:text-brand-800">+ Add line</button>
+              </div>
             </div>
 
             {unclassified > 0 && (

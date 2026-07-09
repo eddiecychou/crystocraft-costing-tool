@@ -419,11 +419,27 @@ export function resolveRef(ref, lib) {
 
 const refsOf = product => (Array.isArray(product?.critical_components) ? product.critical_components : [])
 const perUnit = r => { const n = Number(r?.qty_per_unit); return n > 0 ? n : 1 }
-// Effective plating of a ref: the ref's explicit override wins; otherwise it is
-// inferred from the resolved component's own plating_code (Decision 2). Blank ⇒
-// shared part. `lib` is needed for the inference.
-const refPlating = (r, lib) => (r.plating_code || resolveRef(r, lib)?.plating_code || '').trim().toUpperCase()
-const isShared = (r, lib) => !refPlating(r, lib) // no plating ⇒ applies to all variants
+
+// Effective plating SCOPE of a BOM ref — the single source of truth used by MRP,
+// buildable, and costing so they agree.
+//   ''         ⇒ applies to ALL variants (a shared part, OR an always-needed part
+//                with a fixed finish that the user flagged `all_variants`)
+//   'C'/'G'/…  ⇒ a per-plating alternative: only counts for that SKU's plating
+// `all_variants` is the explicit override for parts that carry a fixed finish
+// (e.g. a gun-colour base used in every variant) — without it the scope would be
+// wrongly inferred from the component's own plating_code (Decision 2).
+export function refScopePlating(ref, lib) {
+  if (ref?.all_variants) return ''
+  return (ref?.plating_code || resolveRef(ref, lib)?.plating_code || '').trim().toUpperCase()
+}
+// Does this ref apply to a finished piece of the given SKU plating?
+export function refApplies(ref, lib, skuPlating) {
+  const p = refScopePlating(ref, lib)
+  return !p || (!!skuPlating && p === String(skuPlating).trim().toUpperCase())
+}
+
+const refPlating = (r, lib) => refScopePlating(r, lib)
+const isShared = (r, lib) => !refPlating(r, lib) // scope '' ⇒ applies to all variants
 const platingsTagged = (refs, lib) => [...new Set(refs.map(r => refPlating(r, lib)).filter(Boolean))]
 // Plating codes the product actually offers (from its variants array).
 // Returns an empty Set when no variants carry plating_code (old format → no filter applied).
