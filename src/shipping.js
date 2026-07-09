@@ -152,12 +152,24 @@ export async function deleteOrder(id) {
 }
 
 // Live order list.
+// No orderBy('createdAt') here — Firestore's orderBy is a FILTER as well as a
+// sort: any doc missing that field (or, transiently, one whose serverTimestamp()
+// hasn't resolved from a pending write yet — e.g. right after createOrderWithLines)
+// is silently excluded from the query results entirely, not just left unsorted.
+// That's exactly why a newly-created PI could vanish from every screen that reads
+// useOrders() (Orders list, MRP Requirements picker, Dashboard). Fetch everything,
+// sort client-side instead — same fix already applied to loadCustomers.
 export function useOrders() {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   useEffect(() => onSnapshot(
-    query(ORDERS(), orderBy('createdAt', 'desc')),
-    snap => { setOrders(snap.docs.map(orderFromDoc)); setLoading(false) },
+    ORDERS(),
+    snap => {
+      const list = snap.docs.map(orderFromDoc)
+      list.sort((a, b) => (b._raw?.createdAt?.seconds || 0) - (a._raw?.createdAt?.seconds || 0))
+      setOrders(list)
+      setLoading(false)
+    },
     () => setLoading(false),
   ), [])
   return { orders, loading }
