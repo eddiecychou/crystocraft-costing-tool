@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Cropper from 'react-easy-crop'
+import 'react-easy-crop/react-easy-crop.css'   // required — positions the cropper; not auto-injected
 import { RotateCcw, RotateCw, Crop as CropIcon } from 'lucide-react'
 import { getCroppedCanvas, ASPECTS } from '../imageCrop'
 
