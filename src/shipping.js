@@ -171,7 +171,10 @@ export async function loadRangeProductsLite() {
       const x = d.data()
       return {
         id: d.id,
-        name: x.design_name || x.name || '',
+        // The product's real display name is entered in the Description field
+        // (RangeForm has no separate design-name input — design_name/name are
+        // legacy/unused on current products), so that must be the last fallback.
+        name: x.design_name || x.name || x.description || '',
         brand_code: x.brand_code || '',
         design_no: x.design_no || '',
         design_code: x.design_code || '',

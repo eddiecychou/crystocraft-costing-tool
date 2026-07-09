@@ -24,6 +24,12 @@ export function platingFromItemCode(itemCode) {
 
 const perUnit = r => { const n = Number(r?.qty_per_unit); return n > 0 ? n : 1 }
 
+// A range product's real display name is entered in the Description field —
+// RangeForm has no separate name input, so `name`/`design_name` are legacy/
+// unset on current products. Fall through to description, then design_code
+// (always present), before ever showing the raw Firestore doc id.
+const productLabel = p => p?.name || p?.description || p?.design_code || p?.id || '?'
+
 // Does this item code look like a figurine SKU (brand letter(s) + design digits)?
 // Used to tell a genuine-but-unknown figurine (flag loudly) from a corp-gift /
 // charge / ad-hoc line that legitimately has no figurine code (skip quietly).
@@ -84,14 +90,15 @@ export function computeRequirements({ lines = [], products = [], lib = [] }) {
     if (!(qty > 0)) { warnings.push({ item_code: l.item_code || '', order, reason: 'no order quantity' }); continue }
 
     const refs = Array.isArray(product.critical_components) ? product.critical_components : []
-    if (!refs.length) { warnings.push({ item_code: l.item_code || '', order, reason: `no critical components on ${product.name || product.id}` }); continue }
+    const label = productLabel(product)
+    if (!refs.length) { warnings.push({ item_code: l.item_code || '', order, reason: `no critical components on ${label}` }); continue }
 
     const plating = platingFromItemCode(l.item_code)
     // Refs scoped to a specific plating (alternatives). `all_variants` / shared
     // parts have scope '' and always apply, so they are excluded here.
     const scoped = refs.filter(r => refScopePlating(r, lib))
     if (!plating && scoped.length) {
-      warnings.push({ item_code: l.item_code || '', order, reason: `plating not determined — plating-specific parts not counted for ${product.name || product.id}` })
+      warnings.push({ item_code: l.item_code || '', order, reason: `plating not determined — plating-specific parts not counted for ${label}` })
     }
 
     let matchedScoped = false
@@ -100,10 +107,10 @@ export function computeRequirements({ lines = [], products = [], lib = [] }) {
       if (refScopePlating(ref, lib)) matchedScoped = true
       const comp = resolveRef(ref, lib)
       if (!comp || !comp.code) { warnings.push({ item_code: l.item_code || '', order, reason: `component ${ref.code || ref.id || '?'} not found` }); continue }
-      bump(comp, qty * perUnit(ref), product.name || product.design_code || product.id)
+      bump(comp, qty * perUnit(ref), label)
     }
     if (plating && scoped.length && !matchedScoped) {
-      warnings.push({ item_code: l.item_code || '', order, reason: `no components tagged for plating ${plating} on ${product.name || product.id}` })
+      warnings.push({ item_code: l.item_code || '', order, reason: `no components tagged for plating ${plating} on ${label}` })
     }
   }
 
