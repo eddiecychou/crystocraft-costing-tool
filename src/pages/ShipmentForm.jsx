@@ -256,7 +256,7 @@ export default function ShipmentForm() {
       await raceWrite(commit)   // throws only on a fast rejection; otherwise proceeds
       navigate(`/shipments/${orderId}`)
     } catch (err) {
-      setExtractError(err.message || 'Could not create shipment.')
+      setExtractError(err.message || 'Could not create order.')
     } finally {
       // Always clear — navigating /shipments/new → /shipments/:id reuses this
       // component instance (same element, no key), so it does NOT unmount and
@@ -293,7 +293,7 @@ export default function ShipmentForm() {
       await raceWrite(write)   // throws only on a fast rejection; otherwise proceeds
       navigate('/shipments')
     } catch (err) {
-      setExtractError(err.message || 'Could not save shipment.')
+      setExtractError(err.message || 'Could not save order.')
     } finally {
       setSaving(false)
     }
@@ -304,9 +304,9 @@ export default function ShipmentForm() {
   return (
     <div className="p-4 md:p-6 max-w-4xl">
       <div className="mb-4">
-        <Link to="/shipments" className="text-sm text-brand-600 hover:underline">← Shipments</Link>
+        <Link to="/shipments" className="text-sm text-brand-600 hover:underline">← Order Listing</Link>
         <h1 className="text-2xl font-bold text-gray-900 mt-1">
-          {isEdit ? (header.erp_pi_no || 'Shipment') : 'Import Proforma Invoice'}
+          {isEdit ? (header.erp_pi_no || 'Order Detail') : 'Import Proforma Invoice'}
         </h1>
         {!isEdit && <p className="text-sm text-gray-500 mt-1">Upload a figurine PI — AI reads the header + line items, then you classify each line.</p>}
       </div>
@@ -473,8 +473,9 @@ export default function ShipmentForm() {
                           <input className="input py-1.5 text-sm w-20" value={l.unit} onChange={e => setLine(i, { unit: e.target.value })} placeholder="pcs" />
                           <input className="input py-1.5 text-sm w-28" type="number" step="0.01" value={l.unit_price ?? ''} onChange={e => setLine(i, { unit_price: e.target.value })} placeholder="Unit price" />
                           {l.matched_product_ref && (
-                            <span className="inline-flex items-center gap-1 text-xs text-green-700 truncate">
-                              <CheckCircle2 size={13} /> {l.matched_product_ref.name || 'matched'}
+                            <span className="inline-flex items-center gap-1 text-xs text-green-700 truncate"
+                              title={l.matched_product_ref.name ? undefined : 'This product has no Description set in Figurine Gifts'}>
+                              <CheckCircle2 size={13} /> {l.matched_product_ref.name || 'matched (no name set)'}
                             </span>
                           )}
                         </div>
@@ -570,18 +571,18 @@ export default function ShipmentForm() {
 
         <div className="flex items-center gap-3 pt-1">
           <button type="submit" className="btn-primary" disabled={saving || (!isEdit && lines.length === 0)}>
-            {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Shipment'}
+            {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Order'}
           </button>
           <button type="button" className="btn-secondary" onClick={() => navigate('/shipments')}>Cancel</button>
           {isEdit && (
             <button type="button" onClick={() => setConfirmDelete(true)} className="ml-auto inline-flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700">
-              <Trash2 size={15} /> Delete shipment
+              <Trash2 size={15} /> Delete order
             </button>
           )}
         </div>
 
       {confirmDelete && (
-        <ConfirmDialog title="Delete shipment" message="Delete this shipment and all its lines? This cannot be undone."
+        <ConfirmDialog title="Delete order" message="Delete this order and all its lines? This cannot be undone."
           onConfirm={async () => { await deleteOrder(id); navigate('/shipments') }}
           onCancel={() => setConfirmDelete(false)} />
       )}
