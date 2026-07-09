@@ -6,7 +6,19 @@ import { useComponents } from '../criticalComponents'
 import { CURRENCIES, PO_PAYMENT_TERMS, PO_UNITS } from '../constants'
 import { fmtMoney } from '../currency'
 import { emptyLine, lineAmount, poTotals, cleanLines } from '../purchaseOrders'
-import { Trash2, Plus } from 'lucide-react'
+import { Trash2, Plus, FileInput, FolderOpen, FileText } from 'lucide-react'
+
+const PO_TERM_VALUES = PO_PAYMENT_TERMS.map(t => t.value)
+
+// Base64-encode a file (or blob) for the Gemini extraction endpoint.
+async function toBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result.split(',')[1])
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -42,6 +54,12 @@ export default function PurchaseOrderForm() {
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(isEdit)
   const [error, setError] = useState('')
+
+  // PDF/image extraction state
+  const [pendingFile, setPendingFile] = useState(null)
+  const [extracting, setExtracting] = useState(false)
+  const [extractError, setExtractError] = useState('')
+  const [dragOver, setDragOver] = useState(false)
 
   // Load supplier list for the picker.
   useEffect(() => {
@@ -89,6 +107,80 @@ export default function PurchaseOrderForm() {
       payment_terms: s?.default_payment_terms || f.payment_terms,
     }))
     setSupplierSnap(snapshotSupplier(s))
+  }
+
+  // ── Parse an old PO from a PDF/image via Gemini vision ──────────────────────
+  function handleDrop(e) {
+    e.preventDefault(); setDragOver(false)
+    const f = Array.from(e.dataTransfer.files).find(x => x.type.startsWith('image/') || x.type === 'application/pdf')
+    if (f) importFile(f)
+  }
+
+  async function importFile(file) {
+    setPendingFile(file)
+    setExtracting(true); setExtractError('')
+    try {
+      const base64 = await toBase64(file)
+      const mimeType = file.type === 'application/pdf' ? 'application/pdf' : (file.type || 'image/png')
+      const res = await fetch('/api/extract-po', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64, mimeType }),
+      })
+      if (!res.ok) throw new Error('Extraction failed')
+      const data = await res.json()
+
+      // Match the extracted supplier: ERP code first, then fuzzy name (EN or CN).
+      let match = null
+      const code = (data.supplier_code || '').trim().toLowerCase()
+      if (code) match = suppliers.find(s => (s.erp_code || '').trim().toLowerCase() === code)
+      if (!match && data.supplier_name) {
+        const lower = data.supplier_name.toLowerCase()
+        match = suppliers.find(s => {
+          const n = (s.name || '').toLowerCase()
+          return n && (lower.includes(n) || n.includes(lower))
+        })
+      }
+      if (!match && data.supplier_name_cn) {
+        match = suppliers.find(s => (s.name_cn || '') && (s.name_cn.includes(data.supplier_name_cn) || data.supplier_name_cn.includes(s.name_cn)))
+      }
+      if (match) setSupplierSnap(snapshotSupplier(match))
+
+      const cur = CURRENCIES.includes(data.currency) ? data.currency : null
+      const terms = PO_TERM_VALUES.includes(data.payment_terms) ? data.payment_terms : null
+
+      setForm(f => ({
+        ...f,
+        pu_number: data.pu_number || f.pu_number,
+        supplier_id: match ? match.id : f.supplier_id,
+        issued_date: data.issued_date || f.issued_date,
+        est_ship_date: data.est_ship_date || f.est_ship_date,
+        currency: cur || match?.default_currency || f.currency,
+        payment_terms: terms || match?.default_payment_terms || f.payment_terms,
+        deposit_pct: data.deposit_pct != null ? String(data.deposit_pct) : f.deposit_pct,
+      }))
+
+      const mapped = (data.lines || []).map(ln => ({
+        ...emptyLine(),
+        code: ln.item_code || '',
+        description: ln.description || '',
+        qty: ln.qty != null ? String(ln.qty) : '',
+        unit: PO_UNITS.includes(ln.unit) ? ln.unit : 'pcs',
+        unit_price: ln.unit_price != null ? String(ln.unit_price) : '',
+      }))
+      if (mapped.length) setLines(mapped)
+
+      // Surface anything the operator still needs to resolve.
+      const notes = []
+      if (!mapped.length) notes.push('No line items found — add them manually.')
+      if (!match && (data.supplier_name || data.supplier_code)) {
+        notes.push(`Supplier “${data.supplier_name || data.supplier_code}” not matched — pick it above or add it first.`)
+      }
+      setExtractError(notes.join(' '))
+    } catch {
+      setExtractError('Could not read this PO — fill the header and add lines manually.')
+    } finally {
+      setExtracting(false)
+    }
   }
 
   function set(field) { return e => setForm(f => ({ ...f, [field]: e.target.value })) }
@@ -165,6 +257,30 @@ export default function PurchaseOrderForm() {
       </div>
 
       <form onSubmit={e => handleSubmit(e)} className="space-y-5">
+        {/* ── Parse an old PO (import only) ── */}
+        {!isEdit && (
+          <div className="card p-4">
+            <label
+              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer transition-colors
+                ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-gray-300 hover:border-brand-400 hover:bg-brand-50'}`}
+              onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+              onDragLeave={() => setDragOver(false)} onDrop={handleDrop}>
+              <span className="text-gray-500 mb-1">{dragOver ? <FolderOpen size={22} /> : <FileInput size={22} />}</span>
+              <span className="text-sm text-gray-600">{dragOver ? 'Drop to import' : 'Upload an old PO to auto-fill (PDF or image)'}</span>
+              <span className="text-xs text-gray-400 mt-0.5">Reads the ERP PU sheet — you still type/confirm the PU number. PDF, JPG, PNG</span>
+              <input type="file" accept="image/*,.pdf" className="hidden"
+                     onChange={e => { if (e.target.files[0]) importFile(e.target.files[0]); e.target.value = '' }} />
+            </label>
+            {pendingFile && (
+              <div className="flex items-center gap-2 mt-3 text-xs text-gray-600">
+                <FileText size={14} className="text-red-400" /> {pendingFile.name}
+              </div>
+            )}
+            {extracting && <div className="mt-2 h-1 bg-brand-100 rounded overflow-hidden"><div className="h-full bg-brand-500 animate-pulse w-full" /></div>}
+            {extractError && <p className="text-xs text-amber-600 mt-2">{extractError}</p>}
+          </div>
+        )}
+
         {/* ── Header ── */}
         <div className="card p-6 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

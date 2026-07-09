@@ -53,6 +53,10 @@
   path = "/api/extract-pi"
 
 [[edge_functions]]
+  function = "extract-po"
+  path = "/api/extract-po"
+
+[[edge_functions]]
   function = "enhance-image"
   path = "/api/enhance-image"
 
