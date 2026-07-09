@@ -5,21 +5,51 @@
 
 ## Current Status — V7.11 CLOSED as of 2026-07-09
 
-**Deployed to Netlify (live `4e9af3f`).** CRM pipeline/fulfilment split + a
+**Deployed to Netlify (live `4fc963d`).** CRM pipeline/fulfilment split + a
 manual (non-AI) image editor with crop/rotate + a new **Production module**
 (renamed from Shipping) carrying a light-MRP Component Requirements report +
-a real bug hunt across PI save/reconciliation/packing that turned up and
-fixed four separate root causes. Commit chain on `main`: `6153ceb` →
+a real bug hunt across PI save/reconciliation/packing/orders that turned up
+and fixed several separate root causes. Commit chain on `main`: `6153ceb` →
 `5363988` → `1e51845` → `149a3c5` → `8e37f83` → `1cbfcf6` → `a8c3e44` →
 `97a3143` → `8ce7c3e` → `cc82008` → `be856c3` → `21a9473` → `85588bd` →
-`7c27f03` → `1d3e4b9` → `d6ac1ff` → `ba9e600` → `4e9af3f`.
+`7c27f03` → `1d3e4b9` → `d6ac1ff` → `ba9e600` → `4e9af3f` → `7ba449c` (docs)
+→ `c6c9d76` → `399038e` → `4fc963d`.
 
 **V7.12 begins fresh in a new conversation.** No open threads from V7.11 —
 every fix in this batch was headlessly tested (pure-logic modules) or
 build-verified; the handful of purely-visual pieces (crop drag feel, table
-layout) were confirmed live by the owner. Next likely focus: **MRP Phase 2 —
-deduct component stock on order confirmation** (idempotency + negative-stock
-decisions flagged, not yet made), or a fresh bug/feature batch as raised.
+layout, order-picker UX) were confirmed live by the owner. Next likely focus:
+**MRP Phase 2 — deduct component stock on order confirmation** (idempotency +
+negative-stock decisions flagged, not yet made), or a fresh bug/feature batch
+as raised.
+
+### Post-close-out follow-ups (2026-07-09, `c6c9d76`→`4fc963d`)
+Owner testing surfaced three more issues on the MRP order picker, all fixed
+after the initial close-out:
+- **New PIs missing from Orders list / MRP picker / Dashboard** (`c6c9d76`):
+  `useOrders()` queried with `orderBy('createdAt', 'desc')`. Firestore's
+  `orderBy` is *also a filter* — it silently excludes any doc where that
+  field is absent or not yet resolved. A freshly-created order's
+  `createdAt: serverTimestamp()` is a local placeholder until the write is
+  server-acked, so a just-created PI could vanish from every screen backed by
+  this hook even though it was saved and reconciled. Dropped the Firestore
+  `orderBy`, sort client-side instead (same fix already applied to
+  `loadCustomers` — this is a recurring trap, see
+  [[lesson-firestore-orderby-is-a-filter]]).
+- **No total-count indicator** (`399038e`): the picker's list gave no way to
+  tell "only 6 loaded" from "all 19 loaded, scroll for more". Header now
+  shows the total; also confirmed `/orders` Firestore rules are a plain
+  `isAdmin()` check (not per-field), ruling out rules-level filtering.
+- **Picker UX was genuinely confusing** (`4fc963d`): it crammed all 19 orders
+  — 11 already shipped/delivered and irrelevant to production — into a ~6-row
+  internal scroll box sorted by date, so the 8 that mattered were scattered
+  and mostly below the fold (the one Ready order sat near the bottom), making
+  it *look* like data was missing even though the count was correct. Fixed by
+  defaulting the picker to **live-demand orders only** (Confirmed/Packing/
+  Ready) with a "Show all (N)" toggle, and **removing the internal scroll box**
+  entirely so rows render inline and the page scrolls. **Lesson:** a matching
+  count is not the same as a usable screen — the owner's "this is chaotic"
+  feedback, not the numbers, is what identified the real problem.
 
 ### CRM: sales pipeline vs. order fulfilment (Dashboard, CustomerDetail, EnquiryForm)
 - **Root problem:** a customer with a live production order *and* a separate
