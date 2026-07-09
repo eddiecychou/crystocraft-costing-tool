@@ -5,7 +5,7 @@ import { storage } from '../firebase'
 import {
   INCOTERMS, ORDER_STATUSES, LINE_TYPES, lineTypeOf, isPackable,
   getOrder, getOrderLines, createOrderWithLines, updateOrder, saveOrderLines, deleteOrder,
-  loadRangeProductsLite, autoMatchLines, matchRangeProduct, rematchLines, validateOrder,
+  loadRangeProductsLite, autoMatchLines, matchRangeProduct, rematchLines, validateOrder, computeOrderTotals,
 } from '../shipping'
 import { loadCustomers, saveCustomer } from '../domain/customer'
 import { CURRENCIES } from '../constants'
@@ -238,13 +238,17 @@ export default function ShipmentForm() {
         await uploadBytes(r, pendingFile, { contentType: pendingFile.type || 'application/octet-stream' })
         sf = { url: await getDownloadURL(r), name: pendingFile.name }
       }
+      // Fall back to the line-item-computed total when the PI extraction never
+      // captured a stated total — otherwise the order silently has no value
+      // even though a correct one is computable (and was shown on this page).
+      const computed = computeOrderTotals(header, lines)
       const orderData = {
         ...header,
         source: 'imported_pi', source_file: sf,
-        subtotal:        header.subtotal        !== '' ? parseFloat(header.subtotal)        : null,
+        subtotal:        header.subtotal        !== '' ? parseFloat(header.subtotal)        : (computed.subtotal > 0 ? computed.subtotal : null),
         discount_pct:    header.discount_pct    !== '' ? parseFloat(header.discount_pct)    : null,
-        discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : null,
-        total_amount:    header.total_amount    !== '' ? parseFloat(header.total_amount)    : null,
+        discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : (computed.discountAmount > 0 ? computed.discountAmount : null),
+        total_amount:    header.total_amount    !== '' ? parseFloat(header.total_amount)    : (computed.subtotal > 0 ? computed.total : null),
       }
       const v = validateOrder(orderData, lines)
       if (!v.ok) { setExtractError(v.errors.map(x => x.message).join(' · ')); return }
@@ -269,6 +273,9 @@ export default function ShipmentForm() {
     try {
       const v = validateOrder(header, lines)
       if (!v.ok) { setExtractError(v.errors.map(x => x.message).join(' · ')); setSaving(false); return }
+      // Same fallback as create — persist the line-computed total when no PI-
+      // stated total was ever captured, so the order isn't left valueless.
+      const computed = computeOrderTotals(header, lines)
       const write = Promise.all([
         updateOrder(id, {
           customer_id: header.customer_id, customer_name: header.customer_name,
@@ -276,10 +283,10 @@ export default function ShipmentForm() {
           order_date: header.order_date || null,
           currency: header.currency, incoterm: header.incoterm, status: header.status,
           destination: header.destination, notes: header.notes,
-          subtotal:        header.subtotal        !== '' ? parseFloat(header.subtotal)        : null,
+          subtotal:        header.subtotal        !== '' ? parseFloat(header.subtotal)        : (computed.subtotal > 0 ? computed.subtotal : null),
           discount_pct:    header.discount_pct    !== '' ? parseFloat(header.discount_pct)    : null,
-          discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : null,
-          total_amount:    header.total_amount    !== '' ? parseFloat(header.total_amount)    : null,
+          discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : (computed.discountAmount > 0 ? computed.discountAmount : null),
+          total_amount:    header.total_amount    !== '' ? parseFloat(header.total_amount)    : (computed.subtotal > 0 ? computed.total : null),
         }),
         saveOrderLines(id, lines),
       ])
@@ -494,16 +501,9 @@ export default function ShipmentForm() {
 
         {/* ── Order totals & discount ──────────────────────────────────── */}
         {lines.length > 0 && (() => {
-          const computedSubtotal = lines.reduce((sum, l) => {
-            const qty = parseFloat(l.qty_ordered) || 0
-            const up  = parseFloat(l.unit_price)  || 0
-            return sum + qty * up
-          }, 0)
+          const { subtotal: computedSubtotal, discountAmount: discAmt, total: computedTotal } = computeOrderTotals(header, lines)
           const piSubtotal   = parseFloat(header.subtotal) || null
-          const discPct      = parseFloat(header.discount_pct) || 0
-          const discAmt      = parseFloat(header.discount_amount) || (discPct > 0 ? +(computedSubtotal * discPct / 100).toFixed(2) : 0)
           const piTotal      = parseFloat(header.total_amount) || null
-          const computedTotal = +(computedSubtotal - discAmt).toFixed(2)
           const subtotalMatch = piSubtotal == null || Math.abs(computedSubtotal - piSubtotal) < 0.02
           const fmt = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
           return (

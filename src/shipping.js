@@ -222,6 +222,23 @@ export function rematchLines(lines, rangeProducts) {
   })
 }
 
+// Subtotal/discount/total derived from line items (qty × unit_price), mirroring
+// the "Order Totals" card shown in the editor. Used both to render that card
+// and, as a fallback on save, to persist a value when the PI extraction never
+// captured a stated total — otherwise the order silently has no total_amount
+// even though a correct one is computable and was visible on screen.
+export function computeOrderTotals(header, lines) {
+  const subtotal = (lines || []).reduce((sum, l) => {
+    const qty = parseFloat(l.qty_ordered) || 0
+    const up = parseFloat(l.unit_price) || 0
+    return sum + qty * up
+  }, 0)
+  const discPct = parseFloat(header?.discount_pct) || 0
+  const discountAmount = parseFloat(header?.discount_amount) || (discPct > 0 ? +(subtotal * discPct / 100).toFixed(2) : 0)
+  const total = +(subtotal - discountAmount).toFixed(2)
+  return { subtotal: +subtotal.toFixed(2), discountAmount, total }
+}
+
 // ── Validators (shared guardrail result format) ───────────────────────────────
 // validateOrder / validateOrderLine return { ok, errors, warnings, infos } so the
 // write path and the read-only Schema Audit page share one set of rules. These
