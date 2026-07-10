@@ -156,3 +156,52 @@ export async function reverseCrystalIssue(orderId, orderLabel) {
     crystal_issued_lines: [],
   })
 }
+
+// ── Packaging (V7.13a packaging) ─────────────────────────────────────────────
+// Same manual batch-per-order pattern as crystals, at pack time.
+//   packaging_issued / packaging_issued_at / packaging_issued_lines[]  on the order.
+
+// lines: [{ packaging_id, code, qty }]
+export async function issuePackagingForOrder(orderId, orderLabel, lines) {
+  const clean = (lines || [])
+    .filter(l => l.packaging_id && Number(l.qty) > 0)
+    .map(l => ({ packaging_id: l.packaging_id, code: l.code || '', qty: Math.abs(Number(l.qty)) }))
+  if (!clean.length) throw new Error('Add at least one packaging line with a quantity.')
+
+  const orderRef = doc(db, 'orders', orderId)
+  const snap = await getDoc(orderRef)
+  if (snap.exists() && snap.data().packaging_issued) throw new Error('Packaging already issued for this order.')
+
+  const issued = []
+  for (const l of clean) {
+    await postMovement('packaging', l.packaging_id, {
+      type: 'issue', qty: l.qty, order_id: orderId,
+      note: `Issued to order ${orderLabel || orderId}`,
+    })
+    issued.push(l)
+  }
+  await updateDoc(orderRef, {
+    packaging_issued: true,
+    packaging_issued_at: serverTimestamp(),
+    packaging_issued_lines: issued,
+  })
+  return issued
+}
+
+export async function reversePackagingIssue(orderId, orderLabel) {
+  const orderRef = doc(db, 'orders', orderId)
+  const snap = await getDoc(orderRef)
+  const issued = snap.exists() ? (snap.data().packaging_issued_lines || []) : []
+  for (const l of issued) {
+    if (!l.packaging_id) continue
+    await postMovement('packaging', l.packaging_id, {
+      type: 'adjustment', qty: Math.abs(Number(l.qty) || 0), order_id: orderId,
+      note: `Reversed packaging issue — order ${orderLabel || orderId}`,
+    })
+  }
+  await updateDoc(orderRef, {
+    packaging_issued: false,
+    packaging_issued_at: null,
+    packaging_issued_lines: [],
+  })
+}

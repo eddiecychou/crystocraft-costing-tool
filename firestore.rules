@@ -143,6 +143,14 @@ service cloud.firestore {
       }
     }
 
+    // Packaging inventory (V7.13a) — gift boxes / cartons / inserts, admin only.
+    match /packaging/{packagingId} {
+      allow read, write: if isAdmin();
+      match /movements/{movementId} {
+        allow read, write: if isAdmin();
+      }
+    }
+
     // ---- Shipping & Logistics module (admin only) -----------------------
     match /orders/{orderId} {
       allow read, write: if isAdmin();

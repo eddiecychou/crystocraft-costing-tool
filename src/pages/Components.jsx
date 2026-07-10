@@ -4,6 +4,7 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useComponents, importStockList, buildProductIndex, matchProductCode } from '../criticalComponents'
 import { useCrystals, saveCrystal, deleteCrystal, importCrystalStock } from '../crystals'
+import { usePackaging, savePackaging, deletePackaging, importPackagingStock } from '../packaging'
 import { postMovement } from '../stockLedger'
 import StockLedger from '../components/StockLedger'
 import { loadRangeProductsWithPacking } from '../packing'
@@ -11,7 +12,7 @@ import { loadCrystalColors, saveCrystalColors } from '../crystalColors'
 import { CURRENCIES, RANGE_FORMAT_CODES } from '../constants'
 import { useComponentCategories, saveComponentCategories } from '../componentCategories'
 import { useCrystalUnitCosts, saveCrystalUnitCosts } from '../crystalCosting'
-import { Puzzle, ArrowUp, ArrowDown, X, Minus, Plus, Check, Gem, ChevronDown, ChevronRight, Trash2 } from 'lucide-react'
+import { Puzzle, ArrowUp, ArrowDown, X, Minus, Plus, Check, Gem, Box, ChevronDown, ChevronRight, Trash2 } from 'lucide-react'
 
 export default function Components() {
   const [tab, setTab] = useState('critical')
@@ -24,7 +25,7 @@ export default function Components() {
       </p>
 
       <div className="flex gap-1 border-b border-ivory-dark mb-5 overflow-x-auto overflow-y-hidden whitespace-nowrap">
-        {[['critical', 'Critical Components'], ['crystalstock', 'Crystal Stock'], ['colours', 'Crystal Colours'], ['crystalcosts', 'Crystal Costs'], ['formatmoq', 'Format MOQs'], ['categories', 'Categories']].map(([k, label]) => (
+        {[['critical', 'Critical Components'], ['crystalstock', 'Crystal Stock'], ['packagingstock', 'Packaging Stock'], ['colours', 'Crystal Colours'], ['crystalcosts', 'Crystal Costs'], ['formatmoq', 'Format MOQs'], ['categories', 'Categories']].map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 shrink-0 transition-colors ${
               tab === k ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-80'}`}>
@@ -35,6 +36,7 @@ export default function Components() {
 
       {tab === 'critical' ? <CriticalComponents />
         : tab === 'crystalstock' ? <CrystalStock />
+        : tab === 'packagingstock' ? <PackagingStock />
         : tab === 'colours' ? <CrystalColours />
         : tab === 'crystalcosts' ? <CrystalCosts />
         : tab === 'formatmoq' ? <FormatMoqs />
@@ -568,6 +570,157 @@ function CrystalImportModal({ onClose }) {
         </p>
         <textarea className="input font-mono text-xs h-40" value={text} onChange={e => setText(e.target.value)}
                   placeholder={'BDC-8232-0014-005\tRosaline\t22811\nBDC-8232-0014-007\tRuby\t10512'} />
+        {rows.length > 0 && <p className="text-xs text-ink-60 mt-2">{rows.length} row{rows.length === 1 ? '' : 's'} parsed.</p>}
+        {result && <p className="text-sm text-green-700 mt-2">Imported — {result.created} new, {result.updated} updated.</p>}
+        <div className="flex justify-end gap-2 mt-4">
+          {!result && <button onClick={run} disabled={busy || rows.length === 0} className="btn-primary text-sm">{busy ? 'Importing…' : `Import ${rows.length || ''}`.trim()}</button>}
+          <button onClick={onClose} className="btn-secondary text-sm">{result ? 'Done' : 'Cancel'}</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Packaging Stock tab ──────────────────────────────────────────────────────
+// Packaging SKUs (gift boxes, cartons, inserts) held as inventory with the
+// shared ledger; consumed batch-per-order at pack time from the order page.
+
+function PackagingStock() {
+  const { packaging, loading } = usePackaging()
+  const [search, setSearch] = useState('')
+  const [expanded, setExpanded] = useState(null)
+  const [adding, setAdding] = useState(false)
+  const [importing, setImporting] = useState(false)
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return packaging
+    return packaging.filter(c => [c.code, c.name, c.type, c.size].some(v => (v || '').toLowerCase().includes(q)))
+  }, [packaging, search])
+
+  const totalOnHand = useMemo(() => packaging.reduce((s, c) => s + (Number.isFinite(c.stock_qty) ? c.stock_qty : 0), 0), [packaging])
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <input className="input text-sm flex-1 min-w-[180px]" placeholder="Search code, name, type…"
+               value={search} onChange={e => setSearch(e.target.value)} />
+        <button onClick={() => setImporting(true)} className="btn-secondary text-sm">Import stock</button>
+        <button onClick={() => setAdding(a => !a)} className="btn-primary text-sm">+ New</button>
+      </div>
+
+      {adding && <PackagingAddRow onDone={() => setAdding(false)} />}
+
+      <p className="text-xs text-ink-50 mb-2">
+        {loading ? 'Loading…' : `${filtered.length} of ${packaging.length} item${packaging.length === 1 ? '' : 's'} · ${totalOnHand.toLocaleString()} pcs on hand`}
+      </p>
+
+      {!loading && packaging.length === 0 ? (
+        <div className="card p-6 text-center text-sm text-ink-60">
+          No packaging yet. <button onClick={() => setImporting(true)} className="text-brand-600 hover:underline">Import your packaging stock list</button>, or add one.
+        </div>
+      ) : (
+        <div className="card divide-y divide-ivory-dark overflow-hidden">
+          {filtered.map(c => (
+            <div key={c.id}>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 py-2.5 hover:bg-ivory/50 transition-colors">
+                <button onClick={() => setExpanded(e => e === c.id ? null : c.id)} className="flex items-center gap-3 min-w-0 flex-1 text-left">
+                  {expanded === c.id ? <ChevronDown size={15} className="text-ink-40 shrink-0" /> : <ChevronRight size={15} className="text-ink-40 shrink-0" />}
+                  <Box size={16} className="text-brand-400 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm text-ink-90 truncate">{c.code}</span>
+                      {c.type && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 shrink-0">{c.type}</span>}
+                      {c.size && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 shrink-0">{c.size}</span>}
+                    </div>
+                    <p className="text-xs text-ink-60 truncate">{c.name || '—'}</p>
+                  </div>
+                </button>
+                <div className="flex justify-end shrink-0 pl-14 sm:pl-0">
+                  <StockEditor component={c} collectionPath="packaging" />
+                </div>
+              </div>
+              {expanded === c.id && (
+                <div className="px-3 pb-3 bg-ivory/30">
+                  <StockLedger componentId={c.id} currentStock={c.stock_qty || 0} collectionPath="packaging" />
+                  <button onClick={() => { if (window.confirm(`Delete packaging ${c.code}? Its ledger history stays but the SKU is removed.`)) deletePackaging(c.id) }}
+                          className="mt-2 inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700">
+                    <Trash2 size={12} /> Delete packaging
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {importing && <PackagingImportModal onClose={() => setImporting(false)} />}
+    </div>
+  )
+}
+
+function PackagingAddRow({ onDone }) {
+  const [f, setF] = useState({ code: '', name: '', type: '', size: '' })
+  const [saving, setSaving] = useState(false)
+  const set = k => e => setF(x => ({ ...x, [k]: e.target.value }))
+  async function save() {
+    if (!f.code.trim()) return
+    setSaving(true)
+    try { await savePackaging(null, f); onDone() } finally { setSaving(false) }
+  }
+  return (
+    <div className="card p-3 mb-3 grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
+      <div><label className="label text-xs">Code *</label><input className="input text-sm font-mono uppercase" value={f.code} onChange={e => setF(x => ({ ...x, code: e.target.value.toUpperCase() }))} placeholder="BOX-GIFT-01" /></div>
+      <div><label className="label text-xs">Name</label><input className="input text-sm" value={f.name} onChange={set('name')} placeholder="Gift box" /></div>
+      <div><label className="label text-xs">Type</label><input className="input text-sm" value={f.type} onChange={set('type')} placeholder="Box / Carton" /></div>
+      <div className="flex gap-2">
+        <input className="input text-sm flex-1" value={f.size} onChange={set('size')} placeholder="Size" />
+        <button onClick={save} disabled={saving || !f.code.trim()} className="btn-primary text-sm shrink-0">{saving ? '…' : 'Add'}</button>
+      </div>
+    </div>
+  )
+}
+
+// Parse a pasted packaging stock list. Each line: code, [name…], qty.
+function parsePackagingStock(text) {
+  const out = []
+  for (const line of (text || '').split(/\r?\n/)) {
+    if (!line.trim()) continue
+    const cells = (line.includes('\t') ? line.split('\t') : line.split(',')).map(s => s.trim()).filter(Boolean)
+    if (cells.length < 2) continue
+    const code = cells[0].toUpperCase()
+    if (!/[A-Z]/.test(code) || !/\d/.test(code)) continue
+    let qi = -1
+    for (let i = cells.length - 1; i >= 1; i--) { if (/^[\d,]+(\.\d+)?$/.test(cells[i])) { qi = i; break } }
+    if (qi === -1) continue
+    const stock_qty = Number(cells[qi].replace(/,/g, ''))
+    const name = cells.slice(1, qi).join(' ')
+    out.push({ code, name, stock_qty })
+  }
+  return out
+}
+
+function PackagingImportModal({ onClose }) {
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState(null)
+  const rows = useMemo(() => parsePackagingStock(text), [text])
+
+  async function run() {
+    setBusy(true)
+    try { setResult(await importPackagingStock(rows)) } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      <div className="bg-white rounded-xl max-w-lg w-full p-5 max-h-[85vh] overflow-y-auto">
+        <h3 className="text-base font-semibold mb-1">Import packaging stock</h3>
+        <p className="text-xs text-ink-60 mb-3">
+          Paste rows as <span className="font-mono">code · name · qty</span> (tab or comma separated).
+          Each row is an absolute count and posts a stock-take to the ledger; re-run any time.
+        </p>
+        <textarea className="input font-mono text-xs h-40" value={text} onChange={e => setText(e.target.value)}
+                  placeholder={'BOX-GIFT-01\tGift box small\t1200\nCARTON-05\tMaster carton\t340'} />
         {rows.length > 0 && <p className="text-xs text-ink-60 mt-2">{rows.length} row{rows.length === 1 ? '' : 's'} parsed.</p>}
         {result && <p className="text-sm text-green-700 mt-2">Imported — {result.created} new, {result.updated} updated.</p>}
         <div className="flex justify-end gap-2 mt-4">
