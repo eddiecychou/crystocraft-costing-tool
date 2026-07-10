@@ -30,7 +30,7 @@ export default function PurchaseOrders() {
     return onSnapshot(q, snap => {
       setPos(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       setLoading(false)
-    })
+    }, () => setLoading(false))   // surface an empty state instead of hanging on a read error
   }, [])
 
   const filtered = useMemo(() => {

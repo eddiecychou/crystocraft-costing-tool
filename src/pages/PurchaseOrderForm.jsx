@@ -89,7 +89,7 @@ export default function PurchaseOrderForm() {
         setSupplierSnap(snapshotSupplier({ id: d.supplier_id, name: d.supplier_name, name_cn: d.supplier_name_cn, erp_code: d.supplier_erp_code, address: d.supplier_address, contact_person: d.supplier_contact }))
       }
       setFetching(false)
-    })
+    }).catch(() => setFetching(false))
   }, [id, isEdit])
 
   // Duplicate / reorder from ?from=<id> — copies supplier, lines, currency and
@@ -112,7 +112,7 @@ export default function PurchaseOrderForm() {
         setSupplierSnap(snapshotSupplier({ id: d.supplier_id, name: d.supplier_name, name_cn: d.supplier_name_cn, erp_code: d.supplier_erp_code, address: d.supplier_address, contact_person: d.supplier_contact }))
       }
       setFetching(false)
-    })
+    }).catch(() => setFetching(false))
   }, [fromId, isEdit])
 
   // Preselect supplier from ?supplier=<id> (new PO from a supplier page).

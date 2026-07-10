@@ -38,7 +38,7 @@ export default function PurchaseOrderDetail() {
     getDoc(doc(db, 'purchase_orders', id)).then(snap => {
       if (snap.exists()) setPo({ id: snap.id, ...snap.data() })
       setLoading(false)
-    })
+    }).catch(() => setLoading(false))   // don't hang the spinner on a failed read
   }, [id])
 
   async function handleDelete() {
