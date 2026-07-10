@@ -152,6 +152,18 @@ export default function PurchaseOrderDetail() {
         <div className="flex justify-end px-4 py-3 border-t border-gray-100 bg-gray-50/50">
           <div className="w-64 space-y-1 text-sm">
             <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span className="tabular-nums">{fmtMoney(totals.subtotal, cur)}</span></div>
+            {(po.adjustments || []).map((a, i) => {
+              const disc = a.kind === 'discount'
+              return (
+                <div key={i} className="flex justify-between text-gray-500">
+                  <span className="truncate max-w-[10rem]">{a.label || (disc ? 'Discount' : 'Additional charge')}</span>
+                  <span className="tabular-nums">{disc ? '− ' : '+ '}{fmtMoney(Math.abs(Number(a.amount) || 0), cur)}</span>
+                </div>
+              )
+            })}
+            {totals.adjustmentsTotal !== 0 && (
+              <div className="flex justify-between font-medium pt-1 border-t border-gray-100"><span className="text-gray-600">Order Total</span><span className="tabular-nums">{fmtMoney(totals.grandTotal, cur)}</span></div>
+            )}
             {totals.deposit > 0 && (
               <div className="flex justify-between text-gray-500"><span>Deposit ({po.deposit_pct}%)</span><span className="tabular-nums">− {fmtMoney(totals.deposit, cur)}</span></div>
             )}

@@ -5,7 +5,7 @@ import { db } from '../firebase'
 import { useComponents } from '../criticalComponents'
 import { CURRENCIES, PO_PAYMENT_TERMS, PO_UNITS } from '../constants'
 import { fmtMoney } from '../currency'
-import { emptyLine, lineAmount, poTotals, cleanLines, linkedComponentIds } from '../purchaseOrders'
+import { emptyLine, lineAmount, poTotals, cleanLines, linkedComponentIds, emptyAdjustment, cleanAdjustments } from '../purchaseOrders'
 import ComponentLinkPicker from '../components/ComponentLinkPicker'
 import { Trash2, Plus, FileInput, FolderOpen, FileText, Link2, X } from 'lucide-react'
 
@@ -52,6 +52,7 @@ export default function PurchaseOrderForm() {
     ship_to: '', status: 'draft', remarks: '',
   })
   const [lines, setLines] = useState([emptyLine()])
+  const [adjustments, setAdjustments] = useState([])
   const [supplierSnap, setSupplierSnap] = useState({})
   const [loading, setLoading] = useState(false)
   const [fetching, setFetching] = useState(isEdit || Boolean(fromId))
@@ -86,6 +87,7 @@ export default function PurchaseOrderForm() {
           ship_to: d.ship_to || '', status: d.status || 'draft', remarks: d.remarks || '',
         }))
         setLines((d.lines?.length ? d.lines : [{}]).map(ln => ({ ...emptyLine(), ...ln })))
+        setAdjustments((d.adjustments || []).map(a => ({ ...emptyAdjustment(), ...a })))
         setSupplierSnap(snapshotSupplier({ id: d.supplier_id, name: d.supplier_name, name_cn: d.supplier_name_cn, erp_code: d.supplier_erp_code, address: d.supplier_address, contact_person: d.supplier_contact }))
       }
       setFetching(false)
@@ -109,6 +111,7 @@ export default function PurchaseOrderForm() {
           ship_to: d.ship_to || '', status: 'draft', remarks: '',
         }))
         setLines((d.lines?.length ? d.lines : [{}]).map(ln => ({ ...emptyLine(), ...ln })))
+        setAdjustments((d.adjustments || []).map(a => ({ ...emptyAdjustment(), ...a })))
         setSupplierSnap(snapshotSupplier({ id: d.supplier_id, name: d.supplier_name, name_cn: d.supplier_name_cn, erp_code: d.supplier_erp_code, address: d.supplier_address, contact_person: d.supplier_contact }))
       }
       setFetching(false)
@@ -215,6 +218,10 @@ export default function PurchaseOrderForm() {
   const addLine = () => setLines(ls => [...ls, emptyLine()])
   const removeLine = uid => setLines(ls => ls.length > 1 ? ls.filter(l => l._uid !== uid) : ls)
 
+  const addAdjustment = () => setAdjustments(a => [...a, emptyAdjustment()])
+  const updateAdjustment = (uid, patch) => setAdjustments(a => a.map(x => x._uid === uid ? { ...x, ...patch } : x))
+  const removeAdjustment = uid => setAdjustments(a => a.filter(x => x._uid !== uid))
+
   // When a line's code matches a known component, offer to fill the description.
   const compByCode = useMemo(() => {
     const m = new Map()
@@ -234,7 +241,7 @@ export default function PurchaseOrderForm() {
     updateLine(uid, patch)
   }
 
-  const totals = poTotals({ lines, deposit_pct: form.deposit_pct })
+  const totals = poTotals({ lines, deposit_pct: form.deposit_pct, adjustments })
 
   async function handleSubmit(e, nextStatus) {
     e.preventDefault()
@@ -248,7 +255,7 @@ export default function PurchaseOrderForm() {
 
     setLoading(true)
     try {
-      const t = poTotals({ lines, deposit_pct: form.deposit_pct })
+      const t = poTotals({ lines, deposit_pct: form.deposit_pct, adjustments })
       const payload = {
         pu_number: form.pu_number.trim(),
         ...supplierSnap,
@@ -262,9 +269,11 @@ export default function PurchaseOrderForm() {
         status: nextStatus || form.status,
         remarks: form.remarks.trim(),
         lines: clean,
+        adjustments: cleanAdjustments(adjustments),
         linked_component_ids: linkedComponentIds(clean),
         subtotal: t.subtotal,
-        total: t.balance,      // amount actually payable after any deposit split
+        grand_total: t.grandTotal,   // subtotal after discounts / extra charges
+        total: t.balance,            // amount actually payable after any deposit split
         updatedAt: serverTimestamp(),
       }
       if (isEdit) {
@@ -446,10 +455,49 @@ export default function PurchaseOrderForm() {
             <Plus size={14} /> Add line
           </button>
 
+          {/* Discounts & additional charges */}
+          <div className="mt-5 pt-4 border-t border-gray-100">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Discounts &amp; Additional Charges</h3>
+            {adjustments.length > 0 && (
+              <div className="space-y-2">
+                {adjustments.map(a => (
+                  <div key={a._uid} className="grid grid-cols-[1fr_7.5rem_7rem_auto] gap-2 items-center">
+                    <input className="input text-sm" value={a.label}
+                           onChange={e => updateAdjustment(a._uid, { label: e.target.value })}
+                           placeholder={a.kind === 'discount' ? 'e.g. volume discount' : 'e.g. freight, mould fee'} />
+                    <select className="input text-sm" value={a.kind} onChange={e => updateAdjustment(a._uid, { kind: e.target.value })}>
+                      <option value="charge">Charge +</option>
+                      <option value="discount">Discount −</option>
+                    </select>
+                    <input className="input text-sm text-right tabular-nums" inputMode="decimal" value={a.amount}
+                           onChange={e => updateAdjustment(a._uid, { amount: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" />
+                    <button type="button" onClick={() => removeAdjustment(a._uid)}
+                            className="text-gray-300 hover:text-red-500 justify-self-end" title="Remove"><Trash2 size={15} /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button type="button" onClick={addAdjustment} className="mt-2 inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-800">
+              <Plus size={14} /> Add discount / charge
+            </button>
+          </div>
+
           {/* Totals */}
           <div className="mt-5 pt-4 border-t border-gray-100 flex justify-end">
             <div className="w-full sm:w-72 space-y-1.5 text-sm">
               <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span className="tabular-nums font-medium">{fmtMoney(totals.subtotal, form.currency)}</span></div>
+              {cleanAdjustments(adjustments).map((a, i) => {
+                const disc = a.kind === 'discount'
+                return (
+                  <div key={i} className="flex justify-between text-gray-500">
+                    <span className="truncate max-w-[11rem]">{a.label || (disc ? 'Discount' : 'Additional charge')}</span>
+                    <span className="tabular-nums">{disc ? '− ' : '+ '}{fmtMoney(a.amount, form.currency)}</span>
+                  </div>
+                )
+              })}
+              {totals.adjustmentsTotal !== 0 && (
+                <div className="flex justify-between font-medium pt-1 border-t border-gray-100"><span className="text-gray-600">Order total</span><span className="tabular-nums">{fmtMoney(totals.grandTotal, form.currency)}</span></div>
+              )}
               {totals.deposit > 0 && (
                 <div className="flex justify-between text-gray-500"><span>Deposit ({form.deposit_pct}%)</span><span className="tabular-nums">− {fmtMoney(totals.deposit, form.currency)}</span></div>
               )}

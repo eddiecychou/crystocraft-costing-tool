@@ -141,6 +141,16 @@ function PrintDoc({ po }) {
           <tbody>
             <tr><td className="k">Total Qty</td><td className="v">{totals.totalQty.toLocaleString()}</td></tr>
             <tr><td className="k">Subtotal</td><td className="v">{money(totals.subtotal, cur)}</td></tr>
+            {(po.adjustments || []).map((a, i) => {
+              const disc = a.kind === 'discount'
+              return (
+                <tr key={i}><td className="k">{a.label || (disc ? 'Discount' : 'Additional charge')}</td>
+                  <td className="v">{disc ? '− ' : '+ '}{money(Math.abs(Number(a.amount) || 0), cur)}</td></tr>
+              )
+            })}
+            {totals.adjustmentsTotal !== 0 && (
+              <tr><td className="k">Order Total</td><td className="v">{money(totals.grandTotal, cur)}</td></tr>
+            )}
             {totals.deposit > 0 && (
               <tr><td className="k">Deposit ({po.deposit_pct}%)</td><td className="v">− {money(totals.deposit, cur)}</td></tr>
             )}
