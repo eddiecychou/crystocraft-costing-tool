@@ -13,6 +13,7 @@ import { FileInput, FolderOpen, FileText, Trash2, CheckCircle2, AlertTriangle, R
 import ConfirmDialog from '../components/ConfirmDialog'
 import PackingListEditor from './PackingListEditor'
 import FreightComparison from './FreightComparison'
+import OrderStockIssue from '../components/OrderStockIssue'
 
 const blankHeader = {
   customer_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', order_date: '',
@@ -576,6 +577,9 @@ export default function ShipmentForm() {
             </div>
           )
         })()}
+
+        {/* Component stock — issue this order's figurine BOM to the ledger (V7.13a) */}
+        {isEdit && <OrderStockIssue orderId={id} orderLabel={header.erp_pi_no || header.erp_so_no || id} />}
 
         <div className="flex items-center gap-3 pt-1">
           <button type="submit" className="btn-primary" disabled={saving || (!isEdit && lines.length === 0)}>
