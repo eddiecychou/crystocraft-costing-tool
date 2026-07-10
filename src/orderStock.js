@@ -71,7 +71,7 @@ export async function issueOrder(orderId, orderLabel) {
 
   const issued = []
   for (const it of items) {
-    await postMovement(it.component_id, {
+    await postMovement('range_components', it.component_id, {
       type: 'issue', qty: it.required, order_id: orderId,
       note: `Issued to order ${orderLabel || orderId}`,
     })
@@ -93,7 +93,7 @@ export async function reverseOrderIssue(orderId, orderLabel) {
   const issued = snap.exists() ? (snap.data().issued_lines || []) : []
   for (const it of issued) {
     if (!it.component_id) continue
-    await postMovement(it.component_id, {
+    await postMovement('range_components', it.component_id, {
       type: 'adjustment', qty: Math.abs(Number(it.qty) || 0), order_id: orderId,
       note: `Reversed issue — order ${orderLabel || orderId}`,
     })

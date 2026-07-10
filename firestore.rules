@@ -134,6 +134,15 @@ service cloud.firestore {
       }
     }
 
+    // Crystal inventory (V7.13a) — per-colour SKUs, admin only, with the same
+    // append-only stock ledger.
+    match /crystals/{crystalId} {
+      allow read, write: if isAdmin();
+      match /movements/{movementId} {
+        allow read, write: if isAdmin();
+      }
+    }
+
     // ---- Shipping & Logistics module (admin only) -----------------------
     match /orders/{orderId} {
       allow read, write: if isAdmin();

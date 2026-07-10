@@ -10,8 +10,8 @@ import { PackagePlus, PackageMinus, ClipboardCheck, Pencil } from 'lucide-react'
 const fmt = n => (Number.isFinite(Number(n)) ? Number(n).toLocaleString() : '0')
 const ICONS = { receipt: PackagePlus, issue: PackageMinus, adjustment: Pencil, stocktake: ClipboardCheck }
 
-export default function StockLedger({ componentId, currentStock = 0 }) {
-  const { movements, loading } = useMovements(componentId)
+export default function StockLedger({ componentId, currentStock = 0, collectionPath = 'range_components' }) {
+  const { movements, loading } = useMovements(collectionPath, componentId)
   const [type, setType] = useState('receipt')
   const [qty, setQty] = useState('')
   const [note, setNote] = useState('')
@@ -30,7 +30,7 @@ export default function StockLedger({ componentId, currentStock = 0 }) {
     if (qty === '' || !Number.isFinite(Number(qty))) { setError('Enter a quantity.'); return }
     setSaving(true); setError('')
     try {
-      await postMovement(componentId, {
+      await postMovement(collectionPath, componentId, {
         type,
         qty: isStocktake ? undefined : Number(qty),
         counted: isStocktake ? Number(qty) : undefined,
