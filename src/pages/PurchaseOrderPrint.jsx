@@ -2,18 +2,15 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
-import logo from '../assets/logo.png'
 import { PO_PAYMENT_TERM_LABEL, amountInWords } from '../constants'
 import { poTotals, lineAmount } from '../purchaseOrders'
 
 // Buyer entity — matches the ERP letterhead. Edit here if the registered
 // details change; the PO print is the only consumer.
 const COMPANY = {
-  name_cn: '深圳市創馭五金製品有限公司',
-  name_en: 'CRYSTOCRAFT',
-  address: 'Shenzhen, PRC',
+  name_cn: '深圳市创联五金制品有限公司',
+  address: '广东省深圳市龙华区大浪街道华盛路133号进门上楼梯 2楼',
   tel: '(86) 755-2770 4425',
-  web: 'www.crystocraft.com.hk',
 }
 
 const money = (v, cur) => {
@@ -42,7 +39,6 @@ function PrintDoc({ po }) {
           border: none; border-radius: 6px; cursor: pointer; font-size: 13px; letter-spacing: .02em; }
         .po-accent { height: 4px; background: #b8935a; border-radius: 2px; margin-bottom: 16px; }
         .po-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
-        .po-head img { height: 30px; }
         .po-company { text-align: right; font-size: 9.5px; color: #555; line-height: 1.5; }
         .po-company .cn { font-size: 11px; color: #1a1a1a; font-weight: 600; }
         .po-title { font-size: 22px; font-weight: 700; letter-spacing: .06em; margin: 4px 0 2px; }
@@ -73,7 +69,8 @@ function PrintDoc({ po }) {
           border-radius: 4px; font-style: italic; color: #6b5a3e; font-size: 10px; }
         .po-remarks { font-size: 10px; color: #555; margin-bottom: 26px; white-space: pre-wrap; }
         .po-remarks .lbl { font-size: 8.5px; text-transform: uppercase; letter-spacing: .1em; color: #999; display: block; margin-bottom: 3px; }
-        .po-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; }
+        .po-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 30px; }
+        .po-sign .space { height: 70px; }
         .po-sign .line { border-top: 1px solid #999; padding-top: 5px; font-size: 9px; color: #777; }
       `}</style>
 
@@ -84,15 +81,12 @@ function PrintDoc({ po }) {
       {/* Header */}
       <div className="po-head">
         <div>
-          <img src={logo} alt="Crystocraft" />
           <div className="po-title">PURCHASE ORDER<span className="cn">採購訂單</span></div>
         </div>
         <div className="po-company">
           <div className="cn">{COMPANY.name_cn}</div>
-          <div>{COMPANY.name_en}</div>
           <div>{COMPANY.address}</div>
           <div>Tel {COMPANY.tel}</div>
-          <div>{COMPANY.web}</div>
         </div>
       </div>
 
@@ -165,8 +159,8 @@ function PrintDoc({ po }) {
       )}
 
       <div className="po-sign">
-        <div className="line">Issued By 制單</div>
-        <div className="line">Authorized Signature 供應商確認</div>
+        <div><div className="space" /><div className="line">Issued By 制單</div></div>
+        <div><div className="space" /><div className="line">Authorized Signature 供應商確認</div></div>
       </div>
     </div>
   )
