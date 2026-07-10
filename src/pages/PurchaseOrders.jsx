@@ -85,6 +85,9 @@ export default function PurchaseOrders() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-mono text-sm font-medium text-gray-900">{p.pu_number || '(no PU no.)'}</span>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${meta.badge}`}>{meta.label}</span>
+                    {!p.pu_number && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Needs PU #</span>
+                    )}
                   </div>
                   <p className="text-xs text-gray-500 truncate">
                     {p.supplier_name || '—'}{p.supplier_name_cn ? ` · ${p.supplier_name_cn}` : ''}

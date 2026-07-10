@@ -239,7 +239,9 @@ export default function PurchaseOrderForm() {
   async function handleSubmit(e, nextStatus) {
     e.preventDefault()
     setError('')
-    if (!form.pu_number.trim()) { setError('PU number is required (copy it from the ERP).'); return }
+    // PU number is optional at any status — "Issued" here means sent to the
+    // supplier, which can happen before the order is keyed into the ERP at
+    // month-end. The PU number gets typed in later, whenever it's assigned.
     if (!form.supplier_id) { setError('Select a supplier.'); return }
     const clean = cleanLines(lines)
     if (!clean.length) { setError('Add at least one line item.'); return }
@@ -319,9 +321,9 @@ export default function PurchaseOrderForm() {
         <div className="card p-6 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="label">PU Number <span className="text-gray-400 font-normal">(from ERP)</span> *</label>
+              <label className="label">PU Number <span className="text-gray-400 font-normal">(from ERP — leave blank until assigned, add it later)</span></label>
               <input className="input font-mono" value={form.pu_number} onChange={set('pu_number')}
-                     placeholder="e.g. PU260014" />
+                     placeholder="e.g. PU260014 — or leave blank for now" />
             </div>
             <div>
               <label className="label">Supplier *</label>
