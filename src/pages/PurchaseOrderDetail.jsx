@@ -7,7 +7,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import { PO_STATUSES, PO_PAYMENT_TERM_LABEL, amountInWords } from '../constants'
 import { fmtMoney } from '../currency'
 import { poTotals, lineAmount } from '../purchaseOrders'
-import { Printer } from 'lucide-react'
+import { Printer, Copy } from 'lucide-react'
 
 const STATUS_META = Object.fromEntries(PO_STATUSES.map(s => [s.value, s]))
 
@@ -77,6 +77,8 @@ export default function PurchaseOrderDetail() {
         <div className="flex gap-2 flex-wrap justify-end">
           <a href={`/purchase-orders/${id}/print`} target="_blank" rel="noreferrer"
              className="btn-secondary inline-flex items-center gap-1.5"><Printer size={15} />Print / PDF</a>
+          <Link to={`/purchase-orders/new?from=${id}`}
+                className="btn-secondary inline-flex items-center gap-1.5"><Copy size={15} />Duplicate</Link>
           <button onClick={toggleStatus} className="btn-secondary">
             {(po.status || 'draft') === 'issued' ? 'Mark Draft' : 'Mark Issued'}
           </button>

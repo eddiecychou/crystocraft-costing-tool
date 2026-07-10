@@ -42,6 +42,7 @@ export default function PurchaseOrderForm() {
   const isEdit = Boolean(id)
   const navigate = useNavigate()
   const [params] = useSearchParams()
+  const fromId = params.get('from')   // duplicate/reorder source
   const { components } = useComponents()
 
   const [suppliers, setSuppliers] = useState([])
@@ -53,7 +54,8 @@ export default function PurchaseOrderForm() {
   const [lines, setLines] = useState([emptyLine()])
   const [supplierSnap, setSupplierSnap] = useState({})
   const [loading, setLoading] = useState(false)
-  const [fetching, setFetching] = useState(isEdit)
+  const [fetching, setFetching] = useState(isEdit || Boolean(fromId))
+  const [dupFromPU, setDupFromPU] = useState('')   // source PU no. when duplicating
   const [error, setError] = useState('')
 
   // PDF/image extraction state
@@ -89,6 +91,29 @@ export default function PurchaseOrderForm() {
       setFetching(false)
     })
   }, [id, isEdit])
+
+  // Duplicate / reorder from ?from=<id> — copies supplier, lines, currency and
+  // terms, but resets the PU number (ERP assigns a new one), dates, status, and
+  // PO-specific remarks so it starts as a clean draft.
+  useEffect(() => {
+    if (isEdit || !fromId) return
+    getDoc(doc(db, 'purchase_orders', fromId)).then(snap => {
+      if (snap.exists()) {
+        const d = snap.data()
+        setDupFromPU(d.pu_number || '')
+        setForm(f => ({ ...f,
+          pu_number: '', supplier_id: d.supplier_id || '',
+          issued_date: today(), est_ship_date: '',
+          currency: d.currency || 'RMB', payment_terms: d.payment_terms || '',
+          payment_terms_custom: d.payment_terms_custom || '', deposit_pct: d.deposit_pct ?? '',
+          ship_to: d.ship_to || '', status: 'draft', remarks: '',
+        }))
+        setLines((d.lines?.length ? d.lines : [{}]).map(ln => ({ ...emptyLine(), ...ln })))
+        setSupplierSnap(snapshotSupplier({ id: d.supplier_id, name: d.supplier_name, name_cn: d.supplier_name_cn, erp_code: d.supplier_erp_code, address: d.supplier_address, contact_person: d.supplier_contact }))
+      }
+      setFetching(false)
+    })
+  }, [fromId, isEdit])
 
   // Preselect supplier from ?supplier=<id> (new PO from a supplier page).
   useEffect(() => {
@@ -260,6 +285,9 @@ export default function PurchaseOrderForm() {
       <div className="mb-6">
         <Link to="/purchase-orders" className="text-sm text-brand-600 hover:underline">← Purchase Orders</Link>
         <h1 className="text-2xl font-bold text-gray-900 mt-1">{isEdit ? 'Edit Purchase Order' : 'New Purchase Order'}</h1>
+        {dupFromPU && !isEdit && (
+          <p className="text-sm text-gray-500 mt-1">Reordered from <span className="font-mono text-gray-700">{dupFromPU}</span> — enter the new PU number from the ERP.</p>
+        )}
       </div>
 
       <form onSubmit={e => handleSubmit(e)} className="space-y-5">
