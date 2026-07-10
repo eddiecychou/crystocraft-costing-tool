@@ -113,10 +113,6 @@ service cloud.firestore {
     }
 
     // ---- Everything below is internal / admin only ----------------------
-    // Supplier purchase orders — internal procurement records.
-    match /purchase_orders/{poId} {
-      allow read, write: if isAdmin();
-    }
     match /suppliers/{supplierId} {
       allow read, write: if isAdmin();
       match /catalogs/{catalogId} {
@@ -129,6 +125,12 @@ service cloud.firestore {
         allow read, write: if isAdmin();
       }
     }
+
+    // Supplier purchase orders — internal procurement records, admin only.
+    match /purchase_orders/{poId} {
+      allow read, write: if isAdmin();
+    }
+
     match /customers/{customerId} {
       allow read, write: if isAdmin();
       match /enquiries/{enquiryId} {
