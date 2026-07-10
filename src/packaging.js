@@ -21,5 +21,10 @@ export const packagingInventory = {
   cardTitle: 'Packaging', iconKey: 'box',
   codePlaceholder: 'BOX-GIFT-01', namePlaceholder: 'Gift box', attrPlaceholder: 'Box / Carton',
   importExample: 'BOX-GIFT-01\tGift box small\t1200\nCARTON-05\tMaster carton\t340',
-  order: { issued: 'packaging_issued', issuedAt: 'packaging_issued_at', lines: 'packaging_issued_lines', lineIdField: 'packaging_id' },
+  order: {
+    reserved: 'packaging_reserved', reservedAt: 'packaging_reserved_at',
+    committed: 'packaging_committed', committedAt: 'packaging_committed_at',
+    lines: 'packaging_lines', lineIdField: 'packaging_id',
+    legacyIssued: 'packaging_issued', legacyLines: 'packaging_issued_lines',
+  },
 }

@@ -24,7 +24,11 @@ export default function InventoryStockTab({ inv }) {
     return items.filter(c => [c.code, c.name, c[inv.attrField], c.size].some(v => (v || '').toLowerCase().includes(q)))
   }, [items, search, inv.attrField])
 
-  const totalOnHand = useMemo(() => items.reduce((s, c) => s + (Number.isFinite(c.stock_qty) ? c.stock_qty : 0), 0), [items])
+  const totals = useMemo(() => items.reduce((t, c) => {
+    t.onHand += Number.isFinite(c.stock_qty) ? c.stock_qty : 0
+    t.reserved += Number.isFinite(c.reserved_qty) ? c.reserved_qty : 0
+    return t
+  }, { onHand: 0, reserved: 0 }), [items])
 
   return (
     <div>
@@ -38,7 +42,12 @@ export default function InventoryStockTab({ inv }) {
       {adding && <AddRow inv={inv} onDone={() => setAdding(false)} />}
 
       <p className="text-xs text-ink-50 mb-2">
-        {loading ? 'Loading…' : `${filtered.length} of ${items.length} item${items.length === 1 ? '' : 's'} · ${totalOnHand.toLocaleString()} pcs on hand`}
+        {loading ? 'Loading…' : (
+          <>
+            {filtered.length} of {items.length} item{items.length === 1 ? '' : 's'} · {totals.onHand.toLocaleString()} on hand
+            {totals.reserved > 0 && <> · <span className="text-amber-600">{totals.reserved.toLocaleString()} reserved</span> · <span className="text-green-700">{(totals.onHand - totals.reserved).toLocaleString()} available</span></>}
+          </>
+        )}
       </p>
 
       {!loading && items.length === 0 ? (
@@ -59,7 +68,10 @@ export default function InventoryStockTab({ inv }) {
                       {c[inv.attrField] && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 shrink-0">{c[inv.attrField]}</span>}
                       {c.size && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 shrink-0">{c.size}</span>}
                     </div>
-                    <p className="text-xs text-ink-60 truncate">{c.name || '—'}</p>
+                    <p className="text-xs text-ink-60 truncate">
+                      {c.name || '—'}
+                      {Number(c.reserved_qty) > 0 && <span className="text-amber-600"> · {Number(c.reserved_qty).toLocaleString()} reserved · {((Number(c.stock_qty) || 0) - Number(c.reserved_qty)).toLocaleString()} avail</span>}
+                    </p>
                   </div>
                 </button>
                 <div className="flex justify-end shrink-0 pl-14 sm:pl-0">
@@ -68,7 +80,7 @@ export default function InventoryStockTab({ inv }) {
               </div>
               {expanded === c.id && (
                 <div className="px-3 pb-3 bg-ivory/30">
-                  <StockLedger componentId={c.id} currentStock={c.stock_qty || 0} collectionPath={inv.collectionPath} />
+                  <StockLedger componentId={c.id} currentStock={c.stock_qty || 0} currentReserved={c.reserved_qty || 0} collectionPath={inv.collectionPath} />
                   <button onClick={() => { if (window.confirm(`Delete ${c.code}? Its ledger history stays but the SKU is removed.`)) inv.remove(c.id) }}
                           className="mt-2 inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700">
                     <Trash2 size={12} /> Delete

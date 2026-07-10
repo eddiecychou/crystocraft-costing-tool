@@ -24,5 +24,10 @@ export const crystalInventory = {
   cardTitle: 'Crystal', iconKey: 'gem',
   codePlaceholder: 'BDC-8232-0014-005', namePlaceholder: 'Rosaline', attrPlaceholder: 'PI',
   importExample: 'BDC-8232-0014-005\tRosaline\t22811\nBDC-8232-0014-007\tRuby\t10512',
-  order: { issued: 'crystals_issued', issuedAt: 'crystals_issued_at', lines: 'crystal_issued_lines', lineIdField: 'crystal_id' },
+  order: {
+    reserved: 'crystals_reserved', reservedAt: 'crystals_reserved_at',
+    committed: 'crystals_committed', committedAt: 'crystals_committed_at',
+    lines: 'crystal_lines', lineIdField: 'crystal_id',
+    legacyIssued: 'crystals_issued', legacyLines: 'crystal_issued_lines',
+  },
 }

@@ -57,106 +57,112 @@ export async function computeOrderIssue(orderId) {
   }
 }
 
-// Issue an order's components to the ledger. Idempotent: refuses if already
-// issued. Posts one `issue` movement per component (order_id-tagged) and records
-// what was deducted on the order for a clean reversal.
-export async function issueOrder(orderId, orderLabel) {
-  const orderRef = doc(db, 'orders', orderId)
-  const snap = await getDoc(orderRef)
-  if (snap.exists() && snap.data().components_issued) {
-    throw new Error('Components already issued for this order.')
-  }
-  const { items } = await computeOrderIssue(orderId)
-  if (!items.length) throw new Error('Nothing to issue — no figurine BOM components on this order.')
+// ── Two-stage reserve → production-in (V7.13a R1) ────────────────────────────
+// All three classes follow the owner's ERP practice: Reserve at order
+// confirmation (components allocated, sitting on the line — on-hand unchanged,
+// reserved ↑), then Production-in when built (consumed — on-hand ↓, reserved ↓).
+// Both stages are reversible. Driven by a `cfg` per class carrying the parent
+// collection path + the exact order-doc field names (cfg.order.*), so metal,
+// crystals and packaging share one implementation and no data migrates.
 
-  const issued = []
-  for (const it of items) {
-    await postMovement('range_components', it.component_id, {
-      type: 'issue', qty: it.required, order_id: orderId,
-      note: `Issued to order ${orderLabel || orderId}`,
-    })
-    issued.push({ component_id: it.component_id, code: it.code, qty: it.required })
-  }
-  await updateDoc(orderRef, {
-    components_issued: true,
-    components_issued_at: serverTimestamp(),
-    issued_lines: issued,
-  })
-  return issued
+// Metal config lives here (its lines come from the BOM explosion, below).
+// Crystals/packaging carry their config on crystalInventory / packagingInventory.
+export const metalOrderConfig = {
+  collectionPath: 'range_components',
+  noun: 'component',
+  order: {
+    reserved: 'components_reserved', reservedAt: 'components_reserved_at',
+    committed: 'components_committed', committedAt: 'components_committed_at',
+    lines: 'component_lines', lineIdField: 'component_id',
+    // Legacy single-stage (V7.13a step 2) — read so any already-issued test
+    // order still reverses cleanly.
+    legacyIssued: 'components_issued', legacyLines: 'issued_lines',
+  },
 }
 
-// Reverse a prior issue — parts go back to stock as an adjustment (+qty) with a
-// clear note, then the order's issued state is cleared.
-export async function reverseOrderIssue(orderId, orderLabel) {
-  const orderRef = doc(db, 'orders', orderId)
-  const snap = await getDoc(orderRef)
-  const issued = snap.exists() ? (snap.data().issued_lines || []) : []
-  for (const it of issued) {
-    if (!it.component_id) continue
-    await postMovement('range_components', it.component_id, {
-      type: 'adjustment', qty: Math.abs(Number(it.qty) || 0), order_id: orderId,
-      note: `Reversed issue — order ${orderLabel || orderId}`,
-    })
-  }
-  await updateDoc(orderRef, {
-    components_issued: false,
-    components_issued_at: null,
-    issued_lines: [],
-  })
-}
-
-// ── Simple inventory classes: crystals & packaging (V7.13a) ──────────────────
-// Crystals and packaging have NO per-product BOM, so consumption is entered by
-// hand as a batch per order (matches the owner's Excel: one issue per SKU per
-// order). Same order-tagged, reversible pattern as the metal issue above, but
-// the lines are operator-supplied. Both classes share these two functions —
-// driven by an `inv` config (crystals.js / packaging.js), whose `inv.order`
-// carries the exact order-doc field names + the line id field, so no data
-// migration is needed. lines: [{ [inv.order.lineIdField], code, qty }]
-export async function issueInventoryForOrder(inv, orderId, orderLabel, lines) {
-  const { collectionPath, order } = inv
+// Reserve a set of lines to an order. lines: [{ [lineIdField], code, qty }].
+export async function reserveForOrder(cfg, orderId, orderLabel, lines) {
+  const { collectionPath, order } = cfg
   const idField = order.lineIdField
   const clean = (lines || [])
     .filter(l => l[idField] && Number(l.qty) > 0)
     .map(l => ({ [idField]: l[idField], code: l.code || '', qty: Math.abs(Number(l.qty)) }))
-  if (!clean.length) throw new Error(`Add at least one ${inv.noun} line with a quantity.`)
+  if (!clean.length) throw new Error('Nothing to reserve — add at least one line with a quantity.')
 
   const orderRef = doc(db, 'orders', orderId)
-  const snap = await getDoc(orderRef)
-  if (snap.exists() && snap.data()[order.issued]) throw new Error(`Already issued for this order.`)
+  const d = (await getDoc(orderRef)).data() || {}
+  if (d[order.reserved] || d[order.committed]) throw new Error('Already reserved for this order.')
 
-  const issued = []
   for (const l of clean) {
     await postMovement(collectionPath, l[idField], {
-      type: 'issue', qty: l.qty, order_id: orderId,
-      note: `Issued to order ${orderLabel || orderId}`,
+      type: 'reserve', qty: l.qty, order_id: orderId,
+      note: `Reserved for order ${orderLabel || orderId}`,
     })
-    issued.push(l)
   }
-  await updateDoc(orderRef, {
-    [order.issued]: true,
-    [order.issuedAt]: serverTimestamp(),
-    [order.lines]: issued,
-  })
-  return issued
+  await updateDoc(orderRef, { [order.reserved]: true, [order.reservedAt]: serverTimestamp(), [order.lines]: clean })
+  return clean
 }
 
-export async function reverseInventoryIssue(inv, orderId, orderLabel) {
-  const { collectionPath, order } = inv
+// Production-in: consume the reservation into finished goods (on-hand ↓, reserved ↓).
+export async function produceForOrder(cfg, orderId, orderLabel) {
+  const { collectionPath, order } = cfg
   const idField = order.lineIdField
   const orderRef = doc(db, 'orders', orderId)
-  const snap = await getDoc(orderRef)
-  const issued = snap.exists() ? (snap.data()[order.lines] || []) : []
-  for (const l of issued) {
+  const d = (await getDoc(orderRef)).data() || {}
+  if (!d[order.reserved]) throw new Error('Reserve the stock before production-in.')
+  if (d[order.committed]) throw new Error('Already produced-in for this order.')
+
+  const lines = d[order.lines] || []
+  for (const l of lines) {
+    if (!l[idField]) continue
+    await postMovement(collectionPath, l[idField], {
+      type: 'produce', qty: Math.abs(Number(l.qty) || 0), order_id: orderId,
+      note: `Production-in — order ${orderLabel || orderId}`,
+    })
+  }
+  await updateDoc(orderRef, { [order.committed]: true, [order.committedAt]: serverTimestamp() })
+  return lines
+}
+
+// Release a reservation (before production-in): reserved back to free stock.
+export async function releaseForOrder(cfg, orderId, orderLabel) {
+  const { collectionPath, order } = cfg
+  const idField = order.lineIdField
+  const orderRef = doc(db, 'orders', orderId)
+  const d = (await getDoc(orderRef)).data() || {}
+  const lines = d[order.lines] || []
+  for (const l of lines) {
+    if (!l[idField]) continue
+    await postMovement(collectionPath, l[idField], {
+      type: 'release', qty: Math.abs(Number(l.qty) || 0), order_id: orderId,
+      note: `Released reservation — order ${orderLabel || orderId}`,
+    })
+  }
+  await updateDoc(orderRef, {
+    [order.reserved]: false, [order.reservedAt]: null,
+    [order.committed]: false, [order.committedAt]: null, [order.lines]: [],
+  })
+}
+
+// Reverse a production-in: consumed stock returns to on-hand (order → open).
+// Also unwinds a legacy single-stage `issue` (same effect: add on-hand back).
+export async function reverseProduceForOrder(cfg, orderId, orderLabel) {
+  const { collectionPath, order } = cfg
+  const idField = order.lineIdField
+  const orderRef = doc(db, 'orders', orderId)
+  const d = (await getDoc(orderRef)).data() || {}
+  const lines = (d[order.lines] && d[order.lines].length ? d[order.lines] : (order.legacyLines ? d[order.legacyLines] : null)) || []
+  for (const l of lines) {
     if (!l[idField]) continue
     await postMovement(collectionPath, l[idField], {
       type: 'adjustment', qty: Math.abs(Number(l.qty) || 0), order_id: orderId,
-      note: `Reversed ${inv.noun} issue — order ${orderLabel || orderId}`,
+      note: `Reversed production-in — order ${orderLabel || orderId}`,
     })
   }
-  await updateDoc(orderRef, {
-    [order.issued]: false,
-    [order.issuedAt]: null,
-    [order.lines]: [],
-  })
+  const patch = {
+    [order.reserved]: false, [order.reservedAt]: null,
+    [order.committed]: false, [order.committedAt]: null, [order.lines]: [],
+  }
+  if (order.legacyIssued) { patch[order.legacyIssued] = false; patch[order.legacyLines] = [] }
+  await updateDoc(orderRef, patch)
 }

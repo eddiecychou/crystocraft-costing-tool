@@ -47,7 +47,7 @@ export default function RangeComponentForm() {
     getComponent(routeId).then(c => {
       if (c) setForm({
         code: c.code, name: c.name, category: c.category || '', plating_code: c.plating_code || '',
-        stock_qty: c.stock_qty ?? '', lead_time_weeks: c.lead_time_weeks ?? '',
+        stock_qty: c.stock_qty ?? '', reserved_qty: c.reserved_qty ?? 0, lead_time_weeks: c.lead_time_weeks ?? '',
         supplierId: c.supplierId || '', supplierName: c.supplierName || '',
         notes: c.notes || '', images: c.images || [],
       })
@@ -244,7 +244,7 @@ export default function RangeComponentForm() {
       {/* Stock ledger — outside the form (it has its own form). Existing parts only. */}
       {!isNew && (
         <div className="mt-4">
-          <StockLedger componentId={routeId} currentStock={form.stock_qty === '' ? 0 : Number(form.stock_qty)} />
+          <StockLedger componentId={routeId} currentStock={form.stock_qty === '' ? 0 : Number(form.stock_qty)} currentReserved={Number(form.reserved_qty) || 0} />
         </div>
       )}
     </div>

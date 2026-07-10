@@ -24,32 +24,52 @@ import { db } from './firebase'
 
 const MOVEMENTS = (colPath, id) => collection(db, colPath, id, 'movements')
 
-// Movement types. `qty` on a stored movement is always the SIGNED change to the
-// balance (receipt +, issue −); `adjustment` is a free signed correction;
-// `stocktake` sets an absolute counted value (its qty is the delta to reach it).
+// The ledger now tracks TWO balances per item: on-hand (physically in stock) and
+// reserved (allocated to confirmed orders, sitting on the production line but not
+// yet consumed). available = on-hand − reserved (R1, reserve→production-in).
+//
+// Manual-panel movement types (on-hand only). Reserve/release/produce below are
+// order-driven and not offered in the manual panel.
 export const MOVEMENT_TYPES = [
   { value: 'receipt',    label: 'Receipt',    sign: +1, note: 'Goods received / PU delivery' },
-  { value: 'issue',      label: 'Issue',      sign: -1, note: 'Consumed by an order / production' },
+  { value: 'issue',      label: 'Issue',      sign: -1, note: 'Consumed directly (no reservation)' },
   { value: 'adjustment', label: 'Adjustment', sign:  0, note: 'Manual correction (± signed)' },
   { value: 'stocktake',  label: 'Stock-take', sign:  0, note: 'Set the counted absolute quantity' },
 ]
 export const movementTypeOf = v => MOVEMENT_TYPES.find(t => t.value === v) || MOVEMENT_TYPES[0]
 
+// Every valid movement type (manual + order-driven). Order-driven:
+//   reserve  — allocate to an order (reserved +q; on-hand unchanged)
+//   release  — un-reserve (reserved −q)
+//   produce  — production-in: consume the reservation (on-hand −q AND reserved −q)
+const VALID_TYPES = new Set(['receipt', 'issue', 'adjustment', 'stocktake', 'reserve', 'release', 'produce'])
+
 const num = v => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
 const today = () => new Date().toISOString().slice(0, 10)
 
-// Compute the signed delta a request applies to a current balance. Pure — the
-// single source of truth for how each movement type moves the balance, so the
-// transaction and any preview UI agree.
-//   receipt / issue : qty is a magnitude; sign comes from the type.
-//   adjustment      : qty is already signed.
-//   stocktake       : counted is the new absolute; delta = counted − current.
-export function movementDelta({ type, qty, counted }, currentBalance) {
-  const cur = num(currentBalance)
-  if (type === 'stocktake') return num(counted) - cur
-  if (type === 'adjustment') return num(qty)
-  if (type === 'issue') return -Math.abs(num(qty))
-  return Math.abs(num(qty))   // receipt (default)
+// How a movement changes the two balances. Pure — the single source of truth so
+// the transaction and any preview UI agree. `base` = { onHand, reserved }.
+//   receipt/issue/adjustment/stocktake : on-hand only (reserved unchanged)
+//   reserve  : reserved +|q|            release : reserved −|q|
+//   produce  : on-hand −|q|, reserved −|q|
+export function movementEffect({ type, qty, counted }, base) {
+  const onHand = num(base?.onHand)
+  const q = num(qty)
+  switch (type) {
+    case 'stocktake':  return { onHandDelta: num(counted) - onHand, reservedDelta: 0 }
+    case 'adjustment': return { onHandDelta: q, reservedDelta: 0 }
+    case 'issue':      return { onHandDelta: -Math.abs(q), reservedDelta: 0 }
+    case 'reserve':    return { onHandDelta: 0, reservedDelta: Math.abs(q) }
+    case 'release':    return { onHandDelta: 0, reservedDelta: -Math.abs(q) }
+    case 'produce':    return { onHandDelta: -Math.abs(q), reservedDelta: -Math.abs(q) }
+    default:           return { onHandDelta: Math.abs(q), reservedDelta: 0 }   // receipt
+  }
+}
+
+// On-hand delta only — kept for the manual ledger panel's live preview, which
+// only offers the on-hand movement types.
+export function movementDelta(mov, currentBalance) {
+  return movementEffect(mov, { onHand: num(currentBalance) }).onHandDelta
 }
 
 // Post one movement atomically: read the cached balance, seed the opening
@@ -62,34 +82,38 @@ export function movementDelta({ type, qty, counted }, currentBalance) {
 // Returns the new balance.
 export async function postMovement(colPath, id, opts) {
   const compRef = doc(db, colPath, id)
-  const type = movementTypeOf(opts.type).value
+  const type = VALID_TYPES.has(opts.type) ? opts.type : 'receipt'
 
   return runTransaction(db, async tx => {
     const snap = await tx.get(compRef)
     if (!snap.exists()) throw new Error('Item not found')
     const comp = snap.data()
-    let base = Number.isFinite(comp.stock_qty) ? comp.stock_qty : 0
+    const onHand = Number.isFinite(comp.stock_qty) ? comp.stock_qty : 0
+    const reserved = Number.isFinite(comp.reserved_qty) ? comp.reserved_qty : 0
 
-    // Seed the opening balance once: any stock that existed before the ledger
-    // becomes an explicit opening stock-take so the history is complete.
-    if (!comp.ledger_seeded && base !== 0) {
+    // Seed the opening on-hand balance once: any stock that existed before the
+    // ledger becomes an explicit opening stock-take so the history is complete.
+    if (!comp.ledger_seeded && onHand !== 0) {
       const openRef = doc(MOVEMENTS(colPath, id))
       tx.set(openRef, {
-        type: 'stocktake', qty: base, counted: base, balance_after: base,
+        type: 'stocktake', qty: onHand, counted: onHand, balance_after: onHand, reserved_after: reserved,
         date: today(), note: 'Opening balance (migrated from stock)',
         seq: Date.now() - 1, createdAt: serverTimestamp(),
       })
     }
 
-    const delta = movementDelta({ type, qty: opts.qty, counted: opts.counted }, base)
-    const balance_after = base + delta
+    const { onHandDelta, reservedDelta } = movementEffect({ type, qty: opts.qty, counted: opts.counted }, { onHand, reserved })
+    const balance_after = onHand + onHandDelta
+    const reserved_after = reserved + reservedDelta
 
     const movRef = doc(MOVEMENTS(colPath, id))
     tx.set(movRef, {
       type,
-      qty: delta,
+      qty: onHandDelta,
+      reserved_qty: reservedDelta,
       counted: type === 'stocktake' ? num(opts.counted) : null,
       balance_after,
+      reserved_after,
       date: opts.date || today(),
       note: (opts.note || '').trim(),
       order_id: opts.order_id || null,
@@ -97,8 +121,8 @@ export async function postMovement(colPath, id, opts) {
       createdAt: serverTimestamp(),
     })
 
-    tx.update(compRef, { stock_qty: balance_after, ledger_seeded: true, updatedAt: serverTimestamp() })
-    return balance_after
+    tx.update(compRef, { stock_qty: balance_after, reserved_qty: reserved_after, ledger_seeded: true, updatedAt: serverTimestamp() })
+    return { onHand: balance_after, reserved: reserved_after }
   })
 }
 
