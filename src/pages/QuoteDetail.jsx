@@ -298,6 +298,30 @@ export default function QuoteDetail() {
             }}
           />
         </p>
+
+        {/* Quote reference numbers — appear on the exported quotation header */}
+        <div className="flex flex-wrap gap-x-6 gap-y-1 mt-2 max-w-lg">
+          {[
+            { label: 'QU P/O No.', field: 'quote_no',   ph: 'e.g. QU260602-1' },
+            { label: 'Ref No.',    field: 'ref_no',      ph: 'e.g. UC4932/26' },
+          ].map(({ label, field, ph }) => (
+            <div key={field} className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-400 shrink-0">{label}</span>
+              <input
+                className="text-xs font-medium text-gray-600 bg-transparent border-b border-gray-200 hover:border-brand-300 focus:border-brand-400 focus:outline-none w-32"
+                defaultValue={quote[field] || ''}
+                key={`${field}-${quote[field]}`}
+                placeholder={ph}
+                onBlur={e => {
+                  if (e.target.value !== (quote[field] || '')) {
+                    updateDoc(doc(db, 'client_quotes', id), { [field]: e.target.value })
+                    setQuote(q => ({ ...q, [field]: e.target.value }))
+                  }
+                }}
+              />
+            </div>
+          ))}
+        </div>
         <div className="flex flex-wrap gap-2 mt-3">
           <select
             className="input w-auto text-sm py-1.5"
@@ -348,13 +372,24 @@ export default function QuoteDetail() {
         )}
       </div>
 
-      {/* Notes */}
-      {quote.notes && (
-        <div className="card p-4 mb-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-1">Notes</h2>
-          <p className="text-sm text-gray-600 whitespace-pre-wrap">{quote.notes}</p>
-        </div>
-      )}
+      {/* Quote-level remarks — payment terms, delivery, bank details, etc.
+          Renders below the table on the exported quotation. */}
+      <div className="card p-4 mb-4">
+        <h2 className="text-sm font-semibold text-gray-700 mb-2">Remarks <span className="font-normal text-gray-400">(shown on the quotation)</span></h2>
+        <textarea
+          rows={4}
+          placeholder={'Payment terms : 50% deposit, balance before shipment.\nDelivery : Hong Kong (one time shipment)\n\nBeneficiary Bank: …'}
+          defaultValue={quote.notes || ''}
+          key={`quote-notes-${quote.id}`}
+          onBlur={e => {
+            if (e.target.value !== (quote.notes || '')) {
+              updateDoc(doc(db, 'client_quotes', id), { notes: e.target.value })
+              setQuote(q => ({ ...q, notes: e.target.value }))
+            }
+          }}
+          className="w-full text-sm text-gray-700 placeholder-gray-300 border border-gray-100 rounded-lg px-3 py-2 resize-y focus:outline-none focus:border-brand-300 focus:ring-1 focus:ring-brand-200 bg-gray-50 hover:bg-white transition-colors leading-relaxed"
+        />
+      </div>
 
       {/* Product Picker Modal */}
       {showProductPicker && (

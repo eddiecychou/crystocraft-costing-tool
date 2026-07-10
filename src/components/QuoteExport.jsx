@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import ExcelJS from 'exceljs'
-import { Download } from 'lucide-react'
+import { Download, Eye } from 'lucide-react'
 import logoUrl from '../assets/logo.png'
 
 // Fetch a product image and return a data: URL so react-pdf can embed it without
@@ -57,21 +57,27 @@ const baseFont = (opts = {}) => ({ name: 'Calibri Light', size: 9, color: { argb
 export default function QuoteExport({ quote, items, onClose }) {
   const [loading, setLoading] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
+  const [previewLoading, setPreviewLoading] = useState(false)
+
+  // Build the quotation PDF as a blob (shared by download + preview).
+  async function buildPdfBlob() {
+    // Pre-embed each product image as a data URL (avoids CORS in react-pdf).
+    const withImages = await Promise.all(items.map(async item => ({
+      ...item,
+      _imageData: await imageToDataURL(item.custom_image || item.hero_image),
+    })))
+    // Lazy-load react-pdf + the document so its weight stays out of the main bundle.
+    const [{ pdf }, { default: QuotePDF }] = await Promise.all([
+      import('@react-pdf/renderer'),
+      import('./QuotePDF'),
+    ])
+    return pdf(<QuotePDF quote={quote} items={withImages} />).toBlob()
+  }
 
   async function exportPDF() {
     setPdfLoading(true)
     try {
-      // Pre-embed each product image as a data URL (avoids CORS in react-pdf).
-      const withImages = await Promise.all(items.map(async item => ({
-        ...item,
-        _imageData: await imageToDataURL(item.custom_image || item.hero_image),
-      })))
-      // Lazy-load react-pdf + the document so its weight stays out of the main bundle.
-      const [{ pdf }, { default: QuotePDF }] = await Promise.all([
-        import('@react-pdf/renderer'),
-        import('./QuotePDF'),
-      ])
-      const blob = await pdf(<QuotePDF quote={quote} items={withImages} />).toBlob()
+      const blob = await buildPdfBlob()
       const url  = URL.createObjectURL(blob)
       const a    = document.createElement('a')
       a.href     = url
@@ -83,6 +89,25 @@ export default function QuoteExport({ quote, items, onClose }) {
       alert(`PDF generation failed: ${err.message}`)
     } finally {
       setPdfLoading(false)
+    }
+  }
+
+  async function previewPDF() {
+    setPreviewLoading(true)
+    // Open the tab synchronously so the browser doesn't block it as a popup;
+    // fill it with the blob once the PDF is ready.
+    const tab = window.open('', '_blank')
+    try {
+      const blob = await buildPdfBlob()
+      const url  = URL.createObjectURL(blob)
+      if (tab) tab.location = url
+      else window.open(url, '_blank')   // popup blocked — fall back
+    } catch (err) {
+      console.error('[QuoteExport] Preview error:', err)
+      if (tab) tab.close()
+      alert(`Preview failed: ${err.message}`)
+    } finally {
+      setPreviewLoading(false)
     }
   }
 
@@ -429,10 +454,13 @@ export default function QuoteExport({ quote, items, onClose }) {
         </div>
 
         <div className="space-y-3">
-          <button className="btn-primary w-full justify-center" onClick={exportPDF} disabled={pdfLoading || loading}>
+          <button className="btn-secondary w-full justify-center" onClick={previewPDF} disabled={previewLoading || pdfLoading || loading}>
+            {previewLoading ? 'Opening…' : <span className="inline-flex items-center gap-1.5"><Eye size={15} />Preview PDF</span>}
+          </button>
+          <button className="btn-primary w-full justify-center" onClick={exportPDF} disabled={pdfLoading || previewLoading || loading}>
             {pdfLoading ? 'Generating…' : <span className="inline-flex items-center gap-1.5"><Download size={15} />Download PDF</span>}
           </button>
-          <button className="btn-secondary w-full justify-center" onClick={exportExcel} disabled={loading || pdfLoading}>
+          <button className="btn-secondary w-full justify-center" onClick={exportExcel} disabled={loading || pdfLoading || previewLoading}>
             {loading ? 'Generating…' : <span className="inline-flex items-center gap-1.5"><Download size={15} />Download Excel (.xlsx)</span>}
           </button>
         </div>
