@@ -24,6 +24,18 @@
 
 @layer components {
 
+  /* Mobile browsers resize the viewport as the address bar hides/shows while
+     scrolling; a fixed `100vh` shell doesn't track that, so a nested
+     overflow-y-auto content pane can desync from the real visible height —
+     scrolling then sticks and rubber-bands near the bottom. `100dvh` tracks
+     the actual viewport; the `100vh` line above it is the fallback for
+     browsers that don't support dvh (an unsupported unit is simply ignored,
+     leaving the previous valid declaration in place). */
+  .h-screen-dynamic {
+    height: 100vh;
+    height: 100dvh;
+  }
+
   /* ── Buttons — Work Sans, uppercase, square corners ──── */
   .btn {
     @apply inline-flex items-center justify-center gap-2 px-5 py-2 rounded-none text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed uppercase;
