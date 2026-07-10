@@ -7,7 +7,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import { PO_STATUSES, PO_PAYMENT_TERM_LABEL, amountInWords } from '../constants'
 import { fmtMoney } from '../currency'
 import { poTotals, lineAmount } from '../purchaseOrders'
-import { Printer, Copy } from 'lucide-react'
+import { Printer, Copy, MoreHorizontal, Trash2, RefreshCw } from 'lucide-react'
 
 const STATUS_META = Object.fromEntries(PO_STATUSES.map(s => [s.value, s]))
 
@@ -32,6 +32,7 @@ export default function PurchaseOrderDetail() {
   const [po, setPo] = useState(null)
   const [loading, setLoading] = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
     getDoc(doc(db, 'purchase_orders', id)).then(snap => {
@@ -63,8 +64,8 @@ export default function PurchaseOrderDetail() {
     <div className="p-4 md:p-6 max-w-3xl">
       <Link to="/purchase-orders" className="text-sm text-brand-600 hover:underline">← Purchase Orders</Link>
 
-      <div className="flex items-start justify-between mt-2 mb-6">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mt-2 mb-6">
+        <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold text-gray-900 font-mono">{po.pu_number || '(no PU no.)'}</h1>
             <span className={`text-xs px-2 py-0.5 rounded-full ${meta.badge}`}>{meta.label}</span>
@@ -74,16 +75,38 @@ export default function PurchaseOrderDetail() {
             {po.supplier_erp_code ? ` · ${po.supplier_erp_code}` : ''}
           </p>
         </div>
-        <div className="flex gap-2 flex-wrap justify-end">
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Link to={`/purchase-orders/${id}/edit`} className="btn-primary">Edit</Link>
           <a href={`/purchase-orders/${id}/print`} target="_blank" rel="noreferrer"
-             className="btn-secondary inline-flex items-center gap-1.5"><Printer size={15} />Print / PDF</a>
-          <Link to={`/purchase-orders/new?from=${id}`}
-                className="btn-secondary inline-flex items-center gap-1.5"><Copy size={15} />Duplicate</Link>
-          <button onClick={toggleStatus} className="btn-secondary">
-            {(po.status || 'draft') === 'issued' ? 'Mark Draft' : 'Mark Issued'}
-          </button>
-          <Link to={`/purchase-orders/${id}/edit`} className="btn-secondary">Edit</Link>
-          <button className="btn-danger" onClick={() => setConfirmDelete(true)}>Delete</button>
+             className="btn-secondary inline-flex items-center gap-1.5"><Printer size={15} />Print</a>
+
+          {/* Overflow menu — less-frequent actions */}
+          <div className="relative">
+            <button onClick={() => setMenuOpen(o => !o)} aria-label="More actions"
+                    className="btn-secondary px-2.5"><MoreHorizontal size={18} /></button>
+            {menuOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
+                <div className="absolute right-0 top-full mt-1 z-40 w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1">
+                  <Link to={`/purchase-orders/new?from=${id}`} onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    <Copy size={15} className="text-gray-400" />Duplicate / reorder
+                  </Link>
+                  <button onClick={() => { setMenuOpen(false); toggleStatus() }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                    <RefreshCw size={15} className="text-gray-400" />
+                    {(po.status || 'draft') === 'issued' ? 'Mark as Draft' : 'Mark as Issued'}
+                  </button>
+                  <div className="my-1 border-t border-gray-100" />
+                  <button onClick={() => { setMenuOpen(false); setConfirmDelete(true) }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-600 hover:bg-red-50">
+                    <Trash2 size={15} />Delete
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
