@@ -5,6 +5,7 @@ import { storage } from '../firebase'
 import { getComponent, saveComponent, deleteComponent, loadComponentQuotes, setPreferredQuote } from '../criticalComponents'
 import { RANGE_PLATINGS } from '../constants'
 import { useComponentCategories } from '../componentCategories'
+import LastActualPaid from '../components/LastActualPaid'
 import { Star, FileText } from 'lucide-react'
 
 const blank = {
@@ -163,6 +164,8 @@ export default function RangeComponentForm() {
             {!isNew && <Link to={`/components/critical/${routeId}/quotes/new${backQ}`} className="btn-secondary text-sm">+ Add quote</Link>}
           </div>
           <p className="text-xs text-ink-60 mb-3">Upload supplier screenshots / PDFs; AI extracts the price. Star one as preferred — its cost is used in costing.</p>
+
+          {!isNew && <LastActualPaid componentId={routeId} />}
 
           {isNew ? (
             <p className="text-sm text-ink-50">Save the component first, then add supplier quotes with images.</p>

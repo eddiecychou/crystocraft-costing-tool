@@ -5,6 +5,7 @@ import { db } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import ImageGallery from '../components/ImageGallery'
+import LastActualPaid from '../components/LastActualPaid'
 import { COMPONENT_IMAGE_TYPES } from '../constants'
 import { X } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
@@ -112,6 +113,7 @@ export default function ComponentDetail() {
 
       {/* Supplier Quotes */}
       <div className="card p-4">
+        <LastActualPaid componentId={componentId} />
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-gray-700">Supplier Quotes</h2>
           <Link

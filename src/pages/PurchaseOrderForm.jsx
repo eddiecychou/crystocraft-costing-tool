@@ -5,8 +5,9 @@ import { db } from '../firebase'
 import { useComponents } from '../criticalComponents'
 import { CURRENCIES, PO_PAYMENT_TERMS, PO_UNITS } from '../constants'
 import { fmtMoney } from '../currency'
-import { emptyLine, lineAmount, poTotals, cleanLines } from '../purchaseOrders'
-import { Trash2, Plus, FileInput, FolderOpen, FileText } from 'lucide-react'
+import { emptyLine, lineAmount, poTotals, cleanLines, linkedComponentIds } from '../purchaseOrders'
+import ComponentLinkPicker from '../components/ComponentLinkPicker'
+import { Trash2, Plus, FileInput, FolderOpen, FileText, Link2, X } from 'lucide-react'
 
 const PO_TERM_VALUES = PO_PAYMENT_TERMS.map(t => t.value)
 
@@ -60,6 +61,7 @@ export default function PurchaseOrderForm() {
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState('')
   const [dragOver, setDragOver] = useState(false)
+  const [linkingUid, setLinkingUid] = useState(null)   // line _uid whose picker is open
 
   // Load supplier list for the picker.
   useEffect(() => {
@@ -201,6 +203,9 @@ export default function PurchaseOrderForm() {
     // Autofill description only if it's currently empty (never overwrite typing).
     const patch = { code }
     if (match && !line.description) patch.description = match.name || ''
+    // Auto-link a figurine component when the code matches — free linkage for
+    // coded/shared parts (boxes, stones). Never clobber a manual link.
+    if (match && !line.linked) patch.linked = { type: 'range', component_id: match.id, label: match.code }
     updateLine(uid, patch)
   }
 
@@ -230,6 +235,7 @@ export default function PurchaseOrderForm() {
         status: nextStatus || form.status,
         remarks: form.remarks.trim(),
         lines: clean,
+        linked_component_ids: linkedComponentIds(clean),
         subtotal: t.subtotal,
         total: t.balance,      // amount actually payable after any deposit split
         updatedAt: serverTimestamp(),
@@ -362,27 +368,46 @@ export default function PurchaseOrderForm() {
             <span>Unit</span><span className="text-right">Unit Price</span><span className="text-right">Amount</span><span />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             {lines.map(ln => (
-              <div key={ln._uid} className="grid grid-cols-2 sm:grid-cols-[2fr_3fr_1fr_1fr_1.3fr_1.3fr_auto] gap-2 items-center">
-                <input className="input text-sm font-mono" list="po-component-codes" value={ln.code}
-                       onChange={e => onCodeChange(ln._uid, e.target.value)} placeholder="P-… / FM-… / MISC" />
-                <input className="input text-sm" value={ln.description}
-                       onChange={e => updateLine(ln._uid, { description: e.target.value })} placeholder="Description" />
-                <input className="input text-sm text-right tabular-nums" inputMode="decimal" value={ln.qty}
-                       onChange={e => updateLine(ln._uid, { qty: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0" />
-                <select className="input text-sm" value={ln.unit} onChange={e => updateLine(ln._uid, { unit: e.target.value })}>
-                  {PO_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-                </select>
-                <input className="input text-sm text-right tabular-nums" inputMode="decimal" value={ln.unit_price}
-                       onChange={e => updateLine(ln._uid, { unit_price: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" />
-                <div className="text-sm text-right tabular-nums text-gray-700 px-1">
-                  {lineAmount(ln) ? lineAmount(ln).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
+              <div key={ln._uid} className="space-y-1">
+                <div className="grid grid-cols-2 sm:grid-cols-[2fr_3fr_1fr_1fr_1.3fr_1.3fr_auto] gap-2 items-center">
+                  <input className="input text-sm font-mono" list="po-component-codes" value={ln.code}
+                         onChange={e => onCodeChange(ln._uid, e.target.value)} placeholder="P-… / FM-… / MISC" />
+                  <input className="input text-sm" value={ln.description}
+                         onChange={e => updateLine(ln._uid, { description: e.target.value })} placeholder="Description" />
+                  <input className="input text-sm text-right tabular-nums" inputMode="decimal" value={ln.qty}
+                         onChange={e => updateLine(ln._uid, { qty: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0" />
+                  <select className="input text-sm" value={ln.unit} onChange={e => updateLine(ln._uid, { unit: e.target.value })}>
+                    {PO_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                  <input className="input text-sm text-right tabular-nums" inputMode="decimal" value={ln.unit_price}
+                         onChange={e => updateLine(ln._uid, { unit_price: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" />
+                  <div className="text-sm text-right tabular-nums text-gray-700 px-1">
+                    {lineAmount(ln) ? lineAmount(ln).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
+                  </div>
+                  <button type="button" onClick={() => removeLine(ln._uid)}
+                          className="text-gray-300 hover:text-red-500 justify-self-end" title="Remove line">
+                    <Trash2 size={15} />
+                  </button>
                 </div>
-                <button type="button" onClick={() => removeLine(ln._uid)}
-                        className="text-gray-300 hover:text-red-500 justify-self-end" title="Remove line">
-                  <Trash2 size={15} />
-                </button>
+                {/* Optional component link — surfaces this actual price on that component */}
+                <div className="flex items-center gap-2 pl-1 text-xs">
+                  {ln.linked?.component_id ? (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-brand-50 text-brand-700">
+                      <Link2 size={12} />
+                      <span className="truncate max-w-[220px]">{ln.linked.label || 'Linked component'}</span>
+                      <span className="text-brand-400">· {ln.linked.type === 'range' ? 'Figurine' : 'Corp'}</span>
+                      <button type="button" onClick={() => updateLine(ln._uid, { linked: null })}
+                              className="text-brand-400 hover:text-red-500" title="Unlink"><X size={12} /></button>
+                    </span>
+                  ) : (
+                    <button type="button" onClick={() => setLinkingUid(ln._uid)}
+                            className="inline-flex items-center gap-1 text-gray-400 hover:text-brand-600">
+                      <Link2 size={12} /> Link component <span className="text-gray-300">(optional)</span>
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -428,6 +453,13 @@ export default function PurchaseOrderForm() {
           <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>Cancel</button>
         </div>
       </form>
+
+      {linkingUid && (
+        <ComponentLinkPicker
+          onClose={() => setLinkingUid(null)}
+          onPick={picked => { updateLine(linkingUid, { linked: picked }); setLinkingUid(null) }}
+        />
+      )}
     </div>
   )
 }
