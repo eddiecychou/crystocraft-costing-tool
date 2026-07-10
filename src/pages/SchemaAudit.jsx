@@ -5,7 +5,8 @@ import { db } from '../firebase'
 import LoadingBar from '../components/LoadingBar'
 import { AlertTriangle, AlertCircle, Info, CheckCircle2, RefreshCw, Copy, ChevronDown, ChevronRight } from 'lucide-react'
 import { validateCustomer } from '../domain/customer'
-import { validateComponent, validateCriticalRefs } from '../criticalComponents'
+import { validateComponent, validateCriticalRefs, buildProductIndex, matchProductCode } from '../criticalComponents'
+import { looksLikeFigurineCode } from '../mrp'
 import { validateOrder } from '../shipping'
 import { allIssues } from '../domain/validation'
 
@@ -57,6 +58,11 @@ export default function SchemaAudit() {
       getDocs(collection(db, 'products')),
       getDocs(collection(db, 'orders')),
     ])
+
+    // Order line items (one subcollection read per order) for the PI-vs-Range check.
+    const orderLineSnaps = await Promise.all(
+      orders.docs.map(d => getDocs(collection(db, 'orders', d.id, 'lines')))
+    )
 
     // Components library for orphan resolution (id + uppercased code).
     const lib = rComps.docs.map(d => ({ id: d.id, code: String(d.data().code || '').trim().toUpperCase() }))
@@ -198,6 +204,44 @@ export default function SchemaAudit() {
         addResult(issues, validateOrder(o), d.id, label, '/shipping')
       })
       grp('Orders (PI)', orders.size, issues, 'Each order should link to a customer.')
+    }
+
+    // ── PI line items not recorded in the Range ──────────────────────────────────
+    // Every order line's item_code is matched against range_products (same matcher
+    // the MRP/costing path uses). Unmatched figurine-looking codes are flagged to
+    // add; other unmatched lines (corp gifts, charges, freight) are info only.
+    // Aggregated by code so a SKU on ten PIs is one row, not ten.
+    {
+      const issues = []
+      const index = buildProductIndex(rProducts.docs.map(d => d.data()))
+      const agg = new Map()   // CODE -> { code, figurine, orders:Set, qty, desc }
+      orders.docs.forEach((od, i) => {
+        const o = od.data()
+        const olabel = o.order_number || o.ordernumber || o.erp_pi_no || od.id
+        orderLineSnaps[i].docs.forEach(ld => {
+          const l = ld.data()
+          const code = String(l.item_code || '').trim().toUpperCase()
+          if (!code) return                       // charge/remark line with no code
+          if (matchProductCode(code, index)) return   // already in the Range
+          let a = agg.get(code)
+          if (!a) { a = { code, figurine: looksLikeFigurineCode(code), orders: new Set(), qty: 0, desc: '' }; agg.set(code, a) }
+          a.orders.add(olabel)
+          const q = num(l.qty_ordered); if (Number.isFinite(q)) a.qty += q
+          if (!a.desc && l.description) a.desc = String(l.description).trim()
+        })
+      })
+      ;[...agg.values()].forEach(a => {
+        const list = [...a.orders]
+        const where = list.slice(0, 4).join(', ') + (list.length > 4 ? ` +${list.length - 4} more` : '')
+        const qtyTxt = a.qty > 0 ? `${a.qty} pcs` : 'qty n/a'
+        const descTxt = a.desc ? ` — “${a.desc}”` : ''
+        if (a.figurine)
+          add(issues, 'warning', a.code, a.code, `not in Range — on ${list.length} PI(s) (${where}), ${qtyTxt}${descTxt}. Add it to the range or fix the code.`, '/range')
+        else
+          add(issues, 'info', a.code, a.code, `not in Range — non-figurine line on ${list.length} PI(s) (${where}), ${qtyTxt}${descTxt}. Likely corp gift / charge; add only if it should be a range product.`, null)
+      })
+      grp('Orders — PI items not in Range', agg.size, issues,
+        'Item codes on PIs (orders) that match no range_product. Figurine-looking codes are flagged to add; corp-gift / charge / freight lines are info only. Decide later what to enter into the Range.')
     }
 
     out.forEach(g => g.issues.sort((a, b) => SEV[a.sev] - SEV[b.sev]))
