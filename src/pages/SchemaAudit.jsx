@@ -5,7 +5,7 @@ import { db } from '../firebase'
 import LoadingBar from '../components/LoadingBar'
 import { AlertTriangle, AlertCircle, Info, CheckCircle2, RefreshCw, Copy, ChevronDown, ChevronRight } from 'lucide-react'
 import { validateCustomer } from '../domain/customer'
-import { validateComponent, validateCriticalRefs, buildProductIndex, matchProductCode } from '../criticalComponents'
+import { validateComponent, validateCriticalRefs, buildProductIndex } from '../criticalComponents'
 import { looksLikeFigurineCode } from '../mrp'
 import { validateOrder } from '../shipping'
 import { allIssues } from '../domain/validation'
@@ -206,26 +206,40 @@ export default function SchemaAudit() {
       grp('Orders (PI)', orders.size, issues, 'Each order should link to a customer.')
     }
 
-    // ── PI line items not recorded in the Range ──────────────────────────────────
-    // Every order line's item_code is matched against range_products (same matcher
-    // the MRP/costing path uses). Unmatched figurine-looking codes are flagged to
-    // add; other unmatched lines (corp gifts, charges, freight) are info only.
-    // Aggregated by code so a SKU on ten PIs is one row, not ten.
+    // ── PI SKUs whose design+format isn't set up in the Range ────────────────────
+    // Reconciliation (and the MRP matcher) resolve a line by DESIGN NUMBER only, so
+    // a line can show "matched" while the exact format ordered was never created in
+    // the Range. Here we probe the stricter design+format key (plating IGNORED, per
+    // the agreed rule) and flag figurine lines whose design+format is absent.
+    // Two cases are distinguished: the design exists but not this format, vs no
+    // product for the design at all. Aggregated by design+format so plating variants
+    // (…-GPI, …-GC1) collapse to one actionable row.
     {
       const issues = []
       const index = buildProductIndex(rProducts.docs.map(d => d.data()))
-      const agg = new Map()   // CODE -> { code, figurine, orders:Set, qty, desc }
+      const strip = d => (d || '').replace(/^[A-Z]/, '')     // drop only the brand letter, keep body letter
+      const hasDesignFormat = (d, f) => !!(index[`${d}-${f}`] || (strip(d) && index[`${strip(d)}-${f}`]))
+      const hasDesign = d => !!(index[d] || (strip(d) && index[strip(d)]))
+      const agg = new Map()   // KEY(design[-format]) -> { key, missing, orders:Set, qty, desc, codes:Set }
       orders.docs.forEach((od, i) => {
         const o = od.data()
         const olabel = o.order_number || o.ordernumber || o.erp_pi_no || od.id
         orderLineSnaps[i].docs.forEach(ld => {
           const l = ld.data()
           const code = String(l.item_code || '').trim().toUpperCase()
-          if (!code) return                       // charge/remark line with no code
-          if (matchProductCode(code, index)) return   // already in the Range
-          let a = agg.get(code)
-          if (!a) { a = { code, figurine: looksLikeFigurineCode(code), orders: new Set(), qty: 0, desc: '' }; agg.set(code, a) }
-          a.orders.add(olabel)
+          if (!code) return                                  // charge/remark line with no code
+          if (!(looksLikeFigurineCode(code) || l.line_type === 'range')) return  // not a figurine line
+          const parts = code.split('-')
+          const design = parts[0] || '', format = parts[1] || ''
+          // What's missing at the agreed granularity (design+format, plating ignored)?
+          const missing = format
+            ? (hasDesignFormat(design, format) ? null : (hasDesign(design) ? 'format' : 'design'))
+            : (hasDesign(design) ? null : 'design')
+          if (!missing) return                               // this design+format is set up — fine
+          const key = format ? `${design}-${format}` : design
+          let a = agg.get(key)
+          if (!a) { a = { key, missing, orders: new Set(), qty: 0, desc: '', codes: new Set() }; agg.set(key, a) }
+          a.orders.add(olabel); a.codes.add(code)
           const q = num(l.qty_ordered); if (Number.isFinite(q)) a.qty += q
           if (!a.desc && l.description) a.desc = String(l.description).trim()
         })
@@ -235,13 +249,16 @@ export default function SchemaAudit() {
         const where = list.slice(0, 4).join(', ') + (list.length > 4 ? ` +${list.length - 4} more` : '')
         const qtyTxt = a.qty > 0 ? `${a.qty} pcs` : 'qty n/a'
         const descTxt = a.desc ? ` — “${a.desc}”` : ''
-        if (a.figurine)
-          add(issues, 'warning', a.code, a.code, `not in Range — on ${list.length} PI(s) (${where}), ${qtyTxt}${descTxt}. Add it to the range or fix the code.`, '/range')
-        else
-          add(issues, 'info', a.code, a.code, `not in Range — non-figurine line on ${list.length} PI(s) (${where}), ${qtyTxt}${descTxt}. Likely corp gift / charge; add only if it should be a range product.`, null)
+        const platings = [...a.codes].filter(c => c !== a.key)
+        const platingTxt = platings.length ? ` [${platings.slice(0, 3).join(', ')}${platings.length > 3 ? '…' : ''}]` : ''
+        const why = a.missing === 'format'
+          ? `design exists but format ${a.key.split('-')[1]} is not set up`
+          : 'no range product for this design'
+        add(issues, 'warning', a.key, a.key,
+          `not in Range — ${why}. On ${list.length} PI(s) (${where}), ${qtyTxt}${descTxt}${platingTxt}. Add the SKU or fix the code.`, '/range')
       })
-      grp('Orders — PI items not in Range', agg.size, issues,
-        'Item codes on PIs (orders) that match no range_product. Figurine-looking codes are flagged to add; corp-gift / charge / freight lines are info only. Decide later what to enter into the Range.')
+      grp('Orders — PI SKUs not in Range', agg.size, issues,
+        'Figurine PI lines whose exact design+format has no range_product (plating ignored). Reconciliation matches on design number only, so these can show “matched” on the PI while the ordered format was never created. Aggregated by design+format.')
     }
 
     out.forEach(g => g.issues.sort((a, b) => SEV[a.sev] - SEV[b.sev]))
