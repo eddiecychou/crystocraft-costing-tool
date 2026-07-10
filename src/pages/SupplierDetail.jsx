@@ -1,14 +1,27 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { doc, getDoc, deleteDoc, collectionGroup, query, where, getDocs, writeBatch } from 'firebase/firestore'
+import { doc, getDoc, deleteDoc, collection, collectionGroup, query, where, getDocs, writeBatch } from 'firebase/firestore'
 import { db } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import SupplierCatalogs from '../components/SupplierCatalogs'
 import SupplierAddQuoteModal from '../components/SupplierAddQuoteModal'
-import { SUPPLIER_CATEGORIES, PO_PAYMENT_TERM_LABEL } from '../constants'
-import { AlertTriangle, Star } from 'lucide-react'
+import { SUPPLIER_CATEGORIES, PO_PAYMENT_TERM_LABEL, PO_STATUSES } from '../constants'
+import { fmtMoney } from '../currency'
+import { poTotals } from '../purchaseOrders'
+import { AlertTriangle, Star, FileText } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
+
+const PO_STATUS_META = Object.fromEntries(PO_STATUSES.map(s => [s.value, s]))
+// Lists longer than this get a search box + "show all" collapse instead of a
+// long scroll — suppliers with years of quotes/POs were becoming unwieldy.
+const COLLAPSE_THRESHOLD = 8
+
+function fmtDate(s) {
+  if (!s) return ''
+  const d = new Date(s)
+  return isNaN(d) ? s : d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
 
 function toArray(val) {
   if (Array.isArray(val)) return val.filter(Boolean)
@@ -50,6 +63,12 @@ export default function SupplierDetail() {
   const [quotesLoading, setQuotesLoading] = useState(true)
   const [showAddQuote, setShowAddQuote] = useState(false)
   const [indexError, setIndexError]     = useState(false)
+  const [quoteSearch, setQuoteSearch]         = useState('')
+  const [showAllQuotes, setShowAllQuotes]     = useState(false)
+  const [rangeSearch, setRangeSearch]         = useState('')
+  const [showAllRangeQuotes, setShowAllRangeQuotes] = useState(false)
+  const [pos, setPos]             = useState([])
+  const [posLoading, setPosLoading] = useState(true)
   const remember = useScrollMemory(`supplier-${id}`, !loading)
 
   useEffect(() => {
@@ -57,6 +76,18 @@ export default function SupplierDetail() {
       if (snap.exists()) setSupplier({ id: snap.id, ...snap.data() })
       setLoading(false)
     })
+  }, [id])
+
+  useEffect(() => {
+    setPosLoading(true)
+    getDocs(query(collection(db, 'purchase_orders'), where('supplier_id', '==', id)))
+      .then(snap => {
+        const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        list.sort((a, b) => (b.issued_date || '').localeCompare(a.issued_date || ''))
+        setPos(list)
+      })
+      .catch(() => setPos([]))
+      .finally(() => setPosLoading(false))
   }, [id])
 
   async function loadQuotes() {
@@ -141,6 +172,22 @@ export default function SupplierDetail() {
     navigate('/suppliers')
   }
 
+  const filteredQuotes = useMemo(() => {
+    const q = quoteSearch.trim().toLowerCase()
+    if (!q) return quotes
+    return quotes.filter(x => [x._productName, x._componentName, x.notes].some(v => (v || '').toLowerCase().includes(q)))
+  }, [quotes, quoteSearch])
+  const visibleQuotes = (showAllQuotes || quoteSearch || filteredQuotes.length <= COLLAPSE_THRESHOLD)
+    ? filteredQuotes : filteredQuotes.slice(0, COLLAPSE_THRESHOLD)
+
+  const filteredRangeQuotes = useMemo(() => {
+    const q = rangeSearch.trim().toLowerCase()
+    if (!q) return rangeQuotes
+    return rangeQuotes.filter(x => [x._componentName, x.notes].some(v => (v || '').toLowerCase().includes(q)))
+  }, [rangeQuotes, rangeSearch])
+  const visibleRangeQuotes = (showAllRangeQuotes || rangeSearch || filteredRangeQuotes.length <= COLLAPSE_THRESHOLD)
+    ? filteredRangeQuotes : filteredRangeQuotes.slice(0, COLLAPSE_THRESHOLD)
+
   if (loading) return <LoadingBar />
   if (!supplier) return <div className="p-6 text-gray-500">Supplier not found.</div>
 
@@ -167,7 +214,6 @@ export default function SupplierDetail() {
           })()}
         </div>
         <div className="flex gap-2">
-          <Link to={`/purchase-orders/new?supplier=${id}`} className="btn-primary">+ New PO</Link>
           <Link to={`/suppliers/${id}/edit`} onClick={remember} className="btn-secondary">Edit</Link>
           <button className="btn-danger" onClick={() => setConfirmDelete(true)}>Delete</button>
         </div>
@@ -194,6 +240,43 @@ export default function SupplierDetail() {
         )}
       </div>
 
+      {/* Purchase Orders */}
+      <div className="card mb-6">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">
+            Purchase Orders {!posLoading && <span className="text-gray-400 font-normal">({pos.length})</span>}
+          </h2>
+          <Link to={`/purchase-orders/new?supplier=${id}`} className="btn-primary text-xs py-1.5 px-3">+ New PO</Link>
+        </div>
+
+        {posLoading ? (
+          <p className="text-sm text-gray-400 text-center py-8">Loading purchase orders…</p>
+        ) : pos.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">No purchase orders for this supplier yet.</p>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {pos.map(p => {
+              const meta = PO_STATUS_META[p.status || 'draft'] || PO_STATUS_META.draft
+              const { balance } = poTotals(p)
+              return (
+                <Link key={p.id} to={`/purchase-orders/${p.id}`} onClick={remember}
+                      className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
+                  <FileText size={16} className="text-gray-300 shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-sm font-medium text-gray-900">{p.pu_number || '(no PU no.)'}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${meta.badge}`}>{meta.label}</span>
+                    </div>
+                    {p.issued_date && <p className="text-xs text-gray-500 mt-0.5">{fmtDate(p.issued_date)}</p>}
+                  </div>
+                  <span className="text-sm font-medium tabular-nums text-gray-800 shrink-0">{fmtMoney(balance, p.currency || 'RMB')}</span>
+                </Link>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Supplier Quotes */}
       <div className="card mb-6">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -211,48 +294,66 @@ export default function SupplierDetail() {
           </div>
         )}
 
+        {quotes.length > COLLAPSE_THRESHOLD && (
+          <div className="px-5 py-2.5 border-b border-gray-100">
+            <input type="text" placeholder="Search product or component…" className="input w-full text-sm"
+                   value={quoteSearch} onChange={e => { setQuoteSearch(e.target.value); setShowAllQuotes(false) }} />
+          </div>
+        )}
+
         {quotesLoading ? (
           <p className="text-sm text-gray-400 text-center py-8">Loading quotes…</p>
         ) : quotes.length === 0 && !indexError ? (
           <p className="text-sm text-gray-400 text-center py-8">No component quotes linked to this supplier yet.</p>
+        ) : filteredQuotes.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">No quotes match "{quoteSearch}".</p>
         ) : (
-          <div className="divide-y divide-gray-100">
-            {quotes.map(q => {
-              const isOrphaned = !q._productName || q._productName === q.productId
-              const productLabel = isOrphaned ? (q.supplier_name || 'Unknown Product') : q._productName
-              const componentLabel = (!q._componentName || q._componentName === q.componentId) ? '—' : q._componentName
-              const rowClass = 'flex items-start justify-between px-5 py-3.5 gap-3 transition-colors'
-              const inner = (
-                <>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-medium text-gray-900 truncate">{productLabel}</p>
-                      {q.is_preferred && (
-                        <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium shrink-0"><Star size={11} className="fill-current" />Preferred</span>
-                      )}
-                      {isOrphaned && (
-                        <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400 shrink-0">Product deleted</span>
-                      )}
+          <>
+            <div className="divide-y divide-gray-100">
+              {visibleQuotes.map(q => {
+                const isOrphaned = !q._productName || q._productName === q.productId
+                const productLabel = isOrphaned ? (q.supplier_name || 'Unknown Product') : q._productName
+                const componentLabel = (!q._componentName || q._componentName === q.componentId) ? '—' : q._componentName
+                const rowClass = 'flex items-start justify-between px-5 py-3.5 gap-3 transition-colors'
+                const inner = (
+                  <>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium text-gray-900 truncate">{productLabel}</p>
+                        {q.is_preferred && (
+                          <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium shrink-0"><Star size={11} className="fill-current" />Preferred</span>
+                        )}
+                        {isOrphaned && (
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400 shrink-0">Product deleted</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">Component: {componentLabel}</p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-400">
+                        {q.unit_cost != null && (
+                          <span className="font-medium text-gray-700">{q.unit_cost} {q.unit_cost_currency}</span>
+                        )}
+                        {q.moq && <span>MOQ {q.moq.toLocaleString()}</span>}
+                        {q.production_lead_time_days && <span>Prod {q.production_lead_time_days}d</span>}
+                        {q.sampling_lead_time_days && <span>Sample {q.sampling_lead_time_days}d</span>}
+                      </div>
+                      {q.notes && <p className="text-xs text-gray-400 mt-0.5 italic truncate">{q.notes}</p>}
                     </div>
-                    <p className="text-xs text-gray-500 mt-0.5">Component: {componentLabel}</p>
-                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-400">
-                      {q.unit_cost != null && (
-                        <span className="font-medium text-gray-700">{q.unit_cost} {q.unit_cost_currency}</span>
-                      )}
-                      {q.moq && <span>MOQ {q.moq.toLocaleString()}</span>}
-                      {q.production_lead_time_days && <span>Prod {q.production_lead_time_days}d</span>}
-                      {q.sampling_lead_time_days && <span>Sample {q.sampling_lead_time_days}d</span>}
-                    </div>
-                    {q.notes && <p className="text-xs text-gray-400 mt-0.5 italic truncate">{q.notes}</p>}
-                  </div>
-                  {!isOrphaned && <span className="text-xs text-gray-400 shrink-0 mt-1">Edit →</span>}
-                </>
-              )
-              return isOrphaned
-                ? <div key={q.id} className={`${rowClass} opacity-50 cursor-default`}>{inner}</div>
-                : <Link key={q.id} to={`/products/${q.productId}/components/${q.componentId}/quotes/${q.id}`} onClick={remember} className={`${rowClass} hover:bg-gray-50`}>{inner}</Link>
-            })}
-          </div>
+                    {!isOrphaned && <span className="text-xs text-gray-400 shrink-0 mt-1">Edit →</span>}
+                  </>
+                )
+                return isOrphaned
+                  ? <div key={q.id} className={`${rowClass} opacity-50 cursor-default`}>{inner}</div>
+                  : <Link key={q.id} to={`/products/${q.productId}/components/${q.componentId}/quotes/${q.id}`} onClick={remember} className={`${rowClass} hover:bg-gray-50`}>{inner}</Link>
+              })}
+            </div>
+            {!quoteSearch && filteredQuotes.length > COLLAPSE_THRESHOLD && (
+              <div className="px-5 py-3 border-t border-gray-100 text-center">
+                <button onClick={() => setShowAllQuotes(s => !s)} className="text-xs text-brand-600 hover:underline">
+                  {showAllQuotes ? 'Show less' : `Show all ${filteredQuotes.length}`}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -264,31 +365,52 @@ export default function SupplierDetail() {
               Figurine Range Component Quotes <span className="text-gray-400 font-normal">({rangeQuotes.length})</span>
             </h2>
           </div>
-          <div className="divide-y divide-gray-100">
-            {rangeQuotes.map(q => (
-              <Link key={q.id} to={`/components/critical/${q.componentId}/quotes/${q.id}`}
-                    className="flex items-start justify-between px-5 py-3.5 gap-3 hover:bg-gray-50 transition-colors">
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="text-sm font-medium text-gray-900 truncate">{q._componentName}</p>
-                    {q.is_preferred && (
-                      <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium shrink-0">
-                        <Star size={11} className="fill-current" />Preferred
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-400">
-                    {q.unit_cost != null && <span className="font-medium text-gray-700">{q.unit_cost} {q.unit_cost_currency}</span>}
-                    {q.moq && <span>MOQ {Number(q.moq).toLocaleString()}</span>}
-                    {q.production_lead_time_days && <span>Prod {q.production_lead_time_days}d</span>}
-                    {q.tooling_sample_cost != null && <span>Tooling {q.tooling_sample_cost} {q.tooling_sample_cost_currency}</span>}
-                  </div>
-                  {q.notes && <p className="text-xs text-gray-400 mt-0.5 italic truncate">{q.notes}</p>}
+
+          {rangeQuotes.length > COLLAPSE_THRESHOLD && (
+            <div className="px-5 py-2.5 border-b border-gray-100">
+              <input type="text" placeholder="Search component…" className="input w-full text-sm"
+                     value={rangeSearch} onChange={e => { setRangeSearch(e.target.value); setShowAllRangeQuotes(false) }} />
+            </div>
+          )}
+
+          {filteredRangeQuotes.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">No quotes match "{rangeSearch}".</p>
+          ) : (
+            <>
+              <div className="divide-y divide-gray-100">
+                {visibleRangeQuotes.map(q => (
+                  <Link key={q.id} to={`/components/critical/${q.componentId}/quotes/${q.id}`}
+                        className="flex items-start justify-between px-5 py-3.5 gap-3 hover:bg-gray-50 transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-medium text-gray-900 truncate">{q._componentName}</p>
+                        {q.is_preferred && (
+                          <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium shrink-0">
+                            <Star size={11} className="fill-current" />Preferred
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-400">
+                        {q.unit_cost != null && <span className="font-medium text-gray-700">{q.unit_cost} {q.unit_cost_currency}</span>}
+                        {q.moq && <span>MOQ {Number(q.moq).toLocaleString()}</span>}
+                        {q.production_lead_time_days && <span>Prod {q.production_lead_time_days}d</span>}
+                        {q.tooling_sample_cost != null && <span>Tooling {q.tooling_sample_cost} {q.tooling_sample_cost_currency}</span>}
+                      </div>
+                      {q.notes && <p className="text-xs text-gray-400 mt-0.5 italic truncate">{q.notes}</p>}
+                    </div>
+                    <span className="text-xs text-gray-400 shrink-0 mt-1">Edit →</span>
+                  </Link>
+                ))}
+              </div>
+              {!rangeSearch && filteredRangeQuotes.length > COLLAPSE_THRESHOLD && (
+                <div className="px-5 py-3 border-t border-gray-100 text-center">
+                  <button onClick={() => setShowAllRangeQuotes(s => !s)} className="text-xs text-brand-600 hover:underline">
+                    {showAllRangeQuotes ? 'Show less' : `Show all ${filteredRangeQuotes.length}`}
+                  </button>
                 </div>
-                <span className="text-xs text-gray-400 shrink-0 mt-1">Edit →</span>
-              </Link>
-            ))}
-          </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
