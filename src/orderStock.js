@@ -104,3 +104,55 @@ export async function reverseOrderIssue(orderId, orderLabel) {
     issued_lines: [],
   })
 }
+
+// ── Crystals (V7.13a crystals-2) ─────────────────────────────────────────────
+// Crystals have NO per-product BOM, so their consumption is entered by hand as a
+// batch per order (matches the owner's Excel: one issue per colour per order).
+// Same order-tagged, reversible pattern as the metal issue above, but the lines
+// are operator-supplied rather than exploded from a BOM.
+//   crystals_issued / crystals_issued_at / crystal_issued_lines[]  on the order doc.
+
+// lines: [{ crystal_id, code, qty }]
+export async function issueCrystalsForOrder(orderId, orderLabel, lines) {
+  const clean = (lines || [])
+    .filter(l => l.crystal_id && Number(l.qty) > 0)
+    .map(l => ({ crystal_id: l.crystal_id, code: l.code || '', qty: Math.abs(Number(l.qty)) }))
+  if (!clean.length) throw new Error('Add at least one crystal line with a quantity.')
+
+  const orderRef = doc(db, 'orders', orderId)
+  const snap = await getDoc(orderRef)
+  if (snap.exists() && snap.data().crystals_issued) throw new Error('Crystals already issued for this order.')
+
+  const issued = []
+  for (const l of clean) {
+    await postMovement('crystals', l.crystal_id, {
+      type: 'issue', qty: l.qty, order_id: orderId,
+      note: `Issued to order ${orderLabel || orderId}`,
+    })
+    issued.push(l)
+  }
+  await updateDoc(orderRef, {
+    crystals_issued: true,
+    crystals_issued_at: serverTimestamp(),
+    crystal_issued_lines: issued,
+  })
+  return issued
+}
+
+export async function reverseCrystalIssue(orderId, orderLabel) {
+  const orderRef = doc(db, 'orders', orderId)
+  const snap = await getDoc(orderRef)
+  const issued = snap.exists() ? (snap.data().crystal_issued_lines || []) : []
+  for (const l of issued) {
+    if (!l.crystal_id) continue
+    await postMovement('crystals', l.crystal_id, {
+      type: 'adjustment', qty: Math.abs(Number(l.qty) || 0), order_id: orderId,
+      note: `Reversed crystal issue — order ${orderLabel || orderId}`,
+    })
+  }
+  await updateDoc(orderRef, {
+    crystals_issued: false,
+    crystals_issued_at: null,
+    crystal_issued_lines: [],
+  })
+}
