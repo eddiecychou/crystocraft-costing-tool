@@ -373,8 +373,8 @@ export default function ShipmentForm() {
         )}
 
         {/* Header */}
-        <div className="card p-6 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="card p-4 md:p-6 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="label">Customer</label>
               <select className="input" value={customers.find(c => c.id === header.customer_id) ? header.customer_id : ''} onChange={onCustomer}>
@@ -402,7 +402,7 @@ export default function ShipmentForm() {
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <label className="label">Order Date</label>
               <input className="input" type="date" value={header.order_date} onChange={setH('order_date')} />
@@ -422,7 +422,7 @@ export default function ShipmentForm() {
               </div>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div><label className="label">Dest. Country</label><input className="input" value={header.destination.country} onChange={setDest('country')} placeholder="Germany" /></div>
             <div><label className="label">Dest. City</label><input className="input" value={header.destination.city} onChange={setDest('city')} placeholder="Hamburg" /></div>
             <div><label className="label">Port (optional)</label><input className="input" value={header.destination.port} onChange={setDest('port')} placeholder="Hamburg" /></div>
@@ -464,16 +464,16 @@ export default function ShipmentForm() {
                     <div className="grid grid-cols-[auto_1fr_auto] gap-3 items-start">
                       <div className="text-xs text-gray-400 pt-2 w-6">{l.line_no ?? i + 1}</div>
                       <div className="min-w-0 space-y-2">
-                        <div className="grid grid-cols-[140px_1fr] gap-2">
+                        <div className="grid grid-cols-[100px_1fr] sm:grid-cols-[140px_1fr] gap-2">
                           <input className="input py-1.5 text-sm font-mono" value={l.item_code} onChange={e => setLine(i, { item_code: e.target.value })} placeholder="Item code" />
                           <input className="input py-1.5 text-sm" value={l.description} onChange={e => setLine(i, { description: e.target.value })} placeholder="Description" />
                         </div>
-                        <div className="flex gap-2 items-center">
-                          <input className="input py-1.5 text-sm w-24" type="number" value={l.qty_ordered ?? ''} onChange={e => setLine(i, { qty_ordered: e.target.value })} placeholder="Qty" />
-                          <input className="input py-1.5 text-sm w-20" value={l.unit} onChange={e => setLine(i, { unit: e.target.value })} placeholder="pcs" />
-                          <input className="input py-1.5 text-sm w-28" type="number" step="0.01" value={l.unit_price ?? ''} onChange={e => setLine(i, { unit_price: e.target.value })} placeholder="Unit price" />
+                        <div className="flex gap-2 items-center flex-wrap">
+                          <input className="input py-1.5 text-sm w-20 sm:w-24" type="number" value={l.qty_ordered ?? ''} onChange={e => setLine(i, { qty_ordered: e.target.value })} placeholder="Qty" />
+                          <input className="input py-1.5 text-sm w-16 sm:w-20" value={l.unit} onChange={e => setLine(i, { unit: e.target.value })} placeholder="pcs" />
+                          <input className="input py-1.5 text-sm w-24 sm:w-28" type="number" step="0.01" value={l.unit_price ?? ''} onChange={e => setLine(i, { unit_price: e.target.value })} placeholder="Unit price" />
                           {l.matched_product_ref && (
-                            <span className="inline-flex items-center gap-1 text-xs text-green-700 truncate"
+                            <span className="inline-flex items-center gap-1 text-xs text-green-700 truncate max-w-full"
                               title={l.matched_product_ref.name ? undefined : 'This product has no Description set in Figurine Gifts'}>
                               <CheckCircle2 size={13} /> {l.matched_product_ref.name || 'matched (no name set)'}
                             </span>
@@ -502,7 +502,7 @@ export default function ShipmentForm() {
 
         {/* ── Order totals & discount ──────────────────────────────────── */}
         {lines.length > 0 && (() => {
-          const { subtotal: computedSubtotal, discountAmount: discAmt, total: computedTotal } = computeOrderTotals(header, lines)
+          const { subtotal: computedSubtotal, chargesTotal, discountAmount: discAmt, total: computedTotal } = computeOrderTotals(header, lines)
           const piSubtotal   = parseFloat(header.subtotal) || null
           const piTotal      = parseFloat(header.total_amount) || null
           const subtotalMatch = piSubtotal == null || Math.abs(computedSubtotal - piSubtotal) < 0.02
@@ -527,6 +527,14 @@ export default function ShipmentForm() {
                     <span className={`font-mono text-sm ${subtotalMatch ? 'text-gray-500' : 'text-amber-600 font-medium'}`}>
                       {header.currency} {fmt(piSubtotal)}
                     </span>
+                  </div>
+                )}
+
+                {/* Charges — flat-amount lines (freight, insurance, etc.) with no qty */}
+                {chargesTotal > 0 && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-500">Charges (freight, insurance, etc.)</span>
+                    <span className="font-mono text-gray-800">+ {header.currency} {fmt(chargesTotal)}</span>
                   </div>
                 )}
 

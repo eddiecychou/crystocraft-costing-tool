@@ -327,7 +327,7 @@ export default function PurchaseOrderForm() {
         )}
 
         {/* ── Header ── */}
-        <div className="card p-6 space-y-5">
+        <div className="card p-4 md:p-6 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="label">PU Number <span className="text-gray-400 font-normal">(from ERP — leave blank until assigned, add it later)</span></label>
@@ -391,7 +391,7 @@ export default function PurchaseOrderForm() {
         </div>
 
         {/* ── Line items ── */}
-        <div className="card p-6">
+        <div className="card p-4 md:p-6">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-gray-700">Line Items</h2>
             <span className="text-xs text-gray-400">Type a component code (autocompletes) or free text for MISC items.</span>
@@ -461,18 +461,20 @@ export default function PurchaseOrderForm() {
             {adjustments.length > 0 && (
               <div className="space-y-2">
                 {adjustments.map(a => (
-                  <div key={a._uid} className="grid grid-cols-[1fr_7.5rem_7rem_auto] gap-2 items-center">
+                  <div key={a._uid} className="flex flex-col sm:grid sm:grid-cols-[1fr_7.5rem_7rem_auto] gap-2 sm:items-center">
                     <input className="input text-sm" value={a.label}
                            onChange={e => updateAdjustment(a._uid, { label: e.target.value })}
                            placeholder={a.kind === 'discount' ? 'e.g. volume discount' : 'e.g. freight, mould fee'} />
-                    <select className="input text-sm" value={a.kind} onChange={e => updateAdjustment(a._uid, { kind: e.target.value })}>
-                      <option value="charge">Charge +</option>
-                      <option value="discount">Discount −</option>
-                    </select>
-                    <input className="input text-sm text-right tabular-nums" inputMode="decimal" value={a.amount}
-                           onChange={e => updateAdjustment(a._uid, { amount: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" />
-                    <button type="button" onClick={() => removeAdjustment(a._uid)}
-                            className="text-gray-300 hover:text-red-500 justify-self-end" title="Remove"><Trash2 size={15} /></button>
+                    <div className="flex gap-2 items-center sm:contents">
+                      <select className="input text-sm flex-none w-28 sm:w-auto" value={a.kind} onChange={e => updateAdjustment(a._uid, { kind: e.target.value })}>
+                        <option value="charge">Charge +</option>
+                        <option value="discount">Discount −</option>
+                      </select>
+                      <input className="input text-sm text-right tabular-nums flex-1 sm:flex-none" inputMode="decimal" value={a.amount}
+                             onChange={e => updateAdjustment(a._uid, { amount: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" />
+                      <button type="button" onClick={() => removeAdjustment(a._uid)}
+                              className="text-gray-300 hover:text-red-500 shrink-0 sm:justify-self-end" title="Remove"><Trash2 size={15} /></button>
+                    </div>
                   </div>
                 ))}
               </div>

@@ -237,21 +237,31 @@ export function rematchLines(lines, rangeProducts) {
   })
 }
 
-// Subtotal/discount/total derived from line items (qty × unit_price), mirroring
-// the "Order Totals" card shown in the editor. Used both to render that card
-// and, as a fallback on save, to persist a value when the PI extraction never
-// captured a stated total — otherwise the order silently has no total_amount
-// even though a correct one is computable and was visible on screen.
+// Subtotal/discount/total derived from line items, mirroring the "Order
+// Totals" card shown in the editor. Used both to render that card and, as a
+// fallback on save, to persist a value when the PI extraction never captured
+// a stated total — otherwise the order silently has no total_amount even
+// though a correct one is computable and was visible on screen.
+//
+// A line with no quantity (e.g. a flat Freight/Insurance charge — the
+// extractor leaves qty_ordered null for pure charges, putting the flat amount
+// in unit_price) is a lump sum, not a per-unit price for zero units. Those
+// lines are kept OUT of `subtotal` (which mirrors the PI's own product-only
+// "Subtotal" field, so the ✓/⚠ comparison against header.subtotal stays
+// meaningful) and rolled into `chargesTotal` instead, which IS added into the
+// final total — otherwise freight/insurance silently vanish from the total.
 export function computeOrderTotals(header, lines) {
-  const subtotal = (lines || []).reduce((sum, l) => {
+  let subtotal = 0, chargesTotal = 0
+  for (const l of (lines || [])) {
     const qty = parseFloat(l.qty_ordered) || 0
     const up = parseFloat(l.unit_price) || 0
-    return sum + qty * up
-  }, 0)
+    if (qty > 0) subtotal += qty * up
+    else chargesTotal += up
+  }
   const discPct = parseFloat(header?.discount_pct) || 0
   const discountAmount = parseFloat(header?.discount_amount) || (discPct > 0 ? +(subtotal * discPct / 100).toFixed(2) : 0)
-  const total = +(subtotal - discountAmount).toFixed(2)
-  return { subtotal: +subtotal.toFixed(2), discountAmount, total }
+  const total = +(subtotal - discountAmount + chargesTotal).toFixed(2)
+  return { subtotal: +subtotal.toFixed(2), chargesTotal: +chargesTotal.toFixed(2), discountAmount, total }
 }
 
 // ── Validators (shared guardrail result format) ───────────────────────────────
