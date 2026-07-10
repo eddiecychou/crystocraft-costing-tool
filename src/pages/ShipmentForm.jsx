@@ -14,8 +14,9 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import PackingListEditor from './PackingListEditor'
 import FreightComparison from './FreightComparison'
 import OrderStockIssue from '../components/OrderStockIssue'
-import OrderCrystalIssue from '../components/OrderCrystalIssue'
-import OrderPackagingIssue from '../components/OrderPackagingIssue'
+import OrderInventoryIssue from '../components/OrderInventoryIssue'
+import { crystalInventory } from '../crystals'
+import { packagingInventory } from '../packaging'
 
 const blankHeader = {
   customer_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', order_date: '',
@@ -583,11 +584,9 @@ export default function ShipmentForm() {
         {/* Component stock — issue this order's figurine BOM to the ledger (V7.13a) */}
         {isEdit && <OrderStockIssue orderId={id} orderLabel={header.erp_pi_no || header.erp_so_no || id} />}
 
-        {/* Crystal stock — batch-issue this order's crystal consumption (V7.13a) */}
-        {isEdit && <OrderCrystalIssue orderId={id} orderLabel={header.erp_pi_no || header.erp_so_no || id} />}
-
-        {/* Packaging stock — batch-issue this order's packaging consumption (V7.13a) */}
-        {isEdit && <OrderPackagingIssue orderId={id} orderLabel={header.erp_pi_no || header.erp_so_no || id} />}
+        {/* Crystal + packaging stock — batch-issue this order's consumption (V7.13a) */}
+        {isEdit && <OrderInventoryIssue orderId={id} orderLabel={header.erp_pi_no || header.erp_so_no || id} inv={crystalInventory} />}
+        {isEdit && <OrderInventoryIssue orderId={id} orderLabel={header.erp_pi_no || header.erp_so_no || id} inv={packagingInventory} />}
 
         <div className="flex items-center gap-3 pt-1">
           <button type="submit" className="btn-primary" disabled={saving || (!isEdit && lines.length === 0)}>

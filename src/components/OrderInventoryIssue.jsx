@@ -1,53 +1,56 @@
 import { useState, useEffect } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
-import { usePackaging } from '../packaging'
-import { issuePackagingForOrder, reversePackagingIssue } from '../orderStock'
-import { Box, Plus, Trash2, RotateCcw, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react'
+import { issueInventoryForOrder, reverseInventoryIssue } from '../orderStock'
+import { Gem, Box, Plus, Trash2, RotateCcw, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react'
 
-// Order → packaging issue card (V7.13a packaging). Manual, batch-per-order at
-// pack time — packaging has no per-product BOM, so the operator picks the
-// materials + actual quantities this order used. Order-tagged and reversible.
+// Generic order → inventory issue card (crystals, packaging). Manual,
+// batch-per-order: the class has no BOM, so the operator picks SKUs + the actual
+// quantities this order consumed. Order-tagged and reversible. Driven by an
+// `inv` config (crystals.js / packaging.js); field names come from inv.order.
 
+const ICONS = { gem: Gem, box: Box }
 const fmt = n => (Number.isFinite(Number(n)) ? Number(n).toLocaleString() : '0')
-const newLine = () => ({ _uid: 'pl_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), packaging_id: '', qty: '' })
+const newLine = () => ({ _uid: 'il_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), item_id: '', qty: '' })
 
-export default function OrderPackagingIssue({ orderId, orderLabel }) {
-  const { packaging } = usePackaging()
+export default function OrderInventoryIssue({ orderId, orderLabel, inv }) {
+  const { items } = inv.useItems()
   const [state, setState] = useState({ issued: false, at: null, lines: [] })
   const [rows, setRows] = useState([newLine()])
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const Icon = ICONS[inv.iconKey] || Box
+  const idField = inv.order.lineIdField
 
   useEffect(() => {
     if (!orderId) return
     return onSnapshot(doc(db, 'orders', orderId), snap => {
       const d = snap.data() || {}
-      setState({ issued: !!d.packaging_issued, at: d.packaging_issued_at || null, lines: d.packaging_issued_lines || [] })
+      setState({ issued: !!d[inv.order.issued], at: d[inv.order.issuedAt] || null, lines: d[inv.order.lines] || [] })
     })
-  }, [orderId])
+  }, [orderId, inv.order.issued, inv.order.issuedAt, inv.order.lines])
 
-  const byId = Object.fromEntries(packaging.map(c => [c.id, c]))
+  const byId = Object.fromEntries(items.map(c => [c.id, c]))
   const setRow = (uid, patch) => setRows(rs => rs.map(r => r._uid === uid ? { ...r, ...patch } : r))
   const addRow = () => setRows(rs => [...rs, newLine()])
   const removeRow = uid => setRows(rs => rs.length > 1 ? rs.filter(r => r._uid !== uid) : rs)
 
   async function doIssue() {
     const lines = rows
-      .filter(r => r.packaging_id && Number(r.qty) > 0)
-      .map(r => ({ packaging_id: r.packaging_id, code: byId[r.packaging_id]?.code || '', qty: Number(r.qty) }))
-    if (!lines.length) { setError('Add at least one packaging item and quantity.'); return }
-    if (!window.confirm(`Issue ${lines.length} packaging line(s) for order ${orderLabel}? This deducts from packaging stock.`)) return
+      .filter(r => r.item_id && Number(r.qty) > 0)
+      .map(r => ({ [idField]: r.item_id, code: byId[r.item_id]?.code || '', qty: Number(r.qty) }))
+    if (!lines.length) { setError('Add at least one item and quantity.'); return }
+    if (!window.confirm(`Issue ${lines.length} ${inv.noun} line(s) for order ${orderLabel}? This deducts from stock.`)) return
     setBusy(true); setError('')
-    try { await issuePackagingForOrder(orderId, orderLabel, lines); setRows([newLine()]) }
+    try { await issueInventoryForOrder(inv, orderId, orderLabel, lines); setRows([newLine()]) }
     catch (e) { setError(e.message || 'Issue failed.') }
     finally { setBusy(false) }
   }
   async function doReverse() {
-    if (!window.confirm(`Reverse the packaging issue for order ${orderLabel}? Items go back to stock.`)) return
+    if (!window.confirm(`Reverse the ${inv.noun} issue for order ${orderLabel}? Items go back to stock.`)) return
     setBusy(true); setError('')
-    try { await reversePackagingIssue(orderId, orderLabel) }
+    try { await reverseInventoryIssue(inv, orderId, orderLabel) }
     catch (e) { setError(e.message || 'Reverse failed.') }
     finally { setBusy(false) }
   }
@@ -59,7 +62,7 @@ export default function OrderPackagingIssue({ orderId, orderLabel }) {
       <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between gap-2 text-left">
         <span className="flex items-center gap-2 text-sm font-semibold text-gray-700">
           {open ? <ChevronDown size={15} className="text-ink-40" /> : <ChevronRight size={15} className="text-ink-40" />}
-          <Box size={14} className="text-brand-400" /> Packaging stock
+          <Icon size={14} className="text-brand-400" /> {inv.cardTitle} stock
         </span>
         {state.issued
           ? <span className="inline-flex items-center gap-1 text-xs text-green-700"><CheckCircle2 size={13} /> Issued{issuedDate ? ` · ${issuedDate}` : ''}</span>
@@ -70,12 +73,12 @@ export default function OrderPackagingIssue({ orderId, orderLabel }) {
         <div className="mt-3">
           {state.issued ? (
             <>
-              <p className="text-xs text-ink-50 mb-2">{state.lines.length} packaging line(s) deducted for this order.</p>
+              <p className="text-xs text-ink-50 mb-2">{state.lines.length} line(s) deducted for this order.</p>
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-gray-50">
                   {state.lines.map((l, i) => (
-                    <tr key={l.packaging_id || i}>
-                      <td className="py-1.5 pr-2"><span className="font-mono text-xs">{l.code || byId[l.packaging_id]?.code || l.packaging_id}</span>{byId[l.packaging_id]?.type ? <span className="text-ink-50"> · {byId[l.packaging_id].type}</span> : ''}</td>
+                    <tr key={l[idField] || i}>
+                      <td className="py-1.5 pr-2"><span className="font-mono text-xs">{l.code || byId[l[idField]]?.code || l[idField]}</span>{byId[l[idField]]?.[inv.attrField] ? <span className="text-ink-50"> · {byId[l[idField]][inv.attrField]}</span> : ''}</td>
                       <td className="py-1.5 text-right font-mono tabular-nums text-red-600">−{fmt(l.qty)}</td>
                     </tr>
                   ))}
@@ -86,20 +89,20 @@ export default function OrderPackagingIssue({ orderId, orderLabel }) {
                 <RotateCcw size={14} /> {busy ? 'Reversing…' : 'Reverse issue (return to stock)'}
               </button>
             </>
-          ) : packaging.length === 0 ? (
-            <p className="text-sm text-ink-50 py-2">No packaging in stock yet — add it in Components → Packaging Stock first.</p>
+          ) : items.length === 0 ? (
+            <p className="text-sm text-ink-50 py-2">Nothing in stock yet — add it in Components first.</p>
           ) : (
             <>
               <div className="space-y-2">
                 {rows.map(r => {
-                  const c = byId[r.packaging_id]
+                  const c = byId[r.item_id]
                   const stock = c && Number.isFinite(c.stock_qty) ? c.stock_qty : null
                   const after = stock != null && r.qty !== '' ? stock - Number(r.qty) : null
                   return (
                     <div key={r._uid} className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                      <select className="input text-sm flex-1" value={r.packaging_id} onChange={e => setRow(r._uid, { packaging_id: e.target.value })}>
-                        <option value="">— pick packaging —</option>
-                        {packaging.map(x => <option key={x.id} value={x.id}>{x.code}{x.type ? ` · ${x.type}` : ''}{x.name ? ` · ${x.name}` : ''}</option>)}
+                      <select className="input text-sm flex-1" value={r.item_id} onChange={e => setRow(r._uid, { item_id: e.target.value })}>
+                        <option value="">— pick —</option>
+                        {items.map(x => <option key={x.id} value={x.id}>{x.code}{x[inv.attrField] ? ` · ${x[inv.attrField]}` : ''}{x.name ? ` · ${x.name}` : ''}</option>)}
                       </select>
                       <div className="flex gap-2 items-center">
                         <input className="input text-sm w-24 text-right tabular-nums" inputMode="numeric" value={r.qty}
@@ -115,10 +118,10 @@ export default function OrderPackagingIssue({ orderId, orderLabel }) {
               </div>
               <div className="flex items-center gap-3 mt-3">
                 <button type="button" onClick={addRow} className="inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-800">
-                  <Plus size={14} /> Add packaging
+                  <Plus size={14} /> Add line
                 </button>
                 <button type="button" onClick={doIssue} disabled={busy} className="btn-primary text-sm ml-auto">
-                  {busy ? 'Issuing…' : 'Issue packaging to stock'}
+                  {busy ? 'Issuing…' : 'Issue to stock'}
                 </button>
               </div>
             </>
