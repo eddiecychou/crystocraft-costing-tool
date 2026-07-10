@@ -2,7 +2,8 @@ import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import { useComponents, saveComponent, importStockList, buildProductIndex, matchProductCode } from '../criticalComponents'
+import { useComponents, importStockList, buildProductIndex, matchProductCode } from '../criticalComponents'
+import { postMovement } from '../stockLedger'
 import { loadRangeProductsWithPacking } from '../packing'
 import { loadCrystalColors, saveCrystalColors } from '../crystalColors'
 import { CURRENCIES, RANGE_FORMAT_CODES } from '../constants'
@@ -240,8 +241,9 @@ function CriticalComponents() {
   )
 }
 
-// Inline stock editor — type a new qty (or use −/+) and it auto-saves on blur,
-// so stock can be reconciled straight from the list without opening each part.
+// Inline stock editor — type a new qty (or use −/+); on blur it posts a
+// stock-take movement to the ledger (stockLedger.js), so a quick reconcile from
+// the list stays fully audited instead of overwriting the number in place.
 function StockEditor({ component: c }) {
   const current = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
   const [val, setVal]       = useState(String(current))
@@ -258,7 +260,7 @@ function StockEditor({ component: c }) {
     if (safe === current) return
     setSaving(true)
     try {
-      await saveComponent(c.id, { ...c, stock_qty: safe })
+      await postMovement(c.id, { type: 'stocktake', counted: safe, note: 'Inline stock update' })
       setSaved(true)
       setTimeout(() => setSaved(false), 1500)
     } finally {

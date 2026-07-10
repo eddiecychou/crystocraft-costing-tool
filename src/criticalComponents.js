@@ -82,9 +82,13 @@ export async function getComponent(id) {
   return snap.exists() ? fromDoc(snap) : null
 }
 
-// Descriptive (non-cost) fields written by the component editor. Cost fields are
-// owned by supplier quotes and denormalised separately, so saving the editor form
-// (merge:true) must never overwrite them.
+// Descriptive (non-cost, non-stock) fields written by the component editor. Two
+// families are deliberately NOT written here so the editor form (merge:true)
+// can never overwrite them:
+//   • cost — owned by supplier quotes, denormalised separately.
+//   • stock_qty — owned by the stock ledger (stockLedger.js); it is a cached
+//     running balance updated only inside a movement transaction. Writing it
+//     from the form would silently diverge the cached number from the ledger.
 const descriptorOf = c => {
   const n = normComponent(c)
   return {
@@ -92,7 +96,7 @@ const descriptorOf = c => {
     plating_code: n.plating_code,
     supplierId: n.supplierId, supplierName: n.supplierName,
     notes: n.notes, images: n.images,
-    stock_qty: n.stock_qty, lead_time_weeks: n.lead_time_weeks,
+    lead_time_weeks: n.lead_time_weeks,
   }
 }
 
@@ -295,13 +299,32 @@ export async function importStockList(rows, rangeProducts) {
     if (r.product_item_code) c.used_by.add(r.product_item_code)
   }
 
-  // Existing components by code → { id, hasName }.
+  // Existing components by code → { id, hasName, prevStock }. prevStock lets the
+  // import record a correct stock-take DELTA into the ledger (below).
   const snap = await getDocs(COL())
   const existingByCode = {}
   for (const d of snap.docs) {
     const code = norm(d.data().code)
-    if (code && !(code in existingByCode)) existingByCode[code] = { id: d.id, hasName: !!(d.data().name || '').trim() }
+    if (code && !(code in existingByCode)) {
+      const prev = d.data().stock_qty
+      existingByCode[code] = { id: d.id, hasName: !!(d.data().name || '').trim(), prevStock: Number.isFinite(prev) ? prev : 0 }
+    }
   }
+
+  // A bulk stock list is a stock-take: each row is an ABSOLUTE counted qty. Mirror
+  // every set into the ledger as a stocktake movement so the cached stock_qty and
+  // the append-only history never diverge (stockLedger.js owns stock_qty).
+  const importDate = new Date().toISOString().slice(0, 10)
+  let movSeq = Date.now()
+  const stocktakeOp = (componentId, counted, prev) => ({
+    ref: doc(collection(db, 'range_components', componentId, 'movements')),
+    data: {
+      type: 'stocktake', qty: counted - prev, counted, balance_after: counted,
+      date: importDate, note: 'Stock-take (list import)', order_id: null,
+      seq: movSeq++, createdAt: serverTimestamp(),
+    },
+    merge: false,
+  })
 
   // Assign a doc id per code (reuse existing, or pre-generate for new ones so
   // product refs can point at them in the same batch).
@@ -311,11 +334,13 @@ export async function importStockList(rows, rangeProducts) {
   for (const [code, c] of Object.entries(compByCode)) {
     const used_by = [...c.used_by]
     const ex = existingByCode[code]
+    const counted = Number.isFinite(c.stock_qty) ? c.stock_qty : null
     if (ex) {
       codeToId[code] = ex.id
       const data = { plating_code: c.plating_code, stock_qty: c.stock_qty, used_by, updatedAt: serverTimestamp() }
       if (c.lead_time_weeks != null) data.lead_time_weeks = c.lead_time_weeks
       if (!ex.hasName && c.name) data.name = c.name
+      if (counted != null) { data.ledger_seeded = true; ops.push(stocktakeOp(ex.id, counted, ex.prevStock)) }
       ops.push({ ref: doc(db, 'range_components', ex.id), data, merge: true })
       updated++
     } else {
@@ -325,8 +350,10 @@ export async function importStockList(rows, rangeProducts) {
         code, name: c.name, plating_code: c.plating_code, stock_qty: c.stock_qty,
         lead_time_weeks: c.lead_time_weeks ?? null, used_by,
         category: '', supplierId: '', supplierName: '', notes: '', images: [],
+        ledger_seeded: counted != null ? true : false,
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
       }, merge: false })
+      if (counted != null) ops.push(stocktakeOp(ref.id, counted, 0))
       created++
     }
   }

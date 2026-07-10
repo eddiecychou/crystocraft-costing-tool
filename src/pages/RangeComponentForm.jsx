@@ -6,6 +6,7 @@ import { getComponent, saveComponent, deleteComponent, loadComponentQuotes, setP
 import { RANGE_PLATINGS } from '../constants'
 import { useComponentCategories } from '../componentCategories'
 import LastActualPaid from '../components/LastActualPaid'
+import StockLedger from '../components/StockLedger'
 import { Star, FileText } from 'lucide-react'
 
 const blank = {
@@ -140,8 +141,10 @@ export default function RangeComponentForm() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Stock on hand <span className="text-ink-60 font-normal">(raw parts)</span></label>
-              <input className="input" inputMode="numeric" value={form.stock_qty}
-                     onChange={setNum('stock_qty')} placeholder="0" />
+              <div className="input bg-ivory/40 text-ink-70 tabular-nums flex items-center justify-between">
+                <span>{form.stock_qty === '' ? '0' : Number(form.stock_qty).toLocaleString()}</span>
+                <span className="text-[10px] text-ink-40">{isNew ? 'set below after saving' : 'managed in ledger ↓'}</span>
+              </div>
             </div>
             <div>
               <label className="label">Lead time <span className="text-ink-60 font-normal">(weeks)</span></label>
@@ -237,6 +240,13 @@ export default function RangeComponentForm() {
           )}
         </div>
       </form>
+
+      {/* Stock ledger — outside the form (it has its own form). Existing parts only. */}
+      {!isNew && (
+        <div className="mt-4">
+          <StockLedger componentId={routeId} currentStock={form.stock_qty === '' ? 0 : Number(form.stock_qty)} />
+        </div>
+      )}
     </div>
   )
 }

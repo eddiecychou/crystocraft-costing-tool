@@ -17,24 +17,16 @@ service cloud.firestore {
     function isApprovedCustomer() {
       return hasProfile() && profile().role == 'customer' && profile().status == 'approved';
     }
-    // Anyone who may browse the catalogue (admins + approved customers).
     function canShop() {
       return isAdmin() || isApprovedCustomer();
     }
 
-    // ---- User role docs --------------------------------------------------
-    // Admin status lives here. Bootstrap the first admin(s) once via the
-    // Firebase console (set role:'admin' on their users/{uid} doc).
     match /users/{uid} {
       allow read: if isAdmin() || request.auth.uid == uid;
-      // Self sign-up: a user may only create their OWN doc, as a pending
-      // customer, with a zero discount. They can never self-assign admin.
       allow create: if request.auth.uid == uid
         && request.resource.data.role == 'customer'
         && request.resource.data.status == 'pending'
         && request.resource.data.ws_discount_pct == 0;
-      // Admins manage everything; a user may edit their own profile but NOT
-      // their role, approval status, or wholesale discount.
       allow update: if isAdmin()
         || (request.auth.uid == uid
             && request.resource.data.role == resource.data.role
@@ -45,13 +37,9 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ---- Corporate gift products ----------------------------------------
-    // Product doc + pricing tiers are customer-visible (reference pricing).
-    // Cost-bearing subcollections (components, supplier quotes) are ADMIN ONLY.
     match /products/{productId} {
       allow read: if canShop();
       allow write: if isAdmin();
-
       match /images/{imageId} {
         allow read: if canShop();
         allow write: if isAdmin();
@@ -60,9 +48,6 @@ service cloud.firestore {
         allow read: if canShop();
         allow write: if isAdmin();
       }
-      // Per-customer published prices (cost × that customer's markup, precomputed
-      // by the admin so raw cost never reaches the storefront). A customer may
-      // only read their OWN price doc; admins manage all.
       match /customer_prices/{priceUid} {
         allow read: if request.auth.uid == priceUid || isAdmin();
         allow write: if isAdmin();
@@ -81,38 +66,30 @@ service cloud.firestore {
       }
     }
 
-    // ---- Figurine (Crystocraft Range) -----------------------------------
     match /range_products/{rangeId} {
       allow read: if canShop();
       allow write: if isAdmin();
-      // Nested figurine images / sub-docs.
       match /{allPaths=**} {
         allow read: if canShop();
         allow write: if isAdmin();
       }
     }
 
-    // ---- Settings: exchange rates + crystal colours are read by the
-    //      storefront for currency conversion and swatches. Admin writes.
     match /settings/{docId} {
       allow read: if canShop();
       allow write: if isAdmin();
     }
 
-    // ---- Customer favourites (one doc per user) -------------------------
     match /favourites/{uid} {
       allow read, write: if request.auth.uid == uid || isAdmin();
     }
 
-    // ---- Customer enquiries (RFQs) --------------------------------------
-    // Customers may create their own and read back their own; admins manage.
     match /enquiries/{eid} {
       allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
       allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 
-    // ---- Everything below is internal / admin only ----------------------
     match /suppliers/{supplierId} {
       allow read, write: if isAdmin();
       match /catalogs/{catalogId} {
@@ -151,12 +128,13 @@ service cloud.firestore {
       match /supplier_quotes/{quoteId} {
         allow read, write: if isAdmin();
       }
+      // Stock ledger (V7.13a) — append-only movement history behind on-hand.
+      match /movements/{movementId} {
+        allow read, write: if isAdmin();
+      }
     }
 
     // ---- Shipping & Logistics module (admin only) -----------------------
-    // Orders/packing actuals + freight KB are internal cost data. The
-    // storefront never reads these. NOTE: this file is a reference copy —
-    // the live rules must be pasted into the Firebase console (no CLI).
     match /orders/{orderId} {
       allow read, write: if isAdmin();
       match /{allPaths=**} {
