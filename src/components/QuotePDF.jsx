@@ -100,8 +100,9 @@ const s = StyleSheet.create({
 
   // Signatures
   signRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 26, marginBottom: 16 },
-  signBox: { width: 220 },
+  signBox: { width: 220, position: 'relative' },
   signSpace: { height: 46 },
+  stampImg: { position: 'absolute', bottom: 0, left: 4, width: 130, height: 48, objectFit: 'contain' },
   signLine: { borderTopWidth: 0.8, borderTopColor: C.grayMid, paddingTop: 4 },
   signRole: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 7, color: C.grayMid, letterSpacing: 1, marginBottom: 2 },
   signName: { fontSize: 8.5, color: C.grayDark },
@@ -251,7 +252,9 @@ export default function QuotePDF({ quote, items }) {
         {/* Signatures */}
         <View style={s.signRow} wrap={false}>
           <View style={s.signBox}>
-            <View style={s.signSpace} />
+            <View style={s.signSpace}>
+              {quote._stampData ? <Image src={quote._stampData} style={s.stampImg} /> : null}
+            </View>
             <View style={s.signLine}>
               <Text style={s.signRole}>ISSUED BY</Text>
               <Text style={s.signName}>United Art Metals Factory Limited</Text>

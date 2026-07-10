@@ -47,6 +47,11 @@ service firebase.storage {
       allow read, write: if isAuth();
     }
 
+    // App-wide settings assets — quote stamp/signature, etc.
+    match /settings/{allPaths=**} {
+      allow read, write: if isAuth();
+    }
+
     // Shipping module — imported PI files (orders/imports/…) + freight quote
     // attachments. NOTE: reference copy — paste into the Storage Rules tab.
     match /orders/{orderId}/{allPaths=**} {

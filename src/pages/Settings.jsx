@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs, writeBatch } from 'firebase/firestore'
-import { db } from '../firebase'
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { db, storage } from '../firebase'
 import { RefreshCw } from 'lucide-react'
 import CatalogueBand from './CatalogueBand'
 import ImportImages from './ImportImages'
@@ -14,6 +15,7 @@ const LABELS = { RMB: 'RMB → HKD', USD: 'USD → HKD', EUR: 'EUR → HKD' }
 const TABS = [
   { v: 'fx',       label: 'Exchange Rates' },
   { v: 'products', label: 'Products' },
+  { v: 'quotes',   label: 'Quote Branding' },
   { v: 'audit',    label: 'Schema Audit' },
 ]
 const PRODUCT_TABS = [
@@ -51,6 +53,8 @@ export default function Settings() {
       </div>
 
       {tab === 'fx' && <ExchangeRatesPanel />}
+
+      {tab === 'quotes' && <QuoteBrandingPanel />}
 
       {tab === 'audit' && <SchemaAudit />}
 
@@ -212,6 +216,76 @@ function ProductDefaults() {
           {log && <p className={`text-sm ${log.startsWith('Error') ? 'text-red-500' : 'text-green-600'}`}>{log}</p>}
         </div>
       </div>
+    </div>
+  )
+}
+
+// Upload once — the stamp/signature is embedded automatically in the "Issued
+// By" block of every quote PDF from then on (see QuoteExport.jsx / QuotePDF.jsx).
+// No per-quote attaching. PNG with a transparent background looks best since it
+// sits directly over the signature line.
+function QuoteBrandingPanel() {
+  const [stampUrl, setStampUrl] = useState(null)   // null = loading
+  const [uploading, setUploading] = useState(false)
+  const [msg, setMsg] = useState('')
+
+  useEffect(() => {
+    getDoc(doc(db, 'settings', 'quote_branding'))
+      .then(snap => setStampUrl(snap.exists() ? (snap.data().stamp_url || '') : ''))
+      .catch(() => setStampUrl(''))
+  }, [])
+
+  async function handleUpload(e) {
+    const file = e.target.files[0]
+    e.target.value = ''
+    if (!file) return
+    setUploading(true); setMsg('')
+    try {
+      const path = `settings/quote_stamp_${Date.now()}_${file.name.replace(/[^\w.\-]/g, '_')}`
+      await uploadBytes(storageRef(storage, path), file)
+      const url = await getDownloadURL(storageRef(storage, path))
+      await setDoc(doc(db, 'settings', 'quote_branding'), { stamp_url: url, updatedAt: serverTimestamp() }, { merge: true })
+      setStampUrl(url)
+      setMsg('Saved — it will appear on every new quote PDF.')
+      setTimeout(() => setMsg(''), 4000)
+    } catch (err) {
+      setMsg('Upload failed: ' + err.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  async function handleRemove() {
+    await setDoc(doc(db, 'settings', 'quote_branding'), { stamp_url: '' }, { merge: true })
+    setStampUrl('')
+  }
+
+  if (stampUrl === null) return <div className="p-4 md:p-6 text-sm text-ink-50">Loading…</div>
+
+  return (
+    <div className="p-4 md:p-6 max-w-lg">
+      <h2 className="text-lg font-semibold mb-1">Quote Stamp &amp; Signature</h2>
+      <p className="text-sm text-ink-60 mb-4">
+        Upload a company chop / signature image once — it's embedded automatically over the
+        "Issued By" line on every quote PDF. A PNG with a transparent background works best.
+      </p>
+
+      {stampUrl ? (
+        <div className="inline-block border border-ivory-dark rounded-md p-3 bg-white mb-4">
+          <img src={stampUrl} alt="Quote stamp" className="max-h-24 max-w-xs object-contain" />
+        </div>
+      ) : (
+        <p className="text-sm text-ink-50 mb-4">No stamp uploaded yet — quote PDFs will show a blank signature line.</p>
+      )}
+
+      <div className="flex items-center gap-3">
+        <label className="btn-secondary text-sm cursor-pointer">
+          {uploading ? 'Uploading…' : stampUrl ? 'Replace' : 'Upload image'}
+          <input type="file" accept="image/png,image/jpeg" className="hidden" onChange={handleUpload} disabled={uploading} />
+        </label>
+        {stampUrl && <button onClick={handleRemove} className="text-sm text-red-500 hover:underline">Remove</button>}
+      </div>
+      {msg && <p className={`text-xs mt-2 ${msg.startsWith('Upload failed') ? 'text-red-500' : 'text-green-600'}`}>{msg}</p>}
     </div>
   )
 }

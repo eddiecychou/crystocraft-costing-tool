@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import ExcelJS from 'exceljs'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '../firebase'
 import { Download, Eye } from 'lucide-react'
 import logoUrl from '../assets/logo.png'
 
@@ -61,17 +63,24 @@ export default function QuoteExport({ quote, items, onClose }) {
 
   // Build the quotation PDF as a blob (shared by download + preview).
   async function buildPdfBlob() {
-    // Pre-embed each product image as a data URL (avoids CORS in react-pdf).
-    const withImages = await Promise.all(items.map(async item => ({
-      ...item,
-      _imageData: await imageToDataURL(item.custom_image || item.hero_image),
-    })))
+    // Pre-embed each product image as a data URL (avoids CORS in react-pdf),
+    // plus the company stamp/signature (Settings → Quote Branding), if set.
+    const [withImages, stampSnap] = await Promise.all([
+      Promise.all(items.map(async item => ({
+        ...item,
+        _imageData: await imageToDataURL(item.custom_image || item.hero_image),
+      }))),
+      getDoc(doc(db, 'settings', 'quote_branding')).catch(() => null),
+    ])
+    const stampUrl = stampSnap?.exists() ? stampSnap.data().stamp_url : ''
+    const stampData = stampUrl ? await imageToDataURL(stampUrl) : null
+
     // Lazy-load react-pdf + the document so its weight stays out of the main bundle.
     const [{ pdf }, { default: QuotePDF }] = await Promise.all([
       import('@react-pdf/renderer'),
       import('./QuotePDF'),
     ])
-    return pdf(<QuotePDF quote={quote} items={withImages} />).toBlob()
+    return pdf(<QuotePDF quote={{ ...quote, _stampData: stampData }} items={withImages} />).toBlob()
   }
 
   async function exportPDF() {
