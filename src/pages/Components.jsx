@@ -192,6 +192,14 @@ function CriticalComponents() {
     [...new Set(components.map(c => c.category).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
   [components])
 
+  const totals = useMemo(() => components.reduce((t, c) => {
+    const onHand = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
+    const reserved = Number.isFinite(c.reserved_qty) ? c.reserved_qty : 0
+    t.onHand += onHand; t.reserved += reserved
+    if (onHand - reserved < 0) t.oversold += 1
+    return t
+  }, { onHand: 0, reserved: 0, oversold: 0 }), [components])
+
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -206,7 +214,13 @@ function CriticalComponents() {
       </div>
 
       <p className="text-xs text-ink-50 mb-2">
-        {loading ? 'Loading…' : `${filtered.length} of ${components.length} component${components.length === 1 ? '' : 's'}`}
+        {loading ? 'Loading…' : (
+          <>
+            {filtered.length} of {components.length} component{components.length === 1 ? '' : 's'} · {totals.onHand.toLocaleString()} on hand
+            {totals.reserved > 0 && <> · <span className="text-amber-600">{totals.reserved.toLocaleString()} reserved</span> · <span className="text-green-700">{(totals.onHand - totals.reserved).toLocaleString()} available</span></>}
+            {totals.oversold > 0 && <> · <span className="text-red-600 font-medium">{totals.oversold} to reorder</span></>}
+          </>
+        )}
       </p>
 
       {!loading && components.length === 0 ? (
@@ -230,6 +244,10 @@ function CriticalComponents() {
                   <p className="text-xs text-ink-60 truncate">
                     {c.name || '—'}{c.supplierName ? ` · ${c.supplierName}` : ''}
                     {c.used_by?.length > 0 && <span className="text-ink-40"> · used by {c.used_by.slice(0, 2).join(', ')}{c.used_by.length > 2 ? ` +${c.used_by.length - 2}` : ''}</span>}
+                    {Number(c.reserved_qty) > 0 && (() => {
+                      const avail = (Number(c.stock_qty) || 0) - Number(c.reserved_qty)
+                      return <span className={avail < 0 ? 'text-red-600 font-medium' : 'text-amber-600'}> · {Number(c.reserved_qty).toLocaleString()} reserved · {avail.toLocaleString()} avail{avail < 0 ? ' — reorder' : ''}</span>
+                    })()}
                   </p>
                 </div>
               </Link>

@@ -37,6 +37,7 @@ import CustomerDetail from './pages/CustomerDetail'
 import Settings from './pages/Settings'
 import SchemaAudit from './pages/SchemaAudit'
 import ComponentsLib from './pages/Components'
+import InventoryStatus from './pages/InventoryStatus'
 import RangeComponentForm from './pages/RangeComponentForm'
 import Catalogues from './pages/Catalogues'
 import CatalogueForm from './pages/CatalogueForm'
@@ -138,6 +139,7 @@ function AdminApp({ user }) {
                 <Route path="/range/:id/costing" element={<RangeCosting />} />
                 <Route path="/range/:id" element={<RangeForm />} />
                 <Route path="/components" element={<ComponentsLib />} />
+                <Route path="/inventory" element={<InventoryStatus />} />
                 <Route path="/components/critical/new" element={<RangeComponentForm />} />
                 <Route path="/components/critical/:id/quotes/new" element={<RangeQuoteForm />} />
                 <Route path="/components/critical/:id/quotes/:quoteId" element={<RangeQuoteForm />} />
