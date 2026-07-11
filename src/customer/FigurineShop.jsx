@@ -30,9 +30,11 @@ function docVariants(p) {
 export default function FigurineShop({ profile }) {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [cat, setCat] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')   // '' = all lifecycle statuses
+  // Filters persist across a detail visit (sessionStorage) so returning to the
+  // catalogue keeps your search/category/status instead of resetting.
+  const [search, setSearch] = useState(() => sessionStorage.getItem('fs-search') || '')
+  const [cat, setCat] = useState(() => sessionStorage.getItem('fs-cat') || '')
+  const [statusFilter, setStatusFilter] = useState(() => sessionStorage.getItem('fs-status') || '')   // '' = all lifecycle statuses
   const [coll, setColl] = useState(null)   // applied Shop-by collection
   const [params, setParams] = useSearchParams()
   const { labels: formatLabels } = useFormatMoq()
@@ -104,6 +106,16 @@ export default function FigurineShop({ profile }) {
     })
   }, [items, coll, search, cat, statusFilter, designFilter, formatFilter])
 
+  // After returning from a product detail, scroll the last-opened card back into
+  // view so you can carry on browsing where you left off (not jump to the top).
+  useEffect(() => {
+    if (loading) return
+    const lastId = sessionStorage.getItem('fs-last-id')
+    if (!lastId) return
+    const el = document.getElementById(`fig-card-${lastId}`)
+    if (el) { el.scrollIntoView({ block: 'center' }); sessionStorage.removeItem('fs-last-id') }
+  }, [loading, filtered])
+
   const formatName = formatLabels[formatFilter] || FORMAT_LABEL[formatFilter] || `Format ${formatFilter}`
   const clearMoqFilter = () => {
     const next = new URLSearchParams(params)
@@ -149,8 +161,8 @@ export default function FigurineShop({ profile }) {
       )}
       <div className="flex flex-col sm:flex-row gap-2 mb-5">
         <input type="text" placeholder="Search name or code…" className="input w-full sm:flex-1"
-          value={search} onChange={e => setSearch(e.target.value)} />
-        <select className="input sm:w-56" value={coll ? '' : cat} onChange={e => { setColl(null); setCat(e.target.value) }}>
+          value={search} onChange={e => { setSearch(e.target.value); sessionStorage.setItem('fs-search', e.target.value) }} />
+        <select className="input sm:w-56" value={coll ? '' : cat} onChange={e => { setColl(null); setCat(e.target.value); sessionStorage.setItem('fs-cat', e.target.value) }}>
           <option value="">All categories</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
@@ -160,7 +172,7 @@ export default function FigurineShop({ profile }) {
         {/* Retired designs never reach `products` (filtered out above), so
             offering a Retired chip here would always show zero results. */}
         {[{ value: '', label: 'All' }, ...RANGE_STATUSES.filter(s => s.value !== 'retired')].map(s => (
-          <button key={s.value || 'all'} onClick={() => setStatusFilter(s.value)}
+          <button key={s.value || 'all'} onClick={() => { setStatusFilter(s.value); sessionStorage.setItem('fs-status', s.value) }}
             className={`px-3 py-1 rounded-full text-xs border transition-colors ${
               statusFilter === s.value
                 ? 'bg-ink text-white border-ink'
@@ -174,7 +186,9 @@ export default function FigurineShop({ profile }) {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
           {filtered.map(s => (
-            <Link key={s.id} to={`/shop/figurine/${s.id}`} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow group">
+            <Link key={s.id} id={`fig-card-${s.id}`} to={`/shop/figurine/${s.id}`}
+              onClick={() => sessionStorage.setItem('fs-last-id', s.id)}
+              className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow group">
               <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
                 {s.image
                   ? <img src={s.image} alt={s.name} className="w-full h-full object-contain p-2" loading="lazy" />

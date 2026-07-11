@@ -14,8 +14,9 @@ import LoadingBar from '../components/LoadingBar'
 export default function CorporateShop({ profile }) {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [cat, setCat] = useState('')
+  // Filters persist across a detail visit so returning keeps your search/category.
+  const [search, setSearch] = useState(() => sessionStorage.getItem('cs-search') || '')
+  const [cat, setCat] = useState(() => sessionStorage.getItem('cs-cat') || '')
   const [coll, setColl] = useState(null)
   const rates = useRates()
   const cur = profile?.base_currency || 'USD'
@@ -47,6 +48,16 @@ export default function CorporateShop({ profile }) {
     })
   }, [products, coll, search, cat])
 
+  // After returning from a product detail, scroll the last-opened card back into
+  // view so you can carry on browsing where you left off.
+  useEffect(() => {
+    if (loading) return
+    const lastId = sessionStorage.getItem('cs-last-id')
+    if (!lastId) return
+    const el = document.getElementById(`corp-card-${lastId}`)
+    if (el) { el.scrollIntoView({ block: 'center' }); sessionStorage.removeItem('cs-last-id') }
+  }, [loading, filtered])
+
   return (
     <div>
       {loading && <LoadingBar />}
@@ -68,8 +79,8 @@ export default function CorporateShop({ profile }) {
       )}
       <div className="flex flex-col sm:flex-row gap-2 mb-5">
         <input type="text" placeholder="Search products…" className="input w-full sm:flex-1"
-          value={search} onChange={e => setSearch(e.target.value)} />
-        <select className="input sm:w-56" value={coll ? '' : cat} onChange={e => { setColl(null); setCat(e.target.value) }}>
+          value={search} onChange={e => { setSearch(e.target.value); sessionStorage.setItem('cs-search', e.target.value) }} />
+        <select className="input sm:w-56" value={coll ? '' : cat} onChange={e => { setColl(null); setCat(e.target.value); sessionStorage.setItem('cs-cat', e.target.value) }}>
           <option value="">All categories</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
@@ -99,7 +110,9 @@ function CorpCard({ p, cur, rates, profile }) {
   }, [p.id, cur, rates, profile?.id, profile?.fx_rate])
 
   return (
-    <Link to={`/shop/corporate/${p.id}`} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+    <Link id={`corp-card-${p.id}`} to={`/shop/corporate/${p.id}`}
+      onClick={() => sessionStorage.setItem('cs-last-id', p.id)}
+      className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">
       <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
         {p.heroImage
           ? <img src={p.heroImage} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
