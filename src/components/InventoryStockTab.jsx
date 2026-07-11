@@ -10,6 +10,13 @@ import { Gem, Box, ChevronDown, ChevronRight, Trash2 } from 'lucide-react'
 
 const ICONS = { gem: Gem, box: Box }
 
+// Reorder when available is at/below the reorder point (or, if none set, only
+// when over-committed). Matches the Inventory Status page.
+const needsReorder = (available, reorderPoint) => {
+  const rp = Number(reorderPoint) || 0
+  return rp > 0 ? available <= rp : available < 0
+}
+
 export default function InventoryStockTab({ inv }) {
   const { items, loading } = inv.useItems()
   const [search, setSearch] = useState('')
@@ -29,7 +36,7 @@ export default function InventoryStockTab({ inv }) {
     const reserved = Number.isFinite(c.reserved_qty) ? c.reserved_qty : 0
     t.onHand += onHand
     t.reserved += reserved
-    if (onHand - reserved < 0) t.oversold += 1   // reserved more than on hand → reorder
+    if (needsReorder(onHand - reserved, c.reorder_point)) t.oversold += 1
     return t
   }, { onHand: 0, reserved: 0, oversold: 0 }), [items])
 
@@ -74,9 +81,13 @@ export default function InventoryStockTab({ inv }) {
                     </div>
                     <p className="text-xs text-ink-60 truncate">
                       {c.name || '—'}
-                      {Number(c.reserved_qty) > 0 && (() => {
-                        const avail = (Number(c.stock_qty) || 0) - Number(c.reserved_qty)
-                        return <span className={avail < 0 ? 'text-red-600 font-medium' : 'text-amber-600'}> · {Number(c.reserved_qty).toLocaleString()} reserved · {avail.toLocaleString()} avail{avail < 0 ? ' — reorder' : ''}</span>
+                      {(() => {
+                        const onHand = Number(c.stock_qty) || 0
+                        const reserved = Number(c.reserved_qty) || 0
+                        const avail = onHand - reserved
+                        const reorder = needsReorder(avail, c.reorder_point)
+                        if (reserved <= 0 && !reorder) return null
+                        return <span className={reorder ? 'text-red-600 font-medium' : 'text-amber-600'}>{reserved > 0 ? ` · ${reserved.toLocaleString()} reserved · ${avail.toLocaleString()} avail` : ` · ${avail.toLocaleString()} avail`}{reorder ? ' — reorder' : ''}</span>
                       })()}
                     </p>
                   </div>

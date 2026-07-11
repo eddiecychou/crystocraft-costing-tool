@@ -192,11 +192,12 @@ function CriticalComponents() {
     [...new Set(components.map(c => c.category).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
   [components])
 
+  const needsReorder = (available, rp) => { const p = Number(rp) || 0; return p > 0 ? available <= p : available < 0 }
   const totals = useMemo(() => components.reduce((t, c) => {
     const onHand = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
     const reserved = Number.isFinite(c.reserved_qty) ? c.reserved_qty : 0
     t.onHand += onHand; t.reserved += reserved
-    if (onHand - reserved < 0) t.oversold += 1
+    if (needsReorder(onHand - reserved, c.reorder_point)) t.oversold += 1
     return t
   }, { onHand: 0, reserved: 0, oversold: 0 }), [components])
 
@@ -244,9 +245,13 @@ function CriticalComponents() {
                   <p className="text-xs text-ink-60 truncate">
                     {c.name || '—'}{c.supplierName ? ` · ${c.supplierName}` : ''}
                     {c.used_by?.length > 0 && <span className="text-ink-40"> · used by {c.used_by.slice(0, 2).join(', ')}{c.used_by.length > 2 ? ` +${c.used_by.length - 2}` : ''}</span>}
-                    {Number(c.reserved_qty) > 0 && (() => {
-                      const avail = (Number(c.stock_qty) || 0) - Number(c.reserved_qty)
-                      return <span className={avail < 0 ? 'text-red-600 font-medium' : 'text-amber-600'}> · {Number(c.reserved_qty).toLocaleString()} reserved · {avail.toLocaleString()} avail{avail < 0 ? ' — reorder' : ''}</span>
+                    {(() => {
+                      const onHand = Number(c.stock_qty) || 0
+                      const reserved = Number(c.reserved_qty) || 0
+                      const avail = onHand - reserved
+                      const reorder = needsReorder(avail, c.reorder_point)
+                      if (reserved <= 0 && !reorder) return null
+                      return <span className={reorder ? 'text-red-600 font-medium' : 'text-amber-600'}>{reserved > 0 ? ` · ${reserved.toLocaleString()} reserved · ${avail.toLocaleString()} avail` : ` · ${avail.toLocaleString()} avail`}{reorder ? ' — reorder' : ''}</span>
                     })()}
                   </p>
                 </div>

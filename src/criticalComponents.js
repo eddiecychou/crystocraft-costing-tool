@@ -51,6 +51,7 @@ export const normComponent = c => ({
   images: Array.isArray(c.images) ? c.images.filter(Boolean) : [],
   stock_qty: numOrNull(c.stock_qty),
   reserved_qty: numOrNull(c.reserved_qty),   // allocated to confirmed orders (ledger-owned)
+  reorder_point: numOrNull(c.reorder_point), // reorder when available ≤ this (0 = only when negative)
   lead_time_weeks: numOrNull(c.lead_time_weeks),
   // Product item codes that use this part as their main component — a display
   // hint stamped by the stock-list import (the canonical BOM link lives on the
