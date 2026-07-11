@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { db } from '../firebase'
-import { derivedCbm, effectiveGw } from '../packing'
+import { derivedCbm, effectiveGw, palletisedTotals, palletDimCbm } from '../packing'
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 async function loadPrintData(plId) {
@@ -68,19 +68,22 @@ function PrintDoc({ pl, order, cartons }) {
     const qty = (c.contents || []).reduce((q, it) => q + (parseFloat(it.qty) || 0), 0)
     return s + qty * count
   }, 0)
-  const totalGw    = cartons.reduce((s, c) => s + effectiveGw(c) * (parseInt(c.carton_count) || 1), 0)
-  const totalCbm   = cartons.reduce((s, c) => s + (derivedCbm(c) || 0) * (parseInt(c.carton_count) || 1), 0)
   const totalNw    = cartons.reduce((s, c) => s + (parseFloat(c.nw_kg) || 0) * (parseInt(c.carton_count) || 1), 0)
+  // Palletised grand totals (CBM from pallet dims where set, +8kg per pallet) —
+  // shared with the editor so the document and the on-screen figures agree.
+  const { totalCbm, totalGw, palletCount } = palletisedTotals(cartons, pallets)
 
-  // Pallet summaries
+  // Pallet summaries — CBM from the wrapped pallet's own dimensions when entered,
+  // otherwise the loose carton sum.
   const palletSummaries = palletNums.map(no => {
     const cs = byPallet[no]
     const firstSeq = parseInt(cs[0]?.carton_seq) || 1
     const lastC = cs[cs.length - 1]
     const lastSeq = (parseInt(lastC?.carton_seq) || 1) + (parseInt(lastC?.carton_count) || 1) - 1
     const ctns = cs.reduce((s, c) => s + (parseInt(c.carton_count) || 1), 0)
-    const cbm  = cs.reduce((s, c) => s + (derivedCbm(c) || 0) * (parseInt(c.carton_count) || 1), 0)
-    const dims = pallets.find(p => p.pallet_no === no)
+    const cartonCbm = cs.reduce((s, c) => s + (derivedCbm(c) || 0) * (parseInt(c.carton_count) || 1), 0)
+    const dims = pallets.find(p => (parseInt(p.pallet_no) || 1) === no)
+    const cbm = palletDimCbm(dims) ?? cartonCbm
     return { no, firstSeq, lastSeq, ctns, cbm, dims }
   })
 

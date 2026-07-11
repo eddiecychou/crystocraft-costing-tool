@@ -7,6 +7,7 @@ import {
   getPackingScenariosByOrder, createPackingList, updatePackingList,
   selectScenario, deleteScenario,
   saveCartonsWithContents, getCartonsWithContents,
+  PALLET_WEIGHT_KG, palletDimCbm, palletisedTotals,
 } from '../packing'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -481,23 +482,10 @@ export default function PackingListEditor({ orderId, orderLines }) {
   }
 
   // ── Derived totals ────────────────────────────────────────────────────────
-  const totals = useMemo(() => {
-    let totalCartons = 0, totalCbm = 0, totalGw = 0
-    for (const c of cartons) {
-      const count = parseInt(c.carton_count) || 1
-      totalCartons += count
-      totalCbm += (derivedCbm(c) || 0) * count
-      // parseFloat('') / parseFloat(undefined) is NaN, not null/undefined, so
-      // `??` never falls through to the next field — an unset gw_kg_actual (an
-      // empty string, the normal "not entered" state) poisoned the whole running
-      // total to NaN. Explicitly check finiteness at each fallback step instead.
-      const actualGw = parseFloat(c.gw_kg_actual)
-      const stdGw = parseFloat(c.gw_kg_standard)
-      const gw = Number.isFinite(actualGw) ? actualGw : (Number.isFinite(stdGw) ? stdGw : 0)
-      totalGw += gw * count
-    }
-    return { totalCartons, totalCbm: Math.round(totalCbm * 1e4) / 1e4, totalGw: Math.round(totalGw * 10) / 10 }
-  }, [cartons])
+  // Palletised: a pallet with L×W×H entered ships at that wrapped volume (not the
+  // loose carton sum) and adds one pallet's timber weight (8kg). Shared with the
+  // printed PDF so the editor and the document always agree.
+  const totals = useMemo(() => palletisedTotals(cartons, pallets), [cartons, pallets])
 
   const pvORows   = useMemo(() => calcPackedVsOrdered(packableLines, cartons), [packableLines, cartons])
   const pvOAllOk  = pvORows.every(r => r.packed === r.ordered)
@@ -606,6 +594,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
           {pl?.status && <StatusBadge status={pl.status} />}
           <span className="text-xs text-gray-400">
             {totals.totalCartons} CTN · {totals.totalCbm} CBM · {totals.totalGw} kg GW
+            {totals.palletCount > 0 && <span className="text-gray-300"> (incl. {totals.palletCount} pallet{totals.palletCount > 1 ? 's' : ''} · +{PALLET_WEIGHT_KG}kg ea)</span>}
           </span>
         </div>
       </div>
@@ -656,11 +645,15 @@ export default function PackingListEditor({ orderId, orderLines }) {
                 : '—'
               const palletCbm = palletCartons.reduce((s, c) => s + (derivedCbm(c) || 0) * (parseInt(c.carton_count) || 1), 0)
               const palletCtns = palletCartons.reduce((s, c) => s + (parseInt(c.carton_count) || 1), 0)
+              const dimCbm = palletDimCbm(pallets.find(p => (parseInt(p.pallet_no) || 1) === no))
               return (
                 <div key={no} className="flex items-center gap-3 flex-wrap">
                   <span className="text-sm text-gray-600 w-20 shrink-0">Pallet {no}</span>
-                  <span className="text-xs text-gray-400 w-32 shrink-0">
-                    CTN {firstSeq}–{lastSeq} ({palletCtns} ctns, {palletCbm.toFixed(4)} CBM)
+                  <span className="text-xs text-gray-400 w-44 shrink-0">
+                    CTN {firstSeq}–{lastSeq} ({palletCtns} ctns)
+                    {dimCbm != null
+                      ? <> · <span className="text-gray-600 font-medium">{dimCbm.toFixed(4)} CBM</span> <span className="text-gray-300 line-through">{palletCbm.toFixed(4)}</span></>
+                      : <> · {palletCbm.toFixed(4)} CBM</>}
                   </span>
                   <div className="flex items-center gap-1">
                     {(['length_m','width_m','height_m']).map((f, fi) => (

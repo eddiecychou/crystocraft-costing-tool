@@ -61,6 +61,48 @@ export function derivedCbm(c) {
   return l && w && h ? calcCbm(l, w, h) : (parseFloat(c.cbm_per_carton) || 0)
 }
 
+// Weight of one empty pallet (kg) — added to the gross weight once per palletised
+// pallet, since the wrapped pallet ships with its own timber weight.
+export const PALLET_WEIGHT_KG = 8
+
+// Palletised CBM from a pallet's own L×W×H (metres → m³). Null unless all three
+// are set — the wrapped pallet's real volume, which differs from the carton sum.
+export function palletDimCbm(p) {
+  const l = parseFloat(p?.length_m), w = parseFloat(p?.width_m), h = parseFloat(p?.height_m)
+  return (l > 0 && w > 0 && h > 0) ? Math.round(l * w * h * 1e4) / 1e4 : null
+}
+
+// Grand totals for a packing list, palletised: each pallet with L×W×H entered
+// ships at that wrapped volume (not the carton sum) and carries one pallet's
+// timber weight. Pallets without dims fall back to the carton sum, unchanged.
+// cartons: [{ pallet_no, carton_count, ...dims, gw }]; pallets: [{ pallet_no, length_m,… }].
+export function palletisedTotals(cartons = [], pallets = []) {
+  let totalCartons = 0, cartonCbm = 0, totalGw = 0
+  const perPalletCartonCbm = {}
+  for (const c of cartons) {
+    const count = parseInt(c.carton_count) || 1
+    totalCartons += count
+    const cCbm = (derivedCbm(c) || 0) * count
+    cartonCbm += cCbm
+    const no = parseInt(c.pallet_no) || 1
+    perPalletCartonCbm[no] = (perPalletCartonCbm[no] || 0) + cCbm
+    totalGw += effectiveGw(c) * count
+  }
+  let totalCbm = 0, palletCount = 0
+  for (const no of Object.keys(perPalletCartonCbm).map(Number)) {
+    const dim = palletDimCbm((pallets || []).find(p => (parseInt(p.pallet_no) || 1) === no))
+    if (dim != null) { totalCbm += dim; palletCount += 1 } else totalCbm += perPalletCartonCbm[no]
+  }
+  totalGw += palletCount * PALLET_WEIGHT_KG
+  return {
+    totalCartons,
+    totalCbm: Math.round(totalCbm * 1e4) / 1e4,
+    cartonCbm: Math.round(cartonCbm * 1e4) / 1e4,
+    totalGw: Math.round(totalGw * 10) / 10,
+    palletCount,
+  }
+}
+
 // ── Standard packing pre-fill ─────────────────────────────────────────────────
 // Returns array of carton rows derived from packable order lines + product packing data.
 // Caller is responsible for loading rangeProducts with their `packing` field.

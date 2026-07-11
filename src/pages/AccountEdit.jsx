@@ -244,8 +244,11 @@ export default function AccountEdit() {
                 onClick={() => { if (confirm('Suspend this customer? They lose pricing access and move to the Suspended tab. You can restore them anytime.')) apply({ status: 'suspended' }, { back: true }) }}>
                 Suspend
               </button>
-              <button className="text-sm text-ink-60 hover:text-brand-600"
-                onClick={() => { if (confirm('Promote this customer to ADMIN? They get full access to the costing tool.')) apply({ role: 'admin' }, { back: true }) }}>
+              <button className="text-sm text-red-600 border border-red-200 rounded px-2.5 py-1 hover:bg-red-50"
+                onClick={() => {
+                  const ans = prompt(`⚠️ Make ${displayName} a FULL ADMIN?\n\nAn admin can see EVERYTHING in the costing tool — costs, margins, suppliers, every customer, and all your trade secrets. Only do this for your own staff.\n\nType  MAKE ADMIN  to confirm.`)
+                  if ((ans || '').trim().toUpperCase() === 'MAKE ADMIN') apply({ role: 'admin' }, { back: true })
+                }}>
                 Make admin
               </button>
             </>
@@ -257,9 +260,9 @@ export default function AccountEdit() {
             </button>
           )}
           {isAdmin && !isSelf && (
-            <button className="text-sm text-ink-60 hover:text-brand-600"
-              onClick={() => { if (confirm('Remove admin access? They become a pending customer.')) apply({ role: 'customer', status: 'pending' }, { back: true }) }}>
-              Revoke admin
+            <button className="btn-secondary text-sm"
+              onClick={() => { if (confirm('Remove admin access? They revert to a normal (approved) customer — they keep shopping/pricing access but can no longer see any costing data.')) apply({ role: 'customer', status: 'approved' }, { back: true }) }}>
+              Revoke admin — back to normal account
             </button>
           )}
           {isAdmin && isSelf && <span className="text-sm text-ink-50">This is your own admin account.</span>}
