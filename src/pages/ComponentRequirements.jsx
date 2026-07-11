@@ -13,7 +13,7 @@ const DEMAND = ['confirmed', 'packing', 'ready']
 const orderLabel = o => (o.erp_pi_no ? `PI ${o.erp_pi_no}` : (o.customer_name || o.id))
 
 function toCsv(rows) {
-  const head = ['Component', 'Name', 'Plating', 'Required', 'In stock', 'Shortage', 'Lead (wk)', 'Used by']
+  const head = ['Component', 'Name', 'Plating', 'Required', 'Available', 'Shortage', 'Lead (wk)', 'Used by']
   const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`
   const out = [head.map(esc).join(',')]
   for (const r of rows) {
@@ -74,12 +74,19 @@ export default function ComponentRequirements() {
     try {
       const chosen = orders.filter(o => selected.has(o.id))
       const lines = []
+      let reservedSkipped = 0
       for (const o of chosen) {
+        // An order that has already reserved (or produced-in) its components has
+        // set that stock aside — its demand is covered, so counting it again
+        // against the now-lower Available would over-order. Skip it.
+        const raw = o._raw || o
+        if (raw.components_reserved || raw.components_committed) { reservedSkipped++; continue }
         const ls = await getOrderLines(o.id)
         const label = orderLabel(o)
         ls.forEach(l => lines.push({ ...l, order_label: label }))
       }
-      setResult(computeRequirements({ lines, products: Object.values(productsById), lib }))
+      const res = computeRequirements({ lines, products: Object.values(productsById), lib })
+      setResult({ ...res, reservedSkipped })
     } finally {
       setComputing(false)
     }
@@ -158,6 +165,7 @@ export default function ComponentRequirements() {
               <span className="font-semibold text-gray-900">{shortCount}</span> component{shortCount === 1 ? '' : 's'} short
               <span className="text-gray-400"> · {result.rows.length} required in total</span>
               {result.unmatched.length > 0 && <span className="text-red-600 font-medium"> · {result.unmatched.length} not in range</span>}
+              {result.reservedSkipped > 0 && <span className="text-amber-600"> · {result.reservedSkipped} reserved order{result.reservedSkipped === 1 ? '' : 's'} excluded (already set aside)</span>}
             </p>
             <div className="flex items-center gap-3">
               <label className="text-xs text-gray-500 inline-flex items-center gap-1.5 cursor-pointer">
@@ -183,7 +191,7 @@ export default function ComponentRequirements() {
                       <th className="px-3 py-2 font-medium">Component</th>
                       <th className="px-3 py-2 font-medium">Plating</th>
                       <th className="px-3 py-2 font-medium text-right">Required</th>
-                      <th className="px-3 py-2 font-medium text-right">In stock</th>
+                      <th className="px-3 py-2 font-medium text-right">Available</th>
                       <th className="px-3 py-2 font-medium text-right">Shortage</th>
                       <th className="px-3 py-2 font-medium text-right">Lead</th>
                       <th className="px-3 py-2 font-medium">Used by</th>

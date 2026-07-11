@@ -8,7 +8,7 @@
 // Pure and dependency-light so the core is headless-testable. Plating inclusion
 // goes through the shared refApplies helper so MRP agrees with buildable/costing.
 
-import { resolveRef, refApplies, refScopePlating, buildProductIndex, matchProductCode, VALID_PLATINGS } from './criticalComponents'
+import { resolveRef, refApplies, refScopePlating, buildProductIndex, matchProductCode, VALID_PLATINGS, availableOf } from './criticalComponents'
 
 const PLATING_LETTERS = new Set(VALID_PLATINGS.filter(Boolean))  // C,G,R,A,M
 
@@ -114,8 +114,10 @@ export function computeRequirements({ lines = [], products = [], lib = [] }) {
     }
   }
 
+  // "In stock" for planning = AVAILABLE (on-hand − reserved): reserved parts are
+  // already committed to confirmed orders, so they can't cover new demand (R2).
   const stockByCode = {}
-  for (const c of lib) if (c?.code) stockByCode[c.code.toUpperCase()] = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
+  for (const c of lib) if (c?.code) stockByCode[c.code.toUpperCase()] = availableOf(c)
 
   const rows = Object.values(req).map(r => {
     const inStock = stockByCode[r.code.toUpperCase()] ?? 0

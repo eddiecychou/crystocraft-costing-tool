@@ -25,10 +25,13 @@ export default function InventoryStockTab({ inv }) {
   }, [items, search, inv.attrField])
 
   const totals = useMemo(() => items.reduce((t, c) => {
-    t.onHand += Number.isFinite(c.stock_qty) ? c.stock_qty : 0
-    t.reserved += Number.isFinite(c.reserved_qty) ? c.reserved_qty : 0
+    const onHand = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
+    const reserved = Number.isFinite(c.reserved_qty) ? c.reserved_qty : 0
+    t.onHand += onHand
+    t.reserved += reserved
+    if (onHand - reserved < 0) t.oversold += 1   // reserved more than on hand → reorder
     return t
-  }, { onHand: 0, reserved: 0 }), [items])
+  }, { onHand: 0, reserved: 0, oversold: 0 }), [items])
 
   return (
     <div>
@@ -46,6 +49,7 @@ export default function InventoryStockTab({ inv }) {
           <>
             {filtered.length} of {items.length} item{items.length === 1 ? '' : 's'} · {totals.onHand.toLocaleString()} on hand
             {totals.reserved > 0 && <> · <span className="text-amber-600">{totals.reserved.toLocaleString()} reserved</span> · <span className="text-green-700">{(totals.onHand - totals.reserved).toLocaleString()} available</span></>}
+            {totals.oversold > 0 && <> · <span className="text-red-600 font-medium">{totals.oversold} to reorder</span></>}
           </>
         )}
       </p>
@@ -70,7 +74,10 @@ export default function InventoryStockTab({ inv }) {
                     </div>
                     <p className="text-xs text-ink-60 truncate">
                       {c.name || '—'}
-                      {Number(c.reserved_qty) > 0 && <span className="text-amber-600"> · {Number(c.reserved_qty).toLocaleString()} reserved · {((Number(c.stock_qty) || 0) - Number(c.reserved_qty)).toLocaleString()} avail</span>}
+                      {Number(c.reserved_qty) > 0 && (() => {
+                        const avail = (Number(c.stock_qty) || 0) - Number(c.reserved_qty)
+                        return <span className={avail < 0 ? 'text-red-600 font-medium' : 'text-amber-600'}> · {Number(c.reserved_qty).toLocaleString()} reserved · {avail.toLocaleString()} avail{avail < 0 ? ' — reorder' : ''}</span>
+                      })()}
                     </p>
                   </div>
                 </button>

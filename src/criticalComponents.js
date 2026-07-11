@@ -478,6 +478,13 @@ const variantPlatings = product => {
   return new Set(codes)
 }
 
+// Available component stock = on-hand − reserved (V7.13a R2). Reserved parts are
+// allocated to confirmed orders and sitting on the production line, so they must
+// NOT count toward what a NEW order can build — otherwise a new order would eat
+// into another customer's reserved stock. Floored at 0.
+export const availableOf = c =>
+  Math.max(0, (Number.isFinite(c?.stock_qty) ? c.stock_qty : 0) - (Number.isFinite(c?.reserved_qty) ? c.reserved_qty : 0))
+
 // How many finished pieces could be *assembled right now* from component stock.
 // Returns { qty, bottleneck } (qty null when the product lists no critical parts).
 //
@@ -500,7 +507,7 @@ export function buildableFromComponents(product, lib) {
     if (!c) return null
     const lt = Number(c.lead_time_weeks)
     if (lt > 0 && lt < FAST_LEAD_WEEKS) return { n: Infinity, code: c.code }
-    const stock = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
+    const stock = availableOf(c)   // available = on-hand − reserved (R2)
     return { n: Math.floor(stock / perUnit(r)), code: c.code }
   }
   // Scarcest part across a list ⇒ { q, code } (q = Infinity when list is empty).
@@ -564,7 +571,7 @@ export function makeLeadWeeks(product, lib, { defaultPartsLeadWeeks = PARTS_LEAD
     for (const r of list) {
       const c = resolveRef(r, lib)
       if (!c) continue
-      const stock = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
+      const stock = availableOf(c)               // available = on-hand − reserved (R2)
       if (stock >= perUnit(r)) continue          // this part is covered
       const rawLt = Number(c.lead_time_weeks)
       const lw = rawLt > 0 ? rawLt : defaultPartsLeadWeeks
