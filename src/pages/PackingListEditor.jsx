@@ -593,8 +593,10 @@ export default function PackingListEditor({ orderId, orderLines }) {
         <div className="ml-auto flex items-center gap-2">
           {pl?.status && <StatusBadge status={pl.status} />}
           <span className="text-xs text-gray-400">
-            {totals.totalCartons} CTN · {totals.totalCbm} CBM · {totals.totalGw} kg GW
-            {totals.palletCount > 0 && <span className="text-gray-300"> (incl. {totals.palletCount} pallet{totals.palletCount > 1 ? 's' : ''} · +{PALLET_WEIGHT_KG}kg ea)</span>}
+            {totals.totalCartons} CTN
+            {totals.palletCount > 0
+              ? <> · cartons {totals.cartonCbm}/pallet {totals.totalCbm} CBM · {totals.totalGw} kg GW <span className="text-gray-300">(incl. {totals.palletCount}×{PALLET_WEIGHT_KG}kg pallet)</span></>
+              : <> · {totals.totalCbm} CBM · {totals.totalGw} kg GW</>}
           </span>
         </div>
       </div>

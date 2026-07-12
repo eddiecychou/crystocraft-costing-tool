@@ -77,28 +77,29 @@ export function palletDimCbm(p) {
 // timber weight. Pallets without dims fall back to the carton sum, unchanged.
 // cartons: [{ pallet_no, carton_count, ...dims, gw }]; pallets: [{ pallet_no, length_m,… }].
 export function palletisedTotals(cartons = [], pallets = []) {
-  let totalCartons = 0, cartonCbm = 0, totalGw = 0
+  let totalCartons = 0, cartonCbm = 0, cartonGw = 0
   const perPalletCartonCbm = {}
   for (const c of cartons) {
     const count = parseInt(c.carton_count) || 1
     totalCartons += count
     const cCbm = (derivedCbm(c) || 0) * count
     cartonCbm += cCbm
+    cartonGw += effectiveGw(c) * count
     const no = parseInt(c.pallet_no) || 1
     perPalletCartonCbm[no] = (perPalletCartonCbm[no] || 0) + cCbm
-    totalGw += effectiveGw(c) * count
   }
   let totalCbm = 0, palletCount = 0
   for (const no of Object.keys(perPalletCartonCbm).map(Number)) {
     const dim = palletDimCbm((pallets || []).find(p => (parseInt(p.pallet_no) || 1) === no))
     if (dim != null) { totalCbm += dim; palletCount += 1 } else totalCbm += perPalletCartonCbm[no]
   }
-  totalGw += palletCount * PALLET_WEIGHT_KG
+  const totalGw = cartonGw + palletCount * PALLET_WEIGHT_KG   // + pallet timber weight
   return {
     totalCartons,
-    totalCbm: Math.round(totalCbm * 1e4) / 1e4,
-    cartonCbm: Math.round(cartonCbm * 1e4) / 1e4,
-    totalGw: Math.round(totalGw * 10) / 10,
+    cartonCbm: Math.round(cartonCbm * 1e4) / 1e4,   // loose carton volume (reconciles down the table)
+    totalCbm: Math.round(totalCbm * 1e4) / 1e4,     // palletised shipping volume (customs)
+    cartonGw: Math.round(cartonGw * 10) / 10,       // carton weight only
+    totalGw: Math.round(totalGw * 10) / 10,         // + pallets (final ship weight)
     palletCount,
   }
 }

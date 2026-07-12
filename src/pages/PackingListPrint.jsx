@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { db } from '../firebase'
-import { derivedCbm, effectiveGw, palletisedTotals, palletDimCbm } from '../packing'
+import { derivedCbm, effectiveGw, palletisedTotals, palletDimCbm, PALLET_WEIGHT_KG } from '../packing'
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 async function loadPrintData(plId) {
@@ -69,22 +69,33 @@ function PrintDoc({ pl, order, cartons }) {
     return s + qty * count
   }, 0)
   const totalNw    = cartons.reduce((s, c) => s + (parseFloat(c.nw_kg) || 0) * (parseInt(c.carton_count) || 1), 0)
-  // Palletised grand totals (CBM from pallet dims where set, +8kg per pallet) —
-  // shared with the editor so the document and the on-screen figures agree.
-  const { totalCbm, totalGw, palletCount } = palletisedTotals(cartons, pallets)
+  // Two views: the carton table totals are the loose carton sums (they reconcile
+  // down the columns — the customer's warehouse view); the palletised figures
+  // (CBM from pallet dims, +8kg/pallet) go in the pallet-summary footer for
+  // customs. Both from the shared calc so the editor and PDF always agree.
+  const { totalCbm, totalGw, cartonCbm, cartonGw, palletCount } = palletisedTotals(cartons, pallets)
 
-  // Pallet summaries — CBM from the wrapped pallet's own dimensions when entered,
-  // otherwise the loose carton sum.
+  // Per-pallet summary — loose carton subtotals AND the wrapped-pallet final
+  // (dims, CBM from those dims, weight incl. one pallet's timber).
+  const round1 = n => Math.round(n * 10) / 10
+  const round4 = n => Math.round(n * 1e4) / 1e4
   const palletSummaries = palletNums.map(no => {
     const cs = byPallet[no]
     const firstSeq = parseInt(cs[0]?.carton_seq) || 1
     const lastC = cs[cs.length - 1]
     const lastSeq = (parseInt(lastC?.carton_seq) || 1) + (parseInt(lastC?.carton_count) || 1) - 1
     const ctns = cs.reduce((s, c) => s + (parseInt(c.carton_count) || 1), 0)
-    const cartonCbm = cs.reduce((s, c) => s + (derivedCbm(c) || 0) * (parseInt(c.carton_count) || 1), 0)
+    const pCartonCbm = cs.reduce((s, c) => s + (derivedCbm(c) || 0) * (parseInt(c.carton_count) || 1), 0)
+    const pCartonGw  = cs.reduce((s, c) => s + effectiveGw(c) * (parseInt(c.carton_count) || 1), 0)
     const dims = pallets.find(p => (parseInt(p.pallet_no) || 1) === no)
-    const cbm = palletDimCbm(dims) ?? cartonCbm
-    return { no, firstSeq, lastSeq, ctns, cbm, dims }
+    const dimCbm = palletDimCbm(dims)
+    const palletised = dimCbm != null
+    return {
+      no, firstSeq, lastSeq, ctns, dims, palletised,
+      cartonCbm: round4(pCartonCbm), cartonGw: round1(pCartonGw),
+      finalCbm: dimCbm ?? round4(pCartonCbm),
+      finalGw: round1(pCartonGw + (palletised ? PALLET_WEIGHT_KG : 0)),
+    }
   })
 
   // Header info
@@ -282,15 +293,16 @@ function PrintDoc({ pl, order, cartons }) {
             ]
           })}
 
-          {/* Grand totals row */}
+          {/* Carton totals row — loose carton sums, reconcile down the columns.
+              The final palletised figures are in the pallet summary below. */}
           <tr className="total-row">
-            <td colSpan={6} style={{ textAlign: 'right' }}>TOTAL</td>
+            <td colSpan={6} style={{ textAlign: 'right' }}>CARTON TOTAL</td>
             <td style={{ textAlign: 'center' }}>{totalCtns}</td>
             <td style={{ textAlign: 'right' }}>{totalQty}</td>
-            <td style={{ textAlign: 'right' }}>{fmt(totalGw, 1)}</td>
+            <td style={{ textAlign: 'right' }}>{fmt(cartonGw, 1)}</td>
             <td></td>
             <td></td>
-            <td style={{ textAlign: 'right' }}>{fmt(totalCbm)}</td>
+            <td style={{ textAlign: 'right' }}>{fmt(cartonCbm)}</td>
             <td></td>
             <td style={{ textAlign: 'right' }}>{fmt(totalNw, 1)}</td>
             <td></td>
@@ -298,22 +310,32 @@ function PrintDoc({ pl, order, cartons }) {
         </tbody>
       </table>
 
-      {/* ── Pallet summary footer ── */}
+      {/* ── Pallet summary (customs / forwarder view) ── */}
       {palletSummaries.length > 0 && (
-        <div style={{ marginTop: 10, fontSize: '8pt' }}>
+        <div style={{ marginTop: 12, border: '1px solid #000', padding: '6px 8px', fontSize: '8pt' }}>
+          <div style={{ fontWeight: 'bold', marginBottom: 4 }}>PALLET SUMMARY (shipping dimensions &amp; weight)</div>
           {palletSummaries.map(ps => {
-            const dimsStr = ps.dims?.length_m && ps.dims?.width_m && ps.dims?.height_m
-              ? ` ${ps.dims.length_m} x ${ps.dims.width_m} x ${ps.dims.height_m} metres,`
-              : ''
+            const dimsStr = ps.palletised
+              ? `${ps.dims.length_m} × ${ps.dims.width_m} × ${ps.dims.height_m} m`
+              : '(no pallet dims)'
             return (
-              <div key={ps.no}>
-                Pallet {ps.no}:{dimsStr} No. {ps.firstSeq}~{ps.lastSeq} &nbsp;&nbsp;
-                Total {ps.ctns} CTNS, {fmt(ps.cbm)} CBM
+              <div key={ps.no} style={{ marginBottom: 2 }}>
+                <strong>Pallet {ps.no}</strong> — CTN {ps.firstSeq}~{ps.lastSeq} ({ps.ctns} ctns) ·&nbsp;
+                <strong>{dimsStr} · {fmt(ps.finalGw, 1)} kg · {fmt(ps.finalCbm)} CBM</strong>
+                <span style={{ color: '#555' }}>
+                  &nbsp;&nbsp;(cartons: {fmt(ps.cartonGw, 1)} kg / {fmt(ps.cartonCbm)} CBM
+                  {ps.palletised ? `, + ${PALLET_WEIGHT_KG} kg pallet` : ''})
+                </span>
               </div>
             )
           })}
-          <div style={{ marginTop: 4, fontWeight: 'bold' }}>
-            Total {totalCtns} CTNS, {fmt(totalGw, 1)} kgs, {fmt(totalCbm)} CBM
+          <div style={{ marginTop: 5, paddingTop: 4, borderTop: '1px solid #000', fontWeight: 'bold' }}>
+            SHIP TOTAL: {totalCtns} CTNS · {palletSummaries.length} pallet{palletSummaries.length > 1 ? 's' : ''} ·
+            &nbsp;{fmt(totalGw, 1)} kg · {fmt(totalCbm)} CBM
+            <span style={{ fontWeight: 'normal', color: '#555' }}>
+              &nbsp;&nbsp;(cartons: {fmt(cartonGw, 1)} kg / {fmt(cartonCbm)} CBM
+              {palletCount > 0 ? `, + ${fmt(palletCount * PALLET_WEIGHT_KG, 1)} kg pallets` : ''})
+            </span>
           </div>
         </div>
       )}
