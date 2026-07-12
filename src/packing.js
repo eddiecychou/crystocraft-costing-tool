@@ -61,8 +61,9 @@ export function derivedCbm(c) {
   return l && w && h ? calcCbm(l, w, h) : (parseFloat(c.cbm_per_carton) || 0)
 }
 
-// Weight of one empty pallet (kg) — added to the gross weight once per palletised
-// pallet, since the wrapped pallet ships with its own timber weight.
+// Default weight of one empty pallet (kg) when the operator hasn't entered a
+// specific one — the wrapped pallet ships with its own timber weight, and real
+// pallets vary, so the per-pallet weight is editable and this is just the default.
 export const PALLET_WEIGHT_KG = 8
 
 // Palletised CBM from a pallet's own L×W×H (metres → m³). Null unless all three
@@ -70,6 +71,19 @@ export const PALLET_WEIGHT_KG = 8
 export function palletDimCbm(p) {
   const l = parseFloat(p?.length_m), w = parseFloat(p?.width_m), h = parseFloat(p?.height_m)
   return (l > 0 && w > 0 && h > 0) ? Math.round(l * w * h * 1e4) / 1e4 : null
+}
+
+// The pallet's own weight (kg): the entered value, else the 8kg default.
+export function palletWeight(p) {
+  const w = parseFloat(p?.weight_kg)
+  return Number.isFinite(w) && w >= 0 ? w : PALLET_WEIGHT_KG
+}
+
+// A pallet counts once it's a real wrapped pallet — i.e. it has dimensions
+// entered, or an explicit weight (so a weighed-but-unmeasured pallet still adds
+// its timber weight). Loose cartons with neither are not palletised.
+export function isPalletised(p) {
+  return palletDimCbm(p) != null || Number.isFinite(parseFloat(p?.weight_kg))
 }
 
 // Grand totals for a packing list, palletised: each pallet with L×W×H entered
@@ -88,18 +102,21 @@ export function palletisedTotals(cartons = [], pallets = []) {
     const no = parseInt(c.pallet_no) || 1
     perPalletCartonCbm[no] = (perPalletCartonCbm[no] || 0) + cCbm
   }
-  let totalCbm = 0, palletCount = 0
+  let totalCbm = 0, palletCount = 0, palletWt = 0
   for (const no of Object.keys(perPalletCartonCbm).map(Number)) {
-    const dim = palletDimCbm((pallets || []).find(p => (parseInt(p.pallet_no) || 1) === no))
-    if (dim != null) { totalCbm += dim; palletCount += 1 } else totalCbm += perPalletCartonCbm[no]
+    const p = (pallets || []).find(x => (parseInt(x.pallet_no) || 1) === no)
+    const dim = palletDimCbm(p)
+    totalCbm += (dim != null ? dim : perPalletCartonCbm[no])
+    if (isPalletised(p)) { palletCount += 1; palletWt += palletWeight(p) }
   }
-  const totalGw = cartonGw + palletCount * PALLET_WEIGHT_KG   // + pallet timber weight
+  const totalGw = cartonGw + palletWt   // + each pallet's own timber weight
   return {
     totalCartons,
     cartonCbm: Math.round(cartonCbm * 1e4) / 1e4,   // loose carton volume (reconciles down the table)
     totalCbm: Math.round(totalCbm * 1e4) / 1e4,     // palletised shipping volume (customs)
     cartonGw: Math.round(cartonGw * 10) / 10,       // carton weight only
     totalGw: Math.round(totalGw * 10) / 10,         // + pallets (final ship weight)
+    palletWt: Math.round(palletWt * 10) / 10,       // total pallet timber weight
     palletCount,
   }
 }

@@ -595,7 +595,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
           <span className="text-xs text-gray-400">
             {totals.totalCartons} CTN
             {totals.palletCount > 0
-              ? <> · cartons {totals.cartonCbm}/pallet {totals.totalCbm} CBM · {totals.totalGw} kg GW <span className="text-gray-300">(incl. {totals.palletCount}×{PALLET_WEIGHT_KG}kg pallet)</span></>
+              ? <> · cartons {totals.cartonCbm}/pallet {totals.totalCbm} CBM · {totals.totalGw} kg GW <span className="text-gray-300">(incl. {totals.palletWt}kg pallet{totals.palletCount > 1 ? 's' : ''})</span></>
               : <> · {totals.totalCbm} CBM · {totals.totalGw} kg GW</>}
           </span>
         </div>
@@ -669,6 +669,17 @@ export default function PackingListEditor({ orderId, orderLines }) {
                       />
                     ))}
                     <span className="text-xs text-gray-400">m</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <input
+                      className="input py-1 text-xs w-16 text-right"
+                      type="number" step="0.1" min="0"
+                      placeholder={String(PALLET_WEIGHT_KG)}
+                      value={getPallet(no, 'weight_kg')}
+                      onChange={e => updatePallet(no, 'weight_kg', e.target.value)}
+                      title={`Empty pallet weight — defaults to ${PALLET_WEIGHT_KG}kg`}
+                    />
+                    <span className="text-xs text-gray-400">kg pallet</span>
                   </div>
                   {getPallet(no, 'length_m') && getPallet(no, 'width_m') && getPallet(no, 'height_m') && (
                     <span className="text-xs text-gray-500">

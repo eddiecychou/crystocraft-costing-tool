@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { doc, getDoc, collection, getDocs, query, orderBy } from 'firebase/firestore'
 import { db } from '../firebase'
-import { derivedCbm, effectiveGw, palletisedTotals, palletDimCbm, PALLET_WEIGHT_KG } from '../packing'
+import { derivedCbm, effectiveGw, palletisedTotals, palletDimCbm, palletWeight, isPalletised } from '../packing'
 
 // ── Data loading ──────────────────────────────────────────────────────────────
 async function loadPrintData(plId) {
@@ -73,7 +73,7 @@ function PrintDoc({ pl, order, cartons }) {
   // down the columns — the customer's warehouse view); the palletised figures
   // (CBM from pallet dims, +8kg/pallet) go in the pallet-summary footer for
   // customs. Both from the shared calc so the editor and PDF always agree.
-  const { totalCbm, totalGw, cartonCbm, cartonGw, palletCount } = palletisedTotals(cartons, pallets)
+  const { totalCbm, totalGw, cartonCbm, cartonGw, palletCount, palletWt } = palletisedTotals(cartons, pallets)
 
   // Per-pallet summary — loose carton subtotals AND the wrapped-pallet final
   // (dims, CBM from those dims, weight incl. one pallet's timber).
@@ -89,12 +89,13 @@ function PrintDoc({ pl, order, cartons }) {
     const pCartonGw  = cs.reduce((s, c) => s + effectiveGw(c) * (parseInt(c.carton_count) || 1), 0)
     const dims = pallets.find(p => (parseInt(p.pallet_no) || 1) === no)
     const dimCbm = palletDimCbm(dims)
-    const palletised = dimCbm != null
+    const palletised = isPalletised(dims)
+    const palletWt = palletised ? palletWeight(dims) : 0
     return {
-      no, firstSeq, lastSeq, ctns, dims, palletised,
+      no, firstSeq, lastSeq, ctns, dims, palletised, palletWt,
       cartonCbm: round4(pCartonCbm), cartonGw: round1(pCartonGw),
       finalCbm: dimCbm ?? round4(pCartonCbm),
-      finalGw: round1(pCartonGw + (palletised ? PALLET_WEIGHT_KG : 0)),
+      finalGw: round1(pCartonGw + palletWt),
     }
   })
 
@@ -324,7 +325,7 @@ function PrintDoc({ pl, order, cartons }) {
                 <strong>{dimsStr} · {fmt(ps.finalGw, 1)} kg · {fmt(ps.finalCbm)} CBM</strong>
                 <span style={{ color: '#555' }}>
                   &nbsp;&nbsp;(cartons: {fmt(ps.cartonGw, 1)} kg / {fmt(ps.cartonCbm)} CBM
-                  {ps.palletised ? `, + ${PALLET_WEIGHT_KG} kg pallet` : ''})
+                  {ps.palletised ? `, + ${fmt(ps.palletWt, 1)} kg pallet` : ''})
                 </span>
               </div>
             )
@@ -334,7 +335,7 @@ function PrintDoc({ pl, order, cartons }) {
             &nbsp;{fmt(totalGw, 1)} kg · {fmt(totalCbm)} CBM
             <span style={{ fontWeight: 'normal', color: '#555' }}>
               &nbsp;&nbsp;(cartons: {fmt(cartonGw, 1)} kg / {fmt(cartonCbm)} CBM
-              {palletCount > 0 ? `, + ${fmt(palletCount * PALLET_WEIGHT_KG, 1)} kg pallets` : ''})
+              {palletCount > 0 ? `, + ${fmt(palletWt, 1)} kg pallet${palletCount > 1 ? 's' : ''}` : ''})
             </span>
           </div>
         </div>
