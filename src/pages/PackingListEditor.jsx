@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { CheckCircle2, AlertTriangle, Plus, Trash2, RefreshCw, Package, Star, Pencil, Copy, FileText } from 'lucide-react'
+import { CheckCircle2, AlertTriangle, Plus, Trash2, RefreshCw, Package, Star, Pencil, Copy, FileText, ChevronUp, ChevronDown } from 'lucide-react'
 import {
   PL_STATUSES, CARTON_MODES,
   buildFullCartonPlan, calcPackedVsOrdered, derivedCbm,
@@ -100,7 +100,7 @@ function LinePicker({ packableLines, orderLineId, itemCode, onSelect }) {
   )
 }
 
-function CartonCard({ carton, packableLines, palletCount, onChange, onRemove }) {
+function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, onMoveUp, onMoveDown, isFirst, isLast }) {
   const c = carton
   const mode = c.pack_mode === 'mixed' ? 'mixed' : 'single'
   const seqEnd = parseInt(c.carton_seq) + parseInt(c.carton_count || 1) - 1
@@ -135,6 +135,13 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove }) 
     <div className="border border-gray-200 rounded-lg overflow-hidden mb-3">
       {/* Carton header */}
       <div className="bg-gray-50 px-4 py-3 flex flex-wrap items-center gap-3">
+        {/* Reorder — move this carton up/down; renumbers to match physical stacking */}
+        <div className="flex flex-col -my-1">
+          <button type="button" onClick={onMoveUp} disabled={isFirst} title="Move up"
+            className="text-gray-400 hover:text-brand-600 disabled:opacity-25 disabled:hover:text-gray-400 leading-none"><ChevronUp size={14} /></button>
+          <button type="button" onClick={onMoveDown} disabled={isLast} title="Move down"
+            className="text-gray-400 hover:text-brand-600 disabled:opacity-25 disabled:hover:text-gray-400 leading-none"><ChevronDown size={14} /></button>
+        </div>
         <span className="text-sm font-medium text-gray-700 min-w-[78px]">{seqLabel}</span>
 
         {/* Pallet assignment */}
@@ -426,6 +433,18 @@ export default function PackingListEditor({ orderId, orderLines }) {
   function removeCarton(localId) {
     setCartons(prev => resequence(prev.filter(c => c._localId !== localId)))
   }
+  // Reorder a carton up/down, then renumber so CTN numbers follow the new
+  // (physical stacking) order.
+  function moveCarton(localId, dir) {
+    setCartons(prev => {
+      const i = prev.findIndex(c => c._localId === localId)
+      const j = i + dir
+      if (i < 0 || j < 0 || j >= prev.length) return prev
+      const next = [...prev]
+      ;[next[i], next[j]] = [next[j], next[i]]
+      return resequence(next)
+    })
+  }
   function addCarton() {
     setCartons(prev => {
       const seq = nextSeq(prev)
@@ -614,7 +633,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
 
       {/* ── Cartons (per-carton single/mixed mode) ── */}
       <div>
-        {cartons.map(c => (
+        {cartons.map((c, i) => (
           <CartonCard
             key={c._localId}
             carton={c}
@@ -622,6 +641,10 @@ export default function PackingListEditor({ orderId, orderLines }) {
             palletCount={palletNums.length}
             onChange={patch => updateCarton(c._localId, patch)}
             onRemove={() => removeCarton(c._localId)}
+            onMoveUp={() => moveCarton(c._localId, -1)}
+            onMoveDown={() => moveCarton(c._localId, 1)}
+            isFirst={i === 0}
+            isLast={i === cartons.length - 1}
           />
         ))}
         <button
