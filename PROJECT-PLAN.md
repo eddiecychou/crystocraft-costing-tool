@@ -3,6 +3,189 @@
 > **Canonical plan lives in Obsidian:** `Crystocraft/Operations/Costing Tool - Project Plan.md`
 > and `Costing Tool - Issues & Bugs Log.md`. This in-repo copy is a convenience snapshot.
 
+## Current Status — V7.13 CLOSED as of 2026-07-14
+
+**Deployed to Netlify (live `7819bb0`).** Owner's stated focus for V7.13 was
+"more inventory build" — this cycle moved component inventory off the ERP and
+onto this app as the source of truth, across all three material classes, plus
+a same-session bug-fix batch. **V7.14 begins fresh in a new conversation.**
+
+### The inventory build (core of V7.13)
+
+**Starting decision — TWO deduction mechanisms, not one.** Reviewed the
+owner's live ERP export (`FSTK.XLS`, 255-line warehouse balance) and a manual
+crystal in/out ledger (`捷克水晶进出仓明细2026.xls`, 26 colour-SKU sheets,
+1,183 issue rows across ~3.5 years). Finding: 84% of crystal issues were
+already batch-per-order-per-colour tied to a PI/SO; ~15% were samples,
+exhibition pieces, and defects with **no order at all** — a per-product BOM
+model structurally can't record that 15%, so it would drift from the ERP
+within weeks. Decision, agreed with the owner:
+- **Metal components** → per-unit BOM explosion (pre-existing; deterministic,
+  forward-MRP-worthy).
+- **Crystals & packaging** → **batch issue per order** against an append-only
+  ledger, no per-product colour/type BOM. Full evidence and reasoning kept in
+  `Inventory_Roadmap_V7.13_Spec.md` (in-repo).
+
+**Foundation — the stock ledger (`src/stockLedger.js`).** On-hand became a
+DERIVED running balance over append-only movements (`range_components/{id}
+/movements` etc.), never a mutable number written in place — the previous
+`stock_qty` field is now only ever a cached mirror, updated inside the same
+Firestore transaction as every movement. `postMovement()` lazily seeds an
+opening balance on first use (no separate migration script). Movement types:
+receipt / issue / adjustment / stocktake, later extended with reserve /
+release / produce (see below). Every write path that used to touch `stock_qty`
+directly (inline stock editor, the component edit form, the bulk stock-list
+importer) now posts a movement instead.
+
+**Order-driven deduction — metal (step 2), then crystals + packaging.** A
+manual, reversible "Issue" action per order (owner's explicit choice over
+auto-on-confirm / auto-on-ship): metal reuses the existing MRP BOM explosion
+so issued quantities always match the Requirements report; crystals and
+packaging get a manual multi-line batch picker per order (mirrors the Excel
+practice). Both idempotent and reversible, order-tagged so a SKU's ledger
+shows which order consumed it.
+
+**Three inventory classes, one engine.** Crystals (`src/crystals.js`) and
+packaging (`src/packaging.js`) were built as their own Firestore collections
+so they never enter the figurine MRP/BOM, then unified into a single generic
+"simple inventory class" factory (`src/inventoryClass.js`) — net −401 lines,
+zero data migration (every field name preserved via a per-class config
+object). Metal (`range_components`) stayed a separate, richer implementation
+(plating, supplier quotes, BOM links, MRP) — deliberately not folded in.
+
+**Reserve → Production-in (two-stage model, all three classes).** The owner
+clarified the real ERP workflow mid-cycle: components are **reserved** at
+order confirmation + deposit (allocated, sitting on the production line,
+on-hand unchanged) and only **produced-in / committed** later when actually
+built into finished goods. This was wanted for crystals and packaging too, to
+calculate correct vendor material requirements. Implementation:
+- Ledger gained a second balance — **Reserved** — alongside on-hand, with
+  **Available = On-hand − Reserved**. New movement types `reserve` / `release`
+  / `produce`, all inside `stockLedger.js`'s `movementEffect()`.
+- Generic order functions in `src/orderStock.js`: `reserveForOrder` /
+  `produceForOrder` / `releaseForOrder` / `reverseProduceForOrder`, driven by
+  a per-class config (`metalOrderConfig`, plus `crystalInventory.order` /
+  `packagingInventory.order`). Legacy single-stage "issued" orders from the
+  first metal build read as already-produced-in and reverse cleanly — no
+  backfill needed.
+- **Available**, not raw on-hand, now drives admin buildable
+  (`buildableFromComponents`/`makeLeadWeeks` in `criticalComponents.js`), the
+  customer figurine page, and the Component Requirements/MRP report — so a
+  reserved order genuinely stops a new order from being promised the same
+  stock, and the MRP report excludes already-reserved/committed orders from
+  demand (this also closed the earlier "double-counts a reserved order's
+  demand" gap).
+
+**Visibility — Inventory Status page.** New `/inventory` screen
+(`src/pages/InventoryStatus.jsx`) aggregating all three classes: On-hand /
+Reserved / Available, sortable columns, a class filter, a "reorder only"
+toggle, and CSV export for handing straight to purchasing. Each SKU now has
+an editable **reorder point** (default: flag only when Available goes
+negative) so hot/active items can be flagged before they run dry, not after.
+
+**Closing the loop — PU receive-to-stock.** New `src/poReceive.js` +
+`PoReceiveStock.jsx` card on the Purchase Order detail page: matches each PU
+line to an inventory SKU (explicit component link first, then item code,
+across all three classes), posts a `receipt` movement per line tagged with
+the PU number, defaults received qty to ordered qty but is editable per line
+for partial deliveries, idempotent + reversible. Completes **reorder list →
+raise PU → goods arrive → Receive → stock rises**, with two-way traceability
+between a PU and the SKUs it stocked.
+
+### Same-session bug-fix batch (separate from the inventory build)
+
+- **Customer catalogue lost your place.** Opening a product detail then going
+  back reset the search/category/status filters and jumped to the top of the
+  catalogue. Fixed on both storefronts (figurine + corporate): filters persist
+  in `sessionStorage`, and the last-opened card scrolls back into view on
+  return.
+- **"Make admin" was a one-click trade-secret risk.** A stray click on Portal
+  → Account could silently promote a customer to full admin (sees every
+  cost/margin/supplier in the tool). Now requires typing `MAKE ADMIN` to
+  confirm, restyled as a red danger action; "Revoke admin" now reverts to a
+  normal **approved** customer (keeps shopping access, loses costing access)
+  instead of dropping them to pending.
+- **Packing list — pallet CBM/weight didn't match reality.** The team's Excel
+  reference showed two different, intentionally-non-reconciling views: loose
+  carton dimensions/weight (what the customer sees when they unpack) vs. the
+  final wrapped-pallet dimensions/weight (what customs/the forwarder need,
+  which is *larger* than the carton sum due to stacking gaps, plus the
+  pallet's own timber weight). The app was only using the carton sum. Fixed
+  with a two-view split: the carton table's totals row stays as loose-carton
+  sums (reconciles down the columns); a new boxed **PALLET SUMMARY** section
+  shows each pallet's wrapped dimensions, final weight (cartons + pallet
+  weight), and final CBM (from the pallet's own measured L×W×H), with the
+  carton subtotal alongside for cross-reference. Pallet weight defaults to
+  8kg but is now editable per pallet (real pallets vary). Shared calc
+  (`palletisedTotals()` in `src/packing.js`) keeps the editor and the printed
+  PDF in agreement.
+- **Carton numbering didn't match physical stacking.** Each carton card now
+  has up/down move controls; moving a carton renumbers the whole list (CTN
+  ranges recompute automatically) so the printed sequence can be made to
+  match how the cartons are actually stacked on the pallet.
+
+### Rules-paste log (manual Firebase Console pastes, all confirmed done)
+`range_components/{id}/movements`, `crystals/{id}` + its `movements`,
+`packaging/{id}` + its `movements`. The R1 reserve/release/produce movement
+types and the PU-receive feature needed **no** rules changes (existing paths
+already admin-ruled).
+
+### Commit chain (in order)
+`77cfa43` → `d8f5416` → `0fa8a2d` → `2837756` (roadmap spec) → `9313997`
+(ledger step 1) → `81ea847` (metal issue step 2) → `551bab5` (crystals-1) →
+`edf2355` (crystals-2) → `564b8c9` (packaging) → `716bd11` (DRY unify) →
+`e1a91d5` (reserve/produce R1) → `09796b8` (Available-everywhere R2) →
+`4c29477` (Inventory Status page) → `1ff96f4` (sort + reorder point) →
+`78ea100` (Make-admin guard + pallet CBM/weight) → `717f86b` (catalogue
+filter persistence) → `7c89b98` (pallet two-view split) → `b3620fe`
+(editable pallet weight) → `af5a5dd` (carton reorder) → `7819bb0` (PU
+receive-to-stock).
+
+### What's verified vs. what still needs owner eyes
+Every change in this cycle is build-clean and the pure logic (ledger
+math, palletised totals, PU-line matching, requirements exclusion) is
+headless-tested. Most UI was click-through-verified live by the owner
+during the session; the **PU receive-to-stock feature was built and tested
+headlessly while the owner was away and has not yet been exercised live** —
+first thing to check next session.
+
+### Deliberately not done in V7.13 (candidates for V7.14+)
+- **Financial-truth milestone** — a valuation basis (weighted-avg/FIFO; "last
+  actual paid" from the PU↔component link is *not* a valuation method) and a
+  period-lock, the real prerequisite for retiring the ERP for accounting
+  purposes (V7.13 only delivers *operational* truth).
+- **Migration path** — one clean opening-balance stock-take, then a shadow-run
+  reconciling this app's ledger against the ERP's `FSTK` for a full cycle,
+  before anyone trusts this as the sole source of truth.
+- Owner may also want to route their team's review/feedback from this session
+  into a fresh bug/polish batch before starting new feature work.
+
+Full decision-by-decision write-up (including the crystal-Excel evidence
+counts) lives in `Inventory_Roadmap_V7.13_Spec.md` in this repo.
+
+## Current Status — V7.12 CLOSED as of 2026-07-10
+
+**Deployed to Netlify (live `315eff4`).** Never got a full write-up in this
+in-repo file at the time — recorded here for continuity between V7.11 and
+V7.13. Commit chain `d28a1ad`→`315eff4` (14 commits).
+
+- **Supplier PO module** (centrepiece) — fast PO draft/print/parse tool: PDF
+  parser (Gemini), PU number optional/typed-in-later (ERP stays the source of
+  truth for the assigned number), PU↔component "last actual paid" link
+  (deliberately decoupled from costing — quotes still drive cost), duplicate/
+  reorder, supplier-page integration. MRP netting deliberately deferred.
+- **Mobile scroll stuck/bouncing** on admin pages — `Layout.jsx`'s `h-screen`
+  (100vh) didn't track the real mobile viewport as the address bar hid/showed
+  during scroll; fixed with a `100dvh`/`100vh`-fallback utility +
+  `overscroll-contain`.
+- **Quote module fine-tuning** — editable Remarks (was read-only-if-set),
+  AMOUNT column + grand TOTAL row on the PDF, QU P/O No. + Ref No. header
+  fields, Issued By/Confirmed by signature blocks, a Preview PDF button, and
+  a one-time company stamp/signature upload (Settings → Quote Branding) that
+  auto-overlays on every future quote.
+
+Full detail in memory `project-supplier-po-module.md` / Obsidian.
+
 ## Current Status — V7.11 CLOSED as of 2026-07-09
 
 **Deployed to Netlify (live `4fc963d`).** CRM pipeline/fulfilment split + a

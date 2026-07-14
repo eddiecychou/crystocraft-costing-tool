@@ -1,9 +1,15 @@
 # Inventory Roadmap — V7.13 (Component Inventory as Source of Truth)
 
-> **Working doc, 2026-07-10.** Canonical version belongs in Obsidian
-> (`Crystocraft/Operations/Costing Tool - Project Plan.md`); this in-repo copy is
-> a convenience snapshot for the team discussion. Nothing here is built yet — it
-> is the agreed direction, the evidence behind it, and the open decisions.
+> **Status: BUILT — V7.13 CLOSED 2026-07-14, live `7819bb0`.** This doc was
+> written 2026-07-10 as the pre-build plan (agreed direction, evidence, open
+> decisions) — everything in §3–§7 below shipped, including the two-stage
+> reserve→production-in model that was decided *after* this doc was written
+> (owner clarified the real ERP workflow mid-cycle). For what actually got
+> built, in order, with commit hashes, see **`PROJECT-PLAN.md` → "Current
+> Status — V7.13 CLOSED"** in this repo. This file is kept as the historical
+> record of the reasoning and evidence (esp. §4's crystal-Excel analysis).
+> Canonical version belongs in Obsidian
+> (`Crystocraft/Operations/Costing Tool - Project Plan.md`).
 
 ## 1. Goal
 
@@ -132,18 +138,27 @@ Counterintuitively, **start with metal, not crystals/packaging.** The deduction
 *mechanism* is category-agnostic and metal is already loaded and ERP-matched — the
 ideal proving ground before touching the harder classes.
 
-## 8. Open decisions for the team
+## 8. Open decisions for the team — RESOLVED (as built)
 
-1. **Deduction timing** — reserve-at-confirm / issue-at-ship (recommended), or
-   hard-deduct at confirm?
-2. **Opening balances** — one clean stock-take to seed the app ledger, then
-   reconcile against `FSTK` at year-end (recommended path to earning finance's
-   trust to retire the ERP).
-3. **V7.13 scope** — operational truth only, or commit to financial/year-end truth
-   this build (adds period-lock + a valuation basis: weighted-avg / FIFO — note
-   "last actual paid" from the PU link is *not* a valuation method)?
-4. **Packaging attach point** — confirm it is consumed at pack time (per order),
-   not per finished unit.
+1. **Deduction timing** — ~~reserve-at-confirm / issue-at-ship, or hard-deduct
+   at confirm?~~ **Decided, then refined mid-cycle**: started as a manual,
+   reversible single-stage "Issue" action; owner then clarified the real ERP
+   practice is genuinely two-stage — **Reserve** at order confirmation +
+   deposit (allocated, still on-hand), then **Production-in** when actually
+   built (consumed). Built as reserve→produce for all three classes.
+2. **Opening balances** — **still open**, not done this cycle. Stock currently
+   reads whatever was in the app's `stock_qty`/component records before the
+   ledger existed (auto-seeded as an opening stock-take on first movement) —
+   this has **not** been reconciled against a fresh `FSTK` count. Needed
+   before trusting the numbers for real ordering decisions.
+3. **V7.13 scope** — **decided: operational truth only.** Financial/year-end
+   truth (period-lock + valuation basis) explicitly deferred to a later
+   milestone — see PROJECT-PLAN.md "Deliberately not done in V7.13".
+4. **Packaging attach point** — **decided: batch-per-order**, same as
+   crystals (not per finished unit, not tied specifically to the pack step in
+   `packing_lists` as originally floated — simpler than that, matches the
+   crystals pattern exactly since the owner wanted parity for vendor
+   material-requirement calculations).
 
 ## 9. Migration note
 
