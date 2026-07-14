@@ -169,7 +169,7 @@ function PrintDoc({ pl, order, cartons }) {
           <tr>
             <td><strong>Shipped Per S/S: </strong>{vessel}</td>
             <td rowSpan={4} style={{ textAlign: 'center', verticalAlign: 'middle', border: '1px solid #000', padding: 4 }}>
-              <div style={{ fontWeight: 'bold', fontSize: '10pt' }}>{caseMark}</div>
+              <div style={{ fontWeight: 'bold', fontSize: '10pt', whiteSpace: 'pre-line' }}>{caseMark}</div>
             </td>
             <td></td>
           </tr>
@@ -245,11 +245,12 @@ function PrintDoc({ pl, order, cartons }) {
                   const isFirstRow = ii === 0
                   return (
                     <tr key={`${c.id || c._localId}-${ii}`}>
-                      {/* Pallet number — only on first carton of the pallet */}
+                      {/* Pallet number cell: rendered once per pallet (rowSpan covers every
+                          row for every carton in this pallet) — never re-emit it for later
+                          cartons, or every column after it shifts right for those rows. */}
                       {isFirstRow && ci === 0
                         ? <td rowSpan={pcs.reduce((s, x) => s + Math.max(1, x.contents?.length || 1), 0)}
                                style={{ textAlign: 'center', verticalAlign: 'top' }}>{no}</td>
-                        : isFirstRow && ci > 0 ? <td style={{ textAlign: 'center' }}></td>
                         : null}
                       {isFirstRow && (
                         <>

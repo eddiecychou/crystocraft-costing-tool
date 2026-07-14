@@ -325,6 +325,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
 
   // Per-scenario header fields
   const [shippedPer, setShippedPer] = useState('')
+  const [caseMark, setCaseMark]     = useState('')
   const [pallets, setPallets]       = useState([])   // [{ pallet_no, length_m, width_m, height_m }]
 
   const pl = useMemo(() => scenarios.find(s => s.id === activeId) || null, [scenarios, activeId])
@@ -351,6 +352,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
         const active = rows.find(r => r.selected) || rows[0]
         setActiveId(active.id)
         setShippedPer(active.shipped_per || '')
+        setCaseMark(active.case_mark || '')
         setPallets(active.pallets || [])
         setCartons(await getCartonsWithContents(active.id))
       }
@@ -365,6 +367,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
     setError(''); setSaved(false)
     const scenario = scenarios.find(s => s.id === id)
     setShippedPer(scenario?.shipped_per || '')
+    setCaseMark(scenario?.case_mark || '')
     setPallets(scenario?.pallets || [])
     setCartons(await getCartonsWithContents(id))
   }
@@ -376,6 +379,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
     setScenarios(rows)
     setActiveId(id)
     setShippedPer('')
+    setCaseMark('')
     setPallets([])
     setCartons(startCartons)
     return id
@@ -409,11 +413,12 @@ export default function PackingListEditor({ orderId, orderLines }) {
       if (rows.length) {
         setActiveId(rows[0].id)
         setShippedPer(rows[0].shipped_per || '')
+        setCaseMark(rows[0].case_mark || '')
         setPallets(rows[0].pallets || [])
         setCartons(await getCartonsWithContents(rows[0].id))
       } else {
         setActiveId(null); setCartons([])
-        setShippedPer(''); setPallets([])
+        setShippedPer(''); setCaseMark(''); setPallets([])
       }
     }
   }
@@ -484,6 +489,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
       await updatePackingList(plId, {
         status,
         shipped_per: shippedPer,
+        case_mark: caseMark,
         pallets,
         totals: { carton_count: totals.totalCartons, cbm: totals.totalCbm, chargeable_weight_kg: totals.totalGw },
       })
@@ -628,6 +634,18 @@ export default function PackingListEditor({ orderId, orderLines }) {
           value={shippedPer}
           onChange={e => setShippedPer(e.target.value)}
           placeholder="e.g. CMA CGM MARCO POLO"
+        />
+      </div>
+
+      {/* Case Mark (printed in the boxed area on the PDF, top-right) */}
+      <div className="flex items-start gap-2">
+        <label className="text-xs text-gray-500 whitespace-nowrap pt-1.5">Case mark</label>
+        <textarea
+          className="input py-1 text-sm flex-1 max-w-xs font-mono"
+          rows={5}
+          value={caseMark}
+          onChange={e => setCaseMark(e.target.value)}
+          placeholder={'e.g.\nKELVINCOLLECTIONS\nPO#PO2604005\nHONG KONG\nCTN.:1-24\nMADE IN CHINA'}
         />
       </div>
 
