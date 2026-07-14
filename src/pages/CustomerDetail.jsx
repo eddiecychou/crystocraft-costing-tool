@@ -50,6 +50,19 @@ const ENQUIRY_STATUS_DOT = {
   'In Production':'bg-purple-500',
 }
 
+// Portal enquiry status (top-level `enquiries` collection from the storefront).
+const PORTAL_STATUS_STYLES = {
+  new:      'bg-amber-100 text-amber-700',
+  handled:  'bg-green-100 text-green-700',
+  archived: 'bg-gray-100 text-gray-500',
+}
+
+function fmtMoney(n, cur) {
+  const v = Number(n)
+  if (!Number.isFinite(v)) return ''
+  return `${cur || ''} ${v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`.trim()
+}
+
 // Terminal statuses → sorted into "History" below the active pipeline.
 // Confirmed = won (now an Order); Completed/Won kept for legacy records.
 const RESOLVED_STATUSES = ['Confirmed', 'Won', 'Completed', 'Lost']
@@ -83,6 +96,7 @@ export default function CustomerDetail() {
   const [orders, setOrders]             = useState([])
   const [accounts, setAccounts]         = useState([])
   const [enquiries, setEnquiries]       = useState([])
+  const [portalEnquiries, setPortalEnquiries] = useState([])
   const [loading, setLoading]           = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmDeleteEnquiry, setConfirmDeleteEnquiry] = useState(null)
@@ -163,6 +177,29 @@ export default function CustomerDetail() {
       }
     })
   }, [id])
+
+  // Portal enquiries (top-level `enquiries`) submitted by this customer's linked
+  // storefront accounts. Real-time, so an enquiry archived or deleted on the
+  // admin Enquiries page just drops out here instead of leaving a stale/broken
+  // row: archived is filtered out, and deletes vanish from the snapshot. The
+  // error callback degrades to an empty list rather than throwing.
+  const accountUids = accounts.map(a => a.id).filter(Boolean)
+  const accountUidKey = accountUids.join(',')
+  useEffect(() => {
+    if (!accountUids.length) { setPortalEnquiries([]); return }
+    // Firestore `in` allows up to 30 values; linked accounts are far fewer.
+    const q = query(collection(db, 'enquiries'), where('uid', 'in', accountUids.slice(0, 30)))
+    return onSnapshot(
+      q,
+      snap => setPortalEnquiries(
+        snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(e => (e.status || 'new') !== 'archived')   // archived = handled/dismissed, hide here
+          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
+      ),
+      () => setPortalEnquiries([]),                           // permission/other error → show none, never crash
+    )
+  }, [accountUidKey])
 
   async function handleDelete() {
     await deleteDoc(doc(db, 'customers', id))
@@ -470,6 +507,55 @@ export default function CustomerDetail() {
                 </div>
               </Link>
             ))}
+          </div>
+        )}
+      </div>
+
+      {/* Portal Enquiries (from the storefront) */}
+      <div className="card mb-4">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <h2 className="text-sm font-semibold text-gray-700">Portal Enquiries ({portalEnquiries.length})</h2>
+          <Link to="/enquiries" onClick={remember} className="text-xs text-brand-600 hover:underline">Manage →</Link>
+        </div>
+        {accounts.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">
+            No storefront account linked, so portal enquiries can't be matched.{' '}
+            <Link to="/customer-accounts" className="text-brand-600 hover:underline">Link one</Link>.
+          </p>
+        ) : portalEnquiries.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">No portal enquiries from this customer.</p>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {portalEnquiries.map(e => {
+              const items = Array.isArray(e.items) ? e.items : []
+              return (
+                <div key={e.id} className="px-5 py-4">
+                  <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                    <span className="text-xs text-gray-500">{fmtDate(e.createdAt)}</span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${PORTAL_STATUS_STYLES[e.status || 'new'] || 'bg-gray-100 text-gray-500'}`}>
+                      {e.status || 'new'}
+                    </span>
+                    <span className="text-xs text-gray-400">
+                      · {items.length} item{items.length === 1 ? '' : 's'}
+                      {e.estimated_total ? ` · est. ${fmtMoney(e.estimated_total, e.currency)}` : ''}
+                    </span>
+                  </div>
+                  {e.message && <p className="text-sm text-gray-800 whitespace-pre-wrap mb-1.5">{e.message}</p>}
+                  {items.length > 0 && (
+                    <ul className="text-xs text-gray-600 space-y-0.5">
+                      {items.slice(0, 6).map((it, i) => (
+                        <li key={i} className="truncate">
+                          <span className="text-gray-400">{it.qty || 1}×</span>{' '}
+                          {it.name || it.code || 'Item'}
+                          {it.code && it.name ? <span className="text-gray-400"> ({it.code})</span> : null}
+                        </li>
+                      ))}
+                      {items.length > 6 && <li className="text-gray-400">…and {items.length - 6} more</li>}
+                    </ul>
+                  )}
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
