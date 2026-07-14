@@ -7,6 +7,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import { PO_STATUSES, PO_PAYMENT_TERM_LABEL, amountInWords } from '../constants'
 import { fmtMoney } from '../currency'
 import { poTotals, lineAmount } from '../purchaseOrders'
+import PoReceiveStock from '../components/PoReceiveStock'
 import { Printer, Copy, MoreHorizontal, Trash2, RefreshCw } from 'lucide-react'
 
 const STATUS_META = Object.fromEntries(PO_STATUSES.map(s => [s.value, s]))
@@ -176,6 +177,9 @@ export default function PurchaseOrderDetail() {
       </div>
 
       <p className="text-xs text-gray-400 italic mb-4">{amountInWords(totals.balance, cur)}</p>
+
+      {/* Receive the PU's goods into inventory (V7.13a) */}
+      <PoReceiveStock po={po} />
 
       {po.remarks && (
         <div className="card p-5">
