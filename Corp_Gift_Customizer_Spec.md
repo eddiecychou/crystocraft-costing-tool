@@ -611,3 +611,18 @@ AB / Moonlight precisely because they're transparent.)
 **Action for next pass:** build a small per-coating "facet iridescence" model
 (hue-by-angle) + raise Mode A transmission; ideally capture real Crystal / AB /
 Moonlight swatch photos to sample true facet colours rather than synthesising them.
+
+**Owner correction (swatch photos: AB + Crystal Blue Light on light vs dark):**
+the iridescent facet colour is **far more drastic on a DARK background** and
+subtle on a light one. AB on white = mostly white sparkle with faint colour
+flecks; AB on black = saturated gold/teal/blue/purple facet triangles all over.
+(Physics: on white, transmitted white light washes out the thin-film iridescence;
+on black there's no competing light so the reflected iridescence dominates.)
+
+**Model rule:** facet-iridescence **saturation/strength ∝ (1 − crystal lightness)**.
+- Jet / dark crystals → strong, saturated per-facet rainbow (AB) or blue/violet
+  (Crystal Blue Light / Moonlight-ish).
+- Clear / white / ivory → subtle, desaturated, pastel flecks only.
+So the AB/Moonlight facet hue model (§14.11) must be **modulated by the underlying
+darkness**, not applied at constant strength. Capture both a light-ground and a
+dark-ground swatch per coating to sample the true range.
