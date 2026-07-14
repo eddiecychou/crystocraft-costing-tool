@@ -1,0 +1,19 @@
+# Fly.io config for the crystal customizer render service.
+# Deploy:  fly launch --no-deploy   (first time, to create the app)  then  fly deploy
+# Set the shared secret:  fly secrets set RENDER_TOKEN=<long-random-string>
+
+app = "crystocraft-customizer-render"     # change if the name is taken
+primary_region = "nrt"                     # Tokyo — closest Fly region to Hong Kong
+
+[build]
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true                # scale to zero when idle (near-zero cost)
+  auto_start_machines = true               # wake on the next request (cold start ~few s)
+  min_machines_running = 0
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"
