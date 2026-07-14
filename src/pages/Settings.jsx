@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { doc, getDoc, setDoc, serverTimestamp, collection, getDocs, writeBatch } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
@@ -27,8 +28,21 @@ const PRODUCT_TABS = [
 ]
 
 export default function Settings() {
-  const [tab, setTab] = useState('fx')
-  const [productTab, setProductTab] = useState('band')
+  const [searchParams] = useSearchParams()
+  // Allow deep links like /settings?tab=products&sub=defaults (e.g. from the
+  // Schema Audit "Change the default" hint) to open the right (sub)tab.
+  const initTab = TABS.some(t => t.v === searchParams.get('tab')) ? searchParams.get('tab') : 'fx'
+  const initSub = PRODUCT_TABS.some(t => t.v === searchParams.get('sub')) ? searchParams.get('sub') : 'band'
+  const [tab, setTab] = useState(initTab)
+  const [productTab, setProductTab] = useState(initSub)
+
+  // Settings stays mounted when only the query string changes (e.g. the Schema
+  // Audit tab links to ?tab=products&sub=defaults), so sync the tabs from params
+  // here — useState alone wouldn't react to a same-route param change.
+  useEffect(() => {
+    const t = searchParams.get('tab'); if (TABS.some(x => x.v === t)) setTab(t)
+    const s = searchParams.get('sub'); if (PRODUCT_TABS.some(x => x.v === s)) setProductTab(s)
+  }, [searchParams])
 
   return (
     <div>

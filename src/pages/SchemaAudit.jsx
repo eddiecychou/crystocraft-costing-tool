@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { collection, getDocs } from 'firebase/firestore'
+import { collection, getDocs, getDoc, doc, updateDoc, writeBatch } from 'firebase/firestore'
 import { db } from '../firebase'
 import LoadingBar from '../components/LoadingBar'
-import { AlertTriangle, AlertCircle, Info, CheckCircle2, RefreshCw, Copy, ChevronDown, ChevronRight } from 'lucide-react'
+import { AlertTriangle, AlertCircle, Info, CheckCircle2, RefreshCw, Copy, ChevronDown, ChevronRight, Eraser } from 'lucide-react'
 import { validateCustomer } from '../domain/customer'
 import { validateComponent, validateCriticalRefs, buildProductIndex } from '../criticalComponents'
 import { looksLikeFigurineCode } from '../mrp'
@@ -48,6 +48,8 @@ export default function SchemaAudit() {
   const [copiedGroup, setCopiedGroup] = useState(null)
   const [activeCat, setActiveCat] = useState(null)
   const [expanded, setExpanded] = useState(() => new Set())
+  const [defaultLead, setDefaultLead] = useState(6)   // global parts-lead fallback (settings/productDefaults)
+  const [clearingLead, setClearingLead] = useState(false)
 
   async function run() {
     setLoading(true)
@@ -65,11 +67,17 @@ export default function SchemaAudit() {
       orders.docs.map(d => getDocs(collection(db, 'orders', d.id, 'lines')))
     )
 
+    // Global default parts-lead fallback — a component with no lead time already
+    // resolves to this at costing/availability time (criticalComponents.makeLeadWeeks).
+    const defSnap = await getDoc(doc(db, 'settings', 'productDefaults'))
+    const defLead = Number(defSnap.data()?.default_parts_lead_weeks) || 6
+    setDefaultLead(defLead)
+
     // Components library for orphan resolution (id + uppercased code).
     const lib = rComps.docs.map(d => ({ id: d.id, code: String(d.data().code || '').trim().toUpperCase() }))
 
     const out = []
-    const grp = (name, total, issues, hint) => out.push({ name, total, issues, hint })
+    const grp = (name, total, issues, hint, extra) => out.push({ name, total, issues, hint, ...extra })
     const add = (issues, sev, id, label, msg, link) => issues.push({ sev, id, label, msg, link })
     // Map a shared validation result onto the audit's issue rows.
     const addResult = (issues, res, id, label, link) =>
@@ -110,7 +118,9 @@ export default function SchemaAudit() {
         const c = d.data(), label = c.code || c.name || d.id
         addResult(issues, validateComponent(c), d.id, label, '/components')
       })
-      grp('Range Components', rComps.size, issues, '`code` is the upsert key; plating lives here.')
+      grp('Range Components', rComps.size, issues,
+        `\`code\` is the upsert key; plating lives here. A component with no lead time isn't broken — it automatically uses the default parts lead (${defLead} wk).`,
+        { hintLink: { to: '/settings?tab=products&sub=defaults', label: 'Change the default (Settings → Products → Defaults)' } })
     }
 
     // ── range products — split by lifecycle so findings route to the right staff ──
@@ -179,11 +189,23 @@ export default function SchemaAudit() {
         if (!sts || sts.size === 0) return               // unused by any product — separate concern
         if (![...sts].every(s => NO_RERUN.has(s))) return // also used by MTO/concept — keep
         const stock = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
-        const lead = (c.lead_time_weeks != null && c.lead_time_weeks !== '') ? `${c.lead_time_weeks}wk lead` : 'no lead time'
-        add(issues, 'info', d.id, code || c.name || d.id, `used only by last-stock/retired designs — stock ${stock}, ${lead}`, '/components')
+        const leadNum = Number(c.lead_time_weeks)
+        const label = code || c.name || d.id
+        // A lead time on a last-stock-only part is wrong: it can't be re-produced,
+        // so promising a procurement lead is misleading. Flag it with a one-click
+        // clear. Parts with no lead are just informational.
+        if (leadNum > 0) {
+          issues.push({
+            sev: 'warning', id: d.id, label, link: '/components',
+            msg: `used only by last-stock/retired designs but has a ${leadNum}wk lead time — it can't be re-produced, so the lead time should be cleared. Stock ${stock}.`,
+            clearLead: { id: d.id, code: label, weeks: leadNum },
+          })
+        } else {
+          add(issues, 'info', d.id, label, `used only by last-stock/retired designs — stock ${stock}, no lead time`, '/components')
+        }
       })
       grp('Last-stock-only components', rComps.size, issues,
-        'Components referenced only by Last Stock / Retired designs — review only. Deleting these makes those designs show SOLD OUT (last-stock availability comes from component stock).')
+        'Components referenced only by Last Stock / Retired designs. These can’t be re-produced, so they should carry no lead time. Deleting them makes those designs show SOLD OUT (last-stock availability comes from component stock).')
     }
 
     // ── corp products ───────────────────────────────────────────────────────────
@@ -314,6 +336,27 @@ export default function SchemaAudit() {
 
   const toggle = name => setExpanded(s => { const n = new Set(s); n.has(name) ? n.delete(name) : n.add(name); return n })
 
+  // Clear the lead time on one last-stock-only component, then re-scan so the
+  // warning drops off. Lead is set to null = "no lead time" (never re-produced).
+  async function clearLead(id) {
+    await updateDoc(doc(db, 'range_components', id), { lead_time_weeks: null })
+    await run()
+  }
+  // Clear the lead time on every flagged last-stock-only component in one batch.
+  async function clearAllLeads(g) {
+    const ids = g.issues.filter(it => it.clearLead).map(it => it.clearLead.id)
+    if (!ids.length) return
+    setClearingLead(true)
+    try {
+      for (let i = 0; i < ids.length; i += 400) {
+        const batch = writeBatch(db)
+        ids.slice(i, i + 400).forEach(id => batch.update(doc(db, 'range_components', id), { lead_time_weeks: null }))
+        await batch.commit()
+      }
+      await run()
+    } finally { setClearingLead(false) }
+  }
+
   if (loading) return <LoadingBar />
 
   // Tab categories present, the active one, per-category issue counts, and the
@@ -381,6 +424,13 @@ export default function SchemaAudit() {
                   {hasIssues ? (
                     <>
                       <span className="text-xs text-ink-50">{g.issues.length} issue{g.issues.length > 1 ? 's' : ''}</span>
+                      {g.issues.some(it => it.clearLead) && (
+                        <button onClick={() => clearAllLeads(g)} disabled={clearingLead}
+                          className="text-xs text-amber-700 hover:underline inline-flex items-center gap-1 disabled:opacity-50"
+                          title="Clear the lead time on every last-stock component listed here">
+                          <Eraser size={12} /> {clearingLead ? 'Clearing…' : `Clear all lead times (${g.issues.filter(it => it.clearLead).length})`}
+                        </button>
+                      )}
                       <button onClick={() => copyGroup(g)} className="text-xs text-brand-600 hover:underline inline-flex items-center gap-1" title="Copy this list (all rows) to send to staff">
                         <Copy size={12} /> {copiedGroup === g.name ? 'Copied ✓' : 'Copy'}
                       </button>
@@ -392,11 +442,16 @@ export default function SchemaAudit() {
               </div>
               {open && hasIssues && (
                 <>
-                  <p className="text-[11px] text-ink-40 mt-2 mb-1">{g.hint}</p>
+                  <p className="text-[11px] text-ink-40 mt-2 mb-1">
+                    {g.hint}
+                    {g.hintLink && <> · <Link to={g.hintLink.to} className="text-brand-600 hover:underline">{g.hintLink.label}</Link></>}
+                  </p>
                   <div className="divide-y divide-gray-100">
                     {g.issues.slice(0, 100).map((it, i) => (
                       it.notInRange
                         ? <NotInRangeRow key={i} it={it} />
+                        : it.clearLead
+                        ? <ClearLeadRow key={i} it={it} onClear={clearLead} />
                         : (
                           <div key={i} className="py-1.5 flex items-start gap-2 text-sm">
                             <SevIcon sev={it.sev} />
@@ -416,6 +471,30 @@ export default function SchemaAudit() {
             </div>
           )
         })}
+      </div>
+    </div>
+  )
+}
+
+// Last-stock-only component that still carries a lead time — offers a one-click
+// clear (a can't-be-re-produced part shouldn't promise a procurement lead).
+function ClearLeadRow({ it, onClear }) {
+  const [busy, setBusy] = useState(false)
+  return (
+    <div className="py-1.5 flex items-start gap-2 text-sm">
+      <SevIcon sev={it.sev} />
+      <div className="min-w-0 flex-1">
+        {it.link
+          ? <Link to={it.link} className="font-mono text-xs text-brand-600 hover:underline">{it.label}</Link>
+          : <span className="font-mono text-xs text-ink-70">{it.label}</span>}
+        <span className="text-ink-70"> — {it.msg}</span>
+        <button
+          onClick={async () => { setBusy(true); try { await onClear(it.clearLead.id) } finally { setBusy(false) } }}
+          disabled={busy}
+          className="ml-2 text-xs text-amber-700 hover:underline inline-flex items-center gap-1 disabled:opacity-50 align-baseline"
+        >
+          <Eraser size={12} /> {busy ? 'Clearing…' : 'Clear lead time'}
+        </button>
       </div>
     </div>
   )
