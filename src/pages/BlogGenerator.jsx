@@ -748,6 +748,60 @@ function SpotlightTab({ preloadedProduct }) {
   )
 }
 
+// The roundup preview, WordPress payload, and per-item editor all pair the AI's
+// items with the user's selected products BY INDEX (selected[i] ↔ items[i]).
+// Gemini, however, can return the items reordered, merged, or one short — which
+// slid a product's photo/name against another product's title/description.
+// Re-align the AI items to the selected products by name (each AI item consumed
+// at most once) so the index alignment downstream actually holds; fall back to
+// positional, then a synthesized stub, so every selected product gets an item.
+function normProductName(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/^\s*\d+[.)]\s*/, '')      // drop a leading "1." / "2)" the AI may prepend
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+function alignRoundupItems(aiItems, selected) {
+  const items = Array.isArray(aiItems) ? aiItems : []
+  const matchesSel = n => n && selected.some(p => {
+    const t = normProductName(p.name)
+    return t && (t === n || t.includes(n) || n.includes(t))
+  })
+  // Is the AI output identifiably named? (Do its product_names map to the
+  // selection?) If names are usable, match by name and STUB genuine misses —
+  // never fall back to position, since a product dropped from the middle would
+  // otherwise inherit a different product's title/body. Only when names are
+  // absent/unusable do we keep the old positional pairing as a best effort.
+  const named = items.filter(it => matchesSel(normProductName(it.product_name))).length
+  const useNames = named >= Math.min(items.length, selected.length) * 0.5
+
+  const stub = p => ({ heading: p.name, body: p.description || p.marketing_description || '', image_caption: '' })
+
+  if (!useNames) {
+    return selected.map((p, i) => ({ ...(items[i] || stub(p)), product_name: p.name }))
+  }
+
+  const pool = items.map(it => ({ it, used: false }))
+  const take = pred => {
+    const slot = pool.find(p => !p.used && pred(p.it))
+    if (slot) { slot.used = true; return slot.it }
+    return null
+  }
+  return selected.map(p => {
+    const target = normProductName(p.name)
+    let item = target ? take(x => normProductName(x.product_name) === target) : null
+    if (!item && target) {
+      item = take(x => {
+        const n = normProductName(x.product_name)
+        return n && (n.includes(target) || target.includes(n))
+      })
+    }
+    if (!item) item = stub(p)   // genuinely dropped → stub, never another product's content
+    return { ...item, product_name: p.name }   // pin the correct name onto the item
+  })
+}
+
 // ── Roundup tab ───────────────────────────────────────────────────────────────
 function RoundupTab() {
   const [source, setSource]           = useState('corporate')
@@ -801,6 +855,9 @@ function RoundupTab() {
       if (!res.ok) throw new Error('Generation failed')
       const data = await res.json()
       if (data.error) throw new Error(data.error)
+      // Align AI items to the selected products by name so the index-based
+      // pairing used by the preview / WP payload / editor can't mismatch.
+      data.items = alignRoundupItems(data.items, selected)
       setResult(data)
     } catch { setError('Failed to generate — please try again.') }
     finally { setLoading(false) }
