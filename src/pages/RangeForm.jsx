@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import { useNavigate, useParams, Link } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage } from '../firebase'
@@ -83,14 +83,22 @@ const emptyPacking = () => ({
   carton_dims: '', pcs_per_carton: '', pack_box_ref: '',
   cbm_per_carton: '', weight_per_carton_kg: '', weight_per_pcs_kg: '',
 })
-const blankForm = () => ({
-  design_no: '', body_code: '', design_name: '', description: '', marketing_description: '', category: '',
-  design_type: '', product_type: 'Figurine', format_code: '001',
-  size: '', crystal_type: 'Bohemia', active: true, status: 'active', is_new: false,
-  moq: '', lead_time_weeks: '', delivery_note: '', critical_components: [],
-  packing: emptyPacking(), gallery: [], variants: [emptyVariant()], plating_stock: {},
-  crystal_mixes: {}, videos: [],
-})
+const blankForm = (prefill = {}) => {
+  const variant = emptyVariant()
+  if (prefill.brand_code) {
+    variant.brand_code = prefill.brand_code.toUpperCase()
+    variant.brand_name = BRAND_NAME[variant.brand_code] || variant.brand_name
+  }
+  return {
+    design_no: prefill.design_no || '', body_code: '', design_name: '',
+    description: prefill.description || '', marketing_description: '', category: '',
+    design_type: '', product_type: 'Figurine', format_code: prefill.format_code || '001',
+    size: '', crystal_type: 'Bohemia', active: true, status: 'active', is_new: false,
+    moq: '', lead_time_weeks: '', delivery_note: '', critical_components: [],
+    packing: emptyPacking(), gallery: [], variants: [variant], plating_stock: {},
+    crystal_mixes: {}, videos: [],
+  }
+}
 
 // Normalise a crystal_mixes map: upper-case codes, de-dupe crystals, drop empties.
 const cleanMixes = mixes => {
@@ -200,12 +208,20 @@ export default function RangeForm() {
   const { id: routeId } = useParams()
   const isNew = routeId === 'new'
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
 
   // Stable doc id (needed for storage paths) — generated up-front for new docs
   const docIdRef = useRef(isNew ? doc(collection(db, 'range_products')).id : routeId)
   const docId = docIdRef.current
 
-  const [form, setForm] = useState(isNew ? blankForm() : null)
+  // Prefill from a Schema Audit "Add to Range from this PI" link (design_no/
+  // body_code/format_code/description query params). New-product form only.
+  const [form, setForm] = useState(isNew ? blankForm({
+    design_no: searchParams.get('design_no') || '',
+    brand_code: searchParams.get('brand_code') || '',
+    format_code: searchParams.get('format_code') || '',
+    description: searchParams.get('description') || '',
+  }) : null)
   const [fetching, setFetching] = useState(!isNew)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')

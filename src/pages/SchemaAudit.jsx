@@ -9,6 +9,7 @@ import { validateComponent, validateCriticalRefs, buildProductIndex } from '../c
 import { looksLikeFigurineCode } from '../mrp'
 import { validateOrder } from '../shipping'
 import { allIssues } from '../domain/validation'
+import { brandLetter, designNumber } from '../constants'
 
 // Read-only schema audit. Scans the main collections against the canonical shapes
 // in the product-manager guardrail spec and reports problems by severity:
@@ -220,10 +221,11 @@ export default function SchemaAudit() {
       const strip = d => (d || '').replace(/^[A-Z]/, '')     // drop only the brand letter, keep body letter
       const hasDesignFormat = (d, f) => !!(index[`${d}-${f}`] || (strip(d) && index[`${strip(d)}-${f}`]))
       const hasDesign = d => !!(index[d] || (strip(d) && index[strip(d)]))
-      const agg = new Map()   // KEY(design[-format]) -> { key, missing, orders:Set, qty, desc, codes:Set }
+      const agg = new Map()   // KEY(design[-format]) -> { key, missing, byOrder:Map(orderId->{...}) }
       orders.docs.forEach((od, i) => {
         const o = od.data()
         const olabel = o.order_number || o.ordernumber || o.erp_pi_no || od.id
+        const odate = o.order_date || o.date || o.createdAt || null
         orderLineSnaps[i].docs.forEach(ld => {
           const l = ld.data()
           const code = String(l.item_code || '').trim().toUpperCase()
@@ -238,24 +240,35 @@ export default function SchemaAudit() {
           if (!missing) return                               // this design+format is set up — fine
           const key = format ? `${design}-${format}` : design
           let a = agg.get(key)
-          if (!a) { a = { key, missing, orders: new Set(), qty: 0, desc: '', codes: new Set() }; agg.set(key, a) }
-          a.orders.add(olabel); a.codes.add(code)
-          const q = num(l.qty_ordered); if (Number.isFinite(q)) a.qty += q
-          if (!a.desc && l.description) a.desc = String(l.description).trim()
+          if (!a) { a = { key, design, format, missing, byOrder: new Map() }; agg.set(key, a) }
+          let ord = a.byOrder.get(od.id)
+          if (!ord) { ord = { id: od.id, label: olabel, date: odate, qty: 0, desc: '', codes: new Set() }; a.byOrder.set(od.id, ord) }
+          ord.codes.add(code)
+          const q = num(l.qty_ordered); if (Number.isFinite(q)) ord.qty += q
+          if (!ord.desc && l.description) ord.desc = String(l.description).trim()
         })
       })
       ;[...agg.values()].forEach(a => {
-        const list = [...a.orders]
+        const orderList = [...a.byOrder.values()].sort((x, y) => (y.date?.toMillis?.() ?? 0) - (x.date?.toMillis?.() ?? 0))
+        const list = orderList.map(o => o.label)
         const where = list.slice(0, 4).join(', ') + (list.length > 4 ? ` +${list.length - 4} more` : '')
-        const qtyTxt = a.qty > 0 ? `${a.qty} pcs` : 'qty n/a'
-        const descTxt = a.desc ? ` — “${a.desc}”` : ''
-        const platings = [...a.codes].filter(c => c !== a.key)
+        const allCodes = new Set(orderList.flatMap(o => [...o.codes]))
+        const totalQty = orderList.reduce((s, o) => s + o.qty, 0)
+        const qtyTxt = totalQty > 0 ? `${totalQty} pcs` : 'qty n/a'
+        const anyDesc = orderList.find(o => o.desc)?.desc || ''
+        const descTxt = anyDesc ? ` — “${anyDesc}”` : ''
+        const platings = [...allCodes].filter(c => c !== a.key)
         const platingTxt = platings.length ? ` [${platings.slice(0, 3).join(', ')}${platings.length > 3 ? '…' : ''}]` : ''
         const why = a.missing === 'format'
           ? `design exists but format ${a.key.split('-')[1]} is not set up`
           : 'no range product for this design'
-        add(issues, 'warning', a.key, a.key,
-          `not in Range — ${why}. On ${list.length} PI(s) (${where}), ${qtyTxt}${descTxt}${platingTxt}. Add the SKU or fix the code.`, '/range')
+        issues.push({
+          sev: 'warning', id: a.key, label: a.key,
+          msg: `not in Range — ${why}. On ${list.length} PI(s) (${where}), ${qtyTxt}${descTxt}${platingTxt}. Pick a PI below to add just that item — not every PI needs backfilling, only the ones still being supplied.`,
+          link: '/range',
+          notInRange: { design: a.design, format: a.format,
+            orders: orderList.map(o => ({ id: o.id, label: o.label, qty: o.qty, desc: o.desc, codes: [...o.codes] })) },
+        })
       })
       grp('Orders — PI SKUs not in Range', agg.size, issues,
         'Figurine PI lines whose exact design+format has no range_product (plating ignored). Reconciliation matches on design number only, so these can show “matched” on the PI while the ordered format was never created. Aggregated by design+format.')
@@ -382,15 +395,19 @@ export default function SchemaAudit() {
                   <p className="text-[11px] text-ink-40 mt-2 mb-1">{g.hint}</p>
                   <div className="divide-y divide-gray-100">
                     {g.issues.slice(0, 100).map((it, i) => (
-                      <div key={i} className="py-1.5 flex items-start gap-2 text-sm">
-                        <SevIcon sev={it.sev} />
-                        <div className="min-w-0">
-                          {it.link
-                            ? <Link to={it.link} className="font-mono text-xs text-brand-600 hover:underline">{it.label}</Link>
-                            : <span className="font-mono text-xs text-ink-70">{it.label}</span>}
-                          <span className="text-ink-70"> — {it.msg}</span>
-                        </div>
-                      </div>
+                      it.notInRange
+                        ? <NotInRangeRow key={i} it={it} />
+                        : (
+                          <div key={i} className="py-1.5 flex items-start gap-2 text-sm">
+                            <SevIcon sev={it.sev} />
+                            <div className="min-w-0">
+                              {it.link
+                                ? <Link to={it.link} className="font-mono text-xs text-brand-600 hover:underline">{it.label}</Link>
+                                : <span className="font-mono text-xs text-ink-70">{it.label}</span>}
+                              <span className="text-ink-70"> — {it.msg}</span>
+                            </div>
+                          </div>
+                        )
                     ))}
                     {g.issues.length > 100 && <p className="text-xs text-ink-40 pt-2">…and {g.issues.length - 100} more — use Copy for the full list.</p>}
                   </div>
@@ -409,6 +426,45 @@ function Tally({ icon: Icon, cls, n, label }) {
     <span className={`inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border ${cls}`}>
       <Icon size={15} /> <span className="font-semibold">{n}</span> {label}
     </span>
+  )
+}
+
+// "Orders — PI SKUs not in Range" row: lets staff pick ONE PI to base a new
+// range product on, instead of a blanket "add the SKU" link. Most flagged
+// design+formats sit on several PIs, many of them old/already-fulfilled —
+// only the PI(s) still being supplied from stock need the item actually added.
+function NotInRangeRow({ it }) {
+  const { design, format, orders } = it.notInRange
+  const [selId, setSelId] = useState(orders[0]?.id || '')
+  const sel = orders.find(o => o.id === selId) || orders[0]
+  const params = new URLSearchParams({
+    brand_code: brandLetter(design) || 'D',
+    design_no: designNumber(design),
+    ...(format ? { format_code: format } : {}),
+    ...(sel?.desc ? { description: sel.desc } : {}),
+  })
+  return (
+    <div className="py-1.5 flex items-start gap-2 text-sm">
+      <SevIcon sev={it.sev} />
+      <div className="min-w-0 flex-1">
+        <span className="font-mono text-xs text-ink-70">{it.label}</span>
+        <span className="text-ink-70"> — {it.msg}</span>
+        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          <select value={selId} onChange={e => setSelId(e.target.value)}
+                  className="text-xs border border-ivory-dark rounded px-1.5 py-1 bg-white max-w-[220px]">
+            {orders.map(o => (
+              <option key={o.id} value={o.id}>
+                {o.label}{o.qty ? ` (${o.qty} pcs)` : ''}
+              </option>
+            ))}
+          </select>
+          <Link to={`/shipments/${sel.id}`} className="text-xs text-ink-50 hover:underline">view PI</Link>
+          <Link to={`/range/new?${params.toString()}`} className="text-xs text-brand-600 hover:underline font-medium">
+            Add to Range from this PI →
+          </Link>
+        </div>
+      </div>
+    </div>
   )
 }
 
