@@ -1,0 +1,53 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Which ERP tables to sync, and how. Start with 2-3 SMALL tables, prove the
+# pipeline end to end, then add more one at a time (dry-run -> real -> validate).
+#
+# Per-table keys:
+#   source          (required)  table name in the ERP database
+#   target          (optional)  Postgres table name; defaults to lowercased source
+#   pk              (list)       primary key column(s). REQUIRED for incremental.
+#   mode            full | incremental        (default: full — see README §4)
+#   watermark       (incremental only) a column that increases on new/changed rows
+#   batch_size      rows per fetch/insert batch (default below)
+#   skip: true      do NOT sync this table (say why in `reason`)
+#
+# Rule of thumb: `full` for anything under ~100k rows. Only reach for
+# `incremental` on the few genuinely large, append-mostly tables.
+# ─────────────────────────────────────────────────────────────────────────────
+
+defaults:
+  source_schema: dbo        # MSSQL default schema. (Firebird ignores this.)
+  target_schema: raw        # dumb 1:1 mirror lands here; build app.* views later
+  mode: full
+  batch_size: 5000
+
+tables:
+  # ── Start here: small reference tables, full replace, no watermark needed ──
+  - source: Customer
+    pk: [CustomerID]
+    mode: full
+
+  - source: Product
+    pk: [ProductCode]
+    mode: full
+
+  # ── Example of a large, append-mostly table done incrementally ─────────────
+  # Only switch to incremental AFTER you've confirmed the watermark column is
+  # actually touched on every insert/update (spot-check it — many ERPs set it on
+  # insert but not on edit). If unsure, leave it as `full`.
+  # - source: SalesOrderHeader
+  #   pk: [OrderNo]
+  #   mode: incremental
+  #   watermark: LastModified
+
+  # - source: SalesOrderDetail
+  #   pk: [OrderNo, LineNo]
+  #   mode: full          # no reliable watermark -> just full-replace it
+
+  # ── Tables to explicitly NOT sync (flag loudly instead of guessing) ────────
+  # - source: SysAuditLog
+  #   skip: true
+  #   reason: "huge, low value, would blow the Supabase size budget"
+  # - source: DocumentBlobs
+  #   skip: true
+  #   reason: "binary attachments — export separately if actually needed"

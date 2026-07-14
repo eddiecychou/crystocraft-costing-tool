@@ -1,0 +1,15 @@
+# Install on YOUR LAPTOP (not the servers):
+#   python -m venv .venv
+#   .venv\Scripts\activate      (Windows)   |   source .venv/bin/activate  (mac/linux)
+#   pip install -r requirements.txt
+#
+# MSSQL also needs the system driver "ODBC Driver 18 for SQL Server"
+# (download from Microsoft). Firebird needs no extra system driver.
+
+psycopg2-binary>=2.9
+python-dotenv>=1.0
+PyYAML>=6.0
+
+# Source driver — install the ONE that matches your ERP engine:
+pyodbc>=5.0            # for SQL Server  (SOURCE_ENGINE=mssql)
+# firebird-driver>=1.10   # uncomment for Firebird/Interbase (SOURCE_ENGINE=firebird)
