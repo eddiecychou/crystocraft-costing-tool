@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { CATEGORIES, PRODUCT_STATUSES, productStatusOf, normVideos, MARKETING_DESC_MAXLEN } from '../constants'
+import { CUSTOMIZER_OPTIONS, engineTypeOf } from '../customizerEngines'
 import { Sparkles, RotateCcw } from 'lucide-react'
 import VideoUrlsEditor from '../components/VideoUrlsEditor'
 
@@ -13,7 +14,7 @@ export default function ProductForm() {
 
   const [form, setForm] = useState({
     name: '', category: '', status: 'concept', description: '', marketing_description: '', assembly_notes: '', videos: [],
-    is_new: false,
+    is_new: false, customizer_type: '',
   })
   const [loading, setLoading]   = useState(false)
   const [fetching, setFetching] = useState(isEdit)
@@ -33,7 +34,9 @@ export default function ProductForm() {
         const d = snap.data()
         // Fold the legacy 'discontinued' status into 'retired' on load; never
         // written back until the form is saved again (then it's canonical).
-        setForm(f => ({ ...f, ...d, status: productStatusOf(d.status).value, videos: normVideos(d.videos, d.video_url) }))
+        // Seed the customizer engine from the field, folding the legacy
+        // `customizable: true` boolean into the crystal_fabric engine.
+        setForm(f => ({ ...f, ...d, status: productStatusOf(d.status).value, videos: normVideos(d.videos, d.video_url), customizer_type: engineTypeOf(d) }))
       }
       setFetching(false)
     })
@@ -144,6 +147,16 @@ export default function ProductForm() {
                  onChange={e => setForm(f => ({ ...f, is_new: e.target.checked }))} />
           <span className="text-sm text-ink-80">New arrival <span className="text-ink-50 font-normal">— shows a green “New” badge in the shop and floats this product to the top. Untick when it's no longer new.</span></span>
         </label>
+
+        <div>
+          <label className="label">Customiser</label>
+          <select className="input max-w-sm" value={form.customizer_type || ''} onChange={set('customizer_type')}>
+            {CUSTOMIZER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <p className="text-[11px] text-gray-400 mt-1">
+            Lets customers preview this product with their own logo. Pick the customization engine that fits this product.
+          </p>
+        </div>
 
         <div>
           <label className="label">Spec Description</label>

@@ -9,6 +9,7 @@ import { useCart } from './store'
 import LoadingBar from '../components/LoadingBar'
 import VideoEmbed from '../components/VideoEmbed'
 import { isStorefrontVisible, normVideos, youtubeEmbed } from '../constants'
+import { engineTypeOf, engineAvailable, engineLabel } from '../customizerEngines'
 
 export default function CorporateDetail({ profile }) {
   const { id } = useParams()
@@ -89,13 +90,13 @@ export default function CorporateDetail({ profile }) {
             {inCart && <span className="ml-3 text-xs text-ink-50">Adjust quantity in your enquiry list</span>}
           </div>
 
-          {p.customizable && (
+          {engineAvailable(engineTypeOf(p)) && (
             <div className="mt-4">
               <Link to={`/customize/${p.id}`}
                 className="btn-secondary inline-flex items-center gap-1.5 border-brand-300 text-brand-700">
                 <Sparkles size={16} /> Customise &amp; Preview with your logo
               </Link>
-              <p className="text-xs text-ink-50 mt-1.5">See your own logo in crystals before you enquire.</p>
+              <p className="text-xs text-ink-50 mt-1.5">See your own logo before you enquire · {engineLabel(engineTypeOf(p))}</p>
             </div>
           )}
 
