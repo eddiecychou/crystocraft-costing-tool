@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { doc, onSnapshot, getDoc, collection, query, orderBy } from 'firebase/firestore'
 import { useParams, Link } from 'react-router-dom'
 import { db, auth } from '../firebase'
-import { Package, ArrowLeft, Check, Plus } from 'lucide-react'
+import { Package, ArrowLeft, Check, Plus, Sparkles } from 'lucide-react'
 import { useRates, convertFromHKD, fmtMoney } from '../currency'
 import FavHeart from './FavHeart'
 import { useCart } from './store'
@@ -88,6 +88,16 @@ export default function CorporateDetail({ profile }) {
             </button>
             {inCart && <span className="ml-3 text-xs text-ink-50">Adjust quantity in your enquiry list</span>}
           </div>
+
+          {p.customizable && (
+            <div className="mt-4">
+              <Link to={`/customize/${p.id}`}
+                className="btn-secondary inline-flex items-center gap-1.5 border-brand-300 text-brand-700">
+                <Sparkles size={16} /> Customise &amp; Preview with your logo
+              </Link>
+              <p className="text-xs text-ink-50 mt-1.5">See your own logo in crystals before you enquire.</p>
+            </div>
+          )}
 
           {tiers.length > 0 && (
             <div className="mt-6">

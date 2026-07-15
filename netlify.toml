@@ -64,6 +64,10 @@
   function = "send-email"
   path = "/api/send-email"
 
+[[edge_functions]]
+  function = "customizer-render"
+  path = "/api/customizer-render"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

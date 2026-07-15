@@ -52,6 +52,18 @@ service firebase.storage {
       allow read, write: if isAuth();
     }
 
+    // Customizer — customer-uploaded logos + saved crystal render previews.
+    // A user owns their own folder; anyone signed in may read (renders are shown
+    // in enquiries/admin). Keyed by uid.
+    match /customer_uploads/{uid}/{allPaths=**} {
+      allow read: if isAuth();
+      allow write: if request.auth.uid == uid;
+    }
+    match /renders/{uid}/{allPaths=**} {
+      allow read: if isAuth();
+      allow write: if request.auth.uid == uid;
+    }
+
     // Shipping module — imported PI files (orders/imports/…) + freight quote
     // attachments. NOTE: reference copy — paste into the Storage Rules tab.
     match /orders/{orderId}/{allPaths=**} {

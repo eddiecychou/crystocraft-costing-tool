@@ -90,6 +90,19 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Customizer product templates — read for shoppers, admin writes.
+    match /product_templates/{productId} {
+      allow read: if canShop();
+      allow write: if isAdmin();
+    }
+
+    // Customizer saved designs — a customer owns their own designs; admin sees all.
+    match /customer_designs/{designId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+
     match /suppliers/{supplierId} {
       allow read, write: if isAdmin();
       match /catalogs/{catalogId} {
