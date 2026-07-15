@@ -100,9 +100,9 @@ const s = StyleSheet.create({
 
   // Signatures
   signRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 26, marginBottom: 16 },
-  signBox: { width: 220, position: 'relative' },
-  signSpace: { height: 74 },
-  stampImg: { position: 'absolute', bottom: 0, left: 4, width: 190, height: 72, objectFit: 'contain' },
+  signBox: { width: 255, position: 'relative' },
+  signSpace: { height: 96 },
+  stampImg: { position: 'absolute', bottom: 0, left: 4, width: 247, height: 94, objectFit: 'contain' },
   signLine: { borderTopWidth: 0.8, borderTopColor: C.grayMid, paddingTop: 4 },
   signRole: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 7, color: C.grayMid, letterSpacing: 1, marginBottom: 2 },
   signName: { fontSize: 8.5, color: C.grayDark },

@@ -127,6 +127,10 @@ function PrintDoc({ pl, order, cartons }) {
           border: 1px solid #000; padding: 2px 4px; vertical-align: top;
         }
         .pl-doc th { background: #e8e8e8; font-weight: bold; text-align: center; }
+        /* Proper pagination: repeat the column header on every printed page and
+           never split a single row across a page break. */
+        .pl-doc thead { display: table-header-group; }
+        .pl-doc tr { break-inside: avoid; page-break-inside: avoid; }
         .pl-doc .no-border td { border: none; }
         .pl-doc .pallet-row td {
           background: #d0d0d0; font-weight: bold; padding: 2px 4px; border: 1px solid #000;
@@ -245,13 +249,11 @@ function PrintDoc({ pl, order, cartons }) {
                   const isFirstRow = ii === 0
                   return (
                     <tr key={`${c.id || c._localId}-${ii}`}>
-                      {/* Pallet number cell: rendered once per pallet (rowSpan covers every
-                          row for every carton in this pallet) — never re-emit it for later
-                          cartons, or every column after it shifts right for those rows. */}
-                      {isFirstRow && ci === 0
-                        ? <td rowSpan={pcs.reduce((s, x) => s + Math.max(1, x.contents?.length || 1), 0)}
-                               style={{ textAlign: 'center', verticalAlign: 'top' }}>{no}</td>
-                        : null}
+                      {/* Pallet number: a normal per-row cell (numbered only at the top of
+                          each pallet). NOT a rowSpan — a rowSpan cell spanning the whole
+                          pallet can't split across a page break, which left the first
+                          carton alone on page 1 with a big gap. */}
+                      <td style={{ textAlign: 'center', verticalAlign: 'top' }}>{isFirstRow && ci === 0 ? no : ''}</td>
                       {isFirstRow && (
                         <>
                           <td style={{ textAlign: 'center' }}>{ctnRange(c)}</td>
