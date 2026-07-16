@@ -3,6 +3,24 @@
 > **Canonical plan lives in Obsidian:** `Crystocraft/Operations/Costing Tool - Project Plan.md`
 > and `Costing Tool - Issues & Bugs Log.md`. This in-repo copy is a convenience snapshot.
 
+## Working across two Macs (2026-07-17)
+
+This project is worked on from two Macs. **Do not rely on iCloud Drive to keep
+them in sync** — an iCloud-synced `Documents/Coding/...` folder was found to be
+silently corrupting `.git` internals (duplicate `main 2`/`main 3`/… ref and
+index files dating back weeks, from iCloud racing with git writes). It hadn't
+broken anything visibly until a `git fetch` finally tripped on it.
+
+**The fix: git is the sync mechanism, not the folder.** Each Mac keeps its own
+local clone **outside** `~/Documents` and `~/Desktop` (e.g. `~/Developer/`, since
+iCloud's "Desktop & Documents Folders" sync only watches those two locations) —
+`git pull` before starting work, `git push` when finishing. All project
+markdown docs (this file included) are tracked in git, so documentation/context
+travels automatically with the code — no separate sync step needed. The
+`erp-sync/.env` credentials are the one deliberate exception: gitignored on
+purpose, they live only on whichever Mac is physically on the Crystocraft LAN
+(see `erp-sync/RUNBOOK-mac.md`).
+
 ## Current Status — V7.13 CLOSED as of 2026-07-14
 
 **Deployed to Netlify (live `7819bb0`).** Owner's stated focus for V7.13 was
