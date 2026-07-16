@@ -5,7 +5,7 @@ import { auth } from '../firebase'
 import logo from '../assets/logo.png'
 import {
   LayoutDashboard, Package, Gem, ClipboardList, Puzzle,
-  Factory, Building2, Megaphone, Settings, MoreHorizontal, Users, Truck, FileText, Boxes,
+  Factory, Building2, Megaphone, Settings, MoreHorizontal, Users, Truck, FileText, Boxes, Database,
 } from 'lucide-react'
 
 const nav = [
@@ -21,6 +21,7 @@ const nav = [
   { to: '/quotes',     label: 'Quotes',        short: 'Quotes',   Icon: ClipboardList, primary: true },
   { to: '/marketing',  label: 'Marketing',     short: 'Marketing',Icon: Megaphone },
   { to: '/shipping',   label: 'Production',    short: 'Prod',     Icon: Truck },
+  { to: '/erp-lookup', label: 'ERP Lookup',    short: 'ERP',      Icon: Database },
   { to: '/settings',   label: 'Settings',      short: 'Settings', Icon: Settings },
 ]
 
