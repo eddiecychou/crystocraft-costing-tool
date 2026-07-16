@@ -21,6 +21,28 @@ travels automatically with the code — no separate sync step needed. The
 purpose, they live only on whichever Mac is physically on the Crystocraft LAN
 (see `erp-sync/RUNBOOK-mac.md`).
 
+Both Macs' canonical path is now **`~/Developer/costing-tool`**. Checklist for
+resuming on a Mac you haven't used in a while (new Claude Code conversation —
+it has no memory of prior sessions, so start here):
+
+1. `cd ~/Developer/costing-tool && git status` — if that path doesn't exist yet
+   on this Mac, see step 5.
+2. If `status` shows anything modified/untracked that matters and isn't pushed
+   yet, deal with it first (commit + push, or copy it out) — don't overwrite it.
+3. `git pull` to get everything done on the other Mac.
+4. If the old iCloud copy (`~/Documents/Coding/Crystocraft/Operation/Costing
+   Tool`) still exists on this machine, ignore/remove it — it's stale and
+   liable to iCloud-corrupt `.git` again; the real copy is in `~/Developer/`.
+5. **First time on this Mac / folder missing:** `mkdir -p ~/Developer && git
+   clone https://github.com/eddiecychou/crystocraft-costing-tool.git
+   ~/Developer/costing-tool`, then `npm install`. For the ERP sync also:
+   `cd erp-sync && python3 -m venv .venv && .venv/bin/pip install -r
+   requirements.txt`, then recreate `.env` (not in git — copy the values from
+   the other Mac or from your password manager, see `RUNBOOK-mac.md`).
+6. If `git fsck --full` (run occasionally, cheap) ever reports errors, look for
+   stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
+   contamination, safe to delete once you confirm the real file still works.
+
 ## Current Status — V7.13 CLOSED as of 2026-07-14
 
 **Deployed to Netlify (live `7819bb0`).** Owner's stated focus for V7.13 was
