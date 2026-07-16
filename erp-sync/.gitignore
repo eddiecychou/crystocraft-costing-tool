@@ -4,3 +4,13 @@ sync.log
 __pycache__/
 *.pyc
 .venv/
+
+# Offline Firebird client installer (staged for on-site use, not for git)
+vendor/
+
+# contains the generated erp_readonly password
+create_readonly_login.sql
+
+# run artifacts
+*.out
+retry.yaml

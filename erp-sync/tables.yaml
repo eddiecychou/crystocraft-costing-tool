@@ -1,53 +1,514 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# Which ERP tables to sync, and how. Start with 2-3 SMALL tables, prove the
-# pipeline end to end, then add more one at a time (dry-run -> real -> validate).
-#
-# Per-table keys:
-#   source          (required)  table name in the ERP database
-#   target          (optional)  Postgres table name; defaults to lowercased source
-#   pk              (list)       primary key column(s). REQUIRED for incremental.
-#   mode            full | incremental        (default: full — see README §4)
-#   watermark       (incremental only) a column that increases on new/changed rows
-#   batch_size      rows per fetch/insert batch (default below)
-#   skip: true      do NOT sync this table (say why in `reason`)
-#
-# Rule of thumb: `full` for anything under ~100k rows. Only reach for
-# `incremental` on the few genuinely large, append-mostly tables.
-# ─────────────────────────────────────────────────────────────────────────────
+# Full overnight load of JES_UnitedArt. All base tables except audit/logs.
+# Giants listed LAST (full mode tonight; flip to incremental later — all 4
+# have a PK + LastUpdate). Full mode is idempotent/self-healing.
 
 defaults:
-  source_schema: dbo        # MSSQL default schema. (Firebird ignores this.)
-  target_schema: raw        # dumb 1:1 mirror lands here; build app.* views later
+  source_schema: dbo
+  target_schema: raw
   mode: full
   batch_size: 5000
 
 tables:
-  # ── Start here: small reference tables, full replace, no watermark needed ──
+  # ── 490 small/medium tables ──
+  - source: ACAllocation
+  - source: ACAllocationBreakDown
+  - source: ACAnaCat
+  - source: ACAnaCode
+  - source: ACBANKREC
+  - source: ACBANKRECDETAIL
+  - source: ACBankRecStatus
+  - source: ACBudget
+  - source: AccCustCheque
+  - source: AccCustPrepaidBal
+  - source: Accessory
+  - source: AccessoryChainType
+  - source: AccessoryType
+  - source: AccInterfaceCodeMap
+  - source: AccInterfaceSetting
+  - source: ACCOA
+  - source: ACCOAAnaCode
+  - source: ACCOAType
+  - source: AccountNo
+  - source: AccountType
+  - source: AccSuppCheque
+  - source: AccSuppPrepaidBal
+  - source: ACCurrencyTX
+  - source: ACDICT
+  - source: ACInterfaceLog
+  - source: ACInterfaceRecLog
+  - source: ACJournal
+  - source: ACLetter
+  - source: ACMiscSetting
+  - source: ACNextPK
+  - source: ACNextRunningNumber
+  - source: ACNumberSetting
+  - source: ACPeriodBalance
+  - source: ACPeriodCode
+  - source: ACPeriodEnded
+  - source: ACPostingLog
+  - source: ACReportSetting
+  - source: ACRunningNumberSetting
+  - source: ACSettle
+  - source: ACSettleBreakDown
+  - source: ACSharedTable
+  - source: ACStatus
+  - source: ACSubVEAnaCode
+  - source: ACSystemSetting
+  - source: ACUser2
+  - source: ACUserGroup
+  - source: ACUserGroupRight
+  - source: ACVE
+  - source: ACVEAnaCode
+  - source: ACVEBreakDown
+  - source: ACVoucherType
+  - source: ACYearCode
+  - source: ACYearEarn
+  - source: ACYearEnded
+  - source: AddCost
+  - source: Alloy
+  - source: AlloyGroup
+  - source: AlloyPrice
+  - source: alloytemp
+  - source: AlloyType
+  - source: AnaCat
+  - source: AnaCode
+  - source: AnaLookup
+  - source: AnaType
+  - source: AYInterchange
+  - source: Bank
+  - source: BarCode
+  - source: CharacterEncoding
+  - source: ChartAccount
+  - source: ConsignmentIn
+  - source: ConsignmentInAna
+  - source: ConsignmentInDetail
+  - source: ConsignmentInDetailAna
+  - source: ConsignmentInDetailItem
+  - source: ConsignmentInHallmark
+  - source: ConsignmentInPurRtn
+  - source: ConsignmentInReturn
+  - source: ConsignmentInReturnDetail
+  - source: ConsignmentInReturnSurcharge
+  - source: ConsignmentInSurcharge
+  - source: ConsignmentOut
+  - source: ConsignmentOutAna
+  - source: ConsignmentOutDetail
+  - source: ConsignmentOutDetailAna
+  - source: ConsignmentOutHallmark
+  - source: ConsignmentOutReturn
+  - source: ConsignmentOutReturnAna
+  - source: ConsignmentOutReturnDetail
+  - source: ConsignmentOutReturnDetailAna
+  - source: ConsignmentOutReturnHallmark
+  - source: ConsignmentOutReturnSurcharge
+  - source: ConsignmentOutSurcharge
+  - source: Country
+  - source: Currency
+  - source: CurrencyTX
+  - source: CustDiscDS
+  - source: CustDiscET
+  - source: CustDSACDefault
+  - source: CustGrade
+  - source: CustGradeDetail
+  - source: CustKGoldAmtBal
   - source: Customer
-    pk: [CustomerID]
-    mode: full
+  - source: CustomerAddress
+  - source: CustomerAnaCode
+  - source: CustomerHallmark
+  - source: CustomerTeam
+  - source: CustReminder
+  - source: CustReminderEamilFlag
+  - source: CUSTTYPE
+  - source: CUSTTYPEDETAIL
+  - source: DBUpgradeHistory
+  - source: Declaration
+  - source: DeclarationAna
+  - source: DeclarationDetail
+  - source: DeclarationDetailAna
+  - source: DeclarationDetailDefaultPrice
+  - source: DeclarationHallmark
+  - source: DeclarationPrice
+  - source: DeclarationSumStoneMaterial
+  - source: DeclarationSurcharge
+  - source: Department
+  - source: Depreciation
+  - source: DepreciationDetail
+  - source: DepreciationSetting
+  - source: Design
+  - source: DesignAnaCode
+  - source: DesignExclusive
+  - source: DesignProductType
+  - source: DesignProject
+  - source: DiamondPrice
+  - source: Dictionary
+  - source: DictionaryNative
+  - source: DocKGoldAmtPayment
+  - source: DocumentRemark
+  - source: dtproperties
+  - source: DuplAnaCode
+  - source: EmpGoldBalMethod
+  - source: Employee
+  - source: EnquiryView
+  - source: EnquiryViewClass
+  - source: EnquiryViewFilter
+  - source: FGDestruction
+  - source: FGDestructionAddCost
+  - source: FGDestructionDetail
+  - source: FGDestructionItemAddCost
+  - source: FGDestructionItemDetail
+  - source: FGDestructionItemLabourCost
+  - source: FGDestructionLabourCost
+  - source: GiftVoucher
+  - source: GITReceive
+  - source: GITReceiveDetail
+  - source: GITReturn
+  - source: GITReturnDetail
+  - source: GoldCast
+  - source: GoldCastDetail
+  - source: GoldPlanMaster
+  - source: GrandCanalSubmitLog
+  - source: GRN
+  - source: GRNDetail
+  - source: Hallmark
+  - source: InvMarkDownPrice
+  - source: Invoice
+  - source: InvoiceDetail
+  - source: InvoiceType
+  - source: InvReturn
+  - source: InvReturnDetail
+  - source: IOOS_Catalog
+  - source: IOOS_Catalog_Customer
+  - source: IOOS_Catalog_Item
+  - source: IOOS_Catalog_Picture
+  - source: IOOS_EmailTemplate
+  - source: IOOS_Log
+  - source: IOOS_NotificationRecipient
+  - source: IOOS_ReceiveLog
+  - source: IOOS_TempConfirmedOrder
+  - source: IOOS_TempConfirmedOrderDetail
+  - source: IOOS_Verbose_Log
+  - source: IOOS_Verbose_Log_Item
+  - source: IOOS_Verbose_Log_Recipient
+  - source: IssueReturnType
+  - source: ITEM_SRP
+  - source: ItemACostHistory
+  - source: ItemAddCost
+  - source: ItemAdditionalService
+  - source: ItemAlloy
+  - source: ItemAnaCode
+  - source: ItemBalAdjDetail
+  - source: ItemBalAdjHeader
+  - source: ItemBatchDetail
+  - source: ItemBatchHeader
+  - source: ItemBatchLabel
+  - source: ItemBatchLabel_ST
+  - source: ItemCloseBalDetail
+  - source: ItemCloseBalHeader
+  - source: ItemCode_Temp
+  - source: ItemCodeSetup
+  - source: ItemCodeSetupAvaFields
+  - source: ItemCustomer
+  - source: ItemDetailExt_Pointers
+  - source: ItemDetailProcess
+  - source: ItemExport_Temp
+  - source: ItemFinGoods
+  - source: ItemLabourCost
+  - source: ItemMOQ
+  - source: ItemMultiSRP
+  - source: ItemRecast
+  - source: ItemRecastDetail
+  - source: ItemRouting
+  - source: ItemSpecialOfferList
+  - source: ItemSRPHistory
+  - source: ItemStone
+  - source: ItemsTX
+  - source: ItemSubconLabourCost
+  - source: ItemTransferBatch
+  - source: ItemTransferBatchDetail
+  - source: ItemTransferCounterDetail
+  - source: ItemTransferCounterHeader
+  - source: ItemTransferDetail
+  - source: ItemTransferHeader
+  - source: ItemType
+  - source: ItemUOMConversion
+  - source: ItemWHBal
+  - source: ItemWHLoc
+  - source: JewelryType
+  - source: JobOrderAddCost
+  - source: JobOrderAnaCode
+  - source: JobOrderBalance
+  - source: JobOrderColorChange
+  - source: JobOrderColorChangeBatch
+  - source: JOBORDERHALLMARK
+  - source: JobOrderHeader
+  - source: JobOrderLabourCost
+  - source: JobOrderNoRegister
+  - source: JobOrderRemark
+  - source: JobOrderRouting
+  - source: JOBORDERSIZE
+  - source: LastNumber_Backup
+  - source: Level
+  - source: LevelPosition
+  - source: LicensePool
+  - source: LicenseUsage
+  - source: LicenseUsageSignature
+  - source: MasterCodeSettings
+  - source: MaterialTransaction
+  - source: MaterialType
+  - source: MaterialWHBal
+  - source: MediaType
+  - source: MemberLevel
+  - source: MemberPoints
+  - source: MenuShortCuts
+  - source: MOQ
+  - source: NumericCode
+  - source: OCBOM
+  - source: OCDetail
+  - source: OCHeader
+  - source: Operator
+  - source: OrderSignaturePicture
+  - source: OrderType
+  - source: ParcelMix
+  - source: ParcelMixDetail
+  - source: PaymentMethod
+  - source: PaymentTerms
+  - source: POSCashFlow
+  - source: POSCashFlowGiftVoucher
+  - source: POSInvoice
+  - source: POSInvoiceDetail
+  - source: POSInvoiceDetailAna
+  - source: POSINVOICEGOLDDETAIL
+  - source: POSInvoicePayment
+  - source: POSInvoiceQuestionnaire
+  - source: POSINVOICERECGOLD
+  - source: POSINVOICEREPLACEGOODS
+  - source: POSInvoiceVoid
+  - source: PosMemberService
+  - source: POSMembership
+  - source: POSMembershipDetailOptical
+  - source: POSMessage
+  - source: PosPoints
+  - source: POSPrinter
+  - source: POSPrinterCmd
+  - source: POSQuestionnaire
+  - source: POSQuestionnaireAnswer
+  - source: POSSignInOut
+  - source: PosSyncChangeNO
+  - source: PosSyncLog
+  - source: PosSyncSvToShopTabels
+  - source: Prefix
+  - source: PrefixItemCode
+  - source: PrefixMap
+  - source: PrefixMapDocLoad
+  - source: PrefixMapRepository
+  - source: PrefixMultiComp
+  - source: PrefixPrintLayout
+  - source: Process
+  - source: ProcessValue
+  - source: ProdAbnormalReturn
+  - source: ProdControl
+  - source: ProdControlHallmark
+  - source: ProdControlSize
+  - source: ProdInDetail
+  - source: ProdInHeader
+  - source: ProdIssueDetail
+  - source: ProdIssueHeader
+  - source: ProdIssueReturnDetail
+  - source: ProdIssueReturnHeader
+  - source: ProdMaterialIssueDetail
+  - source: ProdMaterialIssueHeader
+  - source: ProdMaterialReturnDetail
+  - source: ProdMaterialReturnHeader
+  - source: ProdRoutingAssign
+  - source: ProdRoutingAssignDetail
+  - source: ProdRoutingAssignMaterial
+  - source: ProdRoutingAssignmentBatch
+  - source: ProdRoutingLastNo
+  - source: ProdRoutingMove
+  - source: ProdRoutingMovement
+  - source: ProdRoutingMovementBatch
+  - source: ProdRoutingMovementBatchItemBal
+  - source: ProdRoutingMoveTransaction
+  - source: ProductCatSettings
+  - source: ProductType
+  - source: Property
+  - source: PropertyDetail
+  - source: Purchase
+  - source: PurchaseAna
+  - source: PurchaseDetail
+  - source: PurchaseDetailAna
+  - source: PurchaseDetailItem
+  - source: PurchaseHallmark
+  - source: PurchaseReturn
+  - source: PurchaseReturnAna
+  - source: PurchaseReturnDetail
+  - source: PurchaseReturnDetailAna
+  - source: PurchaseReturnHallmark
+  - source: PurchaseReturnSurcharge
+  - source: PurchaseSurcharge
+  - source: PurReturn
+  - source: PurReturnDetail
+  - source: QAProblem
+  - source: QAProblemType
+  - source: Quotation
+  - source: QuotationAddCostPrice
+  - source: QuotationAlloyPrice
+  - source: QuotationAlloyWastageFineness
+  - source: QuotationAna
+  - source: QuotationAYChangeRate
+  - source: QuotationBomPrice
+  - source: QuotationDetail
+  - source: QuotationDetailAddCost
+  - source: QuotationDetailAna
+  - source: QuotationDetailAY
+  - source: QuotationDetailBOM
+  - source: QuotationDetailLabourCost
+  - source: QuotationDetailMarkUp
+  - source: QuotationDetailStone
+  - source: QuotationDimondPrice
+  - source: QuotationHallmark
+  - source: QuotationLaboreCostPrice
+  - source: QuotationMarkup
+  - source: QuotationSFPrice
+  - source: QuotationStoneGroup
+  - source: QuotationStonePrice
+  - source: QuotationSurcharge
+  - source: RapaportImportStaging
+  - source: RapaportSizeRange
+  - source: RapaportUpdateLog
+  - source: Reach_CompanyInfo
+  - source: Reach_Customers
+  - source: Reach_Items
+  - source: Reach_JobOrders
+  - source: Reach_SalesInvoices
+  - source: Reach_SalesInvoicesDetail
+  - source: RecalAllSRPLog
+  - source: Region
+  - source: RegionGroupDetail
+  - source: RegionGroupHead
+  - source: Results
+  - source: Routing
+  - source: RoutingStd
+  - source: RoutingStdDetail
+  - source: SalesChannel
+  - source: SalesInvoice
+  - source: SalesInvoiceAna
+  - source: SalesInvoiceDetail
+  - source: SalesInvoiceDetailAna
+  - source: SalesInvoiceDetailDefaultPrice
+  - source: SalesInvoiceHallmark
+  - source: SalesInvoiceSurcharge
+  - source: SalesOrder
+  - source: SalesOrderAna
+  - source: SalesOrderDetail
+  - source: SalesOrderDetailAna
+  - source: SalesOrderDetailExt_Pointers
+  - source: SALESORDERDETAILSIZE
+  - source: SalesOrderHallmark
+  - source: SALESORDERSIZE
+  - source: SalesOrderSurcharge
+  - source: SalesPurSettleDocument
+  - source: SalesPurSettleHeader
+  - source: SalesPurSettlePayment
+  - source: SalesReturn
+  - source: SalesReturnAna
+  - source: SalesReturnDetail
+  - source: SalesReturnDetailAna
+  - source: SalesReturnHallmark
+  - source: SalesReturnSurcharge
+  - source: SBU
+  - source: SBUAlloyGroup
+  - source: SendposMessage
+  - source: Sequence
+  - source: ShipMethod
+  - source: ShipTerms
+  - source: Shop
+  - source: SizeProdType
+  - source: SizeReferance
+  - source: SizeType
+  - source: SRPMarkupMethod
+  - source: StockTakeDetail
+  - source: StockTakeHeader
+  - source: StockTakeVariance
+  - source: Stone
+  - source: StoneClarity
+  - source: StoneColor
+  - source: StoneCombination
+  - source: StoneCombinationDetail
+  - source: StoneCut
+  - source: StoneDescAbbr
+  - source: StoneGemType
+  - source: StoneGroup
+  - source: STONESETTINGMETHOD
+  - source: STONESETTINGTYPE
+  - source: STONESETTINGVALUE
+  - source: StoneShape
+  - source: StoneSize
+  - source: StoneType
+  - source: StoneTypeCombination
+  - source: Style
+  - source: SubconGoldClearDtl
+  - source: SubconGoldClearHdr
+  - source: SubconIssueDetail
+  - source: SubconProdInHeader
+  - source: subcontractor
+  - source: SuppDSACDefault
+  - source: Supplier
+  - source: SupplierAddress
+  - source: SupplierType
+  - source: SupplyTerms
+  - source: SupplyTermsChange
+  - source: SupplyTermsDetail
+  - source: Surcharge
+  - source: sysdiagrams
+  - source: SystemError
+  - source: SystemSetting
+  - source: systemSettingACCustSupp
+  - source: systemSettingACMultiComp
+  - source: systemSettingACNAVMultiComp
+  - source: systemSettingACSurcharge
+  - source: systemSettingDSACDefAC
+  - source: systemSettingDSACMultiComp
+  - source: systemSettingDSACSurcharge
+  - source: SystemSettingList
+  - source: systemSettingRFIDMacList
+  - source: Team
+  - source: TeamMember
+  - source: Tradelink_ITVSRefCodeTable
+  - source: Tradelink_LINEITEM
+  - source: Tradelink_TRADEDEC
+  - source: Unit
+  - source: UOM
+  - source: UOMConversion
+  - source: User
+  - source: User2
+  - source: UserGroup
+  - source: UserGroupRight
+  - source: UserGroupRightClass
+  - source: UserGroupRightCostControls
+  - source: UserGroupRightDocStatus
+  - source: UserGroupRightItemType
+  - source: UserShop
+  - source: VirtualViews
+  - source: VourcherDetail
+  - source: VourcherHeader
+  - source: Warehouse
+  - source: WarehouseOperator
+  - source: WarehouseType
+  - source: Z_ItemAddCost
+  - source: Z_ItemAna
+  - source: Z_ItemCost
+  - source: Z_XLSTRAN
+  - source: Z_XLSTRAN_ST
 
-  - source: Product
-    pk: [ProductCode]
-    mode: full
+  # ── 4 giants, run last (full ~40min). PK+watermark noted for future incremental ──
+  - source: Item
+    mode: full            # later: incremental, watermark: LastUpdate, pk: [ITCode, ITRevision]
+  - source: ItemDetail
+    mode: full            # later: incremental, watermark: LastUpdate, pk: [IDPK]
+  - source: JobOrderBOM
+    mode: full            # later: incremental, watermark: LastUpdate, pk: [JBPK]
+  - source: ItemTransaction
+    mode: full            # later: incremental, watermark: LastUpdate, pk: [ITPK]
 
-  # ── Example of a large, append-mostly table done incrementally ─────────────
-  # Only switch to incremental AFTER you've confirmed the watermark column is
-  # actually touched on every insert/update (spot-check it — many ERPs set it on
-  # insert but not on edit). If unsure, leave it as `full`.
-  # - source: SalesOrderHeader
-  #   pk: [OrderNo]
-  #   mode: incremental
-  #   watermark: LastModified
-
-  # - source: SalesOrderDetail
-  #   pk: [OrderNo, LineNo]
-  #   mode: full          # no reliable watermark -> just full-replace it
-
-  # ── Tables to explicitly NOT sync (flag loudly instead of guessing) ────────
-  # - source: SysAuditLog
-  #   skip: true
-  #   reason: "huge, low value, would blow the Supabase size budget"
-  # - source: DocumentBlobs
-  #   skip: true
-  #   reason: "binary attachments — export separately if actually needed"
+  # ── never synced: SystemAudit (2.3GB audit), LogonLog ──

@@ -10,6 +10,12 @@ psycopg2-binary>=2.9
 python-dotenv>=1.0
 PyYAML>=6.0
 
-# Source driver — install the ONE that matches your ERP engine:
-pyodbc>=5.0            # for SQL Server  (SOURCE_ENGINE=mssql)
-# firebird-driver>=1.10   # uncomment for Firebird/Interbase (SOURCE_ENGINE=firebird)
+# Source driver — install the ONE that matches your ERP engine.
+# On this M1 Mac we use the PURE-PYTHON drivers (no Homebrew / unixODBC needed):
+python-tds>=1.17       # MSSQL, pure Python   (SOURCE_ENGINE=mssql, MSSQL_DRIVER_KIND=tds)
+firebird-driver>=1.10  # Firebird/Interbase   (SOURCE_ENGINE=firebird)
+#   NB: firebird-driver also needs the native libfbclient — install the staged
+#   vendor/Firebird-*.pkg (see README / .env). MSSQL via python-tds needs nothing.
+#
+# On a Windows box instead, use ODBC:
+# pyodbc>=5.0          # MSSQL via ODBC       (MSSQL_DRIVER_KIND=odbc + MS ODBC Driver 18)

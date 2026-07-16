@@ -44,8 +44,14 @@ logging.basicConfig(
     ],
 )
 log = logging.getLogger("erp-sync")
+logging.getLogger("pytds").setLevel(logging.WARNING)  # silence per-query TDS chatter
 
 SOURCE_ENGINE = os.environ.get("SOURCE_ENGINE", "mssql").lower()
+# How to talk to MSSQL:
+#   odbc -> pyodbc + Microsoft's ODBC driver (needs unixODBC/Homebrew on macOS).
+#   tds  -> python-tds, a PURE-PYTHON driver: no system libraries, no Homebrew,
+#           works offline once pip-installed. Preferred on this M1 Mac.
+MSSQL_DRIVER_KIND = os.environ.get("MSSQL_DRIVER_KIND", "odbc").lower()
 
 # ── dialect differences between MSSQL and Firebird ────────────────────────────
 # The only things that differ per engine are (a) how you ask for "0 rows" just
@@ -67,9 +73,30 @@ if SOURCE_ENGINE not in DIALECTS:
     sys.exit(f"Unknown SOURCE_ENGINE={SOURCE_ENGINE!r}. Use 'mssql' or 'firebird'.")
 D = DIALECTS[SOURCE_ENGINE]
 
+# Parameter placeholder in prepared statements differs by driver: pyodbc and
+# firebird-driver use qmark "?"; python-tds uses pyformat "%s". This only matters
+# for the incremental WHERE clause below.
+PARAM = "%s" if (SOURCE_ENGINE == "mssql" and MSSQL_DRIVER_KIND == "tds") else "?"
+
 
 # ── source connection (READ-ONLY) ─────────────────────────────────────────────
 def src_conn():
+    if SOURCE_ENGINE == "mssql" and MSSQL_DRIVER_KIND == "tds":
+        # Pure-Python TDS driver. No unixODBC / Homebrew / system driver needed —
+        # the whole thing installs with `pip install python-tds`. Reads nvarchar
+        # (and collation-tagged varchar) as proper Python unicode, so Chinese text
+        # comes back correct. autocommit=True: we only SELECT, never write.
+        import pytds
+        return pytds.connect(
+            server=os.environ["MSSQL_HOST"],
+            port=int(os.environ.get("MSSQL_PORT", "1433")),
+            database=os.environ["MSSQL_DB"],
+            user=os.environ["MSSQL_USER"],
+            password=os.environ["MSSQL_PWD"],
+            login_timeout=30,
+            autocommit=True,
+        )
+
     if SOURCE_ENGINE == "mssql":
         import pyodbc  # imported here so a Firebird-only setup doesn't need pyodbc
         # `Encrypt=no;TrustServerCertificate=yes` avoids TLS handshake failures
@@ -92,6 +119,12 @@ def src_conn():
 
     # firebird
     import firebird.driver as fb        # pip install firebird-driver
+    # firebird-driver is a wrapper around the native libfbclient. On macOS this
+    # comes from the Firebird .pkg (see vendor/ + README). If auto-detection
+    # fails, point FB_CLIENT_LIB at the installed dylib explicitly.
+    fb_lib = os.environ.get("FB_CLIENT_LIB")
+    if fb_lib:
+        fb.load_api(fb_lib)
     return fb.connect(
         f"{os.environ['FB_HOST']}/{os.environ.get('FB_PORT', '3050')}:{os.environ['FB_DATABASE']}",
         user=os.environ["FB_USER"],
@@ -111,17 +144,42 @@ def qi(name):
     return '"' + name.lower().replace('"', '""') + '"'
 
 
+# Non-Unicode SQL Server string types. Their bytes are in the DB's legacy code
+# page (here Big5/cp950), and some rows contain bytes that are INVALID in that
+# code page — decoding them client-side blows up with UnicodeDecodeError and
+# wedges the whole connection. Fix: ask SQL Server to CONVERT them to NVARCHAR
+# server-side, so python-tds only ever receives clean Unicode.
+NONUNICODE_TYPES = {"varchar", "char", "text"}
+
+
 def get_source_columns(sconn, schema, table):
+    """Return [(name, data_type), ...] in ordinal order. data_type is lower-cased
+    for MSSQL; None for Firebird (which doesn't need the CONVERT treatment)."""
     cur = sconn.cursor()
-    cur.execute(D["cols_query"](schema, table))
-    cols = [d[0] for d in cur.description]
+    if SOURCE_ENGINE == "mssql":
+        cur.execute(
+            f"SELECT COLUMN_NAME, DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS "
+            f"WHERE TABLE_SCHEMA={PARAM} AND TABLE_NAME={PARAM} ORDER BY ORDINAL_POSITION",
+            [schema, table],
+        )
+        cols = [(r[0], (r[1] or "").lower()) for r in cur.fetchall()]
+    else:
+        cur.execute(D["cols_query"](schema, table))
+        cols = [(d[0], None) for d in cur.description]
     cur.close()
     return cols
 
 
 def read_batches(sconn, schema, table, cols, where_sql, params, batch_size):
     cur = sconn.cursor()
-    collist = ", ".join(D["q"](c) for c in cols)
+
+    def col_expr(name, dtype):
+        q = D["q"](name)
+        if SOURCE_ENGINE == "mssql" and dtype in NONUNICODE_TYPES:
+            return f"CONVERT(NVARCHAR(MAX), {q}) AS {q}"   # legacy code page -> Unicode
+        return q
+
+    collist = ", ".join(col_expr(name, dtype) for name, dtype in cols)
     src_table = D["q"](table) if SOURCE_ENGINE == "firebird" else f"{D['q'](schema)}.{D['q'](table)}"
     cur.execute(f"SELECT {collist} FROM {src_table} {where_sql}", params or [])
     while True:
@@ -205,14 +263,31 @@ def target_count(dconn, tcfg):
 # ── row writers ───────────────────────────────────────────────────────────────
 def as_text_rows(batch):
     """Everything lands as text in the raw mirror — bulletproof against source
-    type/encoding surprises. Cast to real types later in your app.* views."""
-    return [tuple(None if v is None else str(v) for v in row) for row in batch]
+    type/encoding surprises. Cast to real types later in your app.* views.
+    String values are RSTRIPed: MSSQL nchar columns come back blank-padded to
+    their full width (e.g. 'AB' in nchar(10) -> 'AB        '), which is just
+    noise and would massively bloat the wide nchar tables in Postgres. Trailing
+    whitespace carries no meaning in this ERP. Numbers/dates are unaffected."""
+    def cell(v):
+        if v is None:
+            return None
+        if isinstance(v, str):
+            return v.rstrip()
+        if isinstance(v, (bytes, bytearray)):
+            return v.hex()          # varbinary / rowversion -> clean hex text
+        return str(v)
+    return [tuple(cell(v) for v in row) for row in batch]
+
+
+# Rows per INSERT statement. Measured sweet spot against Supabase over the Seoul
+# link: 5000 is ~3.7x faster than 1000 (fewer round-trips); 10000 was slower.
+WRITE_PAGE_SIZE = 5000
 
 
 def insert_rows(dcur, tcfg, cols, rows):
     tgt = f"{qi(tcfg['target_schema'])}.{qi(tcfg['target'])}"
     collist = ", ".join(qi(c) for c in cols)
-    execute_values(dcur, f"INSERT INTO {tgt} ({collist}) VALUES %s", rows, page_size=1000)
+    execute_values(dcur, f"INSERT INTO {tgt} ({collist}) VALUES %s", rows, page_size=WRITE_PAGE_SIZE)
 
 
 def upsert_rows(dcur, tcfg, cols, rows):
@@ -226,13 +301,14 @@ def upsert_rows(dcur, tcfg, cols, rows):
         sql = f"INSERT INTO {tgt} ({collist}) VALUES %s ON CONFLICT ({pk}) DO NOTHING"
     else:
         sql = f"INSERT INTO {tgt} ({collist}) VALUES %s ON CONFLICT ({pk}) DO UPDATE SET {updates}"
-    execute_values(dcur, sql, rows, page_size=1000)
+    execute_values(dcur, sql, rows, page_size=WRITE_PAGE_SIZE)
 
 
 # ── per-table sync ────────────────────────────────────────────────────────────
 def sync_table(sconn, dconn, tcfg, dry_run):
     src_schema, src_table = tcfg["source_schema"], tcfg["source"]
-    cols = get_source_columns(sconn, src_schema, src_table)
+    cols = get_source_columns(sconn, src_schema, src_table)   # [(name, dtype), ...]
+    colnames = [name for name, _ in cols]
 
     mode = tcfg["mode"]
     if mode == "incremental" and not tcfg.get("pk"):
@@ -246,13 +322,13 @@ def sync_table(sconn, dconn, tcfg, dry_run):
         new_watermark = source_max(sconn, src_schema, src_table, wm_col)
         last = get_watermark(dconn, tcfg)
         if last is not None:
-            # Both pyodbc and firebird-driver use "?" as the parameter marker.
-            where_sql = f"WHERE {D['q'](wm_col)} > ?"
+            # PARAM is "?" for pyodbc/firebird-driver, "%s" for python-tds.
+            where_sql = f"WHERE {D['q'](wm_col)} > {PARAM}"
             params = [last]
 
     total = 0
     if not dry_run:
-        ensure_target_table(dconn, tcfg, cols)
+        ensure_target_table(dconn, tcfg, colnames)
 
     dcur = dconn.cursor()
     try:
@@ -267,9 +343,9 @@ def sync_table(sconn, dconn, tcfg, dry_run):
             if dry_run:
                 continue
             if mode == "full":
-                insert_rows(dcur, tcfg, cols, rows)
+                insert_rows(dcur, tcfg, colnames, rows)
             else:
-                upsert_rows(dcur, tcfg, cols, rows)
+                upsert_rows(dcur, tcfg, colnames, rows)
 
         if dry_run:
             log.info("[DRY] %-28s would sync %7d rows (%s)", src_table, total, mode)
@@ -319,19 +395,36 @@ def main():
              SOURCE_ENGINE, len(tables), "DRY-RUN" if args.dry_run else "LIVE")
 
     failed = []
-    with src_conn() as sconn, dst_conn() as dconn:
+    sconn = src_conn()
+    dconn = dst_conn()
+    try:
         if not args.dry_run:
             ensure_meta(dconn)
         for tcfg in tables:
             try:
                 sync_table(sconn, dconn, tcfg, args.dry_run)
             except Exception:
+                log.exception("FAILED table %s — continuing with the rest", tcfg["source"])
+                failed.append(tcfg["source"])
+                # Recover the TARGET: roll back the aborted transaction (reconnect
+                # if even that fails).
                 try:
                     dconn.rollback()
                 except Exception:
-                    pass
-                log.exception("FAILED table %s — continuing with the rest", tcfg["source"])
-                failed.append(tcfg["source"])
+                    try: dconn.close()
+                    except Exception: pass
+                    dconn = dst_conn()
+                # Recover the SOURCE: a read error (e.g. invalid legacy bytes) can
+                # leave the pytds connection desynced mid-result-set, which would
+                # then fail EVERY following table. Reconnect so one bad table can't
+                # cascade into a wipeout.
+                try: sconn.close()
+                except Exception: pass
+                sconn = src_conn()
+    finally:
+        for _c in (sconn, dconn):
+            try: _c.close()
+            except Exception: pass
 
     if failed:
         log.error("=== Finished WITH FAILURES: %s ===", ", ".join(failed))
