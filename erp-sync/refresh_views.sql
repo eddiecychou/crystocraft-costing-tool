@@ -3,3 +3,4 @@
 -- CONCURRENTLY keeps the view readable during the refresh (needs the unique
 -- index created in api_views.sql).
 refresh materialized view concurrently public.erp_item;
+refresh materialized view public.erp_bom;

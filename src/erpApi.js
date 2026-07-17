@@ -19,3 +19,22 @@ export async function erpLookup(entity, { q = '', limit = 25, activeOnly = false
   if (!res.ok) throw new Error(data.error || `Lookup failed (${res.status})`)
   return data.rows || []
 }
+
+// Multi-level BOM explosion for one item code. Returns tree rows:
+// { level, parent_code, component_code, component_type, qty, ext_qty, is_assembly, path }
+export async function erpBom(code) {
+  const user = auth.currentUser
+  if (!user) throw new Error('Please sign in to look up ERP data.')
+  const token = await user.getIdToken()
+
+  const res = await fetch('/api/erp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ entity: 'bom', code }),
+  })
+
+  let data = {}
+  try { data = await res.json() } catch { /* non-JSON error body */ }
+  if (!res.ok) throw new Error(data.error || `BOM lookup failed (${res.status})`)
+  return data.rows || []
+}

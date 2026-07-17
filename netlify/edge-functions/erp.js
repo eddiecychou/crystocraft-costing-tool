@@ -77,9 +77,30 @@ export default async function handler(req) {
     return json({ error: 'Admin access required' }, 403)
   }
 
-  // 2) Validate the request against the whitelist.
+  // 2) Parse the request.
   let payload
   try { payload = await req.json() } catch { return json({ error: 'Bad JSON' }, 400) }
+
+  // 2a) BOM explosion: { entity: 'bom', code } → recursive explode_bom() RPC.
+  if (payload?.entity === 'bom') {
+    const code = String(payload.code ?? '').trim().slice(0, 40)
+    if (!code) return json({ error: 'Missing item code' }, 400)
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/explode_bom`, {
+      method: 'POST',
+      headers: {
+        apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`,
+        'Content-Type': 'application/json', Accept: 'application/json',
+      },
+      body: JSON.stringify({ p_code: code }),
+    })
+    if (!res.ok) {
+      const detail = await res.text()
+      return json({ error: 'BOM query failed', status: res.status, detail: detail.slice(0, 300) }, 502)
+    }
+    return json({ rows: await res.json() })
+  }
+
+  // 2b) Otherwise: whitelisted entity search.
   const cfg = ENTITIES[payload?.entity]
   if (!cfg) return json({ error: `Unknown entity: ${payload?.entity}` }, 400)
 

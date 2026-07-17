@@ -60,8 +60,16 @@ from raw.supplier;
 create extension if not exists pg_trgm;
 drop index if exists ix_item_code_trgm;       -- from an earlier iteration; search is on the matview now
 drop index if exists ix_item_sdesc_trgm;
-drop view if exists public.erp_item;
-drop materialized view if exists public.erp_item;
+-- Drop erp_item whether it currently exists as a plain view or a matview.
+do $$
+declare k "char";
+begin
+  select relkind into k from pg_class
+   where relname = 'erp_item' and relnamespace = 'public'::regnamespace;
+  if k = 'm' then execute 'drop materialized view public.erp_item cascade';
+  elsif k = 'v' then execute 'drop view public.erp_item cascade';
+  end if;
+end $$;
 
 create materialized view public.erp_item as
 select distinct on (itcode)
@@ -96,9 +104,65 @@ create unique index if not exists ux_erp_item_code    on public.erp_item (code);
 create index        if not exists ix_erp_item_code_trg on public.erp_item using gin (code gin_trgm_ops);
 create index        if not exists ix_erp_item_name_trg on public.erp_item using gin (name gin_trgm_ops);
 
+-- ── BOM (Phase 3) ────────────────────────────────────────────────────────────
+-- raw.itemdetail is the single-level BOM, revisioned (~10.3M rows). erp_bom
+-- collapses it to the CURRENT BOM = the lines of each parent's latest revision.
+-- explode_bom() then walks it recursively for a full multi-level explosion.
+drop materialized view if exists public.erp_bom cascade;
+
+create materialized view public.erp_bom as
+with latest as (
+  select iditemcode, max(nullif(idrevision, '')::int) as rev
+  from raw.itemdetail
+  where idsubitemcode is not null and idsubitemcode <> ''
+  group by iditemcode
+)
+select
+  d.iditemcode                        as parent_code,
+  d.idsubitemcode                     as component_code,
+  nullif(d.iditemtype, '')            as component_type,
+  coalesce(nullif(d.idqty, '')::numeric, 0) as qty,
+  l.rev                               as revision
+from raw.itemdetail d
+join latest l
+  on l.iditemcode = d.iditemcode
+ and nullif(d.idrevision, '')::int = l.rev
+where d.idsubitemcode is not null and d.idsubitemcode <> '';
+
+create index if not exists ix_erp_bom_parent on public.erp_bom (parent_code);
+
+-- Recursive multi-level explosion of one item. ext_qty = product of quantities
+-- down the path. is_assembly = the component itself has a BOM (expandable).
+-- Cycle-guarded (path membership) and depth-capped at 20.
+create or replace function public.explode_bom(p_code text)
+returns table (
+  level int, parent_code text, component_code text, component_type text,
+  qty numeric, ext_qty numeric, is_assembly boolean, path text[]
+) language sql stable as $$
+  with recursive tree as (
+    select 1 as level, b.parent_code, b.component_code, b.component_type,
+           b.qty, b.qty as ext_qty, array[b.parent_code, b.component_code] as path
+    from public.erp_bom b
+    where b.parent_code = p_code
+    union all
+    select t.level + 1, b.parent_code, b.component_code, b.component_type,
+           b.qty, t.ext_qty * b.qty, t.path || b.component_code
+    from public.erp_bom b
+    join tree t on b.parent_code = t.component_code
+    where t.level < 20 and not b.component_code = any(t.path)
+  )
+  select t.level, t.parent_code, t.component_code, t.component_type, t.qty, t.ext_qty,
+         exists (select 1 from public.erp_bom c where c.parent_code = t.component_code) as is_assembly,
+         t.path
+  from tree t
+  order by t.path;
+$$;
+
 -- ── Access: server-side only. Browser (anon) must NOT read these. ────────────
-revoke all on public.erp_customer, public.erp_supplier, public.erp_item from anon, authenticated;
-grant select on public.erp_customer, public.erp_supplier, public.erp_item to service_role;
+revoke all on public.erp_customer, public.erp_supplier, public.erp_item, public.erp_bom from anon, authenticated;
+grant select on public.erp_customer, public.erp_supplier, public.erp_item, public.erp_bom to service_role;
+revoke all on function public.explode_bom(text) from anon, authenticated;
+grant execute on function public.explode_bom(text) to service_role;
 
 -- Refresh PostgREST's schema cache so /rest/v1/erp_customer etc. appear.
 notify pgrst, 'reload schema';

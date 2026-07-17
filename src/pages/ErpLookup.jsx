@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Search, Database, Building2, Factory, Boxes, AlertCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Search, Database, Building2, Factory, Boxes, AlertCircle, ListTree, X } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
-import { erpLookup } from '../erpApi'
+import { erpLookup, erpBom } from '../erpApi'
 
 // Column layout per entity. `key` maps to the curated view's fields.
 const ENTITIES = {
@@ -59,6 +59,70 @@ function cellValue(col, row) {
   return (v ?? null) === null ? <span className="text-gray-300">—</span> : v
 }
 
+const fmtQty = (v) => Number(v).toLocaleString(undefined, { maximumFractionDigits: 4 })
+
+// Modal showing the recursive BOM explosion of one item.
+function BomModal({ code, rows, loading, error, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto"
+         onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl my-8" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <ListTree size={18} className="text-teal-600" />
+            <h2 className="font-semibold text-gray-900">Bill of Materials</h2>
+            <span className="font-mono text-xs text-gray-500">{code}</span>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+        </div>
+        <div className="p-4 max-h-[70vh] overflow-auto">
+          {loading && <p className="text-sm text-gray-500 py-6 text-center">Exploding BOM…</p>}
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <AlertCircle size={16} /> {error}
+            </div>
+          )}
+          {!loading && !error && rows.length === 0 && (
+            <p className="text-sm text-gray-400 py-6 text-center">No components found for this item.</p>
+          )}
+          {!loading && rows.length > 0 && (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500 border-b border-gray-200">
+                  <th className="px-2 py-1.5 font-medium">Component</th>
+                  <th className="px-2 py-1.5 font-medium">Type</th>
+                  <th className="px-2 py-1.5 font-medium text-right">Qty</th>
+                  <th className="px-2 py-1.5 font-medium text-right">Ext. Qty</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
+                    <td className="px-2 py-1.5 font-mono text-xs" style={{ paddingLeft: `${(r.level - 1) * 20 + 8}px` }}>
+                      {r.is_assembly && <span className="text-gray-400 mr-1">▸</span>}
+                      {r.component_code}
+                    </td>
+                    <td className="px-2 py-1.5">
+                      {r.component_type && (
+                        <span className="inline-block px-1.5 py-0.5 rounded text-xs bg-gray-100 text-gray-600">{r.component_type}</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-1.5 text-right tabular-nums text-gray-500">{fmtQty(r.qty)}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums font-medium">{fmtQty(r.ext_qty)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div className="px-5 py-2.5 border-t border-gray-200 text-xs text-gray-400">
+          Indented rows are sub-assemblies exploded to their components. Ext. Qty = quantity per one finished unit.
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function ErpLookup() {
   const [entity, setEntity] = useState('customer')
   const [q, setQ] = useState('')
@@ -67,7 +131,24 @@ export default function ErpLookup() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // BOM modal state
+  const [bomCode, setBomCode] = useState(null)
+  const [bomRows, setBomRows] = useState([])
+  const [bomLoading, setBomLoading] = useState(false)
+  const [bomError, setBomError] = useState('')
+
   const cfg = ENTITIES[entity]
+
+  async function openBom(code) {
+    setBomCode(code); setBomRows([]); setBomError(''); setBomLoading(true)
+    try {
+      setBomRows(await erpBom(code))
+    } catch (e) {
+      setBomError(e.message)
+    } finally {
+      setBomLoading(false)
+    }
+  }
 
   // Debounced lookup on any input change.
   useEffect(() => {
@@ -160,7 +241,12 @@ export default function ErpLookup() {
                 <tr key={r.code} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
                   {cfg.cols.map((c) => (
                     <td key={c.key} className={`px-3 py-2 align-top ${c.mono ? 'font-mono text-xs' : ''} ${c.grow ? '' : 'whitespace-nowrap'} ${c.num ? 'text-right tabular-nums' : ''}`}>
-                      {cellValue(c, r)}
+                      {entity === 'item' && c.key === 'has_bom' && r.has_bom
+                        ? <button onClick={() => openBom(r.code)}
+                            className="inline-flex items-center gap-0.5 text-teal-600 hover:underline text-xs font-medium">
+                            <ListTree size={13} /> View
+                          </button>
+                        : cellValue(c, r)}
                     </td>
                   ))}
                   <td className="px-3 py-2">
@@ -183,6 +269,11 @@ export default function ErpLookup() {
       <p className="text-xs text-gray-400 mt-3">
         Showing up to 50 results. Source: <span className="font-mono">JES_UnitedArt</span> → Supabase mirror.
       </p>
+
+      {bomCode && (
+        <BomModal code={bomCode} rows={bomRows} loading={bomLoading} error={bomError}
+                  onClose={() => setBomCode(null)} />
+      )}
     </div>
   )
 }

@@ -118,15 +118,21 @@ The React/Firebase app reads ERP data through a curated layer, **never** `raw.*`
 - `public.erp_item` — a **materialized view** exposing the latest revision per
   code. `raw.item` is a revision-history table (~1.4M rows, ~44k codes, ~32
   revisions each); the matview collapses it to ~44k rows and is trigram-indexed
-  for fast search. It must be **refreshed after each sync** — `sync.py` does this
+  for fast search.
+- `public.erp_bom` + `explode_bom(code)` — the BOM layer. `raw.itemdetail` is the
+  single-level BOM, revisioned (~10.3M rows); `erp_bom` is the current BOM (latest
+  revision per parent, ~432k lines), and `explode_bom()` walks it recursively for
+  a full multi-level explosion with extended quantities. Cost-bearing → admin-only.
+- Both matviews must be **refreshed after each sync** — `sync.py` does this
   automatically via `refresh_views.sql` on a clean run.
 
 Access path: browser → Netlify edge function `/api/erp` (verifies the caller's
 Firebase token, requires `role: 'admin'`, queries the views with the Supabase
 secret key server-side) → JSON. The Supabase key and the ERP data never reach the
 browser. The whole endpoint is **admin-only** because the item view carries costs.
-Phase 1 = customer/supplier lookup; Phase 2 = item master (with costs). Next:
-invoices / sales orders / POs / BOM.
+Phase 1 = customer/supplier lookup; Phase 2 = item master (with costs); Phase 3 =
+BOM explosion. Next: invoices / sales orders / POs (transaction data — these
+change daily, so enable the incremental nightly sync before relying on them).
 
 ---
 
