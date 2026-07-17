@@ -36,10 +36,11 @@ const ENTITIES = {
   },
 }
 
-// Header → line-detail views, fetched by exact header code (see the 'lines' action).
+// Header → line-detail + surcharge views, fetched by exact header code (see the
+// 'lines' action). Surcharges are freight / delivery / packing / etc. charges.
 const LINES = {
-  sales_invoice: { view: 'erp_sales_invoice_line', fk: 'invoice_no' },
-  sales_order: { view: 'erp_sales_order_line', fk: 'order_no' },
+  sales_invoice: { view: 'erp_sales_invoice_line', fk: 'invoice_no', surchargeView: 'erp_sales_invoice_surcharge' },
+  sales_order: { view: 'erp_sales_order_line', fk: 'order_no', surchargeView: 'erp_sales_order_surcharge' },
 }
 
 const json = (body, status = 200) =>
@@ -115,24 +116,35 @@ export default async function handler(req) {
   }
 
   // 2b) Line detail: { entity: 'lines', of: 'sales_invoice'|'sales_order', code }.
+  //     Returns the header's line items and (for sales docs) its surcharge lines.
   if (payload?.entity === 'lines') {
     const lcfg = LINES[payload?.of]
     if (!lcfg) return json({ error: `Unknown line type: ${payload?.of}` }, 400)
     const code = String(payload.code ?? '').replace(/[^A-Za-z0-9/_-]/g, '').slice(0, 40)
     if (!code) return json({ error: 'Missing header code' }, 400)
-    const p = new URLSearchParams()
-    p.set('select', '*')
-    p.set(lcfg.fk, `eq.${code}`)
-    p.set('order', 'seq.asc')
-    p.set('limit', '1000')
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/${lcfg.view}?${p.toString()}`, {
-      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Accept: 'application/json' },
-    })
-    if (!res.ok) {
-      const detail = await res.text()
-      return json({ error: 'Line query failed', status: res.status, detail: detail.slice(0, 300) }, 502)
+
+    const fetchByHeader = async (view) => {
+      const p = new URLSearchParams()
+      p.set('select', '*')
+      p.set(lcfg.fk, `eq.${code}`)
+      p.set('order', 'seq.asc')
+      p.set('limit', '1000')
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/${view}?${p.toString()}`, {
+        headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Accept: 'application/json' },
+      })
+      if (!r.ok) throw new Error(`${view}: ${r.status} ${(await r.text()).slice(0, 200)}`)
+      return r.json()
     }
-    return json({ rows: await res.json() })
+
+    try {
+      const [rows, surcharges] = await Promise.all([
+        fetchByHeader(lcfg.view),
+        lcfg.surchargeView ? fetchByHeader(lcfg.surchargeView) : Promise.resolve([]),
+      ])
+      return json({ rows, surcharges })
+    } catch (e) {
+      return json({ error: 'Line query failed', detail: String(e.message).slice(0, 300) }, 502)
+    }
   }
 
   // 2c) Otherwise: whitelisted entity search.

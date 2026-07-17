@@ -92,9 +92,24 @@ function cellValue(col, row) {
 const money = (v) => (v === null || v === undefined || v === '')
   ? '—' : Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-// Modal showing the line items of one sales invoice / order.
-function LinesModal({ title, code, rows, loading, error, onClose }) {
-  const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0)
+// Modal showing the line items, surcharges, and full money breakdown of one
+// sales invoice / order.
+function LinesModal({ title, code, header, rows, surcharges, loading, error, onClose }) {
+  const num = (v) => Number(v) || 0
+  const subtotal = rows.reduce((s, r) => s + num(r.amount), 0)
+  const discount = num(header?.discount)
+  const surchargeTotal = surcharges.reduce((s, r) => s + num(r.amount), 0)
+  const tax = num(header?.tax)
+  const grandTotal = header?.amount != null ? num(header.amount) : subtotal - discount + surchargeTotal + tax
+  const deposit = num(header?.deposit)
+  const balance = grandTotal - deposit
+  const curr = header?.currency ? ` ${header.currency}` : ''
+  const SummaryRow = ({ label, value, strong, sign }) => (
+    <div className={`flex justify-between gap-8 py-0.5 ${strong ? 'font-semibold text-gray-900 border-t border-gray-200 mt-1 pt-1.5' : 'text-gray-600'}`}>
+      <span>{label}</span>
+      <span className="tabular-nums">{sign === '-' && value ? '−' : ''}{money(value)}{curr}</span>
+    </div>
+  )
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl my-8" onClick={(e) => e.stopPropagation()}>
@@ -139,12 +154,28 @@ function LinesModal({ title, code, rows, loading, error, onClose }) {
                     <td className="px-2 py-1.5 text-right tabular-nums font-medium">{money(r.amount)}</td>
                   </tr>
                 ))}
-                <tr className="border-t-2 border-gray-200 font-semibold">
-                  <td className="px-2 py-2" colSpan={5}>Total</td>
-                  <td className="px-2 py-2 text-right tabular-nums">{money(total)}</td>
-                </tr>
+                {surcharges.map((s, i) => (
+                  <tr key={`s${i}`} className="border-b border-gray-50 bg-amber-50/40">
+                    <td className="px-2 py-1.5 text-gray-400"></td>
+                    <td className="px-2 py-1.5 text-xs text-amber-700">{s.code || 'CHARGE'}</td>
+                    <td className="px-2 py-1.5 text-gray-600" colSpan={3}>{s.description}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{money(s.amount)}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
+          )}
+
+          {!loading && !error && (rows.length > 0 || surcharges.length > 0) && (
+            <div className="mt-4 ml-auto w-full max-w-xs text-sm">
+              <SummaryRow label="Subtotal" value={subtotal} />
+              {discount > 0 && <SummaryRow label="Discount" value={discount} sign="-" />}
+              {surchargeTotal > 0 && <SummaryRow label="Surcharges (freight, etc.)" value={surchargeTotal} />}
+              {tax > 0 && <SummaryRow label="Tax / GST" value={tax} />}
+              <SummaryRow label="Grand total" value={grandTotal} strong />
+              {deposit > 0 && <SummaryRow label="Deposit paid" value={deposit} sign="-" />}
+              {deposit > 0 && <SummaryRow label="Balance due" value={balance} strong />}
+            </div>
           )}
         </div>
       </div>
@@ -243,17 +274,20 @@ export default function ErpLookup() {
     }
   }
 
-  // Lines (sales invoice / order line items) modal state
-  const [lines, setLines] = useState(null)       // { of, code, title } | null
+  // Lines (sales invoice / order detail) modal state
+  const [lines, setLines] = useState(null)       // { of, code, title, header } | null
   const [linesRows, setLinesRows] = useState([])
+  const [linesSurcharges, setLinesSurcharges] = useState([])
   const [linesLoading, setLinesLoading] = useState(false)
   const [linesError, setLinesError] = useState('')
 
-  async function openLines(of, code) {
+  async function openLines(of, row) {
     const title = of === 'sales_invoice' ? 'Sales Invoice' : 'Sales Order'
-    setLines({ of, code, title }); setLinesRows([]); setLinesError(''); setLinesLoading(true)
+    setLines({ of, code: row.code, title, header: row })
+    setLinesRows([]); setLinesSurcharges([]); setLinesError(''); setLinesLoading(true)
     try {
-      setLinesRows(await erpLines(of, code))
+      const data = await erpLines(of, row.code)
+      setLinesRows(data.rows); setLinesSurcharges(data.surcharges)
     } catch (e) {
       setLinesError(e.message)
     } finally {
@@ -362,7 +396,7 @@ export default function ErpLookup() {
                   ))}
                   <td className="px-3 py-2">
                     {cfg.linesOf
-                      ? <button onClick={() => openLines(cfg.linesOf, r.code)}
+                      ? <button onClick={() => openLines(cfg.linesOf, r)}
                           className="inline-flex items-center gap-0.5 text-teal-600 hover:underline text-xs font-medium">
                           <FileText size={13} /> Lines
                         </button>
@@ -391,7 +425,8 @@ export default function ErpLookup() {
                   onClose={() => setBomCode(null)} />
       )}
       {lines && (
-        <LinesModal title={lines.title} code={lines.code} rows={linesRows}
+        <LinesModal title={lines.title} code={lines.code} header={lines.header}
+                    rows={linesRows} surcharges={linesSurcharges}
                     loading={linesLoading} error={linesError} onClose={() => setLines(null)} />
       )}
     </div>

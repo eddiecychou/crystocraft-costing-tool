@@ -39,8 +39,8 @@ export async function erpBom(code) {
   return data.rows || []
 }
 
-// Line items for one header. `of` is 'sales_invoice' or 'sales_order'; `code`
-// is the invoice/order number.
+// Detail for one header. `of` is 'sales_invoice' or 'sales_order'; `code` is the
+// invoice/order number. Returns { rows, surcharges } (surcharges = freight etc.).
 export async function erpLines(of, code) {
   const user = auth.currentUser
   if (!user) throw new Error('Please sign in to look up ERP data.')
@@ -55,5 +55,5 @@ export async function erpLines(of, code) {
   let data = {}
   try { data = await res.json() } catch { /* non-JSON error body */ }
   if (!res.ok) throw new Error(data.error || `Line lookup failed (${res.status})`)
-  return data.rows || []
+  return { rows: data.rows || [], surcharges: data.surcharges || [] }
 }

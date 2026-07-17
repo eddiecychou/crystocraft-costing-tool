@@ -177,7 +177,8 @@ select
   nullif(sisalesperson, '')                as salesperson,
   nullif(sishipmentdate, '')::timestamp    as ship_date,
   nullif(sipaymentterms, '')               as payment_terms,
-  nullif(lastupdate, '')::timestamp        as last_update
+  nullif(lastupdate, '')::timestamp        as last_update,
+  nullif(sigstamount, '')::numeric         as tax
 from raw.salesinvoice;
 
 create or replace view public.erp_sales_invoice_line as
@@ -227,17 +228,40 @@ select
   nullif(sdrefno, '')             as ref
 from raw.salesorderdetail;
 
--- Index the line FKs so fetching one header's lines is fast.
+-- Surcharge lines: freight / delivery / packing / credit-card / misc charges,
+-- keyed by document. A document total = line subtotal − discount + surcharges
+-- (+ tax, invoices only). qty×unit_price is the surcharge line amount.
+create or replace view public.erp_sales_invoice_surcharge as
+select
+  sssino                          as invoice_no,
+  nullif(ssseq, '')::int          as seq,
+  nullif(sssurchargecode, '')     as code,
+  nullif(ssdesc, '')              as description,
+  coalesce(nullif(ssqty, '')::numeric, 1) * coalesce(nullif(ssunitprice, '')::numeric, 0) as amount
+from raw.salesinvoicesurcharge;
+
+create or replace view public.erp_sales_order_surcharge as
+select
+  sssono                          as order_no,
+  nullif(ssseq, '')::int          as seq,
+  nullif(sssurchargecode, '')     as code,
+  nullif(ssdesc, '')              as description,
+  coalesce(nullif(ssqty, '')::numeric, 1) * coalesce(nullif(ssunitprice, '')::numeric, 0) as amount
+from raw.salesordersurcharge;
+
+-- Index the line + surcharge FKs so fetching one header's detail is fast.
+create index if not exists ix_sis_sino on raw.salesinvoicesurcharge (sssino);
+create index if not exists ix_sos_sono on raw.salesordersurcharge (sssono);
 create index if not exists ix_sid_sino on raw.salesinvoicedetail (sdsino);
 create index if not exists ix_sod_sono on raw.salesorderdetail (sdsono);
 
 -- ── Access: server-side only. Browser (anon) must NOT read these. ────────────
 revoke all on public.erp_customer, public.erp_supplier, public.erp_item, public.erp_bom,
-  public.erp_sales_invoice, public.erp_sales_invoice_line,
-  public.erp_sales_order, public.erp_sales_order_line from anon, authenticated;
+  public.erp_sales_invoice, public.erp_sales_invoice_line, public.erp_sales_invoice_surcharge,
+  public.erp_sales_order, public.erp_sales_order_line, public.erp_sales_order_surcharge from anon, authenticated;
 grant select on public.erp_customer, public.erp_supplier, public.erp_item, public.erp_bom,
-  public.erp_sales_invoice, public.erp_sales_invoice_line,
-  public.erp_sales_order, public.erp_sales_order_line to service_role;
+  public.erp_sales_invoice, public.erp_sales_invoice_line, public.erp_sales_invoice_surcharge,
+  public.erp_sales_order, public.erp_sales_order_line, public.erp_sales_order_surcharge to service_role;
 revoke all on function public.explode_bom(text) from anon, authenticated;
 grant execute on function public.explode_bom(text) to service_role;
 
