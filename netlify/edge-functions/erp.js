@@ -26,6 +26,20 @@ const ENTITIES = {
   customer: { view: 'erp_customer', search: ['code', 'name', 'short_name', 'ref_code'] },
   supplier: { view: 'erp_supplier', search: ['code', 'name', 'short_name', 'ref_code'] },
   item: { view: 'erp_item', search: ['code', 'name', 'description'] },
+  sales_invoice: {
+    view: 'erp_sales_invoice', hasActive: false, orderBy: 'code.desc',
+    search: ['code', 'customer', 'customer_code', 'ref', 'customer_po'],
+  },
+  sales_order: {
+    view: 'erp_sales_order', hasActive: false, orderBy: 'code.desc',
+    search: ['code', 'customer', 'customer_code', 'ref', 'customer_po'],
+  },
+}
+
+// Header → line-detail views, fetched by exact header code (see the 'lines' action).
+const LINES = {
+  sales_invoice: { view: 'erp_sales_invoice_line', fk: 'invoice_no' },
+  sales_order: { view: 'erp_sales_order_line', fk: 'order_no' },
 }
 
 const json = (body, status = 200) =>
@@ -100,7 +114,28 @@ export default async function handler(req) {
     return json({ rows: await res.json() })
   }
 
-  // 2b) Otherwise: whitelisted entity search.
+  // 2b) Line detail: { entity: 'lines', of: 'sales_invoice'|'sales_order', code }.
+  if (payload?.entity === 'lines') {
+    const lcfg = LINES[payload?.of]
+    if (!lcfg) return json({ error: `Unknown line type: ${payload?.of}` }, 400)
+    const code = String(payload.code ?? '').replace(/[^A-Za-z0-9/_-]/g, '').slice(0, 40)
+    if (!code) return json({ error: 'Missing header code' }, 400)
+    const p = new URLSearchParams()
+    p.set('select', '*')
+    p.set(lcfg.fk, `eq.${code}`)
+    p.set('order', 'seq.asc')
+    p.set('limit', '1000')
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${lcfg.view}?${p.toString()}`, {
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Accept: 'application/json' },
+    })
+    if (!res.ok) {
+      const detail = await res.text()
+      return json({ error: 'Line query failed', status: res.status, detail: detail.slice(0, 300) }, 502)
+    }
+    return json({ rows: await res.json() })
+  }
+
+  // 2c) Otherwise: whitelisted entity search.
   const cfg = ENTITIES[payload?.entity]
   if (!cfg) return json({ error: `Unknown entity: ${payload?.entity}` }, 400)
 
@@ -112,9 +147,9 @@ export default async function handler(req) {
   //    the search term can't break the or() filter.
   const params = new URLSearchParams()
   params.set('select', '*')
-  params.set('order', 'code.asc')
+  params.set('order', cfg.orderBy || 'code.asc')
   params.set('limit', String(limit))
-  if (activeOnly) params.set('active', 'is.true')
+  if (activeOnly && cfg.hasActive !== false) params.set('active', 'is.true')
   if (q) {
     const safe = q.replace(/["\\]/g, ' ')
     const or = cfg.search.map((col) => `${col}.ilike."*${safe}*"`).join(',')

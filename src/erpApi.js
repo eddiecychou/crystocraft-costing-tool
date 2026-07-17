@@ -38,3 +38,22 @@ export async function erpBom(code) {
   if (!res.ok) throw new Error(data.error || `BOM lookup failed (${res.status})`)
   return data.rows || []
 }
+
+// Line items for one header. `of` is 'sales_invoice' or 'sales_order'; `code`
+// is the invoice/order number.
+export async function erpLines(of, code) {
+  const user = auth.currentUser
+  if (!user) throw new Error('Please sign in to look up ERP data.')
+  const token = await user.getIdToken()
+
+  const res = await fetch('/api/erp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ entity: 'lines', of, code }),
+  })
+
+  let data = {}
+  try { data = await res.json() } catch { /* non-JSON error body */ }
+  if (!res.ok) throw new Error(data.error || `Line lookup failed (${res.status})`)
+  return data.rows || []
+}

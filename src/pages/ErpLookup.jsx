@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Search, Database, Building2, Factory, Boxes, AlertCircle, ListTree, X } from 'lucide-react'
+import { Search, Database, Building2, Factory, Boxes, AlertCircle, ListTree, X, Receipt, ClipboardList, FileText } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
-import { erpLookup, erpBom } from '../erpApi'
+import { erpLookup, erpBom, erpLines } from '../erpApi'
 
 // Column layout per entity. `key` maps to the curated view's fields.
 const ENTITIES = {
@@ -41,6 +41,28 @@ const ENTITIES = {
       { key: 'has_bom', label: 'BOM', bool: true },
     ],
   },
+  sales_invoice: {
+    label: 'Invoices', Icon: Receipt, linesOf: 'sales_invoice',
+    cols: [
+      { key: 'code', label: 'Invoice #', mono: true },
+      { key: 'date', label: 'Date', date: true },
+      { key: 'customer', label: 'Customer', grow: true },
+      { key: 'currency', label: 'Curr' },
+      { key: 'amount', label: 'Amount', num: true },
+      { key: 'status', label: 'Status', badge: true },
+    ],
+  },
+  sales_order: {
+    label: 'Sales Orders', Icon: ClipboardList, linesOf: 'sales_order',
+    cols: [
+      { key: 'code', label: 'Order #', mono: true },
+      { key: 'date', label: 'Date', date: true },
+      { key: 'customer', label: 'Customer', grow: true },
+      { key: 'currency', label: 'Curr' },
+      { key: 'amount', label: 'Amount', num: true },
+      { key: 'status', label: 'Status', badge: true },
+    ],
+  },
 }
 
 // Render a cell value based on its column type.
@@ -56,7 +78,78 @@ function cellValue(col, row) {
       ? <span className="text-gray-300">—</span>
       : Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   }
+  if (col.date) {
+    return v ? String(v).slice(0, 10) : <span className="text-gray-300">—</span>
+  }
+  if (col.badge) {
+    if (!v) return <span className="text-gray-300">—</span>
+    const green = /confirm|complet|paid|ship|done/i.test(v)
+    return <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${green ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>{v}</span>
+  }
   return (v ?? null) === null ? <span className="text-gray-300">—</span> : v
+}
+
+const money = (v) => (v === null || v === undefined || v === '')
+  ? '—' : Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+// Modal showing the line items of one sales invoice / order.
+function LinesModal({ title, code, rows, loading, error, onClose }) {
+  const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0)
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl my-8" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            <FileText size={18} className="text-teal-600" />
+            <h2 className="font-semibold text-gray-900">{title}</h2>
+            <span className="font-mono text-xs text-gray-500">{code}</span>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+        </div>
+        <div className="p-4 max-h-[70vh] overflow-auto">
+          {loading && <p className="text-sm text-gray-500 py-6 text-center">Loading lines…</p>}
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <AlertCircle size={16} /> {error}
+            </div>
+          )}
+          {!loading && !error && rows.length === 0 && (
+            <p className="text-sm text-gray-400 py-6 text-center">No line items on this document.</p>
+          )}
+          {!loading && rows.length > 0 && (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500 border-b border-gray-200">
+                  <th className="px-2 py-1.5 font-medium">#</th>
+                  <th className="px-2 py-1.5 font-medium">Item</th>
+                  <th className="px-2 py-1.5 font-medium">Description</th>
+                  <th className="px-2 py-1.5 font-medium text-right">Qty</th>
+                  <th className="px-2 py-1.5 font-medium text-right">Unit Price</th>
+                  <th className="px-2 py-1.5 font-medium text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
+                    <td className="px-2 py-1.5 text-gray-400 tabular-nums">{r.seq}</td>
+                    <td className="px-2 py-1.5 font-mono text-xs">{r.item_code}</td>
+                    <td className="px-2 py-1.5">{r.description}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{r.qty}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{money(r.unit_price)}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums font-medium">{money(r.amount)}</td>
+                  </tr>
+                ))}
+                <tr className="border-t-2 border-gray-200 font-semibold">
+                  <td className="px-2 py-2" colSpan={5}>Total</td>
+                  <td className="px-2 py-2 text-right tabular-nums">{money(total)}</td>
+                </tr>
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 const fmtQty = (v) => Number(v).toLocaleString(undefined, { maximumFractionDigits: 4 })
@@ -150,6 +243,24 @@ export default function ErpLookup() {
     }
   }
 
+  // Lines (sales invoice / order line items) modal state
+  const [lines, setLines] = useState(null)       // { of, code, title } | null
+  const [linesRows, setLinesRows] = useState([])
+  const [linesLoading, setLinesLoading] = useState(false)
+  const [linesError, setLinesError] = useState('')
+
+  async function openLines(of, code) {
+    const title = of === 'sales_invoice' ? 'Sales Invoice' : 'Sales Order'
+    setLines({ of, code, title }); setLinesRows([]); setLinesError(''); setLinesLoading(true)
+    try {
+      setLinesRows(await erpLines(of, code))
+    } catch (e) {
+      setLinesError(e.message)
+    } finally {
+      setLinesLoading(false)
+    }
+  }
+
   // Debounced lookup on any input change.
   useEffect(() => {
     let alive = true
@@ -233,7 +344,7 @@ export default function ErpLookup() {
                 {cfg.cols.map((c) => (
                   <th key={c.key} className={`px-3 py-2 font-medium whitespace-nowrap ${c.num ? 'text-right' : ''}`}>{c.label}</th>
                 ))}
-                <th className="px-3 py-2 font-medium">Status</th>
+                <th className="px-3 py-2 font-medium">{cfg.linesOf ? 'Lines' : 'Status'}</th>
               </tr>
             </thead>
             <tbody>
@@ -250,9 +361,14 @@ export default function ErpLookup() {
                     </td>
                   ))}
                   <td className="px-3 py-2">
-                    <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${
-                      r.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                    }`}>{r.active ? 'Active' : 'Expired'}</span>
+                    {cfg.linesOf
+                      ? <button onClick={() => openLines(cfg.linesOf, r.code)}
+                          className="inline-flex items-center gap-0.5 text-teal-600 hover:underline text-xs font-medium">
+                          <FileText size={13} /> Lines
+                        </button>
+                      : <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${
+                          r.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                        }`}>{r.active ? 'Active' : 'Expired'}</span>}
                   </td>
                 </tr>
               ))}
@@ -273,6 +389,10 @@ export default function ErpLookup() {
       {bomCode && (
         <BomModal code={bomCode} rows={bomRows} loading={bomLoading} error={bomError}
                   onClose={() => setBomCode(null)} />
+      )}
+      {lines && (
+        <LinesModal title={lines.title} code={lines.code} rows={linesRows}
+                    loading={linesLoading} error={linesError} onClose={() => setLines(null)} />
       )}
     </div>
   )

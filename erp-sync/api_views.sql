@@ -158,9 +158,86 @@ returns table (
   order by t.path;
 $$;
 
+-- ── Sales invoices & orders (Phase 4) ────────────────────────────────────────
+-- Small header tables (~5k rows each) + their line details. Plain views (live
+-- over raw); the header id is aliased to `code` to match the generic API/search.
+create or replace view public.erp_sales_invoice as
+select
+  sino                                     as code,
+  nullif(sistatus, '')                     as status,
+  nullif(sidate, '')::timestamp            as date,
+  nullif(sicustomer, '')                   as customer_code,
+  nullif(sicustomername, '')               as customer,
+  nullif(sicurrency, '')                   as currency,
+  nullif(siamount, '')::numeric            as amount,
+  nullif(sidiscamount, '')::numeric        as discount,
+  nullif(sidepositamount, '')::numeric     as deposit,
+  nullif(sipono, '')                       as customer_po,
+  nullif(siref, '')                        as ref,
+  nullif(sisalesperson, '')                as salesperson,
+  nullif(sishipmentdate, '')::timestamp    as ship_date,
+  nullif(sipaymentterms, '')               as payment_terms,
+  nullif(lastupdate, '')::timestamp        as last_update
+from raw.salesinvoice;
+
+create or replace view public.erp_sales_invoice_line as
+select
+  sdsino                          as invoice_no,
+  nullif(sdseq, '')::int          as seq,
+  nullif(sditemcode, '')          as item_code,
+  nullif(sddesc, '')              as description,
+  nullif(sditemtype, '')          as item_type,
+  nullif(sdqty, '')::numeric      as qty,
+  nullif(sdunitprice, '')::numeric as unit_price,
+  nullif(sdlineamount, '')::numeric as amount,
+  nullif(sdrefdocno, '')          as ref_doc
+from raw.salesinvoicedetail;
+
+create or replace view public.erp_sales_order as
+select
+  sono                                     as code,
+  nullif(sostatus, '')                     as status,
+  nullif(sodate, '')::timestamp            as date,
+  nullif(sopcdeliverydate, '')::timestamp  as delivery_date,
+  nullif(socustomer, '')                   as customer_code,
+  nullif(socustomername, '')               as customer,
+  nullif(socurrency, '')                   as currency,
+  nullif(soamount, '')::numeric            as amount,
+  nullif(sodiscamount, '')::numeric        as discount,
+  nullif(sodepositamount, '')::numeric     as deposit,
+  nullif(sopono, '')                       as customer_po,
+  nullif(soref, '')                        as ref,
+  nullif(sosalesperson, '')                as salesperson,
+  nullif(soshipmentdate, '')::timestamp    as ship_date,
+  nullif(sopaymentterms, '')               as payment_terms,
+  nullif(lastupdate, '')::timestamp        as last_update
+from raw.salesorder;
+
+create or replace view public.erp_sales_order_line as
+select
+  sdsono                          as order_no,
+  nullif(sdseq, '')::int          as seq,
+  nullif(sditemcode, '')          as item_code,
+  nullif(sddesc, '')              as description,
+  nullif(sditemtype, '')          as item_type,
+  nullif(sdqty, '')::numeric      as qty,
+  nullif(sdunitprice, '')::numeric as unit_price,
+  nullif(sdlineamount, '')::numeric as amount,
+  nullif(sdshipdate, '')::timestamp as ship_date,
+  nullif(sdrefno, '')             as ref
+from raw.salesorderdetail;
+
+-- Index the line FKs so fetching one header's lines is fast.
+create index if not exists ix_sid_sino on raw.salesinvoicedetail (sdsino);
+create index if not exists ix_sod_sono on raw.salesorderdetail (sdsono);
+
 -- ── Access: server-side only. Browser (anon) must NOT read these. ────────────
-revoke all on public.erp_customer, public.erp_supplier, public.erp_item, public.erp_bom from anon, authenticated;
-grant select on public.erp_customer, public.erp_supplier, public.erp_item, public.erp_bom to service_role;
+revoke all on public.erp_customer, public.erp_supplier, public.erp_item, public.erp_bom,
+  public.erp_sales_invoice, public.erp_sales_invoice_line,
+  public.erp_sales_order, public.erp_sales_order_line from anon, authenticated;
+grant select on public.erp_customer, public.erp_supplier, public.erp_item, public.erp_bom,
+  public.erp_sales_invoice, public.erp_sales_invoice_line,
+  public.erp_sales_order, public.erp_sales_order_line to service_role;
 revoke all on function public.explode_bom(text) from anon, authenticated;
 grant execute on function public.explode_bom(text) to service_role;
 
