@@ -111,6 +111,25 @@ All credentials live only in `erp-sync/.env` (git-ignored).
 
 ---
 
+## 4b. App read layer (`api_views.sql`) — the bridge to the costing app
+
+The React/Firebase app reads ERP data through a curated layer, **never** `raw.*`:
+- `public.erp_customer`, `public.erp_supplier` — plain views (live over `raw`).
+- `public.erp_item` — a **materialized view** exposing the latest revision per
+  code. `raw.item` is a revision-history table (~1.4M rows, ~44k codes, ~32
+  revisions each); the matview collapses it to ~44k rows and is trigram-indexed
+  for fast search. It must be **refreshed after each sync** — `sync.py` does this
+  automatically via `refresh_views.sql` on a clean run.
+
+Access path: browser → Netlify edge function `/api/erp` (verifies the caller's
+Firebase token, requires `role: 'admin'`, queries the views with the Supabase
+secret key server-side) → JSON. The Supabase key and the ERP data never reach the
+browser. The whole endpoint is **admin-only** because the item view carries costs.
+Phase 1 = customer/supplier lookup; Phase 2 = item master (with costs). Next:
+invoices / sales orders / POs / BOM.
+
+---
+
 ## 5. Files
 
 | File | What it is |
@@ -121,6 +140,8 @@ All credentials live only in `erp-sync/.env` (git-ignored).
 | `discover.py` | read-only schema catalog: tables + row counts + DB size |
 | `validate.sql` | post-sync spot-checks (counts, dupes, orphans, samples) |
 | `create_readonly_login.sql` | creates `erp_readonly` (git-ignored — has password) |
+| `api_views.sql` | curated read-layer for the app: `erp_customer`, `erp_supplier` (views) + `erp_item` (materialized view, latest revision per code). Re-runnable. |
+| `refresh_views.sql` | refreshes the materialized views; `sync.py` runs it automatically on a clean sync |
 | `.env` | all credentials + connection strings (git-ignored) |
 | `.env.example` | template |
 | `requirements.txt` | Python deps (pure-Python drivers) |

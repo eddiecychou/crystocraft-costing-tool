@@ -25,10 +25,23 @@ const JWKS = createRemoteJWKSet(
 const ENTITIES = {
   customer: { view: 'erp_customer', search: ['code', 'name', 'short_name', 'ref_code'] },
   supplier: { view: 'erp_supplier', search: ['code', 'name', 'short_name', 'ref_code'] },
+  item: { view: 'erp_item', search: ['code', 'name', 'description'] },
 }
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+
+// The ERP archive holds costs, margins, and supplier pricing — trade secrets.
+// So the whole endpoint is admin-only. "admin" = the app's Firestore
+// users/{uid}.role === 'admin' (same rule the app UI uses). We read the caller's
+// own profile doc with their token — Firestore rules allow a user to read it.
+async function isAdmin(uid, idToken, projectId) {
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } })
+  if (!r.ok) return false
+  const doc = await r.json()
+  return doc?.fields?.role?.stringValue === 'admin'
+}
 
 export default async function handler(req) {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
@@ -48,13 +61,20 @@ export default async function handler(req) {
   const authz = req.headers.get('authorization') || ''
   const token = authz.match(/^Bearer (.+)$/i)?.[1]
   if (!token) return json({ error: 'Not signed in' }, 401)
+  let uid
   try {
-    await jwtVerify(token, JWKS, {
+    const { payload } = await jwtVerify(token, JWKS, {
       issuer: `https://securetoken.google.com/${PROJECT_ID}`,
       audience: PROJECT_ID,
     })
+    uid = payload.sub
   } catch {
     return json({ error: 'Invalid or expired session' }, 401)
+  }
+
+  // 1b) Admin-only: the ERP archive exposes costs/margins/supplier pricing.
+  if (!(await isAdmin(uid, token, PROJECT_ID))) {
+    return json({ error: 'Admin access required' }, 403)
   }
 
   // 2) Validate the request against the whitelist.

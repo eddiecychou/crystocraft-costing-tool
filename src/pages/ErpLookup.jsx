@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Search, Database, Building2, Factory, AlertCircle } from 'lucide-react'
+import { Search, Database, Building2, Factory, Boxes, AlertCircle } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import { erpLookup } from '../erpApi'
 
@@ -28,6 +28,35 @@ const ENTITIES = {
       { key: 'currency', label: 'Curr' },
     ],
   },
+  item: {
+    label: 'Items', Icon: Boxes,
+    cols: [
+      { key: 'code', label: 'Code', mono: true },
+      { key: 'name', label: 'Description', grow: true },
+      { key: 'type', label: 'Type' },
+      { key: 'a_cost', label: 'A-Cost', num: true },
+      { key: 'b_cost', label: 'B-Cost', num: true },
+      { key: 'c_cost', label: 'C-Cost', num: true },
+      { key: 'srp', label: 'SRP', num: true },
+      { key: 'has_bom', label: 'BOM', bool: true },
+    ],
+  },
+}
+
+// Render a cell value based on its column type.
+function cellValue(col, row) {
+  const v = row[col.key]
+  if (col.bool) {
+    return v
+      ? <span className="inline-block px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700">Yes</span>
+      : <span className="text-gray-300">—</span>
+  }
+  if (col.num) {
+    return (v === null || v === undefined || v === '')
+      ? <span className="text-gray-300">—</span>
+      : Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  }
+  return (v ?? null) === null ? <span className="text-gray-300">—</span> : v
 }
 
 export default function ErpLookup() {
@@ -121,7 +150,7 @@ export default function ErpLookup() {
             <thead>
               <tr className="text-left text-gray-500 border-b border-gray-200 bg-gray-50">
                 {cfg.cols.map((c) => (
-                  <th key={c.key} className="px-3 py-2 font-medium whitespace-nowrap">{c.label}</th>
+                  <th key={c.key} className={`px-3 py-2 font-medium whitespace-nowrap ${c.num ? 'text-right' : ''}`}>{c.label}</th>
                 ))}
                 <th className="px-3 py-2 font-medium">Status</th>
               </tr>
@@ -130,8 +159,8 @@ export default function ErpLookup() {
               {rows.map((r) => (
                 <tr key={r.code} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
                   {cfg.cols.map((c) => (
-                    <td key={c.key} className={`px-3 py-2 align-top ${c.mono ? 'font-mono text-xs' : ''} ${c.grow ? '' : 'whitespace-nowrap'}`}>
-                      {r[c.key] ?? <span className="text-gray-300">—</span>}
+                    <td key={c.key} className={`px-3 py-2 align-top ${c.mono ? 'font-mono text-xs' : ''} ${c.grow ? '' : 'whitespace-nowrap'} ${c.num ? 'text-right tabular-nums' : ''}`}>
+                      {cellValue(c, r)}
                     </td>
                   ))}
                   <td className="px-3 py-2">

@@ -426,6 +426,22 @@ def main():
             try: _c.close()
             except Exception: pass
 
+    # Refresh the app's materialized read-layer views (e.g. erp_item) so they
+    # reflect the data just synced. Best-effort: a refresh failure is logged but
+    # doesn't fail the sync. Skipped on --dry-run and when nothing changed.
+    if not args.dry_run and not failed:
+        refresh_sql = os.path.join(os.path.dirname(os.path.abspath(args.config)), "refresh_views.sql")
+        if os.path.exists(refresh_sql):
+            try:
+                rconn = dst_conn()
+                rconn.autocommit = True   # REFRESH … CONCURRENTLY can't run in a txn block
+                with rconn.cursor() as rc:
+                    rc.execute(open(refresh_sql, encoding="utf-8").read())
+                rconn.close()
+                log.info("refreshed materialized views (refresh_views.sql)")
+            except Exception:
+                log.exception("materialized-view refresh failed (data is synced; refresh manually)")
+
     if failed:
         log.error("=== Finished WITH FAILURES: %s ===", ", ".join(failed))
         sys.exit(1)

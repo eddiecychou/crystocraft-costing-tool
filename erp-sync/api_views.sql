@@ -51,9 +51,54 @@ select
   nullif(lastupdate, '')::timestamp                 as last_update
 from raw.supplier;
 
+-- ── Item master (Phase 2) ────────────────────────────────────────────────────
+-- Item is a revision-HISTORY table: ~1.4M rows but only ~44k distinct codes
+-- (avg ~32 revisions each). A master lookup wants the LATEST revision per code,
+-- so we expose that as a MATERIALIZED VIEW — small (~44k rows), indexed, fast.
+-- Refresh it after each sync (refresh_views.sql / sync.py does this on success).
+-- Cost columns are included; /api/erp is admin-only so they never reach non-admins.
+create extension if not exists pg_trgm;
+drop index if exists ix_item_code_trgm;       -- from an earlier iteration; search is on the matview now
+drop index if exists ix_item_sdesc_trgm;
+drop view if exists public.erp_item;
+drop materialized view if exists public.erp_item;
+
+create materialized view public.erp_item as
+select distinct on (itcode)
+  itcode                                            as code,
+  nullif(itrefcode, '')                             as ref_code,
+  nullif(ittype, '')                                as type,
+  nullif(itprodtype, '')                            as prod_type,
+  nullif(itshortdesc1, '')                          as name,
+  nullif(itlongdesc1, '')                           as description,
+  nullif(italloy, '')                               as alloy,
+  nullif(itstonetype, '')                           as stone_type,
+  nullif(ituom, '')                                 as uom,
+  (coalesce(nullif(ithasbom, ''), 'N') in ('Y', 'T', '1')) as has_bom,
+  nullif(itdesignno, '')                            as design_no,
+  nullif(itbarcode, '')                             as barcode,
+  nullif(itrevision, '')::int                       as revision,
+  nullif(ittotalweight, '')::numeric                as weight_g,
+  nullif(itacost, '')::numeric                      as a_cost,
+  nullif(itbcost, '')::numeric                      as b_cost,
+  nullif(itccost, '')::numeric                      as c_cost,
+  nullif(itsrp, '')::numeric                        as srp,
+  nullif(itlabourcost, '')::numeric                 as labour_cost,
+  nullif(ittotalmetalcost, '')::numeric             as metal_cost,
+  nullif(ittotalstonecost, '')::numeric             as stone_cost,
+  nullif(ittotaladdcost, '')::numeric               as add_cost,
+  (coalesce(nullif(expired, ''), 'F') <> 'T')       as active,
+  nullif(lastupdate, '')::timestamp                 as last_update
+from raw.item
+order by itcode, nullif(itrevision, '')::int desc nulls last;
+
+create unique index if not exists ux_erp_item_code    on public.erp_item (code);              -- enables REFRESH … CONCURRENTLY
+create index        if not exists ix_erp_item_code_trg on public.erp_item using gin (code gin_trgm_ops);
+create index        if not exists ix_erp_item_name_trg on public.erp_item using gin (name gin_trgm_ops);
+
 -- ── Access: server-side only. Browser (anon) must NOT read these. ────────────
-revoke all on public.erp_customer, public.erp_supplier from anon, authenticated;
-grant select on public.erp_customer, public.erp_supplier to service_role;
+revoke all on public.erp_customer, public.erp_supplier, public.erp_item from anon, authenticated;
+grant select on public.erp_customer, public.erp_supplier, public.erp_item to service_role;
 
 -- Refresh PostgREST's schema cache so /rest/v1/erp_customer etc. appear.
 notify pgrst, 'reload schema';
