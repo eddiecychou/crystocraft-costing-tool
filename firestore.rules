@@ -186,5 +186,14 @@ service cloud.firestore {
     match /freight_rfqs/{rfqId} {
       allow read, write: if isAdmin();
     }
+
+    // ---- UC# invoice registry (admin only) ------------------------------
+    match /uc_invoices/{id} {
+      allow read, write: if isAdmin();
+    }
+    // Atomic UC# allocation counter (counters/uc).
+    match /counters/{name} {
+      allow read, write: if isAdmin();
+    }
   }
 }
