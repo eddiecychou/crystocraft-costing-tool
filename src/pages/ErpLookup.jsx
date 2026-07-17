@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, Database, Building2, Factory, Boxes, AlertCircle, ListTree, X, Receipt, ClipboardList, FileText, ShoppingCart } from 'lucide-react'
+import { Search, Database, Building2, Factory, Boxes, AlertCircle, ListTree, X, Receipt, ClipboardList, FileText, ShoppingCart, History } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import { erpLookup, erpBom, erpLines } from '../erpApi'
 
@@ -74,7 +74,23 @@ const ENTITIES = {
       { key: 'status', label: 'Status', badge: true },
     ],
   },
+  uc_archive: {
+    label: 'UC History', Icon: History,
+    crossLink: { of: 'sales_invoice', key: 'jes_si' },   // jump to the ERP invoice
+    cols: [
+      { key: 'uc_no', label: 'UC #', mono: true },
+      { key: 'year', label: 'Yr' },
+      { key: 'jes_si', label: 'JES SI#', mono: true },
+      { key: 'customer', label: 'Customer', grow: true },
+      { key: 'currency', label: 'Cur' },
+      { key: 'total', label: 'Total', num: true },
+      { key: 'os_balance', label: 'O/S Bal', num: true },
+    ],
+  },
 }
+
+// Which entities support the "Active only" filter (have an active flag).
+const ACTIVE_FILTER = new Set(['customer', 'supplier', 'item'])
 
 // Render a cell value based on its column type.
 function cellValue(col, row) {
@@ -367,11 +383,13 @@ export default function ErpLookup() {
                        focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
           />
         </div>
-        <label className="flex items-center gap-2 text-sm text-gray-600 select-none">
-          <input type="checkbox" checked={activeOnly} onChange={(e) => setActiveOnly(e.target.checked)}
-                 className="rounded border-gray-300 text-teal-600 focus:ring-teal-500" />
-          Active only
-        </label>
+        {ACTIVE_FILTER.has(entity) && (
+          <label className="flex items-center gap-2 text-sm text-gray-600 select-none">
+            <input type="checkbox" checked={activeOnly} onChange={(e) => setActiveOnly(e.target.checked)}
+                   className="rounded border-gray-300 text-teal-600 focus:ring-teal-500" />
+            Active only
+          </label>
+        )}
       </div>
 
       {error && (
@@ -389,12 +407,12 @@ export default function ErpLookup() {
                 {cfg.cols.map((c) => (
                   <th key={c.key} className={`px-3 py-2 font-medium whitespace-nowrap ${c.num ? 'text-right' : ''}`}>{c.label}</th>
                 ))}
-                <th className="px-3 py-2 font-medium">{cfg.linesOf ? 'Lines' : 'Status'}</th>
+                <th className="px-3 py-2 font-medium">{cfg.linesOf ? 'Lines' : cfg.crossLink ? 'ERP' : 'Status'}</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
-                <tr key={r.code} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
+              {rows.map((r, ri) => (
+                <tr key={r.code ?? r.uc_no ?? ri} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
                   {cfg.cols.map((c) => (
                     <td key={c.key} className={`px-3 py-2 align-top ${c.mono ? 'font-mono text-xs' : ''} ${c.grow ? '' : 'whitespace-nowrap'} ${c.num ? 'text-right tabular-nums' : ''}`}>
                       {entity === 'item' && c.key === 'has_bom' && r.has_bom
@@ -406,14 +424,23 @@ export default function ErpLookup() {
                     </td>
                   ))}
                   <td className="px-3 py-2">
-                    {cfg.linesOf
-                      ? <button onClick={() => openLines(cfg.linesOf, r)}
-                          className="inline-flex items-center gap-0.5 text-teal-600 hover:underline text-xs font-medium">
-                          <FileText size={13} /> Lines
-                        </button>
-                      : <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${
-                          r.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                        }`}>{r.active ? 'Active' : 'Expired'}</span>}
+                    {cfg.linesOf ? (
+                      <button onClick={() => openLines(cfg.linesOf, r)}
+                        className="inline-flex items-center gap-0.5 text-teal-600 hover:underline text-xs font-medium">
+                        <FileText size={13} /> Lines
+                      </button>
+                    ) : cfg.crossLink ? (
+                      r[cfg.crossLink.key]
+                        ? <button onClick={() => openLines(cfg.crossLink.of, { code: r[cfg.crossLink.key], currency: r.currency })}
+                            className="inline-flex items-center gap-0.5 text-teal-600 hover:underline text-xs font-medium">
+                            <FileText size={13} /> Invoice
+                          </button>
+                        : <span className="text-gray-300 text-xs">—</span>
+                    ) : (
+                      <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${
+                        r.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                      }`}>{r.active ? 'Active' : 'Expired'}</span>
+                    )}
                   </td>
                 </tr>
               ))}
