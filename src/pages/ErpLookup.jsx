@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, Database, Building2, Factory, Boxes, AlertCircle, ListTree, X, Receipt, ClipboardList, FileText } from 'lucide-react'
+import { Search, Database, Building2, Factory, Boxes, AlertCircle, ListTree, X, Receipt, ClipboardList, FileText, ShoppingCart } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import { erpLookup, erpBom, erpLines } from '../erpApi'
 
@@ -58,6 +58,17 @@ const ENTITIES = {
       { key: 'code', label: 'Order #', mono: true },
       { key: 'date', label: 'Date', date: true },
       { key: 'customer', label: 'Customer', grow: true },
+      { key: 'currency', label: 'Curr' },
+      { key: 'amount', label: 'Amount', num: true },
+      { key: 'status', label: 'Status', badge: true },
+    ],
+  },
+  purchase: {
+    label: 'Purchase Orders', Icon: ShoppingCart, linesOf: 'purchase',
+    cols: [
+      { key: 'code', label: 'PO #', mono: true },
+      { key: 'date', label: 'Date', date: true },
+      { key: 'supplier', label: 'Supplier', grow: true },
       { key: 'currency', label: 'Curr' },
       { key: 'amount', label: 'Amount', num: true },
       { key: 'status', label: 'Status', badge: true },
@@ -282,7 +293,7 @@ export default function ErpLookup() {
   const [linesError, setLinesError] = useState('')
 
   async function openLines(of, row) {
-    const title = of === 'sales_invoice' ? 'Sales Invoice' : 'Sales Order'
+    const title = { sales_invoice: 'Sales Invoice', sales_order: 'Sales Order', purchase: 'Purchase Order' }[of] || 'Document'
     setLines({ of, code: row.code, title, header: row })
     setLinesRows([]); setLinesSurcharges([]); setLinesError(''); setLinesLoading(true)
     try {

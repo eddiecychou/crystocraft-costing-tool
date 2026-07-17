@@ -34,6 +34,10 @@ const ENTITIES = {
     view: 'erp_sales_order', hasActive: false, orderBy: 'code.desc',
     search: ['code', 'customer', 'customer_code', 'ref', 'customer_po'],
   },
+  purchase: {
+    view: 'erp_purchase', hasActive: false, orderBy: 'code.desc',
+    search: ['code', 'supplier', 'supplier_code', 'ref'],
+  },
 }
 
 // Header → line-detail + surcharge views, fetched by exact header code (see the
@@ -41,6 +45,7 @@ const ENTITIES = {
 const LINES = {
   sales_invoice: { view: 'erp_sales_invoice_line', fk: 'invoice_no', surchargeView: 'erp_sales_invoice_surcharge' },
   sales_order: { view: 'erp_sales_order_line', fk: 'order_no', surchargeView: 'erp_sales_order_surcharge' },
+  purchase: { view: 'erp_purchase_line', fk: 'po_no', surchargeView: 'erp_purchase_surcharge' },
 }
 
 const json = (body, status = 200) =>

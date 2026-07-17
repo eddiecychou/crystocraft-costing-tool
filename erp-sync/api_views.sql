@@ -255,13 +255,64 @@ create index if not exists ix_sos_sono on raw.salesordersurcharge (sssono);
 create index if not exists ix_sid_sino on raw.salesinvoicedetail (sdsino);
 create index if not exists ix_sod_sono on raw.salesorderdetail (sdsono);
 
+-- ── Purchase orders (Phase 5) ────────────────────────────────────────────────
+-- Same shape as sales but keyed to a supplier. Total = lines − discount +
+-- surcharges + tax (pugstamount).
+create or replace view public.erp_purchase as
+select
+  puno                                     as code,
+  nullif(pustatus, '')                     as status,
+  nullif(pudate, '')::timestamp            as date,
+  nullif(puduedate, '')::timestamp         as due_date,
+  nullif(pusupplier, '')                   as supplier_code,
+  nullif(pusuppliername, '')               as supplier,
+  nullif(pucurrency, '')                   as currency,
+  nullif(puamount, '')::numeric            as amount,
+  nullif(pudiscamount, '')::numeric        as discount,
+  nullif(pudepositamount, '')::numeric     as deposit,
+  nullif(puref, '')                        as ref,
+  nullif(pusalesperson, '')                as buyer,
+  nullif(pushipmentdate, '')::timestamp    as ship_date,
+  nullif(pupaymentterms, '')               as payment_terms,
+  nullif(lastupdate, '')::timestamp        as last_update,
+  nullif(pugstamount, '')::numeric         as tax
+from raw.purchase;
+
+create or replace view public.erp_purchase_line as
+select
+  pdpuno                          as po_no,
+  nullif(pdseq, '')::int          as seq,
+  nullif(pditemcode, '')          as item_code,
+  nullif(pddesc, '')              as description,
+  nullif(pditemtype, '')          as item_type,
+  nullif(pdqty, '')::numeric      as qty,
+  nullif(pdqtygrn, '')::numeric   as qty_received,
+  nullif(pdunitprice, '')::numeric as unit_price,
+  nullif(pdlineamount, '')::numeric as amount,
+  nullif(pdrefdocno, '')          as ref_doc
+from raw.purchasedetail;
+
+create or replace view public.erp_purchase_surcharge as
+select
+  pspuno                          as po_no,
+  nullif(psseq, '')::int          as seq,
+  nullif(pssurchargecode, '')     as code,
+  nullif(psdesc, '')              as description,
+  coalesce(nullif(psqty, '')::numeric, 1) * coalesce(nullif(psunitprice, '')::numeric, 0) as amount
+from raw.purchasesurcharge;
+
+create index if not exists ix_pd_puno on raw.purchasedetail (pdpuno);
+create index if not exists ix_ps_puno on raw.purchasesurcharge (pspuno);
+
 -- ── Access: server-side only. Browser (anon) must NOT read these. ────────────
 revoke all on public.erp_customer, public.erp_supplier, public.erp_item, public.erp_bom,
   public.erp_sales_invoice, public.erp_sales_invoice_line, public.erp_sales_invoice_surcharge,
-  public.erp_sales_order, public.erp_sales_order_line, public.erp_sales_order_surcharge from anon, authenticated;
+  public.erp_sales_order, public.erp_sales_order_line, public.erp_sales_order_surcharge,
+  public.erp_purchase, public.erp_purchase_line, public.erp_purchase_surcharge from anon, authenticated;
 grant select on public.erp_customer, public.erp_supplier, public.erp_item, public.erp_bom,
   public.erp_sales_invoice, public.erp_sales_invoice_line, public.erp_sales_invoice_surcharge,
-  public.erp_sales_order, public.erp_sales_order_line, public.erp_sales_order_surcharge to service_role;
+  public.erp_sales_order, public.erp_sales_order_line, public.erp_sales_order_surcharge,
+  public.erp_purchase, public.erp_purchase_line, public.erp_purchase_surcharge to service_role;
 revoke all on function public.explode_bom(text) from anon, authenticated;
 grant execute on function public.explode_bom(text) to service_role;
 

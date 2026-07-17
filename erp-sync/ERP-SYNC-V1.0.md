@@ -131,10 +131,12 @@ Firebase token, requires `role: 'admin'`, queries the views with the Supabase
 secret key server-side) → JSON. The Supabase key and the ERP data never reach the
 browser. The whole endpoint is **admin-only** because the item view carries costs.
 Phase 1 = customer/supplier lookup; Phase 2 = item master (with costs); Phase 3 =
-BOM explosion; Phase 4 = sales invoices + sales orders (header search + a line-
-items modal). Next: purchase orders. NB: invoices/orders are transaction data that
-change daily, so the app labels them "as of last sync" until the incremental
-nightly sync is enabled (owner is handling that separately).
+BOM explosion; Phase 4 = sales invoices + sales orders; Phase 5 = purchase orders
+(all with a header search + a line-items/surcharge modal showing the full money
+breakdown: subtotal − discount + surcharges + tax = total, deposit, balance). NB:
+invoices/orders/POs are transaction data that change daily, so the app labels them
+"as of last sync" until the incremental nightly sync is enabled (owner handling
+that separately).
 
 ---
 
