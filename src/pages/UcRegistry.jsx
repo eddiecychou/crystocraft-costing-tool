@@ -289,10 +289,16 @@ export default function UcRegistry() {
   const [q, setQ] = useState('')
   const [source, setSource] = useState('')
   const [statusFilter, setStatusFilter] = useState('open')   // '' = all
+  const [confirmedFilter, setConfirmedFilter] = useState('') // '' = any | 'yes' | 'no'
   const [editing, setEditing] = useState(null)   // record | 'new' | null
 
-  const list = useUcList({ q, source, status: statusFilter, limit: 500 })
-  const arList = useUcList({ status: 'open', limit: 1000 })   // outstanding summary (all open)
+  // undefined = don't filter; true/false = filter on the confirmed flag
+  const confirmed = confirmedFilter === 'yes' ? true : confirmedFilter === 'no' ? false : undefined
+
+  const list = useUcList({ q, source, status: statusFilter, confirmed, limit: 500 })
+  // Outstanding summary: always open, but respects the confirmed filter so you
+  // can read off the "confirmed + open" outstanding total.
+  const arList = useUcList({ status: 'open', confirmed, limit: 1000 })
   const rows = list.rows
   const refreshAll = () => { list.refresh(); arList.refresh() }
 
@@ -347,7 +353,9 @@ export default function UcRegistry() {
           <span className="text-sm text-gray-400">No outstanding balances.</span>
         ) : (
           <>
-            <span className="text-sm text-gray-500 self-center mr-1">Outstanding:</span>
+            <span className="text-sm text-gray-500 self-center mr-1">
+              Outstanding{confirmedFilter === 'yes' ? ' (confirmed)' : confirmedFilter === 'no' ? ' (not confirmed)' : ''}:
+            </span>
             {ar.map(([c, v]) => (
               <span key={c} className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm">
                 <b className="tabular-nums">{money(v)}</b> <span className="text-gray-500">{c}</span>
@@ -379,6 +387,11 @@ export default function UcRegistry() {
           <option value="closed">Closed</option>
           <option value="void">Void</option>
           <option value="">All statuses</option>
+        </select>
+        <select value={confirmedFilter} onChange={(e) => setConfirmedFilter(e.target.value)} className="px-2.5 py-2 text-sm border border-gray-200 rounded-lg">
+          <option value="">Confirmed: any</option>
+          <option value="yes">Confirmed only</option>
+          <option value="no">Not confirmed</option>
         </select>
         <span className="text-sm text-gray-400 tabular-nums">{rows.length} shown</span>
       </div>
