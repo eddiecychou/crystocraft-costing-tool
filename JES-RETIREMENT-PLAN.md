@@ -155,14 +155,33 @@ So the job order is pure JES overhead: a document keyed to satisfy a workflow,
 whose entire content is either duplicated from the sales order line or already
 captured by the app against that line.
 
-### Two caveats
+### Open question, now closed
+
+The production-in date **is** recorded — 130,929 of 131,752 job orders carry
+one — but **owner confirms nobody uses it**, for lead time or anything else. So
+it is written and never read.
+
+Dropping it also loses no history: every job order and production record already
+sits in the Supabase mirror. Retiring JES stops *new* rows being created; it
+does not delete the past. If lead-time analysis is ever wanted, the app's own
+`committed_at` gives the same fact from the point of cutover, and the mirror
+covers everything before it.
+
+That was the last thing that could have made this harder than it looks. Nothing
+now argues for keeping job orders.
+
+### Two notes
 
 - **This saves nothing until cutover.** JES will demand job orders while it
   runs. The saving arrives when production moves to the app — which is why
-  production is now step 4 rather than a late "whichever looks easy" item.
-- **Check the production-in date isn't quietly load-bearing** (99% populated on
-  the JES side). Someone may use it for lead time or to trigger shipping. One
-  question to the team before assuming it is free to drop.
+  production is step 4 rather than a late "whichever looks easy" item.
+- **The team wants this.** Owner reports job orders and production-in are among
+  the most time-consuming things they do, largely because the JES UI is slow and
+  awkward. That matters more than it sounds: §5 lists team adoption as the main
+  risk to every cutover, because people quietly keep using the old system when
+  the new one is no better for them. Here the incentive runs the right way — the
+  first function to migrate is the one they most want rid of. Good place to
+  start, and a good way to build confidence for the harder steps.
 
 ### One open question for step 7, not for this
 
