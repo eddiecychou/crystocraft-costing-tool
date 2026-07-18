@@ -37,6 +37,7 @@ import CustomerDetail from './pages/CustomerDetail'
 import Settings from './pages/Settings'
 import SchemaAudit from './pages/SchemaAudit'
 import BankDetailsAudit from './pages/BankDetailsAudit'
+import BankAccounts from './pages/BankAccounts'
 import ComponentsLib from './pages/Components'
 import InventoryStatus from './pages/InventoryStatus'
 import ErpLookup from './pages/ErpLookup'
@@ -187,6 +188,7 @@ function AdminApp({ user }) {
                 {/* One-off: find bank details pasted into free-text fields.
                     Remove once bank_accounts is the single source. */}
                 <Route path="/bank-audit" element={<BankDetailsAudit />} />
+                <Route path="/bank-accounts" element={<BankAccounts />} />
                 <Route path="/shipping" element={<Shipping />} />
                 <Route path="/shipments/new" element={<ShipmentForm />} />
                 <Route path="/shipments/:id" element={<ShipmentForm />} />

@@ -1,0 +1,52 @@
+// Client for Crystocraft's own receiving bank accounts, via the /api/bank edge
+// function. The browser never talks to Supabase directly — it sends the
+// signed-in user's Firebase token and the edge function does the work.
+//
+// These replace the bank details that used to be retyped into every quote/PI.
+import { auth } from './firebase'
+
+async function call(body) {
+  const user = auth.currentUser
+  if (!user) throw new Error('Please sign in.')
+  const token = await user.getIdToken()
+  const res = await fetch('/api/bank', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  })
+  let data = {}
+  try { data = await res.json() } catch { /* non-JSON error body */ }
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`)
+  return data
+}
+
+export const listBankAccounts = (opts = {}) =>
+  call({ op: 'list', ...opts }).then((d) => d.rows || [])
+
+export const createBankAccount = (data) => call({ op: 'create', data }).then((d) => d.row)
+export const updateBankAccount = (id, data) => call({ op: 'update', id, data }).then((d) => d.row)
+export const bankAccountAudit = (id) => call({ op: 'audit', id }).then((d) => d.rows || [])
+
+// The account a document should use: the active default for that currency,
+// falling back to any active account in it. Returns null when none exists —
+// callers must handle that rather than silently rendering nothing.
+export function accountForCurrency(accounts, currency) {
+  if (!currency) return null
+  const cur = String(currency).trim().toUpperCase()
+  const inCur = accounts.filter((a) => a.active && a.currency === cur)
+  return inCur.find((a) => a.is_default) || inCur[0] || null
+}
+
+// Rendered block for a quote/PI. Kept here so every document formats identically.
+export function formatBankDetails(a) {
+  if (!a) return ''
+  return [
+    ['Beneficiary', a.beneficiary],
+    ['Bank', a.bank_name],
+    ['Bank Address', a.bank_address],
+    ['Account No', a.account_no],
+    ['IBAN', a.iban],
+    ['SWIFT', a.swift],
+    ['Intermediary Bank', a.intermediary],
+  ].filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join('\n')
+}

@@ -17,6 +17,10 @@
   path = "/api/uc"
 
 [[edge_functions]]
+  function = "bank"
+  path = "/api/bank"
+
+[[edge_functions]]
   function = "process-quote"
   path = "/api/process-quote"
 
