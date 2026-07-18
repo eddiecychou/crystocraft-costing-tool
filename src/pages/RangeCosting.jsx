@@ -2,10 +2,12 @@ import { useState, useEffect, useMemo } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import { X, AlertTriangle, BadgeCheck } from 'lucide-react'
+import { X, AlertTriangle, BadgeCheck, ListChecks } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import { CURRENCIES, RANGE_CRYSTAL_BRANDS } from '../constants'
 import { useComponents, resolveRef } from '../criticalComponents'
+import { enumerateRangeSkus } from '../rangeSku'
+import { checkBomCoverage } from '../erpBomCoverage'
 import { useCrystalUnitCosts, crystalSizesOf, crystalBrandsForSize } from '../crystalCosting'
 import { DEFAULT_MARKUP } from '../pricing'
 import {
@@ -13,6 +15,108 @@ import {
   toolingHKD, variantAllInCostHKD, variantSellHKD, productMarkup,
   crystalBomCostHKD, missingCrystalLines,
 } from '../rangeCosting'
+
+// Cross-check the costing against the ERP's bill of materials. The ERP knows
+// what is physically in the product; this costing knows what things cost. It
+// can only ever report — a costing legitimately rolls some BOM lines into
+// others, so nothing here is automatically an error.
+function BomCoverage({ sku, result, loading, error, onCheck }) {
+  if (!sku) return null
+
+  return (
+    <section className="card p-4 mb-4">
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+          <ListChecks size={15} className="text-gray-400" /> ERP bill of materials
+        </h2>
+        <button type="button" onClick={onCheck} disabled={loading}
+                className="text-xs text-brand-600 hover:underline disabled:opacity-50">
+          {loading ? 'Checking…' : result ? 'Re-check' : `Check ${sku}`}
+        </button>
+      </div>
+
+      {error && <p className="text-xs text-amber-600">{error}</p>}
+
+      {!result && !loading && !error && (
+        <p className="text-xs text-ink-50">
+          Compare this costing against what the ERP says is physically in{' '}
+          <span className="font-mono">{sku}</span>.
+        </p>
+      )}
+
+      {result && (
+        <div className="text-xs space-y-2">
+          <p className="text-ink-50">
+            The ERP BOM for <span className="font-mono">{result.sku}</span> has{' '}
+            <strong>{result.total}</strong> part{result.total === 1 ? '' : 's'}:{' '}
+            {result.costed.length} costed as components, {result.crystals.length} stones,{' '}
+            {result.packaging.length} packaging, {result.uncosted.length} other.
+          </p>
+
+          {result.uncosted.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+              <p className="font-medium text-amber-900 mb-1">
+                In the ERP BOM but not costed here:
+              </p>
+              {result.uncosted.map((r) => (
+                <div key={r.component_code} className="text-amber-900">
+                  <span className="font-mono">{r.component_code}</span>
+                  <span className="text-amber-700"> ×{r.ext_qty} · {r.component_type}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {result.crystalMismatch && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+              {result.crystalMismatch === 'none'
+                ? <>The ERP BOM contains <strong>{result.crystals.length}</strong> stone line
+                    {result.crystals.length === 1 ? '' : 's'} but this costing has no crystal BOM.</>
+                : <>The ERP BOM has <strong>{result.crystals.length}</strong> stone line
+                    {result.crystals.length === 1 ? '' : 's'}; this costing has{' '}
+                    <strong>{result.crystalLineCount}</strong>.</>}
+              <div className="mt-1 text-amber-700">
+                {result.crystals.map((r) => (
+                  <div key={r.component_code}>
+                    <span className="font-mono">{r.component_code}</span> ×{r.ext_qty}
+                  </div>
+                ))}
+              </div>
+              <p className="mt-1 text-amber-700">
+                Stones are costed by size × brand here and by item code in the ERP, so these
+                can't be matched automatically — compare them by eye.
+              </p>
+            </div>
+          )}
+
+          {result.packaging.length > 0 && (
+            <details className="text-ink-50">
+              <summary className="cursor-pointer">
+                {result.packaging.length} packaging part
+                {result.packaging.length === 1 ? '' : 's'} in the ERP BOM (not costed per product)
+              </summary>
+              <div className="mt-1 pl-3">
+                {result.packaging.map((r) => (
+                  <div key={r.component_code}>
+                    <span className="font-mono">{r.component_code}</span> ×{r.ext_qty}
+                  </div>
+                ))}
+              </div>
+              <p className="pl-3 mt-1">
+                Packaging is stocked as a pool with no per-product BOM, so this is expected —
+                but it means box, tag, tissue and insert costs aren't in this figure.
+              </p>
+            </details>
+          )}
+
+          {!result.uncosted.length && !result.crystalMismatch && (
+            <p className="text-green-700">Every ERP part is accounted for.</p>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
 
 const DEFAULT_RATES = { RMB: 1.09, USD: 7.78, EUR: 8.60, HKD: 1 }
 const newLineId = () => 'l_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
@@ -66,6 +170,9 @@ export default function RangeCosting() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
+  // ERP BOM cross-check — on demand, not on load: it's an extra round trip
+  // and only matters when someone is actually reviewing the costing.
+  const [bom, setBom] = useState({ result: null, loading: false, error: '' })
 
   const { components: lib } = useComponents()
   const { items: crystalItems } = useCrystalUnitCosts()
@@ -109,6 +216,28 @@ export default function RangeCosting() {
   // preview number reflects what the user is typing before they save.
   const draft = useMemo(() => ({ ...product, costing: serialize(state) }), [product, state])
   const refs = Array.isArray(product?.critical_components) ? product.critical_components : []
+
+  // The app's SKU format IS the ERP item code (D0002-001-GBL), so a variant's
+  // SKU is what the ERP BOM is keyed on. Any variant will do — they share the
+  // design's parts and differ only by plating/colour.
+  const bomSku = useMemo(() => {
+    // useMemo runs before the loading early-return, and enumerateRangeSkus
+    // dereferences product.design_no — so guard the null.
+    if (!product) return ''
+    return enumerateRangeSkus(product, [])[0]?.sku || ''
+  }, [product])
+
+  async function runBomCheck() {
+    setBom({ result: null, loading: true, error: '' })
+    try {
+      const result = await checkBomCoverage(bomSku, refs.map(r => r.code), state.crystal_bom)
+      setBom(result
+        ? { result, loading: false, error: '' }
+        : { result: null, loading: false, error: `No BOM in the ERP for ${bomSku}. It may be a new design, or the mirror may predate it.` })
+    } catch (e) {
+      setBom({ result: null, loading: false, error: e.message })
+    }
+  }
   // Effective plating of a ref (override, else inferred from the component).
   const refPlatOf = r => (r.plating_code || resolveRef(r, lib)?.plating_code || '').trim().toUpperCase()
   // When any part is plating-specific, a single "sum of all parts" is wrong (a
@@ -177,6 +306,9 @@ export default function RangeCosting() {
         </div>
         <Link to={`/range/${id}`} className="btn-secondary text-sm">← Back to product</Link>
       </div>
+
+      <BomCoverage sku={bomSku} result={bom.result} loading={bom.loading}
+                   error={bom.error} onCheck={runBomCheck} />
 
       {/* Component costs */}
       <div className="card p-5 mb-5">
