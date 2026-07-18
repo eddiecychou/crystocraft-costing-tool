@@ -138,6 +138,17 @@ invoices/orders/POs are transaction data that change daily, so the app labels th
 "as of last sync" until the incremental nightly sync is enabled (owner handling
 that separately).
 
+### The UC registry also lives here (not just ERP data)
+
+`public.uc_registry` is the app's **editable** cross-channel invoice registry (the
+replacement for the `Invoice_Check_lists.xls` spreadsheet) — all 3,691 historical
+rows plus everything new, in one table. It is *not* part of the ERP mirror and is
+**not** touched by `sync.py`; it's written by the app through the `/api/uc` edge
+function. UC numbers are allocated by the `uc_seq` Postgres sequence via the
+`uc_no` column default (next: UC4949). It joins to the ERP data on
+`uc_registry.jes_si = erp_sales_invoice.code`, which is what powers the invoice
+drill-down in the registry UI. See PROJECT-PLAN.md (V7.14) for the full story.
+
 ---
 
 ## 5. Files
@@ -240,3 +251,10 @@ searchable map of all 494 tables was generated as a private Artifact.
   encoding handling; write-batch tuning; per-table reconnect resilience;
   read-only login; session-pooler target. Initial load verified (counts, Chinese
   text, disk).
+- **V1.1 (2026-07-17)** — Read layer + app integration (app cycle V7.14). Added
+  `api_views.sql` (customer/supplier views; `erp_item` and `erp_bom` matviews +
+  `explode_bom()`; sales invoice/order and purchase header, line and surcharge
+  views) and `refresh_views.sql`, which `sync.py` now runs automatically after a
+  clean sync. Added `load_uc_archive.py`. The UC registry (`uc_registry` +
+  `uc_seq`) was created in the same database — app-owned and editable, outside the
+  sync's scope. Still full-replace only; incremental remains the next step.

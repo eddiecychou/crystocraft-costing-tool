@@ -43,6 +43,138 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
+## Current Status — V7.14 CLOSED as of 2026-07-17
+
+**Deployed to Netlify (live `03b922b`).** Commit chain `57b5f3c`→`03b922b`
+(18 commits). V7.14's theme was **getting the legacy ERP's data out of the ERP
+and into this app** — a one-way archive of the whole JES database into Supabase,
+a set of read-only lookups in the app on top of it, and then replacing the
+team's cross-channel invoice-tracking spreadsheet with a real registry.
+
+### 1. ERP → Supabase archive (`erp-sync/`, tagged V1.0)
+
+Built and ran a one-way, **read-only** mirror of the legacy JES ERP into a new
+Supabase Postgres project. See `erp-sync/ERP-SYNC-V1.0.md` for the full as-built
+document; the essentials:
+
+- **Environment (discovered on site):** SQL Server 2008 R2 on `192.168.10.251`
+  (machine `SQDB08`), real database **`JES_UnitedArt`** (the `UNITEDART` in
+  `JES.ini` is only JES's alias). The `sa` password in `JES.ini` is app-encoded
+  and unusable; the read-only login was created by connecting as the Windows
+  `administrator` over **NTLM**.
+- **`erp_readonly`** SQL login (`db_datareader`, write-blocked — verified) is
+  what the sync uses. Credentials live only in `erp-sync/.env` (git-ignored).
+- **Pure-Python drivers** (`python-tds`) — deliberately no Homebrew/unixODBC, so
+  the tool runs on the on-site M1 Mac (and would run on a Raspberry Pi unchanged).
+- **Result: 494 tables · 18.7 M rows · ~2.9 GB** in Supabase `raw.*`. The 42 GB
+  source shrank because `nchar` padding and SQL Server indexes aren't copied.
+  Chinese text is clean throughout. `SystemAudit`/`LogonLog` deliberately skipped.
+- **Two real bugs found and fixed during the first full run** (both in `sync.py`):
+  a legacy Big5 `varchar` column with bytes invalid in cp950 blew up the client
+  decoder and *wedged the connection*, cascading into 305 failed tables. Fixed by
+  converting non-Unicode columns to `NVARCHAR` server-side, plus a per-table
+  source reconnect so one bad table can never cascade again.
+- Perf: write batch tuned 1000 → 5000 rows (~3.7× faster).
+
+### 2. ERP Lookup in the app (Phases 1–5)
+
+A new admin-only **ERP Lookup** page (`/erp-lookup`) reading the archive through
+a curated SQL layer — the app never touches `raw.*` directly.
+
+- **Access path:** browser → `/api/erp` Netlify edge function (verifies the
+  caller's Firebase token **and** `role: 'admin'`) → Supabase via the secret key
+  **server-side**. The Supabase key and the ERP data never reach the browser.
+  Admin-gating the whole endpoint matters because item/invoice data carries
+  costs, margins and supplier pricing.
+- **Phase 1** — customer + supplier lookup.
+- **Phase 2** — item master. `raw.item` is a revision-*history* table (1.4 M rows,
+  ~44 k codes, ~32 revisions each), so `erp_item` is a **materialized view of the
+  latest revision per code** (~44 k rows, trigram-indexed). Search went 7 s → ~350 ms.
+- **Phase 3** — **BOM explosion**. `erp_bom` materialized view (current BOM =
+  latest revision per parent, ~432 k of 10.3 M lines) plus `explode_bom(code)`, a
+  recursive, cycle-guarded, depth-capped function returning the full multi-level
+  tree with extended quantities. Surfaced as a tree modal.
+- **Phase 4** — sales invoices + sales orders (header search + line-items modal).
+- **Phase 5** — purchase orders (same shape, keyed to supplier).
+- **Money breakdown fix:** the first version of the lines modal totalled only the
+  line items, which does **not** reconcile with the header once discounts/freight
+  /tax apply. Freight, delivery, packing and card charges turned out to be
+  **surcharge lines in separate tables**, and tax is `sigstamount`. The modal now
+  shows the true breakdown: `subtotal − discount + surcharges + tax = grand total`,
+  then deposit and balance. Verified against real documents.
+- Both matviews are refreshed automatically after each sync (`refresh_views.sql`,
+  run by `sync.py` on a clean finish).
+
+### 3. UC Invoice Registry — replaced the tracking spreadsheet
+
+The team tracked every order across **ERP, Alibaba, Amazon, online shop and
+retail** in a shared `Invoice_Check_lists.xls`, assigning a unique **UC#** to each.
+That is now a real feature (`/uc-registry`).
+
+- **One Supabase table, `public.uc_registry`** — the *whole* registry (all 3,691
+  historical rows plus everything new). Initially built on Firestore, then
+  **deliberately moved to Supabase** so live and history live in one SQL table,
+  joinable to the ERP invoices, with proper search and reporting.
+- **UC# allocation is a Postgres sequence** (`uc_seq`, via the `uc_no` column
+  default) — atomic and collision-free, which the shared spreadsheet never was.
+  Next number is **UC4949** (history ends at UC4948).
+- **Migration reality check:** 2,059 rows had an outstanding balance, but dating
+  back to 2016 — the `O/S Balance` column was never zeroed on payment. So only
+  the **81 genuinely-recent (2025–26) outstanding items** are `open`; all older
+  history is `closed`. This also stops stale balances polluting the AR totals.
+- **Write path:** `/api/uc` edge function (list/create/update), same admin gate
+  and server-side key as `/api/erp`.
+- **Features:** outstanding-by-currency AR summary; search; filters for
+  **source**, **status (Open/Closed/Void/All)** and **confirmed**; 500-row pages;
+  **Void** status for cancelled/mistaken UC#s (keeps the number for audit, excluded
+  from AR); a **date picker** that auto-fills the sheet-style `/YY` year; and a
+  **search-as-you-type ERP invoice picker** (supports the real workflow: create the
+  UC first, link the SI# later). A row's **JES SI# drills into the real ERP
+  invoice** — lines, surcharges and full money breakdown.
+- The separate "UC History" tab was removed once the registry held everything —
+  keeping it would have recreated the two-places split the owner wanted gone.
+
+### 4. Infrastructure / workflow
+
+- **iCloud was silently corrupting this git repo.** Found duplicate
+  `main 2`…`main 7` ref/index files dating back weeks, from iCloud racing with
+  git writes; a `git fetch` finally tripped on it. Cleaned (`git fsck` now clean)
+  and **the repo moved out of iCloud to `~/Developer/costing-tool`** on both Macs.
+  Git — not a synced folder — is now the sync mechanism. See "Working across two
+  Macs" at the top of this file.
+- Git push from the on-site Mac is authenticated with a fine-grained PAT stored
+  in the macOS keychain.
+
+### Deployment requirements introduced this cycle
+
+- **Netlify env vars:** `SUPABASE_URL`, `SUPABASE_SECRET_KEY` (the `sb_secret_…`
+  server-side key — *not* the publishable one). `VITE_FIREBASE_PROJECT_ID` is
+  reused for token verification; no new Firebase var is needed.
+- Supabase project **JES** (`vpcwakkotlpfixqpzqmr`, ap-northeast-2, Pro plan),
+  reached over the **session pooler** on port 5432 (the direct host is IPv6-only).
+- The ERP sync itself must run from a machine **on the Crystocraft LAN and the
+  internet at once** — currently the on-site Mac, run manually.
+
+### Known gaps / where V7.15 could start
+
+- **Incremental sync is not enabled.** All 494 tables are full-replace. The four
+  giants all have a PK + `LastUpdate`, so they're ready for it, but two things
+  must happen first: `ensure_target_table` creates no unique index, so the
+  upsert's `ON CONFLICT` would fail; and `LastUpdate` needs verifying that it
+  changes on every *edit*, not just insert. Until then, **transaction data
+  (invoices/orders/POs) is only as fresh as the last manual sync** — the app
+  labels it "as of last sync". This is the highest-value next step.
+- **Nothing in this cycle was build-tested locally** — the on-site Mac has no
+  Node, so every UI change was verified by the owner on the deployed site. Worth
+  a pass with the build running.
+- **The "Confirmed" flag** was carried over from the spreadsheet; its exact
+  business meaning is pending the team's input (keep / rename / drop).
+- **Dormant leftovers**, harmless but removable: the Firestore `uc_invoices`
+  collection (81 imported docs) and its `firestore.rules` blocks, plus the
+  `erp_uc_archive` table — all superseded by `uc_registry`.
+- `erp-sync/.venv` has stale absolute paths from the folder move (`pip` shebang
+  broken; `python -m pip` works). Recreating the venv would tidy it.
+
 ## Current Status — V7.13 CLOSED as of 2026-07-14
 
 **Deployed to Netlify (live `7819bb0`).** Owner's stated focus for V7.13 was
