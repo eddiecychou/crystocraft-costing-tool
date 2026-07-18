@@ -126,6 +126,15 @@ select distinct on (itcode)
   (coalesce(nullif(ithasbom, ''), 'N') in ('Y', 'T', '1')) as has_bom,
   nullif(itdesignno, '')                            as design_no,
   nullif(itbarcode, '')                             as barcode,
+  -- Image references. The ERP stores a bare filename (FM-2HRT.jpg) pointing
+  -- into a folder outside the database; the files themselves are not synced
+  -- yet. 31,823 of 44,460 codes have one, but only 29,919 DISTINCT files —
+  -- one image serves every colour variant of a design. Lower-cased because
+  -- the source casing is inconsistent (FM-C-S-CRR-w.jpg vs fm-c-chm-4/a.jpg)
+  -- and object storage, unlike Windows, is case-sensitive.
+  lower(nullif(trim(itpicture1), ''))               as picture1,
+  lower(nullif(trim(itpicture2), ''))               as picture2,
+  nullif(itpicture1type, '')                        as picture1_type,
   nullif(itrevision, '')::int                       as revision,
   nullif(ittotalweight, '')::numeric                as weight_g,
   nullif(itacost, '')::numeric                      as a_cost,
