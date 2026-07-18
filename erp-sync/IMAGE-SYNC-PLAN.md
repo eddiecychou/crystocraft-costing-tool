@@ -13,8 +13,14 @@ on-site part short.
 |---|---|
 | Item codes (latest revision) | 44,460 |
 | With a primary image | **31,823 (72%)** |
-| **Distinct image files** | **29,919** |
+| Distinct image filenames (as stored) | 29,919 |
+| **Distinct files, case-insensitively** | **29,460** |
 | With a second image | 8,366 |
+
+Those two counts differ by **459**: that many filenames differ from another
+*only* by capitalisation. On Windows they are the same file, so lower-casing
+isn't tidiness — without it we'd treat one photo as two and half the uploads
+would 404 depending on which casing a row happened to store.
 
 `raw.item.itpicture1` / `itpicture2` hold a bare filename — `FM-2HRT.jpg` — no
 path. `itpicture1type` is `COLOR` (1.11 M rows), `SKETCH` (14.8 k), plus a few
@@ -52,13 +58,22 @@ to list and fix by hand, too many to ignore.
 1. **Find the folder.** `systemsetting` has a dozen image-path columns but all
    are suffixed `_notuse`, so the live path is configured elsewhere — check
    `JES.ini` and the JES client's settings. *This is the one genuine unknown.*
-2. **Enumerate it** — file count, total bytes, extensions present.
-3. **Reconcile** against the 29,919 referenced names, case-insensitively:
-   - referenced but missing on disk (broken references)
-   - on disk but referenced by nothing (orphans — don't upload)
-4. **Upload** the matched files, keyed by lower-cased filename.
+2. Then steps 2–4 are one script, `sync_images.py`, already written and tested
+   against the database half:
 
-Steps 2–4 are one script; only step 1 needs a human first.
+   ```
+   .venv/bin/python sync_images.py --folder "<path>" --report   # safe, read-only
+   .venv/bin/python sync_images.py --folder "<path>" --upload
+   ```
+
+   `--report` reconciles and changes nothing: matched / missing / orphaned
+   counts, the total GB that would be uploaded, and a full list of broken
+   references written to `inventory/images_missing.txt`. Run that first and
+   check the numbers before `--upload`.
+
+Upload needs `SUPABASE_URL` and `SUPABASE_SECRET_KEY` in `.env` (the same
+values Netlify already uses). `--report` needs neither. Uploads are upserts,
+so re-running after a partial failure is cheap.
 
 ## Where the files should live
 

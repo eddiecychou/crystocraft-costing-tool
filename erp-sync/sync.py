@@ -231,6 +231,40 @@ def ensure_target_table(dconn, tcfg, cols):
             if col.lower() not in existing:
                 c.execute(f"ALTER TABLE {qi(schema)}.{qi(tbl)} ADD COLUMN {qi(col)} text;")
                 log.info("  + added new column %s.%s.%s", schema, tbl, col.lower())
+
+        # Incremental upserts use ON CONFLICT (pk), which needs a UNIQUE index
+        # on those columns — without one Postgres raises "there is no unique or
+        # exclusion constraint matching the ON CONFLICT specification" and the
+        # table can never sync incrementally. Created here so enabling
+        # incremental mode in tables.yaml is all that's required.
+        #
+        # Deliberately NOT a primary key: the mirror is all `text` and lands
+        # whatever the ERP holds, so a PK's NOT NULL would reject a legacy row
+        # with a null key and fail the whole load. A unique index satisfies
+        # ON CONFLICT while still tolerating that.
+        if tcfg.get("pk"):
+            idx = f"ux_{tbl.lower()}_pk"
+            pk_cols = ", ".join(qi(col) for col in tcfg["pk"])
+            c.execute("""
+                SELECT 1 FROM pg_indexes WHERE schemaname=%s AND tablename=%s AND indexname=%s
+            """, (schema, tbl.lower(), idx))
+            if not c.fetchone():
+                try:
+                    c.execute(
+                        f"CREATE UNIQUE INDEX {qi(idx)} ON {qi(schema)}.{qi(tbl)} ({pk_cols});"
+                    )
+                    log.info("  + unique index %s on (%s)", idx, ", ".join(tcfg["pk"]))
+                except Exception as e:
+                    # Duplicates on the declared key mean the pk in tables.yaml
+                    # is wrong for this table. Say so loudly — silently falling
+                    # back to full mode would look like it worked.
+                    dconn.rollback()
+                    raise RuntimeError(
+                        f"{schema}.{tbl}: cannot create unique index on "
+                        f"({', '.join(tcfg['pk'])}) — the source has duplicate or null "
+                        f"values there, so that is not a usable key for incremental "
+                        f"sync. Fix the 'pk' in tables.yaml. Original error: {e}"
+                    ) from e
     dconn.commit()
 
 
