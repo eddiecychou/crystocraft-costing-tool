@@ -74,19 +74,6 @@ const ENTITIES = {
       { key: 'status', label: 'Status', badge: true },
     ],
   },
-  uc_archive: {
-    label: 'UC History', Icon: History,
-    crossLink: { of: 'sales_invoice', key: 'jes_si' },   // jump to the ERP invoice
-    cols: [
-      { key: 'uc_no', label: 'UC #', mono: true },
-      { key: 'year', label: 'Yr' },
-      { key: 'jes_si', label: 'JES SI#', mono: true },
-      { key: 'customer', label: 'Customer', grow: true },
-      { key: 'currency', label: 'Cur' },
-      { key: 'total', label: 'Total', num: true },
-      { key: 'os_balance', label: 'O/S Bal', num: true },
-    ],
-  },
 }
 
 // Which entities support the "Active only" filter (have an active flag).

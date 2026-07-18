@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
-import { Search, Hash, Plus, X, AlertCircle, DownloadCloud, CheckCircle2 } from 'lucide-react'
+import { Search, Hash, Plus, X, AlertCircle } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
-import { useUcInvoices, createUcInvoice, updateUcInvoice, seedOpenItems, UC_SOURCES, UC_CURRENCIES } from '../ucRegistry'
-import { UC_OPEN_SEED } from '../ucSeed'
+import { useUcList, createUcInvoice, updateUcInvoice, UC_SOURCES, UC_CURRENCIES } from '../ucRegistry'
 
 const money = (v) => (v === '' || v == null || Number.isNaN(Number(v)))
   ? '—' : Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -111,47 +110,29 @@ function UcForm({ record, onClose, onSaved }) {
 }
 
 export default function UcRegistry() {
-  const { items, loading } = useUcInvoices()
   const [q, setQ] = useState('')
   const [source, setSource] = useState('')
   const [openOnly, setOpenOnly] = useState(true)
   const [editing, setEditing] = useState(null)   // record | 'new' | null
-  const [seeding, setSeeding] = useState(false)
-  const [seedMsg, setSeedMsg] = useState('')
 
-  const filtered = useMemo(() => {
-    const t = q.trim().toLowerCase()
-    return items.filter((r) => {
-      if (openOnly && r.status === 'closed') return false
-      if (source && r.source !== source) return false
-      if (!t) return true
-      return [r.uc_no, r.customer, r.jes_si, r.order_no].some((v) => (v || '').toLowerCase().includes(t))
-    })
-  }, [items, q, source, openOnly])
+  const list = useUcList({ q, source, status: openOnly ? 'open' : '', limit: 400 })
+  const arList = useUcList({ status: 'open', limit: 1000 })   // outstanding summary (all open)
+  const rows = list.rows
+  const refreshAll = () => { list.refresh(); arList.refresh() }
 
-  // Outstanding (open) totals by currency.
+  // Outstanding totals by currency (from the open set).
   const ar = useMemo(() => {
     const by = {}
-    for (const r of items) {
-      if (r.status === 'closed') continue
+    for (const r of arList.rows) {
       const c = r.currency || '?'
       by[c] = (by[c] || 0) + (Number(r.balance) || 0)
     }
     return Object.entries(by).filter(([, v]) => Math.abs(v) > 0.005).sort((a, b) => b[1] - a[1])
-  }, [items])
-
-  async function runSeed() {
-    if (!confirm(`Import ${UC_OPEN_SEED.length} legacy open items and set the UC# counter to 4948?\nThis is safe to run once; it skips any UC# already present.`)) return
-    setSeeding(true); setSeedMsg('')
-    try {
-      const added = await seedOpenItems(UC_OPEN_SEED)
-      setSeedMsg(`Imported ${added} item(s). New UC#s will start at UC4949.`)
-    } catch (e) { setSeedMsg(`Import failed: ${e.message}`) } finally { setSeeding(false) }
-  }
+  }, [arList.rows])
 
   return (
     <div className="p-4 md:p-6">
-      {loading && <LoadingBar />}
+      {list.loading && <LoadingBar />}
 
       <div className="flex items-start justify-between mb-4 gap-4 flex-wrap">
         <div>
@@ -183,22 +164,9 @@ export default function UcRegistry() {
         )}
       </div>
 
-      {/* one-time migration */}
-      {!loading && items.length === 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4 flex items-start gap-3">
-          <DownloadCloud size={18} className="text-amber-600 mt-0.5" />
-          <div className="flex-1">
-            <p className="text-sm text-amber-900 font-medium">Registry is empty — import the legacy open items</p>
-            <p className="text-sm text-amber-700 mt-0.5">Loads {UC_OPEN_SEED.length} outstanding 2025–26 items and sets the counter so new UC#s continue from UC4949.</p>
-          </div>
-          <button onClick={runSeed} disabled={seeding} className="btn-primary text-sm whitespace-nowrap disabled:opacity-50">
-            {seeding ? 'Importing…' : 'Import 81 items'}
-          </button>
-        </div>
-      )}
-      {seedMsg && (
-        <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 mb-4">
-          <CheckCircle2 size={16} /> {seedMsg}
+      {list.error && (
+        <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
+          <AlertCircle size={16} /> {list.error}
         </div>
       )}
 
@@ -217,7 +185,7 @@ export default function UcRegistry() {
           <input type="checkbox" checked={openOnly} onChange={(e) => setOpenOnly(e.target.checked)}
             className="rounded border-gray-300 text-teal-600 focus:ring-teal-500" /> Open only
         </label>
-        <span className="text-sm text-gray-400 tabular-nums">{filtered.length} of {items.length}</span>
+        <span className="text-sm text-gray-400 tabular-nums">{rows.length} shown</span>
       </div>
 
       {/* table */}
@@ -234,7 +202,7 @@ export default function UcRegistry() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => (
+              {rows.map((r) => (
                 <tr key={r.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
                   <td className="px-3 py-2 font-mono text-xs">{r.uc_no}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-gray-500">{r.year}</td>
@@ -256,7 +224,7 @@ export default function UcRegistry() {
                   </td>
                 </tr>
               ))}
-              {!loading && filtered.length === 0 && (
+              {!list.loading && rows.length === 0 && (
                 <tr><td colSpan={10} className="px-3 py-10 text-center text-gray-400">No matching UC# records.</td></tr>
               )}
             </tbody>
@@ -268,7 +236,7 @@ export default function UcRegistry() {
         <UcForm
           record={editing === 'new' ? null : editing}
           onClose={() => setEditing(null)}
-          onSaved={() => setEditing(null)}
+          onSaved={() => { setEditing(null); refreshAll() }}
         />
       )}
     </div>

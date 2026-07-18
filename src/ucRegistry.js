@@ -1,104 +1,49 @@
-// Live UC# invoice registry (Firestore). Replaces the legacy "Invoice Check
-// List" spreadsheet. The UC# is allocated atomically via a counter doc so two
-// people can never grab the same number (the real upgrade over the shared Excel).
-// Historical rows live read-only in Supabase (see the ERP Lookup "UC History"
-// tab); THIS is the live, editable set.
+// UC# invoice registry client. Now backed by Supabase (public.uc_registry) via
+// the admin-gated /api/uc edge function — one SQL table for the whole registry,
+// live + history. (The earlier Firestore version is retired.) UC#s are allocated
+// atomically by a Postgres sequence on insert.
 import { useEffect, useState } from 'react'
-import {
-  collection, doc, addDoc, updateDoc, onSnapshot, serverTimestamp,
-  runTransaction, getDocs,
-} from 'firebase/firestore'
-import { db, auth } from './firebase'
-
-const COL = 'uc_invoices'
-const COUNTER = () => doc(db, 'counters', 'uc')
+import { auth } from './firebase'
 
 export const UC_SOURCES = ['ERP', 'Alibaba', 'Amazon', 'Online Shop', 'Retail', 'Other']
 export const UC_CURRENCIES = ['HKD', 'USD', 'EUR', 'GBP', 'RMB', 'CAD', 'AUD', 'JPY', 'MXN']
 
-const num = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0 }
-const ucSeq = (uc) => { const m = /(\d+)/.exec(uc || ''); return m ? parseInt(m[1], 10) : 0 }
-
-// Canonical write shape. Balance defaults to total − deposit unless set explicitly.
-function normalize(d) {
-  const total = num(d.total), deposit = num(d.deposit)
-  const balance = (d.balance === '' || d.balance == null) ? Math.round((total - deposit) * 100) / 100 : num(d.balance)
-  return {
-    uc_no: (d.uc_no || '').trim(),
-    year: (d.year || '').trim(),
-    source: UC_SOURCES.includes(d.source) ? d.source : 'Other',
-    jes_si: (d.jes_si || '').trim(),
-    order_no: (d.order_no || '').trim(),
-    customer: (d.customer || '').trim(),
-    currency: (d.currency || '').trim(),
-    total, deposit, balance,
-    bal_pay_date: (d.bal_pay_date || '').trim(),
-    shipment: (d.shipment || '').trim(),
-    shipping_cost: num(d.shipping_cost),
-    customs: (d.customs || '').trim(),
-    delivery_date: (d.delivery_date || '').trim(),
-    confirmed: !!d.confirmed,
-    pic: (d.pic || '').trim(),
-    remarks: (d.remarks || '').trim(),
-    status: d.status === 'closed' ? 'closed' : 'open',
-  }
-}
-
-// Allocate the next UC# and create the record atomically (no duplicate numbers).
-export async function createUcInvoice(data) {
-  const email = auth.currentUser?.email || null
-  return runTransaction(db, async (tx) => {
-    const snap = await tx.get(COUNTER())
-    const next = (snap.exists() ? num(snap.data().value) : 0) + 1
-    tx.set(COUNTER(), { value: next }, { merge: true })
-    const ref = doc(collection(db, COL))
-    tx.set(ref, { ...normalize({ ...data, uc_no: `UC${next}` }), created_at: serverTimestamp(), created_by: email })
-    return { id: ref.id, uc_no: `UC${next}` }
+async function ucApi(op, extra) {
+  const user = auth.currentUser
+  if (!user) throw new Error('Please sign in.')
+  const token = await user.getIdToken()
+  const res = await fetch('/api/uc', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ op, ...extra }),
   })
+  let data = {}
+  try { data = await res.json() } catch { /* non-JSON */ }
+  if (!res.ok) throw new Error(data.error || `UC ${op} failed (${res.status})`)
+  return data
 }
 
-export async function updateUcInvoice(id, data) {
-  await updateDoc(doc(db, COL, id), {
-    ...normalize(data), updated_at: serverTimestamp(), updated_by: auth.currentUser?.email || null,
-  })
-}
+export const createUcInvoice = (data) => ucApi('create', { data }).then((d) => d.row)
+export const updateUcInvoice = (id, data) => ucApi('update', { id, data }).then((d) => d.row)
+export const listUc = (filters) => ucApi('list', filters).then((d) => d.rows || [])
 
-// Live list, newest UC# first.
-export function useUcInvoices() {
-  const [items, setItems] = useState([])
+// Debounced, refetchable list. `filters` = { q, source, status, limit }.
+export function useUcList(filters) {
+  const { q = '', source = '', status = '', limit = 300 } = filters || {}
+  const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [nonce, setNonce] = useState(0)
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, COL), (snap) => {
-      const rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-      rows.sort((a, b) => ucSeq(b.uc_no) - ucSeq(a.uc_no))
-      setItems(rows); setLoading(false)
-    }, () => setLoading(false))
-    return unsub
-  }, [])
-  return { items, loading }
-}
-
-// Raise the counter to at least `min` (so new UC#s continue above all history).
-async function ensureCounterAtLeast(min) {
-  await runTransaction(db, async (tx) => {
-    const snap = await tx.get(COUNTER())
-    const cur = snap.exists() ? num(snap.data().value) : 0
-    if (cur < min) tx.set(COUNTER(), { value: min }, { merge: true })
-  })
-}
-
-// One-time migration of the legacy open items. Idempotent: skips UC#s already
-// present, and seeds the counter to 4948 so the next NEW record is UC4949.
-export async function seedOpenItems(seed) {
-  const existing = new Set((await getDocs(collection(db, COL))).docs.map((d) => d.data().uc_no))
-  let added = 0
-  for (const rec of seed) {
-    if (existing.has(rec.uc_no)) continue
-    await addDoc(collection(db, COL), {
-      ...normalize(rec), created_at: serverTimestamp(), created_by: 'migration', migrated: true,
-    })
-    added += 1
-  }
-  await ensureCounterAtLeast(4948)
-  return added
+    let alive = true
+    setLoading(true); setError('')
+    const t = setTimeout(() => {
+      listUc({ q, source, status, limit })
+        .then((r) => { if (alive) setRows(r) })
+        .catch((e) => { if (alive) { setError(e.message); setRows([]) } })
+        .finally(() => { if (alive) setLoading(false) })
+    }, 250)
+    return () => { alive = false; clearTimeout(t) }
+  }, [q, source, status, limit, nonce])
+  return { rows, loading, error, refresh: () => setNonce((n) => n + 1) }
 }

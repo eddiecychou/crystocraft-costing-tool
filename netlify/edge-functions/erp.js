@@ -38,10 +38,6 @@ const ENTITIES = {
     view: 'erp_purchase', hasActive: false, orderBy: 'code.desc',
     search: ['code', 'supplier', 'supplier_code', 'ref'],
   },
-  uc_archive: {
-    view: 'erp_uc_archive', hasActive: false, orderBy: 'src_row.desc',
-    search: ['uc_no', 'customer', 'jes_si', 'order_no'],
-  },
 }
 
 // Header → line-detail + surcharge views, fetched by exact header code (see the
