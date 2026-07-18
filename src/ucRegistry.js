@@ -19,7 +19,7 @@ async function ucApi(op, extra) {
   })
   let data = {}
   try { data = await res.json() } catch { /* non-JSON */ }
-  if (!res.ok) throw new Error(data.error || `UC ${op} failed (${res.status})`)
+  if (!res.ok) throw new Error([data.error, data.detail].filter(Boolean).join(' — ') || `UC ${op} failed (${res.status})`)
   return data
 }
 

@@ -16,7 +16,13 @@ async function call(body) {
   })
   let data = {}
   try { data = await res.json() } catch { /* non-JSON error body */ }
-  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`)
+  if (!res.ok) {
+    // Surface `detail` too. Without it a database error arrives as the bare
+    // string "Create failed", which says nothing and is unactionable — that
+    // hid a missing grant on the audit table on first use.
+    const msg = [data.error, data.detail].filter(Boolean).join(' — ')
+    throw new Error(msg || `Request failed (${res.status})`)
+  }
   return data
 }
 

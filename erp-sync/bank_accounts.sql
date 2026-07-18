@@ -66,8 +66,14 @@ create table if not exists public.bank_accounts_audit (
   after       jsonb
 );
 
+-- SECURITY DEFINER on purpose. The trigger has to insert into the audit table,
+-- but service_role (what PostgREST/the API connects as) is deliberately granted
+-- only SELECT there — so the API can read history and cannot forge, alter or
+-- delete it. Running as the function owner is what lets the trigger write while
+-- keeping the log append-only from the application's side.
+-- search_path is pinned, as it must be for any SECURITY DEFINER function.
 create or replace function public.bank_accounts_audit_fn() returns trigger
-language plpgsql as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 begin
   insert into public.bank_accounts_audit (account_id, action, changed_by, before, after)
   values (

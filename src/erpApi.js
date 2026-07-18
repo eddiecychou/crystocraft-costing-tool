@@ -21,7 +21,7 @@ export async function erpLookup(
 
   let data = {}
   try { data = await res.json() } catch { /* non-JSON error body */ }
-  if (!res.ok) throw new Error(data.error || `Lookup failed (${res.status})`)
+  if (!res.ok) throw new Error([data.error, data.detail].filter(Boolean).join(' — ') || `Lookup failed (${res.status})`)
   return data.rows || []
 }
 
@@ -40,7 +40,7 @@ export async function erpBom(code) {
 
   let data = {}
   try { data = await res.json() } catch { /* non-JSON error body */ }
-  if (!res.ok) throw new Error(data.error || `BOM lookup failed (${res.status})`)
+  if (!res.ok) throw new Error([data.error, data.detail].filter(Boolean).join(' — ') || `BOM lookup failed (${res.status})`)
   return data.rows || []
 }
 
@@ -59,6 +59,6 @@ export async function erpLines(of, code) {
 
   let data = {}
   try { data = await res.json() } catch { /* non-JSON error body */ }
-  if (!res.ok) throw new Error(data.error || `Line lookup failed (${res.status})`)
+  if (!res.ok) throw new Error([data.error, data.detail].filter(Boolean).join(' — ') || `Line lookup failed (${res.status})`)
   return { rows: data.rows || [], surcharges: data.surcharges || [] }
 }
