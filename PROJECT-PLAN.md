@@ -43,6 +43,129 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
+## Current Status — V7.15 IN PROGRESS (opened 2026-07-18)
+
+Commit chain `e3b160f`→`548958d` (25 commits), all deployed. V7.15's theme is
+**integrating the app with the ERP with a view to retiring JES**. Owner's framing:
+be able to query everything useful out of the ERP, map the Firebase data onto
+Supabase as one source of truth, then take over the writing so the old system
+can be switched off.
+
+Full findings: **`V7.15_ERP_Inventory.md`** — this is the summary.
+
+### 1. The scope is far smaller than it looked
+
+Surveyed the whole mirror (`erp-sync/inventory.py`, read-only):
+
+| | |
+|---|---|
+| Tables mirrored | 494 |
+| **Empty** | **286** |
+| Active in the last 3 months | **52** (98.5% of all rows) |
+| Dormant 3 yr+ | 93 |
+
+JES is a *jewellery* package (gold, diamonds, hallmarking, POS, consignment,
+customs). This business uses six modules of it: **items/inventory, job
+orders/production, sales, purchasing, customers/suppliers**. So this is not
+"build an ERP" — it is closing gaps in an app that already covers most of them.
+
+**Quoting has already been migrated** and nobody recorded it: `quotation` stops
+at 2024-12-20. A precedent that the pattern works.
+
+### 2. Accounting is out of scope — and the books are in PBIS
+
+JES's GL was **never used**: `acjournal`, `acsettle`, `acperiodended`,
+`acbudget` are all 0 rows; only vendor config remains, last touched 2004–2006,
+one row stamped by user `demo`. Owner confirmed the books are kept in **PBIS**
+(separate system, on Cindy's machine).
+
+Cindy's journal reports were parsed (`erp-sync/parse_pbis.py`). The key finding:
+**PBIS already carries the app's UC number** —
+`SALES INVOICE SI250040 / UC4743/` — so the join across JES, `uc_registry` and
+the books exists already. **152 of 152 UC numbers in the books are in the
+registry; zero orphans**, an independent validation of the V7.14 migration.
+
+The books run **~5 months behind** (median posting lag 153 days, max 373) — so
+PBIS is history, not a live source of "what's paid".
+
+Still unseen: the **JES→PBIS import file**. That is what an app-generated
+invoice must reproduce, and it is the reason invoicing should not be the first
+function migrated.
+
+### 3. Document model (owner)
+
+| Team says | JES doc | Generated in | In the app |
+|---|---|---|---|
+| **PI** | **SO** | JES | PDF uploaded, AI-parsed into Firestore |
+| **Invoice** | **SI** | JES | referenced by number only |
+
+An SI is often copied from an SO **but not always** — simple sales are invoiced
+with no SO. Any invoice module must support both paths.
+
+**The app re-parses data it already has.** SO lines exist as clean rows in
+`erp_sales_order_line` (188 k). So `ShipmentForm` now cross-checks a parsed PI
+against the ERP's own order and offers to adopt it — augmenting the parser, not
+replacing it, since an order raised today isn't synced yet.
+
+### 4. What shipped
+
+- **ERP Lookup → Inventory**: stock on hand by warehouse and item type.
+  Computed from the movement ledger, **not** `itemwhbal` — that table is a stale
+  snapshot (8,368 of 8,599 non-zero rows have a null `lastupdate`). *Rule: prefer
+  JES's ledgers over its balance tables until each balance table is proven.*
+- **Customer / supplier detail panels**, with payment terms and methods resolved
+  from their lookup tables.
+- **Bank accounts** (`Settings → Bank Accounts`) — the ERP has **no bank master**
+  (`raw.bank` is 2 rows from 2003–05; account-number columns 0-populated), so
+  this is new app data. One default per currency enforced by a partial unique
+  index; IBAN mod-97, SWIFT/BIC and sort-code/ABA validation at the API; an
+  append-only change audit (`SECURITY DEFINER`, so the API can read history but
+  not forge it). Wired into the quotation with a currency-mismatch warning and a
+  snapshot onto the document.
+- **BOM coverage check** on Range Costing — merges every ERP variant of a design
+  and reports what isn't costed. Level 1 only: level 2 is raw alloy from when the
+  factory made FM parts in house, and those are now bought finished.
+- **Component code audit** (`Settings → Component Codes`) — see below.
+- **Fix:** freight quotes saved but never displayed. `where` + `orderBy` needed a
+  composite index that doesn't exist; `catch {}` turned the error into an empty
+  list. Silent catches in `logistics.js` now log.
+
+### 5. Open findings that need a decision
+
+- **The costing may be anchored to superseded part codes.** `FM-K(32).03-C`
+  ("鋅合金", zinc alloy) is used by **0** current BOMs; every BOM builds with
+  `FM-K(32)-C` ("底座配件 chrome", 526 BOMs). These are the old in-house part
+  codes from before the FM parts were bought finished. If so, some unit costs
+  reflect what it cost to *make* a part, not what is now *paid* for it.
+- **Multi-invoice UC numbers** — UC4836 is `SI250128/137` in the registry,
+  unparseable. How should these be recorded?
+- **Packaging is not costed per product.** The ERP BOM carries the gift box,
+  hang tag, tissue, silica gel; the app stocks packaging as a pool.
+
+### 6. Next
+
+1. **Incremental sync** — prerequisite for everything else. `sync.py` now creates
+   the unique index the upsert needs; `probe_lastupdate.py` must be run **on the
+   LAN** to confirm `LastUpdate` moves on edit, or incremental sync silently
+   skips edits.
+2. **Item images** — 31,823 of 44,460 codes have one, 29,460 distinct files.
+   `sync_images.py --report` then `--upload`. Needs the folder path (`JES.ini`;
+   `systemsetting`'s path columns are all `_notuse`). See `IMAGE-SYNC-PLAN.md`.
+3. **SO import by number**, parser as fallback — after sync is current.
+4. **Invoicing** — wants the PBIS import file first.
+5. **Screen snapshots** from the team → the gap map.
+
+### Deployment notes
+
+- No new env vars this cycle. New Supabase objects: `bank_accounts`,
+  `bank_accounts_audit`, `erp_stock`, `erp_warehouse`, `erp_item_type`,
+  `erp_component_usage`; `erp_item` gained image columns; `erp_customer` /
+  `erp_supplier` were dropped and recreated with detail fields.
+- **`refresh_views.sql` now refreshes `erp_stock` after `erp_item`** (it joins it).
+- Almost nothing this cycle was build-tested — this Mac has no Node, so changes
+  were parsed with `esbuild` and verified by the owner on the deployed site. A
+  build pass on a Mac with Node is overdue.
+
 ## Current Status — V7.14 CLOSED as of 2026-07-17
 
 **Deployed to Netlify (live `03b922b`).** Commit chain `57b5f3c`→`03b922b`
