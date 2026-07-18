@@ -26,8 +26,12 @@ const FIELDS = [
   ['beneficiary', 'Beneficiary (account name)', 'Exactly as the bank holds it', true],
   ['bank_name', 'Beneficiary Bank', 'e.g. HSBC Mong Kok Branch', true],
   ['account_no', 'Account no.', 'e.g. 004-534-754262-838', false],
-  ['iban', 'IBAN', 'Validated by checksum on save', false],
-  ['swift', 'SWIFT / BIC', '8 or 11 characters', false],
+  ['iban', 'IBAN', 'Validated by checksum on save', false,
+    'Checked against its mod-97 checksum — a mistyped or swapped character is refused.'],
+  ['swift', 'SWIFT / BIC', 'e.g. BCIRLULL', false,
+    // Banks print this as "BCIRLULL (BCIRLULLXXX * if 11 characters required)",
+    // which invites pasting the whole line into the field.
+    'Code only — 8 or 11 characters, nothing else. 8 is the head office; the last 3 identify a branch, and XXX is the filler some systems demand. BCIRLULL and BCIRLULLXXX are the same destination.'],
   ['intermediary', 'Intermediary bank', 'If the bank requires one', false],
   ['bank_country', 'Bank country', 'e.g. Luxembourg', false],
   ['bank_address', 'Bank address', '', false],
@@ -46,7 +50,7 @@ function AccountForm({ initial, onSave, onCancel, saving }) {
         {initial.id ? 'Edit account' : 'Add bank account'}
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {FIELDS.map(([k, label, placeholder, required]) => (
+        {FIELDS.map(([k, label, placeholder, required, hint]) => (
           <div key={k} className={
             ['bank_address', 'notes', 'payment_methods', 'reference_note'].includes(k) ? 'sm:col-span-2' : ''
           }>
@@ -60,6 +64,7 @@ function AccountForm({ initial, onSave, onCancel, saving }) {
               className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg
                          focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
             />
+            {hint && <p className="text-xs text-gray-400 mt-1 leading-snug">{hint}</p>}
           </div>
         ))}
       </div>

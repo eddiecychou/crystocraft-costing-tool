@@ -58,9 +58,18 @@ function clean(input) {
     if (k in out) out[k] = out[k] == null ? null : String(out[k]).trim() || null
   }
   if ('swift' in out) {
-    out.swift = String(out.swift || '').replace(/\s/g, '').toUpperCase() || null
+    const rawSwift = String(out.swift || '').trim()
+    out.swift = rawSwift.replace(/\s/g, '').toUpperCase() || null
     if (out.swift && !/^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(out.swift)) {
-      return { error: 'SWIFT/BIC must be 8 or 11 characters (6 letters then alphanumerics).' }
+      // Banks print the code alongside a note ("BCIRLULL (BCIRLULLXXX * if 11
+      // characters are required)"), and the whole line gets pasted in. Echo
+      // what arrived so the cause is obvious instead of just restating the rule.
+      const looksPasted = /[()*]|required/i.test(rawSwift)
+      return {
+        error: looksPasted
+          ? `That looks like the bank's whole note. Enter only the code itself — e.g. BCIRLULL — not “${rawSwift.slice(0, 60)}”.`
+          : `“${rawSwift.slice(0, 40)}” isn't a valid SWIFT/BIC. It must be 8 or 11 characters: 6 letters then alphanumerics.`,
+      }
     }
   }
   if ('iban' in out) {
