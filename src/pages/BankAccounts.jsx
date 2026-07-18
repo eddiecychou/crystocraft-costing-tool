@@ -12,6 +12,7 @@ import {
 const BLANK = {
   currency: '', label: '', bank_name: '', bank_address: '', bank_country: '',
   beneficiary: '', account_no: '', swift: '', iban: '', intermediary: '',
+  local_code_label: '', local_code: '',
   payment_methods: '', reference_note: '', notes: '',
   is_default: false, active: true,
 }
@@ -32,6 +33,10 @@ const FIELDS = [
     // Banks print this as "BCIRLULL (BCIRLULLXXX * if 11 characters required)",
     // which invites pasting the whole line into the field.
     'Code only — 8 or 11 characters, nothing else. 8 is the head office; the last 3 identify a branch, and XXX is the filler some systems demand. BCIRLULL and BCIRLULLXXX are the same destination.'],
+  ['local_code_label', 'Local code type', 'e.g. Sort Code, Routing Number (ABA), BSB', false,
+    'The domestic clearing scheme. Naming it correctly also switches on its checks.'],
+  ['local_code', 'Local code', 'e.g. 608382', false,
+    'Sort code / ABA routing / BSB — needed for domestic transfers (CHAPS, BACS, FPS).'],
   ['intermediary', 'Intermediary bank', 'If the bank requires one', false],
   ['bank_country', 'Bank country', 'e.g. Luxembourg', false],
   ['bank_address', 'Bank address', '', false],

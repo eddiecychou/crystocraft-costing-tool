@@ -21,6 +21,12 @@ create table if not exists public.bank_accounts (
   swift           text,
   iban            text,
   intermediary    text,                    -- correspondent bank, when required
+  -- Domestic clearing code. Deliberately generic: the UK GBP account needs a
+  -- sort code (608382) for CHAPS/BACS/FPS, and the US/AU/CA/MY local accounts
+  -- need an ABA routing number, BSB, institution number and so on. One labelled
+  -- pair covers every country instead of a column per scheme.
+  local_code_label text,                   -- "Sort Code", "Routing Number (ABA)", "BSB"
+  local_code       text,                   -- "608382"
   bank_country    text,                    -- "Luxembourg" — matters for wires
   -- Real constraints from real accounts. Banking Circle (EUR) accepts SEPA
   -- Inst / SEPA SCT only, so a customer sending a SWIFT wire would fail; and

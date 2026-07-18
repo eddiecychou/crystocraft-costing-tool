@@ -23,6 +23,7 @@ const json = (b, status = 200) =>
 const WRITABLE = new Set([
   'currency', 'label', 'bank_name', 'bank_address', 'beneficiary',
   'account_no', 'swift', 'iban', 'intermediary', 'bank_country',
+  'local_code_label', 'local_code',
   'payment_methods', 'reference_note', 'notes', 'is_default', 'active',
 ])
 
@@ -54,7 +55,8 @@ function clean(input) {
     if (!/^[A-Z]{3}$/.test(out.currency)) return { error: 'Currency must be a 3-letter code (e.g. USD).' }
   }
   for (const k of ['label', 'bank_name', 'bank_address', 'beneficiary', 'account_no',
-                   'intermediary', 'bank_country', 'payment_methods', 'reference_note', 'notes']) {
+                   'intermediary', 'bank_country', 'local_code_label',
+                   'payment_methods', 'reference_note', 'notes']) {
     if (k in out) out[k] = out[k] == null ? null : String(out[k]).trim() || null
   }
   if ('swift' in out) {
@@ -78,6 +80,33 @@ function clean(input) {
       return { error: 'That IBAN fails its checksum — check for a mistyped or transposed character.' }
     }
   }
+  // Domestic clearing code (sort code / ABA routing / BSB / …). Kept generic,
+  // but where the scheme is identifiable its own rules are applied — same
+  // reasoning as the IBAN checksum: catch a wrong digit here, not at the bank.
+  if ('local_code' in out) {
+    const raw = String(out.local_code || '').trim()
+    out.local_code = raw || null
+    if (out.local_code) {
+      const digits = raw.replace(/\D/g, '')
+      const kind = String(out.local_code_label || '').toLowerCase()
+      if (/sort/.test(kind) && digits.length !== 6) {
+        return { error: `A UK sort code is 6 digits — “${raw.slice(0, 30)}” has ${digits.length}.` }
+      }
+      if (/aba|routing/.test(kind)) {
+        if (digits.length !== 9) {
+          return { error: `A US routing number is 9 digits — “${raw.slice(0, 30)}” has ${digits.length}.` }
+        }
+        // ABA check digit: 3·(d1+d4+d7) + 7·(d2+d5+d8) + (d3+d6+d9) ≡ 0 (mod 10)
+        const w = [3, 7, 1, 3, 7, 1, 3, 7, 1]
+        const sum = digits.split('').reduce((s, d, i) => s + Number(d) * w[i], 0)
+        if (sum % 10 !== 0) {
+          return { error: 'That routing number fails its check digit — verify it against the bank document.' }
+        }
+      }
+      if (!digits) return { error: 'The clearing code should contain digits.' }
+    }
+  }
+
   // An account needs SOMETHING to pay into.
   if (('account_no' in out || 'iban' in out) && !out.account_no && !out.iban) {
     return { error: 'Enter an account number or an IBAN.' }

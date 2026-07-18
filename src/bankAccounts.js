@@ -57,6 +57,9 @@ export function formatBankDetails(a) {
     ['Beneficiary Bank', a.bank_name],
     ['Bank Address', [a.bank_address, a.bank_country].filter(Boolean).join(', ')],
     ['Account No', a.account_no],
+    // Labelled with the scheme's own name — "Sort Code: 608382" is what a UK
+    // payer expects to see, not a generic "Local Code".
+    [a.local_code_label || 'Local Code', a.local_code],
     ['IBAN', a.iban],
     ['SWIFT', a.swift],
     ['Intermediary Bank', a.intermediary],
