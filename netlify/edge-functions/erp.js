@@ -13,7 +13,7 @@
 //
 // Request:  POST { entity: "customer"|"supplier"|"item"|"warehouse"|"stock"|…,
 //                  q?: string, limit?: number, activeOnly?: bool,
-//                  filter?: string (stock → warehouse code), nonZeroOnly?: bool }
+//                  filters?: { warehouse?, item_type? }, nonZeroOnly?: bool }
 // Response: { rows: [...] }
 import { jwtVerify, createRemoteJWKSet } from 'https://esm.sh/jose@5.9.6'
 
@@ -44,12 +44,16 @@ const ENTITIES = {
     view: 'erp_warehouse', orderBy: 'code.asc',
     search: ['code', 'name', 'name_zh', 'type'],
   },
-  // Stock on hand, computed from the movement ledger. Filterable by warehouse;
-  // a single warehouse can hold thousands of item lines, hence the higher cap.
+  item_type: {
+    view: 'erp_item_type', hasActive: false, orderBy: 'code.asc',
+    search: ['code', 'name'],
+  },
+  // Stock on hand, computed from the movement ledger. Filterable by warehouse
+  // and item type; one warehouse can hold thousands of lines, hence the cap.
   stock: {
     view: 'erp_stock', hasActive: false, orderBy: 'qty.desc',
     search: ['item_code', 'description'],
-    filterCol: 'warehouse', maxLimit: 500,
+    filterCols: ['warehouse', 'item_type'], maxLimit: 500,
   },
 }
 
@@ -180,12 +184,14 @@ export default async function handler(req) {
   params.set('order', cfg.orderBy || 'code.asc')
   params.set('limit', String(limit))
   if (activeOnly && cfg.hasActive !== false) params.set('active', 'is.true')
-  // Optional single-column equality filter (stock → warehouse). The column is
-  // fixed by the entity config, never chosen by the caller; only its value comes
-  // from the request, and that is stripped to a safe charset.
-  if (cfg.filterCol && payload.filter) {
-    const val = String(payload.filter).replace(/[^A-Za-z0-9/_-]/g, '').slice(0, 40)
-    if (val) params.set(cfg.filterCol, `eq.${val}`)
+  // Optional equality filters (stock → warehouse, item_type). The filterable
+  // COLUMNS are fixed by the entity config and never chosen by the caller —
+  // only their values come from the request, stripped to a safe charset.
+  for (const col of cfg.filterCols || []) {
+    const raw = payload.filters?.[col]
+    if (!raw) continue
+    const val = String(raw).replace(/[^A-Za-z0-9/_-]/g, '').slice(0, 40)
+    if (val) params.set(col, `eq.${val}`)
   }
   // Stock only: hide item/warehouse pairs that have netted to zero.
   if (cfg.view === 'erp_stock' && payload.nonZeroOnly === true) params.set('qty', 'neq.0')

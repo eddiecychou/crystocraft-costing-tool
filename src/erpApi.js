@@ -3,11 +3,11 @@
 // user's Firebase token and the edge function does the query server-side.
 import { auth } from './firebase'
 
-// `filter` is an entity-specific equality filter (stock → warehouse code);
-// `nonZeroOnly` hides stock lines that have netted to zero.
+// `filters` holds entity-specific equality filters (stock → { warehouse,
+// item_type }); `nonZeroOnly` hides stock lines that have netted to zero.
 export async function erpLookup(
   entity,
-  { q = '', limit = 25, activeOnly = false, filter = '', nonZeroOnly = false } = {},
+  { q = '', limit = 25, activeOnly = false, filters = {}, nonZeroOnly = false } = {},
 ) {
   const user = auth.currentUser
   if (!user) throw new Error('Please sign in to look up ERP data.')
@@ -16,7 +16,7 @@ export async function erpLookup(
   const res = await fetch('/api/erp', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ entity, q, limit, activeOnly, filter, nonZeroOnly }),
+    body: JSON.stringify({ entity, q, limit, activeOnly, filters, nonZeroOnly }),
   })
 
   let data = {}

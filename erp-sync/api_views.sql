@@ -363,17 +363,31 @@ left join (
   from public.erp_stock where qty <> 0 group by warehouse
 ) s on s.warehouse = w.whcode;
 
+-- Item types for the Inventory picker (FG = Finished Goods, SF = Semi-Finished,
+-- ST = Stone, SE = Set, AY = Alloy, SC = Stone Combination). Only 6 exist and
+-- 5 appear in stock; stock_items lets the UI hide the ones that never do.
+create or replace view public.erp_item_type as
+select
+  t.itcode                                        as code,
+  coalesce(nullif(t.itlongdesc1, ''), nullif(t.itshortdesc1, '')) as name,
+  coalesce(s.stock_items, 0)                      as stock_items
+from raw.itemtype t
+left join (
+  select item_type, count(*) as stock_items
+  from public.erp_stock where qty <> 0 group by item_type
+) s on s.item_type = t.itcode;
+
 -- ── Access: server-side only. Browser (anon) must NOT read these. ────────────
 revoke all on public.erp_customer, public.erp_supplier, public.erp_item, public.erp_bom,
   public.erp_sales_invoice, public.erp_sales_invoice_line, public.erp_sales_invoice_surcharge,
   public.erp_sales_order, public.erp_sales_order_line, public.erp_sales_order_surcharge,
   public.erp_purchase, public.erp_purchase_line, public.erp_purchase_surcharge,
-  public.erp_warehouse, public.erp_stock from anon, authenticated;
+  public.erp_warehouse, public.erp_stock, public.erp_item_type from anon, authenticated;
 grant select on public.erp_customer, public.erp_supplier, public.erp_item, public.erp_bom,
   public.erp_sales_invoice, public.erp_sales_invoice_line, public.erp_sales_invoice_surcharge,
   public.erp_sales_order, public.erp_sales_order_line, public.erp_sales_order_surcharge,
   public.erp_purchase, public.erp_purchase_line, public.erp_purchase_surcharge,
-  public.erp_warehouse, public.erp_stock to service_role;
+  public.erp_warehouse, public.erp_stock, public.erp_item_type to service_role;
 revoke all on function public.explode_bom(text) from anon, authenticated;
 grant execute on function public.explode_bom(text) to service_role;
 

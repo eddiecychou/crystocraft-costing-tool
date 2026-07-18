@@ -290,9 +290,11 @@ export default function ErpLookup() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  // Inventory: warehouse list (loaded once) + the current selection.
+  // Inventory: warehouse + item-type pickers (loaded once) and their selections.
   const [warehouses, setWarehouses] = useState([])
+  const [itemTypes, setItemTypes] = useState([])
   const [warehouse, setWarehouse] = useState('')       // '' = all warehouses
+  const [itemType, setItemType] = useState('')         // '' = all types
   const [nonZeroOnly, setNonZeroOnly] = useState(true)
 
   // BOM modal state
@@ -335,13 +337,19 @@ export default function ErpLookup() {
     }
   }
 
-  // Warehouse list for the Inventory tab. Loaded once, on first use.
+  // Picker lists for the Inventory tab. Loaded once, on first use.
   useEffect(() => {
     if (!cfg.hasWarehouse || warehouses.length) return
     let alive = true
-    erpLookup('warehouse', { limit: 100 })
-      .then((r) => { if (alive) setWarehouses(r) })
-      .catch(() => { /* selector just stays empty; the list still loads */ })
+    Promise.all([
+      erpLookup('warehouse', { limit: 100 }),
+      erpLookup('item_type', { limit: 100 }),
+    ])
+      .then(([whs, types]) => {
+        if (!alive) return
+        setWarehouses(whs); setItemTypes(types)
+      })
+      .catch(() => { /* pickers stay empty; the stock list still loads */ })
     return () => { alive = false }
   }, [cfg.hasWarehouse, warehouses.length])
 
@@ -353,7 +361,7 @@ export default function ErpLookup() {
       try {
         const r = await erpLookup(entity, {
           q, activeOnly, limit: cfg.limit || 50,
-          filter: cfg.hasWarehouse ? warehouse : '',
+          filters: cfg.hasWarehouse ? { warehouse, item_type: itemType } : {},
           nonZeroOnly: cfg.hasWarehouse ? nonZeroOnly : false,
         })
         if (alive) setRows(r)
@@ -364,7 +372,7 @@ export default function ErpLookup() {
       }
     }, 300)
     return () => { alive = false; clearTimeout(t) }
-  }, [entity, q, activeOnly, warehouse, nonZeroOnly, cfg])
+  }, [entity, q, activeOnly, warehouse, itemType, nonZeroOnly, cfg])
 
   return (
     <div className="p-4 md:p-6">
@@ -427,6 +435,23 @@ export default function ErpLookup() {
                 .map((w) => (
                   <option key={w.code} value={w.code}>
                     {w.code}{w.name ? ` — ${w.name}` : ''} ({w.stock_items.toLocaleString()})
+                  </option>
+                ))}
+            </select>
+            <select
+              value={itemType}
+              onChange={(e) => setItemType(e.target.value)}
+              className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white
+                         focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
+            >
+              <option value="">All types</option>
+              {/* Only types that actually appear in stock (5 of the ERP's 6). */}
+              {itemTypes
+                .filter((t) => t.stock_items > 0)
+                .sort((a, b) => b.stock_items - a.stock_items)
+                .map((t) => (
+                  <option key={t.code} value={t.code}>
+                    {t.name || t.code} ({t.stock_items.toLocaleString()})
                   </option>
                 ))}
             </select>
