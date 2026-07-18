@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
-import { Search, Hash, Plus, X, AlertCircle } from 'lucide-react'
+import { Search, Hash, Plus, X, AlertCircle, FileText } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import { useUcList, createUcInvoice, updateUcInvoice, UC_SOURCES, UC_CURRENCIES } from '../ucRegistry'
+import { erpLines, erpLookup } from '../erpApi'
 
 const money = (v) => (v === '' || v == null || Number.isNaN(Number(v)))
   ? '—' : Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -118,6 +119,98 @@ function UcForm({ record, onClose, onSaved }) {
   )
 }
 
+// Read-only ERP invoice detail (from the Supabase ERP mirror) for a UC row's JES SI#.
+function ErpInvoiceModal({ si, data, loading, error, onClose }) {
+  const rows = data?.rows || []
+  const surcharges = data?.surcharges || []
+  const header = data?.header || null
+  const n = (v) => Number(v) || 0
+  const subtotal = rows.reduce((s, r) => s + n(r.amount), 0)
+  const discount = n(header?.discount)
+  const surchargeTotal = surcharges.reduce((s, r) => s + n(r.amount), 0)
+  const tax = n(header?.tax)
+  const grand = header?.amount != null ? n(header.amount) : subtotal - discount + surchargeTotal + tax
+  const deposit = n(header?.deposit)
+  const curr = header?.currency ? ` ${header.currency}` : ''
+  const Row = ({ label, value, strong, sign }) => (
+    <div className={`flex justify-between gap-8 py-0.5 ${strong ? 'font-semibold text-gray-900 border-t border-gray-200 mt-1 pt-1.5' : 'text-gray-600'}`}>
+      <span>{label}</span><span className="tabular-nums">{sign === '-' && value ? '−' : ''}{money(value)}{curr}</span>
+    </div>
+  )
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl my-8" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+          <div className="flex items-center gap-2 flex-wrap">
+            <FileText size={18} className="text-teal-600" />
+            <h2 className="font-semibold text-gray-900">ERP Invoice</h2>
+            <span className="font-mono text-xs text-gray-500">{si}</span>
+            {header?.customer && <span className="text-sm text-gray-500">· {header.customer}</span>}
+            {header?.date && <span className="text-xs text-gray-400">· {String(header.date).slice(0, 10)}</span>}
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+        </div>
+        <div className="p-4 max-h-[70vh] overflow-auto">
+          {loading && <p className="text-sm text-gray-500 py-6 text-center">Loading ERP invoice…</p>}
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <AlertCircle size={16} /> {error}
+            </div>
+          )}
+          {!loading && !error && rows.length === 0 && surcharges.length === 0 && (
+            <p className="text-sm text-gray-400 py-6 text-center">No ERP invoice found for {si}.</p>
+          )}
+          {!loading && (rows.length > 0 || surcharges.length > 0) && (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500 border-b border-gray-200">
+                  <th className="px-2 py-1.5 font-medium">#</th>
+                  <th className="px-2 py-1.5 font-medium">Item</th>
+                  <th className="px-2 py-1.5 font-medium">Description</th>
+                  <th className="px-2 py-1.5 font-medium text-right">Qty</th>
+                  <th className="px-2 py-1.5 font-medium text-right">Unit Price</th>
+                  <th className="px-2 py-1.5 font-medium text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => (
+                  <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
+                    <td className="px-2 py-1.5 text-gray-400 tabular-nums">{r.seq}</td>
+                    <td className="px-2 py-1.5 font-mono text-xs">{r.item_code}</td>
+                    <td className="px-2 py-1.5">{r.description}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{r.qty}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{money(r.unit_price)}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums font-medium">{money(r.amount)}</td>
+                  </tr>
+                ))}
+                {surcharges.map((s, i) => (
+                  <tr key={`s${i}`} className="border-b border-gray-50 bg-amber-50/40">
+                    <td className="px-2 py-1.5"></td>
+                    <td className="px-2 py-1.5 text-xs text-amber-700">{s.code || 'CHARGE'}</td>
+                    <td className="px-2 py-1.5 text-gray-600" colSpan={3}>{s.description}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{money(s.amount)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          {!loading && !error && (rows.length > 0 || surcharges.length > 0) && (
+            <div className="mt-4 ml-auto w-full max-w-xs text-sm">
+              <Row label="Subtotal" value={subtotal} />
+              {discount > 0 && <Row label="Discount" value={discount} sign="-" />}
+              {surchargeTotal > 0 && <Row label="Surcharges" value={surchargeTotal} />}
+              {tax > 0 && <Row label="Tax / GST" value={tax} />}
+              <Row label="Grand total" value={grand} strong />
+              {deposit > 0 && <Row label="Deposit" value={deposit} sign="-" />}
+              {deposit > 0 && <Row label="Balance" value={grand - deposit} strong />}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function UcRegistry() {
   const [q, setQ] = useState('')
   const [source, setSource] = useState('')
@@ -128,6 +221,23 @@ export default function UcRegistry() {
   const arList = useUcList({ status: 'open', limit: 1000 })   // outstanding summary (all open)
   const rows = list.rows
   const refreshAll = () => { list.refresh(); arList.refresh() }
+
+  // ERP invoice drill-down (for rows with a JES SI#).
+  const [erpSi, setErpSi] = useState(null)
+  const [erpData, setErpData] = useState(null)
+  const [erpLoading, setErpLoading] = useState(false)
+  const [erpError, setErpError] = useState('')
+  async function openErpInvoice(si) {
+    setErpSi(si); setErpData(null); setErpError(''); setErpLoading(true)
+    try {
+      const [detail, headers] = await Promise.all([
+        erpLines('sales_invoice', si),
+        erpLookup('sales_invoice', { q: si, limit: 5 }),
+      ])
+      const header = headers.find((h) => h.code === si) || null
+      setErpData({ header, rows: detail.rows, surcharges: detail.surcharges })
+    } catch (e) { setErpError(e.message) } finally { setErpLoading(false) }
+  }
 
   // Outstanding totals by currency (from the open set).
   const ar = useMemo(() => {
@@ -221,7 +331,11 @@ export default function UcRegistry() {
                     <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${SOURCE_STYLE[r.source] || SOURCE_STYLE.Other}`}>{r.source}</span>
                   </td>
                   <td className="px-3 py-2">{r.customer}</td>
-                  <td className="px-3 py-2 font-mono text-xs text-gray-500">{r.jes_si || <span className="text-gray-300">—</span>}</td>
+                  <td className="px-3 py-2 font-mono text-xs">
+                    {r.jes_si
+                      ? <button onClick={() => openErpInvoice(r.jes_si)} className="text-teal-600 hover:underline">{r.jes_si}</button>
+                      : <span className="text-gray-300">—</span>}
+                  </td>
                   <td className="px-3 py-2 whitespace-nowrap text-gray-500">{r.currency}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{money(r.total)}</td>
                   <td className={`px-3 py-2 text-right tabular-nums ${Number(r.balance) > 0.005 ? 'font-semibold text-gray-900' : 'text-gray-400'}`}>{money(r.balance)}</td>
@@ -248,6 +362,10 @@ export default function UcRegistry() {
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); refreshAll() }}
         />
+      )}
+      {erpSi && (
+        <ErpInvoiceModal si={erpSi} data={erpData} loading={erpLoading} error={erpError}
+                         onClose={() => setErpSi(null)} />
       )}
     </div>
   )
