@@ -16,7 +16,7 @@ const json = (b, status = 200) =>
 
 // Columns the client may set. uc_no is server-allocated (DB default), never client-set.
 const WRITABLE = new Set([
-  'year', 'source', 'jes_si', 'order_no', 'customer', 'currency', 'total', 'deposit',
+  'doc_date', 'year', 'source', 'jes_si', 'order_no', 'customer', 'currency', 'total', 'deposit',
   'balance', 'bal_pay_date', 'shipment', 'shipping_cost', 'customs', 'delivery_date',
   'confirmed', 'pic', 'remarks', 'status',
 ])

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Search, Hash, Plus, X, AlertCircle, FileText } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import { useUcList, createUcInvoice, updateUcInvoice, UC_SOURCES, UC_CURRENCIES } from '../ucRegistry'
@@ -20,6 +20,71 @@ const SOURCE_STYLE = {
 }
 
 const BLANK = { source: 'ERP', currency: 'HKD', status: 'open', confirmed: false }
+
+// ── ERP invoice picker ────────────────────────────────────────────────────────
+// Type part of an SI# or customer name to search the ERP invoices and link one.
+// Left blank when the UC is created first; linked later once the SI exists.
+function SiPicker({ value, onChange }) {
+  const [q, setQ] = useState(value || '')
+  const [results, setResults] = useState([])
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => { setQ(value || '') }, [value])
+
+  useEffect(() => {
+    if (!open) return
+    const term = q.trim()
+    if (term.length < 2) { setResults([]); return }
+    let alive = true
+    setLoading(true)
+    const t = setTimeout(() => {
+      erpLookup('sales_invoice', { q: term, limit: 8 })
+        .then((r) => { if (alive) setResults(r) })
+        .catch(() => { if (alive) setResults([]) })
+        .finally(() => { if (alive) setLoading(false) })
+    }, 300)
+    return () => { alive = false; clearTimeout(t) }
+  }, [q, open])
+
+  const pick = (r) => { setQ(r.code); onChange(r.code); setOpen(false) }
+
+  return (
+    <label className="flex flex-col gap-1 relative">
+      <span className="text-xs font-medium text-gray-500">ERP invoice (JES SI#) — search to link</span>
+      <div className="relative">
+        <input
+          value={q}
+          onChange={(e) => { setQ(e.target.value); onChange(e.target.value); setOpen(true) }}
+          onFocus={() => setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          placeholder="e.g. SI250087 or customer…"
+          className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
+        {q && (
+          <button type="button" onMouseDown={() => { setQ(''); onChange(''); setResults([]) }}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500" title="Clear">
+            <X size={14} />
+          </button>
+        )}
+      </div>
+      {open && (loading || results.length > 0) && (
+        <ul className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-auto">
+          {loading && <li className="px-3 py-2 text-xs text-gray-400">Searching ERP invoices…</li>}
+          {results.map((r) => (
+            <li key={r.code}>
+              <button type="button" onMouseDown={() => pick(r)}
+                className="w-full text-left px-3 py-1.5 hover:bg-teal-50 flex items-baseline gap-2">
+                <span className="font-mono text-xs text-teal-700">{r.code}</span>
+                <span className="text-xs text-gray-600 truncate flex-1">{r.customer}</span>
+                <span className="text-xs tabular-nums text-gray-400">{money(r.amount)} {r.currency}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </label>
+  )
+}
 
 // ── New / Edit form modal ─────────────────────────────────────────────────────
 function UcForm({ record, onClose, onSaved }) {
@@ -66,9 +131,18 @@ function UcForm({ record, onClose, onSaved }) {
               {UC_SOURCES.map((s) => <option key={s}>{s}</option>)}
             </select>
           </label>
-          {field('Year (e.g. /26)', 'year')}
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-gray-500">Date</span>
+            <input type="date" value={f.doc_date ?? ''}
+              onChange={(e) => {
+                const v = e.target.value
+                // keep the sheet's /YY year in sync automatically
+                setF({ ...f, doc_date: v, year: v ? `/${v.slice(2, 4)}` : f.year })
+              }}
+              className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
+          </label>
           {field('Customer', 'customer', 'text', true)}
-          {field('JES SI# (ERP invoice)', 'jes_si')}
+          <SiPicker value={f.jes_si} onChange={(v) => setF({ ...f, jes_si: v })} />
           {field('Order no.', 'order_no')}
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-gray-500">Currency</span>
@@ -315,7 +389,7 @@ export default function UcRegistry() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-gray-500 border-b border-gray-200 bg-gray-50">
-                {['UC #', 'Yr', 'Source', 'Customer', 'JES SI#', 'Cur'].map((h) => <th key={h} className="px-3 py-2 font-medium whitespace-nowrap">{h}</th>)}
+                {['UC #', 'Date', 'Source', 'Customer', 'JES SI#', 'Cur'].map((h) => <th key={h} className="px-3 py-2 font-medium whitespace-nowrap">{h}</th>)}
                 <th className="px-3 py-2 font-medium text-right">Total</th>
                 <th className="px-3 py-2 font-medium text-right">Balance</th>
                 <th className="px-3 py-2 font-medium">Status</th>
@@ -326,7 +400,9 @@ export default function UcRegistry() {
               {rows.map((r) => (
                 <tr key={r.id} className={`border-b border-gray-100 last:border-0 hover:bg-gray-50 ${r.status === 'void' ? 'opacity-55' : ''}`}>
                   <td className="px-3 py-2 font-mono text-xs">{r.uc_no}</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-gray-500">{r.year}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-gray-500">
+                    {r.doc_date ? String(r.doc_date).slice(0, 10) : r.year}
+                  </td>
                   <td className="px-3 py-2 whitespace-nowrap">
                     <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${SOURCE_STYLE[r.source] || SOURCE_STYLE.Other}`}>{r.source}</span>
                   </td>
