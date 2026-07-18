@@ -29,7 +29,8 @@ function clean(data) {
   if (out.balance === '' || out.balance == null) out.balance = Math.round((num(out.total) - num(out.deposit)) * 100) / 100
   for (const k of ['total', 'deposit', 'balance', 'shipping_cost']) if (k in out) out[k] = num(out[k])
   out.confirmed = !!out.confirmed
-  if (out.status !== 'closed') out.status = 'open'
+  // open = outstanding/tracked, closed = paid/done, void = cancelled mistake.
+  if (!['open', 'closed', 'void'].includes(out.status)) out.status = 'open'
   return out
 }
 

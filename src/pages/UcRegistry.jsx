@@ -6,6 +6,12 @@ import { useUcList, createUcInvoice, updateUcInvoice, UC_SOURCES, UC_CURRENCIES 
 const money = (v) => (v === '' || v == null || Number.isNaN(Number(v)))
   ? '—' : Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+const STATUS_STYLE = {
+  open: { cls: 'bg-green-100 text-green-700', label: 'Open' },
+  closed: { cls: 'bg-gray-100 text-gray-500', label: 'Closed' },
+  void: { cls: 'bg-red-100 text-red-700', label: 'Void' },
+}
+
 const SOURCE_STYLE = {
   ERP: 'bg-gray-100 text-gray-600', Alibaba: 'bg-orange-100 text-orange-700',
   Amazon: 'bg-yellow-100 text-yellow-800', 'Online Shop': 'bg-blue-100 text-blue-700',
@@ -82,10 +88,13 @@ function UcForm({ record, onClose, onSaved }) {
             <input type="checkbox" checked={!!f.confirmed} onChange={set('confirmed')}
               className="rounded border-gray-300 text-teal-600 focus:ring-teal-500" /> Confirmed
           </label>
-          <label className="flex items-center gap-2 text-sm text-gray-600 mt-1">
-            <input type="checkbox" checked={f.status === 'closed'}
-              onChange={(e) => setF({ ...f, status: e.target.checked ? 'closed' : 'open' })}
-              className="rounded border-gray-300 text-teal-600 focus:ring-teal-500" /> Closed (fully paid)
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-medium text-gray-500">Status</span>
+            <select value={f.status || 'open'} onChange={set('status')} className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg">
+              <option value="open">Open</option>
+              <option value="closed">Closed (paid)</option>
+              <option value="void">Void (cancelled / mistake)</option>
+            </select>
           </label>
           <label className="flex flex-col gap-1 col-span-2">
             <span className="text-xs font-medium text-gray-500">Remarks</span>
@@ -203,7 +212,7 @@ export default function UcRegistry() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                <tr key={r.id} className={`border-b border-gray-100 last:border-0 hover:bg-gray-50 ${r.status === 'void' ? 'opacity-55' : ''}`}>
                   <td className="px-3 py-2 font-mono text-xs">{r.uc_no}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-gray-500">{r.year}</td>
                   <td className="px-3 py-2 whitespace-nowrap">
@@ -215,9 +224,8 @@ export default function UcRegistry() {
                   <td className="px-3 py-2 text-right tabular-nums">{money(r.total)}</td>
                   <td className={`px-3 py-2 text-right tabular-nums ${Number(r.balance) > 0.005 ? 'font-semibold text-gray-900' : 'text-gray-400'}`}>{money(r.balance)}</td>
                   <td className="px-3 py-2">
-                    <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${r.status === 'closed' ? 'bg-gray-100 text-gray-500' : 'bg-green-100 text-green-700'}`}>
-                      {r.status === 'closed' ? 'Closed' : 'Open'}
-                    </span>
+                    {(() => { const st = STATUS_STYLE[r.status] || STATUS_STYLE.open
+                      return <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${st.cls}`}>{st.label}</span> })()}
                   </td>
                   <td className="px-3 py-2 text-right">
                     <button onClick={() => setEditing(r)} className="text-teal-600 hover:underline text-xs font-medium">Edit</button>
