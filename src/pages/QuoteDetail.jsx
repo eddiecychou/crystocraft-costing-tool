@@ -17,9 +17,72 @@ import { db, storage } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import QuoteExport from '../components/QuoteExport'
-import { Package, X, Check, Paperclip, FileText, Copy } from 'lucide-react'
+import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
+import { Package, X, Check, Paperclip, FileText, Copy, Banknote, AlertCircle } from 'lucide-react'
 
 const STATUS_OPTIONS = ['draft', 'sent', 'won', 'lost']
+
+// Payment details for the quotation. Reads from the bank accounts register
+// rather than free text — the whole point is that nobody retypes an account
+// number. Auto-selects the account matching the quote currency, because paying
+// USD into an HKD account costs the customer a forced conversion.
+function BankDetailsPicker({ quote, accounts, currency, onChange }) {
+  const selected = accounts.find(a => a.id === quote.bank_account_id) || null
+  const suggested = accountForCurrency(accounts, currency)
+
+  // Nothing chosen yet: adopt the currency-matched default once accounts load.
+  useEffect(() => {
+    if (!quote.bank_account_id && suggested) onChange(suggested)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggested?.id, quote.bank_account_id])
+
+  const mismatch = selected && currency && selected.currency !== currency
+
+  return (
+    <div className="card p-4 mb-4">
+      <h2 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
+        <Banknote size={15} className="text-gray-400" />
+        Payment details <span className="font-normal text-gray-400">(shown on the quotation)</span>
+      </h2>
+
+      {!accounts.length ? (
+        <p className="text-sm text-gray-400">
+          No bank accounts set up yet — add them in Settings → Bank Accounts.
+        </p>
+      ) : (
+        <>
+          <select
+            value={quote.bank_account_id ?? ''}
+            onChange={e => onChange(accounts.find(a => String(a.id) === e.target.value) || null)}
+            className="input text-sm mb-2"
+          >
+            <option value="">— none —</option>
+            {accounts.map(a => (
+              <option key={a.id} value={a.id}>
+                {a.currency} · {a.label || a.bank_name}{a.is_default ? ' (default)' : ''}
+              </option>
+            ))}
+          </select>
+
+          {mismatch && (
+            <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
+              <AlertCircle size={14} className="mt-0.5 shrink-0" />
+              This quote is in <strong>{currency}</strong> but the selected account is{' '}
+              <strong>{selected.currency}</strong>. The customer would pay into the wrong
+              currency and lose the conversion.
+            </div>
+          )}
+
+          {quote.bank_snapshot && (
+            <pre className="text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 whitespace-pre-wrap font-mono">
+              {quote.bank_snapshot}
+            </pre>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
 const STATUS_STYLES = {
   draft: 'bg-gray-100 text-gray-600',
   sent:  'bg-blue-100 text-blue-700',
@@ -39,6 +102,14 @@ export default function QuoteDetail() {
   const [showExport, setShowExport] = useState(false)
   const [duplicating, setDuplicating] = useState(false)
   const [liveImages, setLiveImages] = useState({}) // { product_id: heroImage }
+  const [bankAccounts, setBankAccounts] = useState([])
+
+  // Our receiving accounts, for the payment-details block below.
+  useEffect(() => {
+    listBankAccounts({ activeOnly: true })
+      .then(setBankAccounts)
+      .catch((e) => console.error('bank accounts failed to load', e))
+  }, [])
 
   useEffect(() => {
     getDoc(doc(db, 'client_quotes', id)).then(snap => {
@@ -372,7 +443,26 @@ export default function QuoteDetail() {
         )}
       </div>
 
-      {/* Quote-level remarks — payment terms, delivery, bank details, etc.
+      {/* Payment details — picked from the bank accounts register, never typed.
+          Defaults to the account matching this quote's currency. */}
+      <BankDetailsPicker
+        quote={quote}
+        accounts={bankAccounts}
+        currency={quoteCurrency}
+        onChange={async (account) => {
+          // Snapshot the rendered block onto the quote: if the account is later
+          // edited, an already-issued quote must still show what the customer
+          // was actually given.
+          const patch = {
+            bank_account_id: account?.id ?? null,
+            bank_snapshot: account ? formatBankDetails(account) : '',
+          }
+          await updateDoc(doc(db, 'client_quotes', id), patch)
+          setQuote(q => ({ ...q, ...patch }))
+        }}
+      />
+
+      {/* Quote-level remarks — payment terms, delivery, etc.
           Renders below the table on the exported quotation. */}
       <div className="card p-4 mb-4">
         <h2 className="text-sm font-semibold text-gray-700 mb-2">Remarks <span className="font-normal text-gray-400">(shown on the quotation)</span></h2>

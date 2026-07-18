@@ -400,6 +400,24 @@ export default function QuoteExport({ quote, items, onClose }) {
         currentRow += 2
       }
 
+      // ── Payment details ─────────────────────────────────────────────────────
+      // Rendered from the snapshot stored on the quote, not from the live
+      // account: a quote already sent must keep showing what the customer was
+      // actually given, even if the account is edited afterwards.
+      if (quote.bank_snapshot) {
+        const lines = String(quote.bank_snapshot).split('\n').filter(Boolean)
+        ws.mergeCells(`A${currentRow}:${LAST_COL}${currentRow}`)
+        ws.getRow(currentRow).getCell(1).value = {
+          richText: [
+            { text: 'Payment Details\n', font: { name: 'Calibri Light', size: 8, bold: true, color: { argb: B.GRAY_MID } } },
+            { text: lines.join('\n'), font: { name: 'Calibri Light', size: 8, color: { argb: B.GRAY_DARK } } },
+          ],
+        }
+        ws.getRow(currentRow).getCell(1).alignment = { wrapText: true, vertical: 'top' }
+        ws.getRow(currentRow).height = 12 * (lines.length + 1)
+        currentRow += 2
+      }
+
       // ── Terms ───────────────────────────────────────────────────────────────
       ws.mergeCells(`A${currentRow}:${LAST_COL}${currentRow}`)
       ws.getRow(currentRow).getCell(1).value = `All prices in ${cur}. For reference only — subject to final confirmation. MOQ and lead times may vary.`

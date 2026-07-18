@@ -9,6 +9,7 @@ import ImportImages from './ImportImages'
 import BulkCategoryEditor from '../components/BulkCategoryEditor'
 import BulkVideoEditor from '../components/BulkVideoEditor'
 import SchemaAudit from './SchemaAudit'
+import BankAccounts from './BankAccounts'
 
 const CURRENCIES = ['RMB', 'USD', 'EUR']
 const LABELS = { RMB: 'RMB → HKD', USD: 'USD → HKD', EUR: 'EUR → HKD' }
@@ -17,6 +18,7 @@ const TABS = [
   { v: 'fx',       label: 'Exchange Rates' },
   { v: 'products', label: 'Products' },
   { v: 'quotes',   label: 'Quote Branding' },
+  { v: 'bank',     label: 'Bank Accounts' },
   { v: 'audit',    label: 'Schema Audit' },
 ]
 const PRODUCT_TABS = [
@@ -70,6 +72,7 @@ export default function Settings() {
 
       {tab === 'quotes' && <QuoteBrandingPanel />}
 
+      {tab === 'bank' && <BankAccounts />}
       {tab === 'audit' && <SchemaAudit />}
 
       {tab === 'products' && (
