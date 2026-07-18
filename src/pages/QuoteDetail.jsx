@@ -462,13 +462,15 @@ export default function QuoteDetail() {
         }}
       />
 
-      {/* Quote-level remarks — payment terms, delivery, etc.
+      {/* Quote-level remarks — payment terms, delivery, etc. Bank details are
+          deliberately NOT hinted here any more; they come from the Payment
+          Details block above rather than from anyone typing them.
           Renders below the table on the exported quotation. */}
       <div className="card p-4 mb-4">
         <h2 className="text-sm font-semibold text-gray-700 mb-2">Remarks <span className="font-normal text-gray-400">(shown on the quotation)</span></h2>
         <textarea
           rows={4}
-          placeholder={'Payment terms : 50% deposit, balance before shipment.\nDelivery : Hong Kong (one time shipment)\n\nBeneficiary Bank: …'}
+          placeholder={'Payment terms : 50% deposit, balance before shipment.\nDelivery : Hong Kong (one time shipment)'}
           defaultValue={quote.notes || ''}
           key={`quote-notes-${quote.id}`}
           onBlur={e => {
