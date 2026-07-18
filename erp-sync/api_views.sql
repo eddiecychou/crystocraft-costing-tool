@@ -8,7 +8,10 @@
 -- the bottom refreshes PostgREST so the REST API sees the change.
 
 -- ── Customers ────────────────────────────────────────────────────────────────
-create or replace view public.erp_customer as
+-- Dropped rather than replaced: `create or replace view` can only APPEND
+-- columns, and the detail fields below sit before active/last_update.
+drop view if exists public.erp_customer cascade;
+create view public.erp_customer as
 select
   ctcode                                            as code,
   nullif(ctrefcode, '')                             as ref_code,
@@ -25,12 +28,40 @@ select
   nullif(ctsalesteam, '')                           as sales_team,
   nullif(ctwebsite, '')                             as website,
   nullif(regexp_replace(ctaddress, '\r+', ', ', 'g'), '') as address,
-  (coalesce(nullif(expired, ''), 'F') <> 'T')       as active,
-  nullif(lastupdate, '')::timestamp                 as last_update
-from raw.customer;
+  -- Detail-panel fields. Only columns with real coverage are exposed: of
+  -- customer's 113 columns, 73 are under 5% populated (JES is a jewellery
+  -- package — most of the rest is gold/hallmark/consignment machinery).
+  coalesce(pt.ptdesc1, nullif(ctpaymentterms, ''))   as payment_terms,
+  coalesce(pm.pmdesc1, nullif(ctpaymentmethod, ''))  as payment_method,
+  nullif(ctshipmethod, '')                          as ship_method,
+  nullif(ctshipmentterms, '')                       as shipment_terms,
+  nullif(ctsalesmanhk, '')                          as salesman,
+  nullif(ctcredit, '')::numeric                     as credit_limit,
+  nullif(ctmarkup, '')::numeric                     as markup,
+  nullif(ctgroup, '')                               as customer_group,
+  nullif(ctphone2, '')                              as phone2,
+  nullif(ctemail2, '')                              as email2,
+  nullif(ctcooscontact, '')                         as coos_contact,
+  nullif(ctcoosemail, '')                           as coos_email,
+  nullif(ctaragcontact, '')                         as ar_contact,
+  nullif(ctaragemail, '')                           as ar_email,
+  nullif(ctquotationremarks, '')                    as quotation_remarks,
+  nullif(ctsalesorderremarks, '')                   as order_remarks,
+  nullif(ctinvoiceremarks, '')                      as invoice_remarks,
+  nullif(ctremarks, '')                             as remarks,
+  -- ctbank is populated on only 10 of 458 customers and holds one of two
+  -- 2003-era codes; there is no usable bank master in JES. See
+  -- V7.15_ERP_Inventory.md §"No bank master".
+  nullif(ctbank, '')                                as bank_code,
+  (coalesce(nullif(raw.customer.expired, ''), 'F') <> 'T') as active,
+  nullif(raw.customer.lastupdate, '')::timestamp    as last_update
+from raw.customer
+left join raw.paymentmethod pm on pm.pmcode = nullif(ctpaymentmethod, '')
+left join raw.paymentterms  pt on pt.ptcode = nullif(ctpaymentterms, '');
 
 -- ── Suppliers ────────────────────────────────────────────────────────────────
-create or replace view public.erp_supplier as
+drop view if exists public.erp_supplier cascade;
+create view public.erp_supplier as
 select
   sucode                                            as code,
   nullif(surefcode, '')                             as ref_code,
@@ -47,9 +78,19 @@ select
   nullif(sucity, '')                                as city,
   nullif(suwebsite, '')                             as website,
   nullif(regexp_replace(suaddress, '\r+', ', ', 'g'), '') as address,
-  (coalesce(nullif(expired, ''), 'F') <> 'T')       as active,
-  nullif(lastupdate, '')::timestamp                 as last_update
-from raw.supplier;
+  -- Detail-panel fields (see the note on erp_customer above).
+  nullif(regexp_replace(sushipaddress, '\r+', ', ', 'g'), '') as ship_address,
+  coalesce(pt.ptdesc1, nullif(supaymentterms, ''))   as payment_terms,
+  coalesce(pm.pmdesc1, nullif(supaymentmethod, ''))  as payment_method,
+  nullif(sushipmethod, '')                          as ship_method,
+  nullif(sushipmentterms, '')                       as shipment_terms,
+  nullif(suphone2, '')                              as phone2,
+  nullif(subank, '')                                as bank_code,
+  (coalesce(nullif(raw.supplier.expired, ''), 'F') <> 'T') as active,
+  nullif(raw.supplier.lastupdate, '')::timestamp    as last_update
+from raw.supplier
+left join raw.paymentmethod pm on pm.pmcode = nullif(supaymentmethod, '')
+left join raw.paymentterms  pt on pt.ptcode = nullif(supaymentterms, '');
 
 -- ── Item master (Phase 2) ────────────────────────────────────────────────────
 -- Item is a revision-HISTORY table: ~1.4M rows but only ~44k distinct codes

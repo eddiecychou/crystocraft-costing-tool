@@ -93,6 +93,58 @@ const ENTITIES = {
 // Which entities support the "Active only" filter (have an active flag).
 const ACTIVE_FILTER = new Set(['customer', 'supplier', 'item'])
 
+// Field groups for the customer/supplier detail panel. The list query already
+// returns every column (select *), so opening a detail costs no extra request.
+// Empty fields are hidden — coverage varies a lot across these records.
+const DETAIL_GROUPS = {
+  customer: [
+    ['Identity', [
+      ['code', 'Code'], ['ref_code', 'Ref code'], ['name', 'Name'],
+      ['short_name', 'Short name'], ['customer_group', 'Group'],
+    ]],
+    ['Contact', [
+      ['contact', 'Contact'], ['phone', 'Phone'], ['phone2', 'Phone 2'],
+      ['mobile', 'Mobile'], ['fax', 'Fax'], ['email', 'Email'],
+      ['email2', 'Email 2'], ['website', 'Website'],
+    ]],
+    ['Address', [['address', 'Address'], ['city', 'City'], ['country', 'Country']]],
+    ['Commercial', [
+      ['currency', 'Currency'], ['payment_terms', 'Payment terms'],
+      ['payment_method', 'Payment method'], ['credit_limit', 'Credit limit'],
+      ['markup', 'Markup'], ['ship_method', 'Ship method'],
+      ['shipment_terms', 'Shipment terms'], ['sales_team', 'Sales team'],
+      ['salesman', 'Salesman'],
+    ]],
+    ['Accounts contacts', [
+      ['ar_contact', 'AR contact'], ['ar_email', 'AR email'],
+      ['coos_contact', 'COOS contact'], ['coos_email', 'COOS email'],
+    ]],
+    ['Document remarks', [
+      ['quotation_remarks', 'Quotation'], ['order_remarks', 'Sales order'],
+      ['invoice_remarks', 'Invoice'], ['remarks', 'General'],
+    ]],
+  ],
+  supplier: [
+    ['Identity', [
+      ['code', 'Code'], ['ref_code', 'Ref code'], ['name', 'Name'],
+      ['short_name', 'Short name'], ['type', 'Type'],
+    ]],
+    ['Contact', [
+      ['contact', 'Contact'], ['phone', 'Phone'], ['phone2', 'Phone 2'],
+      ['mobile', 'Mobile'], ['fax', 'Fax'], ['email', 'Email'], ['website', 'Website'],
+    ]],
+    ['Address', [
+      ['address', 'Address'], ['ship_address', 'Ship-from address'],
+      ['city', 'City'], ['country', 'Country'],
+    ]],
+    ['Commercial', [
+      ['currency', 'Currency'], ['payment_terms', 'Payment terms'],
+      ['payment_method', 'Payment method'], ['ship_method', 'Ship method'],
+      ['shipment_terms', 'Shipment terms'],
+    ]],
+  ],
+}
+
 // Render a cell value based on its column type.
 function cellValue(col, row) {
   const v = row[col.key]
@@ -126,6 +178,64 @@ function cellValue(col, row) {
 
 const money = (v) => (v === null || v === undefined || v === '')
   ? '—' : Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+// Full record for one customer / supplier. Reads the row already loaded by the
+// list query — no extra fetch.
+function DetailModal({ entity, row, onClose }) {
+  const groups = DETAIL_GROUPS[entity] || []
+  const has = (v) => v !== null && v !== undefined && v !== ''
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-4 overflow-y-auto"
+         onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl my-8" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between px-5 py-4 border-b border-gray-200">
+          <div>
+            <div className="font-mono text-xs text-gray-500">{row.code}</div>
+            <h2 className="text-lg font-semibold text-gray-900">{row.name}</h2>
+            <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${
+              row.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+            }`}>{row.active ? 'Active' : 'Expired'}</span>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+        </div>
+
+        <div className="px-5 py-4 space-y-5">
+          {groups.map(([title, fields]) => {
+            const shown = fields.filter(([k]) => has(row[k]))
+            if (!shown.length) return null
+            return (
+              <div key={title}>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{title}</h3>
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                  {shown.map(([k, label]) => (
+                    <div key={k} className="flex gap-2 text-sm">
+                      <dt className="text-gray-500 shrink-0 w-32">{label}</dt>
+                      <dd className="text-gray-900 break-words min-w-0">
+                        {typeof row[k] === 'number' ? row[k].toLocaleString() : String(row[k])}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )
+          })}
+
+          {/* The ERP has no usable bank master (see V7.15_ERP_Inventory.md), so
+              say so rather than leaving a silent gap where banking should be. */}
+          <div className="text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+            No bank / remittance details: the ERP never stored them
+            {row.bank_code ? <> (only a legacy bank code, <span className="font-mono">{row.bank_code}</span>)</> : null}.
+          </div>
+        </div>
+
+        <div className="px-5 py-3 border-t border-gray-200 text-xs text-gray-400">
+          Last updated in ERP: {row.last_update ? String(row.last_update).slice(0, 10) : '—'}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // Modal showing the line items, surcharges, and full money breakdown of one
 // sales invoice / order.
@@ -296,6 +406,9 @@ export default function ErpLookup() {
   const [warehouse, setWarehouse] = useState('')       // '' = all warehouses
   const [itemType, setItemType] = useState('')         // '' = all types
   const [nonZeroOnly, setNonZeroOnly] = useState(true)
+
+  // Customer / supplier detail panel (uses the already-loaded row).
+  const [detailRow, setDetailRow] = useState(null)
 
   // BOM modal state
   const [bomCode, setBomCode] = useState(null)
@@ -517,6 +630,11 @@ export default function ErpLookup() {
                             className="inline-flex items-center gap-0.5 text-teal-600 hover:underline text-xs font-medium">
                             <ListTree size={13} /> View
                           </button>
+                        : DETAIL_GROUPS[entity] && c.key === 'code'
+                        ? <button onClick={() => setDetailRow(r)}
+                            className="text-teal-600 hover:underline font-medium">
+                            {r.code}
+                          </button>
                         : cellValue(c, r)}
                     </td>
                   ))}
@@ -567,6 +685,9 @@ export default function ErpLookup() {
         <span className="font-mono">JES_UnitedArt</span> → Supabase mirror.
       </p>
 
+      {detailRow && (
+        <DetailModal entity={entity} row={detailRow} onClose={() => setDetailRow(null)} />
+      )}
       {bomCode && (
         <BomModal code={bomCode} rows={bomRows} loading={bomLoading} error={bomError}
                   onClose={() => setBomCode(null)} />
