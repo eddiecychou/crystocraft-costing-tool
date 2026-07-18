@@ -137,6 +137,27 @@ export default async function handler(req) {
     return json({ rows: await res.json() })
   }
 
+  // 2a1) "What do the BOMs use instead?" — { entity: 'alternatives', code }.
+  //      Ranked suggestions from erp_code_alternatives(), which searches only
+  //      components CURRENT BOMs use. A plain text search was useless here:
+  //      FM-124PT02.01-C reduced to the stem "FM" and returned every FM part.
+  if (payload?.entity === 'alternatives') {
+    const code = String(payload.code ?? '').trim().slice(0, 60)
+    if (!code) return json({ error: 'Missing code' }, 400)
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/erp_code_alternatives`, {
+      method: 'POST',
+      headers: {
+        apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`,
+        'Content-Type': 'application/json', Accept: 'application/json',
+      },
+      body: JSON.stringify({ p_code: code }),
+    })
+    if (!res.ok) {
+      return json({ error: 'Alternatives query failed', detail: (await res.text()).slice(0, 300) }, 502)
+    }
+    return json({ rows: await res.json() })
+  }
+
   // 2a2) Bulk existence check: { entity: 'codes', codes: [...] } → { found: [...] }.
   //      Used by the component-code audit, which would otherwise need one
   //      request per component. Returns only the codes that exist in erp_item.

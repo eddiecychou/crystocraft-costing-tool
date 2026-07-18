@@ -3,7 +3,7 @@ import { collection, getDocs } from 'firebase/firestore'
 import { AlertTriangle, CheckCircle2, Search, Puzzle } from 'lucide-react'
 import { db } from '../firebase'
 import LoadingBar from '../components/LoadingBar'
-import { erpCodesExist, erpLookup } from '../erpApi'
+import { erpCodesExist, erpCodeAlternatives } from '../erpApi'
 
 // Are the app's critical-component codes the ones the ERP actually builds with?
 //
@@ -21,6 +21,28 @@ import { erpCodesExist, erpLookup } from '../erpApi'
 // Candidates are fetched on demand from the ERP's OWN search, never guessed
 // with edit distance — that was tried on the costing screen and kept pairing
 // the wrong part (offering FM-K(21)-G for FM-K(32)-G). A human decides.
+// Ranked replacements. The BOM count is the point — a part used by 526 BOMs is
+// a far likelier replacement than one used by 4 — and `reason` says why each
+// was offered, so a suggestion is never mistaken for a confirmed match.
+function Suggestions({ hits }) {
+  return (
+    <>
+      {hits.map((h, i) => (
+        <div key={h.code} className={`text-xs ${i === 0 ? 'font-medium' : ''}`}>
+          <span className="font-mono text-gray-800">{h.code}</span>
+          <span className="text-gray-500"> · {h.bom_count} BOMs · {h.name || '—'}</span>
+          {h.reason === 'same code without the .NN segment' && (
+            <span className="ml-1 text-teal-600">· same code without “.NN”</span>
+          )}
+        </div>
+      ))}
+      <p className="text-xs text-gray-400 mt-1">
+        Suggestions only — confirm which part is really meant before changing anything.
+      </p>
+    </>
+  )
+}
+
 export default function ComponentCodeAudit() {
   const [rows, setRows] = useState([])       // [{ id, code, name, exists, bomCount }]
   const [loading, setLoading] = useState(true)
@@ -52,15 +74,12 @@ export default function ComponentCodeAudit() {
     return () => { alive = false }
   }, [])
 
-  // Ask the ERP's trigram search what it has near this code. Not a match — a
-  // shortlist. On demand so an audit of hundreds isn't hundreds of requests.
+  // What do current BOMs use instead? Ranked server-side among components the
+  // BOMs actually use. On demand, so auditing hundreds isn't hundreds of calls.
   async function findCandidates(code) {
     setCandidates(c => ({ ...c, [code]: 'loading' }))
     try {
-      // Search on the stable head of the code (up to the first separator run),
-      // since the drift is usually extra digits in the middle or tail.
-      const stem = code.replace(/[^A-Za-z0-9()]/g, ' ').trim().split(/\s+/)[0] || code
-      const hits = await erpLookup('item', { q: stem.slice(0, 12), limit: 25 })
+      const hits = await erpCodeAlternatives(code)
       setCandidates(c => ({ ...c, [code]: hits.length ? hits : 'none' }))
     } catch (e) {
       setError(e.message)
@@ -140,15 +159,8 @@ export default function ComponentCodeAudit() {
 
                 {Array.isArray(candidates[r.code]) && (
                   <div className="mt-2 pl-3 border-l-2 border-gray-100">
-                    <p className="text-xs text-gray-400 mb-1">
-                      ERP items with a similar code — pick the right one by eye:
-                    </p>
-                    {candidates[r.code].map(h => (
-                      <div key={h.code} className="text-xs">
-                        <span className="font-mono text-gray-800">{h.code}</span>
-                        <span className="text-gray-500"> · {h.name || h.description || '—'}</span>
-                      </div>
-                    ))}
+                    <p className="text-xs text-gray-400 mb-1">What current BOMs use instead:</p>
+                    <Suggestions hits={candidates[r.code]} />
                   </div>
                 )}
                 {candidates[r.code] === 'none' && (
@@ -190,13 +202,8 @@ export default function ComponentCodeAudit() {
                 </div>
                 {Array.isArray(candidates[r.code]) && (
                   <div className="mt-2 pl-3 border-l-2 border-gray-100">
-                    <p className="text-xs text-gray-400 mb-1">Similar ERP items:</p>
-                    {candidates[r.code].map(h => (
-                      <div key={h.code} className="text-xs">
-                        <span className="font-mono text-gray-800">{h.code}</span>
-                        <span className="text-gray-500"> · {h.name || h.description || '—'}</span>
-                      </div>
-                    ))}
+                    <p className="text-xs text-gray-400 mb-1">What current BOMs use instead:</p>
+                    <Suggestions hits={candidates[r.code]} />
                   </div>
                 )}
                 {candidates[r.code] === 'none' && (

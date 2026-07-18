@@ -44,6 +44,23 @@ export async function erpBom(code) {
   return data.rows || []
 }
 
+// Components that CURRENT BOMs use, ranked as likely replacements for a
+// superseded code. Suggestions, not answers — the caller shows them to a human.
+export async function erpCodeAlternatives(code) {
+  const user = auth.currentUser
+  if (!user) throw new Error('Please sign in to look up ERP data.')
+  const token = await user.getIdToken()
+  const res = await fetch('/api/erp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ entity: 'alternatives', code }),
+  })
+  let data = {}
+  try { data = await res.json() } catch { /* non-JSON error body */ }
+  if (!res.ok) throw new Error([data.error, data.detail].filter(Boolean).join(' — ') || `Lookup failed (${res.status})`)
+  return data.rows || []
+}
+
 // For each code: does it exist in the ERP item master, and how many CURRENT
 // BOMs use it? Existence alone is a weak test — FM-K(32).03-C exists and is
 // used by ZERO BOMs, while every BOM uses FM-K(32)-C (526). Returns
