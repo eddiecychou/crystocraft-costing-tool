@@ -11,7 +11,9 @@
 //                          one). Legacy service_role JWT also works.
 //   FIREBASE_PROJECT_ID    your Firebase projectId (token audience)
 //
-// Request:  POST { entity: "customer"|"supplier", q?: string, limit?: number, activeOnly?: bool }
+// Request:  POST { entity: "customer"|"supplier"|"item"|"warehouse"|"stock"|…,
+//                  q?: string, limit?: number, activeOnly?: bool,
+//                  filter?: string (stock → warehouse code), nonZeroOnly?: bool }
 // Response: { rows: [...] }
 import { jwtVerify, createRemoteJWKSet } from 'https://esm.sh/jose@5.9.6'
 
@@ -37,6 +39,17 @@ const ENTITIES = {
   purchase: {
     view: 'erp_purchase', hasActive: false, orderBy: 'code.desc',
     search: ['code', 'supplier', 'supplier_code', 'ref'],
+  },
+  warehouse: {
+    view: 'erp_warehouse', orderBy: 'code.asc',
+    search: ['code', 'name', 'name_zh', 'type'],
+  },
+  // Stock on hand, computed from the movement ledger. Filterable by warehouse;
+  // a single warehouse can hold thousands of item lines, hence the higher cap.
+  stock: {
+    view: 'erp_stock', hasActive: false, orderBy: 'qty.desc',
+    search: ['item_code', 'description'],
+    filterCol: 'warehouse', maxLimit: 500,
   },
 }
 
@@ -157,7 +170,7 @@ export default async function handler(req) {
   if (!cfg) return json({ error: `Unknown entity: ${payload?.entity}` }, 400)
 
   const q = String(payload.q ?? '').trim().slice(0, 80)
-  const limit = Math.min(Math.max(parseInt(payload.limit, 10) || 25, 1), 100)
+  const limit = Math.min(Math.max(parseInt(payload.limit, 10) || 25, 1), cfg.maxLimit || 100)
   const activeOnly = payload.activeOnly === true
 
   // 3) Build the PostgREST query. Double-quote ilike values so commas/parens in
@@ -167,6 +180,15 @@ export default async function handler(req) {
   params.set('order', cfg.orderBy || 'code.asc')
   params.set('limit', String(limit))
   if (activeOnly && cfg.hasActive !== false) params.set('active', 'is.true')
+  // Optional single-column equality filter (stock → warehouse). The column is
+  // fixed by the entity config, never chosen by the caller; only its value comes
+  // from the request, and that is stripped to a safe charset.
+  if (cfg.filterCol && payload.filter) {
+    const val = String(payload.filter).replace(/[^A-Za-z0-9/_-]/g, '').slice(0, 40)
+    if (val) params.set(cfg.filterCol, `eq.${val}`)
+  }
+  // Stock only: hide item/warehouse pairs that have netted to zero.
+  if (cfg.view === 'erp_stock' && payload.nonZeroOnly === true) params.set('qty', 'neq.0')
   if (q) {
     const safe = q.replace(/["\\]/g, ' ')
     const or = cfg.search.map((col) => `${col}.ilike."*${safe}*"`).join(',')

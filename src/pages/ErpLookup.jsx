@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Search, Database, Building2, Factory, Boxes, AlertCircle, ListTree, X, Receipt, ClipboardList, FileText, ShoppingCart, History } from 'lucide-react'
+import { Search, Database, Building2, Factory, Boxes, AlertCircle, ListTree, X, Receipt, ClipboardList, FileText, ShoppingCart, History, Warehouse } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import { erpLookup, erpBom, erpLines } from '../erpApi'
 
@@ -74,6 +74,20 @@ const ENTITIES = {
       { key: 'status', label: 'Status', badge: true },
     ],
   },
+  stock: {
+    // noTrailing: stock rows have no active/expired flag, so the generic
+    // trailing Status column would label every row "Expired".
+    label: 'Inventory', Icon: Warehouse, hasWarehouse: true, limit: 500, noTrailing: true,
+    cols: [
+      { key: 'item_code', label: 'Item Code', mono: true },
+      { key: 'description', label: 'Description', grow: true },
+      { key: 'item_type', label: 'Type' },
+      { key: 'warehouse', label: 'W/H', mono: true },
+      { key: 'qty', label: 'Qty', num: true, qty: true },
+      { key: 'last_movement', label: 'Last Move', date: true },
+      { key: 'movements', label: 'Moves', num: true, int: true },
+    ],
+  },
 }
 
 // Which entities support the "Active only" filter (have an active flag).
@@ -88,9 +102,16 @@ function cellValue(col, row) {
       : <span className="text-gray-300">—</span>
   }
   if (col.num) {
-    return (v === null || v === undefined || v === '')
-      ? <span className="text-gray-300">—</span>
-      : Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    if (v === null || v === undefined || v === '') return <span className="text-gray-300">—</span>
+    // Quantities are counts, not money — don't force 2 decimals (some are
+    // fractional from weight-based items, so allow up to 4 when present).
+    if (col.qty) {
+      const n = Number(v)
+      const txt = n.toLocaleString(undefined, { maximumFractionDigits: 4 })
+      return <span className={n < 0 ? 'text-red-600' : n === 0 ? 'text-gray-400' : ''}>{txt}</span>
+    }
+    if (col.int) return Number(v).toLocaleString()
+    return Number(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   }
   if (col.date) {
     return v ? String(v).slice(0, 10) : <span className="text-gray-300">—</span>
@@ -269,6 +290,11 @@ export default function ErpLookup() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Inventory: warehouse list (loaded once) + the current selection.
+  const [warehouses, setWarehouses] = useState([])
+  const [warehouse, setWarehouse] = useState('')       // '' = all warehouses
+  const [nonZeroOnly, setNonZeroOnly] = useState(true)
+
   // BOM modal state
   const [bomCode, setBomCode] = useState(null)
   const [bomRows, setBomRows] = useState([])
@@ -309,13 +335,27 @@ export default function ErpLookup() {
     }
   }
 
+  // Warehouse list for the Inventory tab. Loaded once, on first use.
+  useEffect(() => {
+    if (!cfg.hasWarehouse || warehouses.length) return
+    let alive = true
+    erpLookup('warehouse', { limit: 100 })
+      .then((r) => { if (alive) setWarehouses(r) })
+      .catch(() => { /* selector just stays empty; the list still loads */ })
+    return () => { alive = false }
+  }, [cfg.hasWarehouse, warehouses.length])
+
   // Debounced lookup on any input change.
   useEffect(() => {
     let alive = true
     setLoading(true); setError('')
     const t = setTimeout(async () => {
       try {
-        const r = await erpLookup(entity, { q, activeOnly, limit: 50 })
+        const r = await erpLookup(entity, {
+          q, activeOnly, limit: cfg.limit || 50,
+          filter: cfg.hasWarehouse ? warehouse : '',
+          nonZeroOnly: cfg.hasWarehouse ? nonZeroOnly : false,
+        })
         if (alive) setRows(r)
       } catch (e) {
         if (alive) { setError(e.message); setRows([]) }
@@ -324,7 +364,7 @@ export default function ErpLookup() {
       }
     }, 300)
     return () => { alive = false; clearTimeout(t) }
-  }, [entity, q, activeOnly])
+  }, [entity, q, activeOnly, warehouse, nonZeroOnly, cfg])
 
   return (
     <div className="p-4 md:p-6">
@@ -370,6 +410,33 @@ export default function ErpLookup() {
                        focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
           />
         </div>
+        {cfg.hasWarehouse && (
+          <>
+            <select
+              value={warehouse}
+              onChange={(e) => setWarehouse(e.target.value)}
+              className="px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white
+                         focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
+            >
+              <option value="">All warehouses</option>
+              {/* Only warehouses that actually hold stock — 49 exist in the ERP
+                  but ~16 are in use, and the rest are dead entries. */}
+              {warehouses
+                .filter((w) => w.stock_items > 0)
+                .sort((a, b) => b.stock_items - a.stock_items)
+                .map((w) => (
+                  <option key={w.code} value={w.code}>
+                    {w.code}{w.name ? ` — ${w.name}` : ''} ({w.stock_items.toLocaleString()})
+                  </option>
+                ))}
+            </select>
+            <label className="flex items-center gap-2 text-sm text-gray-600 select-none">
+              <input type="checkbox" checked={nonZeroOnly} onChange={(e) => setNonZeroOnly(e.target.checked)}
+                     className="rounded border-gray-300 text-teal-600 focus:ring-teal-500" />
+              In stock only
+            </label>
+          </>
+        )}
         {ACTIVE_FILTER.has(entity) && (
           <label className="flex items-center gap-2 text-sm text-gray-600 select-none">
             <input type="checkbox" checked={activeOnly} onChange={(e) => setActiveOnly(e.target.checked)}
@@ -378,6 +445,19 @@ export default function ErpLookup() {
           </label>
         )}
       </div>
+
+      {/* Inventory: make the provenance explicit — this is a computed balance,
+          not a stored one, and it is only as fresh as the last sync. */}
+      {cfg.hasWarehouse && (
+        <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+          <AlertCircle size={14} className="mt-0.5 shrink-0" />
+          <span>
+            Balances are <strong>computed from the movement ledger</strong> (sum of all stock
+            transactions), not read from the ERP's stored balance table — that table is a stale
+            snapshot. Figures reflect the last sync.
+          </span>
+        </div>
+      )}
 
       {error && (
         <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
@@ -394,12 +474,17 @@ export default function ErpLookup() {
                 {cfg.cols.map((c) => (
                   <th key={c.key} className={`px-3 py-2 font-medium whitespace-nowrap ${c.num ? 'text-right' : ''}`}>{c.label}</th>
                 ))}
-                <th className="px-3 py-2 font-medium">{cfg.linesOf ? 'Lines' : cfg.crossLink ? 'ERP' : 'Status'}</th>
+                {!cfg.noTrailing && (
+                  <th className="px-3 py-2 font-medium">{cfg.linesOf ? 'Lines' : cfg.crossLink ? 'ERP' : 'Status'}</th>
+                )}
               </tr>
             </thead>
             <tbody>
+              {/* Stock rows have no `code` — the same item appears once per
+                  warehouse, so those key on the warehouse/item pair. */}
               {rows.map((r, ri) => (
-                <tr key={r.code ?? r.uc_no ?? ri} className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                <tr key={r.code ?? r.uc_no ?? (r.item_code ? `${r.warehouse}/${r.item_code}` : ri)}
+                    className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
                   {cfg.cols.map((c) => (
                     <td key={c.key} className={`px-3 py-2 align-top ${c.mono ? 'font-mono text-xs' : ''} ${c.grow ? '' : 'whitespace-nowrap'} ${c.num ? 'text-right tabular-nums' : ''}`}>
                       {entity === 'item' && c.key === 'has_bom' && r.has_bom
@@ -410,6 +495,7 @@ export default function ErpLookup() {
                         : cellValue(c, r)}
                     </td>
                   ))}
+                  {!cfg.noTrailing && (
                   <td className="px-3 py-2">
                     {cfg.linesOf ? (
                       <button onClick={() => openLines(cfg.linesOf, r)}
@@ -429,10 +515,11 @@ export default function ErpLookup() {
                       }`}>{r.active ? 'Active' : 'Expired'}</span>
                     )}
                   </td>
+                  )}
                 </tr>
               ))}
               {!loading && rows.length === 0 && !error && (
-                <tr><td colSpan={cfg.cols.length + 1} className="px-3 py-10 text-center text-gray-400">
+                <tr><td colSpan={cfg.cols.length + (cfg.noTrailing ? 0 : 1)} className="px-3 py-10 text-center text-gray-400">
                   {q ? `No ${cfg.label.toLowerCase()} match “${q}”.` : `No ${cfg.label.toLowerCase()} found.`}
                 </td></tr>
               )}
@@ -442,7 +529,17 @@ export default function ErpLookup() {
       </div>
 
       <p className="text-xs text-gray-400 mt-3">
-        Showing up to 50 results. Source: <span className="font-mono">JES_UnitedArt</span> → Supabase mirror.
+        {cfg.hasWarehouse && rows.length > 0 && (
+          <>
+            {rows.length.toLocaleString()} line{rows.length === 1 ? '' : 's'}
+            {' · total qty '}
+            {rows.reduce((s, r) => s + (Number(r.qty) || 0), 0)
+              .toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            {' — '}
+          </>
+        )}
+        Showing up to {(cfg.limit || 50).toLocaleString()} results. Source:{' '}
+        <span className="font-mono">JES_UnitedArt</span> → Supabase mirror.
       </p>
 
       {bomCode && (

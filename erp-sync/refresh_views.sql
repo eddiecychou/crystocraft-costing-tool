@@ -4,3 +4,5 @@
 -- index created in api_views.sql).
 refresh materialized view concurrently public.erp_item;
 refresh materialized view public.erp_bom;
+-- erp_stock joins erp_item for descriptions, so it must refresh AFTER it.
+refresh materialized view concurrently public.erp_stock;

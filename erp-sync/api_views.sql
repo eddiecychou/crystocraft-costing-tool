@@ -304,15 +304,76 @@ from raw.purchasesurcharge;
 create index if not exists ix_pd_puno on raw.purchasedetail (pdpuno);
 create index if not exists ix_ps_puno on raw.purchasesurcharge (pspuno);
 
+-- ── Inventory / stock on hand (Phase 6) ──────────────────────────────────────
+-- Stock is computed from the MOVEMENT LEDGER (raw.itemtransaction), not from
+-- raw.itemwhbal. itemwhbal looks like the obvious source but is a stale
+-- snapshot: of its 8,599 non-zero rows, 8,368 have a null lastupdate and only
+-- 25 were touched in 2026, and it disagrees with the ledger on exactly the
+-- fast-moving warehouses (FWIP/FSTK). The ledger is live to the last sync,
+-- internally consistent, and agrees with itemwhbal on 93.75% of a 400-row
+-- sample — the disagreements being items that kept moving after the snapshot
+-- went stale. See V7.15_ERP_Inventory.md.
+--
+-- itqtycal is signed (a sales invoice writes -800), so the running balance is
+-- simply its sum. expired='T' rows (1,179 of 1.15M) are voided movements.
+drop view if exists public.erp_warehouse;          -- depends on erp_stock, drop first
+drop materialized view if exists public.erp_stock cascade;
+
+create materialized view public.erp_stock as
+select
+  t.itwarehouse                                       as warehouse,
+  t.itcode                                            as item_code,
+  max(i.name)                                         as description,
+  max(nullif(t.ititemtype, ''))                       as item_type,
+  sum(coalesce(nullif(t.itqtycal, '')::numeric, 0))   as qty,
+  -- Guard the date cast: the mirror is all `text` and holds junk dates
+  -- (itembatchheader has a 4131 typo), so only aggregate ISO-looking values.
+  max(case when t.itdate ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+           then nullif(t.itdate, '')::timestamp end)  as last_movement,
+  count(*)                                            as movements
+from raw.itemtransaction t
+left join public.erp_item i on i.code = t.itcode
+where coalesce(t.expired, 'F') <> 'T'
+  and t.itwarehouse is not null and t.itwarehouse <> ''
+group by t.itwarehouse, t.itcode;
+
+-- Unique on the natural key so this can REFRESH … CONCURRENTLY too.
+create unique index if not exists ux_erp_stock_wh_item on public.erp_stock (warehouse, item_code);
+create index        if not exists ix_erp_stock_wh      on public.erp_stock (warehouse);
+create index        if not exists ix_erp_stock_code_trg on public.erp_stock using gin (item_code gin_trgm_ops);
+create index        if not exists ix_erp_stock_desc_trg on public.erp_stock using gin (description gin_trgm_ops);
+
+-- Warehouse list for the picker. stock_items lets the UI show only warehouses
+-- that actually hold something: 49 exist but only ~12 have any stock, and a
+-- dropdown with 37 dead entries is worse than no dropdown. Defined AFTER
+-- erp_stock because it reads from it.
+create or replace view public.erp_warehouse as
+select
+  w.whcode                            as code,
+  nullif(w.whdesc1, '')               as name,
+  nullif(w.whdesc2, '')               as name_zh,
+  nullif(w.whtype, '')                as type,
+  nullif(w.whsbu, '')                 as sbu,
+  coalesce(w.expired, 'F') <> 'T'     as active,
+  nullif(w.lastupdate, '')::timestamp as last_update,
+  coalesce(s.stock_items, 0)          as stock_items
+from raw.warehouse w
+left join (
+  select warehouse, count(*) as stock_items
+  from public.erp_stock where qty <> 0 group by warehouse
+) s on s.warehouse = w.whcode;
+
 -- ── Access: server-side only. Browser (anon) must NOT read these. ────────────
 revoke all on public.erp_customer, public.erp_supplier, public.erp_item, public.erp_bom,
   public.erp_sales_invoice, public.erp_sales_invoice_line, public.erp_sales_invoice_surcharge,
   public.erp_sales_order, public.erp_sales_order_line, public.erp_sales_order_surcharge,
-  public.erp_purchase, public.erp_purchase_line, public.erp_purchase_surcharge from anon, authenticated;
+  public.erp_purchase, public.erp_purchase_line, public.erp_purchase_surcharge,
+  public.erp_warehouse, public.erp_stock from anon, authenticated;
 grant select on public.erp_customer, public.erp_supplier, public.erp_item, public.erp_bom,
   public.erp_sales_invoice, public.erp_sales_invoice_line, public.erp_sales_invoice_surcharge,
   public.erp_sales_order, public.erp_sales_order_line, public.erp_sales_order_surcharge,
-  public.erp_purchase, public.erp_purchase_line, public.erp_purchase_surcharge to service_role;
+  public.erp_purchase, public.erp_purchase_line, public.erp_purchase_surcharge,
+  public.erp_warehouse, public.erp_stock to service_role;
 revoke all on function public.explode_bom(text) from anon, authenticated;
 grant execute on function public.explode_bom(text) to service_role;
 
