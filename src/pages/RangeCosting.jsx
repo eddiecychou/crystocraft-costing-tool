@@ -20,8 +20,28 @@ import {
 // what is physically in the product; this costing knows what things cost. It
 // can only ever report — a costing legitimately rolls some BOM lines into
 // others, so nothing here is automatically an error.
-function BomCoverage({ sku, result, loading, error, onCheck }) {
-  if (!sku) return null
+//
+// Works at DESIGN level. The costing covers every plating and colour, but the
+// ERP keys BOMs per variant code, so the check merges all of the ERP's variants
+// and marks which parts are shared vs specific to some of them.
+function BomCoverage({ prefixes, result, loading, error, onCheck }) {
+  if (!prefixes.length) return null
+
+  // Shared parts need no annotation; for the rest the plating/colour suffix is
+  // the informative bit (CAB, CGR, GC1 …).
+  const suffixes = (list) => list.map(v => v.split('-').pop()).join(', ')
+
+  const PartList = ({ items }) => (
+    <>
+      {items.map((p) => (
+        <div key={p.code}>
+          <span className="font-mono">{p.code}</span>
+          <span className="opacity-70"> ×{p.ext_qty} · {p.type}</span>
+          {!p.shared && <span className="opacity-70"> · only {suffixes(p.variants)}</span>}
+        </div>
+      ))}
+    </>
+  )
 
   return (
     <section className="card p-4 mb-4">
@@ -31,7 +51,7 @@ function BomCoverage({ sku, result, loading, error, onCheck }) {
         </h2>
         <button type="button" onClick={onCheck} disabled={loading}
                 className="text-xs text-brand-600 hover:underline disabled:opacity-50">
-          {loading ? 'Checking…' : result ? 'Re-check' : `Check ${sku}`}
+          {loading ? 'Checking…' : result ? 'Re-check' : `Check ${prefixes.join(', ')}`}
         </button>
       </div>
 
@@ -40,53 +60,72 @@ function BomCoverage({ sku, result, loading, error, onCheck }) {
       {!result && !loading && !error && (
         <p className="text-xs text-ink-50">
           Compare this costing against what the ERP says is physically in{' '}
-          <span className="font-mono">{sku}</span>.
+          <span className="font-mono">{prefixes.join(', ')}</span> — across every plating and
+          colour the ERP stocks.
         </p>
       )}
 
       {result && (
         <div className="text-xs space-y-2">
           <p className="text-ink-50">
-            The ERP BOM for <span className="font-mono">{result.sku}</span> has{' '}
-            <strong>{result.total}</strong> part{result.total === 1 ? '' : 's'}:{' '}
-            {result.costed.length} costed as components, {result.crystals.length} stones,{' '}
-            {result.packaging.length} packaging, {result.uncosted.length} other.
+            Merged from <strong>{result.variants.length}</strong> ERP variant
+            {result.variants.length === 1 ? '' : 's'} (
+            <span className="font-mono">{suffixes(result.variants)}</span>):{' '}
+            <strong>{result.total}</strong> distinct parts — {result.costed.length} costed,{' '}
+            {result.crystals.length} stones, {result.packaging.length} packaging,{' '}
+            {result.uncosted.length} other.
           </p>
 
           {result.uncosted.length > 0 && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
-              <p className="font-medium text-amber-900 mb-1">
-                In the ERP BOM but not costed here:
-              </p>
-              {result.uncosted.map((r) => (
-                <div key={r.component_code} className="text-amber-900">
-                  <span className="font-mono">{r.component_code}</span>
-                  <span className="text-amber-700"> ×{r.ext_qty} · {r.component_type}</span>
-                </div>
-              ))}
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+              <p className="font-medium mb-1">In the ERP BOM, no matching costed component:</p>
+              <PartList items={result.uncosted} />
+              {/* The two code sets have drifted (FM-K(21)-C in the ERP vs
+                  FM-K(21)01-C here), so some of these ARE costed under a
+                  different code. Show what's costed and let a human pair them
+                  — matching them automatically kept picking the wrong part. */}
+              {result.costedCodes.length > 0 && (
+                <details className="mt-2">
+                  <summary className="cursor-pointer opacity-80">
+                    Codes differ between the two systems — compare with what this product costs
+                  </summary>
+                  <div className="mt-1 pl-3 opacity-80">
+                    {result.costedCodes.map((c) => <div key={c} className="font-mono">{c}</div>)}
+                  </div>
+                  <p className="pl-3 mt-1 opacity-80">
+                    e.g. the ERP's <span className="font-mono">FM-K(21)-C</span> is this product's{' '}
+                    <span className="font-mono">FM-K(21)01-C</span>. Anything above that pairs with
+                    a code here is already costed; aligning the codes would remove the ambiguity.
+                  </p>
+                </details>
+              )}
             </div>
           )}
 
-          {result.crystalMismatch && (
+          {result.crystalMismatch === 'none' && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
-              {result.crystalMismatch === 'none'
-                ? <>The ERP BOM contains <strong>{result.crystals.length}</strong> stone line
-                    {result.crystals.length === 1 ? '' : 's'} but this costing has no crystal BOM.</>
-                : <>The ERP BOM has <strong>{result.crystals.length}</strong> stone line
-                    {result.crystals.length === 1 ? '' : 's'}; this costing has{' '}
-                    <strong>{result.crystalLineCount}</strong>.</>}
-              <div className="mt-1 text-amber-700">
-                {result.crystals.map((r) => (
-                  <div key={r.component_code}>
-                    <span className="font-mono">{r.component_code}</span> ×{r.ext_qty}
-                  </div>
-                ))}
-              </div>
-              <p className="mt-1 text-amber-700">
-                Stones are costed by size × brand here and by item code in the ERP, so these
-                can't be matched automatically — compare them by eye.
+              <p className="font-medium mb-1">
+                The ERP BOM has {result.crystals.length} stone code
+                {result.crystals.length === 1 ? '' : 's'} but this costing has no crystal BOM.
               </p>
+              <PartList items={result.crystals} />
             </div>
+          )}
+
+          {result.crystals.length > 0 && result.crystalMismatch !== 'none' && (
+            <details className="text-ink-50">
+              <summary className="cursor-pointer">
+                {result.crystals.length} stone code{result.crystals.length === 1 ? '' : 's'} in the
+                ERP BOM · this costing has {result.crystalLineCount} crystal line
+                {result.crystalLineCount === 1 ? '' : 's'}
+              </summary>
+              <div className="mt-1 pl-3"><PartList items={result.crystals} /></div>
+              <p className="pl-3 mt-1">
+                Stones are costed by size × brand here and by item code in the ERP — and the code
+                changes per colour — so they can't be matched automatically. Differing counts are
+                expected; compare by eye.
+              </p>
+            </details>
           )}
 
           {result.packaging.length > 0 && (
@@ -95,22 +134,16 @@ function BomCoverage({ sku, result, loading, error, onCheck }) {
                 {result.packaging.length} packaging part
                 {result.packaging.length === 1 ? '' : 's'} in the ERP BOM (not costed per product)
               </summary>
-              <div className="mt-1 pl-3">
-                {result.packaging.map((r) => (
-                  <div key={r.component_code}>
-                    <span className="font-mono">{r.component_code}</span> ×{r.ext_qty}
-                  </div>
-                ))}
-              </div>
+              <div className="mt-1 pl-3"><PartList items={result.packaging} /></div>
               <p className="pl-3 mt-1">
-                Packaging is stocked as a pool with no per-product BOM, so this is expected —
-                but it means box, tag, tissue and insert costs aren't in this figure.
+                Packaging is stocked as a pool with no per-product BOM, so this is expected — but
+                it means box, tag, tissue and insert costs aren't in this figure.
               </p>
             </details>
           )}
 
-          {!result.uncosted.length && !result.crystalMismatch && (
-            <p className="text-green-700">Every ERP part is accounted for.</p>
+          {!result.uncosted.length && result.crystalMismatch !== 'none' && (
+            <p className="text-green-700">Every ERP part is costed or accounted for.</p>
           )}
         </div>
       )}
@@ -220,20 +253,30 @@ export default function RangeCosting() {
   // The app's SKU format IS the ERP item code (D0002-001-GBL), so a variant's
   // SKU is what the ERP BOM is keyed on. Any variant will do — they share the
   // design's parts and differ only by plating/colour.
-  const bomSku = useMemo(() => {
-    // useMemo runs before the loading early-return, and enumerateRangeSkus
-    // dereferences product.design_no — so guard the null.
-    if (!product) return ''
-    return enumerateRangeSkus(product, [])[0]?.sku || ''
+  // The costing covers the whole design across every plating and colour, but
+  // the ERP keys BOMs per variant code. So work from design-level PREFIXES
+  // (D0002-001) and let the check find the ERP's own variants — a design sold
+  // under several crystal brands (D/A/U) yields more than one prefix.
+  // useMemo runs before the loading early-return, so guard the null product.
+  const bomPrefixes = useMemo(() => {
+    if (!product) return []
+    const skus = enumerateRangeSkus(product, []).map(s => s.sku).filter(Boolean)
+    // 'D0002-001-CC1' -> 'D0002-001'
+    return [...new Set(skus.map(s => s.split('-').slice(0, 2).join('-')).filter(Boolean))]
   }, [product])
 
   async function runBomCheck() {
     setBom({ result: null, loading: true, error: '' })
     try {
-      const result = await checkBomCoverage(bomSku, refs.map(r => r.code), state.crystal_bom)
-      setBom(result
-        ? { result, loading: false, error: '' }
-        : { result: null, loading: false, error: `No BOM in the ERP for ${bomSku}. It may be a new design, or the mirror may predate it.` })
+      const result = await checkBomCoverage(bomPrefixes, refs.map(r => r.code), state.crystal_bom)
+      if (!result || result.noneFound) {
+        setBom({
+          result: null, loading: false,
+          error: `No BOM in the ERP for ${bomPrefixes.join(', ')}. It may be a new design, or the mirror may predate it.`,
+        })
+      } else {
+        setBom({ result, loading: false, error: '' })
+      }
     } catch (e) {
       setBom({ result: null, loading: false, error: e.message })
     }
@@ -307,7 +350,7 @@ export default function RangeCosting() {
         <Link to={`/range/${id}`} className="btn-secondary text-sm">← Back to product</Link>
       </div>
 
-      <BomCoverage sku={bomSku} result={bom.result} loading={bom.loading}
+      <BomCoverage prefixes={bomPrefixes} result={bom.result} loading={bom.loading}
                    error={bom.error} onCheck={runBomCheck} />
 
       {/* Component costs */}
