@@ -137,6 +137,39 @@ export default async function handler(req) {
     return json({ rows: await res.json() })
   }
 
+  // 2a2) Bulk existence check: { entity: 'codes', codes: [...] } → { found: [...] }.
+  //      Used by the component-code audit, which would otherwise need one
+  //      request per component. Returns only the codes that exist in erp_item.
+  if (payload?.entity === 'codes') {
+    const codes = (Array.isArray(payload.codes) ? payload.codes : [])
+      .map((c) => String(c ?? '').trim())
+      .filter(Boolean)
+      .slice(0, 500)
+    if (!codes.length) return json({ found: [] })
+    // PostgREST in.() — quote each value so commas/parens in a code can't
+    // break out of the filter list.
+    const list = codes.map((c) => `"${c.replace(/["\\]/g, '')}"`).join(',')
+    const p = new URLSearchParams()
+    p.set('select', 'code')
+    p.set('code', `in.(${list})`)
+    p.set('limit', String(codes.length))
+    const h = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Accept: 'application/json' }
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/erp_item?${p.toString()}`, { headers: h })
+    if (!r.ok) {
+      return json({ error: 'Code check failed', detail: (await r.text()).slice(0, 300) }, 502)
+    }
+    // Existence alone is a weak test — a code can exist and be superseded. Also
+    // return how many CURRENT BOMs use it; zero means nothing is built from it.
+    const u = new URLSearchParams()
+    u.set('select', 'code,bom_count'); u.set('code', `in.(${list})`); u.set('limit', String(codes.length))
+    const ur = await fetch(`${SUPABASE_URL}/rest/v1/erp_component_usage?${u.toString()}`, { headers: h })
+    const usage = ur.ok ? await ur.json() : []
+    return json({
+      found: (await r.json()).map((x) => x.code),
+      usage: Object.fromEntries(usage.map((x) => [x.code, x.bom_count])),
+    })
+  }
+
   // 2b) Line detail: { entity: 'lines', of: 'sales_invoice'|'sales_order', code }.
   //     Returns the header's line items and (for sales docs) its surcharge lines.
   if (payload?.entity === 'lines') {

@@ -10,6 +10,7 @@ import BulkCategoryEditor from '../components/BulkCategoryEditor'
 import BulkVideoEditor from '../components/BulkVideoEditor'
 import SchemaAudit from './SchemaAudit'
 import BankAccounts from './BankAccounts'
+import ComponentCodeAudit from './ComponentCodeAudit'
 
 const CURRENCIES = ['RMB', 'USD', 'EUR']
 const LABELS = { RMB: 'RMB → HKD', USD: 'USD → HKD', EUR: 'EUR → HKD' }
@@ -20,6 +21,7 @@ const TABS = [
   { v: 'quotes',   label: 'Quote Branding' },
   { v: 'bank',     label: 'Bank Accounts' },
   { v: 'audit',    label: 'Schema Audit' },
+  { v: 'codes',    label: 'Component Codes' },
 ]
 const PRODUCT_TABS = [
   { v: 'band',       label: 'Catalogue Band' },
@@ -74,6 +76,7 @@ export default function Settings() {
 
       {tab === 'bank' && <BankAccounts />}
       {tab === 'audit' && <SchemaAudit />}
+      {tab === 'codes' && <ComponentCodeAudit />}
 
       {tab === 'products' && (
         <div>

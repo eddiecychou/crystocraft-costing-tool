@@ -393,6 +393,18 @@ create index        if not exists ix_erp_stock_wh      on public.erp_stock (ware
 create index        if not exists ix_erp_stock_code_trg on public.erp_stock using gin (item_code gin_trgm_ops);
 create index        if not exists ix_erp_stock_desc_trg on public.erp_stock using gin (description gin_trgm_ops);
 
+-- How many CURRENT BOMs use each component (5,817 distinct components).
+-- Existence in the item master is a weak test — the app was found costing
+-- FM-K(32).03-C, which exists and is used by ZERO current BOMs, while every
+-- BOM uses FM-K(32)-C (526). A code that exists but is used nowhere is a
+-- superseded item, and that is the signal worth surfacing.
+create or replace view public.erp_component_usage as
+select component_code            as code,
+       count(*)::int             as bom_count,
+       count(distinct parent_code)::int as parent_count
+from public.erp_bom
+group by component_code;
+
 -- Warehouse list for the picker. stock_items lets the UI show only warehouses
 -- that actually hold something: 49 exist but only ~12 have any stock, and a
 -- dropdown with 37 dead entries is worse than no dropdown. Defined AFTER
@@ -432,12 +444,14 @@ revoke all on public.erp_customer, public.erp_supplier, public.erp_item, public.
   public.erp_sales_invoice, public.erp_sales_invoice_line, public.erp_sales_invoice_surcharge,
   public.erp_sales_order, public.erp_sales_order_line, public.erp_sales_order_surcharge,
   public.erp_purchase, public.erp_purchase_line, public.erp_purchase_surcharge,
-  public.erp_warehouse, public.erp_stock, public.erp_item_type from anon, authenticated;
+  public.erp_warehouse, public.erp_stock, public.erp_item_type,
+  public.erp_component_usage from anon, authenticated;
 grant select on public.erp_customer, public.erp_supplier, public.erp_item, public.erp_bom,
   public.erp_sales_invoice, public.erp_sales_invoice_line, public.erp_sales_invoice_surcharge,
   public.erp_sales_order, public.erp_sales_order_line, public.erp_sales_order_surcharge,
   public.erp_purchase, public.erp_purchase_line, public.erp_purchase_surcharge,
-  public.erp_warehouse, public.erp_stock, public.erp_item_type to service_role;
+  public.erp_warehouse, public.erp_stock, public.erp_item_type,
+  public.erp_component_usage to service_role;
 revoke all on function public.explode_bom(text) from anon, authenticated;
 grant execute on function public.explode_bom(text) to service_role;
 
