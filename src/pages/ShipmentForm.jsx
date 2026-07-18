@@ -8,8 +8,9 @@ import {
   loadRangeProductsLite, autoMatchLines, matchRangeProduct, rematchLines, validateOrder, computeOrderTotals,
 } from '../shipping'
 import { loadCustomers, saveCustomer } from '../domain/customer'
+import { fetchErpSoLines, diffLines } from '../erpSoImport'
 import { CURRENCIES } from '../constants'
-import { FileInput, FolderOpen, FileText, Trash2, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react'
+import { FileInput, FolderOpen, FileText, Trash2, CheckCircle2, AlertTriangle, RefreshCw, Database } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
 import PackingListEditor from './PackingListEditor'
 import FreightComparison from './FreightComparison'
@@ -38,6 +39,67 @@ function raceWrite(promise, ms = 6000) {
   ])
 }
 
+// Shows how the parsed PI compares to the ERP's own sales order. The ERP rows
+// are the original record; the parse is a reading of a picture of it. So when
+// they disagree, the ERP is right — but this says so rather than silently
+// overwriting, because the mirror can be a few days stale and the person
+// importing knows which document they're holding.
+function ErpCrossCheck({ check, onUse }) {
+  if (!check) return null
+  const { soNo, erp, diff, adopted } = check
+  const clean = !diff.differing.length && !diff.onlyParsed.length && !diff.onlyErp.length
+
+  return (
+    <div className={`mt-3 rounded-lg border px-3 py-2.5 text-xs ${
+      clean ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'
+    }`}>
+      <div className="flex items-center gap-1.5 font-semibold mb-1">
+        <Database size={13} />
+        {soNo} found in the ERP — {erp.length} line{erp.length === 1 ? '' : 's'}
+      </div>
+
+      {clean ? (
+        <p className="text-green-800">The parsed lines match the ERP exactly.</p>
+      ) : (
+        <div className="text-amber-900 space-y-1">
+          {diff.differing.map((d) => (
+            <div key={d.item_code}>
+              <span className="font-mono">{d.item_code}</span>{' '}
+              {d.fields.map((f) => (
+                <span key={f.field}>
+                  {f.field} read as <strong>{String(f.parsed)}</strong>, ERP says{' '}
+                  <strong>{String(f.erp)}</strong>{' '}
+                </span>
+              ))}
+            </div>
+          ))}
+          {diff.onlyParsed.map((l, i) => (
+            <div key={`p${i}`}>
+              <span className="font-mono">{l.item_code || '(no code)'}</span> — read from the
+              PDF but not in the ERP order
+            </div>
+          ))}
+          {diff.onlyErp.map((l) => (
+            <div key={l.item_code}>
+              <span className="font-mono">{l.item_code}</span> — in the ERP order but missed
+              by the parser
+            </div>
+          ))}
+        </div>
+      )}
+
+      {adopted ? (
+        <p className="mt-2 text-green-800 font-medium">Using the ERP's lines.</p>
+      ) : (
+        <button type="button" onClick={onUse}
+                className="mt-2 px-2.5 py-1 rounded border border-current text-xs font-medium hover:bg-white/60">
+          Use the ERP's lines{clean ? '' : ' (recommended)'}
+        </button>
+      )}
+    </div>
+  )
+}
+
 export default function ShipmentForm() {
   const { id } = useParams()
   const isEdit = Boolean(id)
@@ -56,6 +118,9 @@ export default function ShipmentForm() {
 
   const [extracting, setExtracting] = useState(false)
   const [extractError, setExtractError] = useState('')
+  // { soNo, erp, diff, adopted? } — result of checking the parse against
+  // the ERP's own sales order. null when there's nothing to say.
+  const [erpCheck, setErpCheck] = useState(null)
   const [dragOver, setDragOver] = useState(false)
   const [fetching, setFetching] = useState(isEdit)
   const [saving, setSaving] = useState(false)
@@ -194,11 +259,37 @@ export default function ShipmentForm() {
       const matched = autoMatchLines(data.lines || [], rangeProducts)
       setLines(matched)
       if (!matched.length) setExtractError('No line items found — check the file or add lines manually.')
+
+      // The PI is the JES sales order, so its lines already exist in the ERP
+      // mirror. Cross-check the parse against them — the ERP's version is the
+      // original, the parse is a reading of a picture of it.
+      checkAgainstErp(data.so_no, matched)
     } catch {
       setExtractError('Could not read this PI — fill in the header and add lines manually.')
     } finally {
       setExtracting(false)
     }
+  }
+
+  // ── ERP cross-check ────────────────────────────────────────────────────────
+  async function checkAgainstErp(soNo, parsedLines) {
+    setErpCheck(null)
+    if (!soNo) return
+    try {
+      const erp = await fetchErpSoLines(soNo)
+      // Not in the mirror yet (raised since the last sync) — say nothing and
+      // leave the parsed lines alone. This must never block the workflow.
+      if (!erp) return
+      setErpCheck({ soNo: String(soNo).toUpperCase(), erp, diff: diffLines(parsedLines, erp) })
+    } catch (e) {
+      console.error('ERP SO cross-check failed', e)
+    }
+  }
+
+  function useErpLines() {
+    if (!erpCheck) return
+    setLines(autoMatchLines(erpCheck.erp, rangeProducts))
+    setErpCheck(c => ({ ...c, adopted: true }))
   }
 
   // ── Line editing / reconciliation ────────────────────────────────────────────
@@ -373,6 +464,7 @@ export default function ShipmentForm() {
             )}
             {extracting && <div className="mt-2 h-1 bg-brand-100 rounded overflow-hidden"><div className="h-full bg-brand-500 animate-pulse w-full" /></div>}
             {extractError && <p className="text-xs text-amber-600 mt-2">{extractError}</p>}
+            <ErpCrossCheck check={erpCheck} onUse={useErpLines} />
           </div>
         )}
 
