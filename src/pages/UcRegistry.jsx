@@ -121,10 +121,10 @@ function UcForm({ record, onClose, onSaved }) {
 export default function UcRegistry() {
   const [q, setQ] = useState('')
   const [source, setSource] = useState('')
-  const [openOnly, setOpenOnly] = useState(true)
+  const [statusFilter, setStatusFilter] = useState('open')   // '' = all
   const [editing, setEditing] = useState(null)   // record | 'new' | null
 
-  const list = useUcList({ q, source, status: openOnly ? 'open' : '', limit: 400 })
+  const list = useUcList({ q, source, status: statusFilter, limit: 500 })
   const arList = useUcList({ status: 'open', limit: 1000 })   // outstanding summary (all open)
   const rows = list.rows
   const refreshAll = () => { list.refresh(); arList.refresh() }
@@ -190,10 +190,12 @@ export default function UcRegistry() {
           <option value="">All sources</option>
           {UC_SOURCES.map((s) => <option key={s}>{s}</option>)}
         </select>
-        <label className="flex items-center gap-2 text-sm text-gray-600 select-none">
-          <input type="checkbox" checked={openOnly} onChange={(e) => setOpenOnly(e.target.checked)}
-            className="rounded border-gray-300 text-teal-600 focus:ring-teal-500" /> Open only
-        </label>
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-2.5 py-2 text-sm border border-gray-200 rounded-lg">
+          <option value="open">Open</option>
+          <option value="closed">Closed</option>
+          <option value="void">Void</option>
+          <option value="">All statuses</option>
+        </select>
         <span className="text-sm text-gray-400 tabular-nums">{rows.length} shown</span>
       </div>
 
