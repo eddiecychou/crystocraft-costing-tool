@@ -36,6 +36,7 @@ import CustomerForm from './pages/CustomerForm'
 import CustomerDetail from './pages/CustomerDetail'
 import Settings from './pages/Settings'
 import SchemaAudit from './pages/SchemaAudit'
+import BankDetailsAudit from './pages/BankDetailsAudit'
 import ComponentsLib from './pages/Components'
 import InventoryStatus from './pages/InventoryStatus'
 import ErpLookup from './pages/ErpLookup'
@@ -183,6 +184,9 @@ function AdminApp({ user }) {
                 <Route path="/blog-generator/:productId" element={<BlogGenerator />} />
                 <Route path="/settings" element={<Settings />} />
                 <Route path="/schema-audit" element={<SchemaAudit />} />
+                {/* One-off: find bank details pasted into free-text fields.
+                    Remove once bank_accounts is the single source. */}
+                <Route path="/bank-audit" element={<BankDetailsAudit />} />
                 <Route path="/shipping" element={<Shipping />} />
                 <Route path="/shipments/new" element={<ShipmentForm />} />
                 <Route path="/shipments/:id" element={<ShipmentForm />} />
