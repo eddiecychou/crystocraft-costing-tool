@@ -71,16 +71,22 @@ export async function checkBomCoverage(prefixes, componentCodes, crystalBomLines
   const variants = [...new Set(found)].sort().slice(0, MAX_VARIANTS)
   if (!variants.length) return { prefixes: wanted, variants: [], parts: [], noneFound: true }
 
-  // Explode each variant; remember which variants each part appears in.
-  const parts = new Map()   // code -> { code, type, ext_qty, is_assembly, path, in:Set }
+  // LEVEL 1 ONLY. Level 2 is the historical in-house process: the factory used
+  // to buy raw alloy (AY: MR040/74-04A, MS100(146/1219)-04D …) and make the
+  // FM metal parts itself. Those FM parts are now bought finished from vendors,
+  // so the raw material below them is no longer purchased and reporting it is
+  // pure noise — it was five of the ten "uncosted" lines on D0002-001.
+  // Level 1 is exactly what a finished good consumes today: stones, FM parts,
+  // packaging. (If in-house production ever resumes, drop this filter.)
+  const parts = new Map()   // code -> { code, type, ext_qty, in:Set }
   for (const code of variants) {
     const rows = await erpBom(code)
-    for (const r of rows || []) {
+    for (const r of (rows || []).filter((x) => Number(x.level) === 1)) {
       const key = norm(r.component_code)
       if (!parts.has(key)) {
         parts.set(key, {
           code: r.component_code, type: r.component_type, ext_qty: r.ext_qty,
-          is_assembly: r.is_assembly, path: r.path || [], in: new Set(),
+          in: new Set(),
         })
       }
       parts.get(key).in.add(code)
@@ -90,17 +96,14 @@ export async function checkBomCoverage(prefixes, componentCodes, crystalBomLines
   const costed = new Set((componentCodes || []).map(norm).filter(Boolean))
   const crystalLines = (crystalBomLines || []).filter((l) => l.size || l.qty)
 
-  // A part is accounted for if IT is costed, or if any ASSEMBLY above it is —
-  // costing "the base plate" covers the sheet metal inside it, and reporting
-  // that sheet would be a false alarm. explode_bom's `path` makes this checkable.
+  // Every level-1 part hangs directly off the finished good, so there are no
+  // ancestors to consider and `is_assembly` is irrelevant here: FM-C(32).01-P
+  // still HAS children in the ERP, but it is bought finished, so it is a leaf
+  // for costing purposes and must be reported like any other purchased part.
   const buckets = { costed: [], crystals: [], packaging: [], uncosted: [] }
   for (const p of parts.values()) {
     const entry = { ...p, variants: [...p.in], shared: p.in.size === variants.length }
     if (costed.has(norm(p.code))) { buckets.costed.push(entry); continue }
-    if ((p.path || []).some((a) => costed.has(norm(a)))) continue   // rolled into a costed parent
-    // An uncosted assembly is skipped: its own children are reported instead,
-    // so listing both would double-count.
-    if (p.is_assembly) continue
     if (p.type === 'ST') { buckets.crystals.push(entry); continue }
     if (isPackaging(p.code)) { buckets.packaging.push(entry); continue }
     buckets.uncosted.push(entry)
