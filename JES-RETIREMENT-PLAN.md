@@ -129,28 +129,49 @@ was produced.
 So "cut out job orders" must not become "stop recording material issues" — that
 would quietly corrupt stock, and JES is currently the only stock ledger.
 
-### Recommendation
+### Recommendation: drop the document entirely — the app already does the work
 
-Keep the **two facts**, drop the **document**:
+The two facts worth keeping are **already recorded by the app**, on the order,
+with timestamps. Nothing needs building, and no job order needs generating:
 
-1. **What was consumed and produced** — stock accuracy, which is what tells you
-   whether a delivery date can be promised.
-2. **When it was actually finished** — the one genuinely new thing a job order
-   records.
+| App function (`orderStock.js`) | What it records |
+|---|---|
+| `reserveForOrder` | stock committed to an order |
+| `issueForOrder` | components consumed — quantities from the *same* MRP explosion as the Component Requirements report, so the two can never disagree |
+| `produceForOrder` | production-in; `committed_at` **is** the production-in date |
+| `releaseForOrder` | reverses a reservation |
 
-Both attach naturally to the **sales order line**, which already knows item,
-quantity, customer and due date. In the app: a "materials issued" and "produced"
-action on the line. No separate document, no re-keying. If the factory floor
-needs a printed instruction, **generate** it from the line rather than type it.
+Plus the order status flow: draft → confirmed → packing → ready → shipped →
+delivered.
+
+The app's stock model is also **better than the one being replaced**. On-hand is
+a derived running balance over an append-only movement log (`stockLedger.js`),
+never a mutable number edited in place. JES's own balance table, `itemwhbal`, is
+exactly the mutable kind and has gone stale — 8,368 of its 8,599 non-zero rows
+have a null `lastupdate`. That is the failure mode the app's design already
+avoids.
+
+So the job order is pure JES overhead: a document keyed to satisfy a workflow,
+whose entire content is either duplicated from the sales order line or already
+captured by the app against that line.
 
 ### Two caveats
 
 - **This saves nothing until cutover.** JES will demand job orders while it
   runs. The saving arrives when production moves to the app — which is why
   production is now step 4 rather than a late "whichever looks easy" item.
-- **Check the production-in date isn't quietly load-bearing** (99% populated).
-  Someone may use it for lead time or to trigger shipping. One question to the
-  team before assuming it's free to drop.
+- **Check the production-in date isn't quietly load-bearing** (99% populated on
+  the JES side). Someone may use it for lead time or to trigger shipping. One
+  question to the team before assuming it is free to drop.
+
+### One open question for step 7, not for this
+
+The app's stock functions operate on component-level inventory
+(`range_components`, crystals, packaging). The ERP also carries **finished-goods
+stock** — FSTK holds 3,671 items. Whether the app needs to own an FG pool, or
+whether finished goods are transient because you build to order, is a stock
+question to settle in step 7. It does not affect the case for dropping job
+orders.
 
 ---
 
