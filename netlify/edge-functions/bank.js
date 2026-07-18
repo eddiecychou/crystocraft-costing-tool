@@ -22,7 +22,8 @@ const json = (b, status = 200) =>
 
 const WRITABLE = new Set([
   'currency', 'label', 'bank_name', 'bank_address', 'beneficiary',
-  'account_no', 'swift', 'iban', 'intermediary', 'notes', 'is_default', 'active',
+  'account_no', 'swift', 'iban', 'intermediary', 'bank_country',
+  'payment_methods', 'reference_note', 'notes', 'is_default', 'active',
 ])
 
 // IBAN mod-97 (ISO 13616). Rejecting a bad IBAN at the API boundary is the
@@ -52,7 +53,8 @@ function clean(input) {
     out.currency = String(out.currency).trim().toUpperCase()
     if (!/^[A-Z]{3}$/.test(out.currency)) return { error: 'Currency must be a 3-letter code (e.g. USD).' }
   }
-  for (const k of ['label', 'bank_name', 'bank_address', 'beneficiary', 'account_no', 'intermediary', 'notes']) {
+  for (const k of ['label', 'bank_name', 'bank_address', 'beneficiary', 'account_no',
+                   'intermediary', 'bank_country', 'payment_methods', 'reference_note', 'notes']) {
     if (k in out) out[k] = out[k] == null ? null : String(out[k]).trim() || null
   }
   if ('swift' in out) {

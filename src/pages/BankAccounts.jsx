@@ -10,22 +10,30 @@ import {
 // for its invoice currency instead of someone pasting one in.
 
 const BLANK = {
-  currency: '', label: '', bank_name: '', bank_address: '', beneficiary: '',
-  account_no: '', swift: '', iban: '', intermediary: '', notes: '',
+  currency: '', label: '', bank_name: '', bank_address: '', bank_country: '',
+  beneficiary: '', account_no: '', swift: '', iban: '', intermediary: '',
+  payment_methods: '', reference_note: '', notes: '',
   is_default: false, active: true,
 }
 
+// Labels follow the wording on the real remittance documents ("Beneficiary
+// Bank", "Beneficiary") rather than generic database names — otherwise you're
+// translating between the form and the bank's paperwork while copying digits,
+// which is exactly when mistakes happen.
 const FIELDS = [
-  ['currency', 'Currency', 'e.g. USD', true],
-  ['label', 'Label', 'e.g. Main USD', false],
-  ['bank_name', 'Bank name', 'e.g. HSBC', true],
-  ['beneficiary', 'Beneficiary', 'Account holder exactly as the bank has it', true],
-  ['account_no', 'Account no.', '', false],
+  ['currency', 'Currency', 'e.g. EUR', true],
+  ['label', 'Label', 'e.g. Main EUR (Banking Circle)', false],
+  ['beneficiary', 'Beneficiary (account name)', 'Exactly as the bank holds it', true],
+  ['bank_name', 'Beneficiary Bank', 'e.g. HSBC Mong Kok Branch', true],
+  ['account_no', 'Account no.', 'e.g. 004-534-754262-838', false],
+  ['iban', 'IBAN', 'Validated by checksum on save', false],
   ['swift', 'SWIFT / BIC', '8 or 11 characters', false],
-  ['iban', 'IBAN', 'Checked against its checksum', false],
   ['intermediary', 'Intermediary bank', 'If the bank requires one', false],
+  ['bank_country', 'Bank country', 'e.g. Luxembourg', false],
   ['bank_address', 'Bank address', '', false],
-  ['notes', 'Notes', '', false],
+  ['payment_methods', 'Accepted payment methods', 'e.g. SEPA Inst / SEPA SCT only', false],
+  ['reference_note', 'Payment reference required', "e.g. Buyer's name, invoice no. and product name in the memo", false],
+  ['notes', 'Internal notes', 'Not shown on documents', false],
 ]
 
 function AccountForm({ initial, onSave, onCancel, saving }) {
@@ -39,7 +47,9 @@ function AccountForm({ initial, onSave, onCancel, saving }) {
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {FIELDS.map(([k, label, placeholder, required]) => (
-          <div key={k} className={k === 'bank_address' || k === 'notes' ? 'sm:col-span-2' : ''}>
+          <div key={k} className={
+            ['bank_address', 'notes', 'payment_methods', 'reference_note'].includes(k) ? 'sm:col-span-2' : ''
+          }>
             <label className="block text-xs text-gray-500 mb-1">
               {label}{required && <span className="text-red-500"> *</span>}
             </label>

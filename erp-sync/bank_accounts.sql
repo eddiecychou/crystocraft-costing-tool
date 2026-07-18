@@ -21,7 +21,15 @@ create table if not exists public.bank_accounts (
   swift           text,
   iban            text,
   intermediary    text,                    -- correspondent bank, when required
-  notes           text,
+  bank_country    text,                    -- "Luxembourg" — matters for wires
+  -- Real constraints from real accounts. Banking Circle (EUR) accepts SEPA
+  -- Inst / SEPA SCT only, so a customer sending a SWIFT wire would fail; and
+  -- it asks for buyer name + invoice no in the memo, without which the receipt
+  -- can't be matched to an order. Both belong ON the document, not in a note
+  -- someone remembers.
+  payment_methods text,                    -- accepted rails / restrictions
+  reference_note  text,                    -- what the payer must put in the memo
+  notes           text,                    -- internal only; NOT rendered
   is_default      boolean     not null default false,
   active          boolean     not null default true,
   created_at      timestamptz not null default now(),

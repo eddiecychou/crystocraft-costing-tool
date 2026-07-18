@@ -44,15 +44,24 @@ export function accountForCurrency(accounts, currency) {
 }
 
 // Rendered block for a quote/PI. Kept here so every document formats identically.
+// Field order and wording follow the remittance documents the team already
+// uses, so the block reads the way a customer's bank expects.
+// `payment_methods` and `reference_note` are included deliberately: an account
+// that only accepts SEPA will bounce a SWIFT wire, and a payment with no
+// invoice number in the memo can't be matched to an order. Both are as
+// necessary as the digits. `notes` is internal and never rendered.
 export function formatBankDetails(a) {
   if (!a) return ''
-  return [
+  const lines = [
     ['Beneficiary', a.beneficiary],
-    ['Bank', a.bank_name],
-    ['Bank Address', a.bank_address],
+    ['Beneficiary Bank', a.bank_name],
+    ['Bank Address', [a.bank_address, a.bank_country].filter(Boolean).join(', ')],
     ['Account No', a.account_no],
     ['IBAN', a.iban],
     ['SWIFT', a.swift],
     ['Intermediary Bank', a.intermediary],
-  ].filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join('\n')
+    ['Accepted Payments', a.payment_methods],
+    ['Payment Reference', a.reference_note],
+  ]
+  return lines.filter(([, v]) => v).map(([k, v]) => `${k}: ${v}`).join('\n')
 }
