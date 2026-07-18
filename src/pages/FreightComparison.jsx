@@ -70,6 +70,10 @@ function AddQuoteForm({ orderId, scenarios, vendors, onSaved, onCancel }) {
     try {
       await saveFreightQuote(null, form)
       onSaved()
+    } catch (e) {
+      // Without this a failed write was silent too — the form just sat there.
+      console.error('saveFreightQuote failed', e)
+      alert(`Could not save the freight quote: ${e.message}`)
     } finally {
       setSaving(false)
     }

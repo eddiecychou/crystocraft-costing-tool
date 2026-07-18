@@ -98,7 +98,8 @@ export async function loadVendors() {
   try {
     const snap = await getDocs(query(VENDORS(), orderBy('name')))
     return snap.docs.map(vendorFromDoc)
-  } catch {
+  } catch (e) {
+    console.error('loadVendors failed', e)
     return []
   }
 }
@@ -196,11 +197,23 @@ export async function deleteFreightQuote(id) {
 }
 
 // All freight quotes for a specific order (feeds P-3 comparison matrix).
+// NOTE: `where` on order_id + `orderBy` on createdAt would need a COMPOSITE
+// index, which doesn't exist (indexes here are created by hand — there's no
+// firestore.indexes.json). That query throws failed-precondition, and the
+// catch below turned it into a silent empty list: quotes saved fine but the
+// tab always showed "No freight quotes yet". So sort client-side instead —
+// same approach getPackingScenariosByOrder() already uses, and these lists
+// are a handful of rows per order.
 export async function loadOrderQuotes(orderId) {
   try {
-    const snap = await getDocs(query(QUOTES(), where('order_id', '==', orderId), orderBy('createdAt', 'desc')))
-    return snap.docs.map(quoteFromDoc)
-  } catch {
+    const snap = await getDocs(query(QUOTES(), where('order_id', '==', orderId)))
+    return snap.docs
+      .map(quoteFromDoc)
+      // Newest first. A just-saved doc's serverTimestamp may still be pending
+      // (null) locally — treat that as newest so it doesn't jump to the bottom.
+      .sort((a, b) => (b.createdAt?.seconds ?? Infinity) - (a.createdAt?.seconds ?? Infinity))
+  } catch (e) {
+    console.error('loadOrderQuotes failed', e)
     return []
   }
 }
@@ -210,7 +223,8 @@ export async function loadVendorQuotes(vendorId) {
   try {
     const snap = await getDocs(query(QUOTES(), where('vendor_id', '==', vendorId)))
     return snap.docs.map(quoteFromDoc)
-  } catch {
+  } catch (e) {
+    console.error('loadVendorQuotes failed', e)
     return []
   }
 }
@@ -219,7 +233,8 @@ export async function loadAllQuotes() {
   try {
     const snap = await getDocs(query(QUOTES(), orderBy('createdAt', 'desc')))
     return snap.docs.map(quoteFromDoc)
-  } catch {
+  } catch (e) {
+    console.error('loadAllQuotes failed', e)
     return []
   }
 }
