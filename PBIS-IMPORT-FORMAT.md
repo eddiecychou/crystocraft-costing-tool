@@ -7,32 +7,71 @@ was deliberately last because an app-generated invoice has to reproduce whatever
 PBIS ingests, and until now we had only PBIS *output* (`parse_pbis.py` reads the
 `.RPT` journal listing). This is the input side.
 
-## The real import is CSV — the `.xls` is only how it reached us
+## THE SPEC: the CSV is what PBIS actually ingests
 
-Cindy, on why the always-zero columns are there at all: *"normally is 0, but they
-needed to be there when I import as **.csv**."*
+Cindy supplied a real imported file — `nov24 to mar25 inv.csv`, 87 invoice rows,
+Nov 2024 to Mar 2025. **This is the authoritative format.** The `.xls` workbooks
+are her working copies; the column table further down describes those and is
+kept only for context.
 
-**PBIS ingests a CSV.** The two `.xls` workbooks are her working copies, not the
-artefact PBIS reads. So the deliverable is a **CSV generator, not an Excel
-writer** — and the import is **positional**: every column must be present even
-when empty, or every field after it shifts.
+Her note on the always-zero columns: *"normally is 0, but they needed to be there
+when I import as .csv."* The import is **positional** — every field must be
+present even when empty, or everything after it shifts.
 
-That reframes an assumption in the column table below. The `.xls` stores the
-issue date as an **Excel serial** (`46196`), but a CSV has no serials — the date
-must be written as *some* text format, and which one is now an open question
-(see 5). The same applies to encoding: the sheets carry Chinese in the name
-columns, so the CSV's encoding is not a detail to guess at (see 6).
+### File-level
+
+| | |
+|---|---|
+| Encoding | **UTF-8 with BOM** (`EF BB BF`) — the BOM is present, so emit it |
+| Line endings | **CRLF** |
+| Header row | **None.** The file starts at data |
+| Delimiter | Comma, no quoting used in the sample |
+| Fields per row | **10, on all 87 rows** |
+
+### Fields (invoice CSV)
+
+| # | Field | Example | Convention |
+|---:|---|---|---|
+| 0 | Doc class | `SI` | |
+| 1 | Invoice no. | `SI240238` + spaces | **Left-justified, space-padded to exactly 20 chars** |
+| 2 | Issue date | `1/11/2024`, `27/3/2025` | **`d/m/yyyy`, NOT zero-padded** |
+| 3 | Total | `774`, `144.4`, `397.61` | Plain decimal; no thousands separator, no forced `.00` |
+| 4 | Customer | `O07` | JES code |
+| 5 | Currency | `HKD` | |
+| 6 | Exch | `7.750000` | **Always 6 decimal places** |
+| 7 | Ref | `UC4649` | **No `/YY` suffix** — unlike the `.xls`, which has `UC4943/26` |
+| 8 | charge | `0` | `0` on all 87 rows |
+| 9 | discount amt | `0`, `50`, `20` | Non-zero on 8 rows — see below |
+
+**Ten fields, not the thirteen in the `.xls`.** The CSV drops the `Discount`
+column, the `type` column and the trailing name column. Note this is the
+**invoice** CSV — the purchase CSV is still unseen, and since purchases carry a
+real `type` (`PP`/`RM`/`PA`/`FS`) its field list is probably different. Do not
+assume it is these ten.
+
+### charge / discount, finally with populated examples
+
+8 of 87 rows are non-zero. Every one is field 9, always HKD, and always a round
+figure — `50` seven times, `20` once. Field 8 is `0` throughout.
+
+Because only one of the two is ever populated, **the data cannot prove which
+field is "charge" and which is "discount amt"** — that mapping comes from the
+`.xls` header order and should be confirmed before it is relied on.
 
 ## The headline: header-level only
 
-**Twelve columns, one row per document. No line items.**
+**One row per document. No line items.**
 
 An app-generated invoice does **not** need to reproduce JES's line structure,
 its separate surcharge tables, or its `sigstamount` tax field. PBIS wants a
 header and a total. That removes the largest unknown from the invoicing step —
 the fear was that the books depended on line-level detail, and they do not.
 
-## Column contract
+## For context only: the `.xls` working copies
+
+Not the import format — see the CSV spec at the top. Kept because the `.xls`
+carries column *headers*, which the headerless CSV does not, and that is where
+the field names come from.
 
 Real `.xls` (BIFF/OLE, saved from Excel for Mac). One sheet, named for the batch
 (`invoice jul10`, `PO jul10`). Row 0 is the header; row 1 onward is data.
@@ -84,6 +123,31 @@ Note `uc_registry.uc_no` stores the prefix (`UC4943`, not `4943`).
   field, nothing more.
 
 Both are exactly the drift that disappears once the app is the system of record.
+
+### Second validation: 87 rows from the real CSV (Nov 24 – Mar 25)
+
+| | |
+|---|---|
+| UC references resolved | **86 / 87** |
+| Currency matches | **87 / 87** |
+
+The exceptions are each interesting, and none is a format problem:
+
+- **`UA2168` — not a UC number at all.** One row (`SI240274`) carries a `UA`
+  prefix. A different reference series that nothing in the app knows about.
+  Worth asking what `UA` is; if there are more of them, the UC number is not the
+  universal join we have been assuming.
+- **UC4657 covers two invoices** — `SI240240` (3,432) and `SI240248` (4,290).
+  The registry holds 4,290, so the other invoice appears as a "total mismatch"
+  when it is nothing of the kind. **This is a concrete second example of the
+  multi-invoice UC question left open in `JES-RETIREMENT-PLAN.md` §5** (which
+  cited `UC4836 = SI250128/137`). It is not rare, and the registry's one-row-per-
+  UC shape cannot represent it.
+- **`SI240249`** — registry total empty where the CSV has 9,700.
+- **`SI250038`** — registry 51.52 against CSV 51.72, a 20-cent difference.
+
+So of four apparent discrepancies, **one is a design gap** (multi-invoice UC),
+one is an unknown reference series, and two are ordinary registry drift.
 
 ## Naming trap: `PI` now has three meanings
 
@@ -161,19 +225,19 @@ and a new supplier will always need classifying by hand.
    empty, or the fields after it shift. See the CSV note below, which is the
    more important half of that answer.
 4. **Is the `Customer Name` column (12) read on import, or cosmetic?**
-5. **What date format does the CSV use?** The `.xls` holds an Excel serial, which
-   cannot survive into a CSV. `dd/mm/yyyy`? `yyyymmdd`? PBIS's own `.RPT` output
-   uses `dd/mm/yyyy`, so that is the guess — but it is a guess, and a wrong date
-   format either fails the import or, worse, silently transposes day and month.
-6. **What encoding and dialect does the CSV need?** Comma or tab; quoting rules;
-   and critically **UTF-8 or Big5** — the sheets carry Chinese in the name
-   columns, and the ERP mirror already proved this business has legacy Big5 data
-   (see the V7.14 sync bug in `ERP-SYNC-V1.0.md`).
-7. **Does the CSV carry the header row**, or start straight at data?
-
-**The cheapest way to close 5–7: ask Cindy for one real `.csv` she has actually
-imported.** One file answers all three and removes the guesswork entirely — the
-same way the `.xls` pair answered far more than a description would have.
+5. ~~**What date format does the CSV use?**~~ **Answered: `d/m/yyyy`, not
+   zero-padded.**
+6. ~~**What encoding and dialect?**~~ **Answered: UTF-8 with BOM, CRLF, comma.**
+7. ~~**Does the CSV carry the header row?**~~ **Answered: no.**
+8. **Which of fields 8 and 9 is "charge" and which is "discount amt"?** Only one
+   is ever populated, so the data cannot say.
+9. **What is the `UA` reference series?** `UA2168` appears once in 87 rows where
+   a `UC` number was expected.
+10. **Is GBP 14.00 correct for the 2024/25 audit year?** It is far from the
+    market rate for that period — see the exchange-rate warning above.
+11. **Send one purchase `.csv` too.** We have the invoice CSV and both `.xls`
+    files, but not a purchase CSV — and purchases carry a real `type` code, so
+    their field list is probably not the invoice's ten.
 
 ## ⚠️ The exchange rate is a trap — do NOT use the app's own rates
 
@@ -181,15 +245,30 @@ The `Exch` column carries **Cindy's audit rates for the financial year**, fixed
 for the year. The app already has two *different* sources of exchange rate, and
 using either would silently misstate the books:
 
-| Source | Purpose | RMB | USD | EUR | GBP | CAD |
-|---|---|---|---|---|---|---|
-| **PBIS import (Cindy's audit rates)** | **the books** | **1.14** | **7.75** | **9.00** | **10.50** | **5.66** |
-| `src/currency.js` `DEFAULT_RATES` | app pricing | 1.09 | 7.78 | 8.60 | — | — |
-| `netlify/edge-functions/fx-rates.js` | live market feed | *daily* | *daily* | *daily* | — | — |
+| Source | Purpose | RMB | USD | EUR | GBP | CAD | MXN |
+|---|---|---|---|---|---|---|---|
+| **PBIS, FY 2026 batch** | **the books** | **1.14** | **7.75** | **9.00** | **10.50** | **5.66** | — |
+| **PBIS, Nov 24–Mar 25 batch** | **the books** | — | **7.75** | **8.50** | **14.00** | **6.055550** | **2.182900** |
+| `src/currency.js` `DEFAULT_RATES` | app pricing | 1.09 | 7.78 | 8.60 | — | — | — |
+| `netlify/edge-functions/fx-rates.js` | live market feed | *daily* | *daily* | *daily* | — | — | — |
 
-EUR is **4.7% apart** and RMB **4.6% apart**. A PBIS file generated with the
-app's rates would be wrong by roughly that much on every non-HKD document —
-large enough to matter to an audit, small enough that nobody notices for months.
+EUR is **4.7% apart** from the app's default and RMB **4.6% apart**. A PBIS file
+generated with the app's rates would be wrong by roughly that much on every
+non-HKD document — large enough to matter to an audit, small enough that nobody
+notices for months.
+
+**The two PBIS batches prove the rates really do move between years, and by a
+lot.** GBP goes **14.00 → 10.50** and CAD **6.055550 → 5.66** between the
+2024/25 file and the 2026 file. Only USD holds at the 7.75 peg.
+
+> ⚠️ GBP at **14.00** is far from any market GBP/HKD rate for that period
+> (roughly 9.5–10.5). It may be deliberate for audit purposes, or it may be an
+> error in that batch. **Worth asking Cindy** — if it is wrong, every GBP invoice
+> in that period is overstated by about a third.
+
+`MXN` also appears (2.182900) and is **not** among the app's
+`CUSTOMER_CURRENCIES`, so the currency list is wider than the app currently
+models.
 
 Three consequences for whoever builds the exporter:
 
