@@ -53,11 +53,72 @@ are references to nothing until the folder is copied.
 Expect roughly **200 of 29,919 (0.7%) to need manual attention** — small enough
 to list and fix by hand, too many to ignore.
 
-## On site (needs the LAN)
+## DONE on the LAN, 2026-07-19 — the folder is found
 
-1. **Find the folder.** `systemsetting` has a dozen image-path columns but all
+```
+Z:\jes\Pictures\Color\     →  /Volumes/JES SHARE/JES/Pictures/COLOR
+```
+
+**The `_notuse` columns were never unused.** `systemsetting.ssimagepath_notuse`
+holds `z:\jes\pictures\`, with `ssimgcolorpath_notuse` and
+`ssimgsketchpath_notuse` giving the Color/Sketch split that matches
+`itpicture1type` exactly. The suffix is a lie, in the same family as
+`lastupdateby` holding usernames. Nothing needed hunting in `JES.ini` after all —
+the answer was in the mirror the whole time.
+
+`Z:` maps to the share `JES SHARE`; mount it on the Mac and point the script at
+the mount.
+
+### What the reconciliation actually found
+
+| | |
+|---|---:|
+| Referenced by the ERP | 29,460 |
+| **Matched — uploaded** | **22,569 · 1.01 GB** |
+| Referenced but missing | 6,891 |
+| On disk, never referenced | 14,429 |
+| Same filename in >1 folder | 1,071 |
+
+**1.01 GB, not the 1.5–4.5 GB estimated.** In item terms: 24,353 of 31,823 codes
+(76.5%) get an image; 7,470 do not.
+
+**The missing 23% are genuinely gone.** Checked `SKETCH`, `OTHERS`, `TECHNICAL`,
+`IconPack` and `JEWELCAD`: between them they resolve **59** of the 6,856 missing
+names. These are not misfiled, the files do not exist. Nothing to recover.
+
+**The folder is nested, and the duplicate count was badly underestimated.** Only
+6,701 of 38,423 files sit at the top level; the rest are in ~311 subfolders
+(`001/`, `021/`, and a dated backup `JES/20100316/`). `scan_folder` walks
+recursively so this works, but its docstring said "no duplicates expected" and
+there are **1,070**. Of those, 901 are identical in size (harmless copies) and
+**169 are genuinely different files** — e.g. `u0003-001-cm4.jpg` is 6,442 bytes
+at the top level and 46,337 bytes in `001/`. First match wins, so for those 169
+the image an item gets is arbitrary. 0.7% of the upload; a known follow-up, not
+a blocker, and cheap to correct later since uploads are upserts.
+
+### Two bugs found by smoke-testing one file first
+
+Both would have failed all 22,569 uploads:
+
+1. **New-style `sb_secret_...` keys are only accepted via the `apikey` header.**
+   The script sent `Authorization: Bearer` only, and Storage tried to parse it
+   as a JWT — `400 {"statusCode":"403","message":"Invalid Compact JWS"}`. Now
+   sends both headers, which works for legacy service_role JWTs too.
+2. **Supabase Storage rejects `#` in an object key** — raw *and* URL-encoded
+   (`InvalidKey`). Only **12** matched files are affected (0.1%); they are
+   skipped and named rather than failing one by one. The many `#`-prefixed files
+   in the folder listing are mostly unreferenced, so the blast radius is small.
+
+Object names are now URL-quoted with `safe="/"`. No matched file contains a
+slash, so the 31 slash-bearing references in the section above never arise in
+practice — they are all among the missing.
+
+## Historical: what was unknown before the LAN visit
+
+1. ~~**Find the folder.** `systemsetting` has a dozen image-path columns but all
    are suffixed `_notuse`, so the live path is configured elsewhere — check
-   `JES.ini` and the JES client's settings. *This is the one genuine unknown.*
+   `JES.ini` and the JES client's settings. *This is the one genuine unknown.*~~
+   **Wrong premise — the `_notuse` columns hold the path. See above.**
 2. Then steps 2–4 are one script, `sync_images.py`, already written and tested
    against the database half:
 

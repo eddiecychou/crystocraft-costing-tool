@@ -116,14 +116,25 @@ def upload(matched, found):
         sys.exit("Upload needs SUPABASE_URL and SUPABASE_SECRET_KEY in erp-sync/.env "
                  "(the same values Netlify uses). Report mode needs neither.")
     import urllib.request
+    import urllib.parse
 
     def put(name, path):
         with open(path, "rb") as fh:
             body = fh.read()
         req = urllib.request.Request(
-            f"{url}/storage/v1/object/{BUCKET}/{name}",
+            # Quote the name: it goes in the URL path, and these filenames carry
+            # brackets, spaces and other characters that must not be read as
+            # syntax. safe="/" because a handful of ERP filenames contain a
+            # slash, which Storage turns into a nested key of the same text.
+            f"{url}/storage/v1/object/{BUCKET}/{urllib.parse.quote(name, safe='/')}",
             data=body, method="POST",
             headers={
+                # BOTH auth headers, deliberately. New-style `sb_secret_...`
+                # keys are only accepted via `apikey` — the Storage API tries to
+                # parse a Bearer token as a JWT and fails with "Invalid Compact
+                # JWS". Legacy service_role JWTs accept either. Sending both
+                # works for both generations.
+                "apikey": key,
                 "Authorization": f"Bearer {key}",
                 "Content-Type": "image/jpeg",
                 # Re-runnable: replace rather than fail on an existing object.
@@ -131,6 +142,16 @@ def upload(matched, found):
             },
         )
         urllib.request.urlopen(req, timeout=60).read()
+
+    # Supabase Storage rejects '#' in an object key outright — raw or encoded
+    # ("InvalidKey"). Skip those up front and name them, rather than burning a
+    # failure on each and burying the reason in a truncated error list.
+    unkeyable = sorted(n for n in matched if "#" in n)
+    if unkeyable:
+        matched = {n for n in matched if "#" not in n}
+        print(f"  skipping {len(unkeyable)} file(s) — '#' is not a legal Storage key:")
+        for n in unkeyable:
+            print(f"    {n}")
 
     done = failed = 0
     for i, name in enumerate(sorted(matched), 1):

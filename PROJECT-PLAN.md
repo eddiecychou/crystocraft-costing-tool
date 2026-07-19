@@ -256,6 +256,44 @@ file from Cindy — still unseen, and the longest pole in the plan.
 `JES-RETIREMENT-PLAN.md` §4 "Cutover checklist" — chiefly whether JES blocks an
 SI on insufficient FTBS stock, which is a five-minute test on the LAN.
 
+### On the LAN, 2026-07-19 — steps 1 and 2 done
+
+**Step 1 — `LastUpdate` probe. Incremental sync is CLEARED for four tables:**
+
+| Table | Rows | Touched well after creation | Verdict |
+|---|---:|---:|---|
+| `ItemTransaction` | 1,156,048 | 18.3% | ✅ safe |
+| `SalesOrder` | 5,631 | 54.8% | ✅ safe |
+| `SalesInvoice` | 5,455 | 26.6% | ✅ safe |
+| `Purchase` | 4,256 | 35.6% | ✅ safe |
+
+⚠️ **`ItemTransaction` has 556 rows with no `LastUpdate` at all** — incremental
+would never pick them up. They need one full pass; incremental is fine after.
+
+**Still undecided — `Item` (1.45 M), `ItemDetail` (10.3 M), `SalesOrderDetail`
+(188 k).** These have no document-date column, so the statistical test cannot
+run on them. They are exactly the tables that most need incremental. **Needs the
+2-minute manual test:** edit a remark on `D0383-165-GC1K` in JES, save, re-run
+the probe, see whether `LastUpdate` moved.
+
+Fixed a bug in `probe_lastupdate.py` while there: it probed `Item` on `ItemCode`,
+which does not exist (the column is `ITCode`), and swallowed the failure as
+"probe failed". Another case of column names lying.
+
+**Mirror staleness at the time of check:** `salesorder` 2026-07-16 vs live
+07-17; `itemtransaction` 2026-07-10 vs 07-17. A few days to a week behind.
+
+**Step 2 — item images. The folder was never a mystery.**
+`systemsetting.ssimagepath_notuse` holds `z:\jes\pictures\` — the `_notuse`
+suffix is a lie. Mounted at `/Volumes/JES SHARE/JES/Pictures/COLOR`.
+**22,569 files · 1.01 GB uploaded** (well under the 1.5–4.5 GB estimate);
+24,353 of 31,823 item codes get an image. The missing 23% are genuinely absent
+from disk — the sibling folders resolve only 59 of 6,856. Two bugs in
+`sync_images.py` found by smoke-testing a single file first, either of which
+would have failed all 22,569: new-style `sb_secret_` keys need the `apikey`
+header, and Storage rejects `#` in object keys (12 files, skipped and named).
+Full detail in `erp-sync/IMAGE-SYNC-PLAN.md`.
+
 ## Where V7.16 starts
 
 **On the LAN (the office Mac), in order:**

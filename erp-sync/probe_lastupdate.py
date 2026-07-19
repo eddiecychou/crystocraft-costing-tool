@@ -31,7 +31,9 @@ from sync import src_conn, D
 # The four giants incremental sync would target first, with the document-date
 # column to compare LastUpdate against.
 TARGETS = [
-    ("Item",            "ItemCode",   None),
+    # Item's code column is ITCode, not ItemCode (which does not exist — the
+    # sample query failed on it until 2026-07-19).
+    ("Item",            "ITCode",     None),
     ("ItemDetail",      "IDItemCode", None),
     ("SalesOrderDetail", "SDSONo",    None),
     ("ItemTransaction", "ITPK",       "ITDate"),
