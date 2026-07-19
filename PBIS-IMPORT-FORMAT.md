@@ -7,6 +7,22 @@ was deliberately last because an app-generated invoice has to reproduce whatever
 PBIS ingests, and until now we had only PBIS *output* (`parse_pbis.py` reads the
 `.RPT` journal listing). This is the input side.
 
+## The real import is CSV — the `.xls` is only how it reached us
+
+Cindy, on why the always-zero columns are there at all: *"normally is 0, but they
+needed to be there when I import as **.csv**."*
+
+**PBIS ingests a CSV.** The two `.xls` workbooks are her working copies, not the
+artefact PBIS reads. So the deliverable is a **CSV generator, not an Excel
+writer** — and the import is **positional**: every column must be present even
+when empty, or every field after it shifts.
+
+That reframes an assumption in the column table below. The `.xls` stores the
+issue date as an **Excel serial** (`46196`), but a CSV has no serials — the date
+must be written as *some* text format, and which one is now an open question
+(see 5). The same applies to encoding: the sheets carry Chinese in the name
+columns, so the CSV's encoding is not a detail to guess at (see 6).
+
 ## The headline: header-level only
 
 **Twelve columns, one row per document. No line items.**
@@ -138,9 +154,26 @@ and a new supplier will always need classifying by hand.
    audit.** Fixed for the financial year, set by Cindy — not market rates, which
    is why they are round numbers (EUR 9.0, GBP 10.5) with USD at the 7.75 peg.
    See the warning below; this is the most dangerous field in the file.
-3. **How do discount and charge behave when populated?** The columns exist but
-   are `0.0` on all 55 rows, so the fields are known and their semantics are not.
+3. ~~**How do discount and charge behave when populated?**~~ **Answered by Cindy
+   2026-07-19:** *"normally is 0, but they needed to be there when I import as
+   .csv."* So they are not semantically interesting — they are **structurally
+   required**. The import is positional: every column must be present even when
+   empty, or the fields after it shift. See the CSV note below, which is the
+   more important half of that answer.
 4. **Is the `Customer Name` column (12) read on import, or cosmetic?**
+5. **What date format does the CSV use?** The `.xls` holds an Excel serial, which
+   cannot survive into a CSV. `dd/mm/yyyy`? `yyyymmdd`? PBIS's own `.RPT` output
+   uses `dd/mm/yyyy`, so that is the guess — but it is a guess, and a wrong date
+   format either fails the import or, worse, silently transposes day and month.
+6. **What encoding and dialect does the CSV need?** Comma or tab; quoting rules;
+   and critically **UTF-8 or Big5** — the sheets carry Chinese in the name
+   columns, and the ERP mirror already proved this business has legacy Big5 data
+   (see the V7.14 sync bug in `ERP-SYNC-V1.0.md`).
+7. **Does the CSV carry the header row**, or start straight at data?
+
+**The cheapest way to close 5–7: ask Cindy for one real `.csv` she has actually
+imported.** One file answers all three and removes the guesswork entirely — the
+same way the `.xls` pair answered far more than a description would have.
 
 ## ⚠️ The exchange rate is a trap — do NOT use the app's own rates
 
