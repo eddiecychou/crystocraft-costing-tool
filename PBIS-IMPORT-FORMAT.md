@@ -133,13 +133,45 @@ and a new supplier will always need classifying by hand.
 ## Open questions for Cindy
 
 1. ~~**What does `type` mean on purchases?**~~ **Answered above by the owner.**
-2. **Where do the exchange rates come from, and who maintains them?** They are
-   standing rates, not daily: USD 7.75 (the peg), EUR 9.0, GBP 10.5, CAD 5.66,
-   RMB 1.14 — round numbers, constant across the file. An app-generated file must
-   use the same table or the books will not reconcile.
+2. ~~**Where do the exchange rates come from, and who maintains them?**~~
+   **Answered 2026-07-19: they are the rates Cindy is using for this year's
+   audit.** Fixed for the financial year, set by Cindy — not market rates, which
+   is why they are round numbers (EUR 9.0, GBP 10.5) with USD at the 7.75 peg.
+   See the warning below; this is the most dangerous field in the file.
 3. **How do discount and charge behave when populated?** The columns exist but
    are `0.0` on all 55 rows, so the fields are known and their semantics are not.
 4. **Is the `Customer Name` column (12) read on import, or cosmetic?**
+
+## ⚠️ The exchange rate is a trap — do NOT use the app's own rates
+
+The `Exch` column carries **Cindy's audit rates for the financial year**, fixed
+for the year. The app already has two *different* sources of exchange rate, and
+using either would silently misstate the books:
+
+| Source | Purpose | RMB | USD | EUR | GBP | CAD |
+|---|---|---|---|---|---|---|
+| **PBIS import (Cindy's audit rates)** | **the books** | **1.14** | **7.75** | **9.00** | **10.50** | **5.66** |
+| `src/currency.js` `DEFAULT_RATES` | app pricing | 1.09 | 7.78 | 8.60 | — | — |
+| `netlify/edge-functions/fx-rates.js` | live market feed | *daily* | *daily* | *daily* | — | — |
+
+EUR is **4.7% apart** and RMB **4.6% apart**. A PBIS file generated with the
+app's rates would be wrong by roughly that much on every non-HKD document —
+large enough to matter to an audit, small enough that nobody notices for months.
+
+Three consequences for whoever builds the exporter:
+
+1. **The PBIS export needs its own rate table, keyed by financial year**,
+   maintained deliberately and sourced from Cindy. It must not read
+   `settings/exchange_rates`, and it must never call `fx-rates.js`.
+2. **The rates change each year.** An export run in a new financial year with
+   last year's table is wrong in the same quiet way.
+3. **GBP and CAD are not in the app's `DEFAULT_RATES` at all** but do appear in
+   the invoice file (GBP 10.5, CAD 5.66) — so the table cannot simply be copied
+   from what the app already has.
+
+The safest design is to store the rate **on the document at the time it is
+raised**, the way `Exch` already appears per row here, rather than looking it up
+at export time.
 
 ## Also observed
 
