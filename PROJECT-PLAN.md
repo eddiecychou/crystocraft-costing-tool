@@ -350,6 +350,36 @@ file before committing to the full run, either of which would have failed all
 
 Full detail in `erp-sync/IMAGE-SYNC-PLAN.md`.
 
+### Step 3 — full sync, done 2026-07-19 21:17
+
+`=== Finished cleanly ===`. All 494 tables, **0 errors**, `refresh_views.sql` ran
+automatically. **Ran 16:08 → 21:17 — 5h 08m, not the ~2h estimated** from the
+2026-07-16 run. Plan for five hours, not two, until incremental is switched on.
+
+| Table | Rows | Mirror max `lastupdate` |
+|---|---:|---|
+| `item` | 1,447,399 | **2026-07-19 15:52:43** |
+| `itemdetail` | 10,346,277 | **2026-07-19 15:52:49** |
+| `itemtransaction` | 1,156,048 | 2026-07-17 08:26:28 |
+| `salesorder` | 5,631 | 2026-07-17 16:12:42 |
+| `salesinvoice` | 5,455 | 2026-07-13 16:59:19 |
+| `purchase` | 4,256 | 2026-07-17 08:09:03 |
+
+The first two carry the 15:52 timestamps of the `U0383-165-GC1K` probe edit, so
+the mirror demonstrably reaches today. `itemtransaction` matches the live count
+exactly (1,156,048 — the figure the probe read off SQL Server).
+
+Views rebuilt: `erp_item` 44,466 · `erp_bom` 432,057 · `erp_stock` 34,241.
+
+**This clears the last prerequisite for incremental sync** — the 556
+`itemtransaction` rows with no `LastUpdate` have now had their full pass.
+Step 4 (flip `Item`, `ItemDetail`, `ItemTransaction` to incremental in
+`tables.yaml`) is unblocked, and on these timings it is worth doing first:
+five hours per refresh is the thing making the mirror stale.
+
+`JobOrderBOM` is the fourth giant and was never probed — do not flip it on the
+assumption it behaves like the others.
+
 ## Where V7.16 starts
 
 **On the LAN (the office Mac), in order:**
