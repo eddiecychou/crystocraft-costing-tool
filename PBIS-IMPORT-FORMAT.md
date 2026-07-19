@@ -79,10 +79,60 @@ Both are exactly the drift that disappears once the app is the system of record.
 
 Write the meaning down wherever `PI` appears in code or spec.
 
+## The purchase `type` codes — answered by the owner, 2026-07-19
+
+| Code | Means |
+|---|---|
+| `PP` | **Purchase Part** |
+| `RM` | **Crystal** |
+| `PA` | **Packing** |
+| `FS` | **POS**, or other non-figurine product |
+
+An earlier draft guessed `RM` was "raw material". **Wrong** — it is crystals.
+`PA` does not appear in this batch at all, so the format supports four codes and
+the sample shows three (`PP` 15, `FS` 4, `RM` 4).
+
+Note these four map almost exactly onto the app's own stock classes:
+`PP` → components, `RM` → `crystalInventory`, `PA` → `packagingInventory`,
+`FS` → the B2C trading operation that §4 of the retirement plan puts out of
+scope for production.
+
+### The code is NOT derivable from JES's item type — but the supplier predicts it
+
+Cross-checked every PO line in the sample against `raw.purchasedetail`:
+
+| PBIS type | JES item types on the lines |
+|---|---|
+| `PP` | `SF` × 51 |
+| `FS` | `SF` × 5 |
+| `RM` | `ST` × 4, **`SF` × 9** |
+
+So `SF` (semi-finished) appears under all three codes, and `RM` is mostly *not*
+`ST`. The item master cannot tell you the PBIS type.
+
+Looking at what the `RM` orders actually contain shows the owner's definition is
+right and **JES's typing is what's inconsistent**:
+
+```
+PU260040  [ST] BDC-8232-0014-001   Bohemia glass 8232/14(BL) double hole
+PU260041  [SF] P-GL0057-BL         32mm 心形 K9水晶 - 藍色
+PU260033  [SF] MISC                5kg crystal AB round beads 0.8mm
+PU260034  [SF] MISC                Rhinestone Fabric
+```
+
+All crystals. Some typed `ST`, some `SF`, some dumped in `MISC`. **The PBIS type
+is a better classification of what was bought than JES's own item type** — worth
+remembering when the item master moves (step 6).
+
+**Supplier predicts the type cleanly: 14 suppliers in the sample, 0 with more
+than one type.** So a generator can derive `type` from a supplier→type mapping
+rather than asking the user. Sample is 23 orders across 14 suppliers, so treat
+that as a strong hypothesis to confirm against a wider batch, not a proven rule —
+and a new supplier will always need classifying by hand.
+
 ## Open questions for Cindy
 
-1. **What does `type` mean on purchases?** `FS`, `PP`, `RM`. `RM` is plausibly
-   raw material; the rest would be guessing. Blank on invoices.
+1. ~~**What does `type` mean on purchases?**~~ **Answered above by the owner.**
 2. **Where do the exchange rates come from, and who maintains them?** They are
    standing rates, not daily: USD 7.75 (the peg), EUR 9.0, GBP 10.5, CAD 5.66,
    RMB 1.14 — round numbers, constant across the file. An app-generated file must
