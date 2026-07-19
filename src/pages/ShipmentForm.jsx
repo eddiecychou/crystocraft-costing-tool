@@ -18,6 +18,18 @@ import OrderStockIssue from '../components/OrderStockIssue'
 import OrderInventoryIssue from '../components/OrderInventoryIssue'
 import { crystalInventory } from '../crystals'
 import { packagingInventory } from '../packaging'
+import { metalOrderConfig } from '../orderStock'
+import { orderStockStatus, stockStatusDetail, STOCK_STATUS_LABEL, STOCK_STATUS_STYLE } from '../orderStockStatus'
+import { doc, onSnapshot } from 'firebase/firestore'
+import { db } from '../firebase'
+
+// Every stock class an order consumes. Order matters only for display.
+const STOCK_CFGS = [metalOrderConfig, crystalInventory, packagingInventory]
+
+// Statuses that mean the goods have physically left. Past this point, material
+// consumption that was never recorded will not be — JES used to make that
+// impossible (no job order, no movement); the app has to ask instead.
+const SHIPPED_STATUSES = new Set(['shipped', 'delivered'])
 
 const blankHeader = {
   customer_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', order_date: '',
@@ -163,8 +175,33 @@ export default function ShipmentForm() {
     Promise.all(loads).finally(() => setFetching(false))
   }, [id, isEdit])
 
+  // Live roll-up of what this order has actually consumed. Subscribed rather
+  // than read once, so it tracks the three stock cards on the same page.
+  const [stock, setStock] = useState(null)
+  useEffect(() => {
+    if (!isEdit || !id) return
+    return onSnapshot(doc(db, 'orders', id), snap => setStock(orderStockStatus(snap.data() || {}, STOCK_CFGS)))
+  }, [id, isEdit])
+
   const setH = field => e => setHeader(h => ({ ...h, [field]: e.target.value }))
   const setDest = field => e => setHeader(h => ({ ...h, destination: { ...h.destination, [field]: e.target.value } }))
+
+  // Moving an order to shipped/delivered with consumption unrecorded is the way
+  // component stock drifts once job orders are gone. Deliberately a confirm and
+  // not a block — simple sales legitimately consume nothing — but it can no
+  // longer happen without someone seeing it.
+  const setStatus = e => {
+    const next = e.target.value
+    if (SHIPPED_STATUSES.has(next) && !SHIPPED_STATUSES.has(header.status) && stock && stock.state !== 'recorded') {
+      const detail = stockStatusDetail(stock)
+      const ok = window.confirm(
+        `This order's material consumption is not fully recorded.\n\n${detail}\n\n`
+        + `Mark it ${next} anyway? Component stock will stay higher than it physically is until this is recorded.`
+      )
+      if (!ok) return
+    }
+    setHeader(h => ({ ...h, status: next }))
+  }
 
   function onCustomer(e) {
     const c = customers.find(x => x.id === e.target.value)
@@ -514,7 +551,14 @@ export default function ShipmentForm() {
             {isEdit && (
               <div>
                 <label className="label">Status</label>
-                <select className="input" value={header.status} onChange={setH('status')}>{ORDER_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}</select>
+                <select className="input" value={header.status} onChange={setStatus}>{ORDER_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}</select>
+                {stock && (
+                  <span className={`mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium border rounded-full px-2 py-0.5 ${STOCK_STATUS_STYLE[stock.state]}`}
+                        title={stockStatusDetail(stock) || 'All material consumption for this order has been recorded.'}>
+                    {stock.state !== 'recorded' && <AlertTriangle size={11} />}
+                    {STOCK_STATUS_LABEL[stock.state]}
+                  </span>
+                )}
               </div>
             )}
           </div>

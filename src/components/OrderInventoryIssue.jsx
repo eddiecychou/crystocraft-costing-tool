@@ -77,7 +77,7 @@ export default function OrderInventoryIssue({ orderId, orderLabel, inv }) {
           ? <span className="inline-flex items-center gap-1 text-xs text-green-700"><CheckCircle2 size={13} /> Produced-in{dateStr ? ` · ${dateStr}` : ''}</span>
           : state.stage === 'reserved'
             ? <span className="inline-flex items-center gap-1 text-xs text-amber-600"><Lock size={12} /> Reserved{dateStr ? ` · ${dateStr}` : ''}</span>
-            : <span className="text-xs text-ink-40">not reserved</span>}
+            : <span className="text-xs text-ink-40">not used on this order</span>}
       </button>
 
       {open && (

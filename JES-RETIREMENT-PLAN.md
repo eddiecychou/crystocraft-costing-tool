@@ -31,7 +31,7 @@ So this is finishing a migration that is partly done, not starting one.
 | Job | Status |
 |---|---|
 | **Item master + BOM** | JES only. Everything references it. |
-| **Stock ledger** | JES only — 1.15 M movements. The app displays stock; it doesn't record it. |
+| **Stock ledger** | JES only — 1.15 M movements. The app displays stock; it doesn't record it. **But only crystals are maintained: the team's real figures live in Excel** (§4). |
 | **Sales orders** (the team's "PI") | Created in JES; the app imports a PDF of them. |
 | **Invoices (SI)** | JES only, and feeds PBIS. |
 | **Production / job orders** | JES only — see §4, this is the first one to move. |
@@ -62,6 +62,13 @@ SO-import-by-number (built, waiting on fresh data). Nothing retires, but the app
 stops keeping a re-typed copy of JES data and the team starts trusting it.
 
 ### Step 4 — Production (see §4 — moved to the front)
+
+**Owner's sequence, confirmed 2026-07-19:** JES keeps issuing sales orders,
+invoices and purchase orders while production moves first. Then sales orders and
+purchase orders move together. **Invoices split off and go last** — an
+app-generated invoice must reproduce the JES→PBIS import file, and that file is
+still unseen (what V7.15 parsed was PBIS *output*). Getting it from Cindy is the
+longest pole in the plan; worth chasing now.
 
 ### Step 5 — Whichever of purchasing is thin, per the snapshots
 For each, there is a moment where the team says *"from today we do this in the
@@ -136,10 +143,16 @@ with timestamps. Nothing needs building, and no job order needs generating:
 
 | App function (`orderStock.js`) | What it records |
 |---|---|
-| `reserveForOrder` | stock committed to an order |
-| `issueForOrder` | components consumed — quantities from the *same* MRP explosion as the Component Requirements report, so the two can never disagree |
-| `produceForOrder` | production-in; `committed_at` **is** the production-in date |
-| `releaseForOrder` | reverses a reservation |
+| `reserveForOrder` | stock allocated to an order — quantities from the *same* MRP explosion as the Component Requirements report, so the two can never disagree |
+| `produceForOrder` | production-in: consumes the reservation; `committed_at` **is** the production-in date |
+| `releaseForOrder` | reverses a reservation (before production-in) |
+| `reverseProduceForOrder` | reverses a production-in |
+
+> **Correction (V7.16).** Earlier drafts of this table listed an `issueForOrder`.
+> **No such function exists.** The model is two-stage, not four-verb: material
+> consumption is not a separate step — it happens *inside* `produceForOrder`
+> when the reservation is consumed. Anyone speccing against the old table would
+> have built for a function that was never there.
 
 Plus the order status flow: draft → confirmed → packing → ready → shipped →
 delivered.
@@ -183,14 +196,143 @@ now argues for keeping job orders.
   first function to migrate is the one they most want rid of. Good place to
   start, and a good way to build confidence for the harder steps.
 
-### One open question for step 7, not for this
+### Finished-goods stock — settled: output is implicit
 
-The app's stock functions operate on component-level inventory
-(`range_components`, crystals, packaging). The ERP also carries **finished-goods
-stock** — FSTK holds 3,671 items. Whether the app needs to own an FG pool, or
-whether finished goods are transient because you build to order, is a stock
-question to settle in step 7. It does not affect the case for dropping job
-orders.
+*(Was "one open question for step 7". Owner decided it, V7.16.)*
+
+**Production consumes; it does not create a stock balance.** The app deducts
+components, crystals and packaging, the order moves along its status flow, and
+no finished-goods balance is ever written. JES's PI leg into FTBS simply stops
+existing at cutover.
+
+That is honest for build-to-order: the finished pieces exist for days, against a
+named order, then ship. Holding them as a balance would be bookkeeping for its
+own sake.
+
+**B2C finished stock is a separate, unconnected thing**, treated as a trading
+operation — stock is received, stock is sold, and nothing links it to a
+production event. The app already supports exactly this shape (`receipt` /
+`issue` in `stockLedger.js`; the crystals and packaging inventories are built
+this way). So if B2C finished goods ever need to be in the app it is a new
+collection over existing machinery — no production plumbing, no warehouse model.
+**Not step 4's problem, and no longer step 7's either.**
+
+### The gap map (measured, V7.16)
+
+Which movements actually depend on a job order, from `itemtransaction` since
+2025 — not assumed:
+
+| Doc type | Movements | Hangs off a JO? |
+|---|---:|---|
+| MI (material issue) | 1,120 | **100%** |
+| PI (production-in) | 1,244 | **100%** |
+| IT (transfer) | 2,298 | no — refs an SO, or nothing |
+| SI (sales issue) | 1,023 | no ref |
+| IA (adjustment) | 838 | no ref |
+| GN (goods in) | 103 | no — refs a `PU` |
+| SR / PR (returns) | 23 | no ref |
+
+So job orders are load-bearing for **2,364 of 6,649 movements — about a third**,
+not all of them. "100% of material issues hang off a job order" is true, but it
+is 100% of a subset. The cutover surface is smaller than it first looked.
+
+> **Naming trap.** `PI` in the movement ledger means **production-in**. The
+> team's "PI" is JES's **SO**. Same two letters, unrelated meanings.
+
+MI and PI are also **paired double-entry warehouse transfers** — MI moves
+material `FJOD → FWIP`, PI moves `FWIP → FTBS`. The app has no warehouse
+dimension (one `stock_qty` per component) and, by the decision above,
+deliberately never will for this purpose.
+
+### The job-order flow IS the crystal flow — and crystals are the one trusted number
+
+Found V7.16, after the owner explained that **the team keeps the real stock
+figures in Excel, not in JES**. Only the crystal warehouse is maintained in JES;
+metal parts are not, because keeping them current in a slow ERP is impractical.
+
+The movement ledger agrees, and sharpens it. Every MI, and the consumption leg
+of every PI, is item type **`ST`** — stones/crystals (codes like `1177182`):
+
+| Doc | Type | Flow | Moves | Codes |
+|---|---|---|---:|---:|
+| MI | **ST** | FJOD → FWIP | 560 | 107 |
+| PI | **ST** | FWIP consumed | 523 | 106 |
+| PI | FG | → FTBS | 688 | 586 |
+
+Metal parts (`SF`, 411 codes) barely move — 515 movements in FSTK, 33 on the PI
+leg. Exactly as the owner described.
+
+**So the one part of JES stock the team keeps accurate is the part that runs
+entirely through job orders.**
+
+> **Correction.** An earlier reading of this cycle took the large `IA` figure
+> (FSTK adjustments −1.6 M units against GN receipts of +136 k) as evidence that
+> JES stock was untrusted across the board, and concluded that stopping job
+> orders broke nothing. That holds for **metals**. It is **wrong for crystals** —
+> the adjustments are concentrated in FSTK, while the crystal flow through
+> FJOD/FWIP is the disciplined part. Stopping job orders stops crystal tracking.
+
+This does not change the decision — job orders still go — but it adds a
+prerequisite:
+
+**The production cutover must carry crystal stock over on the day.** The app
+cannot start crystals from zero; it needs opening balances for those ~107–180
+codes at the moment of the switch, or the one accurate stock record in the
+business is stranded in a system nobody is updating. Machinery exists at both
+ends: the app's crystal inventory is the same shape as the JES flow (reserve per
+order → consume), and `inventoryClass.js` already has an `importStock` path.
+What is needed is the balance extract and a reconciliation.
+
+**Open, and it decides where opening balances come from:** for crystals, is JES
+the real record, or does the Excel win there too? If the two have drifted, that
+must be settled *before* cutover — opening balances become permanent the moment
+anything is posted against them.
+
+### The Excel spreadsheets are an undocumented system of record
+
+Worth naming plainly, because §5 lists "a function nobody mentioned" as the
+commonest way these projects stall — and this is one, found by conversation
+rather than by reading the database.
+
+Metals get *better* immediately on migration: the app's ledger is an append-only
+running balance, which is what the team is approximating by hand in Excel.
+Absorbing those spreadsheets deserves its own small piece of work.
+
+### Prerequisites — built in V7.16
+
+JES enforced recording through workflow: no job order, no material movement.
+The app made it a button someone had to remember, and styled the failure state
+more quietly than the success states. Four ways an order could reach *shipped*
+with consumption silently unrecorded, all now closed:
+
+| Was | Now |
+|---|---|
+| Gaps at reserve time (BOM parts absent from the ledger) were shown in the preview and **never persisted** — an order reserved with 3 of 5 components looked identical to one with 5 of 5 | `reserveForOrder` persists them to `component_gaps`; shown for as long as the reservation lives, and a gap outranks the stage on the chip |
+| Status was a free dropdown with **no reference anywhere** to the stock fields | Moving to shipped/delivered with consumption unrecorded raises a confirm naming the actual reason. A confirm, not a block — simple sales legitimately consume nothing |
+| The "nothing recorded" state rendered in `text-ink-40`, the quietest style on the page | Reads as red, with an icon |
+| Three separate cards, no combined answer | One roll-up chip beside Status: not recorded / partly recorded / recorded |
+
+The roll-up deliberately **does not nag**: a class nobody touched is not counted
+as missing, because plenty of orders use no packaging or no crystals. Only work
+that was *started and left unfinished*, or finished with known gaps, counts.
+
+### Cutover checklist for step 4
+
+Code is done. What remains is a date and three checks:
+
+1. **Does JES let you raise an SI when FTBS stock is insufficient?** Five-minute
+   test in JES, on the LAN. Once PI stops, FTBS drains and never refills (SI
+   takes 924 movements a year out of it, nothing puts any back). If JES blocks
+   or warns on negative stock, the team hits it within weeks. If it goes
+   negative quietly, there is nothing to do.
+2. **Crystal opening balances** — extract at cutover, reconcile against the
+   team's own figures, import via `inventoryClass.importStock`. Settle any
+   JES-vs-Excel disagreement *first*.
+3. **Tell the team two things**, not one: stop opening job orders *and* press
+   Reserve → Production-in on the order in the app. JES enforced the second by
+   refusing to move material without a job order; the app asks instead. The
+   V7.16 prompts catch a miss, but they work best when the step is expected
+   rather than met cold.
 
 ---
 
@@ -221,4 +363,8 @@ Resist committing to a date before the screens have been seen.
 3. **A decision on the item master** (step 6) when we get there.
 4. **Someone to call each cutover** — when the team stops using JES for a
    function.
-5. **Confirmation on the production-in date** before production moves (§4).
+5. ~~**Confirmation on the production-in date** before production moves (§4).~~
+   Confirmed — nobody uses it. And finished-goods stock is settled (§4).
+6. **A cutover date for production** — the one remaining input for step 4. The
+   code prerequisites are done; what is left is the day the team stops opening
+   job orders in JES.

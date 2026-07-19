@@ -74,14 +74,25 @@ export const metalOrderConfig = {
     reserved: 'components_reserved', reservedAt: 'components_reserved_at',
     committed: 'components_committed', committedAt: 'components_committed_at',
     lines: 'component_lines', lineIdField: 'component_id',
+    // What could NOT be reserved, persisted at reserve time (V7.16). Only the
+    // metal class has gaps — its lines come from the BOM explosion, so a part
+    // can be required but absent from the ledger. Crystals/packaging are picked
+    // by hand, so there is nothing to miss.
+    gaps: 'component_gaps',
     // Legacy single-stage (V7.13a step 2) — read so any already-issued test
     // order still reverses cleanly.
     legacyIssued: 'components_issued', legacyLines: 'issued_lines',
   },
+  cardTitle: 'Component',
 }
 
 // Reserve a set of lines to an order. lines: [{ [lineIdField], code, qty }].
-export async function reserveForOrder(cfg, orderId, orderLabel, lines) {
+// `gaps` (optional) = { missing, unmatched } from computeOrderIssue — what the
+// preview warned about and could NOT be reserved. Persisted with the
+// reservation: before V7.16 this warning vanished the moment you clicked
+// Reserve, so an order reserved with 3 of 5 components displayed exactly like
+// one reserved with 5 of 5. Stock silently drifted with no record of where.
+export async function reserveForOrder(cfg, orderId, orderLabel, lines, gaps) {
   const { collectionPath, order } = cfg
   const idField = order.lineIdField
   const clean = (lines || [])
@@ -99,8 +110,20 @@ export async function reserveForOrder(cfg, orderId, orderLabel, lines) {
       note: `Reserved for order ${orderLabel || orderId}`,
     })
   }
-  await updateDoc(orderRef, { [order.reserved]: true, [order.reservedAt]: serverTimestamp(), [order.lines]: clean })
+  const patch = { [order.reserved]: true, [order.reservedAt]: serverTimestamp(), [order.lines]: clean }
+  if (order.gaps) patch[order.gaps] = summariseGaps(gaps)
+  await updateDoc(orderRef, patch)
   return clean
+}
+
+// Trim the preview's gap lists to what is worth keeping on the order doc: the
+// code and why, nothing else. Returns null when there is nothing to record, so
+// a clean reservation clears any gaps left by an earlier one.
+function summariseGaps(gaps) {
+  const missing = (gaps?.missing || []).map(m => ({ code: m.code || '', name: m.name || '', qty: Number(m.required) || 0 }))
+  const unmatched = (gaps?.unmatched || []).map(u => (typeof u === 'string' ? { label: u } : { label: u?.code || u?.description || u?.label || 'unmatched line' }))
+  if (!missing.length && !unmatched.length) return null
+  return { missing, unmatched, at: new Date().toISOString() }
 }
 
 // Production-in: consume the reservation into finished goods (on-hand ↓, reserved ↓).
@@ -138,10 +161,12 @@ export async function releaseForOrder(cfg, orderId, orderLabel) {
       note: `Released reservation — order ${orderLabel || orderId}`,
     })
   }
-  await updateDoc(orderRef, {
+  const patch = {
     [order.reserved]: false, [order.reservedAt]: null,
     [order.committed]: false, [order.committedAt]: null, [order.lines]: [],
-  })
+  }
+  if (order.gaps) patch[order.gaps] = null   // the reservation is gone; so are its gaps
+  await updateDoc(orderRef, patch)
 }
 
 // Reverse a production-in: consumed stock returns to on-hand (order → open).
@@ -164,5 +189,6 @@ export async function reverseProduceForOrder(cfg, orderId, orderLabel) {
     [order.committed]: false, [order.committedAt]: null, [order.lines]: [],
   }
   if (order.legacyIssued) { patch[order.legacyIssued] = false; patch[order.legacyLines] = [] }
+  if (order.gaps) patch[order.gaps] = null   // back to open — nothing reserved, nothing missing
   await updateDoc(orderRef, patch)
 }

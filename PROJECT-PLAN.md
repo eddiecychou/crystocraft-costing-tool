@@ -175,6 +175,87 @@ to every cutover.
 Caveat recorded there: 100% of material issues hang off a job order in JES, so
 "drop job orders" must never become "stop recording material issues".
 
+## V7.16 — in progress
+
+### Step 4 (production) prerequisites — done 2026-07-19
+
+Started off-LAN, so steps 1–3 below are untouched. Went at step 6 (production
+off JES) instead, since it needs no fresh sync data.
+
+**Gap map, measured from `itemtransaction`:** only **MI** (1,120/yr) and **PI**
+(1,244/yr) hang off a job order — 2,364 of 6,649 movements, about a third, not
+all. `IT`, `SI`, `IA`, `GN`, `SR`, `PR` don't touch one. Both are paired
+double-entry warehouse transfers (`FJOD→FWIP`, `FWIP→FTBS`). Full table in
+`JES-RETIREMENT-PLAN.md` §4.
+
+**Owner decision: production output is implicit.** Build-to-order, so no
+finished-goods balance is ever written; JES's PI leg into FTBS just stops at
+cutover. B2C finished stock is a separate trading operation (receipt → sale) and
+is explicitly out of scope. This also closes what §4 had left open for step 7.
+
+**Doc correction:** §4's table listed an `issueForOrder` that **does not exist**.
+The model is two-stage — consumption happens inside `produceForOrder`.
+
+**Built.** JES enforced material recording through workflow; the app made it an
+optional button and styled the failure state more quietly than success. Four
+holes, all closed:
+
+- `component_gaps` persisted at reserve time (`orderStock.js`) — previously the
+  "N parts can't be reserved" warning vanished on click, so a part-reserved
+  order looked identical to a complete one. **The correctness fix.**
+- Confirm when moving to shipped/delivered with consumption unrecorded, naming
+  the reason. A confirm, not a block.
+- "not recorded" now reads as red with an icon, not `text-ink-40`.
+- One roll-up chip beside Status (`orderStockStatus.js`, new) across all three
+  stock classes. Doesn't nag: an untouched class isn't counted as missing.
+
+Files: `src/orderStockStatus.js` (new), `orderStock.js`,
+`components/OrderStockIssue.jsx`, `components/OrderInventoryIssue.jsx`,
+`pages/ShipmentForm.jsx`. **Parsed with esbuild only — no Node on this Mac, so
+none of it is build-tested or run.** Needs verifying on the deployed site:
+reserve an order with a BOM part missing from the ledger, then check the gap
+survives, the chip reads "partly recorded", and shipping it prompts.
+
+### The crystal finding — and a correction
+
+Owner then explained something the database alone would not have shown: **the
+team keeps the real stock figures in Excel.** Only the crystal warehouse is
+maintained in JES; metal parts are not, because keeping them current in a slow
+ERP is impractical.
+
+Checking that against the ledger sharpened it into the cycle's most important
+finding: **every MI, and the consumption leg of every PI, is item type `ST` —
+crystals** (107 codes). Metals (`SF`) barely move. So the job-order flow *is* the
+crystal flow, and the one part of JES stock the team trusts is the part that runs
+entirely through job orders.
+
+**Correction to the entry above:** an earlier reading took the large `IA` figure
+(FSTK −1.6 M against GN +136 k) as evidence JES stock was untrusted across the
+board, and concluded stopping job orders broke nothing. True for metals, **wrong
+for crystals** — the adjustments sit in FSTK, while the FJOD/FWIP crystal flow is
+the disciplined part.
+
+Consequence: **the production cutover must carry crystal opening balances over on
+the day**, or the one accurate stock record in the business is stranded. Both
+ends exist already (`inventoryClass.importStock`; the app's crystal card is the
+same shape as the JES flow). Open question: for crystals, does JES or the Excel
+win? Settle before cutover — opening balances become permanent immediately.
+
+Also named: **the Excel spreadsheets are an undocumented system of record.** §5
+of the retirement plan lists "a function nobody mentioned" as the commonest way
+these projects stall; this is one, and it surfaced by conversation, not by
+reading the database. Absorbing it deserves its own piece of work — metals get
+better immediately, since the app's append-only running balance is what the team
+is approximating by hand.
+
+**Sequence confirmed with owner:** production first; then sales orders +
+purchase orders together; **invoices last**, because they need the PBIS import
+file from Cindy — still unseen, and the longest pole in the plan.
+
+**Left for step 4:** a cutover date, plus the three checks in
+`JES-RETIREMENT-PLAN.md` §4 "Cutover checklist" — chiefly whether JES blocks an
+SI on insufficient FTBS stock, which is a five-minute test on the LAN.
+
 ## Where V7.16 starts
 
 **On the LAN (the office Mac), in order:**

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { computeOrderIssue, reserveForOrder, produceForOrder, releaseForOrder, reverseProduceForOrder, metalOrderConfig } from '../orderStock'
+import { gapsOf } from '../orderStockStatus'
 import { Lock, Factory, RotateCcw, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react'
 
 // Order → component stock card (V7.13a R1). Two-stage, matching the ERP:
@@ -12,7 +13,7 @@ const cfg = metalOrderConfig
 const fmt = n => (Number.isFinite(Number(n)) ? Number(n).toLocaleString() : '0')
 
 export default function OrderStockIssue({ orderId, orderLabel }) {
-  const [state, setState] = useState({ stage: 'open', at: null, lines: [] })
+  const [state, setState] = useState({ stage: 'open', at: null, lines: [], gaps: { missing: [], unmatched: [], count: 0 } })
   const [preview, setPreview] = useState(null)
   const [loading, setLoading] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -29,7 +30,7 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
       const stage = committed ? 'committed' : reserved ? 'reserved' : 'open'
       const at = committed ? (d[o.committedAt] || d[`${o.legacyIssued}_at`] || null) : reserved ? d[o.reservedAt] : null
       const lines = (d[o.lines]?.length ? d[o.lines] : d[o.legacyLines]) || []
-      setState({ stage, at, lines })
+      setState({ stage, at, lines, gaps: gapsOf(d, cfg) })
     })
   }, [orderId])
 
@@ -52,8 +53,11 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
 
   const doReserve = () => {
     const lines = (preview?.items || []).map(it => ({ component_id: it.component_id, code: it.code, qty: it.required }))
-    run(() => reserveForOrder(cfg, orderId, orderLabel, lines),
-      `Reserve components for order ${orderLabel}? Stock is allocated to this order (still physically on hand).`,
+    const gaps = { missing: preview?.missing || [], unmatched: preview?.unmatched || [] }
+    const gapCount = gaps.missing.length + gaps.unmatched.length
+    run(() => reserveForOrder(cfg, orderId, orderLabel, lines, gaps),
+      `Reserve components for order ${orderLabel}? Stock is allocated to this order (still physically on hand).`
+        + (gapCount ? `\n\n${gapCount} line(s) CANNOT be reserved and will be recorded as a gap on this order.` : ''),
       () => setPreview(null))
   }
   const doProduce = () => run(() => produceForOrder(cfg, orderId, orderLabel),
@@ -72,11 +76,12 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
           {open ? <ChevronDown size={15} className="text-ink-40" /> : <ChevronRight size={15} className="text-ink-40" />}
           Component stock
         </span>
-        <StageChip stage={state.stage} dateStr={dateStr} />
+        <StageChip stage={state.stage} dateStr={dateStr} gapCount={state.gaps.count} />
       </button>
 
       {open && (
         <div className="mt-3">
+          {state.stage !== 'open' && <GapNotice gaps={state.gaps} />}
           {state.stage === 'committed' ? (
             <>
               <p className="text-xs text-ink-50 mb-2">{state.lines.length} component(s) consumed (production-in) for this order.</p>
@@ -132,10 +137,34 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
   )
 }
 
-function StageChip({ stage, dateStr }) {
+function StageChip({ stage, dateStr, gapCount }) {
+  // A gap outranks the stage: "produced-in, but 2 parts were never reserved" is
+  // the state that used to be indistinguishable from a clean one.
+  if (gapCount > 0) return (
+    <span className="inline-flex items-center gap-1 text-xs text-amber-700 font-medium">
+      <AlertTriangle size={13} /> {stage === 'committed' ? 'Produced-in' : 'Reserved'} · {gapCount} gap{gapCount > 1 ? 's' : ''}
+    </span>
+  )
   if (stage === 'committed') return <span className="inline-flex items-center gap-1 text-xs text-green-700"><CheckCircle2 size={13} /> Produced-in{dateStr ? ` · ${dateStr}` : ''}</span>
   if (stage === 'reserved') return <span className="inline-flex items-center gap-1 text-xs text-amber-600"><Lock size={12} /> Reserved{dateStr ? ` · ${dateStr}` : ''}</span>
-  return <span className="text-xs text-ink-40">not reserved</span>
+  // Not a hint — this is the state that quietly drifts stock, so it reads as one.
+  return <span className="inline-flex items-center gap-1 text-xs text-red-600 font-medium"><AlertTriangle size={13} /> not recorded</span>
+}
+
+// The gaps recorded at reserve time, shown for as long as the reservation
+// lives. Before V7.16 this existed only in the pre-reserve preview.
+function GapNotice({ gaps }) {
+  if (!gaps?.count) return null
+  return (
+    <div className="mb-3 flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+      <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+      <div>
+        <p className="font-medium">{gaps.count} line(s) were never reserved — this order's consumption is incomplete.</p>
+        {gaps.missing.length > 0 && <p className="mt-0.5">Not in the component ledger: {gaps.missing.map(m => m.code).join(', ')}.</p>}
+        {gaps.unmatched.length > 0 && <p className="mt-0.5">Not matched to the Range: {gaps.unmatched.map(u => u.label).join(', ')}.</p>}
+      </div>
+    </div>
+  )
 }
 
 function PreviewTable({ items }) {
