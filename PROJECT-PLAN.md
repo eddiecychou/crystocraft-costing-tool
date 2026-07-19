@@ -249,8 +249,33 @@ better immediately, since the app's append-only running balance is what the team
 is approximating by hand.
 
 **Sequence confirmed with owner:** production first; then sales orders +
-purchase orders together; **invoices last**, because they need the PBIS import
-file from Cindy — still unseen, and the longest pole in the plan.
+purchase orders together; **invoices last**, because the books are the one
+downstream consumer that must not break.
+
+### The PBIS import format arrived the same day
+
+Cindy supplied `invoice to import.xls` and `PO to import.xls` — the file that
+had been the longest pole in the plan. **`PBIS-IMPORT-FORMAT.md`** holds the
+column contract; the two things that matter:
+
+- **Header-level only, no line items.** An app invoice does not need to
+  reproduce JES's line structure, surcharge tables or `sigstamount` tax field.
+  PBIS wants a header and a total. That was the big unknown, and it is smaller
+  than feared.
+- **Validated 32/32** against `uc_registry` — every UC reference resolves, every
+  currency matches, every total matches to the cent. The app already holds what
+  the file needs; the UC number is the join, confirmed now from the input side
+  as well as V7.15's output side.
+
+⚠️ **One thing for a human:** UC4933 is `jes_si = 'VOID'` in the registry, but
+the import file posts `SI260070` for the same customer and the same total. An
+invoice the app believes is void is going into the books. UC4926 has an empty
+`jes_si` where the file has `SI260082`. Both are registry drift, not format
+problems — and both are what the app becoming system of record removes.
+
+Four questions remain for Cindy (the purchase `type` codes FS/PP/RM, who
+maintains the standing exchange rates, discount/charge semantics, and whether
+the name column is read on import). None block scoping the work.
 
 **Left for step 4:** a cutover date, plus the three checks in
 `JES-RETIREMENT-PLAN.md` §4 "Cutover checklist" — chiefly whether JES blocks an

@@ -65,10 +65,13 @@ stops keeping a re-typed copy of JES data and the team starts trusting it.
 
 **Owner's sequence, confirmed 2026-07-19:** JES keeps issuing sales orders,
 invoices and purchase orders while production moves first. Then sales orders and
-purchase orders move together. **Invoices split off and go last** — an
-app-generated invoice must reproduce the JES→PBIS import file, and that file is
-still unseen (what V7.15 parsed was PBIS *output*). Getting it from Cindy is the
-longest pole in the plan; worth chasing now.
+purchase orders move together. **Invoices split off and go last.**
+
+The reason invoices went last was that an app-generated invoice must reproduce
+the JES→PBIS import file, and that file had never been seen. **Cindy supplied it
+the same day** — see `PBIS-IMPORT-FORMAT.md`. It is header-level only, and the
+app's data validates 32/32 against it. Invoices stay last (the books are the one
+downstream consumer that must not break), but they are no longer *blocked*.
 
 ### Step 5 — Whichever of purchasing is thin, per the snapshots
 For each, there is a moment where the team says *"from today we do this in the
@@ -91,8 +94,15 @@ physical stocktake at cutover: you are establishing opening balances, and an
 error there becomes permanent.
 
 ### Step 8 — Sales documents
-Sales orders, then invoices. **Invoices last** — get the JES→PBIS import file
-from Cindy first, because an app-generated invoice has to reproduce it.
+Sales orders, then invoices. **Invoices last** — an app-generated invoice has to
+reproduce the JES→PBIS import file.
+
+> **Unblocked 2026-07-19.** Cindy supplied both import files. The format is
+> **header-level only — no line items**, so an app invoice does not need to
+> reproduce JES's line structure, surcharge tables or tax field. Validated
+> 32/32 against `uc_registry` on UC number, currency and total. Full column
+> contract and the four remaining questions for Cindy in
+> **`PBIS-IMPORT-FORMAT.md`**. This step can now be scoped rather than deferred.
 
 ### Step 9 — Switch off
 Read-only for a period in case something surfaces, then decommission. The
@@ -359,7 +369,10 @@ Resist committing to a date before the screens have been seen.
 ## 7. What is needed from the owner
 
 1. **Screen snapshots** — the whole plan's shape depends on them.
-2. **The JES→PBIS import file** — blocks invoicing.
+2. ~~**The JES→PBIS import file** — blocks invoicing.~~ **Received 2026-07-19.**
+   Four follow-up questions for Cindy in `PBIS-IMPORT-FORMAT.md` (the `type`
+   codes, who maintains the exchange rates, discount/charge semantics, and
+   whether the name column is read on import).
 3. **A decision on the item master** (step 6) when we get there.
 4. **Someone to call each cutover** — when the team stops using JES for a
    function.
