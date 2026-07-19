@@ -11,11 +11,10 @@ export const APP_NAME = 'Operation Center'
 
 // Shown small in the sidebar so it's obvious which build is live.
 //
-// This is the PRODUCT version, restarting at 1.x with the rename. It is not the
-// same as the V7.x development-cycle numbering in PROJECT-PLAN.md (currently
-// V7.15) — those track work cycles, this tracks what the team is looking at.
-// Keep them from being confused: bump this on a release, not on every commit.
-export const APP_VERSION = 'V1.5'
+// Deliberately the SAME number as the development cycle in PROJECT-PLAN.md, so
+// "which version are you on?" has one answer whether it's asked of the team or
+// of the docs. Bump it when a cycle closes, not on every commit.
+export const APP_VERSION = 'V7.15'
 
 // Injected by Vite at build time (see vite.config.js). The version alone can't
 // tell you whether a deploy actually went out — several changes this cycle
