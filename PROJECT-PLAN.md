@@ -270,11 +270,31 @@ SI on insufficient FTBS stock, which is a five-minute test on the LAN.
 ⚠️ **`ItemTransaction` has 556 rows with no `LastUpdate` at all** — incremental
 would never pick them up. They need one full pass; incremental is fine after.
 
-**Still undecided — `Item` (1.45 M), `ItemDetail` (10.3 M), `SalesOrderDetail`
-(188 k).** These have no document-date column, so the statistical test cannot
-run on them. They are exactly the tables that most need incremental. **Needs the
-2-minute manual test:** edit a remark on `D0383-165-GC1K` in JES, save, re-run
-the probe, see whether `LastUpdate` moved.
+**Manual test done, and it settles `Item` and `ItemDetail`.** Owner edited
+`ITRemarks` on `U0383-165-GC1K` at 15:52:43. Revision 1 acts as the control:
+
+| Revision | LastUpdate | Contains the edit? |
+|---|---|---|
+| **0** | 2026-07-19 15:52:43 | ✅ |
+| 1 | 2026-07-16 13:59:28 | ❌ untouched |
+| **2** | 2026-07-19 15:52:43 | ✅ |
+
+JES did **both**: updated revision 0 in place *and* inserted revision 2. Either
+alone suffices for incremental sync. `ItemDetail` moved too (15:52:49).
+
+| Table | Verdict |
+|---|---|
+| `Item` (1.45 M) | ✅ **safe — proven directly** |
+| `ItemDetail` (10.3 M) | ✅ **safe — proven directly** |
+| `SalesOrderDetail` (188 k) | ⚠️ still untested — an item edit doesn't touch sales orders. Same test on a sales order settles it; 188 k rows, so full replace is tolerable meanwhile |
+
+**Six of seven cleared, including the 10.3 M-row table.** This was the single
+biggest unknown in V7.16.
+
+Checked while there, because revision 0 carrying current data could have broken
+it: `erp_item` orders by `itrevision desc`, so it takes revision 2 — which does
+hold the edit. **The matview is correct.** Every item lookup in the app depends
+on that, so it was worth confirming rather than assuming.
 
 Fixed a bug in `probe_lastupdate.py` while there: it probed `Item` on `ItemCode`,
 which does not exist (the column is `ITCode`), and swallowed the failure as
@@ -286,12 +306,23 @@ which does not exist (the column is `ITCode`), and swallowed the failure as
 **Step 2 — item images. The folder was never a mystery.**
 `systemsetting.ssimagepath_notuse` holds `z:\jes\pictures\` — the `_notuse`
 suffix is a lie. Mounted at `/Volumes/JES SHARE/JES/Pictures/COLOR`.
-**22,569 files · 1.01 GB uploaded** (well under the 1.5–4.5 GB estimate);
-24,353 of 31,823 item codes get an image. The missing 23% are genuinely absent
-from disk — the sibling folders resolve only 59 of 6,856. Two bugs in
-`sync_images.py` found by smoke-testing a single file first, either of which
-would have failed all 22,569: new-style `sb_secret_` keys need the `apikey`
-header, and Storage rejects `#` in object keys (12 files, skipped and named).
+**Done: 22,557 objects · 957 MB in the private `erp-item-images` bucket, 0
+failed. 24,214 item codes now resolve to a stored image.** Well under the
+1.5–4.5 GB estimate. The missing 23% are genuinely absent from disk — the
+sibling folders resolve only 59 of 6,856.
+
+Three bugs in `sync_images.py`, the first two found by smoke-testing a single
+file before committing to the full run, either of which would have failed all
+22,557:
+
+- new-style `sb_secret_` keys are only accepted via the `apikey` header (the
+  script sent `Authorization: Bearer` only → "Invalid Compact JWS")
+- Storage rejects `#` in an object key, raw or encoded (12 files, skipped and named)
+- **the upload was 32× slower than necessary**: `urlopen` opens a fresh TCP+TLS
+  connection per call, so a 45 KB file cost 1,188 ms against a 5 ms SMB read.
+  Persistent connections + 12 workers took it from 0.8 to 25.3 files/sec —
+  7.6 hours to 15 minutes.
+
 Full detail in `erp-sync/IMAGE-SYNC-PLAN.md`.
 
 ## Where V7.16 starts

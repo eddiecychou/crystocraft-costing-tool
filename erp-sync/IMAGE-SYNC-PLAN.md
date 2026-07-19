@@ -113,6 +113,40 @@ Object names are now URL-quoted with `safe="/"`. No matched file contains a
 slash, so the 31 slash-bearing references in the section above never arise in
 practice — they are all among the missing.
 
+### A third bug: the upload was 32× slower than it needed to be
+
+The first run measured **0.8 files/sec — a 7.6-hour ETA.** Timing the two halves
+separately found it was not the LAN and not the share:
+
+| | per file |
+|---|---:|
+| SMB read from the share | **5 ms** |
+| HTTPS PUT via `urlopen` | **1,188 ms** |
+
+At 45 KB average that is not bandwidth — `urllib.urlopen` opens a fresh TCP+TLS
+connection per call, so the run was paying a full handshake 22,000 times.
+
+Fixed with one persistent `http.client.HTTPSConnection` per worker thread plus
+`WORKERS = 12` in a `ThreadPoolExecutor`; the cost is round-trip latency, so
+parallelism converts almost directly into speed. **0.8 → 25.3 files/sec, 7.6
+hours → 15 minutes.** Also added one retry on a dropped keep-alive: servers
+close idle connections whenever they like, and without it a routine disconnect
+would be recorded as a failed upload and the file silently skipped.
+
+### Final result, 2026-07-19
+
+```
+Uploaded 22,557, failed 0, bucket 'erp-item-images' (private)
+957 MB · 24,214 item codes resolve to a stored image
+```
+
+One transient `502 Bad Gateway` on `u0416-001-gem.jpg` during the run; retried
+successfully. Worth expecting on a run this size — re-running is cheap because
+uploads are upserts.
+
+24,214 rather than the 24,353 predicted by the report: the 12 skipped `#` files
+each serve several item codes, since one image serves many colour variants.
+
 ## Historical: what was unknown before the LAN visit
 
 1. ~~**Find the folder.** `systemsetting` has a dozen image-path columns but all

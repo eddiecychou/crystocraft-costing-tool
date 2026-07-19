@@ -115,33 +115,87 @@ def upload(matched, found):
     if not url or not key:
         sys.exit("Upload needs SUPABASE_URL and SUPABASE_SECRET_KEY in erp-sync/.env "
                  "(the same values Netlify uses). Report mode needs neither.")
-    import urllib.request
+    import http.client
+    import threading
     import urllib.parse
+    from concurrent.futures import ThreadPoolExecutor
+
+    # Why this is not a simple urlopen loop: measured on the LAN, an SMB read of
+    # a source file costs ~5 ms while one urlopen PUT cost ~1,188 ms. The files
+    # average 45 KB, so that is not bandwidth — urlopen opens a fresh TCP+TLS
+    # connection per call and pays the full handshake every time. Sequentially
+    # that put the 22.4 k-file run at ~7.6 hours.
+    #
+    # Fix is two-part: keep one persistent HTTPS connection per worker thread
+    # (so the handshake is paid once, not 22,000 times), and run WORKERS of them
+    # in parallel, since the cost is round-trip latency rather than throughput.
+    host = urllib.parse.urlparse(url).netloc
+    WORKERS = 12
+    local = threading.local()
+    lock = threading.Lock()
+    counts = {"done": 0, "failed": 0, "shown": 0}
+
+    def conn():
+        c = getattr(local, "conn", None)
+        if c is None:
+            c = local.conn = http.client.HTTPSConnection(host, timeout=60)
+        return c
 
     def put(name, path):
         with open(path, "rb") as fh:
             body = fh.read()
-        req = urllib.request.Request(
-            # Quote the name: it goes in the URL path, and these filenames carry
-            # brackets, spaces and other characters that must not be read as
-            # syntax. safe="/" because a handful of ERP filenames contain a
-            # slash, which Storage turns into a nested key of the same text.
-            f"{url}/storage/v1/object/{BUCKET}/{urllib.parse.quote(name, safe='/')}",
-            data=body, method="POST",
-            headers={
-                # BOTH auth headers, deliberately. New-style `sb_secret_...`
-                # keys are only accepted via `apikey` — the Storage API tries to
-                # parse a Bearer token as a JWT and fails with "Invalid Compact
-                # JWS". Legacy service_role JWTs accept either. Sending both
-                # works for both generations.
-                "apikey": key,
-                "Authorization": f"Bearer {key}",
-                "Content-Type": "image/jpeg",
-                # Re-runnable: replace rather than fail on an existing object.
-                "x-upsert": "true",
-            },
-        )
-        urllib.request.urlopen(req, timeout=60).read()
+        # Quote the name: it goes in the URL path, and these filenames carry
+        # brackets, spaces and other characters that must not be read as syntax.
+        # safe="/" because a handful of ERP filenames contain a slash, which
+        # Storage turns into a nested key of the same text.
+        target = f"/storage/v1/object/{BUCKET}/{urllib.parse.quote(name, safe='/')}"
+        headers = {
+            # BOTH auth headers, deliberately. New-style `sb_secret_...` keys are
+            # only accepted via `apikey` — the Storage API tries to parse a
+            # Bearer token as a JWT and fails with "Invalid Compact JWS". Legacy
+            # service_role JWTs accept either. Sending both works for both.
+            "apikey": key,
+            "Authorization": f"Bearer {key}",
+            "Content-Type": "image/jpeg",
+            # Re-runnable: replace rather than fail on an existing object.
+            "x-upsert": "true",
+        }
+        # One retry on a dropped keep-alive: the server may close an idle
+        # connection at any time, and that must not read as an upload failure.
+        for attempt in (1, 2):
+            try:
+                c = conn()
+                c.request("POST", target, body=body, headers=headers)
+                resp = c.getresponse()
+                payload = resp.read()
+                if resp.status >= 400:
+                    raise RuntimeError(f"HTTP {resp.status} {payload[:120].decode(errors='replace')}")
+                return
+            except (http.client.HTTPException, OSError):
+                try:
+                    conn().close()
+                except Exception:
+                    pass
+                local.conn = None
+                if attempt == 2:
+                    raise
+
+    def work(item):
+        i, name = item
+        try:
+            put(name, found[name])
+            with lock:
+                counts["done"] += 1
+        except Exception as e:
+            with lock:
+                counts["failed"] += 1
+                if counts["shown"] < 10:
+                    counts["shown"] += 1
+                    print(f"  ! {name}: {type(e).__name__} {str(e)[:90]}", flush=True)
+        with lock:
+            n = counts["done"] + counts["failed"]
+        if n % 500 == 0:
+            print(f"  {n:,}/{total:,} uploaded ({counts['failed']} failed)", flush=True)
 
     # Supabase Storage rejects '#' in an object key outright — raw or encoded
     # ("InvalidKey"). Skip those up front and name them, rather than burning a
@@ -153,19 +207,13 @@ def upload(matched, found):
         for n in unkeyable:
             print(f"    {n}")
 
-    done = failed = 0
-    for i, name in enumerate(sorted(matched), 1):
-        try:
-            put(name, found[name])
-            done += 1
-        except Exception as e:
-            failed += 1
-            if failed <= 10:
-                print(f"  ! {name}: {type(e).__name__} {str(e)[:90]}")
-        if i % 500 == 0:
-            print(f"  {i:,}/{len(matched):,} uploaded ({failed} failed)")
-    print(f"\nUploaded {done:,}, failed {failed:,}, bucket '{BUCKET}'.")
-    if failed:
+    total = len(matched)
+    print(f"  {WORKERS} parallel workers, persistent connections", flush=True)
+    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+        list(pool.map(work, enumerate(sorted(matched), 1)))
+
+    print(f"\nUploaded {counts['done']:,}, failed {counts['failed']:,}, bucket '{BUCKET}'.")
+    if counts["failed"]:
         print("Re-run to retry — uploads are upserts, so already-copied files are cheap.")
 
 
