@@ -3,6 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
 import logo from '../assets/logo.png'
+import { APP_NAME, APP_VERSION, versionLabel } from '../appInfo'
 import {
   LayoutDashboard, Package, Gem, ClipboardList, Puzzle,
   Factory, Building2, Megaphone, Settings, MoreHorizontal, Users, Truck, FileText, Boxes, Database, Hash,
@@ -47,7 +48,8 @@ export default function Layout({ children, user }) {
       <aside className="hidden md:flex w-56 bg-ink flex-col shrink-0">
         <div className="px-5 py-5 border-b border-white/10">
           <img src={logo} alt="Crystocraft" className="h-7 w-auto brightness-0 invert" />
-          <p className="text-xs font-medium text-ivory/50 mt-2 tracking-[0.14em] uppercase font-label">Product Manager</p>
+          <p className="text-xs font-medium text-ivory/50 mt-2 tracking-[0.14em] uppercase font-label">{APP_NAME}</p>
+          <p className="text-[10px] text-ivory/30 mt-1 font-label tracking-wide">{versionLabel()}</p>
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-0.5">
@@ -84,7 +86,9 @@ export default function Layout({ children, user }) {
         <header className="md:hidden bg-ink px-4 py-3 flex items-center justify-between shrink-0">
           <div>
             <img src={logo} alt="Crystocraft" className="h-6 w-auto brightness-0 invert" />
-            <p className="text-xs font-medium text-ivory/50 mt-0.5 tracking-[0.12em] uppercase font-label">Product Manager</p>
+            <p className="text-xs font-medium text-ivory/50 mt-0.5 tracking-[0.12em] uppercase font-label">
+              {APP_NAME} <span className="text-ivory/30 normal-case tracking-normal">{APP_VERSION}</span>
+            </p>
           </div>
           <button onClick={handleSignOut} className="text-xs text-ivory/40 hover:text-red-400 transition-colors px-2 py-1">
             Sign out

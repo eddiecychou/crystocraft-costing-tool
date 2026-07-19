@@ -1,4 +1,4 @@
-// Shared domain primitives — the foundation of the Product Manager guardrail
+// Shared domain primitives — the foundation of the Operation Center guardrail
 // layer (spec: product-manager-guardrail-spec.md). Two things live here so they
 // have exactly one definition across the app:
 //
