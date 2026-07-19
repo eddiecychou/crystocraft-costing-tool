@@ -43,7 +43,7 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
-## Current Status — V7.15 IN PROGRESS (opened 2026-07-18)
+## Current Status — V7.15 CLOSED as of 2026-07-19
 
 Commit chain `e3b160f`→`548958d` (25 commits), all deployed. V7.15's theme is
 **integrating the app with the ERP with a view to retiring JES**. Owner's framing:
@@ -125,7 +125,19 @@ replacing it, since an order raised today isn't synced yet.
 - **BOM coverage check** on Range Costing — merges every ERP variant of a design
   and reports what isn't costed. Level 1 only: level 2 is raw alloy from when the
   factory made FM parts in house, and those are now bought finished.
-- **Component code audit** (`Settings → Component Codes`) — see below.
+- **Component code audit** (`Settings → Component Codes`) — see §5. Reports
+  three states: not in the ERP; exists but **no current BOM uses it**
+  (superseded — the interesting one, invisible to a plain existence check); or
+  exists and is built with. "What do the BOMs use?" ranks replacements
+  server-side (`erp_code_alternatives`) among components current BOMs actually
+  use — the `.NN`-stripped code first (right ~34% of the time and exactly right
+  when it hits), then longest shared prefix by usage.
+- **Renamed to Operation Center**, with `V7.15 · <build time>` under the logo.
+  Name and version live in `src/appInfo.js`; the build stamp is injected by Vite
+  so "is my change live yet?" is answerable at a glance. The browser tab stays
+  "Crystocraft Customer Portal" — the same deployment serves the customer
+  storefront and those OG tags are customer-facing. `package.json` realigned to
+  7.15.0, collapsing three numbering schemes into one.
 - **Fix:** freight quotes saved but never displayed. `where` + `orderBy` needed a
   composite index that doesn't exist; `catch {}` turned the error into an empty
   list. Silent catches in `logistics.js` now log.
@@ -142,18 +154,67 @@ replacing it, since an order raised today isn't synced yet.
 - **Packaging is not costed per product.** The ERP BOM carries the gift box,
   hang tag, tissue, silica gel; the app stocks packaging as a pool.
 
-### 6. Next
+### 6. The retirement plan
 
-1. **Incremental sync** — prerequisite for everything else. `sync.py` now creates
-   the unique index the upsert needs; `probe_lastupdate.py` must be run **on the
-   LAN** to confirm `LastUpdate` moves on edit, or incremental sync silently
-   skips edits.
-2. **Item images** — 31,823 of 44,460 codes have one, 29,460 distinct files.
-   `sync_images.py --report` then `--upload`. Needs the folder path (`JES.ini`;
-   `systemsetting`'s path columns are all `_notuse`). See `IMAGE-SYNC-PLAN.md`.
-3. **SO import by number**, parser as fallback — after sync is current.
-4. **Invoicing** — wants the PBIS import file first.
-5. **Screen snapshots** from the team → the gap map.
+`JES-RETIREMENT-PLAN.md` was written this cycle: nine steps from here to
+switching JES off, in plain language, with the numbers included.
+
+Its main decision: **drop production job orders**. Owner's instinct, confirmed
+in the data — of 131,752 job orders, item/qty/customer/delivery are 100%
+duplicated from the sales order line, and **wastage, the field that would
+justify the paperwork, is filled on 2 of them**. The app already records
+everything worth keeping (`reserveForOrder`, `issueForOrder`, `produceForOrder`
+with `committed_at`), so nothing needs building. Owner confirms nobody uses the
+production-in date, and the team will be glad to see the back of it.
+
+Consequence: **production becomes the first function to migrate** rather than a
+late item — highest keying cost, lowest data loss, doesn't feed PBIS, and the
+team wants it. That last point matters, because team adoption is the main risk
+to every cutover.
+
+Caveat recorded there: 100% of material issues hang off a job order in JES, so
+"drop job orders" must never become "stop recording material issues".
+
+## Where V7.16 starts
+
+**On the LAN (the office Mac), in order:**
+
+1. `cd erp-sync && .venv/bin/python probe_lastupdate.py` — then the manual check
+   it prints: edit one record in JES, re-run, see whether `LastUpdate` moved.
+   **This decides whether incremental sync is possible at all.** Record the
+   answer per table here.
+2. Find the item-image folder (`JES.ini` / the JES client — `systemsetting`'s
+   path columns are all suffixed `_notuse`), then
+   `sync_images.py --folder "<path>" --report`, check the numbers, `--upload`.
+   See `IMAGE-SYNC-PLAN.md`.
+3. Run the sync.
+
+**Then, in dependency order:**
+
+4. **Incremental sync** switched on for whichever tables the probe cleared.
+5. **SO import by number** (built, `src/erpSoImport.js`) becomes useful once the
+   mirror is current.
+6. **Production off JES** — the first real retirement step (see above).
+7. **Item master / BOM**, then **stock**, then **sales documents**. Invoicing
+   last; it needs the PBIS import file.
+
+**Waiting on people, not code:**
+
+- **Screen snapshots** from the team — the gap map depends on them, and they
+  are the main protection against discovering an unknown function late.
+- **The JES→PBIS import file** from Cindy. What we have is PBIS *output*; the
+  import format is still unseen and is what an app-generated invoice must match.
+- The three decisions in §5.
+
+**Housekeeping carried forward:**
+
+- Run `Settings → Component Codes` across all components — if many sit on
+  superseded alloy codes, that is a costing-accuracy problem, not just tidiness.
+- A build pass on a Mac with Node (see Deployment notes).
+- `render-service/engine/core.py` holds committed but **inert** customizer
+  iridescence work — the `coating` path is never called, and produces no visible
+  change on light crystals even when it is. Fix noted in commit `3bb9d31`.
+- `/bank-audit` was a one-off; it can go once bank accounts are settled.
 
 ### Deployment notes
 
