@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { storage } from '../firebase'
 import {
-  INCOTERMS, ORDER_STATUSES, LINE_TYPES, lineTypeOf, isPackable,
+  INCOTERMS, ORDER_CURRENCIES, ORDER_STATUSES, LINE_TYPES, lineTypeOf, isPackable,
   getOrder, getOrderLines, createOrderWithLines, updateOrder, saveOrderLines, deleteOrder,
   loadRangeProductsLite, autoMatchLines, matchRangeProduct, rematchLines, validateOrder, computeOrderTotals,
 } from '../shipping'
@@ -19,7 +19,7 @@ import OrderInventoryIssue from '../components/OrderInventoryIssue'
 import { crystalInventory } from '../crystals'
 import { packagingInventory } from '../packaging'
 import { metalOrderConfig } from '../orderStock'
-import { allocateSoNo } from '../soNumber'
+import { allocateSoNo, allocateSiNo } from '../soNumber'
 import { orderStockStatus, stockStatusDetail, STOCK_STATUS_LABEL, STOCK_STATUS_STYLE } from '../orderStockStatus'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -33,7 +33,8 @@ const STOCK_CFGS = [metalOrderConfig, crystalInventory, packagingInventory]
 const SHIPPED_STATUSES = new Set(['shipped', 'delivered'])
 
 const blankHeader = {
-  customer_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', uc_no: '', order_date: '',
+  customer_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', erp_si_no: '', uc_no: '', order_date: '',
+  invoiced_at: '',
   currency: 'USD', incoterm: 'FOB', status: 'draft',
   destination: { country: '', city: '', address: '', port: '' }, notes: '',
   subtotal: '', discount_pct: '', discount_amount: '', total_amount: '',
@@ -159,7 +160,8 @@ export default function ShipmentForm() {
         if (o) {
           setHeader({
             customer_id: o.customer_id, customer_name: o.customer_name,
-            erp_pi_no: o.erp_pi_no, erp_so_no: o.erp_so_no || '', uc_no: o.uc_no || '',
+            erp_pi_no: o.erp_pi_no, erp_so_no: o.erp_so_no || '', erp_si_no: o.erp_si_no || '', uc_no: o.uc_no || '',
+            invoiced_at: o.invoiced_at || '',
             order_date: o.order_date || '',
             currency: o.currency, incoterm: o.incoterm, status: o.status,
             destination: { ...blankHeader.destination, ...o.destination }, notes: o.notes,
@@ -198,6 +200,23 @@ export default function ShipmentForm() {
       setSoError(e.message || 'Could not allocate an SO number.')
     } finally {
       setAllocatingSo(false)
+    }
+  }
+
+  // Same as the SO allocator, own counter. Stamps invoiced_at so the invoice
+  // carries its own date rather than reusing the order date — an order raised in
+  // June and invoiced in July is normal and the books need the later one.
+  const [allocatingSi, setAllocatingSi] = useState(false)
+  const [siError, setSiError] = useState('')
+  async function doAllocateSi() {
+    setAllocatingSi(true); setSiError('')
+    try {
+      const no = await allocateSiNo()
+      setHeader(h => ({ ...h, erp_si_no: no, invoiced_at: h.invoiced_at || new Date().toISOString().slice(0, 10) }))
+    } catch (e) {
+      setSiError(e.message || 'Could not allocate an invoice number.')
+    } finally {
+      setAllocatingSi(false)
     }
   }
 
@@ -429,7 +448,8 @@ export default function ShipmentForm() {
       const write = Promise.all([
         updateOrder(id, {
           customer_id: header.customer_id, customer_name: header.customer_name,
-          erp_pi_no: header.erp_pi_no, erp_so_no: header.erp_so_no, uc_no: header.uc_no,
+          erp_pi_no: header.erp_pi_no, erp_so_no: header.erp_so_no, erp_si_no: header.erp_si_no,
+          invoiced_at: header.invoiced_at || null, uc_no: header.uc_no,
           order_date: header.order_date || null,
           currency: header.currency, incoterm: header.incoterm, status: header.status,
           destination: header.destination, notes: header.notes,
@@ -577,6 +597,20 @@ export default function ShipmentForm() {
                 <label className="label">UC#</label>
                 <input className="input" value={header.uc_no} onChange={setH('uc_no')} placeholder="e.g. UC4950/26" />
               </div>
+              <div>
+                <label className="label flex items-center justify-between gap-2">
+                  <span>Invoice No</span>
+                  {!header.erp_si_no && (
+                    <button type="button" onClick={doAllocateSi} disabled={allocatingSi}
+                            className="text-[11px] text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case"
+                            title="Allocate the next invoice number in JES's series. Only safe once JES has stopped issuing them for this year.">
+                      {allocatingSi ? 'Allocating…' : 'Allocate'}
+                    </button>
+                  )}
+                </label>
+                <input className="input" value={header.erp_si_no} onChange={setH('erp_si_no')} placeholder="e.g. SI260094" />
+                {siError && <p className="text-xs text-red-600 mt-1">{siError}</p>}
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -586,7 +620,7 @@ export default function ShipmentForm() {
             </div>
             <div>
               <label className="label">Currency</label>
-              <select className="input" value={header.currency} onChange={setH('currency')}>{CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
+              <select className="input" value={header.currency} onChange={setH('currency')}>{ORDER_CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
             </div>
             <div>
               <label className="label">Incoterm</label>

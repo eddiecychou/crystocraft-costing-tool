@@ -64,6 +64,8 @@ import Portal from './pages/Portal'
 import Marketing from './pages/Marketing'
 import PackingListPrint from './pages/PackingListPrint'
 import ProformaInvoicePrint from './pages/ProformaInvoicePrint'
+import SalesInvoicePrint from './pages/SalesInvoicePrint'
+import SalesInvoices from './pages/SalesInvoices'
 
 export default function App() {
   const user = useAuthState()
@@ -132,6 +134,7 @@ function AdminApp({ user }) {
       <Route path="/packing/:plId/print" element={<PackingListPrint />} />
       <Route path="/purchase-orders/:id/print" element={<PurchaseOrderPrint />} />
       <Route path="/shipments/:id/pi" element={<ProformaInvoicePrint />} />
+      <Route path="/shipments/:id/invoice" element={<SalesInvoicePrint />} />
       {/* All other admin routes wrapped in Layout */}
       <Route path="/*" element={
             <Layout user={user}>
@@ -192,6 +195,7 @@ function AdminApp({ user }) {
                 <Route path="/bank-audit" element={<BankDetailsAudit />} />
                 <Route path="/bank-accounts" element={<BankAccounts />} />
                 <Route path="/shipping" element={<Shipping />} />
+                <Route path="/sales-invoices" element={<SalesInvoices />} />
                 <Route path="/shipments/new" element={<ShipmentForm />} />
                 <Route path="/shipments/:id" element={<ShipmentForm />} />
                 <Route path="/logistics/new" element={<LogisticsVendorForm />} />

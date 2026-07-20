@@ -30,17 +30,39 @@ export const JES_SEED_BY_YEAR = {
   '25': 42,   // JES max SO250042
 }
 
+// Sales Invoice numbering: same shape, own counter. Measured 2026-07-20 —
+// SI26 max SI260093 over 92 rows, SI25 144, SI24 276.
+//
+// NOTE the difference from SO: the SI series has a GAP (SI260072 is missing),
+// where SO260001..27 is unbroken. So do not "verify" an SI counter by assuming
+// contiguity — a hole is normal here and usually means a voided invoice. Voids
+// are recorded in JES as sistatus VOID (90 of them), not by reusing the number.
+export const JES_SI_SEED_BY_YEAR = {
+  '26': 93,   // JES max SI260093, verified 2026-07-20
+  '25': 144,
+}
+
 export const soYear = (d = new Date()) => String(d.getFullYear() % 100).padStart(2, '0')
 
 export const formatSoNo = (yy, n) => `SO${yy}${String(n).padStart(4, '0')}`
+export const formatSiNo = (yy, n) => `SI${yy}${String(n).padStart(4, '0')}`
 
 // Allocate the next SO number for the current year, atomically.
 // Returns e.g. "SO260028". The transaction makes concurrent allocation safe —
 // two people creating an order at once cannot receive the same number.
 export async function allocateSoNo() {
+  return allocate('so', JES_SEED_BY_YEAR, formatSoNo)
+}
+
+// Allocate the next Sales Invoice number for the current year, atomically.
+export async function allocateSiNo() {
+  return allocate('si', JES_SI_SEED_BY_YEAR, formatSiNo)
+}
+
+async function allocate(kind, seeds, format) {
   const yy = soYear()
-  const seed = Number(JES_SEED_BY_YEAR[yy]) || 0
-  const ref = doc(db, 'counters', `so_${yy}`)
+  const seed = Number(seeds[yy]) || 0
+  const ref = doc(db, 'counters', `${kind}_${yy}`)
 
   return runTransaction(db, async (tx) => {
     const snap = await tx.get(ref)
@@ -48,7 +70,7 @@ export async function allocateSoNo() {
     // starting at 1 would re-issue numbers JES has already used.
     const last = snap.exists() ? (Number(snap.data().last) || 0) : seed
     const next = last + 1
-    tx.set(ref, { last: next, year: yy, updated_at: new Date().toISOString() }, { merge: true })
-    return formatSoNo(yy, next)
+    tx.set(ref, { last: next, year: yy, kind, updated_at: new Date().toISOString() }, { merge: true })
+    return format(yy, next)
   })
 }

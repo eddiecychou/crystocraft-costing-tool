@@ -6,29 +6,44 @@ import logo from '../assets/logo.png'
 import { APP_NAME, APP_VERSION, versionLabel } from '../appInfo'
 import {
   LayoutDashboard, Package, Gem, ClipboardList, Puzzle,
-  Factory, Building2, Megaphone, Settings, MoreHorizontal, Users, Truck, FileText, Boxes, Database, Hash,
+  Factory, Building2, Megaphone, Settings, MoreHorizontal, Users, Truck, FileText, Boxes, Database, Hash, Receipt,
 } from 'lucide-react'
 
+// Grouped so the list stays readable as it grows — it reached 16 destinations
+// and the flat version was hard to scan. Order within each group follows the
+// real workflow rather than the alphabet: quote → order/produce → invoice.
 const nav = [
   { to: '/dashboard',  label: 'Dashboard',     short: 'Home',     Icon: LayoutDashboard, primary: true },
+
+  { group: 'Catalogue' },
   { to: '/products',   label: 'Corp Gifts',    short: 'Corp',     Icon: Package, primary: true },
   { to: '/range',      label: 'Figurine Gifts',short: 'Figurine', Icon: Gem, primary: true },
   { to: '/components', label: 'Components',    short: 'Comps',    Icon: Puzzle },
-  { to: '/inventory',  label: 'Inventory',     short: 'Stock',    Icon: Boxes },
-  { to: '/suppliers',  label: 'Suppliers',     short: 'Suppliers',Icon: Factory },
-  { to: '/purchase-orders', label: 'Purchase Orders', short: 'POs', Icon: FileText },
+
+  { group: 'Sales' },
+  { to: '/quotes',     label: 'Quotes',        short: 'Quotes',   Icon: ClipboardList, primary: true },
+  { to: '/shipping',   label: 'Production',    short: 'Prod',     Icon: Truck },
+  { to: '/sales-invoices', label: 'Sales Invoices', short: 'Invoices', Icon: Receipt },
   { to: '/customers',  label: 'Customers',     short: 'Customers',Icon: Building2 },
   { to: '/portal',     label: 'Portal',        short: 'Portal',   Icon: Users },
-  { to: '/quotes',     label: 'Quotes',        short: 'Quotes',   Icon: ClipboardList, primary: true },
+
+  { group: 'Supply' },
+  { to: '/suppliers',  label: 'Suppliers',     short: 'Suppliers',Icon: Factory },
+  { to: '/purchase-orders', label: 'Purchase Orders', short: 'POs', Icon: FileText },
+  { to: '/inventory',  label: 'Inventory',     short: 'Stock',    Icon: Boxes },
+
+  { group: 'System' },
   { to: '/marketing',  label: 'Marketing',     short: 'Marketing',Icon: Megaphone },
-  { to: '/shipping',   label: 'Production',    short: 'Prod',     Icon: Truck },
   { to: '/erp-lookup', label: 'ERP Lookup',    short: 'ERP',      Icon: Database },
   { to: '/uc-registry',label: 'UC Registry',   short: 'UC#',      Icon: Hash },
   { to: '/settings',   label: 'Settings',      short: 'Settings', Icon: Settings },
 ]
 
-const mainNav  = nav.filter(n => n.primary)
-const moreNav  = nav.filter(n => !n.primary)
+// Group headings are layout only — every consumer that wants destinations
+// filters them out first.
+const navItems = nav.filter(n => n.to)
+const mainNav  = navItems.filter(n => n.primary)
+const moreNav  = navItems.filter(n => !n.primary)
 
 export default function Layout({ children, user }) {
   const navigate  = useNavigate()
@@ -52,22 +67,33 @@ export default function Layout({ children, user }) {
           <p className="text-[10px] text-ivory/30 mt-1 font-label tracking-wide">{versionLabel()}</p>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
-          {nav.map(({ to, label, Icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm font-medium transition-colors ${
-                  isActive
-                    ? 'bg-brand-600 text-white'
-                    : 'text-ivory/60 hover:bg-white/8 hover:text-ivory'
-                }`
-              }
-            >
-              <Icon size={18} strokeWidth={1.75} className="shrink-0" />
-              {label}
-            </NavLink>
+        {/* min-h-0 + overflow-y-auto: without both, a flex child refuses to
+            shrink below its content, so the tail of the list was clipped off
+            the bottom of the viewport and simply unreachable — not scrollable,
+            gone. */}
+        <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-0.5">
+          {nav.map((item, i) => (
+            item.group ? (
+              <p key={`g-${item.group}`}
+                 className={`px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-ivory/25 ${i === 0 ? 'pb-1' : 'pt-4 pb-1'}`}>
+                {item.group}
+              </p>
+            ) : (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3 py-2 rounded-sm text-sm font-medium transition-colors ${
+                    isActive
+                      ? 'bg-brand-600 text-white'
+                      : 'text-ivory/60 hover:bg-white/8 hover:text-ivory'
+                  }`
+                }
+              >
+                <item.Icon size={18} strokeWidth={1.75} className="shrink-0" />
+                {item.label}
+              </NavLink>
+            )
           ))}
         </nav>
 
@@ -139,7 +165,7 @@ export default function Layout({ children, user }) {
                 <p className="text-xs font-medium text-ink-50 uppercase tracking-[0.12em] font-label">All sections</p>
               </div>
               <div className="grid grid-cols-4 gap-1 p-3 pt-2">
-                {nav.map(({ to, short, Icon }) => (
+                {navItems.map(({ to, short, Icon }) => (
                   <NavLink
                     key={to}
                     to={to}

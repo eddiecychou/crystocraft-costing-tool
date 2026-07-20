@@ -21,6 +21,12 @@ import { buildProductIndex, matchProductCode } from './criticalComponents'
 
 export const INCOTERMS = ['EXW', 'FOB', 'CIF', 'DAP', 'DDP']
 
+// Currencies an order may be raised in. Measured, not assumed: AED, CAD, EUR,
+// GBP, HKD, MXN and USD all appear on real sales orders since 2024, and RMB on
+// purchases. Anything not listed here is coerced to USD by normOrder — so a
+// missing currency is a silent corruption, not a validation error.
+export const ORDER_CURRENCIES = ['HKD', 'USD', 'EUR', 'GBP', 'RMB', 'CAD', 'AED', 'MXN']
+
 export const ORDER_STATUSES = [
   { value: 'draft',     label: 'Draft',     style: 'bg-gray-100 text-gray-600' },
   { value: 'confirmed', label: 'Confirmed', style: 'bg-blue-50 text-blue-700' },
@@ -63,6 +69,11 @@ export const normOrder = o => ({
   client_quote_id: o.client_quote_id || null,
   erp_pi_no: str(o.erp_pi_no),
   erp_so_no: str(o.erp_so_no),
+  // The sales invoice number (SI######). Its own field: without one, SI numbers
+  // were being typed into erp_so_no, so the order list showed "SI260085" in a
+  // column headed SO and the two document numbers could not be told apart.
+  erp_si_no: str(o.erp_si_no),
+  invoiced_at: o.invoiced_at || null,
   // The app's UC reference (full form, e.g. "UC4950/26"). Free text like
   // erp_pi_no — usually typed in from Cindy's list, same as today. The one
   // place this is set automatically is "Duplicate order", which allocates a
@@ -71,7 +82,12 @@ export const normOrder = o => ({
   customer_id: o.customer_id || '',
   customer_name: str(o.customer_name),
   order_date: o.order_date || null,
-  currency: ['HKD', 'RMB', 'USD', 'EUR'].includes(o.currency) ? o.currency : 'USD',
+  // Every currency seen on a real sales order since 2024 (measured against
+  // raw.salesorder): AED, CAD, EUR, GBP, HKD, MXN, USD — plus RMB for purchases.
+  // The old whitelist was ['HKD','RMB','USD','EUR'], which silently coerced a
+  // GBP or CAD order to USD: same number, wrong currency, no warning. Cindy's
+  // audit rate table covers GBP, CAD and MXN, so these reach the books.
+  currency: ORDER_CURRENCIES.includes(o.currency) ? o.currency : 'USD',
   incoterm: INCOTERMS.includes(o.incoterm) ? o.incoterm : 'FOB',
   destination: {
     country: str(o.destination?.country),
