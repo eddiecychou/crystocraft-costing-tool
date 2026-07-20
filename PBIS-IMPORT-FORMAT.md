@@ -40,8 +40,8 @@ present even when empty, or everything after it shifts.
 | 5 | Currency | `HKD` | |
 | 6 | Exch | `7.750000` | **Always 6 decimal places** |
 | 7 | Ref | `UC4649` | **No `/YY` suffix** — unlike the `.xls`, which has `UC4943/26` |
-| 8 | charge | `0` | `0` on all 87 rows |
-| 9 | discount amt | `0`, `50`, `20` | Non-zero on 8 rows — see below |
+| 8 | charge | `0` | **Ignored by PBIS** — always emit `0` |
+| 9 | discount amt | `0` | **Ignored by PBIS** — always emit `0` (sample has 8 stray non-zero rows) |
 
 **Ten fields, not the thirteen in the `.xls`.** The CSV drops the `Discount`
 column, the `type` column and the trailing name column. Note this is the
@@ -49,14 +49,39 @@ column, the `type` column and the trailing name column. Note this is the
 real `type` (`PP`/`RM`/`PA`/`FS`) its field list is probably different. Do not
 assume it is these ten.
 
-### charge / discount, finally with populated examples
+### charge / discount — PBIS IGNORES BOTH. Always emit `0,0`
 
-8 of 87 rows are non-zero. Every one is field 9, always HKD, and always a round
-figure — `50` seven times, `20` once. Field 8 is `0` throughout.
+**Answered by Cindy 2026-07-19:** *"PBIS only record the final invoice amount.
+The 'charge' and 'discount amt' column is the additional information used to
+calculate the final invoice amount which is not used in pbis. However, the csv
+format used to import into pbis cannot be changed."*
 
-Because only one of the two is ever populated, **the data cannot prove which
-field is "charge" and which is "discount amt"** — that mapping comes from the
-`.xls` header order and should be confirmed before it is relied on.
+So fields 8 and 9 are **structural padding**. They must be present because the
+import is positional and the format is fixed, but **PBIS does not read them**.
+The earlier question of which is "charge" and which is "discount amt" is moot for
+the exporter: **always write `0,0`**.
+
+The 8 non-zero rows in the sample are residue from Cindy's own working `.xls`,
+where those columns are used to *derive* the total — they are carried into the
+CSV and then ignored.
+
+**Verified: field 3 is the final amount and the adjustment never touches it.**
+Triangulated across all three systems:
+
+| Invoice | CSV total | CSV field 9 | JES `siamount` | Registry |
+|---|---:|---:|---:|---:|
+| SI240240 | 3,432 | 50 | **3,432** | *(no row — see below)* |
+| SI240248 | 4,290 | 50 | **4,290** | 4,290 |
+| SI240239 | 2,145 | 50 | **2,145** | 2,145 |
+| SI250023 | 2,872 | 20 | **2,872** | 2,872 |
+
+The generator therefore needs one number — the final invoice total — and it
+matches JES's `siamount` exactly, which is what the app already holds.
+
+> **Likely, not confirmed:** the same reasoning probably covers the trailing
+> name column (open question 4). If the format cannot be changed and PBIS reads
+> only what it needs, the name is almost certainly cosmetic too. Still worth
+> confirming, since it is one line in a reply.
 
 ## The headline: header-level only
 
@@ -269,8 +294,8 @@ and a new supplier will always need classifying by hand.
    zero-padded.**
 6. ~~**What encoding and dialect?**~~ **Answered: UTF-8 with BOM, CRLF, comma.**
 7. ~~**Does the CSV carry the header row?**~~ **Answered: no.**
-8. **Which of fields 8 and 9 is "charge" and which is "discount amt"?** Only one
-   is ever populated, so the data cannot say.
+8. ~~**Which of fields 8 and 9 is "charge" and which is "discount amt"?**~~
+   **Moot — PBIS reads neither. Always emit `0,0`.**
 9. ~~**What is the `UA` reference series?**~~ **Answered: orders to Mascot
    (M03).** ~340 of its 379 invoices sit outside `uc_registry`, but the
    relationship ended 2024-12-27. See the validation section.
