@@ -430,6 +430,29 @@ seen. Two matter:
   document class neither the app nor the import format models — **and credit
   notes affect revenue, so it bears on the 31 March valuation.**
 
+  **Cindy, 2026-07-20:** *"DN&CN they are in JES, I just didn't record them in
+  this excel file... I enter DN & CN into pbis too. Since there are just 4 or 5 a
+  year. So I do it manually."* Screen captures promised.
+
+  Volume confirms her figure. The likely JES homes are `salesreturn` (177 rows,
+  `SR######`) and `purchasereturn` (433 rows, `PR######`) — **FY2026 has exactly
+  four sales returns**, `SR260001`–`SR260004`.
+
+  ⚠️ **The mapping is not proven.** The Excel register numbers them `DN159`,
+  `DN160`… against customers (`Mascot`, `Mascota`), while JES uses `SR`/`PR`. A
+  debit note raised *against a customer* is not the same thing as a purchase
+  return, so these may be two overlapping schemes rather than one. Cindy's screen
+  captures will settle it — do not assume `DN ≡ PR` and `CN ≡ SR` before then.
+
+  Note the 420-row register spans back to 2006, so historically this ran at ~20 a
+  year against ~4 now. And **returns do post stock movements** (`SR` and `PR`
+  appear in `itemtransaction`), so they are not purely an accounting artefact.
+
+- **`UA` is being retired.** Cindy: *"I guess we no longer use UA... will use UC
+  for Mascot order, too."* So the `UA` series is **history only** — no future
+  handling needed, and `UC` becomes the universal key going forward after all.
+  The 301 historical rows still sit outside the app.
+
 **Pattern worth naming:** every time the actual artefact has been examined rather
 than described, it contained more than the description — the `_notuse` columns
 held the image path, the `.xls` turned out not to be the import format, and now a
