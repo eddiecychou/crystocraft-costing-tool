@@ -403,6 +403,61 @@ five hours per refresh is the thing making the mirror stale.
 `JobOrderBOM` is the fourth giant and was never probed — do not flip it on the
 assumption it behaves like the others.
 
+### `Invoice_Check_lists.xls` has SEVEN sheets — the app imported one
+
+Cindy sent her corrected registry on 2026-07-20. The correction itself was
+negligible; the file's *structure* was the finding.
+
+| Sheet | Rows | In the app? |
+|---|---:|---|
+| `INVOICE UC#` | 3,696 | ✅ this is `uc_registry` |
+| `NO USE RECORD ONLY` | 1,488 | ❌ |
+| **`INVOICE UA#(Mascot)`** | **301** | ❌ |
+| **`DN&CN Register`** | **420** | ❌ |
+| `Principal overpayment 2018` | 17 | ❌ |
+| `Sanriowave MG-HK` | 28 | ❌ |
+| `Sanriowave MG-Maylaysia` | 16 | ❌ |
+
+`load_uc_archive.py` hard-codes `SHEET = "INVOICE UC#"`, so six sheets were never
+seen. Two matter:
+
+- **`INVOICE UA#(Mascot)`, 301 rows.** The `UA` series reverse-engineered from a
+  single stray reference is a **full parallel register**, with `JES SI#` and
+  `JES SO#` columns — always joinable, just unknown. This is where the ~340 M03
+  invoices outside `uc_registry` live.
+- **`DN&CN Register`, 420 rows.** Debit and credit notes. The PBIS CSV **cannot
+  express a credit or reversal**, and Cindy adjusts those manually. So this is a
+  document class neither the app nor the import format models — **and credit
+  notes affect revenue, so it bears on the 31 March valuation.**
+
+**Pattern worth naming:** every time the actual artefact has been examined rather
+than described, it contained more than the description — the `_notuse` columns
+held the image path, the `.xls` turned out not to be the import format, and now a
+one-sheet import turns out to be a seven-sheet workbook.
+
+### What the "fix" actually changed, applied 2026-07-20
+
+Diffed before touching anything; backup kept as `uc_registry_backup_20260720`.
+
+| | |
+|---|---|
+| `UC2474` | `Viod` → `Void` (typo) |
+| `UC4926` | blank → `SI260082` |
+| `UC4949` | new row (Online Shop, EUR 50.53) |
+| `uc_seq` | advanced to 4949 — next allocation `UC4950` |
+
+Applied surgically rather than replacing 3,691 rows for three changes. The app
+now matches the spreadsheet exactly: 0 differences, 0 added, 0 removed.
+
+⚠️ **`UC4933` was NOT fixed.** The case Cindy acknowledged as a mistake — the
+books posting `SI260070` against a row marked `VOID` — is unchanged. That is the
+row that matters most, because the void flag is what a PBIS exporter would use to
+exclude invoices.
+
+⚠️ **`uc_no` is not unique:** `UC1480` and `UC1748` each appear twice. The app
+cannot enforce uniqueness on a column that already violates it, which blocks
+making the app the allocator until they are resolved.
+
 ### New requirement: a 31 March stock valuation for the year-end audit
 
 Cindy needs a snapshot **value** at the financial year end, in three parts:
