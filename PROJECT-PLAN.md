@@ -323,10 +323,21 @@ alone suffices for incremental sync. `ItemDetail` moved too (15:52:49).
 |---|---|
 | `Item` (1.45 M) | ✅ **safe — proven directly** |
 | `ItemDetail` (10.3 M) | ✅ **safe — proven directly** |
-| `SalesOrderDetail` (188 k) | ⚠️ still untested — an item edit doesn't touch sales orders. Same test on a sales order settles it; 188 k rows, so full replace is tolerable meanwhile |
+| `SalesOrderDetail` (188 k) | ✅ **safe** — cleared 2026-07-20, see below |
 
-**Six of seven cleared, including the 10.3 M-row table.** This was the single
-biggest unknown in V7.16.
+**Seven of seven cleared.** This was the single biggest unknown in V7.16.
+
+`SalesOrderDetail` settled itself on 2026-07-20 without needing a staged test.
+`SO260027` is dated **2026-07-17** but both its header and its detail line carry
+`LastUpdate = 2026-07-20 09:32:04` — a real edit by `ZHENGCL`, three days after
+the order date. The header row demonstrably existed since 07-17, so that is an
+update rather than an insert, and the detail line shares the identical
+timestamp: the same header-and-lines-together behaviour proven the day before
+when the `U0383-165-GC1K` edit moved `Item` and `ItemDetail` six seconds apart.
+
+Strong evidence rather than a controlled test — a first detail line could in
+principle have been inserted at that instant — but it matches the proven pattern
+and the header is unambiguous.
 
 Checked while there, because revision 0 carrying current data could have broken
 it: `erp_item` orders by `itrevision desc`, so it takes revision 2 — which does
