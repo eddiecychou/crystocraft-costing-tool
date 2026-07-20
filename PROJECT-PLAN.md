@@ -565,6 +565,12 @@ a *shared* importer (crystals and packaging both use it), so it would have
 quietly dropped numeric SKUs on every future import, not just this one. Commit
 `83ca410`, pushed and deployed.
 
+**Imported: all 180 rows, 2026-07-20.** JES inventory's crystal side now has an
+app equivalent. Still to confirm (not yet checked from this session — Firestore
+needs a login): the total-units figure on the Crystal Stock tab reads
+3,110,447, and the two clamped-to-zero codes (`5186188`, `5135900`) show 0 with
+no negative artefact.
+
 #### Two corrections to earlier notes in this file
 
 1. **Goods receipt into the app already exists.** An earlier note claimed the app
