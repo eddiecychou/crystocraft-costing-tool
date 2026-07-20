@@ -654,6 +654,26 @@ verified:** anything past the sign-in wall — the actual `/api/uc` call needs
 admin auth, which was not entered. CuiLing or the owner should click through one
 real Duplicate before relying on it.
 
+#### ⚠️ First version was built into a component that never renders — fixed same evening
+
+Owner: *"where is the duplicate? i can't find it."* Because it wasn't visible —
+`Shipments.jsx`, the file the feature above was built into, is **dead code**:
+imported once in `App.jsx`, never rendered as a JSX element anywhere. `/shipments`
+redirects to `/shipping`, which renders a different component entirely —
+`ShipmentsList` inside `Shipping.jsx`, a table, not a card list. Picked the file
+by name matching what a "shipments list" ought to be called, without tracing the
+actual route first — the same mistake as the `FGDestructionItemDetail` monitor
+filter earlier tonight: pattern-matched on a name instead of checking what
+actually runs.
+
+**Fixed, commit `8883762`.** Moved the whole feature into the real
+`ShipmentsList` — Duplicate is now a trailing icon column in the orders table,
+with `uc_no` shown next to the customer name. `Shipments.jsx` reverted to its
+pre-tonight state; it is still dead/unrouted code and a candidate for deletion,
+left for the owner rather than removed silently. Rebuilt clean, same
+verification limit as before — the click-through itself still needs a real
+signed-in session.
+
 **The UC lives in the SO `Reference` field**, in full `UC####/YY` form —
 `raw.salesorder.soref`. Verified against the screenshots exactly
 (`SO260024 → UC4944/26 → 7,613.94`, matching the registry to the cent).
