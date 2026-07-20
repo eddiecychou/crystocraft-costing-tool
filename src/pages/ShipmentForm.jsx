@@ -19,6 +19,7 @@ import OrderInventoryIssue from '../components/OrderInventoryIssue'
 import { crystalInventory } from '../crystals'
 import { packagingInventory } from '../packaging'
 import { metalOrderConfig } from '../orderStock'
+import { allocateSoNo } from '../soNumber'
 import { orderStockStatus, stockStatusDetail, STOCK_STATUS_LABEL, STOCK_STATUS_STYLE } from '../orderStockStatus'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -182,6 +183,23 @@ export default function ShipmentForm() {
     if (!isEdit || !id) return
     return onSnapshot(doc(db, 'orders', id), snap => setStock(orderStockStatus(snap.data() || {}, STOCK_CFGS)))
   }, [id, isEdit])
+
+  // Allocate the next SO number in JES's own series. See soNumber.js — this
+  // shares a series with JES, so it is only safe once JES has stopped issuing
+  // them for the year.
+  const [allocatingSo, setAllocatingSo] = useState(false)
+  const [soError, setSoError] = useState('')
+  async function doAllocateSo() {
+    setAllocatingSo(true); setSoError('')
+    try {
+      const no = await allocateSoNo()
+      setHeader(h => ({ ...h, erp_so_no: no }))
+    } catch (e) {
+      setSoError(e.message || 'Could not allocate an SO number.')
+    } finally {
+      setAllocatingSo(false)
+    }
+  }
 
   const setH = field => e => setHeader(h => ({ ...h, [field]: e.target.value }))
   const setDest = field => e => setHeader(h => ({ ...h, destination: { ...h.destination, [field]: e.target.value } }))
@@ -530,8 +548,18 @@ export default function ShipmentForm() {
                 <input className="input" value={header.erp_pi_no} onChange={setH('erp_pi_no')} placeholder="e.g. PI-2025-0481" />
               </div>
               <div>
-                <label className="label">SO / Doc No</label>
+                <label className="label flex items-center justify-between gap-2">
+                  <span>SO / Doc No</span>
+                  {!header.erp_so_no && (
+                    <button type="button" onClick={doAllocateSo} disabled={allocatingSo}
+                            className="text-[11px] text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case"
+                            title="Allocate the next SO number in JES's series. Only safe once JES has stopped issuing them for this year.">
+                      {allocatingSo ? 'Allocating…' : 'Allocate'}
+                    </button>
+                  )}
+                </label>
                 <input className="input" value={header.erp_so_no} onChange={setH('erp_so_no')} placeholder="e.g. SO260017" />
+                {soError && <p className="text-xs text-red-600 mt-1">{soError}</p>}
               </div>
               <div>
                 <label className="label">UC#</label>
@@ -578,8 +606,12 @@ export default function ShipmentForm() {
           )}
         </div>
 
-        {/* Reconciliation */}
-        {(lines.length > 0 || isEdit) && (
+        {/* Reconciliation. Rendered unconditionally: "+ Add line" lives inside
+            this card, so gating it on `lines.length > 0 || isEdit` meant a
+            brand-new order had no way to add its first line by hand — the only
+            route in was Import PI. That made the app able to *parse* an order
+            but never *originate* one. */}
+        {(
           <div className="card p-4 md:p-6">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-gray-700">Line items &amp; reconciliation</h2>
@@ -598,6 +630,13 @@ export default function ShipmentForm() {
                 <AlertTriangle size={14} />
                 {unclassified} line{unclassified > 1 ? 's' : ''} still need a type. Classify every line before packing.
               </div>
+            )}
+
+            {lines.length === 0 && (
+              <p className="text-sm text-ink-50 py-3 text-center">
+                No lines yet — <button type="button" onClick={addBlankLine} className="text-brand-600 hover:underline">add one</button>
+                {!isEdit && <> , or drop a PI above to import them.</>}
+              </p>
             )}
 
             <div className="space-y-2">
