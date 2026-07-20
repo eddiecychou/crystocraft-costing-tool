@@ -551,6 +551,20 @@ cannot be an opening balance.
 physical count instead of counting all 180 blind. Largest is `C01-1028-26-002`:
 ledger 108,072 vs JES 69,752.
 
+#### Bug found and fixed on first real use: numeric-only codes silently dropped
+
+First paste attempt: 180 rows in the file, **only 121 rows parsed** — no error,
+no warning. `parseStockPaste` (`src/inventoryClass.js`) required a code's first
+cell to contain **both** a letter and a digit. All 59 missing rows were exactly
+the **pure-digit** codes (`5186188`, `1177191`, `5135900`…), which are common
+among JES-origin crystal SKUs.
+
+**Fixed**: require a digit only — every real code has one, a letter is not
+guaranteed. Verified against the full file: 180/180 now parse. This was a bug in
+a *shared* importer (crystals and packaging both use it), so it would have
+quietly dropped numeric SKUs on every future import, not just this one. Commit
+`83ca410`, pushed and deployed.
+
 #### Two corrections to earlier notes in this file
 
 1. **Goods receipt into the app already exists.** An earlier note claimed the app
