@@ -330,11 +330,45 @@ that was *started and left unfinished*, or finished with known gaps, counts.
 
 Code is done. What remains is a date and three checks:
 
-1. **Does JES let you raise an SI when FTBS stock is insufficient?** Five-minute
-   test in JES, on the LAN. Once PI stops, FTBS drains and never refills (SI
-   takes 924 movements a year out of it, nothing puts any back). If JES blocks
-   or warns on negative stock, the team hits it within weeks. If it goes
-   negative quietly, there is nothing to do.
+1. ~~**Does JES let you raise an SI when FTBS stock is insufficient?**~~
+   **ANSWERED 2026-07-19, and it is the blocking case.** CuiLing:
+   *「成品倉唔夠料，JES confirm唔到單。我要做adjustment，在成品倉加數量才能夠
+   confirm invoice. 如果唔係，佢就係open status.」*
+
+   **JES will not confirm an invoice without stock in FTBS.** The invoice sits at
+   `open` until someone posts a manual adjustment adding quantity to the
+   finished-goods warehouse.
+
+   **This couples the production cutover to the sales cutover, and the plan did
+   not account for it.** Once production-in stops, FTBS is never replenished, so
+   every invoice needs a prior adjustment. Work does not disappear — **it moves
+   from XiangXia to CuiLing**, which inverts the adoption argument that made
+   production the safe first step.
+
+   Measured, since 2025:
+
+   | | |
+   |---|---:|
+   | SI movements out of FTBS | **924** |
+   | IA adjustments into FTBS | **218** (all by user `ADM`) |
+   | Distinct days those fall on | **20** |
+   | Net quantity added | +1,648 |
+
+   Two things follow. FTBS is **already** short often enough to need topping up
+   about every two to three weeks — so this is an existing workaround, not a new
+   one. And because it is done in **batches on 20 days a year, not per invoice**,
+   the honest interim is a **periodic bulk top-up of FTBS**, not an adjustment
+   per document.
+
+   **Recommended interim:** XiangXia stops job orders and production-in entirely;
+   someone posts a periodic bulk adjustment into FTBS purely so JES will confirm
+   invoices, until sales documents migrate. State plainly that this is a
+   workaround keeping a number JES needs and nobody trusts — FTBS is already
+   bookkeeping rather than a real figure, since the team's real stock lives in
+   Excel (§4).
+
+   **Do not present production as "pure removal of work" to the team until this
+   is settled.** For CuiLing it is not.
 2. **Crystal opening balances** — extract at cutover, reconcile against the
    team's own figures, import via `inventoryClass.importStock`. Settle any
    JES-vs-Excel disagreement *first*.

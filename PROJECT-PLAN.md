@@ -392,6 +392,33 @@ five hours per refresh is the thing making the mirror stale.
 `JobOrderBOM` is the fourth giant and was never probed — do not flip it on the
 assumption it behaves like the others.
 
+### ⚠️ JES blocks invoicing without FTBS stock — production and sales are coupled
+
+CuiLing, asked whether JES will raise an invoice when the finished-goods
+warehouse is short: *「成品倉唔夠料，JES confirm唔到單。我要做adjustment，
+在成品倉加數量才能夠confirm invoice.」* — **it will not confirm.** The invoice
+stays `open` until someone manually adjusts stock into FTBS.
+
+This was flagged as the one thing to check before setting a production cutover
+date, and the answer is the bad one. Once production-in stops, FTBS is never
+replenished, so **the work does not disappear — it moves from XiangXia to
+CuiLing.** That inverts the argument that made production the safe first step
+(migrate what the team most wants rid of).
+
+| Since 2025 | |
+|---|---:|
+| SI movements out of FTBS | 924 |
+| IA adjustments into FTBS | 218 (all user `ADM`) |
+| Days those fall on | **20** |
+
+FTBS is *already* short often enough to need topping up every two to three
+weeks, and it is done in **batches, not per invoice**. So the interim is a
+**periodic bulk top-up**, not an adjustment per document — a workaround to keep
+a number JES demands and nobody trusts, given the real stock lives in Excel.
+
+**Consequence for the meeting: production is not "pure removal of work".** For
+CuiLing it adds some. Full detail in `JES-RETIREMENT-PLAN.md` §4 checklist.
+
 ### The UC registry was built and never adopted (found 2026-07-19)
 
 Owner asked CuiLing and Cindy how UC numbers are allocated. Answer: **Cindy keeps
