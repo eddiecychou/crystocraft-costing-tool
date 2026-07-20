@@ -133,10 +133,26 @@ Both are exactly the drift that disappears once the app is the system of record.
 
 The exceptions are each interesting, and none is a format problem:
 
-- **`UA2168` — not a UC number at all.** One row (`SI240274`) carries a `UA`
-  prefix. A different reference series that nothing in the app knows about.
-  Worth asking what `UA` is; if there are more of them, the UC number is not the
-  universal join we have been assuming.
+- **`UA2168` — a second reference series. Answered by Cindy 2026-07-19:**
+  *"UA is order issued to Mascot previously. (I guess it's because we are selling
+  semi-finish product to them, so we use UA instead of UC.)"* Note she marks the
+  reason as a guess; the existence of the series is not in doubt.
+
+  Traced it: the row is `SI240274`, customer **`M03` = Mascot International Inc**.
+  M03 has **379 invoices** in the ERP, of which **only 40 appear in
+  `uc_registry`** — so roughly 340 invoices to this customer sit outside the
+  registry entirely. **`uc_registry` holds 3,691 rows and every one is
+  `UC`-prefixed; there are zero `UA` rows.**
+
+  **The mitigating fact: M03's last invoice is 2024-12-27** — the very row in this
+  CSV. The relationship appears to have ended, and 228 invoices have been raised
+  since 2025-01-01 with no `UA` among them.
+
+  So **UC is safe as the join going forward**, but it is *not* a complete key to
+  history. Anything that reconciles the books against the registry across older
+  periods will show ~340 M03 invoices as unmatched, and that is correct rather
+  than broken. Worth confirming with the team that M03 is genuinely finished
+  before relying on "UC covers everything".
 - **UC4657 covers two invoices** — `SI240240` (3,432) and `SI240248` (4,290).
   The registry holds 4,290, so the other invoice appears as a "total mismatch"
   when it is nothing of the kind. **This is a concrete second example of the
@@ -231,10 +247,11 @@ and a new supplier will always need classifying by hand.
 7. ~~**Does the CSV carry the header row?**~~ **Answered: no.**
 8. **Which of fields 8 and 9 is "charge" and which is "discount amt"?** Only one
    is ever populated, so the data cannot say.
-9. **What is the `UA` reference series?** `UA2168` appears once in 87 rows where
-   a `UC` number was expected.
-10. **Is GBP 14.00 correct for the 2024/25 audit year?** It is far from the
-    market rate for that period — see the exchange-rate warning above.
+9. ~~**What is the `UA` reference series?**~~ **Answered: orders to Mascot
+   (M03).** ~340 of its 379 invoices sit outside `uc_registry`, but the
+   relationship ended 2024-12-27. See the validation section.
+10. ~~**Is GBP 14.00 correct for the 2024/25 audit year?**~~ **Answered: yes,
+    that was the PBIS rate for that year.**
 11. **Send one purchase `.csv` too.** We have the invoice CSV and both `.xls`
     files, but not a purchase CSV — and purchases carry a real `type` code, so
     their field list is probably not the invoice's ten.
@@ -261,10 +278,15 @@ notices for months.
 lot.** GBP goes **14.00 → 10.50** and CAD **6.055550 → 5.66** between the
 2024/25 file and the 2026 file. Only USD holds at the 7.75 peg.
 
-> ⚠️ GBP at **14.00** is far from any market GBP/HKD rate for that period
-> (roughly 9.5–10.5). It may be deliberate for audit purposes, or it may be an
-> error in that batch. **Worth asking Cindy** — if it is wrong, every GBP invoice
-> in that period is overstated by about a third.
+> **GBP 14.00 — queried and confirmed.** Cindy, 2026-07-19: *"GBP 14 was
+> 2024-2025 exch rate used in pbis."* Deliberate, not an error.
+>
+> The wider lesson matters more than the answer: 14.00 is far from any market
+> GBP/HKD rate for that period (roughly 9.5–10.5), yet it is the correct value
+> for the books. **So the rate table cannot be sanity-checked against market
+> data, and must never be computed or "corrected".** It is copied from Cindy for
+> each audit year, verbatim, and a value that looks wrong is not evidence that it
+> is.
 
 `MXN` also appears (2.182900) and is **not** among the app's
 `CUSTOMER_CURRENCIES`, so the currency list is wider than the app currently
