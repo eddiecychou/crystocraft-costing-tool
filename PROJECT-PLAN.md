@@ -626,6 +626,34 @@ That matters for design. **An app that allocates the UC automatically on a new
 order removes this whole error class** — it is one of the strongest arguments yet
 for moving allocation off the spreadsheet.
 
+**Built, same day (commit `8a9bff2`).** The order model had nowhere to even put
+a UC — `normOrder` had `erp_pi_no`/`erp_so_no` but no `uc_no`, and `source`
+collapsed anything that wasn't an in-app quote into `imported_pi`, with no
+representation for an order the app originated itself. Added:
+
+- `uc_no` on the order (free text, same as `erp_pi_no` — normally still typed in
+  from Cindy's list, unchanged from today's practice) and a `duplicated` source.
+- `allocateOrderUc` (`ucRegistry.js`) — allocates a fresh UC via the existing
+  admin-gated `/api/uc` create op and returns the full `UC####/YY` form. Added
+  `'App'` to `UC_SOURCES` so app-issued numbers are visible in the registry UI
+  rather than falling into Other.
+- **A Duplicate button on the Shipments list**, matching where CuiLing actually
+  triggers it in JES. Copies customer, currency, incoterm, destination, notes,
+  lines; resets `erp_pi_no`/`erp_so_no`/date/status/totals (they belong to the
+  source document); **allocates a fresh UC instead of copying the source
+  order's** — the one behaviour change that closes the error class.
+- UC# as a third field on the order form, alongside PI Number and SO/Doc No.
+
+This changes nothing about a regular new order — UC stays a hand-typed field,
+same habit as today. Only Duplicate behaves differently, because Duplicate is
+where the bug lives.
+
+**Verified:** full `npm run build` clean (2137 modules), dev server boots with
+no console errors, `/shipments` redirects to sign-in as expected. **Not
+verified:** anything past the sign-in wall — the actual `/api/uc` call needs
+admin auth, which was not entered. CuiLing or the owner should click through one
+real Duplicate before relying on it.
+
 **The UC lives in the SO `Reference` field**, in full `UC####/YY` form —
 `raw.salesorder.soref`. Verified against the screenshots exactly
 (`SO260024 → UC4944/26 → 7,613.94`, matching the registry to the cent).
