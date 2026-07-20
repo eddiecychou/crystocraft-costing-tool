@@ -83,6 +83,49 @@ matches JES's `siamount` exactly, which is what the app already holds.
 > only what it needs, the name is almost certainly cosmetic too. Still worth
 > confirming, since it is one line in a reply.
 
+## THE SPEC: the purchase CSV (`purchase order import.CSV`, 2026-07-20)
+
+Supplied by Cindy. **It is NOT the invoice CSV with a different doc class** — it
+differs in five ways, so the two need separate emitters.
+
+| | Invoice CSV | **Purchase CSV** |
+|---|---|---|
+| BOM | **UTF-8 BOM present** | **NO BOM** |
+| Fields per row | 10 | **12** |
+| Document no. | space-padded to **20** | **not padded** (`PU240108`, 8 chars) |
+| Total | plain (`774`, `144.4`) | **4 decimal places** (`15200.0000`) |
+| Exch | **6** dp (`7.750000`) | **10** dp (`1.1764705880`) |
+
+Same in both: CRLF, no header row, comma delimited, `d/m/yyyy` dates not
+zero-padded.
+
+### Fields (purchase CSV)
+
+| # | Field | Example | Convention |
+|---:|---|---|---|
+| 0 | Doc class | `PI` | **`PI` = purchase**, not the team's PI |
+| 1 | Purchase order no. | `PU240108` | **Not padded** |
+| 2 | Issue date | `15/10/2024` | `d/m/yyyy`, not zero-padded |
+| 3 | Total | `15200.0000` | **Always 4 dp** |
+| 4 | Supplier | `W33` | JES code |
+| 5 | Currency | `RMB` | |
+| 6 | Exch | `1.1764705880` | **Always 10 dp** |
+| 7 | Discount | `0` | *(absent from the invoice CSV)* |
+| 8 | Reference | `20241010`, `309936` | Free text — no UC join on purchases |
+| 9 | charge | `264.0000` | **Populated here**, unlike invoices |
+| 10 | discount amt | `0` | |
+| 11 | type | `FS`, `PP` | `PP`/`RM`/`PA`/`FS` — *(absent from the invoice CSV)* |
+
+So the purchase CSV is the `.xls` layout **minus only the trailing name column**,
+while the invoice CSV drops `Discount`, `type` **and** the name column.
+
+**Note field 9 is non-zero** (`264.0000`) — the first populated `charge` we have
+seen. Per Cindy this is still informational: PBIS records only field 3.
+
+The FY2024-25 RMB rate here is `1.1764705880`, which is exactly `1 / 0.85` —
+another sign the rates are set deliberately rather than taken from a market
+feed, and another reason never to compute them.
+
 ## The headline: header-level only
 
 **One row per document. No line items.**
@@ -289,7 +332,10 @@ and a new supplier will always need classifying by hand.
    required**. The import is positional: every column must be present even when
    empty, or the fields after it shift. See the CSV note below, which is the
    more important half of that answer.
-4. **Is the `Customer Name` column (12) read on import, or cosmetic?**
+4. ~~**Is the `Customer Name` column (12) read on import, or cosmetic?**~~
+   **Answered by observation: it is in NEITHER CSV.** The invoice CSV has 10
+   fields, the purchase CSV 12, and the name column appears in only the `.xls`
+   working copies. It is never imported.
 5. ~~**What date format does the CSV use?**~~ **Answered: `d/m/yyyy`, not
    zero-padded.**
 6. ~~**What encoding and dialect?**~~ **Answered: UTF-8 with BOM, CRLF, comma.**
@@ -301,9 +347,13 @@ and a new supplier will always need classifying by hand.
    relationship ended 2024-12-27. See the validation section.
 10. ~~**Is GBP 14.00 correct for the 2024/25 audit year?**~~ **Answered: yes,
     that was the PBIS rate for that year.**
-11. **Send one purchase `.csv` too.** We have the invoice CSV and both `.xls`
-    files, but not a purchase CSV — and purchases carry a real `type` code, so
-    their field list is probably not the invoice's ten.
+11. ~~**Send one purchase `.csv` too.**~~ **Received 2026-07-20 — and the
+    caution was justified: 12 fields, not 10, plus four other differences. See
+    the purchase CSV spec above.**
+
+**All format questions are now closed.** What remains is not format but
+behaviour, already recorded above: no duplicate protection, quarterly cadence,
+and voids excluded at source.
 
 ## The authoritative rate table — FY 2026-27 (from Cindy, 2026-07-19)
 
