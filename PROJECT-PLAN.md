@@ -518,6 +518,75 @@ carries that total. Cindy's working file referenced it as `UC4657`, which belong
 to Rex Wong, so that reference was simply wrong. This is a real invoice in JES
 and in the books with no UC number at all.
 
+### Step 2 finally started: CuiLing's sales walkthrough (2026-07-20)
+
+The screen captures the plan has called its main protection against discovering
+an unknown function late. Five screens: SO add, SO list, SO after duplicate,
+SI add, and the Document Loading dialog.
+
+**The workflow, confirmed:** `SO (Add — or Duplicate) → Load Document → SI`. An
+invoice is built by loading the sales order, which matches the model in §3 of the
+retirement plan.
+
+**⭐ Duplicate is the primary data-entry method — and it explains the UC errors.**
+CuiLing's own annotation: 添加老客户新订单时直接复制以前的订单，这样客户的信息就
+不需要重新输入了，只需要重新添加产品编码即可 — *"for a repeat customer, duplicate
+a previous order so the customer details don't need re-entering; only the product
+codes need changing."* The next screen is annotated 这是点复制后保留的信息，然后再
+进行更改产品编码和UC，日期等新信息 — *"this is what's retained after copying; then
+change the product code, UC, date etc."*
+
+**So the UC is carried over by the copy and must be manually overwritten.** That
+is the structural cause of every UC anomaly found this week — `UC4657` appearing
+on two invoices, and `SI240240` carrying a reference belonging to Rex Wong.
+They are not random typos; they are one specific, repeatable slip: duplicating an
+order and forgetting to change the UC.
+
+That matters for design. **An app that allocates the UC automatically on a new
+order removes this whole error class** — it is one of the strongest arguments yet
+for moving allocation off the spreadsheet.
+
+**The UC lives in the SO `Reference` field**, in full `UC####/YY` form —
+`raw.salesorder.soref`. Verified against the screenshots exactly
+(`SO260024 → UC4944/26 → 7,613.94`, matching the registry to the cent).
+**73 of 76 SOs since 2025 carry one**, so the SO→UC join is nearly complete and
+directly usable.
+
+Also visible in the live list: **`UC4920//26`** — a double-slash typo, exactly
+one row (`SO260017`). Real, and the kind of thing an allocator prevents.
+
+### ⚠️ JES's own exchange rates are NOT the PBIS rates — never source them
+
+The SO screen carries an Exchange Rate field, and it disagrees wildly with
+Cindy's audit table:
+
+| Currency | JES `soexrate` (since 2025) | PBIS FY2026-27 |
+|---|---|---|
+| USD | **1** (39 orders) | **7.75** |
+| EUR | 8.5 (13), 8.6 (5), **0.85** (1) | **9.00** |
+| GBP | **7.5** (2) | **10.50** |
+| AED | 3.67 | *(not in the table)* |
+
+USD orders default to `1`, EUR varies across three values including a
+reciprocal-looking `0.85`. **JES's rate field is unreliable and unrelated to the
+books.** The PBIS export must take rates only from Cindy's audit table — this now
+has three independent confirmations.
+
+`AED` also appears, and is not in her rate table at all.
+
+### Smaller observations worth keeping
+
+- The Sales Invoice header has a **`Prefix` dropdown** (`SALES INVOICE`), so other
+  document prefixes exist in that screen — but `sidoctype` is `SALESINVOICE` on
+  all 5,455 rows, so **DN/CN do not live there.** Still unresolved pending
+  Cindy's captures; `salesreturn`/`purchasereturn` carry a null doctype.
+- The invoice has **`Gst Amt %`** (tax) and **`Change all warehouse to`** — the
+  latter is how the FTBS deduction is targeted.
+- The Document Loading dialog has a **`Production In Item`** checkbox, tying
+  invoice creation to production-in.
+- Statuses `OPEN` / `CONFIRMED` are visible throughout the SO list, consistent
+  with the confirmation finding.
+
 ### New requirement: a 31 March stock valuation for the year-end audit
 
 Cindy needs a snapshot **value** at the financial year end, in three parts:
