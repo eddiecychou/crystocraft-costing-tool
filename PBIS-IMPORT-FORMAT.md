@@ -156,17 +156,38 @@ The exceptions are each interesting, and none is a format problem:
   handle by exception rather than by design, but "UC covers everything" is false
   both for history (~340 unmatched M03 invoices, correctly) and for the
   occasional future order.
-- **UC4657 covers two invoices** — `SI240240` (3,432) and `SI240248` (4,290).
-  The registry holds 4,290, so the other invoice appears as a "total mismatch"
-  when it is nothing of the kind. **This is a concrete second example of the
-  multi-invoice UC question left open in `JES-RETIREMENT-PLAN.md` §5** (which
-  cited `UC4836 = SI250128/137`). It is not rare, and the registry's one-row-per-
-  UC shape cannot represent it.
-- **`SI240249`** — registry total empty where the CSV has 9,700.
-- **`SI250038`** — registry 51.52 against CSV 51.72, a 20-cent difference.
+- **UC4657 — a typo in Cindy's file, NOT a design gap.**
 
-So of four apparent discrepancies, **one is a design gap** (multi-invoice UC),
-one is an unknown reference series, and two are ordinary registry drift.
+  > **Correction.** An earlier draft called this "a concrete second example of
+  > the multi-invoice UC question" and concluded the registry's one-row-per-UC
+  > shape could not represent it. **Wrong on both counts.** Owner: *"there will
+  > never be one UC, 2 invoices. Either it is an update — there will be a suffix
+  > at the UC, e.g. UC1234 was updated by UC1234-a — or it is a wrong
+  > input/typo."*
+
+  Traced it, and the rule holds exactly:
+
+  | | |
+  |---|---|
+  | `SI240248` | → `UC4657` in the registry (Rex Wong, HKD 4,290) ✅ matches |
+  | `SI240240` | **not in the registry at all** — no row references it |
+
+  So `UC4657` legitimately belongs to `SI240248`. `SI240240`'s reference in
+  Cindy's CSV is simply wrong.
+
+  The real finding underneath is different and still worth acting on:
+  **`SI240240` is an invoice in JES and in the books with no registry entry
+  whatsoever.** Not a shape problem — a missing row.
+
+  How often the mistake happens, measured: only **5 of 3,691** registry rows have
+  more than one invoice in `jes_si` (`UC1683`, `UC1777`, `UC2395`, `UC3796`,
+  `UC4836`). Rare enough to be error rather than practice — but it does recur, so
+  an app that owns the registry should **detect and reject it** rather than
+  assume it cannot happen.
+
+So of four apparent discrepancies: one is a second reference series (`UA`), one
+is a typo plus a missing registry row, and two are ordinary drift. **None is a
+format problem, and none is a design gap.**
 
 ## Naming trap: `PI` now has three meanings
 
@@ -362,6 +383,34 @@ at export time.
 - Numeric-looking references arrive as floats (`20260710.0`), so anything reading
   this must not assume the column is text.
 - Dates are Excel serials, so a reader needs `datetime.date(1899,12,30) + days`.
+
+## UC numbers are not always plain `UC####` — 6% carry a suffix
+
+Owner, 2026-07-19: an updated order gets a **suffix on the same UC** —
+`UC1234` updated by `UC1234-a`. This was not previously written down anywhere,
+and it matters: the app's allocator issues plain sequential numbers only.
+
+Measured across all 3,691 registry rows — **227 (6.1%) are not plain `UC####`**:
+
+| Shape | Count | Example |
+|---|---:|---|
+| `UC####(A)` | 72 | `UC1547(A)` |
+| `UC####/UC####` | 37 | compound — see below |
+| `UC####-#` | 31 | the hyphen form |
+| `UC####(B)` | 14 | `UC1547(B)` |
+| `UC####/####` | 10 | `UC1956/61` |
+| `UC####/UC####/UC####` | 10 | three at once |
+| `UC####/####/####` | 9 | |
+| `UC####/UC####/UC####/UC####` | 6 | four at once |
+
+Two distinct things are mixed in here:
+
+1. **Update suffixes** — `(A)`, `(B)`, `-1`. This is the rule the owner
+   described, and the parenthesised form is more common than the hyphen. An
+   allocator must be able to issue `UC1234(A)` against an existing `UC1234`.
+2. **Compound references** — `UC2008/2016`, and up to four UC numbers in a single
+   `uc_no` field. **This is not the update rule and is not yet explained.** It
+   may be several orders combined onto one document. ~72 rows.
 
 ## Hard requirements for the generator (Cindy, 2026-07-19)
 

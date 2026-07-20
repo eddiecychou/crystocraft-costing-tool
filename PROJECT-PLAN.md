@@ -149,8 +149,20 @@ replacing it, since an order raised today isn't synced yet.
   `FM-K(32)-C` ("底座配件 chrome", 526 BOMs). These are the old in-house part
   codes from before the FM parts were bought finished. If so, some unit costs
   reflect what it cost to *make* a part, not what is now *paid* for it.
-- **Multi-invoice UC numbers** — UC4836 is `SI250128/137` in the registry,
-  unparseable. How should these be recorded?
+- ~~**Multi-invoice UC numbers** — UC4836 is `SI250128/137` in the registry,
+  unparseable. How should these be recorded?~~ **Answered by owner 2026-07-19:
+  they should not exist.** *"There will never be one UC, 2 invoices. Either it is
+  an update — there will be a suffix at the UC, e.g. UC1234 updated by UC1234-a —
+  or it is a wrong input/typo."* So `UC4836` is an error, not a pattern needing a
+  design. Measured: only **5 of 3,691** rows have more than one invoice in
+  `jes_si`. Rare — but it recurs, so an app owning the registry should **detect
+  and reject** it rather than assume it cannot happen.
+  **New requirement out of the same answer:** UC numbers take **update
+  suffixes**, and **227 of 3,691 (6.1%)** are not plain `UC####` — 72 as
+  `UC####(A)`, 31 as `UC####-#`, plus ~72 compound `UC####/UC####` forms that are
+  a separate, still-unexplained thing. The app's allocator issues plain
+  sequential numbers only, so it cannot yet express an update. See
+  `PBIS-IMPORT-FORMAT.md`.
 - **Packaging is not costed per product.** The ERP BOM carries the gift box,
   hang tag, tissue, silica gel; the app stocks packaging as a pool.
 
