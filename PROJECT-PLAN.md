@@ -279,11 +279,16 @@ column contract; the two things that matter:
   the file needs; the UC number is the join, confirmed now from the input side
   as well as V7.15's output side.
 
-⚠️ **One thing for a human:** UC4933 is `jes_si = 'VOID'` in the registry, but
-the import file posts `SI260070` for the same customer and the same total. An
-invoice the app believes is void is going into the books. UC4926 has an empty
-`jes_si` where the file has `SI260082`. Both are registry drift, not format
-problems — and both are what the app becoming system of record removes.
+**UC4933 — resolved 2026-07-20, and it was never a problem.** Flagged here
+originally as "an invoice the app believes is void is going into the books".
+Cindy: *"UC4933 is a void invoice. We record all UC registry in this file even it
+is void/refund in the later day. Just that we do not import the void invoice into
+pbis after checking."* The `.xls` is her unfiltered **working file**, not the
+import — the void check happens between it and the CSV. `VOID` in the registry is
+a legitimate state, not drift.
+
+**UC4926** had an empty `jes_si` where the file has `SI260082` — that one was
+genuine, and Cindy has since fixed it.
 
 Four questions remain for Cindy (the purchase `type` codes FS/PP/RM, who
 maintains the standing exchange rates, discount/charge semantics, and whether
@@ -472,10 +477,10 @@ Diffed before touching anything; backup kept as `uc_registry_backup_20260720`.
 Applied surgically rather than replacing 3,691 rows for three changes. The app
 now matches the spreadsheet exactly: 0 differences, 0 added, 0 removed.
 
-⚠️ **`UC4933` was NOT fixed.** The case Cindy acknowledged as a mistake — the
-books posting `SI260070` against a row marked `VOID` — is unchanged. That is the
-row that matters most, because the void flag is what a PBIS exporter would use to
-exclude invoices.
+**`UC4933` needed no fix** — established 2026-07-20. It is correctly marked
+`VOID`; the registry records every UC number including voided and refunded ones,
+and the void is filtered out between the working `.xls` and the CSV that PBIS
+ingests. The earlier reading of this as an unfixed error was wrong.
 
 ⚠️ **`uc_no` is not unique:** `UC1480` and `UC1748` each appear twice. The app
 cannot enforce uniqueness on a column that already violates it, which blocks
@@ -574,10 +579,10 @@ never client-set — see `netlify/edge-functions/uc.js`). But **not one number h
 ever been issued through it.** Every row is a one-time import of Cindy's
 spreadsheet, so the app's copy is a snapshot that begins ageing immediately.
 
-That explains the drift found in the PBIS reconciliation — `UC4926` with a blank
-`jes_si`, `UC4933` still marked `VOID` — without needing to blame anyone. Owner
-confirms the `UC4933` case: *"it is a mistake and Cindy said she has not fully
-updated the records, in reality it shouldn't happen."*
+That explains the one genuine gap found in the PBIS reconciliation — `UC4926`
+with a blank `jes_si`, since fixed. (`UC4933` looked like a second case but was
+not: it is correctly marked `VOID`, and voids are filtered between the working
+`.xls` and the CSV. See `PBIS-IMPORT-FORMAT.md`.)
 
 **This is the adoption risk in `JES-RETIREMENT-PLAN.md` §5, already realised
 once.** A feature shipped, the old spreadsheet kept running, and nobody noticed

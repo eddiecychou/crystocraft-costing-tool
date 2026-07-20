@@ -180,12 +180,32 @@ Note `uc_registry.uc_no` stores the prefix (`UC4943`, not `4943`).
 
 ### Two discrepancies — both registry drift, neither a format problem
 
-- ⚠️ **UC4933 — the registry says `VOID`, the books are posting it.** The file
-  carries `SI260070`, EUR 487.63, Peter Lammer (P34); the registry row has the
-  same customer and the same total to the cent but `jes_si = 'VOID'`. Either it
-  was voided and reissued without the registry being updated, or the registry is
-  wrong. **An invoice the app believes is void is going into the books.** Needs a
-  human decision.
+- **UC4933 — NOT an error. The registry is right and the process works.**
+
+  > **Correction.** This was flagged three times across two days as "an invoice
+  > the app believes is void is going into the books". **Wrong.** Cindy,
+  > 2026-07-20: *"UC4933 is a void invoice. We record all UC registry in this
+  > file even it is void/refund in the later day. Just that we do not import the
+  > void invoice into pbis after checking."*
+
+  The mistake was treating the `.xls` as the import. It is not — it is her
+  **working file**, deliberately unfiltered, and the void check happens between
+  it and the CSV that PBIS actually ingests. `SI260070` appearing in
+  `invoice to import.xls` therefore proves nothing about what reached the books.
+
+  Two things follow, both useful:
+
+  1. **`VOID` in the registry is a legitimate state, not drift.** Every UC number
+     is recorded even when later voided or refunded, so the registry is complete
+     by design rather than stale.
+  2. **The manual void check is a real process step that an exporter must
+     replicate** — and the registry's marker is exactly the right source for it,
+     because it is accurate.
+
+  Scale: **17 rows marked `VOID` and 5 `CANCELLED`** out of 3,692, against 90
+  `VOID` invoices in JES (3 since 2025). Small, and easy to miss precisely
+  because it is small.
+
 - **UC4926** — registry `jes_si` is empty where the file has `SI260082`
   (USD 2012.6, Regalo Original A29; customer and total both match). An unfilled
   field, nothing more.
