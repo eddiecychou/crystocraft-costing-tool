@@ -455,10 +455,22 @@ export default function ShipmentForm() {
     <div className="p-4 md:p-6 max-w-4xl">
       <div className="mb-4">
         <Link to="/shipments" className="text-sm text-brand-600 hover:underline">← Order Listing</Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-1">
-          {isEdit ? (header.erp_pi_no || 'Order Detail') : 'Import Proforma Invoice'}
-        </h1>
-        {!isEdit && <p className="text-sm text-gray-500 mt-1">Upload a figurine PI — AI reads the header + line items, then you classify each line.</p>}
+        <div className="flex items-start justify-between gap-3 mt-1">
+          <h1 className="text-2xl font-bold text-gray-900">
+            {isEdit ? (header.erp_pi_no || 'Order Detail') : 'New Order'}
+          </h1>
+          {isEdit && (
+            <a href={`/shipments/${id}/pi`} target="_blank" rel="noreferrer"
+               className="btn-secondary text-sm inline-flex items-center gap-1.5 shrink-0">
+              <FileText size={14} /> Proforma Invoice
+            </a>
+          )}
+        </div>
+        {!isEdit && (
+          <p className="text-sm text-gray-500 mt-1">
+            Enter the order directly, or drop a PI below to have AI read the header and line items.
+          </p>
+        )}
       </div>
 
       {/* Tabs — only shown on edit (saved order) */}

@@ -63,6 +63,7 @@ import Shipping from './pages/Shipping'
 import Portal from './pages/Portal'
 import Marketing from './pages/Marketing'
 import PackingListPrint from './pages/PackingListPrint'
+import ProformaInvoicePrint from './pages/ProformaInvoicePrint'
 
 export default function App() {
   const user = useAuthState()
@@ -130,6 +131,7 @@ function AdminApp({ user }) {
       {/* Print routes — no Layout wrapper */}
       <Route path="/packing/:plId/print" element={<PackingListPrint />} />
       <Route path="/purchase-orders/:id/print" element={<PurchaseOrderPrint />} />
+      <Route path="/shipments/:id/pi" element={<ProformaInvoicePrint />} />
       {/* All other admin routes wrapped in Layout */}
       <Route path="/*" element={
             <Layout user={user}>
