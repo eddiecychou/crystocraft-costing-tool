@@ -233,8 +233,8 @@ and a new supplier will always need classifying by hand.
 
 1. ~~**What does `type` mean on purchases?**~~ **Answered above by the owner.**
 2. ~~**Where do the exchange rates come from, and who maintains them?**~~
-   **Answered 2026-07-19: they are the rates Cindy is using for this year's
-   audit.** Fixed for the financial year, set by Cindy — not market rates, which
+   **Answered 2026-07-19: Cindy's audit-year rates; full FY 2026-27 table now
+   recorded above.** Fixed for the financial year, set by Cindy — not market rates, which
    is why they are round numbers (EUR 9.0, GBP 10.5) with USD at the 7.75 peg.
    See the warning below; this is the most dangerous field in the file.
 3. ~~**How do discount and charge behave when populated?**~~ **Answered by Cindy
@@ -258,6 +258,50 @@ and a new supplier will always need classifying by hand.
 11. **Send one purchase `.csv` too.** We have the invoice CSV and both `.xls`
     files, but not a purchase CSV — and purchases carry a real `type` code, so
     their field list is probably not the invoice's ten.
+
+## The authoritative rate table — FY 2026-27 (from Cindy, 2026-07-19)
+
+| Currency | Rate |
+|---|---:|
+| HKD | 1 (pivot) |
+| USD | 7.75 |
+| EUR | 9 |
+| GBP | 10.5 |
+| CAD | 5.66 |
+| RMB | 1.14 |
+| MXN | **0.4581** |
+
+Direction is **HKD per 1 unit of foreign currency** (1 USD = 7.75 HKD).
+
+### ⚠️ MXN in the 2024-25 batch looks inverted — worth Cindy checking
+
+The Nov 24 – Mar 25 file carries `MXN 2.182900`. Cindy's 2026-27 figure is
+`0.4581`. These are reciprocals:
+
+```
+1 / 0.4581   = 2.182929      (file has 2.182900)
+1 / 2.1829   = 0.458106
+```
+
+Every other currency in that file follows HKD-per-unit — USD 7.75, EUR, GBP,
+CAD, RMB. `0.4581` is also the economically sensible direction, since one peso is
+worth well under one HKD. So `2.1829` appears to be **MXN per HKD**, the wrong
+way round.
+
+There is exactly one MXN invoice in the batch, **`SI250016`, 844.07 MXN**:
+
+| Applied rate | Booked as |
+|---|---:|
+| 2.1829 (as in the file) | **HK$1,842.52** |
+| 0.4581 (this year's direction) | HK$386.67 |
+
+If the inversion is real, that invoice is overstated by about **HK$1,456**.
+
+**Stated as a question, not a correction** — GBP 14.00 also looked wrong by
+market and turned out to be deliberate, so the rate table is not ours to judge.
+But a reciprocal to five significant figures is a different kind of evidence from
+"looks high", and the two files disagree by a factor of 4.76 on the same
+currency. Cindy should decide.
 
 ## ⚠️ The exchange rate is a trap — do NOT use the app's own rates
 
@@ -318,6 +362,57 @@ at export time.
 - Numeric-looking references arrive as floats (`20260710.0`), so anything reading
   this must not assume the column is text.
 - Dates are Excel serials, so a reader needs `datetime.date(1899,12,30) + days`.
+
+## Hard requirements for the generator (Cindy, 2026-07-19)
+
+Three operational answers that constrain the design more than the file format
+does. Each of these fails **silently in the books** if ignored.
+
+### 1. PBIS has NO duplicate protection
+
+> *"PBIS will see it as new entry if a document is imported twice. I need to
+> delete it manually."*
+
+**The app must track what it has already exported.** There is no safety net at
+the far end: a re-run after a partial failure, a retried download, or two people
+exporting the same quarter all post the invoice twice, and Cindy has to find and
+delete it by hand.
+
+This is the opposite of the image upload, where re-running was cheap because
+uploads were upserts. Here **re-running is dangerous**, so the exporter needs an
+exported-state marker per document and a deliberate "re-export anyway" path
+rather than a plain button.
+
+### 2. Cadence is quarterly
+
+> *"Normally, I do it every 3 months."*
+
+So the natural shape is **"everything not yet exported, up to a cut-off date"**,
+not a live feed and not one-file-per-invoice. Combined with (1): the batch itself
+is worth recording, so a re-send can reproduce exactly what was sent before.
+
+### 3. Voided invoices must be EXCLUDED at source
+
+> *"Normally, voided invoice should not import into pbis. It may be due to
+> mistake handling. All imported invoice or purchase order will be checked and
+> adjusted manually in pbis."*
+
+The format has no way to express a credit, a reversal or a cancellation — every
+row is a positive document. **Voids are handled by never sending them.**
+
+So the exporter needs a reliable void signal. Today that is
+`uc_registry.jes_si = 'VOID'` — and `UC4933` is exactly the case where it failed:
+a voided invoice reached the books because the registry was not updated. Owner
+confirms it was a mistake and should not have happened.
+
+That makes the registry-adoption problem (see `PROJECT-PLAN.md`) a **correctness
+dependency, not just tidiness**: if the app is to filter voids out of the export,
+the app's void flag has to be the real one, maintained live — not a snapshot of
+Cindy's spreadsheet.
+
+Cindy also checks and adjusts everything manually after import, so the export is
+a first draft rather than the final word. Useful to know: it means a small
+formatting imperfection is recoverable, while a duplicate or a stray void is not.
 
 ## What this unblocks
 
