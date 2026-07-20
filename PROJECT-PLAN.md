@@ -482,9 +482,30 @@ now matches the spreadsheet exactly: 0 differences, 0 added, 0 removed.
 and the void is filtered out between the working `.xls` and the CSV that PBIS
 ingests. The earlier reading of this as an unfixed error was wrong.
 
-⚠️ **`uc_no` is not unique:** `UC1480` and `UC1748` each appear twice. The app
-cannot enforce uniqueness on a column that already violates it, which blocks
-making the app the allocator until they are resolved.
+**`uc_no` "duplicates" — resolved 2026-07-20. They are the suffix rule, filed in
+the wrong column.**
+
+| uc_no | year | jes_si | customer |
+|---|---|---|---|
+| UC1480 | `/10` | SI100109 | K Crystals (India Order) |
+| UC1480 | **`/10(B)`** | SI100110 | K Crystals (India Order) |
+| UC1748 | `/11` | SI110092 | K Crystals |
+| UC1748 | **`/11(A)`** | SI110081 | GOLDEN TOUCH |
+
+The `(A)`/`(B)` update suffix normally lives **in `uc_no`** (227 rows do this,
+e.g. `UC1547(A)`). On exactly **2 rows** it was typed into the `year` field
+instead — so `uc_no` looks duplicated when it is not.
+
+**`(uc_no, year)` is unique across all 3,692 rows.** So the composite key works
+today, and normalising those two rows to `UC1480(B)` / `UC1748(A)` would make
+`uc_no` alone unique — worth doing before the app becomes the allocator, but it
+is a two-row tidy-up rather than a blocker.
+
+⚠️ **Genuinely missing: `SI240240`.** HKD 3,432 to `C13` (Fee Ratibor),
+13 Nov 2024, **`CONFIRMED` in JES** — and **no registry row anywhere**; no row
+carries that total. Cindy's working file referenced it as `UC4657`, which belongs
+to Rex Wong, so that reference was simply wrong. This is a real invoice in JES
+and in the books with no UC number at all.
 
 ### New requirement: a 31 March stock valuation for the year-end audit
 
