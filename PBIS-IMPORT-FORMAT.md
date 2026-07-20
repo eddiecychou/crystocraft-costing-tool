@@ -144,15 +144,18 @@ The exceptions are each interesting, and none is a format problem:
   registry entirely. **`uc_registry` holds 3,691 rows and every one is
   `UC`-prefixed; there are zero `UA` rows.**
 
-  **The mitigating fact: M03's last invoice is 2024-12-27** — the very row in this
-  CSV. The relationship appears to have ended, and 228 invoices have been raised
-  since 2025-01-01 with no `UA` among them.
+  M03's last invoice is 2024-12-27 — the very row in this CSV — and 228 invoices
+  since 2025-01-01 carry no `UA`.
 
-  So **UC is safe as the join going forward**, but it is *not* a complete key to
-  history. Anything that reconciles the books against the registry across older
-  periods will show ~340 M03 invoices as unmatched, and that is correct rather
-  than broken. Worth confirming with the team that M03 is genuinely finished
-  before relying on "UC covers everything".
+  > **Correction, same day.** That looked like a finished relationship, and an
+  > earlier draft concluded `UC` was therefore safe as a universal key going
+  > forward. **Owner: Mascot still has business, "maybe one order per year."**
+  > The series is **dormant, not dead.**
+
+  So the app must not assume every sale carries a UC. `UA` is rare enough to
+  handle by exception rather than by design, but "UC covers everything" is false
+  both for history (~340 unmatched M03 invoices, correctly) and for the
+  occasional future order.
 - **UC4657 covers two invoices** — `SI240240` (3,432) and `SI240248` (4,290).
   The registry holds 4,290, so the other invoice appears as a "total mismatch"
   when it is nothing of the kind. **This is a concrete second example of the

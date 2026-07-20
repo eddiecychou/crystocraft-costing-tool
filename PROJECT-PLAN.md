@@ -380,6 +380,56 @@ five hours per refresh is the thing making the mirror stale.
 `JobOrderBOM` is the fourth giant and was never probed — do not flip it on the
 assumption it behaves like the others.
 
+### The UC registry was built and never adopted (found 2026-07-19)
+
+Owner asked CuiLing and Cindy how UC numbers are allocated. Answer: **Cindy keeps
+an Excel file and CuiLing fetches a number from it when a new order comes in.
+Cindy still owns the registry.**
+
+Checked against the data, and it is unambiguous:
+
+| | |
+|---|---|
+| Rows in `uc_registry` | 3,691 |
+| Rows **not** created by the migration | **0** |
+| `migrated = true` | **3,691 (all)** |
+
+V7.14 replaced the team's `Invoice_Check_lists.xls` with `/uc-registry`, and the
+app **already allocates UC numbers server-side** (`uc_no` is a DB default,
+never client-set — see `netlify/edge-functions/uc.js`). But **not one number has
+ever been issued through it.** Every row is a one-time import of Cindy's
+spreadsheet, so the app's copy is a snapshot that begins ageing immediately.
+
+That explains the drift found in the PBIS reconciliation — `UC4926` with a blank
+`jes_si`, `UC4933` still marked `VOID` — without needing to blame anyone. Owner
+confirms the `UC4933` case: *"it is a mistake and Cindy said she has not fully
+updated the records, in reality it shouldn't happen."*
+
+**This is the adoption risk in `JES-RETIREMENT-PLAN.md` §5, already realised
+once.** A feature shipped, the old spreadsheet kept running, and nobody noticed
+for two cycles. It also means UC allocation must genuinely move into the app
+before the app can issue invoices — and **the person to convince is Cindy, not
+CuiLing.** Two systems both handing out UC numbers would collide.
+
+### What CuiLing actually sends: a JES-generated PI, printed to PDF
+
+So before she can stop using JES, **the app must generate the PI document**. It
+can print quotes, packing lists and purchase orders; it cannot produce a sales
+order or invoice document. That is the concrete build item for her area.
+
+Worth noting the loop this closes: the app currently **AI-parses a PDF of that
+PI** (`netlify/edge-functions/extract-pi.js`) to get data it would already hold
+if it had generated the document. Generating the PI removes the parse entirely —
+this is exactly the "stop double-entry" of step 3.
+
+### Correction: Mascot is dormant, not finished
+
+Yesterday's note concluded that because M03's last invoice was 2024-12-27, `UC`
+was safe as a universal key going forward. **Owner: Mascot still has business,
+"maybe one order per year."** So the `UA` series is dormant, not dead, and the
+app cannot assume every sale carries a UC. ~340 of M03's 379 invoices sit outside
+the registry.
+
 ## Where V7.16 starts
 
 **On the LAN (the office Mac), in order:**
