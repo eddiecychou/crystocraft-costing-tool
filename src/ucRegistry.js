@@ -5,7 +5,7 @@
 import { useEffect, useState } from 'react'
 import { auth } from './firebase'
 
-export const UC_SOURCES = ['ERP', 'Alibaba', 'Amazon', 'Online Shop', 'Retail', 'Other']
+export const UC_SOURCES = ['ERP', 'Alibaba', 'Amazon', 'Online Shop', 'Retail', 'App', 'Other']
 export const UC_CURRENCIES = ['HKD', 'USD', 'EUR', 'GBP', 'RMB', 'CAD', 'AUD', 'JPY', 'MXN']
 
 async function ucApi(op, extra) {
@@ -26,6 +26,21 @@ async function ucApi(op, extra) {
 export const createUcInvoice = (data) => ucApi('create', { data }).then((d) => d.row)
 export const updateUcInvoice = (id, data) => ucApi('update', { id, data }).then((d) => d.row)
 export const listUc = (filters) => ucApi('list', filters).then((d) => d.rows || [])
+
+// Allocate a FRESH UC# for an app-originated order (used by "Duplicate order").
+// Deliberately never copies the source order's UC — a carried-over UC is the
+// exact, repeatable slip CuiLing's JES workflow produces (duplicate an order to
+// reuse the customer details, then forget to change the UC before the product
+// codes). See PROJECT-PLAN.md, "CuiLing's sales walkthrough", 2026-07-20.
+// uc_no is allocated server-side by a Postgres sequence; year is derived here
+// from today's date, matching the registry's own "/YY" convention.
+export async function allocateOrderUc({ customer_name, currency } = {}) {
+  const year = '/' + String(new Date().getFullYear() % 100).padStart(2, '0')
+  const row = await createUcInvoice({
+    source: 'App', year, customer: customer_name || '', currency: currency || 'HKD', status: 'open',
+  })
+  return { id: row.id, uc_no: row.uc_no, year: row.year, full: `${row.uc_no}${row.year}` }
+}
 
 // Debounced, refetchable list. `filters` = { q, source, status, confirmed, limit }.
 // `confirmed` is true/false to filter, or undefined for "any".

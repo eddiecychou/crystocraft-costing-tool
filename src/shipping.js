@@ -59,10 +59,15 @@ const ORDERS = () => collection(db, 'orders')
 const LINES  = orderId => collection(db, 'orders', orderId, 'lines')
 
 export const normOrder = o => ({
-  source: o.source === 'in_app_quote' ? 'in_app_quote' : 'imported_pi',
+  source: o.source === 'in_app_quote' ? 'in_app_quote' : o.source === 'duplicated' ? 'duplicated' : 'imported_pi',
   client_quote_id: o.client_quote_id || null,
   erp_pi_no: str(o.erp_pi_no),
   erp_so_no: str(o.erp_so_no),
+  // The app's UC reference (full form, e.g. "UC4950/26"). Free text like
+  // erp_pi_no — usually typed in from Cindy's list, same as today. The one
+  // place this is set automatically is "Duplicate order", which allocates a
+  // fresh one rather than copying the source order's.
+  uc_no: str(o.uc_no),
   customer_id: o.customer_id || '',
   customer_name: str(o.customer_name),
   order_date: o.order_date || null,

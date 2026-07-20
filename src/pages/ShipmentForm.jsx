@@ -32,7 +32,7 @@ const STOCK_CFGS = [metalOrderConfig, crystalInventory, packagingInventory]
 const SHIPPED_STATUSES = new Set(['shipped', 'delivered'])
 
 const blankHeader = {
-  customer_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', order_date: '',
+  customer_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', uc_no: '', order_date: '',
   currency: 'USD', incoterm: 'FOB', status: 'draft',
   destination: { country: '', city: '', address: '', port: '' }, notes: '',
   subtotal: '', discount_pct: '', discount_amount: '', total_amount: '',
@@ -158,7 +158,7 @@ export default function ShipmentForm() {
         if (o) {
           setHeader({
             customer_id: o.customer_id, customer_name: o.customer_name,
-            erp_pi_no: o.erp_pi_no, erp_so_no: o.erp_so_no || '',
+            erp_pi_no: o.erp_pi_no, erp_so_no: o.erp_so_no || '', uc_no: o.uc_no || '',
             order_date: o.order_date || '',
             currency: o.currency, incoterm: o.incoterm, status: o.status,
             destination: { ...blankHeader.destination, ...o.destination }, notes: o.notes,
@@ -411,7 +411,7 @@ export default function ShipmentForm() {
       const write = Promise.all([
         updateOrder(id, {
           customer_id: header.customer_id, customer_name: header.customer_name,
-          erp_pi_no: header.erp_pi_no, erp_so_no: header.erp_so_no,
+          erp_pi_no: header.erp_pi_no, erp_so_no: header.erp_so_no, uc_no: header.uc_no,
           order_date: header.order_date || null,
           currency: header.currency, incoterm: header.incoterm, status: header.status,
           destination: header.destination, notes: header.notes,
@@ -524,7 +524,7 @@ export default function ShipmentForm() {
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <div>
                 <label className="label">PI Number</label>
                 <input className="input" value={header.erp_pi_no} onChange={setH('erp_pi_no')} placeholder="e.g. PI-2025-0481" />
@@ -532,6 +532,10 @@ export default function ShipmentForm() {
               <div>
                 <label className="label">SO / Doc No</label>
                 <input className="input" value={header.erp_so_no} onChange={setH('erp_so_no')} placeholder="e.g. SO260017" />
+              </div>
+              <div>
+                <label className="label">UC#</label>
+                <input className="input" value={header.uc_no} onChange={setH('uc_no')} placeholder="e.g. UC4950/26" />
               </div>
             </div>
           </div>

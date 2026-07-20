@@ -16,7 +16,8 @@ const STATUS_STYLE = {
 const SOURCE_STYLE = {
   ERP: 'bg-gray-100 text-gray-600', Alibaba: 'bg-orange-100 text-orange-700',
   Amazon: 'bg-yellow-100 text-yellow-800', 'Online Shop': 'bg-blue-100 text-blue-700',
-  Retail: 'bg-purple-100 text-purple-700', Other: 'bg-gray-100 text-gray-500',
+  Retail: 'bg-purple-100 text-purple-700', App: 'bg-emerald-100 text-emerald-700',
+  Other: 'bg-gray-100 text-gray-500',
 }
 
 const BLANK = { source: 'ERP', currency: 'HKD', status: 'open', confirmed: false }
