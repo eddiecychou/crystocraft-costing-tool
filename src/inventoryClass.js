@@ -27,7 +27,11 @@ export function parseStockPaste(text) {
     const cells = (line.includes('\t') ? line.split('\t') : line.split(',')).map(s => s.trim()).filter(Boolean)
     if (cells.length < 2) continue
     const code = cells[0].toUpperCase()
-    if (!/[A-Z]/.test(code) || !/\d/.test(code)) continue   // needs a code-like first cell
+    // Needs a code-like first cell. A digit is required (every real code has
+    // one); a letter is NOT — many JES-origin crystal codes are pure numeric
+    // (e.g. "5186188"), and requiring a letter silently dropped every one of
+    // them on import.
+    if (!/\d/.test(code)) continue
     let qi = -1
     for (let i = cells.length - 1; i >= 1; i--) { if (/^[\d,]+(\.\d+)?$/.test(cells[i])) { qi = i; break } }
     if (qi === -1) continue
