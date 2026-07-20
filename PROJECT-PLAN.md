@@ -403,6 +403,52 @@ five hours per refresh is the thing making the mirror stale.
 `JobOrderBOM` is the fourth giant and was never probed — do not flip it on the
 assumption it behaves like the others.
 
+### New requirement: a 31 March stock valuation for the year-end audit
+
+Cindy needs a snapshot **value** at the financial year end, in three parts:
+
+| Part | Where it lives today | App readiness |
+|---|---|---|
+| **B2C finished goods** | Excel, managed by **ChunCi** — not in JES | ❌ outside both systems |
+| **Done but not yet shipped** | nowhere — derivable from order state | 🟡 conditional, see below |
+| **Components in the warehouse** | app ledgers (after the stocktake) | 🟡 quantities yes, value no |
+
+**This partly reverses the "output is implicit" decision** (§4 of the retirement
+plan). The audit needs a done-but-not-shipped figure, which is a finished-goods
+value. The saving grace is that it does **not** require holding a finished-goods
+balance — it can be *derived* from orders that have had production-in but are not
+yet shipped, valued at BOM cost. Derivation rather than a stored balance keeps
+the original decision intact.
+
+⚠️ **Correction to the owner's proposed method.** The suggestion was to derive it
+from sales invoices plus `uc_registry`. Those tell you what has been *invoiced* —
+so their complement is "not yet invoiced", which is **not** the same as "produced
+but not shipped". An order can be un-invoiced and not yet made. **Only the app's
+production-in timestamp distinguishes them.**
+
+**Consequence: XiangXia's trial period is load-bearing, not just habit-forming.**
+If production-in is not recorded between now and the year end, the
+done-but-not-shipped figure cannot be produced at all. That changes "try to use
+the app as much as possible" into a requirement with an audit deadline attached.
+
+**Gap to build: nothing in the app values stock.** The ingredients both exist —
+quantities in the ledgers, `unit_cost` volume tiers on components — but nothing
+multiplies them. A valuation report is well scoped and now has a date attached.
+
+**Two things to settle with Cindy:**
+
+1. **Which 31 March?** If it is 2026-03-31 this is historical reconstruction from
+   JES and the Excels; if 2027-03-31 the app can be designed to produce it. Very
+   different pieces of work.
+2. **Which cost basis?** Component costs are stored as *volume tiers*
+   (`min_qty` / `unit_cost`), so there is no single unit cost to read. Audit
+   valuation usually wants actual purchase cost — that rule needs stating.
+
+**Also new: ChunCi is a fourth person and a third spreadsheet.** The map is now
+XiangXia (production, stock, item master, purchasing — keeps the metal stock
+Excel), CuiLing (sales orders, invoices), Cindy (books, UC registry, PBIS),
+ChunCi (B2C finished goods Excel).
+
 ### ⚠️ JES blocks invoicing without FTBS stock — production and sales are coupled
 
 CuiLing, asked whether JES will raise an invoice when the finished-goods
