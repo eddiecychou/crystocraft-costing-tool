@@ -518,6 +518,66 @@ carries that total. Cindy's working file referenced it as `UC4657`, which belong
 to Rex Wong, so that reference was simply wrong. This is a real invoice in JES
 and in the books with no UC number at all.
 
+### Crystal migration — JES inventory can be retired (2026-07-20)
+
+XiangXia: **the only stock in JES that is maintained and accurate is the
+crystals.** Migrate those to the app and the inventory side of JES can be
+switched off. Metals are already worthless there — the real figures are in her
+Excel (§4 of the retirement plan).
+
+**Source: the movement ledger, not `itemwhbal`.** For the 180 `ST` codes active
+since 2025, the two agree on **162** and differ on **18** — and `itemwhbal` is
+*lower* every time, exactly the lag a stale snapshot produces. Consistent with
+V7.15 and with the project rule to prefer ledgers over balance tables.
+
+**Prepared: `Desktop/ERP Migration/crystal_opening_balances.tsv`** — 180 codes,
+`code / name / qty`, the format the Crystal Stock **Import Stock** button expects.
+
+| | |
+|---|---:|
+| Codes | 180 (active since 2025) |
+| With stock | 117 |
+| At zero | 63 |
+| Total units | 3,110,447 |
+
+Scoped to codes moved since 2025 rather than the 433 with any non-zero ledger
+balance — **338 of those have not moved since before 2020** and would arrive as
+phantom SKUs on day one.
+
+Two negatives (`5186188` −3, `5135900` −5) were **clamped to 0**; a negative
+cannot be an opening balance.
+
+**The 18 disagreeing codes are a spot-check list**, not a problem — a short
+physical count instead of counting all 180 blind. Largest is `C01-1028-26-002`:
+ledger 108,072 vs JES 69,752.
+
+#### Two corrections to earlier notes in this file
+
+1. **Goods receipt into the app already exists.** An earlier note claimed the app
+   could not receive purchased stock and that XiangXia would need manual
+   adjustments. **Wrong** — `src/poReceive.js` and `components/PoReceiveStock.jsx`
+   receive PO lines into stock across all three classes, posting `receipt`
+   movements tagged with the PU number, reversible. The claim came from grepping
+   only `PurchaseOrderDetail.jsx` and `purchaseOrders.js` and concluding from
+   absence.
+2. **Crystal Stock is empty** (`0 of 0 items`), so the import has no collision
+   risk with existing app data.
+
+#### ⚠️ One latent trap in `poReceive.js`
+
+`loadInventoryIndex` indexes metal, then crystals, then packaging, with
+`// first wins on duplicate codes`. **So a code present in both Components and
+Crystal Stock routes its receipts to metal, silently.** The incoming codes are
+`C01-*`, `BDC-*` and numeric while components are `P-GL*`, so a clash is
+unlikely — but it is worth checking after import, because the failure mode is
+invisible: stock lands in the wrong class with no error.
+
+Related vocabulary note: **"crystal" in the app means Swarovski stones.** The K9
+crystal blanks (`P-GL0057…`) live under Components and are classed `metal`. That
+split is functional — BOM-driven parts in Components, per-order picked stones in
+Crystal Stock — but the word means two different things depending on who is
+speaking, and JES adds a third (`ST` vs `SF`).
+
 ### Step 2 finally started: CuiLing's sales walkthrough (2026-07-20)
 
 The screen captures the plan has called its main protection against discovering
