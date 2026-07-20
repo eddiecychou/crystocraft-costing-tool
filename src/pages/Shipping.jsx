@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
-import { useOrders, orderStatusOf } from '../shipping'
+import { useOrders, orderStatusOf, getOrder, getOrderLines, createOrderWithLines } from '../shipping'
+import { allocateOrderUc } from '../ucRegistry'
 import { useVendors, FREIGHT_MODES, modeLabel, strengthOf } from '../logistics'
-import { MapPin, FileInput, ClipboardCheck, MessageCircle, Star, Truck } from 'lucide-react'
+import { MapPin, FileInput, ClipboardCheck, MessageCircle, Star, Truck, Copy } from 'lucide-react'
 import ComponentRequirements from './ComponentRequirements'
 
 const TABS = [
@@ -42,6 +43,8 @@ function ShipmentsList() {
   const navigate = useNavigate()
   const { orders, loading } = useOrders()
   const [search, setSearch] = useState('')
+  const [duplicatingId, setDuplicatingId] = useState(null)
+  const [dupError, setDupError] = useState('')
 
   const filtered = orders
     .filter(o => {
@@ -50,6 +53,41 @@ function ShipmentsList() {
       return hay.includes(search.toLowerCase())
     })
     .sort((a, b) => (b.order_date || '').localeCompare(a.order_date || ''))   // newest order date first
+
+  // "Duplicate" — matches how CuiLing actually works in JES: copy a repeat
+  // customer's previous order rather than re-entering their details, then edit
+  // the product codes. The one thing this deliberately does NOT copy is the
+  // UC# — a carried-over UC is the exact, repeatable slip that workflow
+  // produces there (confirmed against the registry: UC4657 duplicated onto
+  // SI240240, which then had no registry row of its own). A fresh UC is
+  // allocated instead; everything else copies through, same as her habit.
+  async function handleDuplicate(o) {
+    if (duplicatingId) return
+    setDuplicatingId(o.id); setDupError('')
+    try {
+      const [src, lines] = await Promise.all([getOrder(o.id), getOrderLines(o.id)])
+      if (!src) throw new Error('Order not found.')
+      const uc = await allocateOrderUc({ customer_name: src.customer_name, currency: src.currency })
+      const newOrderData = {
+        source: 'duplicated',
+        customer_id: src.customer_id, customer_name: src.customer_name,
+        currency: src.currency, incoterm: src.incoterm,
+        destination: src.destination, notes: src.notes,
+        uc_no: uc.full,
+        // JES references and totals belong to the source document, not the
+        // copy — order_date resets too, since a duplicate is naturally today's.
+        erp_pi_no: '', erp_so_no: '', order_date: '', status: 'draft',
+        subtotal: null, discount_pct: null, discount_amount: null, total_amount: null,
+      }
+      const newLines = lines.map((l, i) => ({ ...l, line_no: i + 1 }))
+      const { id: newId, commit } = createOrderWithLines(newOrderData, newLines)
+      await commit
+      navigate(`/shipments/${newId}`)
+    } catch (err) {
+      setDupError(err.message || 'Could not duplicate this order.')
+      setDuplicatingId(null)
+    }
+  }
 
   return (
     <div className="p-4 md:p-6">
@@ -63,6 +101,7 @@ function ShipmentsList() {
 
       <input type="text" placeholder="Search by customer, PI no, SO no, destination…"
         className="input w-full mb-4" value={search} onChange={e => setSearch(e.target.value)} />
+      {dupError && <p className="text-sm text-red-600 mb-3">{dupError}</p>}
 
       {filtered.length === 0 && !loading ? (
         <div className="text-center py-20 text-gray-400">
@@ -82,6 +121,7 @@ function ShipmentsList() {
                 <th className="px-4 py-2.5 font-medium whitespace-nowrap">Currency</th>
                 <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Order Value</th>
                 <th className="px-4 py-2.5 font-medium whitespace-nowrap">Status</th>
+                <th className="px-2 py-2.5"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -98,6 +138,7 @@ function ShipmentsList() {
                     <td className="px-4 py-3 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-gray-900 truncate">{o.customer_name || 'Unnamed customer'}</span>
+                        {o.uc_no && <span className="text-xs text-gray-400">{o.uc_no}</span>}
                         {needsReconcile && (
                           <span title="Needs reconcile" className="inline-flex items-center text-amber-600">
                             <ClipboardCheck size={12} />
@@ -116,6 +157,13 @@ function ShipmentsList() {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${st.style}`}>{st.label}</span>
+                    </td>
+                    <td className="px-2 py-3 whitespace-nowrap text-right" onClick={e => e.stopPropagation()}>
+                      <button type="button" onClick={() => handleDuplicate(o)} disabled={duplicatingId === o.id}
+                              title="Duplicate this order — allocates a fresh UC#"
+                              className="p-1.5 rounded-lg text-gray-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-50 transition-colors">
+                        <Copy size={14} className={duplicatingId === o.id ? 'animate-pulse' : ''} />
+                      </button>
                     </td>
                   </tr>
                 )
