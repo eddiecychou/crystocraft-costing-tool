@@ -61,16 +61,31 @@ function variantLabel(v) {
   return [brand && `${brand} Crystals`, plating && `${plating} Plated`].filter(Boolean).join(', ') || '—'
 }
 
-// Same code rule as the Range page: prefix when the design has one brand,
-// shared base when it spans several. brand_code already carries the full
-// prefix ("UA"), so nothing is appended to it.
-function codeOf(p) {
+function brandsOf(p) {
   const variants = Array.isArray(p.variants) ? p.variants : []
   const fallback = brandLetter(p.design_code) || 'D'
+  return [...new Set(variants.map(v => v.brand_code || fallback).filter(Boolean))]
+}
+
+// The heading code. The Range page leaves the prefix off a multi-brand design
+// because D0344-001 and A0344-001 are genuinely different codes — fine on a
+// screen where the brand chips sit beside it, wrong in a catalogue, where a
+// bare "0344-001" is not orderable. Multi-brand headings therefore show every
+// letter the design comes in ("D/A0344-001") and each price row carries its own
+// full code. brand_code already contains the whole prefix ("UA"), so nothing is
+// appended to it.
+function codeOf(p) {
   const designNo = p.design_no || designNumber(p.design_code)
-  const brands = [...new Set(variants.map(v => v.brand_code || fallback).filter(Boolean))]
-  const prefix = brands.length === 1 ? brands[0] : ''
+  const brands = brandsOf(p)
+  const prefix = brands.length ? brands.join('/') : ''
   return [`${prefix}${designNo}`, p.format_code].filter(Boolean).join('-')
+}
+
+// The orderable code for one variant: brand prefix + design + format + plating.
+function variantCode(p, v) {
+  const designNo = p.design_no || designNumber(p.design_code)
+  const brand = v.brand_code || brandLetter(p.design_code) || 'D'
+  return [`${brand}${designNo}`, p.format_code, v.plating_code].filter(Boolean).join('-')
 }
 
 // Identical brand+plating+price rows can occur when a design carries duplicate
@@ -78,7 +93,7 @@ function codeOf(p) {
 const dedupe = rows => {
   const seen = new Set()
   return rows.filter(r => {
-    const k = `${r.plating}|${r.price}`
+    const k = `${r.code}|${r.plating}|${r.price}`
     if (seen.has(k)) return false
     seen.add(k); return true
   })
@@ -155,9 +170,15 @@ export default function RangeCatalogueExport({ onClose }) {
           // Gold, Gold…") because the thing that differs — the crystal brand —
           // was not shown. Colour never appears: rangePrice ignores it, so
           // enumerating colours produced dozens of identical prices.
+          // Only shown when the heading cannot carry one prefix — otherwise it
+          // repeats the heading on every row for no gain.
           prices: dedupe(variants
             .filter(v => Number(v.ws_price_usd) > 0)
-            .map(v => ({ plating: variantLabel(v), price: priceOf(rangePrice(v)) }))),
+            .map(v => ({
+              plating: variantLabel(v),
+              code: brandsOf(p).length > 1 ? variantCode(p, v) : '',
+              price: priceOf(rangePrice(v)),
+            }))),
         }
       })
 

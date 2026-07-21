@@ -77,6 +77,7 @@ const s = StyleSheet.create({
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2 },
   priceRowAlt: { backgroundColor: C.rowAlt },
   plating: { fontSize: 7.5, color: C.grayDark, flex: 1, paddingRight: 6 },
+  rowCode: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 6.5, color: C.grayMid, letterSpacing: 0.3 },
   price: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 8.5 },
 
 })
@@ -112,8 +113,11 @@ function ProductCard({ p }) {
           <Text style={s.code}>{p.code}</Text>
           <Text style={s.name}>{p.name}</Text>
           {p.prices.map((r, i) => (
-            <View key={r.plating} style={[s.priceRow, i % 2 ? s.priceRowAlt : null]}>
-              <Text style={s.plating}>{r.plating}</Text>
+            <View key={`${r.code}|${r.plating}|${r.price}`} style={[s.priceRow, i % 2 ? s.priceRowAlt : null]}>
+              <View style={{ flex: 1, paddingRight: 6 }}>
+                {r.code ? <Text style={s.rowCode}>{r.code}</Text> : null}
+                <Text style={s.plating}>{r.plating}</Text>
+              </View>
               <Text style={s.price}>{r.price}</Text>
             </View>
           ))}
