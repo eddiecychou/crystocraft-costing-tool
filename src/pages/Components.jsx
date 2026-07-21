@@ -35,8 +35,8 @@ export default function Components() {
       </div>
 
       {tab === 'critical' ? <CriticalComponents />
-        : tab === 'crystalstock' ? <InventoryStockTab inv={crystalInventory} />
-        : tab === 'packagingstock' ? <InventoryStockTab inv={packagingInventory} />
+        : tab === 'crystalstock' ? <InventoryStockTab key="crystals" inv={crystalInventory} />
+        : tab === 'packagingstock' ? <InventoryStockTab key="packaging" inv={packagingInventory} />
         : tab === 'colours' ? <CrystalColours />
         : tab === 'crystalcosts' ? <CrystalCosts />
         : tab === 'formatmoq' ? <FormatMoqs />

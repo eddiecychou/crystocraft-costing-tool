@@ -67,12 +67,23 @@ export function createInventoryClass({ collectionName, attrField }) {
     const [items, setItems] = useState([])
     const [loading, setLoading] = useState(true)
     useEffect(() => {
+      setLoading(true)
       const q = query(COL(), orderBy('code'))
       return onSnapshot(q,
         snap => { setItems(snap.docs.map(fromDoc)); setLoading(false) },
         () => { setItems([]); setLoading(false) },
       )
-    }, [])
+      // collectionName, NOT []. Each inventory class owns its own useItems, but
+      // React matches hooks by POSITION, not by identity — so rendering
+      // <InventoryStockTab inv={crystalInventory}/> and then
+      // <InventoryStockTab inv={packagingInventory}/> in the same slot reuses
+      // one instance, and with [] deps the effect never re-ran. The crystal
+      // subscription survived into the Packaging Stock tab, which is why it
+      // showed 180 crystals and 3,110,447 on hand. Reported 2026-07-21.
+      //
+      // collectionName is constant within a class, so this changes nothing for
+      // a normal mount; it only fires when the hook is handed a different class.
+    }, [collectionName])
     return { items, loading }
   }
 
