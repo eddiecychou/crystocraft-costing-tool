@@ -38,8 +38,13 @@ export const JES_SEED_BY_YEAR = {
 // contiguity — a hole is normal here and usually means a voided invoice. Voids
 // are recorded in JES as sistatus VOID (90 of them), not by reusing the number.
 export const JES_SI_SEED_BY_YEAR = {
-  '26': 93,   // JES max SI260093, verified 2026-07-20
-  '25': 144,
+  '26': 94,   // JES max SI260094, re-verified 2026-07-21 after the first
+              // incremental sync. Was 93: CuiLing raised SI260094 on 21 Jul
+              // and the mirror had not seen it when the seed was first set,
+              // so the app's first invoice would have reused her number.
+  '25': 145,  // was 144 — that was a row count, not a max. The SI series has
+              // gaps (voids), so counting rows understates it. Not in the
+              // allocation path; corrected for the record.
 }
 
 export const soYear = (d = new Date()) => String(d.getFullYear() % 100).padStart(2, '0')

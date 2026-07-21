@@ -457,3 +457,47 @@ grant execute on function public.explode_bom(text) to service_role;
 
 -- Refresh PostgREST's schema cache so /rest/v1/erp_customer etc. appear.
 notify pgrst, 'reload schema';
+
+-- ── UC registry, dated from the invoice (Phase 7) ────────────────────────────
+-- Cindy, 2026-07-21: "the UC registry has a date field, but it is better to
+-- link to the SI date automatically if an SI is issued for that UC number."
+--
+-- She is right, and the field was worse than she thought: doc_date was NULL on
+-- all 3,695 rows. It has never been populated, so the registry's Date column
+-- has always fallen back to showing just the year suffix ("/26").
+--
+-- Derived here rather than copied into the table on purpose. A stored copy
+-- would go stale the moment an invoice date is corrected in JES, and the whole
+-- point of the registry is that it reconciles against the books.
+--
+-- The join key is jes_si -> salesinvoice.sino, not siref -> uc_no: 3,535 of
+-- 3,586 registry rows with a jes_si match an invoice this way, against 3,251
+-- the other way round. sino is unique across all 5,456 invoices, so the join
+-- cannot fan out a registry row into duplicates.
+--
+-- The '^SI[0-9]' guard is not cosmetic. jes_si is a free-text column carried
+-- over from Cindy's working .xls, and 29 rows hold status words rather than
+-- invoice numbers — 'Cancelled', 'CANCELLED', 'Not use', 'Open'. Same family
+-- as UC4933 in V7.16: the spreadsheet is a working file, not a clean feed.
+--
+-- Rows genuinely without an invoice (109 have no jes_si at all, mostly
+-- source='Other') keep doc_date as a manual entry. Hence effective_date:
+-- the invoice's date when there is one, the typed one otherwise.
+--
+-- NOTE u.* is expanded when the view is created, so re-run this file after
+-- adding a column to uc_registry.
+drop view if exists public.uc_registry_dated cascade;
+create view public.uc_registry_dated as
+select
+  u.*,
+  si.sidate::date                          as si_date,
+  coalesce(si.sidate::date, u.doc_date)    as effective_date
+from public.uc_registry u
+left join raw.salesinvoice si
+  on u.jes_si ~ '^SI[0-9]'
+ and si.sino = u.jes_si;
+
+revoke all on public.uc_registry_dated from anon, authenticated;
+grant select on public.uc_registry_dated to service_role;
+
+notify pgrst, 'reload schema';

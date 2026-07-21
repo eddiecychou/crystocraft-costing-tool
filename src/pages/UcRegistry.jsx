@@ -132,15 +132,28 @@ function UcForm({ record, onClose, onSaved }) {
               {UC_SOURCES.map((s) => <option key={s}>{s}</option>)}
             </select>
           </label>
+          {/* Date. Once an invoice is issued against this UC, the invoice's own
+              date is the document date and typing a second one here could only
+              disagree with the books — so the field shows the joined value and
+              stops being editable. Rows with no invoice keep the manual entry.
+              (Cindy, 2026-07-21.) */}
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-gray-500">Date</span>
-            <input type="date" value={f.doc_date ?? ''}
-              onChange={(e) => {
-                const v = e.target.value
-                // keep the sheet's /YY year in sync automatically
-                setF({ ...f, doc_date: v, year: v ? `/${v.slice(2, 4)}` : f.year })
-              }}
-              className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
+            {record?.si_date ? (
+              <span className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
+                    title={`Taken from invoice ${record.jes_si}`}>
+                {String(record.si_date).slice(0, 10)}
+                <span className="ml-1.5 text-xs text-gray-400">from {record.jes_si}</span>
+              </span>
+            ) : (
+              <input type="date" value={f.doc_date ?? ''}
+                onChange={(e) => {
+                  const v = e.target.value
+                  // keep the sheet's /YY year in sync automatically
+                  setF({ ...f, doc_date: v, year: v ? `/${v.slice(2, 4)}` : f.year })
+                }}
+                className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
+            )}
           </label>
           {field('Customer', 'customer', 'text', true)}
           <SiPicker value={f.jes_si} onChange={(v) => setF({ ...f, jes_si: v })} />
@@ -415,7 +428,11 @@ export default function UcRegistry() {
                 <tr key={r.id} className={`border-b border-gray-100 last:border-0 hover:bg-gray-50 ${r.status === 'void' ? 'opacity-55' : ''}`}>
                   <td className="px-3 py-2 font-mono text-xs">{r.uc_no}</td>
                   <td className="px-3 py-2 whitespace-nowrap text-gray-500">
-                    {r.doc_date ? String(r.doc_date).slice(0, 10) : r.year}
+                    {r.effective_date
+                      ? <span title={r.si_date ? `From invoice ${r.jes_si}` : 'Entered by hand'}>
+                          {String(r.effective_date).slice(0, 10)}
+                        </span>
+                      : r.year}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
                     <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${SOURCE_STYLE[r.source] || SOURCE_STYLE.Other}`}>{r.source}</span>

@@ -78,7 +78,11 @@ export default async function handler(req) {
     if (body.confirmed === true || body.confirmed === false) p.set('confirmed', `is.${body.confirmed}`)
     const q = String(body.q ?? '').trim().slice(0, 80).replace(/["\\]/g, ' ')
     if (q) p.set('or', `(uc_no.ilike."*${q}*",customer.ilike."*${q}*",jes_si.ilike."*${q}*",order_no.ilike."*${q}*")`)
-    const r = await rest(`uc_registry?${p.toString()}`)
+    // Reads go through uc_registry_dated, which adds si_date (the invoice's own
+    // date, joined from the mirror) and effective_date. Writes below still go to
+    // the uc_registry TABLE — the view is read-only by design, since the date is
+    // derived and must not be editable where it comes from an invoice.
+    const r = await rest(`uc_registry_dated?${p.toString()}`)
     if (!r.ok) return json({ error: 'List failed', detail: (await r.text()).slice(0, 300) }, 502)
     return json({ rows: await r.json() })
   }
