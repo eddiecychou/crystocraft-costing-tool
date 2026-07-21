@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { pdf } from '@react-pdf/renderer'
 import { db } from '../firebase'
-import { galleryUrl, designNumber, brandLetter, RANGE_CRYSTAL_BRANDS } from '../constants'
+import { galleryUrl, designNumber, brandLetter, brandSortRank, RANGE_CRYSTAL_BRANDS } from '../constants'
 import { useRates, wsPriceFactor, convertFromUSD, fmtMoney } from '../currency'
 import { useCrystalColors } from '../crystalColors'
 import { rangePrice } from '../rangeSku'
@@ -112,6 +112,29 @@ function codeOf(p) {
   const brands = brandsOf(p)
   const prefix = brands.length ? brands.join('/') : ''
   return [`${prefix}${designNo}`, p.format_code].filter(Boolean).join('-')
+}
+
+// Sort key for a product within its theme. Two parts, in this order:
+//
+//  1. brandSortRank — the ordering the Range page and the customer shop already
+//     share, so the catalogue does not invent a third. It keeps the classic
+//     D/A/U/H/M figurines together (all rank 0), then the UA series, UB, then
+//     B-series accessories last.
+//  2. The code itself, alphabetically. Within rank 0 this is what puts M0014
+//     before U0017. Design numbers are zero-padded to four digits, so a plain
+//     string compare is also numeric order — D0019 sorts before D0107.
+//
+// A multi-brand heading reads "D/A0023-001", and the "/" would sort it ahead of
+// every plain D code. The key therefore uses the FIRST brand only, so it sorts
+// where a reader expects: with the other D0023 items.
+function sortKeyOf(p) {
+  const brands = brandsOf(p)
+  const first = brands[0] || ''
+  const designNo = p.design_no || designNumber(p.design_code)
+  return {
+    rank: brands.length ? Math.min(...brands.map(brandSortRank)) : brandSortRank(first),
+    code: [`${first}${designNo}`, p.format_code].filter(Boolean).join('-'),
+  }
 }
 
 // The orderable code for one variant: brand prefix + design + format + plating.
@@ -225,6 +248,7 @@ export default function RangeCatalogueExport({ onClose }) {
         return {
           key: p.id,
           type: p.design_type || 'Other',
+          _sort: sortKeyOf(p),
           // Same rule the Range page uses: a single-brand design carries its
           // prefix (D0002-001), a multi-brand one shows the shared base because
           // the prefix differs per row — and each row names its brand anyway.
@@ -264,9 +288,18 @@ export default function RangeCatalogueExport({ onClose }) {
         }
       })
 
+      // Themes alphabetically; products within a theme by code. Firestore
+      // returns documents in no useful order, so without this the blocks sat in
+      // whatever sequence they happened to arrive in.
       const groups = [...new Map(cards.map(c => [c.type, null])).keys()]
         .sort((a, b) => a.localeCompare(b))
-        .map(title => ({ title, products: cards.filter(c => c.type === title) }))
+        .map(title => ({
+          title,
+          products: cards
+            .filter(c => c.type === title)
+            .sort((a, b) => a._sort.rank - b._sort.rank
+              || a._sort.code.localeCompare(b._sort.code)),
+        }))
 
       const validity = `Prices valid 30 days from issue · ${cur}`
       const blob = await pdf(
