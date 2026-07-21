@@ -170,9 +170,15 @@ function UcForm({ record, onClose, onSaved }) {
           {field('Balance (blank = total − deposit)', 'balance', 'number')}
           {field('Balance payment date', 'bal_pay_date')}
           {field('Shipment', 'shipment')}
-          {field('Shipping cost', 'shipping_cost', 'number')}
           {field('Customs (報關)', 'customs')}
-          {field('Delivery date', 'delivery_date')}
+          {/* Shipping cost and Delivery date removed 2026-07-21 (Cindy: "not
+              needed"). Both had been abandoned years ago and the data left
+              behind is not trustworthy: delivery_date holds 36 values of which
+              half are 'X' or '-', and shipping_cost was last used in /20 — its
+              221 values include 366,720.00 repeated across a dozen unrelated
+              /20 rows (a constant pasted down a spreadsheet column) and one
+              row where it simply duplicates the invoice total (UC3502,
+              35,013,502). The COLUMNS are kept; only the fields are gone. */}
           <label className="flex items-center gap-2 text-sm text-gray-600 mt-1">
             <input type="checkbox" checked={!!f.confirmed} onChange={set('confirmed')}
               className="rounded border-gray-300 text-teal-600 focus:ring-teal-500" /> Confirmed

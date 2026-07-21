@@ -132,6 +132,77 @@ Files: `shipping.js`, `ShipmentForm.jsx`, `Shipping.jsx`, `Shipments.jsx`,
 site: open a legacy order and check UC# is populated, that Duplicate order
 still allocates a *fresh* UC, and that the proforma prints one UC# row.
 
+### The first incremental sync ran (2026-07-21, on the LAN)
+
+**59 minutes, against 4h31m on 19 July, and clean.** Every incremental table
+pulled exactly the row count measured on the source before seeding — the seed
+was validated against `dbo.*` first, so the run held no surprises:
+
+| table | rows | watermark after |
+|---|---:|---|
+| Purchase | 0 | 17 Jul 08:09 |
+| SalesInvoice | 5 | 21 Jul 11:45 |
+| SalesOrder | 2 | 20 Jul 17:24 |
+| SalesOrderDetail | 1 | 20 Jul 09:32 |
+| Item | 4 | 19 Jul 21:44 |
+| ItemDetail | 40 | 19 Jul 21:44 |
+| ItemTransaction | 0 | 17 Jul 08:26 |
+| `JobOrderBOM` | 1,388,009 (full) | — |
+
+**Correction to the housekeeping note carried from V7.16.** `JobOrderBOM` was
+described as the last obstacle to a fast sync, on an estimate of ~27 minutes
+taken from the 19 July log. That number was wrong: it ran while three other
+giants shared the connection. Alone it takes **6.5 minutes**.
+
+The real cost is now the **486 small tables at ~6 s each ≈ 49 min**, nearly all
+fixed per-table overhead — 286 of them are empty and sync zero rows. Probing
+`JobOrderBOM` would save 6 minutes of 59; skipping or batching the known-empty
+tables is worth roughly eight times as much. That is the V7.18 lever, not the
+probe.
+
+**Seeds re-verified, and one was stale.** `JES_SI_SEED_BY_YEAR['26']` 93 → 94:
+CuiLing raised `SI260094` on 21 Jul after the seed was set on the 20th, so the
+app's first invoice would have silently reused her number. The V7.17 opening
+step existed to catch exactly this, and it did. `SI25` corrected 144 → 145 as
+well — that had been recorded from a row count, and the SI series has gaps from
+voids.
+
+### UC registry: two dead fields retired (Cindy, 2026-07-21)
+
+Cindy asked for **freight charge and delivery date** to be dropped from the
+registry. Checking them first showed both were abandoned years ago and the
+residue is not trustworthy:
+
+- `delivery_date` — 36 values, of which 14 are `X` and 3 are `-`. The real dates
+  stop in 2021.
+- `shipping_cost` — 221 values, last used in `/20`. They include `366,720.00`
+  repeated across a dozen unrelated `/20` rows (a constant pasted down a
+  spreadsheet column) and `UC3502`, where it simply duplicates the invoice
+  total at 35,013,502.
+
+Removed from the form and from the edge function's `WRITABLE` set, so nothing
+can repopulate them. **The columns are kept** — dropping them is irreversible
+and destroying six-year-old history was not what was asked for. If the columns
+should go too, that is a separate decision.
+
+### Next dependency: Cindy's JES → app code mapping
+
+Cindy will map **JES customer codes and supplier codes** onto the app's own
+customers and suppliers. **This gates mapping invoices and purchases** — until
+an app customer can be resolved to a JES `ctcode`, an app-raised invoice cannot
+be tied to the ERP's record of the same party, and neither can a PU.
+
+The receiving fields already exist on both sides and are editable:
+`erp_code` on customers (`CustomerForm.jsx:229`) and on suppliers
+(`SupplierForm.jsx:129`), both searchable in the list pages. So her mapping has
+somewhere to land without any schema work.
+
+What is **not** built is a bulk path. Entering codes one record at a time
+through the forms is fine for a handful and wrong for hundreds. When her
+mapping arrives — most likely as a sheet — the thing to build is an importer
+that matches on code and reports what it could not place. Deliberately not
+built ahead of seeing the file: its shape decides the matching rules.
+
 ---
 
 ## Current Status — V7.16 CLOSED as of 2026-07-21
