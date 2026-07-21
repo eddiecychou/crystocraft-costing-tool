@@ -56,10 +56,37 @@ const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.n
 // "Bohemia Crystals, Gold Plated" — the row label a buyer can actually order
 // from. A variant is a brand x plating pair, and showing only the plating made
 // several rows look identical.
+//
+// crystal_name is the variant's own description and is preferred when set: it
+// is what distinguishes a Golden Teak or Crystal AB variant from the plain one
+// at the same brand and plating. It is hand-entered, so it is often blank or
+// stale — which is exactly why ambiguous() below reports what needs attention
+// rather than the document quietly printing two identical-looking rows.
 function variantLabel(v) {
   const brand = BRAND_NAME[v.brand_code] || v.brand_code || ''
   const plating = v.plating_name || v.plating_code || ''
-  return [brand && `${brand} Crystals`, plating && `${plating} Plated`].filter(Boolean).join(', ') || '—'
+  const crystal = (v.crystal_name || '').trim()
+  return [
+    brand && `${brand} Crystals`,
+    plating && `${plating} Plated`,
+    crystal || '',
+  ].filter(Boolean).join(', ') || '—'
+}
+
+// Products whose priced rows still collide after labelling — same code, same
+// label, different price. These are the ones whose variant descriptions were
+// never filled in, and no amount of formatting can tell them apart.
+function ambiguousProducts(list) {
+  const out = []
+  for (const p of list) {
+    const rows = (Array.isArray(p.variants) ? p.variants : [])
+      .filter(v => Number(v.ws_price_usd) > 0)
+      .map(v => `${v.brand_code || ''}|${v.plating_code || ''}|${(v.crystal_name || '').trim()}|${(v.crystal_colors || []).join(',')}`)
+    const seen = new Set()
+    const clash = rows.some(k => (seen.has(k) ? true : (seen.add(k), false)))
+    if (clash) out.push(p)
+  }
+  return out
 }
 
 function brandsOf(p) {
@@ -257,6 +284,12 @@ export default function RangeCatalogueExport({ onClose }) {
     }
   }
 
+  // Variant descriptions are hand-entered and, per the owner, often not kept
+  // up to date. Where two priced variants are indistinguishable the catalogue
+  // has nothing to print but the same row twice — so say which products those
+  // are BEFORE the PDF goes to a customer, rather than after they ask.
+  const needsAttention = useMemo(() => ambiguousProducts(sellable), [sellable])
+
   // Priced brand x plating rows — what the catalogue actually lists. Counting
   // colour permutations here would advertise a number the document no longer
   // contains.
@@ -299,6 +332,22 @@ export default function RangeCatalogueExport({ onClose }) {
               {Number(profile?.fx_rate) > 0 && <> · fixed rate {profile.fx_rate}</>}
             </div>
           </div>
+
+          {needsAttention.length > 0 && (
+            <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+              <div className="font-medium inline-flex items-center gap-1.5">
+                <AlertTriangle size={13} /> {needsAttention.length} product{needsAttention.length === 1 ? '' : 's'} will show rows that look identical
+              </div>
+              <p className="mt-0.5 text-amber-700/90">
+                Two priced variants share a brand, plating and description, so the catalogue cannot tell them apart.
+                Fill in the crystal description on those variants to fix it.
+              </p>
+              <p className="mt-1 font-mono text-[11px] text-amber-900">
+                {needsAttention.slice(0, 12).map(p => codeOf(p)).join('  ')}
+                {needsAttention.length > 12 ? `  +${needsAttention.length - 12} more` : ''}
+              </p>
+            </div>
+          )}
 
           {progress && (
             <div className="mb-3">
