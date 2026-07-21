@@ -4,6 +4,7 @@ import { pdf } from '@react-pdf/renderer'
 import { db } from '../firebase'
 import { galleryUrl, designNumber, brandLetter, RANGE_CRYSTAL_BRANDS } from '../constants'
 import { useRates, wsPriceFactor, convertFromUSD, fmtMoney } from '../currency'
+import { useCrystalColors } from '../crystalColors'
 import { rangePrice } from '../rangeSku'
 import RangeCataloguePDF from './RangeCataloguePDF'
 import { X, BookOpen, Loader2, AlertTriangle } from 'lucide-react'
@@ -88,6 +89,33 @@ function variantCode(p, v) {
   return [`${brand}${designNo}`, p.format_code, v.plating_code].filter(Boolean).join('-')
 }
 
+// Build the price rows, appending crystal colours only to rows that would
+// otherwise read identically. A premium-crystal variant sits beside the plain
+// one at the same brand and plating, so without this the pair looks like a
+// mistake; with colours on every row, the block becomes the wall of text the
+// first draft was cut down from.
+function withColourDisambiguation(variants, toRow, coloursOf) {
+  const rows = variants.map(v => ({ ...toRow(v), _colours: coloursOf(v) }))
+  const seen = new Map()
+  for (const r of rows) {
+    const k = `${r.code}|${r.plating}`
+    seen.set(k, (seen.get(k) || 0) + 1)
+  }
+  const out = rows.map(r => {
+    const ambiguous = seen.get(`${r.code}|${r.plating}`) > 1
+    // Truncated: a variant can cover a dozen colours and the point is only to
+    // say which option this is, not to enumerate the range.
+    const list = r._colours.slice(0, 3).join(', ')
+    const more = r._colours.length > 3 ? ` +${r._colours.length - 3}` : ''
+    return {
+      code: r.code,
+      plating: ambiguous && list ? `${r.plating} — ${list}${more}` : r.plating,
+      price: r.price,
+    }
+  })
+  return dedupe(out)
+}
+
 // Identical brand+plating+price rows can occur when a design carries duplicate
 // variant rows; the buyer should see one.
 const dedupe = rows => {
@@ -108,6 +136,7 @@ export default function RangeCatalogueExport({ onClose }) {
   const [progress, setProgress] = useState(null)   // { done, total }
   const [error, setError] = useState('')
   const rates = useRates()
+  const { colors } = useCrystalColors()
 
   useEffect(() => {
     Promise.all([
@@ -154,6 +183,11 @@ export default function RangeCatalogueExport({ onClose }) {
       const dataUrls = await mapLimit(heroes, 6, imageToDataURL,
         (done, total) => setProgress({ done, total }))
 
+      const colourName = Object.fromEntries((colors || []).map(c => [c.code, c.name]))
+      // Which crystal colours a variant covers, as names. Used only to tell two
+      // otherwise-identical rows apart.
+      const coloursOf = v => (v.crystal_colors || []).map(c => colourName[c] || c)
+
       const cards = sellable.map((p, i) => {
         const variants = Array.isArray(p.variants) ? p.variants : []
         return {
@@ -172,13 +206,25 @@ export default function RangeCatalogueExport({ onClose }) {
           // enumerating colours produced dozens of identical prices.
           // Only shown when the heading cannot carry one prefix — otherwise it
           // repeats the heading on every row for no gain.
-          prices: dedupe(variants
-            .filter(v => Number(v.ws_price_usd) > 0)
-            .map(v => ({
+          // CORRECTION (owner, 2026-07-21): colour DOES affect price. The app's
+          // model puts price on the variant, so rangePrice ignores colour — but
+          // the team expresses a premium crystal (Golden Teak, Crystal AB, the
+          // GX/AX mixes) by splitting it into its own variant at its own price.
+          //
+          // Dropping colour therefore turned two real options into what looked
+          // like a duplicated row: "Bohemia Crystals, Chrome Plated" twice at
+          // 5.25 and 5.28. The colours are added back, but ONLY where two rows
+          // share a brand and plating — listing them everywhere is what made the
+          // first draft unreadable.
+          prices: withColourDisambiguation(
+            variants.filter(v => Number(v.ws_price_usd) > 0),
+            v => ({
               plating: variantLabel(v),
               code: brandsOf(p).length > 1 ? variantCode(p, v) : '',
               price: priceOf(rangePrice(v)),
-            }))),
+            }),
+            coloursOf,
+          ),
         }
       })
 

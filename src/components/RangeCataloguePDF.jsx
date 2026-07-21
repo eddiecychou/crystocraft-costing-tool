@@ -14,13 +14,20 @@ import WorkSansSemiBold from '../assets/fonts/WorkSans-SemiBold.ttf'
 // breaks, no page numbers, and no prices. This is generated, paginated and
 // priced.
 //
-// ONE BLOCK PER PRODUCT, AND COLOUR NEVER APPEARS. rangePrice() reads
-// variant.ws_price_usd and ignores colour entirely, so enumerating colours
-// listed every SKU of a design at an identical price — sixteen rows of
-// "USD 3.85" for one butterfly. What actually varies is the variant, which is a
-// CRYSTAL BRAND x PLATING pair, so each row reads "Bohemia Crystals, Gold
-// Plated". Showing only the plating made those rows look like a meaningless
-// repeat of Chrome/Chrome/Gold, because the thing that differed was hidden.
+// ONE BLOCK PER PRODUCT. A row is a variant, which is a CRYSTAL BRAND x PLATING
+// pair, so it reads "Bohemia Crystals, Gold Plated". Showing only the plating
+// made those rows look like a meaningless repeat of Chrome/Chrome/Gold, because
+// the thing that differed was hidden.
+//
+// COLOUR IS NOT ENUMERATED, BUT IT IS NOT IRRELEVANT EITHER. An earlier draft
+// listed every colour and produced sixteen rows of "USD 3.85" for one
+// butterfly. The correction (owner, 2026-07-21) is that colour DOES affect
+// price: premium crystals — Golden Teak, Crystal AB, the GX/AX mixes — are
+// dearer, and the team expresses that by splitting them into their own variant
+// at their own price. rangePrice() reads variant.ws_price_usd, so the model
+// carries this correctly; only the display had lost it. Colours are therefore
+// appended to a row ONLY when another row shares its brand and plating, which
+// is exactly when the reader would otherwise see an unexplained duplicate.
 
 Font.register({ family: 'Questrial', src: QuestrialRegular })
 Font.register({ family: 'Work Sans', fonts: [
