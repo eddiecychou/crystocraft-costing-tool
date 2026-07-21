@@ -3,7 +3,7 @@ import ExportFilterBar from '../components/ExportFilterBar'
 import { downloadCsv, exportStem, inDateRange } from '../exportCsv'
 import { Link, useNavigate } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
-import { useOrders } from '../shipping'
+import { useOrders, updateOrder, NO_INVOICE_REASONS, noInvoiceReasonOf } from '../shipping'
 import { erpLookup } from '../erpApi'
 import { Receipt, AlertTriangle, FileText, Database } from 'lucide-react'
 import ErpDocModal from '../components/ErpDocModal'
@@ -68,6 +68,7 @@ export default function SalesInvoices() {
   const { orders, loading } = useOrders()
   const [search, setSearch] = useState('')
   const [showAllAwaiting, setShowAllAwaiting] = useState(false)
+  const [showResolved, setShowResolved] = useState(false)
   const [erpDoc, setErpDoc] = useState(null)   // JES invoice being viewed, read-only
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
@@ -75,7 +76,7 @@ export default function SalesInvoices() {
 
   const erp = useErpInvoices(search)
 
-  const { invoiced, awaiting } = useMemo(() => {
+  const { invoiced, awaiting, resolved } = useMemo(() => {
     const q = search.trim().toLowerCase()
     const match = (o) =>
       !q || `${o.customer_name} ${o.erp_si_no} ${o.erp_so_no} ${o.uc_no}`.toLowerCase().includes(q)
@@ -84,11 +85,27 @@ export default function SalesInvoices() {
       invoiced: all
         .filter((o) => o.erp_si_no)
         .sort((a, b) => (b.invoiced_at || b.order_date || '').localeCompare(a.invoiced_at || a.order_date || '')),
+      // Newest first. This was oldest-first on the reasoning that the oldest is
+      // the most overdue — but the tail is pre-app JES history that will never
+      // be invoiced here, so it buried the recent orders that actually need
+      // acting on under two years of noise.
       awaiting: all
-        .filter((o) => !o.erp_si_no && AWAITING.has(o.status))
-        .sort((a, b) => (a.order_date || '').localeCompare(b.order_date || '')),   // oldest first — most overdue
+        .filter((o) => !o.erp_si_no && AWAITING.has(o.status) && !o.no_invoice_reason)
+        .sort((a, b) => (b.order_date || '').localeCompare(a.order_date || '')),
+      // Dismissed, kept visible so the decision can be reviewed or undone.
+      resolved: all.filter((o) => !o.erp_si_no && AWAITING.has(o.status) && o.no_invoice_reason),
     }
   }, [orders, search])
+
+  // Marking an order as never-to-be-invoiced. Written straight through rather
+  // than via a confirm: it is trivially reversible from the resolved list, and
+  // there are 66 of these to work through.
+  async function setNoInvoice(o, reason) {
+    await updateOrder(o.id, {
+      no_invoice_reason: reason,
+      no_invoice_at: reason ? new Date().toISOString().slice(0, 10) : null,
+    })
+  }
 
   // One list, two sources. Which system an invoice lives in is an implementation
   // detail to the person looking for it, so they are merged and sorted by date —
@@ -195,7 +212,8 @@ export default function SalesInvoices() {
                   "shipped without an invoice" claimed something untrue about
                   historical data and made 66 rows look like 66 problems. */}
               <p className="text-xs text-amber-700/80 mt-0.5">
-                Orders imported from JES were invoiced there — search the invoice or UC number to check before raising one.
+                Newest first. Orders imported from JES were invoiced there — search the invoice or UC number to check
+                before raising one, then mark it so it leaves this list.
               </p>
             </div>
             <table className="w-full text-sm">
@@ -209,11 +227,65 @@ export default function SalesInvoices() {
                     <td className="px-4 py-2.5 whitespace-nowrap text-right tabular-nums text-gray-800">
                       {fmtValue(o.total_amount ?? o.subtotal)}
                     </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-xs text-amber-700">needs invoice →</td>
+                    {/* stopPropagation: the row itself navigates to the order,
+                        and picking a reason must not do both. */}
+                    <td className="px-4 py-2.5 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
+                      <select
+                        value=""
+                        onChange={(e) => e.target.value && setNoInvoice(o, e.target.value)}
+                        className="text-xs border border-amber-200 bg-white rounded px-1.5 py-1 text-amber-800 hover:border-amber-400 cursor-pointer"
+                        title="This order will not be invoiced in the app — say why, and it leaves this list">
+                        <option value="">needs invoice ▾</option>
+                        {NO_INVOICE_REASONS.map((r) => (
+                          <option key={r.value} value={r.value}>{r.label}</option>
+                        ))}
+                      </select>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {resolved.length > 0 && (
+          <div className="mb-5">
+            <button type="button" onClick={() => setShowResolved(v => !v)}
+              className="text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2">
+              {showResolved ? 'Hide' : 'Show'} {resolved.length} order{resolved.length === 1 ? '' : 's'} marked as not needing an invoice
+            </button>
+            {showResolved && (
+              <div className="card mt-2 overflow-hidden">
+                <table className="w-full text-sm">
+                  <tbody className="divide-y divide-gray-50">
+                    {resolved.map((o) => (
+                      <tr key={o.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/shipments/${o.id}`)}>
+                        <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{fmtDate(o.order_date)}</td>
+                        <td className="px-4 py-2.5 whitespace-nowrap text-gray-500 font-mono text-xs">{o.erp_so_no || '—'}</td>
+                        <td className="px-4 py-2.5 text-gray-700">{o.customer_name || 'Unnamed customer'}</td>
+                        <td className="px-4 py-2.5 whitespace-nowrap text-right tabular-nums text-gray-600">
+                          {fmtValue(o.total_amount ?? o.subtotal)}
+                        </td>
+                        <td className="px-4 py-2.5 whitespace-nowrap">
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600"
+                                title={noInvoiceReasonOf(o.no_invoice_reason)?.hint}>
+                            {noInvoiceReasonOf(o.no_invoice_reason)?.label || o.no_invoice_reason}
+                          </span>
+                          {o.no_invoice_at && <span className="text-[11px] text-gray-400 ml-1.5">{o.no_invoice_at}</span>}
+                        </td>
+                        <td className="px-4 py-2.5 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
+                          <button type="button" onClick={() => setNoInvoice(o, '')}
+                            className="text-xs text-gray-500 hover:text-brand-600 underline underline-offset-2"
+                            title="Put this order back in the needs-invoice list">
+                            Undo
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 

@@ -37,6 +37,18 @@ export const ORDER_STATUSES = [
 ]
 export const orderStatusOf = v => ORDER_STATUSES.find(s => s.value === v) || ORDER_STATUSES[0]
 
+// Reasons an order legitimately never gets an app invoice. Each removes it from
+// the "no invoice recorded" list, and says which of three quite different
+// things happened — the list is a worklist, so an unexplained dismissal would
+// just move the ambiguity somewhere less visible.
+export const NO_INVOICE_REASONS = [
+  { value: 'invoiced_in_jes', label: 'Invoiced in JES',  hint: 'The invoice exists, in the old system' },
+  { value: 'on_hold',         label: 'On hold',          hint: 'Customer is holding it up — invoice later' },
+  { value: 'cancelled',       label: 'Cancelled',        hint: 'Order will not be invoiced at all' },
+]
+export const noInvoiceReasonOf = v => NO_INVOICE_REASONS.find(r => r.value === v) || null
+
+
 // Line classification (reconciliation). `non_product` = charge/service, excluded
 // from packing. Everything else is packable.
 export const LINE_TYPES = [
@@ -114,6 +126,17 @@ export const normOrder = o => ({
   // are optional. Anything validating an invoice must check the UC, not the SO.
   erp_si_no: str(o.erp_si_no),
   invoiced_at: o.invoiced_at || null,
+  // Why this order will never be invoiced in the app. Without it, a shipped
+  // order with no SI can only ever be "outstanding" — so a cancelled order and
+  // one the customer is sitting on look identical to one genuinely awaiting an
+  // invoice, and the awaiting list can never reach zero.
+  //
+  // NOT a status. 'cancelled' as a pipeline status would erase the fact that
+  // the goods actually shipped, and these orders keep their real status; this
+  // records a separate decision about invoicing.
+  no_invoice_reason: NO_INVOICE_REASONS.some(r => r.value === o.no_invoice_reason)
+    ? o.no_invoice_reason : '',
+  no_invoice_at: o.no_invoice_at || null,
   // The app's UC reference (full form, e.g. "UC4950/26"). Free text — usually
   // typed in from Cindy's list, same as today. It is set automatically in two
   // places: "Duplicate order" allocates a fresh one rather than copying the
