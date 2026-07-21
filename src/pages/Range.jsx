@@ -11,6 +11,7 @@ import { Gem } from 'lucide-react'
 import { useCrystalColors, colorMap } from '../crystalColors'
 import { useComponents, buildableFromComponents } from '../criticalComponents'
 import ErpProductImport from '../components/ErpProductImport'
+import RangeCatalogueExport from '../components/RangeCatalogueExport'
 
 const PLATING_DOT = Object.fromEntries(RANGE_PLATINGS.map(p => [p.name, p.dot]))
 const STATUS_META = Object.fromEntries(RANGE_STATUSES.map(s => [s.value, s]))
@@ -140,6 +141,7 @@ export default function Range() {
 
   // One item per product (design number + format); variations collapsed inside
   const [importing, setImporting] = useState(false)
+  const [cataloguing, setCataloguing] = useState(false)
 
   const items = useMemo(() => products.map(p => {
     const fallbackBrand = brandLetter(p.design_code) || 'D'
@@ -265,6 +267,7 @@ export default function Range() {
       {importing && (
         <ErpProductImport products={products} onClose={() => setImporting(false)} />
       )}
+      {cataloguing && <RangeCatalogueExport onClose={() => setCataloguing(false)} />}
 
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-1">
         <div>
@@ -276,6 +279,9 @@ export default function Range() {
           {/* Importing is the faster path when JES already has the design —
               it fills the code, description and the FM components from the
               ERP BOM. "New product" stays for designs the ERP has never seen. */}
+          <button type="button" onClick={() => setCataloguing(true)} className="btn-secondary text-sm text-center">
+            Catalogue PDF
+          </button>
           <button type="button" onClick={() => setImporting(true)} className="btn-secondary text-sm text-center">
             Import from ERP
           </button>
