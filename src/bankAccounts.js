@@ -3,10 +3,10 @@
 // signed-in user's Firebase token and the edge function does the work.
 //
 // These replace the bank details that used to be retyped into every quote/PI.
-import { auth } from './firebase'
+import { authedUser } from './firebase'
 
 async function call(body) {
-  const user = auth.currentUser
+  const user = await authedUser()
   if (!user) throw new Error('Please sign in.')
   const token = await user.getIdToken()
   const res = await fetch('/api/bank', {

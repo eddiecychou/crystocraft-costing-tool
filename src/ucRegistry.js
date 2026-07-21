@@ -3,7 +3,7 @@
 // live + history. (The earlier Firestore version is retired.) UC#s are allocated
 // atomically by a Postgres sequence on insert.
 import { useEffect, useState } from 'react'
-import { auth } from './firebase'
+import { authedUser } from './firebase'
 
 // The sales CHANNEL, and only that. Two values were removed on 2026-07-21:
 //
@@ -26,7 +26,7 @@ export const ucSource = (v) => (v in UC_SOURCE_ALIASES ? UC_SOURCE_ALIASES[v] : 
 export const UC_CURRENCIES = ['HKD', 'USD', 'EUR', 'GBP', 'RMB', 'CAD', 'AUD', 'JPY', 'MXN']
 
 async function ucApi(op, extra) {
-  const user = auth.currentUser
+  const user = await authedUser()
   if (!user) throw new Error('Please sign in.')
   const token = await user.getIdToken()
   const res = await fetch('/api/uc', {

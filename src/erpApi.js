@@ -1,7 +1,7 @@
 // Client for the ERP archive (read-only, in Supabase) via the /api/erp edge
 // function. The browser never talks to Supabase directly — it sends the signed-in
 // user's Firebase token and the edge function does the query server-side.
-import { auth } from './firebase'
+import { authedUser } from './firebase'
 
 // `filters` holds entity-specific equality filters (stock → { warehouse,
 // item_type }); `nonZeroOnly` hides stock lines that have netted to zero.
@@ -9,7 +9,7 @@ export async function erpLookup(
   entity,
   { q = '', limit = 25, activeOnly = false, filters = {}, nonZeroOnly = false } = {},
 ) {
-  const user = auth.currentUser
+  const user = await authedUser()
   if (!user) throw new Error('Please sign in to look up ERP data.')
   const token = await user.getIdToken()
 
@@ -28,7 +28,7 @@ export async function erpLookup(
 // When the mirror last ran, and how current the ERP data in it is.
 // Returns { synced_at, data_through, tables, rows_mirrored } or null.
 export async function erpSyncStatus() {
-  const user = auth.currentUser
+  const user = await authedUser()
   if (!user) return null
   const token = await user.getIdToken()
   const res = await fetch('/api/erp', {
@@ -43,7 +43,7 @@ export async function erpSyncStatus() {
 // Multi-level BOM explosion for one item code. Returns tree rows:
 // { level, parent_code, component_code, component_type, qty, ext_qty, is_assembly, path }
 export async function erpBom(code) {
-  const user = auth.currentUser
+  const user = await authedUser()
   if (!user) throw new Error('Please sign in to look up ERP data.')
   const token = await user.getIdToken()
 
@@ -62,7 +62,7 @@ export async function erpBom(code) {
 // Components that CURRENT BOMs use, ranked as likely replacements for a
 // superseded code. Suggestions, not answers — the caller shows them to a human.
 export async function erpCodeAlternatives(code) {
-  const user = auth.currentUser
+  const user = await authedUser()
   if (!user) throw new Error('Please sign in to look up ERP data.')
   const token = await user.getIdToken()
   const res = await fetch('/api/erp', {
@@ -81,7 +81,7 @@ export async function erpCodeAlternatives(code) {
 // used by ZERO BOMs, while every BOM uses FM-K(32)-C (526). Returns
 // { found:Set, usage:{code->bomCount} }. One request per 400 codes.
 export async function erpCodesExist(codes) {
-  const user = auth.currentUser
+  const user = await authedUser()
   if (!user) throw new Error('Please sign in to look up ERP data.')
   const token = await user.getIdToken()
 
@@ -106,7 +106,7 @@ export async function erpCodesExist(codes) {
 // Detail for one header. `of` is 'sales_invoice' or 'sales_order'; `code` is the
 // invoice/order number. Returns { rows, surcharges } (surcharges = freight etc.).
 export async function erpLines(of, code) {
-  const user = auth.currentUser
+  const user = await authedUser()
   if (!user) throw new Error('Please sign in to look up ERP data.')
   const token = await user.getIdToken()
 
