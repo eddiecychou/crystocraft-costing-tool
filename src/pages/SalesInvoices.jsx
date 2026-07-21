@@ -29,6 +29,10 @@ const fmtValue = (v) => {
 // invoice. Draft and in-progress orders are not late, they are just early.
 const AWAITING = new Set(['shipped', 'delivered'])
 
+// Cap the preview. Unbounded, this block rendered 66 rows and pushed the actual
+// invoice list — the point of the page — entirely below the fold.
+const AWAITING_PREVIEW = 5
+
 // Historical invoices are READ from the ERP mirror, never imported. Copying
 // 5,455 JES invoices into Firestore would duplicate the system of record and
 // invite the two to drift; the mirror is already the archive (see
@@ -60,6 +64,7 @@ export default function SalesInvoices() {
   const navigate = useNavigate()
   const { orders, loading } = useOrders()
   const [search, setSearch] = useState('')
+  const [showAllAwaiting, setShowAllAwaiting] = useState(false)
 
   const erp = useErpInvoices(search)
 
@@ -128,15 +133,30 @@ export default function SalesInvoices() {
 
         {awaiting.length > 0 && (
           <div className="card mb-5 overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-2.5 bg-amber-50 border-b border-amber-200">
-              <AlertTriangle size={14} className="text-amber-600" />
-              <p className="text-sm font-medium text-amber-800">
-                {awaiting.length} order{awaiting.length === 1 ? '' : 's'} shipped without an invoice
+            <div className="px-4 py-2.5 bg-amber-50 border-b border-amber-200">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <p className="text-sm font-medium text-amber-800 inline-flex items-center gap-2">
+                  <AlertTriangle size={14} className="text-amber-600" />
+                  {awaiting.length} order{awaiting.length === 1 ? '' : 's'} with no invoice recorded in the app
+                </p>
+                {awaiting.length > AWAITING_PREVIEW && (
+                  <button type="button" onClick={() => setShowAllAwaiting(v => !v)}
+                          className="text-xs text-amber-800 hover:text-amber-900 underline underline-offset-2">
+                    {showAllAwaiting ? 'Show fewer' : `Show all ${awaiting.length}`}
+                  </button>
+                )}
+              </div>
+              {/* Most of these are pre-app orders imported from JES — their
+                  invoice exists there, it was just never recorded here. Saying
+                  "shipped without an invoice" claimed something untrue about
+                  historical data and made 66 rows look like 66 problems. */}
+              <p className="text-xs text-amber-700/80 mt-0.5">
+                Orders imported from JES were invoiced there — search the invoice or UC number to check before raising one.
               </p>
             </div>
             <table className="w-full text-sm">
               <tbody className="divide-y divide-gray-50">
-                {awaiting.map((o) => (
+                {(showAllAwaiting ? awaiting : awaiting.slice(0, AWAITING_PREVIEW)).map((o) => (
                   <tr key={o.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/shipments/${o.id}`)}>
                     <td className="px-4 py-2.5 whitespace-nowrap text-gray-600">{fmtDate(o.order_date)}</td>
                     <td className="px-4 py-2.5 whitespace-nowrap text-gray-500 font-mono text-xs">{o.erp_so_no || '—'}</td>
