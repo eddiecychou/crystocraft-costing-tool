@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
-import { useOrders, orderStatusOf, getOrder, getOrderLines, createOrderWithLines } from '../shipping'
+import { useOrders, orderStatusOf, orderUc, getOrder, getOrderLines, createOrderWithLines } from '../shipping'
 import { allocateOrderUc } from '../ucRegistry'
 import { useVendors, FREIGHT_MODES, modeLabel, strengthOf } from '../logistics'
 import { erpLookup } from '../erpApi'
@@ -78,7 +78,7 @@ function ShipmentsList() {
   const filtered = orders
     .filter(o => {
       if (!search) return true
-      const hay = `${o.customer_name} ${o.erp_pi_no} ${o.erp_so_no} ${o.destination?.country} ${o.destination?.city}`.toLowerCase()
+      const hay = `${o.customer_name} ${orderUc(o)} ${o.erp_so_no} ${o.destination?.country} ${o.destination?.city}`.toLowerCase()
       return hay.includes(search.toLowerCase())
     })
     .sort((a, b) => (b.order_date || '').localeCompare(a.order_date || ''))   // newest order date first
@@ -126,7 +126,7 @@ function ShipmentsList() {
         uc_no: uc.full,
         // JES references and totals belong to the source document, not the
         // copy — order_date resets too, since a duplicate is naturally today's.
-        erp_pi_no: '', erp_so_no: '', order_date: '', status: 'draft',
+        erp_so_no: '', order_date: '', status: 'draft',
         subtotal: null, discount_pct: null, discount_amount: null, total_amount: null,
       }
       const newLines = lines.map((l, i) => ({ ...l, line_no: i + 1 }))
@@ -186,7 +186,7 @@ function ShipmentsList() {
             <thead>
               <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
                 <th className="px-4 py-2.5 font-medium whitespace-nowrap">Order Date</th>
-                <th className="px-4 py-2.5 font-medium whitespace-nowrap">PI #</th>
+                <th className="px-4 py-2.5 font-medium whitespace-nowrap">UC#</th>
                 <th className="px-4 py-2.5 font-medium whitespace-nowrap">SO #</th>
                 <th className="px-4 py-2.5 font-medium">Customer</th>
                 <th className="px-4 py-2.5 font-medium whitespace-nowrap">Currency</th>
@@ -206,7 +206,7 @@ function ShipmentsList() {
                   <tr key={row.key} className="hover:bg-gray-50 transition-colors cursor-pointer"
                     onClick={() => navigate(`/shipments/${o.id}`)}>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-600">{fmtOrderDate(o.order_date)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{o.erp_pi_no || '—'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{orderUc(o) || '—'}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-600">{o.erp_so_no || '—'}</td>
                     <td className="px-4 py-3 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">

@@ -6,6 +6,7 @@ import {
   INCOTERMS, ORDER_CURRENCIES, ORDER_STATUSES, LINE_TYPES, lineTypeOf, isPackable,
   getOrder, getOrderLines, createOrderWithLines, updateOrder, saveOrderLines, deleteOrder,
   loadRangeProductsLite, autoMatchLines, matchRangeProduct, rematchLines, validateOrder, computeOrderTotals,
+  orderUc,
 } from '../shipping'
 import { loadCustomers, saveCustomer } from '../domain/customer'
 import { fetchErpSoLines, diffLines } from '../erpSoImport'
@@ -165,7 +166,11 @@ export default function ShipmentForm() {
         if (o) {
           setHeader({
             customer_id: o.customer_id, customer_name: o.customer_name,
-            erp_pi_no: o.erp_pi_no, erp_so_no: o.erp_so_no || '', erp_si_no: o.erp_si_no || '', uc_no: o.uc_no || '',
+            // uc_no is seeded through orderUc so an order whose UC lives in the
+            // legacy erp_pi_no shows it in the UC# field and does not look
+            // un-allocated to doAllocateSi. erp_pi_no is still carried so
+            // saving does not silently drop it.
+            erp_pi_no: o.erp_pi_no, erp_so_no: o.erp_so_no || '', erp_si_no: o.erp_si_no || '', uc_no: orderUc(o),
             customer_po: o.customer_po || '',
             invoiced_at: o.invoiced_at || '',
             order_date: o.order_date || '',
@@ -339,7 +344,9 @@ export default function ShipmentForm() {
           ...h,
           customer_id,
           customer_name,
-          erp_pi_no: data.pi_no || h.erp_pi_no,
+          // The parser's "pi_no" is the UC reference on the document (the
+          // PDFs are named e.g. "… UC4920-26.pdf"), so it lands in uc_no now.
+          uc_no: data.pi_no || h.uc_no,
           erp_so_no: data.so_no || h.erp_so_no,
           order_date: data.order_date || h.order_date,
           currency: ['USD', 'EUR', 'RMB', 'HKD'].includes(data.currency) ? data.currency : h.currency,
@@ -499,7 +506,7 @@ export default function ShipmentForm() {
         <div className="flex items-start justify-between gap-3 mt-1">
           <h1 className="text-2xl font-bold text-gray-900">
             {isEdit
-              ? (header.erp_si_no || header.erp_pi_no || 'Order Detail')
+              ? (header.erp_si_no || header.uc_no || 'Order Detail')
               : (isDirect ? 'Direct Invoice' : 'New Order')}
           </h1>
           {isEdit && (
@@ -602,10 +609,6 @@ export default function ShipmentForm() {
               )}
             </div>
             <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="label">PI Number</label>
-                <input className="input" value={header.erp_pi_no} onChange={setH('erp_pi_no')} placeholder="e.g. PI-2025-0481" />
-              </div>
               <div>
                 <label className="label flex items-center justify-between gap-2">
                   <span>SO / Doc No</span>
@@ -845,11 +848,11 @@ export default function ShipmentForm() {
         })()}
 
         {/* Component stock — issue this order's figurine BOM to the ledger (V7.13a) */}
-        {isEdit && <OrderStockIssue orderId={id} orderLabel={header.erp_pi_no || header.erp_so_no || id} />}
+        {isEdit && <OrderStockIssue orderId={id} orderLabel={header.uc_no || header.erp_so_no || id} />}
 
         {/* Crystal + packaging stock — batch-issue this order's consumption (V7.13a) */}
-        {isEdit && <OrderInventoryIssue orderId={id} orderLabel={header.erp_pi_no || header.erp_so_no || id} inv={crystalInventory} />}
-        {isEdit && <OrderInventoryIssue orderId={id} orderLabel={header.erp_pi_no || header.erp_so_no || id} inv={packagingInventory} />}
+        {isEdit && <OrderInventoryIssue orderId={id} orderLabel={header.uc_no || header.erp_so_no || id} inv={crystalInventory} />}
+        {isEdit && <OrderInventoryIssue orderId={id} orderLabel={header.uc_no || header.erp_so_no || id} inv={packagingInventory} />}
 
         <div className="flex items-center gap-3 pt-1">
           <button type="submit" className="btn-primary" disabled={saving || (!isEdit && lines.length === 0)}>

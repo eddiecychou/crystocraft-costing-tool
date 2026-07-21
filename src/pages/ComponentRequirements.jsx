@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
-import { useOrders, getOrderLines, orderStatusOf } from '../shipping'
+import { useOrders, getOrderLines, orderStatusOf, orderUc } from '../shipping'
 import { loadComponents } from '../criticalComponents'
 import { computeRequirements } from '../mrp'
 import LoadingBar from '../components/LoadingBar'
@@ -10,7 +10,7 @@ import { AlertTriangle, Download, Boxes, Calculator, Info } from 'lucide-react'
 // Statuses that represent live demand — pre-selected in the picker.
 const DEMAND = ['confirmed', 'packing', 'ready']
 
-const orderLabel = o => (o.erp_pi_no ? `PI ${o.erp_pi_no}` : (o.customer_name || o.id))
+const orderLabel = o => orderUc(o) || o.customer_name || o.id
 
 function toCsv(rows) {
   const head = ['Component', 'Name', 'Plating', 'Required', 'Available', 'Shortage', 'Lead (wk)', 'Used by']
@@ -140,7 +140,7 @@ export default function ComponentRequirements() {
                   <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-brand-600" checked={selected.has(o.id)} onChange={() => toggle(o.id)} />
                   <span className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium text-gray-800 truncate">{o.customer_name || 'Unnamed'}</span>
-                    {o.erp_pi_no && <span className="text-xs text-gray-400">PI {o.erp_pi_no}</span>}
+                    {orderUc(o) && <span className="text-xs text-gray-400">{orderUc(o)}</span>}
                     <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${st.style}`}>{st.label}</span>
                   </span>
                   {o.order_date && <span className="text-xs text-gray-400 shrink-0">{o.order_date}</span>}

@@ -61,12 +61,33 @@ export function matchRangeProduct(itemCode, rangeProducts) {
 
 // ── orders ────────────────────────────────────────────────────────────────────
 
+// The order's UC reference, wherever it happens to live.
+//
+// Orders created before 2026-07-21 carry it in erp_pi_no (the field then
+// labelled "PI Number"); everything since carries it in uc_no. Every read must
+// go through here, because treating a legacy order as having no UC is not a
+// display bug — doAllocateSi() allocates a fresh UC when it finds none, which
+// would issue a second UC for an order that already has one. That is the exact
+// duplicate-UC slip the invoice-chained allocation was built to stop.
+export const orderUc = o => (o && (o.uc_no || o.erp_pi_no)) || ''
+
 const ORDERS = () => collection(db, 'orders')
 const LINES  = orderId => collection(db, 'orders', orderId, 'lines')
 
 export const normOrder = o => ({
   source: o.source === 'in_app_quote' ? 'in_app_quote' : o.source === 'duplicated' ? 'duplicated' : 'imported_pi',
   client_quote_id: o.client_quote_id || null,
+  // LEGACY — do not write to this, read it through orderUc() below.
+  //
+  // This was labelled "PI Number" and every one of the 78 orders that has it
+  // holds a UC reference in it (UC4948/26, UC4946/26, …), never a PI number of
+  // its own. That is not a coincidence: the team's "PI" is JES's SO, which has
+  // its own field (erp_so_no), so there was never a third document number for
+  // this field to hold. CuiLing reported it as a duplicate of UC# on
+  // 2026-07-21 and she is right — they are one field that got entered twice.
+  //
+  // Kept in the schema so existing data is preserved and round-trips on save.
+  // New writes go to uc_no.
   erp_pi_no: str(o.erp_pi_no),
   erp_so_no: str(o.erp_so_no),
   // The CUSTOMER's own purchase order number — their reference, not ours.
@@ -93,10 +114,14 @@ export const normOrder = o => ({
   // are optional. Anything validating an invoice must check the UC, not the SO.
   erp_si_no: str(o.erp_si_no),
   invoiced_at: o.invoiced_at || null,
-  // The app's UC reference (full form, e.g. "UC4950/26"). Free text like
-  // erp_pi_no — usually typed in from Cindy's list, same as today. The one
-  // place this is set automatically is "Duplicate order", which allocates a
-  // fresh one rather than copying the source order's.
+  // The app's UC reference (full form, e.g. "UC4950/26"). Free text — usually
+  // typed in from Cindy's list, same as today. It is set automatically in two
+  // places: "Duplicate order" allocates a fresh one rather than copying the
+  // source order's, and allocating an invoice number allocates a UC if the
+  // order has none.
+  //
+  // THE ONLY field for this reference as of 2026-07-21. Read it via orderUc()
+  // so legacy orders that hold it in erp_pi_no are not treated as having none.
   uc_no: str(o.uc_no),
   customer_id: o.customer_id || '',
   customer_name: str(o.customer_name),

@@ -99,6 +99,39 @@ The SI26 "OK" is the one to distrust: it only proves the seed matches what the
 *last sync* saw, and the sync has not run since CuiLing's 20–21 Jul invoices.
 **Re-run this after the sync, not before.**
 
+### PI Number and UC# were the same field (CuiLing, 2026-07-21)
+
+**Reported as cosmetic duplication; it was a correctness bug.** The order form
+had a "PI Number" field and a "UC#" field, and on `UC4920/26` the first held
+`UC4920/26` while the second was empty. Every one of the 78 orders is the same
+shape — the Orders list column headed "PI #" contains nothing but UC references.
+
+There was never a third document number for that field to hold: the team's "PI"
+*is* JES's SO, which has its own field. So "PI Number" had silently become the
+UC field, and the real UC field was the empty one.
+
+**Why it mattered.** `doAllocateSi` allocates a UC when the order has none, and
+it tested `uc_no` only. Clicking Allocate on any legacy order would have issued
+a **second UC for an order that already had one** — precisely the duplicate-UC
+slip that chaining UC allocation to invoice creation was built to prevent (4 UC
+refs in JES already carry two invoices each). It also printed the same number
+twice on the proforma and the invoice, and would have shown the red "this
+invoice has no UC number" warning on an order that has one.
+
+**Fixed by consolidating on `uc_no`,** with `orderUc(o) = o.uc_no || o.erp_pi_no`
+in `shipping.js` as the single read path — so legacy orders behave correctly
+with **no data migration**, and each one self-migrates the first time it is
+saved. `erp_pi_no` stays in `normOrder` and round-trips on save; nothing is
+destroyed. The form's duplicate input is gone, the list column reads UC#, and
+the PI parser's `pi_no` now lands in `uc_no` (those PDFs are named `… UC4920-26.pdf`).
+
+Files: `shipping.js`, `ShipmentForm.jsx`, `Shipping.jsx`, `Shipments.jsx`,
+`Dashboard.jsx`, `ComponentRequirements.jsx`, `CustomerDetail.jsx`,
+`PackingListPrint.jsx`, `ProformaInvoicePrint.jsx`, `SalesInvoicePrint.jsx`,
+`SchemaAudit.jsx`. **esbuild-parsed only — not run.** Verify on the deployed
+site: open a legacy order and check UC# is populated, that Duplicate order
+still allocates a *fresh* UC, and that the proforma prints one UC# row.
+
 ---
 
 ## Current Status — V7.16 CLOSED as of 2026-07-21

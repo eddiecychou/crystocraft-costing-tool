@@ -103,7 +103,7 @@ function PrintDoc({ pl, order, cartons }) {
   const consignee = pl.consignee_name || order?.customer_name || ''
   const caseMark  = pl.case_mark || ''
   const plDate    = fmtDate(pl.pl_date) || fmtDate(pl.updatedAt) || ''
-  const refNo     = order?.erp_pi_no || ''
+  const refNo     = order?.uc_no || order?.erp_pi_no || ''
   // The customer's own PO number, not ours. This used to print erp_so_no, so
   // "PO NO" showed OUR sales order — the one reference the customer's receiving
   // desk cannot match against anything.

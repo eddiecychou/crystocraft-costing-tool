@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
-import { useOrders, orderStatusOf } from '../shipping'
+import { useOrders, orderStatusOf, orderUc } from '../shipping'
 import { MapPin, FileInput, ClipboardCheck } from 'lucide-react'
 
 // Phase 12.0 — Shipment list. Each row is an order (commercial anchor); status
@@ -12,7 +12,7 @@ export default function Shipments() {
 
   const filtered = orders.filter(o => {
     if (!search) return true
-    const hay = `${o.customer_name} ${o.erp_pi_no} ${o.destination?.country} ${o.destination?.city}`.toLowerCase()
+    const hay = `${o.customer_name} ${orderUc(o)} ${o.destination?.country} ${o.destination?.city}`.toLowerCase()
     return hay.includes(search.toLowerCase())
   })
 
@@ -54,7 +54,7 @@ export default function Shipments() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-medium text-gray-900 text-sm">{o.customer_name || 'Unnamed customer'}</p>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${st.style}`}>{st.label}</span>
-                    {o.source === 'imported_pi' && o.erp_pi_no && <span className="text-xs text-gray-400">PI {o.erp_pi_no}</span>}
+                    {o.source === 'imported_pi' && orderUc(o) && <span className="text-xs text-gray-400">{orderUc(o)}</span>}
                     {needsReconcile && (
                       <span className="inline-flex items-center gap-1 text-xs text-amber-600">
                         <ClipboardCheck size={12} /> needs reconcile

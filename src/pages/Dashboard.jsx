@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
 import { normalizeCustomer } from '../domain/customer'
-import { orderStatusOf } from '../shipping'
+import { orderStatusOf, orderUc } from '../shipping'
 
 // Orders in these statuses are "in production" — committed and being made, but
 // not yet shipped. Closing out = set the order to Shipped (it then drops off).
@@ -356,7 +356,7 @@ export default function Dashboard() {
                         <p className="text-sm font-semibold text-gray-900">{cust?.company_name || o.customer_name || '—'}</p>
                         <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${st.style}`}>{st.label}</span>
                       </div>
-                      <p className="text-xs text-gray-500 mt-0.5">{o.erp_pi_no ? `PI ${o.erp_pi_no}` : o.id}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{orderUc(o) || o.id}</p>
                     </div>
                     <p className="text-xs text-gray-400 shrink-0">{dateStr}</p>
                   </Link>

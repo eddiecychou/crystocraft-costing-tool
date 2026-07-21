@@ -223,7 +223,7 @@ export default function SchemaAudit() {
     {
       const issues = []
       orders.docs.forEach(d => {
-        const o = d.data(), label = o.order_number || o.ordernumber || o.erp_pi_no || d.id
+        const o = d.data(), label = o.order_number || o.ordernumber || o.uc_no || o.erp_pi_no || d.id
         addResult(issues, validateOrder(o), d.id, label, '/shipping')
       })
       grp('Orders (PI)', orders.size, issues, 'Each order should link to a customer.')
@@ -246,7 +246,7 @@ export default function SchemaAudit() {
       const agg = new Map()   // KEY(design[-format]) -> { key, missing, byOrder:Map(orderId->{...}) }
       orders.docs.forEach((od, i) => {
         const o = od.data()
-        const olabel = o.order_number || o.ordernumber || o.erp_pi_no || od.id
+        const olabel = o.order_number || o.ordernumber || o.uc_no || o.erp_pi_no || od.id
         const odate = o.order_date || o.date || o.createdAt || null
         orderLineSnaps[i].docs.forEach(ld => {
           const l = ld.data()

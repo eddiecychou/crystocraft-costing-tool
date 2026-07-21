@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { getOrder, getOrderLines, computeOrderTotals } from '../shipping'
+import { getOrder, getOrderLines, computeOrderTotals, orderUc } from '../shipping'
 import { loadCustomers } from '../domain/customer'
 import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
 import { amountInWords } from '../constants'
@@ -172,9 +172,10 @@ export default function ProformaInvoicePrint() {
           {customer?.contact_emails?.[0] && <div className="addr">{customer.contact_emails[0]}</div>}
         </div>
         <div className="pi-box">
-          <div className="pi-kv"><span className="k">PI No.</span><span className="v pi-code">{order.erp_pi_no || '—'}</span></div>
+          {/* One reference, not two. "PI No." and "UC#" printed the same
+              number on the same document until 2026-07-21. */}
+          <div className="pi-kv"><span className="k">UC#</span><span className="v pi-code">{orderUc(order) || '—'}</span></div>
           <div className="pi-kv"><span className="k">SO No.</span><span className="v pi-code">{order.erp_so_no || '—'}</span></div>
-          {order.uc_no && <div className="pi-kv"><span className="k">UC#</span><span className="v pi-code">{order.uc_no}</span></div>}
           <div className="pi-kv"><span className="k">Date</span><span className="v">{fmtDate(order.order_date)}</span></div>
           <div className="pi-kv"><span className="k">Currency</span><span className="v">{cur}</span></div>
           {order.incoterm && <div className="pi-kv"><span className="k">Incoterm</span><span className="v">{order.incoterm}</span></div>}

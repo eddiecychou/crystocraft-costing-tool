@@ -449,7 +449,7 @@ export default function CustomerDetail() {
         ) : (
           <div className="divide-y divide-gray-100">
             {orders.map(o => {
-              const piNo = o.erp_pi_no || o.erp_so_no || '—'
+              const piNo = o.uc_no || o.erp_pi_no || o.erp_so_no || '—'
               const dateStr = o.order_date
                 ? new Date(o.order_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
                 : '—'

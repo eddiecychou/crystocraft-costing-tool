@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
-import { getOrder, getOrderLines, computeOrderTotals } from '../shipping'
+import { getOrder, getOrderLines, computeOrderTotals, orderUc } from '../shipping'
 import { loadCustomers } from '../domain/customer'
 import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
 import { amountInWords } from '../constants'
@@ -145,7 +145,7 @@ export default function SalesInvoicePrint() {
           document to Cindy's books and the PBIS import. A sales order is NOT
           required (retail sales are invoiced directly), so its absence is
           normal and deliberately not flagged. A missing UC is not. */}
-      {!order.uc_no && (
+      {!orderUc(order) && (
         <div className="si-warn red">
           This invoice has <strong>no UC number</strong>. Every invoice needs one — it is what matches
           this document to the books. Allocate one on the order before sending.
@@ -183,8 +183,7 @@ export default function SalesInvoicePrint() {
           <div className="si-kv"><span className="k">Invoice No.</span><span className="v big si-code">{order.erp_si_no || '—'}</span></div>
           <div className="si-kv"><span className="k">Date</span><span className="v">{fmtDate(order.invoiced_at || order.order_date)}</span></div>
           {order.erp_so_no && <div className="si-kv"><span className="k">SO No.</span><span className="v si-code">{order.erp_so_no}</span></div>}
-          {order.erp_pi_no && <div className="si-kv"><span className="k">PI No.</span><span className="v si-code">{order.erp_pi_no}</span></div>}
-          {order.uc_no && <div className="si-kv"><span className="k">UC#</span><span className="v si-code">{order.uc_no}</span></div>}
+          {orderUc(order) && <div className="si-kv"><span className="k">UC#</span><span className="v si-code">{orderUc(order)}</span></div>}
           <div className="si-kv"><span className="k">Currency</span><span className="v">{cur}</span></div>
           {order.incoterm && <div className="si-kv"><span className="k">Incoterm</span><span className="v">{order.incoterm}</span></div>}
           {destText && <div className="si-kv"><span className="k">Destination</span><span className="v">{destText}</span></div>}
