@@ -203,6 +203,63 @@ mapping arrives — most likely as a sheet — the thing to build is an importer
 that matches on code and reports what it could not place. Deliberately not
 built ahead of seeing the file: its shape decides the matching rules.
 
+### SI240240: a void JES cannot record — and a V7.16 correction
+
+Cindy explained the `UC4657` anomaly, and it turns out to explain more than
+itself. `SI240240` was voided, but it had already been marked confirmed by
+mistake, **and JES permits no change to a confirmed invoice**. So `SI240248`
+was re-issued against the same UC and the correction was made by hand on the
+way into PBIS.
+
+Checked against both systems, all four of her statements hold:
+
+| | |
+|---|---|
+| PBIS | `SI240248`/`UC4657` Rex Wong HKD 4,290; `SI240235`/`UC4655` Fee Ratibor HKD 600; **no `SI240240`** |
+| `uc_registry` | agrees exactly — `UC4657`→`SI240248`, `UC4655`→`SI240235`, no `SI240240` row |
+| JES mirror | `SI240240` **`CONFIRMED`**, siref `UC4657/24`, 13 Nov 2024 — sitting alongside `SI240248`, also confirmed, same UC |
+
+So the registry and the books are right and **only JES is wrong**, permanently.
+Worth noting JES *has* a `VOID` status and uses it on 90 invoices — this one
+just missed the window.
+
+**The correction.** V7.16 recorded that "4 UC refs in JES carry two invoices
+each, **all** from copying an order and not changing the UC by hand", and built
+the invoice-chained UC allocation on that reading. The count and the cause were
+both off. Across all years **30** UC refs carry two or more confirmed invoices,
+and the recent ones have three distinct causes:
+
+- `UC4657/24` — a void that could not be recorded. Not a slip at all.
+- `UC4438/24` — a legitimate split. The registry has it right as `UC4438` and
+  `UC4438(A)`; JES's `siref` simply drops the suffix, so both invoices look like
+  the same UC from the ERP side. A JES limitation, not an error.
+- `UC4647/24` — `SI240231` references it in JES but the registry only has
+  `SI240230`. This one looks like a genuine gap, possibly a missing `UC4647(A)`.
+
+The allocation change is still right — it removes one real cause. But it does
+not address the other two, and "duplicate UC in JES" cannot be read as evidence
+of the copy-paste slip.
+
+**One open item for Cindy:** `SI240201` sits on both `UC4623` and `UC4629`
+(HKD 41,000 and 31,500, both Sun Life). That is the only genuine breach of her
+one-UC-one-SI rule in `/24`–`/26`, and it is the reverse shape of the old
+compound entries — two registry rows sharing an invoice rather than one row
+with a compound UC.
+
+### Cindy's rules, enforced from /24 onward
+
+1. **One UC, one SI.** Compound entries (91 rows, e.g. `UC3965/ UC3992`) are the
+   old practice of combining two or more invoices into one production order.
+   They stop at `/23` — the data confirms it, with none in `/24`, `/25` or `/26`.
+2. **Suffixed UCs read `UC1234(A)/26`** — letter in parentheses on the number,
+   year in its own column. Recent rows already comply; the deviations
+   (`UC4406/A`, `UC4240/(A)`, `UC4544(寄賣單)`) are all `/23` and older.
+
+Both are now checked in the UC form, **as warnings that can be saved through**,
+and only for `/24+` so the historical record is never flagged. A hard block
+would be wrong here: JES contains states that are incorrect and uncorrectable,
+and the registry has to be able to record what actually happened.
+
 ---
 
 ## Current Status — V7.16 CLOSED as of 2026-07-21

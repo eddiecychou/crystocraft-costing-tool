@@ -88,6 +88,41 @@ function SiPicker({ value, onChange }) {
 }
 
 // ── New / Edit form modal ─────────────────────────────────────────────────────
+// ── Cindy's rules for recent & future records (2026-07-21) ──────────────────
+//
+// Both apply from /24 onward only. The older record legitimately breaks them:
+// before /24 a UC could combine two or more invoices into one production order,
+// which is why 91 registry rows carry a compound uc_no ("UC3965/ UC3992") and
+// why some share an SI. Those are history and must not be flagged.
+const RECENT_YEARS = /^\/(2[4-9]|[3-9][0-9])$/
+
+// "each UC number should be match with a unique SI" — one invoice, one UC.
+// The recent record already nearly holds: across /24../26 the only genuine
+// breach is SI240201, which sits on both UC4623 and UC4629.
+//
+// Deliberately a warning, not a block. JES itself contains UC refs carrying two
+// confirmed invoices that cannot be corrected there (see UC4657 below), so a
+// hard block would make the true state of the books unrecordable.
+async function duplicateSiWarning(jesSi, selfId, year) {
+  if (!RECENT_YEARS.test(String(year || '')) || !/^SI[0-9]/.test(String(jesSi || ''))) return ''
+  const rows = await listUc({ q: jesSi, limit: 20 }).catch(() => [])
+  const clash = rows.filter((r) => r.jes_si === jesSi && r.id !== selfId)
+  if (!clash.length) return ''
+  return `${jesSi} is already on ${clash.map((r) => r.uc_no + (r.year || '')).join(', ')}. `
+       + 'Since /24 each invoice should sit on exactly one UC — check this is not the same sale entered twice.'
+}
+
+// "UC with suffix should appear as UC1234(A)/26" — the letter in parentheses on
+// the number, the year in its own column. Recent rows already follow it; the
+// deviations are all /23 and older (UC4406/A, UC4240/(A), UC4544(寄賣單)).
+const UC_SHAPE = /^UC[0-9]+(\([A-Z]\))?$/
+function ucShapeWarning(ucNo, year) {
+  if (!RECENT_YEARS.test(String(year || '')) || !ucNo) return ''
+  if (UC_SHAPE.test(ucNo)) return ''
+  return `"${ucNo}" is not the expected shape. Since /24 a UC reads UC1234, or `
+       + 'UC1234(A) when a second invoice splits off it — the year stays in its own column.'
+}
+
 function UcForm({ record, onClose, onSaved }) {
   const isNew = !record?.id
   const [f, setF] = useState(record || BLANK)
@@ -95,10 +130,20 @@ function UcForm({ record, onClose, onSaved }) {
   const [error, setError] = useState('')
   const set = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value })
 
+  // Warnings, not errors: shown once, and saving again goes through. The
+  // registry has to be able to record what actually happened, including the
+  // things JES got wrong and cannot fix.
+  const [warning, setWarning] = useState('')
+
   async function save() {
     if (!f.customer?.trim()) { setError('Customer is required.'); return }
     setSaving(true); setError('')
     try {
+      if (!warning) {
+        const w = [ucShapeWarning(f.uc_no, f.year),
+                   await duplicateSiWarning(f.jes_si, record?.id, f.year)].filter(Boolean).join(' ')
+        if (w) { setWarning(w); setSaving(false); return }
+      }
       if (isNew) await createUcInvoice(f)
       else await updateUcInvoice(record.id, f)
       onSaved()
@@ -202,10 +247,16 @@ function UcForm({ record, onClose, onSaved }) {
             <AlertCircle size={16} /> {error}
           </div>
         )}
+        {warning && (
+          <div className="flex items-start gap-2 text-sm text-amber-800 bg-amber-50 border-t border-amber-200 px-5 py-2">
+            <AlertCircle size={16} className="shrink-0 mt-0.5" />
+            <span>{warning} <strong className="whitespace-nowrap">Save again to keep it.</strong></span>
+          </div>
+        )}
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200">
           <button onClick={onClose} className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
           <button onClick={save} disabled={saving} className="btn-primary text-sm disabled:opacity-50">
-            {saving ? 'Saving…' : isNew ? 'Create UC#' : 'Save'}
+            {saving ? 'Saving…' : warning ? 'Save anyway' : isNew ? 'Create UC#' : 'Save'}
           </button>
         </div>
       </div>
