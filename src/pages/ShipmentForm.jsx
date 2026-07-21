@@ -21,7 +21,7 @@ import { crystalInventory } from '../crystals'
 import { packagingInventory } from '../packaging'
 import { metalOrderConfig } from '../orderStock'
 import { allocateSoNo, soYear } from '../soNumber'
-import { allocateInvoice } from '../ucRegistry'
+import { allocateInvoice, upsertInvoice } from '../ucRegistry'
 import { orderStockStatus, stockStatusDetail, STOCK_STATUS_LABEL, STOCK_STATUS_STYLE } from '../orderStockStatus'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -496,6 +496,24 @@ export default function ShipmentForm() {
         saveOrderLines(id, lines),
       ])
       await raceWrite(write)   // throws only on a fast rejection; otherwise proceeds
+
+      // Keep the Postgres financial record in step. Deliberately AFTER the
+      // Firestore write and deliberately not awaited into the failure path:
+      // Firestore is the source of truth, so a Supabase hiccup must not make a
+      // successful save look failed. Drift that results is caught by the
+      // reconciliation on the Sales Invoices page rather than hidden.
+      if (header.erp_si_no) {
+        upsertInvoice({
+          si_no: header.erp_si_no,
+          uc_no: header.uc_no || null,
+          order_id: id,
+          customer: header.customer_name,
+          currency: header.currency,
+          total: header.total_amount !== '' ? parseFloat(header.total_amount)
+               : (computed.subtotal > 0 ? computed.total : null),
+          invoiced_at: header.invoiced_at || null,
+        })
+      }
       navigate('/shipments')
     } catch (err) {
       setExtractError(err.message || 'Could not save order.')

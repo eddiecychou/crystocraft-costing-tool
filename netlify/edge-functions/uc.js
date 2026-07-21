@@ -148,6 +148,48 @@ export default async function handler(req) {
     })
   }
 
+  // ── keep the financial record in step with the order ───────────────────────
+  // Called on every order save that carries an invoice number. Upserts on
+  // si_no, so re-saving an order corrects the row rather than duplicating it.
+  //
+  // Firestore remains the source; this is a copy. A copy that can drift is a
+  // liability, which is why the reconcile op below exists rather than trusting
+  // this to always succeed.
+  if (body.op === 'upsert_invoice') {
+    const si = String(body.si_no ?? '').trim()
+    if (!/^SI\d{6,}$/.test(si)) return json({ error: 'Bad invoice number' }, 400)
+    const row = {
+      si_no: si,
+      year: si.slice(2, 4),
+      uc_no: body.uc_no ? String(body.uc_no).slice(0, 64) : null,
+      order_id: body.order_id ? String(body.order_id).slice(0, 64) : null,
+      customer: String(body.customer ?? '').slice(0, 200),
+      currency: String(body.currency ?? '').slice(0, 8),
+      total: Number.isFinite(Number(body.total)) ? Number(body.total) : null,
+      invoiced_at: /^\d{4}-\d{2}-\d{2}$/.test(String(body.invoiced_at ?? '')) ? body.invoiced_at : null,
+      updated_at: new Date().toISOString(),
+      updated_by: email,
+    }
+    const r = await rest('app_sales_invoice?on_conflict=si_no', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify(row),
+    })
+    if (!r.ok) return json({ error: 'Invoice sync failed', detail: (await r.text()).slice(0, 300) }, 502)
+    return json({ row: (await r.json())[0] || null })
+  }
+
+  // ── the financial record, for reconciliation against Firestore ─────────────
+  if (body.op === 'list_invoices') {
+    const p = new URLSearchParams()
+    p.set('select', 'si_no,uc_no,order_id,customer,currency,total,invoiced_at,status,updated_at')
+    p.set('order', 'si_no.desc')
+    p.set('limit', String(Math.min(Math.max(parseInt(body.limit, 10) || 500, 1), 2000)))
+    const r = await rest(`app_sales_invoice?${p.toString()}`)
+    if (!r.ok) return json({ error: 'List failed', detail: (await r.text()).slice(0, 300) }, 502)
+    return json({ rows: await r.json() })
+  }
+
   // ── create (allocates UC# via the uc_no column default) ─────────────────────
   if (body.op === 'create') {
     const payload = { ...clean(body.data), created_by: email }

@@ -58,6 +58,18 @@ export function allocateInvoice({ year, customer, currency, order_id, uc_id, uc_
   return ucApi('allocate_invoice', { year, customer, currency, order_id, uc_id, uc_no })
 }
 
+// Keep the Postgres financial record in step with the order. Called on save.
+// Fire-and-forget by design: a failed sync must never block saving an order,
+// because the order is the source of truth. Drift is caught by the
+// reconciliation below instead of by refusing the save.
+export function upsertInvoice(fields) {
+  return ucApi('upsert_invoice', fields).catch(() => null)
+}
+
+// The financial record as Postgres holds it, for comparison against Firestore.
+export const listAppInvoices = (limit = 500) =>
+  ucApi('list_invoices', { limit }).then((d) => d.rows || []).catch(() => [])
+
 // Allocate a FRESH UC# for an app-originated order (used by "Duplicate order").
 // Deliberately never copies the source order's UC — a carried-over UC is the
 // exact, repeatable slip CuiLing's JES workflow produces (duplicate an order to

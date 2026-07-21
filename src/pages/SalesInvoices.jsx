@@ -4,6 +4,7 @@ import { downloadCsv, exportStem, inDateRange } from '../exportCsv'
 import { Link, useNavigate } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import { useOrders, updateOrder, NO_INVOICE_REASONS, noInvoiceReasonOf } from '../shipping'
+import { listAppInvoices, upsertInvoice } from '../ucRegistry'
 import { erpLookup } from '../erpApi'
 import { Receipt, AlertTriangle, FileText, Database } from 'lucide-react'
 import ErpDocModal from '../components/ErpDocModal'
@@ -73,6 +74,9 @@ export default function SalesInvoices() {
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [srcFilter, setSrcFilter] = useState('')   // '' | 'app' | 'jes'
+  const [ledger, setLedger] = useState(null)      // Postgres rows, or null while loading
+  const [fixing, setFixing] = useState(false)
+  const [showDrift, setShowDrift] = useState(false)
 
   const erp = useErpInvoices(search)
 
@@ -107,6 +111,15 @@ export default function SalesInvoices() {
     })
   }
 
+  // The financial record as Postgres holds it. Firestore is the source of
+  // truth; this is a copy, and a copy nobody checks is worse than no copy —
+  // it invites trust it has not earned.
+  useEffect(() => {
+    let alive = true
+    listAppInvoices(1000).then(r => { if (alive) setLedger(r) })
+    return () => { alive = false }
+  }, [])
+
   // One list, two sources. Which system an invoice lives in is an implementation
   // detail to the person looking for it, so they are merged and sorted by date —
   // but each row says where it came from, because what you can DO with it
@@ -132,6 +145,46 @@ export default function SalesInvoices() {
       }))
     return [...app, ...jes].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
   }, [invoiced, erp.rows])
+
+  // Reconcile Firestore against Postgres. Compares only the fields the ledger
+  // claims to hold — comparing anything else would report drift that does not
+  // matter. Money is compared to 2dp because a float round-trip is not a
+  // disagreement about the invoice.
+  const drift = useMemo(() => {
+    if (!ledger) return null
+    const byNo = new Map(ledger.map((r) => [String(r.si_no || '').trim().toUpperCase(), r]))
+    const money = (v) => (v == null || v === '' ? null : Math.round(Number(v) * 100) / 100)
+    const out = []
+    for (const o of invoiced) {
+      const no = String(o.erp_si_no || '').trim().toUpperCase()
+      if (!no) continue
+      const row = byNo.get(no)
+      if (!row) { out.push({ order: o, no, why: 'not in the financial record' }); continue }
+      const diffs = []
+      if (money(row.total) !== money(o.total_amount ?? o.subtotal)) diffs.push('total')
+      if ((row.currency || '') !== (o.currency || '')) diffs.push('currency')
+      if ((row.uc_no || '') !== (o.uc_no || '')) diffs.push('UC')
+      if ((row.customer || '') !== (o.customer_name || '')) diffs.push('customer')
+      if (diffs.length) out.push({ order: o, no, why: `${diffs.join(', ')} differ${diffs.length === 1 ? 's' : ''}` })
+    }
+    return out
+  }, [ledger, invoiced])
+
+  // Re-send every drifting order. Safe to re-run: the upsert keys on si_no.
+  async function resync() {
+    setFixing(true)
+    try {
+      for (const d of drift || []) {
+        await upsertInvoice({
+          si_no: d.order.erp_si_no, uc_no: d.order.uc_no || null, order_id: d.order.id,
+          customer: d.order.customer_name, currency: d.order.currency,
+          total: d.order.total_amount ?? d.order.subtotal ?? null,
+          invoiced_at: d.order.invoiced_at || null,
+        })
+      }
+      setLedger(await listAppInvoices(1000))
+    } finally { setFixing(false) }
+  }
 
   // The export set. Filtering here rather than inside `merged` keeps the
   // page's own two-source de-duplication intact — dropping a JES row by date
@@ -180,6 +233,44 @@ export default function SalesInvoices() {
       <div className="p-4 md:p-6">
         {loading && <LoadingBar />}
         {erpDoc && <ErpDocModal of="sales_invoice" doc={erpDoc} onClose={() => setErpDoc(null)} />}
+
+        {/* Reconciliation. Silence here means the two records agree — which is
+            the only way a copy earns any trust. */}
+        {drift && drift.length > 0 && (
+          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <p className="text-sm text-amber-800 inline-flex items-center gap-2">
+                <AlertTriangle size={14} className="text-amber-600" />
+                {drift.length} invoice{drift.length === 1 ? '' : 's'} out of step with the financial record
+              </p>
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={() => setShowDrift(v => !v)}
+                  className="text-xs text-amber-800 hover:text-amber-900 underline underline-offset-2">
+                  {showDrift ? 'Hide' : 'Show'}
+                </button>
+                <button type="button" onClick={resync} disabled={fixing}
+                  className="text-xs font-medium px-2.5 py-1 rounded border border-amber-300 bg-white text-amber-900 hover:bg-amber-100 disabled:opacity-50">
+                  {fixing ? 'Re-syncing…' : 'Re-sync all'}
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-amber-700/80 mt-0.5">
+              The order in the app is the source of truth; this is its copy in Supabase, used for exports and the books.
+              Re-syncing rewrites the copy from the order.
+            </p>
+            {showDrift && (
+              <ul className="mt-2 space-y-0.5">
+                {drift.slice(0, 30).map((d) => (
+                  <li key={d.no} className="text-xs text-amber-900">
+                    <span className="font-mono">{d.no}</span> — {d.why}
+                    <span className="text-amber-700/70"> · {d.order.customer_name || 'Unnamed'}</span>
+                  </li>
+                ))}
+                {drift.length > 30 && <li className="text-xs text-amber-700/70">…and {drift.length - 30} more</li>}
+              </ul>
+            )}
+          </div>
+        )}
 
         <ExportFilterBar
           from={from} to={to} onFrom={setFrom} onTo={setTo}
