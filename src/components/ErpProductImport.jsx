@@ -12,7 +12,7 @@ import { X, Search, Database, AlertTriangle, Check, Loader2 } from 'lucide-react
 // what actually gets created is a MERGE that no single ERP screen shows. Anyone
 // importing should see the merged result, and which parts are already known to
 // the app, before it is written.
-export default function ErpProductImport({ products = [], onClose }) {
+export default function ErpProductImport({ products = [], initialCode = '', onClose }) {
   const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [results, setResults] = useState([])
@@ -22,6 +22,13 @@ export default function ErpProductImport({ products = [], onClose }) {
   const [picked, setPicked] = useState(new Set())   // component codes to import
   const [importing, setImporting] = useState(false)
   const [error, setError] = useState('')
+
+  // Opened from a specific ERP row (the lookup's Import action) — skip the
+  // search and go straight to the review, which is the step that matters.
+  useEffect(() => {
+    if (initialCode) choose(initialCode)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCode])
 
   // Finished goods only — a figurine is an FG item. Debounced, because this
   // searches 44,467 items.
@@ -239,9 +246,9 @@ export default function ErpProductImport({ products = [], onClose }) {
         </div>
 
         <div className="flex justify-between gap-2 px-5 py-3 border-t border-gray-200">
-          <button onClick={() => (preview ? setPreview(null) : onClose())}
+          <button onClick={() => (preview && !initialCode ? setPreview(null) : onClose())}
             className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">
-            {preview ? '← Back to search' : 'Cancel'}
+            {preview && !initialCode ? '← Back to search' : 'Cancel'}
           </button>
           {preview && (
             <button onClick={doImport} disabled={importing || already}

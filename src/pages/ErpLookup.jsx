@@ -1,7 +1,12 @@
-import { useEffect, useState } from 'react'
-import { Search, Database, Building2, Factory, Boxes, AlertCircle, ListTree, X, Receipt, ClipboardList, FileText, ShoppingCart, History, Warehouse, ImageOff } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { Search, Database, Building2, Factory, Boxes, AlertCircle, ListTree, X, Receipt, ClipboardList, FileText, ShoppingCart, History, Warehouse, ImageOff, Download } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import { erpLookup, erpBom, erpLines, erpSyncStatus, erpItemImages } from '../erpApi'
+import ErpProductImport from '../components/ErpProductImport'
+import { buildProductIndex, matchProductCode } from '../criticalComponents'
+import { designBaseOf } from '../erpProductImport'
+import { collection, getDocs } from 'firebase/firestore'
+import { db } from '../firebase'
 
 // Column layout per entity. `key` maps to the curated view's fields.
 const ENTITIES = {
@@ -437,6 +442,14 @@ export default function ErpLookup() {
   const [sync, setSync] = useState(null)
   const [images, setImages] = useState({})   // picture1 filename -> signed URL
   const [photo, setPhoto] = useState(null)   // { url, row } — enlarged view
+  const [importCode, setImportCode] = useState('')   // ERP code being imported
+  const [rangeProducts, setRangeProducts] = useState([])
+
+  // Is this ERP code's design already a product here? Uses the app's own
+  // matcher, which reconciles a full variant code (D0002-001-CGR) against
+  // however design_code happens to be stored.
+  const productIndex = useMemo(() => buildProductIndex(rangeProducts), [rangeProducts])
+  const inApp = (code) => !!matchProductCode(designBaseOf(code), productIndex)
   const [warehouses, setWarehouses] = useState([])
   const [itemTypes, setItemTypes] = useState([])
   const [warehouse, setWarehouse] = useState('')       // '' = all warehouses
@@ -503,6 +516,17 @@ export default function ErpLookup() {
     return () => { alive = false }
   }, [entity, rows])
 
+  // The app's own figurines, loaded once. Only used to mark which ERP items
+  // are already in the app, and to stop an import creating a second product for
+  // a design that already has one.
+  useEffect(() => {
+    let alive = true
+    getDocs(collection(db, 'range_products'))
+      .then(s => { if (alive) setRangeProducts(s.docs.map(d => ({ id: d.id, ...d.data() }))) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [])
+
   // Sync freshness. Loaded once; a failure leaves the line hidden rather than
   // showing a wrong or alarming value.
   useEffect(() => {
@@ -552,6 +576,13 @@ export default function ErpLookup() {
     <div className="p-4 md:p-6">
       {loading && <LoadingBar />}
       {photo && <PhotoModal url={photo.url} row={photo.row} onClose={() => setPhoto(null)} />}
+      {importCode && (
+        <ErpProductImport
+          products={rangeProducts}
+          initialCode={importCode}
+          onClose={() => setImportCode('')}
+        />
+      )}
 
       <div className="mb-4">
         <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -707,10 +738,24 @@ export default function ErpLookup() {
                   {cfg.cols.map((c) => (
                     <td key={c.key} className={`px-3 py-2 align-top ${c.mono ? 'font-mono text-xs' : ''} ${c.grow ? '' : 'whitespace-nowrap'} ${c.num ? 'text-right tabular-nums' : ''}`}>
                       {entity === 'item' && c.key === 'has_bom' && r.has_bom
-                        ? <button onClick={() => openBom(r.code)}
-                            className="inline-flex items-center gap-0.5 text-teal-600 hover:underline text-xs font-medium">
-                            <ListTree size={13} /> View
-                          </button>
+                        ? <div className="flex items-center gap-2">
+                            <button onClick={() => openBom(r.code)}
+                              className="inline-flex items-center gap-0.5 text-teal-600 hover:underline text-xs font-medium">
+                              <ListTree size={13} /> View
+                            </button>
+                            {/* Import only makes sense for a finished good — a
+                                figurine — and only when the app has no product
+                                for that design yet. */}
+                            {String(r.type).toUpperCase() === 'FG' && (
+                              inApp(r.code)
+                                ? <span className="text-[10px] text-gray-400" title="This design is already a product in the app">in app</span>
+                                : <button onClick={() => setImportCode(r.code)}
+                                    className="inline-flex items-center gap-0.5 text-brand-600 hover:underline text-xs font-medium"
+                                    title="Create a figurine product from this item and its BOM">
+                                    <Download size={12} /> Import
+                                  </button>
+                            )}
+                          </div>
                         : DETAIL_GROUPS[entity] && c.key === 'code'
                         ? <button onClick={() => setDetailRow(r)}
                             className="text-teal-600 hover:underline font-medium">
