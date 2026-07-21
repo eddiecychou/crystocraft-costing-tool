@@ -89,26 +89,32 @@ const s = StyleSheet.create({
   //
   // Explicit rows of two instead: each row is its own flex container whose
   // height is its tallest cell, and wrap={false} keeps a row off a page break.
-  row: { flexDirection: 'row', marginBottom: 14 },
-  card: { width: '50%', paddingRight: 12 },
+  // THREE columns. Two left large voids: a card is only as tall as its price
+  // rows, so a one-row product beside a six-row one wasted most of a half page.
+  // Three fits because the label column still clears what it needs — 168pt
+  // usable, ~95pt for the longest label plus a 48pt price — and wrapped labels
+  // are safe now that rows align to flex-start.
+  row: { flexDirection: 'row', marginBottom: 12 },
+  card: { width: '33.333%', paddingRight: 9 },
   cardInner: { flexDirection: 'column' },
-  photo: { width: 118, height: 118, objectFit: 'contain', marginBottom: 6, alignSelf: 'center' },
-  photoBlank: { width: 118, height: 118, marginBottom: 6, alignSelf: 'center', borderWidth: 0.8, borderColor: C.border },
-  code: { fontFamily: 'Work Sans', fontWeight: 600, fontSize: 9, letterSpacing: 0.4 },
-  name: { fontSize: 8.5, color: C.grayDark, marginTop: 1.5, marginBottom: 4 },
+  photo: { width: 100, height: 100, objectFit: 'contain', marginBottom: 5, alignSelf: 'center' },
+  photoBlank: { width: 100, height: 100, marginBottom: 5, alignSelf: 'center', borderWidth: 0.8, borderColor: C.border },
+  code: { fontFamily: 'Work Sans', fontWeight: 600, fontSize: 8.5, letterSpacing: 0.3 },
+  name: { fontSize: 8, color: C.grayDark, marginTop: 1.5, marginBottom: 3.5 },
   attr: { fontSize: 7, color: C.grayMid, marginBottom: 3 },
-  note: { fontSize: 6.5, color: '#a06a1b', backgroundColor: '#fdf5e6',
-          paddingVertical: 1.5, paddingHorizontal: 3, marginBottom: 3, alignSelf: 'flex-start' },
+  note: { fontSize: 6, paddingVertical: 1.5, paddingHorizontal: 3, marginBottom: 3, alignSelf: 'flex-start' },
+  noteRetired: { color: '#a06a1b', backgroundColor: '#fdf5e6' },
+  noteConcept: { color: '#6b4a9e', backgroundColor: '#f4f0fa' },
 
   // alignItems is flex-start, not center: with a label that wraps and a price
   // that does not, centring is what let the two overlap.
   priceRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 2.2,
               paddingHorizontal: 2 },
   priceRowAlt: { backgroundColor: C.rowAlt },
-  priceLabel: { flex: 1, paddingRight: 8 },
-  plating: { fontSize: 7.5, color: C.grayDark },
+  priceLabel: { flex: 1, paddingRight: 5 },
+  plating: { fontSize: 7, color: C.grayDark },
   rowCode: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 6.5, color: C.grayMid, letterSpacing: 0.3, marginBottom: 0.5 },
-  price: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 8.5, width: 54, textAlign: 'right' },
+  price: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 8, width: 48, textAlign: 'right' },
 
 })
 
@@ -135,9 +141,10 @@ function Footer({ validity }) {
 
 // Split a theme's products into rows of two. Done here rather than with
 // flexWrap for the reason in the `row` style above.
-const pairs = (list) => {
+const PER_ROW = 3
+const chunk = (list) => {
   const out = []
-  for (let i = 0; i < list.length; i += 2) out.push(list.slice(i, i + 2))
+  for (let i = 0; i < list.length; i += PER_ROW) out.push(list.slice(i, i + PER_ROW))
   return out
 }
 
@@ -155,7 +162,9 @@ function ProductCard({ p }) {
         <View>
           <Text style={s.code}>{p.code}</Text>
           <Text style={s.name}>{p.name}</Text>
-          {p.note ? <Text style={s.note}>{p.note}</Text> : null}
+          {p.note ? (
+            <Text style={[s.note, p.noteKind === 'concept' ? s.noteConcept : s.noteRetired]}>{p.note}</Text>
+          ) : null}
           {p.prices.map((r, i) => (
             <View key={`${r.code}|${r.plating}|${r.price}`} style={[s.priceRow, i % 2 ? s.priceRowAlt : null]}>
               <View style={s.priceLabel}>
@@ -210,14 +219,16 @@ export default function RangeCataloguePDF({ account, currency, validity, groups,
                 here — the heading still stranded itself at the foot of a page
                 with its content pushed to the next. Making them one
                 unbreakable unit is structural rather than advisory. */}
-            {pairs(g.products).map((pair, i) => (
-              <View key={pair[0]?.code || i} wrap={false}>
+            {chunk(g.products).map((group, i) => (
+              <View key={group[0]?.code || i} wrap={false}>
                 {i === 0 && <Text style={s.section}>{g.title}</Text>}
                 <View style={s.row}>
-                  <ProductCard p={pair[0]} />
-                  {/* An empty half keeps the last odd card at column width
-                      rather than letting it stretch across the page. */}
-                  {pair[1] ? <ProductCard p={pair[1]} /> : <View style={s.card} />}
+                  {group.map(p => <ProductCard key={p.code} p={p} />)}
+                  {/* Empty cells keep a short final row at column width rather
+                      than letting its cards stretch across the page. */}
+                  {Array.from({ length: PER_ROW - group.length }, (_, k) => (
+                    <View key={`pad${k}`} style={s.card} />
+                  ))}
                 </View>
               </View>
             ))}

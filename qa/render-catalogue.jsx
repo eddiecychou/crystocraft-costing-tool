@@ -16,25 +16,29 @@ const rows = n => Array.from({ length: n }, (_, i) => ({
   price: `USD ${(2 + i * 0.37).toFixed(2)}`,
 }))
 
-const product = (code, name, nRows, note) => ({
-  code, name, note: note ? 'Retired Stock — no further production, while supplies last' : '',
+// kind: '' = Made to Order (unmarked) | 'retired' | 'concept'
+const product = (code, name, nRows, kind) => ({
+  code, name,
+  note: kind === 'retired' ? 'Retired Stock — no further production, while supplies last'
+      : kind === 'concept' ? 'Concept — not yet tooled, enquiry only' : '',
+  noteKind: kind || '',
   image: TEST_IMAGE, prices: rows(nRows),
 })
 
 const groups = [{
   title: 'ANGELS',
   products: [
-    product('D/A0009-001', 'Sacred Angel Freestand', 6, true),
-    product('D0010-001', 'Angel (Hymn Book) Freestand', 1, true),
-    product('D0011-001', 'Sacred Angel(Lyre) Freestand', 2, false),
-    product('D0018-001', 'Angel (Trumpet) Freestand', 4, true),
-    product('D0019-001', 'Flying Angel(Heart) Freestand', 3, false),
-    product('D0022-001', 'Mini Sacred Angel(Cross) Freestand', 6, true),
-    product('M0014-236', 'Guardian Angel Music Box (Wood Body)', 2, false),
+    product('D/A0009-001', 'Sacred Angel Freestand', 6, 'retired'),
+    product('D0010-001', 'Angel (Hymn Book) Freestand', 1, 'concept'),
+    product('D0011-001', 'Sacred Angel(Lyre) Freestand', 2, ''),
+    product('D0018-001', 'Angel (Trumpet) Freestand', 4, 'concept'),
+    product('D0019-001', 'Flying Angel(Heart) Freestand', 3, ''),
+    product('D0022-001', 'Mini Sacred Angel(Cross) Freestand', 6, 'retired'),
+    product('M0014-236', 'Guardian Angel Music Box (Wood Body)', 2, ''),
   ],
 }, {
   title: 'ZODIAC',
-  products: [product('D0259-001', 'Zodiac Gemini Freestand', 6, false)],
+  products: [product('D0259-001', 'Zodiac Gemini Freestand', 6, '')],
 }]
 
 ReactPDF.render(

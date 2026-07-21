@@ -255,10 +255,19 @@ export default function RangeCatalogueExport({ onClose }) {
           code: codeOf(p),
           name: p.description || '',
           image: dataUrls[i],
-          // Only the exception is marked. Made to Order is the norm, so
-          // labelling it on every block would be noise; a buyer reading this
-          // weeks later needs to know which items will not be reproduced.
-          note: p.status === 'stock' ? 'Retired Stock — no further production, while supplies last' : '',
+          // Made to Order is the norm and is left unmarked; the two
+          // exceptions are labelled, because both change what a buyer can
+          // actually order and neither is visible from a photograph.
+          //   Retired Stock — will not be produced again.
+          //   Concept       — not tooled yet, so it cannot be produced AT ALL
+          //                   until tooling is made. Quite different from Made
+          //                   to Order, and the more expensive one to get wrong.
+          note: p.status === 'stock'
+            ? 'Retired Stock — no further production, while supplies last'
+            : p.status === 'concept'
+              ? 'Concept — not yet tooled, enquiry only'
+              : '',
+          noteKind: p.status === 'stock' ? 'retired' : p.status === 'concept' ? 'concept' : '',
           // One row per BRAND x PLATING, which is what a variant actually is.
           // Unlabelled, these read as a meaningless repeat ("Chrome, Chrome,
           // Gold, Gold…") because the thing that differs — the crystal brand —
