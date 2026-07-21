@@ -19,15 +19,18 @@ import WorkSansSemiBold from '../assets/fonts/WorkSans-SemiBold.ttf'
 // made those rows look like a meaningless repeat of Chrome/Chrome/Gold, because
 // the thing that differed was hidden.
 //
-// COLOUR IS NOT ENUMERATED, BUT IT IS NOT IRRELEVANT EITHER. An earlier draft
-// listed every colour and produced sixteen rows of "USD 3.85" for one
-// butterfly. The correction (owner, 2026-07-21) is that colour DOES affect
-// price: premium crystals — Golden Teak, Crystal AB, the GX/AX mixes — are
-// dearer, and the team expresses that by splitting them into their own variant
-// at their own price. rangePrice() reads variant.ws_price_usd, so the model
-// carries this correctly; only the display had lost it. Colours are therefore
-// appended to a row ONLY when another row shares its brand and plating, which
-// is exactly when the reader would otherwise see an unexplained duplicate.
+// THE ROW LABEL IS THE VARIANT'S OWN description FIELD. The variant editor
+// generates it from plating + crystal and lets it be edited, so it is the one
+// string the team curates. Rebuilding the same sentence from brand_code and
+// plating_name — which earlier versions did — cannot see an edit, and that was
+// the cause of every row problem here.
+//
+// It matters because colour DOES affect price (owner, 2026-07-21): premium
+// crystals such as Golden Teak, Crystal AB and the GX/AX mixes are dearer, and
+// the team expresses that by splitting them into their own variant at their own
+// price. The description is where that difference is written down. Where it has
+// not been filled in, two variants print identically — so the export names
+// those products before building rather than shipping the confusion.
 
 Font.register({ family: 'Questrial', src: QuestrialRegular })
 Font.register({ family: 'Work Sans', fonts: [

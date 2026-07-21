@@ -57,20 +57,22 @@ const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.n
 // from. A variant is a brand x plating pair, and showing only the plating made
 // several rows look identical.
 //
-// crystal_name is the variant's own description and is preferred when set: it
-// is what distinguishes a Golden Teak or Crystal AB variant from the plain one
-// at the same brand and plating. It is hand-entered, so it is often blank or
-// stale — which is exactly why ambiguous() below reports what needs attention
-// rather than the document quietly printing two identical-looking rows.
+// v.description IS the label. The variant editor generates it from plating +
+// crystal and lets it be edited, so it is the field the team curates and the
+// one place a premium crystal gets spelled out.
+//
+// Earlier versions of this rebuilt the same sentence from brand_code and
+// plating_name. That was the mistake behind every row problem in this
+// catalogue: a reconstruction cannot see an edit, so a variant whose
+// description had been corrected still printed the generated words, and two
+// variants that differ only in an edited description printed identically.
+// Falling back to the construction only when description is blank.
 function variantLabel(v) {
+  const desc = (v.description || '').trim()
+  if (desc) return desc
   const brand = BRAND_NAME[v.brand_code] || v.brand_code || ''
   const plating = v.plating_name || v.plating_code || ''
-  const crystal = (v.crystal_name || '').trim()
-  return [
-    brand && `${brand} Crystals`,
-    plating && `${plating} Plated`,
-    crystal || '',
-  ].filter(Boolean).join(', ') || '—'
+  return [brand && `${brand} Crystals`, plating && `${plating} Plated`].filter(Boolean).join(', ') || '—'
 }
 
 // Products whose priced rows still collide after labelling — same code, same
@@ -81,7 +83,10 @@ function ambiguousProducts(list) {
   for (const p of list) {
     const rows = (Array.isArray(p.variants) ? p.variants : [])
       .filter(v => Number(v.ws_price_usd) > 0)
-      .map(v => `${v.brand_code || ''}|${v.plating_code || ''}|${(v.crystal_name || '').trim()}|${(v.crystal_colors || []).join(',')}`)
+      // Keyed on the printed label, because that is what a reader compares.
+      // A blank description falls back to the generated words, which is exactly
+      // when two variants collide.
+      .map(v => `${v.brand_code || ''}|${v.plating_code || ''}|${variantLabel(v)}`)
     const seen = new Set()
     const clash = rows.some(k => (seen.has(k) ? true : (seen.add(k), false)))
     if (clash) out.push(p)
