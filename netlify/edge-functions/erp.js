@@ -191,6 +191,16 @@ export default async function handler(req) {
     })
   }
 
+  // 2a3) Sync freshness: { entity: 'sync_status' } → when the mirror last ran
+  //      and how current the ERP data in it is. Two different times; see the
+  //      erp_sync_status view for why conflating them would mislead.
+  if (payload?.entity === 'sync_status') {
+    const h = { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Accept: 'application/json' }
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/erp_sync_status?select=*&limit=1`, { headers: h })
+    if (!r.ok) return json({ error: 'Sync status failed', detail: (await r.text()).slice(0, 300) }, 502)
+    return json({ status: (await r.json())[0] || null })
+  }
+
   // 2b) Line detail: { entity: 'lines', of: 'sales_invoice'|'sales_order', code }.
   //     Returns the header's line items and (for sales docs) its surcharge lines.
   if (payload?.entity === 'lines') {

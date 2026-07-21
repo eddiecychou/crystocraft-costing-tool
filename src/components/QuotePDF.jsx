@@ -60,7 +60,7 @@ const s = StyleSheet.create({
   infoCol: { flexDirection: 'column', width: 330 },
   infoLine: { flexDirection: 'row', marginBottom: 3, alignItems: 'flex-start' },
   label: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 7, color: C.grayLabel, letterSpacing: 1.3, width: 62, paddingTop: 1 },
-  labelRight: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 7, color: C.grayLabel, letterSpacing: 1.3, marginRight: 8, textAlign: 'right' },
+  labelRight: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 7, color: C.grayLabel, letterSpacing: 1.3, marginRight: 8, textAlign: 'right', width: 62, paddingTop: 1 },
   value: { fontSize: 9, color: C.black, flex: 1 },
   valueStrong: { fontSize: 10.5, color: C.black },
   infoRightLine: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 3 },
@@ -132,7 +132,11 @@ export default function QuotePDF({ quote, items }) {
   const grandTotal = items.reduce((sum, item) => sum + tierAmount(firstTier(item)), 0)
 
   return (
-    <Document title={`Quotation ${clientName}`} author="Crystocraft">
+    <Document
+      title={[quote.quote_no, clientName, quote.quote_date]
+        .filter(Boolean).join(' - ') || `Quotation ${clientName}`}
+      author="Crystocraft"
+    >
       <Page size="A4" style={s.page}>
         {/* Header */}
         <View style={s.headerRow}>

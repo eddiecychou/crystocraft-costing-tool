@@ -501,3 +501,31 @@ revoke all on public.uc_registry_dated from anon, authenticated;
 grant select on public.uc_registry_dated to service_role;
 
 notify pgrst, 'reload schema';
+
+-- ── Sync freshness (Phase 8) ─────────────────────────────────────────────────
+-- "Reflects the last data sync — not live" was all the ERP Lookup page could
+-- say, which left the obvious question unanswered: last sync when? Requested
+-- 2026-07-21.
+--
+-- Two different times, and conflating them would mislead:
+--   synced_at    — when sync.py last ran. How stale the MIRROR is.
+--   data_through — the newest LastUpdate the incremental tables have pulled.
+--                  How current the ERP DATA is. These differ: after the
+--                  2026-07-21 run, synced_at was 13:28 but data_through was
+--                  11:45, because nothing had been edited in JES since.
+--
+-- Restricted to the tables that actually carry a watermark: a full-mode table
+-- has last_watermark NULL and would drag the max() to nothing.
+drop view if exists public.erp_sync_status cascade;
+create view public.erp_sync_status as
+select
+  max(last_run_at)                                     as synced_at,
+  max(last_watermark) filter (where last_watermark <> '') as data_through,
+  count(*)                                             as tables,
+  sum(row_count)                                       as rows_mirrored
+from meta.sync_state;
+
+revoke all on public.erp_sync_status from anon, authenticated;
+grant select on public.erp_sync_status to service_role;
+
+notify pgrst, 'reload schema';

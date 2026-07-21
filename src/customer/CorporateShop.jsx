@@ -26,7 +26,7 @@ export default function CorporateShop({ profile }) {
     return onSnapshot(q, snap => {
       setProducts(
         snap.docs.map(d => ({ id: d.id, ...d.data() }))
-          .filter(p => productStatusOf(p.status).value !== 'retired')
+          .filter(p => p.active !== false && productStatusOf(p.status).value !== 'retired')
           // New-tagged products first (C0), then alphabetical.
           .sort((a, b) => newFirst(a, b) || (a.name || '').localeCompare(b.name || ''))
       )

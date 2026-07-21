@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Search, Database, Building2, Factory, Boxes, AlertCircle, ListTree, X, Receipt, ClipboardList, FileText, ShoppingCart, History, Warehouse } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
-import { erpLookup, erpBom, erpLines } from '../erpApi'
+import { erpLookup, erpBom, erpLines, erpSyncStatus } from '../erpApi'
 
 // Column layout per entity. `key` maps to the curated view's fields.
 const ENTITIES = {
@@ -392,6 +392,19 @@ function BomModal({ code, rows, loading, error, onClose }) {
   )
 }
 
+// "21 Jul 13:28". Accepts both shapes the two fields come in: an ISO timestamp
+// with a zone (last_run_at) and JES's naive "2026-07-21 11:45:07" (the
+// watermark), which is local time and must not be read as UTC.
+function fmtSyncTime(v) {
+  if (!v) return '—'
+  const iso = typeof v === 'string' && !v.includes('T') && !v.endsWith('Z')
+    ? v.replace(' ', 'T')            // naive → parsed in the reader's own zone
+    : v
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return String(v).slice(0, 16)
+  return d.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+}
+
 export default function ErpLookup() {
   const [entity, setEntity] = useState('customer')
   const [q, setQ] = useState('')
@@ -401,6 +414,7 @@ export default function ErpLookup() {
   const [error, setError] = useState('')
 
   // Inventory: warehouse + item-type pickers (loaded once) and their selections.
+  const [sync, setSync] = useState(null)
   const [warehouses, setWarehouses] = useState([])
   const [itemTypes, setItemTypes] = useState([])
   const [warehouse, setWarehouse] = useState('')       // '' = all warehouses
@@ -450,6 +464,14 @@ export default function ErpLookup() {
     }
   }
 
+  // Sync freshness. Loaded once; a failure leaves the line hidden rather than
+  // showing a wrong or alarming value.
+  useEffect(() => {
+    let alive = true
+    erpSyncStatus().then(s => { if (alive) setSync(s) }).catch(() => {})
+    return () => { alive = false }
+  }, [])
+
   // Picker lists for the Inventory tab. Loaded once, on first use.
   useEffect(() => {
     if (!cfg.hasWarehouse || warehouses.length) return
@@ -498,17 +520,35 @@ export default function ErpLookup() {
         <p className="text-sm text-gray-500 mt-0.5">
           Read-only search of the legacy JES ERP archive. Reflects the last data sync — not live.
         </p>
+        {/* Two different times, deliberately both shown. "Synced" is when the
+            mirror last ran; "JES data to" is the newest edit it actually
+            carries. They diverge whenever nothing has changed in JES since the
+            previous run, and only the second one answers "is my order in here
+            yet?". Sync runs on the office LAN only, so this can be days old. */}
+        {sync && (
+          <p className="text-xs text-gray-400 mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5">
+            <span title={sync.synced_at || ''}>
+              Synced <strong className="font-medium text-gray-500">{fmtSyncTime(sync.synced_at)}</strong>
+            </span>
+            {sync.data_through && (
+              <span title={sync.data_through}>
+                JES data to <strong className="font-medium text-gray-500">{fmtSyncTime(sync.data_through)}</strong>
+              </span>
+            )}
+            {sync.tables ? <span>{Number(sync.rows_mirrored).toLocaleString()} rows · {sync.tables} tables</span> : null}
+          </p>
+        )}
       </div>
 
       {/* Entity toggle */}
-      <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1 mb-4">
+      <div className="flex md:inline-flex overflow-x-auto rounded-lg border border-gray-200 bg-white p-1 mb-4 -mx-4 px-4 md:mx-0 md:px-1 scrollbar-none">
         {Object.entries(ENTITIES).map(([key, e]) => {
           const on = entity === key
           return (
             <button
               key={key}
               onClick={() => { setEntity(key); setRows([]) }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition ${
+              className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm rounded-md transition ${
                 on ? 'bg-teal-600 text-white' : 'text-gray-600 hover:bg-gray-50'
               }`}
             >

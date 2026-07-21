@@ -25,6 +25,21 @@ export async function erpLookup(
   return data.rows || []
 }
 
+// When the mirror last ran, and how current the ERP data in it is.
+// Returns { synced_at, data_through, tables, rows_mirrored } or null.
+export async function erpSyncStatus() {
+  const user = auth.currentUser
+  if (!user) return null
+  const token = await user.getIdToken()
+  const res = await fetch('/api/erp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ entity: 'sync_status' }),
+  })
+  if (!res.ok) return null            // freshness is a nicety; never break the page
+  return (await res.json()).status || null
+}
+
 // Multi-level BOM explosion for one item code. Returns tree rows:
 // { level, parent_code, component_code, component_type, qty, ext_qty, is_assembly, path }
 export async function erpBom(code) {

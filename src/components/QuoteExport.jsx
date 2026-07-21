@@ -83,6 +83,16 @@ export default function QuoteExport({ quote, items, onClose }) {
     return pdf(<QuotePDF quote={{ ...quote, _stampData: stampData }} items={withImages} />).toBlob()
   }
 
+  // "QU260602-1 - Widdop Bingham - 2026-07-21" — the three things anyone
+  // looking for this file later would search on. Falls back cleanly when the
+  // quote has no QU number or no client yet.
+  function exportName(ext) {
+    const date = quote.quote_date || new Date().toISOString().slice(0, 10)
+    const parts = [quote.quote_no, quote.client_name, date].filter(Boolean)
+    // Strip characters that are illegal in filenames on Windows or macOS.
+    return `${parts.join(' - ').replace(/[\\/:*?"<>|]/g, '-')}.${ext}`
+  }
+
   async function exportPDF() {
     setPdfLoading(true)
     try {
@@ -90,7 +100,7 @@ export default function QuoteExport({ quote, items, onClose }) {
       const url  = URL.createObjectURL(blob)
       const a    = document.createElement('a')
       a.href     = url
-      a.download = `Quotation_${quote.client_name}_${quote.quote_date || new Date().toISOString().slice(0, 10)}.pdf`
+      a.download = exportName('pdf')
       a.click()
       URL.revokeObjectURL(url)
     } catch (err) {
@@ -446,7 +456,7 @@ export default function QuoteExport({ quote, items, onClose }) {
       const url  = URL.createObjectURL(blob)
       const a    = document.createElement('a')
       a.href     = url
-      a.download = `Quotation_${quote.client_name}_${quote.quote_date || new Date().toISOString().slice(0, 10)}.xlsx`
+      a.download = exportName('xlsx')
       a.click()
       URL.revokeObjectURL(url)
 

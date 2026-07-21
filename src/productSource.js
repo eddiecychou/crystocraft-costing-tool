@@ -68,7 +68,11 @@ export async function loadBlogProducts(source) {
       .filter(p => p.status !== 'hidden')  // never feature hidden designs
   }
   const snap = await getDocs(query(collection(db, 'products'), orderBy('name')))
-  return snap.docs.map(d => ({ id: d.id, source: 'corporate', ...d.data() }))
+  return snap.docs
+    .map(d => ({ id: d.id, source: 'corporate', ...d.data() }))
+    // `active !== false`, not `active === true`: products created before the
+    // flag existed have no such field and must stay visible.
+    .filter(p => p.active !== false)
 }
 
 // Resolve the image list for one selected product. Range images are already on
