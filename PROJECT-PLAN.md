@@ -266,6 +266,9 @@ Ten JES screen captures (Item Balance Adjustment, Item Master, Job Order,
 Purchase Order, Purchase Return, Sales Return, Goods Receive Note). Full
 write-up in `V7.15_ERP_Inventory.md` §7–9. Three things change the plan:
 
+> **Superseded in part by the owner's clarification below** — the stock take is
+> real, but only its crystal document is audit input.
+
 **1. The 31 March stock take is done in JES, and 2026 is complete.** It has run
 every year since 2007 as Item Balance Adjustment documents. 2026 is four docs
 issued 31/3/2026 (entered 8–13 May): crystal, POS, purchased parts, packing —
@@ -300,6 +303,53 @@ Smaller, but they will bite an importer: purchase orders carry legitimate
 **at PO line level** (`P.O. No.` + `P.D. Seq`), not at PO level; and issue dates
 are routinely **backdated** weeks before entry, so anything built on these must
 use the issue date and never `LastUpdate`.
+
+### The audit does not need JES's stock movements (owner, 2026-07-21)
+
+> *"For audit, we don't need all the complicated stock movements in JES.
+> Current JES only gives accurate crystal balances. FM metal, packaging and
+> other purchase materials are in Excel (already imported to the app). Finished
+> goods for B2C is kept by ChunCi in Excel."*
+
+This shrinks the 31 March valuation sharply, and **corrects the entry above**:
+of the four IA stock-take documents, only `IA260033` (crystal) covers stock JES
+actually knows. `IA260035` purchased parts (−273,147) and `IA260036` packing
+(−1,086,744) are adjustments to balances **nobody maintains** — JES being
+reconciled to XiangXia's spreadsheet. Big numbers, no audit meaning. The one
+class JES *is* trusted for is the one whose 2026 adjustment was reversed in
+full by `IA260039`.
+
+| Class | Source of truth | In the app? |
+|---|---|---|
+| Crystal | JES | Yes — 180 SKUs / 3.1 M units (V7.16) |
+| FM metal | XiangXia's Excel | Yes |
+| Packaging | XiangXia's Excel | Yes |
+| Other purchased materials | XiangXia's Excel | Yes |
+| **Finished goods (B2C)** | **ChunCi's Excel** | **No** |
+
+So the valuation is a report over stock the app already holds, plus one sheet
+from ChunCi — not an exercise against the ERP at all.
+
+**The blocker is cost, not quantity, and it is worse than recorded.**
+`createInventoryClass` persists descriptors only, with `stock_qty` owned by the
+ledger: **a crystal or packaging stock record has no unit-cost field at all.**
+Costs live elsewhere (`crystal_unit_costs` keyed by *brand*, components through
+the range costing model) but nothing joins a stock row to a price. "Quantities
+and unit costs both exist, nothing multiplies them" was too generous — for two
+classes the multiplication has no left-hand side.
+
+Order of work, none of it started:
+
+1. **Cost basis per class** — purchase price, standard cost, or latest PO price.
+   Cindy's decision, and it determines the rest.
+2. **A join from stock row to cost** for crystal and packaging.
+3. **ChunCi's B2C sheet** — the one input with no home in the app yet.
+4. A report that multiplies and totals.
+
+**Explicitly out of scope:** JES's 1.15 M movement ledger, the IA adjustment
+history, and the subcontractor warehouses. Retiring JES no longer has to solve
+stock valuation — the two are separate problems, and only the crystal balance
+connects them.
 
 ---
 
