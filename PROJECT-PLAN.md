@@ -260,6 +260,47 @@ and only for `/24+` so the historical record is never flagged. A hard block
 would be wrong here: JES contains states that are incorrect and uncorrectable,
 and the registry has to be able to record what actually happened.
 
+### XiangXia's screens: the 31 March stock take was already there
+
+Ten JES screen captures (Item Balance Adjustment, Item Master, Job Order,
+Purchase Order, Purchase Return, Sales Return, Goods Receive Note). Full
+write-up in `V7.15_ERP_Inventory.md` §7–9. Three things change the plan:
+
+**1. The 31 March stock take is done in JES, and 2026 is complete.** It has run
+every year since 2007 as Item Balance Adjustment documents. 2026 is four docs
+issued 31/3/2026 (entered 8–13 May): crystal, POS, purchased parts, packing —
+`IA260033`–`IA260036`. The open item "which 31 March" partly answers itself:
+**both 2025 and 2026 takes exist**, so the question narrows to which year end
+the books need, not whether the count exists.
+
+**But `IA260039` is a line-for-line exact reversal of the crystal document**
+(`IA260033`), entered 16 June with the remark "This amount offsets order
+IA260033". All three lines, opposite signs. **The 2026 crystal adjustment nets
+to zero.** Reversals are routine here (`IA260031` reverses `IA260030`,
+`IA181721` reverses `IA171570`), so the adjustment ledger must always be read
+net — a valuation that reads the stock-take document alone will be wrong.
+
+Also: **metal is absent from the 2026 take** (2025 and 2024 both had one),
+consistent with metals not being maintained in JES.
+
+**2. The warehouse map is bigger than `FJOD → FWIP → FTBS`.** All 41 are named
+in `raw.warehouse`. `F…` is Foreverank (the China plant), `H…` is United Art
+(Hong Kong), `CN…` are Foreverank workshops. **Nine warehouses are outside
+parties** — platers, a packing works, Italina, Martin Schmidt. JES models
+subcontractor-held stock as warehouses, and the app's inventory has to decide
+whether it follows goods to a plater's works or stops at the factory gate.
+That is a scope question for the production cutover, not a detail.
+
+**3. `SR260004` references `CN581/26`.** Sales returns carry the credit-note
+number, which is the join Cindy's DN/CN mapping will need — the register found
+in V7.16 connects to the ledger through this field.
+
+Smaller, but they will bite an importer: purchase orders carry legitimate
+**zero-price lines** (`PU260044` line 3, 500 pcs at 0.00); GRNs match receipts
+**at PO line level** (`P.O. No.` + `P.D. Seq`), not at PO level; and issue dates
+are routinely **backdated** weeks before entry, so anything built on these must
+use the issue date and never `LastUpdate`.
+
 ---
 
 ## Current Status — V7.16 CLOSED as of 2026-07-21
