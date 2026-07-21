@@ -50,8 +50,19 @@ export default function SalesInvoices() {
 
   return (
     <div>
-      <div className="px-4 md:px-6 pt-4 md:pt-6 pb-0 border-b border-ivory-dark">
-        <h1 className="text-xl md:text-2xl mb-4">Sales Invoices</h1>
+      <div className="px-4 md:px-6 pt-4 md:pt-6 pb-4 border-b border-ivory-dark">
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-xl md:text-2xl">Sales Invoices</h1>
+          {/* A direct invoice needs its own front door. Smaller retail sales are
+              invoiced without a sales order at all, so routing them through
+              "Production → Import PI" would be both wrong and confusing. */}
+          <Link to="/shipments/new?direct=1" className="btn-primary text-sm whitespace-nowrap inline-flex items-center gap-1.5">
+            <Receipt size={15} /> Direct Invoice
+          </Link>
+        </div>
+        <p className="text-sm text-ink-50 mt-1">
+          An invoice needs a UC number; a sales order is optional — retail sales are invoiced directly.
+        </p>
       </div>
 
       <div className="p-4 md:p-6">

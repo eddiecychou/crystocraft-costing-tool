@@ -138,6 +138,16 @@ export default function SalesInvoicePrint() {
           This order has <strong>no invoice number</strong>. Allocate one on the order before sending this.
         </div>
       )}
+      {/* The UC is the required key on an invoice — it is what joins this
+          document to Cindy's books and the PBIS import. A sales order is NOT
+          required (retail sales are invoiced directly), so its absence is
+          normal and deliberately not flagged. A missing UC is not. */}
+      {!order.uc_no && (
+        <div className="si-warn red">
+          This invoice has <strong>no UC number</strong>. Every invoice needs one — it is what matches
+          this document to the books. Allocate one on the order before sending.
+        </div>
+      )}
       {currencyMismatch && (
         <div className="si-warn amber">
           This invoice is in <strong>{cur}</strong> but the bank account shown is in <strong>{bank.currency}</strong>.

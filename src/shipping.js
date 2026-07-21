@@ -72,6 +72,19 @@ export const normOrder = o => ({
   // The sales invoice number (SI######). Its own field: without one, SI numbers
   // were being typed into erp_so_no, so the order list showed "SI260085" in a
   // column headed SO and the two document numbers could not be told apart.
+  //
+  // THE INVARIANT (owner, 2026-07-20; confirmed in the ERP): an invoice must
+  // carry a UC number, but need NOT have a sales order or PI behind it. Smaller
+  // retail transactions are invoiced directly.
+  //
+  // The data agrees emphatically. raw.salesinvoice.siref holds the UC — and
+  // 0 of 516 invoices since 2024 have an empty siref. There is no SO-reference
+  // column on salesinvoice at all: JES links an invoice to a UC, never to an
+  // order. Roughly 19% of the registry is Online Shop / Amazon / Alibaba, the
+  // retail channels this describes.
+  //
+  // So uc_no is the required key on the invoice path; erp_so_no and erp_pi_no
+  // are optional. Anything validating an invoice must check the UC, not the SO.
   erp_si_no: str(o.erp_si_no),
   invoiced_at: o.invoiced_at || null,
   // The app's UC reference (full form, e.g. "UC4950/26"). Free text like

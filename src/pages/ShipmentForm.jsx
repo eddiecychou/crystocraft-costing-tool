@@ -20,6 +20,7 @@ import { crystalInventory } from '../crystals'
 import { packagingInventory } from '../packaging'
 import { metalOrderConfig } from '../orderStock'
 import { allocateSoNo, allocateSiNo } from '../soNumber'
+import { allocateOrderUc } from '../ucRegistry'
 import { orderStockStatus, stockStatusDetail, STOCK_STATUS_LABEL, STOCK_STATUS_STYLE } from '../orderStockStatus'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -119,6 +120,10 @@ export default function ShipmentForm() {
   const isEdit = Boolean(id)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  // Direct invoice: a retail sale with no sales order behind it. Only changes
+  // how the page presents itself — the record is the same shape, it just never
+  // gets an SO number. See normOrder in shipping.js for why that is legitimate.
+  const isDirect = searchParams.get('direct') === '1'
 
   const [header, setHeader]   = useState(() => {
     const preCustomerId = searchParams.get('customer_id')
@@ -208,11 +213,25 @@ export default function ShipmentForm() {
   // June and invoiced in July is normal and the books need the later one.
   const [allocatingSi, setAllocatingSi] = useState(false)
   const [siError, setSiError] = useState('')
+  // An invoice must carry a UC — that is the required key, not the SO (see
+  // normOrder in shipping.js; 0 of 516 JES invoices since 2024 lack one). So
+  // allocating an invoice number allocates a UC too when the order has none,
+  // rather than letting an invoice exist that cannot be matched to the books.
+  // This is also what removes the duplicate-UC slip: 4 UC refs in JES carry two
+  // invoices each, all from copying an order and not changing the UC by hand.
   async function doAllocateSi() {
     setAllocatingSi(true); setSiError('')
     try {
+      let uc = header.uc_no
+      if (!uc) {
+        const allocated = await allocateOrderUc({ customer_name: header.customer_name, currency: header.currency })
+        uc = allocated.full
+      }
       const no = await allocateSiNo()
-      setHeader(h => ({ ...h, erp_si_no: no, invoiced_at: h.invoiced_at || new Date().toISOString().slice(0, 10) }))
+      setHeader(h => ({
+        ...h, uc_no: uc, erp_si_no: no,
+        invoiced_at: h.invoiced_at || new Date().toISOString().slice(0, 10),
+      }))
     } catch (e) {
       setSiError(e.message || 'Could not allocate an invoice number.')
     } finally {
@@ -477,7 +496,9 @@ export default function ShipmentForm() {
         <Link to="/shipments" className="text-sm text-brand-600 hover:underline">← Order Listing</Link>
         <div className="flex items-start justify-between gap-3 mt-1">
           <h1 className="text-2xl font-bold text-gray-900">
-            {isEdit ? (header.erp_pi_no || 'Order Detail') : 'New Order'}
+            {isEdit
+              ? (header.erp_si_no || header.erp_pi_no || 'Order Detail')
+              : (isDirect ? 'Direct Invoice' : 'New Order')}
           </h1>
           {isEdit && (
             <a href={`/shipments/${id}/pi`} target="_blank" rel="noreferrer"
@@ -488,7 +509,9 @@ export default function ShipmentForm() {
         </div>
         {!isEdit && (
           <p className="text-sm text-gray-500 mt-1">
-            Enter the order directly, or drop a PI below to have AI read the header and line items.
+            {isDirect
+              ? 'A retail sale invoiced directly — no sales order needed. Add the lines, then allocate an invoice number.'
+              : 'Enter the order directly, or drop a PI below to have AI read the header and line items.'}
           </p>
         )}
       </div>
@@ -530,8 +553,10 @@ export default function ShipmentForm() {
       {/* Order tab (or new shipment form) */}
       {(!isEdit || tab === 'order') && (
       <form onSubmit={isEdit ? handleSave : handleCreate} className="space-y-5">
-        {/* PI upload (import only) */}
-        {!isEdit && (
+        {/* PI upload (import only). Hidden for a direct invoice — a retail sale
+            has no proforma to import, so offering the dropzone would suggest a
+            step that does not exist. */}
+        {!isEdit && !isDirect && (
           <div className="card p-4">
             <label
               className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer transition-colors
@@ -681,7 +706,7 @@ export default function ShipmentForm() {
             {lines.length === 0 && (
               <p className="text-sm text-ink-50 py-3 text-center">
                 No lines yet — <button type="button" onClick={addBlankLine} className="text-brand-600 hover:underline">add one</button>
-                {!isEdit && <> , or drop a PI above to import them.</>}
+                {!isEdit && !isDirect && <> , or drop a PI above to import them.</>}
               </p>
             )}
 
