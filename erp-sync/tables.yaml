@@ -1,6 +1,16 @@
-# Full overnight load of JES_UnitedArt. All base tables except audit/logs.
-# Giants listed LAST (full mode tonight; flip to incremental later — all 4
-# have a PK + LastUpdate). Full mode is idempotent/self-healing.
+# Load of JES_UnitedArt. All base tables except audit/logs.
+#
+# Seven tables run INCREMENTAL (enabled 2026-07-21) — Item, ItemDetail,
+# ItemTransaction, SalesOrder, SalesInvoice, Purchase, SalesOrderDetail. Each was
+# proven to refresh LastUpdate on edit (see PROJECT-PLAN.md, "LastUpdate probe"),
+# and each declared pk was verified unique with no nulls against the mirror
+# before being enabled. This takes a refresh from ~5 hours to minutes.
+#
+# JobOrderBOM stays FULL: it is the one giant never probed.
+#
+# Everything else stays full. Full mode is idempotent/self-healing, so a full run
+# remains the repair path — in particular for the 556 ItemTransaction rows whose
+# LastUpdate is null and which incremental can never see.
 
 defaults:
   source_schema: dbo
@@ -334,6 +344,9 @@ tables:
   - source: Property
   - source: PropertyDetail
   - source: Purchase
+    mode: incremental
+    watermark: LastUpdate
+    pk: [PUNo]
   - source: PurchaseAna
   - source: PurchaseDetail
   - source: PurchaseDetailAna
@@ -392,6 +405,9 @@ tables:
   - source: RoutingStdDetail
   - source: SalesChannel
   - source: SalesInvoice
+    mode: incremental
+    watermark: LastUpdate
+    pk: [SINo]
   - source: SalesInvoiceAna
   - source: SalesInvoiceDetail
   - source: SalesInvoiceDetailAna
@@ -399,8 +415,14 @@ tables:
   - source: SalesInvoiceHallmark
   - source: SalesInvoiceSurcharge
   - source: SalesOrder
+    mode: incremental
+    watermark: LastUpdate
+    pk: [SONo]
   - source: SalesOrderAna
   - source: SalesOrderDetail
+    mode: incremental
+    watermark: LastUpdate
+    pk: [SDPK]
   - source: SalesOrderDetailAna
   - source: SalesOrderDetailExt_Pointers
   - source: SALESORDERDETAILSIZE
@@ -503,12 +525,24 @@ tables:
 
   # ── 4 giants, run last (full ~40min). PK+watermark noted for future incremental ──
   - source: Item
-    mode: full            # later: incremental, watermark: LastUpdate, pk: [ITCode, ITRevision]
+    mode: incremental
+    watermark: LastUpdate
+    pk: [ITPK]            # ITPK is unique across all 1,447,399 rows; the earlier
+                          # note suggested [ITCode, ITRevision] but ITPK is the
+                          # real key and a single column.
   - source: ItemDetail
-    mode: full            # later: incremental, watermark: LastUpdate, pk: [IDPK]
+    mode: incremental
+    watermark: LastUpdate
+    pk: [IDPK]
   - source: JobOrderBOM
-    mode: full            # later: incremental, watermark: LastUpdate, pk: [JBPK]
+    mode: full            # NOT probed — do not assume it behaves like the others.
+                          # Leave on full until LastUpdate is verified for it.
   - source: ItemTransaction
-    mode: full            # later: incremental, watermark: LastUpdate, pk: [ITPK]
+    mode: incremental
+    watermark: LastUpdate
+    pk: [ITPK]            # 556 rows have a NULL LastUpdate and can never be
+                          # picked up incrementally. They were captured by the
+                          # full pass on 2026-07-19; a future full run repairs
+                          # any others.
 
   # ── never synced: SystemAudit (2.3GB audit), LogonLog ──
