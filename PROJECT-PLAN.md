@@ -43,6 +43,64 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
+## V7.17 — OPEN, started 2026-07-21
+
+Theme: **the app becomes the live one.** V7.16 gave it the ability to originate
+documents; V7.17 is about the data behind them being current, and about the
+first real transactions going through it rather than through JES.
+
+The opening sequence is in "Where V7.17 starts" below. What follows is what has
+happened in this cycle so far.
+
+### The first incremental run needs a seeded watermark (2026-07-21, off-LAN)
+
+**`tables.yaml` says incremental, but `meta.sync_state.last_watermark` is NULL
+for all seven tables** — checked against Supabase before the LAN trip. In
+`sync.py:354-362`, a NULL watermark means no `WHERE` clause is built, so the
+run pulls *every* row and pushes it through the UPSERT path instead of
+TRUNCATE+INSERT.
+
+For `ItemDetail` (10,346,277 rows) that is not "minutes instead of five hours" —
+it is slower than the full load it was meant to replace. V7.16's closing note
+that the first incremental run "should take minutes" was wrong about the first
+run specifically; it is right about every run after it.
+
+**Fix: `erp-sync/seed_watermarks.py` (new).** Writes `2026-07-19 00:00:00` to
+the seven incremental tables. That is before every full load in the 2026-07-19
+pass (08:45–13:16 UTC, 16:45–21:16 HK) in either timezone, so it re-pulls about
+two and a half days of changes and cannot skip an edit. It refuses to overwrite
+a non-null watermark — erring late would silently drop rows, which is the exact
+failure the LastUpdate probe existed to rule out.
+
+`JobOrderBOM` is deliberately not in the list: still `mode: full`, and a
+watermark on a full table would be meaningless.
+
+### Seed re-verification is now a script, not a manual query
+
+**`erp-sync/check_doc_seeds.py` (new).** Parses `JES_SEED_BY_YEAR` and
+`JES_SI_SEED_BY_YEAR` out of `src/soNumber.js`, compares each against the
+mirror's real max, and prints the edit to make. Read-only. Casts the sequence
+to `int` rather than taking `max()` on the text — the mirror is all text, and a
+string max is wrong the moment digit widths differ.
+
+Run against the pre-sync mirror it already found one discrepancy:
+
+| | seed | mirror max | |
+|---|---:|---:|---|
+| SO26 | 27 | 27 | OK |
+| SI26 | 93 | 93 | OK *(pre-sync — expected to move)* |
+| SI25 | 144 | **145** | stale |
+
+SI25 is not in the allocation path (allocation is for the current year), so it
+is a documentation error rather than a collision risk: V7.16 recorded "SI25 max
+144" from a row count, not a max. Worth correcting, not urgent.
+
+The SI26 "OK" is the one to distrust: it only proves the seed matches what the
+*last sync* saw, and the sync has not run since CuiLing's 20–21 Jul invoices.
+**Re-run this after the sync, not before.**
+
+---
+
 ## Current Status — V7.16 CLOSED as of 2026-07-21
 
 Commit chain `e44194f`→`f43dcbf` (43 commits), all deployed. V7.16's theme is
