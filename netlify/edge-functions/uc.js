@@ -74,7 +74,26 @@ export default async function handler(req) {
   // ── list / search ──────────────────────────────────────────────────────────
   if (body.op === 'list') {
     const p = new URLSearchParams()
-    p.set('select', '*'); p.set('order', 'id.desc')
+    p.set('select', '*')
+    // Sorting is applied by the DATABASE, not the browser. The list is capped
+    // (1000 of 3,695 rows), so sorting the fetched page would reorder a slice
+    // and look like the whole registry — "sort by customer" would show the
+    // A-names of whichever 1000 rows came back, not the A-names of the
+    // registry. Same reason the date range is a server filter.
+    //
+    // Whitelisted, because this value goes straight into a PostgREST order
+    // clause. uc_no sorts as text on purpose: every number is UC + 4 digits
+    // (UC1353..UC4952), so lexical and numeric order agree, and the suffixed
+    // and compound forms still sort next to their base number.
+    const SORTABLE = new Set([
+      'uc_no', 'effective_date', 'customer', 'jes_si', 'source',
+      'total', 'balance', 'status', 'currency', 'id',
+    ])
+    const sortCol = SORTABLE.has(body.sort) ? body.sort : 'id'
+    const sortDir = body.dir === 'asc' ? 'asc' : 'desc'
+    // Blanks last whichever way it is sorted — an empty customer or an undated
+    // row at the top of the list is never what someone is looking for.
+    p.set('order', `${sortCol}.${sortDir}.nullslast`)
     p.set('limit', String(Math.min(Math.max(parseInt(body.limit, 10) || 200, 1), 1000)))
     if (['open', 'closed', 'void'].includes(body.status)) p.set('status', `eq.${body.status}`)
     if (body.source) p.set('source', `eq.${String(body.source).replace(/[^\w /-]/g, '')}`)

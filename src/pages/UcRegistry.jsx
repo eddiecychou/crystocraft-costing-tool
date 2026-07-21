@@ -370,6 +370,24 @@ function ErpInvoiceModal({ si, data, loading, error, onClose }) {
   )
 }
 
+// Sortable column header. The arrow only shows on the active column — an
+// indicator on every column tells you nothing about which one is in effect.
+function SortTh({ label, col, sort, onSort, align = 'left' }) {
+  const on = sort.col === col
+  return (
+    <th className={`px-3 py-2 font-medium whitespace-nowrap ${align === 'right' ? 'text-right' : ''}`}>
+      <button type="button" onClick={() => onSort(col)}
+        className={`inline-flex items-center gap-1 hover:text-gray-900 transition-colors ${on ? 'text-gray-900' : ''}`}
+        title={`Sort by ${label}`}>
+        {label}
+        <span className={`text-[9px] leading-none ${on ? 'opacity-100' : 'opacity-0'}`}>
+          {sort.dir === 'asc' ? '▲' : '▼'}
+        </span>
+      </button>
+    </th>
+  )
+}
+
 export default function UcRegistry() {
   const [q, setQ] = useState('')
   const [source, setSource] = useState('')
@@ -378,6 +396,17 @@ export default function UcRegistry() {
   const [editing, setEditing] = useState(null)   // record | 'new' | null
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
+  // Column sort, Excel-style. Default id.desc = newest first, which is what the
+  // registry showed before sorting existed.
+  const [sort, setSort] = useState({ col: 'id', dir: 'desc' })
+  // Text columns open A→Z; numbers and dates open with the largest first, which
+  // is what you want the moment you click "Total" or "Date".
+  const TEXT_COLS = new Set(['uc_no', 'customer', 'jes_si', 'source', 'status', 'currency'])
+  const toggleSort = (col) => setSort((s) => (
+    s.col === col
+      ? { col, dir: s.dir === 'asc' ? 'desc' : 'asc' }
+      : { col, dir: TEXT_COLS.has(col) ? 'asc' : 'desc' }
+  ))
 
   // undefined = don't filter; true/false = filter on the confirmed flag
   const confirmed = confirmedFilter === 'yes' ? true : confirmedFilter === 'no' ? false : undefined
@@ -385,7 +414,10 @@ export default function UcRegistry() {
   // 1000 is the edge function's ceiling. Worth raising from 500 once a date
   // range is in play: a full audit year is more than 500 rows, and a silently
   // truncated export is the one failure mode that would matter most to Cindy.
-  const list = useUcList({ q, source, status: statusFilter, confirmed, from, to, limit: 1000 })
+  const list = useUcList({
+    q, source, status: statusFilter, confirmed, from, to,
+    sort: sort.col, dir: sort.dir, limit: 1000,
+  })
   // Outstanding summary: always open, but respects the confirmed filter so you
   // can read off the "confirmed + open" outstanding total.
   const arList = useUcList({ status: 'open', confirmed, limit: 1000 })
@@ -525,10 +557,13 @@ export default function UcRegistry() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-gray-500 border-b border-gray-200 bg-gray-50">
-                {['UC #', 'Date', 'Source', 'Customer', 'JES SI#', 'Cur'].map((h) => <th key={h} className="px-3 py-2 font-medium whitespace-nowrap">{h}</th>)}
-                <th className="px-3 py-2 font-medium text-right">Total</th>
-                <th className="px-3 py-2 font-medium text-right">Balance</th>
-                <th className="px-3 py-2 font-medium">Status</th>
+                {[
+                  ['UC #', 'uc_no'], ['Date', 'effective_date'], ['Source', 'source'],
+                  ['Customer', 'customer'], ['JES SI#', 'jes_si'], ['Cur', 'currency'],
+                ].map(([h, col]) => <SortTh key={h} label={h} col={col} sort={sort} onSort={toggleSort} />)}
+                <SortTh label="Total"   col="total"   sort={sort} onSort={toggleSort} align="right" />
+                <SortTh label="Balance" col="balance" sort={sort} onSort={toggleSort} align="right" />
+                <SortTh label="Status"  col="status"  sort={sort} onSort={toggleSort} />
                 <th className="px-3 py-2 font-medium"></th>
               </tr>
             </thead>
