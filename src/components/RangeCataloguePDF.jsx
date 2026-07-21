@@ -79,11 +79,6 @@ const s = StyleSheet.create({
   plating: { fontSize: 7.5, color: C.grayDark, flex: 1, paddingRight: 6 },
   price: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 8.5 },
 
-  // Index
-  idxRow: { flexDirection: 'row', paddingVertical: 1.6, borderBottomWidth: 0.4, borderBottomColor: C.border },
-  idxCode: { width: 108, fontFamily: 'Work Sans', fontSize: 7.5 },
-  idxName: { flex: 1, fontSize: 7.5, color: C.grayDark },
-  idxPrice: { width: 70, fontSize: 7.5, textAlign: 'right' },
 })
 
 function RunningHead({ account, currency }) {
@@ -131,9 +126,12 @@ function ProductCard({ p }) {
 
 /**
  * @param groups   [{ title, products: [{ code, name, image, prices:[{plating,price}] }] }]
- * @param index    [{ code, name, price }] — one row per brand x plating
+ *
+ * No SKU index. It was removed on 2026-07-21: with colour collapsed out, every
+ * index row simply repeated a price already printed beside the product it
+ * belongs to, and the product blocks are the thing a buyer reads.
  */
-export default function RangeCataloguePDF({ account, currency, validity, groups, index, generatedAt }) {
+export default function RangeCataloguePDF({ account, currency, validity, groups, generatedAt }) {
   return (
     <Document title={`Crystocraft Catalogue${account ? ` — ${account}` : ''}`} author="Crystocraft">
       {/* Cover */}
@@ -169,21 +167,6 @@ export default function RangeCataloguePDF({ account, currency, validity, groups,
         <Footer validity={validity} />
       </Page>
 
-      {/* SKU index — a buyer quoting a code needs to find it fast. */}
-      {index?.length ? (
-        <Page size="A4" style={s.page}>
-          <RunningHead account={account} currency={currency} />
-          <Text style={s.section}>Index — all SKUs</Text>
-          {index.map((r) => (
-            <View key={r.code} style={s.idxRow}>
-              <Text style={s.idxCode}>{r.code}</Text>
-              <Text style={s.idxName}>{r.name}</Text>
-              <Text style={s.idxPrice}>{r.price}</Text>
-            </View>
-          ))}
-          <Footer validity={validity} />
-        </Page>
-      ) : null}
     </Document>
   )
 }

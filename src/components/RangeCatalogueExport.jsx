@@ -165,21 +165,6 @@ export default function RangeCatalogueExport({ onClose }) {
         .sort((a, b) => a.localeCompare(b))
         .map(title => ({ title, products: cards.filter(c => c.type === title) }))
 
-      // Index at brand x plating, NOT per colour. Enumerating colours listed
-      // every SKU of a design at the same price — 16 rows of "USD 3.85" for one
-      // butterfly — which is pages of noise. The colour letters are the last
-      // characters of the SKU and are chosen at order time.
-      const index = sellable.flatMap(p => {
-        const base = codeOf(p)
-        return (Array.isArray(p.variants) ? p.variants : [])
-          .filter(v => Number(v.ws_price_usd) > 0)
-          .map(v => ({
-            code: `${base}-${v.plating_code || ''}`,
-            name: `${p.description || ''} · ${variantLabel(v)}`,
-            price: priceOf(rangePrice(v)),
-          }))
-      }).sort((a, b) => a.code.localeCompare(b.code))
-
       const validity = `Prices valid 30 days from issue · ${cur}`
       const blob = await pdf(
         <RangeCataloguePDF
@@ -187,7 +172,6 @@ export default function RangeCatalogueExport({ onClose }) {
           currency={cur}
           validity={validity}
           groups={groups}
-          index={index}
           generatedAt={new Date()}
         />,
       ).toBlob()
