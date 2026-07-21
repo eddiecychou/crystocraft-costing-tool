@@ -4,6 +4,7 @@ import LoadingBar from '../components/LoadingBar'
 import { useOrders } from '../shipping'
 import { erpLookup } from '../erpApi'
 import { Receipt, AlertTriangle, FileText, Database } from 'lucide-react'
+import ErpDocModal from '../components/ErpDocModal'
 
 // Sales Invoices. An invoice is not a separate record here — it is an order
 // that has been given an invoice number, which mirrors how CuiLing actually
@@ -65,6 +66,7 @@ export default function SalesInvoices() {
   const { orders, loading } = useOrders()
   const [search, setSearch] = useState('')
   const [showAllAwaiting, setShowAllAwaiting] = useState(false)
+  const [erpDoc, setErpDoc] = useState(null)   // JES invoice being viewed, read-only
 
   const erp = useErpInvoices(search)
 
@@ -104,6 +106,7 @@ export default function SalesInvoices() {
         no: (r.code || '').trim(), date: r.date,
         so: null, uc: (r.ref || '').trim(), customer: r.customer,
         currency: r.currency, amount: r.amount, status: (r.status || '').trim().toUpperCase(),
+        raw: r,
       }))
     return [...app, ...jes].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
   }, [invoiced, erp.rows])
@@ -127,6 +130,7 @@ export default function SalesInvoices() {
 
       <div className="p-4 md:p-6">
         {loading && <LoadingBar />}
+        {erpDoc && <ErpDocModal of="sales_invoice" doc={erpDoc} onClose={() => setErpDoc(null)} />}
 
         <input type="text" placeholder="Search by customer, invoice no, SO no, UC#…"
           className="input w-full mb-4" value={search} onChange={(e) => setSearch(e.target.value)} />
@@ -210,21 +214,23 @@ export default function SalesInvoices() {
               <tbody className="divide-y divide-gray-50">
                 {merged.map((r) => {
                   const isApp = r.src === 'app'
-                  const open = () => isApp && navigate(`/shipments/${r.id}`)
+                  // App rows open the order; JES rows open a read-only viewer.
+                  // Both are clickable — read-only should not mean opaque.
+                  const open = () => isApp ? navigate(`/shipments/${r.id}`) : setErpDoc(r.raw)
                   // A voided JES invoice is not a live document — it is excluded
                   // from the PBIS import, so it must not read as a normal row.
                   const void_ = r.status === 'VOID'
                   return (
-                    <tr key={r.key} className={`transition-colors ${isApp ? 'hover:bg-gray-50' : ''} ${void_ ? 'opacity-60' : ''}`}>
-                      <td className={`px-4 py-3 whitespace-nowrap font-mono text-xs font-medium ${isApp ? 'text-gray-900 cursor-pointer' : 'text-gray-600'}`}
+                    <tr key={r.key} className={`transition-colors hover:bg-gray-50 ${void_ ? 'opacity-60' : ''}`}>
+                      <td className={`px-4 py-3 whitespace-nowrap font-mono text-xs font-medium cursor-pointer ${isApp ? 'text-gray-900' : 'text-gray-600'}`}
                           onClick={open}>
                         {r.no || '—'}
                         {void_ && <span className="ml-1.5 text-[10px] font-sans font-medium text-red-600">VOID</span>}
                       </td>
-                      <td className={`px-4 py-3 whitespace-nowrap text-gray-600 ${isApp ? 'cursor-pointer' : ''}`} onClick={open}>{fmtDate(r.date)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-600 cursor-pointer" onClick={open}>{fmtDate(r.date)}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-gray-500 font-mono text-xs">{r.so || '—'}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-gray-500 font-mono text-xs">{r.uc || '—'}</td>
-                      <td className={`px-4 py-3 font-medium text-gray-900 min-w-0 ${isApp ? 'cursor-pointer' : ''}`} onClick={open}>
+                      <td className="px-4 py-3 font-medium text-gray-900 min-w-0 cursor-pointer" onClick={open}>
                         <span className="truncate">{r.customer || 'Unnamed customer'}</span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-gray-500">{r.currency}</td>

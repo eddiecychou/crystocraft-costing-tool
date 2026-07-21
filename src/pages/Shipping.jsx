@@ -7,6 +7,7 @@ import { useVendors, FREIGHT_MODES, modeLabel, strengthOf } from '../logistics'
 import { erpLookup } from '../erpApi'
 import { MapPin, FileInput, ClipboardCheck, MessageCircle, Star, Truck, Copy, Plus, Database } from 'lucide-react'
 import ComponentRequirements from './ComponentRequirements'
+import ErpDocModal from '../components/ErpDocModal'
 
 const TABS = [
   { v: 'shipments', label: 'Orders' },
@@ -83,6 +84,7 @@ function ShipmentsList() {
     .sort((a, b) => (b.order_date || '').localeCompare(a.order_date || ''))   // newest order date first
 
   const erp = useErpOrders(search)
+  const [erpDoc, setErpDoc] = useState(null)   // JES order being viewed, read-only
 
   // App rows and JES rows in one list, de-duplicated by SO number with the app
   // row winning. That is what implements "only wire what is not already parsed"
@@ -170,6 +172,7 @@ function ShipmentsList() {
         </p>
       )}
       {dupError && <p className="text-sm text-red-600 mb-3">{dupError}</p>}
+      {erpDoc && <ErpDocModal of="sales_order" doc={erpDoc} onClose={() => setErpDoc(null)} />}
 
       {merged.length === 0 && !loading && !erp.loading ? (
         <div className="text-center py-20 text-gray-400">
@@ -194,7 +197,7 @@ function ShipmentsList() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {merged.map(row => {
-                if (row.src === 'jes') return <JesOrderRow key={row.key} r={row.r} />
+                if (row.src === 'jes') return <JesOrderRow key={row.key} r={row.r} onOpen={() => setErpDoc(row.r)} />
                 const o = row.o
                 const st = orderStatusOf(o.status)
                 const needsReconcile = (o._raw?.lines_unreconciled ?? 0) > 0
@@ -249,10 +252,11 @@ function ShipmentsList() {
 // A JES sales order: visible and searchable, but not editable or duplicable —
 // the app cannot re-issue a document JES produced, and duplicating one would
 // silently create an app order claiming a JES SO number.
-function JesOrderRow({ r }) {
+function JesOrderRow({ r, onOpen }) {
   const void_ = (r.status || '').trim().toUpperCase() === 'VOID'
   return (
-    <tr className={`transition-colors ${void_ ? 'opacity-60' : ''}`}>
+    <tr onClick={onOpen}
+        className={`transition-colors cursor-pointer hover:bg-gray-50 ${void_ ? 'opacity-60' : ''}`}>
       <td className="px-4 py-3 whitespace-nowrap text-gray-600">{fmtOrderDate(r.date)}</td>
       <td className="px-4 py-3 whitespace-nowrap text-gray-500">{(r.ref || '').trim() || '—'}</td>
       <td className="px-4 py-3 whitespace-nowrap text-gray-600 font-mono text-xs">{(r.code || '').trim()}</td>
