@@ -240,11 +240,39 @@ The allocation change is still right — it removes one real cause. But it does
 not address the other two, and "duplicate UC in JES" cannot be read as evidence
 of the copy-paste slip.
 
+**`UC4647` — closed, and my hypothesis was wrong.** I suggested a missing
+`UC4647(A)`; there was no gap. `UC4648` existed and was correct all along, and
+I only failed to see it because I queried `UC4647` without looking at its
+neighbour. Cindy confirmed from PBIS: `UC4647`→`SI240230` HK$350,
+`UC4648`→`SI240231` HK$344. The JES line totals match that pairing exactly
+(350.00 and 344.00). **JES is the wrong one** — `SI240231` carries
+`siref = UC4647/24` where it should read `UC4648/24`, and being CONFIRMED it
+cannot be corrected there.
+
+**So all three recent "duplicate UC" cases in JES are JES-side artefacts**, and
+none is a registry slip:
+
+| | cause | registry |
+|---|---|---|
+| `UC4657/24` | a void that could not be recorded | correct |
+| `UC4438/24` | a real split; JES's `siref` drops the `(A)` suffix | correct |
+| `UC4647/24` | `siref` simply mis-keyed | correct |
+
+That completes the correction to V7.16 begun above: the duplicate-UC pattern is
+not evidence of copy-paste in the app at all. **It is evidence that JES's
+`siref` is unreliable.**
+
+Which retrospectively justifies a choice made in `uc_registry_dated`: it joins
+`jes_si → salesinvoice.sino`, and the `siref → uc_no` direction was rejected for
+matching fewer rows (3,251 against 3,535). Had it joined on `siref`, `UC4648`
+would have been silently attached to `UC4647`'s invoice and given the wrong
+date. The weaker-looking join key was also the corrupt one.
+
 **One open item for Cindy:** `SI240201` sits on both `UC4623` and `UC4629`
-(HKD 41,000 and 31,500, both Sun Life). That is the only genuine breach of her
-one-UC-one-SI rule in `/24`–`/26`, and it is the reverse shape of the old
-compound entries — two registry rows sharing an invoice rather than one row
-with a compound UC.
+(HKD 41,000 and 31,500, both Sun Life). Evidence says this is *not* the old
+compound pattern either — JES has `SI240198` referencing `UC4623/24` at exactly
+41,000, claimed by no registry row, so the registry appears to have the wrong SI
+number on `UC4623`. Awaiting her confirmation before a one-field correction.
 
 ### Cindy's rules, enforced from /24 onward
 
