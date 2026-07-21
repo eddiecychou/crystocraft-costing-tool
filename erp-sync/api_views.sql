@@ -491,7 +491,25 @@ create view public.uc_registry_dated as
 select
   u.*,
   si.sidate::date                          as si_date,
-  coalesce(si.sidate::date, u.doc_date)    as effective_date
+  coalesce(si.sidate::date, u.doc_date)    as effective_date,
+  -- Where the invoice actually lives, as a FACT rather than a typed field.
+  --
+  -- The `source` column cannot answer this and never could: 'ERP' does not
+  -- mean "the invoice is in JES", because Online Shop (422), Alibaba (152) and
+  -- Amazon (103) invoices are all in JES too. 'ERP' is a residual "direct
+  -- sale" bucket wearing a system's name. Measured 2026-07-21.
+  --
+  -- Deliberately NOT called 'App' when absent. An invoice raised in JES this
+  -- afternoon is not in the mirror either — the sync runs on the office LAN
+  -- only. Absence means "not in the mirror", which is app-raised OR not yet
+  -- synced, and the two cannot be told apart from here.
+  case
+    -- coalesce is required: `NULL !~ pattern` is NULL, not true, so a row
+    -- with no jes_si would fall through and be reported as not_in_mirror.
+    when coalesce(u.jes_si, '') !~ '^SI[0-9]' then null   -- no invoice, or a status word
+    when si.sino is not null    then 'jes'
+    else 'not_in_mirror'
+  end                                      as invoice_location
 from public.uc_registry u
 left join raw.salesinvoice si
   on u.jes_si ~ '^SI[0-9]'

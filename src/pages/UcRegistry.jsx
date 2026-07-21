@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Search, Hash, Plus, X, AlertCircle, FileText } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
-import { useUcList, createUcInvoice, updateUcInvoice, UC_SOURCES, UC_CURRENCIES } from '../ucRegistry'
+import { useUcList, createUcInvoice, updateUcInvoice, UC_SOURCES, UC_CURRENCIES, ucSource } from '../ucRegistry'
 import { erpLines, erpLookup } from '../erpApi'
 
 const money = (v) => (v === '' || v == null || Number.isNaN(Number(v)))
@@ -14,13 +14,24 @@ const STATUS_STYLE = {
 }
 
 const SOURCE_STYLE = {
-  ERP: 'bg-gray-100 text-gray-600', Alibaba: 'bg-orange-100 text-orange-700',
+  Wholesale: 'bg-gray-100 text-gray-600', Alibaba: 'bg-orange-100 text-orange-700',
   Amazon: 'bg-yellow-100 text-yellow-800', 'Online Shop': 'bg-blue-100 text-blue-700',
-  Retail: 'bg-purple-100 text-purple-700', App: 'bg-emerald-100 text-emerald-700',
+  Retail: 'bg-purple-100 text-purple-700',
   Other: 'bg-gray-100 text-gray-500',
 }
 
-const BLANK = { source: 'ERP', currency: 'HKD', status: 'open', confirmed: false }
+// Where the invoice lives — derived on uc_registry_dated, never typed.
+// "not in the mirror" is not the same as "raised in the app": the sync runs on
+// the office LAN, so an invoice raised in JES this morning is also absent.
+const LOCATION_LABEL = { jes: 'JES', not_in_mirror: 'not in sync' }
+const LOCATION_TITLE = {
+  jes: 'This invoice is in the JES mirror.',
+  not_in_mirror: 'This invoice number is not in the JES mirror — either it was raised in the app, or JES has not been synced since it was issued.',
+}
+
+// No source: the channel is chosen when the invoice is filled in, not when the
+// number is allocated.
+const BLANK = { source: '', currency: 'HKD', status: 'open', confirmed: false }
 
 // ── ERP invoice picker ────────────────────────────────────────────────────────
 // Type part of an SI# or customer name to search the ERP invoices and link one.
@@ -173,7 +184,8 @@ function UcForm({ record, onClose, onSaved }) {
         <div className="p-5 grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-gray-500">Source</span>
-            <select value={f.source} onChange={set('source')} className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg">
+            <select value={ucSource(f.source)} onChange={set('source')} className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg">
+              <option value="">— not set —</option>
               {UC_SOURCES.map((s) => <option key={s}>{s}</option>)}
             </select>
           </label>
@@ -492,7 +504,14 @@ export default function UcRegistry() {
                       : r.year}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
-                    <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${SOURCE_STYLE[r.source] || SOURCE_STYLE.Other}`}>{r.source}</span>
+                    {ucSource(r.source)
+                      ? <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${SOURCE_STYLE[ucSource(r.source)] || SOURCE_STYLE.Other}`}>{ucSource(r.source)}</span>
+                      : <span className="text-xs text-gray-300">—</span>}
+                    {r.invoice_location && (
+                      <span className="ml-1.5 text-[10px] text-gray-400" title={LOCATION_TITLE[r.invoice_location]}>
+                        {LOCATION_LABEL[r.invoice_location]}
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-2">{r.customer}</td>
                   <td className="px-3 py-2 font-mono text-xs">

@@ -5,7 +5,24 @@
 import { useEffect, useState } from 'react'
 import { auth } from './firebase'
 
-export const UC_SOURCES = ['ERP', 'Alibaba', 'Amazon', 'Online Shop', 'Retail', 'App', 'Other']
+// The sales CHANNEL, and only that. Two values were removed on 2026-07-21:
+//
+// 'ERP' (2,901 rows) was a system's name doing a channel's job, and it never
+// meant "the invoice is in JES" — Online Shop (422), Alibaba (152) and Amazon
+// (103) invoices are all in JES too. Owner: these are bulk B2B orders, so
+// 'Wholesale'. Where an invoice actually lives is now the derived
+// `invoice_location` on uc_registry_dated, which is a fact rather than a typed
+// field.
+//
+// 'App' was never a channel either — allocateOrderUc wrote it, so it recorded
+// which system minted the UC, not how the sale came in. Nobody ever chose it
+// from this list.
+export const UC_SOURCES = ['Wholesale', 'Alibaba', 'Amazon', 'Online Shop', 'Retail', 'Other']
+
+// Legacy values still in the table, mapped for display so the rename can be
+// applied to the data at any time without the dropdown going blank in between.
+const UC_SOURCE_ALIASES = { ERP: 'Wholesale', App: '' }
+export const ucSource = (v) => (v in UC_SOURCE_ALIASES ? UC_SOURCE_ALIASES[v] : (v || ''))
 export const UC_CURRENCIES = ['HKD', 'USD', 'EUR', 'GBP', 'RMB', 'CAD', 'AUD', 'JPY', 'MXN']
 
 async function ucApi(op, extra) {
@@ -36,8 +53,12 @@ export const listUc = (filters) => ucApi('list', filters).then((d) => d.rows || 
 // from today's date, matching the registry's own "/YY" convention.
 export async function allocateOrderUc({ customer_name, currency } = {}) {
   const year = '/' + String(new Date().getFullYear() % 100).padStart(2, '0')
+  // No `source`: it is the sales channel, and allocating a number tells us
+  // nothing about how the sale came in. It gets chosen when the invoice is
+  // filled in. (Previously wrote 'App', which asserted a channel that does not
+  // exist — see UC_SOURCES.)
   const row = await createUcInvoice({
-    source: 'App', year, customer: customer_name || '', currency: currency || 'HKD', status: 'open',
+    year, customer: customer_name || '', currency: currency || 'HKD', status: 'open',
   })
   return { id: row.id, uc_no: row.uc_no, year: row.year, full: `${row.uc_no}${row.year}` }
 }
