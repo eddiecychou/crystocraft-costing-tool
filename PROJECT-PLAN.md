@@ -379,6 +379,76 @@ history, and the subcontractor warehouses. Retiring JES no longer has to solve
 stock valuation — the two are separate problems, and only the crystal balance
 connects them.
 
+### Crystal BOM: the plan, not yet built (2026-07-21)
+
+Owner's framing: XiangXia generates requirements and production from JES's
+crystal BOM, with some wastage. The app has no crystal BOM — `critical_components`
+holds FM parts only, deliberately, because those are the long-lead, complicated
+ones and were worth recording first. **Not urgent** — order volume is low enough
+to calculate by hand — but it needs a decided shape before JES goes further away,
+and new crystal codes have nowhere to go now that item-master input into JES has
+stopped.
+
+**The measurements.** 271 distinct crystal codes appear across job-order BOMs,
+at exact SKU level including colour (`BDC-8232-0014-005` Rosaline,
+`-011` Violet). The app's Crystal Stock uses **the same codes** — its own field
+placeholder is `BDC-8232-0014-005` — so the join between the two systems already
+exists and needs no mapping table.
+
+**A correction to a first reading.** An initial query appeared to show 223,346
+BOM lines carrying wastage. It showed nothing of the sort: `jbqtystd` is `0` on
+those rows, so the comparison was meaningless. The Job Order screen instead
+carries a **`Wastage %` field at job-order level** (0.00 on the captured
+example). So wastage is probably a per-job percentage rather than anything in
+the BOM — **to be confirmed with XiangXia**, because it decides where wastage
+lives in the app.
+
+#### The core finding: there are two crystal BOMs, answering different questions
+
+| | App `crystal_bom` | JES crystal BOM |
+|---|---|---|
+| Keyed by | size × brand ("6× 14mm Octagon") | exact stone SKU |
+| Knows colour? | **No — deliberately** | Yes |
+| Answers | what does this design cost | what do I pick from the shelf |
+
+The app's version abstracts colour on purpose so that one costing covers every
+colour variant (see the long comment at the head of `rangeCosting.js`). That is
+exactly why it cannot drive requirements: **it never names a SKU.** These are
+not redundant models, and folding one into the other would break the costing.
+
+#### The approach
+
+1. **Leave `crystal_bom` alone.** Add a separate design-level crystal
+   *requirement* list keyed by stone SKU — structurally the twin of
+   `critical_components`, but referencing the `crystals` collection instead of
+   `range_components`. The pattern already works for FM parts; crystals get the
+   same treatment. Costing is untouched.
+
+2. **Seed it from the ERP, exactly as the FM import does.**
+   `previewErpProduct` already extracts the ST lines from the merged BOM — it
+   currently reports and skips them, because there was nowhere to put them
+   (`erpProductImport.js`, the `crystals` return value and its warning). Once
+   the destination exists, enabling it is small, and every design the ERP knows
+   arrives with its crystal BOM without anyone typing it.
+
+3. **New crystal SKUs go in the app's Crystal Stock** (`crystals`), which
+   already has an editor, a paste importer, and the 180 migrated SKUs. That
+   collection **is** the crystal item master now. JES is frozen, so there is no
+   second place to keep in step and nothing new to build for this part.
+
+4. **Wastage needs a home**, once XiangXia confirms how she applies it. If it is
+   a per-job percentage, it belongs on the production/requirement calculation,
+   not on the BOM line — putting it on the line would bake one job's allowance
+   into the design permanently.
+
+#### The number to check first
+
+**271 codes appear in ERP production BOMs; the app holds 180.** If the ~90
+difference is still in use, seeding requirements will surface them as missing
+stock records. That is useful information, but far better discovered
+deliberately than in the middle of a production run — so reconcile the two
+lists before building step 2.
+
 ---
 
 ## Current Status — V7.16 CLOSED as of 2026-07-21
