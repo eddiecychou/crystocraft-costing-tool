@@ -201,6 +201,48 @@ export default async function handler(req) {
     return json({ status: (await r.json())[0] || null })
   }
 
+  // 2a4) Item images: { entity: 'item_images', paths: ['fm-2hrt.jpg', …] }
+  //      → { urls: { 'fm-2hrt.jpg': 'https://…signed…' } }
+  //
+  //      The erp-item-images bucket is PRIVATE, so the browser cannot fetch an
+  //      object directly and there is no public URL to build. This mints
+  //      short-lived signed URLs server-side, in one batch call for the whole
+  //      visible page.
+  //
+  //      Signed URLs rather than proxying the bytes through this function: the
+  //      browser then loads images straight from Supabase's CDN, so 22,557
+  //      thumbnails never touch Netlify's bandwidth.
+  if (payload?.entity === 'item_images') {
+    const paths = (Array.isArray(payload.paths) ? payload.paths : [])
+      .map((p) => String(p ?? '').trim().toLowerCase())
+      .filter(Boolean)
+      .slice(0, 100)
+    if (!paths.length) return json({ urls: {} })
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/erp-item-images`, {
+      method: 'POST',
+      // Both auth headers: new-style sb_secret_ keys are only accepted via
+      // apikey, legacy service_role JWTs accept either. Same reason as the
+      // uploader in erp-sync/sync_images.py.
+      headers: {
+        apikey: SERVICE_KEY,
+        Authorization: `Bearer ${SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      // One hour: long enough to browse, short enough that a copied URL is not
+      // a lasting hole in a private bucket.
+      body: JSON.stringify({ expiresIn: 3600, paths }),
+    })
+    if (!r.ok) return json({ error: 'Image signing failed', detail: (await r.text()).slice(0, 300) }, 502)
+    const signed = await r.json()
+    const urls = {}
+    for (const row of Array.isArray(signed) ? signed : []) {
+      // A missing object comes back with an error and no signedURL — skipped,
+      // so the caller simply gets no image rather than a broken one.
+      if (row?.signedURL && !row.error) urls[row.path] = `${SUPABASE_URL}/storage/v1${row.signedURL}`
+    }
+    return json({ urls })
+  }
+
   // 2b) Line detail: { entity: 'lines', of: 'sales_invoice'|'sales_order', code }.
   //     Returns the header's line items and (for sales docs) its surcharge lines.
   if (payload?.entity === 'lines') {

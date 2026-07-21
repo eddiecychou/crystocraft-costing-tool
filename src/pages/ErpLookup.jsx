@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Search, Database, Building2, Factory, Boxes, AlertCircle, ListTree, X, Receipt, ClipboardList, FileText, ShoppingCart, History, Warehouse } from 'lucide-react'
+import { Search, Database, Building2, Factory, Boxes, AlertCircle, ListTree, X, Receipt, ClipboardList, FileText, ShoppingCart, History, Warehouse, ImageOff } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
-import { erpLookup, erpBom, erpLines, erpSyncStatus } from '../erpApi'
+import { erpLookup, erpBom, erpLines, erpSyncStatus, erpItemImages } from '../erpApi'
 
 // Column layout per entity. `key` maps to the curated view's fields.
 const ENTITIES = {
@@ -395,6 +395,26 @@ function BomModal({ code, rows, loading, error, onClose }) {
 // "21 Jul 13:28". Accepts both shapes the two fields come in: an ISO timestamp
 // with a zone (last_run_at) and JES's naive "2026-07-21 11:45:07" (the
 // watermark), which is local time and must not be read as UTC.
+// Enlarged item image. The item master is the one place a picture answers the
+// question faster than any field does — "is this the right part?" is visual.
+function PhotoModal({ url, row, onClose }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-gray-200">
+          <div className="min-w-0">
+            <div className="font-mono text-sm text-gray-900 truncate">{row.code}</div>
+            <div className="text-xs text-gray-500 truncate">{row.name}</div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 shrink-0"><X size={18} /></button>
+        </div>
+        <img src={url} alt={row.code} className="w-full max-h-[70vh] object-contain bg-gray-50" />
+        <div className="px-4 py-2 text-[11px] text-gray-400 font-mono truncate border-t border-gray-100">{row.picture1}</div>
+      </div>
+    </div>
+  )
+}
+
 function fmtSyncTime(v) {
   if (!v) return '—'
   const iso = typeof v === 'string' && !v.includes('T') && !v.endsWith('Z')
@@ -415,6 +435,8 @@ export default function ErpLookup() {
 
   // Inventory: warehouse + item-type pickers (loaded once) and their selections.
   const [sync, setSync] = useState(null)
+  const [images, setImages] = useState({})   // picture1 filename -> signed URL
+  const [photo, setPhoto] = useState(null)   // { url, row } — enlarged view
   const [warehouses, setWarehouses] = useState([])
   const [itemTypes, setItemTypes] = useState([])
   const [warehouse, setWarehouse] = useState('')       // '' = all warehouses
@@ -464,6 +486,23 @@ export default function ErpLookup() {
     }
   }
 
+  // Item images. Signed per visible page rather than per row: one request for
+  // the whole list instead of 50, and the URLs expire in an hour so there is
+  // no point caching them beyond the current view.
+  //
+  // 22,437 of 29,263 distinct picture1 filenames have an object behind them —
+  // the rest are referenced by the ERP but were missing from the image folder.
+  // A filename with no object is simply absent from the response, so those
+  // rows fall back to the placeholder instead of a broken image.
+  useEffect(() => {
+    if (entity !== 'item') { setImages({}); return }
+    const paths = [...new Set(rows.map(r => r.picture1).filter(Boolean))]
+    if (!paths.length) { setImages({}); return }
+    let alive = true
+    erpItemImages(paths).then(u => { if (alive) setImages(u) }).catch(() => {})
+    return () => { alive = false }
+  }, [entity, rows])
+
   // Sync freshness. Loaded once; a failure leaves the line hidden rather than
   // showing a wrong or alarming value.
   useEffect(() => {
@@ -512,6 +551,7 @@ export default function ErpLookup() {
   return (
     <div className="p-4 md:p-6">
       {loading && <LoadingBar />}
+      {photo && <PhotoModal url={photo.url} row={photo.row} onClose={() => setPhoto(null)} />}
 
       <div className="mb-4">
         <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -655,6 +695,7 @@ export default function ErpLookup() {
                 {!cfg.noTrailing && (
                   <th className="px-3 py-2 font-medium">{cfg.linesOf ? 'Lines' : cfg.crossLink ? 'ERP' : 'Status'}</th>
                 )}
+                {entity === 'item' && <th className="px-3 py-2 font-medium w-14"></th>}
               </tr>
             </thead>
             <tbody>
@@ -699,10 +740,28 @@ export default function ErpLookup() {
                     )}
                   </td>
                   )}
+                  {entity === 'item' && (
+                    <td className="px-3 py-2">
+                      {images[r.picture1] ? (
+                        <button type="button" onClick={() => setPhoto({ url: images[r.picture1], row: r })}
+                                title="View image">
+                          {/* loading="lazy": a 50-row page would otherwise pull
+                              50 images from the CDN before any are scrolled to. */}
+                          <img src={images[r.picture1]} alt="" loading="lazy"
+                               className="w-9 h-9 object-cover rounded border border-gray-200 bg-white hover:border-teal-400" />
+                        </button>
+                      ) : (
+                        <div className="w-9 h-9 rounded border border-dashed border-gray-200 flex items-center justify-center"
+                             title={r.picture1 ? `${r.picture1} — referenced by the ERP but not in the image sync` : 'No image on this item'}>
+                          <ImageOff size={13} className="text-gray-300" />
+                        </div>
+                      )}
+                    </td>
+                  )}
                 </tr>
               ))}
               {!loading && rows.length === 0 && !error && (
-                <tr><td colSpan={cfg.cols.length + (cfg.noTrailing ? 0 : 1)} className="px-3 py-10 text-center text-gray-400">
+                <tr><td colSpan={cfg.cols.length + (cfg.noTrailing ? 0 : 1) + (entity === 'item' ? 1 : 0)} className="px-3 py-10 text-center text-gray-400">
                   {q ? `No ${cfg.label.toLowerCase()} match “${q}”.` : `No ${cfg.label.toLowerCase()} found.`}
                 </td></tr>
               )}

@@ -40,6 +40,22 @@ export async function erpSyncStatus() {
   return (await res.json()).status || null
 }
 
+// Signed URLs for item-master images, by bare filename (erp_item.picture1).
+// The bucket is private, so these are minted server-side and expire in an hour.
+// Returns { filename: url } — filenames with no object are simply absent.
+export async function erpItemImages(paths) {
+  const user = await authedUser()
+  if (!user || !paths?.length) return {}
+  const token = await user.getIdToken()
+  const res = await fetch('/api/erp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ entity: 'item_images', paths }),
+  })
+  if (!res.ok) return {}          // images are a nicety; never break the list
+  return (await res.json()).urls || {}
+}
+
 // Multi-level BOM explosion for one item code. Returns tree rows:
 // { level, parent_code, component_code, component_type, qty, ext_qty, is_assembly, path }
 export async function erpBom(code) {
