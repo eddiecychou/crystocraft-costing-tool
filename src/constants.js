@@ -212,7 +212,11 @@ export const RANGE_STATUS_CUSTOMER = {
   stock: {
     label: 'Retired Stock',
     cls: 'bg-amber-100 text-amber-700',
-    tip: 'Retired design — limited remaining stock, available while supplies last.',
+    // Says "no further production" explicitly, not just "limited stock". The
+    // risk being guarded against (owner, 2026-07-21) is a customer assuming the
+    // tooling still exists and planning a repeat order around it — scarcity
+    // wording alone implies "order soon", which is the wrong inference.
+    tip: 'Retired design — the tooling is retired and there will be no further production runs. Available while remaining stock lasts.',
   },
   concept: {
     label: 'Concept',

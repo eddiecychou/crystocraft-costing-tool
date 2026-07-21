@@ -234,7 +234,7 @@ export default function RangeCatalogueExport({ onClose }) {
           // Only the exception is marked. Made to Order is the norm, so
           // labelling it on every block would be noise; a buyer reading this
           // weeks later needs to know which items will not be reproduced.
-          note: p.status === 'stock' ? 'Retired Stock — while supplies last' : '',
+          note: p.status === 'stock' ? 'Retired Stock — no further production, while supplies last' : '',
           // One row per BRAND x PLATING, which is what a variant actually is.
           // Unlabelled, these read as a meaningless repeat ("Chrome, Chrome,
           // Gold, Gold…") because the thing that differs — the crystal brand —
