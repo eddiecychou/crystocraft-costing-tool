@@ -14,11 +14,13 @@ import WorkSansSemiBold from '../assets/fonts/WorkSans-SemiBold.ttf'
 // breaks, no page numbers, and no prices. This is generated, paginated and
 // priced.
 //
-// ONE BLOCK PER PRODUCT, NOT PER SKU. A design with 5 platings and 6 colours is
-// 30 SKUs; the full range would run to thousands of rows nobody reads. Prices
-// vary by PLATING ONLY — rangePrice() reads variant.ws_price_usd and ignores
-// colour entirely — so a product needs one small plating→price table and a list
-// of available colours, not a row per combination.
+// ONE BLOCK PER PRODUCT, AND COLOUR NEVER APPEARS. rangePrice() reads
+// variant.ws_price_usd and ignores colour entirely, so enumerating colours
+// listed every SKU of a design at an identical price — sixteen rows of
+// "USD 3.85" for one butterfly. What actually varies is the variant, which is a
+// CRYSTAL BRAND x PLATING pair, so each row reads "Bohemia Crystals, Gold
+// Plated". Showing only the plating made those rows look like a meaningless
+// repeat of Chrome/Chrome/Gold, because the thing that differed was hidden.
 
 Font.register({ family: 'Questrial', src: QuestrialRegular })
 Font.register({ family: 'Work Sans', fonts: [
@@ -64,22 +66,22 @@ const s = StyleSheet.create({
 
   // Product block — two per row
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  card: { width: '50%', paddingRight: 10, paddingBottom: 14 },
+  card: { width: '50%', paddingRight: 10, paddingBottom: 16 },
   cardInner: { flexDirection: 'row' },
-  photo: { width: 92, height: 92, objectFit: 'contain', marginRight: 9 },
-  photoBlank: { width: 92, height: 92, marginRight: 9, borderWidth: 0.8, borderColor: C.border },
-  code: { fontFamily: 'Work Sans', fontWeight: 600, fontSize: 8.5, letterSpacing: 0.4 },
-  name: { fontSize: 8.5, color: C.grayDark, marginTop: 1.5, marginBottom: 3 },
+  photo: { width: 128, height: 128, objectFit: 'contain', marginRight: 10 },
+  photoBlank: { width: 128, height: 128, marginRight: 10, borderWidth: 0.8, borderColor: C.border },
+  code: { fontFamily: 'Work Sans', fontWeight: 600, fontSize: 9, letterSpacing: 0.4 },
+  name: { fontSize: 8.5, color: C.grayDark, marginTop: 1.5, marginBottom: 4 },
   attr: { fontSize: 7, color: C.grayMid, marginBottom: 3 },
 
-  priceRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 1.4 },
+  priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2 },
   priceRowAlt: { backgroundColor: C.rowAlt },
-  plating: { fontSize: 7.5, color: C.grayDark },
-  price: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 8 },
+  plating: { fontSize: 7.5, color: C.grayDark, flex: 1, paddingRight: 6 },
+  price: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 8.5 },
 
   // Index
   idxRow: { flexDirection: 'row', paddingVertical: 1.6, borderBottomWidth: 0.4, borderBottomColor: C.border },
-  idxCode: { width: 120, fontFamily: 'Work Sans', fontSize: 7.5 },
+  idxCode: { width: 108, fontFamily: 'Work Sans', fontSize: 7.5 },
   idxName: { flex: 1, fontSize: 7.5, color: C.grayDark },
   idxPrice: { width: 70, fontSize: 7.5, textAlign: 'right' },
 })
@@ -105,7 +107,7 @@ function Footer({ validity }) {
   )
 }
 
-// One product: hero image, identity, and a plating→price table.
+// One product: hero image, identity, and a brand x plating price table.
 function ProductCard({ p }) {
   return (
     <View style={s.card} wrap={false}>
@@ -114,7 +116,6 @@ function ProductCard({ p }) {
         <View style={{ flex: 1 }}>
           <Text style={s.code}>{p.code}</Text>
           <Text style={s.name}>{p.name}</Text>
-          {p.colours ? <Text style={s.attr}>Crystal: {p.colours}</Text> : null}
           {p.prices.map((r, i) => (
             <View key={r.plating} style={[s.priceRow, i % 2 ? s.priceRowAlt : null]}>
               <Text style={s.plating}>{r.plating}</Text>
@@ -129,8 +130,8 @@ function ProductCard({ p }) {
 }
 
 /**
- * @param groups   [{ title, products: [{ code, name, colours, image, prices:[{plating,price}] }] }]
- * @param index    [{ code, name, price }] — every SKU, for the back of the book
+ * @param groups   [{ title, products: [{ code, name, image, prices:[{plating,price}] }] }]
+ * @param index    [{ code, name, price }] — one row per brand x plating
  */
 export default function RangeCataloguePDF({ account, currency, validity, groups, index, generatedAt }) {
   return (

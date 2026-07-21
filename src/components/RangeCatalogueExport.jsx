@@ -2,10 +2,9 @@ import { useState, useEffect, useMemo } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { pdf } from '@react-pdf/renderer'
 import { db } from '../firebase'
-import { galleryUrl, designNumber, brandLetter } from '../constants'
-import { useCrystalColors } from '../crystalColors'
+import { galleryUrl, designNumber, brandLetter, RANGE_CRYSTAL_BRANDS } from '../constants'
 import { useRates, wsPriceFactor, convertFromUSD, fmtMoney } from '../currency'
-import { enumerateRangeSkus, rangePrice } from '../rangeSku'
+import { rangePrice } from '../rangeSku'
 import RangeCataloguePDF from './RangeCataloguePDF'
 import { X, BookOpen, Loader2, AlertTriangle } from 'lucide-react'
 
@@ -51,6 +50,40 @@ async function mapLimit(items, limit, fn, onProgress) {
   return out
 }
 
+const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
+
+// "Bohemia Crystals, Gold Plated" — the row label a buyer can actually order
+// from. A variant is a brand x plating pair, and showing only the plating made
+// several rows look identical.
+function variantLabel(v) {
+  const brand = BRAND_NAME[v.brand_code] || v.brand_code || ''
+  const plating = v.plating_name || v.plating_code || ''
+  return [brand && `${brand} Crystals`, plating && `${plating} Plated`].filter(Boolean).join(', ') || '—'
+}
+
+// Same code rule as the Range page: prefix when the design has one brand,
+// shared base when it spans several. brand_code already carries the full
+// prefix ("UA"), so nothing is appended to it.
+function codeOf(p) {
+  const variants = Array.isArray(p.variants) ? p.variants : []
+  const fallback = brandLetter(p.design_code) || 'D'
+  const designNo = p.design_no || designNumber(p.design_code)
+  const brands = [...new Set(variants.map(v => v.brand_code || fallback).filter(Boolean))]
+  const prefix = brands.length === 1 ? brands[0] : ''
+  return [`${prefix}${designNo}`, p.format_code].filter(Boolean).join('-')
+}
+
+// Identical brand+plating+price rows can occur when a design carries duplicate
+// variant rows; the buyer should see one.
+const dedupe = rows => {
+  const seen = new Set()
+  return rows.filter(r => {
+    const k = `${r.plating}|${r.price}`
+    if (seen.has(k)) return false
+    seen.add(k); return true
+  })
+}
+
 export default function RangeCatalogueExport({ onClose }) {
   const [accounts, setAccounts] = useState([])
   const [products, setProducts] = useState([])
@@ -59,7 +92,6 @@ export default function RangeCatalogueExport({ onClose }) {
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState(null)   // { done, total }
   const [error, setError] = useState('')
-  const { colors } = useCrystalColors()
   const rates = useRates()
 
   useEffect(() => {
@@ -94,7 +126,6 @@ export default function RangeCatalogueExport({ onClose }) {
     try {
       const factor = wsPriceFactor(profile)
       const cur = profile?.base_currency || 'USD'
-      const colourName = Object.fromEntries((colors || []).map(c => [c.code, c.name]))
 
       const priceOf = (usd) => {
         const net = Number(usd) > 0 ? Number(usd) * factor : null
@@ -110,18 +141,23 @@ export default function RangeCatalogueExport({ onClose }) {
 
       const cards = sellable.map((p, i) => {
         const variants = Array.isArray(p.variants) ? p.variants : []
-        const colourCodes = [...new Set(variants.flatMap(v => v.crystal_colors || []))]
         return {
           key: p.id,
           type: p.design_type || 'Other',
-          code: p.design_code || `${brandLetter(p.design_code) || 'D'}${p.design_no || designNumber(p.design_code)}-${p.format_code || '001'}`,
+          // Same rule the Range page uses: a single-brand design carries its
+          // prefix (D0002-001), a multi-brand one shows the shared base because
+          // the prefix differs per row — and each row names its brand anyway.
+          code: codeOf(p),
           name: p.description || '',
-          colours: colourCodes.map(c => colourName[c] || c).join(', '),
           image: dataUrls[i],
-          // Price varies by plating only — rangePrice ignores colour entirely.
-          prices: variants
+          // One row per BRAND x PLATING, which is what a variant actually is.
+          // Unlabelled, these read as a meaningless repeat ("Chrome, Chrome,
+          // Gold, Gold…") because the thing that differs — the crystal brand —
+          // was not shown. Colour never appears: rangePrice ignores it, so
+          // enumerating colours produced dozens of identical prices.
+          prices: dedupe(variants
             .filter(v => Number(v.ws_price_usd) > 0)
-            .map(v => ({ plating: v.plating_name || v.plating_code || '—', price: priceOf(rangePrice(v)) })),
+            .map(v => ({ plating: variantLabel(v), price: priceOf(rangePrice(v)) }))),
         }
       })
 
@@ -129,14 +165,20 @@ export default function RangeCatalogueExport({ onClose }) {
         .sort((a, b) => a.localeCompare(b))
         .map(title => ({ title, products: cards.filter(c => c.type === title) }))
 
-      // Every resolvable SKU, so a buyer quoting a code can find it.
-      const index = sellable.flatMap(p =>
-        enumerateRangeSkus(p, colors || []).map(sk => ({
-          code: sk.sku,
-          name: `${p.description || ''}${sk.plating_name ? ` · ${sk.plating_name}` : ''}${sk.color_name ? ` · ${sk.color_name}` : ''}`,
-          price: priceOf(sk.price),
-        })),
-      ).sort((a, b) => a.code.localeCompare(b.code))
+      // Index at brand x plating, NOT per colour. Enumerating colours listed
+      // every SKU of a design at the same price — 16 rows of "USD 3.85" for one
+      // butterfly — which is pages of noise. The colour letters are the last
+      // characters of the SKU and are chosen at order time.
+      const index = sellable.flatMap(p => {
+        const base = codeOf(p)
+        return (Array.isArray(p.variants) ? p.variants : [])
+          .filter(v => Number(v.ws_price_usd) > 0)
+          .map(v => ({
+            code: `${base}-${v.plating_code || ''}`,
+            name: `${p.description || ''} · ${variantLabel(v)}`,
+            price: priceOf(rangePrice(v)),
+          }))
+      }).sort((a, b) => a.code.localeCompare(b.code))
 
       const validity = `Prices valid 30 days from issue · ${cur}`
       const blob = await pdf(
@@ -164,9 +206,13 @@ export default function RangeCatalogueExport({ onClose }) {
     }
   }
 
-  const skuCount = useMemo(
-    () => sellable.reduce((n, p) => n + enumerateRangeSkus(p, colors || []).length, 0),
-    [sellable, colors],
+  // Priced brand x plating rows — what the catalogue actually lists. Counting
+  // colour permutations here would advertise a number the document no longer
+  // contains.
+  const lineCount = useMemo(
+    () => sellable.reduce((n, p) => n + (Array.isArray(p.variants)
+      ? p.variants.filter(v => Number(v.ws_price_usd) > 0).length : 0), 0),
+    [sellable],
   )
 
   return (
@@ -195,7 +241,7 @@ export default function RangeCatalogueExport({ onClose }) {
               the account PAYS — 90 is a discount, 130 a markup — so calling it a
               discount anywhere would be wrong. */}
           <div className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-3 space-y-0.5">
-            <div>{sellable.length} products · {skuCount.toLocaleString()} SKUs · visible, non-retired only</div>
+            <div>{sellable.length} products · {lineCount.toLocaleString()} priced options · visible, non-retired only</div>
             <div>
               Prices: <strong>{profile ? `${Number(profile.ws_discount_pct) || 100}% of list` : '100% of list'}</strong>
               {' · '}<strong>{profile?.base_currency || 'USD'}</strong>
