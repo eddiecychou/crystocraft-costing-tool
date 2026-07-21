@@ -136,6 +136,12 @@ export function buildFullCartonPlan(packableLines, rangeProducts) {
       const count     = pcsPerCtn > 0 ? Math.ceil(qty / pcsPerCtn) : 1
       const dims      = parseDims(pk.carton_dims)
       const gw        = parseFloat(pk.weight_per_carton_kg) || null
+      // Net weight = the goods alone, without carton or packaging. The packing
+      // DB carries it per piece (2,090 of 3,292 records), so a full carton's NW
+      // is that times the pieces in it. Where the product has no per-piece
+      // weight this stays null and CuiLing types it — same as GW.
+      const nwPerPcs  = parseFloat(pk.weight_per_pcs_kg) || 0
+      const nw        = nwPerPcs > 0 && pcsPerCtn > 0 ? Math.round(nwPerPcs * pcsPerCtn * 100) / 100 : null
       const cbm       = dims
         ? calcCbm(dims.l, dims.w, dims.h)
         : (parseFloat(pk.cbm_per_carton) || null)
@@ -152,7 +158,7 @@ export function buildFullCartonPlan(packableLines, rangeProducts) {
         width_cm:  dims?.w ?? null,
         height_cm: dims?.h ?? null,
         cbm_per_carton: cbm,
-        nw_kg: null,
+        nw_kg: nw,
         is_estimate: true,
         notes: '',
         contents: [{

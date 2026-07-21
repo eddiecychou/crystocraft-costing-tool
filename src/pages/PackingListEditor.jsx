@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { CheckCircle2, AlertTriangle, Plus, Trash2, RefreshCw, Package, Star, Pencil, Copy, FileText, ChevronUp, ChevronDown } from 'lucide-react'
 import {
   PL_STATUSES, CARTON_MODES,
-  buildFullCartonPlan, calcPackedVsOrdered, derivedCbm,
+  buildFullCartonPlan, calcPackedVsOrdered, derivedCbm, effectiveGw,
   loadRangeProductsWithPacking,
   getPackingScenariosByOrder, createPackingList, updatePackingList,
   selectScenario, deleteScenario,
@@ -106,6 +106,10 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
   const seqEnd = parseInt(c.carton_seq) + parseInt(c.carton_count || 1) - 1
   const seqLabel = parseInt(c.carton_count) > 1 ? `CTN ${c.carton_seq}–${seqEnd}` : `CTN ${c.carton_seq}`
   const cbm = derivedCbm(c)
+  // Net above gross is physically impossible, so it is always a typo in one of
+  // the two. Flagged on the field rather than blocked — the person entering it
+  // knows which number they are sure of.
+  const nwOverGw = c.nw_kg != null && effectiveGw(c) != null && c.nw_kg > effectiveGw(c)
   const contents = c.contents?.length ? c.contents : [newContent()]
   const extraItems = Math.max(0, contents.length - 1)
 
@@ -176,6 +180,22 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
               value={c.gw_kg_actual ?? c.gw_kg_standard ?? ''}
               onChange={e => onChange({ ...c, gw_kg_actual: e.target.value === '' ? null : parseFloat(e.target.value) || null, is_estimate: false })}
               title={c.gw_kg_standard ? `Standard: ${c.gw_kg_standard} kg` : ''}
+            />
+            <span className="text-xs text-gray-400">kg</span>
+          </div>
+          {/* Net weight. The printed packing list has always had N.W/Ctn and
+              N.W columns; until 2026-07-21 there was no way to fill them, so
+              they printed blank on every document. */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-gray-500">NW</span>
+            <input
+              className={`input py-1 text-xs w-20 text-right ${nwOverGw ? 'border-red-400' : ''}`}
+              type="number" step="0.1" min="0" placeholder="kg"
+              value={c.nw_kg ?? ''}
+              onChange={e => onChange({ ...c, nw_kg: e.target.value === '' ? null : parseFloat(e.target.value) || null })}
+              title={nwOverGw
+                ? 'Net weight is higher than gross weight — one of the two is wrong.'
+                : 'Net weight per carton: the goods alone, without carton or packaging.'}
             />
             <span className="text-xs text-gray-400">kg</span>
           </div>

@@ -322,7 +322,7 @@ function PrintDoc({ pl, order, cartons }) {
             <td></td>
             <td style={{ textAlign: 'right' }}>{fmt(cartonCbm)}</td>
             <td></td>
-            <td style={{ textAlign: 'right' }}>{fmt(totalNw, 1)}</td>
+            <td style={{ textAlign: 'right' }}>{totalNw > 0 ? fmt(totalNw, 1) : ''}</td>
             <td></td>
           </tr>
         </tbody>
