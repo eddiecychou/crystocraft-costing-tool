@@ -104,7 +104,15 @@ function PrintDoc({ pl, order, cartons }) {
   const caseMark  = pl.case_mark || ''
   const plDate    = fmtDate(pl.pl_date) || fmtDate(pl.updatedAt) || ''
   const refNo     = order?.erp_pi_no || ''
-  const poNo      = order?.erp_so_no || ''
+  // The customer's own PO number, not ours. This used to print erp_so_no, so
+  // "PO NO" showed OUR sales order — the one reference the customer's receiving
+  // desk cannot match against anything.
+  //
+  // Deliberately does NOT fall back to the SO number when empty. Falling back
+  // would keep printing the wrong number on every existing order, which is the
+  // bug being fixed; blank is honest and prompts someone to enter the real one.
+  const soNo      = order?.erp_so_no || ''
+  const poNo      = order?.customer_po || ''
   const vessel    = pl.shipped_per || ''
 
   // Compute C/NO range (first carton seq to last carton seq+count-1)
@@ -178,7 +186,7 @@ function PrintDoc({ pl, order, cartons }) {
             <td></td>
           </tr>
           <tr>
-            <td><strong>Invoice No: </strong>{poNo ? `ORDER NO. ${poNo}` : ''}</td>
+            <td><strong>Invoice No: </strong>{soNo ? `ORDER NO. ${soNo}` : ''}</td>
             <td></td>
           </tr>
           <tr>
@@ -265,7 +273,13 @@ function PrintDoc({ pl, order, cartons }) {
                           <td style={{ textAlign: 'right' }}>{qty > 0 ? qty * count : ''}</td>
                           <td style={{ textAlign: 'right' }}>{gw > 0 ? fmt(gw * count, 1) : ''}</td>
                           <td style={{ textAlign: 'center' }}>{dims}</td>
-                          <td style={{ textAlign: 'right' }}>{cbm > 0 ? fmt(cbm) : ''}</td>
+                          {/* 6dp, not 4. The total is computed at full
+                              precision, so a 4dp per-carton figure did not
+                              multiply out: 0.0488 x 28 reads as 1.3664 against a
+                              printed total of 1.3674. The total was right and
+                              the row was rounded — but a shipping document that
+                              does not reconcile gets queried at customs. */}
+                          <td style={{ textAlign: 'right' }}>{cbm > 0 ? fmt(cbm, 6) : ''}</td>
                           <td style={{ textAlign: 'right' }}>{cbm > 0 ? fmt(cbm * count) : ''}</td>
                           <td style={{ textAlign: 'right' }}>{c.nw_kg > 0 ? fmt(c.nw_kg, 1) : ''}</td>
                           <td style={{ textAlign: 'right' }}>{c.nw_kg > 0 ? fmt(c.nw_kg * count, 1) : ''}</td>

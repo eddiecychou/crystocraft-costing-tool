@@ -34,7 +34,7 @@ const STOCK_CFGS = [metalOrderConfig, crystalInventory, packagingInventory]
 const SHIPPED_STATUSES = new Set(['shipped', 'delivered'])
 
 const blankHeader = {
-  customer_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', erp_si_no: '', uc_no: '', order_date: '',
+  customer_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', erp_si_no: '', uc_no: '', customer_po: '', order_date: '',
   invoiced_at: '',
   currency: 'USD', incoterm: 'FOB', status: 'draft',
   destination: { country: '', city: '', address: '', port: '' }, notes: '',
@@ -166,6 +166,7 @@ export default function ShipmentForm() {
           setHeader({
             customer_id: o.customer_id, customer_name: o.customer_name,
             erp_pi_no: o.erp_pi_no, erp_so_no: o.erp_so_no || '', erp_si_no: o.erp_si_no || '', uc_no: o.uc_no || '',
+            customer_po: o.customer_po || '',
             invoiced_at: o.invoiced_at || '',
             order_date: o.order_date || '',
             currency: o.currency, incoterm: o.incoterm, status: o.status,
@@ -468,6 +469,7 @@ export default function ShipmentForm() {
         updateOrder(id, {
           customer_id: header.customer_id, customer_name: header.customer_name,
           erp_pi_no: header.erp_pi_no, erp_so_no: header.erp_so_no, erp_si_no: header.erp_si_no,
+          customer_po: header.customer_po,
           invoiced_at: header.invoiced_at || null, uc_no: header.uc_no,
           order_date: header.order_date || null,
           currency: header.currency, incoterm: header.incoterm, status: header.status,
@@ -621,6 +623,10 @@ export default function ShipmentForm() {
               <div>
                 <label className="label">UC#</label>
                 <input className="input" value={header.uc_no} onChange={setH('uc_no')} placeholder="e.g. UC4950/26" />
+              </div>
+              <div>
+                <label className="label">Customer PO</label>
+                <input className="input" value={header.customer_po} onChange={setH('customer_po')} placeholder="e.g. 56909" />
               </div>
               <div>
                 <label className="label flex items-center justify-between gap-2">

@@ -69,6 +69,12 @@ export const normOrder = o => ({
   client_quote_id: o.client_quote_id || null,
   erp_pi_no: str(o.erp_pi_no),
   erp_so_no: str(o.erp_so_no),
+  // The CUSTOMER's own purchase order number — their reference, not ours.
+  // JES carries it as salesorder.sopono (exposed as customer_po on
+  // erp_sales_order); the app had no field for it, so the packing list was
+  // printing our SO number under "PO NO", which is the one number the
+  // customer's own receiving desk cannot match against anything.
+  customer_po: str(o.customer_po),
   // The sales invoice number (SI######). Its own field: without one, SI numbers
   // were being typed into erp_so_no, so the order list showed "SI260085" in a
   // column headed SO and the two document numbers could not be told apart.
