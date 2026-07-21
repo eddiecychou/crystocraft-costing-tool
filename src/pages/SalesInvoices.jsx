@@ -1,8 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import { useOrders } from '../shipping'
-import { Receipt, AlertTriangle, FileText } from 'lucide-react'
+import { erpLookup } from '../erpApi'
+import { Receipt, AlertTriangle, FileText, Database } from 'lucide-react'
 
 // Sales Invoices. An invoice is not a separate record here — it is an order
 // that has been given an invoice number, which mirrors how CuiLing actually
@@ -28,10 +29,39 @@ const fmtValue = (v) => {
 // invoice. Draft and in-progress orders are not late, they are just early.
 const AWAITING = new Set(['shipped', 'delivered'])
 
+// Historical invoices are READ from the ERP mirror, never imported. Copying
+// 5,455 JES invoices into Firestore would duplicate the system of record and
+// invite the two to drift; the mirror is already the archive (see
+// JES-RETIREMENT-PLAN.md §9 — "the Supabase archive remains as history").
+// So JES rows are visible and searchable here but not editable, and they carry
+// no Print action: the app cannot reissue a document JES produced.
+function useErpInvoices(search) {
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let alive = true
+    setLoading(true); setError('')
+    // Debounced — every keystroke would otherwise hit the edge function.
+    const t = setTimeout(() => {
+      erpLookup('sales_invoice', { q: search.trim(), limit: 100 })
+        .then((r) => { if (alive) setRows(r || []) })
+        .catch((e) => { if (alive) { setError(e.message || 'Could not reach the ERP archive.'); setRows([]) } })
+        .finally(() => { if (alive) setLoading(false) })
+    }, 300)
+    return () => { alive = false; clearTimeout(t) }
+  }, [search])
+
+  return { rows, loading, error }
+}
+
 export default function SalesInvoices() {
   const navigate = useNavigate()
   const { orders, loading } = useOrders()
   const [search, setSearch] = useState('')
+
+  const erp = useErpInvoices(search)
 
   const { invoiced, awaiting } = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -47,6 +77,31 @@ export default function SalesInvoices() {
         .sort((a, b) => (a.order_date || '').localeCompare(b.order_date || '')),   // oldest first — most overdue
     }
   }, [orders, search])
+
+  // One list, two sources. Which system an invoice lives in is an implementation
+  // detail to the person looking for it, so they are merged and sorted by date —
+  // but each row says where it came from, because what you can DO with it
+  // differs. App rows print; JES rows are history.
+  const merged = useMemo(() => {
+    const app = invoiced.map((o) => ({
+      key: `app-${o.id}`, src: 'app', id: o.id,
+      no: o.erp_si_no, date: o.invoiced_at || o.order_date,
+      so: o.erp_so_no, uc: o.uc_no, customer: o.customer_name,
+      currency: o.currency, amount: o.total_amount ?? o.subtotal, status: null,
+    }))
+    // The app's own invoices may also exist in the mirror once a sync runs;
+    // showing both would double-count. The app row wins — it is the live one.
+    const appNos = new Set(app.map((r) => (r.no || '').trim().toUpperCase()))
+    const jes = (erp.rows || [])
+      .filter((r) => !appNos.has((r.code || '').trim().toUpperCase()))
+      .map((r) => ({
+        key: `erp-${r.code}`, src: 'jes', id: null,
+        no: (r.code || '').trim(), date: r.date,
+        so: null, uc: (r.ref || '').trim(), customer: r.customer,
+        currency: r.currency, amount: r.amount, status: (r.status || '').trim().toUpperCase(),
+      }))
+    return [...app, ...jes].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+  }, [invoiced, erp.rows])
 
   return (
     <div>
@@ -98,12 +153,24 @@ export default function SalesInvoices() {
           </div>
         )}
 
-        <p className="text-sm text-gray-500 mb-3">{invoiced.length} invoice{invoiced.length === 1 ? '' : 's'}</p>
+        <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+          <p className="text-sm text-gray-500">
+            {merged.length} invoice{merged.length === 1 ? '' : 's'}
+            {erp.rows.length > 0 && <span className="text-gray-400"> · {invoiced.length} in the app, {merged.length - invoiced.length} from JES</span>}
+          </p>
+          {erp.loading && <span className="text-xs text-gray-400">loading JES history…</span>}
+        </div>
 
-        {invoiced.length === 0 && !loading ? (
+        {erp.error && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+            JES history unavailable — {erp.error}
+          </p>
+        )}
+
+        {merged.length === 0 && !loading && !erp.loading ? (
           <div className="text-center py-16 text-gray-400">
             <Receipt size={28} className="mx-auto mb-3 opacity-40" />
-            No invoices yet. Open an order and allocate an invoice number to raise one.
+            {search ? 'No invoices match your search.' : 'No invoices yet. Open an order and allocate an invoice number to raise one.'}
           </div>
         ) : (
           <div className="card overflow-x-auto">
@@ -121,28 +188,43 @@ export default function SalesInvoices() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {invoiced.map((o) => (
-                  <tr key={o.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 whitespace-nowrap font-mono text-xs font-medium text-gray-900 cursor-pointer"
-                        onClick={() => navigate(`/shipments/${o.id}`)}>{o.erp_si_no}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600 cursor-pointer"
-                        onClick={() => navigate(`/shipments/${o.id}`)}>{fmtDate(o.invoiced_at || o.order_date)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-500 font-mono text-xs">{o.erp_so_no || '—'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-500 font-mono text-xs">{o.uc_no || '—'}</td>
-                    <td className="px-4 py-3 font-medium text-gray-900 cursor-pointer"
-                        onClick={() => navigate(`/shipments/${o.id}`)}>{o.customer_name || 'Unnamed customer'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">{o.currency}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-800">
-                      {fmtValue(o.total_amount ?? o.subtotal)}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right">
-                      <Link to={`/shipments/${o.id}/invoice`} target="_blank" rel="noreferrer"
-                            className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
-                        <FileText size={12} /> Print
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
+                {merged.map((r) => {
+                  const isApp = r.src === 'app'
+                  const open = () => isApp && navigate(`/shipments/${r.id}`)
+                  // A voided JES invoice is not a live document — it is excluded
+                  // from the PBIS import, so it must not read as a normal row.
+                  const void_ = r.status === 'VOID'
+                  return (
+                    <tr key={r.key} className={`transition-colors ${isApp ? 'hover:bg-gray-50' : ''} ${void_ ? 'opacity-60' : ''}`}>
+                      <td className={`px-4 py-3 whitespace-nowrap font-mono text-xs font-medium ${isApp ? 'text-gray-900 cursor-pointer' : 'text-gray-600'}`}
+                          onClick={open}>
+                        {r.no || '—'}
+                        {void_ && <span className="ml-1.5 text-[10px] font-sans font-medium text-red-600">VOID</span>}
+                      </td>
+                      <td className={`px-4 py-3 whitespace-nowrap text-gray-600 ${isApp ? 'cursor-pointer' : ''}`} onClick={open}>{fmtDate(r.date)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-500 font-mono text-xs">{r.so || '—'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-500 font-mono text-xs">{r.uc || '—'}</td>
+                      <td className={`px-4 py-3 font-medium text-gray-900 min-w-0 ${isApp ? 'cursor-pointer' : ''}`} onClick={open}>
+                        <span className="truncate">{r.customer || 'Unnamed customer'}</span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-500">{r.currency}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-800">{fmtValue(r.amount)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                        {isApp ? (
+                          <Link to={`/shipments/${r.id}/invoice`} target="_blank" rel="noreferrer"
+                                className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
+                            <FileText size={12} /> Print
+                          </Link>
+                        ) : (
+                          <span title="Historical invoice from JES — read-only archive"
+                                className="text-[10px] font-medium text-ink-40 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
+                            <Database size={10} /> JES
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
