@@ -720,7 +720,14 @@ export default function ShipmentForm() {
                       <div className="min-w-0 space-y-2">
                         <div className="grid grid-cols-[100px_1fr] sm:grid-cols-[140px_1fr] gap-2">
                           <input className="input py-1.5 text-sm font-mono" value={l.item_code} onChange={e => setLine(i, { item_code: e.target.value })} placeholder="Item code" />
-                          <input className="input py-1.5 text-sm" value={l.description} onChange={e => setLine(i, { description: e.target.value })} placeholder="Description" />
+                          {/* A textarea, not an input: one-off "MISC" lines
+                              routinely carry multi-line descriptions in JES —
+                              "SOCKS\nMaterial: Cotton + Polyester\nSize: 25-27".
+                              A single-line input made those impossible to enter
+                              at all. Drag to expand; newlines are preserved and
+                              printed. */}
+                          <textarea className="input py-1.5 text-sm resize-y leading-snug" rows={1} style={{ minHeight: '2.15rem' }}
+                                    value={l.description} onChange={e => setLine(i, { description: e.target.value })} placeholder="Description" />
                         </div>
                         <div className="flex gap-2 items-center flex-wrap">
                           <input className="input py-1.5 text-sm w-20 sm:w-24" type="number" value={l.qty_ordered ?? ''} onChange={e => setLine(i, { qty_ordered: e.target.value })} placeholder="Qty" />

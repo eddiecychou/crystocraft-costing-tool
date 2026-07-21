@@ -107,6 +107,9 @@ export default function SalesInvoicePrint() {
           letter-spacing: .05em; padding: 7px 8px; text-align: left; }
         table.si-lines th.r, table.si-lines td.r { text-align: right; }
         table.si-lines td { padding: 7px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+        /* One-off MISC lines carry multi-line descriptions; without this they
+           collapse into one run-on line. */
+        table.si-lines td.desc { white-space: pre-wrap; }
         table.si-lines tr:nth-child(even) td { background: #fafafa; }
         .si-code { font-family: 'SF Mono', Menlo, monospace; font-size: 9.5px; }
         .si-totals { display: flex; justify-content: flex-end; margin-top: 10px; }
@@ -207,14 +210,24 @@ export default function SalesInvoicePrint() {
               <tr key={i}>
                 <td>{i + 1}</td>
                 <td className="si-code">{l.item_code || '—'}</td>
-                <td>{l.description || '—'}</td>
+                <td className="desc">{l.description || '—'}</td>
                 <td className="r">{qty.toLocaleString()}{l.unit ? ` ${l.unit}` : ''}</td>
                 <td className="r">{up.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                 <td className="r">{(qty * up).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
               </tr>
             )
           })}
-          {productLines.length === 0 && (
+          {chargeLines.map((l, i) => (
+            <tr key={`c${i}`}>
+              <td>{productLines.length + i + 1}</td>
+              <td className="si-code">{l.item_code || '—'}</td>
+              <td className="desc">{l.description || 'Charge'}</td>
+              <td className="r" />
+              <td className="r" />
+              <td className="r">{(parseFloat(l.unit_price) || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+            </tr>
+          ))}
+          {productLines.length === 0 && chargeLines.length === 0 && (
             <tr><td colSpan={6} style={{ textAlign: 'center', color: '#aaa', padding: '18px 0' }}>No line items on this order.</td></tr>
           )}
         </tbody>
@@ -228,11 +241,7 @@ export default function SalesInvoicePrint() {
               <tr><td className="k">Discount{order.discount_pct ? ` (${order.discount_pct}%)` : ''}</td>
                   <td className="v">− {money(discountAmount, cur)}</td></tr>
             )}
-            {chargeLines.map((l, i) => (
-              <tr key={i}><td className="k">{l.description || 'Charge'}</td>
-                  <td className="v">{money(parseFloat(l.unit_price) || 0, cur)}</td></tr>
-            ))}
-            {chargeLines.length === 0 && chargesTotal > 0 && (
+            {chargesTotal > 0 && (
               <tr><td className="k">Charges</td><td className="v">{money(chargesTotal, cur)}</td></tr>
             )}
             <tr className="grand"><td className="k">Total Due</td><td className="v">{money(total, cur)}</td></tr>
