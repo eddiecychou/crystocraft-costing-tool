@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
+import ExportFilterBar from '../components/ExportFilterBar'
+import { downloadCsv, exportStem, inDateRange } from '../exportCsv'
 import { Link, useNavigate } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import { useOrders } from '../shipping'
@@ -67,6 +69,9 @@ export default function SalesInvoices() {
   const [search, setSearch] = useState('')
   const [showAllAwaiting, setShowAllAwaiting] = useState(false)
   const [erpDoc, setErpDoc] = useState(null)   // JES invoice being viewed, read-only
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [srcFilter, setSrcFilter] = useState('')   // '' | 'app' | 'jes'
 
   const erp = useErpInvoices(search)
 
@@ -111,6 +116,33 @@ export default function SalesInvoices() {
     return [...app, ...jes].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
   }, [invoiced, erp.rows])
 
+  // The export set. Filtering here rather than inside `merged` keeps the
+  // page's own two-source de-duplication intact — dropping a JES row by date
+  // before de-duplication could let an app duplicate of it back in.
+  const exportable = useMemo(() => merged.filter((r) => {
+    if (srcFilter && r.src !== srcFilter) return false
+    return inDateRange(r.date, from, to)
+  }), [merged, srcFilter, from, to])
+
+  // JES rows are read from the mirror, so an export mixing both sources is
+  // only as current as the last sync — the Source column says which is which.
+  const INVOICE_COLUMNS = [
+    { label: 'Invoice no.', value: (r) => r.no, text: true },
+    { label: 'Date',        value: (r) => r.date },
+    { label: 'UC#',         value: (r) => r.uc, text: true },
+    { label: 'SO no.',      value: (r) => r.so, text: true },
+    { label: 'Customer',    value: (r) => r.customer },
+    { label: 'Currency',    value: (r) => r.currency },
+    { label: 'Amount',      value: (r) => r.amount },
+    { label: 'Status',      value: (r) => r.status || '' },
+    { label: 'Source',      value: (r) => (r.src === 'app' ? 'App' : 'JES') },
+  ]
+
+  const exportInvoices = () => downloadCsv(
+    exportStem('sales-invoices', { from, to, type: srcFilter }),
+    INVOICE_COLUMNS, exportable,
+  )
+
   return (
     <div>
       <div className="px-4 md:px-6 pt-4 md:pt-6 pb-4 border-b border-ivory-dark">
@@ -131,6 +163,14 @@ export default function SalesInvoices() {
       <div className="p-4 md:p-6">
         {loading && <LoadingBar />}
         {erpDoc && <ErpDocModal of="sales_invoice" doc={erpDoc} onClose={() => setErpDoc(null)} />}
+
+        <ExportFilterBar
+          from={from} to={to} onFrom={setFrom} onTo={setTo}
+          typeLabel="Source" typeValue={srcFilter} onType={setSrcFilter}
+          typeOptions={[{ value: 'app', label: 'Raised in app' }, { value: 'jes', label: 'JES (history)' }]}
+          count={exportable.length} total={merged.length} noun="invoices"
+          onExport={exportInvoices} disabled={loading}
+        />
 
         <input type="text" placeholder="Search by customer, invoice no, SO no, UC#…"
           className="input w-full mb-4" value={search} onChange={(e) => setSearch(e.target.value)} />

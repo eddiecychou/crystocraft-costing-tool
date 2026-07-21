@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Search, Hash, Plus, X, AlertCircle, FileText } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import { useUcList, createUcInvoice, updateUcInvoice, UC_SOURCES, UC_CURRENCIES, ucSource } from '../ucRegistry'
+import ExportFilterBar from '../components/ExportFilterBar'
+import { downloadCsv, exportStem } from '../exportCsv'
 import { erpLines, erpLookup } from '../erpApi'
 
 const money = (v) => (v === '' || v == null || Number.isNaN(Number(v)))
@@ -374,16 +376,49 @@ export default function UcRegistry() {
   const [statusFilter, setStatusFilter] = useState('open')   // '' = all
   const [confirmedFilter, setConfirmedFilter] = useState('') // '' = any | 'yes' | 'no'
   const [editing, setEditing] = useState(null)   // record | 'new' | null
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
 
   // undefined = don't filter; true/false = filter on the confirmed flag
   const confirmed = confirmedFilter === 'yes' ? true : confirmedFilter === 'no' ? false : undefined
 
-  const list = useUcList({ q, source, status: statusFilter, confirmed, limit: 500 })
+  // 1000 is the edge function's ceiling. Worth raising from 500 once a date
+  // range is in play: a full audit year is more than 500 rows, and a silently
+  // truncated export is the one failure mode that would matter most to Cindy.
+  const list = useUcList({ q, source, status: statusFilter, confirmed, from, to, limit: 1000 })
   // Outstanding summary: always open, but respects the confirmed filter so you
   // can read off the "confirmed + open" outstanding total.
   const arList = useUcList({ status: 'open', confirmed, limit: 1000 })
   const rows = list.rows
   const refreshAll = () => { list.refresh(); arList.refresh() }
+
+  // The registry as Cindy reads it, plus invoice_location so an app-raised or
+  // not-yet-synced invoice is visible in the sheet rather than only on screen.
+  const UC_COLUMNS = [
+    { label: 'UC#',        value: (r) => `${r.uc_no || ''}${r.year || ''}`, text: true },
+    { label: 'Date',       value: (r) => r.effective_date },
+    { label: 'JES SI#',    value: (r) => r.jes_si, text: true },
+    { label: 'Invoice in', value: (r) => (r.invoice_location === 'jes' ? 'JES' : r.invoice_location === 'not_in_mirror' ? 'not in sync' : '') },
+    { label: 'Source',     value: (r) => ucSource(r.source) },
+    { label: 'Customer',   value: (r) => r.customer },
+    { label: 'Order no.',  value: (r) => r.order_no, text: true },
+    { label: 'Currency',   value: (r) => r.currency },
+    { label: 'Total',      value: (r) => r.total },
+    { label: 'Deposit',    value: (r) => r.deposit },
+    { label: 'Balance',    value: (r) => r.balance },
+    { label: 'Bal. pay date', value: (r) => r.bal_pay_date },
+    { label: 'Shipment',   value: (r) => r.shipment },
+    { label: 'Customs',    value: (r) => r.customs },
+    { label: 'Status',     value: (r) => r.status },
+    { label: 'Confirmed',  value: (r) => (r.confirmed ? 'Yes' : 'No') },
+    { label: 'PIC',        value: (r) => r.pic },
+    { label: 'Remarks',    value: (r) => r.remarks },
+  ]
+
+  const exportUc = () => downloadCsv(
+    exportStem('uc-registry', { from, to, type: source || statusFilter }),
+    UC_COLUMNS, rows,
+  )
 
   // ERP invoice drill-down (for rows with a JES SI#).
   const [erpSi, setErpSi] = useState(null)
@@ -476,8 +511,13 @@ export default function UcRegistry() {
           <option value="yes">Confirmed only</option>
           <option value="no">Not confirmed</option>
         </select>
-        <span className="text-sm text-gray-400 tabular-nums">{rows.length} shown</span>
       </div>
+
+      <ExportFilterBar
+        from={from} to={to} onFrom={setFrom} onTo={setTo}
+        count={rows.length} total={rows.length} noun="rows"
+        onExport={exportUc} disabled={list.loading}
+      />
 
       {/* table */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">

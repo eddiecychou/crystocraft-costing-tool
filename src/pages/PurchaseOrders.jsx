@@ -8,6 +8,8 @@ import { PO_STATUSES } from '../constants'
 import { fmtMoney } from '../currency'
 import { poTotals } from '../purchaseOrders'
 import { FileText } from 'lucide-react'
+import ExportFilterBar from '../components/ExportFilterBar'
+import { downloadCsv, exportStem, inDateRange } from '../exportCsv'
 
 const STATUS_META = Object.fromEntries(PO_STATUSES.map(s => [s.value, s]))
 
@@ -22,6 +24,8 @@ export default function PurchaseOrders() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
   const remember = useScrollMemory('purchase-orders', !loading)
 
   useEffect(() => {
@@ -37,11 +41,37 @@ export default function PurchaseOrders() {
     const q = search.trim().toLowerCase()
     return pos.filter(p => {
       if (statusFilter && (p.status || 'draft') !== statusFilter) return false
+      // Dates come from issued_date, which can be blank on a draft — an undated
+      // PO is excluded once a range is set, rather than silently included.
+      if ((from || to) && !inDateRange(p.issued_date, from, to)) return false
       if (!q) return true
       return [p.pu_number, p.supplier_name, p.supplier_name_cn, p.supplier_erp_code]
         .some(v => (v || '').toLowerCase().includes(q))
     })
-  }, [pos, search, statusFilter])
+  }, [pos, search, statusFilter, from, to])
+
+  // Columns follow the PO screen, plus the money Cindy needs for the books.
+  const PO_COLUMNS = [
+    { label: 'PU No.',        value: p => p.pu_number, text: true },
+    { label: 'Issued',        value: p => p.issued_date },
+    { label: 'Status',        value: p => STATUS_META[p.status || 'draft']?.label || p.status || 'draft' },
+    { label: 'Supplier',      value: p => p.supplier_name },
+    { label: 'Supplier (CN)', value: p => p.supplier_name_cn },
+    { label: 'Supplier code', value: p => p.supplier_erp_code, text: true },
+    { label: 'Currency',      value: p => p.currency },
+    { label: 'Lines',         value: p => (p.lines || []).length },
+    { label: 'Qty',           value: p => poTotals(p).totalQty },
+    { label: 'Subtotal',      value: p => poTotals(p).subtotal.toFixed(2) },
+    { label: 'Adjustments',   value: p => poTotals(p).adjustmentsTotal.toFixed(2) },
+    { label: 'Total',         value: p => poTotals(p).grandTotal.toFixed(2) },
+    { label: 'Deposit',       value: p => poTotals(p).deposit.toFixed(2) },
+    { label: 'Balance',       value: p => poTotals(p).balance.toFixed(2) },
+  ]
+
+  const exportPos = () => downloadCsv(
+    exportStem('purchase-orders', { from, to, type: statusFilter }),
+    PO_COLUMNS, filtered,
+  )
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
@@ -53,6 +83,12 @@ export default function PurchaseOrders() {
         </div>
         <Link to="/purchase-orders/new" className="btn-primary text-sm whitespace-nowrap">+ New PO</Link>
       </div>
+
+      <ExportFilterBar
+        from={from} to={to} onFrom={setFrom} onTo={setTo}
+        count={filtered.length} total={pos.length} noun="POs"
+        onExport={exportPos} disabled={loading}
+      />
 
       <div className="flex flex-col sm:flex-row gap-2 mb-4">
         <input type="text" placeholder="Search PU no. or supplier…" className="input w-full sm:flex-1"

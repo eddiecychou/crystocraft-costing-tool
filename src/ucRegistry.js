@@ -63,10 +63,13 @@ export async function allocateOrderUc({ customer_name, currency } = {}) {
   return { id: row.id, uc_no: row.uc_no, year: row.year, full: `${row.uc_no}${row.year}` }
 }
 
-// Debounced, refetchable list. `filters` = { q, source, status, confirmed, limit }.
-// `confirmed` is true/false to filter, or undefined for "any".
+// Debounced, refetchable list. `filters` = { q, source, status, confirmed,
+// from, to, limit }. `confirmed` is true/false to filter, or undefined for
+// "any"; `from`/`to` are yyyy-mm-dd and filter on effective_date, INCLUSIVE.
+//
+// The date range is applied server-side on purpose — see the edge function.
 export function useUcList(filters) {
-  const { q = '', source = '', status = '', confirmed, limit = 300 } = filters || {}
+  const { q = '', source = '', status = '', confirmed, from = '', to = '', limit = 300 } = filters || {}
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -75,12 +78,12 @@ export function useUcList(filters) {
     let alive = true
     setLoading(true); setError('')
     const t = setTimeout(() => {
-      listUc({ q, source, status, confirmed, limit })
+      listUc({ q, source, status, confirmed, from, to, limit })
         .then((r) => { if (alive) setRows(r) })
         .catch((e) => { if (alive) { setError(e.message); setRows([]) } })
         .finally(() => { if (alive) setLoading(false) })
     }, 250)
     return () => { alive = false; clearTimeout(t) }
-  }, [q, source, status, confirmed, limit, nonce])
+  }, [q, source, status, confirmed, from, to, limit, nonce])
   return { rows, loading, error, refresh: () => setNonce((n) => n + 1) }
 }

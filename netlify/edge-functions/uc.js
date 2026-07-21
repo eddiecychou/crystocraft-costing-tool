@@ -79,6 +79,13 @@ export default async function handler(req) {
     if (['open', 'closed', 'void'].includes(body.status)) p.set('status', `eq.${body.status}`)
     if (body.source) p.set('source', `eq.${String(body.source).replace(/[^\w /-]/g, '')}`)
     if (body.confirmed === true || body.confirmed === false) p.set('confirmed', `is.${body.confirmed}`)
+    // Inclusive date range over effective_date (the invoice's own date when it
+    // has one, else the typed doc_date). Strictly validated: these values are
+    // interpolated into a PostgREST filter.
+    for (const [key, op] of [['from', 'gte'], ['to', 'lte']]) {
+      const v = String(body[key] ?? '').trim()
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) p.append('effective_date', `${op}.${v}`)
+    }
     const q = String(body.q ?? '').trim().slice(0, 80).replace(/["\\]/g, ' ')
     if (q) p.set('or', `(uc_no.ilike."*${q}*",customer.ilike."*${q}*",jes_si.ilike."*${q}*",order_no.ilike."*${q}*")`)
     // Reads go through uc_registry_dated, which adds si_date (the invoice's own
