@@ -290,7 +290,8 @@ export default function Range() {
       </div>
       {seedLog && <p className="text-xs font-mono text-ink-60 mb-2">{seedLog}</p>}
 
-      {/* Made to Order / Last Stock toggle */}
+      {/* Lifecycle filter. 'Retired Stock' and 'Retired — Sold Out' are the
+          same state either side of the stock running out. */}
       <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden mt-3">
         {[
           { v: 'all', label: 'All' },

@@ -996,7 +996,7 @@ export default function RangeForm() {
           </div>
           {form.status === 'stock' ? (
             <p className="text-xs text-ink-60 mb-3">
-              <strong>Last Stock</strong> — retired design, no re-runs. Availability is driven by
+              <strong>Retired Stock</strong> — retired design, no re-runs. Availability is driven by
               how many units can still be built from remaining component stock. Tick the critical
               components below and keep their stock counts up to date — that's the single source
               of truth for this item.

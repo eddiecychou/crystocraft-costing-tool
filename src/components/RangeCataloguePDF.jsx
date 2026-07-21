@@ -83,6 +83,8 @@ const s = StyleSheet.create({
   code: { fontFamily: 'Work Sans', fontWeight: 600, fontSize: 9, letterSpacing: 0.4 },
   name: { fontSize: 8.5, color: C.grayDark, marginTop: 1.5, marginBottom: 4 },
   attr: { fontSize: 7, color: C.grayMid, marginBottom: 3 },
+  note: { fontSize: 6.5, color: '#a06a1b', backgroundColor: '#fdf5e6',
+          paddingVertical: 1.5, paddingHorizontal: 3, marginBottom: 3, alignSelf: 'flex-start' },
 
   priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2 },
   priceRowAlt: { backgroundColor: C.rowAlt },
@@ -122,6 +124,7 @@ function ProductCard({ p }) {
         <View style={{ flex: 1 }}>
           <Text style={s.code}>{p.code}</Text>
           <Text style={s.name}>{p.name}</Text>
+          {p.note ? <Text style={s.note}>{p.note}</Text> : null}
           {p.prices.map((r, i) => (
             <View key={`${r.code}|${r.plating}|${r.price}`} style={[s.priceRow, i % 2 ? s.priceRowAlt : null]}>
               <View style={{ flex: 1, paddingRight: 6 }}>
@@ -139,7 +142,7 @@ function ProductCard({ p }) {
 }
 
 /**
- * @param groups   [{ title, products: [{ code, name, image, prices:[{plating,price}] }] }]
+ * @param groups   [{ title, products: [{ code, name, note, image, prices:[{plating,price}] }] }]
  *
  * No SKU index. It was removed on 2026-07-21: with colour collapsed out, every
  * index row simply repeated a price already printed beside the product it

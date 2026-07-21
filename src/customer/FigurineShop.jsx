@@ -167,7 +167,8 @@ export default function FigurineShop({ profile }) {
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
-      {/* Lifecycle status filter — All / Made to Order / Last Stock / Concept */}
+      {/* Lifecycle status filter — All / Made to Order / Retired Stock / Concept.
+          Sold-out retired designs are filtered out of the list entirely. */}
       <div className="flex flex-wrap gap-1.5 mb-5">
         {/* Retired designs never reach `products` (filtered out above), so
             offering a Retired chip here would always show zero results. */}

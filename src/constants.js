@@ -183,17 +183,23 @@ export const RANGE_BODY_TYPES = [
 // Lifecycle status (drives the customer promise together with live stock):
 //  • 'active'   = Made to Order — tooling exists, stock may or may not be on hand,
 //                 MOQ may apply. The current, orderable range.
-//  • 'stock'    = Last Stock    — no re-runs; sells the remaining inventory.
+//  • 'stock'    = Retired Stock — no re-runs; sells the remaining inventory.
 //  • 'concept'  = Concept       — not yet tooled, no stock; shown like any product
 //                 (price/size/images/description) but enquiry-only, no MOQ/lead.
-//  • 'retired'  = Retired       — last-stock has fully sold out; no stock, no
-//                 re-run. Greyed out in the admin list; kept for history/reference.
+//  • 'retired'  = Retired, Sold Out — the same lifecycle state as 'stock' with
+//                 the stock gone. Greyed out in the admin list; kept for
+//                 history/reference and hidden from customers.
+//
+// 'stock' and 'retired' are ONE state, not two (owner, 2026-07-21): a retired
+// design that still has units, and the same design once they run out. The
+// labels used to read "Last Stock" and "Retired", which hid that relationship
+// and made them look like unrelated options sitting in the same filter bar.
 // Stored keys are kept as 'active' / 'stock' for back-compat; only labels changed.
 export const RANGE_STATUSES = [
   { value: 'active',  label: 'Made to Order', badge: 'bg-emerald-100 text-emerald-700' },
-  { value: 'stock',   label: 'Last Stock',    badge: 'bg-amber-100 text-amber-700' },
+  { value: 'stock',   label: 'Retired Stock', badge: 'bg-amber-100 text-amber-700' },
   { value: 'concept', label: 'Concept',       badge: 'bg-purple-100 text-purple-700' },
-  { value: 'retired', label: 'Retired',       badge: 'bg-gray-200 text-gray-600' },
+  { value: 'retired', label: 'Retired — Sold Out', badge: 'bg-gray-200 text-gray-600' },
 ]
 
 // Customer-facing availability labels + explanatory tooltips for range figurines.
@@ -204,7 +210,7 @@ export const RANGE_STATUS_CUSTOMER = {
     tip: 'Produced to order — standard production lead time applies.',
   },
   stock: {
-    label: 'Last Stock',
+    label: 'Retired Stock',
     cls: 'bg-amber-100 text-amber-700',
     tip: 'Retired design — limited remaining stock, available while supplies last.',
   },
@@ -214,7 +220,7 @@ export const RANGE_STATUS_CUSTOMER = {
     tip: 'Concept design — not yet in production. Enquire to register your interest.',
   },
   retired: {
-    label: 'Retired',
+    label: 'Retired — Sold Out',
     cls: 'bg-gray-200 text-gray-600',
     tip: 'Retired — no stock remaining. This design will not be produced again.',
   },

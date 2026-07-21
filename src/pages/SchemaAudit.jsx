@@ -127,7 +127,7 @@ export default function SchemaAudit() {
     {
       const buckets = {
         mto:     { name: 'Range — Made to Order', hint: 'Made-to-order figurines: variants, MOQ/lead, BOM, and images.', total: 0, issues: [] },
-        stock:   { name: 'Range — Last Stock',    hint: 'Last Stock: components ARE the inventory — missing components shows the design SOLD OUT.', total: 0, issues: [] },
+        stock:   { name: 'Range — Retired Stock', hint: 'Retired Stock: components ARE the inventory — missing components shows the design SOLD OUT.', total: 0, issues: [] },
         concept: { name: 'Range — Concept',       hint: 'Concept figurines: in development (not tooled).', total: 0, issues: [] },
         retired: { name: 'Range — Retired',       hint: 'Retired figurines: sold out, excluded from the shops.', total: 0, issues: [] },
       }
@@ -144,7 +144,7 @@ export default function SchemaAudit() {
         if (!isNum(p.lead_time_weeks) || num(p.lead_time_weeks) <= 0) add(issues, 'info', d.id, label, 'no assembly lead_time_weeks set', `/range/${d.id}`)
         const refs = Array.isArray(p.critical_components) ? p.critical_components : []
         addResult(issues, validateCriticalRefs(refs, lib), d.id, label, `/range/${d.id}`)
-        // Missing components: for Last Stock it means SOLD OUT (error); for MTO it
+        // Missing components: for Retired Stock it means SOLD OUT (error); for MTO it
         // stays sellable at a default lead but can't be costed (warning).
         if (refs.length === 0 && st !== 'concept' && st !== 'retired') {
           if (st === 'stock')
@@ -205,7 +205,7 @@ export default function SchemaAudit() {
         }
       })
       grp('Last-stock-only components', rComps.size, issues,
-        'Components referenced only by Last Stock / Retired designs. These can’t be re-produced, so they should carry no lead time. Deleting them makes those designs show SOLD OUT (last-stock availability comes from component stock).')
+        'Components referenced only by Retired Stock designs. These can’t be re-produced, so they should carry no lead time. Deleting them makes those designs show SOLD OUT (retired-stock availability comes from component stock).')
     }
 
     // ── corp products ───────────────────────────────────────────────────────────

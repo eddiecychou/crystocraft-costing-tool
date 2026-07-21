@@ -657,7 +657,7 @@ export function productAvailability(product, lib, { defaultPartsLeadWeeks = PART
   // `promise` is the internal/admin string (may name the bottleneck part code).
   // `customerPromise` is the portal-safe version — same facts, never an ERP code.
   let promise, leadWeeks, effectiveMoq, customerPromise
-  if (status === 'stock') {                       // Last Stock — retired; availability from remaining parts
+  if (status === 'stock') {                       // Retired Stock — availability from remaining parts
     effectiveMoq = 0
     if (byPlating && Object.keys(byPlating).length) {
       const parts = Object.entries(byPlating).map(([p, n]) => `${p}: ${n}`).join(' · ')
