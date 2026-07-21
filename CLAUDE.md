@@ -31,16 +31,28 @@ of record, one function at a time.
 found corrupting `.git`; the repo lives in `~/Developer/costing-tool` on both.
 `git pull` before starting, `git push` when done. See the top of `PROJECT-PLAN.md`.
 
-**This Mac has no Node.** No `npm`, no `npx`, no dev server, no build. Changes
-are syntax-checked with the native esbuild binary:
+**This Mac has no permanent Node**, but one can be fetched into the scratch
+directory in about ten seconds, and `node_modules/` is already installed:
+
+```
+curl -sL https://nodejs.org/dist/v24.18.0/node-v24.18.0-darwin-arm64.tar.gz | tar xz -C "$SCRATCH"
+export PATH="$SCRATCH/node-v24.18.0-darwin-arm64/bin:$PATH"
+```
+
+Without it, changes are only syntax-checked with the native esbuild binary:
 
 ```
 ESB=$(ls -d node_modules/@esbuild/*/bin/esbuild | head -1)
 $ESB src/pages/Foo.jsx --loader:.jsx=jsx --format=esm --outfile=/dev/null
 ```
 
-That proves it *parses*, not that it *works*. The owner verifies on the deployed
-site. Say so plainly in commit messages rather than implying it was tested.
+**That proves it PARSES and nothing else.** It does not resolve identifiers — a
+missing import reports clean and is a blank page at runtime — and it says
+nothing about layout. Both have shipped broken this way. Fetch Node and
+actually run the thing whenever the change is checkable: `qa/README.md` renders
+a catalogue PDF page to a PNG you can look at, and the same pattern suits
+anything else with real output. Say plainly in commit messages what was
+verified and what was not.
 
 **Python environments do work:**
 - `erp-sync/.venv` — psycopg2, python-tds, dotenv. Use it for anything touching

@@ -147,7 +147,12 @@ function ProductCard({ p }) {
     <View style={s.card}>
       <View style={s.cardInner}>
         {p.image ? <Image style={s.photo} src={p.image} /> : <View style={s.photoBlank} />}
-        <View style={{ flex: 1 }}>
+        {/* No flex here. This was `flex: 1`, left over from the side-by-side
+            layout where it meant "take the remaining WIDTH". Once cardInner
+            became a column it meant "take the remaining HEIGHT", and with no
+            fixed container height react-pdf collapsed the block onto the image
+            above it — which is what made the page look shredded. */}
+        <View>
           <Text style={s.code}>{p.code}</Text>
           <Text style={s.name}>{p.name}</Text>
           {p.note ? <Text style={s.note}>{p.note}</Text> : null}
@@ -200,14 +205,20 @@ export default function RangeCataloguePDF({ account, currency, validity, groups,
         <RunningHead account={account} currency={currency} />
         {groups.map(g => (
           <View key={g.title}>
-            {/* The heading must not be orphaned at a page foot from its cards. */}
-            <Text style={s.section} minPresenceAhead={80}>{g.title}</Text>
+            {/* The heading is bound INTO the same wrap={false} block as its
+                first row. minPresenceAhead was tried first and does not hold
+                here — the heading still stranded itself at the foot of a page
+                with its content pushed to the next. Making them one
+                unbreakable unit is structural rather than advisory. */}
             {pairs(g.products).map((pair, i) => (
-              <View key={pair[0]?.code || i} style={s.row} wrap={false}>
-                <ProductCard p={pair[0]} />
-                {/* An empty half keeps the last odd card at column width
-                    rather than letting it stretch across the page. */}
-                {pair[1] ? <ProductCard p={pair[1]} /> : <View style={s.card} />}
+              <View key={pair[0]?.code || i} wrap={false}>
+                {i === 0 && <Text style={s.section}>{g.title}</Text>}
+                <View style={s.row}>
+                  <ProductCard p={pair[0]} />
+                  {/* An empty half keeps the last odd card at column width
+                      rather than letting it stretch across the page. */}
+                  {pair[1] ? <ProductCard p={pair[1]} /> : <View style={s.card} />}
+                </View>
               </View>
             ))}
           </View>
