@@ -74,23 +74,33 @@ const s = StyleSheet.create({
   section: { fontSize: 11, color: C.gold, letterSpacing: 1.2, textTransform: 'uppercase',
              marginTop: 6, marginBottom: 8 },
 
-  // Product block — two per row
+  // Product block — two per row, STACKED.
+  //
+  // Photo beside text does not fit. An A4 column is 256pt; a 128pt photo plus
+  // its margin leaves 118pt for the label AND the price, and "Bohemia Crystals,
+  // Chrome Plated" alone needs about 95pt at 7.5pt. Rows wrapped to three lines
+  // and collided. Stacking gives the text the full column width and costs
+  // nothing, because the photo was never the constraint.
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  card: { width: '50%', paddingRight: 10, paddingBottom: 16 },
-  cardInner: { flexDirection: 'row' },
-  photo: { width: 128, height: 128, objectFit: 'contain', marginRight: 10 },
-  photoBlank: { width: 128, height: 128, marginRight: 10, borderWidth: 0.8, borderColor: C.border },
+  card: { width: '50%', paddingRight: 12, paddingBottom: 16 },
+  cardInner: { flexDirection: 'column' },
+  photo: { width: 118, height: 118, objectFit: 'contain', marginBottom: 6, alignSelf: 'center' },
+  photoBlank: { width: 118, height: 118, marginBottom: 6, alignSelf: 'center', borderWidth: 0.8, borderColor: C.border },
   code: { fontFamily: 'Work Sans', fontWeight: 600, fontSize: 9, letterSpacing: 0.4 },
   name: { fontSize: 8.5, color: C.grayDark, marginTop: 1.5, marginBottom: 4 },
   attr: { fontSize: 7, color: C.grayMid, marginBottom: 3 },
   note: { fontSize: 6.5, color: '#a06a1b', backgroundColor: '#fdf5e6',
           paddingVertical: 1.5, paddingHorizontal: 3, marginBottom: 3, alignSelf: 'flex-start' },
 
-  priceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 2 },
+  // alignItems is flex-start, not center: with a label that wraps and a price
+  // that does not, centring is what let the two overlap.
+  priceRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 2.2,
+              paddingHorizontal: 2 },
   priceRowAlt: { backgroundColor: C.rowAlt },
-  plating: { fontSize: 7.5, color: C.grayDark, flex: 1, paddingRight: 6 },
-  rowCode: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 6.5, color: C.grayMid, letterSpacing: 0.3 },
-  price: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 8.5 },
+  priceLabel: { flex: 1, paddingRight: 8 },
+  plating: { fontSize: 7.5, color: C.grayDark },
+  rowCode: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 6.5, color: C.grayMid, letterSpacing: 0.3, marginBottom: 0.5 },
+  price: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 8.5, width: 54, textAlign: 'right' },
 
 })
 
@@ -127,7 +137,7 @@ function ProductCard({ p }) {
           {p.note ? <Text style={s.note}>{p.note}</Text> : null}
           {p.prices.map((r, i) => (
             <View key={`${r.code}|${r.plating}|${r.price}`} style={[s.priceRow, i % 2 ? s.priceRowAlt : null]}>
-              <View style={{ flex: 1, paddingRight: 6 }}>
+              <View style={s.priceLabel}>
                 {r.code ? <Text style={s.rowCode}>{r.code}</Text> : null}
                 <Text style={s.plating}>{r.plating}</Text>
               </View>
