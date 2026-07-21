@@ -81,8 +81,16 @@ const s = StyleSheet.create({
   // Chrome Plated" alone needs about 95pt at 7.5pt. Rows wrapped to three lines
   // and collided. Stacking gives the text the full column width and costs
   // nothing, because the photo was never the constraint.
-  grid: { flexDirection: 'row', flexWrap: 'wrap' },
-  card: { width: '50%', paddingRight: 12, paddingBottom: 16 },
+  // NOT flexWrap. react-pdf does not compute the height of a wrapped flex line
+  // from its tallest child, so a card with six price rows overlapped whatever
+  // landed on the line below. It looked survivable while cards were
+  // side-by-side and roughly equal height; stacking them made the heights vary
+  // enough to break it outright.
+  //
+  // Explicit rows of two instead: each row is its own flex container whose
+  // height is its tallest cell, and wrap={false} keeps a row off a page break.
+  row: { flexDirection: 'row', marginBottom: 14 },
+  card: { width: '50%', paddingRight: 12 },
   cardInner: { flexDirection: 'column' },
   photo: { width: 118, height: 118, objectFit: 'contain', marginBottom: 6, alignSelf: 'center' },
   photoBlank: { width: 118, height: 118, marginBottom: 6, alignSelf: 'center', borderWidth: 0.8, borderColor: C.border },
@@ -125,10 +133,18 @@ function Footer({ validity }) {
   )
 }
 
+// Split a theme's products into rows of two. Done here rather than with
+// flexWrap for the reason in the `row` style above.
+const pairs = (list) => {
+  const out = []
+  for (let i = 0; i < list.length; i += 2) out.push(list.slice(i, i + 2))
+  return out
+}
+
 // One product: hero image, identity, and a brand x plating price table.
 function ProductCard({ p }) {
   return (
-    <View style={s.card} wrap={false}>
+    <View style={s.card}>
       <View style={s.cardInner}>
         {p.image ? <Image style={s.photo} src={p.image} /> : <View style={s.photoBlank} />}
         <View style={{ flex: 1 }}>
@@ -186,9 +202,14 @@ export default function RangeCataloguePDF({ account, currency, validity, groups,
           <View key={g.title}>
             {/* The heading must not be orphaned at a page foot from its cards. */}
             <Text style={s.section} minPresenceAhead={80}>{g.title}</Text>
-            <View style={s.grid}>
-              {g.products.map(p => <ProductCard key={p.code} p={p} />)}
-            </View>
+            {pairs(g.products).map((pair, i) => (
+              <View key={pair[0]?.code || i} style={s.row} wrap={false}>
+                <ProductCard p={pair[0]} />
+                {/* An empty half keeps the last odd card at column width
+                    rather than letting it stretch across the page. */}
+                {pair[1] ? <ProductCard p={pair[1]} /> : <View style={s.card} />}
+              </View>
+            ))}
           </View>
         ))}
         <Footer validity={validity} />
