@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import { useOrders, orderStatusOf, getOrder, getOrderLines, createOrderWithLines } from '../shipping'
 import { allocateOrderUc } from '../ucRegistry'
 import { useVendors, FREIGHT_MODES, modeLabel, strengthOf } from '../logistics'
-import { MapPin, FileInput, ClipboardCheck, MessageCircle, Star, Truck, Copy } from 'lucide-react'
+import { erpLookup } from '../erpApi'
+import { MapPin, FileInput, ClipboardCheck, MessageCircle, Star, Truck, Copy, Plus, Database } from 'lucide-react'
 import ComponentRequirements from './ComponentRequirements'
 
 const TABS = [
@@ -12,6 +13,33 @@ const TABS = [
   { v: 'requirements', label: 'Requirements' },
   { v: 'logistics', label: 'Logistics' },
 ]
+
+// Historical sales orders are READ from the ERP mirror, never imported — same
+// reasoning as the invoice list. 2025 and 2026 are already parsed into the app,
+// so rather than a date cutoff (brittle, and wrong the moment another year is
+// imported) rows are de-duplicated by SO number: whatever the app holds wins,
+// and JES fills in only what the app does not have.
+//
+// Note the default fetch is the most recent 100 SOs, most of which ARE in the
+// app — so the default view stays app-dominated and search is what reaches back
+// into the 5,631-row history. `code`, `customer` and `ref` are all searchable.
+function useErpOrders(search) {
+  const [rows, setRows] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    let alive = true
+    setLoading(true); setError('')
+    const t = setTimeout(() => {
+      erpLookup('sales_order', { q: search.trim(), limit: 100 })
+        .then(r => { if (alive) setRows(r || []) })
+        .catch(e => { if (alive) { setError(e.message || 'Could not reach the ERP archive.'); setRows([]) } })
+        .finally(() => { if (alive) setLoading(false) })
+    }, 300)
+    return () => { alive = false; clearTimeout(t) }
+  }, [search])
+  return { rows, loading, error }
+}
 
 export default function Shipping() {
   const [tab, setTab] = useState('shipments')
@@ -54,6 +82,26 @@ function ShipmentsList() {
     })
     .sort((a, b) => (b.order_date || '').localeCompare(a.order_date || ''))   // newest order date first
 
+  const erp = useErpOrders(search)
+
+  // App rows and JES rows in one list, de-duplicated by SO number with the app
+  // row winning. That is what implements "only wire what is not already parsed"
+  // without hard-coding which years were imported.
+  const merged = useMemo(() => {
+    const app = filtered.map(o => ({ src: 'app', key: `app-${o.id}`, o }))
+    const appSo = new Set(filtered.map(o => (o.erp_so_no || '').trim().toUpperCase()).filter(Boolean))
+    const jes = (erp.rows || [])
+      .filter(r => !appSo.has((r.code || '').trim().toUpperCase()))
+      .map(r => ({ src: 'jes', key: `erp-${r.code}`, r }))
+    return [...app, ...jes].sort((a, b) => {
+      const da = a.src === 'app' ? (a.o.order_date || '') : (a.r.date || '')
+      const db = b.src === 'app' ? (b.o.order_date || '') : (b.r.date || '')
+      return String(db).localeCompare(String(da))
+    })
+  }, [filtered, erp.rows])
+
+  const jesOnly = merged.length - filtered.length
+
   // "Duplicate" — matches how CuiLing actually works in JES: copy a repeat
   // customer's previous order rather than re-entering their details, then edit
   // the product codes. The one thing this deliberately does NOT copy is the
@@ -93,17 +141,37 @@ function ShipmentsList() {
     <div className="p-4 md:p-6">
       {loading && <LoadingBar />}
       <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-gray-500">{filtered.length} of {orders.length} orders</p>
-        <Link to="/shipments/new" className="btn-primary text-sm whitespace-nowrap inline-flex items-center gap-1.5">
-          <FileInput size={15} /> Import PI
-        </Link>
+        <p className="text-sm text-gray-500">
+          {merged.length} order{merged.length === 1 ? '' : 's'}
+          {jesOnly > 0 && <span className="text-gray-400"> · {filtered.length} in the app, {jesOnly} from JES</span>}
+          {erp.loading && <span className="text-gray-400"> · loading JES history…</span>}
+        </p>
+        <div className="flex items-center gap-2">
+          {/* An order can be entered directly now, not only imported from a PDF.
+              Without this button the only way in was Import PI, which is why the
+              app could parse an order but never originate one. */}
+          <Link to="/shipments/new" className="btn-primary text-sm whitespace-nowrap inline-flex items-center gap-1.5">
+            <Plus size={15} /> New Order
+          </Link>
+          {/* Same destination — that page now offers both paths (type the
+              lines, or drop a PI). Kept as a separate button because "Import PI"
+              is what the team looks for. */}
+          <Link to="/shipments/new" className="btn-secondary text-sm whitespace-nowrap inline-flex items-center gap-1.5">
+            <FileInput size={15} /> Import PI
+          </Link>
+        </div>
       </div>
 
       <input type="text" placeholder="Search by customer, PI no, SO no, destination…"
         className="input w-full mb-4" value={search} onChange={e => setSearch(e.target.value)} />
+      {erp.error && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+          JES history unavailable — {erp.error}
+        </p>
+      )}
       {dupError && <p className="text-sm text-red-600 mb-3">{dupError}</p>}
 
-      {filtered.length === 0 && !loading ? (
+      {merged.length === 0 && !loading && !erp.loading ? (
         <div className="text-center py-20 text-gray-400">
           {orders.length === 0
             ? <><Link to="/shipments/new" className="text-brand-600 hover:underline">Import a proforma invoice</Link> to get started.</>
@@ -125,12 +193,14 @@ function ShipmentsList() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {filtered.map(o => {
+              {merged.map(row => {
+                if (row.src === 'jes') return <JesOrderRow key={row.key} r={row.r} />
+                const o = row.o
                 const st = orderStatusOf(o.status)
                 const needsReconcile = (o._raw?.lines_unreconciled ?? 0) > 0
                 const value = o.total_amount ?? o.subtotal
                 return (
-                  <tr key={o.id} className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  <tr key={row.key} className="hover:bg-gray-50 transition-colors cursor-pointer"
                     onClick={() => navigate(`/shipments/${o.id}`)}>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-600">{fmtOrderDate(o.order_date)}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-600">{o.erp_pi_no || '—'}</td>
@@ -173,6 +243,39 @@ function ShipmentsList() {
         </div>
       )}
     </div>
+  )
+}
+
+// A JES sales order: visible and searchable, but not editable or duplicable —
+// the app cannot re-issue a document JES produced, and duplicating one would
+// silently create an app order claiming a JES SO number.
+function JesOrderRow({ r }) {
+  const void_ = (r.status || '').trim().toUpperCase() === 'VOID'
+  return (
+    <tr className={`transition-colors ${void_ ? 'opacity-60' : ''}`}>
+      <td className="px-4 py-3 whitespace-nowrap text-gray-600">{fmtOrderDate(r.date)}</td>
+      <td className="px-4 py-3 whitespace-nowrap text-gray-500">{(r.ref || '').trim() || '—'}</td>
+      <td className="px-4 py-3 whitespace-nowrap text-gray-600 font-mono text-xs">{(r.code || '').trim()}</td>
+      <td className="px-4 py-3 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium text-gray-900 truncate">{r.customer || 'Unnamed customer'}</span>
+          {r.customer_po && <span className="text-xs text-gray-400">{r.customer_po}</span>}
+        </div>
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap text-gray-500">{r.currency}</td>
+      <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-800">
+        {r.amount != null ? fmtValue(r.amount) : <span className="text-gray-300">—</span>}
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap">
+        <span className="text-xs text-gray-500">{(r.status || '').trim() || '—'}</span>
+      </td>
+      <td className="px-2 py-3 whitespace-nowrap text-right">
+        <span title="Historical order from JES — read-only archive"
+              className="text-[10px] font-medium text-ink-40 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
+          <Database size={10} /> JES
+        </span>
+      </td>
+    </tr>
   )
 }
 
