@@ -10,6 +10,7 @@ import LoadingBar from '../components/LoadingBar'
 import { Gem } from 'lucide-react'
 import { useCrystalColors, colorMap } from '../crystalColors'
 import { useComponents, buildableFromComponents } from '../criticalComponents'
+import ErpProductImport from '../components/ErpProductImport'
 
 const PLATING_DOT = Object.fromEntries(RANGE_PLATINGS.map(p => [p.name, p.dot]))
 const STATUS_META = Object.fromEntries(RANGE_STATUSES.map(s => [s.value, s]))
@@ -138,6 +139,8 @@ export default function Range() {
 
 
   // One item per product (design number + format); variations collapsed inside
+  const [importing, setImporting] = useState(false)
+
   const items = useMemo(() => products.map(p => {
     const fallbackBrand = brandLetter(p.design_code) || 'D'
     const designNo = p.design_no || designNumber(p.design_code)
@@ -259,6 +262,10 @@ export default function Range() {
     <div className="p-4 md:p-6">
       {loading && <LoadingBar />}
 
+      {importing && (
+        <ErpProductImport products={products} onClose={() => setImporting(false)} />
+      )}
+
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-1">
         <div>
           <h1 className="text-xl md:text-2xl">Figurine Gifts</h1>
@@ -266,6 +273,12 @@ export default function Range() {
           <p className="text-xs text-ink-60">Stock value ≈ ${Math.round(totalValue).toLocaleString()} USD (WS)</p>
         </div>
         <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+          {/* Importing is the faster path when JES already has the design —
+              it fills the code, description and the FM components from the
+              ERP BOM. "New product" stays for designs the ERP has never seen. */}
+          <button type="button" onClick={() => setImporting(true)} className="btn-secondary text-sm text-center">
+            Import from ERP
+          </button>
           <Link to="/range/new" className="btn-primary text-sm text-center">+ New product</Link>
         </div>
       </div>
