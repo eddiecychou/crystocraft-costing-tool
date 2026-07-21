@@ -37,6 +37,17 @@ export const JES_SEED_BY_YEAR = {
 // where SO260001..27 is unbroken. So do not "verify" an SI counter by assuming
 // contiguity — a hole is normal here and usually means a voided invoice. Voids
 // are recorded in JES as sistatus VOID (90 of them), not by reusing the number.
+// ⚠️ NO LONGER USED FOR ALLOCATION as of 2026-07-21.
+//
+// Invoice numbers are now issued by public.allocate_sales_invoice in Postgres,
+// which derives the next number from the greater of what the app has issued
+// and what the mirror shows JES issued. There is no seed to maintain, and no
+// way for staleness to reuse a number — which is exactly what happened here:
+// this table read 93 while CuiLing had already issued SI260094.
+//
+// Kept because erp-sync/check_doc_seeds.py still parses it, and because the
+// values record what JES's series looked like at cutover. Do NOT wire it back
+// into allocation.
 export const JES_SI_SEED_BY_YEAR = {
   '26': 94,   // JES max SI260094, re-verified 2026-07-21 after the first
               // incremental sync. Was 93: CuiLing raised SI260094 on 21 Jul
@@ -59,7 +70,13 @@ export async function allocateSoNo() {
   return allocate('so', JES_SEED_BY_YEAR, formatSoNo)
 }
 
-// Allocate the next Sales Invoice number for the current year, atomically.
+// ⚠️ DEPRECATED, and deliberately left unwired. Use allocateInvoice() in
+// ucRegistry.js instead: it issues the number and its UC in ONE Postgres
+// transaction, so the two can never disagree, and derives the number from the
+// data rather than the seed above.
+//
+// Not deleted, because the Firestore counter it reads (counters/si_<yy>) still
+// exists and this is the only code that documents what it was for.
 export async function allocateSiNo() {
   return allocate('si', JES_SI_SEED_BY_YEAR, formatSiNo)
 }

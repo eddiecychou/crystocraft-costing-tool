@@ -116,6 +116,38 @@ export default async function handler(req) {
     return json({ rows: await r.json() })
   }
 
+  // ── allocate an invoice + its UC, in ONE Postgres transaction ──────────────
+  // The whole point of this op. Previously the UC went to Postgres and the
+  // order to Firestore with nothing making them agree, so abandoning the form
+  // after allocating burned a UC with no invoice behind it.
+  //
+  // The invoice NUMBER is derived inside the function from the greater of what
+  // the app has issued and what the mirror shows JES issued — no seed to go
+  // stale, which is the bug that had to be hand-fixed on 2026-07-21.
+  if (body.op === 'allocate_invoice') {
+    const yy = String(body.year ?? '').trim()
+    if (!/^\d{2}$/.test(yy)) return json({ error: 'Bad year' }, 400)
+    const r = await rest('rpc/allocate_sales_invoice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        p_year: yy,
+        p_customer: String(body.customer ?? '').slice(0, 200),
+        p_currency: String(body.currency ?? 'HKD').slice(0, 8),
+        p_order_id: body.order_id ? String(body.order_id).slice(0, 64) : null,
+        p_uc_id: Number.isFinite(Number(body.uc_id)) && body.uc_id ? Number(body.uc_id) : null,
+        p_uc_no: body.uc_no ? String(body.uc_no).slice(0, 64) : null,
+        p_created_by: email,
+      }),
+    })
+    if (!r.ok) return json({ error: 'Allocation failed', detail: (await r.text()).slice(0, 300) }, 502)
+    const row = (await r.json())[0] || {}
+    return json({
+      si_no: row.o_si_no, uc_no: row.o_uc_no,
+      uc_id: row.o_uc_id, invoice_id: row.o_invoice_id,
+    })
+  }
+
   // ── create (allocates UC# via the uc_no column default) ─────────────────────
   if (body.op === 'create') {
     const payload = { ...clean(body.data), created_by: email }

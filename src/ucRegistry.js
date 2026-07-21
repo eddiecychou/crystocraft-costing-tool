@@ -44,6 +44,20 @@ export const createUcInvoice = (data) => ucApi('create', { data }).then((d) => d
 export const updateUcInvoice = (id, data) => ucApi('update', { id, data }).then((d) => d.row)
 export const listUc = (filters) => ucApi('list', filters).then((d) => d.rows || [])
 
+// Allocate an invoice number AND its UC in one Postgres transaction.
+//
+// Returns { si_no, uc_no, uc_id, invoice_id }. Pass `uc_id` when the order
+// already has a UC, so it is reused rather than a second one issued.
+//
+// This replaces the old two-step (allocateOrderUc into Postgres, then
+// allocateSiNo from a Firestore counter). Two things it fixes: the UC and the
+// invoice can no longer disagree, and the invoice number is derived from the
+// data rather than the hardcoded JES_SI_SEED_BY_YEAR — which was already stale
+// on the day it was written.
+export function allocateInvoice({ year, customer, currency, order_id, uc_id, uc_no } = {}) {
+  return ucApi('allocate_invoice', { year, customer, currency, order_id, uc_id, uc_no })
+}
+
 // Allocate a FRESH UC# for an app-originated order (used by "Duplicate order").
 // Deliberately never copies the source order's UC — a carried-over UC is the
 // exact, repeatable slip CuiLing's JES workflow produces (duplicate an order to

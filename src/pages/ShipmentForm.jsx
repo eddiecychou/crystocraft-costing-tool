@@ -20,8 +20,8 @@ import OrderInventoryIssue from '../components/OrderInventoryIssue'
 import { crystalInventory } from '../crystals'
 import { packagingInventory } from '../packaging'
 import { metalOrderConfig } from '../orderStock'
-import { allocateSoNo, allocateSiNo } from '../soNumber'
-import { allocateOrderUc } from '../ucRegistry'
+import { allocateSoNo, soYear } from '../soNumber'
+import { allocateInvoice } from '../ucRegistry'
 import { orderStockStatus, stockStatusDetail, STOCK_STATUS_LABEL, STOCK_STATUS_STYLE } from '../orderStockStatus'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -223,19 +223,26 @@ export default function ShipmentForm() {
   // normOrder in shipping.js; 0 of 516 JES invoices since 2024 lack one). So
   // allocating an invoice number allocates a UC too when the order has none,
   // rather than letting an invoice exist that cannot be matched to the books.
-  // This is also what removes the duplicate-UC slip: 4 UC refs in JES carry two
-  // invoices each, all from copying an order and not changing the UC by hand.
+  //
+  // ONE Postgres transaction, as of 2026-07-21. This used to be two steps —
+  // a UC written to Postgres, then a number from a Firestore counter — with
+  // nothing making them agree: abandoning the form after allocating burned a
+  // UC with no invoice behind it. The number is now derived inside the
+  // database from the greater of what the app has issued and what the mirror
+  // shows JES issued, so JES_SI_SEED_BY_YEAR can no longer go stale and
+  // silently reuse a number CuiLing already used. (It did, on 2026-07-21.)
   async function doAllocateSi() {
     setAllocatingSi(true); setSiError('')
     try {
-      let uc = header.uc_no
-      if (!uc) {
-        const allocated = await allocateOrderUc({ customer_name: header.customer_name, currency: header.currency })
-        uc = allocated.full
-      }
-      const no = await allocateSiNo()
+      const res = await allocateInvoice({
+        year: soYear(),
+        customer: header.customer_name,
+        currency: header.currency,
+        order_id: id || null,
+        uc_no: header.uc_no || null,
+      })
       setHeader(h => ({
-        ...h, uc_no: uc, erp_si_no: no,
+        ...h, uc_no: res.uc_no, erp_si_no: res.si_no,
         invoiced_at: h.invoiced_at || new Date().toISOString().slice(0, 10),
       }))
     } catch (e) {
