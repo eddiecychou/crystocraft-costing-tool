@@ -17,9 +17,10 @@ of record, one function at a time.
 
 | File | What it holds |
 |---|---|
-| `PROJECT-PLAN.md` | The running record. Newest cycle first. **"Where V7.16 starts" is the current entry point.** |
+| `PROJECT-PLAN.md` | The running record. Newest cycle first. **"Where V7.17 starts" is the current entry point.** |
 | `JES-RETIREMENT-PLAN.md` | The nine-step route to switching JES off, in plain language |
 | `V7.15_ERP_Inventory.md` | What the ERP actually contains — measured, not assumed |
+| `PBIS-IMPORT-FORMAT.md` | The JES→PBIS import contract — what an app-generated invoice must reproduce |
 | `erp-sync/ERP-SYNC-V1.0.md` | How the ERP mirror works |
 | `erp-sync/IMAGE-SYNC-PLAN.md` | Item images: prepared, needs the LAN |
 | `Corp_Gift_Customizer_Spec.md`, `Customizer_Build_Plan.md` | Customizer — **on hold** |
@@ -60,7 +61,21 @@ planning work that needs it.
 - **Column names lie.** `lastupdateby` contains the substring "date" and holds
   usernames. Validate values, not names.
 - Accounting is **not** in JES — the books are in PBIS, on Cindy's machine.
-- The team's "PI" is JES's **SO**; "invoice" is **SI**.
+- The team's "PI" is JES's **SO**; "invoice" is **SI**. **"PI" has a third
+  meaning**: in `itemtransaction` it is production-in, and in the PBIS import it
+  is a purchase. Check which one is meant before building against it.
+- **JES stock is not maintained except for crystals.** The team's real figures
+  live in Excel — XiangXia's for metals, ChunCi's for B2C finished goods. Three
+  of the four people who use JES keep a spreadsheet it does not know about.
+- **An invoice requires a UC number, not a sales order.** `salesinvoice` has no
+  SO column at all; its `siref` holds the UC, and 0 of 516 invoices since 2024
+  lack one. Retail sales are invoiced with no order behind them.
+- **Never take an exchange rate from JES.** Its own rate fields are unusable
+  (USD orders default to `1`), and the books use Cindy's audit-year table, which
+  cannot be sanity-checked against market rates — GBP was 14.00 in 2024-25.
+  Copy her table verbatim; never compute.
+- The `_notuse` suffix on `systemsetting` columns is a lie — they hold the live
+  image paths. Same family as `lastupdateby` holding usernames.
 
 ## Conventions
 

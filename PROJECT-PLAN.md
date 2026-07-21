@@ -43,151 +43,131 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
-## Current Status — V7.15 CLOSED as of 2026-07-19
+## Current Status — V7.16 CLOSED as of 2026-07-21
 
-Commit chain `e3b160f`→`548958d` (25 commits), all deployed. V7.15's theme is
-**integrating the app with the ERP with a view to retiring JES**. Owner's framing:
-be able to query everything useful out of the ERP, map the Firebase data onto
-Supabase as one source of truth, then take over the writing so the old system
-can be switched off.
+Commit chain `e44194f`→`f43dcbf` (43 commits), all deployed. V7.16's theme is
+**the app starting to originate documents instead of only reading them** —
+and, underneath that, finding out what the team actually does.
 
-Full findings: **`V7.15_ERP_Inventory.md`** — this is the summary.
+### What changed in one line
 
-### 1. The scope is far smaller than it looked
+The app could parse an order but never create one. It can now raise a sales
+order, a proforma invoice, a sales invoice and a packing list, allocate its own
+document numbers, and it holds the first stock JES used to own.
 
-Surveyed the whole mirror (`erp-sync/inventory.py`, read-only):
+### The numbers
 
 | | |
+|---|---:|
+| Commits | 43 |
+| Item images uploaded | 22,557 · 957 MB |
+| Crystal SKUs migrated out of JES | 180 |
+| Tables cleared for incremental sync | **7 of 8** |
+| Full-sync time, before → after | ~5 h → minutes |
+| App bugs found by attempting real work | 6 |
+
+### 1. Three external dependencies closed, all by looking at the artefact
+
+Every one of these had been "waiting on someone" for a cycle or more, and every
+one turned out to contain more than its description.
+
+- **The item-image folder.** The plan said the path was configured somewhere
+  unknown because `systemsetting`'s columns are all suffixed `_notuse`. They are
+  populated: `ssimagepath_notuse` = `z:\jes\pictures\`. 22,557 images uploaded.
+- **The JES→PBIS import format** (`PBIS-IMPORT-FORMAT.md`, new). Header-level
+  only, no line items — the fear that the books needed line detail was wrong.
+  Fully specified for both invoices and purchases, validated 118/119 against
+  `uc_registry`.
+- **`Invoice_Check_lists.xls` has seven sheets; the app had imported one.** The
+  `UA`/Mascot register (301 rows) and a DN&CN register (420 rows) were invisible
+  to everyone.
+
+### 2. Incremental sync: 7 of 8 tables cleared
+
+`LastUpdate` was proven to move on edit — statistically for four tables, then
+directly when the owner edited `U0383-165-GC1K` and both `Item` and `ItemDetail`
+moved six seconds apart. `SalesOrderDetail` settled itself the next morning.
+Enabled in `tables.yaml` with every declared key verified unique first.
+
+`JobOrderBOM` stays on full — the one giant never probed.
+
+### 3. What shipped in the app
+
+- **Orders can be created from scratch.** The line-items card was gated so a new
+  order had no "add line" button; the only way in was Import PI.
+- **Proforma Invoice and Sales Invoice generators** — the documents CuiLing
+  sends. This is what lets sales leave JES, and it retires the AI-parse loop:
+  the app was parsing a PDF of a document it could produce itself.
+- **Document numbering** — SO and SI allocated from JES's own series, seeded
+  from its current max. UC allocation is chained to invoice creation, which
+  removes the duplicate-UC slip at its source.
+- **JES history wired in read-only** — orders and invoices from the mirror,
+  de-duplicated against the app's own, with a detail view. Never imported.
+- **Crystal stock migrated**: 180 SKUs, 3.1 M units. The first stock the app
+  owns rather than displays.
+- **Production step-4 guardrails** — persisted BOM gaps, a pre-ship confirm, a
+  stock roll-up chip.
+- **A nav that scrolls.** It had `flex-1` and no overflow, so the tail was
+  clipped and unreachable.
+
+### 4. Six app bugs, all found by attempting real work
+
+None of these were visible by reading the code, and none would have been found
+by a test suite written against the same assumptions:
+
+| Bug | Found by |
 |---|---|
-| Tables mirrored | 494 |
-| **Empty** | **286** |
-| Active in the last 3 months | **52** (98.5% of all rows) |
-| Dormant 3 yr+ | 93 |
+| Paste importer silently dropped numeric-only codes | importing 180 crystals, 121 arrived |
+| `normOrder` coerced GBP/CAD/AED/MXN orders to USD | wiring currency for invoices |
+| Image upload opened a new TLS connection per file | 7.6 h projected for 22 k files |
+| Multi-line MISC descriptions could not be entered | asking what MISC actually contains |
+| Freight-only invoices rendered an empty line table | the same question |
+| Packing list printed our SO as the customer's PO | CuiLing reading a real document |
 
-JES is a *jewellery* package (gold, diamonds, hallmarking, POS, consignment,
-customs). This business uses six modules of it: **items/inventory, job
-orders/production, sales, purchasing, customers/suppliers**. So this is not
-"build an ERP" — it is closing gaps in an app that already covers most of them.
+### 5. What the team told us that the database could not
 
-**Quoting has already been migrated** and nobody recorded it: `quotation` stops
-at 2024-12-20. A precedent that the pattern works.
+The most valuable findings this cycle came from conversation, and several
+reversed conclusions already written down:
 
-### 2. Accounting is out of scope — and the books are in PBIS
+- **The real stock figures live in Excel, not JES** — only crystals are
+  maintained there. This inverted an earlier reading that JES stock was
+  uniformly untrusted.
+- **The job-order flow IS the crystal flow.** Every `MI`, and the consumption leg
+  of every `PI`, is item type `ST`. So the one accurate stock record runs
+  entirely through the paperwork being retired.
+- **JES will not confirm an invoice without FTBS stock**, which couples the
+  production cutover to sales and moves work from XiangXia to CuiLing.
+- **An invoice needs a UC, not a sales order.** Confirmed emphatically:
+  `salesinvoice` has no SO column at all, and 0 of 516 invoices since 2024 lack
+  a UC.
+- **Duplicate-an-order explains every UC anomaly found this week** — the UC is
+  carried over by the copy and must be changed by hand. Four UC refs in JES
+  carry two invoices each.
 
-JES's GL was **never used**: `acjournal`, `acsettle`, `acperiodended`,
-`acbudget` are all 0 rows; only vendor config remains, last touched 2004–2006,
-one row stamped by user `demo`. Owner confirmed the books are kept in **PBIS**
-(separate system, on Cindy's machine).
+### 6. Corrections made to this document
 
-Cindy's journal reports were parsed (`erp-sync/parse_pbis.py`). The key finding:
-**PBIS already carries the app's UC number** —
-`SALES INVOICE SI250040 / UC4743/` — so the join across JES, `uc_registry` and
-the books exists already. **152 of 152 UC numbers in the books are in the
-registry; zero orphans**, an independent validation of the V7.14 migration.
+Recorded rather than quietly edited, because the wrong version was acted on:
 
-The books run **~5 months behind** (median posting lag 153 days, max 373) — so
-PBIS is history, not a live source of "what's paid".
+- `UC4933` was called an error three times. It is not — the `.xls` is a working
+  file and voids are filtered before import.
+- "Stopping job orders breaks nothing" — true for metals, wrong for crystals.
+- "Goods receipt does not exist in the app" — it does; I grepped two files and
+  concluded from absence.
+- "Mascot is finished" — dormant, not dead. Then retired properly by Cindy.
+- The `uc_no` "duplicates" are the year-plus-suffix identifier, not a defect.
 
-Still unseen: the **JES→PBIS import file**. That is what an app-generated
-invoice must reproduce, and it is the reason invoicing should not be the first
-function migrated.
+### 7. Open decisions carried into V7.17
 
-### 3. Document model (owner)
+- **Cindy's PBIS export has no source for app-raised invoices.** She builds it
+  from JES. This gap widens with every invoice CuiLing creates in the app.
+- **The SO/SI seeds must be re-verified** after the next sync — CuiLing raised
+  invoices on 20–21 Jul that the mirror has not seen.
+- **The 31 March stock valuation** needs a cost basis and a decision on which
+  year end.
+- **Which `31 March`, and the DN/CN mapping** — awaiting Cindy.
+- The three §5 findings from V7.15 are still open (superseded part codes,
+  packaging not costed per product).
 
-| Team says | JES doc | Generated in | In the app |
-|---|---|---|---|
-| **PI** | **SO** | JES | PDF uploaded, AI-parsed into Firestore |
-| **Invoice** | **SI** | JES | referenced by number only |
-
-An SI is often copied from an SO **but not always** — simple sales are invoiced
-with no SO. Any invoice module must support both paths.
-
-**The app re-parses data it already has.** SO lines exist as clean rows in
-`erp_sales_order_line` (188 k). So `ShipmentForm` now cross-checks a parsed PI
-against the ERP's own order and offers to adopt it — augmenting the parser, not
-replacing it, since an order raised today isn't synced yet.
-
-### 4. What shipped
-
-- **ERP Lookup → Inventory**: stock on hand by warehouse and item type.
-  Computed from the movement ledger, **not** `itemwhbal` — that table is a stale
-  snapshot (8,368 of 8,599 non-zero rows have a null `lastupdate`). *Rule: prefer
-  JES's ledgers over its balance tables until each balance table is proven.*
-- **Customer / supplier detail panels**, with payment terms and methods resolved
-  from their lookup tables.
-- **Bank accounts** (`Settings → Bank Accounts`) — the ERP has **no bank master**
-  (`raw.bank` is 2 rows from 2003–05; account-number columns 0-populated), so
-  this is new app data. One default per currency enforced by a partial unique
-  index; IBAN mod-97, SWIFT/BIC and sort-code/ABA validation at the API; an
-  append-only change audit (`SECURITY DEFINER`, so the API can read history but
-  not forge it). Wired into the quotation with a currency-mismatch warning and a
-  snapshot onto the document.
-- **BOM coverage check** on Range Costing — merges every ERP variant of a design
-  and reports what isn't costed. Level 1 only: level 2 is raw alloy from when the
-  factory made FM parts in house, and those are now bought finished.
-- **Component code audit** (`Settings → Component Codes`) — see §5. Reports
-  three states: not in the ERP; exists but **no current BOM uses it**
-  (superseded — the interesting one, invisible to a plain existence check); or
-  exists and is built with. "What do the BOMs use?" ranks replacements
-  server-side (`erp_code_alternatives`) among components current BOMs actually
-  use — the `.NN`-stripped code first (right ~34% of the time and exactly right
-  when it hits), then longest shared prefix by usage.
-- **Renamed to Operation Center**, with `V7.15 · <build time>` under the logo.
-  Name and version live in `src/appInfo.js`; the build stamp is injected by Vite
-  so "is my change live yet?" is answerable at a glance. The browser tab stays
-  "Crystocraft Customer Portal" — the same deployment serves the customer
-  storefront and those OG tags are customer-facing. `package.json` realigned to
-  7.15.0, collapsing three numbering schemes into one.
-- **Fix:** freight quotes saved but never displayed. `where` + `orderBy` needed a
-  composite index that doesn't exist; `catch {}` turned the error into an empty
-  list. Silent catches in `logistics.js` now log.
-
-### 5. Open findings that need a decision
-
-- **The costing may be anchored to superseded part codes.** `FM-K(32).03-C`
-  ("鋅合金", zinc alloy) is used by **0** current BOMs; every BOM builds with
-  `FM-K(32)-C` ("底座配件 chrome", 526 BOMs). These are the old in-house part
-  codes from before the FM parts were bought finished. If so, some unit costs
-  reflect what it cost to *make* a part, not what is now *paid* for it.
-- ~~**Multi-invoice UC numbers** — UC4836 is `SI250128/137` in the registry,
-  unparseable. How should these be recorded?~~ **Answered by owner 2026-07-19:
-  they should not exist.** *"There will never be one UC, 2 invoices. Either it is
-  an update — there will be a suffix at the UC, e.g. UC1234 updated by UC1234-a —
-  or it is a wrong input/typo."* So `UC4836` is an error, not a pattern needing a
-  design. Measured: only **5 of 3,691** rows have more than one invoice in
-  `jes_si`. Rare — but it recurs, so an app owning the registry should **detect
-  and reject** it rather than assume it cannot happen.
-  **New requirement out of the same answer:** UC numbers take **update
-  suffixes**, and **227 of 3,691 (6.1%)** are not plain `UC####` — 72 as
-  `UC####(A)`, 31 as `UC####-#`, plus ~72 compound `UC####/UC####` forms that are
-  a separate, still-unexplained thing. The app's allocator issues plain
-  sequential numbers only, so it cannot yet express an update. See
-  `PBIS-IMPORT-FORMAT.md`.
-- **Packaging is not costed per product.** The ERP BOM carries the gift box,
-  hang tag, tissue, silica gel; the app stocks packaging as a pool.
-
-### 6. The retirement plan
-
-`JES-RETIREMENT-PLAN.md` was written this cycle: nine steps from here to
-switching JES off, in plain language, with the numbers included.
-
-Its main decision: **drop production job orders**. Owner's instinct, confirmed
-in the data — of 131,752 job orders, item/qty/customer/delivery are 100%
-duplicated from the sales order line, and **wastage, the field that would
-justify the paperwork, is filled on 2 of them**. The app already records
-everything worth keeping (`reserveForOrder`, `issueForOrder`, `produceForOrder`
-with `committed_at`), so nothing needs building. Owner confirms nobody uses the
-production-in date, and the team will be glad to see the back of it.
-
-Consequence: **production becomes the first function to migrate** rather than a
-late item — highest keying cost, lowest data loss, doesn't feed PBIS, and the
-team wants it. That last point matters, because team adoption is the main risk
-to every cutover.
-
-Caveat recorded there: 100% of material issues hang off a job order in JES, so
-"drop job orders" must never become "stop recording material issues".
-
-## V7.16 — in progress
 
 ### Step 4 (production) prerequisites — done 2026-07-19
 
@@ -838,57 +818,223 @@ was safe as a universal key going forward. **Owner: Mascot still has business,
 app cannot assume every sale carries a UC. ~340 of M03's 379 invoices sit outside
 the registry.
 
-## Where V7.16 starts
+## Where V7.17 starts
 
-**On the LAN (the office Mac), in order:**
+**Immediately, on the LAN — before CuiLing raises anything in the app:**
 
-1. `cd erp-sync && .venv/bin/python probe_lastupdate.py` — then the manual check
-   it prints: edit one record in JES, re-run, see whether `LastUpdate` moved.
-   **This decides whether incremental sync is possible at all.** Record the
-   answer per table here.
-2. Find the item-image folder (`JES.ini` / the JES client — `systemsetting`'s
-   path columns are all suffixed `_notuse`), then
-   `sync_images.py --folder "<path>" --report`, check the numbers, `--upload`.
-   See `IMAGE-SYNC-PLAN.md`.
-3. Run the sync.
+1. `git pull`, then run the sync. **Incremental is now enabled** for seven
+   tables, so this should take minutes, not five hours. It is the first
+   incremental run — watch it, and check `meta.sync_state` afterwards.
+2. **Re-verify the SO and SI seeds.** CuiLing raised invoices on 20–21 Jul that
+   the mirror has not seen, so `JES_SI_SEED_BY_YEAR` in `src/soNumber.js`
+   (currently 93) is probably stale. **A stale seed means the app's first
+   invoice silently reuses a number JES already issued.** One-line fix once the
+   real max is known.
+3. Tell CuiLing the rule agreed: **new SO/SI in the app only; edits to existing
+   JES documents stay in JES**, and the app-created ones are edited in the app
+   because they will never appear in JES.
 
 **Then, in dependency order:**
 
-4. **Incremental sync** switched on for whichever tables the probe cleared.
-5. **SO import by number** (built, `src/erpSoImport.js`) becomes useful once the
-   mirror is current.
-6. **Production off JES** — the first real retirement step (see above).
-7. **Item master / BOM**, then **stock**, then **sales documents**. Invoicing
-   last; it needs the PBIS import file.
+4. **Walk one invoice end to end yourself** before CuiLing depends on it.
+   Nothing in the invoice path has been exercised: allocation writes a UC to
+   Supabase and the order to Firestore, and those two have never had to agree on
+   a real transaction. Ten minutes, and it converts "her first bug" into "our
+   first bug".
+5. **Resolve the PBIS gap.** Cindy builds her import from JES, so app-raised
+   invoices reach no books. Simplest interim: CuiLing keeps recording number and
+   total in Cindy's sheet. The real fix is the exporter — fully specified in
+   `PBIS-IMPORT-FORMAT.md`, not built.
+6. **Production cutover** — the code is done; what remains is a date, the
+   crystal opening balances (imported, needs a physical check), and the FTBS
+   top-up arrangement with CuiLing.
+7. **The 31 March stock valuation.** Nothing in the app values stock: quantities
+   and unit costs both exist, nothing multiplies them. Has a deadline attached
+   and depends on XiangXia recording production-in.
 
 **Waiting on people, not code:**
 
-- **Screen snapshots** from the team — the gap map depends on them, and they
-  are the main protection against discovering an unknown function late.
-- **The JES→PBIS import file** from Cindy. What we have is PBIS *output*; the
-  import format is still unseen and is what an app-generated invoice must match.
-- The three decisions in §5.
+- **XiangXia's screen walkthrough** — CuiLing's was the single most valuable
+  hour of V7.16 and hers is the side going live first.
+- **Cindy:** which 31 March, the cost basis, the DN/CN screen captures, and
+  whether MXN was inverted in the 2024-25 batch (~HK$1,456 on `SI250016`).
+- The three §5 decisions from V7.15, still open.
 
 **Housekeeping carried forward:**
 
-- Run `Settings → Component Codes` across all components — if many sit on
-  superseded alloy codes, that is a costing-accuracy problem, not just tidiness.
-- A build pass on a Mac with Node (see Deployment notes).
+- **`JobOrderBOM` is the last table on full sync** — probe it or leave it.
+- **The 169 ambiguous duplicate images** — same filename, different files;
+  first match wins, so 0.7% of item images may be the wrong one.
+- **`poReceive.js` "first wins on duplicate codes"** — a code in both Components
+  and Crystal Stock routes receipts to metal silently. Worth one check on the
+  first crystal PO receipt.
+- Run `Settings → Component Codes` across all components — superseded alloy
+  codes are a costing-accuracy problem, not tidiness.
 - `render-service/engine/core.py` holds committed but **inert** customizer
-  iridescence work — the `coating` path is never called, and produces no visible
-  change on light crystals even when it is. Fix noted in commit `3bb9d31`.
+  iridescence work. Fix noted in commit `3bb9d31`.
 - `/bank-audit` was a one-off; it can go once bank accounts are settled.
 
 ### Deployment notes
 
-- No new env vars this cycle. New Supabase objects: `bank_accounts`,
-  `bank_accounts_audit`, `erp_stock`, `erp_warehouse`, `erp_item_type`,
-  `erp_component_usage`; `erp_item` gained image columns; `erp_customer` /
-  `erp_supplier` were dropped and recreated with detail fields.
-- **`refresh_views.sql` now refreshes `erp_stock` after `erp_item`** (it joins it).
-- Almost nothing this cycle was build-tested — this Mac has no Node, so changes
-  were parsed with `esbuild` and verified by the owner on the deployed site. A
-  build pass on a Mac with Node is overdue.
+- **No new env vars for the app.** `erp-sync/.env` gained `SUPABASE_URL` and
+  `SUPABASE_SECRET_KEY` for the image upload.
+- **New Supabase objects:** storage bucket `erp-item-images` (private, 22,557
+  objects); `uc_registry_backup_20260720` (a pre-edit snapshot, safe to drop
+  once the registry is settled).
+- **New Firestore collections:** `counters/so_<yy>` and `counters/si_<yy>`,
+  created on first document-number allocation.
+- **`tables.yaml` now runs seven tables incremental.** A full run remains the
+  repair path — in particular for the 556 `ItemTransaction` rows whose
+  `LastUpdate` is null and which incremental can never see.
+- **Node was installed and the build actually run this cycle** — the first real
+  build pass in a while, and it now runs on every change. The Mac still has no
+  permanent Node; it was fetched into a scratch directory.
+- Print documents (PI, SI, packing list) have **not** been verified as rendered
+  output. They need a real order behind the sign-in wall.
+
+## Current Status — V7.15 CLOSED as of 2026-07-19
+
+Commit chain `e3b160f`→`548958d` (25 commits), all deployed. V7.15's theme is
+**integrating the app with the ERP with a view to retiring JES**. Owner's framing:
+be able to query everything useful out of the ERP, map the Firebase data onto
+Supabase as one source of truth, then take over the writing so the old system
+can be switched off.
+
+Full findings: **`V7.15_ERP_Inventory.md`** — this is the summary.
+
+### 1. The scope is far smaller than it looked
+
+Surveyed the whole mirror (`erp-sync/inventory.py`, read-only):
+
+| | |
+|---|---|
+| Tables mirrored | 494 |
+| **Empty** | **286** |
+| Active in the last 3 months | **52** (98.5% of all rows) |
+| Dormant 3 yr+ | 93 |
+
+JES is a *jewellery* package (gold, diamonds, hallmarking, POS, consignment,
+customs). This business uses six modules of it: **items/inventory, job
+orders/production, sales, purchasing, customers/suppliers**. So this is not
+"build an ERP" — it is closing gaps in an app that already covers most of them.
+
+**Quoting has already been migrated** and nobody recorded it: `quotation` stops
+at 2024-12-20. A precedent that the pattern works.
+
+### 2. Accounting is out of scope — and the books are in PBIS
+
+JES's GL was **never used**: `acjournal`, `acsettle`, `acperiodended`,
+`acbudget` are all 0 rows; only vendor config remains, last touched 2004–2006,
+one row stamped by user `demo`. Owner confirmed the books are kept in **PBIS**
+(separate system, on Cindy's machine).
+
+Cindy's journal reports were parsed (`erp-sync/parse_pbis.py`). The key finding:
+**PBIS already carries the app's UC number** —
+`SALES INVOICE SI250040 / UC4743/` — so the join across JES, `uc_registry` and
+the books exists already. **152 of 152 UC numbers in the books are in the
+registry; zero orphans**, an independent validation of the V7.14 migration.
+
+The books run **~5 months behind** (median posting lag 153 days, max 373) — so
+PBIS is history, not a live source of "what's paid".
+
+Still unseen: the **JES→PBIS import file**. That is what an app-generated
+invoice must reproduce, and it is the reason invoicing should not be the first
+function migrated.
+
+### 3. Document model (owner)
+
+| Team says | JES doc | Generated in | In the app |
+|---|---|---|---|
+| **PI** | **SO** | JES | PDF uploaded, AI-parsed into Firestore |
+| **Invoice** | **SI** | JES | referenced by number only |
+
+An SI is often copied from an SO **but not always** — simple sales are invoiced
+with no SO. Any invoice module must support both paths.
+
+**The app re-parses data it already has.** SO lines exist as clean rows in
+`erp_sales_order_line` (188 k). So `ShipmentForm` now cross-checks a parsed PI
+against the ERP's own order and offers to adopt it — augmenting the parser, not
+replacing it, since an order raised today isn't synced yet.
+
+### 4. What shipped
+
+- **ERP Lookup → Inventory**: stock on hand by warehouse and item type.
+  Computed from the movement ledger, **not** `itemwhbal` — that table is a stale
+  snapshot (8,368 of 8,599 non-zero rows have a null `lastupdate`). *Rule: prefer
+  JES's ledgers over its balance tables until each balance table is proven.*
+- **Customer / supplier detail panels**, with payment terms and methods resolved
+  from their lookup tables.
+- **Bank accounts** (`Settings → Bank Accounts`) — the ERP has **no bank master**
+  (`raw.bank` is 2 rows from 2003–05; account-number columns 0-populated), so
+  this is new app data. One default per currency enforced by a partial unique
+  index; IBAN mod-97, SWIFT/BIC and sort-code/ABA validation at the API; an
+  append-only change audit (`SECURITY DEFINER`, so the API can read history but
+  not forge it). Wired into the quotation with a currency-mismatch warning and a
+  snapshot onto the document.
+- **BOM coverage check** on Range Costing — merges every ERP variant of a design
+  and reports what isn't costed. Level 1 only: level 2 is raw alloy from when the
+  factory made FM parts in house, and those are now bought finished.
+- **Component code audit** (`Settings → Component Codes`) — see §5. Reports
+  three states: not in the ERP; exists but **no current BOM uses it**
+  (superseded — the interesting one, invisible to a plain existence check); or
+  exists and is built with. "What do the BOMs use?" ranks replacements
+  server-side (`erp_code_alternatives`) among components current BOMs actually
+  use — the `.NN`-stripped code first (right ~34% of the time and exactly right
+  when it hits), then longest shared prefix by usage.
+- **Renamed to Operation Center**, with `V7.15 · <build time>` under the logo.
+  Name and version live in `src/appInfo.js`; the build stamp is injected by Vite
+  so "is my change live yet?" is answerable at a glance. The browser tab stays
+  "Crystocraft Customer Portal" — the same deployment serves the customer
+  storefront and those OG tags are customer-facing. `package.json` realigned to
+  7.15.0, collapsing three numbering schemes into one.
+- **Fix:** freight quotes saved but never displayed. `where` + `orderBy` needed a
+  composite index that doesn't exist; `catch {}` turned the error into an empty
+  list. Silent catches in `logistics.js` now log.
+
+### 5. Open findings that need a decision
+
+- **The costing may be anchored to superseded part codes.** `FM-K(32).03-C`
+  ("鋅合金", zinc alloy) is used by **0** current BOMs; every BOM builds with
+  `FM-K(32)-C` ("底座配件 chrome", 526 BOMs). These are the old in-house part
+  codes from before the FM parts were bought finished. If so, some unit costs
+  reflect what it cost to *make* a part, not what is now *paid* for it.
+- ~~**Multi-invoice UC numbers** — UC4836 is `SI250128/137` in the registry,
+  unparseable. How should these be recorded?~~ **Answered by owner 2026-07-19:
+  they should not exist.** *"There will never be one UC, 2 invoices. Either it is
+  an update — there will be a suffix at the UC, e.g. UC1234 updated by UC1234-a —
+  or it is a wrong input/typo."* So `UC4836` is an error, not a pattern needing a
+  design. Measured: only **5 of 3,691** rows have more than one invoice in
+  `jes_si`. Rare — but it recurs, so an app owning the registry should **detect
+  and reject** it rather than assume it cannot happen.
+  **New requirement out of the same answer:** UC numbers take **update
+  suffixes**, and **227 of 3,691 (6.1%)** are not plain `UC####` — 72 as
+  `UC####(A)`, 31 as `UC####-#`, plus ~72 compound `UC####/UC####` forms that are
+  a separate, still-unexplained thing. The app's allocator issues plain
+  sequential numbers only, so it cannot yet express an update. See
+  `PBIS-IMPORT-FORMAT.md`.
+- **Packaging is not costed per product.** The ERP BOM carries the gift box,
+  hang tag, tissue, silica gel; the app stocks packaging as a pool.
+
+### 6. The retirement plan
+
+`JES-RETIREMENT-PLAN.md` was written this cycle: nine steps from here to
+switching JES off, in plain language, with the numbers included.
+
+Its main decision: **drop production job orders**. Owner's instinct, confirmed
+in the data — of 131,752 job orders, item/qty/customer/delivery are 100%
+duplicated from the sales order line, and **wastage, the field that would
+justify the paperwork, is filled on 2 of them**. The app already records
+everything worth keeping (`reserveForOrder`, `issueForOrder`, `produceForOrder`
+with `committed_at`), so nothing needs building. Owner confirms nobody uses the
+production-in date, and the team will be glad to see the back of it.
+
+Consequence: **production becomes the first function to migrate** rather than a
+late item — highest keying cost, lowest data loss, doesn't feed PBIS, and the
+team wants it. That last point matters, because team adoption is the main risk
+to every cutover.
+
+Caveat recorded there: 100% of material issues hang off a job order in JES, so
+"drop job orders" must never become "stop recording material issues".
 
 ## Current Status — V7.14 CLOSED as of 2026-07-17
 
