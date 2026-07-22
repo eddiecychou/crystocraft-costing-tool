@@ -187,6 +187,22 @@ say plainly what was and was not checked.
 Reserve and production issue need no work; they are generic over the inventory
 class and start functioning the moment the BOM exists.
 
+> **Corrections from doing it (2026-07-22).** Three of the six steps above are
+> wrong as written — see "V7.18 — the running record" below for the evidence.
+>
+> - **Step 1 is not the blocker it looks like.** Only 4 codes stand between the
+>   derivation and a working requirement, one of which (`C01-1028-32-019`) is
+>   not on the list. The other 13 are stock accuracy, and three of the four have
+>   not moved since 2013 — importing a decade-old balance would silently satisfy
+>   requirements instead of showing a gap.
+> - **Step 2 is not one table.** The suffix is family-scoped: `-005` is Rosaline
+>   in `BDC-8232` and Rose in `C01-1028`. Key on `(family, size, suffix)`.
+> - **Step 3 is two layers, not one.** A *skeleton* of positions keyed on
+>   `(shape, size)` including hole count, plus an *allocation* per mix code.
+>   "Colour resolves from the order line" holds only for plain colours; a mix is
+>   a per-model recipe with quantities. Family belongs in the allocation, not
+>   the skeleton, or interchangeable stones read as different products.
+
 **Waiting on people:**
 
 - **XiangXia** — how wastage is actually applied. JES has a job-order-level
@@ -216,6 +232,300 @@ class and start functioning the moment the BOM exists.
 - **No new env vars.**
 - **`qa/` needs no install** beyond a scratch Node; eslint is deliberately not a
   project dependency.
+
+---
+
+## V7.18 — the running record
+
+Theme: **crystals become a bill of materials.** V7.17 made the data current;
+V7.18 is about the app knowing what a figurine is actually made of, and
+answering "can we make it" for the one inventory class that had no BOM at all.
+
+The opening sequence is in "Where V7.18 starts" above. What follows is what has
+happened in this cycle so far.
+
+### Crystals decompose, and the plan under-described how much (2026-07-22)
+
+The plan's step 3 proposed `{ series, pattern, size, qty }` with "colour
+resolves from the order line". That is right for a plain colour and wrong for
+everything else, and the owner said so before any code was written: each colour
+variation has a different configuration, and MX/AX/GX/M1 are mixtures whose
+contents differ per model.
+
+The job-order BOM confirms it. `D0092-001` Fan-Out Peacock, per unit:
+
+| variant | Bohemia 8232/14 octagon | Swarovski chaton 1028/18 | total |
+|---|---|---|---:|
+| `GC1` / `RC1` | 13 × Crystal | 9 × Crystal | 22 |
+| `CAX` | 8 Aquamarine, 5 Blue AB | 5 AB.BL, 4 Blue Zircon | 22 |
+| `GMX` | 8 Crystal + 1 each of five | 4 Crystal + 1 each of five | 22 |
+
+**Twenty-two stones every time, thirteen octagons and nine chatons every time.**
+Only the colour allocation changes. Checked across four job orders from 2023 to
+2026 at quantities 2, 12, 36 and 36 — identical per-unit figures every time.
+
+So the shape is two layers, not one: a **skeleton** of positions, and an
+**allocation** per mix code. Both were already in the ERP with real numbers.
+
+`src/data/crystalMixes.json` — 187 models, built from a legacy website CSV —
+says `MX` on that model is two colours. The BOM says six across two families.
+**That file is wrong and was not used.** It had also been written into Firestore
+on 66 products; those are now cleared.
+
+### The prefix letter is a crystal-sourcing route, not part of the design
+
+`D0243` and `U0243` are both "Giant Sunflower - A - Free Stand". The numeric
+stem is the design; the letter is where the stones come from:
+
+| route | fills the 14mm double-hole position with | status |
+|---|---|---|
+| `U` | Swarovski 8016 / 8116 | **stock exhausted** |
+| `D` | Bohemia 8232 | the successor, live |
+| `M` | Bohemia + remaining Swarovski *single* hole | live, burning down stock |
+| `A` | Asfour 1080 | live |
+| `H` | Bohemia heart 3130 | live, hearts only |
+
+`M`, `A` and `H` all first appear in 2022–2023 — the response to Swarovski
+supply ending. Across designs with both routes, `D` is the more recent in **213
+stems against 21**: a one-way migration, not a preference.
+
+**This needs no modelling in the app.** The Range already holds only the live
+route — the owner confirmed the app has `D0243` and not `U0243`, and the four
+remaining `U` designs are the single-hole and all-chaton survivors. An earlier
+draft of this work proposed a supersession model; it was scrapped as
+over-building once that was clear.
+
+### The derivation, and what it is worth
+
+`raw.itemdetail` at latest revision, not `joborderbom` — it gives per-unit
+quantities directly and turned out to be a strict superset (the job-order
+fallback matched 0 additional codes). Cross-checked against the job-order
+derivation on `D0092`: both give 22.
+
+Before trusting it, the consistency question: do per-unit quantities agree
+between job orders for the same code?
+
+```
+742  ERP codes matching an app product
+408  built once — nothing to compare
+334  built 2+ times, every job agrees
+  0  disagree
+```
+
+`U0088-001-CGR` has **185 job orders spanning 2006 to 2026 across 14 different
+order quantities**, all giving identical per-unit counts. XiangXia's BOMs have
+been stable for twenty years.
+
+100% invites distrust, so the same comparison was run over the whole mirror:
+**177 code+item pairs do disagree.** None are in the app's Range. The
+instrument works; our subset is genuinely clean.
+
+### The skeleton is keyed on shape and size, not family
+
+Keyed on `(family, size)`, ten product+plating combinations looked like they
+needed different stone counts across colourways. Seven of those agreed on the
+total and differed only in *which supplier filled a slot* — `D0046` Lighthouse
+needs six 14mm octagons in every colourway; `GC1` takes all six from Bohemia,
+`GX` takes four from Swarovski.
+
+Re-keyed on `(shape, size)`: **270 → 277 agreeing, 10 → 3 disagreeing.** Family
+moved down into the allocation, which is also what makes a future route swap an
+allocation change rather than a new product.
+
+The three survivors are real and want XiangXia:
+
+- `0383-001` Duckling — `CBL` needs 1 stone, `CGO` needs 2
+- `0086-001` Flower Fairy (Heart) — `GC1` needs 9, `GPI` needs 10
+- `0465-001` Pocket Crown — `AB` uses chaton 26, `C1` uses chaton 24
+
+The first two look like item-master errors; the third is a real size change.
+
+### Shape was being guessed, and the owner caught it
+
+The shape table mapped a handful of patterns and **defaulted everything else to
+"octagon"**. The owner checked `M0005` — "2 octagons of 14, 1 PP32 chaton and 1
+oval crystal" — and the app called the oval an octagon. Swarovski `8102` is an
+oval; Asfour `1032` had been filed as a chaton and is an octagon substitute.
+
+Shape is what decides interchangeability, so **a wrong shape is worse than no
+shape**. Three changes:
+
+- Shape now comes from the ERP's own words first. The item names carry them and
+  nothing was reading them: `8721` Almond, `8781` Heart, `8805` Leaf, `8811`
+  Snow Flake, `8815` Star, `8816` Moon, `8818` Star Fish, `8950` cashew.
+- Patterns with no shape word and no confirmed entry are labelled by pattern
+  number — `#8015 1h` — not assumed.
+- **Hole count is part of a position.** One-hole and two-hole stones of the same
+  shape and size do not substitute, and lumping them would have let the app
+  propose a swap that does not fit.
+
+Still unclassified, and needing a human: `#8015/20`, `#8641/20`, and two Spectra
+`8290` codes whose ERP item code contains a literal space (`C01-801 220-002`),
+which is a JES data error.
+
+### Colours: the suffix is family-scoped
+
+`-005` is Rosaline in `BDC-8232` and Rose in `C01-1028`. The cross-reference is
+keyed on `(family, size, suffix)`, and keying it on `(family, suffix)` alone
+merged `BDC-8232-0014` with `-0018` and made 22 of 69 entries look ambiguous.
+
+Of 108 entries: 16 resolve exactly because the **Bohemia descriptions embed the
+app's own code** — `Bohemia glass 8232/14(PI) double hole Rosaline` — 46 resolve
+by name, 10 are flagged proposals, 35 are blank.
+
+The 35 are **Swarovski accent colours the app's 17-colour library has no entry
+for**: Amethyst, Garnet, Siam, Capri Blue, Jonquil, Black Diamond, Peridot,
+Blue Zircon, Jet, Chrysolite, White Opal, Bordeaux, Antique Green, Golden
+Shadow, Light Amethyst. The owner's reading: these are chaton accents that
+complement a main colour and are never offered on their own — 30 of the 33 are
+chatons, 3 are strass. So a blank is arguably correct: an accent that never
+enters the library can never be offered as a mono colourway by mistake.
+
+Worth revisiting: **Antique Green and Bordeaux also exist on the 8016
+double-hole** with 10,371 and 30,277 in JES, so those two are main stones as
+well as accents.
+
+Also: the `crystals` collection is **not homogeneous**. 120 items are figurine
+stones (`C01`/`BDC`/`C07`); 60 are raw Swarovski article numbers — beads,
+pearls, steel components, fabric — with colours encoded Swarovski-style
+(`001AB`, `001GSHA`), often several per item. The colour attribute does not fit
+those and they were left alone.
+
+### Only 4 crystal codes actually block anything
+
+V7.17 measured 17 crystal codes as missing and left a paste-ready file. All 17
+are still missing, but the derivation allows a better question: which codes do
+the BOMs reference?
+
+```
+81  distinct codes the derived BOM needs
+77  already in the app
+ 4  missing
+```
+
+Three are on the V7.17 list; `C01-1028-32-019` Light Amethyst is not. **So
+importing the 17 is about stock accuracy, not BOM completeness** — a weaker
+justification than the plan assumed.
+
+And they were *not* imported, deliberately. Three of the four last moved in
+**2013–2014**. Importing Blue Zircon at 4,101 would silently satisfy every
+requirement against it; nobody would find out until someone reached for the
+bin. A visible gap beats an invisible wrong answer — the same failure mode
+`CLAUDE.md` already records for `itemwhbal`. Only `C01-1028-32-019` (18,566,
+last moved 2024-11-25) is plausible rather than archaeological.
+
+They also cannot be scripted in: `stock_qty` is owned by the stock ledger and
+`importStock` writes a stocktake movement alongside the document. The app's
+importer is the correct path.
+
+### What was built
+
+- **`crystal_components` on 181 products**, `{ positions, mixes, source }`.
+  Collapsed across plating and brand — safe, because plating does not touch the
+  stones. 3 skipped where that collapse was not clean, 104 have no derived
+  skeleton yet.
+- **A Crystal BOM editor** on the range form, replacing the old Crystal
+  Mixtures card. Flags the three states that matter: a recipe that does not add
+  up, a crystal code the stock list does not carry, and a mix nobody has ordered
+  yet — **empty, not zero**.
+- **Crystals in `computeRequirements`**, with their own table on the material
+  requirements page and a `Kind` column in the CSV.
+- **Editable stock details** — the colour attribute had been a read-only badge,
+  so a wrong colour could not be corrected from the app at all. Writing a field
+  the app gives no way to edit was the mistake.
+
+### Packing: XiangXia's spreadsheet is a CBM correction
+
+`pack_db估算.xls`, 8,900 rows. 286 of 288 products already had packing, so this
+is an overwrite, not a fill:
+
+```
+78  not in the sheet
+66  identical
+62  value change
+56  identical, sheet has multiple options
+33  reference upgrade (safe)
+```
+
+**29 reference upgrades were applied** — stubs (`PB001`) replaced with full JES
+codes (`P-PB001ROS-02-01`), no numeric field touched.
+
+The dry run earned its keep: it proposed 33 and **four were wrong**. Both sides
+were already full JES codes with different suffixes — `ROS` against `05WH`,
+`-01-15` against `-02-01` — and `boxkey()` reduced them to the same family, so a
+genuine box change read as a formatting fix.
+
+The 62 value changes are mostly CBM with pieces-per-carton unchanged: 26 within
+5%, **15 substantive**. `0370-001` is up 172%; the four Mini Sacred Angels
+double. If the app has been understating CBM, freight estimates have been wrong.
+Not applied — the filename says 估算 (estimate).
+
+**Unresolved:** 66 products where the sheet offers 2–4 packings (gift box against
+plain box) that the app's single `packing` object cannot hold. The variants
+already carry an unused `packaging` field, which may be where it belongs.
+
+### Bugs shipped and caught this cycle
+
+Seven, all mine, and none visible to esbuild or the build:
+
+1. `left(joitemcode, 12)` compared a fixed slice against 11-character prefixes.
+   The codes are not fixed width. Returned 0 matches.
+2. Colour names taken with `max(itshortdesc1)` over ~29 revisions — a string max
+   returns whichever sorts last, not the newest. Put a stale "Swarovski Strass
+   #8016/14" name on four Bohemia codes.
+3. The colour matcher **wrote its proposals back over its own input**, so a
+   second run read its own guesses as exact matches: 16 became 73 with nothing
+   verified.
+4. A substring test matched a colour name anywhere in the string, so "Bohemia
+   heart crystal #3130 Rosaline" matched `C1` on the product noun.
+5. An **empty mix recipe contributed zero stones and reported no problem** —
+   `if (mix)` is not enough, an empty array is truthy. The exact failure the
+   editor's "nobody has ordered this mix yet" state exists to make visible.
+6. **Cross-language drift**: the Python position key gained hole count, the JS
+   did not, so every plain colourway resolved to nothing.
+7. `BDC-8149-0014-001` is written `one  hole` with two spaces.
+
+Numbers 1–4 produced plausible-looking output and were caught by *reading it*.
+5–7 were caught by `qa/mrp-crystals.mjs`. The V7.17 rule held: verify by running
+the thing, and look at what comes out.
+
+### Tooling added
+
+- `migration/pull_range.cjs`, `pull_crystals.cjs`, `pull_crystal_colors.cjs` —
+  Firestore dumps via the Admin SDK. `range_products` is gated behind
+  `canShop()`, so the web config is not enough. **firebase-admin 13+ dropped
+  `credential` from the CJS root export**; the modular subpaths are the entry
+  points.
+- `qa/bundle-headless.mjs` — bundles any `src` module with Firebase stubbed, so
+  pure logic can be run in node. `mrp.js` imports `criticalComponents`, which
+  imports the initialised app, which drags in grpc and dies on load. The stub
+  throws on any call, so a check that reaches for the database fails loudly.
+- `qa/crystal-bom.html` and `qa/stock-edit.html` — mount a component directly
+  with realistic data. Both editors sit behind an admin login, so this is the
+  only way to look at them without signing in as the owner.
+- The service-account key is gitignored under both its intended name **and the
+  console's own download name**, which is what actually lands in `~/Downloads`.
+  It arrived in the repo root untracked and unignored.
+
+### Waiting on people
+
+- **XiangXia** — wastage (still the oldest open question); the 3 skeleton
+  anomalies; the 4 unclassified shape patterns; and on packing: which columns
+  are measured against calculated, whether the doubled CBMs are corrections,
+  where music-box and mobile packing lives, and the 10 Crystal Bible products
+  plus 2 bookmarks missing from the sheet.
+- **The owner** — the 10 flagged colour proposals, and whether Antique Green
+  and Bordeaux should get library codes.
+
+### Still to do
+
+- **Step 6, order planning** — requirement − available − on-order.
+- **104 products with no derived BOM** — 39 rescuable from an older route, 35
+  from a sibling format, both inferences needing confirmation.
+- **103 products still carrying the legacy `crystal_mixes`.**
+- **286 mix colourways with no recipe** — the owner's call: these were never
+  ordered, so they are left to be filled in when someone first orders one. The
+  app must therefore treat an undefined mix as a question, not a zero.
 
 ---
 
