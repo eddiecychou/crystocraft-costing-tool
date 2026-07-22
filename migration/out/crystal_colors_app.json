@@ -1,0 +1,179 @@
+{
+  "colors": [
+    {
+      "code": "C1",
+      "name": "Clear (Dazzle Cut)",
+      "swatch": "#ebebeb"
+    },
+    {
+      "code": "CL",
+      "name": "Clear (Simple Cut)",
+      "swatch": "#e6e6e6"
+    },
+    {
+      "code": "AB",
+      "name": "Crystal AB",
+      "swatch": "#d6dbe6"
+    },
+    {
+      "code": "GT",
+      "name": "Golden Teak",
+      "swatch": "#bbb5a3"
+    },
+    {
+      "code": "PI",
+      "name": "Rosaline",
+      "swatch": "#f3e5ea"
+    },
+    {
+      "code": "RE",
+      "name": "Ruby",
+      "swatch": "#d8400e"
+    },
+    {
+      "code": "FU",
+      "name": "Fuchsia",
+      "swatch": "#f0477a"
+    },
+    {
+      "code": "PE",
+      "name": "Peach",
+      "swatch": "#f7a081"
+    },
+    {
+      "code": "TO",
+      "name": "Topaz",
+      "swatch": "#fecc28"
+    },
+    {
+      "code": "GO",
+      "name": "Light Topaz",
+      "swatch": "#faec95"
+    },
+    {
+      "code": "LP",
+      "name": "Light Peridot",
+      "swatch": "#d6efc4"
+    },
+    {
+      "code": "EM",
+      "name": "Emerald",
+      "swatch": "#33715e"
+    },
+    {
+      "code": "GR",
+      "name": "Aquamarine",
+      "swatch": "#bae0ee"
+    },
+    {
+      "code": "BL",
+      "name": "Sapphire",
+      "swatch": "#a9c8f9"
+    },
+    {
+      "code": "DB",
+      "name": "Dark Sapphire",
+      "swatch": "#8ba3de"
+    },
+    {
+      "code": "VL",
+      "name": "Light Violet",
+      "swatch": "#e8e5f4"
+    },
+    {
+      "code": "PU",
+      "name": "Deep Violet",
+      "swatch": "#938ca6"
+    },
+    {
+      "code": "MX",
+      "name": "Mix Config MX",
+      "swatch": ""
+    },
+    {
+      "code": "M1",
+      "name": "Mix Config M1",
+      "swatch": ""
+    },
+    {
+      "code": "M2",
+      "name": "Mix Config M2",
+      "swatch": ""
+    },
+    {
+      "code": "M3",
+      "name": "Mix Config M3",
+      "swatch": ""
+    },
+    {
+      "code": "M4",
+      "name": "Mix Config M4",
+      "swatch": ""
+    },
+    {
+      "code": "M5",
+      "name": "Mix Config M5",
+      "swatch": ""
+    },
+    {
+      "code": "AX",
+      "name": "Mix (AB) Config AX",
+      "swatch": ""
+    },
+    {
+      "code": "A1",
+      "name": "Mix (AB) Config A1",
+      "swatch": ""
+    },
+    {
+      "code": "A2",
+      "name": "Mix (AB) Config A2",
+      "swatch": ""
+    },
+    {
+      "code": "GX",
+      "name": "Mix (GT) Config GX",
+      "swatch": ""
+    },
+    {
+      "code": "G1",
+      "name": "Mix (GT) Config G1",
+      "swatch": ""
+    },
+    {
+      "code": "G2",
+      "name": "Mix (GT) Config G2",
+      "swatch": ""
+    },
+    {
+      "code": "JT",
+      "name": "JT",
+      "swatch": "#000000"
+    },
+    {
+      "code": "G3",
+      "name": "G3",
+      "swatch": ""
+    },
+    {
+      "code": "B1",
+      "name": "B1",
+      "swatch": "#5f83f2"
+    },
+    {
+      "code": "M6",
+      "name": "M6",
+      "swatch": ""
+    },
+    {
+      "code": "M7",
+      "name": "M7",
+      "swatch": ""
+    },
+    {
+      "code": "M8",
+      "name": "M8",
+      "swatch": ""
+    }
+  ]
+}
