@@ -60,6 +60,31 @@ export function parseCrystalCode(code) {
   }
 }
 
+// One-hole and two-hole stones of the same shape and size do not substitute for
+// each other, so hole count is part of a position's identity: 'octagon 2h'. The
+// code alone does not carry it — only the item name does, which is why this
+// takes a name rather than working from parseCrystalCode.
+export function holesFromName(name) {
+  // Whitespace is collapsed first: BDC-8149-0014-001 is written "one  hole"
+  // with two spaces, and matching the literal string missed it.
+  const n = String(name || '').toLowerCase().replace(/\s+/g, ' ')
+  if (n.includes('double hole') || n.includes('dbl hole') || n.includes('two hole')) return '2h'
+  if (n.includes('one hole') || n.includes('single hole') || n.includes('1 hole')) return '1h'
+  return ''
+}
+
+// Shape label for a stock item, matching how derive_crystal_bom.py labels a
+// position. Keeping these in step matters: when the Python started appending
+// hole count and this did not, every plain colourway silently resolved to
+// nothing, because 'octagon|14|PI' no longer matched 'octagon 2h|14|PI'.
+export function shapeLabelFor(code, name) {
+  const p = parseCrystalCode(code)
+  if (!p) return ''
+  const shape = p.shape || (p.pattern ? `#${p.pattern}` : '')
+  const h = holesFromName(name)
+  return `${shape} ${h}`.trim()
+}
+
 export const positionKey = (shape, size) => `${shape}|${size}`
 
 export function emptyCrystalBom() {
@@ -100,10 +125,12 @@ export function indexCrystals(crystals) {
   const idx = new Map()
   for (const c of crystals || []) {
     const p = parseCrystalCode(c.code)
-    if (!p || !p.shape) continue
+    if (!p) continue
     const colour = String(c.colour || '').trim().toUpperCase()
     if (!colour) continue
-    const k = `${p.shape}|${p.size}|${colour}`
+    const label = shapeLabelFor(c.code, c.name)
+    if (!label) continue
+    const k = `${label}|${p.size}|${colour}`
     if (!idx.has(k)) idx.set(k, [])
     idx.get(k).push(c)
   }
@@ -126,8 +153,11 @@ export function crystalRequirement(bom, colour, crystals) {
   const unresolved = []
   const byCode = new Map((crystals || []).map(c => [String(c.code || '').toUpperCase(), c]))
 
+  // `mix && ...` is not enough: an empty array is truthy, so a mix code that
+  // exists with no lines took this branch, contributed nothing, and reported no
+  // problem. An empty recipe means undefined, not zero.
   const mix = b.mixes[col]
-  if (mix) {
+  if (mix && mix.length) {
     for (const l of mix) {
       const crystal = byCode.get(l.code)
       if (crystal) lines.push({ code: l.code, qty: l.qty, crystal })

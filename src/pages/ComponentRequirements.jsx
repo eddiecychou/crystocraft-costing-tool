@@ -3,21 +3,27 @@ import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useOrders, getOrderLines, orderStatusOf, orderUc } from '../shipping'
 import { loadComponents } from '../criticalComponents'
+import { loadCrystals } from '../crystals'
 import { computeRequirements } from '../mrp'
 import LoadingBar from '../components/LoadingBar'
-import { AlertTriangle, Download, Boxes, Calculator, Info } from 'lucide-react'
+import { AlertTriangle, Download, Boxes, Calculator, Info, Gem } from 'lucide-react'
 
 // Statuses that represent live demand — pre-selected in the picker.
 const DEMAND = ['confirmed', 'packing', 'ready']
 
 const orderLabel = o => orderUc(o) || o.customer_name || o.id
 
-function toCsv(rows) {
-  const head = ['Component', 'Name', 'Plating', 'Required', 'Available', 'Shortage', 'Lead (wk)', 'Used by']
+// One file for both, with a Kind column: a crystal and a component can share a
+// shortage list without either being mistaken for the other.
+function toCsv(rows, crystalRows = []) {
+  const head = ['Kind', 'Code', 'Name', 'Plating', 'Required', 'Available', 'Shortage', 'Lead (wk)', 'Used by']
   const esc = v => `"${String(v ?? '').replace(/"/g, '""')}"`
   const out = [head.map(esc).join(',')]
   for (const r of rows) {
-    out.push([r.code, r.name, r.plating_code || '-', r.required, r.inStock, r.shortage, r.leadWeeks ?? '', r.usedBy.join('; ')].map(esc).join(','))
+    out.push(['Component', r.code, r.name, r.plating_code || '-', r.required, r.inStock, r.shortage, r.leadWeeks ?? '', r.usedBy.join('; ')].map(esc).join(','))
+  }
+  for (const r of crystalRows) {
+    out.push(['Crystal', r.code, r.name, '-', r.required, r.inStock, r.shortage, '', r.usedBy.join('; ')].map(esc).join(','))
   }
   return out.join('\n')
 }
@@ -26,6 +32,7 @@ export default function ComponentRequirements() {
   const { orders, loading } = useOrders()
   const [productsById, setProductsById] = useState({})
   const [lib, setLib] = useState([])
+  const [crystals, setCrystals] = useState([])
   const [ready, setReady] = useState(false)
   const [selected, setSelected] = useState(() => new Set())
   const [seeded, setSeeded] = useState(false)
@@ -36,11 +43,11 @@ export default function ComponentRequirements() {
 
   // Load products (with BOMs) + component library once.
   useEffect(() => {
-    Promise.all([getDocs(collection(db, 'range_products')), loadComponents()])
-      .then(([psnap, comps]) => {
+    Promise.all([getDocs(collection(db, 'range_products')), loadComponents(), loadCrystals()])
+      .then(([psnap, comps, stones]) => {
         const byId = {}
         psnap.forEach(d => { byId[d.id] = { id: d.id, ...d.data() } })
-        setProductsById(byId); setLib(comps); setReady(true)
+        setProductsById(byId); setLib(comps); setCrystals(stones); setReady(true)
       })
   }, [])
 
@@ -85,7 +92,7 @@ export default function ComponentRequirements() {
         const label = orderLabel(o)
         ls.forEach(l => lines.push({ ...l, order_label: label }))
       }
-      const res = computeRequirements({ lines, products: Object.values(productsById), lib })
+      const res = computeRequirements({ lines, products: Object.values(productsById), lib, crystals })
       setResult({ ...res, reservedSkipped })
     } finally {
       setComputing(false)
@@ -94,12 +101,15 @@ export default function ComponentRequirements() {
 
   const shownRows = result ? (onlyShort ? result.rows.filter(r => r.shortage > 0) : result.rows) : []
   const shortCount = result ? result.rows.filter(r => r.shortage > 0).length : 0
+  const crystalAll = result?.crystalRows || []
+  const shownCrystals = onlyShort ? crystalAll.filter(r => r.shortage > 0) : crystalAll
+  const crystalShort = crystalAll.filter(r => r.shortage > 0).length
 
   function exportCsv() {
-    const blob = new Blob([toCsv(shownRows)], { type: 'text/csv;charset=utf-8' })
+    const blob = new Blob([toCsv(shownRows, shownCrystals)], { type: 'text/csv;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url; a.download = `component-requirements-${new Date().toISOString().slice(0, 10)}.csv`
+    a.href = url; a.download = `material-requirements-${new Date().toISOString().slice(0, 10)}.csv`
     a.click(); URL.revokeObjectURL(url)
   }
 
@@ -217,6 +227,57 @@ export default function ComponentRequirements() {
               </div>
             )}
           </div>
+
+          {/* Crystals. A separate table rather than merged rows: they come from
+              their own inventory, have no lead time or plating, and are counted
+              per stone rather than per part. Only shown once a product in the
+              selection actually carries a crystal BOM. */}
+          {crystalAll.length > 0 && (
+            <div className="bg-white rounded-lg border border-gray-100 mb-3">
+              <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5">
+                  <Gem size={14} className="text-brand-500" />
+                  Crystals
+                  <span className="font-normal text-gray-400">
+                    · {crystalShort} short of {crystalAll.length} required
+                  </span>
+                </h2>
+              </div>
+              {shownCrystals.length === 0 ? (
+                <p className="px-4 py-3 text-xs text-gray-500">
+                  No crystal shortages — every stone is covered by available stock.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                        <th className="px-3 py-2 font-medium">Crystal</th>
+                        <th className="px-3 py-2 font-medium text-right">Required</th>
+                        <th className="px-3 py-2 font-medium text-right">Available</th>
+                        <th className="px-3 py-2 font-medium text-right">Shortage</th>
+                        <th className="px-3 py-2 font-medium">Used by</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {shownCrystals.map(r => (
+                        <tr key={r.code} className={r.shortage > 0 ? 'bg-red-50/40' : ''}>
+                          <td className="px-3 py-2">
+                            <div className="font-medium text-gray-800 font-mono text-xs">{r.code}</div>
+                            {r.name && <div className="text-xs text-gray-400">{r.name}</div>}
+                          </td>
+                          <td className="px-3 py-2 text-right tabular-nums">{r.required}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-gray-500">{r.inStock}</td>
+                          <td className={`px-3 py-2 text-right tabular-nums font-semibold ${r.shortage > 0 ? 'text-red-600' : 'text-gray-300'}`}>{r.shortage || '—'}</td>
+                          <td className="px-3 py-2 text-xs text-gray-500">{r.usedBy.join(', ')}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Not in product range — figurine codes we couldn't match. Flagged
               loudly so they aren't silently left out of the order plan. */}

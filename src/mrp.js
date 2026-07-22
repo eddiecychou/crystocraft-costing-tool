@@ -9,6 +9,7 @@
 // goes through the shared refApplies helper so MRP agrees with buildable/costing.
 
 import { resolveRef, refApplies, refScopePlating, buildProductIndex, matchProductCode, VALID_PLATINGS, availableOf } from './criticalComponents'
+import { crystalRequirement } from './crystalBom'
 
 const PLATING_LETTERS = new Set(VALID_PLATINGS.filter(Boolean))  // C,G,R,A,M
 
@@ -23,6 +24,15 @@ export function platingFromItemCode(itemCode) {
 }
 
 const perUnit = r => { const n = Number(r?.qty_per_unit); return n > 0 ? n : 1 }
+
+// Colourway of a finished SKU, from the tail of the plating segment:
+// D0092-001-GMX → 'MX', U0257-001-GAB → 'AB'. Empty when the code carries no
+// colour, which is normal for corp-gift and charge lines.
+export function colourFromItemCode(itemCode) {
+  const parts = String(itemCode || '').trim().toUpperCase().split('-')
+  const seg = parts[2] || ''
+  return PLATING_LETTERS.has(seg[0]) ? seg.slice(1) : seg
+}
 
 // A range product's real display name is entered in the Description field —
 // RangeForm has no separate name input, so `name`/`design_name` are legacy/
@@ -57,15 +67,22 @@ function lineProduct(l, productsById, index) {
 //   products : range_products array (each with critical_components[])
 //   lib      : range_components array (stock_qty, lead_time_weeks, plating_code)
 // Returns { rows, warnings, skipped }.
-export function computeRequirements({ lines = [], products = [], lib = [] }) {
+export function computeRequirements({ lines = [], products = [], lib = [], crystals = [] }) {
   const productsById = {}
   for (const p of products) if (p?.id) productsById[p.id] = p
   const index = buildProductIndex(products)
 
   const req = {}          // code → { code, name, plating_code, required, leadWeeks, usedBy:Set }
+  const creq = {}         // same, for crystal stones
   const warnings = []     // { item_code, order, reason }
   const unmatched = []    // figurine-looking codes NOT in the product range (flag loudly)
   const skipped = []      // genuinely non-figurine lines (corp gift / charge) — informational
+
+  const bumpCrystal = (code, name, qty, productName) => {
+    if (!creq[code]) creq[code] = { code, name: name || '', required: 0, usedBy: new Set() }
+    creq[code].required += qty
+    if (productName) creq[code].usedBy.add(productName)
+  }
 
   const bump = (comp, qty, productName) => {
     const key = comp.code
@@ -91,6 +108,25 @@ export function computeRequirements({ lines = [], products = [], lib = [] }) {
 
     const refs = Array.isArray(product.critical_components) ? product.critical_components : []
     const label = productLabel(product)
+
+    // Crystals, before the critical-components early-exit: a figurine can carry
+    // a crystal BOM and no critical components, and skipping it here would drop
+    // the stones silently.
+    if (crystals.length && product.crystal_components) {
+      const colour = colourFromItemCode(l.item_code)
+      const { lines: cl, unresolved } = crystalRequirement(product.crystal_components, colour, crystals)
+      for (const c of cl) bumpCrystal(c.code, c.crystal?.name, qty * c.qty, label)
+      for (const u of unresolved) {
+        // Never let an unresolved stone vanish into a zero. Each of these is a
+        // real requirement the app cannot price or reserve yet.
+        const detail =
+          u.reason === 'mix-not-defined' ? `mix ${u.code} has no recipe on ${label} — ${u.qty} stones/unit unaccounted`
+          : u.reason === 'not-in-inventory' ? `crystal ${u.code} is not in crystal stock (${label})`
+          : `no ${u.shape} ${u.size} stone in colour ${u.colour || '?'} for ${label}`
+        warnings.push({ item_code: l.item_code || '', order, reason: detail })
+      }
+    }
+
     if (!refs.length) { warnings.push({ item_code: l.item_code || '', order, reason: `no critical components on ${label}` }); continue }
 
     const plating = platingFromItemCode(l.item_code)
@@ -128,7 +164,27 @@ export function computeRequirements({ lines = [], products = [], lib = [] }) {
     }
   }).sort((a, b) => (b.shortage - a.shortage) || a.code.localeCompare(b.code))
 
-  return { rows, warnings, unmatched, skipped }
+  // Crystal stock. These live in their own collection with their own ledger, so
+  // availability is computed here rather than borrowed from availableOf, which
+  // is shaped for range_components.
+  const crystalStock = {}
+  for (const c of crystals) {
+    if (!c?.code) continue
+    const onHand = Number(c.stock_qty) || 0
+    const reserved = Number(c.reserved_qty) || 0
+    crystalStock[String(c.code).toUpperCase()] = onHand - reserved
+  }
+
+  const crystalRows = Object.values(creq).map(r => {
+    const inStock = crystalStock[r.code.toUpperCase()] ?? 0
+    return {
+      code: r.code, name: r.name,
+      required: r.required, inStock, shortage: Math.max(0, r.required - inStock),
+      usedBy: [...r.usedBy].sort(),
+    }
+  }).sort((a, b) => (b.shortage - a.shortage) || a.code.localeCompare(b.code))
+
+  return { rows, crystalRows, warnings, unmatched, skipped }
 }
 
 function numOrNull(v) { const n = Number(v); return Number.isFinite(n) ? n : null }

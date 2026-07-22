@@ -75,8 +75,12 @@ def shape_from_name(name):
 
 
 def holes(name):
-    """One-hole and two-hole stones of the same shape are not interchangeable."""
-    n = (name or "").lower()
+    """One-hole and two-hole stones of the same shape are not interchangeable.
+
+    Whitespace is collapsed first: BDC-8149-0014-001 is written "one  hole"
+    with two spaces, and matching the literal string missed it.
+    """
+    n = re.sub(r"\s+", " ", (name or "").lower())
     if "double hole" in n or "dbl hole" in n or "two hole" in n:
         return "2h"
     if "one hole" in n or "single hole" in n or "1 hole" in n:
