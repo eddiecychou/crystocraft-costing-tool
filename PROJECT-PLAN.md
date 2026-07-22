@@ -383,7 +383,8 @@ enters the library can never be offered as a mono colourway by mistake.
 
 Worth revisiting: **Antique Green and Bordeaux also exist on the 8016
 double-hole** with 10,371 and 30,277 in JES, so those two are main stones as
-well as accents.
+well as accents. *(Settled later the same day — see "A colour code is a slot"
+below.)*
 
 Also: the `crystals` collection is **not homogeneous**. 120 items are figurine
 stones (`C01`/`BDC`/`C07`); 60 are raw Swarovski article numbers — beads,
@@ -464,9 +465,139 @@ Not applied — the filename says 估算 (estimate).
 plain box) that the app's single `packing` object cannot hold. The variants
 already carry an unused `packaging` field, which may be where it belongs.
 
+### A missing crystal BOM was silent, across a third of the range
+
+`computeRequirements` only computed crystals when `crystal_components` existed,
+with no `else`. A figurine without one contributed **zero stones and zero
+warnings** — indistinguishable from one that genuinely needs none. 107 of 288
+products were in that state.
+
+Before adding the warning, the question was whether it needs an opt-out: are
+any products genuinely crystal-free? **None are.** 98 have crystal lines in the
+ERP under some route or format, and the remaining 9 are the new concept block
+plus `A061`/`A062` — designs named "Crystal Bulldog", "Crystal Heart". So a
+missing BOM is always worth reporting and there is no state to opt out of. An
+empty `crystal_components` counts as missing too, or it becomes a silent way
+back into the same hole.
+
+Same failure class as the empty mix recipe, and worse: that was one mix code,
+this was 37% of the range.
+
+### The rescue: where the other 107 should copy from
+
+The stones exist; they are recorded against a code the app no longer sells.
+
+```
+ 68  from another route (the U/A/H predecessor the product succeeded)
+ 32  from another format (the same figurine on a different base)
+  7  no ERP crystal history at all
+---
+100  proposals, 67 of them clean
+```
+
+"Clean" means every source code agreed on the positions; the other 33 are
+flagged for a human to pick. `migration/out/crystal_bom_rescue.csv` carries the
+source ERP codes so each proposal is checkable. **Not written** — both rescues
+are inferences and need XiangXia.
+
+Two corrections came out of building it, and both improved the *existing*
+derivation:
+
+- **Pooling every candidate manufactured disagreement.** 80 of 107 looked
+  inconsistent. Different routes and formats legitimately carry different
+  stones, so the question is not "do they all agree" but "which single group
+  should this copy from". Now picks the most recently built route, or the plain
+  `001` format.
+- **Some ERP item codes carry a space where the pattern number belongs.**
+  `C01-801 214-002` is Swarovski Spectra `#8290/14`. Unparsed, those stones got
+  their own junk position label and made products look like they needed
+  different stones per colourway — `U0018-001` is 8 stones in every one of its
+  14 colourways, only the family changes. Pattern and size now come from the
+  item name when the code cannot carry them, and 8290 is classified an octagon
+  on the evidence that it fills exactly the slot 8016/14 fills.
+
+That lifted the direct derivation from 181 to **182 products**, cut plating
+disagreements from 3 to 2, and removed the junk `#C01` label. Only `#8015/20`
+and `#8641/20` remain unclassified.
+
+### A colour code is a slot, not a colour
+
+The single most useful thing learned this cycle, from the owner:
+
+> Bordeaux is the Swarovski 8016/8116 stone in the **RE** slot; the substitution
+> is Bohemia RE. Antique Green is Swarovski **GR**; Bohemia has nothing that is
+> exactly Antique Green and its nearest is still called GR.
+
+So Bohemia `GR` is Aquamarine, Swarovski `GR` is Antique Green, **and both are
+GR**. The app records the position; the supplier fills it with whatever they
+make. Neither needs a library entry, which removed two of the fifteen colours
+that had looked like a gap.
+
+**The same shape as the route letters.** Third time this cycle something that
+looked like a property turned out to be a slot: the route letter, the colour
+code, and then the clear grade below.
+
+### CL is a grade, and four stones were assigned C1
+
+> Spectra 8290/14 is the retired octagon used for CL, and the substitute for CL
+> is the Asfour octagon 14mm. *(owner)*
+
+`C1` and `CL` are both "Clear" — the difference is cut, and **no item name
+states it**. Every one of these stones is called "Crystal" or "Clear", so name
+matching assigned them all `C1`.
+
+Settled against the ERP by reading which colourways actually consume each
+stone, not by assumption:
+
+| stone | evidence | |
+|---|---|---|
+| Asfour 1080/14 | CL 57 against 4 others | → `CL` |
+| Asfour 1080/18 | CLA only | → `CL` |
+| Spectra 8290/14 | CL 211 against C1 7 | → `CL` |
+| Spectra 8290/20 | CL 9, rest clear stones in coloured designs | → `CL` |
+| **Asfour 1032/14** | **C1 5 against C19 2** | **stays `C1`** |
+
+Being Asfour is not what makes a stone `CL` — 1080 is the cheap octagon, 1032 is
+not. Checking each code individually caught that; treating the family as one
+would have got it wrong, the same mistake as defaulting every pattern to
+octagon.
+
+**Tian Hua `#1050/14` is `C1`** (owner). The ERP could not settle it: the only
+`C07` code in the mirror, zero job orders, zero BOM lines. And its code borrows
+Asfour's `1080` numbering while the name says `#1050/14`, which is exactly what
+made it look like part of the cheap family. A fourth "column names lie" case,
+alongside `lastupdateby` and the `_notuse` suffix.
+
+It was briefly written as `CL` on an inference, then reverted to blank when the
+owner said "probably", and only written once that became a decision.
+
+### Accents are a decision, not an open question
+
+> Medium Sapphire is BL. Light Peach, Light Colorado Topaz, Smoked Topaz, Light
+> Rose and Vintage Rose are mostly chaton colours for accent and are never
+> major. PE exists but is never used on figurines — only on the new crystal
+> fabric flowers. *(owner)*
+
+Medium Sapphire → `BL` is written; Bohemia had already proved it by writing
+`(BL) … Medium Sapph`.
+
+The rest join the accents as a **recorded decision** rather than a gap. An
+accent complements a main colour and is never sold as a colourway of its own,
+so the library has no code for it and should not: a colour that cannot be
+ordered alone has no slot, and giving it one would let it be offered by
+mistake. The review file now distinguishes `accent — no library slot (decided)`
+from an unanswered question, and 39 stones sit in the first.
+
+The `PE` detail is the sharp one: the code exists, so a matcher will happily
+assign it. Only knowing it is for the fabric flowers makes Light Peach on a
+chaton an accent instead.
+
+**The colour cross-reference is closed:** 81 figurine stones with a colour, 39
+decided accents, 0 flagged, 0 undecided.
+
 ### Bugs shipped and caught this cycle
 
-Seven, all mine, and none visible to esbuild or the build:
+Eleven, all mine, and none visible to esbuild or the build:
 
 1. `left(joitemcode, 12)` compared a fixed slice against 11-character prefixes.
    The codes are not fixed width. Returned 0 matches.
@@ -484,10 +615,31 @@ Seven, all mine, and none visible to esbuild or the build:
 6. **Cross-language drift**: the Python position key gained hole count, the JS
    did not, so every plain colourway resolved to nothing.
 7. `BDC-8149-0014-001` is written `one  hole` with two spaces.
+8. **A missing crystal BOM was silent** — no `else`, so 107 products reported no
+   crystals rather than no answer. Same class as 5, across 37% of the range.
+9. The "saved" badge on the stock editor was gated on `saved && !dirty`, and
+   `dirty` compares against the *subscribed* item — so there was no feedback at
+   all between clicking Save and the snapshot returning.
+10. **Cross-language drift again**: 8290 and the name-pattern fallback went into
+    the Python and not the JS. Caught this time by *looking for it* after
+    number 6, not by accident.
+11. The accent rule was added to only one of the two matching paths, so every
+    stone resolving through the ERP colour table skipped it — all six of the
+    owner's examples came back as CHECK proposals anyway.
 
 Numbers 1–4 produced plausible-looking output and were caught by *reading it*.
-5–7 were caught by `qa/mrp-crystals.mjs`. The V7.17 rule held: verify by running
-the thing, and look at what comes out.
+5–8 and 10–11 were caught by `qa/mrp-crystals.mjs` or by checking deliberately.
+The V7.17 rule held: verify by running the thing, and look at what comes out.
+
+**The recurring shape is one rule in two places.** Numbers 6, 10 and 11 are the
+same bug three times: the Python and the JS each hold a copy of the position
+and colour rules, and the copies drift. A check now pins the malformed-code
+case, but the real fix is one source of truth, which this cycle did not do.
+
+**And four of the eleven were caught by the owner, not by me** — that mixes are
+per-model, that `M0005`'s third stone is an oval, that a colour code is a slot,
+and that `CL` is a grade. Each was a script asserting something confidently and
+wrongly about the physical world.
 
 ### Tooling added
 
@@ -510,22 +662,23 @@ the thing, and look at what comes out.
 ### Waiting on people
 
 - **XiangXia** — wastage (still the oldest open question); the 3 skeleton
-  anomalies; the 4 unclassified shape patterns; and on packing: which columns
-  are measured against calculated, whether the doubled CBMs are corrections,
-  where music-box and mobile packing lives, and the 10 Crystal Bible products
-  plus 2 bookmarks missing from the sheet.
-- **The owner** — the 10 flagged colour proposals, and whether Antique Green
-  and Bordeaux should get library codes.
+  anomalies; `#8015/20` and `#8641/20`; **the 100 rescue proposals** — does a
+  skeleton carry across a supplier change, and across a base change?; and on
+  packing: which columns are measured against calculated, whether the doubled
+  CBMs are corrections, where music-box and mobile packing lives, and the 10
+  Crystal Bible products plus 2 bookmarks missing from the sheet.
 
 ### Still to do
 
 - **Step 6, order planning** — requirement − available − on-order.
-- **104 products with no derived BOM** — 39 rescuable from an older route, 35
-  from a sibling format, both inferences needing confirmation.
-- **103 products still carrying the legacy `crystal_mixes`.**
+- **The 100 rescue proposals**, once confirmed — that is the coverage gap.
+- **102 products still carrying the legacy `crystal_mixes`.**
 - **286 mix colourways with no recipe** — the owner's call: these were never
   ordered, so they are left to be filled in when someone first orders one. The
   app must therefore treat an undefined mix as a question, not a zero.
+- **Never seen in a browser:** the crystals table and the missing-BOM warning on
+  the material requirements page. The logic passes 23 headless checks, but the
+  page needs an admin login and confirmed orders carrying crystal products.
 
 ---
 
