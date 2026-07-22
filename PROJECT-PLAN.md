@@ -43,7 +43,183 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
-## V7.17 — OPEN, started 2026-07-21
+## Current Status — V7.17 CLOSED as of 2026-07-21
+
+Commit chain `bfb6ad2`→`e3ae9d7` (43 commits), all deployed. V7.17's theme is
+**the app becoming the live one** — the mirror made current, the first
+financial record written to Postgres, and the documents the team sends
+generated rather than hand-assembled.
+
+### The numbers
+
+| | |
+|---|---:|
+| Commits | 43 |
+| Sync, before → after | 4 h 31 m → **59 min** |
+| Rows the first incremental run pulled | **52**, not 12.5 M |
+| Registry rows that gained a date | 3,535 |
+| UC/SI anomalies investigated | 4, all closed |
+| Data errors found in the registry | 3 |
+| Bugs I shipped and had to fix | **4** |
+
+### 1. The sync is current, and the first run was nearly a disaster
+
+`tables.yaml` said incremental but every watermark was NULL, and `sync.py`
+builds no `WHERE` clause without one — so the "first incremental run" would
+have pushed all 12.5 M rows through UPSERT instead of TRUNCATE+INSERT, slower
+than the full load it replaced. Caught before the LAN trip by checking
+`meta.sync_state` rather than trusting the config. `seed_watermarks.py` writes a
+seed proven safe against the source; the run then pulled **52 rows in 59
+minutes**, every count matching what was measured beforehand.
+
+**Correction carried from V7.16:** `JobOrderBOM` was called the last obstacle to
+a fast sync on a ~27-minute estimate. Alone it takes 6.5. The real cost is 486
+small tables at ~6 s of fixed overhead, 286 of them empty — that is the V7.18
+lever, not the probe.
+
+### 2. Invoice numbering stopped depending on a hardcoded seed
+
+`JES_SI_SEED_BY_YEAR` read 93 while CuiLing had already issued `SI260094`, so
+the app's first invoice would have silently reused her number. Fixed, then
+removed as a concept: `allocate_sales_invoice` in Postgres derives the next
+number from the greater of what the app has issued and what the mirror shows
+JES issued, and allocates the UC in the same transaction. Two failure modes gone
+— a stale seed, and a UC burned with no invoice behind it.
+
+`app_sales_invoice` is the first financial record the app writes to Postgres.
+Orders stay in Firestore; the invoice *fact* lands beside `uc_registry` and the
+mirror, with a reconciliation on the Sales Invoices page so the copy cannot
+drift silently.
+
+### 3. The UC registry, substantially rebuilt
+
+- **Dates.** `doc_date` was NULL on all 3,695 rows and had never been
+  populated. Now derived from the invoice — 3,535 rows gained a real date.
+- **Source** was three questions in one dropdown. `ERP` never meant "in JES"
+  (Online Shop, Alibaba and Amazon invoices are all in JES too); it meant bulk
+  B2B, so it is `Wholesale`. `App` was written by code and chosen by nobody.
+  Where an invoice actually lives is now derived, not typed.
+- **Sortable columns and filtered CSV export**, both server-side — the list is
+  capped at 1,000 of 3,695, so client-side would have sorted and exported a
+  slice while looking like the whole registry.
+- **Three data errors found and two corrected**, plus the `UC4657` typo.
+
+### 4. Four UC/SI anomalies, and what they turned out to mean
+
+| | cause | registry |
+|---|---|---|
+| `UC4657` | a void JES confirmed and cannot reverse | correct |
+| `UC4438` | a real split whose `(A)` suffix `siref` drops | correct |
+| `UC4647` | a mis-keyed `siref` | correct |
+| `UC4623` | a genuine registry typo | **corrected** |
+
+Three of four were JES-side artefacts it cannot fix. **The registry was right
+more often than JES was** — the opposite of the assumption this cycle began
+with, and it retrospectively justified joining `uc_registry_dated` on `jes_si`
+rather than `siref`, which would have mis-dated `UC4648`.
+
+Also: Cindy's correction on `UC4629` did not reconcile (HK$73,000 belonged to
+`UC4624`). Raising it rather than applying it avoided double-counting HK$41,500.
+
+### 5. Documents the app now generates
+
+- **Full-range trade catalogue** as a real PDF, priced per trade account from
+  `ws_discount_pct` and their currency. Three columns, grouped by theme, sorted
+  by code, with Retired Stock and Concept marked — the two states a buyer
+  cannot infer from a photograph.
+- **Filtered CSV exports** for POs, the registry and invoices, with a UTF-8 BOM
+  so Excel does not mangle 容興竹木製品有限公司, text-forcing so it does not eat
+  `0001-179`, and formula guarding on free-text fields.
+- **Packing list** gained the net-weight field its printed columns had always
+  had and nothing ever filled.
+
+### 6. The ERP became a source, not just a reference
+
+Item-master images wired into ERP Lookup via signed URLs (22,437 of 29,263
+filenames resolve; the rest the ERP references but never had). Figurine import
+from the JES item master, from both the Range page and the lookup rows, merging
+every variant's BOM because no single JES screen shows the merged result.
+
+### 7. Four bugs I shipped, and the process change that followed
+
+`useMemo`, `enumerateRangeSkus` and `listUc` were all used without being
+imported. The third blocked Cindy from saving anything in the UC registry and
+was live for hours. A `flex: 1` left over from a previous layout shredded the
+catalogue across three deploys.
+
+Every one was invisible to the check being used: **esbuild parses; it does not
+resolve identifiers and it does not lay out.** A full esbuild *bundle* catches
+unresolved imports but not a free variable.
+
+So `qa/` now exists — Node fetched into scratch in ten seconds, a headless PDF
+render rasterised to a PNG, and `eslint.no-undef.mjs`. The rule that made this
+cycle expensive is written into `CLAUDE.md`: verify by running the thing, and
+say plainly what was and was not checked.
+
+### 8. Scope that got smaller by asking
+
+- **The 31 March valuation** is four spreadsheets and one JES balance, not the
+  1.15 M-row movement ledger. Only crystal is accurate in JES; metal, packaging
+  and purchased materials live in the app already; B2C finished goods are
+  ChunCi's sheet and the one input with no home yet.
+- **The crystal gap** was not 271 vs 180. 143 codes are dormant; 128 are active;
+  **17 are missing from the app**, nine of them one partially-migrated family.
+
+---
+
+## Where V7.18 starts
+
+**Step 2 of the crystal work, which is the cycle's spine:**
+
+1. **Import the 17 missing crystal codes** —
+   `erp-sync/inventory/crystal_missing_import.tsv` is paste-ready. The JES
+   balances in it are a starting point, not a count.
+2. **Colour cross-reference** — app `PI` ↔ ERP `005`. Derivable from the ERP
+   item name, which carries the colour word; build by name match, check by eye.
+3. **`crystal_components` on the product**, holding
+   `{ series, pattern, size, qty }` — colour resolves from the order line,
+   because crystal codes decompose. One row where the ERP needs 34.
+4. **Seed it from the ERP** — `previewErpProduct` already extracts the ST lines
+   and discards them.
+5. **Extend `computeRequirements`** so crystals appear beside components.
+6. **Order planning** — requirement − available − on-order.
+
+Reserve and production issue need no work; they are generic over the inventory
+class and start functioning the moment the BOM exists.
+
+**Waiting on people:**
+
+- **XiangXia** — how wastage is actually applied. JES has a job-order-level
+  `Wastage %`; if it is per-job it belongs on the calculation, not the BOM line.
+- **Cindy** — the 31 March cost basis, and which year end.
+- **CuiLing** — the rule that new SO/SI are raised in the app only. Until the
+  next LAN sync that rule is the only thing protecting the invoice number.
+
+**Carried forward:**
+
+- **Never run:** the first live invoice allocation should produce `SI260095`.
+  The whole Postgres path is verified against the database and unexercised by a
+  human.
+- The catalogue's pre-flight names products whose variant descriptions cannot be
+  told apart — a finite worklist that shrinks as they are filled in.
+- `JobOrderBOM` is the last table on full sync; the 486 empty-table pass is the
+  bigger prize.
+- **169 ambiguous duplicate images**, `poReceive.js` first-wins on duplicate
+  codes, superseded alloy codes, and the inert customizer iridescence work.
+
+### Deployment notes
+
+- **New Supabase objects:** `app_sales_invoice` + `allocate_sales_invoice()`,
+  views `uc_registry_dated` and `erp_sync_status`.
+- **Data migrations applied:** `ERP`→`Wholesale` (2,901 rows), `App` source
+  cleared (2), `UC4657` remark typo, `UC4623` invoice number.
+- **No new env vars.**
+- **`qa/` needs no install** beyond a scratch Node; eslint is deliberately not a
+  project dependency.
+
+---
+
+## V7.17 — the running record
 
 Theme: **the app becomes the live one.** V7.16 gave it the ability to originate
 documents; V7.17 is about the data behind them being current, and about the
