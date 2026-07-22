@@ -1,5 +1,5 @@
 {
-  "pulled_at": "2026-07-22T13:15:38.828Z",
+  "pulled_at": "2026-07-22T13:20:03.527Z",
   "items": [
     {
       "id": "0B4uSwV5deafRuzTbLSg",
@@ -7,23 +7,23 @@
       "code": "BDC-3130-1414-005",
       "notes": "",
       "size": "",
-      "colour": "",
       "stock_qty": 4241,
       "name": "Bohemia heart crystal #3130(14.4x14) Rosaline",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "PI",
+      "updatedAt": "2026-07-22T13:19:39.451Z"
     },
     {
       "id": "0FUaIKDpwJWmvsd0cUhh",
       "size": "",
-      "colour": "",
       "stock_qty": 24977,
       "name": "Bohemia glass 8232/14(PI) double hole Rosaline",
       "ledger_seeded": true,
       "code": "BDC-8232-0014-005",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "PI",
+      "updatedAt": "2026-07-22T13:19:39.824Z"
     },
     {
       "id": "0GEtx8ilrr5NXCfnzP9h",
@@ -31,11 +31,11 @@
       "ledger_seeded": true,
       "code": "C01-1028-18-001",
       "size": "",
-      "colour": "",
       "name": "Swarovski PP#1028/18 Sapphire",
       "stock_qty": 80616,
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "BL",
+      "updatedAt": "2026-07-22T13:19:40.447Z"
     },
     {
       "id": "0XtMuq7zdgrHcrdhcDgl",
@@ -115,11 +115,11 @@
       "ledger_seeded": true,
       "code": "BDC-8232-0014-008",
       "size": "",
-      "colour": "",
       "name": "Bohemia glass 8232/14(EM) double hole Emerald",
       "stock_qty": 640,
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "EM",
+      "updatedAt": "2026-07-22T13:19:40.906Z"
     },
     {
       "id": "2V4kN98xFWJ931e8yfJd",
@@ -127,11 +127,11 @@
       "ledger_seeded": true,
       "code": "C01-1028-18-009",
       "size": "",
-      "colour": "",
       "name": "Swarovski PP#1028/18 Topaz",
       "stock_qty": 41786,
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "TO",
+      "updatedAt": "2026-07-22T13:19:41.201Z"
     },
     {
       "id": "2jSQi3LyjgLaYfN2wdvp",
@@ -174,12 +174,12 @@
       "stock_qty": 33333,
       "name": "Swarovski PP#1028/32 Sapphire",
       "size": "",
-      "colour": "",
       "ledger_seeded": true,
       "code": "C01-1028-32-001",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "BL",
+      "updatedAt": "2026-07-22T13:19:41.523Z"
     },
     {
       "id": "3qlCf3wp4bbFqaxtSqsQ",
@@ -189,21 +189,21 @@
       "name": "Swarovski Strass #8102/20 double hole medium Sapph",
       "stock_qty": 21218,
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "BL",
+      "updatedAt": "2026-07-22T13:19:41.801Z"
     },
     {
       "id": "3qsmyUN3oSI81OEYUG7g",
       "size": "",
-      "colour": "",
       "stock_qty": 33967,
       "name": "Swarovski Strass #8102/20 double hole Crystal",
       "ledger_seeded": true,
       "code": "C01-8102-20-002",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "C1",
+      "updatedAt": "2026-07-22T13:19:42.108Z"
     },
     {
       "id": "5Be4DR37T1JInm5ObjIg",
@@ -234,24 +234,24 @@
       "name": "Swarovski PP#1088/18 Crystal",
       "stock_qty": 21839,
       "size": "",
-      "colour": "",
       "notes": "",
       "ledger_seeded": true,
       "code": "C01-1088-18-002",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "C1",
+      "updatedAt": "2026-07-22T13:19:42.384Z"
     },
     {
       "id": "5hbFNwGJbkEHMBTgWAJs",
       "name": "Bohemia glass 8232/14(GO) double hole Amber",
       "stock_qty": 36,
       "size": "",
-      "colour": "",
       "notes": "",
       "ledger_seeded": true,
       "code": "BDC-8232-0014-003",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "GO",
+      "updatedAt": "2026-07-22T13:19:42.694Z"
     },
     {
       "id": "5iR37ylQwANHfN1lbGIk",
@@ -285,9 +285,9 @@
       "stock_qty": 108072,
       "name": "Swarovski PP#1028/26 Crystal",
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "C1",
+      "updatedAt": "2026-07-22T13:19:43.000Z"
     },
     {
       "id": "62kdRLNJFxIWh2XTjXZD",
@@ -307,11 +307,11 @@
       "code": "BDC-8232-0014-002",
       "notes": "",
       "size": "",
-      "colour": "",
       "stock_qty": 8815,
       "name": "Bohemia glass 8232/14(C1) double hole Crystal",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "C1",
+      "updatedAt": "2026-07-22T13:19:43.276Z"
     },
     {
       "id": "8RfNTVa7KRtFhS9QyqoG",
@@ -354,12 +354,12 @@
       "stock_qty": 15840,
       "name": "Swarovski PP#1028/18 Aquamarine",
       "size": "",
-      "colour": "",
       "ledger_seeded": true,
       "code": "C01-1028-18-016",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "GR",
+      "updatedAt": "2026-07-22T13:19:43.581Z"
     },
     {
       "id": "9fkeN9NBQnDHBRbeX6Yu",
@@ -402,12 +402,12 @@
       "stock_qty": 10537,
       "name": "Swarovski Spectra #8290/14 one hole Crystal",
       "size": "",
-      "colour": "",
       "ledger_seeded": true,
       "code": "C01-801 114-002",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "C1",
+      "updatedAt": "2026-07-22T13:19:43.883Z"
     },
     {
       "id": "Ax9GDJOxvcsRWaeNbXQE",
@@ -441,9 +441,9 @@
       "name": "Swarovski Strass #8016/14 double hole Golden Teak",
       "stock_qty": 49860,
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "GT",
+      "updatedAt": "2026-07-22T13:19:44.204Z"
     },
     {
       "id": "ClZtChucQAqUypbdKcoD",
@@ -486,24 +486,24 @@
       "stock_qty": 50203,
       "name": "Swarovski PP#1028/26 BL.AB",
       "size": "",
-      "colour": "",
       "ledger_seeded": true,
       "code": "C01-1028-26-013",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "AB",
+      "updatedAt": "2026-07-22T13:19:44.484Z"
     },
     {
       "id": "DXHxOZkZp2BarkNuH6Gi",
       "name": "Bohemia glass 8232/14(BL) double hole Medium Sapph",
       "stock_qty": 4444,
       "size": "",
-      "colour": "",
       "notes": "",
       "ledger_seeded": true,
       "code": "BDC-8232-0014-001",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "BL",
+      "updatedAt": "2026-07-22T13:19:44.764Z"
     },
     {
       "id": "Dhz8SxmhIZIFtpEq6F1u",
@@ -525,9 +525,9 @@
       "name": "Swarovski PP#1028/32 Aquamarine",
       "stock_qty": 43768,
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "GR",
+      "updatedAt": "2026-07-22T13:19:45.044Z"
     },
     {
       "id": "EXytqePp2RIcWfrONmpH",
@@ -559,11 +559,11 @@
       "code": "C01-1028-32-013",
       "notes": "",
       "size": "",
-      "colour": "",
       "stock_qty": 14818,
       "name": "Swarovski PP#1028/32  AB BL",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "AB",
+      "updatedAt": "2026-07-22T13:19:45.320Z"
     },
     {
       "id": "FoCgX9IBJm4qUv07Y0y8",
@@ -606,12 +606,12 @@
       "name": "Swarovski SS#1088/SS29  Crystal",
       "stock_qty": 1555,
       "size": "",
-      "colour": "",
       "notes": "",
       "ledger_seeded": true,
       "code": "C01-1088-SS29-002",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "C1",
+      "updatedAt": "2026-07-22T13:19:45.597Z"
     },
     {
       "id": "GnBfhxDxyVvaNxWfEvwj",
@@ -631,11 +631,11 @@
       "ledger_seeded": true,
       "code": "C01-8115-14-005",
       "size": "",
-      "colour": "",
       "name": "Swarovski Strass #8115/14 one hole Rosaline",
       "stock_qty": 12814,
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "PI",
+      "updatedAt": "2026-07-22T13:19:45.874Z"
     },
     {
       "id": "H9zddlKYdt0UDnIn3t2x",
@@ -666,12 +666,12 @@
       "name": "Asfour #1080/18 double hole Crystal",
       "stock_qty": 764,
       "size": "",
-      "colour": "",
       "notes": "",
       "ledger_seeded": true,
       "code": "C01-1080-18-002",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "C1",
+      "updatedAt": "2026-07-22T13:19:46.179Z"
     },
     {
       "id": "HluFgcMEmwRMSFH8FIU9",
@@ -693,9 +693,9 @@
       "stock_qty": 4105,
       "name": "Swarovski Strass #8016/14 double hole Emerald",
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "EM",
+      "updatedAt": "2026-07-22T13:19:46.456Z"
     },
     {
       "id": "JXnSMvSlBI9uwmj2yOJI",
@@ -712,14 +712,14 @@
     {
       "id": "Jbd3ckbObIAAEEmmMQwd",
       "size": "",
-      "colour": "",
       "stock_qty": 23574,
       "name": "Swarovski PP#1028/32 Emerald",
       "ledger_seeded": true,
       "code": "C01-1028-32-008",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "EM",
+      "updatedAt": "2026-07-22T13:19:46.760Z"
     },
     {
       "id": "KYRa8Uxrdqxsjo9xCWrR",
@@ -760,14 +760,14 @@
     {
       "id": "L2QpLkRmJmtiB9NuFI8a",
       "size": "",
-      "colour": "",
       "name": "Bohemia glass 8249/14(BL) double hole Medium Sapph",
       "stock_qty": 3408,
       "notes": "",
       "ledger_seeded": true,
       "code": "BDC-8249-0014-001",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "BL",
+      "updatedAt": "2026-07-22T13:19:47.038Z"
     },
     {
       "id": "LOB1571ZA7mJRhlit29k",
@@ -784,14 +784,14 @@
     {
       "id": "LSeOCPYuNjpuLYVf41sq",
       "size": "",
-      "colour": "",
       "name": "Swarovski PP#1028/26 Ruby",
       "stock_qty": 16526,
       "notes": "",
       "ledger_seeded": true,
       "code": "C01-1028-26-021",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "RE",
+      "updatedAt": "2026-07-22T13:19:47.311Z"
     },
     {
       "id": "MAnpH1U5lq4uRPussIss",
@@ -825,9 +825,9 @@
       "stock_qty": 5708,
       "name": "Swarovski spectra #8290/20 double hole Crystal",
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "C1",
+      "updatedAt": "2026-07-22T13:19:47.586Z"
     },
     {
       "id": "MzKfAwzmc2jazSbJKFFd",
@@ -861,9 +861,9 @@
       "stock_qty": 11700,
       "name": "Bohemia glass 8232/14(RE) double hole Ruby",
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "RE",
+      "updatedAt": "2026-07-22T13:19:47.896Z"
     },
     {
       "id": "OzrPRjI6dSHsZRbFmcVC",
@@ -871,11 +871,11 @@
       "ledger_seeded": true,
       "code": "BDC-8149-0014-001",
       "size": "",
-      "colour": "",
       "name": "Bohemia glass 8149/14(BL) one  hole Medium Sapph",
       "stock_qty": 1209,
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "BL",
+      "updatedAt": "2026-07-22T13:19:48.194Z"
     },
     {
       "id": "PQugIkajhJWbZMtqXMyO",
@@ -904,14 +904,14 @@
     {
       "id": "QQQLQnkKePT0CdvsmwZp",
       "size": "",
-      "colour": "",
       "stock_qty": 9139,
       "name": "Swarovski PP#1028/26 Fuchsia",
       "ledger_seeded": true,
       "code": "C01-1028-26-035",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "FU",
+      "updatedAt": "2026-07-22T13:19:48.469Z"
     },
     {
       "id": "QgC4GKlpXowqGIROlbQW",
@@ -921,9 +921,9 @@
       "stock_qty": 19023,
       "name": "Swarovski PP#1028/18 Light Topaz",
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "GO",
+      "updatedAt": "2026-07-22T13:19:48.742Z"
     },
     {
       "id": "R2JAsSB50UhLEZ9PPu3G",
@@ -942,12 +942,12 @@
       "stock_qty": 21830,
       "name": "Swarovski PP#1028/32 Crystal",
       "size": "",
-      "colour": "",
       "ledger_seeded": true,
       "code": "C01-1028-32-002",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "C1",
+      "updatedAt": "2026-07-22T13:19:49.051Z"
     },
     {
       "id": "Rk81Kg5ipHqHcqlckOni",
@@ -964,50 +964,50 @@
     {
       "id": "SPJInG0zFc5P1Xu33Qu2",
       "size": "",
-      "colour": "",
       "name": "Swarovski Strass #815/14 one hole Golden Teak",
       "stock_qty": 15461,
       "notes": "",
       "ledger_seeded": true,
       "code": "C01-8115-14-012",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "GT",
+      "updatedAt": "2026-07-22T13:19:49.327Z"
     },
     {
       "id": "SQGl0c3dN5Olk2BSzYkq",
       "stock_qty": 17074,
       "name": "Bohemia heart crystal #3130(14.4x14) Crystal",
       "size": "",
-      "colour": "",
       "ledger_seeded": true,
       "code": "BDC-3130-1414-002",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "C1",
+      "updatedAt": "2026-07-22T13:19:49.603Z"
     },
     {
       "id": "STi5GNqBIDEu3NeV8K71",
       "size": "",
-      "colour": "",
       "name": "Bohemia glass 8232/14(GT) double hole Golden Teak",
       "stock_qty": 1217,
       "notes": "",
       "ledger_seeded": true,
       "code": "BDC-8232-0014-012",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "GT",
+      "updatedAt": "2026-07-22T13:19:49.878Z"
     },
     {
       "id": "Sui2CqqpkWi5FMDFDhxQ",
       "name": "Swarovski PP#1028/26 Emerald",
       "stock_qty": 35117,
       "size": "",
-      "colour": "",
       "notes": "",
       "ledger_seeded": true,
       "code": "C01-1028-26-008",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "EM",
+      "updatedAt": "2026-07-22T13:19:50.153Z"
     },
     {
       "id": "T3lCJubpinllxPLpEu8G",
@@ -1026,24 +1026,24 @@
       "name": "Asfour #1080/14 double hole Crystal",
       "stock_qty": 4897,
       "size": "",
-      "colour": "",
       "notes": "",
       "ledger_seeded": true,
       "code": "C01-1080-14-002",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "C1",
+      "updatedAt": "2026-07-22T13:19:50.429Z"
     },
     {
       "id": "UCGHMmvED91X1t0Fzuu2",
       "size": "",
-      "colour": "",
       "stock_qty": 4822,
       "name": "Bohemia glass 8232/14(AB) double hole Blue AB",
       "ledger_seeded": true,
       "code": "BDC-8232-0014-013",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "AB",
+      "updatedAt": "2026-07-22T13:19:50.705Z"
     },
     {
       "id": "UL4f7jNWBV9tvqKUi1ee",
@@ -1065,9 +1065,9 @@
       "stock_qty": 24239,
       "name": "Swarovski Strass #8115/14 one hole Violet",
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "VL",
+      "updatedAt": "2026-07-22T13:19:50.982Z"
     },
     {
       "id": "VBBWYDXeMxgFO8FpK9dJ",
@@ -1098,12 +1098,12 @@
       "stock_qty": 21864,
       "name": "Swarovski Strass #8115/14 one hole Crystal",
       "size": "",
-      "colour": "",
       "ledger_seeded": true,
       "code": "C01-8115-14-002",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "C1",
+      "updatedAt": "2026-07-22T13:19:51.258Z"
     },
     {
       "id": "X2LcxCiQMSEn3gssDEC1",
@@ -1113,21 +1113,21 @@
       "name": "Swarovski SS#2058/16 Crystal",
       "stock_qty": 357,
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "C1",
+      "updatedAt": "2026-07-22T13:19:51.534Z"
     },
     {
       "id": "X3NqTzjJPg5QmaqHOgN6",
       "stock_qty": 17868,
       "name": "Swarovski Strass#8016/14 double hole Light Peridot",
       "size": "",
-      "colour": "",
       "ledger_seeded": true,
       "code": "C01-8016-14-010",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "LP",
+      "updatedAt": "2026-07-22T13:19:51.810Z"
     },
     {
       "id": "XPq1L30YkPgKIMWFOILF",
@@ -1159,11 +1159,11 @@
       "ledger_seeded": true,
       "code": "C01-8115-14-003",
       "size": "",
-      "colour": "",
       "name": "Swarovski Strass #8115/14 one hole Light Topaz",
       "stock_qty": 16600,
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "GO",
+      "updatedAt": "2026-07-22T13:19:52.084Z"
     },
     {
       "id": "ZFCZhnawQVIAikhHzQdM",
@@ -1228,38 +1228,38 @@
     {
       "id": "aaXLrApW4b1w1HX2LjRO",
       "size": "",
-      "colour": "",
       "stock_qty": 22115,
       "name": "Swarovski PP#1088/26 Crystal",
       "ledger_seeded": true,
       "code": "C01-1088-26-002",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "C1",
+      "updatedAt": "2026-07-22T13:19:52.358Z"
     },
     {
       "id": "agBeG1ZZpa0aAzy5DcFW",
       "stock_qty": 158683,
       "name": "Swarovski PP#1028/18 Crystal",
       "size": "",
-      "colour": "",
       "ledger_seeded": true,
       "code": "C01-1028-18-002",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "C1",
+      "updatedAt": "2026-07-22T13:19:52.633Z"
     },
     {
       "id": "azQRZwjw4eGMhzV6khPc",
       "size": "",
-      "colour": "",
       "stock_qty": 24456,
       "name": "Swarovski PP#1028/18 Emerald",
       "ledger_seeded": true,
       "code": "C01-1028-18-008",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "EM",
+      "updatedAt": "2026-07-22T13:19:52.910Z"
     },
     {
       "id": "b4QEpLhfsZuh6cdn8nbb",
@@ -1276,26 +1276,26 @@
     {
       "id": "bJfRQxPnFz33FKXsedh8",
       "size": "",
-      "colour": "",
       "name": "Swarovski PP#1028/26 Sapphire",
       "stock_qty": 61518,
       "notes": "",
       "ledger_seeded": true,
       "code": "C01-1028-26-001",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "BL",
+      "updatedAt": "2026-07-22T13:19:53.184Z"
     },
     {
       "id": "bR2th7pyLsv63ruVgROc",
       "name": "Bohemia glass 8232/18(CL) double hole Crystal",
       "stock_qty": 4190,
       "size": "",
-      "colour": "",
       "notes": "",
       "ledger_seeded": true,
       "code": "BDC-8232-0018-002",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "CL",
+      "updatedAt": "2026-07-22T13:19:53.458Z"
     },
     {
       "id": "bqG2hH40IPH4eHUls7yr",
@@ -1336,14 +1336,14 @@
     {
       "id": "cKY5SjTk0P560EN4WoD7",
       "size": "",
-      "colour": "",
       "stock_qty": 3576,
       "name": "Bohemia glass 8232/14(LP) double hole Light Perido",
       "ledger_seeded": true,
       "code": "BDC-8232-0014-010",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "LP",
+      "updatedAt": "2026-07-22T13:19:53.735Z"
     },
     {
       "id": "cNfOdsKQ5gAtLEB0rxEt",
@@ -1389,9 +1389,9 @@
       "stock_qty": 1683,
       "name": "Bohemia glass 8232/14(PU) double hole BlueViolet",
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "PU",
+      "updatedAt": "2026-07-22T13:19:54.012Z"
     },
     {
       "id": "ciIgFSFRohRZMMl1DjTi",
@@ -1437,9 +1437,9 @@
       "name": "Swarovski PP#1028/18 Fuchsia",
       "stock_qty": 22261,
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "FU",
+      "updatedAt": "2026-07-22T13:19:54.284Z"
     },
     {
       "id": "e1WTU4LZtXGFkb1bXF6L",
@@ -1468,14 +1468,14 @@
     {
       "id": "eMqNiczwUACEZli7JZcV",
       "size": "",
-      "colour": "",
       "stock_qty": 1725,
       "name": "Bohemia heart crystal #3130(14.4x14) Blue AB",
       "ledger_seeded": true,
       "code": "BDC-3130-1414-013",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "AB",
+      "updatedAt": "2026-07-22T13:19:54.558Z"
     },
     {
       "id": "epaT2NJaFDa9kbBLipc2",
@@ -1483,11 +1483,11 @@
       "ledger_seeded": true,
       "code": "C01-1028-32-009",
       "size": "",
-      "colour": "",
       "name": "Swarovski PP#1028/32 Topaz",
       "stock_qty": 15392,
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "TO",
+      "updatedAt": "2026-07-22T13:19:54.833Z"
     },
     {
       "id": "f4rPlkg8bfGYmm1jNA4e",
@@ -1504,14 +1504,14 @@
     {
       "id": "fgccOzF4KclWqsUvvTiq",
       "size": "",
-      "colour": "",
       "stock_qty": 17651,
       "name": "Swarovski PP#1028/18 Ruby",
       "ledger_seeded": true,
       "code": "C01-1028-18-021",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "RE",
+      "updatedAt": "2026-07-22T13:19:55.107Z"
     },
     {
       "id": "fxDzBuuq60yv73N2Z6bx",
@@ -1543,11 +1543,11 @@
       "ledger_seeded": true,
       "code": "BDC-3130-1414-007",
       "size": "",
-      "colour": "",
       "name": "Bohemia heart crystal #3130 (14.4x14) Ruby",
       "stock_qty": 5928,
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "RE",
+      "updatedAt": "2026-07-22T13:19:55.388Z"
     },
     {
       "id": "iAcDRLfFxSUmShutfpNc",
@@ -1557,9 +1557,9 @@
       "name": "Bohemia glass 8232/14(TO) double holeTopaz",
       "stock_qty": 10,
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "TO",
+      "updatedAt": "2026-07-22T13:19:55.661Z"
     },
     {
       "id": "iFSDjXreYjNv0NKo9xbL",
@@ -1591,11 +1591,11 @@
       "code": "C01-1028-32-021",
       "notes": "",
       "size": "",
-      "colour": "",
       "stock_qty": 23855,
       "name": "Swarovski PP#1028/32 Ruby",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "RE",
+      "updatedAt": "2026-07-22T13:19:55.936Z"
     },
     {
       "id": "ivliGuih8jcF2US2tqSi",
@@ -1612,14 +1612,14 @@
     {
       "id": "jAQT5jTlPBeIEKWRDZsS",
       "size": "",
-      "colour": "",
       "stock_qty": 335,
       "name": "Swarovski PP#1028/09 Ruby",
       "ledger_seeded": true,
       "code": "C01-1028-09-021",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "RE",
+      "updatedAt": "2026-07-22T13:19:56.211Z"
     },
     {
       "id": "jAY9RkV6pHAHa1aF5Duw",
@@ -1629,9 +1629,9 @@
       "stock_qty": 15106,
       "name": "Swarovski PP#1028/18 Rose",
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "PI",
+      "updatedAt": "2026-07-22T13:19:56.486Z"
     },
     {
       "id": "jLwh4w4AQkAKcn6XRVlV",
@@ -1672,26 +1672,26 @@
     {
       "id": "lpU47epL0YcRXFzgteLO",
       "size": "",
-      "colour": "",
       "name": "Bohemia glass 8232/14(DB) double hole DarkSapphire",
       "stock_qty": 9508,
       "notes": "",
       "ledger_seeded": true,
       "code": "BDC-8232-0014-028",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "DB",
+      "updatedAt": "2026-07-22T13:19:56.761Z"
     },
     {
       "id": "lwk5QANcrlb84qEFC9cf",
       "size": "",
-      "colour": "",
       "stock_qty": 11358,
       "name": "Swarovski Strass #8115/14 one hole Blue Violet",
       "ledger_seeded": true,
       "code": "C01-8115-14-006",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "PU",
+      "updatedAt": "2026-07-22T13:19:57.036Z"
     },
     {
       "id": "mHIDPngqqVrDBxoM8nkM",
@@ -1711,11 +1711,11 @@
       "ledger_seeded": true,
       "code": "C01-1028-26-016",
       "size": "",
-      "colour": "",
       "name": "Swarovski PP#1028/26 Aquamarine",
       "stock_qty": 74970,
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "GR",
+      "updatedAt": "2026-07-22T13:19:57.312Z"
     },
     {
       "id": "mpMWRFg5gJZidrZbT0mU",
@@ -1773,21 +1773,21 @@
       "stock_qty": 31271,
       "name": "Swarovski PP#1028/26 Rose",
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "PI",
+      "updatedAt": "2026-07-22T13:19:57.590Z"
     },
     {
       "id": "naPkCpdVOCRm1YxjWtkG",
       "size": "",
-      "colour": "",
       "name": "Bohemia glass 8232/14(VL) double hole Violet",
       "stock_qty": 3256,
       "notes": "",
       "ledger_seeded": true,
       "code": "BDC-8232-0014-011",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "VL",
+      "updatedAt": "2026-07-22T13:19:57.865Z"
     },
     {
       "id": "ngVZH3dQGR9g69RHbbhV",
@@ -1797,9 +1797,9 @@
       "name": "Swarovski PP#1028/32 Rose",
       "stock_qty": 19605,
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "PI",
+      "updatedAt": "2026-07-22T13:19:58.146Z"
     },
     {
       "id": "nnnueA18KKUCbS6xt2bJ",
@@ -1807,11 +1807,11 @@
       "ledger_seeded": true,
       "code": "C01-8115-14-009",
       "size": "",
-      "colour": "",
       "name": "Swarovski Strass #8115/14 one hole Topaz",
       "stock_qty": 14591,
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "TO",
+      "updatedAt": "2026-07-22T13:19:58.421Z"
     },
     {
       "id": "oCm3bGRg1SF5XrQUKMPH",
@@ -1819,11 +1819,11 @@
       "code": "C01-1028-26-009",
       "notes": "",
       "size": "",
-      "colour": "",
       "stock_qty": 27712,
       "name": "Swarovski PP#1028/26 Topaz",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "TO",
+      "updatedAt": "2026-07-22T13:19:58.695Z"
     },
     {
       "id": "oHwSaJIDxezDmloBnYNP",
@@ -1842,12 +1842,12 @@
       "stock_qty": 7181,
       "name": "Swarovski Strass #8641/20 one hole Crystal",
       "size": "",
-      "colour": "",
       "ledger_seeded": true,
       "code": "C01-8641-2012-002",
       "notes": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "C1",
+      "updatedAt": "2026-07-22T13:19:58.973Z"
     },
     {
       "id": "oy8qUUExOPGxM8wDntlP",
@@ -1975,23 +1975,23 @@
       "ledger_seeded": true,
       "code": "C01-8016-14-003",
       "size": "",
-      "colour": "",
       "name": "Swarovski Strass #8016/14 double hole Light Topaz",
       "stock_qty": 39942,
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "GO",
+      "updatedAt": "2026-07-22T13:19:59.246Z"
     },
     {
       "id": "sljZs8I6rc2fLKQFGir5",
       "size": "",
-      "colour": "",
       "name": "Swarovski Spectra#8290/20 Drop crystal one hole CL",
       "stock_qty": 3393,
       "notes": "",
       "ledger_seeded": true,
       "code": "C01-864 120-002",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "CL",
+      "updatedAt": "2026-07-22T13:19:59.523Z"
     },
     {
       "id": "ssvlcLlUjiYvYacqGgFD",
@@ -2001,9 +2001,9 @@
       "name": "Asfour #1032/14 double hole Crystal",
       "stock_qty": 816,
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "C1",
+      "updatedAt": "2026-07-22T13:19:59.800Z"
     },
     {
       "id": "ti6UU7jyN397UqGkGRvr",
@@ -2013,21 +2013,21 @@
       "name": "Swarovski PP#1088/18 Aquamarine",
       "stock_qty": 8422,
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "GR",
+      "updatedAt": "2026-07-22T13:20:00.074Z"
     },
     {
       "id": "u8pfDAvQBqFPx65nBmKj",
       "size": "",
-      "colour": "",
       "name": "Swarovski Strass #8115/14 one hole Emerlad",
       "stock_qty": 29705,
       "notes": "",
       "ledger_seeded": true,
       "code": "C01-8115-14-008",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "EM",
+      "updatedAt": "2026-07-22T13:20:00.348Z"
     },
     {
       "id": "uwf98ee9HFo3ofEmGVhd",
@@ -2037,9 +2037,9 @@
       "stock_qty": 15405,
       "name": "Swarovski Strass #8115/14 one hole  Dk Sapph",
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "DB",
+      "updatedAt": "2026-07-22T13:20:00.660Z"
     },
     {
       "id": "v9HLilDPVyH5rZNMWSTP",
@@ -2058,12 +2058,12 @@
       "name": "Swarovski PP#1028/18 AB.BL",
       "stock_qty": 31388,
       "size": "",
-      "colour": "",
       "notes": "",
       "ledger_seeded": true,
       "code": "C01-1028-18-013",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "AB",
+      "updatedAt": "2026-07-22T13:20:00.961Z"
     },
     {
       "id": "vRV11vKJvLK8yMXR0rir",
@@ -2085,9 +2085,9 @@
       "stock_qty": 13538,
       "name": "Swarovski Strass #8115/14 one hole Light Peridot",
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "LP",
+      "updatedAt": "2026-07-22T13:20:01.237Z"
     },
     {
       "id": "wodQIEHfK23cIUEeoTj1",
@@ -2157,9 +2157,9 @@
       "name": "Bohemia glass 8232/14(GR) double hole Aquamarine",
       "stock_qty": 1836,
       "size": "",
-      "colour": "",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "GR",
+      "updatedAt": "2026-07-22T13:20:01.509Z"
     }
   ]
 }

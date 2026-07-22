@@ -54,6 +54,12 @@ ALIASES = {
     "rose": "PI",
     "abbl": "AB",
     "crystalblab": "AB",
+    # Abbreviations and one typo in the ERP item master. "Emerlad" is Emerald;
+    # it is spelled that way on C01-8115-14-008 and nowhere else.
+    "blab": "AB",
+    "dksapph": "DB",
+    "emerlad": "EM",
+    "dropcrystalcl": "CL",
 }
 
 
@@ -122,6 +128,58 @@ with open(os.path.join(OUTDIR, "crystal_colour_map.csv"), "w", newline="",
     w.writeheader()
     for r in out:
         w.writerow({k: r.get(k, "") for k in w.fieldnames})
+
+
+# --- assignments for the app's own crystal stock items ------------------------
+# The colour table only covers codes the derived BOM references (81 of them).
+# The crystals collection holds 180, every one with an empty `colour`, so the
+# same rules are applied to each item's own name.
+def resolve(name):
+    words = colour_words(name)
+    n = norm(words)
+    if words.upper() in app_colours:
+        return words.upper(), "app code used as the name"
+    if n in by_name:
+        return by_name[n], "name match"
+    if n in ALIASES:
+        return ALIASES[n], "name match (alias)"
+    for alias, c in sorted(list(ALIASES.items()) + list(by_name.items()),
+                           key=lambda x: -len(x[0])):
+        if n.endswith(alias) and n != alias:
+            return c, "suffix match — CHECK"
+    return "", ""
+
+
+# (family, size, suffix) -> code, from the table above: a code the BOM uses is
+# already resolved and should not be re-derived from a possibly different name.
+from_table = {(r["family"], r["size"], r["suffix"]): (r["app_code"], r["match_source"])
+              for r in out if r["app_code"]}
+
+crystals_path = os.path.join(OUTDIR, "crystals_app.json")
+if os.path.exists(crystals_path):
+    items = json.load(open(crystals_path))["items"]
+    assigns, astats = [], collections.Counter()
+    for it in items:
+        code = str(it.get("code") or "").strip()
+        parts = code.split("-")
+        key = ("-".join(parts[:2]), parts[2], parts[3]) if len(parts) >= 4 else None
+        app_code, src = from_table.get(key, ("", ""))
+        if not app_code:
+            app_code, src = resolve(str(it.get("name") or ""))
+        astats[src or "unresolved"] += 1
+        assigns.append({"id": it.get("id"), "code": code, "name": it.get("name", ""),
+                        "current_colour": it.get("colour", ""),
+                        "proposed_colour": app_code, "source": src,
+                        "colour_words": colour_words(str(it.get("name") or ""))})
+    with open(os.path.join(OUTDIR, "crystal_colour_assignments.csv"), "w",
+              newline="", encoding="utf-8-sig") as fh:
+        w = csv.DictWriter(fh, fieldnames=list(assigns[0]))
+        w.writeheader()
+        w.writerows(assigns)
+    print(f"\n{len(assigns)} app crystals")
+    for k, v in astats.most_common():
+        print(f"  {v:4d}  {k}")
+    print("-> migration/out/crystal_colour_assignments.csv\n")
 
 print(f"{len(out)} ERP colour entries")
 for k, v in stats.most_common():
