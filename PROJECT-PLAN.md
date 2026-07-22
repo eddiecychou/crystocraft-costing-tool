@@ -457,13 +457,51 @@ not redundant models, and folding one into the other would break the costing.
    not on the BOM line — putting it on the line would bake one job's allowance
    into the design permanently.
 
-#### The number to check first
+#### Step 1 done (2026-07-21): the gap is much smaller than 271 vs 180
 
-**271 codes appear in ERP production BOMs; the app holds 180.** If the ~90
-difference is still in use, seeding requirements will surface them as missing
-stock records. That is useful information, but far better discovered
-deliberately than in the middle of a production run — so reconcile the two
-lists before building step 2.
+The headline number was misleading. Of the 271 crystal codes in job-order BOMs,
+**143 have not been used in over two years**. Only **128 are active** (used
+since Jul 2024), and 124 of those within the last twelve months.
+
+Reconciled against the JES ledger, which is where the V7.16 migration drew
+from:
+
+| | codes |
+|---|---:|
+| Active in production (2 yr) | **128** |
+| Hold a non-zero JES balance | 364 |
+| Active **and** holding stock | **126** |
+| **Active with NO stock record** | **2** |
+| Holding stock, not recently used | 238 |
+
+So the risk is two codes, not ninety:
+
+- `C01-1028-26-014` — Swarovski PP#1028/26 Jet, 395 used, last Apr 2026
+- `C01-1028-26-025` — Swarovski PP#1028/26 Capri Blue, 21,265 used, last Dec 2025
+
+`erp-sync/inventory/crystal_must_have.csv` lists all 128 with volume, last-used
+date and JES balance. **That is the set the app's crystal stock must cover** —
+not the 271, and not the 364 with balances, most of which are dormant.
+
+**The one thing still unanswered from here.** The app's 180 SKUs live in
+Firestore, which needs a signed-in admin to read; there is no service account
+on this Mac and the migration left no list in the repo. So whether those 180
+include all 126 active-and-stocked codes has to be checked from inside the app:
+export Crystal Stock from Inventory Status and diff it against
+`crystal_must_have.csv`. One export, and step 1 closes properly.
+
+#### Also settled by this: crystal codes are structured, and that changes the BOM design
+
+`BDC-8232-0014-005` is series · pattern · size · colour, and one pattern+size
+carries up to 34 colours. The ERP keys its BOM at the full variant code, so a
+design would need a row per colour. Because the codes decompose, the app's BOM
+can instead hold `{ series, pattern, size, qty }` and resolve colour from the
+ORDER LINE — one row where the ERP needs 34, and the same shape the metal BOM
+already uses for plating scope.
+
+The colour cross-reference this needs (app `PI` ↔ ERP `005`) is derivable: the
+ERP item name carries the word, e.g. "…double hole Rosaline". Build it by name
+match, then check it by eye once.
 
 ---
 
