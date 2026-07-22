@@ -35,7 +35,10 @@ const INITIAL = {
   derived_at: '2026-07-22T13:36:55.382Z',
   positions: [
     { shape: 'chaton', size: '18', qty: 9 },
-    { shape: 'octagon', size: '14', qty: 13 },
+    { shape: 'octagon 2h', size: '14', qty: 13 },
+    // An unclassified pattern, to check the editor keeps the label verbatim
+    // instead of snapping it to the nearest dropdown entry.
+    { shape: '#8015 1h', size: '20', qty: 0 },
   ],
   mixes: {
     MX: [
@@ -82,4 +85,9 @@ function Harness() {
   )
 }
 
-createRoot(document.getElementById('root')).render(<Harness />)
+// Reuse the root across hot updates. Calling createRoot again on every HMR
+// pass filled the console with React warnings and made it impossible to tell a
+// real component error from noise while checking this page.
+const el = document.getElementById('root')
+const root = (window.__qaRoot ||= createRoot(el))
+root.render(<Harness />)

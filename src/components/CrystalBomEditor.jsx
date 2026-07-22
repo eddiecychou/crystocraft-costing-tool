@@ -17,7 +17,11 @@ import { SHAPES, parseCrystalCode, totalStones, isMixCode } from '../crystalBom'
 // handful that are wrong and filling the ones nobody ever ordered — not typing
 // it all in.
 
-const shapeLabel = { octagon: 'Octagon', chaton: 'Chaton', heart: 'Heart' }
+// Shapes are free text, not an enum. The ERP carries stones nobody has
+// classified — almond, cashew, snowflake, leaf, star fish — and patterns whose
+// shape is unknown are labelled by pattern number ('#8015 1h'). A fixed
+// dropdown would silently rewrite those to whatever happened to be first.
+const SHAPE_HINT = 'octagon 2h · octagon 1h · chaton · oval 2h · heart'
 
 export default function CrystalBomEditor({ bom, onChange, crystals = [], mixCodes = [] }) {
   const positions = bom?.positions || []
@@ -72,16 +76,19 @@ export default function CrystalBomEditor({ bom, onChange, crystals = [], mixCode
         <span className="text-[11px] text-ink-50 tabular-nums">{total} total</span>
       </div>
 
+      <datalist id="crystal-shapes">
+        {SHAPES.map(s => <option key={s} value={s} />)}
+      </datalist>
+
       <div className="mt-2 space-y-2">
         {positions.length === 0 && (
           <p className="text-xs text-ink-50">No positions yet — add one below.</p>
         )}
         {positions.map((p, i) => (
           <div key={i} className="flex items-center gap-2 text-xs">
-            <select className="input text-xs py-1 w-32 shrink-0" value={p.shape}
-                    onChange={e => setPosition(i, 'shape', e.target.value)}>
-              {SHAPES.map(s => <option key={s} value={s}>{shapeLabel[s] || s}</option>)}
-            </select>
+            <input className="input text-xs py-1 w-36 shrink-0" value={p.shape} list="crystal-shapes"
+                   onChange={e => setPosition(i, 'shape', e.target.value)}
+                   placeholder="shape" title={`Stone shape and hole count — ${SHAPE_HINT}`} />
             <input className="input text-xs py-1 w-24 shrink-0" placeholder="size" value={p.size}
                    onChange={e => setPosition(i, 'size', e.target.value)}
                    title="Stone size as the ERP writes it — 14, 18, 26, SS29" />
@@ -160,7 +167,7 @@ export default function CrystalBomEditor({ bom, onChange, crystals = [], mixCode
                         </span>
                         {parsed?.shape && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-50 shrink-0">
-                            {shapeLabel[parsed.shape] || parsed.shape} {parsed.size}
+                            {parsed.shape || `#${parsed.pattern}`} {parsed.size}
                           </span>
                         )}
                         <button type="button" onClick={() => removeMixLine(code, i)}

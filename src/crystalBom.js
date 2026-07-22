@@ -22,17 +22,25 @@
 // migration/derive_crystal_bom.py. 277 of 280 product+plating combinations
 // agree on their positions across every colourway they have been built in.
 
-// Swarovski/Bohemia pattern number -> physical shape. Kept in step with the
-// SHAPE table in migration/derive_crystal_bom.py; if one changes, change both.
+// Pattern number -> physical shape. Kept in step with the SHAPE table in
+// migration/derive_crystal_bom.py; if one changes, change both.
+//
+// Only patterns whose shape is actually known belong here. An earlier version
+// defaulted everything else to 'octagon', which described Swarovski 8102 (an
+// oval) and Asfour 1032 as octagons. Unknown patterns are labelled '#8015'
+// rather than guessed: shape is what decides whether two stones are
+// interchangeable, so a wrong one is worse than none.
 const SHAPE_BY_PATTERN = {
-  1028: 'chaton', 1088: 'chaton', 1032: 'chaton',
-  8015: 'octagon', 8016: 'octagon', 8115: 'octagon', 8116: 'octagon',
-  8232: 'octagon', 8249: 'octagon', 1080: 'octagon', 8102: 'octagon',
-  8641: 'octagon', 8290: 'octagon', 864: 'octagon', 801: 'octagon',
+  1028: 'chaton', 1088: 'chaton',
+  8016: 'octagon', 8116: 'octagon', 8232: 'octagon', 8249: 'octagon',
+  1080: 'octagon', 1032: 'octagon', 8115: 'octagon', 8149: 'octagon',
+  8102: 'oval',
   3130: 'heart',
 }
 
-export const SHAPES = ['octagon', 'chaton', 'heart']
+// Offered in the position dropdown. Free text is allowed too, because the ERP
+// carries shapes nobody has classified yet (almond, cashew, snowflake, leaf…).
+export const SHAPES = ['octagon 2h', 'octagon 1h', 'chaton', 'oval 2h', 'oval 1h', 'heart']
 
 // 'BDC-8232-0014-002' -> { family: 'BDC-8232', pattern: '8232', size: '14',
 //                          suffix: '002', shape: 'octagon' }

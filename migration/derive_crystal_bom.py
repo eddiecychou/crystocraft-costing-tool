@@ -40,26 +40,64 @@ products = json.load(open(os.path.join(OUTDIR, "range_products.json")))["product
 # Pattern number -> physical shape. The 10 disagreeing skeletons all turned out
 # to agree on how many stones and differ only on which family fills a slot, so
 # a position needs shape and size, not brand.
+# Shape per pattern number. Only patterns whose shape is actually known go in
+# here. Everything else is labelled by its pattern number, which is honest —
+# an earlier version defaulted unknown patterns to "octagon" and so described
+# Swarovski 8102 (an oval) and Asfour 1032 as octagons. A wrong shape is worse
+# than no shape, because shape is what decides interchangeability.
 SHAPE = {
-    "1028": "chaton", "1088": "chaton", "1032": "chaton",
-    "8015": "octagon", "8016": "octagon", "8115": "octagon", "8116": "octagon",
-    "8232": "octagon", "8249": "octagon", "1080": "octagon", "8102": "octagon",
-    "8641": "octagon", "8290": "octagon", "864": "octagon", "801": "octagon",
+    # chatons — "PP" and "SS" pointed-back stones
+    "1028": "chaton", "1088": "chaton",
+    # 14mm octagons, the interchangeable set Eddie confirmed for figurine metal
+    "8016": "octagon", "8116": "octagon", "8232": "octagon", "8249": "octagon",
+    "1080": "octagon", "1032": "octagon", "8115": "octagon", "8149": "octagon",
+    # confirmed individually
+    "8102": "oval",            # Eddie, on M0005
     "3130": "heart",
 }
 
+# Shape words the ERP writes into the item name. These beat the table above:
+# the ERP is describing the stone in front of it.
+NAME_SHAPES = [
+    ("star fish", "starfish"), ("snow flake", "snowflake"), ("starss", None),
+    ("heart", "heart"), ("star", "star"), ("moon", "moon"), ("leaf", "leaf"),
+    ("almond", "almond"), ("cashew", "cashew"), ("oval", "oval"),
+    ("drop", "drop"), ("classic", "classic"),
+]
 
-def position(family, size):
+
+def shape_from_name(name):
+    n = (name or "").lower()
+    for word, shape in NAME_SHAPES:
+        if shape and word in n:
+            return shape
+    return ""
+
+
+def holes(name):
+    """One-hole and two-hole stones of the same shape are not interchangeable."""
+    n = (name or "").lower()
+    if "double hole" in n or "dbl hole" in n or "two hole" in n:
+        return "2h"
+    if "one hole" in n or "single hole" in n or "1 hole" in n:
+        return "1h"
+    return ""
+
+
+def position(family, size, name=""):
     """('BDC-8232', '0014') -> ('octagon', '14').
 
-    Bohemia 8232/14, Swarovski 8016/14 and Asfour 1080/14 all collapse to the
-    same position, which is the interchangeability the route letters encode.
+    Bohemia 8232/14, Swarovski 8016/14 and Asfour 1080/14 collapse to the same
+    position — the interchangeability the route letters encode. Patterns whose
+    shape is unknown keep their pattern number as the label rather than being
+    assumed into a shape they may not have.
     """
     pat = (family or "").split("-")[-1].strip()
-    shape = SHAPE.get(pat, pat or "?")
+    shape = shape_from_name(name) or SHAPE.get(pat) or (f"#{pat}" if pat else "?")
     s = (size or "").strip().upper()
     s = s.lstrip("0") or s          # '0014' -> '14'
-    return (shape, s)
+    h = holes(name)
+    return (f"{shape} {h}".strip(), s)
 
 
 def split_crystal(code):
@@ -203,13 +241,19 @@ print(f"  keyed on (family, size) — DISAGREE        : {len(inconsistent)}")
 # The same test with family removed: does the product need the same number of
 # stones in each shape+size, whoever supplies them?
 pos_shape = collections.defaultdict(dict)
+# Which families have actually filled each position, recorded while the
+# positions are computed. Deriving it afterwards without the item name produced
+# a different key and silently blanked the column.
+pos_families = collections.defaultdict(lambda: collections.defaultdict(set))
 for code, lines in bom.items():
     for (d, f, b, pl, col) in cands[code]:
         by_pos = collections.Counter()
         for item, qty in lines.items():
             fam, size, _suf = split_crystal(item)
             if fam:
-                by_pos[position(fam, size)] += qty
+                key = position(fam, size, names.get(item, ''))
+                by_pos[key] += qty
+                pos_families[(d, f, b, pl)][key].add(fam)
         pos_shape[(d, f, b, pl)][col] = dict(by_pos)
 
 pos_skeletons, pos_bad = {}, []
@@ -283,11 +327,7 @@ with open(os.path.join(OUTDIR, "crystal_skeletons.csv"), "w", newline="", encodi
     for key, pos in sorted(pos_skeletons.items()):
         d, f, b, pl = key
         bad = key in pos_bad
-        # Which families have actually filled this position, for the eye-check.
-        fams = collections.defaultdict(set)
-        for col, shp in shape.get(key, {}).items():
-            for (fam, size), _q in shp.items():
-                fams[position(fam, size)].add(fam)
+        fams = pos_families.get(key, {})
         for (shp, size), q in sorted(pos.items()):
             w.writerow([d, f, b, pl, shp, size, float(q), len(pos_shape[key]),
                         "NO" if bad else "yes",

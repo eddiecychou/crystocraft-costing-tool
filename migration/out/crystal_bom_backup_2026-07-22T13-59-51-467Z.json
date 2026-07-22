@@ -1,0 +1,6111 @@
+[
+  {
+    "id": "u42ojXRnN6LK6WQ5NZNR",
+    "pk": "0001|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 4
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.380Z",
+      "source": "erp",
+      "mixes": {
+        "GX": [
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-012",
+            "qty": 2
+          }
+        ],
+        "M2": [
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 2
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "5DfHFP1BwvvlUWo9jpzY",
+    "pk": "0002|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.380Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "WzbwBX9nhFu2zlYlu0t6",
+    "pk": "0002|230",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.380Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "6jVyOwIcGZTh99UL3U6y",
+    "pk": "0003|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 10
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "BDC-8232-0014-008",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-008",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-021",
+            "qty": 8
+          }
+        ],
+        "M2": [
+          {
+            "code": "BDC-8232-0014-009",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-009",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-017",
+            "qty": 8
+          }
+        ],
+        "M4": [
+          {
+            "code": "BDC-8232-0014-011",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-015",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-020",
+            "qty": 8
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-001",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-005",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-008",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-009",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-022",
+            "qty": 2
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "tLVTpIblnhTe0sYlBpDM",
+    "pk": "0005|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "20",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "BKiWyWJrsnT3jwpNZSQM",
+    "pk": "0006|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "AX": [
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-013",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-008",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "hjoXrzro4pRthEvpLdos",
+    "pk": "0007|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 3
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "AX": [
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-013",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "gv3InxNhjpdJSFoqesiz",
+    "pk": "0008|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 8
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 3
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-008",
+            "qty": 6
+          }
+        ],
+        "M2": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-028",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-001",
+            "qty": 6
+          },
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          }
+        ],
+        "AX": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-013",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-016",
+            "qty": 6
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "lmdCp7wdll2YSR7CrY5J",
+    "pk": "0009|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 6
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "MX": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "04sVW8INp1rKAjgTi4wC",
+    "pk": "0011|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 5
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "MX": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "FuBhzo2wKwDYcsTsl408",
+    "pk": "0014|236",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 3
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "OpdGKXkHkgdgsEZG0GcG",
+    "pk": "0014|230",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 3
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "GX": [
+          {
+            "code": "BDC-8232-0014-012",
+            "qty": 2
+          },
+          {
+            "code": "C01-8115-14-003",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "n9aar7hOx1bdoZcU6j4v",
+    "pk": "0014|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 3
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "UCHo9bfFfNczVnkQ8CiG",
+    "pk": "0018|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 3
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 5
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "KFLitXlNibQa0mLXAUlM",
+    "pk": "0019|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 3
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 5
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "MX": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-002",
+            "qty": 3
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "KLLgNEh3ovDkyfAgqe6a",
+    "pk": "0020|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 3
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 5
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "MX": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-002",
+            "qty": 3
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "FDdNtx50CO04t03dOusZ",
+    "pk": "0022|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "12y4o6nMTJR5kGKN2FUr",
+    "pk": "0023|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 3
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "GX": [
+          {
+            "code": "BDC-8232-0014-012",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-021",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-024",
+            "qty": 2
+          }
+        ],
+        "M2": [
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-020",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-021",
+            "qty": 1
+          }
+        ],
+        "AX": [
+          {
+            "code": "BDC-8232-0014-013",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-017",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-021",
+            "qty": 1
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-005",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-021",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "AWGXeDgmgdqQPkerxurw",
+    "pk": "0023|236",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 3
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M3": [
+          {
+            "code": "BDC-8232-0014-011",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-016",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-021",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "PL7HxiMmfT3qiVtjalDj",
+    "pk": "0023|230",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 3
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M3": [
+          {
+            "code": "BDC-8232-0014-011",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-016",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-021",
+            "qty": 1
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-005",
+            "qty": 3
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "shf74H1EvjM1P1is0G0s",
+    "pk": "0026|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 5
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "AX": [
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-011",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-013",
+            "qty": 2
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "194UG4WMmcujfZucZNlE",
+    "pk": "0027|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "D1C7vbkqZrepb77Trc4T",
+    "pk": "0027|236",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "8PXAWHwG8c7Qb5AeKGUj",
+    "pk": "0028|230",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 5
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "MX": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 1
+          },
+          {
+            "code": "C01-8016-14-003",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "taS2lzkOcO4dUdeOjApz",
+    "pk": "0028|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 5
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-008",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-009",
+            "qty": 1
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "20JDxS7INwALYqSmEEl3",
+    "pk": "0029|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 6
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "MX": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-002",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "ay5jILhN9D0WtdiOPCYl",
+    "pk": "0030|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "oSK4M2g9nFFlkkUprJgu",
+    "pk": "0030|230",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "2pZqxvf1Il6lzvs53gu5",
+    "pk": "0031|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 4
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M2": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-028",
+            "qty": 2
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "kSZ9TDg83s0NBjZVnSYl",
+    "pk": "0032|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "20",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "j7uqCUgdWH0pPeKsozjs",
+    "pk": "0033|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "Mp5UYyUpucDAVh5KI9w7",
+    "pk": "0037|230",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "Udn5oCsy4dSkuTXwz90v",
+    "pk": "0037|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "B05BvZYOSTGatGDgzXMP",
+    "pk": "0040|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "IHXCn63sMbtDujSsqdxb",
+    "pk": "0042|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "heart",
+          "size": "1414",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "wTdNiDlzVRT6cLtAqLRL",
+    "pk": "0046|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 6
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "GX": [
+          {
+            "code": "BDC-8232-0014-009",
+            "qty": 2
+          },
+          {
+            "code": "C01-8016-14-003",
+            "qty": 2
+          },
+          {
+            "code": "C01-8016-14-012",
+            "qty": 2
+          }
+        ],
+        "AX": [
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-009",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-013",
+            "qty": 2
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-008",
+            "qty": 2
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "Po4qhxYDv4JIZiWwUvDQ",
+    "pk": "0058|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 6
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "A1": [
+          {
+            "code": "BDC-8232-0014-011",
+            "qty": 3
+          },
+          {
+            "code": "BDC-8232-0014-013",
+            "qty": 3
+          }
+        ],
+        "AX": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 3
+          },
+          {
+            "code": "BDC-8232-0014-013",
+            "qty": 3
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "g3x9LtZmMVgR9kmnzJGc",
+    "pk": "0062|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 6
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M2": [
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-008",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-028",
+            "qty": 2
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "rsvPsDrXbSng9SS3FR1Z",
+    "pk": "0063|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "heart",
+          "size": "1414",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "RWq6zrVCLSNo3VPLmWAh",
+    "pk": "0065|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 4
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "XzD6WQGZY1cDZSqKjSoQ",
+    "pk": "0083|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "m5BpxVM9FxLMzTuXNID5",
+    "pk": "0086|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 3
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 4
+        },
+        {
+          "shape": "octagon",
+          "size": "2012",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "zV7iFRCpkUCHrhdbthFd",
+    "pk": "0088|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "m7SVRA8grW1QrDohFSNc",
+    "pk": "0089|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "dwNbPVd5d2J2Wabq03pm",
+    "pk": "0092|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 9
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 13
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 4
+          },
+          {
+            "code": "BDC-8232-0014-010",
+            "qty": 9
+          },
+          {
+            "code": "C01-1028-18-021",
+            "qty": 9
+          }
+        ],
+        "AX": [
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 8
+          },
+          {
+            "code": "BDC-8232-0014-013",
+            "qty": 5
+          },
+          {
+            "code": "C01-1028-18-013",
+            "qty": 5
+          },
+          {
+            "code": "C01-1028-18-017",
+            "qty": 4
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-002",
+            "qty": 8
+          },
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-002",
+            "qty": 4
+          },
+          {
+            "code": "C01-1028-18-005",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-008",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-009",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-015",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-022",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "YOCBAEKDJSeAGFHo1oZW",
+    "pk": "0094|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 2
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "VTvoUgn9DonTIxwvZFtW",
+    "pk": "0095|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "18",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "XnvjWoEC1wqGszqYMf0E",
+    "pk": "0096|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "18",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "Z5TFBpKg28tGLi7frA1U",
+    "pk": "0102|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "4EBGVPu6aO9Zh0Ds8LoH",
+    "pk": "0103|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "20",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "3sD8Pyum1IOjfWJ2N8cC",
+    "pk": "0107|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "heart",
+          "size": "1414",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "lAomI5DJSC8JQr5g0PEO",
+    "pk": "0108|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "heart",
+          "size": "1414",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "JBUjo5Kf1BAhKGQjuXBz",
+    "pk": "0109|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 4
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "5Ud8Mx5lowhd3lPIPRZP",
+    "pk": "0110|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 4
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 2
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "hTe4EvggEDZDPLJH7xvU",
+    "pk": "0112|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 4
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "MX": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 2
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "M0n4XT4hWqOhTD3CcQNc",
+    "pk": "0118|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 4
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "ogsuRDLNhrxYDlC2tYIU",
+    "pk": "0119|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "20",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "jx0tEA50K779KzvGJIcv",
+    "pk": "0121|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 12
+        },
+        {
+          "shape": "octagon",
+          "size": "18",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "MX": [
+          {
+            "code": "BDC-8232-0018-002",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-001",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-005",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-008",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-009",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-022",
+            "qty": 2
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "3Q4hFpGi9GUA3IWwG2R2",
+    "pk": "0122|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 3
+        },
+        {
+          "shape": "octagon",
+          "size": "20",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "AX": [
+          {
+            "code": "BDC-8232-0014-011",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-013",
+            "qty": 2
+          },
+          {
+            "code": "C01-8102-20-002",
+            "qty": 1
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 2
+          },
+          {
+            "code": "C01-8102-20-001",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "xvckKe6yccwZSpFmkJjl",
+    "pk": "0124|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 4
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 4
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "CI4Ovuas1K9xoKgEMfTd",
+    "pk": "0125|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 8
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "UuZFSbeT3mAJN9SzNCla",
+    "pk": "0135|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 3
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "GX": [
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-009",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-012",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-023",
+            "qty": 2
+          }
+        ],
+        "AX": [
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-011",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-013",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-013",
+            "qty": 2
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-001",
+            "qty": 2
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "BCyMx2yJBJAMTfALKxWU",
+    "pk": "0139|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 4
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "MX": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "mHJbpyZrzO4r5mobInyc",
+    "pk": "0140|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "dNmEUFbdZAjohDXYEdOV",
+    "pk": "0141|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "ZzF7OCcvL1xQrdkHU0q9",
+    "pk": "0153|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "heart",
+          "size": "1414",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "YXLwHglgAKNedFQMhSVU",
+    "pk": "0167|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 4
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "jpR5nkOUuHYaPxKH9jfw",
+    "pk": "0168|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "j586Zb7uY29gxGwvHELT",
+    "pk": "0169|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "M6F2awNvEwMtJabxK6Am",
+    "pk": "0172|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "w9Zer7szDkz3VHncQNxI",
+    "pk": "0173|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          },
+          {
+            "code": "C01-8016-14-003",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "7EzhaOj17GRdolAHqIYo",
+    "pk": "0174|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "QkIP7DLesxPXbMMvnzPS",
+    "pk": "0175|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          }
+        ],
+        "M2": [
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 1
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "rNx4f4cBWff6CQ00mFSx",
+    "pk": "0191|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 3
+        },
+        {
+          "shape": "octagon",
+          "size": "20",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "9i5P0z1AuQSt1FmtHVcL",
+    "pk": "0196|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 3
+        },
+        {
+          "shape": "octagon",
+          "size": "20",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "50purKndpfiRTpFiHiFq",
+    "pk": "0208|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 8
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "vI20Afkw3XvTeFa1IGSM",
+    "pk": "0209|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 7
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 3
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 3
+          },
+          {
+            "code": "BDC-8232-0014-013",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-002",
+            "qty": 2
+          }
+        ],
+        "M2": [
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 3
+          },
+          {
+            "code": "BDC-8232-0014-009",
+            "qty": 3
+          },
+          {
+            "code": "BDC-8232-0014-012",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-002",
+            "qty": 2
+          }
+        ],
+        "M3": [
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 3
+          },
+          {
+            "code": "BDC-8232-0014-008",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-010",
+            "qty": 3
+          },
+          {
+            "code": "C01-1028-26-002",
+            "qty": 2
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-002",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-002",
+            "qty": 2
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "EQliPmhJG0ULFUGDwU1u",
+    "pk": "0210|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 6
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "jY32mCRqAubv3o0Q8g6o",
+    "pk": "0215|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 9
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "BDC-8232-0014-002",
+            "qty": 4
+          },
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-010",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-011",
+            "qty": 1
+          }
+        ],
+        "M2": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-002",
+            "qty": 4
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-008",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-009",
+            "qty": 1
+          }
+        ],
+        "M3": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-008",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-009",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-011",
+            "qty": 4
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 4
+          },
+          {
+            "code": "BDC-8232-0014-010",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-011",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "N6yGeTfFGNguxLkk6a32",
+    "pk": "0220|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 6
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "IUftzewwCFZav4QThV75",
+    "pk": "0221|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 6
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 4
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-010",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-020",
+            "qty": 6
+          }
+        ],
+        "M2": [
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-008",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-009",
+            "qty": 6
+          }
+        ],
+        "M4": [
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-005",
+            "qty": 6
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-009",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-017",
+            "qty": 6
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "NWElp469qNZuMOfuLiAj",
+    "pk": "0226|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "K15uhMERlynLMyjIVtn2",
+    "pk": "0229|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "BLFPowLJqj7sFHcpVvvb",
+    "pk": "0232|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 4
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 4
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 3
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "YC28jtqAs6NN239f066W",
+    "pk": "0235|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 16
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "evvpjuGZW1UcFQCBg0AU",
+    "pk": "0240|224",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 7
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 7
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 7
+          },
+          {
+            "code": "C01-1028-18-019",
+            "qty": 7
+          }
+        ],
+        "M3": [
+          {
+            "code": "BDC-8232-0014-011",
+            "qty": 7
+          },
+          {
+            "code": "C01-1028-18-001",
+            "qty": 7
+          }
+        ],
+        "M4": [
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 7
+          },
+          {
+            "code": "C01-1028-18-021",
+            "qty": 7
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "mIPzJXrTFhdMzej294Bz",
+    "pk": "0241|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 8
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "0ohLnIeMebBew7n0IUoO",
+    "pk": "0242|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "lpnlDbUtVFBdvY3222W9",
+    "pk": "0246|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 6
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 5
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M2": [
+          {
+            "code": "BDC-8232-0014-001",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-010",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-011",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-016",
+            "qty": 6
+          },
+          {
+            "code": "C01-1028-26-002",
+            "qty": 1
+          }
+        ],
+        "M4": [
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-010",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-005",
+            "qty": 6
+          },
+          {
+            "code": "C01-1028-26-002",
+            "qty": 1
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 3
+          },
+          {
+            "code": "BDC-8232-0014-011",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-002",
+            "qty": 6
+          },
+          {
+            "code": "C01-1028-26-002",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "ncqrbMLSaw77oLadkX3m",
+    "pk": "0251|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "C01",
+          "size": "801 220",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "nUV7GFCGes3HeECxkzkq",
+    "pk": "0256|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 5
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "GX": [
+          {
+            "code": "BDC-8232-0014-009",
+            "qty": 1
+          },
+          {
+            "code": "C01-8016-14-003",
+            "qty": 2
+          },
+          {
+            "code": "C01-8016-14-012",
+            "qty": 2
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "M6jYEEk8ox7EUCC9ecDU",
+    "pk": "0257|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "mn8Nq3ex6kIgEvsTeNj3",
+    "pk": "0258|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "1tWw7gzTijQiQCAtKVqR",
+    "pk": "0259|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "kWaN2H7IxL5rzyTVfczl",
+    "pk": "0260|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "2jNtnFol1HKh8k2xULel",
+    "pk": "0261|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "5MIdsfXaS536aXQI2CiJ",
+    "pk": "0262|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "KH0mqa0XW8GMFo3lN8Ds",
+    "pk": "0263|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "7hkEIc3bVejkh55SZZVy",
+    "pk": "0264|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 2
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "n9My1WJeT0b24H0pHuv4",
+    "pk": "0265|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "fzDSZQ0pRwxgMBvSzvfs",
+    "pk": "0266|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "tP9pbR5RRhdFewwgwyE0",
+    "pk": "0267|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 4
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "9tqnfTu97FQbsbd4ri2K",
+    "pk": "0268|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 4
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "2aPEIYuF0spNrJTA2RjY",
+    "pk": "0269|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "dDVmJaleTFczWcInzYet",
+    "pk": "0270|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "8Vwia2pTIH2DPrO67rDx",
+    "pk": "0271|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "Zv4Unh8ndd8eKuL4z7ux",
+    "pk": "0272|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "eJWzkHZl92jnm4jR6s0j",
+    "pk": "0273|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "dKFYwbPOZ7GrqIeR37bI",
+    "pk": "0274|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "iw4A2OOL5PVTbnPyzQWI",
+    "pk": "0275|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "TCoR2ElVwim31adnvB9s",
+    "pk": "0276|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "WBS5FcaILIGJcRCdEszC",
+    "pk": "0276|163",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "nr6vz7gWnGcP3M4pgdk1",
+    "pk": "0277|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "KqMobw5HTLhz6kX1ugZ7",
+    "pk": "0278|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "UTixyebLTwF0MYSiuOU6",
+    "pk": "0279|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 5
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "18",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "BDC-8232-0014-002",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0018-002",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-016",
+            "qty": 3
+          },
+          {
+            "code": "C01-1028-26-019",
+            "qty": 2
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "hgxnXRyiOnvmqcvQxTZB",
+    "pk": "0292|163",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "dU6sOOEIgrQFweX5zbWj",
+    "pk": "0299|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "GMU5C5ibvhe8RQUwgfMc",
+    "pk": "0300|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "DjUlvcrcMLQbeZZ4iNHv",
+    "pk": "0301|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "44pSSaNZFkJasCAub9df",
+    "pk": "0302|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "LBntrA42Ym8lf26sLuL7",
+    "pk": "0303|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "cw86tsZOgHptvP2k5F3y",
+    "pk": "0320|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "fAkPEhp6PuCzSgxsVUDt",
+    "pk": "0324|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "m8zcIvC8ls7JBQkLzwFV",
+    "pk": "0324|163",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "O444Ho68jHp5BDo3K952",
+    "pk": "0326|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "CR3V1rbcC3gTFS1YkzmG",
+    "pk": "0327|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 5
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-011",
+            "qty": 2
+          }
+        ],
+        "M2": [
+          {
+            "code": "BDC-8232-0014-006",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-008",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-009",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-028",
+            "qty": 1
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-010",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-011",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "rY6FWXqf6M1hjDQdnGok",
+    "pk": "0327|236",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 5
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "AX": [
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 2
+          },
+          {
+            "code": "BDC-8232-0014-011",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-013",
+            "qty": 2
+          }
+        ],
+        "MX": [
+          {
+            "code": "BDC-8232-0014-003",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-004",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-005",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-010",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-011",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "PK7VwoDhuFY9yjvKi6Wh",
+    "pk": "0328|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 5
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "pND1a9L6DWvjCTJ3pugE",
+    "pk": "0330|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "z5TzWJNN9IzAcUWUcZxQ",
+    "pk": "0332|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 4
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "e7SfiHYobccfMH6pjKHW",
+    "pk": "0337|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "lVQld5b3J4BXM6KICDTd",
+    "pk": "0337|163",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "0KIT0vekzsQ7Z30eRmlu",
+    "pk": "0338|163",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "Icbe0pW5ui0CqmOMjY7D",
+    "pk": "0338|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "VN9QBSEBvltnPC4nM06o",
+    "pk": "0339|163",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "uofkxowdZ2mXRR6hSQv0",
+    "pk": "0340|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "6BgCxag2jJnPkYpJIrXO",
+    "pk": "0341|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "4odvlFubUn8VNvMJ7bTc",
+    "pk": "0342|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "p4IWbBflNttjrcK2HENW",
+    "pk": "0343|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "k6wy8OBWOYKFRe5MgOSd",
+    "pk": "0344|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "glBwFOnTtVVja0XIidSn",
+    "pk": "0345|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "Oo8cfbjgDHsiRNEe5Zyd",
+    "pk": "0346|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 3
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "X9wBlHaaLz2jU5orShKu",
+    "pk": "0347|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 3
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "PC5C0TsmcldUnc8kbvMV",
+    "pk": "0348|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 3
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "gtzamtkbXdlnz6hmNowk",
+    "pk": "0349|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 2
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "g2X0vY33I0d4guomRgQJ",
+    "pk": "0350|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "xVzqrnZcI3FIGJIMiuAX",
+    "pk": "0351|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 3
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "2ibW17q8ynOCuxvv71fJ",
+    "pk": "0353|159",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 24
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 3
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 10
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "MX": [
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-009",
+            "qty": 3
+          },
+          {
+            "code": "BDC-8232-0014-010",
+            "qty": 6
+          },
+          {
+            "code": "C01-1028-18-002",
+            "qty": 24
+          },
+          {
+            "code": "C01-1028-26-002",
+            "qty": 3
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "pu6AQknK8pPnDopVXLQi",
+    "pk": "0354|159",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 7
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "MX": [
+          {
+            "code": "BDC-8232-0014-007",
+            "qty": 1
+          },
+          {
+            "code": "BDC-8232-0014-009",
+            "qty": 3
+          },
+          {
+            "code": "BDC-8232-0014-010",
+            "qty": 3
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "PwBahbUofqsvE4jjR0Ai",
+    "pk": "0355|042",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "mZyaGwmqeXajj2kF5mNz",
+    "pk": "0357|238",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 3
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "z6iat0iWMOFQ0M7U8Dzs",
+    "pk": "0360|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 8
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "L2N84Ln3H6swwNt3Wm15",
+    "pk": "0363|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "AUAMldPVdMIfFyEGiny2",
+    "pk": "0365|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "VstuNSCEFzPF47byOovL",
+    "pk": "0365|163",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "JKM0ARuyQ2zrtQ4YtgS8",
+    "pk": "0370|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 16
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 8
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 8
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "WyVyOxodlV1bjlW9ktVd",
+    "pk": "0379|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "24",
+          "qty": 3
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "uCu9PTELOURmvW18s2qa",
+    "pk": "0379|163",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "24",
+          "qty": 3
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "4AMQReBl135TfJNLdCcY",
+    "pk": "0380|163",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 3
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "STGXubitLkRnEEkyGPVZ",
+    "pk": "0401|163",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 10
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "nkerp7dTBHIUcpNDLeUq",
+    "pk": "0404|163",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 12
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "fzT0wZ2dtwH3r5MrAv0a",
+    "pk": "0405|163",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "chaton",
+          "size": "SS29",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "VO2ybMnCugLnf9hsRBjc",
+    "pk": "0411|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 17
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 8
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "C01-1028-18-003",
+            "qty": 8
+          },
+          {
+            "code": "C01-1028-18-016",
+            "qty": 3
+          },
+          {
+            "code": "C01-1028-18-017",
+            "qty": 4
+          },
+          {
+            "code": "C01-1028-18-025",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-008",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-017",
+            "qty": 3
+          },
+          {
+            "code": "C01-1028-26-020",
+            "qty": 3
+          },
+          {
+            "code": "C01-1028-32-009",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-025",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "HSd9VmwiSjS0vN2c9kul",
+    "pk": "0413|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 14
+        },
+        {
+          "shape": "chaton",
+          "size": "24",
+          "qty": 4
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 3
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 5
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "C01-1028-18-005",
+            "qty": 4
+          },
+          {
+            "code": "C01-1028-18-019",
+            "qty": 6
+          },
+          {
+            "code": "C01-1028-18-035",
+            "qty": 4
+          },
+          {
+            "code": "C01-1028-24-041",
+            "qty": 4
+          },
+          {
+            "code": "C01-1028-26-021",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-035",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-32-005",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-019",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-021",
+            "qty": 3
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "MwOOdQBaEIhGIz6xuB7N",
+    "pk": "0414|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 16
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 10
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "C01-1028-18-018",
+            "qty": 7
+          },
+          {
+            "code": "C01-1028-18-023",
+            "qty": 9
+          },
+          {
+            "code": "C01-1028-26-018",
+            "qty": 9
+          },
+          {
+            "code": "C01-1028-26-023",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-021",
+            "qty": 2
+          }
+        ],
+        "MX": [
+          {
+            "code": "C01-1028-18-001",
+            "qty": 11
+          },
+          {
+            "code": "C01-1028-18-016",
+            "qty": 5
+          },
+          {
+            "code": "C01-1028-26-001",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-013",
+            "qty": 4
+          },
+          {
+            "code": "C01-1028-26-016",
+            "qty": 4
+          },
+          {
+            "code": "C01-1028-32-013",
+            "qty": 2
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "dxFSFCYFVRJEfTcdc1L0",
+    "pk": "0415|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "9TfXNz5PLbOQ8PaUugqy",
+    "pk": "0416|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "rbRwzasWrBfwpKzXvoaj",
+    "pk": "0450|231",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 6
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-005",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-009",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-037",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-042",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-021",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-042",
+            "qty": 1
+          }
+        ],
+        "MX": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-015",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-019",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-025",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-017",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-017",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-021",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "m6ykwsSfraSPmAIeCjvI",
+    "pk": "0451|231",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 7
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-017",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-020",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-023",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-009",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-025",
+            "qty": 1
+          }
+        ],
+        "MX": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-016",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-017",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-023",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-022",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-025",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "czJEqBRtI8wWlbFg5pxC",
+    "pk": "0452|231",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 8
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-008",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-015",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-022",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-005",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-024",
+            "qty": 1
+          }
+        ],
+        "MX": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-015",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-017",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-025",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-009",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-024",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "HMQmyVxop6gAzMqXFEac",
+    "pk": "0453|231",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 4
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-015",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-042",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-015",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-042",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-008",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-009",
+            "qty": 1
+          }
+        ],
+        "MX": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-009",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-042",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-009",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-020",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-008",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-017",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "wWfmgp1aTN86Ygq2ku7P",
+    "pk": "0454|231",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 5
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 3
+          },
+          {
+            "code": "C01-1028-18-015",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-042",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-015",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-024",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-009",
+            "qty": 1
+          }
+        ],
+        "MX": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-021",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-022",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-035",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-021",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-025",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-009",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "4Rppvly4eCPOUE3TaLBa",
+    "pk": "0455|231",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 7
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-003",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-005",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-017",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-042",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-005",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-001",
+            "qty": 1
+          }
+        ],
+        "MX": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-005",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-015",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-016",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-005",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-001",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "l5WhTtT6Pac3ITwKZWkE",
+    "pk": "0456|231",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 6
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.381Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 4
+          },
+          {
+            "code": "C01-1028-18-003",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-042",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-009",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-017",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-026",
+            "qty": 1
+          }
+        ],
+        "MX": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 4
+          },
+          {
+            "code": "C01-1028-18-016",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-025",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-009",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-017",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-026",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "Kc1CXvZeE3GWJJKHphgY",
+    "pk": "0457|231",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 6
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.382Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-008",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-019",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-015",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-015",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-018",
+            "qty": 1
+          }
+        ],
+        "MX": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-022",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-024",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-009",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-009",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-018",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "UN4DFL36tf8omWdmYOrn",
+    "pk": "0458|231",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 8
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.382Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-019",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-020",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-042",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-26-009",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-017",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "OJT3arCwuxRsMtO40hWW",
+    "pk": "0459|231",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 4
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.382Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 3
+          },
+          {
+            "code": "C01-1028-18-016",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-017",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-025",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-009",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-014",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "dDIOjza8FJO7bmD7VfDh",
+    "pk": "0460|231",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 8
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.382Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 2
+          },
+          {
+            "code": "C01-1028-18-005",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-015",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-024",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-035",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-037",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-044",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-020",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-016",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "rDdYm0h4342c9zrXzVw5",
+    "pk": "0461|231",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 7
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 1
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.382Z",
+      "source": "erp",
+      "mixes": {
+        "M1": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 3
+          },
+          {
+            "code": "C01-1028-18-005",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-017",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-035",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-037",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-025",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-015",
+            "qty": 1
+          }
+        ],
+        "MX": [
+          {
+            "code": "C01-1028-18-002",
+            "qty": 3
+          },
+          {
+            "code": "C01-1028-18-009",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-016",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-017",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-18-025",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-26-020",
+            "qty": 1
+          },
+          {
+            "code": "C01-1028-32-015",
+            "qty": 1
+          }
+        ]
+      }
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "uBDHhRRh0LA3nrGuK0r7",
+    "pk": "0465|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 2
+        },
+        {
+          "shape": "chaton",
+          "size": "26",
+          "qty": 2
+        },
+        {
+          "shape": "chaton",
+          "size": "32",
+          "qty": 1
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 1
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.382Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  },
+  {
+    "id": "GPHP4EmeulkBREbQW5K7",
+    "pk": "0597|001",
+    "crystal_components": {
+      "positions": [
+        {
+          "shape": "chaton",
+          "size": "18",
+          "qty": 2
+        },
+        {
+          "shape": "octagon",
+          "size": "14",
+          "qty": 2
+        }
+      ],
+      "derived_at": "2026-07-22T13:36:55.382Z",
+      "mixes": {},
+      "source": "erp"
+    },
+    "crystal_mixes": null
+  }
+]
