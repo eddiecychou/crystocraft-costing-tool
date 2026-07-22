@@ -11,4 +11,10 @@ dist
 
 # Local Netlify folder
 .netlify
+
+# Firebase Admin service-account key — never commit.
+# Second pattern catches the console's own download name, which is what
+# actually lands in ~/Downloads and is easy to drop in unrenamed.
+firebase-service-account.json
+*firebase-adminsdk*.json
 src/assets/fonts/NotoSansTC-Regular.ttf
