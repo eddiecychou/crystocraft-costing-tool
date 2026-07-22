@@ -135,14 +135,13 @@ CODE_OVERRIDES = {
     "C01-1080-18-002": ("CL", "CLA only"),
     "C01-801 114-002": ("CL", "Spectra 8290/14 — CL 211 against C1 7"),
     "C01-801 220-002": ("CL", "Spectra 8290/20 — CL 9, rest are clear stones in coloured designs"),
-    # C07-1080-14-002 Tian Hua #1050/14 is deliberately NOT here. It is the only
-    # C07 code in the ERP, used by zero job orders and zero item-master BOMs, so
-    # nothing can be inferred from consumption. The owner's read is that it is
-    # probably C1 — more facets, like Asfour 1032 — rather than CL like Asfour
-    # 1080 and Spectra 8290, but "probably" is not enough to write: a wrong
-    # grade makes the app substitute a cheap stone for a dazzle-cut one. Left
-    # blank so it reads as a question, and settable in Components -> Crystal
-    # Stock once someone has the stone in hand.
+    # The ERP cannot settle this one: it is the only C07 code, used by zero job
+    # orders and zero item-master BOMs, so there is no consumption to read. The
+    # code borrows Asfour's 1080 numbering while the name says #1050/14, which
+    # is what made it look like part of the cheap family. Owner's decision
+    # 2026-07-22: it has more facets, like Asfour 1032, so it belongs with C1
+    # rather than with Asfour 1080 and Spectra 8290.
+    "C07-1080-14-002": ("C1", "Tian Hua 1050/14 — dazzle cut like Asfour 1032 (owner)"),
 }
 
 out, stats = [], collections.Counter()
