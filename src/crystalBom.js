@@ -34,9 +34,17 @@ const SHAPE_BY_PATTERN = {
   1028: 'chaton', 1088: 'chaton',
   8016: 'octagon', 8116: 'octagon', 8232: 'octagon', 8249: 'octagon',
   1080: 'octagon', 1032: 'octagon', 8115: 'octagon', 8149: 'octagon',
+  // Spectra 8290 — the retired cheaper grade. On U0018-001 it fills exactly the
+  // slot 8016/14 fills in the other colourways, same count, same size.
+  8290: 'octagon',
   8102: 'oval',
   3130: 'heart',
 }
+
+// A handful of ERP item codes carry a space where the pattern number should be:
+// "C01-801 214-002" is Swarovski Spectra #8290/14. The code cannot be parsed,
+// but the name states pattern and size outright.
+const PATTERN_IN_NAME = /#\s*(\d{3,4})\s*\/\s*(\d+|SS\d+)/i
 
 // Offered in the position dropdown. Free text is allowed too, because the ERP
 // carries shapes nobody has classified yet (almond, cashew, snowflake, leaf…).
@@ -80,9 +88,27 @@ export function holesFromName(name) {
 export function shapeLabelFor(code, name) {
   const p = parseCrystalCode(code)
   if (!p) return ''
-  const shape = p.shape || (p.pattern ? `#${p.pattern}` : '')
+  let { pattern, shape } = p
+  // Recover a pattern the code could not carry, then re-look-up the shape.
+  if (!/^\d+$/.test(pattern)) {
+    const m = PATTERN_IN_NAME.exec(String(name || ''))
+    if (m) { pattern = m[1]; shape = SHAPE_BY_PATTERN[pattern] || shape }
+  }
+  const label = shape || (pattern ? `#${pattern}` : '')
   const h = holesFromName(name)
-  return `${shape} ${h}`.trim()
+  return `${label} ${h}`.trim()
+}
+
+// Size for a stock item, preferring the name when the code is malformed —
+// 'C01-801 214-002' splits to a size of '214' but the stone is #8290/14.
+export function sizeFor(code, name) {
+  const p = parseCrystalCode(code)
+  if (!p) return ''
+  if (!/^\d+$/.test(p.pattern)) {
+    const m = PATTERN_IN_NAME.exec(String(name || ''))
+    if (m) return m[2].toUpperCase().replace(/^0+/, '') || m[2].toUpperCase()
+  }
+  return p.size
 }
 
 export const positionKey = (shape, size) => `${shape}|${size}`
@@ -130,7 +156,7 @@ export function indexCrystals(crystals) {
     if (!colour) continue
     const label = shapeLabelFor(c.code, c.name)
     if (!label) continue
-    const k = `${label}|${p.size}|${colour}`
+    const k = `${label}|${sizeFor(c.code, c.name)}|${colour}`
     if (!idx.has(k)) idx.set(k, [])
     idx.get(k).push(c)
   }

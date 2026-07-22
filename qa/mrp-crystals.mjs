@@ -104,6 +104,28 @@ console.log('\n— a colour with no matching stone warns')
     warnings.filter(w => /no .* stone in colour EM/.test(w.reason)).length, 2)
 }
 
+console.log('\n— a malformed ERP code resolves from its name')
+{
+  // "C01-801 214-002" is Swarovski Spectra #8290/14: JES wrote a space where
+  // the pattern number belongs. Left unparsed it got its own junk position and
+  // made products look like they needed different stones per colourway.
+  const spectra = [...CRYSTALS, {
+    code: 'C01-801 214-002', name: 'Swarovski Spectra #8290/14 double hole Crystal',
+    colour: 'CL', stock_qty: 900,
+  }]
+  const prod = {
+    ...PRODUCT, id: 'p4',
+    crystal_components: { positions: [{ shape: 'octagon 2h', size: '14', qty: 4 }], mixes: {} },
+  }
+  const { crystalRows, warnings } = computeRequirements({
+    lines: [{ item_code: 'D0092-001-GCL', qty_ordered: 10 }],
+    products: [prod], lib: [], crystals: spectra,
+  })
+  check('Spectra resolves as octagon 2h/14', crystalRows.map(r => r.code), ['C01-801 214-002'])
+  check('4/unit x10', crystalRows[0] && crystalRows[0].required, 40)
+  check('no unresolved warning', warnings.filter(w => /no octagon/.test(w.reason)).length, 0)
+}
+
 console.log('\n— a product with no crystal BOM warns instead of staying silent')
 {
   const bare = { ...PRODUCT, id: 'p2', crystal_components: undefined }

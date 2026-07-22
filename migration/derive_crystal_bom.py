@@ -51,6 +51,9 @@ SHAPE = {
     # 14mm octagons, the interchangeable set Eddie confirmed for figurine metal
     "8016": "octagon", "8116": "octagon", "8232": "octagon", "8249": "octagon",
     "1080": "octagon", "1032": "octagon", "8115": "octagon", "8149": "octagon",
+    # Spectra 8290 — the retired cheaper grade. On U0018-001 it fills exactly
+    # the slot 8016/14 fills in the other colourways, same count, same size.
+    "8290": "octagon",
     # confirmed individually
     "8102": "oval",            # Eddie, on M0005
     "3130": "heart",
@@ -88,6 +91,19 @@ def holes(name):
     return ""
 
 
+# A handful of ERP item codes carry a space where the pattern number should be:
+# "C01-801 214-002" is Swarovski Spectra #8290/14. The code cannot be parsed,
+# but the name states the pattern and size outright. Without this those stones
+# got their own junk position label and made products look like they needed
+# different stones per colourway when they did not.
+PATTERN_IN_NAME = re.compile(r"#\s*(\d{3,4})\s*/\s*([0-9]+|SS\d+)", re.I)
+
+
+def pattern_from_name(name):
+    m = PATTERN_IN_NAME.search(name or "")
+    return (m.group(1), m.group(2).upper()) if m else (None, None)
+
+
 def position(family, size, name=""):
     """('BDC-8232', '0014') -> ('octagon', '14').
 
@@ -97,8 +113,14 @@ def position(family, size, name=""):
     assumed into a shape they may not have.
     """
     pat = (family or "").split("-")[-1].strip()
-    shape = shape_from_name(name) or SHAPE.get(pat) or (f"#{pat}" if pat else "?")
     s = (size or "").strip().upper()
+    # A pattern with a space in it did not survive the code split; recover both
+    # pattern and size from the name.
+    if " " in pat or not pat.isdigit():
+        npat, nsize = pattern_from_name(name)
+        if npat:
+            pat, s = npat, nsize
+    shape = shape_from_name(name) or SHAPE.get(pat) or (f"#{pat}" if pat else "?")
     s = s.lstrip("0") or s          # '0014' -> '14'
     h = holes(name)
     return (f"{shape} {h}".strip(), s)
