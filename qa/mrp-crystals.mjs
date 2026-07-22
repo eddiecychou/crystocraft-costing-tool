@@ -104,6 +104,37 @@ console.log('\n— a colour with no matching stone warns')
     warnings.filter(w => /no .* stone in colour EM/.test(w.reason)).length, 2)
 }
 
+console.log('\n— a product with no crystal BOM warns instead of staying silent')
+{
+  const bare = { ...PRODUCT, id: 'p2', crystal_components: undefined }
+  const { crystalRows, warnings } = computeRequirements({
+    lines: [{ item_code: 'D0092-001-GMX', qty_ordered: 20 }],
+    products: [bare], lib: [], crystals: CRYSTALS,
+  })
+  check('no stones counted', crystalRows.length, 0)
+  check('warns that the BOM is missing',
+    warnings.some(w => /no crystal BOM on/.test(w.reason)), true)
+}
+
+console.log('\n— an empty BOM object counts as missing, not as "needs none"')
+{
+  const empty = { ...PRODUCT, id: 'p3', crystal_components: { positions: [], mixes: {}, source: 'manual' } }
+  const { warnings } = computeRequirements({
+    lines: [{ item_code: 'D0092-001-GMX', qty_ordered: 20 }],
+    products: [empty], lib: [], crystals: CRYSTALS,
+  })
+  check('still warns', warnings.some(w => /no crystal BOM on/.test(w.reason)), true)
+}
+
+console.log('\n— a product WITH a BOM does not get the missing-BOM warning')
+{
+  const { warnings } = computeRequirements({
+    lines: [{ item_code: 'D0092-001-GMX', qty_ordered: 20 }],
+    products: [PRODUCT], lib: [], crystals: CRYSTALS,
+  })
+  check('no false positive', warnings.some(w => /no crystal BOM on/.test(w.reason)), false)
+}
+
 console.log('\n— crystals are counted even with no critical components')
 {
   const { crystalRows } = computeRequirements({

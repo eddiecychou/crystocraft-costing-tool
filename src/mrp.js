@@ -112,18 +112,30 @@ export function computeRequirements({ lines = [], products = [], lib = [], cryst
     // Crystals, before the critical-components early-exit: a figurine can carry
     // a crystal BOM and no critical components, and skipping it here would drop
     // the stones silently.
-    if (crystals.length && product.crystal_components) {
-      const colour = colourFromItemCode(l.item_code)
-      const { lines: cl, unresolved } = crystalRequirement(product.crystal_components, colour, crystals)
-      for (const c of cl) bumpCrystal(c.code, c.crystal?.name, qty * c.qty, label)
-      for (const u of unresolved) {
-        // Never let an unresolved stone vanish into a zero. Each of these is a
-        // real requirement the app cannot price or reserve yet.
-        const detail =
-          u.reason === 'mix-not-defined' ? `mix ${u.code} has no recipe on ${label} — ${u.qty} stones/unit unaccounted`
-          : u.reason === 'not-in-inventory' ? `crystal ${u.code} is not in crystal stock (${label})`
-          : `no ${u.shape} ${u.size} stone in colour ${u.colour || '?'} for ${label}`
-        warnings.push({ item_code: l.item_code || '', order, reason: detail })
+    if (crystals.length) {
+      const bom = product.crystal_components
+      const hasBom = !!bom && ((bom.positions || []).length > 0 || Object.keys(bom.mixes || {}).length > 0)
+      if (!hasBom) {
+        // A figurine with no crystal BOM used to contribute nothing and say
+        // nothing, which reads exactly like a figurine that needs no crystals.
+        // 107 of 288 products were in that state, and none of them are actually
+        // crystal-free — 98 have crystal lines in the ERP and the rest are new
+        // designs called things like "Crystal Bulldog". So the absence is always
+        // worth reporting rather than a state to opt out of.
+        warnings.push({ item_code: l.item_code || '', order, reason: `no crystal BOM on ${label} — crystals not counted` })
+      } else {
+        const colour = colourFromItemCode(l.item_code)
+        const { lines: cl, unresolved } = crystalRequirement(bom, colour, crystals)
+        for (const c of cl) bumpCrystal(c.code, c.crystal?.name, qty * c.qty, label)
+        for (const u of unresolved) {
+          // Never let an unresolved stone vanish into a zero. Each of these is a
+          // real requirement the app cannot price or reserve yet.
+          const detail =
+            u.reason === 'mix-not-defined' ? `mix ${u.code} has no recipe on ${label} — ${u.qty} stones/unit unaccounted`
+            : u.reason === 'not-in-inventory' ? `crystal ${u.code} is not in crystal stock (${label})`
+            : `no ${u.shape} ${u.size} stone in colour ${u.colour || '?'} for ${label}`
+          warnings.push({ item_code: l.item_code || '', order, reason: detail })
+        }
       }
     }
 
