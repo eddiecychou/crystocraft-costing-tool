@@ -268,11 +268,27 @@ matching fewer rows (3,251 against 3,535). Had it joined on `siref`, `UC4648`
 would have been silently attached to `UC4647`'s invoice and given the wrong
 date. The weaker-looking join key was also the corrupt one.
 
-**One open item for Cindy:** `SI240201` sits on both `UC4623` and `UC4629`
-(HKD 41,000 and 31,500, both Sun Life). Evidence says this is *not* the old
-compound pattern either — JES has `SI240198` referencing `UC4623/24` at exactly
-41,000, claimed by no registry row, so the registry appears to have the wrong SI
-number on `UC4623`. Awaiting her confirmation before a one-field correction.
+**`UC4623` — closed 2026-07-21.** `SI240201` sat on both `UC4623` and
+`UC4629`. Not the old compound pattern: JES had `SI240198` referencing
+`UC4623/24` at exactly 41,000, claimed by no registry row, so the registry
+simply had the wrong SI number. Corrected to `SI240198`.
+
+Cindy's first reply gave `UC4629 — SI240201 — 73,000`, which did not reconcile:
+both JES and the registry showed 31,500, and the 73,000 belonged to `UC4624`.
+Raising that rather than applying it avoided moving a correct row and
+double-counting HKD 41,500. She has since confirmed the transcription slip was
+hers, and all three now agree across the registry, JES and PBIS:
+
+| UC | invoice | amount | date |
+|---|---|---:|---|
+| `UC4623` | `SI240198` | 41,000 | 29 Nov 2024 |
+| `UC4624` | `SI240199` | 73,000 | 29 Oct 2024 |
+| `UC4629` | `SI240201` | 31,500 | 15 Oct 2024 |
+
+**All four UC/SI anomalies from this cycle are now closed**, and the pattern is
+worth keeping: three were JES-side artefacts it cannot correct (a void that
+could not be recorded, a dropped `(A)` suffix, a mis-keyed `siref`) and one was
+a genuine registry typo. The registry was right more often than JES was.
 
 ### Cindy's rules, enforced from /24 onward
 
