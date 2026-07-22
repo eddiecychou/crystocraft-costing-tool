@@ -483,12 +483,33 @@ So the risk is two codes, not ninety:
 date and JES balance. **That is the set the app's crystal stock must cover** —
 not the 271, and not the 364 with balances, most of which are dormant.
 
-**The one thing still unanswered from here.** The app's 180 SKUs live in
-Firestore, which needs a signed-in admin to read; there is no service account
-on this Mac and the migration left no list in the repo. So whether those 180
-include all 126 active-and-stocked codes has to be checked from inside the app:
-export Crystal Stock from Inventory Status and diff it against
-`crystal_must_have.csv`. One export, and step 1 closes properly.
+**Closed with the owner's export.** Diffed the app's 180 against the 128
+active codes: **17 are missing**, and they are not marginal.
+
+| code | used, 2 yr | last used |
+|---|---:|---|
+| `C01-8016-14-005` Rosaline | 3,044,726 | Oct 2025 |
+| `C01-8016-14-007` Bordeaux | 3,037,445 | Oct 2025 |
+| `C01-8016-14-002` Crystal | 2,668,528 | Oct 2025 |
+| `C01-8016-14-001` Medium Sapphire | 2,197,281 | Oct 2025 |
+| …13 more | | |
+
+**Nine of the seventeen are one family: `C01-8016-14` (Swarovski Strass
+#8016/14), where 9 of its 13 active colours are absent** while four — Emerald,
+Light Topaz, Light Peridot, Golden Teak — are present and stocked. So the V7.16
+migration took a partial slice of a family rather than missing it wholesale,
+which is why nothing looked obviously wrong.
+
+`erp-sync/inventory/crystal_missing_import.tsv` is paste-ready for the Crystal
+Stock importer (code / name / JES balance). **The JES balances in it are a
+starting point, not a truth** — this is the class of stock the team maintains
+in JES, but it has not been counted since the 31/3 take, and `C01-1028-26-025`
+(Capri Blue, 21,265 consumed) has no JES balance at all.
+
+**The reverse direction is not a problem.** 69 app codes are not in the active
+set, 62 of them holding zero stock — dormant SKUs and a block of numeric
+Swarovski article numbers (`1177182`, `5015361`…) on a different coding scheme
+entirely. Harmless; worth tidying one day, not now.
 
 #### Also settled by this: crystal codes are structured, and that changes the BOM design
 
