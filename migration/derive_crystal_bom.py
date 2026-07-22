@@ -37,6 +37,31 @@ MIX_CODES = {"MX", "M1", "M2", "M3", "M4", "M5", "M6", "M7", "M8",
 products = json.load(open(os.path.join(OUTDIR, "range_products.json")))["products"]
 
 
+# Pattern number -> physical shape. The 10 disagreeing skeletons all turned out
+# to agree on how many stones and differ only on which family fills a slot, so
+# a position needs shape and size, not brand.
+SHAPE = {
+    "1028": "chaton", "1088": "chaton", "1032": "chaton",
+    "8015": "octagon", "8016": "octagon", "8115": "octagon", "8116": "octagon",
+    "8232": "octagon", "8249": "octagon", "1080": "octagon", "8102": "octagon",
+    "8641": "octagon", "8290": "octagon", "864": "octagon", "801": "octagon",
+    "3130": "heart",
+}
+
+
+def position(family, size):
+    """('BDC-8232', '0014') -> ('octagon', '14').
+
+    Bohemia 8232/14, Swarovski 8016/14 and Asfour 1080/14 all collapse to the
+    same position, which is the interchangeability the route letters encode.
+    """
+    pat = (family or "").split("-")[-1].strip()
+    shape = SHAPE.get(pat, pat or "?")
+    s = (size or "").strip().upper()
+    s = s.lstrip("0") or s          # '0014' -> '14'
+    return (shape, s)
+
+
 def split_crystal(code):
     """BDC-8232-0014-002 -> ('BDC-8232', '0014', '002').
 
@@ -172,8 +197,33 @@ for key, colourways in shape.items():
         inconsistent.append((key, len(distinct), len(colourways)))
 
 print(f"\nproduct+plating combinations with a skeleton: {len(skeletons)}")
-print(f"  colourways agree on stone counts          : {len(skeletons) - len(inconsistent)}")
-print(f"  colourways DISAGREE                       : {len(inconsistent)}")
+print(f"  keyed on (family, size) — agree           : {len(skeletons) - len(inconsistent)}")
+print(f"  keyed on (family, size) — DISAGREE        : {len(inconsistent)}")
+
+# The same test with family removed: does the product need the same number of
+# stones in each shape+size, whoever supplies them?
+pos_shape = collections.defaultdict(dict)
+for code, lines in bom.items():
+    for (d, f, b, pl, col) in cands[code]:
+        by_pos = collections.Counter()
+        for item, qty in lines.items():
+            fam, size, _suf = split_crystal(item)
+            if fam:
+                by_pos[position(fam, size)] += qty
+        pos_shape[(d, f, b, pl)][col] = dict(by_pos)
+
+pos_skeletons, pos_bad = {}, []
+for key, colourways in pos_shape.items():
+    distinct = {tuple(sorted(v.items())) for v in colourways.values()}
+    counts = collections.Counter(tuple(sorted(v.items())) for v in colourways.values())
+    pos_skeletons[key] = dict(counts.most_common(1)[0][0])
+    if len(distinct) > 1:
+        pos_bad.append(key)
+
+print(f"  keyed on (shape, size)  — agree           : {len(pos_skeletons) - len(pos_bad)}")
+print(f"  keyed on (shape, size)  — DISAGREE        : {len(pos_bad)}")
+if pos_bad:
+    print("    still disagreeing:", ", ".join("|".join(k) for k in sorted(pos_bad)))
 
 # --- allocations for mix codes ----------------------------------------------
 allocations = collections.defaultdict(dict)
@@ -208,25 +258,40 @@ for item, nm in names.items():
 os.makedirs(OUTDIR, exist_ok=True)
 json.dump(
     {
-        "skeletons": {"|".join(k): {f"{fam}|{size}": float(q) for (fam, size), q in v.items()}
-                      for k, v in skeletons.items()},
+        "skeletons": {"|".join(k): {f"{shp}|{size}": float(q) for (shp, size), q in v.items()}
+                      for k, v in pos_skeletons.items()},
+        "skeletons_by_family": {"|".join(k): {f"{fam}|{size}": float(q) for (fam, size), q in v.items()}
+                                for k, v in skeletons.items()},
         "allocations": {b: m for b, m in allocations.items()},
-        "inconsistent": ["|".join(k) + f" ({n} shapes over {c} colourways)"
-                         for k, n, c in inconsistent],
+        "inconsistent": ["|".join(k) for k in sorted(pos_bad)],
+        "inconsistent_by_family": ["|".join(k) + f" ({n} shapes over {c} colourways)"
+                                   for k, n, c in inconsistent],
         "no_bom": sorted(set(codes) - set(bom)),
     },
     open(os.path.join(OUTDIR, "crystal_bom_derived.json"), "w"), indent=2,
 )
 
 # Review CSVs. UTF-8 BOM so Excel does not mangle them, per project convention.
+# The skeleton is written keyed on shape+size, with family left to the
+# allocation. Keying it on family made seven products look like they needed
+# different stone counts when they only differed in who supplied the stone.
 with open(os.path.join(OUTDIR, "crystal_skeletons.csv"), "w", newline="", encoding="utf-8-sig") as fh:
     w = csv.writer(fh)
-    w.writerow(["design", "format", "brand", "plating", "family", "size", "stones_per_unit", "colourways_seen", "agree"])
-    for key, pos in sorted(skeletons.items()):
+    w.writerow(["design", "format", "brand", "plating", "shape", "size",
+                "stones_per_unit", "colourways_seen", "agree",
+                "families_seen"])
+    for key, pos in sorted(pos_skeletons.items()):
         d, f, b, pl = key
-        bad = any(k == key for k, _, _ in inconsistent)
-        for (fam, size), q in sorted(pos.items()):
-            w.writerow([d, f, b, pl, fam, size, float(q), len(shape[key]), "NO" if bad else "yes"])
+        bad = key in pos_bad
+        # Which families have actually filled this position, for the eye-check.
+        fams = collections.defaultdict(set)
+        for col, shp in shape.get(key, {}).items():
+            for (fam, size), _q in shp.items():
+                fams[position(fam, size)].add(fam)
+        for (shp, size), q in sorted(pos.items()):
+            w.writerow([d, f, b, pl, shp, size, float(q), len(pos_shape[key]),
+                        "NO" if bad else "yes",
+                        " | ".join(sorted(fams.get((shp, size), [])))])
 
 with open(os.path.join(OUTDIR, "crystal_colour_table.csv"), "w", newline="", encoding="utf-8-sig") as fh:
     w = csv.writer(fh)
