@@ -60,6 +60,14 @@ ALIASES = {
     "dksapph": "DB",
     "emerlad": "EM",
     "dropcrystalcl": "CL",
+    # An app colour code is a SLOT, not an exact physical colour: each supplier's
+    # nearest equivalent shares it. Bohemia GR is Aquamarine, Swarovski GR is
+    # Antique Green — no Bohemia stone is exactly Antique Green, and it is still
+    # called GR. Same for Bordeaux, which is the Swarovski 8016/8116 stone in the
+    # RE slot that Bohemia fills with Ruby. Both confirmed by the owner
+    # 2026-07-22; neither needs a new library entry.
+    "bordeaux": "RE",
+    "antiquegreen": "GR",
 }
 
 

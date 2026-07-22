@@ -1,158 +1,158 @@
 ﻿id,code,name,current_colour,proposed_colour,source,colour_words
-0B4uSwV5deafRuzTbLSg,BDC-3130-1414-005,Bohemia heart crystal #3130(14.4x14) Rosaline,,PI,name match,Rosaline
-0FUaIKDpwJWmvsd0cUhh,BDC-8232-0014-005,Bohemia glass 8232/14(PI) double hole Rosaline,,PI,exact (code in ERP name),Rosaline
-0GEtx8ilrr5NXCfnzP9h,C01-1028-18-001,Swarovski PP#1028/18 Sapphire,,BL,name match,Sapphire
-0XtMuq7zdgrHcrdhcDgl,C01-8115-14-007,Swarovski Strass #8115/14 one hole Bordeaux,,,,Bordeaux
+0B4uSwV5deafRuzTbLSg,BDC-3130-1414-005,Bohemia heart crystal #3130(14.4x14) Rosaline,PI,PI,name match,Rosaline
+0FUaIKDpwJWmvsd0cUhh,BDC-8232-0014-005,Bohemia glass 8232/14(PI) double hole Rosaline,PI,PI,exact (code in ERP name),Rosaline
+0GEtx8ilrr5NXCfnzP9h,C01-1028-18-001,Swarovski PP#1028/18 Sapphire,BL,BL,name match,Sapphire
+0XtMuq7zdgrHcrdhcDgl,C01-8115-14-007,Swarovski Strass #8115/14 one hole Bordeaux,,RE,name match (alias),Bordeaux
 1B0rGyFyRHUYAJBkbKoY,5203296,181943 01 223 502 234,,,,
 1RslpiDgItLn9URdpuVH,C01-1028-24-018,Swarovski PP#1028/24 Garnet,,,,Garnet
 1fk8pBpXWFXN0GYZbrge,C01-8116-14-038,Swarovski Strass#8016/14 double hole Golden Shadow,,,,Golden Shadow
 1xGKdIpWGDrwLnUdolbo,5146971,Beads 181702 05 001AB 001GSHA,,,,Beads
 26F8A2G5VPakSW44xETI,C01-1028-18-044,Swarovski PP#1028/18 Light Peach,,PE,suffix match — CHECK,Light Peach
-2OpY7yI9wdA77HwMjTUl,BDC-8232-0014-008,Bohemia glass 8232/14(EM) double hole Emerald,,EM,exact (code in ERP name),Emerald
-2V4kN98xFWJ931e8yfJd,C01-1028-18-009,Swarovski PP#1028/18 Topaz,,TO,name match,Topaz
+2OpY7yI9wdA77HwMjTUl,BDC-8232-0014-008,Bohemia glass 8232/14(EM) double hole Emerald,EM,EM,exact (code in ERP name),Emerald
+2V4kN98xFWJ931e8yfJd,C01-1028-18-009,Swarovski PP#1028/18 Topaz,TO,TO,name match,Topaz
 2jSQi3LyjgLaYfN2wdvp,C01-1028-18-023,Swarovski PP#1028/18 Black Diamond,,,,Black Diamond
 2wosLmP2aR67Ax6VHXqp,1184582,5948 MM 14.0 ROSALINE STEEL,,,,MM ROSALINE STEEL
 39mgW4AcmdFB2X0uNpOZ,C01-1028-25-017,Swarovski PP#1028/25  Blue Zircon,,,,Blue Zircon
-3gI3uqRC0Ywa4SVfDIMC,C01-1028-32-001,Swarovski PP#1028/32 Sapphire,,BL,name match,Sapphire
-3qlCf3wp4bbFqaxtSqsQ,C01-8102-20-001,Swarovski Strass #8102/20 double hole medium Sapph,,BL,name match (alias),medium Sapph
-3qsmyUN3oSI81OEYUG7g,C01-8102-20-002,Swarovski Strass #8102/20 double hole Crystal,,C1,name match (alias),Crystal
+3gI3uqRC0Ywa4SVfDIMC,C01-1028-32-001,Swarovski PP#1028/32 Sapphire,BL,BL,name match,Sapphire
+3qlCf3wp4bbFqaxtSqsQ,C01-8102-20-001,Swarovski Strass #8102/20 double hole medium Sapph,BL,BL,name match (alias),medium Sapph
+3qsmyUN3oSI81OEYUG7g,C01-8102-20-002,Swarovski Strass #8102/20 double hole Crystal,C1,C1,name match (alias),Crystal
 5Be4DR37T1JInm5ObjIg,C01-1028-18-019,Swarovski PP#1028/18 Light Amethyst,,,,Light Amethyst
 5Qw7GYIGS7PSAWEzH85m,1184554,"5928 MM 14,0 SAPPHIRE STEEL",,,,"MM , SAPPHIRE STEEL"
-5abPSUHnvZflHYoEI5Ri,C01-1088-18-002,Swarovski PP#1088/18 Crystal,,C1,name match (alias),Crystal
-5hbFNwGJbkEHMBTgWAJs,BDC-8232-0014-003,Bohemia glass 8232/14(GO) double hole Amber,,GO,exact (code in ERP name),Amber
+5abPSUHnvZflHYoEI5Ri,C01-1088-18-002,Swarovski PP#1088/18 Crystal,C1,C1,name match (alias),Crystal
+5hbFNwGJbkEHMBTgWAJs,BDC-8232-0014-003,Bohemia glass 8232/14(GO) double hole Amber,GO,GO,exact (code in ERP name),Amber
 5iR37ylQwANHfN1lbGIk,C01-1028-24-040,Swarovski PP#1028/24 White Opal,,,,White Opal
 5unUGYLSncI0Vr1iIA85,C01-1028-18-024,Swarovski PP#1028/18 Light Colorado Topaz,,TO,suffix match — CHECK,Light Colorado Topaz
-5yeaZ3rGIZLNO3nZgPwD,C01-1028-26-002,Swarovski PP#1028/26 Crystal,,C1,name match (alias),Crystal
+5yeaZ3rGIZLNO3nZgPwD,C01-1028-26-002,Swarovski PP#1028/26 Crystal,C1,C1,name match (alias),Crystal
 62kdRLNJFxIWh2XTjXZD,5155729,181722 01 001ANTP 001 SSHA,,,,SSHA
-7DACdddTS14HOCLi7Eub,BDC-8232-0014-002,Bohemia glass 8232/14(C1) double hole Crystal,,C1,exact (code in ERP name),Crystal
+7DACdddTS14HOCLi7Eub,BDC-8232-0014-002,Bohemia glass 8232/14(C1) double hole Crystal,C1,C1,exact (code in ERP name),Crystal
 8RfNTVa7KRtFhS9QyqoG,5135908,181504 39 001ROGL 362 227 208,,,,
 8d6Qhv0X16MpU5IpOgrV,C01-1028-18-025,Swarovski PP#1028/18 Capri Blue,,,,Capri Blue
 8lpAFkBOE5n4dMXbMceW,C01-1028-26-019,Swarovski PP#1028/26 Light Amethyst,,,,Light Amethyst
-9cGWLy0FCFZ6dS84Eopw,C01-1028-18-016,Swarovski PP#1028/18 Aquamarine,,GR,name match,Aquamarine
+9cGWLy0FCFZ6dS84Eopw,C01-1028-18-016,Swarovski PP#1028/18 Aquamarine,GR,GR,name match,Aquamarine
 9fkeN9NBQnDHBRbeX6Yu,1184549,"5948 MM 14,0 CRYSTAL STEEL",,,,"MM , CRYSTAL STEEL"
 9wDdJvWdx3Qnd3Gvvw5q,5015361,Beads 180101 03 215,,,,Beads
 AmxXrVpCCKX1EmF66zjX,C01-1028-18-020,Swarovski PP#1028/18 Peridot,,,,Peridot
-Apzdk3BF7BmGSB3J1FPf,C01-801 114-002,Swarovski Spectra #8290/14 one hole Crystal,,C1,name match (alias),Crystal
+Apzdk3BF7BmGSB3J1FPf,C01-801 114-002,Swarovski Spectra #8290/14 one hole Crystal,C1,C1,name match (alias),Crystal
 Ax9GDJOxvcsRWaeNbXQE,5015397,Beads 180301 05 001GSHA,,,,Beads
 AzWpMm1BFqsgHSLNZOkT,C01-1028-24-041,Swarovski PP#1028/24 Vintage Rose,,PI,suffix match — CHECK,Vintage Rose
-B2yEOQzREs7zrtwa1hhx,C01-8016-14-012,Swarovski Strass #8016/14 double hole Golden Teak,,GT,name match,Golden Teak
-ClZtChucQAqUypbdKcoD,C01-8115-14-004,Swarovski Strass #8115/14 one hole Antique Green,,,,Antique Green
+B2yEOQzREs7zrtwa1hhx,C01-8016-14-012,Swarovski Strass #8016/14 double hole Golden Teak,GT,GT,name match,Golden Teak
+ClZtChucQAqUypbdKcoD,C01-8115-14-004,Swarovski Strass #8115/14 one hole Antique Green,,GR,name match (alias),Antique Green
 CyK61nYdmcxb6R1HdW1K,5169538,186522 MM14 01 234 001MOL H,,,,H
 D1zvgimNp5N7HIqEyF8n,C01-1028-18-015,Swarovski PP#1028/18 Amethyst,,,,Amethyst
-DIt926inpBVGnvzWKiIV,C01-1028-26-013,Swarovski PP#1028/26 BL.AB,,AB,name match (alias),BL.AB
-DXHxOZkZp2BarkNuH6Gi,BDC-8232-0014-001,Bohemia glass 8232/14(BL) double hole Medium Sapph,,BL,exact (code in ERP name),Medium Sapph
+DIt926inpBVGnvzWKiIV,C01-1028-26-013,Swarovski PP#1028/26 BL.AB,AB,AB,name match (alias),BL.AB
+DXHxOZkZp2BarkNuH6Gi,BDC-8232-0014-001,Bohemia glass 8232/14(BL) double hole Medium Sapph,BL,BL,exact (code in ERP name),Medium Sapph
 Dhz8SxmhIZIFtpEq6F1u,C01-1028-18-037,Swarovski PP#1028/18 Light Rose,,PI,suffix match — CHECK,Light Rose
-DzV8EmgAKTEszmA2ldnd,C01-1028-32-016,Swarovski PP#1028/32 Aquamarine,,GR,name match,Aquamarine
+DzV8EmgAKTEszmA2ldnd,C01-1028-32-016,Swarovski PP#1028/32 Aquamarine,GR,GR,name match,Aquamarine
 EXytqePp2RIcWfrONmpH,1177191,5890 MM 14.0 CRYSTAL GOLD.PRL STEEL,,,,MM CRYSTAL GOLD.PRL STEEL
 FMKWGMIs9hvcOItnpo82,C01-1028-18-046,Swarovski PP#1028/18 Smoked Topaz,,TO,suffix match — CHECK,Smoked Topaz
-FbpcxkH47lvTYpS7Awf2,C01-1028-32-013,Swarovski PP#1028/32  AB BL,,AB,name match (alias),AB BL
+FbpcxkH47lvTYpS7Awf2,C01-1028-32-013,Swarovski PP#1028/32  AB BL,AB,AB,name match (alias),AB BL
 FoCgX9IBJm4qUv07Y0y8,C01-1028-26-022,Swarovski PP#1028/26 Siam,,,,Siam
 Fy73jD8CmkqWyqN7oM3p,5238219,182013 26 203 246 225,,,,
 G9rH69QOOUF8Rk9xXWdy,5040171,Beads 180401 02 280,,,,Beads
-GE3PDF4qUX4tbSvlLk6o,C01-1088-SS29-002,Swarovski SS#1088/SS29  Crystal,,C1,name match (alias),Crystal
+GE3PDF4qUX4tbSvlLk6o,C01-1088-SS29-002,Swarovski SS#1088/SS29  Crystal,C1,C1,name match (alias),Crystal
 GnBfhxDxyVvaNxWfEvwj,C01-1028-32-025,Swarovski PP#1028/32 Capri Blue,,,,Capri Blue
-GuzQ5BVPaOUGvA8s8KI6,C01-8115-14-005,Swarovski Strass #8115/14 one hole Rosaline,,PI,name match,Rosaline
+GuzQ5BVPaOUGvA8s8KI6,C01-8115-14-005,Swarovski Strass #8115/14 one hole Rosaline,PI,PI,name match,Rosaline
 H9zddlKYdt0UDnIn3t2x,5015388,Beads 180201 16 208,,,,Beads
 HStJMHDu5apLx6KWmhgo,5203311,181922 17 207 001GSHA,,,,
-HTULYs3GZCyxXQCBH4JY,C01-1080-18-002,Asfour #1080/18 double hole Crystal,,C1,name match (alias),Crystal
+HTULYs3GZCyxXQCBH4JY,C01-1080-18-002,Asfour #1080/18 double hole Crystal,C1,C1,name match (alias),Crystal
 HluFgcMEmwRMSFH8FIU9,5015382,Beads 180201 02 280HEM,,,,Beads
-J895zmU49l0kAeGXP1Xo,C01-8016-14-008,Swarovski Strass #8016/14 double hole Emerald,,EM,name match,Emerald
+J895zmU49l0kAeGXP1Xo,C01-8016-14-008,Swarovski Strass #8016/14 double hole Emerald,EM,EM,name match,Emerald
 JXnSMvSlBI9uwmj2yOJI,5031415,Beads 180101 16 208,,,,Beads
-Jbd3ckbObIAAEEmmMQwd,C01-1028-32-008,Swarovski PP#1028/32 Emerald,,EM,name match,Emerald
+Jbd3ckbObIAAEEmmMQwd,C01-1028-32-008,Swarovski PP#1028/32 Emerald,EM,EM,name match,Emerald
 KYRa8Uxrdqxsjo9xCWrR,C01-1028-32-015,Swarovski PP#1028/32 Amethyst,,,,Amethyst
 KjFlqNRGBYtpesVfaeN1,5040175,Beads 180401 20 001MLGLD,,,,Beads
 KxbVFXmzaWJKtnkNoVbh,5015373,Beads 180101 09 204,,,,Beads
-L2QpLkRmJmtiB9NuFI8a,BDC-8249-0014-001,Bohemia glass 8249/14(BL) double hole Medium Sapph,,BL,exact (code in ERP name),Medium Sapph
+L2QpLkRmJmtiB9NuFI8a,BDC-8249-0014-001,Bohemia glass 8249/14(BL) double hole Medium Sapph,BL,BL,exact (code in ERP name),Medium Sapph
 LOB1571ZA7mJRhlit29k,1177182,"5890 MM 14,0 CRYSTAL WHITE STEEL",,,,"MM , CRYSTAL WHITE STEEL"
-LSeOCPYuNjpuLYVf41sq,C01-1028-26-021,Swarovski PP#1028/26 Ruby,,RE,name match,Ruby
+LSeOCPYuNjpuLYVf41sq,C01-1028-26-021,Swarovski PP#1028/26 Ruby,RE,RE,name match,Ruby
 MAnpH1U5lq4uRPussIss,1184587,"5948 MM 14,0 LIGHT SAPPHIRE STEEL",,,,"MM , LIGHT SAPPHIRE STEEL"
 MJ4on370aGZllBkx0keY,5238226,182043 25 203 227 213,,,,
-MJkBud4qdSQJezy7lhgG,C01-801 220-002,Swarovski spectra #8290/20 double hole Crystal,,C1,name match (alias),Crystal
+MJkBud4qdSQJezy7lhgG,C01-801 220-002,Swarovski spectra #8290/20 double hole Crystal,C1,C1,name match (alias),Crystal
 MzKfAwzmc2jazSbJKFFd,C01-1028-32-026,Swarovski PP#1028/32 Chrysolite,,,,Chrysolite
 MzxkzmWfiyGHuGXt1tQk,5015384,Beads 180201 05 001GSHA,,,,Beads
-O9hR1mjqQB1aZRXFaKSI,BDC-8232-0014-007,Bohemia glass 8232/14(RE) double hole Ruby,,RE,exact (code in ERP name),Ruby
-OzrPRjI6dSHsZRbFmcVC,BDC-8149-0014-001,Bohemia glass 8149/14(BL) one  hole Medium Sapph,,BL,name match (alias),Medium Sapph
+O9hR1mjqQB1aZRXFaKSI,BDC-8232-0014-007,Bohemia glass 8232/14(RE) double hole Ruby,RE,RE,exact (code in ERP name),Ruby
+OzrPRjI6dSHsZRbFmcVC,BDC-8149-0014-001,Bohemia glass 8149/14(BL) one  hole Medium Sapph,BL,BL,name match (alias),Medium Sapph
 PQugIkajhJWbZMtqXMyO,C01-1028-18-018,Swarovski PP#1028/18 Garnet,,,,Garnet
 Q1JgEhLfU3Fzw40YR042,Z35472,Z35472 Fabric HT190525 010001COP,,,,Fabric
-QQQLQnkKePT0CdvsmwZp,C01-1028-26-035,Swarovski PP#1028/26 Fuchsia,,FU,name match,Fuchsia
-QgC4GKlpXowqGIROlbQW,C01-1028-18-003,Swarovski PP#1028/18 Light Topaz,,GO,name match,Light Topaz
+QQQLQnkKePT0CdvsmwZp,C01-1028-26-035,Swarovski PP#1028/26 Fuchsia,FU,FU,name match,Fuchsia
+QgC4GKlpXowqGIROlbQW,C01-1028-18-003,Swarovski PP#1028/18 Light Topaz,GO,GO,name match,Light Topaz
 R2JAsSB50UhLEZ9PPu3G,C01-1028-32-014,Swarovski PP#1028/32 Jet,,,,Jet
-RHQziMqYndt1XgTVA5is,C01-1028-32-002,Swarovski PP#1028/32 Crystal,,C1,name match (alias),Crystal
+RHQziMqYndt1XgTVA5is,C01-1028-32-002,Swarovski PP#1028/32 Crystal,C1,C1,name match (alias),Crystal
 Rk81Kg5ipHqHcqlckOni,5186188,181902 01 001ROGL 234,,,,
-SPJInG0zFc5P1Xu33Qu2,C01-8115-14-012,Swarovski Strass #815/14 one hole Golden Teak,,GT,name match,Golden Teak
-SQGl0c3dN5Olk2BSzYkq,BDC-3130-1414-002,Bohemia heart crystal #3130(14.4x14) Crystal,,C1,name match (alias),Crystal
-STi5GNqBIDEu3NeV8K71,BDC-8232-0014-012,Bohemia glass 8232/14(GT) double hole Golden Teak,,GT,exact (code in ERP name),Golden Teak
-Sui2CqqpkWi5FMDFDhxQ,C01-1028-26-008,Swarovski PP#1028/26 Emerald,,EM,name match,Emerald
+SPJInG0zFc5P1Xu33Qu2,C01-8115-14-012,Swarovski Strass #815/14 one hole Golden Teak,GT,GT,name match,Golden Teak
+SQGl0c3dN5Olk2BSzYkq,BDC-3130-1414-002,Bohemia heart crystal #3130(14.4x14) Crystal,C1,C1,name match (alias),Crystal
+STi5GNqBIDEu3NeV8K71,BDC-8232-0014-012,Bohemia glass 8232/14(GT) double hole Golden Teak,GT,GT,exact (code in ERP name),Golden Teak
+Sui2CqqpkWi5FMDFDhxQ,C01-1028-26-008,Swarovski PP#1028/26 Emerald,EM,EM,name match,Emerald
 T3lCJubpinllxPLpEu8G,C01-1028-18-041,Swarovski PP#1028/18 Vintage Rose,,PI,suffix match — CHECK,Vintage Rose
-TyXa6OLVw4fgL0izDETI,C01-1080-14-002,Asfour #1080/14 double hole Crystal,,C1,name match (alias),Crystal
-UCGHMmvED91X1t0Fzuu2,BDC-8232-0014-013,Bohemia glass 8232/14(AB) double hole Blue AB,,AB,exact (code in ERP name),Blue AB
+TyXa6OLVw4fgL0izDETI,C01-1080-14-002,Asfour #1080/14 double hole Crystal,C1,C1,name match (alias),Crystal
+UCGHMmvED91X1t0Fzuu2,BDC-8232-0014-013,Bohemia glass 8232/14(AB) double hole Blue AB,AB,AB,exact (code in ERP name),Blue AB
 UL4f7jNWBV9tvqKUi1ee,5054734,Beads 181201 05 001GSHA,,,,Beads
-UZqPXgqLMeKIwznygtmH,C01-8115-14-011,Swarovski Strass #8115/14 one hole Violet,,VL,name match (alias),Violet
+UZqPXgqLMeKIwznygtmH,C01-8115-14-011,Swarovski Strass #8115/14 one hole Violet,VL,VL,name match (alias),Violet
 VBBWYDXeMxgFO8FpK9dJ,5233879,181982 01 280 234,,,,
 VMzt0p8USlx298hblDRS,5063831,Beads 180201 29 001LISH,,,,Beads
-Vnw9O0OLDiONXFEeOUJG,C01-8115-14-002,Swarovski Strass #8115/14 one hole Crystal,,C1,name match (alias),Crystal
-X2LcxCiQMSEn3gssDEC1,C01-2058-16-002,Swarovski SS#2058/16 Crystal,,C1,name match (alias),Crystal
-X3NqTzjJPg5QmaqHOgN6,C01-8016-14-010,Swarovski Strass#8016/14 double hole Light Peridot,,LP,name match,Light Peridot
+Vnw9O0OLDiONXFEeOUJG,C01-8115-14-002,Swarovski Strass #8115/14 one hole Crystal,C1,C1,name match (alias),Crystal
+X2LcxCiQMSEn3gssDEC1,C01-2058-16-002,Swarovski SS#2058/16 Crystal,C1,C1,name match (alias),Crystal
+X3NqTzjJPg5QmaqHOgN6,C01-8016-14-010,Swarovski Strass#8016/14 double hole Light Peridot,LP,LP,name match,Light Peridot
 XPq1L30YkPgKIMWFOILF,5066053,Beads 181001 02 001SINI,,,,Beads
 Y6OzCdsj48jFa978Y5Yp,C01-1028-32-022,Swarovski PP#1028/32 Siam,,,,Siam
-YcT4HzSzvwkEKb65KHPt,C01-8115-14-003,Swarovski Strass #8115/14 one hole Light Topaz,,GO,name match,Light Topaz
+YcT4HzSzvwkEKb65KHPt,C01-8115-14-003,Swarovski Strass #8115/14 one hole Light Topaz,GO,GO,name match,Light Topaz
 ZFCZhnawQVIAikhHzQdM,C01-1028-18-042,Swarovski PP#1028/18 Jonquil,,,,Jonquil
 Zn7Pg5435SOEJPN1BeZb,5146954,Beads 181702 02 001ROGL 280HEM,,,,Beads
 aCqmgNqjr23gNp5diNH3,5186189,181902 01 227 001MOL,,,,
 aUUuDyXput9RgUeI2QnC,5015371,180101 07 327,,,,
 aVz4BlX4ZUVzcYvzHpOr,5203307,181922 52 208 001GSHA,,,,
-aaXLrApW4b1w1HX2LjRO,C01-1088-26-002,Swarovski PP#1088/26 Crystal,,C1,name match (alias),Crystal
-agBeG1ZZpa0aAzy5DcFW,C01-1028-18-002,Swarovski PP#1028/18 Crystal,,C1,name match (alias),Crystal
-azQRZwjw4eGMhzV6khPc,C01-1028-18-008,Swarovski PP#1028/18 Emerald,,EM,name match,Emerald
+aaXLrApW4b1w1HX2LjRO,C01-1088-26-002,Swarovski PP#1088/26 Crystal,C1,C1,name match (alias),Crystal
+agBeG1ZZpa0aAzy5DcFW,C01-1028-18-002,Swarovski PP#1028/18 Crystal,C1,C1,name match (alias),Crystal
+azQRZwjw4eGMhzV6khPc,C01-1028-18-008,Swarovski PP#1028/18 Emerald,EM,EM,name match,Emerald
 b4QEpLhfsZuh6cdn8nbb,C01-1028-32-018,Swarovski PP#1028/32 Garnet,,,,Garnet
-bJfRQxPnFz33FKXsedh8,C01-1028-26-001,Swarovski PP#1028/26 Sapphire,,BL,name match,Sapphire
-bR2th7pyLsv63ruVgROc,BDC-8232-0018-002,Bohemia glass 8232/18(CL) double hole Crystal,,CL,exact (code in ERP name),Crystal
+bJfRQxPnFz33FKXsedh8,C01-1028-26-001,Swarovski PP#1028/26 Sapphire,BL,BL,name match,Sapphire
+bR2th7pyLsv63ruVgROc,BDC-8232-0018-002,Bohemia glass 8232/18(CL) double hole Crystal,CL,CL,exact (code in ERP name),Crystal
 bqG2hH40IPH4eHUls7yr,C01-1028-26-023,Swarovski PP#1028/26 Black Diamond,,,,Black Diamond
 c7dh6uIjpwWyzUVtDXX4,C01-1028-18-040,Swarovski PP#1028/18 White Opal,,,,White Opal
 cD8jnlxWMPb87tiHz1zN,5155716,181712 03 001SSHA 284,,,,
-cKY5SjTk0P560EN4WoD7,BDC-8232-0014-010,Bohemia glass 8232/14(LP) double hole Light Perido,,LP,exact (code in ERP name),Light Perido
+cKY5SjTk0P560EN4WoD7,BDC-8232-0014-010,Bohemia glass 8232/14(LP) double hole Light Perido,LP,LP,exact (code in ERP name),Light Perido
 cNfOdsKQ5gAtLEB0rxEt,5015366,Beads 180101 05 001LUMG,,,,Beads
 cXh16YvYZGyyekaeB1K4,C01-1028-26-015,Swarovski PP#1028/26 Amethyst,,,,Amethyst
 ca7iptv2mYJBmYnerrzW,C01-1028-32-042,Swarovski PP#1028/32 Jonquil,,,,Jonquil
-cc2KghtZ2qOr2yhcG0PB,BDC-8232-0014-006,Bohemia glass 8232/14(PU) double hole BlueViolet,,PU,exact (code in ERP name),BlueViolet
+cc2KghtZ2qOr2yhcG0PB,BDC-8232-0014-006,Bohemia glass 8232/14(PU) double hole BlueViolet,PU,PU,exact (code in ERP name),BlueViolet
 ciIgFSFRohRZMMl1DjTi,5015374,Beads 180101 08 539,,,,Beads
 csJB1JbOclqj0PZC5Vyj,5135900,181504 02 280HEM 280NUT 001SINI 280,,,,
 cuHPBMRW2k5OmnToWMwz,1184572,"5948 MM 14,0 CRYSTAL BRONZSHADE STEEL",,,,"MM , CRYSTAL BRONZSHADE STEEL"
-dFoLliG1Kii33HlmsA4p,C01-1028-18-035,Swarovski PP#1028/18 Fuchsia,,FU,name match,Fuchsia
+dFoLliG1Kii33HlmsA4p,C01-1028-18-035,Swarovski PP#1028/18 Fuchsia,FU,FU,name match,Fuchsia
 e1WTU4LZtXGFkb1bXF6L,5169965,186512 MM14 03 215 001SSHA H,,,,H
 eGkR6jA8tUq5khASRCoM,1184565,"5948 MM 14,0 LIGHT AMETHYST STEEL",,,,"MM , LIGHT AMETHYST STEEL"
-eMqNiczwUACEZli7JZcV,BDC-3130-1414-013,Bohemia heart crystal #3130(14.4x14) Blue AB,,AB,name match (alias),Blue AB
-epaT2NJaFDa9kbBLipc2,C01-1028-32-009,Swarovski PP#1028/32 Topaz,,TO,name match,Topaz
+eMqNiczwUACEZli7JZcV,BDC-3130-1414-013,Bohemia heart crystal #3130(14.4x14) Blue AB,AB,AB,name match (alias),Blue AB
+epaT2NJaFDa9kbBLipc2,C01-1028-32-009,Swarovski PP#1028/32 Topaz,TO,TO,name match,Topaz
 f4rPlkg8bfGYmm1jNA4e,1184553,"5948 MM 14,0 LIGHT ROSE STEEL",,,,"MM , LIGHT ROSE STEEL"
-fgccOzF4KclWqsUvvTiq,C01-1028-18-021,Swarovski PP#1028/18 Ruby,,RE,name match,Ruby
+fgccOzF4KclWqsUvvTiq,C01-1028-18-021,Swarovski PP#1028/18 Ruby,RE,RE,name match,Ruby
 fxDzBuuq60yv73N2Z6bx,5135952,181403 15 212 285 288,,,,
 gB2h8KR23lFj07jVfq76,1184542,"5928 MM 14,0 TOPAZ STEEL",,,,"MM , TOPAZ STEEL"
-iA7grcFMsfVNtoiKV8IK,BDC-3130-1414-007,Bohemia heart crystal #3130 (14.4x14) Ruby,,RE,name match,Ruby
-iAcDRLfFxSUmShutfpNc,BDC-8232-0014-009,Bohemia glass 8232/14(TO) double holeTopaz,,TO,exact (code in ERP name),double holeTopaz
+iA7grcFMsfVNtoiKV8IK,BDC-3130-1414-007,Bohemia heart crystal #3130 (14.4x14) Ruby,RE,RE,name match,Ruby
+iAcDRLfFxSUmShutfpNc,BDC-8232-0014-009,Bohemia glass 8232/14(TO) double holeTopaz,TO,TO,exact (code in ERP name),double holeTopaz
 iFSDjXreYjNv0NKo9xbL,C01-1028-26-020,Swarovski PP#1028/26 Peridot,,,,Peridot
 iTGCexq68l3lkgAezUaP,C01-1028-18-022,Swarovski PP#1028/18 Siam,,,,Siam
-ijDJZkoLDOjxjPHXHG2s,C01-1028-32-021,Swarovski PP#1028/32 Ruby,,RE,name match,Ruby
+ijDJZkoLDOjxjPHXHG2s,C01-1028-32-021,Swarovski PP#1028/32 Ruby,RE,RE,name match,Ruby
 ivliGuih8jcF2US2tqSi,C01-1028-26-042,Swarovski PP#1028/26 Jonquil,,,,Jonquil
-jAQT5jTlPBeIEKWRDZsS,C01-1028-09-021,Swarovski PP#1028/09 Ruby,,RE,name match,Ruby
-jAY9RkV6pHAHa1aF5Duw,C01-1028-18-005,Swarovski PP#1028/18 Rose,,PI,name match (alias),Rose
+jAQT5jTlPBeIEKWRDZsS,C01-1028-09-021,Swarovski PP#1028/09 Ruby,RE,RE,name match,Ruby
+jAY9RkV6pHAHa1aF5Duw,C01-1028-18-005,Swarovski PP#1028/18 Rose,PI,PI,name match (alias),Rose
 jLwh4w4AQkAKcn6XRVlV,5130980,5928 MM 14.0 BLUSH ROSE STEEL,,,,MM BLUSH ROSE STEEL
 kimv0BYUZUwihMDWtrcX,5186180,181883 01 209 502 001,,,,
 kqcgECunlkVPN2QsJyCI,5031437,Beads 180101 15 206,,,,Beads
-lpU47epL0YcRXFzgteLO,BDC-8232-0014-028,Bohemia glass 8232/14(DB) double hole DarkSapphire,,DB,exact (code in ERP name),DarkSapphire
-lwk5QANcrlb84qEFC9cf,C01-8115-14-006,Swarovski Strass #8115/14 one hole Blue Violet,,PU,name match (alias),Blue Violet
+lpU47epL0YcRXFzgteLO,BDC-8232-0014-028,Bohemia glass 8232/14(DB) double hole DarkSapphire,DB,DB,exact (code in ERP name),DarkSapphire
+lwk5QANcrlb84qEFC9cf,C01-8115-14-006,Swarovski Strass #8115/14 one hole Blue Violet,PU,PU,name match (alias),Blue Violet
 mHIDPngqqVrDBxoM8nkM,5015364,Beads 180101 02 001SINI,,,,Beads
-mMhzVYUYJHYihx9ZKPRk,C01-1028-26-016,Swarovski PP#1028/26 Aquamarine,,GR,name match,Aquamarine
+mMhzVYUYJHYihx9ZKPRk,C01-1028-26-016,Swarovski PP#1028/26 Aquamarine,GR,GR,name match,Aquamarine
 mpMWRFg5gJZidrZbT0mU,C01-1028-32-017,Swarovski PP#1028/32 Blue Zircon,,,,Blue Zircon
 mvPQ6IexcsrKXo2b2R1W,C07-1080-14-002,Tian Hua #1050/14 double hole Clear,,C1,suffix match — CHECK,Tian Hua Clear
 n2F53XPXssjrRn2yWwU1,5238221,182023 01 001SINI 211 001SSHA,,,,
 nBa9n0ZniXaDvHGM4rwc,5226664,181951 14MM 001GSHA,,,,
-nX79jCdHlJlPbSQcHaiy,C01-1028-26-005,Swarovski PP#1028/26 Rose,,PI,name match (alias),Rose
-naPkCpdVOCRm1YxjWtkG,BDC-8232-0014-011,Bohemia glass 8232/14(VL) double hole Violet,,VL,exact (code in ERP name),Violet
-ngVZH3dQGR9g69RHbbhV,C01-1028-32-005,Swarovski PP#1028/32 Rose,,PI,name match (alias),Rose
-nnnueA18KKUCbS6xt2bJ,C01-8115-14-009,Swarovski Strass #8115/14 one hole Topaz,,TO,name match,Topaz
-oCm3bGRg1SF5XrQUKMPH,C01-1028-26-009,Swarovski PP#1028/26 Topaz,,TO,name match,Topaz
+nX79jCdHlJlPbSQcHaiy,C01-1028-26-005,Swarovski PP#1028/26 Rose,PI,PI,name match (alias),Rose
+naPkCpdVOCRm1YxjWtkG,BDC-8232-0014-011,Bohemia glass 8232/14(VL) double hole Violet,VL,VL,exact (code in ERP name),Violet
+ngVZH3dQGR9g69RHbbhV,C01-1028-32-005,Swarovski PP#1028/32 Rose,PI,PI,name match (alias),Rose
+nnnueA18KKUCbS6xt2bJ,C01-8115-14-009,Swarovski Strass #8115/14 one hole Topaz,TO,TO,name match,Topaz
+oCm3bGRg1SF5XrQUKMPH,C01-1028-26-009,Swarovski PP#1028/26 Topaz,TO,TO,name match,Topaz
 oHwSaJIDxezDmloBnYNP,5124176,181000 12MM,,,,
-oPcrJRU3NXyt3QjZwEnA,C01-8641-2012-002,Swarovski Strass #8641/20 one hole Crystal,,C1,name match (alias),Crystal
+oPcrJRU3NXyt3QjZwEnA,C01-8641-2012-002,Swarovski Strass #8641/20 one hole Crystal,C1,C1,name match (alias),Crystal
 oy8qUUExOPGxM8wDntlP,5149549,Beads 181601 05 208 001GSHA,,,,Beads
 pkkQDC31UwI5KYYVZ8SQ,5015365,Beads 180101 05 001GSHA,,,,Beads
 qjT2k6XGK4PMGiGZMOQ4,5161249,181722 02 001GSHA 280HEM,,,,
@@ -163,19 +163,19 @@ r6zARXiLJpX3T6HrykDK,C01-1028-32-024,Swarovski PP#1028/32 Light Colorado Topaz,,
 rJdKYMLOqTUDQgZDmRTT,5161248,181722 01 227 001MOL,,,,
 rZ5qJ1cbsXxlsL4rmwqU,5025511,5929 MM 14.0 CRYSTAL STEEL,,,,MM CRYSTAL STEEL
 sMxHtxnuazj94JEW3h0L,5226666,181951 14MM 266,,,,
-sQpOwGkgrfqre6VVfHf5,C01-8016-14-003,Swarovski Strass #8016/14 double hole Light Topaz,,GO,name match,Light Topaz
-sljZs8I6rc2fLKQFGir5,C01-864 120-002,Swarovski Spectra#8290/20 Drop crystal one hole CL,,CL,name match (alias),Drop crystal CL
-ssvlcLlUjiYvYacqGgFD,C01-1032-14-002,Asfour #1032/14 double hole Crystal,,C1,name match (alias),Crystal
-ti6UU7jyN397UqGkGRvr,C01-1088-18-016,Swarovski PP#1088/18 Aquamarine,,GR,name match,Aquamarine
-u8pfDAvQBqFPx65nBmKj,C01-8115-14-008,Swarovski Strass #8115/14 one hole Emerlad,,EM,name match (alias),Emerlad
-uwf98ee9HFo3ofEmGVhd,C01-8115-14-028,Swarovski Strass #8115/14 one hole  Dk Sapph,,DB,name match (alias),Dk Sapph
+sQpOwGkgrfqre6VVfHf5,C01-8016-14-003,Swarovski Strass #8016/14 double hole Light Topaz,GO,GO,name match,Light Topaz
+sljZs8I6rc2fLKQFGir5,C01-864 120-002,Swarovski Spectra#8290/20 Drop crystal one hole CL,CL,CL,name match (alias),Drop crystal CL
+ssvlcLlUjiYvYacqGgFD,C01-1032-14-002,Asfour #1032/14 double hole Crystal,C1,C1,name match (alias),Crystal
+ti6UU7jyN397UqGkGRvr,C01-1088-18-016,Swarovski PP#1088/18 Aquamarine,GR,GR,name match,Aquamarine
+u8pfDAvQBqFPx65nBmKj,C01-8115-14-008,Swarovski Strass #8115/14 one hole Emerlad,EM,EM,name match (alias),Emerlad
+uwf98ee9HFo3ofEmGVhd,C01-8115-14-028,Swarovski Strass #8115/14 one hole  Dk Sapph,DB,DB,name match (alias),Dk Sapph
 v9HLilDPVyH5rZNMWSTP,5015375,Beads 180101 10 214,,,,Beads
-vE8WnoH2M7wYBhD9moqL,C01-1028-18-013,Swarovski PP#1028/18 AB.BL,,AB,name match (alias),AB.BL
+vE8WnoH2M7wYBhD9moqL,C01-1028-18-013,Swarovski PP#1028/18 AB.BL,AB,AB,name match (alias),AB.BL
 vRV11vKJvLK8yMXR0rir,5203299,181933 52 208 001GSHA,,,,
-veCN5xKyv4DvoHaP5qPB,C01-8115-14-010,Swarovski Strass #8115/14 one hole Light Peridot,,LP,name match,Light Peridot
+veCN5xKyv4DvoHaP5qPB,C01-8115-14-010,Swarovski Strass #8115/14 one hole Light Peridot,LP,LP,name match,Light Peridot
 wodQIEHfK23cIUEeoTj1,C01-1028-25-018,Swarovski PP#1028/25 Garnet,,,,Garnet
 wxKVFWA4ta8hvQgOWBOE,C01-1028-32-023,Swarovski PP#1028/32 Black Diamond,,,,Black Diamond
 y6BrlRxinjYKpJyFY0Xc,C01-8115-14-001,Swarovski Strass #8115/14 one hole Medium Sapphire,,BL,suffix match — CHECK,Medium Sapphire
 y7JBv6fFKQB5Twj9rA89,5203303,181933 17 207 001GSHA,,,,
 yvOzTBoFDuc1twkStwLQ,C01-1028-26-024,Swarovski PP#1028/26 Light Colorado Topaz,,TO,suffix match — CHECK,Light Colorado Topaz
-yye95B7DCwPWbNRxRvrg,BDC-8232-0014-004,Bohemia glass 8232/14(GR) double hole Aquamarine,,GR,exact (code in ERP name),Aquamarine
+yye95B7DCwPWbNRxRvrg,BDC-8232-0014-004,Bohemia glass 8232/14(GR) double hole Aquamarine,GR,GR,exact (code in ERP name),Aquamarine
