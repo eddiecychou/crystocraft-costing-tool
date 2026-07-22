@@ -1,0 +1,350 @@
+[
+  {
+    "id": "6jVyOwIcGZTh99UL3U6y",
+    "key": "0003|001",
+    "packing": {
+      "carton_dims": "32.6 x 28.5 x 17.8 CM",
+      "pcs_per_carton": "96",
+      "cbm_per_carton": "0.0165",
+      "weight_per_carton_kg": "3.7",
+      "weight_per_pcs_kg": "0.033",
+      "pack_box_ref": "PB001"
+    }
+  },
+  {
+    "id": "hjoXrzro4pRthEvpLdos",
+    "key": "0007|001",
+    "packing": {
+      "carton_dims": "32.6 x 28.5 x 17.8 CM",
+      "pcs_per_carton": "96",
+      "cbm_per_carton": "0.0165",
+      "weight_per_carton_kg": "3.8",
+      "weight_per_pcs_kg": "0.033",
+      "pack_box_ref": "PB001"
+    }
+  },
+  {
+    "id": "ay5jILhN9D0WtdiOPCYl",
+    "key": "0030|001",
+    "packing": {
+      "pcs_per_carton": "96",
+      "carton_dims": "",
+      "cbm_per_carton": "0.0165",
+      "weight_per_carton_kg": "3.7",
+      "pack_box_ref": "PB001",
+      "weight_per_pcs_kg": "0.033"
+    }
+  },
+  {
+    "id": "IzsSq9k85SWKysZcQxtG",
+    "key": "0035|001",
+    "packing": {
+      "pcs_per_carton": "96",
+      "cbm_per_carton": "0.0165",
+      "carton_dims": "",
+      "weight_per_pcs_kg": "0.03",
+      "pack_box_ref": "PB001",
+      "weight_per_carton_kg": "3.6"
+    }
+  },
+  {
+    "id": "Udn5oCsy4dSkuTXwz90v",
+    "key": "0037|001",
+    "packing": {
+      "weight_per_pcs_kg": "0.034",
+      "pack_box_ref": "PB001",
+      "weight_per_carton_kg": "3.9",
+      "cbm_per_carton": "0.0165",
+      "carton_dims": "",
+      "pcs_per_carton": "96"
+    }
+  },
+  {
+    "id": "B05BvZYOSTGatGDgzXMP",
+    "key": "0040|001",
+    "packing": {
+      "pcs_per_carton": "96",
+      "cbm_per_carton": "0.0165",
+      "carton_dims": "",
+      "pack_box_ref": "PB001",
+      "weight_per_pcs_kg": "0.034",
+      "weight_per_carton_kg": "3.9"
+    }
+  },
+  {
+    "id": "XzD6WQGZY1cDZSqKjSoQ",
+    "key": "0083|001",
+    "packing": {
+      "weight_per_carton_kg": "3.8",
+      "pack_box_ref": "PB001",
+      "weight_per_pcs_kg": "0.033",
+      "carton_dims": "",
+      "cbm_per_carton": "0.0165",
+      "pcs_per_carton": "96"
+    }
+  },
+  {
+    "id": "zV7iFRCpkUCHrhdbthFd",
+    "key": "0088|001",
+    "packing": {
+      "cbm_per_carton": "0.0165",
+      "carton_dims": "",
+      "pack_box_ref": "PB001",
+      "weight_per_pcs_kg": "0.033",
+      "weight_per_carton_kg": "3.8",
+      "pcs_per_carton": "96"
+    }
+  },
+  {
+    "id": "m7SVRA8grW1QrDohFSNc",
+    "key": "0089|001",
+    "packing": {
+      "cbm_per_carton": "0.0165",
+      "carton_dims": "",
+      "weight_per_pcs_kg": "0.033",
+      "pack_box_ref": "PB001",
+      "weight_per_carton_kg": "3.8",
+      "pcs_per_carton": "96"
+    }
+  },
+  {
+    "id": "M0n4XT4hWqOhTD3CcQNc",
+    "key": "0118|001",
+    "packing": {
+      "carton_dims": "",
+      "cbm_per_carton": "0.0165",
+      "weight_per_carton_kg": "3.9",
+      "weight_per_pcs_kg": "0.034",
+      "pack_box_ref": "PB001",
+      "pcs_per_carton": "96"
+    }
+  },
+  {
+    "id": "YXLwHglgAKNedFQMhSVU",
+    "key": "0167|001",
+    "packing": {
+      "carton_dims": "",
+      "cbm_per_carton": "0.0165",
+      "weight_per_carton_kg": "3.9",
+      "weight_per_pcs_kg": "0.034",
+      "pack_box_ref": "PB001",
+      "pcs_per_carton": "96"
+    }
+  },
+  {
+    "id": "jpR5nkOUuHYaPxKH9jfw",
+    "key": "0168|001",
+    "packing": {
+      "pcs_per_carton": "96",
+      "cbm_per_carton": "0.0165",
+      "carton_dims": "",
+      "weight_per_pcs_kg": "0.03",
+      "pack_box_ref": "PB001",
+      "weight_per_carton_kg": "3.5"
+    }
+  },
+  {
+    "id": "j586Zb7uY29gxGwvHELT",
+    "key": "0169|001",
+    "packing": {
+      "pcs_per_carton": "96",
+      "weight_per_carton_kg": "3.5",
+      "pack_box_ref": "PB001",
+      "weight_per_pcs_kg": "0.03",
+      "carton_dims": "",
+      "cbm_per_carton": "0.0165"
+    }
+  },
+  {
+    "id": "M6F2awNvEwMtJabxK6Am",
+    "key": "0172|001",
+    "packing": {
+      "cbm_per_carton": "0.0165",
+      "carton_dims": "",
+      "pack_box_ref": "PB001",
+      "weight_per_pcs_kg": "0.03",
+      "weight_per_carton_kg": "3.5",
+      "pcs_per_carton": "96"
+    }
+  },
+  {
+    "id": "EQliPmhJG0ULFUGDwU1u",
+    "key": "0210|001",
+    "packing": {
+      "carton_dims": "",
+      "cbm_per_carton": "0.0165",
+      "weight_per_carton_kg": "3",
+      "pack_box_ref": "PB001",
+      "weight_per_pcs_kg": "0.025",
+      "pcs_per_carton": "96"
+    }
+  },
+  {
+    "id": "K15uhMERlynLMyjIVtn2",
+    "key": "0229|001",
+    "packing": {
+      "carton_dims": "",
+      "cbm_per_carton": "0.0165",
+      "weight_per_carton_kg": "3.5",
+      "pack_box_ref": "PB001",
+      "weight_per_pcs_kg": "0.031",
+      "pcs_per_carton": "96"
+    }
+  },
+  {
+    "id": "EhHDDimahSlhnL6KHwFC",
+    "key": "0230|001",
+    "packing": {
+      "carton_dims": "",
+      "cbm_per_carton": "0.0165",
+      "weight_per_carton_kg": "3.5",
+      "weight_per_pcs_kg": "0.03",
+      "pack_box_ref": "PB001",
+      "pcs_per_carton": "96"
+    }
+  },
+  {
+    "id": "8Vwia2pTIH2DPrO67rDx",
+    "key": "0271|001",
+    "packing": {
+      "pack_box_ref": "PB001",
+      "weight_per_pcs_kg": "0.03",
+      "weight_per_carton_kg": "3.5",
+      "cbm_per_carton": "0.0165",
+      "carton_dims": "",
+      "pcs_per_carton": "96"
+    }
+  },
+  {
+    "id": "Zv4Unh8ndd8eKuL4z7ux",
+    "key": "0272|001",
+    "packing": {
+      "pack_box_ref": "PB001",
+      "weight_per_pcs_kg": "0.03",
+      "weight_per_carton_kg": "3.5",
+      "cbm_per_carton": "0.0165",
+      "carton_dims": "",
+      "pcs_per_carton": "96"
+    }
+  },
+  {
+    "id": "fAkPEhp6PuCzSgxsVUDt",
+    "key": "0324|001",
+    "packing": {
+      "carton_dims": "",
+      "cbm_per_carton": "0.0165",
+      "weight_per_carton_kg": "3.8",
+      "pack_box_ref": "PB001",
+      "weight_per_pcs_kg": "0.034",
+      "pcs_per_carton": "96"
+    }
+  },
+  {
+    "id": "pND1a9L6DWvjCTJ3pugE",
+    "key": "0330|001",
+    "packing": {
+      "pcs_per_carton": "96",
+      "carton_dims": "",
+      "cbm_per_carton": "0.0165",
+      "weight_per_carton_kg": "",
+      "pack_box_ref": "PB001",
+      "weight_per_pcs_kg": ""
+    }
+  },
+  {
+    "id": "2ibW17q8ynOCuxvv71fJ",
+    "key": "0353|159",
+    "packing": {
+      "pcs_per_carton": "24",
+      "carton_dims": "",
+      "cbm_per_carton": "0.09",
+      "weight_per_carton_kg": "6.3",
+      "weight_per_pcs_kg": "0.208",
+      "pack_box_ref": "PB029"
+    }
+  },
+  {
+    "id": "pu6AQknK8pPnDopVXLQi",
+    "key": "0354|159",
+    "packing": {
+      "weight_per_pcs_kg": "0.183",
+      "pack_box_ref": "PB028",
+      "weight_per_carton_kg": "5.5",
+      "cbm_per_carton": "0.0844",
+      "carton_dims": "",
+      "pcs_per_carton": "24"
+    }
+  },
+  {
+    "id": "AUAMldPVdMIfFyEGiny2",
+    "key": "0365|001",
+    "packing": {
+      "pcs_per_carton": "96",
+      "carton_dims": "",
+      "cbm_per_carton": "0.0165",
+      "weight_per_carton_kg": "",
+      "pack_box_ref": "PB001",
+      "weight_per_pcs_kg": ""
+    }
+  },
+  {
+    "id": "UcLmPJxSwYxd9OpXZI6R",
+    "key": "0377|001",
+    "packing": {
+      "carton_dims": "",
+      "cbm_per_carton": "0.0165",
+      "weight_per_carton_kg": "",
+      "pack_box_ref": "PB001",
+      "weight_per_pcs_kg": "",
+      "pcs_per_carton": "96"
+    }
+  },
+  {
+    "id": "sHFEUFMnFdvFuKSj2j1Z",
+    "key": "0378|001",
+    "packing": {
+      "pack_box_ref": "PB001",
+      "weight_per_pcs_kg": "",
+      "weight_per_carton_kg": "",
+      "cbm_per_carton": "0.0165",
+      "carton_dims": "",
+      "pcs_per_carton": "96"
+    }
+  },
+  {
+    "id": "WyVyOxodlV1bjlW9ktVd",
+    "key": "0379|001",
+    "packing": {
+      "cbm_per_carton": "0.0165",
+      "carton_dims": "",
+      "weight_per_pcs_kg": "",
+      "pack_box_ref": "PB001",
+      "weight_per_carton_kg": "",
+      "pcs_per_carton": "96"
+    }
+  },
+  {
+    "id": "aw4yU5xJcuy5XYWF1fIV",
+    "key": "0380|001",
+    "packing": {
+      "pack_box_ref": "PB001",
+      "weight_per_pcs_kg": "0.0396",
+      "weight_per_carton_kg": "3.8",
+      "cbm_per_carton": "0.0165",
+      "carton_dims": "",
+      "pcs_per_carton": "96"
+    }
+  },
+  {
+    "id": "9TfXNz5PLbOQ8PaUugqy",
+    "key": "0416|001",
+    "packing": {
+      "pcs_per_carton": "96",
+      "carton_dims": "",
+      "cbm_per_carton": "0.0165",
+      "weight_per_carton_kg": "",
+      "pack_box_ref": "PB001",
+      "weight_per_pcs_kg": ""
+    }
+  }
+]

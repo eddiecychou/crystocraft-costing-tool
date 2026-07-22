@@ -1,5 +1,5 @@
 {
-  "pulled_at": "2026-07-22T07:56:41.233Z",
+  "pulled_at": "2026-07-22T13:07:23.114Z",
   "products": [
     {
       "id": "u42ojXRnN6LK6WQ5NZNR",
@@ -832,14 +832,6 @@
       ],
       "marketing_description": "This enchanting Mini Angeliwing Butterfly Freestand, measuring 5.6 x 3.8 cm, is a delicate marvel crafted from brilliant Bohemia crystal. Two faceted 14mm octagon crystals form its wings, beautifully complemented by 8 Swarovski crystal rhinestones on the wings and 2 on the tentacles, adding a vibrant sparkle. Available in radiant Chrome or luxurious Gold finishes, this piece makes a captivating collectible or a thoughtful gift.",
       "is_new": false,
-      "packing": {
-        "carton_dims": "32.6 x 28.5 x 17.8 CM",
-        "pcs_per_carton": "96",
-        "cbm_per_carton": "0.0165",
-        "weight_per_carton_kg": "3.7",
-        "weight_per_pcs_kg": "0.033",
-        "pack_box_ref": "PB001"
-      },
       "product_type": "Figurines",
       "variants": [
         {
@@ -1045,7 +1037,15 @@
           "plating_code": "C"
         }
       ],
-      "updatedAt": "2026-06-27T15:04:14.321Z"
+      "packing": {
+        "carton_dims": "32.6 x 28.5 x 17.8 CM",
+        "pcs_per_carton": "96",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.7",
+        "weight_per_pcs_kg": "0.033",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:06:55.799Z"
     },
     {
       "id": "gfG6SXVhdbrpedWXuVja",
@@ -1987,14 +1987,6 @@
       "delivery_note": "",
       "marketing_description": "",
       "is_new": false,
-      "packing": {
-        "carton_dims": "32.6 x 28.5 x 17.8 CM",
-        "pcs_per_carton": "96",
-        "cbm_per_carton": "0.0165",
-        "weight_per_carton_kg": "3.8",
-        "weight_per_pcs_kg": "0.033",
-        "pack_box_ref": "PB001"
-      },
       "product_type": "Figurines",
       "active": true,
       "crystal_mixes": {
@@ -2096,7 +2088,15 @@
           ]
         }
       ],
-      "updatedAt": "2026-07-10T05:04:28.004Z"
+      "packing": {
+        "carton_dims": "32.6 x 28.5 x 17.8 CM",
+        "pcs_per_carton": "96",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.8",
+        "weight_per_pcs_kg": "0.033",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:06:56.283Z"
     },
     {
       "id": "gv3InxNhjpdJSFoqesiz",
@@ -6796,14 +6796,6 @@
       "plating_stock": {},
       "active": true,
       "createdAt": "2026-06-16T18:50:03.026Z",
-      "packing": {
-        "pcs_per_carton": "96",
-        "carton_dims": "",
-        "cbm_per_carton": "0.0165",
-        "weight_per_carton_kg": "3.7",
-        "pack_box_ref": "PB001",
-        "weight_per_pcs_kg": "0.033"
-      },
       "gallery": [
         {
           "url": "https://www.crystocraft.com/wp-content/uploads/2019/09/U0030-001-GGT.jpg",
@@ -6974,7 +6966,15 @@
       "videos": [
         "https://youtube.com/shorts/pE37jo8WCug?si=Gv0xkkwzO_rEjG9w"
       ],
-      "updatedAt": "2026-07-01T12:23:31.077Z"
+      "packing": {
+        "pcs_per_carton": "96",
+        "carton_dims": "",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.7",
+        "weight_per_pcs_kg": "0.033",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:06:56.900Z"
     },
     {
       "id": "oSK4M2g9nFFlkkUprJgu",
@@ -7842,14 +7842,6 @@
         "C": 432
       },
       "createdAt": "2026-06-16T18:51:03.094Z",
-      "packing": {
-        "pcs_per_carton": "96",
-        "cbm_per_carton": "0.0165",
-        "carton_dims": "",
-        "weight_per_pcs_kg": "0.03",
-        "pack_box_ref": "PB001",
-        "weight_per_carton_kg": "3.6"
-      },
       "video_url": "",
       "design_type": "Animals",
       "delivery_note": "",
@@ -7945,7 +7937,15 @@
       "videos": [
         "https://youtube.com/shorts/4gy25AoKlDA?si=cunai78opKVM7HwU"
       ],
-      "updatedAt": "2026-07-01T12:25:55.153Z"
+      "packing": {
+        "pcs_per_carton": "96",
+        "cbm_per_carton": "0.0165",
+        "carton_dims": "",
+        "weight_per_pcs_kg": "0.03",
+        "weight_per_carton_kg": "3.6",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:06:57.301Z"
     },
     {
       "id": "JIZAvfa1sSdrNnYymUZG",
@@ -8337,14 +8337,6 @@
       },
       "active": true,
       "createdAt": "2026-06-16T18:50:07.984Z",
-      "packing": {
-        "weight_per_pcs_kg": "0.034",
-        "pack_box_ref": "PB001",
-        "weight_per_carton_kg": "3.9",
-        "cbm_per_carton": "0.0165",
-        "carton_dims": "",
-        "pcs_per_carton": "96"
-      },
       "gallery": [
         {
           "url": "https://www.crystocraft.com/wp-content/uploads/2025/10/D0037-001-CPI-1.jpg",
@@ -8503,7 +8495,15 @@
       "videos": [
         "https://youtube.com/shorts/c_IflVKjbFk?si=l9Ns0ROTdJQabwyJ"
       ],
-      "updatedAt": "2026-07-01T10:21:37.188Z"
+      "packing": {
+        "weight_per_pcs_kg": "0.034",
+        "weight_per_carton_kg": "3.9",
+        "cbm_per_carton": "0.0165",
+        "carton_dims": "",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:06:57.606Z"
     },
     {
       "id": "dOy451RfDBHlFB7B8ZWl",
@@ -8633,14 +8633,6 @@
         "G": 206
       },
       "createdAt": "2026-06-16T18:50:49.323Z",
-      "packing": {
-        "pcs_per_carton": "96",
-        "cbm_per_carton": "0.0165",
-        "carton_dims": "",
-        "pack_box_ref": "PB001",
-        "weight_per_pcs_kg": "0.034",
-        "weight_per_carton_kg": "3.9"
-      },
       "video_url": "",
       "design_type": "Hearts",
       "delivery_note": "",
@@ -8762,7 +8754,15 @@
       "videos": [
         "https://youtube.com/shorts/c_IflVKjbFk?si=l9Ns0ROTdJQabwyJ"
       ],
-      "updatedAt": "2026-07-01T10:21:37.188Z"
+      "packing": {
+        "pcs_per_carton": "96",
+        "cbm_per_carton": "0.0165",
+        "carton_dims": "",
+        "weight_per_pcs_kg": "0.034",
+        "weight_per_carton_kg": "3.9",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:06:57.975Z"
     },
     {
       "id": "Wmt0jq5a3ft2ATOzELku",
@@ -11429,14 +11429,6 @@
         "C": 61
       },
       "createdAt": "2026-06-16T18:50:57.866Z",
-      "packing": {
-        "weight_per_carton_kg": "3.8",
-        "pack_box_ref": "PB001",
-        "weight_per_pcs_kg": "0.033",
-        "carton_dims": "",
-        "cbm_per_carton": "0.0165",
-        "pcs_per_carton": "96"
-      },
       "gallery": [
         {
           "url": "https://www.crystocraft.com/wp-content/uploads/2025/05/U0083-001-CGO.jpg",
@@ -11535,7 +11527,15 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-29T16:05:01.956Z"
+      "packing": {
+        "weight_per_carton_kg": "3.8",
+        "weight_per_pcs_kg": "0.033",
+        "carton_dims": "",
+        "cbm_per_carton": "0.0165",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:06:58.283Z"
     },
     {
       "id": "QPYWLadkR3oSW4bGiyyU",
@@ -12057,14 +12057,6 @@
       },
       "active": true,
       "createdAt": "2026-06-16T18:50:01.023Z",
-      "packing": {
-        "cbm_per_carton": "0.0165",
-        "carton_dims": "",
-        "pack_box_ref": "PB001",
-        "weight_per_pcs_kg": "0.033",
-        "weight_per_carton_kg": "3.8",
-        "pcs_per_carton": "96"
-      },
       "gallery": [
         {
           "url": "https://www.crystocraft.com/wp-content/uploads/2025/05/U0088-001-CGR.jpg",
@@ -12223,7 +12215,15 @@
       "videos": [
         "https://youtube.com/shorts/UE2z3zq-6rA?si=nUeTr1b16kzKPq0_"
       ],
-      "updatedAt": "2026-07-01T10:35:54.992Z"
+      "packing": {
+        "cbm_per_carton": "0.0165",
+        "carton_dims": "",
+        "weight_per_pcs_kg": "0.033",
+        "weight_per_carton_kg": "3.8",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:06:58.588Z"
     },
     {
       "id": "zmCy30ptjSmvXpyH2EoI",
@@ -12411,14 +12411,6 @@
         "C": 120
       },
       "createdAt": "2026-06-16T18:51:03.426Z",
-      "packing": {
-        "cbm_per_carton": "0.0165",
-        "carton_dims": "",
-        "weight_per_pcs_kg": "0.033",
-        "pack_box_ref": "PB001",
-        "weight_per_carton_kg": "3.8",
-        "pcs_per_carton": "96"
-      },
       "crystal_mixes": {},
       "video_url": "",
       "design_type": "Birds",
@@ -12487,7 +12479,15 @@
       "videos": [
         "https://youtube.com/shorts/UE2z3zq-6rA?si=nUeTr1b16kzKPq0_"
       ],
-      "updatedAt": "2026-07-01T10:35:54.992Z"
+      "packing": {
+        "cbm_per_carton": "0.0165",
+        "carton_dims": "",
+        "weight_per_pcs_kg": "0.033",
+        "weight_per_carton_kg": "3.8",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:06:58.887Z"
     },
     {
       "id": "dwNbPVd5d2J2Wabq03pm",
@@ -14599,14 +14599,6 @@
         "C": 343
       },
       "createdAt": "2026-06-16T18:50:44.308Z",
-      "packing": {
-        "carton_dims": "",
-        "cbm_per_carton": "0.0165",
-        "weight_per_carton_kg": "3.9",
-        "weight_per_pcs_kg": "0.034",
-        "pack_box_ref": "PB001",
-        "pcs_per_carton": "96"
-      },
       "crystal_mixes": {},
       "video_url": "",
       "critical_components": [],
@@ -14694,7 +14686,15 @@
       "videos": [
         "https://youtube.com/shorts/-LPfK1u1Vyo?si=2juSqB5n-dHNzyoR"
       ],
-      "updatedAt": "2026-07-01T10:33:50.031Z"
+      "packing": {
+        "carton_dims": "",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.9",
+        "weight_per_pcs_kg": "0.034",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:06:59.171Z"
     },
     {
       "id": "ogsuRDLNhrxYDlC2tYIU",
@@ -16266,14 +16266,6 @@
       "status": "stock",
       "plating_stock": {},
       "createdAt": "2026-06-16T18:50:56.477Z",
-      "packing": {
-        "carton_dims": "",
-        "cbm_per_carton": "0.0165",
-        "weight_per_carton_kg": "3.9",
-        "weight_per_pcs_kg": "0.034",
-        "pack_box_ref": "PB001",
-        "pcs_per_carton": "96"
-      },
       "product_type": "Figurines",
       "critical_components": [
         {
@@ -16339,7 +16331,15 @@
       "videos": [
         "https://youtube.com/shorts/pE37jo8WCug?si=Gv0xkkwzO_rEjG9w"
       ],
-      "updatedAt": "2026-07-01T12:23:31.077Z"
+      "packing": {
+        "carton_dims": "",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.9",
+        "weight_per_pcs_kg": "0.034",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:06:59.477Z"
     },
     {
       "id": "WBDkPNDtA082emdupJFu",
@@ -16502,14 +16502,6 @@
         "G": 375
       },
       "createdAt": "2026-06-16T18:50:49.650Z",
-      "packing": {
-        "pcs_per_carton": "96",
-        "cbm_per_carton": "0.0165",
-        "carton_dims": "",
-        "weight_per_pcs_kg": "0.03",
-        "pack_box_ref": "PB001",
-        "weight_per_carton_kg": "3.5"
-      },
       "crystal_mixes": {},
       "design_type": "Hearts",
       "delivery_note": "",
@@ -16576,7 +16568,15 @@
         }
       ],
       "marketing_description": "This Mini Heart freestanding ornament, crafted with Bohemia crystal and a Gold finish, captures light beautifully. Its elegant heart shape and sparkling facets make it a cherished gift or decorative accent.",
-      "updatedAt": "2026-07-01T15:38:14.235Z"
+      "packing": {
+        "pcs_per_carton": "96",
+        "cbm_per_carton": "0.0165",
+        "carton_dims": "",
+        "weight_per_pcs_kg": "0.03",
+        "weight_per_carton_kg": "3.5",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:06:59.777Z"
     },
     {
       "id": "ydihnMAQYBUgQPNsxWeX",
@@ -16840,14 +16840,6 @@
         "C": 300
       },
       "createdAt": "2026-06-16T18:50:49.987Z",
-      "packing": {
-        "pcs_per_carton": "96",
-        "weight_per_carton_kg": "3.5",
-        "pack_box_ref": "PB001",
-        "weight_per_pcs_kg": "0.03",
-        "carton_dims": "",
-        "cbm_per_carton": "0.0165"
-      },
       "crystal_mixes": {},
       "design_type": "Hearts",
       "delivery_note": "",
@@ -16948,7 +16940,15 @@
       ],
       "video_url": "https://youtube.com/shorts/c_IflVKjbFk?si=l9Ns0ROTdJQabwyJ",
       "marketing_description": "This Mini Heart(Arrow) Freestand captures affection with its striking Bohemia crystal. Offered in Gold or Chrome, its faceted heart radiates a captivating sparkle, a perfect collectible or gift.",
-      "updatedAt": "2026-07-01T15:48:38.255Z"
+      "packing": {
+        "pcs_per_carton": "96",
+        "weight_per_carton_kg": "3.5",
+        "weight_per_pcs_kg": "0.03",
+        "carton_dims": "",
+        "cbm_per_carton": "0.0165",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:07:00.055Z"
     },
     {
       "id": "GctbB47brrIDIK9S0woP",
@@ -17276,14 +17276,6 @@
         "C": 4188
       },
       "createdAt": "2026-06-16T18:50:50.338Z",
-      "packing": {
-        "cbm_per_carton": "0.0165",
-        "carton_dims": "",
-        "pack_box_ref": "PB001",
-        "weight_per_pcs_kg": "0.03",
-        "weight_per_carton_kg": "3.5",
-        "pcs_per_carton": "96"
-      },
       "crystal_mixes": {},
       "design_type": "Hearts",
       "delivery_note": "",
@@ -17384,7 +17376,15 @@
         }
       ],
       "marketing_description": "This Mini Heart (w/ Slot) Freestand captures light beautifully. A faceted Bohemia crystal within a polished heart, available in Gold or Chrome, creating a delightful collectible. Slot can insert small photo.",
-      "updatedAt": "2026-07-01T15:58:30.599Z"
+      "packing": {
+        "cbm_per_carton": "0.0165",
+        "carton_dims": "",
+        "weight_per_pcs_kg": "0.03",
+        "weight_per_carton_kg": "3.5",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:07:00.356Z"
     },
     {
       "id": "w9Zer7szDkz3VHncQNxI",
@@ -18418,14 +18418,6 @@
         "G": 303
       },
       "createdAt": "2026-06-16T18:50:36.469Z",
-      "packing": {
-        "carton_dims": "",
-        "cbm_per_carton": "0.0165",
-        "weight_per_carton_kg": "3",
-        "pack_box_ref": "PB001",
-        "weight_per_pcs_kg": "0.025",
-        "pcs_per_carton": "96"
-      },
       "crystal_mixes": {},
       "design_type": "Animals",
       "delivery_note": "",
@@ -18486,7 +18478,15 @@
           "caption": "D0210-001-GTO"
         }
       ],
-      "updatedAt": "2026-07-01T16:59:05.181Z"
+      "packing": {
+        "carton_dims": "",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3",
+        "weight_per_pcs_kg": "0.025",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:07:00.673Z"
     },
     {
       "id": "jY32mCRqAubv3o0Q8g6o",
@@ -19295,14 +19295,6 @@
         "C": 664
       },
       "createdAt": "2026-06-16T18:50:51.328Z",
-      "packing": {
-        "carton_dims": "",
-        "cbm_per_carton": "0.0165",
-        "weight_per_carton_kg": "3.5",
-        "pack_box_ref": "PB001",
-        "weight_per_pcs_kg": "0.031",
-        "pcs_per_carton": "96"
-      },
       "crystal_mixes": {},
       "design_type": "Hearts",
       "delivery_note": "",
@@ -19407,7 +19399,15 @@
           "caption": "D0229-001-CAB"
         }
       ],
-      "updatedAt": "2026-07-01T17:39:36.876Z"
+      "packing": {
+        "carton_dims": "",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.5",
+        "weight_per_pcs_kg": "0.031",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:07:00.949Z"
     },
     {
       "id": "S3VUcnUDIwgBEydgB7nw",
@@ -19670,14 +19670,6 @@
         "C": 1106
       },
       "createdAt": "2026-06-16T18:51:07.564Z",
-      "packing": {
-        "carton_dims": "",
-        "cbm_per_carton": "0.0165",
-        "weight_per_carton_kg": "3.5",
-        "weight_per_pcs_kg": "0.03",
-        "pack_box_ref": "PB001",
-        "pcs_per_carton": "96"
-      },
       "crystal_mixes": {},
       "design_type": "Hearts",
       "delivery_note": "",
@@ -19738,7 +19730,15 @@
         }
       ],
       "marketing_description": "A captivating Mini Heart (Birthstone) Freestand, crafted with Bohemia crystal and a gleaming chrome finish. This elegant heart design, featuring a multifaceted crystal, adds a refined sparkle to any collection or gift.",
-      "updatedAt": "2026-07-01T17:46:31.004Z"
+      "packing": {
+        "carton_dims": "",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.5",
+        "weight_per_pcs_kg": "0.03",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:07:01.224Z"
     },
     {
       "id": "BLFPowLJqj7sFHcpVvvb",
@@ -23859,14 +23859,6 @@
         "C": 543
       },
       "createdAt": "2026-06-16T18:50:57.162Z",
-      "packing": {
-        "pack_box_ref": "PB001",
-        "weight_per_pcs_kg": "0.03",
-        "weight_per_carton_kg": "3.5",
-        "cbm_per_carton": "0.0165",
-        "carton_dims": "",
-        "pcs_per_carton": "96"
-      },
       "product_type": "Figurines",
       "critical_components": [
         {
@@ -24002,7 +23994,15 @@
           "caption": "D0271-001-CBL"
         }
       ],
-      "updatedAt": "2026-07-02T14:05:03.869Z"
+      "packing": {
+        "weight_per_pcs_kg": "0.03",
+        "weight_per_carton_kg": "3.5",
+        "cbm_per_carton": "0.0165",
+        "carton_dims": "",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:07:01.541Z"
     },
     {
       "id": "Zv4Unh8ndd8eKuL4z7ux",
@@ -24020,14 +24020,6 @@
         "C": 291
       },
       "createdAt": "2026-06-16T18:51:09.648Z",
-      "packing": {
-        "pack_box_ref": "PB001",
-        "weight_per_pcs_kg": "0.03",
-        "weight_per_carton_kg": "3.5",
-        "cbm_per_carton": "0.0165",
-        "carton_dims": "",
-        "pcs_per_carton": "96"
-      },
       "crystal_mixes": {},
       "design_type": "Objects",
       "delivery_note": "",
@@ -24113,7 +24105,15 @@
           "caption": ""
         }
       ],
-      "updatedAt": "2026-07-02T19:28:25.415Z"
+      "packing": {
+        "weight_per_pcs_kg": "0.03",
+        "weight_per_carton_kg": "3.5",
+        "cbm_per_carton": "0.0165",
+        "carton_dims": "",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:07:01.815Z"
     },
     {
       "id": "eJWzkHZl92jnm4jR6s0j",
@@ -26744,14 +26744,6 @@
       },
       "active": false,
       "createdAt": "2026-06-16T18:50:46.966Z",
-      "packing": {
-        "carton_dims": "",
-        "cbm_per_carton": "0.0165",
-        "weight_per_carton_kg": "3.8",
-        "pack_box_ref": "PB001",
-        "weight_per_pcs_kg": "0.034",
-        "pcs_per_carton": "96"
-      },
       "crystal_mixes": {},
       "video_url": "",
       "videos": [],
@@ -26872,7 +26864,6 @@
           "caption": "D0324-001-CAB"
         }
       ],
-      "updatedAt": "2026-07-03T00:38:42.152Z",
       "critical_components": [
         {
           "id": "BY88Cb81rTlRR1EcbxzC",
@@ -26898,7 +26889,16 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "packing": {
+        "carton_dims": "",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "3.8",
+        "weight_per_pcs_kg": "0.034",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:07:02.090Z"
     },
     {
       "id": "m8zcIvC8ls7JBQkLzwFV",
@@ -28020,14 +28020,6 @@
         "C": 420
       },
       "createdAt": "2026-06-16T18:50:38.523Z",
-      "packing": {
-        "pcs_per_carton": "96",
-        "carton_dims": "",
-        "cbm_per_carton": "0.0165",
-        "weight_per_carton_kg": "",
-        "pack_box_ref": "PB001",
-        "weight_per_pcs_kg": ""
-      },
       "crystal_mixes": {},
       "design_type": "Animals",
       "delivery_note": "",
@@ -28128,7 +28120,15 @@
           "caption": "D0330-001-CVL"
         }
       ],
-      "updatedAt": "2026-07-03T06:57:21.964Z"
+      "packing": {
+        "pcs_per_carton": "96",
+        "carton_dims": "",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": "",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:07:02.366Z"
     },
     {
       "id": "z5TzWJNN9IzAcUWUcZxQ",
@@ -31180,14 +31180,6 @@
       "plating_stock": {},
       "active": true,
       "createdAt": "2026-06-16T18:50:10.646Z",
-      "packing": {
-        "pcs_per_carton": "24",
-        "carton_dims": "",
-        "cbm_per_carton": "0.09",
-        "weight_per_carton_kg": "6.3",
-        "weight_per_pcs_kg": "0.208",
-        "pack_box_ref": "PB029"
-      },
       "product_type": "Figurines",
       "is_new": false,
       "delivery_note": "",
@@ -31318,7 +31310,6 @@
           "caption": "U0353-159-GRE"
         }
       ],
-      "updatedAt": "2026-07-03T08:38:53.423Z",
       "critical_components": [
         {
           "id": "C1C3ktkKyG7KZVRIkSXz",
@@ -31392,7 +31383,16 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "packing": {
+        "pcs_per_carton": "24",
+        "carton_dims": "",
+        "cbm_per_carton": "0.09",
+        "weight_per_carton_kg": "6.3",
+        "weight_per_pcs_kg": "0.208",
+        "pack_box_ref": "P-PB029ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:07:02.651Z"
     },
     {
       "id": "pu6AQknK8pPnDopVXLQi",
@@ -31411,14 +31411,6 @@
       "plating_stock": {},
       "active": true,
       "createdAt": "2026-06-16T18:50:10.976Z",
-      "packing": {
-        "weight_per_pcs_kg": "0.183",
-        "pack_box_ref": "PB028",
-        "weight_per_carton_kg": "5.5",
-        "cbm_per_carton": "0.0844",
-        "carton_dims": "",
-        "pcs_per_carton": "24"
-      },
       "product_type": "Figurines",
       "is_new": false,
       "delivery_note": "",
@@ -31608,7 +31600,15 @@
           "plating_code": "G"
         }
       ],
-      "updatedAt": "2026-07-07T01:31:30.526Z"
+      "packing": {
+        "weight_per_pcs_kg": "0.183",
+        "weight_per_carton_kg": "5.5",
+        "cbm_per_carton": "0.0844",
+        "carton_dims": "",
+        "pcs_per_carton": "24",
+        "pack_box_ref": "P-PB028ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:07:02.930Z"
     },
     {
       "id": "PwBahbUofqsvE4jjR0Ai",
@@ -32403,14 +32403,6 @@
         "C": 138
       },
       "createdAt": "2026-06-16T18:50:51.676Z",
-      "packing": {
-        "pcs_per_carton": "96",
-        "carton_dims": "",
-        "cbm_per_carton": "0.0165",
-        "weight_per_carton_kg": "",
-        "pack_box_ref": "PB001",
-        "weight_per_pcs_kg": ""
-      },
       "crystal_mixes": {},
       "design_type": "Objects",
       "delivery_note": "",
@@ -32511,7 +32503,15 @@
           "caption": "D0365-001-CPI"
         }
       ],
-      "updatedAt": "2026-07-03T09:07:00.877Z"
+      "packing": {
+        "pcs_per_carton": "96",
+        "carton_dims": "",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": "",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:07:03.233Z"
     },
     {
       "id": "VstuNSCEFzPF47byOovL",
@@ -33223,14 +33223,6 @@
         "G": 2200
       },
       "createdAt": "2026-06-16T18:50:52.008Z",
-      "packing": {
-        "carton_dims": "",
-        "cbm_per_carton": "0.0165",
-        "weight_per_carton_kg": "",
-        "pack_box_ref": "PB001",
-        "weight_per_pcs_kg": "",
-        "pcs_per_carton": "96"
-      },
       "crystal_mixes": {},
       "design_type": "Hearts",
       "delivery_note": "",
@@ -33282,7 +33274,15 @@
           ]
         }
       ],
-      "updatedAt": "2026-07-03T09:57:12.478Z"
+      "packing": {
+        "carton_dims": "",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": "",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:07:03.507Z"
     },
     {
       "id": "VOb57aTcGMNEq8htXlBT",
@@ -33703,14 +33703,6 @@
         "C": 284
       },
       "createdAt": "2026-06-16T18:50:53.731Z",
-      "packing": {
-        "pack_box_ref": "PB001",
-        "weight_per_pcs_kg": "",
-        "weight_per_carton_kg": "",
-        "cbm_per_carton": "0.0165",
-        "carton_dims": "",
-        "pcs_per_carton": "96"
-      },
       "crystal_mixes": {},
       "video_url": "",
       "videos": [],
@@ -33773,7 +33765,6 @@
           "caption": "H0378-001-CAB"
         }
       ],
-      "updatedAt": "2026-07-03T10:03:41.839Z",
       "critical_components": [
         {
           "id": "DBs4ICspzDIHuJHeYg9d",
@@ -33799,7 +33790,16 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "packing": {
+        "weight_per_pcs_kg": "",
+        "weight_per_carton_kg": "",
+        "cbm_per_carton": "0.0165",
+        "carton_dims": "",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:07:03.783Z"
     },
     {
       "id": "2zZBYNa6rEpC2mIPO48d",
@@ -33950,14 +33950,6 @@
         "C": 1237
       },
       "createdAt": "2026-06-16T18:50:52.365Z",
-      "packing": {
-        "cbm_per_carton": "0.0165",
-        "carton_dims": "",
-        "weight_per_pcs_kg": "",
-        "pack_box_ref": "PB001",
-        "weight_per_carton_kg": "",
-        "pcs_per_carton": "96"
-      },
       "crystal_mixes": {},
       "design_type": "Hearts",
       "delivery_note": "",
@@ -34039,7 +34031,15 @@
         }
       ],
       "active": true,
-      "updatedAt": "2026-07-03T10:06:39.455Z"
+      "packing": {
+        "cbm_per_carton": "0.0165",
+        "carton_dims": "",
+        "weight_per_pcs_kg": "",
+        "weight_per_carton_kg": "",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:07:04.060Z"
     },
     {
       "id": "uCu9PTELOURmvW18s2qa",
@@ -34471,14 +34471,6 @@
         "G": 816
       },
       "createdAt": "2026-06-16T18:50:52.717Z",
-      "packing": {
-        "pack_box_ref": "PB001",
-        "weight_per_pcs_kg": "0.0396",
-        "weight_per_carton_kg": "3.8",
-        "cbm_per_carton": "0.0165",
-        "carton_dims": "",
-        "pcs_per_carton": "96"
-      },
       "crystal_mixes": {},
       "design_type": "Hearts",
       "delivery_note": "",
@@ -34536,7 +34528,15 @@
           "caption": "D0380-001-GPI"
         }
       ],
-      "updatedAt": "2026-07-03T10:15:10.919Z"
+      "packing": {
+        "weight_per_pcs_kg": "0.0396",
+        "weight_per_carton_kg": "3.8",
+        "cbm_per_carton": "0.0165",
+        "carton_dims": "",
+        "pcs_per_carton": "96",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:07:04.379Z"
     },
     {
       "id": "Rg1wgnHvFB78jfIF1V5l",
@@ -36103,14 +36103,6 @@
         "C": 138
       },
       "createdAt": "2026-06-16T18:50:48.666Z",
-      "packing": {
-        "pcs_per_carton": "96",
-        "carton_dims": "",
-        "cbm_per_carton": "0.0165",
-        "weight_per_carton_kg": "",
-        "pack_box_ref": "PB001",
-        "weight_per_pcs_kg": ""
-      },
       "crystal_mixes": {},
       "design_type": "Flowers",
       "delivery_note": "",
@@ -36193,7 +36185,15 @@
           "caption": "D0416-001-CEM"
         }
       ],
-      "updatedAt": "2026-07-03T11:16:01.602Z"
+      "packing": {
+        "pcs_per_carton": "96",
+        "carton_dims": "",
+        "cbm_per_carton": "0.0165",
+        "weight_per_carton_kg": "",
+        "weight_per_pcs_kg": "",
+        "pack_box_ref": "P-PB001ROS-02-01"
+      },
+      "updatedAt": "2026-07-22T13:07:04.656Z"
     },
     {
       "id": "rbRwzasWrBfwpKzXvoaj",
