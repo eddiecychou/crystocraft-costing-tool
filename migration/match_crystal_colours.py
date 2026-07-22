@@ -68,6 +68,29 @@ ALIASES = {
     # 2026-07-22; neither needs a new library entry.
     "bordeaux": "RE",
     "antiquegreen": "GR",
+    # Bohemia writes "(BL) … Medium Sapph", so the parenthetical already proved
+    # this; confirmed by the owner 2026-07-22.
+    "mediumsapphire": "BL",
+    "mediumsapph": "BL",
+}
+
+# Accent colours: Swarovski chatons used to complement a main colour, never sold
+# as a colourway of their own. The app's library has no code for them and should
+# not — a colour that cannot be ordered on its own has no slot to fill, and
+# adding one would let it be offered by mistake.
+#
+# Blank here is a decision, not an unanswered question, and the review file says
+# so. Owner, 2026-07-22: "mostly chatons colours for accent and they are never
+# major".
+#
+# Peach is a special case: PE exists in the library but is never used on
+# figurines — only on the new crystal fabric flowers — so Light Peach on a
+# chaton is an accent, not PE.
+ACCENT_NO_SLOT = {
+    "lightpeach", "lightcoloradotopaz", "smokedtopaz", "lightrose", "vintagerose",
+    "amethyst", "lightamethyst", "blackdiamond", "bluezircon", "capriblue",
+    "chrysolite", "garnet", "goldenshadow", "jet", "jonquil", "peridot",
+    "siam", "whiteopal",
 }
 
 
@@ -130,7 +153,12 @@ for r in rows:
     else:
         words = colour_words(r["erp_name"])
         n = norm(words)
-        if words.upper() in app_colours:
+        if n in ACCENT_NO_SLOT:
+            # Before any matching. These end with a colour word that would
+            # otherwise pull them into a slot they do not belong in: "Light Rose"
+            # into PI, "Smoked Topaz" into TO.
+            code, src = "", "accent — no library slot (decided)"
+        elif words.upper() in app_colours:
             # A few ERP names carry the app's code as the colour word outright:
             # "Swarovski SS#1088/SS29  TO".
             code, src = words.upper(), "app code used as the name"
@@ -168,6 +196,11 @@ with open(os.path.join(OUTDIR, "crystal_colour_map.csv"), "w", newline="",
 def resolve(name):
     words = colour_words(name)
     n = norm(words)
+    # Checked before any matching: several accents end with a colour word that
+    # would otherwise pull them into a slot they do not belong in — "Light Rose"
+    # into PI, "Smoked Topaz" into TO.
+    if n in ACCENT_NO_SLOT:
+        return "", "accent — no library slot (decided)"
     if words.upper() in app_colours:
         return words.upper(), "app code used as the name"
     if n in by_name:

@@ -1,5 +1,5 @@
 {
-  "pulled_at": "2026-07-22T16:24:50.639Z",
+  "pulled_at": "2026-07-22T16:27:46.484Z",
   "items": [
     {
       "id": "0B4uSwV5deafRuzTbLSg",
@@ -2119,11 +2119,11 @@
       "code": "C01-8115-14-001",
       "notes": "",
       "size": "",
-      "colour": "",
       "stock_qty": 49597,
       "name": "Swarovski Strass #8115/14 one hole Medium Sapphire",
       "createdAt": "2026-07-20T14:16:23.912Z",
-      "updatedAt": "2026-07-20T14:16:23.912Z"
+      "colour": "BL",
+      "updatedAt": "2026-07-22T16:27:44.415Z"
     },
     {
       "id": "y7JBv6fFKQB5Twj9rA89",
