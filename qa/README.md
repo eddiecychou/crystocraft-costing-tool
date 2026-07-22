@@ -60,3 +60,36 @@ and hides all of them.
 
 esbuild reported every one of those files as fine. It parses; it does not lay
 out, and it does not resolve identifiers either.
+
+# Catching an undefined identifier
+
+`no-undef` is the single most valuable check in this project, because the bug
+it catches has shipped three times: a name used but never imported. esbuild
+parses straight past it. A full esbuild **bundle** does not catch it either —
+a free variable is not an unresolved import. The browser throws at runtime, and
+on 2026-07-21 that blocked Cindy from saving anything in the UC registry
+(`listUc` was called in the save path and never imported).
+
+```
+SCRATCH=<your scratch dir>
+export PATH="$SCRATCH/node/bin:$PATH"
+mkdir -p "$SCRATCH/lint" && (cd "$SCRATCH/lint" && npm init -y && npm i eslint)
+"$SCRATCH/lint/node_modules/.bin/eslint" \
+  --config qa/eslint.no-undef.mjs --no-config-lookup src netlify
+```
+
+Expect zero errors. eslint is deliberately NOT a project dependency — nothing
+is added to package.json for a check that runs from a scratch install.
+
+# Checking every import resolves
+
+A full bundle of the app catches unresolved imports across the whole graph,
+which per-file parsing cannot:
+
+```
+ESB=$(ls -d node_modules/@esbuild/*/bin/esbuild | head -1)
+$ESB src/main.jsx --bundle --outdir=/tmp/bundlecheck --loader:.js=jsx \
+  --loader:.png=file --loader:.jpg=file --loader:.ttf=file --loader:.svg=file
+```
+
+Run both before pushing anything that touches imports.
