@@ -98,6 +98,7 @@ export default function InventoryStockTab({ inv }) {
               </div>
               {expanded === c.id && (
                 <div className="px-3 pb-3 bg-ivory/30">
+                  <EditRow inv={inv} item={c} />
                   <StockLedger componentId={c.id} currentStock={c.stock_qty || 0} currentReserved={c.reserved_qty || 0} collectionPath={inv.collectionPath} />
                   <button onClick={() => { if (window.confirm(`Delete ${c.code}? Its ledger history stays but the SKU is removed.`)) inv.remove(c.id) }}
                           className="mt-2 inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700">
@@ -111,6 +112,75 @@ export default function InventoryStockTab({ inv }) {
       )}
 
       {importing && <ImportModal inv={inv} onClose={() => setImporting(false)} />}
+    </div>
+  )
+}
+
+// Correct an existing SKU's descriptive fields.
+//
+// The list showed the attribute as a read-only badge, so a wrong colour on a
+// crystal could not be fixed from the app at all — only by a script. That
+// became a real problem once colours were populated in bulk: 10 of them are
+// proposals needing a human, and nobody could confirm or change them.
+//
+// Stock is deliberately not here. `save` writes descriptive fields only;
+// quantity belongs to the ledger, via StockEditor and StockLedger below.
+function EditRow({ inv, item }) {
+  const initial = () => ({
+    code: item.code || '', name: item.name || '',
+    attr: item[inv.attrField] || '', size: item.size || '', notes: item.notes || '',
+  })
+  const [f, setF] = useState(initial)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const set = k => e => { setF(x => ({ ...x, [k]: e.target.value })); setSaved(false) }
+
+  const dirty = f.code !== (item.code || '') || f.name !== (item.name || '') ||
+    f.attr !== (item[inv.attrField] || '') || f.size !== (item.size || '') ||
+    f.notes !== (item.notes || '')
+
+  async function save() {
+    if (!f.code.trim() || !dirty) return
+    setSaving(true)
+    try {
+      await inv.save(item.id, {
+        code: f.code, name: f.name, [inv.attrField]: f.attr, size: f.size, notes: f.notes,
+      })
+      setSaved(true)
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="pt-3 pb-2">
+      <div className="flex items-baseline justify-between mb-1.5">
+        <label className="text-[11px] uppercase tracking-wide text-ink-50">Details</label>
+        {/* Shown on a successful write, not on `!dirty`. `dirty` compares
+            against the subscribed item, which only refreshes when the snapshot
+            comes back — so gating on it left the user with no feedback at all
+            between clicking Save and the round trip completing. */}
+        {saved && <span className="text-[11px] text-green-600">saved</span>}
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
+        <div>
+          <label className="label text-xs">Code</label>
+          <input className="input text-sm font-mono uppercase" value={f.code}
+                 onChange={e => { setF(x => ({ ...x, code: e.target.value.toUpperCase() })); setSaved(false) }} />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="label text-xs">Name</label>
+          <input className="input text-sm" value={f.name} onChange={set('name')} />
+        </div>
+        <div>
+          <label className="label text-xs">{inv.attrLabel}</label>
+          <input className="input text-sm" value={f.attr} onChange={set('attr')}
+                 placeholder={inv.attrPlaceholder} />
+        </div>
+        <div className="flex gap-2">
+          <input className="input text-sm flex-1" value={f.size} onChange={set('size')} placeholder="Size" />
+          <button onClick={save} disabled={saving || !dirty || !f.code.trim()}
+                  className="btn-secondary text-sm shrink-0">{saving ? '…' : 'Save'}</button>
+        </div>
+      </div>
     </div>
   )
 }
