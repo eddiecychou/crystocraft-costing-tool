@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "crystocraft-costing",
-      "runtimeExecutable": "/Users/eddie/Documents/Coding/Crystocraft/Operation/Costing Tool/.claude/start-dev.sh",
+      "runtimeExecutable": "/Users/eddie/Developer/costing-tool/.claude/start-dev.sh",
       "runtimeArgs": [],
       "port": 5179
     }

@@ -1,0 +1,1966 @@
+[
+  {
+    "id": "u42ojXRnN6LK6WQ5NZNR",
+    "pk": "0001|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "AB",
+        "GR"
+      ],
+      "GX": [
+        "GO",
+        "GT"
+      ],
+      "M1": [
+        "PU",
+        "RE"
+      ],
+      "M2": [
+        "GO",
+        "PU"
+      ],
+      "M3": [
+        "GO",
+        "LP"
+      ],
+      "MX": [
+        "GO",
+        "RE"
+      ]
+    }
+  },
+  {
+    "id": "5DfHFP1BwvvlUWo9jpzY",
+    "pk": "0002|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "WzbwBX9nhFu2zlYlu0t6",
+    "pk": "0002|230",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "6jVyOwIcGZTh99UL3U6y",
+    "pk": "0003|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "AB"
+      ],
+      "GX": [
+        "GT"
+      ],
+      "M1": [
+        "EM"
+      ],
+      "M2": [
+        "TO"
+      ],
+      "M3": [
+        "LP"
+      ],
+      "M4": [
+        "VL"
+      ],
+      "MX": [
+        "C1"
+      ]
+    }
+  },
+  {
+    "id": "tLVTpIblnhTe0sYlBpDM",
+    "pk": "0005|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "BKiWyWJrsnT3jwpNZSQM",
+    "pk": "0006|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "AB",
+        "GR"
+      ],
+      "GX": [
+        "GO",
+        "GT"
+      ],
+      "M1": [
+        "LP",
+        "PU"
+      ],
+      "M2": [
+        "BL",
+        "DB"
+      ],
+      "MX": [
+        "EM",
+        "RE"
+      ]
+    }
+  },
+  {
+    "id": "hjoXrzro4pRthEvpLdos",
+    "pk": "0007|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "AB",
+        "TO"
+      ]
+    }
+  },
+  {
+    "id": "gv3InxNhjpdJSFoqesiz",
+    "pk": "0008|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "AB",
+        "BL"
+      ],
+      "GX": [
+        "GO",
+        "GT"
+      ],
+      "M1": [
+        "GR",
+        "PU"
+      ],
+      "M2": [
+        "BL",
+        "DB"
+      ],
+      "MX": [
+        "GO",
+        "RE"
+      ]
+    }
+  },
+  {
+    "id": "lmdCp7wdll2YSR7CrY5J",
+    "pk": "0009|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "MX": [
+        "BL",
+        "GO",
+        "GR",
+        "PI",
+        "PU",
+        "RE"
+      ]
+    }
+  },
+  {
+    "id": "04sVW8INp1rKAjgTi4wC",
+    "pk": "0011|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "MX": [
+        "PU",
+        "PI",
+        "BL",
+        "GR",
+        "GO"
+      ]
+    }
+  },
+  {
+    "id": "FuBhzo2wKwDYcsTsl408",
+    "pk": "0014|236",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "AB",
+        "VL"
+      ],
+      "GX": [
+        "GO",
+        "GT"
+      ],
+      "M1": [
+        "LP",
+        "PI"
+      ],
+      "MX": [
+        "GO",
+        "RE"
+      ]
+    }
+  },
+  {
+    "id": "OpdGKXkHkgdgsEZG0GcG",
+    "pk": "0014|230",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "AB",
+        "VL"
+      ],
+      "GX": [
+        "GO",
+        "GT"
+      ],
+      "M1": [
+        "LP",
+        "PI"
+      ],
+      "MX": [
+        "GO",
+        "RE"
+      ]
+    }
+  },
+  {
+    "id": "n9aar7hOx1bdoZcU6j4v",
+    "pk": "0014|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "GX": [
+        "GT",
+        "GO"
+      ],
+      "AX": [
+        "VL",
+        "AB"
+      ],
+      "MX": [
+        "RE",
+        "GO"
+      ]
+    }
+  },
+  {
+    "id": "UCHo9bfFfNczVnkQ8CiG",
+    "pk": "0018|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "MX": [
+        "BL",
+        "GR",
+        "GO",
+        "PU",
+        "PI"
+      ]
+    }
+  },
+  {
+    "id": "KFLitXlNibQa0mLXAUlM",
+    "pk": "0019|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "MX": [
+        "PU",
+        "BL",
+        "GR",
+        "PI",
+        "GO"
+      ]
+    }
+  },
+  {
+    "id": "KLLgNEh3ovDkyfAgqe6a",
+    "pk": "0020|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "MX": [
+        "PU",
+        "BL",
+        "GR",
+        "GO",
+        "PI"
+      ]
+    }
+  },
+  {
+    "id": "FDdNtx50CO04t03dOusZ",
+    "pk": "0022|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "AB"
+      ],
+      "GX": [
+        "GT"
+      ],
+      "M1": [
+        "TO"
+      ],
+      "M2": [
+        "PI"
+      ],
+      "M3": [
+        "VL"
+      ],
+      "MX": [
+        "PU"
+      ]
+    }
+  },
+  {
+    "id": "12y4o6nMTJR5kGKN2FUr",
+    "pk": "0023|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "AWGXeDgmgdqQPkerxurw",
+    "pk": "0023|236",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "AB"
+      ],
+      "GX": [
+        "GT"
+      ],
+      "M1": [
+        "TO"
+      ],
+      "M2": [
+        "PI"
+      ],
+      "M3": [
+        "VL"
+      ],
+      "MX": [
+        "PU"
+      ]
+    }
+  },
+  {
+    "id": "PL7HxiMmfT3qiVtjalDj",
+    "pk": "0023|230",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "AB"
+      ],
+      "GX": [
+        "GT"
+      ],
+      "M1": [
+        "TO"
+      ],
+      "M2": [
+        "PI"
+      ],
+      "M3": [
+        "VL"
+      ],
+      "MX": [
+        "PU"
+      ]
+    }
+  },
+  {
+    "id": "shf74H1EvjM1P1is0G0s",
+    "pk": "0026|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "194UG4WMmcujfZucZNlE",
+    "pk": "0027|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "D1C7vbkqZrepb77Trc4T",
+    "pk": "0027|236",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "8PXAWHwG8c7Qb5AeKGUj",
+    "pk": "0028|230",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "BL",
+        "EM",
+        "PU",
+        "RE",
+        "TO"
+      ],
+      "MX": [
+        "BL",
+        "GO",
+        "GR",
+        "PI",
+        "PU"
+      ]
+    }
+  },
+  {
+    "id": "taS2lzkOcO4dUdeOjApz",
+    "pk": "0028|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "BL",
+        "EM",
+        "PU",
+        "RE",
+        "TO"
+      ],
+      "MX": [
+        "BL",
+        "GO",
+        "GR",
+        "PI",
+        "PU"
+      ]
+    }
+  },
+  {
+    "id": "20JDxS7INwALYqSmEEl3",
+    "pk": "0029|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "MX": [
+        "BL",
+        "GO",
+        "GR",
+        "PI",
+        "PU",
+        "RE"
+      ]
+    }
+  },
+  {
+    "id": "ay5jILhN9D0WtdiOPCYl",
+    "pk": "0030|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "oSK4M2g9nFFlkkUprJgu",
+    "pk": "0030|230",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "2pZqxvf1Il6lzvs53gu5",
+    "pk": "0031|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "kSZ9TDg83s0NBjZVnSYl",
+    "pk": "0032|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "j7uqCUgdWH0pPeKsozjs",
+    "pk": "0033|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "Mp5UYyUpucDAVh5KI9w7",
+    "pk": "0037|230",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "PI",
+        "RE"
+      ],
+      "M2": [
+        "GO",
+        "RE"
+      ],
+      "MX": [
+        "PU",
+        "RE"
+      ]
+    }
+  },
+  {
+    "id": "Udn5oCsy4dSkuTXwz90v",
+    "pk": "0037|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "PI",
+        "RE"
+      ],
+      "M2": [
+        "GO",
+        "RE"
+      ],
+      "MX": [
+        "PU",
+        "RE"
+      ]
+    }
+  },
+  {
+    "id": "B05BvZYOSTGatGDgzXMP",
+    "pk": "0040|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "PI",
+        "RE"
+      ],
+      "M2": [
+        "GO",
+        "RE"
+      ],
+      "MX": [
+        "PU",
+        "RE"
+      ]
+    }
+  },
+  {
+    "id": "IHXCn63sMbtDujSsqdxb",
+    "pk": "0042|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "wTdNiDlzVRT6cLtAqLRL",
+    "pk": "0046|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "A1": [
+        "AB",
+        "BL",
+        "DB"
+      ],
+      "AX": [
+        "AB",
+        "GO",
+        "TO"
+      ],
+      "GX": [
+        "GO",
+        "GT",
+        "TO"
+      ],
+      "MX": [
+        "EM",
+        "GO",
+        "PU"
+      ]
+    }
+  },
+  {
+    "id": "Po4qhxYDv4JIZiWwUvDQ",
+    "pk": "0058|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "A1": [
+        "AB",
+        "VL"
+      ],
+      "A2": [
+        "AB",
+        "GR"
+      ],
+      "AX": [
+        "AB",
+        "BL"
+      ],
+      "G1": [
+        "GO",
+        "GT",
+        "LP"
+      ],
+      "GX": [
+        "GO",
+        "GT",
+        "TO"
+      ],
+      "M1": [
+        "EM",
+        "RE"
+      ],
+      "MX": [
+        "BL",
+        "GO",
+        "GR",
+        "PI",
+        "PU",
+        "RE"
+      ]
+    }
+  },
+  {
+    "id": "g3x9LtZmMVgR9kmnzJGc",
+    "pk": "0062|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "rsvPsDrXbSng9SS3FR1Z",
+    "pk": "0063|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "RWq6zrVCLSNo3VPLmWAh",
+    "pk": "0065|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "XzD6WQGZY1cDZSqKjSoQ",
+    "pk": "0083|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "m5BpxVM9FxLMzTuXNID5",
+    "pk": "0086|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "GO",
+        "RE"
+      ],
+      "M2": [
+        "BL",
+        "GR"
+      ],
+      "M3": [
+        "PI",
+        "RE"
+      ],
+      "M4": [
+        "GO",
+        "PI"
+      ],
+      "MX": [
+        "GR",
+        "PI"
+      ]
+    }
+  },
+  {
+    "id": "zV7iFRCpkUCHrhdbthFd",
+    "pk": "0088|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "m7SVRA8grW1QrDohFSNc",
+    "pk": "0089|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "dwNbPVd5d2J2Wabq03pm",
+    "pk": "0092|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "AB",
+        "GR"
+      ],
+      "GX": [
+        "GO",
+        "GT",
+        "TO"
+      ],
+      "M1": [
+        "LP",
+        "PU"
+      ],
+      "M2": [
+        "LP",
+        "VL"
+      ],
+      "M3": [
+        "BL",
+        "DB",
+        "EM"
+      ],
+      "MX": [
+        "C1",
+        "GO",
+        "GR",
+        "PI",
+        "PU",
+        "RE"
+      ]
+    }
+  },
+  {
+    "id": "YOCBAEKDJSeAGFHo1oZW",
+    "pk": "0094|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "VTvoUgn9DonTIxwvZFtW",
+    "pk": "0095|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "XnvjWoEC1wqGszqYMf0E",
+    "pk": "0096|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "Z5TFBpKg28tGLi7frA1U",
+    "pk": "0102|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "4EBGVPu6aO9Zh0Ds8LoH",
+    "pk": "0103|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "3sD8Pyum1IOjfWJ2N8cC",
+    "pk": "0107|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "lAomI5DJSC8JQr5g0PEO",
+    "pk": "0108|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "JBUjo5Kf1BAhKGQjuXBz",
+    "pk": "0109|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "GR",
+        "PI"
+      ],
+      "M2": [
+        "GO",
+        "RE"
+      ],
+      "M3": [
+        "GO",
+        "PI"
+      ],
+      "MX": [
+        "BL",
+        "GR"
+      ]
+    }
+  },
+  {
+    "id": "5Ud8Mx5lowhd3lPIPRZP",
+    "pk": "0110|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "GR",
+        "PI"
+      ],
+      "M2": [
+        "GO",
+        "RE"
+      ],
+      "M3": [
+        "GO",
+        "PI"
+      ],
+      "MX": [
+        "BL",
+        "GR"
+      ]
+    }
+  },
+  {
+    "id": "hTe4EvggEDZDPLJH7xvU",
+    "pk": "0112|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "GR",
+        "PI"
+      ],
+      "M2": [
+        "GO",
+        "RE"
+      ],
+      "M3": [
+        "GO",
+        "PI"
+      ],
+      "MX": [
+        "BL",
+        "GR"
+      ]
+    }
+  },
+  {
+    "id": "M0n4XT4hWqOhTD3CcQNc",
+    "pk": "0118|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "ogsuRDLNhrxYDlC2tYIU",
+    "pk": "0119|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "jx0tEA50K779KzvGJIcv",
+    "pk": "0121|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "MX": [
+        "C1",
+        "RE",
+        "BL",
+        "GR",
+        "GO",
+        "PI"
+      ]
+    }
+  },
+  {
+    "id": "3Q4hFpGi9GUA3IWwG2R2",
+    "pk": "0122|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "AB",
+        "C1",
+        "VL"
+      ],
+      "GX": [
+        "GO",
+        "GT"
+      ],
+      "M1": [
+        "BL",
+        "DB",
+        "LP"
+      ],
+      "MX": [
+        "BL",
+        "GR"
+      ]
+    }
+  },
+  {
+    "id": "xvckKe6yccwZSpFmkJjl",
+    "pk": "0124|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "CI4Ovuas1K9xoKgEMfTd",
+    "pk": "0125|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "UuZFSbeT3mAJN9SzNCla",
+    "pk": "0135|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "BCyMx2yJBJAMTfALKxWU",
+    "pk": "0139|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "BL",
+        "DB",
+        "GR",
+        "LP"
+      ],
+      "MX": [
+        "BL",
+        "GO",
+        "GR",
+        "PI"
+      ]
+    }
+  },
+  {
+    "id": "mHJbpyZrzO4r5mobInyc",
+    "pk": "0140|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "dNmEUFbdZAjohDXYEdOV",
+    "pk": "0141|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "ZzF7OCcvL1xQrdkHU0q9",
+    "pk": "0153|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "YXLwHglgAKNedFQMhSVU",
+    "pk": "0167|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "jpR5nkOUuHYaPxKH9jfw",
+    "pk": "0168|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "j586Zb7uY29gxGwvHELT",
+    "pk": "0169|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "M6F2awNvEwMtJabxK6Am",
+    "pk": "0172|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "w9Zer7szDkz3VHncQNxI",
+    "pk": "0173|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "PI",
+        "RE"
+      ],
+      "M2": [
+        "PI",
+        "PU"
+      ],
+      "MX": [
+        "GO",
+        "RE"
+      ]
+    }
+  },
+  {
+    "id": "7EzhaOj17GRdolAHqIYo",
+    "pk": "0174|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "PI",
+        "RE"
+      ],
+      "M2": [
+        "PI",
+        "PU"
+      ],
+      "MX": [
+        "GO",
+        "RE"
+      ]
+    }
+  },
+  {
+    "id": "QkIP7DLesxPXbMMvnzPS",
+    "pk": "0175|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "PI",
+        "RE"
+      ],
+      "M2": [
+        "PI",
+        "PU"
+      ],
+      "MX": [
+        "GO",
+        "RE"
+      ]
+    }
+  },
+  {
+    "id": "rNx4f4cBWff6CQ00mFSx",
+    "pk": "0191|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "9i5P0z1AuQSt1FmtHVcL",
+    "pk": "0196|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "50purKndpfiRTpFiHiFq",
+    "pk": "0208|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "vI20Afkw3XvTeFa1IGSM",
+    "pk": "0209|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "AB",
+        "BL",
+        "GR"
+      ],
+      "M2": [
+        "GO",
+        "GT",
+        "TO"
+      ],
+      "M3": [
+        "EM",
+        "GR",
+        "LP"
+      ],
+      "MX": [
+        "BL",
+        "C1",
+        "GO",
+        "GR",
+        "PI",
+        "PU",
+        "RE"
+      ]
+    }
+  },
+  {
+    "id": "EQliPmhJG0ULFUGDwU1u",
+    "pk": "0210|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "jY32mCRqAubv3o0Q8g6o",
+    "pk": "0215|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "C1",
+        "GO",
+        "GR",
+        "LP",
+        "PI",
+        "VL"
+      ],
+      "M2": [
+        "BL",
+        "EM",
+        "PU",
+        "RE",
+        "TO"
+      ],
+      "M3": [
+        "BL",
+        "PU",
+        "RE",
+        "TO",
+        "VL"
+      ],
+      "MX": [
+        "GO",
+        "GR",
+        "LP",
+        "PI",
+        "PU",
+        "VL"
+      ]
+    }
+  },
+  {
+    "id": "N6yGeTfFGNguxLkk6a32",
+    "pk": "0220|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "IUftzewwCFZav4QThV75",
+    "pk": "0221|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "LP",
+        "RE"
+      ],
+      "M2": [
+        "EM",
+        "GO"
+      ],
+      "M3": [
+        "TO",
+        "VL"
+      ],
+      "M4": [
+        "PI",
+        "PU"
+      ],
+      "MX": [
+        "GR",
+        "TO"
+      ]
+    }
+  },
+  {
+    "id": "NWElp469qNZuMOfuLiAj",
+    "pk": "0226|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "K15uhMERlynLMyjIVtn2",
+    "pk": "0229|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "BLFPowLJqj7sFHcpVvvb",
+    "pk": "0232|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "YC28jtqAs6NN239f066W",
+    "pk": "0235|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "evvpjuGZW1UcFQCBg0AU",
+    "pk": "0240|224",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "RE"
+      ],
+      "M2": [
+        "TO"
+      ],
+      "M3": [
+        "VL"
+      ],
+      "M4": [
+        "PI"
+      ],
+      "M5": [
+        "GO"
+      ],
+      "MX": [
+        "PU"
+      ]
+    }
+  },
+  {
+    "id": "mIPzJXrTFhdMzej294Bz",
+    "pk": "0241|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "0ohLnIeMebBew7n0IUoO",
+    "pk": "0242|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "lpnlDbUtVFBdvY3222W9",
+    "pk": "0246|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "PU",
+        "VL"
+      ],
+      "M2": [
+        "BL",
+        "LP",
+        "PI",
+        "VL"
+      ],
+      "M3": [
+        "EM",
+        "PU",
+        "RE",
+        "TO"
+      ],
+      "M4": [
+        "GO",
+        "GR",
+        "LP",
+        "PU"
+      ],
+      "MX": [
+        "PI",
+        "VL"
+      ]
+    }
+  },
+  {
+    "id": "ncqrbMLSaw77oLadkX3m",
+    "pk": "0251|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "nUV7GFCGes3HeECxkzkq",
+    "pk": "0256|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "M6jYEEk8ox7EUCC9ecDU",
+    "pk": "0257|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "mn8Nq3ex6kIgEvsTeNj3",
+    "pk": "0258|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "1tWw7gzTijQiQCAtKVqR",
+    "pk": "0259|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "kWaN2H7IxL5rzyTVfczl",
+    "pk": "0260|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "2jNtnFol1HKh8k2xULel",
+    "pk": "0261|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "5MIdsfXaS536aXQI2CiJ",
+    "pk": "0262|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "KH0mqa0XW8GMFo3lN8Ds",
+    "pk": "0263|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "7hkEIc3bVejkh55SZZVy",
+    "pk": "0264|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "n9My1WJeT0b24H0pHuv4",
+    "pk": "0265|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "fzDSZQ0pRwxgMBvSzvfs",
+    "pk": "0266|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "tP9pbR5RRhdFewwgwyE0",
+    "pk": "0267|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "9tqnfTu97FQbsbd4ri2K",
+    "pk": "0268|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "2aPEIYuF0spNrJTA2RjY",
+    "pk": "0269|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "dDVmJaleTFczWcInzYet",
+    "pk": "0270|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "8Vwia2pTIH2DPrO67rDx",
+    "pk": "0271|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "Zv4Unh8ndd8eKuL4z7ux",
+    "pk": "0272|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "eJWzkHZl92jnm4jR6s0j",
+    "pk": "0273|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "dKFYwbPOZ7GrqIeR37bI",
+    "pk": "0274|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "iw4A2OOL5PVTbnPyzQWI",
+    "pk": "0275|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "TCoR2ElVwim31adnvB9s",
+    "pk": "0276|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "WBS5FcaILIGJcRCdEszC",
+    "pk": "0276|163",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "nr6vz7gWnGcP3M4pgdk1",
+    "pk": "0277|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "KqMobw5HTLhz6kX1ugZ7",
+    "pk": "0278|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "UTixyebLTwF0MYSiuOU6",
+    "pk": "0279|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "M1": [
+        "GR",
+        "PI"
+      ]
+    }
+  },
+  {
+    "id": "hgxnXRyiOnvmqcvQxTZB",
+    "pk": "0292|163",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "dU6sOOEIgrQFweX5zbWj",
+    "pk": "0299|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "GMU5C5ibvhe8RQUwgfMc",
+    "pk": "0300|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "DjUlvcrcMLQbeZZ4iNHv",
+    "pk": "0301|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "44pSSaNZFkJasCAub9df",
+    "pk": "0302|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "LBntrA42Ym8lf26sLuL7",
+    "pk": "0303|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "cw86tsZOgHptvP2k5F3y",
+    "pk": "0320|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "fAkPEhp6PuCzSgxsVUDt",
+    "pk": "0324|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "m8zcIvC8ls7JBQkLzwFV",
+    "pk": "0324|163",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "O444Ho68jHp5BDo3K952",
+    "pk": "0326|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "CR3V1rbcC3gTFS1YkzmG",
+    "pk": "0327|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "AB",
+        "PI",
+        "VL"
+      ],
+      "GX": [
+        "GO",
+        "GT",
+        "TO"
+      ],
+      "M1": [
+        "PI",
+        "PU",
+        "VL"
+      ],
+      "M2": [
+        "DB",
+        "EM",
+        "PU",
+        "RE",
+        "TO"
+      ],
+      "MX": [
+        "GO",
+        "GR",
+        "LP",
+        "PI",
+        "VL"
+      ]
+    }
+  },
+  {
+    "id": "rY6FWXqf6M1hjDQdnGok",
+    "pk": "0327|236",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "AB",
+        "PI",
+        "VL"
+      ],
+      "GX": [
+        "GO",
+        "GT",
+        "TO"
+      ],
+      "M1": [
+        "PI",
+        "PU",
+        "VL"
+      ],
+      "M2": [
+        "DB",
+        "EM",
+        "PU",
+        "RE",
+        "TO"
+      ],
+      "MX": [
+        "GO",
+        "GR",
+        "LP",
+        "PI",
+        "VL"
+      ]
+    }
+  },
+  {
+    "id": "PK7VwoDhuFY9yjvKi6Wh",
+    "pk": "0328|001",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "AB",
+        "PI",
+        "VL"
+      ],
+      "GX": [
+        "GO",
+        "GT",
+        "TO"
+      ],
+      "M1": [
+        "PI",
+        "PU",
+        "VL"
+      ],
+      "M2": [
+        "DB",
+        "EM",
+        "PU",
+        "RE",
+        "TO"
+      ],
+      "M4": [
+        "BL",
+        "DB"
+      ],
+      "M5": [
+        "PI",
+        "RE"
+      ],
+      "M6": [
+        "PU",
+        "VL"
+      ],
+      "M7": [
+        "GO",
+        "TO"
+      ],
+      "M8": [
+        "EM",
+        "GR"
+      ],
+      "MX": [
+        "GO",
+        "LP",
+        "PI"
+      ]
+    }
+  },
+  {
+    "id": "pND1a9L6DWvjCTJ3pugE",
+    "pk": "0330|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "z5TzWJNN9IzAcUWUcZxQ",
+    "pk": "0332|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "e7SfiHYobccfMH6pjKHW",
+    "pk": "0337|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "lVQld5b3J4BXM6KICDTd",
+    "pk": "0337|163",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "0KIT0vekzsQ7Z30eRmlu",
+    "pk": "0338|163",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "Icbe0pW5ui0CqmOMjY7D",
+    "pk": "0338|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "VN9QBSEBvltnPC4nM06o",
+    "pk": "0339|163",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "uofkxowdZ2mXRR6hSQv0",
+    "pk": "0340|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "6BgCxag2jJnPkYpJIrXO",
+    "pk": "0341|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "4odvlFubUn8VNvMJ7bTc",
+    "pk": "0342|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "p4IWbBflNttjrcK2HENW",
+    "pk": "0343|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "k6wy8OBWOYKFRe5MgOSd",
+    "pk": "0344|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "glBwFOnTtVVja0XIidSn",
+    "pk": "0345|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "Oo8cfbjgDHsiRNEe5Zyd",
+    "pk": "0346|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "X9wBlHaaLz2jU5orShKu",
+    "pk": "0347|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "PC5C0TsmcldUnc8kbvMV",
+    "pk": "0348|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "gtzamtkbXdlnz6hmNowk",
+    "pk": "0349|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "g2X0vY33I0d4guomRgQJ",
+    "pk": "0350|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "xVzqrnZcI3FIGJIMiuAX",
+    "pk": "0351|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "2ibW17q8ynOCuxvv71fJ",
+    "pk": "0353|159",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "AB",
+        "LP",
+        "PI"
+      ],
+      "DB": [
+        "BL",
+        "DB",
+        "LP"
+      ],
+      "G2": [
+        "GT",
+        "JT"
+      ],
+      "GX": [
+        "GO",
+        "GT",
+        "LP"
+      ],
+      "MX": [
+        "LP",
+        "RE",
+        "TO"
+      ],
+      "PU": [
+        "LP",
+        "PU",
+        "VL"
+      ],
+      "RE": [
+        "LP",
+        "PI",
+        "RE"
+      ],
+      "TO": [
+        "GO",
+        "LP",
+        "TO"
+      ]
+    }
+  },
+  {
+    "id": "pu6AQknK8pPnDopVXLQi",
+    "pk": "0354|159",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "AB",
+        "LP",
+        "PI"
+      ],
+      "DB": [
+        "BL",
+        "DB",
+        "LP"
+      ],
+      "G2": [
+        "GT",
+        "JT"
+      ],
+      "GX": [
+        "GO",
+        "GT",
+        "LP"
+      ],
+      "MX": [
+        "LP",
+        "RE",
+        "TO"
+      ],
+      "PU": [
+        "LP",
+        "PU",
+        "VL"
+      ],
+      "RE": [
+        "LP",
+        "PI",
+        "RE"
+      ],
+      "TO": [
+        "GO",
+        "LP",
+        "TO"
+      ]
+    }
+  },
+  {
+    "id": "PwBahbUofqsvE4jjR0Ai",
+    "pk": "0355|042",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "mZyaGwmqeXajj2kF5mNz",
+    "pk": "0357|238",
+    "crystal_components": null,
+    "crystal_mixes": {
+      "AX": [
+        "VL",
+        "PI",
+        "AB"
+      ]
+    }
+  },
+  {
+    "id": "z6iat0iWMOFQ0M7U8Dzs",
+    "pk": "0360|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "L2N84Ln3H6swwNt3Wm15",
+    "pk": "0363|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "AUAMldPVdMIfFyEGiny2",
+    "pk": "0365|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "VstuNSCEFzPF47byOovL",
+    "pk": "0365|163",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "JKM0ARuyQ2zrtQ4YtgS8",
+    "pk": "0370|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "WyVyOxodlV1bjlW9ktVd",
+    "pk": "0379|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "uCu9PTELOURmvW18s2qa",
+    "pk": "0379|163",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "4AMQReBl135TfJNLdCcY",
+    "pk": "0380|163",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "STGXubitLkRnEEkyGPVZ",
+    "pk": "0401|163",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "nkerp7dTBHIUcpNDLeUq",
+    "pk": "0404|163",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "fzT0wZ2dtwH3r5MrAv0a",
+    "pk": "0405|163",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "VO2ybMnCugLnf9hsRBjc",
+    "pk": "0411|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "HSd9VmwiSjS0vN2c9kul",
+    "pk": "0413|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "MwOOdQBaEIhGIz6xuB7N",
+    "pk": "0414|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "dxFSFCYFVRJEfTcdc1L0",
+    "pk": "0415|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "9TfXNz5PLbOQ8PaUugqy",
+    "pk": "0416|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "rbRwzasWrBfwpKzXvoaj",
+    "pk": "0450|231",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "m6ykwsSfraSPmAIeCjvI",
+    "pk": "0451|231",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "czJEqBRtI8wWlbFg5pxC",
+    "pk": "0452|231",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "HMQmyVxop6gAzMqXFEac",
+    "pk": "0453|231",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "wWfmgp1aTN86Ygq2ku7P",
+    "pk": "0454|231",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "4Rppvly4eCPOUE3TaLBa",
+    "pk": "0455|231",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "l5WhTtT6Pac3ITwKZWkE",
+    "pk": "0456|231",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "Kc1CXvZeE3GWJJKHphgY",
+    "pk": "0457|231",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "UN4DFL36tf8omWdmYOrn",
+    "pk": "0458|231",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "OJT3arCwuxRsMtO40hWW",
+    "pk": "0459|231",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "dDIOjza8FJO7bmD7VfDh",
+    "pk": "0460|231",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "rDdYm0h4342c9zrXzVw5",
+    "pk": "0461|231",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "uBDHhRRh0LA3nrGuK0r7",
+    "pk": "0465|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  },
+  {
+    "id": "GPHP4EmeulkBREbQW5K7",
+    "pk": "0597|001",
+    "crystal_components": null,
+    "crystal_mixes": {}
+  }
+]

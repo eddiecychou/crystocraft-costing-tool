@@ -13,6 +13,7 @@ import { resizeToJpeg } from '../imageResize'
 import { enhanceProductImage } from '../enhanceImage'
 import ManualAdjust from '../components/ManualAdjust'
 import VideoUrlsEditor from '../components/VideoUrlsEditor'
+import CrystalBomEditor from '../components/CrystalBomEditor'
 
 const BODY_NAME = Object.fromEntries(RANGE_BODY_TYPES.map(b => [b.code, b.name]))
 
@@ -25,9 +26,10 @@ import LoadingBar from '../components/LoadingBar'
 import { useCrystalColors, colorMap, ensureColors } from '../crystalColors'
 import { buildRangeSku, rangePrice } from '../rangeSku'
 import { useComponents, resolveRef, productAvailability } from '../criticalComponents'
+import { useCrystals } from '../crystals'
+import { normaliseCrystalBom, emptyCrystalBom } from '../crystalBom'
 import { useProductDefaults } from '../useProductDefaults'
 import { Puzzle, Gem, Check, Download, Plus, X, Sparkles, RotateCcw, AlertTriangle } from 'lucide-react'
-import CRYSTAL_MIXES from '../data/crystalMixes.json'
 
 // Detect whether the AI has bleached product colours (see ImageGallery.jsx for
 // the same function used in the corp-gift flow).
@@ -96,21 +98,10 @@ const blankForm = (prefill = {}) => {
     size: '', crystal_type: 'Bohemia', active: true, status: 'active', is_new: false,
     moq: '', lead_time_weeks: '', delivery_note: '', critical_components: [],
     packing: emptyPacking(), gallery: [], variants: [variant], plating_stock: {},
-    crystal_mixes: {}, videos: [],
+    crystal_components: emptyCrystalBom(), videos: [],
   }
 }
 
-// Normalise a crystal_mixes map: upper-case codes, de-dupe crystals, drop empties.
-const cleanMixes = mixes => {
-  const out = {}
-  for (const [code, list] of Object.entries(mixes || {})) {
-    const k = (code || '').trim().toUpperCase()
-    const crystals = [...new Set((Array.isArray(list) ? list : [])
-      .map(c => (c || '').trim().toUpperCase()).filter(Boolean))]
-    if (k && crystals.length) out[k] = crystals
-  }
-  return out
-}
 
 const PLATING_NAME = Object.fromEntries(RANGE_PLATINGS.map(p => [p.code, p.name]))
 const platingKey = v => (v.plating_code || '').trim().toUpperCase()
@@ -230,7 +221,6 @@ export default function RangeForm() {
   const [pickerFor, setPickerFor] = useState(null)
   const [pickerUrl, setPickerUrl] = useState('')
   const [catOptions, setCatOptions] = useState({ design: [], product: [] })
-  const [mixMsg, setMixMsg] = useState('')
   // AI marketing-copy writer (mirrors the corporate-gift product form)
   const [aiLoading, setAiLoading]   = useState(false)
   const [aiError, setAiError]       = useState('')
@@ -243,6 +233,9 @@ export default function RangeForm() {
   const { colors: libColors, setColors: setLibColors } = useCrystalColors()
   const colorLookup = colorMap(libColors)
   const { components: libComponents } = useComponents()
+  // Crystal stock list — the BOM editor resolves each line's code against it so
+  // a stone the inventory does not carry is visible rather than silent.
+  const { items: libCrystals } = useCrystals()
   const prodDefaults = useProductDefaults()
 
   // Toggle a critical component on/off for this product. We store the stable
@@ -352,17 +345,6 @@ export default function RangeForm() {
 
   // ── Crystal mixtures (model-level recipes: mixcode -> [crystal codes]) ──
   // Toggle a crystal code in/out of a mixcode's recipe.
-  const toggleMixCrystal = (mixCode, crystal) => setForm(f => {
-    const list = Array.isArray(f.crystal_mixes?.[mixCode]) ? f.crystal_mixes[mixCode] : []
-    const has = list.includes(crystal)
-    return { ...f, crystal_mixes: { ...f.crystal_mixes, [mixCode]: has ? list.filter(c => c !== crystal) : [...list, crystal] } }
-  })
-  const removeMix = mixCode => setForm(f => {
-    const next = { ...f.crystal_mixes }; delete next[mixCode]
-    return { ...f, crystal_mixes: next }
-  })
-  const addMix = mixCode => setForm(f =>
-    f.crystal_mixes?.[mixCode] ? f : { ...f, crystal_mixes: { ...f.crystal_mixes, [mixCode]: [] } })
   // The product's identifying code (body letter + design no), e.g. "M0004".
   const designCodeNow = () => {
     const body = ((form.variants.find(v => (v.brand_code || '').length > 1)?.brand_code || '').slice(1)
@@ -378,54 +360,6 @@ export default function RangeForm() {
   const brandTakesColours = v => {
     const b = (v.brand_code || '').trim().toUpperCase()[0]
     return !b || ['D', 'U', 'M'].includes(b)   // unknown/empty defaults to allowed
-  }
-  const pullLegacyMixes = async () => {
-    const designNo = (form.design_no || '').trim()
-    const digits = designNo.replace(/\D/g, '')
-    const candidates = [
-      designCodeNow(),
-      'M' + designNo,
-      // any recipe whose numeric part matches this design no (keys are all M####)
-      ...Object.keys(CRYSTAL_MIXES).filter(k => k.replace(/\D/g, '') === digits),
-    ].filter(Boolean)
-    const code = candidates.find(c => CRYSTAL_MIXES[c])
-    const rec = code && CRYSTAL_MIXES[code]
-    if (!rec) {
-      setMixMsg(`No legacy recipe found for ${designCodeNow() || designNo || '(no code)'}.`)
-      return
-    }
-    // The model's genuine single colours (legacy MonoCrystal). Used to correct
-    // over-ticked colour selections on every variant so the card shows only the
-    // colours this model is actually offered in.
-    const mono = (Array.isArray(rec.mono) ? rec.mono : [])
-      .map(c => (c || '').trim().toUpperCase()).filter(Boolean)
-    const mixCodes = Object.keys(cleanMixes(rec.mixes))
-    // The legacy model offered both its single colours AND its mix codes, so tick
-    // both on every variation — mixes only render on the card when ticked.
-    const selection = [...new Set([...mono, ...mixCodes])]
-    const mixCount = mixCodes.length
-    // Tick colours only on colour-bearing brands (D/U/M); clear Asfour (A) rows.
-    const colourVariants = form.variants.filter(brandTakesColours).length
-    setForm(f => ({
-      ...f,
-      crystal_mixes: { ...cleanMixes(f.crystal_mixes), ...cleanMixes(rec.mixes) },
-      variants: selection.length
-        ? f.variants.map(v => ({ ...v, crystal_colors: brandTakesColours(v) ? [...selection] : [] }))
-        : f.variants,
-    }))
-    // Make sure every referenced code (singles + mix codes) exists in the library
-    // so the ticks render as proper chips, not "(not in library)" orphans.
-    if (selection.length) {
-      try {
-        const merged = await ensureColors(selection)
-        if (Array.isArray(merged)) setLibColors(merged)
-      } catch { /* non-fatal: codes still tick, just show as orphan until added */ }
-    }
-    const skipped = form.variants.length - colourVariants
-    setMixMsg(`Pulled ${mixCount} mixture${mixCount === 1 ? '' : 's'}`
-      + (selection.length && colourVariants ? ` and ticked ${selection.length} colour${selection.length === 1 ? '' : 's'} on ${colourVariants} variation${colourVariants === 1 ? '' : 's'}` : '')
-      + (skipped ? ` (skipped ${skipped} Asfour row${skipped === 1 ? '' : 's'})` : '')
-      + ` from ${code}. Save to apply.`)
   }
 
   // Pull the distinct categories already used in the system so the
@@ -478,7 +412,7 @@ export default function RangeForm() {
           packing: { ...emptyPacking(), ...(d.packing || {}) },
           gallery: normGallery(d.gallery),
           variants: vs,
-          crystal_mixes: cleanMixes(d.crystal_mixes),
+          crystal_components: normaliseCrystalBom(d.crystal_components),
           // Plating pool: stored map wins; else seed from legacy per-variant stock.
           plating_stock: d.plating_stock && Object.keys(d.plating_stock).length
             ? { ...d.plating_stock } : derivePlatingStock(vs),
@@ -800,7 +734,7 @@ export default function RangeForm() {
       })),
       // Per-model crystal mixture recipes (shared across platings):
       // mixcode -> [crystal short-codes]. Drives the catalogue swatch table.
-      crystal_mixes: cleanMixes(form.crystal_mixes),
+      crystal_components: normaliseCrystalBom(form.crystal_components),
       updatedAt: serverTimestamp(),
     }
     try {
@@ -1621,84 +1555,16 @@ export default function RangeForm() {
           </div>
         </div>
 
-        {/* Crystal mixtures — model-level recipes for mix/assorted colour codes */}
-        <div className="card p-5">
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-base flex items-center gap-2"><Gem size={18} className="text-brand-500" />Crystal Mixtures</h2>
-            <button type="button" onClick={pullLegacyMixes} className="btn-secondary text-xs inline-flex items-center gap-1">
-              <Download size={13} />Pull from legacy catalogue
-            </button>
-          </div>
-          <p className="text-xs text-ink-60 mb-3">
-            Mix codes (MX, M1, AX, GX…) live in the Crystal Colour Library so they can be ticked per
-            variation — define here which single crystals each one contains for <em>this</em> model.
-            A mix only shows on the product card when it's ticked in a variation. Shared across all platings.
-          </p>
-          {mixMsg && <p className="text-xs text-brand-600 mb-2">{mixMsg}</p>}
-          {libColors.length === 0 ? (
-            <p className="text-xs text-ink-50">
-              Add crystal colours first in <Link to="/components" className="text-brand-600 hover:underline">Components → Crystal Colours</Link>.
-            </p>
-          ) : (
-            <>
-              <div className="space-y-3">
-                {Object.keys(form.crystal_mixes || {}).filter(c => (form.crystal_mixes[c] || []).length >= 0).length === 0 && (
-                  <p className="text-xs text-ink-50">No mixtures yet — add a mix code below or pull from the legacy catalogue.</p>
-                )}
-                {Object.entries(form.crystal_mixes || {}).map(([mixCode, crystals]) => (
-                  <div key={mixCode} className="border border-ink-10 rounded-lg p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-mono text-sm font-semibold text-ink-80">{mixCode}</span>
-                      <button type="button" onClick={() => removeMix(mixCode)}
-                              className="text-red-400 hover:text-red-600" title="Remove mixture"><X size={15} /></button>
-                    </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      {libColors.filter(c => !isMixCode(c.code)).map(c => {
-                        const on = (crystals || []).includes(c.code)
-                        return (
-                          <button type="button" key={c.code} onClick={() => toggleMixCrystal(mixCode, c.code)}
-                            className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] border transition-colors ${
-                              on ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-ink-10 text-ink-50 hover:border-ink-30'}`}
-                            title={c.name || c.code}>
-                            <span className="inline-block w-3 h-3 rounded-full border border-black/10"
-                                  style={{ background: c.swatch || 'repeating-conic-gradient(#bbb 0% 25%, #eee 0% 50%)' }} />
-                            <span className="font-mono">{c.code}</span>
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              {(() => {
-                // Mix codes come from the library — only codes that exist there
-                // can be ticked in a variation, so only those are worth a recipe.
-                const libMixCodes = libColors.map(c => c.code).filter(isMixCode)
-                const addable = libMixCodes.filter(mc => !(mc in (form.crystal_mixes || {})))
-                if (libMixCodes.length === 0) return (
-                  <p className="text-[11px] text-ink-50 mt-3">
-                    No mix codes in the library yet. Add codes like MX, M1, AX, GX in{' '}
-                    <Link to="/components" className="text-brand-600 hover:underline">Components → Crystal Colours</Link>{' '}
-                    so they can be selected in each variation.
-                  </p>
-                )
-                return (
-                  <div className="mt-3 flex flex-wrap gap-1.5 items-center">
-                    <span className="text-[11px] uppercase tracking-wide text-ink-40 mr-1">Add mix code:</span>
-                    {addable.length === 0
-                      ? <span className="text-[11px] text-ink-50">all library mix codes added</span>
-                      : addable.map(mc => (
-                          <button type="button" key={mc} onClick={() => addMix(mc)}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] border border-ink-10 text-ink-50 hover:border-brand-300 hover:text-brand-600">
-                            <Plus size={11} /><span className="font-mono">{mc}</span>
-                          </button>
-                        ))}
-                  </div>
-                )
-              })()}
-            </>
-          )}
-        </div>
+        {/* Crystal BOM — the positions this model takes, and how a mix splits
+            them across colours. Replaces the old Crystal Mixtures editor, which
+            held a colour list with no quantities and was populated from a
+            marketing CSV that the job-order BOM contradicts. */}
+        <CrystalBomEditor
+          bom={form.crystal_components}
+          onChange={next => setForm(f => ({ ...f, crystal_components: next }))}
+          crystals={libCrystals}
+          mixCodes={libColors.map(c => c.code).filter(isMixCode)}
+        />
 
         {/* Actions */}
         <div className="flex items-center justify-between">
