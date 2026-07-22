@@ -99,6 +99,29 @@ for r in rows:
             ALIASES[learned] = r["app_code"]
 
 
+# C1 and CL are both "Clear" — the difference is grade, not colour, and no item
+# name states it. C1 is the dazzle cut; CL was Swarovski Spectra, retired, and
+# is now filled by Asfour and Chinese octagons. Name matching cannot see this:
+# every one of these is called "Crystal" or "Clear" and was assigned C1.
+#
+# Settled against the ERP by looking at which colourways actually consume each
+# stone. Asfour 1032/14 is deliberately absent — it runs in C1 colourways
+# (5 against 2), so it is not part of the CL family despite being Asfour.
+CODE_OVERRIDES = {
+    "C01-1080-14-002": ("CL", "CL 57 colourways against 4 others"),
+    "C01-1080-18-002": ("CL", "CLA only"),
+    "C01-801 114-002": ("CL", "Spectra 8290/14 — CL 211 against C1 7"),
+    "C01-801 220-002": ("CL", "Spectra 8290/20 — CL 9, rest are clear stones in coloured designs"),
+    # C07-1080-14-002 Tian Hua #1050/14 is deliberately NOT here. It is the only
+    # C07 code in the ERP, used by zero job orders and zero item-master BOMs, so
+    # nothing can be inferred from consumption. The owner's read is that it is
+    # probably C1 — more facets, like Asfour 1032 — rather than CL like Asfour
+    # 1080 and Spectra 8290, but "probably" is not enough to write: a wrong
+    # grade makes the app substitute a cheap stone for a dazzle-cut one. Left
+    # blank so it reads as a question, and settable in Components -> Crystal
+    # Stock once someone has the stone in hand.
+}
+
 out, stats = [], collections.Counter()
 for r in rows:
     code, src = r.get("app_code", ""), ""
@@ -169,11 +192,15 @@ if os.path.exists(crystals_path):
     assigns, astats = [], collections.Counter()
     for it in items:
         code = str(it.get("code") or "").strip()
-        parts = code.split("-")
-        key = ("-".join(parts[:2]), parts[2], parts[3]) if len(parts) >= 4 else None
-        app_code, src = from_table.get(key, ("", ""))
-        if not app_code:
-            app_code, src = resolve(str(it.get("name") or ""))
+        if code in CODE_OVERRIDES:
+            app_code, why = CODE_OVERRIDES[code]
+            src = f"grade override — {why}"
+        else:
+            parts = code.split("-")
+            key = ("-".join(parts[:2]), parts[2], parts[3]) if len(parts) >= 4 else None
+            app_code, src = from_table.get(key, ("", ""))
+            if not app_code:
+                app_code, src = resolve(str(it.get("name") or ""))
         astats[src or "unresolved"] += 1
         assigns.append({"id": it.get("id"), "code": code, "name": it.get("name", ""),
                         "current_colour": it.get("colour", ""),
