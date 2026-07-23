@@ -679,7 +679,7 @@ export default function ShipmentForm() {
                   {!header.erp_si_no && (
                     <button type="button" onClick={doAllocateSi} disabled={allocatingSi}
                             className="text-[11px] text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case"
-                            title="Allocate the next invoice number in JES's series. Only safe once JES has stopped issuing them for this year.">
+                            title="Issue the invoice: allocate the next SI number (and a UC if none), and stamp today as the invoice date. Deliberately manual — an order is invoiced when you invoice it, not when it is created.">
                       {allocatingSi ? 'Allocating…' : 'Allocate'}
                     </button>
                   )}
