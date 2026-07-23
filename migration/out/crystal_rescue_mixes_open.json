@@ -1,0 +1,204 @@
+[
+  {
+    "key": "0006|230",
+    "name": "Mini Hummingbird with Crystal Bible",
+    "why": "no sibling recipe",
+    "mixes": [
+      "GX",
+      "M1",
+      "M2"
+    ]
+  },
+  {
+    "key": "0006|236",
+    "name": "Mini Hummingbird Music Box (Wood Body)",
+    "why": "no sibling recipe",
+    "mixes": [
+      "GX",
+      "M1",
+      "M2"
+    ]
+  },
+  {
+    "key": "0010|001",
+    "name": "Sacred Angel(Hymn Book)",
+    "why": "route swap",
+    "mixes": [
+      "MX"
+    ]
+  },
+  {
+    "key": "0015|001",
+    "name": "Guardian Angel(Heart)",
+    "why": "route swap",
+    "mixes": [
+      "AX"
+    ]
+  },
+  {
+    "key": "0024|001",
+    "name": "Mini Sacred Angel(Dove)",
+    "why": "route swap",
+    "mixes": [
+      "GX",
+      "M1",
+      "M2",
+      "M3",
+      "MX",
+      "AX"
+    ]
+  },
+  {
+    "key": "0025|001",
+    "name": "Mini Sacred Angel(Star)",
+    "why": "route swap",
+    "mixes": [
+      "GX",
+      "AX"
+    ]
+  },
+  {
+    "key": "0026|236",
+    "name": "Swan Music Box (Wood Body)",
+    "why": "no sibling recipe",
+    "mixes": [
+      "GX",
+      "M1",
+      "M2",
+      "MX"
+    ]
+  },
+  {
+    "key": "0035|001",
+    "name": "Turtle",
+    "why": "route swap",
+    "mixes": [
+      "M1",
+      "M2",
+      "M3",
+      "MX"
+    ]
+  },
+  {
+    "key": "0037|232",
+    "name": "Twin Hearts - Zinc alloy Mini Oval Base with Round Plaque",
+    "why": "no sibling recipe",
+    "mixes": [
+      "M2",
+      "MX"
+    ]
+  },
+  {
+    "key": "0040|232",
+    "name": "Twin Hearts(Love) - Zinc alloy Mini Oval Base with Round Plaque",
+    "why": "no sibling recipe",
+    "mixes": [
+      "M1",
+      "M2",
+      "MX"
+    ]
+  },
+  {
+    "key": "0045|001",
+    "name": "Cat(Ball)",
+    "why": "route swap",
+    "mixes": [
+      "M1"
+    ]
+  },
+  {
+    "key": "0062|236",
+    "name": "Mini Globe Music Box (Wood Body)",
+    "why": "no sibling recipe",
+    "mixes": [
+      "A1",
+      "AX",
+      "GX",
+      "M1"
+    ]
+  },
+  {
+    "key": "0070|001",
+    "name": "Crystal Egg",
+    "why": "route swap",
+    "mixes": [
+      "M1",
+      "M2",
+      "MX"
+    ]
+  },
+  {
+    "key": "0085|001",
+    "name": "Flower Fairy(Rose)",
+    "why": "route swap",
+    "mixes": [
+      "MX",
+      "M1",
+      "M2",
+      "M3",
+      "M4"
+    ]
+  },
+  {
+    "key": "0111|001",
+    "name": "B-fly Fairy(Ribbon)",
+    "why": "route swap",
+    "mixes": [
+      "MX",
+      "M1",
+      "M2",
+      "M3"
+    ]
+  },
+  {
+    "key": "0366|164",
+    "name": "",
+    "why": "route swap",
+    "mixes": [
+      "G1",
+      "G2",
+      "G3",
+      "GX",
+      "M1",
+      "M2",
+      "M3",
+      "M4",
+      "M5",
+      "MX"
+    ]
+  },
+  {
+    "key": "0368|164",
+    "name": "",
+    "why": "route swap",
+    "mixes": [
+      "A1",
+      "AX",
+      "GX",
+      "M1",
+      "M2",
+      "M3",
+      "M4",
+      "M5",
+      "MX"
+    ]
+  },
+  {
+    "key": "0393|175",
+    "name": "Cute Pocket - Crown - Letter Opener",
+    "why": "no sibling recipe",
+    "mixes": [
+      "MX"
+    ]
+  },
+  {
+    "key": "0399|163",
+    "name": "Cute Pocket Chinese Zodiac - Dragon - Metal Bookmark",
+    "why": "no sibling recipe",
+    "mixes": [
+      "M1",
+      "M2",
+      "MX"
+    ]
+  }
+]

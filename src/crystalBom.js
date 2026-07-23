@@ -135,8 +135,16 @@ export function normaliseCrystalBom(raw) {
   }
   return {
     positions, mixes,
-    source: b.source === 'erp' ? 'erp' : 'manual',
+    // 'erp'        derived from this product's own ERP BOM
+    // 'erp-rescue' inferred from a predecessor route or a sibling format,
+    //              because the ERP never built this exact code. Same stones,
+    //              different supplier or a different base — confirmed by the
+    //              owner 2026-07-23, but still an inference, so it is badged
+    //              differently rather than passed off as directly derived.
+    // 'manual'     a human has edited it
+    source: ['erp', 'erp-rescue'].includes(b.source) ? b.source : 'manual',
     derived_at: b.derived_at || '',
+    rescued_from: Array.isArray(b.rescued_from) ? b.rescued_from : [],
   }
 }
 

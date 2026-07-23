@@ -63,6 +63,15 @@ export default function CrystalBomEditor({ bom, onChange, crystals = [], mixCode
             <Sparkles size={11} />derived from ERP
           </span>
         )}
+        {/* A rescue is inferred from a predecessor route or a sibling format,
+            not from this product's own BOM. Worth saying so — the stone counts
+            are trustworthy, the supplier of each stone may not be. */}
+        {bom?.source === 'erp-rescue' && (
+          <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 inline-flex items-center gap-1"
+                title={bom.rescued_from?.length ? `Copied from ${bom.rescued_from.join(', ')}` : ''}>
+            <AlertTriangle size={11} />inferred — please check
+          </span>
+        )}
       </div>
       <p className="text-xs text-ink-60 mb-4">
         How many stones this model takes, and how a mix splits them across colours.

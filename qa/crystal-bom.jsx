@@ -31,7 +31,10 @@ const CRYSTALS = [
 const MIX_CODES = ['MX', 'M1', 'M2', 'M3', 'M4', 'AX', 'GX']
 
 const INITIAL = {
-  source: 'erp',
+  // 'erp-rescue' is the provenance for a BOM inferred from a predecessor route
+  // or a sibling format — it must badge differently from a direct derivation.
+  source: 'erp-rescue',
+  rescued_from: ['U0092-001-GMX', 'U0092-001-GC1'],
   derived_at: '2026-07-22T13:36:55.382Z',
   positions: [
     { shape: 'chaton', size: '18', qty: 9 },

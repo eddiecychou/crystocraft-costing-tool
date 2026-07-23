@@ -1,5 +1,5 @@
 {
-  "pulled_at": "2026-07-22T16:16:43.025Z",
+  "pulled_at": "2026-07-23T13:01:42.050Z",
   "products": [
     {
       "id": "u42ojXRnN6LK6WQ5NZNR",
@@ -503,7 +503,6 @@
           ]
         }
       ],
-      "crystal_mixes": {},
       "delivery_note": "",
       "gallery": [
         {
@@ -602,7 +601,32 @@
       "videos": [
         "https://www.youtube.com/watch?v=ro_O05bjgdg"
       ],
-      "updatedAt": "2026-07-01T09:50:56.174Z"
+      "crystal_components": {
+        "rescued_from": [
+          "D0002-001-CAB",
+          "D0002-001-CGR",
+          "D0002-001-CVL",
+          "D0002-001-GAB",
+          "D0002-001-GC1",
+          "U0002-001-ADB"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 2
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.818Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:08.631Z"
     },
     {
       "id": "WzbwBX9nhFu2zlYlu0t6",
@@ -1166,7 +1190,6 @@
         "C": 170
       },
       "createdAt": "2026-06-16T18:50:39.547Z",
-      "crystal_mixes": {},
       "active": true,
       "delivery_note": "",
       "gallery": [
@@ -1254,7 +1277,32 @@
       "lead_time_weeks": 3,
       "moq": 100,
       "description": "Original Hummingbird Freestand",
-      "updatedAt": "2026-06-27T15:07:47.141Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0004-001-AAB",
+          "U0004-001-CAB",
+          "U0004-001-CAB000I03",
+          "U0004-001-CBL",
+          "U0004-001-CMX",
+          "U0004-001-CTO"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          },
+          {
+            "shape": "oval 2h",
+            "size": "20",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.818Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:09.013Z"
     },
     {
       "id": "tLVTpIblnhTe0sYlBpDM",
@@ -1673,28 +1721,6 @@
       "plating_stock": {},
       "active": true,
       "createdAt": "2026-06-16T18:50:21.828Z",
-      "crystal_mixes": {
-        "AX": [
-          "AB",
-          "GR"
-        ],
-        "GX": [
-          "GO",
-          "GT"
-        ],
-        "M1": [
-          "LP",
-          "PU"
-        ],
-        "M2": [
-          "BL",
-          "DB"
-        ],
-        "MX": [
-          "EM",
-          "RE"
-        ]
-      },
       "delivery_note": "",
       "product_type": "Crystal Bibles",
       "design_type": "Birds",
@@ -1892,7 +1918,61 @@
         }
       ],
       "status": "stock",
-      "updatedAt": "2026-07-09T07:44:46.327Z"
+      "crystal_components": {
+        "rescued_from": [
+          "A0006-001-CCL",
+          "D0006-001-CAX",
+          "D0006-001-CBL",
+          "D0006-001-CMX",
+          "U0006-001-AM1",
+          "U0006-001-ARE"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 2
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.818Z",
+        "source": "erp-rescue",
+        "mixes": {
+          "AX": [
+            {
+              "code": "BDC-8232-0014-004",
+              "qty": 1
+            },
+            {
+              "code": "BDC-8232-0014-013",
+              "qty": 1
+            },
+            {
+              "code": "C01-1028-18-002",
+              "qty": 2
+            }
+          ],
+          "MX": [
+            {
+              "code": "BDC-8232-0014-007",
+              "qty": 1
+            },
+            {
+              "code": "BDC-8232-0014-008",
+              "qty": 1
+            },
+            {
+              "code": "C01-1028-18-002",
+              "qty": 2
+            }
+          ]
+        }
+      },
+      "updatedAt": "2026-07-23T13:01:09.641Z"
     },
     {
       "id": "EHkKEr0T7Fd4zUcMvs2P",
@@ -1908,28 +1988,6 @@
       "plating_stock": {},
       "active": true,
       "createdAt": "2026-06-16T18:50:25.418Z",
-      "crystal_mixes": {
-        "AX": [
-          "AB",
-          "GR"
-        ],
-        "GX": [
-          "GO",
-          "GT"
-        ],
-        "M1": [
-          "LP",
-          "PU"
-        ],
-        "M2": [
-          "BL",
-          "DB"
-        ],
-        "MX": [
-          "EM",
-          "RE"
-        ]
-      },
       "delivery_note": "",
       "gallery": [
         {
@@ -2112,7 +2170,61 @@
         }
       ],
       "status": "stock",
-      "updatedAt": "2026-07-09T07:44:58.252Z"
+      "crystal_components": {
+        "rescued_from": [
+          "A0006-001-CCL",
+          "D0006-001-CAX",
+          "D0006-001-CBL",
+          "D0006-001-CMX",
+          "U0006-001-AM1",
+          "U0006-001-ARE"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 2
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.818Z",
+        "source": "erp-rescue",
+        "mixes": {
+          "AX": [
+            {
+              "code": "BDC-8232-0014-004",
+              "qty": 1
+            },
+            {
+              "code": "BDC-8232-0014-013",
+              "qty": 1
+            },
+            {
+              "code": "C01-1028-18-002",
+              "qty": 2
+            }
+          ],
+          "MX": [
+            {
+              "code": "BDC-8232-0014-007",
+              "qty": 1
+            },
+            {
+              "code": "BDC-8232-0014-008",
+              "qty": 1
+            },
+            {
+              "code": "C01-1028-18-002",
+              "qty": 2
+            }
+          ]
+        }
+      },
+      "updatedAt": "2026-07-23T13:01:09.998Z"
     },
     {
       "id": "hjoXrzro4pRthEvpLdos",
@@ -2730,15 +2842,6 @@
       "product_type": "Figurines",
       "is_new": false,
       "active": true,
-      "crystal_mixes": {
-        "MX": [
-          "PU",
-          "PI",
-          "GR",
-          "BL",
-          "GO"
-        ]
-      },
       "gallery": [
         {
           "url": "https://firebasestorage.googleapis.com/v0/b/crystocraft-costing.firebasestorage.app/o/range_products%2FaGh0v4sNX5nBN19kR7oz%2F1782304685652-D0010-001-CC1.jpg?alt=media&token=57ea15cf-58d3-460f-990c-1e843e97150f",
@@ -2829,7 +2932,26 @@
       "videos": [
         "https://youtube.com/shorts/1YL-OYvL2uk?si=6BBnEBSgNoCekJLu"
       ],
-      "updatedAt": "2026-07-01T10:11:51.611Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0010-001-CGO",
+          "U0010-001-CMX",
+          "U0010-001-GC1",
+          "U0010-001-GCL",
+          "U0010-001-GMX"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 5
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.818Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:10.322Z"
     },
     {
       "id": "04sVW8INp1rKAjgTi4wC",
@@ -3662,12 +3784,6 @@
         "weight_per_pcs_kg": "0.034",
         "pack_box_ref": "P-PB007ROS-02-01"
       },
-      "crystal_mixes": {
-        "AX": [
-          "VL",
-          "AB"
-        ]
-      },
       "gallery": [
         {
           "url": "https://firebasestorage.googleapis.com/v0/b/crystocraft-costing.firebasestorage.app/o/range_products%2FGyOfqYV5pKcWOzALHW03%2F1782308850035-M0015-001-CAX.jpg?alt=media&token=423ef797-3a4c-4c8b-8b60-a8d0cd072451",
@@ -3746,7 +3862,32 @@
       "videos": [
         "https://youtube.com/shorts/1YL-OYvL2uk?si=6BBnEBSgNoCekJLu"
       ],
-      "updatedAt": "2026-07-01T10:11:51.611Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0015-001-ALP",
+          "U0015-001-CAX",
+          "U0015-001-CAX000I03",
+          "U0015-001-CBL",
+          "U0015-001-CC1",
+          "U0015-001-CCL"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 1h",
+            "size": "14",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.818Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:10.711Z"
     },
     {
       "id": "TJ9VIoOJynKe0f2d2yqC",
@@ -3771,7 +3912,6 @@
       },
       "active": true,
       "createdAt": "2026-06-16T18:50:30.194Z",
-      "crystal_mixes": {},
       "video_url": "",
       "product_type": "Tech Accessories",
       "videos": [],
@@ -4031,7 +4171,32 @@
           "crystal_colors": []
         }
       ],
-      "updatedAt": "2026-06-27T15:12:24.668Z"
+      "crystal_components": {
+        "rescued_from": [
+          "D0015-001-GMX",
+          "H0015-001-CPI",
+          "H0015-001-GPI",
+          "M0015-001-GBL",
+          "M0015-001-GMX",
+          "M0015-001-GPI"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 1h",
+            "size": "14",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.818Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:10.992Z"
     },
     {
       "id": "ot7XGldvhcrIWHtOYKjz",
@@ -5635,26 +5800,6 @@
       ],
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {
-        "AX": [
-          "AB"
-        ],
-        "GX": [
-          "GT"
-        ],
-        "M1": [
-          "TO"
-        ],
-        "M2": [
-          "PI"
-        ],
-        "M3": [
-          "VL"
-        ],
-        "MX": [
-          "PU"
-        ]
-      },
       "is_new": false,
       "active": true,
       "gallery": [
@@ -5723,7 +5868,37 @@
       "videos": [
         "https://youtube.com/shorts/1YL-OYvL2uk?si=6BBnEBSgNoCekJLu"
       ],
-      "updatedAt": "2026-07-01T10:11:51.611Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0024-001-AMX",
+          "U0024-001-CAB",
+          "U0024-001-CAX",
+          "U0024-001-CAX000I03",
+          "U0024-001-CBL",
+          "U0024-001-CC1"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 1
+          },
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 2
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.818Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:11.318Z"
     },
     {
       "id": "oqE8Q4lAYiehUXEClinO",
@@ -5750,7 +5925,6 @@
         "carton_dims": "",
         "pcs_per_carton": "96"
       },
-      "crystal_mixes": {},
       "video_url": "",
       "design_type": "Angels",
       "delivery_note": "",
@@ -5858,7 +6032,37 @@
       "videos": [
         "https://youtube.com/shorts/1YL-OYvL2uk?si=6BBnEBSgNoCekJLu"
       ],
-      "updatedAt": "2026-07-01T10:11:51.611Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0025-001-CAB",
+          "U0025-001-CAX",
+          "U0025-001-CAX000S35",
+          "U0025-001-CBL",
+          "U0025-001-CGR",
+          "U0025-001-CM2"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 1
+          },
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 2
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.818Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:11.607Z"
     },
     {
       "id": "qyU93mmctkI1PxunJwiM",
@@ -5898,30 +6102,6 @@
       "videos": [],
       "design_type": "Birds",
       "delivery_note": "",
-      "crystal_mixes": {
-        "AX": [
-          "AB",
-          "PU",
-          "VL"
-        ],
-        "GX": [
-          "GO",
-          "GT",
-          "TO"
-        ],
-        "M1": [
-          "PU",
-          "RE"
-        ],
-        "M2": [
-          "BL",
-          "DB"
-        ],
-        "MX": [
-          "PI",
-          "PU"
-        ]
-      },
       "is_new": true,
       "variants": [
         {
@@ -6055,7 +6235,42 @@
       ],
       "description": "Swan Music Box (Wood Body)",
       "marketing_description": "Celebrate elegance with the Swan Music Box, a captivating design featuring a graceful swan crafted with exquisite Bohemia crystal. This beautiful figurine rests upon a premium wood body, encircled by a mirror grid and topped with a stainless steel plate, housing an 8-note mechanical movement that plays your choice of cherished tunes. Available in sophisticated Chrome or radiant Gold finishes, it makes a perfect collectible or a memorable gift.\nTunes: Memory / Swan Lake / Fly Me to the Moon / Amazing Grace / You are my Sunshine / Love Story / Deck the Hall",
-      "updatedAt": "2026-06-27T15:17:04.383Z"
+      "crystal_components": {
+        "rescued_from": [
+          "D0026-001-AC1",
+          "D0026-001-CAX",
+          "D0026-001-CAXMFLW01",
+          "D0026-001-CBL",
+          "D0026-001-CPI",
+          "D0026-001-GC1"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 5
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.818Z",
+        "source": "erp-rescue",
+        "mixes": {
+          "AX": [
+            {
+              "code": "BDC-8232-0014-006",
+              "qty": 1
+            },
+            {
+              "code": "BDC-8232-0014-011",
+              "qty": 2
+            },
+            {
+              "code": "BDC-8232-0014-013",
+              "qty": 2
+            }
+          ]
+        }
+      },
+      "updatedAt": "2026-07-23T13:01:11.924Z"
     },
     {
       "id": "shf74H1EvjM1P1is0G0s",
@@ -7281,7 +7496,6 @@
           "caption": "D0030-236-GC1"
         }
       ],
-      "crystal_mixes": {},
       "video_url": "",
       "product_type": "Music Boxes",
       "videos": [],
@@ -7414,7 +7628,27 @@
       ],
       "description": "Mini Cross Music Box (Wood Body)",
       "marketing_description": "The Mini Cross Music Box offers a delicate blend of craftsmanship and charm, featuring a Bohemia crystal at its heart. This religious piece, measuring 6.1 x 9.4 cm, rests upon a wood body with an 8-note mechanical movement and a captivating mirror grid. A stainless steel plate on top secures the figurine, and the design is available in Chrome or Gold finishes, playing your choice of seven enchanting tunes.\nTunes: Memory / Swan Lake / Fly Me to the Moon / Amazing Grace / You are my Sunshine / Love Story / Deck the Hall",
-      "updatedAt": "2026-06-27T15:32:06.514Z"
+      "crystal_components": {
+        "rescued_from": [
+          "D0030-001-CAB",
+          "D0030-001-CBL",
+          "D0030-001-CC1",
+          "D0030-001-CGR",
+          "D0030-001-CPI",
+          "D0030-001-CPU"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.818Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:12.204Z"
     },
     {
       "id": "ay5jILhN9D0WtdiOPCYl",
@@ -8080,7 +8314,6 @@
       },
       "active": true,
       "createdAt": "2026-06-16T18:50:27.321Z",
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "format_code": "236",
@@ -8226,7 +8459,27 @@
       ],
       "description": "Dolphin Music Box (Wood Body)",
       "marketing_description": "The Dolphin Music Box presents a captivating dolphin figurine crafted with Bohemia crystal, poised gracefully above an elegant wood body. This delightful piece features an 8-note mechanical movement, playing a choice of beloved tunes such as \"Memory\" or \"Love Story,\" and is beautifully finished with a mirror grid around the base and a stainless steel plate. Available in Chrome or Gold finishes, it measures 7.3 x 10.3 cm, making it a charming decorative accent or a treasured gift.\nTunes: Memory / Swan Lake / Fly Me to the Moon / Amazing Grace / You are my Sunshine / Love Story / Deck the Hall",
-      "updatedAt": "2026-06-27T15:38:03.337Z"
+      "crystal_components": {
+        "rescued_from": [
+          "A0031-001-GCL",
+          "D0031-001-AC1",
+          "D0031-001-CM2",
+          "D0031-001-GAX",
+          "D0031-001-GC1",
+          "D0031-001-RC1"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 4
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.818Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:12.513Z"
     },
     {
       "id": "kSZ9TDg83s0NBjZVnSYl",
@@ -8565,32 +8818,6 @@
       ],
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {
-        "M1": [
-          "AB",
-          "BL",
-          "GR"
-        ],
-        "M2": [
-          "GO",
-          "GT",
-          "TO"
-        ],
-        "M3": [
-          "EM",
-          "GR",
-          "LP"
-        ],
-        "MX": [
-          "BL",
-          "C1",
-          "GO",
-          "GR",
-          "PI",
-          "PU",
-          "RE"
-        ]
-      },
       "is_new": false,
       "description": "Turtle Freestsand",
       "active": true,
@@ -8647,7 +8874,22 @@
         "weight_per_carton_kg": "3.6",
         "pack_box_ref": "P-PB001ROS-02-01"
       },
-      "updatedAt": "2026-07-22T13:06:57.301Z"
+      "crystal_components": {
+        "rescued_from": [
+          "A0035-001-GCL"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 7
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.818Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:12.830Z"
     },
     {
       "id": "JIZAvfa1sSdrNnYymUZG",
@@ -8682,7 +8924,6 @@
           "caption": "D0037-236-GRE"
         }
       ],
-      "crystal_mixes": {},
       "video_url": "",
       "product_type": "Music Boxes",
       "videos": [],
@@ -8815,7 +9056,27 @@
       ],
       "description": "Twin Heart Music Box (Wood Body)",
       "marketing_description": "Adorn your space with the enchanting Twin Heart Music Box, a testament to refined design and joyful melodies. This charming piece features two gracefully intertwined hearts, each embracing a faceted Bohemia crystal, radiating a captivating sparkle. Crafted with an elegant wood body, a mirror grid, and a stainless steel plate for the figurine, it houses an 8-note mechanical movement that plays a choice of cherished tunes, available in Chrome or Gold finishes.\nTunes: Memory / Swan Lake / Fly Me to the Moon / Amazing Grace / You are my Sunshine / Love Story / Deck the Hall",
-      "updatedAt": "2026-06-27T15:41:59.295Z"
+      "crystal_components": {
+        "rescued_from": [
+          "D0037-001-CM1",
+          "D0037-001-CPI",
+          "D0037-001-CRE",
+          "D0037-001-GM1",
+          "D0037-001-GRE",
+          "U0037-001-CBL"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.818Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:13.107Z"
     },
     {
       "id": "Mp5UYyUpucDAVh5KI9w7",
@@ -9253,20 +9514,6 @@
       "product_type": "Figurines",
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {
-        "M1": [
-          "PI",
-          "RE"
-        ],
-        "M2": [
-          "GO",
-          "RE"
-        ],
-        "MX": [
-          "PU",
-          "RE"
-        ]
-      },
       "is_new": false,
       "active": true,
       "variants": [
@@ -9304,7 +9551,6 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-27T15:50:28.095Z",
       "critical_components": [
         {
           "id": "i3vXiQARQOGeBpZmTIYd",
@@ -9324,7 +9570,39 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0037-001-CM1",
+          "D0037-001-CPI",
+          "D0037-001-CRE",
+          "D0037-001-GM1",
+          "D0037-001-GRE",
+          "U0037-001-CBL"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.818Z",
+        "source": "erp-rescue",
+        "mixes": {
+          "M1": [
+            {
+              "code": "BDC-8232-0014-005",
+              "qty": 1
+            },
+            {
+              "code": "BDC-8232-0014-007",
+              "qty": 1
+            }
+          ]
+        }
+      },
+      "updatedAt": "2026-07-23T13:01:13.428Z"
     },
     {
       "id": "B05BvZYOSTGatGDgzXMP",
@@ -9510,20 +9788,6 @@
       "product_type": "Figurines",
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {
-        "M1": [
-          "PI",
-          "RE"
-        ],
-        "M2": [
-          "GO",
-          "RE"
-        ],
-        "MX": [
-          "PU",
-          "RE"
-        ]
-      },
       "is_new": false,
       "active": true,
       "variants": [
@@ -9561,7 +9825,6 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-27T15:53:00.740Z",
       "critical_components": [
         {
           "id": "7Rf9OV9lPfZHeU5nCWzV",
@@ -9581,7 +9844,28 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0040-001-CC1",
+          "D0040-001-GRE",
+          "D0040-001-RC1",
+          "D0040-001-RRE",
+          "U0040-001-CBL",
+          "U0040-001-CC1"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:13.705Z"
     },
     {
       "id": "IHXCn63sMbtDujSsqdxb",
@@ -9749,7 +10033,6 @@
         "weight_per_pcs_kg": ""
       },
       "createdAt": "2026-06-16T18:51:23.626Z",
-      "crystal_mixes": {},
       "video_url": "",
       "design_type": "Hearts",
       "delivery_note": "",
@@ -9822,7 +10105,6 @@
       "videos": [
         "https://youtube.com/shorts/c_IflVKjbFk?si=l9Ns0ROTdJQabwyJ"
       ],
-      "updatedAt": "2026-07-01T10:21:37.188Z",
       "critical_components": [
         {
           "id": "1AqxKZXh5jfD6JThoPEj",
@@ -9866,7 +10148,28 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "H0042-001-CAB",
+          "H0042-001-CC1",
+          "H0042-001-CPI000",
+          "H0042-001-CVL",
+          "H0042-001-GPI000",
+          "U0042-001-CBL"
+        ],
+        "positions": [
+          {
+            "shape": "#8015 1h",
+            "size": "20",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:14.007Z"
     },
     {
       "id": "DIPiZt5U71V2A3WcO9sJ",
@@ -9904,7 +10207,6 @@
           "caption": "D0043-231-G"
         }
       ],
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Hearts",
@@ -9977,7 +10279,6 @@
           ]
         }
       ],
-      "updatedAt": "2026-07-01T08:12:40.088Z",
       "critical_components": [
         {
           "qty_per_unit": 1,
@@ -10015,7 +10316,28 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0043-001-CPI",
+          "D0043-001-GC1",
+          "D0043-001-GRE",
+          "U0043-001-CABG296",
+          "U0043-001-CBL",
+          "U0043-001-CC1"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:14.288Z"
     },
     {
       "id": "iUvNzCZrk1kKvCw3UkFP",
@@ -10063,12 +10385,6 @@
       ],
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {
-        "M1": [
-          "C1",
-          "BL"
-        ]
-      },
       "is_new": false,
       "description": "Cat(Ball) Freestand",
       "active": true,
@@ -10149,7 +10465,27 @@
       "videos": [
         "https://youtube.com/shorts/AY2YWGtMEH0?si=9GFa-OhquTe3VNpp"
       ],
-      "updatedAt": "2026-07-01T12:28:44.187Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0045-001-C01",
+          "U0045-001-CGO",
+          "U0045-001-CLP",
+          "U0045-001-CMX",
+          "U0045-001-CPU",
+          "U0045-001-CPU000P13"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 3
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:14.564Z"
     },
     {
       "id": "wTdNiDlzVRT6cLtAqLRL",
@@ -10411,14 +10747,6 @@
       "videos": [],
       "design_type": "Musical",
       "delivery_note": "",
-      "crystal_mixes": {
-        "M1": [
-          "C1"
-        ],
-        "MX": [
-          "C1"
-        ]
-      },
       "is_new": true,
       "description": "Violin Music Box (Wood Body)\nTunes: Memory / Swan Lake / Fly Me to the Moon / Amazing Grace / You are my Sunshine / Love Story / Deck the Hall",
       "variants": [
@@ -10520,7 +10848,37 @@
           "plating_code": "G"
         }
       ],
-      "updatedAt": "2026-06-29T13:40:03.445Z"
+      "crystal_components": {
+        "rescued_from": [
+          "D0055-001-CBL",
+          "D0055-001-CC1",
+          "D0055-001-CM1",
+          "D0055-001-CMX",
+          "D0055-001-GC1",
+          "D0055-001-GC1MFLW03"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 5
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "18",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:14.847Z"
     },
     {
       "id": "53o0jJdQD7Y7odqOmkV8",
@@ -10576,7 +10934,6 @@
       ],
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {},
       "video_url": "",
       "is_new": false,
       "videos": [],
@@ -10601,7 +10958,37 @@
       ],
       "delivery_note": "",
       "marketing_description": "",
-      "updatedAt": "2026-06-29T13:39:53.423Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0055-001-AM1",
+          "U0055-001-AMX",
+          "U0055-001-CBL",
+          "U0055-001-CC1",
+          "U0055-001-CC1919S35",
+          "U0055-001-CCL"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 5
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "18",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:15.135Z"
     },
     {
       "id": "Po4qhxYDv4JIZiWwUvDQ",
@@ -10862,7 +11249,6 @@
         }
       ],
       "product_type": "Figurines",
-      "updatedAt": "2026-06-23T04:15:35.251Z",
       "lead_time_weeks": 3,
       "moq": 100,
       "critical_components": [
@@ -10908,7 +11294,28 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "U0061-001-CBL",
+          "U0061-001-CC1",
+          "U0061-001-GC1",
+          "U0061-001-GCL",
+          "U0061-001-GMX",
+          "U0061-001-GPU"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 6
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:15.436Z"
     },
     {
       "id": "HSDUzIvHlrNaiEIdEeJD",
@@ -10940,7 +11347,6 @@
           "caption": "D0061-237-GC1"
         }
       ],
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "variants": [
@@ -10966,7 +11372,6 @@
       "delivery_note": "",
       "marketing_description": "",
       "product_type": "Pen Stands",
-      "updatedAt": "2026-06-23T04:15:49.588Z",
       "lead_time_weeks": 3,
       "moq": 100,
       "critical_components": [
@@ -11006,7 +11411,23 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "A0061-237-GCLA28"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "18",
+            "qty": 6
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:15.714Z"
     },
     {
       "id": "g3x9LtZmMVgR9kmnzJGc",
@@ -11257,40 +11678,6 @@
       "videos": [],
       "delivery_note": "",
       "design_type": "Objects",
-      "crystal_mixes": {
-        "A1": [
-          "AB",
-          "GR",
-          "LP"
-        ],
-        "AX": [
-          "AB",
-          "PU",
-          "VL"
-        ],
-        "GX": [
-          "GO",
-          "GT",
-          "TO"
-        ],
-        "M1": [
-          "EM",
-          "RE"
-        ],
-        "M2": [
-          "DB",
-          "EM",
-          "GR"
-        ],
-        "MX": [
-          "BL",
-          "GO",
-          "GR",
-          "PI",
-          "PU",
-          "RE"
-        ]
-      },
       "is_new": true,
       "description": "Mini Globe Music Box (Wood Body)\nTunes: Memory / Swan Lake / Fly Me to the Moon / Amazing Grace / You are my Sunshine / Love Story / Deck the Hall",
       "variants": [
@@ -11368,7 +11755,6 @@
         }
       ],
       "marketing_description": "The Mini Globe Music Box presents a captivating blend of artistry and sound, featuring a globe adorned with sparkling Bohemia crystal elements held within an elegant metal frame. This exquisite piece rests upon a wood body with an 8-note mechanical movement, encircled by a sophisticated mirror grid and topped with a stainless steel plate. Available in Chrome or Gold finishes, it offers a choice of beloved tunes including \"Memory,\" \"Swan Lake,\" and \"Love Story,\" making it a cherished collectible or a truly memorable gift.",
-      "updatedAt": "2026-06-23T12:58:10.358Z",
       "lead_time_weeks": 3,
       "moq": 100,
       "critical_components": [
@@ -11438,7 +11824,69 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "A0062-001-GCL",
+          "D0062-001-CAX",
+          "D0062-001-CMX",
+          "D0062-001-GC1",
+          "D0062-001-GM2",
+          "D0062-001-GMX"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 6
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "source": "erp-rescue",
+        "mixes": {
+          "M2": [
+            {
+              "code": "BDC-8232-0014-004",
+              "qty": 2
+            },
+            {
+              "code": "BDC-8232-0014-008",
+              "qty": 2
+            },
+            {
+              "code": "BDC-8232-0014-028",
+              "qty": 2
+            }
+          ],
+          "MX": [
+            {
+              "code": "BDC-8232-0014-001",
+              "qty": 1
+            },
+            {
+              "code": "BDC-8232-0014-003",
+              "qty": 1
+            },
+            {
+              "code": "BDC-8232-0014-004",
+              "qty": 1
+            },
+            {
+              "code": "BDC-8232-0014-005",
+              "qty": 1
+            },
+            {
+              "code": "BDC-8232-0014-006",
+              "qty": 1
+            },
+            {
+              "code": "BDC-8232-0014-007",
+              "qty": 1
+            }
+          ]
+        }
+      },
+      "updatedAt": "2026-07-23T13:01:15.999Z"
     },
     {
       "id": "rsvPsDrXbSng9SS3FR1Z",
@@ -11562,7 +12010,6 @@
         "cbm_per_carton": "0.0247",
         "carton_dims": ""
       },
-      "crystal_mixes": {},
       "design_type": "Hearts",
       "delivery_note": "",
       "marketing_description": "",
@@ -11654,7 +12101,32 @@
           "plating_code": "G"
         }
       ],
-      "updatedAt": "2026-07-07T02:26:16.182Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0064-001-CBL",
+          "U0064-001-CC1",
+          "U0064-001-GBL",
+          "U0064-001-GC1",
+          "U0064-001-GC1J",
+          "U0064-001-GCL"
+        ],
+        "positions": [
+          {
+            "shape": "#8015 1h",
+            "size": "20",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 1h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:16.281Z"
     },
     {
       "id": "eQqO6EkJTxUF6N9eLjay",
@@ -11682,7 +12154,6 @@
       },
       "createdAt": "2026-06-16T18:51:23.989Z",
       "design_type": "Hearts",
-      "crystal_mixes": {},
       "is_new": false,
       "active": true,
       "delivery_note": "",
@@ -11791,7 +12262,32 @@
           ]
         }
       ],
-      "updatedAt": "2026-07-14T09:40:16.124Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0064-001-CBL",
+          "U0064-001-CC1",
+          "U0064-001-GBL",
+          "U0064-001-GC1",
+          "U0064-001-GC1J",
+          "U0064-001-GCL"
+        ],
+        "positions": [
+          {
+            "shape": "#8015 1h",
+            "size": "20",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 1h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:16.581Z"
     },
     {
       "id": "RWq6zrVCLSNo3VPLmWAh",
@@ -11978,29 +12474,6 @@
       ],
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {
-        "M1": [
-          "BL",
-          "EM",
-          "PU",
-          "RE",
-          "TO"
-        ],
-        "M2": [
-          "GO",
-          "GR",
-          "LP",
-          "PI",
-          "VL"
-        ],
-        "MX": [
-          "BL",
-          "GR",
-          "PI",
-          "PU",
-          "RE"
-        ]
-      },
       "video_url": "",
       "is_new": false,
       "description": "Crystal Egg Freestand",
@@ -12049,7 +12522,27 @@
         }
       ],
       "marketing_description": "",
-      "updatedAt": "2026-06-29T15:59:22.013Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0070-001-AMX",
+          "U0070-001-CBL",
+          "U0070-001-CCL",
+          "U0070-001-CM1",
+          "U0070-001-CM2",
+          "U0070-001-CMX"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 10
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:16.861Z"
     },
     {
       "id": "R3dC8PUk9nRZTGFUr085",
@@ -12075,7 +12568,6 @@
       },
       "active": true,
       "createdAt": "2026-06-16T18:50:23.802Z",
-      "crystal_mixes": {},
       "video_url": "",
       "product_type": "Crystal Bibles",
       "videos": [],
@@ -12203,7 +12695,6 @@
         }
       ],
       "marketing_description": "Celebrate faith with the Mini Sunburst with Crystal Bible, a radiant religious piece crafted with Bohemia crystal. This exquisite figurine, measuring 7.4 x 5.8 x 6.7 cm, features a mirror-coated Crystal Bible that can be custom laser engraved with meaningful graphics and quotes. Available in a choice of Chrome or Gold finishes, it makes a thoughtful gift or a sparkling addition to any collection.",
-      "updatedAt": "2026-06-23T13:59:13.802Z",
       "lead_time_weeks": 3,
       "moq": 100,
       "critical_components": [
@@ -12237,7 +12728,28 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0083-001-CTO",
+          "D0083-001-GC1",
+          "D0083-001-GGO",
+          "D0083-001-GRE",
+          "D0083-001-GTO",
+          "U0083-001-ADB"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:17.138Z"
     },
     {
       "id": "XzD6WQGZY1cDZSqKjSoQ",
@@ -12417,28 +12929,6 @@
       ],
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {
-        "MX": [
-          "GR",
-          "PI"
-        ],
-        "M1": [
-          "RE",
-          "GO"
-        ],
-        "M2": [
-          "BL",
-          "GR"
-        ],
-        "M3": [
-          "RE",
-          "PI"
-        ],
-        "M4": [
-          "GO",
-          "PI"
-        ]
-      },
       "video_url": "",
       "is_new": false,
       "description": "Flower Fairy(Rose) Freestand",
@@ -12526,7 +13016,37 @@
       "videos": [
         "https://youtube.com/shorts/1ZRe7UyTqRM?si=QLnRkeVBkv1xbcON"
       ],
-      "updatedAt": "2026-07-01T10:13:27.012Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0085-001-C01",
+          "U0085-001-CC1",
+          "U0085-001-CGR",
+          "U0085-001-CM1",
+          "U0085-001-CM2",
+          "U0085-001-CM3"
+        ],
+        "positions": [
+          {
+            "shape": "#8641 1h",
+            "size": "2012",
+            "qty": 1
+          },
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 3
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 4
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:17.424Z"
     },
     {
       "id": "m5BpxVM9FxLMzTuXNID5",
@@ -12715,7 +13235,6 @@
       },
       "active": true,
       "createdAt": "2026-06-16T18:50:24.121Z",
-      "crystal_mixes": {},
       "video_url": "",
       "product_type": "Crystal Bibles",
       "design_type": "Birds",
@@ -12879,7 +13398,32 @@
       "videos": [
         "https://youtube.com/shorts/UE2z3zq-6rA?si=nUeTr1b16kzKPq0_"
       ],
-      "updatedAt": "2026-07-01T10:35:54.992Z"
+      "crystal_components": {
+        "rescued_from": [
+          "A0088-001-CC1",
+          "A0088-001-CCL",
+          "D0088-001-CB1",
+          "D0088-001-GC1",
+          "U0088-001-C01",
+          "U0088-001-CAB"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 2
+          },
+          {
+            "shape": "octagon 1h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:17.705Z"
     },
     {
       "id": "zV7iFRCpkUCHrhdbthFd",
@@ -13117,7 +13661,6 @@
           "caption": "D0088-236-GC1"
         }
       ],
-      "crystal_mixes": {},
       "video_url": "",
       "product_type": "Music Boxes",
       "design_type": "Birds",
@@ -13252,7 +13795,32 @@
       "videos": [
         "https://youtube.com/shorts/UE2z3zq-6rA?si=nUeTr1b16kzKPq0_"
       ],
-      "updatedAt": "2026-07-01T10:35:54.992Z"
+      "crystal_components": {
+        "rescued_from": [
+          "A0088-001-CC1",
+          "A0088-001-CCL",
+          "D0088-001-CB1",
+          "D0088-001-GC1",
+          "U0088-001-C01",
+          "U0088-001-CAB"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 2
+          },
+          {
+            "shape": "octagon 1h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:18.007Z"
     },
     {
       "id": "m7SVRA8grW1QrDohFSNc",
@@ -13661,7 +14229,6 @@
       },
       "active": true,
       "createdAt": "2026-06-16T18:50:24.457Z",
-      "crystal_mixes": {},
       "video_url": "",
       "product_type": "Crystal Bibles",
       "videos": [],
@@ -13789,7 +14356,6 @@
         }
       ],
       "marketing_description": "This exquisite Mini Dolphin with Crystal Bible, crafted from Bohemia crystal, offers a truly unique collectible. The playful dolphin, featuring a sparkling faceted body, gracefully arches over a crystal bible with a mirror-coated bottom, perfect for laser engraving cherished quotes or graphics. Available in a Chrome or Gold finish, this 7.4 x 5.8 x 6.5 cm piece makes a thoughtful gift or a captivating display in any setting, radiating elegance and charm.",
-      "updatedAt": "2026-06-23T14:58:53.599Z",
       "lead_time_weeks": 3,
       "moq": 100,
       "critical_components": [
@@ -13823,7 +14389,38 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "A0094-001-CC1",
+          "A0094-001-CCL",
+          "D0094-001-CAB",
+          "D0094-001-CBL",
+          "D0094-001-CBL939",
+          "D0094-001-CPU"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 2
+          },
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:18.294Z"
     },
     {
       "id": "YOCBAEKDJSeAGFHo1oZW",
@@ -14529,7 +15126,6 @@
         "weight_per_pcs_kg": "0.052",
         "weight_per_carton_kg": "3.1"
       },
-      "crystal_mixes": {},
       "video_url": "",
       "design_type": "Angels",
       "delivery_note": "",
@@ -14595,7 +15191,27 @@
       "videos": [
         "https://youtube.com/shorts/WIAZaOs7tso?si=8iwnVa2mIQMK6g-R"
       ],
-      "updatedAt": "2026-07-01T10:12:41.590Z"
+      "crystal_components": {
+        "rescued_from": [
+          "A0106-001-CCL"
+        ],
+        "positions": [
+          {
+            "shape": "drop 1h",
+            "size": "20",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:18.572Z"
     },
     {
       "id": "3sD8Pyum1IOjfWJ2N8cC",
@@ -15199,24 +15815,6 @@
       "is_new": false,
       "delivery_note": "",
       "marketing_description": "",
-      "crystal_mixes": {
-        "MX": [
-          "BL",
-          "GR"
-        ],
-        "M1": [
-          "GR",
-          "PI"
-        ],
-        "M2": [
-          "RE",
-          "GO"
-        ],
-        "M3": [
-          "GO",
-          "PI"
-        ]
-      },
       "variants": [
         {
           "brand_code": "D",
@@ -15301,7 +15899,27 @@
       "videos": [
         "https://youtube.com/shorts/1ZRe7UyTqRM?si=QLnRkeVBkv1xbcON"
       ],
-      "updatedAt": "2026-07-01T10:13:27.012Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0111-001-C01",
+          "U0111-001-CGO",
+          "U0111-001-CM1000P22",
+          "U0111-001-CMX",
+          "U0111-001-CRE",
+          "U0111-001-G01"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 4
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:18.848Z"
     },
     {
       "id": "hTe4EvggEDZDPLJH7xvU",
@@ -15446,7 +16064,6 @@
         "carton_dims": "",
         "cbm_per_carton": "0.0164"
       },
-      "crystal_mixes": {},
       "design_type": "Butterflies",
       "delivery_note": "",
       "product_type": "Figurines",
@@ -15550,7 +16167,25 @@
           "caption": "D0114-001-CAB"
         }
       ],
-      "updatedAt": "2026-07-08T16:27:23.598Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0114-001-CGO000P22",
+          "U0114-001-CGR",
+          "U0114-001-GCL",
+          "U0114-001-GDB"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 4
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:19.130Z"
     },
     {
       "id": "pnXs3fQIw7aEWPD6m21T",
@@ -15576,7 +16211,6 @@
         "carton_dims": "",
         "pcs_per_carton": "48"
       },
-      "crystal_mixes": {},
       "video_url": "",
       "design_type": "Butterflies",
       "delivery_note": "",
@@ -15644,7 +16278,27 @@
       "videos": [
         "https://www.youtube.com/watch?v=ro_O05bjgdg"
       ],
-      "updatedAt": "2026-07-01T09:50:56.174Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0115-001-AMX",
+          "U0115-001-CGR",
+          "U0115-001-CM1",
+          "U0115-001-CM4",
+          "U0115-001-CMX",
+          "U0115-001-CMX000P22"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 4
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:19.406Z"
     },
     {
       "id": "M0n4XT4hWqOhTD3CcQNc",
@@ -16209,7 +16863,6 @@
         "weight_per_pcs_kg": ""
       },
       "createdAt": "2026-06-16T18:50:44.655Z",
-      "crystal_mixes": {},
       "video_url": "",
       "design_type": "Flowers",
       "delivery_note": "",
@@ -16291,7 +16944,32 @@
       "videos": [
         "https://youtube.com/shorts/-LPfK1u1Vyo?si=2juSqB5n-dHNzyoR"
       ],
-      "updatedAt": "2026-07-01T10:34:08.025Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0123-001-CLP"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 4
+          },
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 4
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:19.707Z"
     },
     {
       "id": "xvckKe6yccwZSpFmkJjl",
@@ -17293,7 +17971,6 @@
         "pack_box_ref": "P-PB007ROS-02-01",
         "weight_per_carton_kg": "2.76"
       },
-      "crystal_mixes": {},
       "design_type": "Objects",
       "delivery_note": "",
       "product_type": "Figurines",
@@ -17359,7 +18036,27 @@
           "caption": "D0145-001-GC1"
         }
       ],
-      "updatedAt": "2026-07-08T07:54:12.093Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0145-001-ATO",
+          "U0145-001-CGO",
+          "U0145-001-CLP",
+          "U0145-001-CPU",
+          "U0145-001-GCL",
+          "U0145-001-GCL000P22"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 4
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:19.985Z"
     },
     {
       "id": "ZzF7OCcvL1xQrdkHU0q9",
@@ -17538,7 +18235,6 @@
           "crystal_colors": []
         }
       ],
-      "crystal_mixes": {},
       "createdAt": "2026-07-09T00:08:46.352Z",
       "critical_components": [
         {
@@ -17576,8 +18272,28 @@
           "caption": ""
         }
       ],
-      "updatedAt": "2026-07-09T00:14:11.833Z",
-      "moq": 100
+      "moq": 100,
+      "crystal_components": {
+        "rescued_from": [
+          "U0160-001-AMX",
+          "U0160-001-CBL",
+          "U0160-001-CGO",
+          "U0160-001-CGR",
+          "U0160-001-CLP",
+          "U0160-001-CM1"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 9
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:20.262Z"
     },
     {
       "id": "YXLwHglgAKNedFQMhSVU",
@@ -17720,7 +18436,6 @@
       "product_type": "Figurines",
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {},
       "video_url": "",
       "is_new": false,
       "description": "Mini Heart(Heart) - Zinc alloy Mobile Freestand with Laser Engraving",
@@ -17790,7 +18505,6 @@
       ],
       "delivery_note": "",
       "marketing_description": "This elegant Mini Heart mobile freestand features sparkling Bohemia crystal within a heart-shaped zinc alloy frame dangling in a hoop. Offered in Chrome or Gold, its radiant facets catch the light beautifully.",
-      "updatedAt": "2026-07-01T15:34:28.485Z",
       "critical_components": [
         {
           "id": "f4quxwJEshhC92vxdtwJ",
@@ -17828,7 +18542,33 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0168-001-CPI",
+          "D0168-001-GC1",
+          "D0168-001-GPI",
+          "U0168-001-CAB",
+          "U0168-001-CC1",
+          "U0168-001-CPI"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:20.540Z"
     },
     {
       "id": "jpR5nkOUuHYaPxKH9jfw",
@@ -17973,7 +18713,6 @@
       "product_type": "Figurines",
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {},
       "video_url": "",
       "is_new": false,
       "active": true,
@@ -18012,7 +18751,6 @@
       ],
       "delivery_note": "",
       "marketing_description": "This Mini Heart design, featuring a gleaming gold finish, radiates romance. A faceted Bohemia crystal heart shimmers within, resting on a zinc alloy oval base with a round plaque, perfect for a cherished sentiment.",
-      "updatedAt": "2026-07-01T15:39:48.354Z",
       "critical_components": [
         {
           "id": "KoR3regU0HRWLQc0JaTP",
@@ -18032,7 +18770,33 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0168-001-CPI",
+          "D0168-001-GC1",
+          "D0168-001-GPI",
+          "U0168-001-CAB",
+          "U0168-001-CC1",
+          "U0168-001-CPI"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:20.817Z"
     },
     {
       "id": "HvB1g5tfLW5xzuTFJnF3",
@@ -18074,7 +18838,6 @@
       "product_type": "Figurines",
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {},
       "video_url": "",
       "is_new": false,
       "active": true,
@@ -18143,7 +18906,6 @@
       ],
       "delivery_note": "",
       "marketing_description": "This exquisite Mini Heart(Arrow) collectible features a brilliant Bohemia crystal. Its elegant zinc alloy base and heart design, complete with a round plaque, are available in refined Chrome or luxurious Gold finishes. Laser engraving text.",
-      "updatedAt": "2026-07-01T15:47:36.759Z",
       "critical_components": [
         {
           "id": "kbRfiD2b2dvw7eEtZOTs",
@@ -18181,7 +18943,33 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0169-001-CPI",
+          "D0169-001-GRE",
+          "U0169-001-CBL",
+          "U0169-001-CGR",
+          "U0169-001-CGR000I03",
+          "U0169-001-CMX"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:21.107Z"
     },
     {
       "id": "j586Zb7uY29gxGwvHELT",
@@ -18362,7 +19150,6 @@
           "caption": "D0171-231-G"
         }
       ],
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Hearts",
@@ -18434,7 +19221,6 @@
         }
       ],
       "marketing_description": "A heartfelt Crystocraft creation, this Mini Heart(Doves) Freestand showcases a sparkling Bohemia crystal. Choose from a refined Chrome or opulent Gold finish for this elegant gift or display piece.",
-      "updatedAt": "2026-07-01T15:51:18.629Z",
       "critical_components": [
         {
           "code": "FM-U0171BY00-01C",
@@ -18484,7 +19270,33 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0171-001-CVL",
+          "D0171-001-GPI",
+          "U0171-001-C01000S35",
+          "U0171-001-CBL",
+          "U0171-001-CCL",
+          "U0171-001-CCL000P22"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 2
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:21.392Z"
     },
     {
       "id": "4jGLYcpSYzNqwlo9hQKq",
@@ -18522,7 +19334,6 @@
           "caption": "D0172-232-G"
         }
       ],
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Hearts",
@@ -18595,7 +19406,6 @@
         }
       ],
       "marketing_description": "This Mini Heart design features a captivating Bohemia crystal, gracefully held within a zinc alloy oval base. Available in radiant Chrome or elegant Gold, its sparkling facets create a delightful display. Laser engraving text.",
-      "updatedAt": "2026-07-01T15:53:39.284Z",
       "critical_components": [
         {
           "id": "6Zjw3FLkuMT2wOad5D2Z",
@@ -18633,7 +19443,28 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0172-001-CPI",
+          "D0172-001-GC1",
+          "D0172-001-GPI",
+          "U0172-001-CAB",
+          "U0172-001-CCL",
+          "U0172-001-CGO"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:21.671Z"
     },
     {
       "id": "M6F2awNvEwMtJabxK6Am",
@@ -20984,7 +21815,6 @@
         "weight_per_pcs_kg": "",
         "weight_per_carton_kg": "5.0"
       },
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Angels",
@@ -21043,7 +21873,27 @@
         }
       ],
       "marketing_description": "This charming Pocket - Sweetie Angel - Metal Bookmark, finished in Gold, features a radiant Bohemia crystal. Its sweet angel design holds a captivating faceted crystal, sparkling with iridescent hues. A delightful gift for any collector.",
-      "updatedAt": "2026-07-01T17:32:39.234Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0226-163-CABA",
+          "U0226-163-CBLA",
+          "U0226-163-CGRA",
+          "U0226-163-CPIA",
+          "U0226-163-CPUA",
+          "U0226-163-CVLA"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:21.949Z"
     },
     {
       "id": "K15uhMERlynLMyjIVtn2",
@@ -21223,7 +22073,6 @@
           "caption": "D0229-232-G"
         }
       ],
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Hearts",
@@ -21266,7 +22115,6 @@
         }
       ],
       "marketing_description": "This Mini Heart (Love) design features a shining Bohemia crystal suspended within a golden heart. Presented on a zinc alloy mini oval base, it offers a radiant display of affection, finished in gold. Laser engraving text.",
-      "updatedAt": "2026-07-01T17:40:48.784Z",
       "critical_components": [
         {
           "id": "a8uBedPptQmrYb2Kn1DG",
@@ -21286,7 +22134,33 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0229-001-CAB",
+          "U0229-001-CPI",
+          "U0229-001-CVL",
+          "U0229-001-GC1",
+          "U0229-001-GCL",
+          "U0229-001-GRE"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:22.226Z"
     },
     {
       "id": "fOlIXbm8vfuzGjhlMs4B",
@@ -21323,7 +22197,6 @@
           "caption": "D0229-231-G"
         }
       ],
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Hearts",
@@ -21397,7 +22270,6 @@
         }
       ],
       "marketing_description": "Celebrate love with the Mini Heart (Love) mobile freestand. This elegant zinc alloy piece features a brilliant Bohemia crystal, available in Chrome or Gold. A beautiful gift or treasured keepsake, measuring 7.2 x 8.4 cm.",
-      "updatedAt": "2026-07-01T17:43:41.855Z",
       "critical_components": [
         {
           "id": "m1hRQJ8Ys26o635QiZ5L",
@@ -21435,7 +22307,33 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0229-001-CAB",
+          "U0229-001-CPI",
+          "U0229-001-CVL",
+          "U0229-001-GC1",
+          "U0229-001-GCL",
+          "U0229-001-GRE"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:22.504Z"
     },
     {
       "id": "EhHDDimahSlhnL6KHwFC",
@@ -21453,7 +22351,6 @@
         "C": 1106
       },
       "createdAt": "2026-06-16T18:51:07.564Z",
-      "crystal_mixes": {},
       "design_type": "Hearts",
       "delivery_note": "",
       "product_type": "Figurines",
@@ -21521,7 +22418,32 @@
         "pcs_per_carton": "96",
         "pack_box_ref": "P-PB001ROS-02-01"
       },
-      "updatedAt": "2026-07-22T13:07:01.224Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0230-001-CAB010",
+          "U0230-001-CC1000",
+          "U0230-001-CC1004",
+          "U0230-001-CDB009",
+          "U0230-001-CEM005",
+          "U0230-001-CGR003"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:22.789Z"
     },
     {
       "id": "BLFPowLJqj7sFHcpVvvb",
@@ -22749,7 +23671,6 @@
         "carton_dims": "",
         "cbm_per_carton": "0.0337"
       },
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Animals",
@@ -22813,7 +23734,32 @@
           "caption": "D0253-001-CAB"
         }
       ],
-      "updatedAt": "2026-07-01T18:10:21.968Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0253-001-CAB",
+          "U0253-001-CBL",
+          "U0253-001-CC1",
+          "U0253-001-CCL",
+          "U0253-001-CGO",
+          "U0253-001-CLP"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:23.065Z"
     },
     {
       "id": "nUV7GFCGes3HeECxkzkq",
@@ -25886,7 +26832,6 @@
         "cbm_per_carton": "0.0312",
         "carton_dims": ""
       },
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Animals",
@@ -25943,7 +26888,27 @@
           "caption": "D0269-163-GAB"
         }
       ],
-      "updatedAt": "2026-07-02T13:57:42.279Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0269-163-CABA",
+          "U0269-163-CREA",
+          "U0269-163-GABA",
+          "U0269-163-GEMA",
+          "U0269-163-GGRA",
+          "U0269-163-GTOA"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:23.342Z"
     },
     {
       "id": "dDVmJaleTFczWcInzYet",
@@ -26616,7 +27581,6 @@
         "cbm_per_carton": "0.0312",
         "carton_dims": ""
       },
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Animals",
@@ -26663,7 +27627,27 @@
           "caption": "D0274-163-GAB-1"
         }
       ],
-      "updatedAt": "2026-07-02T19:39:13.770Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0274-163-CBLA",
+          "U0274-163-CLP",
+          "U0274-163-CLPA",
+          "U0274-163-CPIA",
+          "U0274-163-GLP",
+          "U0274-163-GTOA"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:23.632Z"
     },
     {
       "id": "dKFYwbPOZ7GrqIeR37bI",
@@ -27441,7 +28425,6 @@
         "cbm_per_carton": "0.0312",
         "pcs_per_carton": "96"
       },
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Animals",
@@ -27487,7 +28470,27 @@
           "caption": "D0278-163-GAB-1"
         }
       ],
-      "updatedAt": "2026-07-02T20:14:52.881Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0278-163-CAB",
+          "U0278-163-CABA",
+          "U0278-163-CABA000W25",
+          "U0278-163-CABG",
+          "U0278-163-CBLA",
+          "U0278-163-CDBA"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:23.910Z"
     },
     {
       "id": "UTixyebLTwF0MYSiuOU6",
@@ -27664,7 +28667,6 @@
         "pack_box_ref": "P-GB037A01-03-14",
         "pcs_per_carton": "96"
       },
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Objects",
@@ -27739,7 +28741,30 @@
           "caption": "D0286-175-GAB"
         }
       ],
-      "updatedAt": "2026-07-02T20:23:29.926Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0286-175-CABA",
+          "U0286-175-CDB",
+          "U0286-175-CDBA",
+          "U0286-175-GC1A"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:24.209Z"
     },
     {
       "id": "wwnWEMEzLIudQW7ZKdoF",
@@ -27766,7 +28791,6 @@
         "cbm_per_carton": "0.0358",
         "carton_dims": ""
       },
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Angels",
@@ -27812,7 +28836,29 @@
           "caption": "D0289-175-CAB"
         }
       ],
-      "updatedAt": "2026-07-02T20:28:11.503Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0289-175-CBL",
+          "U0289-175-CBLA",
+          "U0289-175-CC1A"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:24.486Z"
     },
     {
       "id": "Xipe4M3yAzuzyGWdkV1X",
@@ -27840,7 +28886,6 @@
         "cbm_per_carton": "0.0358",
         "pcs_per_carton": "96"
       },
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Hearts",
@@ -27915,7 +28960,29 @@
           "caption": "D0290-175-GAB"
         }
       ],
-      "updatedAt": "2026-07-02T20:33:17.465Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0290-175-CRE",
+          "U0290-175-CREA",
+          "U0290-175-GREA"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:24.760Z"
     },
     {
       "id": "gtDoP9uudcU8jIhyyEPS",
@@ -27942,7 +29009,6 @@
         "carton_dims": "",
         "pcs_per_carton": "96"
       },
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Objects",
@@ -27988,7 +29054,28 @@
           "caption": "D0291-175-CAB"
         }
       ],
-      "updatedAt": "2026-07-02T20:42:51.978Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0291-175-CC1A",
+          "U0291-175-GGTA"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:25.038Z"
     },
     {
       "id": "jc0x4Fy7TMu1TKGu8Khg",
@@ -28015,7 +29102,6 @@
         "carton_dims": "",
         "pcs_per_carton": "96"
       },
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Objects",
@@ -28061,7 +29147,24 @@
           "caption": "D0291-163-CAB"
         }
       ],
-      "updatedAt": "2026-07-02T20:45:48.004Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0291-163-CC1A000W25",
+          "U0291-163-CREA",
+          "U0291-163-GDBA"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:25.342Z"
     },
     {
       "id": "QaHwoTuuKDMpQhJYkLHi",
@@ -28088,7 +29191,6 @@
         "carton_dims": "",
         "pcs_per_carton": "96"
       },
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Butterflies",
@@ -28134,7 +29236,29 @@
           "caption": "D0292-175-GAB"
         }
       ],
-      "updatedAt": "2026-07-02T20:47:38.341Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0292-175-CPIA",
+          "U0292-175-GPU",
+          "U0292-175-GPUA"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:25.617Z"
     },
     {
       "id": "hgxnXRyiOnvmqcvQxTZB",
@@ -29566,7 +30690,6 @@
         "weight_per_carton_kg": "5.2",
         "pcs_per_carton": "96"
       },
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Religious",
@@ -29624,7 +30747,27 @@
           "caption": "D0325-163-GAB"
         }
       ],
-      "updatedAt": "2026-07-03T05:00:22.420Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0325-163-CABA",
+          "U0325-163-CBLA",
+          "U0325-163-CGRA",
+          "U0325-163-CPIA",
+          "U0325-163-CREA",
+          "U0325-163-CVLA"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:25.894Z"
     },
     {
       "id": "O444Ho68jHp5BDo3K952",
@@ -30834,7 +31977,6 @@
       "product_type": "Figurines",
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {},
       "video_url": "",
       "is_new": false,
       "description": "Pocket - Love - Zinc alloy Mobile Freestand with Laser Engraving Print",
@@ -30874,7 +32016,6 @@
       ],
       "delivery_note": "",
       "marketing_description": "",
-      "updatedAt": "2026-07-03T07:18:26.465Z",
       "critical_components": [
         {
           "id": "gOeEAK1RVWPAxCioss63",
@@ -30894,7 +32035,28 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0337-001-CRE",
+          "U0337-001-CC1",
+          "U0337-001-CGO",
+          "U0337-001-CGRE",
+          "U0337-001-CPI",
+          "U0337-001-CPIE"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:26.171Z"
     },
     {
       "id": "Lgx9znC4CKV98wyjbUVj",
@@ -30931,7 +32093,6 @@
       "product_type": "Figurines",
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {},
       "video_url": "",
       "is_new": false,
       "active": true,
@@ -30970,7 +32131,6 @@
       ],
       "delivery_note": "",
       "marketing_description": "",
-      "updatedAt": "2026-07-03T07:19:01.069Z",
       "critical_components": [
         {
           "id": "orHVqzPvvpYGtKC9egtq",
@@ -30990,7 +32150,28 @@
           "qty_per_unit": 1,
           "plating_code": "C"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0337-001-CRE",
+          "U0337-001-CC1",
+          "U0337-001-CGO",
+          "U0337-001-CGRE",
+          "U0337-001-CPI",
+          "U0337-001-CPIE"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:26.455Z"
     },
     {
       "id": "e7SfiHYobccfMH6pjKHW",
@@ -31459,7 +32640,6 @@
       "product_type": "Figurines",
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {},
       "video_url": "",
       "is_new": false,
       "active": true,
@@ -31498,7 +32678,6 @@
       ],
       "delivery_note": "",
       "marketing_description": "",
-      "updatedAt": "2026-07-03T07:39:53.278Z",
       "critical_components": [
         {
           "id": "PRWF33Wphi2t9lQTe0qp",
@@ -31518,7 +32697,28 @@
           "qty_per_unit": 1,
           "plating_code": "C"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0338-001-CRE",
+          "D0338-001-GRE",
+          "D0338-001-GREE",
+          "U0338-001-CAB",
+          "U0338-001-CABE",
+          "U0338-001-CBL"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:26.738Z"
     },
     {
       "id": "ymJy0UrwGxfiVVX0EGWk",
@@ -31549,7 +32749,6 @@
       "product_type": "Figurines",
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {},
       "video_url": "",
       "is_new": false,
       "description": "Pocket - Twin Hearts - Zinc alloy Mobile Freestand with Laser Engraving",
@@ -31629,7 +32828,6 @@
           "caption": "D0338-231-CPI"
         }
       ],
-      "updatedAt": "2026-07-03T07:49:25.622Z",
       "critical_components": [
         {
           "id": "l3yBeSzp8CpquotUva7P",
@@ -31649,7 +32847,28 @@
           "qty_per_unit": 1,
           "plating_code": "C"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0338-001-CRE",
+          "D0338-001-GRE",
+          "D0338-001-GREE",
+          "U0338-001-CAB",
+          "U0338-001-CABE",
+          "U0338-001-CBL"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:27.015Z"
     },
     {
       "id": "VN9QBSEBvltnPC4nM06o",
@@ -31851,7 +33070,6 @@
         "cbm_per_carton": "0.0349",
         "carton_dims": ""
       },
-      "crystal_mixes": {},
       "design_type": "Flowers",
       "delivery_note": "",
       "marketing_description": "",
@@ -31937,7 +33155,27 @@
           "caption": "D0339-001-GAB"
         }
       ],
-      "updatedAt": "2026-07-03T08:19:52.540Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0339-001-CPI",
+          "U0339-001-CVL",
+          "U0339-001-CVLE",
+          "U0339-001-GC1",
+          "U0339-001-GC1E",
+          "U0339-001-GCL"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:27.289Z"
     },
     {
       "id": "uofkxowdZ2mXRR6hSQv0",
@@ -34594,7 +35832,6 @@
           "caption": "U0355-230-GRE"
         }
       ],
-      "crystal_mixes": {},
       "video_url": "",
       "product_type": "Crystal Bibles",
       "videos": [],
@@ -34668,7 +35905,6 @@
         }
       ],
       "marketing_description": "A truly unique keepsake, the Mini Rose with Crystal Bible combines the enduring beauty of a rose with a symbolic crystal bible. Crafted from Bohemia crystal, this exquisite piece features a lustrous rose, available in Chrome or Gold finishes, rising from an open book. The crystal bible boasts a mirror coating at the bottom, offering a special touch for laser engraving quotes and graphics, creating a cherished, personalised gift or collectible.",
-      "updatedAt": "2026-06-23T15:21:08.308Z",
       "lead_time_weeks": 3,
       "moq": 100,
       "critical_components": [
@@ -34702,7 +35938,28 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0355-001-CC12AT",
+          "D0355-001-CC1Q264",
+          "D0355-001-CPI245",
+          "D0355-001-CPIQ244",
+          "D0355-001-CPIQ245",
+          "D0355-001-CPIQ277"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:27.568Z"
     },
     {
       "id": "yT3hP59MgINMgrTd0qTK",
@@ -34730,7 +35987,6 @@
         "pcs_per_carton": "96"
       },
       "product_type": "Figurines",
-      "crystal_mixes": {},
       "is_new": false,
       "variants": [
         {
@@ -34896,7 +36152,27 @@
           "url": "https://www.crystocraft.com/wp-content/uploads/2019/09/U0355-001-GRE-1.jpg"
         }
       ],
-      "updatedAt": "2026-07-18T09:18:58.619Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0355-001-AJTQ244",
+          "U0355-001-AJTQ249",
+          "U0355-001-APUH03S35",
+          "U0355-001-APUQ250S35",
+          "U0355-001-AREQ244",
+          "U0355-001-CABQ000"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:27.844Z"
     },
     {
       "id": "mZyaGwmqeXajj2kF5mNz",
@@ -35691,63 +36967,6 @@
           "plating_code": "C"
         }
       ],
-      "crystal_mixes": {
-        "G1": [
-          "GR",
-          "GS",
-          "LP"
-        ],
-        "G2": [
-          "GT",
-          "JT"
-        ],
-        "G3": [
-          "GO",
-          "GT",
-          "TO"
-        ],
-        "GX": [
-          "GS",
-          "GT",
-          "SS"
-        ],
-        "M1": [
-          "BL",
-          "GO",
-          "GR",
-          "LP",
-          "PI",
-          "VL"
-        ],
-        "M2": [
-          "C1",
-          "EM",
-          "GO",
-          "GR",
-          "LP",
-          "TO"
-        ],
-        "M3": [
-          "PU",
-          "VL"
-        ],
-        "M4": [
-          "BL",
-          "DB"
-        ],
-        "M5": [
-          "EM",
-          "GR"
-        ],
-        "MX": [
-          "EM",
-          "GO",
-          "LP",
-          "PU",
-          "RE",
-          "TO"
-        ]
-      },
       "description": "Evergreen 4R Picture Frame",
       "gallery": [
         {
@@ -35805,9 +37024,29 @@
           ]
         }
       ],
-      "updatedAt": "2026-07-03T09:37:32.217Z",
       "lead_time_weeks": 3,
-      "moq": 100
+      "moq": 100,
+      "crystal_components": {
+        "rescued_from": [
+          "U0366-164-ACLG",
+          "U0366-164-AG1G",
+          "U0366-164-AG2",
+          "U0366-164-AG2G",
+          "U0366-164-AG2G000S35",
+          "U0366-164-AGX"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 6
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:28.120Z"
     },
     {
       "id": "XmP2odu1BlJ1r4dsJZqD",
@@ -35864,43 +37103,6 @@
           "plating_code": "C"
         }
       ],
-      "crystal_mixes": {
-        "A1": [
-          "AB",
-          "VL"
-        ],
-        "AX": [
-          "AB"
-        ],
-        "GX": [
-          "GS",
-          "GT"
-        ],
-        "M1": [
-          "GO",
-          "TO"
-        ],
-        "M2": [
-          "PI",
-          "RE"
-        ],
-        "M3": [
-          "PU",
-          "VL"
-        ],
-        "M4": [
-          "BL",
-          "DB"
-        ],
-        "M5": [
-          "EM",
-          "GR"
-        ],
-        "MX": [
-          "LP",
-          "VL"
-        ]
-      },
       "product_type": "Photo Frame",
       "design_type": "Birds",
       "variants": [
@@ -35958,9 +37160,39 @@
           "caption": ""
         }
       ],
-      "updatedAt": "2026-07-03T09:36:51.519Z",
       "lead_time_weeks": 3,
-      "moq": 100
+      "moq": 100,
+      "crystal_components": {
+        "rescued_from": [
+          "U0368-164-AGX",
+          "U0368-164-AGXG",
+          "U0368-164-AGXG000P22",
+          "U0368-164-AJT",
+          "U0368-164-AJTG",
+          "U0368-164-AJTG000S35"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 13
+          },
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 4
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 4
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:28.410Z"
     },
     {
       "id": "JKM0ARuyQ2zrtQ4YtgS8",
@@ -36094,7 +37326,6 @@
       "product_type": "Figurines",
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {},
       "video_url": "",
       "is_new": false,
       "active": true,
@@ -36133,7 +37364,6 @@
       ],
       "delivery_note": "",
       "marketing_description": "",
-      "updatedAt": "2026-07-03T09:43:27.646Z",
       "critical_components": [
         {
           "id": "VETEHg5ni4jKS1Tgj0CP",
@@ -36153,7 +37383,30 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "U0377-001-GAB",
+          "U0377-001-GCL",
+          "U0377-001-GRE"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 10
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:28.690Z"
     },
     {
       "id": "UcLmPJxSwYxd9OpXZI6R",
@@ -36171,7 +37424,6 @@
         "G": 2200
       },
       "createdAt": "2026-06-16T18:50:52.008Z",
-      "crystal_mixes": {},
       "design_type": "Hearts",
       "delivery_note": "",
       "marketing_description": "",
@@ -36230,7 +37482,29 @@
         "pcs_per_carton": "96",
         "pack_box_ref": "P-PB001ROS-02-01"
       },
-      "updatedAt": "2026-07-22T13:07:03.507Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0377-001-GAB",
+          "U0377-001-GCL",
+          "U0377-001-GRE"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 10
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:28.964Z"
     },
     {
       "id": "VOb57aTcGMNEq8htXlBT",
@@ -36257,7 +37531,6 @@
         "pack_box_ref": "P-CP008-01-00",
         "pcs_per_carton": "96"
       },
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Hearts",
@@ -36305,7 +37578,32 @@
           ]
         }
       ],
-      "updatedAt": "2026-07-03T09:57:59.167Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0377-163-AABA",
+          "U0377-163-AEMA",
+          "U0377-163-AGOA",
+          "U0377-163-ALPA",
+          "U0377-163-CAB",
+          "U0377-163-CABA"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 10
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:29.248Z"
     },
     {
       "id": "Z3pRtI8MIfNiAKAcJdus",
@@ -36343,7 +37641,6 @@
       "product_type": "Figurines",
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {},
       "video_url": "",
       "is_new": false,
       "active": true,
@@ -36394,7 +37691,6 @@
       ],
       "delivery_note": "",
       "marketing_description": "",
-      "updatedAt": "2026-07-03T09:58:44.322Z",
       "critical_components": [
         {
           "id": "vRoO8tRzE8t8YY72XqSX",
@@ -36432,7 +37728,30 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "U0377-001-GAB",
+          "U0377-001-GCL",
+          "U0377-001-GRE"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 10
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:29.530Z"
     },
     {
       "id": "J17PAzBQ6RNOtRU07umG",
@@ -36460,7 +37779,6 @@
       },
       "createdAt": "2026-06-16T18:51:24.350Z",
       "design_type": "Hearts",
-      "crystal_mixes": {},
       "video_url": "",
       "product_type": "Figurines",
       "is_new": false,
@@ -36521,7 +37839,6 @@
           "caption": "U0378-240-GC1"
         }
       ],
-      "updatedAt": "2026-07-03T09:59:52.576Z",
       "critical_components": [
         {
           "id": "DBs4ICspzDIHuJHeYg9d",
@@ -36559,7 +37876,32 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "H0378-001-GC1",
+          "U0378-001-C01924",
+          "U0378-001-G01924",
+          "U0378-001-GCL",
+          "U0378-001-GMX"
+        ],
+        "positions": [
+          {
+            "shape": "#6228",
+            "size": "14",
+            "qty": 1
+          },
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 6
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:29.807Z"
     },
     {
       "id": "NeL2BgnFDok8l8feafiL",
@@ -36586,7 +37928,6 @@
         "weight_per_pcs_kg": ""
       },
       "createdAt": "2026-06-16T18:51:32.690Z",
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Hearts",
@@ -36632,7 +37973,31 @@
           "caption": "H0378-163-CAB"
         }
       ],
-      "updatedAt": "2026-07-03T10:47:33.570Z"
+      "crystal_components": {
+        "rescued_from": [
+          "H0378-001-GC1",
+          "U0378-001-C01924",
+          "U0378-001-G01924",
+          "U0378-001-GCL",
+          "U0378-001-GMX"
+        ],
+        "positions": [
+          {
+            "shape": "#6228",
+            "size": "14",
+            "qty": 1
+          },
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 6
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:30.081Z"
     },
     {
       "id": "sHFEUFMnFdvFuKSj2j1Z",
@@ -36651,7 +38016,6 @@
         "C": 284
       },
       "createdAt": "2026-06-16T18:50:53.731Z",
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Hearts",
@@ -36747,7 +38111,30 @@
         "pcs_per_carton": "96",
         "pack_box_ref": "P-PB001ROS-02-01"
       },
-      "updatedAt": "2026-07-22T13:07:03.783Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0378-001-C01924",
+          "U0378-001-G01924",
+          "U0378-001-GCL",
+          "U0378-001-GMX"
+        ],
+        "positions": [
+          {
+            "shape": "#6228",
+            "size": "14",
+            "qty": 1
+          },
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 6
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:30.360Z"
     },
     {
       "id": "2zZBYNa6rEpC2mIPO48d",
@@ -36789,7 +38176,6 @@
       "product_type": "Figurines",
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {},
       "video_url": "",
       "is_new": false,
       "active": true,
@@ -36840,7 +38226,6 @@
       ],
       "delivery_note": "",
       "marketing_description": "",
-      "updatedAt": "2026-07-03T10:04:21.287Z",
       "critical_components": [
         {
           "id": "BEMrIqpoNESVdB6ipO2Y",
@@ -36878,7 +38263,31 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0379-001-CPI",
+          "U0379-001-CBL",
+          "U0379-001-GCL",
+          "U0379-001-GRE"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "24",
+            "qty": 3
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:30.638Z"
     },
     {
       "id": "WyVyOxodlV1bjlW9ktVd",
@@ -37286,7 +38695,6 @@
       "product_type": "Figurines",
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {},
       "video_url": "",
       "is_new": false,
       "active": true,
@@ -37316,7 +38724,6 @@
       ],
       "delivery_note": "",
       "marketing_description": "",
-      "updatedAt": "2026-07-03T10:12:45.073Z",
       "critical_components": [
         {
           "id": "RywUzZjcRxe0NKtHZD59",
@@ -37336,7 +38743,29 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "U0380-001-GCL",
+          "U0380-001-GPI"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 3
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:30.914Z"
     },
     {
       "id": "NExQqaJPKxEI4ha1mzKS",
@@ -37368,7 +38797,6 @@
       "product_type": "Figurines",
       "lead_time_weeks": 3,
       "moq": 100,
-      "crystal_mixes": {},
       "video_url": "",
       "is_new": false,
       "active": true,
@@ -37429,7 +38857,6 @@
         }
       ],
       "marketing_description": "",
-      "updatedAt": "2026-07-03T10:13:28.210Z",
       "critical_components": [
         {
           "id": "jgG7qPmUFLgxdSm02gBg",
@@ -37449,7 +38876,29 @@
           "qty_per_unit": 1,
           "plating_code": "C"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "U0380-001-GCL",
+          "U0380-001-GPI"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 3
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:31.189Z"
     },
     {
       "id": "aw4yU5xJcuy5XYWF1fIV",
@@ -37467,7 +38916,6 @@
         "G": 816
       },
       "createdAt": "2026-06-16T18:50:52.717Z",
-      "crystal_mixes": {},
       "design_type": "Hearts",
       "delivery_note": "",
       "marketing_description": "",
@@ -37532,7 +38980,28 @@
         "pcs_per_carton": "96",
         "pack_box_ref": "P-PB001ROS-02-01"
       },
-      "updatedAt": "2026-07-22T13:07:04.379Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0380-001-GCL",
+          "U0380-001-GPI"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 3
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:31.465Z"
     },
     {
       "id": "Rg1wgnHvFB78jfIF1V5l",
@@ -37559,7 +39028,6 @@
         "weight_per_pcs_kg": ""
       },
       "createdAt": "2026-06-16T18:50:38.862Z",
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Birds",
@@ -37657,7 +39125,23 @@
           "caption": "D0383-001-CGO"
         }
       ],
-      "updatedAt": "2026-07-03T10:27:22.019Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0383-001-CGO",
+          "U0383-001-GGO"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:31.744Z"
     },
     {
       "id": "zBo2ko70QQZksBL5efiX",
@@ -37687,7 +39171,6 @@
         "pack_box_ref": "P-PB046ROS-02-01"
       },
       "plating_stock": {},
-      "crystal_mixes": {},
       "createdAt": "2026-06-25T06:09:17.108Z",
       "critical_components": [
         {
@@ -37755,9 +39238,39 @@
       ],
       "product_type": "Photo Frame",
       "design_type": "Birds",
-      "updatedAt": "2026-07-03T10:46:18.058Z",
       "lead_time_weeks": 3,
-      "moq": 100
+      "moq": 100,
+      "crystal_components": {
+        "rescued_from": [
+          "U0383-165-CAB",
+          "U0383-165-CABK",
+          "U0383-165-CBL",
+          "U0383-165-CBLG",
+          "U0383-165-CBLK",
+          "U0383-165-CBLK203W25"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 5
+          },
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 3
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:32.029Z"
     },
     {
       "id": "afCoR6sMRPNDjq1SsGfd",
@@ -37786,7 +39299,6 @@
         "pack_box_ref": "P-PB046ROS-02-01"
       },
       "plating_stock": {},
-      "crystal_mixes": {},
       "createdAt": "2026-06-25T07:24:34.862Z",
       "critical_components": [
         {
@@ -37850,9 +39362,39 @@
           "caption": "D0384-165-CPIK"
         }
       ],
-      "updatedAt": "2026-07-03T10:45:57.955Z",
       "lead_time_weeks": 3,
-      "moq": 100
+      "moq": 100,
+      "crystal_components": {
+        "rescued_from": [
+          "U0384-165-C01K",
+          "U0384-165-CABG",
+          "U0384-165-CABK",
+          "U0384-165-CBLK",
+          "U0384-165-CDBK",
+          "U0384-165-CEMK"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 6
+          },
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 2
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:32.315Z"
     },
     {
       "id": "1aafQNBFDu6EH3w45QLG",
@@ -37881,7 +39423,6 @@
         "pack_box_ref": "P-PB046ROS-02-01"
       },
       "plating_stock": {},
-      "crystal_mixes": {},
       "createdAt": "2026-06-25T07:26:54.073Z",
       "critical_components": [
         {
@@ -37941,9 +39482,34 @@
           ]
         }
       ],
-      "updatedAt": "2026-07-03T10:50:33.093Z",
       "lead_time_weeks": 3,
-      "moq": 100
+      "moq": 100,
+      "crystal_components": {
+        "rescued_from": [
+          "U0386-165-AABK",
+          "U0386-165-ABLK",
+          "U0386-165-AC1K",
+          "U0386-165-ADBK",
+          "U0386-165-AEMK",
+          "U0386-165-AGOK"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 9
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:32.600Z"
     },
     {
       "id": "NXeahENHYGOv9smvVncG",
@@ -38006,12 +39572,6 @@
           "caption": "U0393-175-CTO"
         }
       ],
-      "crystal_mixes": {
-        "MX": [
-          "EM",
-          "RE"
-        ]
-      },
       "variants": [
         {
           "brand_code": "U",
@@ -38043,7 +39603,32 @@
           ]
         }
       ],
-      "updatedAt": "2026-07-03T10:56:14.679Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0393-186-CBL255",
+          "U0393-186-CBLT255",
+          "U0393-186-CBLT256",
+          "U0393-186-CBLT256S35",
+          "U0393-186-CDBT255",
+          "U0393-186-CPI256"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 6
+          },
+          {
+            "shape": "chaton",
+            "size": "32",
+            "qty": 3
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:32.890Z"
     },
     {
       "id": "JxFtjceijIi3nSk0aase",
@@ -38071,7 +39656,6 @@
         "weight_per_pcs_kg": "0.05",
         "pack_box_ref": "P-GB037A01-03-14"
       },
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Animals",
@@ -38170,7 +39754,32 @@
           "caption": "U0396-175-GRE"
         }
       ],
-      "updatedAt": "2026-07-03T11:00:03.028Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0396-204-CMX"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 4
+          },
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 2
+          },
+          {
+            "shape": "chaton",
+            "size": "32",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:33.167Z"
     },
     {
       "id": "3VIF5Ijh8oEeFSoIsaxm",
@@ -38194,7 +39803,6 @@
         "weight_per_carton_kg": "5.5",
         "pcs_per_carton": "96"
       },
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Animals",
@@ -38262,7 +39870,34 @@
           "caption": "U0397-175-CMX"
         }
       ],
-      "updatedAt": "2026-07-03T11:07:25.117Z"
+      "crystal_components": {
+        "rescued_from": [
+          "D0397-204-CMX",
+          "U0397-204-CMX",
+          "U0397-204-GMX"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 3
+          },
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 2
+          },
+          {
+            "shape": "chaton",
+            "size": "32",
+            "qty": 3
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:33.444Z"
     },
     {
       "id": "fueQ6y8BL4xkS0wsnvwz",
@@ -38289,7 +39924,6 @@
         "carton_dims": "",
         "cbm_per_carton": "0.0312"
       },
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Animals",
@@ -38355,7 +39989,37 @@
           "caption": "U0399-163-GEM"
         }
       ],
-      "updatedAt": "2026-07-08T05:21:14.070Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0399-001-CDB",
+          "U0399-001-CEM",
+          "U0399-001-CGT",
+          "U0399-001-CM1",
+          "U0399-001-CM2",
+          "U0399-001-CMX"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 7
+          },
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 3
+          },
+          {
+            "shape": "chaton",
+            "size": "32",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:33.733Z"
     },
     {
       "id": "STGXubitLkRnEEkyGPVZ",
@@ -42183,7 +43847,6 @@
         "cbm_per_carton": "",
         "pcs_per_carton": "96"
       },
-      "crystal_mixes": {},
       "design_type": "Flowers",
       "delivery_note": "",
       "marketing_description": "",
@@ -42242,7 +43905,27 @@
           "caption": "D0466-001-GRE"
         }
       ],
-      "updatedAt": "2026-07-03T11:26:36.401Z"
+      "crystal_components": {
+        "rescued_from": [
+          "U0466-001-GRE"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 4
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:34.011Z"
     },
     {
       "id": "Vs9ejjUovSC2SLsX1Z8o",
@@ -42269,7 +43952,6 @@
         "weight_per_pcs_kg": ""
       },
       "createdAt": "2026-06-16T18:50:39.192Z",
-      "crystal_mixes": {},
       "design_type": "Animals",
       "delivery_note": "",
       "marketing_description": "",
@@ -42373,7 +44055,37 @@
           "caption": "D0497-001-CAB943"
         }
       ],
-      "updatedAt": "2026-07-02T20:39:50.336Z"
+      "crystal_components": {
+        "rescued_from": [
+          "D0497-189-CC1223",
+          "D0497-189-CC1T223",
+          "D0497-189-GC1223",
+          "U0497-189-CABT",
+          "U0497-189-CBL297",
+          "U0497-189-CC1000"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 2
+          },
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 1
+          },
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:34.330Z"
     },
     {
       "id": "tbtxdezuTB2y355YPl4T",
@@ -42406,7 +44118,6 @@
           "caption": "U0558-001-CRE"
         }
       ],
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "delivery_note": "",
@@ -42464,7 +44175,6 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-24T09:21:12.983Z",
       "lead_time_weeks": 3,
       "moq": 100,
       "critical_components": [
@@ -42474,7 +44184,28 @@
           "qty_per_unit": 1,
           "plating_code": "C"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "U0558-001-CPI233",
+          "U0558-001-CPI238",
+          "U0558-001-CPI245",
+          "U0558-001-CPI246",
+          "U0558-001-CPI251",
+          "U0558-001-CPI2A4"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:34.607Z"
     },
     {
       "id": "x5QP7394QQ2PLzusVq5l",
@@ -42505,7 +44236,6 @@
           "caption": "D0558-236-CRE"
         }
       ],
-      "crystal_mixes": {},
       "video_url": "",
       "product_type": "Music Boxes",
       "videos": [],
@@ -42546,7 +44276,6 @@
           ]
         }
       ],
-      "updatedAt": "2026-06-25T03:45:19.755Z",
       "lead_time_weeks": 3,
       "moq": 100,
       "critical_components": [
@@ -42586,7 +44315,28 @@
           "qty_per_unit": 1,
           "plating_code": "C"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0558-001-CPI000",
+          "D0558-001-CPI233",
+          "D0558-001-CPI238",
+          "D0558-001-CPI244",
+          "D0558-001-CPI244D13",
+          "D0558-001-CPI2A4"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 1
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:34.883Z"
     },
     {
       "id": "ZQY9i5kIsy3ao9aaKMAN",
@@ -42654,7 +44404,6 @@
         }
       ],
       "product_type": "Figurines",
-      "updatedAt": "2026-06-23T04:15:35.251Z",
       "lead_time_weeks": 3,
       "moq": 100,
       "critical_components": [
@@ -42664,7 +44413,28 @@
           "qty_per_unit": 1,
           "plating_code": "C"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "U0562-001-CAB245",
+          "U0562-001-CAB249",
+          "U0562-001-CAB264",
+          "U0562-001-CAB2AD",
+          "U0562-001-CAB2AE",
+          "U0562-001-CAB2AF"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:35.190Z"
     },
     {
       "id": "E7HW570DDiOs8ahI9k0s",
@@ -42695,7 +44465,6 @@
           "caption": "D0574-236-GC1"
         }
       ],
-      "crystal_mixes": {},
       "video_url": "",
       "product_type": "Music Boxes",
       "videos": [],
@@ -42730,7 +44499,6 @@
         }
       ],
       "marketing_description": "This exquisite Double Heart (Lrg) Music Box marries the warmth of a wood body with the radiant sparkle of Bohemia crystal. Adorned with a gold finish and featuring an 8-note mechanical movement, the music box delights with a choice of classic tunes such as \"Memory\" or \"Love Story.\" A mirror grid encircles the wood body, reflecting the lustrous gold hearts and adding a captivating visual dimension to this cherished collectible.",
-      "updatedAt": "2026-06-23T13:18:24.313Z",
       "lead_time_weeks": 3,
       "moq": 100,
       "critical_components": [
@@ -42770,7 +44538,28 @@
           "qty_per_unit": 1,
           "plating_code": "C"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "H0574-001-GC1227ZNC",
+          "H0574-001-GC1MFLW02",
+          "H0574-001-GC1MFLW03",
+          "H0574-001-GRE227",
+          "H0574-001-GRE227ZNC",
+          "U0574-001-G01227"
+        ],
+        "positions": [
+          {
+            "shape": "heart",
+            "size": "1414",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:35.467Z"
     },
     {
       "id": "wsic5qhTC2tOy5EnGkIX",
@@ -42822,7 +44611,6 @@
         }
       ],
       "product_type": "Figurines",
-      "updatedAt": "2026-06-23T04:15:35.251Z",
       "lead_time_weeks": 3,
       "moq": 100,
       "critical_components": [
@@ -42838,7 +44626,27 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "H0574-001-GC1227ZNC",
+          "H0574-001-GC1MFLW02",
+          "H0574-001-GC1MFLW03",
+          "H0574-001-GRE227",
+          "H0574-001-GRE227ZNC"
+        ],
+        "positions": [
+          {
+            "shape": "heart",
+            "size": "1414",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:35.744Z"
     },
     {
       "id": "pW32XImFPWlu9uK7k4M1",
@@ -42892,7 +44700,6 @@
       ],
       "design_type": "Hearts",
       "product_type": "Figurines",
-      "updatedAt": "2026-06-23T04:15:35.251Z",
       "lead_time_weeks": 3,
       "moq": 100,
       "critical_components": [
@@ -42914,7 +44721,28 @@
           "qty_per_unit": 1,
           "plating_code": "C"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "D0582-149-CC12AT",
+          "U0582-149-CC1206",
+          "U0582-149-CC1275",
+          "U0582-149-CC12AQ",
+          "U0582-149-CC12AS",
+          "U0582-149-CC12AT"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:36.021Z"
     },
     {
       "id": "1GbIrdunBCXbLaRmRj7O",
@@ -42939,7 +44767,6 @@
       },
       "active": true,
       "createdAt": "2026-06-16T18:50:29.878Z",
-      "crystal_mixes": {},
       "video_url": "",
       "product_type": "Music Boxes",
       "videos": [],
@@ -43082,7 +44909,29 @@
           "caption": "D0597-236-CC1"
         }
       ],
-      "updatedAt": "2026-07-03T11:10:58.011Z"
+      "crystal_components": {
+        "rescued_from": [
+          "A0597-001-GC1",
+          "U0597-001-GC1",
+          "U0597-001-GC1948"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 2
+          },
+          {
+            "shape": "octagon 1h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:36.297Z"
     },
     {
       "id": "GPHP4EmeulkBREbQW5K7",
@@ -43292,7 +45141,6 @@
           "caption": "U0597-237-GC1"
         }
       ],
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "design_type": "Animals",
@@ -43336,7 +45184,6 @@
           ]
         }
       ],
-      "updatedAt": "2026-07-03T11:10:36.154Z",
       "critical_components": [
         {
           "id": "XyDFiqJB9MES4I5t20EA",
@@ -43368,7 +45215,30 @@
           "qty_per_unit": 1,
           "plating_code": "G"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "A0597-001-GC1",
+          "U0597-001-GC1",
+          "U0597-001-GC1948"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "18",
+            "qty": 2
+          },
+          {
+            "shape": "octagon 1h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:36.572Z"
     },
     {
       "id": "Zd26nkj4FYHzLgA6RlZj",
@@ -44245,7 +46115,6 @@
       "active": true,
       "createdAt": "2026-06-16T18:50:08.652Z",
       "product_type": "Figurines",
-      "crystal_mixes": {},
       "video_url": "",
       "videos": [],
       "delivery_note": "",
@@ -44343,7 +46212,6 @@
           "caption": ""
         }
       ],
-      "updatedAt": "2026-06-23T10:15:47.600Z",
       "lead_time_weeks": 3,
       "moq": 100,
       "critical_components": [
@@ -44383,7 +46251,28 @@
           "qty_per_unit": 1,
           "plating_code": "C"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "UA061-231-CBL203",
+          "UA061-231-CC1206",
+          "UA061-231-CC12AV",
+          "UA061-231-CGO208",
+          "UA061-231-CGO209",
+          "UA061-231-CPI244"
+        ],
+        "positions": [
+          {
+            "shape": "octagon 2h",
+            "size": "14",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:36.848Z"
     },
     {
       "id": "KS8PwhEzOmyj0cU1iiW4",
@@ -44425,7 +46314,6 @@
           "caption": "UA062-224-C1-1"
         }
       ],
-      "crystal_mixes": {},
       "delivery_note": "",
       "marketing_description": "",
       "video_url": "",
@@ -44517,7 +46405,6 @@
       "videos": [
         "https://youtube.com/shorts/JLDR78_nsRw?si=S8SzY4umEudemNgO"
       ],
-      "updatedAt": "2026-07-01T12:30:05.559Z",
       "critical_components": [
         {
           "id": "GatTjPwXlzZg6JTyih6z",
@@ -44543,7 +46430,28 @@
           "qty_per_unit": 1,
           "plating_code": "C"
         }
-      ]
+      ],
+      "crystal_components": {
+        "rescued_from": [
+          "UA062-224-CBL2D2",
+          "UA062-224-CC12D4",
+          "UA062-224-CC12D5",
+          "UA062-224-CPI204",
+          "UA062-224-CPI2D3",
+          "UA062-224-CRE244"
+        ],
+        "positions": [
+          {
+            "shape": "chaton",
+            "size": "26",
+            "qty": 2
+          }
+        ],
+        "derived_at": "2026-07-23T13:01:06.819Z",
+        "mixes": {},
+        "source": "erp-rescue"
+      },
+      "updatedAt": "2026-07-23T13:01:37.125Z"
     }
   ]
 }
