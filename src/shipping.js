@@ -221,12 +221,32 @@ export async function updateOrder(id, patch) {
   await updateDoc(doc(db, 'orders', id), { ...patch, updatedAt: serverTimestamp() })
 }
 
-// Persist reconciliation edits — write each line's classification/match back.
+// Reconcile the order's lines subcollection to exactly the lines passed in:
+// update existing, create new, delete removed. One batch, so it is atomic.
+//
+// This replaced a version that did `batch.update` per line and skipped any line
+// with no id. Three ways that silently lost CuiLing's edits (all reproduced):
+//   - a newly added line has no id, so it was skipped and never saved;
+//   - a line whose doc no longer exists made `update` throw NOT_FOUND, which
+//     failed the WHOLE batch — every edit in that save was lost, while the
+//     header (written separately) still saved, so it looked like nothing stuck;
+//   - a removed line was only dropped from form state, never from Firestore, so
+//     it reappeared on the next load.
+// `set(..., { merge:true })` creates-or-updates and cannot throw on a missing
+// doc, and the diff deletes what the user removed. The lines subcollection ends
+// up matching the form, whatever state it was in before.
 export async function saveOrderLines(orderId, lines) {
+  const existing = await getDocs(LINES(orderId))
+  const keep = new Set()
   const batch = writeBatch(db)
-  for (const l of lines) {
-    if (!l.id) continue
-    batch.update(doc(db, 'orders', orderId, 'lines', l.id), normLine(l))
+  for (const l of (lines || [])) {
+    const ref = l.id ? doc(db, 'orders', orderId, 'lines', l.id)
+                     : doc(collection(db, 'orders', orderId, 'lines'))
+    keep.add(ref.id)
+    batch.set(ref, normLine(l), { merge: true })
+  }
+  for (const d of existing.docs) {
+    if (!keep.has(d.id)) batch.delete(d.ref)
   }
   await batch.commit()
 }
