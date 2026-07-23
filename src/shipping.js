@@ -165,10 +165,16 @@ export const normOrder = o => ({
   status: ORDER_STATUSES.some(s => s.value === o.status) ? o.status : 'draft',
   source_file: o.source_file || null,
   notes: str(o.notes),
+  // subtotal / total_amount are the order's ACTUAL value, computed from the
+  // lines. pi_subtotal / pi_total are the figures the imported PI stated, kept
+  // only as the cross-check reference — editing lines must move the former and
+  // never the latter (CuiLing, 2026-07-23: the total should follow the lines).
   subtotal:        numOrNull(o.subtotal),
   discount_pct:    numOrNull(o.discount_pct),
   discount_amount: numOrNull(o.discount_amount),
   total_amount:    numOrNull(o.total_amount),
+  pi_subtotal:     numOrNull(o.pi_subtotal),
+  pi_total:        numOrNull(o.pi_total),
 })
 
 export const normLine = l => {

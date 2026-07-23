@@ -39,7 +39,10 @@ const blankHeader = {
   invoiced_at: '',
   currency: 'USD', incoterm: 'FOB', status: 'draft',
   destination: { country: '', city: '', address: '', port: '' }, notes: '',
-  subtotal: '', discount_pct: '', discount_amount: '', total_amount: '',
+  // pi_subtotal / pi_total hold what the imported PI stated, for the mismatch
+  // cross-check only. The order's real subtotal/total are computed from the
+  // lines at save time, not carried in editable header state.
+  pi_subtotal: '', pi_total: '', discount_pct: '', discount_amount: '',
 }
 
 // Firestore writes with persistentLocalCache resolve only when the SERVER acks —
@@ -176,10 +179,13 @@ export default function ShipmentForm() {
             order_date: o.order_date || '',
             currency: o.currency, incoterm: o.incoterm, status: o.status,
             destination: { ...blankHeader.destination, ...o.destination }, notes: o.notes,
-            subtotal:        o.subtotal        ?? '',
             discount_pct:    o.discount_pct    ?? '',
             discount_amount: o.discount_amount ?? '',
-            total_amount:    o.total_amount    ?? '',
+            // Reference figures for the mismatch check. New orders carry their
+            // own pi_* fields; older imported orders predate them and still
+            // hold the PI value in subtotal/total_amount, so fall back to those.
+            pi_subtotal: o.pi_subtotal ?? (o.source === 'imported_pi' ? o.subtotal : null) ?? '',
+            pi_total:    o.pi_total    ?? (o.source === 'imported_pi' ? o.total_amount : null) ?? '',
           })
           setSourceFile(o.source_file || null)
           setLines(await getOrderLines(id))
@@ -358,10 +364,11 @@ export default function ShipmentForm() {
           order_date: data.order_date || h.order_date,
           currency: ['USD', 'EUR', 'RMB', 'HKD'].includes(data.currency) ? data.currency : h.currency,
           incoterm: INCOTERMS.includes(data.incoterm) ? data.incoterm : h.incoterm,
-          subtotal:        data.subtotal        != null ? data.subtotal        : h.subtotal,
+          // The parsed PI totals are the stated reference, not the order value.
+          pi_subtotal:     data.subtotal        != null ? data.subtotal        : h.pi_subtotal,
           discount_pct:    data.discount_pct    != null ? data.discount_pct    : h.discount_pct,
           discount_amount: data.discount_amount != null ? data.discount_amount : h.discount_amount,
-          total_amount:    data.total_amount    != null ? data.total_amount    : h.total_amount,
+          pi_total:        data.total_amount    != null ? data.total_amount    : h.pi_total,
         }
       })
       const matched = autoMatchLines(data.lines || [], rangeProducts)
@@ -448,10 +455,14 @@ export default function ShipmentForm() {
       const orderData = {
         ...header,
         source: 'imported_pi', source_file: sf,
-        subtotal:        header.subtotal        !== '' ? parseFloat(header.subtotal)        : (computed.subtotal > 0 ? computed.subtotal : null),
+        // Actual value = computed from the lines. PI figures kept only as the
+        // stated reference for the mismatch check.
+        subtotal:        computed.subtotal > 0 ? computed.subtotal : null,
+        total_amount:    computed.subtotal > 0 ? computed.total : null,
+        pi_subtotal:     header.pi_subtotal !== '' ? parseFloat(header.pi_subtotal) : null,
+        pi_total:        header.pi_total    !== '' ? parseFloat(header.pi_total)    : null,
         discount_pct:    header.discount_pct    !== '' ? parseFloat(header.discount_pct)    : null,
         discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : (computed.discountAmount > 0 ? computed.discountAmount : null),
-        total_amount:    header.total_amount    !== '' ? parseFloat(header.total_amount)    : (computed.subtotal > 0 ? computed.total : null),
       }
       const v = validateOrder(orderData, lines)
       if (!v.ok) { setExtractError(v.errors.map(x => x.message).join(' · ')); return }
@@ -505,10 +516,13 @@ export default function ShipmentForm() {
           order_date: header.order_date || null,
           currency: header.currency, incoterm: header.incoterm, status: header.status,
           destination: header.destination, notes: header.notes,
-          subtotal:        header.subtotal        !== '' ? parseFloat(header.subtotal)        : (computed.subtotal > 0 ? computed.subtotal : null),
+          // Actual value follows the lines; PI figures stay as the reference.
+          subtotal:        computed.subtotal > 0 ? computed.subtotal : null,
+          total_amount:    computed.subtotal > 0 ? computed.total : null,
+          pi_subtotal:     header.pi_subtotal !== '' ? parseFloat(header.pi_subtotal) : null,
+          pi_total:        header.pi_total    !== '' ? parseFloat(header.pi_total)    : null,
           discount_pct:    header.discount_pct    !== '' ? parseFloat(header.discount_pct)    : null,
           discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : (computed.discountAmount > 0 ? computed.discountAmount : null),
-          total_amount:    header.total_amount    !== '' ? parseFloat(header.total_amount)    : (computed.subtotal > 0 ? computed.total : null),
         }),
         saveOrderLines(id, lines),
       ])
@@ -526,8 +540,8 @@ export default function ShipmentForm() {
           order_id: id,
           customer: header.customer_name,
           currency: header.currency,
-          total: header.total_amount !== '' ? parseFloat(header.total_amount)
-               : (computed.subtotal > 0 ? computed.total : null),
+          total: computed.subtotal > 0 ? computed.total
+               : (header.pi_total !== '' ? parseFloat(header.pi_total) : null),
           invoiced_at: header.invoiced_at || null,
         })
       }
@@ -815,8 +829,8 @@ export default function ShipmentForm() {
         {/* ── Order totals & discount ──────────────────────────────────── */}
         {lines.length > 0 && (() => {
           const { subtotal: computedSubtotal, chargesTotal, discountAmount: discAmt, total: computedTotal } = computeOrderTotals(header, lines)
-          const piSubtotal   = parseFloat(header.subtotal) || null
-          const piTotal      = parseFloat(header.total_amount) || null
+          const piSubtotal   = parseFloat(header.pi_subtotal) || null
+          const piTotal      = parseFloat(header.pi_total) || null
           const subtotalMatch = piSubtotal == null || Math.abs(computedSubtotal - piSubtotal) < 0.02
           const fmt = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
           return (
