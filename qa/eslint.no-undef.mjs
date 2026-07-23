@@ -11,9 +11,10 @@
 const browser = Object.fromEntries([
   'window','document','navigator','console','fetch','Blob','File','FileReader',
   'URL','URLSearchParams','FormData','Headers','Request','Response','AbortController',
-  'setTimeout','clearTimeout','setInterval','clearInterval','requestAnimationFrame',
+  'setTimeout','clearTimeout','setInterval','clearInterval','requestAnimationFrame','cancelAnimationFrame',
   'localStorage','sessionStorage','crypto','btoa','atob','alert','confirm','prompt',
   'Image','HTMLElement','Event','CustomEvent','IntersectionObserver','ResizeObserver',
+  'createImageBitmap','OffscreenCanvas',
   'TextEncoder','TextDecoder','structuredClone','queueMicrotask','performance',
 ].map(k => [k, 'readonly']))
 

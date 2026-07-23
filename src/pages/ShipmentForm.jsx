@@ -455,6 +455,23 @@ export default function ShipmentForm() {
       }
       const v = validateOrder(orderData, lines)
       if (!v.ok) { setExtractError(v.errors.map(x => x.message).join(' · ')); return }
+
+      // Allocate the SO number automatically on create. The app is now the only
+      // source of new SO numbers (CuiLing, 2026-07-23: new SO/SI go in the app,
+      // old JES ones may be edited but no new ones are added), so the JES
+      // collision the manual button guarded against no longer applies. Only
+      // when empty: an imported old JES PI already carries its SO and must keep
+      // it. Allocation failure aborts the create with a message rather than
+      // silently making an order with no SO — the exact state being fixed.
+      if (!orderData.erp_so_no) {
+        try {
+          orderData.erp_so_no = await allocateSoNo()
+        } catch (e) {
+          setExtractError(`Could not allocate an SO number: ${e.message || e}. Order not created.`)
+          return
+        }
+      }
+
       const { id: orderId, commit } = createOrderWithLines(orderData, lines)
       await raceWrite(commit)   // throws only on a fast rejection; otherwise proceeds
       navigate(`/shipments/${orderId}`)
@@ -640,7 +657,7 @@ export default function ShipmentForm() {
                   {!header.erp_so_no && (
                     <button type="button" onClick={doAllocateSo} disabled={allocatingSo}
                             className="text-[11px] text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case"
-                            title="Allocate the next SO number in JES's series. Only safe once JES has stopped issuing them for this year.">
+                            title="Allocate the next SO number. New orders get one automatically on create; this is for an older order that has none.">
                       {allocatingSo ? 'Allocating…' : 'Allocate'}
                     </button>
                   )}

@@ -13,13 +13,19 @@ import { db } from './firebase'
 // beside them and needs no new SQL object or edge-function endpoint. UC# stays
 // in Supabase because the registry does.
 //
-// ⚠️ COLLISION RISK — READ BEFORE ENABLING
-// This allocates into the SAME series JES uses. While CuiLing still raises sales
-// orders in JES, both systems hand out numbers independently and WILL collide:
-// JES has no idea the app took SO260028. Per year, this has to be a clean
-// switch, not an overlap — exactly the rule that applies to the UC registry.
-// Until that switch happens, treat the button as "allocate the next number
-// *after* JES's last", and confirm JES's max hasn't moved.
+// CUTOVER DONE (CuiLing, 2026-07-23): new SO and SI numbers are raised in the
+// app only; old JES orders may still be edited but no new ones are added there.
+// So the app is now the sole source of new SO numbers for 2026 and the
+// collision below no longer applies — SO is auto-allocated on order creation
+// (ShipmentForm handleCreate).
+//
+// ⚠️ COLLISION RISK — the reason this was manual until 2026-07-23, kept for the
+// record and because it returns the moment a NEW year starts before JES is
+// confirmed stopped for it. This allocates into the SAME series JES uses. If
+// both systems hand out numbers independently they WILL collide: JES has no
+// idea the app took SO260028. Per year this has to be a clean switch, not an
+// overlap — re-confirm JES has stopped for each new year before trusting the
+// seed, exactly the rule that applies to the UC registry.
 
 // Seeds are JES's last number for that year, verified against raw.salesorder.
 // The counter is created on first allocation from the seed, so the first number
