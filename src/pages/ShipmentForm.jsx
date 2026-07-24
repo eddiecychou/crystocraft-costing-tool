@@ -485,6 +485,42 @@ export default function ShipmentForm() {
 
       const { id: orderId, commit } = createOrderWithLines(orderData, lines)
       await raceWrite(commit)   // throws only on a fast rejection; otherwise proceeds
+
+      // A Direct Invoice with no invoice number vanishes: the Sales Invoices
+      // page lists orders that HAVE an SI, plus un-invoiced ones that are
+      // shipped/delivered. A new direct invoice is neither, so it appeared
+      // nowhere and CuiLing could not find what she had just created
+      // (2026-07-23).
+      //
+      // Unlike a normal order — where invoicing happens later, so the SI stays
+      // a deliberate act — this flow exists to produce an invoice. Its own
+      // instruction is "add the lines, then allocate an invoice number", which
+      // is a step the app can simply take.
+      //
+      // Deliberately AFTER the order is committed, not before: allocating first
+      // and then failing to create would burn an invoice number with nothing
+      // behind it, which is the exact fault V7.17 removed from this path. If
+      // this fails the order still exists and she lands on it, so the manual
+      // Allocate button is one click away rather than the work being lost.
+      if (isDirect && !orderData.erp_si_no) {
+        try {
+          const res = await allocateInvoice({
+            year: soYear(),
+            customer: orderData.customer_name,
+            currency: orderData.currency,
+            order_id: orderId,
+            uc_no: orderData.uc_no || null,
+          })
+          await updateOrder(orderId, {
+            erp_si_no: res.si_no,
+            uc_no: res.uc_no || orderData.uc_no || '',
+            invoiced_at: orderData.invoiced_at || new Date().toISOString().slice(0, 10),
+          })
+        } catch (e) {
+          setExtractError(`Order created, but the invoice number could not be allocated: ${e.message || e}. Use Allocate on the order.`)
+        }
+      }
+
       navigate(`/shipments/${orderId}`)
     } catch (err) {
       setExtractError(err.message || 'Could not create order.')
