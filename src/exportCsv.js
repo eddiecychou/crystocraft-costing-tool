@@ -18,7 +18,13 @@
 
 // Excel treats a leading =, +, - or @ as a formula. Prefixing with a single
 // quote makes it literal text and the quote itself is not displayed.
-const deFormula = (s) => (/^[=+\-@]/.test(s) ? `'${s}` : s)
+//
+// A plain negative number is exempt. Guarding it turned -56 into '-56, which
+// Excel reads as TEXT — so a shortage or an adjustment column could not be
+// summed, sorted or formatted as a number. The test is deliberately strict:
+// only a bare number passes, so "-2+cmd|' /C calc'!A0" is still neutralised.
+const NUMERIC = /^-?\d+(\.\d+)?$/
+const deFormula = (s) => (/^[=+\-@]/.test(s) && !NUMERIC.test(s) ? `'${s}` : s)
 
 const cell = (v, text) => {
   if (v == null) return '""'

@@ -3,7 +3,9 @@ import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { computeOrderIssue, reserveForOrder, produceForOrder, releaseForOrder, reverseProduceForOrder, metalOrderConfig } from '../orderStock'
 import { gapsOf } from '../orderStockStatus'
-import { Lock, Factory, RotateCcw, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react'
+import { loadComponents } from '../criticalComponents'
+import { downloadCsv } from '../exportCsv'
+import { Lock, Factory, RotateCcw, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Download } from 'lucide-react'
 
 // Order → component stock card (V7.13a R1). Two-stage, matching the ERP:
 // Reserve at confirmation (allocated, on-hand unchanged) → Production-in when
@@ -69,6 +71,47 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
 
   const dateStr = state.at?.toDate ? state.at.toDate().toLocaleDateString() : null
 
+  // Export the components for this production order (XiangXia, 2026-07-23).
+  //
+  // What is exportable depends on the stage: before reserving there is a full
+  // preview (need / in stock / after), afterwards only the code and qty that
+  // were actually reserved or consumed are stored on the order. Rather than
+  // export a thin file, the stored lines are enriched with names at click time
+  // — a one-shot read, so no extra subscription on every order page.
+  const [exporting, setExporting] = useState(false)
+  const exportable = state.stage === 'open' ? (preview?.items || []) : state.lines
+  async function doExport() {
+    setExporting(true); setError('')
+    try {
+      const stem = `components_${String(orderLabel || orderId).replace(/[^\w.-]+/g, '-')}`
+      if (state.stage === 'open') {
+        downloadCsv(`${stem}_required`, [
+          { label: 'Component', value: r => r.code, text: true },
+          { label: 'Name', value: r => r.name || '' },
+          { label: 'Required', value: r => r.required },
+          { label: 'In stock', value: r => r.inStock },
+          { label: 'After reserve', value: r => r.after },
+        ], preview.items)
+        return
+      }
+      // Reserved / produced-in: stored lines carry code and qty only.
+      let nameByCode = {}
+      try {
+        const lib = await loadComponents()
+        nameByCode = Object.fromEntries(lib.map(c => [String(c.code || '').toUpperCase(), c.name || '']))
+      } catch { /* names are a nicety; the code and qty still export */ }
+      downloadCsv(`${stem}_${state.stage === 'committed' ? 'consumed' : 'reserved'}`, [
+        { label: 'Component', value: r => r.code, text: true },
+        { label: 'Name', value: r => nameByCode[String(r.code || '').toUpperCase()] || '' },
+        { label: 'Qty', value: r => r.qty },
+      ], state.lines)
+    } catch (e) {
+      setError(e.message || 'Could not export.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="card p-4">
       <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between gap-2 text-left">
@@ -82,6 +125,15 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
       {open && (
         <div className="mt-3">
           {state.stage !== 'open' && <GapNotice gaps={state.gaps} />}
+          {exportable.length > 0 && (
+            <div className="flex justify-end -mt-1 mb-2">
+              <button type="button" onClick={doExport} disabled={exporting}
+                      className="inline-flex items-center gap-1.5 text-xs text-brand-600 hover:text-brand-800 disabled:opacity-50"
+                      title="Export this order's components as a CSV for Excel">
+                <Download size={13} /> {exporting ? 'Exporting…' : 'Export CSV'}
+              </button>
+            </div>
+          )}
           {state.stage === 'committed' ? (
             <>
               <p className="text-xs text-ink-50 mb-2">{state.lines.length} component(s) consumed (production-in) for this order.</p>
