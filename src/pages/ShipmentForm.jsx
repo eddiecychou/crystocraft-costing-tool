@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { storage } from '../firebase'
@@ -128,6 +128,11 @@ export default function ShipmentForm() {
   // how the page presents itself — the record is the same shape, it just never
   // gets an SO number. See normOrder in shipping.js for why that is legitimate.
   const isDirect = searchParams.get('direct') === '1'
+  // Arrived from "Raise invoice →" on the Sales Invoices page. The order form is
+  // long and the invoice field is well down it, so landing here without being
+  // shown where to go is the same discoverability problem that action fixes.
+  const wantsInvoice = searchParams.get('invoice') === '1'
+  const invoiceFieldRef = useRef(null)
 
   const [header, setHeader]   = useState(() => {
     const preCustomerId = searchParams.get('customer_id')
@@ -194,6 +199,14 @@ export default function ShipmentForm() {
     }
     Promise.all(loads).finally(() => setFetching(false))
   }, [id, isEdit])
+
+  // Bring the invoice field into view when arriving via "Raise invoice →".
+  // After `fetching` clears, so the field exists and the layout has settled.
+  useEffect(() => {
+    if (!wantsInvoice || fetching || !invoiceFieldRef.current) return
+    invoiceFieldRef.current.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    invoiceFieldRef.current.focus({ preventScroll: true })
+  }, [wantsInvoice, fetching])
 
   // Live roll-up of what this order has actually consumed. Subscribed rather
   // than read once, so it tracks the three stock cards on the same page.
@@ -744,7 +757,7 @@ export default function ShipmentForm() {
                     </button>
                   )}
                 </label>
-                <input className="input" value={header.erp_si_no} onChange={setH('erp_si_no')} placeholder="e.g. SI260094" />
+                <input ref={invoiceFieldRef} className="input" value={header.erp_si_no} onChange={setH('erp_si_no')} placeholder="e.g. SI260094" />
                 {siError && <p className="text-xs text-red-600 mt-1">{siError}</p>}
               </div>
             </div>

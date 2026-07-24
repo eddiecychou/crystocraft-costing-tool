@@ -226,7 +226,10 @@ export default function SalesInvoices() {
           </Link>
         </div>
         <p className="text-sm text-ink-50 mt-1">
-          An invoice needs a UC number; a sales order is optional — retail sales are invoiced directly.
+          Two paths: a <strong>wholesale</strong> invoice is raised from its sales order once the goods are
+          ready to ship — open the order below and allocate its number. A <strong>retail</strong> sale
+          (Amazon, web, small Alibaba) skips the sales order and is invoiced directly.
+          Either way the invoice needs a UC number.
         </p>
       </div>
 
@@ -317,6 +320,25 @@ export default function SalesInvoices() {
                     <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{o.currency}</td>
                     <td className="px-4 py-2.5 whitespace-nowrap text-right tabular-nums text-gray-800">
                       {fmtValue(o.total_amount ?? o.subtotal)}
+                    </td>
+                    {/* The wholesale path, made explicit. A wholesale invoice is
+                        raised FROM its sales order (owner, 2026-07-24), and the
+                        app supported it only by clicking the row and knowing to
+                        find Allocate on the order — while the one prominent
+                        button on this page raises a RETAIL invoice, which is the
+                        minority case.
+
+                        This opens the order rather than allocating here: the
+                        banner above says most of these were already invoiced in
+                        JES, so a one-click allocate would burn invoice numbers
+                        on orders that already have one. */}
+                    <td className="px-4 py-2.5 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
+                      <button type="button"
+                        onClick={() => navigate(`/shipments/${o.id}?invoice=1`)}
+                        className="text-xs font-medium text-brand-600 hover:text-brand-800 mr-3"
+                        title="Open this sales order and raise its invoice">
+                        Raise invoice →
+                      </button>
                     </td>
                     {/* stopPropagation: the row itself navigates to the order,
                         and picking a reason must not do both. */}
