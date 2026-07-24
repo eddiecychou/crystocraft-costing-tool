@@ -244,6 +244,44 @@ answering "can we make it" for the one inventory class that had no BOM at all.
 The opening sequence is in "Where V7.18 starts" above. What follows is what has
 happened in this cycle so far.
 
+### How an invoice is actually raised — two paths (owner, 2026-07-24)
+
+Not derivable from the code, and it decides how SO and SI numbers behave.
+
+**Wholesale.** Sales order first. Then the customer pays a deposit and
+confirms, and production starts. When production is finished and the goods are
+ready to ship, **the invoice is raised from the SO** and the customer pays the
+balance.
+
+**Retail** — Amazon, web orders, small Alibaba. **No sales order at all**; the
+invoice is issued directly to keep the process simple. The one operational
+difference is that finished goods come off **ChunCi's Excel sheet**, not out of
+the app — consistent with `CLAUDE.md`'s note that JES stock is not maintained
+except for crystals.
+
+Three consequences, all now enforced:
+
+| | wholesale | retail (Direct Invoice) |
+|---|---|---|
+| sales order number | allocated on create | **never** — there is no SO |
+| invoice number | a later, deliberate act | allocated on create |
+| finished-goods stock | the app | ChunCi's Excel sheet |
+
+The SI half was already right by accident of reasoning — invoicing "when you
+invoice it, not when it is created" is exactly the wholesale rule, and the
+Direct Invoice page exists precisely because retail does not follow it.
+
+The SO half was **wrong and had to be fixed**: auto-allocation was applied to
+every new order including Direct Invoices, so a retail sale minted a sales
+order number for a document that does not exist — out of a series that is
+gapless. Now skipped when the form is the Direct Invoice one.
+
+Worth remembering the shape of this mistake: the SO change was made from a
+correct statement ("new SO/SI are raised in the app only") that simply did not
+mention the retail path, so the code generalised a rule further than the
+business does. The two-path picture is the sort of thing that has to be asked
+for; nothing in the schema implies it.
+
 ### Crystals decompose, and the plan under-described how much (2026-07-22)
 
 The plan's step 3 proposed `{ series, pattern, size, qty }` with "colour

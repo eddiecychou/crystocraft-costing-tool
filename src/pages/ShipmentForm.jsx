@@ -474,7 +474,17 @@ export default function ShipmentForm() {
       // when empty: an imported old JES PI already carries its SO and must keep
       // it. Allocation failure aborts the create with a message rather than
       // silently making an order with no SO — the exact state being fixed.
-      if (!orderData.erp_so_no) {
+      //
+      // NOT for a Direct Invoice. The business runs two invoicing paths (owner,
+      // 2026-07-24):
+      //   wholesale — sales order, deposit, production, then the invoice is
+      //               raised FROM the SO when the goods are ready to ship;
+      //   retail    — Amazon, web and small Alibaba orders skip the sales order
+      //               entirely and are invoiced directly to keep it simple.
+      // So a retail sale has no sales order by design, and minting one for it
+      // would consume a number out of a gapless series for a document that does
+      // not exist.
+      if (!isDirect && !orderData.erp_so_no) {
         try {
           orderData.erp_so_no = await allocateSoNo()
         } catch (e) {
