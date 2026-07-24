@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { getOrder, getOrderLines, computeOrderTotals, orderUc } from '../shipping'
 import { loadCustomers } from '../domain/customer'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '../firebase'
 import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
 import { downloadCsv } from '../exportCsv'
 import { amountInWords } from '../constants'
@@ -40,6 +42,11 @@ export default function ProformaInvoicePrint() {
   const [lines, setLines] = useState([])
   const [customer, setCustomer] = useState(null)
   const [bank, setBank] = useState(null)
+  // The company chop, uploaded once in Settings → Quote branding and already
+  // used on quotations. Reused rather than given its own setting: it is the
+  // same company signing the same customer's document, and two places to
+  // upload it is two places for it to be out of date.
+  const [stampUrl, setStampUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -60,6 +67,12 @@ export default function ProformaInvoicePrint() {
           const accounts = await listBankAccounts()
           if (alive) setBank(accountForCurrency(accounts || [], o.currency))
         } catch { /* no bank block */ }
+        // Same treatment as the bank block: a missing or unreadable chop prints
+        // an unstamped invoice rather than failing the page.
+        try {
+          const snap = await getDoc(doc(db, 'settings', 'quote_branding'))
+          if (alive && snap.exists()) setStampUrl(snap.data().stamp_url || '')
+        } catch { /* unstamped */ }
       } catch (e) {
         if (alive) setError(e.message || 'Could not load this order.')
       } finally {
@@ -151,6 +164,21 @@ export default function ProformaInvoicePrint() {
           letter-spacing: .05em; padding: 7px 8px; text-align: left; }
         table.pi-lines th.r, table.pi-lines td.r { text-align: right; }
         table.pi-lines td { padding: 7px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+        /* A line must never be sliced by a page boundary. Without this, row 50
+           of a 52-line invoice printed as "1," with the rest of the amount on
+           the far side of the break, and row 49's total came out cut through
+           the middle — a figure on an invoice rendered unreadable, which is
+           worse than an ugly page. Reported by CuiLing 2026-07-24.
+           Both spellings: page-break-inside is what most print engines still
+           honour, break-inside is the modern one. */
+        table.pi-lines tr, table.pi-lines td { page-break-inside: avoid; break-inside: avoid; }
+        /* Repeat the column headers on every page. A 3-page invoice whose
+           later pages are unlabelled columns of numbers is hard to check. */
+        table.pi-lines thead { display: table-header-group; }
+        table.pi-lines tfoot { display: table-footer-group; }
+        /* Keep the closing blocks whole; splitting a total or a bank block
+           across pages is the same class of problem as splitting a line. */
+        .pi-totals, .pi-words, .pi-bank, .pi-sign, .pi-foot { page-break-inside: avoid; break-inside: avoid; }
         /* One-off MISC lines carry multi-line descriptions; without this they
            collapse into one run-on line. */
         table.pi-lines td.desc { white-space: pre-wrap; }
@@ -170,7 +198,14 @@ export default function ProformaInvoicePrint() {
         .pi-notes { font-size: 10px; color: #555; margin-bottom: 22px; white-space: pre-wrap; }
         .pi-notes .lbl { font-size: 8.5px; text-transform: uppercase; letter-spacing: .1em; color: #999; display: block; margin-bottom: 3px; }
         .pi-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 26px; }
-        .pi-sign .space { height: 70px; }
+        .pi-sign .space { height: 70px; position: relative; }
+        /* The company chop sits ON the signature line, as it does on a quote
+           (QuotePDF signBox/stampImg) — same asset, same placement, so the two
+           documents a customer receives look like they came from one company.
+           print-color-adjust keeps it from being dropped by "background
+           graphics off", which is the default in some print dialogs. */
+        .pi-sign .stamp { position: absolute; bottom: 0; left: 4px; max-width: 240px; max-height: 92px;
+          object-fit: contain; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
         .pi-sign .line { border-top: 1px solid #999; padding-top: 5px; font-size: 9px; color: #777; }
         .pi-foot { margin-top: 26px; padding-top: 10px; border-top: 1px solid #eee; text-align: center; font-size: 9px; color: #888; line-height: 1.6; }
         .pi-foot .nm { font-weight: 600; color: #555; }
@@ -306,7 +341,9 @@ export default function ProformaInvoicePrint() {
 
       <div className="pi-sign">
         <div>
-          <div className="space" />
+          <div className="space">
+            {stampUrl && <img className="stamp" src={stampUrl} alt="" />}
+          </div>
           <div className="line">ISSUED BY · {SELLER.name}</div>
         </div>
         <div>

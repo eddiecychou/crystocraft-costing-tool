@@ -19,3 +19,6 @@ dist
 firebase-service-account.json
 *firebase-adminsdk*.json
 src/assets/fonts/NotoSansTC-Regular.ttf
+
+# QA render artifacts (PDFs/PNGs produced by qa/pi-pagination.mjs)
+qa/out/
