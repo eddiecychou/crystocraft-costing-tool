@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { getOrder, getOrderLines, computeOrderTotals, orderUc } from '../shipping'
 import { loadCustomers } from '../domain/customer'
 import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
+import { downloadCsv } from '../exportCsv'
 import { amountInWords } from '../constants'
 
 // Proforma Invoice — the document CuiLing currently generates in JES and prints
@@ -86,11 +87,45 @@ export default function ProformaInvoicePrint() {
   // payment failure, so say so on screen rather than letting it print silently.
   const currencyMismatch = bank && bank.currency && bank.currency !== cur
 
+  // The PI's line table as a CSV. `withPrices` is the whole point of the
+  // feature: the factory needs codes, descriptions and quantities, and should
+  // not be handed the customer's pricing.
+  //
+  // Charge lines (freight, insurance) are included in both. They are part of
+  // the order, and dropping them silently from the unpriced file would make it
+  // disagree with the printed document for no stated reason — they simply come
+  // out with a blank quantity, as they print.
+  function exportCsv(withPrices) {
+    const rows = [
+      ...productLines.map((l, i) => ({ n: i + 1, l, charge: false })),
+      ...chargeLines.map((l, i) => ({ n: productLines.length + i + 1, l, charge: true })),
+    ]
+    const qtyOf = r => (r.charge ? '' : (parseFloat(r.l.qty_ordered) || 0))
+    const upOf = r => (parseFloat(r.l.unit_price) || 0)
+    const columns = [
+      { label: '#', value: r => r.n },
+      { label: 'Item Code', value: r => r.l.item_code || '', text: true },
+      { label: 'Description', value: r => r.l.description || '' },
+      { label: 'Qty', value: qtyOf },
+      { label: 'Unit', value: r => (r.charge ? '' : (r.l.unit || '')) },
+      ...(withPrices ? [
+        { label: `Unit Price (${cur})`, value: upOf },
+        { label: `Amount (${cur})`, value: r => (r.charge ? upOf(r) : (parseFloat(r.l.qty_ordered) || 0) * upOf(r)) },
+      ] : []),
+    ]
+    const ref = String(orderUc(order) || order.erp_so_no || id).replace(/[^\w.-]+/g, '-')
+    downloadCsv(`PI_${ref}${withPrices ? '' : '_no-prices'}`, columns, rows)
+  }
+
   return (
     <div className="pi-doc">
       <style>{`
         @page { size: A4 portrait; margin: 1.2cm; }
-        @media print { body { margin: 0; } .print-btn, .pi-warn { display: none !important; } }
+        @media print { body { margin: 0; } .print-btn, .pi-warn, .pi-tools { display: none !important; } }
+        .pi-tools { display: flex; justify-content: center; gap: 10px; margin: 0 auto 18px; flex-wrap: wrap; }
+        .pi-tools button { padding: 7px 16px; background: #fff; color: #444; border: 1px solid #d8d8d8;
+          border-radius: 6px; cursor: pointer; font-size: 12px; }
+        .pi-tools button:hover { border-color: #b8935a; color: #1a1a1a; }
         .pi-doc { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; font-size: 10.5px; line-height: 1.45; }
         .pi-doc * { box-sizing: border-box; }
         .print-btn { display: block; margin: 0 auto 18px; padding: 9px 26px; background: #1a1a1a; color: #fff;
@@ -142,6 +177,17 @@ export default function ProformaInvoicePrint() {
       `}</style>
 
       <button className="print-btn" onClick={() => window.print()}>Print / Save as PDF</button>
+
+      {/* CSV of the line table (XiangXia, 2026-07-23). Two buttons rather than a
+          checkbox so the choice is one click and, more importantly, so the
+          FILENAME records which one it is — a priced PI and an unpriced one look
+          identical sitting in a Downloads folder, and only one of them should
+          reach the factory floor. Lines only: totals as trailing rows would
+          break the table for Excel, and a sum is one formula away. */}
+      <div className="pi-tools">
+        <button type="button" onClick={() => exportCsv(true)}>Export CSV</button>
+        <button type="button" onClick={() => exportCsv(false)}>Export CSV — no prices</button>
+      </div>
 
       {currencyMismatch && (
         <div className="pi-warn">
