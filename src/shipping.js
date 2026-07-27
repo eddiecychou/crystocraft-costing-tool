@@ -21,6 +21,19 @@ import { buildProductIndex, matchProductCode } from './criticalComponents'
 
 export const INCOTERMS = ['EXW', 'FOB', 'CIF', 'DAP', 'DDP']
 
+// Payment terms printed on the PI and the invoice — JES had this and the app
+// dropped it (CuiLing, 2026-07-24). Free text on the order, because terms are
+// negotiated per customer; these are the common ones offered as a datalist so
+// the usual case is one click and the wording stays consistent.
+export const PAYMENT_TERMS = [
+  'Full Payment Before Shipment',
+  'Full Payment Before 7 Days of Shipment',
+  '30% Deposit, 70% Before Shipment',
+  '50% Deposit, 50% Before Shipment',
+  'T/T in Advance',
+  'Net 30 Days',
+]
+
 // Currencies an order may be raised in. Measured, not assumed: AED, CAD, EUR,
 // GBP, HKD, MXN and USD all appear on real sales orders since 2024, and RMB on
 // purchases. Anything not listed here is coerced to USD by normOrder — so a
@@ -156,6 +169,7 @@ export const normOrder = o => ({
   // audit rate table covers GBP, CAD and MXN, so these reach the books.
   currency: ORDER_CURRENCIES.includes(o.currency) ? o.currency : 'USD',
   incoterm: INCOTERMS.includes(o.incoterm) ? o.incoterm : 'FOB',
+  payment_terms: str(o.payment_terms),
   destination: {
     country: str(o.destination?.country),
     city: str(o.destination?.city),

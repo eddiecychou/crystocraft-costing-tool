@@ -186,6 +186,7 @@ export default function SalesInvoicePrint() {
           {orderUc(order) && <div className="si-kv"><span className="k">UC#</span><span className="v si-code">{orderUc(order)}</span></div>}
           <div className="si-kv"><span className="k">Currency</span><span className="v">{cur}</span></div>
           {order.incoterm && <div className="si-kv"><span className="k">Incoterm</span><span className="v">{order.incoterm}</span></div>}
+          {order.payment_terms && <div className="si-kv"><span className="k">Payment Terms</span><span className="v">{order.payment_terms}</span></div>}
           {destText && <div className="si-kv"><span className="k">Destination</span><span className="v">{destText}</span></div>}
         </div>
       </div>

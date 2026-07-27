@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { storage } from '../firebase'
 import {
-  INCOTERMS, ORDER_CURRENCIES, ORDER_STATUSES, LINE_TYPES, lineTypeOf, isPackable,
+  INCOTERMS, PAYMENT_TERMS, ORDER_CURRENCIES, ORDER_STATUSES, LINE_TYPES, lineTypeOf, isPackable,
   getOrder, getOrderLines, createOrderWithLines, updateOrder, saveOrderLines, deleteOrder,
   loadRangeProductsLite, autoMatchLines, matchRangeProduct, rematchLines, validateOrder, computeOrderTotals,
   orderUc,
@@ -37,7 +37,7 @@ const SHIPPED_STATUSES = new Set(['shipped', 'delivered'])
 const blankHeader = {
   customer_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', erp_si_no: '', uc_no: '', customer_po: '', order_date: '',
   invoiced_at: '',
-  currency: 'USD', incoterm: 'FOB', status: 'draft',
+  currency: 'USD', incoterm: 'FOB', payment_terms: '', status: 'draft',
   destination: { country: '', city: '', address: '', port: '' }, notes: '',
   // pi_subtotal / pi_total hold what the imported PI stated, for the mismatch
   // cross-check only. The order's real subtotal/total are computed from the
@@ -182,7 +182,7 @@ export default function ShipmentForm() {
             customer_po: o.customer_po || '',
             invoiced_at: o.invoiced_at || '',
             order_date: o.order_date || '',
-            currency: o.currency, incoterm: o.incoterm, status: o.status,
+            currency: o.currency, incoterm: o.incoterm, payment_terms: o.payment_terms || '', status: o.status,
             destination: { ...blankHeader.destination, ...o.destination }, notes: o.notes,
             discount_pct:    o.discount_pct    ?? '',
             discount_amount: o.discount_amount ?? '',
@@ -377,6 +377,7 @@ export default function ShipmentForm() {
           order_date: data.order_date || h.order_date,
           currency: ['USD', 'EUR', 'RMB', 'HKD'].includes(data.currency) ? data.currency : h.currency,
           incoterm: INCOTERMS.includes(data.incoterm) ? data.incoterm : h.incoterm,
+          payment_terms: data.payment_terms != null ? data.payment_terms : h.payment_terms,
           // The parsed PI totals are the stated reference, not the order value.
           pi_subtotal:     data.subtotal        != null ? data.subtotal        : h.pi_subtotal,
           discount_pct:    data.discount_pct    != null ? data.discount_pct    : h.discount_pct,
@@ -573,7 +574,7 @@ export default function ShipmentForm() {
           customer_po: header.customer_po,
           invoiced_at: header.invoiced_at || null, uc_no: header.uc_no,
           order_date: header.order_date || null,
-          currency: header.currency, incoterm: header.incoterm, status: header.status,
+          currency: header.currency, incoterm: header.incoterm, payment_terms: header.payment_terms, status: header.status,
           destination: header.destination, notes: header.notes,
           // Actual value follows the lines; PI figures stay as the reference.
           subtotal:        computed.subtotal > 0 ? computed.subtotal : null,
@@ -774,6 +775,16 @@ export default function ShipmentForm() {
             <div>
               <label className="label">Incoterm</label>
               <select className="input" value={header.incoterm} onChange={setH('incoterm')}>{INCOTERMS.map(t => <option key={t}>{t}</option>)}</select>
+            </div>
+            <div>
+              <label className="label">Payment Terms</label>
+              {/* Free text with common presets — terms are negotiated per
+                  customer, and this prints on the PI and the invoice. */}
+              <input className="input" list="payment-terms" value={header.payment_terms}
+                     onChange={setH('payment_terms')} placeholder="e.g. Full Payment Before Shipment" />
+              <datalist id="payment-terms">
+                {PAYMENT_TERMS.map(t => <option key={t} value={t} />)}
+              </datalist>
             </div>
             {isEdit && (
               <div>
