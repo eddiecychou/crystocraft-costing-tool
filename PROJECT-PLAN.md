@@ -43,6 +43,268 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
+## Current Status — V7.18 CLOSED as of 2026-07-24
+
+Commit chain `fffb566`→`7a9f67b` (35 commits), all deployed. V7.18's theme is
+**crystals become a bill of materials** — the one inventory class with no BOM
+gets one, mostly by derivation rather than data entry — and, in its second
+half, **the invoicing paths the business actually uses became visible to the
+app**, which is not what the cycle set out to do but is what CuiLing needed.
+
+### The numbers
+
+| | |
+|---|---:|
+| Commits | 35 |
+| Products with a crystal BOM | 0 → **281 of 288** |
+| — derived directly from the ERP | 182 |
+| — inferred (predecessor route / sibling format), confirmed by the owner | 99 |
+| — need manual entry (no ERP history) | 7 |
+| Crystal stones with a colour resolved | 0 → 81, plus 39 decided accents |
+| Colour cross-reference | closed — 0 flagged, 0 undecided |
+| CuiLing / owner issues fixed | 8 |
+| XiangXia exports shipped | 2 |
+| Bugs I shipped and self-caught | 12 |
+
+### 1. Crystals decompose, and the plan under-described how much
+
+The opening plan proposed one BOM row per product with "colour resolves from
+the order line." True for a plain colourway, wrong for a mix — a mix is a
+per-model recipe with real quantities, confirmed against the ERP job-order BOM
+(`D0092` Fan-Out Peacock: 22 stones, 13 octagon + 9 chaton, identical across
+four job orders spanning 2023–2026). The shape that survived is two layers: a
+**skeleton** of positions keyed on `(shape, size)` — including hole count, since
+a one-hole and a two-hole stone of the same size do not substitute — and an
+**allocation** per mix code on top of it. Family (which supplier fills a
+position) sits in the allocation, not the skeleton, after keying the skeleton
+on family first produced ten false disagreements — `D0046` Lighthouse needs six
+14 mm octagons in *every* colourway, Bohemia in some, Swarovski in others, and
+that is one skeleton with two allocations, not two skeletons.
+
+The owner caught the sharpest version of this directly: `M0005`'s BOM said
+three stones were all octagons, and the owner named the ERP truth — 2 octagons,
+1 chaton, 1 oval — from having actually seen the crystal. Swarovski 8102 is an
+oval; the shape table had defaulted every unclassified pattern to "octagon,"
+which is worse than leaving it unknown, since shape is exactly what decides
+whether two stones can substitute for each other.
+
+### 2. The rescue — 100 proposals, 99 confirmed and written
+
+107 products had no BOM because the ERP had never built that *exact* product
+code — not because the stones don't exist. The owner confirmed both inferences
+needed to close the gap: a route change (`D0018-001` sold today, `U0018-001` in
+the ERP — same figurine, Swarovski swapped for Bohemia when stock ran out) keeps
+its stone *count*, and a format change (`-236` music box vs `-001` freestand)
+keeps its crystal content outright. 99 of 100 candidate products were written,
+badged `erp-rescue` rather than `erp` in the editor — an amber "inferred —
+please check," because the stone counts are trustworthy and the supplier of
+each stone may not be. Mix recipes were copied only where the source route
+matches what the product still sells; the 12 where it doesn't (the recipe would
+name a Swarovski code for a Bohemia product) are left undefined rather than
+translated by guesswork, joining 19 products where the app offers a mix nobody
+has ever ordered. 7 products remain with no ERP history at all and need
+entering by hand.
+
+### 3. The colour cross-reference closed, mostly on data the app already had
+
+108 `(family, size, suffix)` entries resolved to 16 exact matches (the Bohemia
+item names embed the app's own colour code), most of the rest by name-matching
+against the ERP's own words, and a handful only by the owner directly — a
+colour code turned out to be a **slot**, not a physical colour: Bohemia `GR` is
+Aquamarine, Swarovski `GR` is Antique Green, and both are correctly `GR`.
+Grade turned out to be a second axis hiding in the same field — `C1` and `CL`
+are both "Clear," and only consumption data (which colourways actually use
+each stone) could separate Asfour 1080 (`CL`, the retired-Spectra substitute)
+from Asfour 1032 (`C1`, unrelated despite sharing a supplier). 39 Swarovski
+chaton colours were confirmed as accents that will never get a library code —
+correct, not incomplete, since a colour that cannot be ordered alone should
+have no slot to be offered by mistake.
+
+### 4. Requirements, editors, and the silent gap that mattered most
+
+Crystals now compute in `computeRequirements` alongside components — a mix
+resolves its recipe, a plain colour resolves by `(shape, size, colour)` against
+stock, and an unresolved stone becomes a warning, never a silently satisfied
+zero. The sharpest version of that principle: a product with **no** crystal BOM
+used to contribute nothing and warn about nothing — indistinguishable from a
+product that genuinely needs no crystals. 107 of 288 products were in that
+state (before the rescue), and none of them are actually crystal-free. Fixed to
+warn always, because there was no state to opt out of.
+
+The Crystal BOM editor (replacing the old Crystal Mixtures card, which stored a
+colour list with no quantities from a marketing CSV the job-order BOM
+contradicts) flags a recipe that doesn't sum to the model's stone count, a
+crystal code the stock list doesn't carry, and a mix nobody has ordered — empty,
+not zero. A stock item's own colour, previously a read-only badge, is now
+editable, because populating 81 of them in bulk produced 10 proposals that only
+a human could confirm and there was no way for a human to do it.
+
+### 5. How the business actually invoices — two paths, not one
+
+**Wholesale**: sales order first, deposit and confirmation, production, then the
+invoice is raised **from the SO** once goods are ready to ship. **Retail**
+(Amazon, web, small Alibaba): no sales order at all, invoiced directly, finished
+goods tracked on ChunCi's Excel sheet rather than in the app. Neither fact is
+derivable from the schema — both came from the owner describing how the team
+actually works, on 2026-07-23 and 2026-07-24.
+
+The SO-number fix (below) generalised the first, correct statement — "new SO/SI
+are raised in the app only" — one step further than the business goes: it
+auto-allocated an SO for a Direct Invoice too, minting a sales-order number for
+a document that by design has none, out of a series that has to stay gapless.
+Caught the next day when the owner described the two paths in full, and fixed
+by scoping auto-allocation to the wholesale form only. Worth recording the
+shape of the mistake, not just the fix: a true general rule, applied without
+knowing the exception, generalises wrong.
+
+### 6. Eight fixes for CuiLing
+
+- **SO number never filled on create** — only ever came from a manual button,
+  guarding against a JES collision that no longer applies now the app is the
+  sole source for 2026. Auto-allocated on create for wholesale orders; **not**
+  for Direct Invoices (§5).
+- **Order edits silently reverting** — "changed 3 times, still shows the first
+  input." `saveOrderLines` skipped any line with no id (new lines vanished) and
+  threw on any line whose doc no longer existed, which failed the *entire*
+  batch — one phantom line broke every future save on that order, while the
+  header saved fine, which is why it looked like nothing had happened. Rewritten
+  to reconcile the subcollection to the form instead of updating line-by-line.
+- **Order total frozen at the imported PI value** — one field did two jobs, the
+  "PI stated" cross-check reference and the order's actual stored total. Split
+  in two; the real total now recomputes from the lines on every save, per the
+  owner's instruction that it should follow what she edits.
+- **Direct Invoice invisible after creation** — the Sales Invoices page lists
+  orders that have an SI, plus un-invoiced ones that are shipped/delivered; a
+  fresh direct invoice with neither matched no bucket. The invoice number is now
+  allocated automatically right after the order commits (never before, so a
+  failed create cannot burn a number).
+- **The wholesale path had no visible action** — the only prominent button on
+  Sales Invoices raised a *retail* invoice, the minority case. Each
+  awaiting-invoice row now has an explicit "Raise invoice →" that opens the
+  order and focuses the invoice field, rather than allocating in place (most of
+  those orders were already invoiced in JES; a one-click allocate here would
+  burn numbers on top of that).
+- **A PI line sliced across a page break** — the print CSS had no page-break
+  rules at all. Added, along with repeating column headers on later pages.
+  Reproduced in a real rendered PDF (52 mixed-height rows through headless
+  Chrome) to confirm the fix doesn't regress it; could **not** reproduce
+  CuiLing's exact artifact, so this is "cannot recur," not "confirmed cured" —
+  worth her re-printing the same invoice.
+- **No signature on the PI** — the company chop already existed for
+  quotations; the PI now places it the same way, so neither document needs
+  hand-signing.
+- **Payment Terms missing** — JES printed it, the app never carried the field.
+  Added to the order, both prints, with a preset list for the common terms.
+
+### 7. Two exports for XiangXia
+
+A production order's components export to CSV — the columns depend on the
+order's stage, since that is what it actually holds (a full preview before
+reserving, just code+qty after). The PI exports to CSV with a **separate**
+unpriced file for the factory floor — two buttons rather than a checkbox, so
+the choice survives as the filename once the file is sitting in Downloads.
+Checking the unpriced output caught a bug in the *shared* CSV helper used by
+every export in the app: the formula-injection guard treated any leading `-` as
+dangerous, so a negative number like a shortage or an adjustment was written as
+text and could not be summed in Excel. Fixed for every export, not just this
+one.
+
+### 8. One rule in two places, twice, and twelve bugs shipped
+
+The crystal shape and colour rules exist once in Python (the derivation) and
+once in JS (the app, for resolving a live order). They drifted twice — hole
+count landed in one copy and not the other, and later the Spectra/malformed-code
+fix did the same — both silently breaking every plain-colour resolution the
+second the copies disagreed. A test now pins the malformed-code case so the
+next drift fails loudly; the actual fix (one source of truth) is still owed.
+
+Twelve bugs across the cycle, all self-caught before or immediately after
+shipping: a fixed-width prefix slice, a string-max where the latest revision
+was needed, a colour-matching script that read its own prior output as ground
+truth, a substring match that took a product noun for a colour word, an empty
+array treated as a real recipe, a missing `else` that made 107 products report
+"no crystals needed" instead of "no answer," a save-confirmation UI gated on
+the wrong state, the two cross-language drifts above, a matching rule applied
+to only one of two code paths, the Direct-Invoice SO bug (§5), and a missing
+`useRef` import that would have been a blank page in production. None were
+visible to the build; all were caught by running the thing and looking at the
+output — screenshots, headless renders, or a throwaway write against real
+Firestore, verified and then undone.
+
+### Deployment notes
+
+- **New Firestore fields:** `range_products.crystal_components` (positions,
+  mixes, source, rescued_from), `crystals.colour` (81 of 180 filled),
+  `orders.pi_subtotal`/`pi_total` (split from `subtotal`/`total_amount`),
+  `orders.payment_terms`.
+- **New settings reuse:** the PI now reads `settings/quote_branding.stamp_url`,
+  the same chop already used on quotations — no new upload path.
+- **`crystal_mixes` (legacy field)** cleared on every product that got a real
+  BOM; 7 products (the ones with no ERP history) still carry it, harmless but
+  unread.
+- **No new env vars.**
+- **`qa/` gained:** `bundle-headless.mjs` (stub Firebase so pure logic runs in
+  Node), the SO/SI allocation guards, the CSV-output checks (including the
+  formula-injection fix), and `pi-pagination.mjs` (real Chrome → real PDF →
+  rasterised pages, looked at by eye — `qa/out/` is gitignored, regenerable).
+
+---
+
+## Where V7.19 starts
+
+**Order planning — the plan's last step, deferred here for scope, not
+difficulty:**
+
+1. **Add the on-order term.** Today's shortage is `required − available`; it
+   needs to become `required − available − on_order`. The mechanism to match a
+   PO line to a stock item already exists and is proven in production
+   (`poReceive.js` matches by code across all three inventory classes at
+   receive time) — reuse it rather than requiring anyone to go back and link
+   PO lines by hand. Show on-order as its own column next to Available, not
+   folded silently into one number, so a shortage that drops is visible as
+   "why," not just "less."
+2. **Decide which PO statuses count.** Live data: 3 `draft`, 8 `issued`, 0
+   received. Default to `issued` only — a draft is an intention, not a
+   commitment — but confirm CuiLing doesn't already treat a draft as
+   committed in practice.
+3. **Timing has no home yet.** No PO carries an expected-arrival date, so
+   "on order" as of today has no way to know whether it lands before or after
+   the ship date it's meant to cover. Components already carry
+   `lead_time_weeks`; POs carry nothing. Flag this on screen rather than
+   inventing an ETA model before hearing how delivery is actually tracked.
+4. **Warn on the unmatched, don't drop it.** Two open PO lines are coded
+   `MISC` and match no inventory code by design — they must surface as a
+   warning, the same discipline as every other silent-gap fix this cycle,
+   not vanish from the on-order figure.
+5. **Confirm the feature is worth building at all.** 11 purchase orders exist
+   in the app today. The crystal half of this already pays for itself — four
+   Bohemia codes on order are worth roughly as much as what's in stock for
+   them right now — but the general case depends on POs being raised in the
+   app rather than outside it. Worth one line from the owner before spending
+   the effort.
+
+**Also carried forward, unresolved:**
+
+- **XiangXia** — wastage (the oldest open question in this project, still
+  unanswered); the 3 skeleton anomalies (`0383` Duckling, `0086` Flower Fairy,
+  `0465` Pocket Crown); the 2 unclassified crystal patterns (`#8015/20`,
+  `#8641/20`); and on packing, which columns are measured vs calculated and
+  where music-box/mobile packing is tracked.
+- **The owner** — re-print the 52-line invoice that showed the sliced amount,
+  to confirm the page-break fix actually cured it (the repro could not
+  reproduce her exact artifact, so this is unverified); confirm the chop
+  prints where expected; the 19 products with an undefined mix and the 7
+  needing manual crystal entry, whenever someone has time.
+- **Not fixed, only noted:** every order created via `handleCreate` is tagged
+  `source: 'imported_pi'`, including Direct Invoices that were never imported
+  from anything. Harmless today (a display hint and a fallback), a mislabel
+  that needs `normOrder`'s taxonomy widened to fix properly.
+- **One rule, two languages.** The crystal shape/colour logic still lives
+  separately in `migration/derive_crystal_bom.py` and `src/crystalBom.js`. It
+  has drifted twice. Worth collapsing to one source before a third drift ships.
+
+---
+
 ## Current Status — V7.17 CLOSED as of 2026-07-21
 
 Commit chain `bfb6ad2`→`e3ae9d7` (43 commits), all deployed. V7.17's theme is
@@ -697,26 +959,84 @@ wrongly about the physical world.
   console's own download name**, which is what actually lands in `~/Downloads`.
   It arrived in the repo root untracked and unignored.
 
-### Waiting on people
+### The rescue lands: 68 route + 32 format proposals confirmed (owner, 2026-07-23)
 
-- **XiangXia** — wastage (still the oldest open question); the 3 skeleton
-  anomalies; `#8015/20` and `#8641/20`; **the 100 rescue proposals** — does a
-  skeleton carry across a supplier change, and across a base change?; and on
-  packing: which columns are measured against calculated, whether the doubled
-  CBMs are corrections, where music-box and mobile packing lives, and the 10
-  Crystal Bible products plus 2 bookmarks missing from the sheet.
+Both inferences behind the 100 candidate rescues, confirmed directly: a route
+change keeps the stone **count** (`D0018-001` sold today is the same figurine
+as `U0018-001` in the ERP, Bohemia standing in for exhausted Swarovski stock),
+and a format change (`-236` vs `-001`) keeps the crystal content outright.
+99 of 100 written — one had already gained a direct BOM from an unrelated fix
+earlier the same day. See "The rescue" in the close-out above for the shape of
+what got written and what deliberately didn't (mix recipes on a route swap).
 
-### Still to do
+### A missing crystal BOM was silent — no `else`, and 107 products said nothing
 
-- **Step 6, order planning** — requirement − available − on-order.
-- **The 100 rescue proposals**, once confirmed — that is the coverage gap.
-- **102 products still carrying the legacy `crystal_mixes`.**
-- **286 mix colourways with no recipe** — the owner's call: these were never
-  ordered, so they are left to be filled in when someone first orders one. The
-  app must therefore treat an undefined mix as a question, not a zero.
-- **Never seen in a browser:** the crystals table and the missing-BOM warning on
-  the material requirements page. The logic passes 23 headless checks, but the
-  page needs an admin login and confirmed orders carrying crystal products.
+`computeRequirements` only computed crystals when `crystal_components` existed.
+No `else` meant a product without one contributed zero stones and raised zero
+warnings — indistinguishable from a product that genuinely needs none. Checked
+before writing the fix: none of the 107 affected products are actually
+crystal-free (98 have crystal lines somewhere in the ERP; the rest are new
+designs literally named "Crystal Bulldog," "Crystal Heart"). So the warning
+needed no opt-out — a missing BOM is always worth reporting.
+
+### Stock items become editable — a colour could not be corrected at all
+
+The crystal stock list showed `colour` as a read-only badge. Populating 81 of
+them in one pass produced 10 proposals that needed a human eye, and there was
+no way for a human to act on that from the app — only by asking for another
+script. Added an edit form to the same expanded row the stock ledger already
+uses, generic over the inventory class (so packaging and metal stock get it
+too), writing only descriptive fields — `stock_qty` stays owned by the ledger.
+
+### Colour: a code is a slot, and grade hides in the same field (owner, 2026-07-22–23)
+
+Three corrections in sequence, each changing how the remaining colours were
+resolved:
+
+- **Bordeaux is Swarovski's `RE` slot** (the substitute is Bohemia RE); **Antique
+  Green is Swarovski's `GR` slot**, and Bohemia's nearest equivalent — Aquamarine
+  — is *also* `GR`. Confirms the general rule: an app colour code names a
+  position, not a physical pigment, and each supplier's nearest equivalent
+  shares it.
+- **`C1` and `CL` are both "Clear," and only ONE is a colour** — the other is a
+  grade. Consumption data settled which stone is which: Asfour 1080 and
+  Spectra 8290 run overwhelmingly in `CL` colourways (the retired Swarovski
+  Spectra family and its replacement); Asfour 1032, despite being the same
+  supplier as 1080, runs in `C1`. Being "Asfour" doesn't decide it — the
+  specific stone does. The one stone with zero ERP consumption to check
+  against (`C07-1080-14-002`, Tian Hua) was left blank rather than guessed,
+  then set on the owner's direct word once given.
+- **39 Swarovski accents "are never major"** (owner) — chatons used to
+  complement a main colour, never sold as a colourway on their own. Recorded as
+  a decision (`accent — no library slot`), not an open question: giving one a
+  library code would let it be offered by mistake.
+
+Net result: colour cross-reference closed. 81 of 180 crystal stones carry a
+colour; the other 99 are either accents (39, correctly blank) or non-figurine
+stock (60, a different coding scheme — beads, pearls, steel components — that
+the two-letter attribute was never meant to cover).
+
+### CuiLing's sales-flow reports (2026-07-23 → 07-24) — the cycle's second half
+
+Five reports in quick succession, each traced from her live data rather than
+guessed at: the SO number never filling on create, order edits reverting after
+save, the order total frozen at the imported figure, a Direct Invoice
+disappearing after creation, and — the following day, once the owner explained
+wholesale vs retail in full — a Direct Invoice wrongly minting a sales-order
+number of its own. Two more, on the printed documents: a line sliced by a page
+break, and Payment Terms missing entirely against what JES used to print. See
+"Eight fixes for CuiLing" and "How the business actually invoices" in the
+close-out above for the detail on each — this entry exists so the running
+record shows *when* they landed relative to the crystal work, not just what
+they were.
+
+### Two exports for XiangXia (2026-07-23)
+
+A production order's components, and the PI — the second with a dedicated
+unpriced file for the factory floor, since she is production-side and should
+not see customer pricing. Checking the unpriced file's output caught a bug in
+the shared CSV formula-guard that affected every export in the app, not just
+these two — see "Two exports for XiangXia" in the close-out above.
 
 ---
 
