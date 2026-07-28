@@ -297,25 +297,41 @@ function LinesModal({ title, code, header, rows, surcharges, loading, error, onC
                   <th className="px-2 py-1.5 font-medium">Description</th>
                   <th className="px-2 py-1.5 font-medium text-right">Qty</th>
                   <th className="px-2 py-1.5 font-medium text-right">Unit Price</th>
+                  <th className="px-2 py-1.5 font-medium text-right">Markup</th>
+                  <th className="px-2 py-1.5 font-medium text-right">Marked Unit Price</th>
                   <th className="px-2 py-1.5 font-medium text-right">Amount</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r, i) => (
-                  <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="px-2 py-1.5 text-gray-400 tabular-nums">{r.seq}</td>
-                    <td className="px-2 py-1.5 font-mono text-xs">{r.item_code}</td>
-                    <td className="px-2 py-1.5">{r.description}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums">{r.qty}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums">{money(r.unit_price)}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums font-medium">{money(r.amount)}</td>
-                  </tr>
-                ))}
+                {rows.map((r, i) => {
+                  // JES's own line grid shows three price columns, not two: a
+                  // reference Unit Price, a per-line Markup/Discount factor
+                  // (e.g. 0.70 — independent of the header's own discount),
+                  // and the Marked Unit Price that factor produces. Only the
+                  // first and the resulting Amount are stored; Marked Unit
+                  // Price is derived here exactly as JES derives it.
+                  const hasMarkup = r.markup !== null && r.markup !== undefined && Number(r.markup) !== 1
+                  const marked = r.markup != null ? Number(r.unit_price || 0) * Number(r.markup) : null
+                  return (
+                    <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
+                      <td className="px-2 py-1.5 text-gray-400 tabular-nums">{r.seq}</td>
+                      <td className="px-2 py-1.5 font-mono text-xs">{r.item_code}</td>
+                      <td className="px-2 py-1.5">{r.description}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{r.qty}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{money(r.unit_price)}</td>
+                      <td className={`px-2 py-1.5 text-right tabular-nums ${hasMarkup ? 'text-amber-700 font-medium' : 'text-gray-300'}`}>
+                        {r.markup != null ? Number(r.markup).toFixed(2) : '—'}
+                      </td>
+                      <td className="px-2 py-1.5 text-right tabular-nums">{marked != null ? money(marked) : '—'}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums font-medium">{money(r.amount)}</td>
+                    </tr>
+                  )
+                })}
                 {surcharges.map((s, i) => (
                   <tr key={`s${i}`} className="border-b border-gray-50 bg-amber-50/40">
                     <td className="px-2 py-1.5 text-gray-400"></td>
                     <td className="px-2 py-1.5 text-xs text-amber-700">{s.code || 'CHARGE'}</td>
-                    <td className="px-2 py-1.5 text-gray-600" colSpan={3}>{s.description}</td>
+                    <td className="px-2 py-1.5 text-gray-600" colSpan={5}>{s.description}</td>
                     <td className="px-2 py-1.5 text-right tabular-nums">{money(s.amount)}</td>
                   </tr>
                 ))}

@@ -231,6 +231,14 @@ select
   nullif(sigstamount, '')::numeric         as tax
 from raw.salesinvoice;
 
+-- `markup` is a per-LINE factor (e.g. 0.70), distinct from the header-level
+-- `discount`/`discount_pct` on the whole document — a line can be marked up or
+-- down independently of the order's overall discount. Checked against a real
+-- JES screenshot (SO150197 line UD015-D01-T00): `unit_price` (18.96) is the
+-- REFERENCE/list price, not net — `amount` (39.82) already bakes in the
+-- markup (qty 3 × 18.96 × 0.70 ≈ 39.82). JES's own UI shows a third value,
+-- "Marked Unit Price" (13.27 = unit_price × markup = amount/qty), which isn't
+-- stored on its own — it's derived, same as the app should derive it.
 create or replace view public.erp_sales_invoice_line as
 select
   sdsino                          as invoice_no,
@@ -241,7 +249,8 @@ select
   nullif(sdqty, '')::numeric      as qty,
   nullif(sdunitprice, '')::numeric as unit_price,
   nullif(sdlineamount, '')::numeric as amount,
-  nullif(sdrefdocno, '')          as ref_doc
+  nullif(sdrefdocno, '')          as ref_doc,
+  nullif(sdmarkup, '')::numeric   as markup
 from raw.salesinvoicedetail;
 
 create or replace view public.erp_sales_order as
@@ -275,7 +284,8 @@ select
   nullif(sdunitprice, '')::numeric as unit_price,
   nullif(sdlineamount, '')::numeric as amount,
   nullif(sdshipdate, '')::timestamp as ship_date,
-  nullif(sdrefno, '')             as ref
+  nullif(sdrefno, '')             as ref,
+  nullif(sdmarkup, '')::numeric   as markup
 from raw.salesorderdetail;
 
 -- Surcharge lines: freight / delivery / packing / credit-card / misc charges,
@@ -339,7 +349,8 @@ select
   nullif(pdqtygrn, '')::numeric   as qty_received,
   nullif(pdunitprice, '')::numeric as unit_price,
   nullif(pdlineamount, '')::numeric as amount,
-  nullif(pdrefdocno, '')          as ref_doc
+  nullif(pdrefdocno, '')          as ref_doc,
+  nullif(pdmarkup, '')::numeric   as markup
 from raw.purchasedetail;
 
 create or replace view public.erp_purchase_surcharge as
