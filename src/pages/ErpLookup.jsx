@@ -54,6 +54,13 @@ const ENTITIES = {
       { key: 'customer', label: 'Customer', grow: true },
       { key: 'currency', label: 'Curr' },
       { key: 'amount', label: 'Amount', num: true },
+      { key: 'discount', label: 'Discount', num: true },
+      // "Deposit" is JES's only record of money received against this
+      // invoice — there is no fuller payment ledger here (the books, and any
+      // later partial payments, are in PBIS, not JES). Balance Due is derived
+      // from it, same formula as the Lines drill-down modal below.
+      { key: 'deposit', label: 'Deposit Paid', num: true },
+      { key: 'balance_due', label: 'Balance Due', num: true, compute: r => (Number(r.amount) || 0) - (Number(r.deposit) || 0) },
       { key: 'status', label: 'Status', badge: true },
     ],
   },
@@ -152,7 +159,7 @@ const DETAIL_GROUPS = {
 
 // Render a cell value based on its column type.
 function cellValue(col, row) {
-  const v = row[col.key]
+  const v = col.compute ? col.compute(row) : row[col.key]
   if (col.bool) {
     return v
       ? <span className="inline-block px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700">Yes</span>

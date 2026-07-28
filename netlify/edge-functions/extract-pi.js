@@ -14,6 +14,7 @@ Return ONLY a valid JSON object with these keys (use null when a value is not pr
   "so_no": string or null,                 // ERP Sales Order / Document No (e.g. "SO260017", "SO-2025-0017")
   "customer_name": string or null,
   "order_date": string or null,            // ISO date YYYY-MM-DD if determinable
+  "est_ship_date": string or null,         // ISO date YYYY-MM-DD if determinable
   "currency": "USD" | "EUR" | "RMB" | "HKD" | null,
   "incoterm": "EXW" | "FOB" | "CIF" | "DAP" | "DDP" | null,
   "subtotal": number or null,              // sum of all line amounts before any discount
@@ -41,6 +42,7 @@ Rules:
 - unit_price is the per-unit price as a number only (strip currency symbols).
 - Currency symbols: $ = USD, € = EUR, ¥ or 元 or RMB = RMB, HK$ = HKD.
 - Incoterm is often near the totals or shipping terms.
+- est_ship_date is labelled "Est. Ship Date", "Estimated Shipment", "ETA" or similar, often in the same header block as Payment Terms and Shipment Term.
 - subtotal: sum of all line amounts printed on the document before any discount. Look for "Subtotal", "Sub-Total", "Amount Before Discount".
 - discount_pct: order-level discount percentage. Look for "Less X% Discount", "Trade Discount %". Extract the number only (e.g. 30 for "Less 30% Discount").
 - discount_amount: absolute monetary discount value. Look for "Less X% Discount:", "Discount Amount".

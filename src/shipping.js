@@ -162,6 +162,11 @@ export const normOrder = o => ({
   customer_id: o.customer_id || '',
   customer_name: str(o.customer_name),
   order_date: o.order_date || null,
+  // The projected shipment date printed on the PI — a commitment to the
+  // customer, separate from the shipment record's actual date (which only
+  // exists once goods have actually gone). JES's own PI template carried this
+  // as "Est. Ship Date"; the app's PI dropped it when the layout was rebuilt.
+  est_ship_date: o.est_ship_date || null,
   // Every currency seen on a real sales order since 2024 (measured against
   // raw.salesorder): AED, CAD, EUR, GBP, HKD, MXN, USD — plus RMB for purchases.
   // The old whitelist was ['HKD','RMB','USD','EUR'], which silently coerced a

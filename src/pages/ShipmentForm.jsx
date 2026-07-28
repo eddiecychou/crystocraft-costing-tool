@@ -36,6 +36,7 @@ const SHIPPED_STATUSES = new Set(['shipped', 'delivered'])
 
 const blankHeader = {
   customer_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', erp_si_no: '', uc_no: '', customer_po: '', order_date: '',
+  est_ship_date: '',
   invoiced_at: '',
   currency: 'USD', incoterm: 'FOB', payment_terms: '', status: 'draft',
   destination: { country: '', city: '', address: '', port: '' }, notes: '',
@@ -182,6 +183,7 @@ export default function ShipmentForm() {
             customer_po: o.customer_po || '',
             invoiced_at: o.invoiced_at || '',
             order_date: o.order_date || '',
+            est_ship_date: o.est_ship_date || '',
             currency: o.currency, incoterm: o.incoterm, payment_terms: o.payment_terms || '', status: o.status,
             destination: { ...blankHeader.destination, ...o.destination }, notes: o.notes,
             discount_pct:    o.discount_pct    ?? '',
@@ -375,6 +377,7 @@ export default function ShipmentForm() {
           uc_no: data.pi_no || h.uc_no,
           erp_so_no: data.so_no || h.erp_so_no,
           order_date: data.order_date || h.order_date,
+          est_ship_date: data.est_ship_date || h.est_ship_date,
           currency: ['USD', 'EUR', 'RMB', 'HKD'].includes(data.currency) ? data.currency : h.currency,
           incoterm: INCOTERMS.includes(data.incoterm) ? data.incoterm : h.incoterm,
           payment_terms: data.payment_terms != null ? data.payment_terms : h.payment_terms,
@@ -574,6 +577,7 @@ export default function ShipmentForm() {
           customer_po: header.customer_po,
           invoiced_at: header.invoiced_at || null, uc_no: header.uc_no,
           order_date: header.order_date || null,
+          est_ship_date: header.est_ship_date || null,
           currency: header.currency, incoterm: header.incoterm, payment_terms: header.payment_terms, status: header.status,
           destination: header.destination, notes: header.notes,
           // Actual value follows the lines; PI figures stay as the reference.
@@ -767,6 +771,10 @@ export default function ShipmentForm() {
             <div>
               <label className="label">Order Date</label>
               <input className="input" type="date" value={header.order_date} onChange={setH('order_date')} />
+            </div>
+            <div>
+              <label className="label">Est. Ship Date</label>
+              <input className="input" type="date" value={header.est_ship_date} onChange={setH('est_ship_date')} />
             </div>
             <div>
               <label className="label">Currency</label>

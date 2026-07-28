@@ -261,6 +261,7 @@ export default function ProformaInvoicePrint() {
           <div className="pi-kv"><span className="k">Currency</span><span className="v">{cur}</span></div>
           {order.incoterm && <div className="pi-kv"><span className="k">Incoterm</span><span className="v">{order.incoterm}</span></div>}
           {order.payment_terms && <div className="pi-kv"><span className="k">Payment Terms</span><span className="v">{order.payment_terms}</span></div>}
+          {order.est_ship_date && <div className="pi-kv"><span className="k">Est. Ship Date</span><span className="v">{fmtDate(order.est_ship_date)}</span></div>}
           {destText && <div className="pi-kv"><span className="k">Destination</span><span className="v">{destText}</span></div>}
           {dest.port && <div className="pi-kv"><span className="k">Port</span><span className="v">{dest.port}</span></div>}
         </div>
