@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Users, Mail, MailX, Store, UserCheck, Link2, Tag, AlertCircle, Download } from 'lucide-react'
+import { Users, Mail, MailX, UserCheck, Link2, Tag, AlertCircle, Download, Trash2, X } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import {
-  useMarketingContacts, updateContactReview, contactName,
-  MC_RELATIONSHIPS, MC_REVIEW,
+  useMarketingContacts, updateContactReview, saveContact, deleteContact, deleteContacts,
+  contactName, MC_RELATIONSHIPS, MC_REVIEW, MC_STATUSES,
 } from '../domain/marketingContact'
 
 const STATUS_STYLE = {
@@ -62,6 +62,122 @@ function exportCsv(rows) {
   URL.revokeObjectURL(url)
 }
 
+// Edit one contact. Local form state seeded from the row; the imported Mailchimp
+// fields not shown here are preserved on save (the domain merges them).
+function EditContactModal({ contact, onClose, onSaved, onDeleted }) {
+  const [f, setF] = useState({
+    first_name: contact.first_name, last_name: contact.last_name, email: contact.email,
+    company: contact.company, country: contact.country, phone: contact.phone,
+    relationship: contact.relationship, status: contact.status,
+    is_customer: contact.is_customer, review_status: contact.review_status,
+    tags: contact.tags.join(', '), app_notes: contact.app_notes,
+  })
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const set = k => e => setF(s => ({ ...s, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
+
+  async function save() {
+    setBusy(true); setError('')
+    try {
+      const tags = [...new Set(f.tags.split(/[,|]/).map(t => t.trim().toLowerCase()).filter(Boolean))]
+      const newId = await saveContact(contact.id, { ...f, tags })
+      onSaved(contact.id, { ...contact, ...f, tags, id: newId, emailable: f.status === 'subscribed' })
+    } catch (e) {
+      setError(e.message || 'Could not save.'); setBusy(false)
+    }
+  }
+  async function del() {
+    if (!window.confirm(`Delete ${contact.email} permanently? This cannot be undone.`)) return
+    setBusy(true); setError('')
+    try { await deleteContact(contact.id); onDeleted([contact.id]) }
+    catch (e) { setError(e.message || 'Could not delete.'); setBusy(false) }
+  }
+
+  const field = (label, k, type = 'text') => (
+    <label className="block">
+      <span className="text-xs text-gray-500">{label}</span>
+      <input type={type} className="input w-full mt-0.5" value={f[k]} onChange={set(k)} />
+    </label>
+  )
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+          <h2 className="font-semibold text-gray-900">Edit contact</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+        </div>
+        <div className="p-5 space-y-3 max-h-[70vh] overflow-auto">
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <AlertCircle size={16} /> {error}
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3">
+            {field('First name', 'first_name')}
+            {field('Last name', 'last_name')}
+          </div>
+          {field('Email', 'email', 'email')}
+          <div className="grid grid-cols-2 gap-3">
+            {field('Company', 'company')}
+            {field('Country', 'country')}
+          </div>
+          {field('Phone', 'phone')}
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block">
+              <span className="text-xs text-gray-500">Status</span>
+              <select className="input w-full mt-0.5" value={f.status} onChange={set('status')}>
+                {MC_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-xs text-gray-500">Type</span>
+              <select className="input w-full mt-0.5" value={f.relationship} onChange={set('relationship')}>
+                <option value="">—</option>
+                {MC_RELATIONSHIPS.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </label>
+          </div>
+          <label className="block">
+            <span className="text-xs text-gray-500">Tags (comma-separated)</span>
+            <input className="input w-full mt-0.5" value={f.tags} onChange={set('tags')} placeholder="distributor, exhibition contact" />
+          </label>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 text-sm text-gray-600">
+              <input type="checkbox" checked={f.is_customer} onChange={set('is_customer')}
+                     className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
+              Likely customer
+            </label>
+            <label className="flex items-center gap-2 text-sm text-gray-600">
+              Review
+              <select className="input py-1" value={f.review_status} onChange={set('review_status')}>
+                {MC_REVIEW.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+              </select>
+            </label>
+          </div>
+          <label className="block">
+            <span className="text-xs text-gray-500">Notes</span>
+            <textarea className="input w-full mt-0.5" rows={2} value={f.app_notes} onChange={set('app_notes')} />
+          </label>
+          <p className="text-[11px] text-gray-400">
+            Status drives emailability automatically (only “subscribed” is emailable). Changing the email moves the record.
+          </p>
+        </div>
+        <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200">
+          <button onClick={del} disabled={busy}
+            className="text-sm text-red-600 hover:text-red-700 inline-flex items-center gap-1.5 disabled:opacity-50">
+            <Trash2 size={15} /> Delete
+          </button>
+          <div className="flex gap-2">
+            <button onClick={onClose} disabled={busy} className="btn-secondary text-sm">Cancel</button>
+            <button onClick={save} disabled={busy} className="btn-primary text-sm">{busy ? 'Saving…' : 'Save'}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function MarketingContacts() {
   const { contacts, loading, setContacts } = useMarketingContacts()
   const [search, setSearch] = useState('')
@@ -71,6 +187,8 @@ export default function MarketingContacts() {
   const [relationship, setRelationship] = useState('')
   const [country, setCountry] = useState('')
   const [review, setReview] = useState('')
+  const [selected, setSelected] = useState(() => new Set())
+  const [editing, setEditing] = useState(null)
 
   const countries = useMemo(() => {
     const c = new Map()
@@ -107,15 +225,53 @@ export default function MarketingContacts() {
   }, [contacts, search, audience, status, segment, relationship, country, review])
 
   const shown = filtered.slice(0, DISPLAY_CAP)
+  const allShownSelected = shown.length > 0 && shown.every(c => selected.has(c.id))
 
   async function setReviewStatus(id, value) {
     setContacts(prev => prev.map(c => c.id === id ? { ...c, review_status: value } : c))
     try { await updateContactReview(id, { review_status: value }) } catch { /* optimistic; a reload corrects */ }
   }
 
+  function toggleSel(id) {
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+  function toggleAllShown() {
+    setSelected(prev => {
+      const n = new Set(prev)
+      if (allShownSelected) shown.forEach(c => n.delete(c.id))
+      else shown.forEach(c => n.add(c.id))
+      return n
+    })
+  }
+
+  // Remove ids from local state + selection after a delete.
+  function removeLocal(ids) {
+    const idset = new Set(ids)
+    setContacts(prev => prev.filter(c => !idset.has(c.id)))
+    setSelected(prev => { const n = new Set(prev); ids.forEach(i => n.delete(i)); return n })
+    setEditing(null)
+  }
+  function applySaved(oldId, updated) {
+    setContacts(prev => prev.map(c => c.id === oldId ? { ...c, ...updated } : c))
+    setEditing(null)
+  }
+
+  async function bulkDelete() {
+    const ids = [...selected]
+    if (!ids.length) return
+    if (!window.confirm(`Delete ${ids.length} contact${ids.length === 1 ? '' : 's'} permanently? This cannot be undone.`)) return
+    try { await deleteContacts(ids); removeLocal(ids) }
+    catch (e) { window.alert(e.message || 'Bulk delete failed.') }
+  }
+
   return (
     <div className="p-4 md:p-6">
       {loading && <LoadingBar />}
+
+      {editing && (
+        <EditContactModal contact={editing} onClose={() => setEditing(null)}
+          onSaved={applySaved} onDeleted={removeLocal} />
+      )}
 
       <div className="flex items-start justify-between mb-4 gap-3">
         <div>
@@ -123,7 +279,7 @@ export default function MarketingContacts() {
             <Users size={22} className="text-brand-600" /> Marketing Contacts
           </h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Cleaned Mailchimp list — kept separate from Customers. Imported {stats.total.toLocaleString()} contacts.
+            Cleaned Mailchimp list — kept separate from Customers. {stats.total.toLocaleString()} contacts.
           </p>
         </div>
         <button onClick={() => exportCsv(filtered)} className="btn-secondary text-sm flex items-center gap-1.5 shrink-0">
@@ -183,10 +339,23 @@ export default function MarketingContacts() {
         </div>
       </div>
 
-      <p className="text-xs text-gray-500 mb-2">
-        {filtered.length.toLocaleString()} match{filtered.length === 1 ? '' : 'es'}
-        {filtered.length > DISPLAY_CAP && ` — showing first ${DISPLAY_CAP}, refine to narrow`}
-      </p>
+      {/* Count + bulk bar */}
+      <div className="flex items-center justify-between mb-2 min-h-[28px]">
+        <p className="text-xs text-gray-500">
+          {filtered.length.toLocaleString()} match{filtered.length === 1 ? '' : 'es'}
+          {filtered.length > DISPLAY_CAP && ` — showing first ${DISPLAY_CAP}, refine to narrow`}
+        </p>
+        {selected.size > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">{selected.size} selected</span>
+            <button onClick={() => setSelected(new Set())} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+            <button onClick={bulkDelete}
+              className="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 border border-red-200 rounded-md px-2 py-1">
+              <Trash2 size={13} /> Delete selected
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Results */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -194,6 +363,11 @@ export default function MarketingContacts() {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-gray-500 border-b border-gray-200 bg-gray-50">
+                <th className="px-3 py-2 w-8">
+                  <input type="checkbox" checked={allShownSelected} onChange={toggleAllShown}
+                         className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                         title="Select all shown" />
+                </th>
                 <th className="px-3 py-2 font-medium">Name</th>
                 <th className="px-3 py-2 font-medium">Company</th>
                 <th className="px-3 py-2 font-medium">Email</th>
@@ -207,9 +381,15 @@ export default function MarketingContacts() {
             </thead>
             <tbody>
               {shown.map(c => (
-                <tr key={c.id} className="border-b border-gray-100 last:border-0 hover:bg-gray-50 align-top">
+                <tr key={c.id} className={`border-b border-gray-100 last:border-0 hover:bg-gray-50 align-top ${selected.has(c.id) ? 'bg-brand-50/40' : ''}`}>
+                  <td className="px-3 py-2">
+                    <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleSel(c.id)}
+                           className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
+                  </td>
                   <td className="px-3 py-2 whitespace-nowrap">
-                    {contactName(c)}
+                    <button onClick={() => setEditing(c)} className="text-brand-600 hover:underline font-medium text-left">
+                      {contactName(c)}
+                    </button>
                     {c.is_customer && <UserCheck size={13} className="inline ml-1 align-[-2px] text-brand-600" title="Likely customer (bought / logged in)" />}
                   </td>
                   <td className="px-3 py-2">
@@ -259,7 +439,7 @@ export default function MarketingContacts() {
                 </tr>
               ))}
               {!loading && filtered.length === 0 && (
-                <tr><td colSpan={9} className="px-3 py-12 text-center text-gray-400">
+                <tr><td colSpan={10} className="px-3 py-12 text-center text-gray-400">
                   <AlertCircle size={32} strokeWidth={1.25} className="mx-auto mb-2 text-gray-300" />
                   No contacts match these filters.
                 </td></tr>
@@ -270,7 +450,7 @@ export default function MarketingContacts() {
       </div>
 
       <p className="text-xs text-gray-400 mt-3">
-        Source: Mailchimp export (trade + retail audiences), cleaned & deduped. The suppressed list
+        Click a name to edit; tick rows to delete in bulk. The suppressed list
         (unsubscribed / bounced) is retained for reference only and must never be emailed.
       </p>
     </div>

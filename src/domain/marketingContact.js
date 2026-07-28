@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { collection, getDocs, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import {
+  collection, getDocs, getDoc, doc, updateDoc, setDoc, deleteDoc,
+  writeBatch, serverTimestamp,
+} from 'firebase/firestore'
 import { db } from '../firebase'
 
 // Marketing contacts — the cleaned Mailchimp list, kept DELIBERATELY SEPARATE
@@ -98,4 +101,61 @@ export async function updateContactReview(id, patch) {
   if ('review_status' in patch) allowed.review_status = str(patch.review_status)
   if ('app_notes' in patch)     allowed.app_notes = str(patch.app_notes)
   await updateDoc(doc(db, 'marketing_contacts', id), { ...allowed, updatedAt: serverTimestamp() })
+}
+
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+
+// Doc id from an email — same rule as the import + /api/subscribe endpoint, so a
+// contact always resolves to one deterministic doc.
+export const idFromEmail = email => String(email || '').trim().toLowerCase().replace(/\s+/g, '')
+
+// Full edit of a contact. `emailable` is derived from status so the two can never
+// disagree (subscribed = emailable, anything else = suppressed). Editing the email
+// changes the doc id, so that case is a rename: write the new doc, delete the old,
+// refusing if the target email already belongs to another contact.
+export async function saveContact(currentId, data) {
+  const email = str(data.email).trim().toLowerCase()
+  if (!EMAIL_RE.test(email)) throw new Error('A valid email is required.')
+  const status = MC_STATUSES.includes(data.status) ? data.status : 'subscribed'
+  const patch = {
+    first_name:   str(data.first_name),
+    last_name:    str(data.last_name),
+    email,
+    company:      str(data.company),
+    country:      str(data.country),
+    phone:        str(data.phone),
+    relationship: MC_RELATIONSHIPS.includes(data.relationship) ? data.relationship : '',
+    tags:         arr(data.tags),
+    status,
+    emailable:    status === 'subscribed',
+    is_customer:  !!data.is_customer,
+    review_status: str(data.review_status),
+    app_notes:    str(data.app_notes),
+    updatedAt:    serverTimestamp(),
+  }
+  const newId = idFromEmail(email)
+  if (newId === currentId) {
+    await updateDoc(doc(db, 'marketing_contacts', currentId), patch)
+    return newId
+  }
+  const target = await getDoc(doc(db, 'marketing_contacts', newId))
+  if (target.exists()) throw new Error('Another contact already uses that email.')
+  const cur = await getDoc(doc(db, 'marketing_contacts', currentId))
+  const base = cur.exists() ? cur.data() : {}
+  await setDoc(doc(db, 'marketing_contacts', newId), { ...base, ...patch })
+  await deleteDoc(doc(db, 'marketing_contacts', currentId))
+  return newId
+}
+
+export async function deleteContact(id) {
+  await deleteDoc(doc(db, 'marketing_contacts', id))
+}
+
+// Bulk delete, chunked to Firestore's 500-write batch limit.
+export async function deleteContacts(ids) {
+  for (let i = 0; i < ids.length; i += 400) {
+    const batch = writeBatch(db)
+    ids.slice(i, i + 400).forEach(id => batch.delete(doc(db, 'marketing_contacts', id)))
+    await batch.commit()
+  }
 }
