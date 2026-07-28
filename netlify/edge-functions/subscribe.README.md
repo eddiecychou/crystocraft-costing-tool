@@ -51,44 +51,55 @@ Then check **Marketing → Contacts** (filter audience = "Website signup").
 
 The current popup is Mailchimp's own hosted snippet posting straight to
 `list-manage.com` (account `u=6b2d62335af3c423419365717`, audience
-`id=d952115846`). To run in parallel, add a form that posts to **both** — the app
-endpoint and Mailchimp — so nothing breaks while you confirm the app is
-capturing everything. Drop this into an Elementor HTML widget / header-footer
-snippet (replace `APP_DOMAIN`):
+`id=d952115846`).
+
+### DEPLOYED (2026-07-28): mirror snippet, not a new form
+
+The popup is Mailchimp's classic embedded form — `#mc-embedded-subscribe-form`
+with `#mce-EMAIL` (name `EMAIL`) + a hidden `b_*` honeypot — already in the DOM
+on every page. Rather than add a competing form, a **mirror** was deployed: an
+invisible listener that captures the SAME signups the popup collects and
+forwards each to `/api/subscribe`. Zero UX change, true parallel run.
+
+Lives in **Elementor → Custom Code**, snippet "App signup mirror (parallel to
+Mailchimp)" (post id 57615), Location `<head>`, Condition Entire site. The code:
 
 ```html
-<form id="cc-subscribe">
-  <input type="email" name="email" placeholder="Your email" required>
-  <!-- honeypot: hidden from humans, bots fill it -->
-  <input type="text" name="hp" style="position:absolute;left:-9999px" tabindex="-1" autocomplete="off">
-  <button type="submit">Subscribe</button>
-  <span class="cc-msg" aria-live="polite"></span>
-</form>
 <script>
-document.getElementById('cc-subscribe').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const f = e.target, email = f.email.value.trim(), msg = f.querySelector('.cc-msg');
-  if (f.hp.value) return;                       // bot
-  // 1) app endpoint (source of truth going forward)
-  try {
-    await fetch('https://APP_DOMAIN/api/subscribe', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, page: location.href }),
-    });
-  } catch (_) {}
-  // 2) Mailchimp in parallel (remove this block once you cut over)
-  try {
-    const body = new URLSearchParams({ EMAIL: email });
-    await fetch('https://crystocraft.us3.list-manage.com/subscribe/post?u=6b2d62335af3c423419365717&id=d952115846',
-      { method: 'POST', mode: 'no-cors', body });
-  } catch (_) {}
-  msg.textContent = 'Thanks — you’re subscribed!';
-  f.reset();
-});
+(function () {
+  var ENDPOINT = 'https://ua-product-manager.netlify.app/api/subscribe';
+  document.addEventListener('submit', function (e) {
+    try {
+      var form = e.target;
+      if (!form || form.tagName !== 'FORM') return;
+      var act = form.getAttribute('action') || '';
+      var isMC = form.id === 'mc-embedded-subscribe-form' || act.indexOf('list-manage.com') !== -1;
+      if (!isMC) return;
+      var el = form.querySelector('input[type=email], #mce-EMAIL, input[name=EMAIL]');
+      var email = el && el.value ? el.value.trim() : '';
+      if (!email || email.indexOf('@') < 0) return;
+      var hp = form.querySelector('input[name^="b_"]');   // Mailchimp honeypot
+      if (hp && hp.value) return;
+      fetch(ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, page: location.href, source: 'wordpress_mc_popup' }),
+        keepalive: true,
+        mode: 'cors'
+      }).catch(function () {});
+    } catch (err) {}
+  }, true); // capture phase, runs even if Mailchimp stops propagation
+})();
 </script>
 ```
 
-When you're confident the app is capturing everything, delete the Mailchimp
-`<script>` block (step 2) and remove the hosted Mailchimp popup snippet. Where
-that popup snippet is injected still needs locating — the `plugins.php`/code
-area is blocked by the Plugin Sentinel security plugin.
+Verified end-to-end on the live site: a submit on a list-manage form is caught,
+posted, and lands in `marketing_contacts` (CORS from crystocraft.com confirmed).
+
+### Cutover (later)
+
+Once the app has captured signups for a while and you're confident, remove the
+hosted Mailchimp popup snippet so only the app receives new signups. Where that
+popup snippet is injected still needs locating — `plugins.php`/code areas are
+blocked by the Plugin Sentinel security plugin. The mirror above keeps working
+regardless (it only forwards a copy; it never touched Mailchimp).
