@@ -127,6 +127,14 @@ service cloud.firestore {
         allow read, write: if isAdmin();
       }
     }
+
+    // Marketing contacts — the cleaned Mailchimp list + WordPress signups.
+    // Kept separate from customers; admin-only in the app. Public signups are
+    // written server-side by the /api/subscribe edge function (service account,
+    // which bypasses these rules), never by the browser.
+    match /marketing_contacts/{contactId} {
+      allow read, write: if isAdmin();
+    }
     match /{path=**}/supplier_quotes/{quoteId} {
       allow read, write: if isAdmin();
     }
