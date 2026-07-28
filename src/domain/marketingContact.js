@@ -14,7 +14,7 @@ import { db } from '../firebase'
 const COL = () => collection(db, 'marketing_contacts')
 
 export const MC_STATUSES = ['subscribed', 'nonsubscribed', 'unsubscribed', 'cleaned']
-export const MC_AUDIENCES = ['trade', 'retail']
+export const MC_AUDIENCES = ['trade', 'retail', 'website']
 export const MC_RELATIONSHIPS = [
   'distributor', 'large retailer', 'retailer', 'oem', 'corp gift',
   'wholesaler', 'trophy', 'jewelry', 'glassware', 'home decor', 'wedding', 'licensing',

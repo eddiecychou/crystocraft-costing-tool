@@ -77,6 +77,10 @@
   path = "/api/send-email"
 
 [[edge_functions]]
+  function = "subscribe"
+  path = "/api/subscribe"
+
+[[edge_functions]]
   function = "customizer-render"
   path = "/api/customizer-render"
 

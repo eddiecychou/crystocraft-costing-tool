@@ -13,8 +13,9 @@ const STATUS_STYLE = {
   cleaned:       'bg-red-100 text-red-700',
 }
 const AUD_STYLE = {
-  trade:  'bg-indigo-100 text-indigo-700',
-  retail: 'bg-teal-100 text-teal-700',
+  trade:   'bg-indigo-100 text-indigo-700',
+  retail:  'bg-teal-100 text-teal-700',
+  website: 'bg-amber-100 text-amber-700',
 }
 const REVIEW_STYLE = {
   '':          'text-gray-400',
@@ -157,9 +158,10 @@ export default function MarketingContacts() {
             <option value="cleaned">Cleaned (bounced)</option>
           </select>
           <select className="input flex-1 min-w-[110px]" value={audience} onChange={e => setAudience(e.target.value)}>
-            <option value="">Both audiences</option>
+            <option value="">All audiences</option>
             <option value="trade">Trade (B2B)</option>
             <option value="retail">Retail (e-com)</option>
+            <option value="website">Website signup</option>
           </select>
           <select className="input flex-1 min-w-[110px]" value={segment} onChange={e => setSegment(e.target.value)}>
             <option value="">Customer + prospect</option>
