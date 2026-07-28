@@ -96,26 +96,32 @@ Mailchimp)" (post id 57615), Location `<head>`, Condition Entire site. The code:
 Verified end-to-end on the live site: a submit on a list-manage form is caught,
 posted, and lands in `marketing_contacts` (CORS from crystocraft.com confirmed).
 
-### The replacement popup — BUILT, saved as DRAFT (ready, inactive)
+### CUTOVER DONE (2026-07-28) — the replacement popup is LIVE
 
-The mirror only works while Mailchimp's popup exists (it listens to that popup's
-form). So a standalone replacement popup was built and is waiting: **Elementor →
-Custom Code, "App signup popup (activate at Mailchimp cutover)" (post id 57616),
-status DRAFT.** It's a self-contained, on-brand modal (dark header, gold tagline,
-burgundy button) that posts directly to `/api/subscribe` (source
-`wordpress_popup`) with a honeypot and a 30-day "seen" cookie, no Mailchimp
-dependency. Verified: renders correctly and a submit lands in `marketing_contacts`.
+Owner cancelled the Mailchimp plan; switched over. The replacement popup is a
+self-contained, on-brand modal (dark header, gold tagline, burgundy button)
+posting directly to `/api/subscribe` (source `wordpress_popup`), honeypot +
+30-day cookie, no Mailchimp dependency. **Elementor → Custom Code, "App signup
+popup (activate at Mailchimp cutover)" (post 57616), PUBLISHED, Entire site,
+`<head>`.**
 
-### Cutover checklist (when ready to drop Mailchimp)
+The Mailchimp plan being cancelled did NOT stop its popup — the connected-site
+script (`chimpstatic.com/mcjs-connected/...`, injected by Mailchimp-for-
+WooCommerce) still rendered `.mc-modal`. So the popup snippet also **suppresses
+it**: a `.mc-modal,.mc-modal-bg{display:none!important}` CSS rule plus a small
+`killMC()` that removes those nodes for ~15s. Fully reversible — unpublishing the
+snippet restores everything. Verified live: our popup shows, MC modal = 0 nodes,
+and a real submit through the popup landed in `marketing_contacts`.
 
-Order matters so the site is never left with two popups or none:
-1. **Remove the hosted Mailchimp popup snippet** (stops the Mailchimp popup).
-   Its injection point still needs locating — `plugins.php`/code areas are
-   blocked by the Plugin Sentinel security plugin.
-2. **Publish the draft popup** (post 57616): set status Publish + Condition
-   "Entire site", Location `<head>`.
-3. **Unpublish the mirror** (post 57615) — redundant once Mailchimp's popup is
-   gone (harmless if left; it just has nothing to listen to).
+The **mirror (post 57615) is kept published** — the site ALSO has a static
+Mailchimp *footer* signup form (`#mc-embedded-subscribe-form` in an Elementor
+`.mc-footer` widget), and the mirror still forwards those submits to the app.
 
-The mirror never touched Mailchimp — it only forwarded a copy — so nothing
-breaks during the transition.
+### Still open (small follow-ups)
+
+- **Footer Mailchimp form** still posts to the (now dead) Mailchimp list, so a
+  visitor who uses it sees a Mailchimp error even though the mirror captured
+  their email. Repoint/replace it (or remove it) when convenient.
+- **Mailchimp-for-WooCommerce** plugin can be disconnected/removed whenever —
+  its sync target (the account) is gone. Not required; the popup suppression
+  already hides the last visible Mailchimp UI.
