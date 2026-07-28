@@ -280,7 +280,7 @@ export default async function handler(req) {
   if (!cfg) return json({ error: `Unknown entity: ${payload?.entity}` }, 400)
 
   const q = String(payload.q ?? '').trim().slice(0, 80)
-  const limit = Math.min(Math.max(parseInt(payload.limit, 10) || 25, 1), cfg.maxLimit || 100)
+  const limit = Math.min(Math.max(parseInt(payload.limit, 10) || 25, 1), cfg.maxLimit || 200)
   const activeOnly = payload.activeOnly === true
 
   // 3) Build the PostgREST query. Double-quote ilike values so commas/parens in

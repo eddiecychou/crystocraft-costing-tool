@@ -434,6 +434,7 @@ export default function ErpLookup() {
   const [entity, setEntity] = useState('customer')
   const [q, setQ] = useState('')
   const [activeOnly, setActiveOnly] = useState(true)
+  const [limit, setLimit] = useState(50)
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -558,7 +559,7 @@ export default function ErpLookup() {
     const t = setTimeout(async () => {
       try {
         const r = await erpLookup(entity, {
-          q, activeOnly, limit: cfg.limit || 50,
+          q, activeOnly, limit: cfg.limit || limit,
           filters: cfg.hasWarehouse ? { warehouse, item_type: itemType } : {},
           nonZeroOnly: cfg.hasWarehouse ? nonZeroOnly : false,
         })
@@ -570,7 +571,7 @@ export default function ErpLookup() {
       }
     }, 300)
     return () => { alive = false; clearTimeout(t) }
-  }, [entity, q, activeOnly, warehouse, itemType, nonZeroOnly, cfg])
+  }, [entity, q, activeOnly, warehouse, itemType, nonZeroOnly, limit, cfg])
 
   return (
     <div className="p-4 md:p-6">
@@ -691,6 +692,21 @@ export default function ErpLookup() {
             <input type="checkbox" checked={activeOnly} onChange={(e) => setActiveOnly(e.target.checked)}
                    className="rounded border-gray-300 text-teal-600 focus:ring-teal-500" />
             Active only
+          </label>
+        )}
+        {!cfg.limit && (
+          <label className="flex items-center gap-2 text-sm text-gray-600 select-none">
+            Show
+            <select
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              className="px-2 py-1.5 text-sm border border-gray-200 rounded-lg bg-white
+                         focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
+            >
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+            </select>
           </label>
         )}
       </div>
@@ -825,7 +841,7 @@ export default function ErpLookup() {
             {' — '}
           </>
         )}
-        Showing up to {(cfg.limit || 50).toLocaleString()} results. Source:{' '}
+        Showing up to {(cfg.limit || limit).toLocaleString()} results. Source:{' '}
         <span className="font-mono">JES_UnitedArt</span> → Supabase mirror.
       </p>
 
