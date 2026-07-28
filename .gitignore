@@ -22,3 +22,10 @@ src/assets/fonts/NotoSansTC-Regular.ttf
 
 # QA render artifacts (PDFs/PNGs produced by qa/pi-pagination.mjs)
 qa/out/
+
+# Marketing / Mailchimp contact exports — personal data (emails, names),
+# never commit. The Firestore `marketing_contacts` collection is the store;
+# these local files are the one-time import source only.
+migration/marketing_contacts/
+*audience_export*.zip
+*audience_export*.csv
