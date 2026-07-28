@@ -96,10 +96,26 @@ Mailchimp)" (post id 57615), Location `<head>`, Condition Entire site. The code:
 Verified end-to-end on the live site: a submit on a list-manage form is caught,
 posted, and lands in `marketing_contacts` (CORS from crystocraft.com confirmed).
 
-### Cutover (later)
+### The replacement popup — BUILT, saved as DRAFT (ready, inactive)
 
-Once the app has captured signups for a while and you're confident, remove the
-hosted Mailchimp popup snippet so only the app receives new signups. Where that
-popup snippet is injected still needs locating — `plugins.php`/code areas are
-blocked by the Plugin Sentinel security plugin. The mirror above keeps working
-regardless (it only forwards a copy; it never touched Mailchimp).
+The mirror only works while Mailchimp's popup exists (it listens to that popup's
+form). So a standalone replacement popup was built and is waiting: **Elementor →
+Custom Code, "App signup popup (activate at Mailchimp cutover)" (post id 57616),
+status DRAFT.** It's a self-contained, on-brand modal (dark header, gold tagline,
+burgundy button) that posts directly to `/api/subscribe` (source
+`wordpress_popup`) with a honeypot and a 30-day "seen" cookie, no Mailchimp
+dependency. Verified: renders correctly and a submit lands in `marketing_contacts`.
+
+### Cutover checklist (when ready to drop Mailchimp)
+
+Order matters so the site is never left with two popups or none:
+1. **Remove the hosted Mailchimp popup snippet** (stops the Mailchimp popup).
+   Its injection point still needs locating — `plugins.php`/code areas are
+   blocked by the Plugin Sentinel security plugin.
+2. **Publish the draft popup** (post 57616): set status Publish + Condition
+   "Entire site", Location `<head>`.
+3. **Unpublish the mirror** (post 57615) — redundant once Mailchimp's popup is
+   gone (harmless if left; it just has nothing to listen to).
+
+The mirror never touched Mailchimp — it only forwarded a copy — so nothing
+breaks during the transition.
