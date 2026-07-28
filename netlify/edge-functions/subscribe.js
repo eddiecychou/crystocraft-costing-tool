@@ -75,9 +75,26 @@ const dv = (val) => {
   return undefined
 }
 
+// Rebuild a canonical PKCS#8 PEM from whatever the env var actually holds. Env
+// UIs mangle multi-line secrets in every possible way — literal \n, doubled
+// \\n, stripped body newlines, surrounding quotes, CRLF — and jose's importPKCS8
+// then rejects it with "must be PKCS#8 formatted string". Extract the base64
+// body and re-wrap it, so any of those survive. (Verified against all of them.)
+function normalizePkcs8(input) {
+  let s = String(input || '').trim()
+  if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) s = s.slice(1, -1)
+  s = s.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\\r/g, '')
+  const inner = s
+    .replace(/-----BEGIN [A-Z ]*PRIVATE KEY-----/, '')
+    .replace(/-----END [A-Z ]*PRIVATE KEY-----/, '')
+  const body = inner.replace(/[^A-Za-z0-9+/=]/g, '')
+  const wrapped = body.match(/.{1,64}/g)?.join('\n') || body
+  return `-----BEGIN PRIVATE KEY-----\n${wrapped}\n-----END PRIVATE KEY-----\n`
+}
+
 // Google service-account → OAuth2 access token for the Firestore (datastore) API.
 async function getAccessToken(clientEmail, privateKeyPem) {
-  const key = await importPKCS8(privateKeyPem, 'RS256')
+  const key = await importPKCS8(normalizePkcs8(privateKeyPem), 'RS256')
   const now = Math.floor(Date.now() / 1000)
   const assertion = await new SignJWT({ scope: 'https://www.googleapis.com/auth/datastore' })
     .setProtectedHeader({ alg: 'RS256', typ: 'JWT' })
@@ -140,7 +157,7 @@ export default async function handler(req) {
 
   const PROJECT = Deno.env.get('VITE_FIREBASE_PROJECT_ID') || Deno.env.get('FIREBASE_PROJECT_ID')
   const CLIENT_EMAIL = Deno.env.get('FIREBASE_CLIENT_EMAIL')
-  const PRIVATE_KEY = (Deno.env.get('FIREBASE_PRIVATE_KEY') || '').replace(/\\n/g, '\n')
+  const PRIVATE_KEY = Deno.env.get('FIREBASE_PRIVATE_KEY') || ''   // normalizePkcs8 handles any formatting
   if (!PROJECT || !CLIENT_EMAIL || !PRIVATE_KEY) {
     return json({ error: 'Server not configured (missing FIREBASE_* env vars)' }, 500)
   }
