@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
-import { Users, Mail, MailX, UserCheck, Link2, Tag, AlertCircle, Download, Trash2, X, Pencil } from 'lucide-react'
+import { Users, Mail, MailX, UserCheck, Link2, Tag, AlertCircle, Download, Trash2, X, Pencil, UserPlus } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import {
   useMarketingContacts, updateContactReview, saveContact, deleteContact, deleteContacts,
   contactName, MC_CATEGORIES, MC_REVIEW, MC_STATUSES, isCategoryTag, sortTags,
+  promoteContactsToCustomers,
 } from '../domain/marketingContact'
 
 const STATUS_STYLE = {
@@ -25,15 +26,24 @@ const REVIEW_STYLE = {
 }
 const DISPLAY_CAP = 300
 
-function Stat({ Icon, label, value, tone = 'text-gray-900' }) {
+// Plain when there's nothing to filter to (Total, Suppressed); a button when
+// `onClick` is given, so a stat can double as a quick filter — click again
+// (active=true) to clear it.
+function Stat({ Icon, label, value, tone = 'text-gray-900', onClick, active }) {
+  const Tag_ = onClick ? 'button' : 'div'
   return (
-    <div className="card px-4 py-3 flex items-center gap-3">
+    <Tag_
+      type={onClick ? 'button' : undefined}
+      onClick={onClick}
+      className={`card px-4 py-3 flex items-center gap-3 text-left w-full ${onClick ? 'hover:border-brand-300 hover:bg-brand-50/30 transition-colors cursor-pointer' : ''} ${active ? 'ring-2 ring-brand-400 border-brand-300' : ''}`}
+      title={onClick ? (active ? 'Click to clear this filter' : 'Click to filter to these') : undefined}
+    >
       <Icon size={20} className="text-brand-600 shrink-0" />
       <div>
         <div className={`text-lg font-bold leading-none ${tone}`}>{value.toLocaleString()}</div>
         <div className="text-xs text-gray-500 mt-0.5">{label}</div>
       </div>
-    </div>
+    </Tag_>
   )
 }
 
@@ -179,8 +189,10 @@ export default function MarketingContacts() {
   const [category, setCategory] = useState('')
   const [country, setCountry] = useState('')
   const [review, setReview] = useState('')
+  const [matchedOnly, setMatchedOnly] = useState(false)
   const [selected, setSelected] = useState(() => new Set())
   const [editing, setEditing] = useState(null)
+  const [promoting, setPromoting] = useState(false)
 
   const countries = useMemo(() => {
     const c = new Map()
@@ -212,9 +224,10 @@ export default function MarketingContacts() {
       if (category && !c.tags.includes(category)) return false
       if (country && c.country !== country) return false
       if (review && c.review_status !== review) return false
+      if (matchedOnly && !c.possible_customer_match) return false
       return true
     })
-  }, [contacts, search, audience, status, segment, category, country, review])
+  }, [contacts, search, audience, status, segment, category, country, review, matchedOnly])
 
   const shown = filtered.slice(0, DISPLAY_CAP)
   const allShownSelected = shown.length > 0 && shown.every(c => selected.has(c.id))
@@ -256,6 +269,36 @@ export default function MarketingContacts() {
     catch (e) { window.alert(e.message || 'Bulk delete failed.') }
   }
 
+  // Create a real app Customer for each selected contact that isn't already
+  // linked to one (already-matched contacts are skipped, not duplicated).
+  async function bulkPromote() {
+    const ids = [...selected]
+    if (!ids.length) return
+    const rows = contacts.filter(c => ids.includes(c.id))
+    const already = rows.filter(c => c.possible_customer_match).length
+    const toAdd = rows.length - already
+    if (!toAdd) { window.alert('All selected contacts are already linked to an app customer.'); return }
+    if (!window.confirm(
+      `Add ${toAdd} contact${toAdd === 1 ? '' : 's'} as new Customers in the app?` +
+      (already ? ` (${already} already linked — will be skipped.)` : '')
+    )) return
+    setPromoting(true)
+    try {
+      const { created, skipped } = await promoteContactsToCustomers(rows)
+      const byId = new Map(created.map(r => [r.contactId, r]))
+      setContacts(prev => prev.map(c => byId.has(c.id)
+        ? { ...c, is_customer: true, possible_customer_match: { customer_id: byId.get(c.id).customerId, company_name: byId.get(c.id).companyName } }
+        : c))
+      setSelected(new Set())
+      window.alert(`Added ${created.length} customer${created.length === 1 ? '' : 's'}.` +
+        (skipped.length ? ` ${skipped.length} skipped (already linked).` : ''))
+    } catch (e) {
+      window.alert(e.message || 'Could not add customers.')
+    } finally {
+      setPromoting(false)
+    }
+  }
+
   return (
     <div className="p-4 md:p-6">
       {loading && <LoadingBar />}
@@ -284,8 +327,10 @@ export default function MarketingContacts() {
         <Stat Icon={Users}     label="Total contacts"          value={stats.total} />
         <Stat Icon={Mail}      label="Emailable (subscribed)"  value={stats.emailable} tone="text-green-700" />
         <Stat Icon={MailX}     label="Suppressed — never email" value={stats.suppressed} tone="text-amber-700" />
-        <Stat Icon={UserCheck} label="Likely customers"        value={stats.customers} />
-        <Stat Icon={Link2}     label="Match an app customer"   value={stats.matched} />
+        <Stat Icon={UserCheck} label="Likely customers"        value={stats.customers}
+              active={segment === 'customer'} onClick={() => setSegment(s => s === 'customer' ? '' : 'customer')} />
+        <Stat Icon={Link2}     label="Match an app customer"   value={stats.matched}
+              active={matchedOnly} onClick={() => setMatchedOnly(v => !v)} />
       </div>
 
       {/* Filters */}
@@ -332,15 +377,25 @@ export default function MarketingContacts() {
       </div>
 
       {/* Count + bulk bar */}
-      <div className="flex items-center justify-between mb-2 min-h-[28px]">
-        <p className="text-xs text-gray-500">
+      <div className="flex items-center justify-between mb-2 min-h-[28px] flex-wrap gap-2">
+        <p className="text-xs text-gray-500 flex items-center gap-2">
           {filtered.length.toLocaleString()} match{filtered.length === 1 ? '' : 'es'}
           {filtered.length > DISPLAY_CAP && ` — showing first ${DISPLAY_CAP}, refine to narrow`}
+          {matchedOnly && (
+            <span className="inline-flex items-center gap-1 text-brand-600 bg-brand-50 rounded-full px-2 py-0.5">
+              matched to a customer
+              <button onClick={() => setMatchedOnly(false)} className="hover:text-brand-800"><X size={11} /></button>
+            </span>
+          )}
         </p>
         {selected.size > 0 && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-gray-500">{selected.size} selected</span>
             <button onClick={() => setSelected(new Set())} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+            <button onClick={bulkPromote} disabled={promoting}
+              className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 border border-brand-200 rounded-md px-2 py-1 disabled:opacity-50">
+              <UserPlus size={13} /> {promoting ? 'Adding…' : 'Add to Customers'}
+            </button>
             <button onClick={bulkDelete}
               className="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 border border-red-200 rounded-md px-2 py-1">
               <Trash2 size={13} /> Delete selected
@@ -449,7 +504,8 @@ export default function MarketingContacts() {
       </div>
 
       <p className="text-xs text-gray-400 mt-3">
-        Click <strong>Edit</strong> (or a contact’s name) to change their details; tick rows to delete in bulk. The suppressed list
+        Click <strong>Edit</strong> (or a contact’s name) to change their details; tick rows to delete in bulk or add them as
+        Customers. The two stat tiles above are filters too — click one to narrow the list. The suppressed list
         (unsubscribed / bounced) is retained for reference only and must never be emailed.
       </p>
     </div>

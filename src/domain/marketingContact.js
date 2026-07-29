@@ -4,6 +4,7 @@ import {
   writeBatch, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../firebase'
+import { saveCustomer } from './customer'
 
 // Marketing contacts — the cleaned Mailchimp list, kept DELIBERATELY SEPARATE
 // from the `customers` collection. Some people are in both; they are not merged.
@@ -163,4 +164,44 @@ export async function deleteContacts(ids) {
     ids.slice(i, i + 400).forEach(id => batch.delete(doc(db, 'marketing_contacts', id)))
     await batch.commit()
   }
+}
+
+// Record that a contact is now (or already was found to be) an app customer.
+// A pointer, not a merge — the marketing contact stays a separate record; see
+// the module header. is_customer flips to true because "linked to a real
+// customer" is the strongest possible signal of that.
+export async function linkContactToCustomer(id, customerId, companyName) {
+  await updateDoc(doc(db, 'marketing_contacts', id), {
+    possible_customer_match: { customer_id: customerId, company_name: str(companyName) },
+    is_customer: true,
+    updatedAt: serverTimestamp(),
+  })
+}
+
+// Promote selected marketing contacts into real app Customer records — the
+// reverse direction from possible_customer_match, for a contact that turns out
+// to be worth tracking as a customer. Contacts already linked are skipped (no
+// second customer created for them); the caller decides how to report that.
+// Returns { created: [{contactId, customerId, companyName}], skipped: [contactId] }.
+export async function promoteContactsToCustomers(rows) {
+  const created = [], skipped = []
+  for (const c of rows) {
+    if (c.possible_customer_match) { skipped.push(c.id); continue }
+    const company = str(c.company) || displayName(c)
+    const res = await saveCustomer(null, {
+      company_name: company,
+      contact_name: [c.first_name, c.last_name].filter(Boolean).join(' '),
+      contact_emails: [c.email],
+      contact_phones: c.phone ? [c.phone] : [],
+      country: c.country,
+      tags: c.tags,
+      crm_status: 'Prospect',
+      source: c.tags.includes('alibaba') ? 'Alibaba' : (c.audiences.includes('website') ? 'Website' : ''),
+      notes: 'Added from Marketing Contacts (Mailchimp import).',
+    })
+    if (!res.ok) throw new Error(`Could not create a customer for ${c.email}: ${res.result.errors?.[0]?.message || 'validation failed'}`)
+    await linkContactToCustomer(c.id, res.id, company)
+    created.push({ contactId: c.id, customerId: res.id, companyName: company })
+  }
+  return { created, skipped }
 }
