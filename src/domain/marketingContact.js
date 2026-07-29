@@ -18,10 +18,17 @@ const COL = () => collection(db, 'marketing_contacts')
 
 export const MC_STATUSES = ['subscribed', 'nonsubscribed', 'unsubscribed', 'cleaned']
 export const MC_AUDIENCES = ['trade', 'retail', 'website']
-export const MC_RELATIONSHIPS = [
+// "Category" tags — the buyer-type tags promoted for filtering + highlighting.
+// These used to be a separate `relationship` field, but that was derived from
+// tags (every value already appeared as a tag), so it was merged back into tags.
+export const MC_CATEGORIES = [
   'distributor', 'large retailer', 'retailer', 'oem', 'corp gift',
   'wholesaler', 'trophy', 'jewelry', 'glassware', 'home decor', 'wedding', 'licensing',
 ]
+const CATEGORY_SET = new Set(MC_CATEGORIES)
+export const isCategoryTag = t => CATEGORY_SET.has(t)
+// Category tags first (so they survive a truncated display), then the rest.
+export const sortTags = tags => [...tags].sort((a, b) => (isCategoryTag(b) ? 1 : 0) - (isCategoryTag(a) ? 1 : 0))
 export const MC_REVIEW = [
   { value: '',          label: 'Unreviewed' },
   { value: 'keep',      label: 'Keep' },
@@ -51,7 +58,6 @@ export function normalizeContact(id, raw) {
     status:        str(r.status) || 'subscribed',
     emailable:     !!r.emailable,
     is_customer:   !!r.is_customer,
-    relationship:  str(r.relationship),
     channels:      arr(r.channels),
     freemail:      !!r.freemail,
     role_address:  !!r.role_address,
@@ -124,7 +130,6 @@ export async function saveContact(currentId, data) {
     company:      str(data.company),
     country:      str(data.country),
     phone:        str(data.phone),
-    relationship: MC_RELATIONSHIPS.includes(data.relationship) ? data.relationship : '',
     tags:         arr(data.tags),
     status,
     emailable:    status === 'subscribed',

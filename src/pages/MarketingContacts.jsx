@@ -3,7 +3,7 @@ import { Users, Mail, MailX, UserCheck, Link2, Tag, AlertCircle, Download, Trash
 import LoadingBar from '../components/LoadingBar'
 import {
   useMarketingContacts, updateContactReview, saveContact, deleteContact, deleteContacts,
-  contactName, MC_RELATIONSHIPS, MC_REVIEW, MC_STATUSES,
+  contactName, MC_CATEGORIES, MC_REVIEW, MC_STATUSES, isCategoryTag, sortTags,
 } from '../domain/marketingContact'
 
 const STATUS_STYLE = {
@@ -41,7 +41,7 @@ function Stat({ Icon, label, value, tone = 'text-gray-900' }) {
 // company names, and every field text-quoted so codes/leading-zeros survive.
 function exportCsv(rows) {
   const cols = ['email', 'first_name', 'last_name', 'company', 'country', 'status',
-    'audiences', 'is_customer', 'relationship', 'tags', 'review_status', 'matched_customer']
+    'audiences', 'is_customer', 'tags', 'review_status', 'matched_customer']
   const esc = v => {
     const s = Array.isArray(v) ? v.join('|') : (v == null ? '' : String(v))
     return `"${s.replace(/"/g, '""')}"`
@@ -68,7 +68,7 @@ function EditContactModal({ contact, onClose, onSaved, onDeleted }) {
   const [f, setF] = useState({
     first_name: contact.first_name, last_name: contact.last_name, email: contact.email,
     company: contact.company, country: contact.country, phone: contact.phone,
-    relationship: contact.relationship, status: contact.status,
+    status: contact.status,
     is_customer: contact.is_customer, review_status: contact.review_status,
     tags: contact.tags.join(', '), app_notes: contact.app_notes,
   })
@@ -123,24 +123,16 @@ function EditContactModal({ contact, onClose, onSaved, onDeleted }) {
             {field('Country', 'country')}
           </div>
           {field('Phone', 'phone')}
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block">
-              <span className="text-xs text-gray-500">Status</span>
-              <select className="input w-full mt-0.5" value={f.status} onChange={set('status')}>
-                {MC_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-xs text-gray-500">Type</span>
-              <select className="input w-full mt-0.5" value={f.relationship} onChange={set('relationship')}>
-                <option value="">—</option>
-                {MC_RELATIONSHIPS.map(r => <option key={r} value={r}>{r}</option>)}
-              </select>
-            </label>
-          </div>
+          <label className="block">
+            <span className="text-xs text-gray-500">Status</span>
+            <select className="input w-full mt-0.5" value={f.status} onChange={set('status')}>
+              {MC_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
           <label className="block">
             <span className="text-xs text-gray-500">Tags (comma-separated)</span>
             <input className="input w-full mt-0.5" value={f.tags} onChange={set('tags')} placeholder="distributor, exhibition contact" />
+            <span className="text-[11px] text-gray-400">Category tags ({MC_CATEGORIES.slice(0, 5).join(', ')}…) show highlighted.</span>
           </label>
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2 text-sm text-gray-600">
@@ -184,7 +176,7 @@ export default function MarketingContacts() {
   const [audience, setAudience] = useState('')
   const [status, setStatus] = useState('subscribed')  // default to the emailable list
   const [segment, setSegment] = useState('')          // '', 'customer', 'prospect'
-  const [relationship, setRelationship] = useState('')
+  const [category, setCategory] = useState('')
   const [country, setCountry] = useState('')
   const [review, setReview] = useState('')
   const [selected, setSelected] = useState(() => new Set())
@@ -217,12 +209,12 @@ export default function MarketingContacts() {
       if (status && c.status !== status) return false
       if (segment === 'customer' && !c.is_customer) return false
       if (segment === 'prospect' && c.is_customer) return false
-      if (relationship && c.relationship !== relationship) return false
+      if (category && !c.tags.includes(category)) return false
       if (country && c.country !== country) return false
       if (review && c.review_status !== review) return false
       return true
     })
-  }, [contacts, search, audience, status, segment, relationship, country, review])
+  }, [contacts, search, audience, status, segment, category, country, review])
 
   const shown = filtered.slice(0, DISPLAY_CAP)
   const allShownSelected = shown.length > 0 && shown.every(c => selected.has(c.id))
@@ -324,9 +316,9 @@ export default function MarketingContacts() {
             <option value="customer">Likely customers</option>
             <option value="prospect">Prospects / leads</option>
           </select>
-          <select className="input flex-1 min-w-[110px]" value={relationship} onChange={e => setRelationship(e.target.value)}>
-            <option value="">All types</option>
-            {MC_RELATIONSHIPS.map(r => <option key={r} value={r}>{r}</option>)}
+          <select className="input flex-1 min-w-[110px]" value={category} onChange={e => setCategory(e.target.value)}>
+            <option value="">All categories</option>
+            {MC_CATEGORIES.map(r => <option key={r} value={r}>{r}</option>)}
           </select>
           <select className="input flex-1 min-w-[110px]" value={country} onChange={e => setCountry(e.target.value)}>
             <option value="">All countries</option>
@@ -373,7 +365,6 @@ export default function MarketingContacts() {
                 <th className="px-3 py-2 font-medium">Email</th>
                 <th className="px-3 py-2 font-medium">Country</th>
                 <th className="px-3 py-2 font-medium">Audience</th>
-                <th className="px-3 py-2 font-medium">Type</th>
                 <th className="px-3 py-2 font-medium">Tags</th>
                 <th className="px-3 py-2 font-medium">Status</th>
                 <th className="px-3 py-2 font-medium">Review</th>
@@ -413,15 +404,16 @@ export default function MarketingContacts() {
                       ))}
                     </div>
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-600">{c.relationship || <span className="text-gray-300">—</span>}</td>
                   <td className="px-3 py-2">
-                    <div className="flex flex-wrap gap-1 max-w-[220px]">
-                      {c.tags.slice(0, 4).map(t => (
-                        <span key={t} className="inline-flex items-center gap-0.5 text-[10px] text-gray-600 bg-gray-100 rounded px-1 py-0.5">
+                    <div className="flex flex-wrap gap-1 max-w-[260px]">
+                      {sortTags(c.tags).slice(0, 5).map(t => (
+                        <span key={t} className={`inline-flex items-center gap-0.5 text-[10px] rounded px-1 py-0.5 ${
+                          isCategoryTag(t) ? 'text-teal-700 bg-teal-100 font-medium' : 'text-gray-600 bg-gray-100'
+                        }`}>
                           <Tag size={9} />{t}
                         </span>
                       ))}
-                      {c.tags.length > 4 && <span className="text-[10px] text-gray-400">+{c.tags.length - 4}</span>}
+                      {c.tags.length > 5 && <span className="text-[10px] text-gray-400">+{c.tags.length - 5}</span>}
                     </div>
                   </td>
                   <td className="px-3 py-2">
@@ -439,7 +431,7 @@ export default function MarketingContacts() {
                 </tr>
               ))}
               {!loading && filtered.length === 0 && (
-                <tr><td colSpan={10} className="px-3 py-12 text-center text-gray-400">
+                <tr><td colSpan={9} className="px-3 py-12 text-center text-gray-400">
                   <AlertCircle size={32} strokeWidth={1.25} className="mx-auto mb-2 text-gray-300" />
                   No contacts match these filters.
                 </td></tr>
