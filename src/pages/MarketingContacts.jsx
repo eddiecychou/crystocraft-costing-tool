@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Users, Mail, MailX, UserCheck, Link2, Tag, AlertCircle, Download, Trash2, X } from 'lucide-react'
+import { Users, Mail, MailX, UserCheck, Link2, Tag, AlertCircle, Download, Trash2, X, Pencil } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import {
   useMarketingContacts, updateContactReview, saveContact, deleteContact, deleteContacts,
@@ -368,6 +368,7 @@ export default function MarketingContacts() {
                 <th className="px-3 py-2 font-medium">Tags</th>
                 <th className="px-3 py-2 font-medium">Status</th>
                 <th className="px-3 py-2 font-medium">Review</th>
+                <th className="px-3 py-2 font-medium w-12 text-right">Edit</th>
               </tr>
             </thead>
             <tbody>
@@ -428,10 +429,16 @@ export default function MarketingContacts() {
                       {MC_REVIEW.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                     </select>
                   </td>
+                  <td className="px-3 py-2 text-right">
+                    <button onClick={() => setEditing(c)} title="Edit contact"
+                      className="inline-flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700 hover:underline">
+                      <Pencil size={13} /> Edit
+                    </button>
+                  </td>
                 </tr>
               ))}
               {!loading && filtered.length === 0 && (
-                <tr><td colSpan={9} className="px-3 py-12 text-center text-gray-400">
+                <tr><td colSpan={10} className="px-3 py-12 text-center text-gray-400">
                   <AlertCircle size={32} strokeWidth={1.25} className="mx-auto mb-2 text-gray-300" />
                   No contacts match these filters.
                 </td></tr>
@@ -442,7 +449,7 @@ export default function MarketingContacts() {
       </div>
 
       <p className="text-xs text-gray-400 mt-3">
-        Click a name to edit; tick rows to delete in bulk. The suppressed list
+        Click <strong>Edit</strong> (or a contact’s name) to change their details; tick rows to delete in bulk. The suppressed list
         (unsubscribed / bounced) is retained for reference only and must never be emailed.
       </p>
     </div>
