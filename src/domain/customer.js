@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
-  collection, doc, getDoc, getDocs, addDoc, updateDoc,
-  onSnapshot, serverTimestamp,
+  collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
+  onSnapshot, serverTimestamp, query, where, writeBatch,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { str, cleanArray, result, addError, addWarning } from './validation'
@@ -205,6 +205,103 @@ export async function loadCustomers() {
 export async function getCustomer(id) {
   const snap = await getDoc(doc(db, 'customers', id))
   return snap.exists() ? fromDoc(snap) : null
+}
+
+// ── Merging two duplicate customer records ──────────────────────────────────
+// The survivor is the record you choose to keep; the duplicate is deleted.
+// Conflict rule: survivor wins, fill gaps only — a blank field on the survivor
+// is filled from the duplicate, array fields are unioned (never dropped), and a
+// boolean flag OR's (a true on either side survives). Nothing on the survivor
+// that already has a value is ever overwritten.
+const MERGE_SCALAR_FIELDS = [
+  'contact_name', 'website', 'address', 'country',
+  'crm_category', 'crm_status', 'source', 'segment', 'erp_code', 'notes', 'folder_path',
+]
+const MERGE_ARRAY_FIELDS = ['contact_emails', 'contact_phones', 'contact_whatsapps', 'contact_wechats', 'tags', 'channels']
+const MERGE_BOOL_FIELDS = ['is_vip', 'is_personal_wa']
+
+function unionArrays(a, b) {
+  const seen = new Set(); const out = []
+  for (const v of [...(a || []), ...(b || [])]) {
+    const k = String(v).trim().toLowerCase()
+    if (k && !seen.has(k)) { seen.add(k); out.push(v) }
+  }
+  return out
+}
+
+// What would change on the survivor if merged with the duplicate — the fields
+// to write, so the UI can show "X will gain: …" before anyone commits to it.
+function fieldsToFillFrom(survivor, duplicate) {
+  const out = {}
+  for (const f of MERGE_SCALAR_FIELDS) {
+    if (!str(survivor[f]) && str(duplicate[f])) out[f] = duplicate[f]
+  }
+  for (const f of MERGE_ARRAY_FIELDS) {
+    const merged = unionArrays(survivor[f], duplicate[f])
+    if (merged.length !== (survivor[f] || []).length) out[f] = merged
+  }
+  for (const f of MERGE_BOOL_FIELDS) {
+    if (!survivor[f] && duplicate[f]) out[f] = true
+  }
+  return out
+}
+
+// The three collections that reference a customer by id — everything a merge
+// has to repoint. (favourites/customer_designs/enquiries key on the portal
+// login's own uid, not customer_id, so a customer merge doesn't touch them.)
+async function relatedDocs(customerId) {
+  const [ordersSnap, quotesSnap, usersSnap] = await Promise.all([
+    getDocs(query(collection(db, 'orders'), where('customer_id', '==', customerId))),
+    getDocs(query(collection(db, 'client_quotes'), where('customer_id', '==', customerId))),
+    getDocs(query(collection(db, 'users'), where('customer_id', '==', customerId))),
+  ])
+  return { ordersSnap, quotesSnap, usersSnap }
+}
+
+// Read-only — never writes. Lets the UI show what a merge would do before
+// anyone commits to it: how many orders/quotes/portal-accounts move, and which
+// fields the survivor would gain.
+export async function previewCustomerMerge(duplicateId, survivorId) {
+  if (duplicateId === survivorId) throw new Error('Cannot merge a customer into itself.')
+  const [dupSnap, survSnap] = await Promise.all([
+    getDoc(doc(db, 'customers', duplicateId)),
+    getDoc(doc(db, 'customers', survivorId)),
+  ])
+  if (!dupSnap.exists() || !survSnap.exists()) throw new Error('Customer not found.')
+  const duplicate = { id: duplicateId, ...normalizeCustomer(dupSnap.data()) }
+  const survivor  = { id: survivorId, ...normalizeCustomer(survSnap.data()) }
+  const { ordersSnap, quotesSnap, usersSnap } = await relatedDocs(duplicateId)
+  return {
+    duplicate, survivor,
+    fieldsToFill: fieldsToFillFrom(survivor, duplicate),
+    ordersCount: ordersSnap.size,
+    quotesCount: quotesSnap.size,
+    accountsCount: usersSnap.size,
+  }
+}
+
+// Execute the merge: repoint every order/quote/portal-account from the
+// duplicate onto the survivor, fill the survivor's blank fields from the
+// duplicate, then delete the duplicate. Chunked batches (Firestore's 500-write
+// limit) — in practice one customer's related docs are far fewer than that.
+export async function mergeCustomers(duplicateId, survivorId) {
+  const preview = await previewCustomerMerge(duplicateId, survivorId)
+  const { ordersSnap, quotesSnap, usersSnap } = await relatedDocs(duplicateId)
+  const allRefs = [...ordersSnap.docs, ...quotesSnap.docs, ...usersSnap.docs].map(d => d.ref)
+  const hasFields = Object.keys(preview.fieldsToFill).length > 0
+  const CHUNK = 400
+  if (allRefs.length === 0) {
+    if (hasFields) await updateDoc(doc(db, 'customers', survivorId), { ...preview.fieldsToFill, updatedAt: serverTimestamp() })
+  } else {
+    for (let i = 0; i < allRefs.length; i += CHUNK) {
+      const batch = writeBatch(db)
+      allRefs.slice(i, i + CHUNK).forEach(ref => batch.update(ref, { customer_id: survivorId }))
+      if (i === 0 && hasFields) batch.update(doc(db, 'customers', survivorId), { ...preview.fieldsToFill, updatedAt: serverTimestamp() })
+      await batch.commit()
+    }
+  }
+  await deleteDoc(doc(db, 'customers', duplicateId))
+  return preview
 }
 
 // Live customer list (same client-side sort, same no-orderBy safety).

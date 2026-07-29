@@ -9,10 +9,10 @@ import { ref as storageRef, deleteObject } from 'firebase/storage'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
-import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package } from 'lucide-react'
+import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
-import { normalizeCustomer } from '../domain/customer'
+import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers } from '../domain/customer'
 
 function toArray(val) {
   if (Array.isArray(val)) return val.filter(Boolean)
@@ -87,6 +87,119 @@ function fmtDate(ts) {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
+const MERGE_FIELD_LABELS = {
+  contact_name: 'contact name', website: 'website', address: 'address', country: 'country',
+  crm_category: 'type', crm_status: 'status', source: 'source', segment: 'segment',
+  erp_code: 'ERP code', notes: 'notes', folder_path: 'folder',
+  contact_emails: 'email(s)', contact_phones: 'phone(s)', contact_whatsapps: 'WhatsApp(s)',
+  contact_wechats: 'WeChat(s)', tags: 'tags', channels: 'channels',
+  is_vip: 'VIP flag', is_personal_wa: 'personal-WhatsApp flag',
+}
+
+// Merges `customer` into another record you pick — the survivor's data wins,
+// this record's blanks-only fields fill in, and this record is deleted once
+// its orders/quotes/portal-accounts have moved. See domain/customer.js for the
+// actual merge rule.
+function MergeCustomerModal({ customer, onClose, onMerged }) {
+  const [customers, setCustomers] = useState([])
+  const [search, setSearch] = useState('')
+  const [survivorId, setSurvivorId] = useState('')
+  const [preview, setPreview] = useState(null)
+  const [previewing, setPreviewing] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => { loadCustomers().then(setCustomers) }, [])
+
+  useEffect(() => {
+    if (!survivorId) { setPreview(null); return }
+    let alive = true
+    setError(''); setPreviewing(true)
+    previewCustomerMerge(customer.id, survivorId)
+      .then(p => { if (alive) setPreview(p) })
+      .catch(e => { if (alive) setError(e.message || 'Could not load a preview.') })
+      .finally(() => { if (alive) setPreviewing(false) })
+    return () => { alive = false }
+  }, [survivorId, customer.id])
+
+  const results = search
+    ? customers.filter(c => c.id !== customer.id && c.company_name.toLowerCase().includes(search.toLowerCase())).slice(0, 20)
+    : []
+
+  async function confirm() {
+    setBusy(true); setError('')
+    try {
+      await mergeCustomers(customer.id, survivorId)
+      onMerged(survivorId)
+    } catch (e) {
+      setError(e.message || 'Merge failed.'); setBusy(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+          <h2 className="font-semibold text-gray-900">Merge “{customer.company_name}” into…</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+        </div>
+        <div className="p-5 space-y-3">
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <AlertTriangle size={16} /> {error}
+            </div>
+          )}
+          <label className="block">
+            <span className="text-xs text-gray-500">The surviving record — search by company name</span>
+            <input className="input w-full mt-0.5" placeholder="Search customers…" value={search}
+              onChange={e => { setSearch(e.target.value); setSurvivorId('') }} autoFocus />
+          </label>
+          {search && !survivorId && (
+            <div className="border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
+              {results.length === 0 ? (
+                <p className="text-xs text-gray-400 px-3 py-2">No match.</p>
+              ) : results.map(c => (
+                <button key={c.id} type="button"
+                  onClick={() => { setSurvivorId(c.id); setSearch(c.company_name) }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                  {c.company_name} {c.country && <span className="text-gray-400">— {c.country}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {previewing && <p className="text-xs text-gray-400">Checking what would move…</p>}
+
+          {preview && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900 space-y-1.5">
+              <p>
+                <strong>{preview.ordersCount}</strong> order{preview.ordersCount === 1 ? '' : 's'},{' '}
+                <strong>{preview.quotesCount}</strong> quote{preview.quotesCount === 1 ? '' : 's'}, and{' '}
+                <strong>{preview.accountsCount}</strong> portal account{preview.accountsCount === 1 ? '' : 's'} will move to{' '}
+                <strong>{preview.survivor.company_name}</strong>.
+              </p>
+              <p className="text-xs text-amber-800">
+                {Object.keys(preview.fieldsToFill).length > 0
+                  ? <>{preview.survivor.company_name} will gain: {Object.keys(preview.fieldsToFill).map(f => MERGE_FIELD_LABELS[f] || f).join(', ')} — nothing it already has is overwritten.</>
+                  : <>No fields to fill in — the surviving record already has everything this one does.</>}
+              </p>
+              <p className="text-xs text-amber-700 font-medium">
+                “{customer.company_name}” will be deleted once merged. This cannot be undone.
+              </p>
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200">
+          <button onClick={onClose} disabled={busy} className="btn-secondary text-sm">Cancel</button>
+          <button onClick={confirm} disabled={busy || !preview} className="btn-danger text-sm">
+            {busy ? 'Merging…' : 'Merge & Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function CustomerDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -100,6 +213,7 @@ export default function CustomerDetail() {
   const [loading, setLoading]           = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmDeleteEnquiry, setConfirmDeleteEnquiry] = useState(null)
+  const [merging, setMerging] = useState(false)
   const remember = useScrollMemory(`customer-${id}`, !loading)
 
   // Enquiry form state
@@ -308,6 +422,7 @@ export default function CustomerDetail() {
           </div>
           <div className="flex gap-2 shrink-0">
             <Link to={`/customers/${id}/edit`} onClick={remember} className="btn-secondary text-sm">Edit</Link>
+            <button className="btn-secondary text-sm" onClick={() => setMerging(true)}>Merge…</button>
             <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>Delete</button>
           </div>
         </div>
@@ -814,6 +929,14 @@ export default function CustomerDetail() {
           enquiry={editingEnquiry}
           onSave={() => {}}
           onClose={() => { setEnquiryFormOpen(false); setEditingEnquiry(null) }}
+        />
+      )}
+
+      {merging && (
+        <MergeCustomerModal
+          customer={customer}
+          onClose={() => setMerging(false)}
+          onMerged={(survivorId) => navigate(`/customers/${survivorId}`)}
         />
       )}
 
