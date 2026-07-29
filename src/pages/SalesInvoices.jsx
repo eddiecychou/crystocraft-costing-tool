@@ -88,6 +88,12 @@ export default function SalesInvoices() {
     const match = (o) =>
       !q || `${o.customer_name} ${o.erp_si_no} ${o.erp_so_no} ${o.uc_no}`.toLowerCase().includes(q)
     const all = orders.filter(match)
+    // An order already HAS an invoice when it carries an SI number — either in
+    // its own erp_si_no field, or (for JES-imported orders) in the doc-number
+    // field, where the SI sometimes landed instead of an SO/QU. Only a QU or SO
+    // needs one raised; an SI is already invoiced, so it must not sit in the
+    // "needs invoice" list.
+    const invoicedAlready = (o) => !!o.erp_si_no || /^SI/i.test(o.erp_so_no || '')
     return {
       invoiced: all
         .filter((o) => o.erp_si_no)
@@ -97,10 +103,10 @@ export default function SalesInvoices() {
       // be invoiced here, so it buried the recent orders that actually need
       // acting on under two years of noise.
       awaiting: all
-        .filter((o) => !o.erp_si_no && AWAITING.has(o.status) && !o.no_invoice_reason)
+        .filter((o) => !invoicedAlready(o) && AWAITING.has(o.status) && !o.no_invoice_reason)
         .sort((a, b) => (b.order_date || '').localeCompare(a.order_date || '')),
       // Dismissed, kept visible so the decision can be reviewed or undone.
-      resolved: all.filter((o) => !o.erp_si_no && AWAITING.has(o.status) && o.no_invoice_reason),
+      resolved: all.filter((o) => !invoicedAlready(o) && AWAITING.has(o.status) && o.no_invoice_reason),
     }
   }, [orders, search])
 
