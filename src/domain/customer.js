@@ -27,6 +27,42 @@ export const CRM_CATEGORIES = ['Distributor', 'Small B2B', 'Gift / OEM', 'Crysta
 export const CHANNELS       = ['Email', 'WhatsApp Business', 'Alibaba', 'Personal WhatsApp']
 export const CUSTOMER_SOURCES = ['Alibaba', 'Website', 'Email Marketing', 'Referral', 'Trade Show', 'BNI', 'Direct']
 
+// Country picker — single source (previously duplicated, and drifted, between
+// Customers.jsx's filter dropdown and CustomerForm.jsx's search combobox).
+// Base list plus everywhere a real customer or marketing contact is on record
+// (checked against both collections, 2026-07-29) that wasn't already covered —
+// Pakistan/Estonia/Latvia/Lithuania/Belarus (asked for) and the rest ordered by
+// how many contacts are there (Cyprus 15, Israel 14, Greece 13, Turkey 11, down
+// to Serbia 2). Left out: spelling variants of countries already in the list
+// (Macao, Brasil, România, Scotland) and "Republic of Dominica", which is Dominican
+// Republic misremembered — the correct name is included instead.
+export const CUSTOMER_COUNTRIES = [
+  'Albania', 'Algeria', 'Argentina', 'Australia', 'Austria',
+  'Belarus', 'Belgium', 'Brazil', 'Bulgaria',
+  'Cambodia', 'Canada', 'Chile', 'China (Mainland)', 'Colombia', 'Croatia', 'Cyprus', 'Czech Republic',
+  'Denmark', 'Dominican Republic',
+  'Ecuador', 'Egypt', 'Estonia',
+  'Finland', 'France',
+  'Germany', 'Greece',
+  'Honduras', 'Hong Kong', 'Hungary',
+  'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy',
+  'Japan',
+  'Kazakhstan', 'Kenya', 'Kuwait',
+  'Latvia', 'Lebanon', 'Lithuania', 'Luxembourg',
+  'Macau', 'Malaysia', 'Maldives', 'Mauritius', 'Mexico', 'Moldova', 'Mongolia', 'Morocco', 'Myanmar',
+  'Netherlands', 'New Zealand', 'Nigeria', 'Norway',
+  'Oman',
+  'Pakistan', 'Peru', 'Philippines', 'Poland', 'Portugal',
+  'Qatar',
+  'Romania', 'Russia',
+  'Saudi Arabia', 'Serbia', 'Singapore', 'Slovakia', 'Slovenia', 'South Africa', 'South Korea',
+  'Spain', 'Sri Lanka', 'Sweden', 'Switzerland',
+  'Taiwan', 'Thailand', 'Turkey',
+  'Ukraine', 'United Arab Emirates', 'United Kingdom', 'United States', 'Uzbekistan',
+  'Venezuela', 'Vietnam',
+  'Other',
+]
+
 // Array from a canonical array field, falling back to a legacy scalar field.
 const arrFrom = (arrVal, scalarVal) => {
   if (Array.isArray(arrVal) && arrVal.length) return cleanArray(arrVal)

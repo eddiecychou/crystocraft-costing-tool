@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Store, ShoppingCart, Gift, Sparkles, Check, Star, AlertCircle, AlertTriangle } from 'lucide-react'
-import { saveCustomer, CRM_STATUSES, CRM_CATEGORIES, CHANNELS, CUSTOMER_SOURCES } from '../domain/customer'
+import { saveCustomer, CRM_STATUSES, CRM_CATEGORIES, CHANNELS, CUSTOMER_SOURCES, CUSTOMER_COUNTRIES } from '../domain/customer'
 
 function toArray(val) {
   if (Array.isArray(val)) return val.length ? val : ['']
@@ -39,28 +39,10 @@ function MultiInput({ label, values, onChange, type = 'text', placeholder }) {
   )
 }
 
-const COUNTRIES = [
-  'Argentina', 'Australia', 'Austria',
-  'Belgium', 'Brazil', 'Bulgaria',
-  'Cambodia', 'Canada', 'China (Mainland)', 'Czech Republic',
-  'Denmark',
-  'Finland', 'France',
-  'Germany',
-  'Hong Kong', 'Hungary',
-  'India', 'Indonesia', 'Italy',
-  'Japan',
-  'Kenya',
-  'Macau', 'Malaysia', 'Mexico', 'Moldova', 'Morocco', 'Myanmar',
-  'Netherlands', 'New Zealand', 'Nigeria', 'Norway',
-  'Philippines', 'Poland', 'Portugal',
-  'Qatar',
-  'Romania', 'Russia',
-  'Saudi Arabia', 'Singapore', 'Slovakia', 'South Africa', 'South Korea', 'Spain', 'Sweden', 'Switzerland',
-  'Taiwan', 'Thailand',
-  'United Arab Emirates', 'United Kingdom', 'United States',
-  'Vietnam',
-  'Other',
-]
+// Canonical list lives in domain/customer.js (CUSTOMER_COUNTRIES) — this used to
+// be a second, independently-maintained copy that had already drifted from the
+// one in Customers.jsx (missing Cyprus, Israel, Pakistan, and 30-odd others a
+// real customer or contact is actually in).
 
 // Enum vocabularies (CRM_CATEGORIES / CHANNELS / CRM_STATUSES / CUSTOMER_SOURCES)
 // are the canonical lists imported from the domain module so the form and the
@@ -241,7 +223,7 @@ export default function CustomerForm() {
             />
             {countryOpen && (
               <div className="absolute z-20 left-0 right-0 mt-1 border border-gray-200 rounded-lg bg-white shadow-lg max-h-52 overflow-y-auto">
-                {COUNTRIES.filter(c => c.toLowerCase().includes(countrySearch.toLowerCase())).map(c => (
+                {CUSTOMER_COUNTRIES.filter(c => c.toLowerCase().includes(countrySearch.toLowerCase())).map(c => (
                   <button
                     key={c}
                     type="button"

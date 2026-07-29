@@ -3,17 +3,7 @@ import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import { Store, ShoppingCart, Gift, Sparkles, Building2, Star, Smartphone } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
-import { useCustomers } from '../domain/customer'
-
-const COUNTRIES = [
-  'Hong Kong', 'China (Mainland)', 'Macau', 'Taiwan',
-  'Singapore', 'Malaysia', 'Thailand', 'Vietnam', 'Indonesia', 'Philippines',
-  'Japan', 'South Korea', 'India',
-  'United Arab Emirates', 'Australia', 'New Zealand',
-  'United Kingdom', 'Germany', 'France', 'Netherlands', 'Switzerland', 'Italy', 'Spain',
-  'Belgium', 'Poland', 'Czech Republic', 'Austria', 'Sweden', 'Denmark', 'Norway',
-  'South Africa', 'United States', 'Canada', 'Other',
-]
+import { useCustomers, CUSTOMER_COUNTRIES } from '../domain/customer'
 
 const CRM_STATUS_STYLES = {
   Active:   'bg-green-100 text-green-700',
@@ -97,7 +87,7 @@ export default function Customers() {
         <div className="flex gap-2 flex-wrap">
           <select className="input flex-1 min-w-[120px]" value={filterCountry} onChange={e => setFilterCountry(e.target.value)}>
             <option value="">All countries</option>
-            {COUNTRIES.map(c => <option key={c}>{c}</option>)}
+            {CUSTOMER_COUNTRIES.map(c => <option key={c}>{c}</option>)}
           </select>
           <select className="input flex-1 min-w-[120px]" value={filterChannel} onChange={e => setFilterChannel(e.target.value)}>
             <option value="">All channels</option>
