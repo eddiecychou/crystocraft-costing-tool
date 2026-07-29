@@ -256,7 +256,7 @@ export default function ProformaInvoicePrint() {
           {/* One reference, not two. "PI No." and "UC#" printed the same
               number on the same document until 2026-07-21. */}
           <div className="pi-kv"><span className="k">UC#</span><span className="v pi-code">{orderUc(order) || '—'}</span></div>
-          <div className="pi-kv"><span className="k">SO No.</span><span className="v pi-code">{order.erp_so_no || '—'}</span></div>
+          <div className="pi-kv"><span className="k">{/^SO/i.test(order.erp_so_no || '') ? 'SO No.' : 'Doc No.'}</span><span className="v pi-code">{order.erp_so_no || '—'}</span></div>
           <div className="pi-kv"><span className="k">Date</span><span className="v">{fmtDate(order.order_date)}</span></div>
           <div className="pi-kv"><span className="k">Currency</span><span className="v">{cur}</span></div>
           {order.incoterm && <div className="pi-kv"><span className="k">Incoterm</span><span className="v">{order.incoterm}</span></div>}
