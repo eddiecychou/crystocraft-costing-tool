@@ -29,9 +29,12 @@ const fmtValue = (v) => {
   return Number.isFinite(n) ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
 }
 
-// Shipped or delivered but with no invoice number — the orders that owe an
-// invoice. Draft and in-progress orders are not late, they are just early.
-const AWAITING = new Set(['shipped', 'delivered'])
+// Any COMMITTED order (confirmed or later) with no invoice number — the orders
+// that can be invoiced from here. Previously only shipped/delivered, which hid
+// app-created SOs still at Confirmed/Ready: the wholesale flow raises the invoice
+// FROM the SO, and it is invoiced at confirmation (deposit taken), not only at
+// ship time. Draft stays out — a draft is not a commitment yet.
+const AWAITING = new Set(['confirmed', 'packing', 'ready', 'shipped', 'delivered'])
 
 // Cap the preview. Unbounded, this block rendered 66 rows and pushed the actual
 // invoice list — the point of the page — entirely below the fold.
