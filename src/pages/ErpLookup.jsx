@@ -7,6 +7,7 @@ import { buildProductIndex, matchProductCode } from '../criticalComponents'
 import { designBaseOf } from '../erpProductImport'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
+import { loadCustomers, importErpCustomers } from '../domain/customer'
 
 // Column layout per entity. `key` maps to the curated view's fields.
 const ENTITIES = {
@@ -468,6 +469,9 @@ export default function ErpLookup() {
   const [photo, setPhoto] = useState(null)   // { url, row } — enlarged view
   const [importCode, setImportCode] = useState('')   // ERP code being imported
   const [rangeProducts, setRangeProducts] = useState([])
+  const [existingErpCodes, setExistingErpCodes] = useState(() => new Set())  // customers.erp_code already in the app
+  const [selectedCustomers, setSelectedCustomers] = useState(() => new Set())
+  const [importingCustomers, setImportingCustomers] = useState(false)
 
   // Is this ERP code's design already a product here? Uses the app's own
   // matcher, which reconciles a full variant code (D0002-001-CGR) against
@@ -551,6 +555,16 @@ export default function ErpLookup() {
     return () => { alive = false }
   }, [])
 
+  // Same idea for customers: which JES customer codes are already linked to an
+  // app Customer, so an ERP row can be marked "in app" and excluded from import.
+  useEffect(() => {
+    let alive = true
+    loadCustomers()
+      .then(list => { if (alive) setExistingErpCodes(new Set(list.map(c => String(c.erp_code || '').toUpperCase()).filter(Boolean))) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [])
+
   // Sync freshness. Loaded once; a failure leaves the line hidden rather than
   // showing a wrong or alarming value.
   useEffect(() => {
@@ -595,6 +609,50 @@ export default function ErpLookup() {
     }, 300)
     return () => { alive = false; clearTimeout(t) }
   }, [entity, q, activeOnly, warehouse, itemType, nonZeroOnly, limit, cfg])
+
+  // Only rows not already linked to an app customer can be selected/imported.
+  const importableCustomerRows = entity === 'customer'
+    ? rows.filter(r => !existingErpCodes.has(String(r.code).toUpperCase()))
+    : []
+  const allCustomersShownSelected = importableCustomerRows.length > 0
+    && importableCustomerRows.every(r => selectedCustomers.has(r.code))
+
+  function toggleCustomerSel(code) {
+    setSelectedCustomers(prev => { const n = new Set(prev); n.has(code) ? n.delete(code) : n.add(code); return n })
+  }
+  function toggleAllCustomerSel() {
+    setSelectedCustomers(prev => {
+      const n = new Set(prev)
+      if (allCustomersShownSelected) importableCustomerRows.forEach(r => n.delete(r.code))
+      else importableCustomerRows.forEach(r => n.add(r.code))
+      return n
+    })
+  }
+
+  async function handleImportCustomers() {
+    const codes = selectedCustomers
+    const toImport = rows.filter(r => codes.has(r.code))
+    if (!toImport.length) return
+    if (!window.confirm(`Import ${toImport.length} customer${toImport.length === 1 ? '' : 's'} from JES into the app?`)) return
+    setImportingCustomers(true)
+    try {
+      const { created, skipped } = await importErpCustomers(toImport)
+      setExistingErpCodes(prev => {
+        const n = new Set(prev)
+        created.forEach(c => n.add(String(c.erpCode).toUpperCase()))
+        return n
+      })
+      setSelectedCustomers(new Set())
+      window.alert(
+        `Imported ${created.length} customer${created.length === 1 ? '' : 's'}.` +
+        (skipped.length ? ` ${skipped.length} already linked, skipped.` : '')
+      )
+    } catch (e) {
+      window.alert(e.message || 'Import failed.')
+    } finally {
+      setImportingCustomers(false)
+    }
+  }
 
   return (
     <div className="p-4 md:p-6">
@@ -642,7 +700,7 @@ export default function ErpLookup() {
           return (
             <button
               key={key}
-              onClick={() => { setEntity(key); setRows([]) }}
+              onClick={() => { setEntity(key); setRows([]); setSelectedCustomers(new Set()) }}
               className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm rounded-md transition ${
                 on ? 'bg-teal-600 text-white' : 'text-gray-600 hover:bg-gray-50'
               }`}
@@ -754,12 +812,41 @@ export default function ErpLookup() {
         </div>
       )}
 
+      {/* Import old JES customers into the app. Tick rows (already-linked ones
+          are disabled, per existingErpCodes) and import — a real Customer
+          record is created per code, tagged erp-import, never duplicated on a
+          re-import since it dedupes on erp_code. */}
+      {entity === 'customer' && (
+        <div className="flex items-center justify-between mb-2 gap-3 flex-wrap min-h-[24px]">
+          <p className="text-xs text-gray-400">
+            Tick rows to import as app Customers — already-linked ones are disabled.
+          </p>
+          {selectedCustomers.size > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">{selectedCustomers.size} selected</span>
+              <button onClick={() => setSelectedCustomers(new Set())} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+              <button onClick={handleImportCustomers} disabled={importingCustomers}
+                className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 border border-brand-200 rounded-md px-2 py-1 disabled:opacity-50">
+                <Download size={13} /> {importingCustomers ? 'Importing…' : 'Import as Customers'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Results */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-gray-500 border-b border-gray-200 bg-gray-50">
+                {entity === 'customer' && (
+                  <th className="px-3 py-2 w-8">
+                    <input type="checkbox" checked={allCustomersShownSelected} onChange={toggleAllCustomerSel}
+                           className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                           title="Select all shown (not already in the app)" />
+                  </th>
+                )}
                 {cfg.cols.map((c) => (
                   <th key={c.key} className={`px-3 py-2 font-medium whitespace-nowrap ${c.num ? 'text-right' : ''}`}>{c.label}</th>
                 ))}
@@ -775,6 +862,14 @@ export default function ErpLookup() {
               {rows.map((r, ri) => (
                 <tr key={r.code ?? r.uc_no ?? (r.item_code ? `${r.warehouse}/${r.item_code}` : ri)}
                     className="border-b border-gray-100 last:border-0 hover:bg-gray-50">
+                  {entity === 'customer' && (
+                    <td className="px-3 py-2">
+                      <input type="checkbox" checked={selectedCustomers.has(r.code)}
+                             disabled={existingErpCodes.has(String(r.code).toUpperCase())}
+                             onChange={() => toggleCustomerSel(r.code)}
+                             className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-30" />
+                    </td>
+                  )}
                   {cfg.cols.map((c) => (
                     <td key={c.key} className={`px-3 py-2 align-top ${c.mono ? 'font-mono text-xs' : ''} ${c.grow ? '' : 'whitespace-nowrap'} ${c.num ? 'text-right tabular-nums' : ''}`}>
                       {entity === 'item' && c.key === 'has_bom' && r.has_bom
@@ -796,6 +891,11 @@ export default function ErpLookup() {
                                   </button>
                             )}
                           </div>
+                        : entity === 'customer' && c.key === 'name' && existingErpCodes.has(String(r.code).toUpperCase())
+                        ? <span className="inline-flex items-center gap-1.5">
+                            {r.name}
+                            <span className="text-[10px] text-teal-600 bg-teal-50 rounded px-1 py-0.5 shrink-0" title="Already linked to an app customer">in app</span>
+                          </span>
                         : DETAIL_GROUPS[entity] && c.key === 'code'
                         ? <button onClick={() => setDetailRow(r)}
                             className="text-teal-600 hover:underline font-medium">
@@ -846,7 +946,7 @@ export default function ErpLookup() {
                 </tr>
               ))}
               {!loading && rows.length === 0 && !error && (
-                <tr><td colSpan={cfg.cols.length + (cfg.noTrailing ? 0 : 1) + (entity === 'item' ? 1 : 0)} className="px-3 py-10 text-center text-gray-400">
+                <tr><td colSpan={cfg.cols.length + (cfg.noTrailing ? 0 : 1) + (entity === 'item' ? 1 : 0) + (entity === 'customer' ? 1 : 0)} className="px-3 py-10 text-center text-gray-400">
                   {q ? `No ${cfg.label.toLowerCase()} match “${q}”.` : `No ${cfg.label.toLowerCase()} found.`}
                 </td></tr>
               )}

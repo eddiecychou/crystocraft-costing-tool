@@ -321,3 +321,38 @@ export function useCustomers() {
 
 // Display helper — canonical name with a safe fallback.
 export const customerName = c => str(c?.company_name || c?.name) || '—'
+
+// Import ERP customer records (JES `erp_customer` rows, via ERP Lookup) as real
+// app Customers. Dedupes on erp_code against every existing customer — an ERP
+// code that's already linked is skipped, not re-created, so re-importing (or
+// selecting a row already brought in) is safe to repeat.
+export async function importErpCustomers(erpRows) {
+  const existing = await loadCustomers()
+  const seen = new Set(existing.map(c => str(c.erp_code).toUpperCase()).filter(Boolean))
+  const created = [], skipped = []
+  for (const r of erpRows) {
+    const code = str(r.code)
+    const codeKey = code.toUpperCase()
+    if (codeKey && seen.has(codeKey)) { skipped.push(code); continue }
+    const companyName = str(r.name) || str(r.short_name) || code
+    const res = await saveCustomer(null, {
+      company_name: companyName,
+      contact_name: str(r.contact),
+      contact_emails: [r.email, r.email2].map(str).filter(Boolean),
+      contact_phones: [r.phone, r.phone2, r.mobile].map(str).filter(Boolean),
+      website: str(r.website),
+      address: str(r.address),
+      country: str(r.country),
+      erp_code: code,
+      // Old JES customers, not marketing leads — Active/Dormant reflects the
+      // ERP's own expired flag rather than defaulting everyone to Prospect.
+      crm_status: r.active === false ? 'Dormant' : 'Active',
+      tags: ['erp-import'],
+      notes: ['Imported from JES ERP (code ' + code + ').', str(r.remarks)].filter(Boolean).join(' '),
+    })
+    if (!res.ok) throw new Error(`Could not create a customer for ${code}: ${res.result.errors?.[0]?.message || 'validation failed'}`)
+    created.push({ erpCode: code, customerId: res.id, companyName })
+    if (codeKey) seen.add(codeKey)
+  }
+  return { created, skipped }
+}
