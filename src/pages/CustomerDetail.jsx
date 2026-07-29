@@ -936,7 +936,17 @@ export default function CustomerDetail() {
         <MergeCustomerModal
           customer={customer}
           onClose={() => setMerging(false)}
-          onMerged={(survivorId) => navigate(`/customers/${survivorId}`)}
+          onMerged={(survivorId) => {
+            // Close first: /customers/:id reuses the same CustomerDetail instance
+            // rather than remounting (React Router keeps one element for the
+            // route), so navigating alone left this modal open. It then re-ran
+            // its own preview effect once `customer` re-fetched as the survivor
+            // — merging the survivor into itself — which is the "Cannot merge a
+            // customer into itself" error, even though the merge had already
+            // succeeded before that point.
+            setMerging(false)
+            navigate(`/customers/${survivorId}`)
+          }}
         />
       )}
 
