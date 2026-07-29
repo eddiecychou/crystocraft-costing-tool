@@ -5,9 +5,42 @@ import { erpLookup, erpBom, erpLines, erpSyncStatus, erpItemImages } from '../er
 import ErpProductImport from '../components/ErpProductImport'
 import { buildProductIndex, matchProductCode } from '../criticalComponents'
 import { designBaseOf } from '../erpProductImport'
-import { collection, getDocs } from 'firebase/firestore'
+import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { loadCustomers, importErpCustomers } from '../domain/customer'
+import { CURRENCIES } from '../constants'
+
+// Import ERP supplier records as app Suppliers (mirrors importErpCustomers).
+// Suppliers have no domain module yet — SupplierForm.jsx writes this same
+// shape inline — so this matches that shape directly rather than inventing a
+// new one. Dedupes on erp_code so a re-import (or a code already linked)
+// never creates a duplicate.
+async function importErpSuppliers(erpRows) {
+  const snap = await getDocs(collection(db, 'suppliers'))
+  const seen = new Set(snap.docs.map(d => String(d.data().erp_code || '').toUpperCase()).filter(Boolean))
+  const created = [], skipped = []
+  for (const r of erpRows) {
+    const code = String(r.code || '')
+    const codeKey = code.toUpperCase()
+    if (codeKey && seen.has(codeKey)) { skipped.push(code); continue }
+    const companyName = r.name || r.short_name || code
+    const emails = [r.email, r.email2].filter(Boolean)
+    const phones = [r.phone, r.phone2, r.mobile].filter(Boolean)
+    const ref = await addDoc(collection(db, 'suppliers'), {
+      name: companyName, name_cn: '', erp_code: code, category: '',
+      country: r.country || '', city: r.city || '', address: r.address || '',
+      wechat_id: '', whatsapp: '', contact_person: r.contact || '',
+      notes: ['Imported from JES ERP (code ' + code + ').', r.remarks].filter(Boolean).join(' '),
+      default_currency: CURRENCIES.includes(r.currency) ? r.currency : '',
+      default_payment_terms: '',
+      phones, emails, phone: phones[0] || '', email: emails[0] || '',
+      createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    })
+    created.push({ erpCode: code, supplierId: ref.id, companyName })
+    if (codeKey) seen.add(codeKey)
+  }
+  return { created, skipped }
+}
 
 // Column layout per entity. `key` maps to the curated view's fields.
 const ENTITIES = {
@@ -472,6 +505,9 @@ export default function ErpLookup() {
   const [existingErpCodes, setExistingErpCodes] = useState(() => new Set())  // customers.erp_code already in the app
   const [selectedCustomers, setSelectedCustomers] = useState(() => new Set())
   const [importingCustomers, setImportingCustomers] = useState(false)
+  const [existingSupplierErpCodes, setExistingSupplierErpCodes] = useState(() => new Set())  // suppliers.erp_code already in the app
+  const [selectedSuppliers, setSelectedSuppliers] = useState(() => new Set())
+  const [importingSuppliers, setImportingSuppliers] = useState(false)
 
   // Is this ERP code's design already a product here? Uses the app's own
   // matcher, which reconciles a full variant code (D0002-001-CGR) against
@@ -565,6 +601,15 @@ export default function ErpLookup() {
     return () => { alive = false }
   }, [])
 
+  // And for suppliers.
+  useEffect(() => {
+    let alive = true
+    getDocs(collection(db, 'suppliers'))
+      .then(s => { if (alive) setExistingSupplierErpCodes(new Set(s.docs.map(d => String(d.data().erp_code || '').toUpperCase()).filter(Boolean))) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [])
+
   // Sync freshness. Loaded once; a failure leaves the line hidden rather than
   // showing a wrong or alarming value.
   useEffect(() => {
@@ -654,6 +699,50 @@ export default function ErpLookup() {
     }
   }
 
+  // Only rows not already linked to an app supplier can be selected/imported.
+  const importableSupplierRows = entity === 'supplier'
+    ? rows.filter(r => !existingSupplierErpCodes.has(String(r.code).toUpperCase()))
+    : []
+  const allSuppliersShownSelected = importableSupplierRows.length > 0
+    && importableSupplierRows.every(r => selectedSuppliers.has(r.code))
+
+  function toggleSupplierSel(code) {
+    setSelectedSuppliers(prev => { const n = new Set(prev); n.has(code) ? n.delete(code) : n.add(code); return n })
+  }
+  function toggleAllSupplierSel() {
+    setSelectedSuppliers(prev => {
+      const n = new Set(prev)
+      if (allSuppliersShownSelected) importableSupplierRows.forEach(r => n.delete(r.code))
+      else importableSupplierRows.forEach(r => n.add(r.code))
+      return n
+    })
+  }
+
+  async function handleImportSuppliers() {
+    const codes = selectedSuppliers
+    const toImport = rows.filter(r => codes.has(r.code))
+    if (!toImport.length) return
+    if (!window.confirm(`Import ${toImport.length} supplier${toImport.length === 1 ? '' : 's'} from JES into the app?`)) return
+    setImportingSuppliers(true)
+    try {
+      const { created, skipped } = await importErpSuppliers(toImport)
+      setExistingSupplierErpCodes(prev => {
+        const n = new Set(prev)
+        created.forEach(c => n.add(String(c.erpCode).toUpperCase()))
+        return n
+      })
+      setSelectedSuppliers(new Set())
+      window.alert(
+        `Imported ${created.length} supplier${created.length === 1 ? '' : 's'}.` +
+        (skipped.length ? ` ${skipped.length} already linked, skipped.` : '')
+      )
+    } catch (e) {
+      window.alert(e.message || 'Import failed.')
+    } finally {
+      setImportingSuppliers(false)
+    }
+  }
+
   return (
     <div className="p-4 md:p-6">
       {loading && <LoadingBar />}
@@ -700,7 +789,7 @@ export default function ErpLookup() {
           return (
             <button
               key={key}
-              onClick={() => { setEntity(key); setRows([]); setSelectedCustomers(new Set()) }}
+              onClick={() => { setEntity(key); setRows([]); setSelectedCustomers(new Set()); setSelectedSuppliers(new Set()) }}
               className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm rounded-md transition ${
                 on ? 'bg-teal-600 text-white' : 'text-gray-600 hover:bg-gray-50'
               }`}
@@ -833,6 +922,23 @@ export default function ErpLookup() {
           )}
         </div>
       )}
+      {entity === 'supplier' && (
+        <div className="flex items-center justify-between mb-2 gap-3 flex-wrap min-h-[24px]">
+          <p className="text-xs text-gray-400">
+            Tick rows to import as app Suppliers — already-linked ones are disabled.
+          </p>
+          {selectedSuppliers.size > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-500">{selectedSuppliers.size} selected</span>
+              <button onClick={() => setSelectedSuppliers(new Set())} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+              <button onClick={handleImportSuppliers} disabled={importingSuppliers}
+                className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 border border-brand-200 rounded-md px-2 py-1 disabled:opacity-50">
+                <Download size={13} /> {importingSuppliers ? 'Importing…' : 'Import as Suppliers'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Results */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
@@ -843,6 +949,13 @@ export default function ErpLookup() {
                 {entity === 'customer' && (
                   <th className="px-3 py-2 w-8">
                     <input type="checkbox" checked={allCustomersShownSelected} onChange={toggleAllCustomerSel}
+                           className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
+                           title="Select all shown (not already in the app)" />
+                  </th>
+                )}
+                {entity === 'supplier' && (
+                  <th className="px-3 py-2 w-8">
+                    <input type="checkbox" checked={allSuppliersShownSelected} onChange={toggleAllSupplierSel}
                            className="rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                            title="Select all shown (not already in the app)" />
                   </th>
@@ -867,6 +980,14 @@ export default function ErpLookup() {
                       <input type="checkbox" checked={selectedCustomers.has(r.code)}
                              disabled={existingErpCodes.has(String(r.code).toUpperCase())}
                              onChange={() => toggleCustomerSel(r.code)}
+                             className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-30" />
+                    </td>
+                  )}
+                  {entity === 'supplier' && (
+                    <td className="px-3 py-2">
+                      <input type="checkbox" checked={selectedSuppliers.has(r.code)}
+                             disabled={existingSupplierErpCodes.has(String(r.code).toUpperCase())}
+                             onChange={() => toggleSupplierSel(r.code)}
                              className="rounded border-gray-300 text-teal-600 focus:ring-teal-500 disabled:opacity-30" />
                     </td>
                   )}
@@ -895,6 +1016,11 @@ export default function ErpLookup() {
                         ? <span className="inline-flex items-center gap-1.5">
                             {r.name}
                             <span className="text-[10px] text-teal-600 bg-teal-50 rounded px-1 py-0.5 shrink-0" title="Already linked to an app customer">in app</span>
+                          </span>
+                        : entity === 'supplier' && c.key === 'name' && existingSupplierErpCodes.has(String(r.code).toUpperCase())
+                        ? <span className="inline-flex items-center gap-1.5">
+                            {r.name}
+                            <span className="text-[10px] text-teal-600 bg-teal-50 rounded px-1 py-0.5 shrink-0" title="Already linked to an app supplier">in app</span>
                           </span>
                         : DETAIL_GROUPS[entity] && c.key === 'code'
                         ? <button onClick={() => setDetailRow(r)}
@@ -946,7 +1072,7 @@ export default function ErpLookup() {
                 </tr>
               ))}
               {!loading && rows.length === 0 && !error && (
-                <tr><td colSpan={cfg.cols.length + (cfg.noTrailing ? 0 : 1) + (entity === 'item' ? 1 : 0) + (entity === 'customer' ? 1 : 0)} className="px-3 py-10 text-center text-gray-400">
+                <tr><td colSpan={cfg.cols.length + (cfg.noTrailing ? 0 : 1) + (entity === 'item' ? 1 : 0) + (entity === 'customer' || entity === 'supplier' ? 1 : 0)} className="px-3 py-10 text-center text-gray-400">
                   {q ? `No ${cfg.label.toLowerCase()} match “${q}”.` : `No ${cfg.label.toLowerCase()} found.`}
                 </td></tr>
               )}
