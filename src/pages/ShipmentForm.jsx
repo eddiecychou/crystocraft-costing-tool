@@ -11,7 +11,7 @@ import {
 import { loadCustomers, saveCustomer } from '../domain/customer'
 import { fetchErpSoLines, diffLines } from '../erpSoImport'
 import { CURRENCIES } from '../constants'
-import { FileInput, FolderOpen, FileText, Trash2, CheckCircle2, AlertTriangle, RefreshCw, Database } from 'lucide-react'
+import { FileInput, FolderOpen, FileText, Trash2, CheckCircle2, AlertTriangle, RefreshCw, Database, Receipt } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
 import PackingListEditor from './PackingListEditor'
 import FreightComparison from './FreightComparison'
@@ -158,6 +158,19 @@ export default function ShipmentForm() {
 
   useEffect(() => {
     const preCustomerId = searchParams.get('customer_id')
+    // React Router renders the SAME <ShipmentForm/> element for /shipments/new
+    // and /shipments/:id, so the component instance is REUSED across those
+    // navigations rather than remounted. Without resetting here, opening a new
+    // form (New Order / Direct Invoice / Import PI) straight after viewing an
+    // order left that order's header + lines in state — and Save then created a
+    // DUPLICATE of it, with a fresh SO number (reported 2026-07-29: SO260032
+    // duplicating QU260709, same UC/customer/lines). Reset every piece of order
+    // state on each id change; the isEdit branch below refills it from the doc.
+    setPendingFile(null); setErpCheck(null); setExtractError(''); setSiError('')
+    if (!isEdit) {
+      setHeader(preCustomerId ? { ...blankHeader, customer_id: preCustomerId } : blankHeader)
+      setLines([]); setSourceFile(null); setTab('order')
+    }
     const loads = [
       loadCustomers().then(list => {
         setCustomers(list)
@@ -262,10 +275,16 @@ export default function ShipmentForm() {
         order_id: id || null,
         uc_no: header.uc_no || null,
       })
-      setHeader(h => ({
-        ...h, uc_no: res.uc_no, erp_si_no: res.si_no,
-        invoiced_at: h.invoiced_at || new Date().toISOString().slice(0, 10),
-      }))
+      const patch = {
+        uc_no: res.uc_no || header.uc_no || '',
+        erp_si_no: res.si_no,
+        invoiced_at: header.invoiced_at || new Date().toISOString().slice(0, 10),
+      }
+      setHeader(h => ({ ...h, ...patch }))
+      // Persist immediately on a saved order so "Raise Invoice" is a complete
+      // action — the number is already burned in Postgres, so leaving it only in
+      // local state (needing a manual Save) is how an invoice goes missing.
+      if (id) await updateOrder(id, patch)
     } catch (e) {
       setSiError(e.message || 'Could not allocate an invoice number.')
     } finally {
@@ -630,10 +649,32 @@ export default function ShipmentForm() {
               : (isDirect ? 'Direct Invoice' : 'New Order')}
           </h1>
           {isEdit && (
-            <a href={`/shipments/${id}/pi`} target="_blank" rel="noreferrer"
-               className="btn-secondary text-sm inline-flex items-center gap-1.5 shrink-0">
-              <FileText size={14} /> Proforma Invoice
-            </a>
+            <div className="shrink-0 text-right">
+              <div className="flex items-center gap-2 justify-end">
+                <a href={`/shipments/${id}/pi`} target="_blank" rel="noreferrer"
+                   className="btn-secondary text-sm inline-flex items-center gap-1.5">
+                  <FileText size={14} /> Proforma Invoice
+                </a>
+                {/* Convert the order/PI into a sales invoice in one click: allocate
+                    its SI number (and a UC if it has none). Previously this was
+                    only reachable via a subtle "Allocate" link far down the form,
+                    so "generate an invoice from an SO" looked impossible. Once
+                    invoiced, this becomes a link to the printed invoice. */}
+                {header.erp_si_no ? (
+                  <a href={`/shipments/${id}/invoice`} target="_blank" rel="noreferrer"
+                     className="btn-primary text-sm inline-flex items-center gap-1.5">
+                    <Receipt size={14} /> Invoice {header.erp_si_no}
+                  </a>
+                ) : (
+                  <button type="button" onClick={doAllocateSi} disabled={allocatingSi}
+                    className="btn-primary text-sm inline-flex items-center gap-1.5 disabled:opacity-50"
+                    title="Allocate this order's invoice number (SI) and UC — turns the proforma into a sales invoice.">
+                    <Receipt size={14} /> {allocatingSi ? 'Raising…' : 'Raise Invoice'}
+                  </button>
+                )}
+              </div>
+              {siError && <p className="text-xs text-red-600 mt-1">{siError}</p>}
+            </div>
           )}
         </div>
         {!isEdit && (
