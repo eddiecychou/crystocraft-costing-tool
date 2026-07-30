@@ -43,6 +43,161 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
+## Current Status — V7.19 CLOSED as of 2026-07-30
+
+Commit chain `81ed82d`→`d06cb78` (25 commits), all deployed. V7.19 did not do
+what "Where V7.19 starts" (below, now historical) planned — no order-planning
+work happened this cycle. Instead the cycle was **the Mailchimp retirement**
+end-to-end, plus a run of real bugs CuiLing hit while actually invoicing —
+which is exactly the kind of divergence this doc is supposed to record rather
+than paper over.
+
+### The numbers
+
+| | |
+|---|---:|
+| Commits | 25 |
+| Mailchimp contacts backfilled | 0 → **2,460** |
+| WordPress signup capture | Mailchimp popup → app popup, **fully cut over** |
+| ERP customers/suppliers imported to app | new one-click flow, JES codes deduped |
+| Duplicate customer merge tool | didn't exist → built, verified |
+| Invoice allocation | broken for **every** order → fixed (schema-permission bug) |
+| Bugs CuiLing hit and reported | 3 (duplicate order, can't invoice from SO, this permission error) |
+
+### 1. Retiring Mailchimp — the actual multi-week thread of this cycle
+
+Started as "download and clean the mailing list," became a full migration,
+because every step surfaced the next thing that needed doing:
+
+- **Cleaned and merged two Mailchimp audiences** (trade + retail, 2,490 raw
+  rows) into one deduped set — 2,460 unique contacts, most-restrictive status
+  wins so an unsubscribe/bounce in either audience suppresses the merged
+  record. Countries and tags normalised; UTF-8 preserved for Chinese company
+  names.
+- **New `marketing_contacts` Firestore collection**, deliberately separate
+  from `customers` — some people are in both, and the owner wanted to
+  organise them on his own terms rather than merge on sight.
+  `possible_customer_match` links a contact to a real customer (31 matched by
+  email at import) without merging the records.
+- **Hit, and recorded, a gotcha that will recur:** the importer used the
+  Admin SDK, which bypasses Firestore rules — so the 2,460 docs existed but
+  the browser (client SDK, under rules) couldn't read them until a
+  `marketing_contacts` rule was added and *published* (a separate step from
+  `git push` — Firestore rules don't deploy with the app).
+- **`/api/subscribe`** — a public Netlify edge function so WordPress signups
+  land in the same collection. First time this app authenticates to
+  Firestore as the service account from a public endpoint (minted Google
+  OAuth token) rather than the caller's own token. Shipped once, broke once
+  in prod (`"pkcs8" must be PKCS#8 formatted string` — env-var UIs mangle
+  multi-line secrets every possible way), fixed by rebuilding a canonical PEM
+  from the base64 body regardless of formatting, verified against all seven
+  manglings.
+- **WordPress capture, done in two stages because the situation changed
+  mid-cycle.** First: an invisible **mirror** snippet that copied whatever
+  the existing Mailchimp popup collected, so the two ran in parallel with
+  zero UX change. Then the owner **cancelled the Mailchimp plan** — which
+  did *not* stop the popup (Mailchimp-for-WooCommerce's connected-site
+  script kept rendering it) — so the mirror was promoted to a full cutover:
+  a new on-brand popup posting straight to the app, plus a `.mc-modal`
+  suppression rule so the dead Mailchimp popup stops appearing. Both
+  snippets live in Elementor Custom Code, no plugin changes.
+- **Marketing Contacts page** grew from read-only to a full workspace:
+  edit/delete/bulk-delete, Type merged into tags (was 100% redundant —
+  every one of 501 "Type" values already existed as a tag), two stat tiles
+  doubling as one-click filters, and a bulk **"Add to Customers"** action
+  that promotes a contact into a real Customer record.
+- **Left open:** the static Mailchimp *footer* form still posts to the now-dead
+  Mailchimp list (the mirror still captures the email, but the visitor sees an
+  error); Mailchimp-for-WooCommerce can be disconnected/removed now the account
+  is gone.
+
+### 2. Three real bugs, found by CuiLing actually invoicing
+
+- **Duplicate orders.** Opening New Order / Direct Invoice / Import PI right
+  after viewing an existing order silently copied that order's data into the
+  new one — `/shipments/new` and `/shipments/:id` render the same component
+  instance (React Router doesn't remount it), and the reset effect only ever
+  fired on the *edit* path. One duplicate (SO260032, a copy of QU260709) was
+  already live; deleted after confirming it carried no invoice number.
+- **"Can't generate a sales invoice from an SO."** Three separate things,
+  found only by tracing each one: (a) there was no prominent way to raise an
+  invoice from an order — only a small "Allocate" link deep in the form, now
+  a **Raise Invoice** button next to Proforma Invoice; (b) the Sales Invoices
+  "awaiting" list only showed `shipped`/`delivered` orders, hiding
+  app-created SOs sitting at `confirmed`/`ready` — widened to any committed
+  status; (c) 5 JES-imported orders had their SI number sitting in the
+  *doc-number* field instead of the invoice field, so already-invoiced orders
+  were wrongly flagged as needing one — now excluded either way.
+- **"Permission denied for schema raw" on every Allocate/Raise Invoice
+  click.** The real blocker. `allocate_sales_invoice` reads `raw.salesinvoice`
+  to derive the next SI number, but `service_role` (what the app connects as)
+  has zero grant on schema `raw` — confirmed directly against Supabase, not
+  guessed. Every curated ERP view works around this because a Postgres view
+  runs with its *owner's* privileges by default; this was a plain function,
+  so it ran as the caller instead. Fixed with `SECURITY DEFINER` (the same
+  pattern already used in `bank_accounts.sql`), applied via the SQL Editor
+  (a live DDL change needs the owner's own hand) and verified with a
+  throwaway read-only function — deliberately avoiding calling the real
+  function even inside a rolled-back transaction, since `uc_registry.uc_no`
+  comes from a plain sequence that a rollback would not undo.
+
+### 3. ERP Lookup kept growing
+
+- Result cap became user-selectable (50/100/200/500) instead of fixed at 50.
+- **Per-line markup/discount** surfaced for the first time — a genuinely
+  separate mechanism from the header-level order discount (a line can be
+  marked up or down independently), previously invisible because the raw
+  column existed but no curated view selected it.
+- **Invoice discount/deposit/balance-due** promoted from a drill-down-only
+  view to columns in the main Invoices list.
+- **Est. Ship Date** restored to the order/PI — it existed on the old
+  JES-native PI and was dropped when the app rebuilt its own PI layout; now
+  also extracted automatically when re-importing an old PI PDF.
+- **One-click import**: old JES customers and suppliers can be selected and
+  imported straight into the app's own `customers`/`suppliers` collections,
+  deduped on `erp_code` so re-importing (or an already-linked code) never
+  creates a duplicate.
+- Country dropdown gained Pakistan, Estonia, Latvia, Lithuania, Belarus and
+  ~35 others found by checking which countries actually appear in customer
+  data but were missing from the list, rather than guessing.
+
+### 4. A general-purpose duplicate-customer merge tool
+
+Didn't exist before this cycle — a duplicate customer could previously only
+be deleted outright, silently orphaning its orders/quotes/portal account.
+Now: pick a survivor, preview exactly what will move and which fields will
+fill in (survivor wins, arrays union, nothing already set is overwritten),
+confirm, and the duplicate is repointed and removed. Shipped with one UI bug
+(the modal stayed open with a false "merge into itself" error after a
+*successful* merge, because closing it was never wired into the
+navigate-after-success path) — fixed the same day.
+
+### 5. The Sales Invoice gained the chop, matching the SO and quote
+
+The printed Sales Invoice had an empty signature box — the Proforma Invoice
+and quotations already stamp the company chop there (one asset, uploaded once
+in Settings → Quote branding), the SI print was just never wired to read it.
+Same asset, same placement, same "missing chop prints unstamped rather than
+failing the page" fallback as the PI.
+
+### Deployment notes
+
+- **New Firestore collection:** `marketing_contacts`, plus its (separately
+  published) security rule.
+- **New Netlify edge function:** `subscribe.js` (`/api/subscribe`), needs
+  `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY` env vars (set this cycle).
+- **New Postgres:** `allocate_sales_invoice` altered to `SECURITY DEFINER`
+  (applied directly via Supabase SQL Editor; repo's copy updated to match).
+- **New WordPress:** two Elementor Custom Code snippets — the live signup
+  popup and the (now largely redundant, but harmless) mirror. Neither
+  touches a plugin.
+- Every domain-logic change this cycle (contact promote, customer merge,
+  ERP import) was verified against **live Firestore with throwaway
+  fixtures** before shipping — created, asserted on, cleaned up — not just
+  parsed. `qa/`'s no-undef lint ran on every touched file.
+
+---
+
 ## Current Status — V7.18 CLOSED as of 2026-07-24
 
 Commit chain `fffb566`→`7a9f67b` (35 commits), all deployed. V7.18's theme is
