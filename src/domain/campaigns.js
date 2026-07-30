@@ -18,9 +18,17 @@ export async function listCampaigns() {
 // bodyHtml is the Unlayer-exported HTML (see Campaigns.jsx); design is its
 // JSON source, kept so a campaign could be reopened for editing later even
 // though that's not part of "one campaign at a time" scope yet.
+//
+// Firestore's addDoc() rejects ANY `undefined` value anywhere in a nested
+// object, and Unlayer's exported design is a large, deeply nested object with
+// some optional fields genuinely undefined in JS — a JSON round-trip strips
+// those the same way JSON.stringify always has, and is cheap next to the
+// design blob's own size.
+const stripUndefined = (v) => (v == null ? v : JSON.parse(JSON.stringify(v)))
+
 export async function createCampaign({ name, subject, bodyHtml, design, segment }) {
   const ref = await addDoc(COL(), {
-    name, subject, bodyHtml, design, segment,
+    name, subject, bodyHtml, design: stripUndefined(design), segment,
     status: 'active',
     sent: {}, failed: {},
     created_at: serverTimestamp(),
