@@ -6,6 +6,7 @@ import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
 import { amountInWords } from '../constants'
+import { pdfFileTitle } from '../pdfFilename'
 
 // Sales Invoice — the commercial invoice, raised from an order the same way
 // CuiLing's JES workflow does it ("Load Document" pulls the sales order into a
@@ -74,6 +75,20 @@ export default function SalesInvoicePrint() {
     return () => { alive = false }
   }, [id])
 
+  // Drive the browser's "Save as PDF" default filename (see pdfFilename.js) —
+  // restore the previous title on unmount so navigating elsewhere in the app
+  // doesn't leave the tab stuck on this invoice's name.
+  useEffect(() => {
+    if (!order) return
+    const prev = document.title
+    document.title = pdfFileTitle([
+      order.erp_si_no || 'SI',
+      orderUc(order) ? `UC${orderUc(order)}` : null,
+      order.customer_name || customer?.company_name,
+    ])
+    return () => { document.title = prev }
+  }, [order, customer])
+
   if (loading) return <p style={{ padding: 40, textAlign: 'center', color: '#888' }}>Loading…</p>
   if (error) return <p style={{ padding: 40, textAlign: 'center', color: '#c00' }}>{error}</p>
 
@@ -89,9 +104,17 @@ export default function SalesInvoicePrint() {
   return (
     <div className="si-doc">
       <style>{`
-        @page { size: A4 portrait; margin: 1.2cm; }
-        @media print { body { margin: 0; } .print-btn, .si-warn { display: none !important; } }
-        .si-doc { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; font-size: 10.5px; line-height: 1.45; }
+        @page { size: A4 portrait; margin: 1.8cm; }
+        @media print { body { margin: 0; } .print-btn, .si-warn { display: none !important; }
+          .si-doc { max-width: none; margin: 0; padding: 0; box-shadow: none; } }
+        /* Explicit white, not just under @media print: the app's beige page
+           background (index.css) was showing through around and behind the
+           document on screen too — the white company chop looked broken
+           sitting on peach, and it also wastes ink if a "print background
+           colours" browser setting is on. A real invoice is a white page.
+           Reported by the owner 2026-07-30. */
+        .si-doc { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; font-size: 10.5px; line-height: 1.45;
+          background: #fff; max-width: 850px; margin: 0 auto; padding: 36px 44px; box-shadow: 0 1px 6px rgba(0,0,0,.1); }
         .si-doc * { box-sizing: border-box; }
         .print-btn { display: block; margin: 0 auto 18px; padding: 9px 26px; background: #1a1a1a; color: #fff;
           border: none; border-radius: 6px; cursor: pointer; font-size: 13px; letter-spacing: .02em; }
@@ -103,7 +126,6 @@ export default function SalesInvoicePrint() {
         .si-company { text-align: right; font-size: 9.5px; color: #555; line-height: 1.5; }
         .si-company .nm { font-size: 11px; color: #1a1a1a; font-weight: 600; }
         .si-title { font-size: 22px; font-weight: 700; letter-spacing: .06em; margin: 4px 0 2px; }
-        .si-title .cn { font-size: 13px; color: #888; font-weight: 500; margin-left: 8px; }
         .si-meta-grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 20px; margin: 14px 0 20px; }
         .si-box { border: 1px solid #e4e4e4; border-radius: 8px; padding: 12px 14px; }
         .si-box h4 { margin: 0 0 6px; font-size: 8.5px; text-transform: uppercase; letter-spacing: .1em; color: #999; font-weight: 600; }
@@ -179,7 +201,7 @@ export default function SalesInvoicePrint() {
 
       <div className="si-head">
         <div>
-          <div className="si-title">INVOICE<span className="cn">發票</span></div>
+          <div className="si-title">INVOICE</div>
         </div>
         <div className="si-company">
           <div className="nm">{SELLER.name}</div>
@@ -190,7 +212,7 @@ export default function SalesInvoicePrint() {
 
       <div className="si-meta-grid">
         <div className="si-box si-cust">
-          <h4>Bill To 客戶</h4>
+          <h4>Bill To</h4>
           <div className="name">{order.customer_name || customer?.company_name || '—'}</div>
           {customer?.contact_name && <div className="addr">Attn: {customer.contact_name}</div>}
           {customer?.address && <div className="addr">{customer.address}</div>}
@@ -213,7 +235,7 @@ export default function SalesInvoicePrint() {
           <tr>
             <th style={{ width: '3%' }}>#</th>
             <th style={{ width: '20%' }}>Item Code</th>
-            <th style={{ width: '41%' }}>Description 描述</th>
+            <th style={{ width: '41%' }}>Description</th>
             <th className="r" style={{ width: '10%' }}>Qty</th>
             <th className="r" style={{ width: '13%' }}>Unit Price</th>
             <th className="r" style={{ width: '13%' }}>Amount</th>
@@ -270,14 +292,14 @@ export default function SalesInvoicePrint() {
 
       {bankBlock && (
         <div className="si-bank">
-          <h4>Remittance 匯款資料</h4>
+          <h4>Remittance</h4>
           <pre>{bankBlock}</pre>
         </div>
       )}
 
       {order.notes && (
         <div className="si-notes">
-          <span className="lbl">Remarks 備註</span>
+          <span className="lbl">Remarks</span>
           {order.notes}
         </div>
       )}

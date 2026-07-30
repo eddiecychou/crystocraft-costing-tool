@@ -20,6 +20,16 @@
     letter-spacing: 0.04em;
     font-weight: 400;
   }
+
+  /* Printed documents (PI, SI, PO, packing list, catalogue) sit on the app's
+     beige background, which some mobile "Save as PDF" paths (iOS Share Sheet
+     in particular) render bleeding past the @page margin as a grey/beige
+     border down both edges — invisible on desktop print-to-PDF, which clips
+     to the page box, but visible on a phone. White is correct for a printed
+     page regardless. Reported by CuiLing 2026-07-30. */
+  @media print {
+    body { background: #fff !important; }
+  }
 }
 
 @layer components {
