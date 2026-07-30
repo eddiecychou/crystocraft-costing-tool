@@ -91,7 +91,7 @@ export default function ProformaInvoicePrint() {
     const prev = document.title
     document.title = pdfFileTitle([
       order.erp_so_no || 'PI',
-      orderUc(order) ? `UC${orderUc(order)}` : null,
+      orderUc(order) || null,
       order.customer_name || customer?.company_name,
     ])
     return () => { document.title = prev }
@@ -149,20 +149,22 @@ export default function ProformaInvoicePrint() {
     <div className="pi-doc">
       <style>{`
         @page { size: A4 portrait; margin: 1.8cm; }
-        @media print { body { margin: 0; } .print-btn, .pi-warn, .pi-tools { display: none !important; }
-          .pi-doc { max-width: none; margin: 0; padding: 0; box-shadow: none; } }
+        @media print { body { margin: 0; } .print-btn, .pi-warn, .pi-tools { display: none !important; } }
         .pi-tools { display: flex; justify-content: center; gap: 10px; margin: 0 auto 18px; flex-wrap: wrap; }
         .pi-tools button { padding: 7px 16px; background: #fff; color: #444; border: 1px solid #d8d8d8;
           border-radius: 6px; cursor: pointer; font-size: 12px; }
         .pi-tools button:hover { border-color: #b8935a; color: #1a1a1a; }
-        /* Explicit white, not just under @media print: the app's beige page
-           background (index.css) was showing through around and behind the
-           document on screen too — the white company chop looked broken
-           sitting on peach, and it also wastes ink if a "print background
-           colours" browser setting is on. A real invoice is a white page.
-           Reported by the owner 2026-07-30. */
+        /* Plain white, unconditionally — not gated behind @media print and not
+           wrapped in a card (max-width/padding/box-shadow). A card needs
+           @media print to strip it back to a flat page, and several mobile
+           "Save as PDF" paths (iOS Share Sheet in particular) render the
+           on-screen layout as-is without ever applying print media — so the
+           shadow and margins baked straight into the PDF instead of being
+           stripped. A plain white block has nothing that needs stripping.
+           Reported by the owner 2026-07-30, then again 2026-07-30 after the
+           first (card-based) fix regressed this exact document on mobile. */
         .pi-doc { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; font-size: 10.5px; line-height: 1.45;
-          background: #fff; max-width: 850px; margin: 0 auto; padding: 36px 44px; box-shadow: 0 1px 6px rgba(0,0,0,.1); }
+          background: #fff; }
         .pi-doc * { box-sizing: border-box; }
         .print-btn { display: block; margin: 0 auto 18px; padding: 9px 26px; background: #1a1a1a; color: #fff;
           border: none; border-radius: 6px; cursor: pointer; font-size: 13px; letter-spacing: .02em; }
