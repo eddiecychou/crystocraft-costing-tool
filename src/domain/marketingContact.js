@@ -30,12 +30,6 @@ const CATEGORY_SET = new Set(MC_CATEGORIES)
 export const isCategoryTag = t => CATEGORY_SET.has(t)
 // Category tags first (so they survive a truncated display), then the rest.
 export const sortTags = tags => [...tags].sort((a, b) => (isCategoryTag(b) ? 1 : 0) - (isCategoryTag(a) ? 1 : 0))
-export const MC_REVIEW = [
-  { value: '',          label: 'Unreviewed' },
-  { value: 'keep',      label: 'Keep' },
-  { value: 'follow_up', label: 'Follow up' },
-  { value: 'drop',      label: 'Drop' },
-]
 
 const str = v => (v == null ? '' : String(v))
 const arr = v => (Array.isArray(v) ? v.filter(Boolean) : [])
@@ -101,15 +95,6 @@ export function useMarketingContacts() {
   return { contacts, loading, reload, setContacts }
 }
 
-// Update only the app-side organising fields. The imported Mailchimp data is
-// never written from the app.
-export async function updateContactReview(id, patch) {
-  const allowed = {}
-  if ('review_status' in patch) allowed.review_status = str(patch.review_status)
-  if ('app_notes' in patch)     allowed.app_notes = str(patch.app_notes)
-  await updateDoc(doc(db, 'marketing_contacts', id), { ...allowed, updatedAt: serverTimestamp() })
-}
-
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
 // Doc id from an email — same rule as the import + /api/subscribe endpoint, so a
@@ -132,10 +117,17 @@ export async function saveContact(currentId, data) {
     country:      str(data.country),
     phone:        str(data.phone),
     tags:         arr(data.tags),
+    // A website signup can genuinely be either trade or retail (or both) —
+    // it defaults to ['website'] at import/signup time but that's a source,
+    // not a classification, so this needs to be editable per contact.
+    audiences:    arr(data.audiences),
     status,
     emailable:    status === 'subscribed',
     is_customer:  !!data.is_customer,
-    review_status: str(data.review_status),
+    // review_status deliberately not written here — the review UI was
+    // dropped from the Contacts page (not useful in practice); the field
+    // itself is left untouched rather than reset, since updateDoc only
+    // patches given keys and the rename branch below spreads `base` first.
     app_notes:    str(data.app_notes),
     updatedAt:    serverTimestamp(),
   }
@@ -164,6 +156,52 @@ export async function deleteContacts(ids) {
     ids.slice(i, i + 400).forEach(id => batch.delete(doc(db, 'marketing_contacts', id)))
     await batch.commit()
   }
+}
+
+// Distinct tags with a contact count each, most-used first. The Mailchimp
+// import left the tag set genuinely chaotic (one-off variants, near-dupes) —
+// this is what both the filter dropdown and the tag manager below use, so
+// they always show the REAL tags rather than the fixed MC_CATEGORIES subset
+// (which is only the "promoted for filtering" handful).
+export function tagCounts(contacts) {
+  const m = new Map()
+  for (const c of contacts) for (const t of c.tags) m.set(t, (m.get(t) || 0) + 1)
+  return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+}
+
+// Rename a tag across every contact that carries it. Renaming to a tag that
+// already exists on some of those contacts MERGES rather than duplicates
+// (tags are deduped per contact) — that's the main tool for cleaning up
+// near-duplicate tags. Returns the number of contacts touched, chunked to
+// Firestore's 500-write batch limit like deleteContacts above.
+export async function renameTagEverywhere(contacts, from, to) {
+  const target = str(to).trim().toLowerCase()
+  if (!target) throw new Error('New tag name is required.')
+  const affected = contacts.filter(c => c.tags.includes(from))
+  for (let i = 0; i < affected.length; i += 400) {
+    const batch = writeBatch(db)
+    affected.slice(i, i + 400).forEach(c => {
+      const tags = [...new Set(c.tags.map(t => (t === from ? target : t)))]
+      batch.update(doc(db, 'marketing_contacts', c.id), { tags, updatedAt: serverTimestamp() })
+    })
+    await batch.commit()
+  }
+  return affected.length
+}
+
+// Remove a tag from every contact that carries it (the tag itself, not the
+// contacts). Returns the number of contacts touched.
+export async function deleteTagEverywhere(contacts, tag) {
+  const affected = contacts.filter(c => c.tags.includes(tag))
+  for (let i = 0; i < affected.length; i += 400) {
+    const batch = writeBatch(db)
+    affected.slice(i, i + 400).forEach(c => {
+      const tags = c.tags.filter(t => t !== tag)
+      batch.update(doc(db, 'marketing_contacts', c.id), { tags, updatedAt: serverTimestamp() })
+    })
+    await batch.commit()
+  }
+  return affected.length
 }
 
 // Record that a contact is now (or already was found to be) an app customer.

@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
-import { Users, Mail, MailX, UserCheck, Link2, Tag, AlertCircle, Download, Trash2, X, Pencil, UserPlus } from 'lucide-react'
+import { Users, Mail, MailX, UserCheck, Link2, Tag, Tags, AlertCircle, Download, Trash2, X, Pencil, UserPlus } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import {
-  useMarketingContacts, updateContactReview, saveContact, deleteContact, deleteContacts,
-  contactName, MC_CATEGORIES, MC_REVIEW, MC_STATUSES, isCategoryTag, sortTags,
-  promoteContactsToCustomers,
+  useMarketingContacts, saveContact, deleteContact, deleteContacts,
+  contactName, MC_CATEGORIES, MC_STATUSES, MC_AUDIENCES, isCategoryTag, sortTags,
+  promoteContactsToCustomers, tagCounts, renameTagEverywhere, deleteTagEverywhere,
 } from '../domain/marketingContact'
 
 const STATUS_STYLE = {
@@ -17,12 +17,6 @@ const AUD_STYLE = {
   trade:   'bg-indigo-100 text-indigo-700',
   retail:  'bg-teal-100 text-teal-700',
   website: 'bg-amber-100 text-amber-700',
-}
-const REVIEW_STYLE = {
-  '':          'text-gray-400',
-  keep:        'text-green-700',
-  follow_up:   'text-amber-700',
-  drop:        'text-red-600',
 }
 const DISPLAY_CAP = 300
 
@@ -78,13 +72,16 @@ function EditContactModal({ contact, onClose, onSaved, onDeleted }) {
   const [f, setF] = useState({
     first_name: contact.first_name, last_name: contact.last_name, email: contact.email,
     company: contact.company, country: contact.country, phone: contact.phone,
-    status: contact.status,
-    is_customer: contact.is_customer, review_status: contact.review_status,
+    status: contact.status, audiences: contact.audiences,
+    is_customer: contact.is_customer,
     tags: contact.tags.join(', '), app_notes: contact.app_notes,
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const set = k => e => setF(s => ({ ...s, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
+  const toggleAudience = a => setF(s => ({
+    ...s, audiences: s.audiences.includes(a) ? s.audiences.filter(x => x !== a) : [...s.audiences, a],
+  }))
 
   async function save() {
     setBusy(true); setError('')
@@ -139,24 +136,31 @@ function EditContactModal({ contact, onClose, onSaved, onDeleted }) {
               {MC_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </label>
+          <div className="block">
+            <span className="text-xs text-gray-500">Audience</span>
+            {/* A website signup defaults to ['website'] but that's a source,
+                not a classification — it can genuinely be trade, retail, or
+                both, and needs sorting into the right one. */}
+            <div className="flex gap-3 mt-1">
+              {MC_AUDIENCES.map(a => (
+                <label key={a} className="flex items-center gap-1.5 text-sm text-gray-700">
+                  <input type="checkbox" checked={f.audiences.includes(a)} onChange={() => toggleAudience(a)}
+                         className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
+                  {a}
+                </label>
+              ))}
+            </div>
+          </div>
           <label className="block">
             <span className="text-xs text-gray-500">Tags (comma-separated)</span>
             <input className="input w-full mt-0.5" value={f.tags} onChange={set('tags')} placeholder="distributor, exhibition contact" />
             <span className="text-[11px] text-gray-400">Category tags ({MC_CATEGORIES.slice(0, 5).join(', ')}…) show highlighted.</span>
           </label>
-          <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 text-sm text-gray-600">
-              <input type="checkbox" checked={f.is_customer} onChange={set('is_customer')}
-                     className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
-              Likely customer
-            </label>
-            <label className="flex items-center gap-2 text-sm text-gray-600">
-              Review
-              <select className="input py-1" value={f.review_status} onChange={set('review_status')}>
-                {MC_REVIEW.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-              </select>
-            </label>
-          </div>
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <input type="checkbox" checked={f.is_customer} onChange={set('is_customer')}
+                   className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
+            Likely customer
+          </label>
           <label className="block">
             <span className="text-xs text-gray-500">Notes</span>
             <textarea className="input w-full mt-0.5" rows={2} value={f.app_notes} onChange={set('app_notes')} />
@@ -180,18 +184,102 @@ function EditContactModal({ contact, onClose, onSaved, onDeleted }) {
   )
 }
 
+// Bulk tag cleanup — the Mailchimp import left tags genuinely chaotic (one-off
+// variants, near-duplicates like "personal network" vs "personal contact").
+// Editing one contact at a time can't fix that; this renames/merges or
+// removes a tag across every contact carrying it in one action.
+function TagManagerModal({ contacts, onClose, onApplied }) {
+  const [q, setQ] = useState('')
+  const [edits, setEdits] = useState({})
+  const [busyTag, setBusyTag] = useState(null)
+  const counts = useMemo(() => tagCounts(contacts), [contacts])
+  const shown = counts.filter(([t]) => t.includes(q.toLowerCase().trim()))
+
+  async function handleRename(tag) {
+    const to = (edits[tag] ?? tag).trim().toLowerCase()
+    if (!to || to === tag) return
+    setBusyTag(tag)
+    try {
+      const n = await renameTagEverywhere(contacts, tag, to)
+      onApplied({ type: 'rename', from: tag, to, count: n })
+      setEdits(s => { const n2 = { ...s }; delete n2[tag]; return n2 })
+    } catch (e) {
+      window.alert(e.message || 'Rename failed.')
+    } finally {
+      setBusyTag(null)
+    }
+  }
+
+  async function handleDelete(tag, count) {
+    if (!window.confirm(`Remove tag "${tag}" from ${count} contact${count === 1 ? '' : 's'}? This cannot be undone.`)) return
+    setBusyTag(tag)
+    try {
+      const n = await deleteTagEverywhere(contacts, tag)
+      onApplied({ type: 'delete', tag, count: n })
+    } catch (e) {
+      window.alert(e.message || 'Delete failed.')
+    } finally {
+      setBusyTag(null)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-xl my-8" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+          <h2 className="font-semibold text-gray-900">Manage tags</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+        </div>
+        <div className="px-5 pt-3">
+          <input type="text" placeholder="Search tags…" className="input w-full" value={q} onChange={e => setQ(e.target.value)} />
+        </div>
+        <div className="p-5 space-y-2 max-h-[65vh] overflow-auto">
+          {shown.map(([tag, count]) => (
+            <div key={tag} className="flex items-center gap-2">
+              <span className={`shrink-0 w-8 text-center text-[10px] rounded px-1 py-0.5 ${isCategoryTag(tag) ? 'text-teal-700 bg-teal-100 font-medium' : 'text-gray-600 bg-gray-100'}`}>
+                {count}
+              </span>
+              <input
+                className="input flex-1 text-sm"
+                value={edits[tag] ?? tag}
+                onChange={e => setEdits(s => ({ ...s, [tag]: e.target.value }))}
+              />
+              <button onClick={() => handleRename(tag)} disabled={busyTag === tag || (edits[tag] ?? tag) === tag}
+                className="btn-secondary text-xs shrink-0 disabled:opacity-50"
+                title="Rename — merges into an existing tag instead of duplicating it">
+                {busyTag === tag ? '…' : 'Rename'}
+              </button>
+              <button onClick={() => handleDelete(tag, count)} disabled={busyTag === tag}
+                className="text-red-600 hover:text-red-700 shrink-0 disabled:opacity-50" title={`Remove from all ${count} contacts`}>
+                <Trash2 size={15} />
+              </button>
+            </div>
+          ))}
+          {shown.length === 0 && <div className="text-sm text-gray-400 text-center py-8">No tags match.</div>}
+        </div>
+        <p className="px-5 pb-4 text-[11px] text-gray-400">
+          Renaming to a tag that already exists on some of these contacts merges the two — no duplicates.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function MarketingContacts() {
   const { contacts, loading, setContacts } = useMarketingContacts()
   const [search, setSearch] = useState('')
   const [audience, setAudience] = useState('')
   const [status, setStatus] = useState('subscribed')  // default to the emailable list
-  const [segment, setSegment] = useState('')          // '', 'customer', 'prospect'
+  // Whether the contact is actually linked to a real app Customer record
+  // (possible_customer_match) — NOT the softer is_customer flag, which used
+  // to drive a "Customer + prospect" filter the owner found too vague:
+  // "I only need to know if this contact is in the app or not."
+  const [inApp, setInApp] = useState('')              // '', 'yes', 'no'
   const [category, setCategory] = useState('')
   const [country, setCountry] = useState('')
-  const [review, setReview] = useState('')
-  const [matchedOnly, setMatchedOnly] = useState(false)
   const [selected, setSelected] = useState(() => new Set())
   const [editing, setEditing] = useState(null)
+  const [managingTags, setManagingTags] = useState(false)
   const [promoting, setPromoting] = useState(false)
 
   const countries = useMemo(() => {
@@ -200,11 +288,15 @@ export default function MarketingContacts() {
     return [...c.entries()].sort((a, b) => b[1] - a[1]).map(([k]) => k)
   }, [contacts])
 
+  // Real tags with counts, not the fixed MC_CATEGORIES subset — that list
+  // only ever covered the "promoted for filtering" handful and hid every
+  // one-off tag the Mailchimp import left behind.
+  const tagOptions = useMemo(() => tagCounts(contacts), [contacts])
+
   const stats = useMemo(() => ({
     total: contacts.length,
     emailable: contacts.filter(c => c.emailable).length,
     suppressed: contacts.filter(c => c.status === 'unsubscribed' || c.status === 'cleaned').length,
-    customers: contacts.filter(c => c.is_customer).length,
     matched: contacts.filter(c => c.possible_customer_match).length,
   }), [contacts])
 
@@ -219,23 +311,16 @@ export default function MarketingContacts() {
       )) return false
       if (audience && !c.audiences.includes(audience)) return false
       if (status && c.status !== status) return false
-      if (segment === 'customer' && !c.is_customer) return false
-      if (segment === 'prospect' && c.is_customer) return false
+      if (inApp === 'yes' && !c.possible_customer_match) return false
+      if (inApp === 'no' && c.possible_customer_match) return false
       if (category && !c.tags.includes(category)) return false
       if (country && c.country !== country) return false
-      if (review && c.review_status !== review) return false
-      if (matchedOnly && !c.possible_customer_match) return false
       return true
     })
-  }, [contacts, search, audience, status, segment, category, country, review, matchedOnly])
+  }, [contacts, search, audience, status, inApp, category, country])
 
   const shown = filtered.slice(0, DISPLAY_CAP)
   const allShownSelected = shown.length > 0 && shown.every(c => selected.has(c.id))
-
-  async function setReviewStatus(id, value) {
-    setContacts(prev => prev.map(c => c.id === id ? { ...c, review_status: value } : c))
-    try { await updateContactReview(id, { review_status: value }) } catch { /* optimistic; a reload corrects */ }
-  }
 
   function toggleSel(id) {
     setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
@@ -259,6 +344,22 @@ export default function MarketingContacts() {
   function applySaved(oldId, updated) {
     setContacts(prev => prev.map(c => c.id === oldId ? { ...c, ...updated } : c))
     setEditing(null)
+  }
+
+  // Reflect a tag rename/delete already committed in Firestore (see
+  // TagManagerModal) into local state, so the list updates without a full
+  // reload. Also clears the category filter if it was pointed at a tag that
+  // just changed underneath it.
+  function applyTagChange(change) {
+    const target = change.type === 'rename' ? change.from : change.tag
+    setContacts(prev => prev.map(c => {
+      if (!c.tags.includes(target)) return c
+      const tags = change.type === 'rename'
+        ? [...new Set(c.tags.map(t => (t === change.from ? change.to : t)))]
+        : c.tags.filter(t => t !== change.tag)
+      return { ...c, tags }
+    }))
+    setCategory(cat => (cat === target ? '' : cat))
   }
 
   async function bulkDelete() {
@@ -307,6 +408,9 @@ export default function MarketingContacts() {
         <EditContactModal contact={editing} onClose={() => setEditing(null)}
           onSaved={applySaved} onDeleted={removeLocal} />
       )}
+      {managingTags && (
+        <TagManagerModal contacts={contacts} onClose={() => setManagingTags(false)} onApplied={applyTagChange} />
+      )}
 
       <div className="flex items-start justify-between mb-4 gap-3">
         <div>
@@ -317,20 +421,23 @@ export default function MarketingContacts() {
             Cleaned Mailchimp list — kept separate from Customers. {stats.total.toLocaleString()} contacts.
           </p>
         </div>
-        <button onClick={() => exportCsv(filtered)} className="btn-secondary text-sm flex items-center gap-1.5 shrink-0">
-          <Download size={15} /> Export view
-        </button>
+        <div className="flex gap-2 shrink-0">
+          <button onClick={() => setManagingTags(true)} className="btn-secondary text-sm flex items-center gap-1.5">
+            <Tags size={15} /> Manage tags
+          </button>
+          <button onClick={() => exportCsv(filtered)} className="btn-secondary text-sm flex items-center gap-1.5">
+            <Download size={15} /> Export view
+          </button>
+        </div>
       </div>
 
       {/* Segment summary */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mb-5">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-5">
         <Stat Icon={Users}     label="Total contacts"          value={stats.total} />
         <Stat Icon={Mail}      label="Emailable (subscribed)"  value={stats.emailable} tone="text-green-700" />
         <Stat Icon={MailX}     label="Suppressed — never email" value={stats.suppressed} tone="text-amber-700" />
-        <Stat Icon={UserCheck} label="Likely customers"        value={stats.customers}
-              active={segment === 'customer'} onClick={() => setSegment(s => s === 'customer' ? '' : 'customer')} />
-        <Stat Icon={Link2}     label="Match an app customer"   value={stats.matched}
-              active={matchedOnly} onClick={() => setMatchedOnly(v => !v)} />
+        <Stat Icon={Link2}     label="In the app"              value={stats.matched}
+              active={inApp === 'yes'} onClick={() => setInApp(v => v === 'yes' ? '' : 'yes')} />
       </div>
 
       {/* Filters */}
@@ -356,22 +463,22 @@ export default function MarketingContacts() {
             <option value="retail">Retail (e-com)</option>
             <option value="website">Website signup</option>
           </select>
-          <select className="input flex-1 min-w-[110px]" value={segment} onChange={e => setSegment(e.target.value)}>
-            <option value="">Customer + prospect</option>
-            <option value="customer">Likely customers</option>
-            <option value="prospect">Prospects / leads</option>
+          {/* Whether the contact is actually linked to a real app Customer
+              record (possible_customer_match) — replaces the old "Customer +
+              prospect" dropdown, which filtered on the softer is_customer
+              flag and the owner found too vague. */}
+          <select className="input flex-1 min-w-[110px]" value={inApp} onChange={e => setInApp(e.target.value)}>
+            <option value="">In app: any</option>
+            <option value="yes">In app</option>
+            <option value="no">Not in app</option>
           </select>
-          <select className="input flex-1 min-w-[110px]" value={category} onChange={e => setCategory(e.target.value)}>
-            <option value="">All categories</option>
-            {MC_CATEGORIES.map(r => <option key={r} value={r}>{r}</option>)}
+          <select className="input flex-1 min-w-[130px]" value={category} onChange={e => setCategory(e.target.value)}>
+            <option value="">All tags</option>
+            {tagOptions.map(([t, n]) => <option key={t} value={t}>{t} ({n})</option>)}
           </select>
           <select className="input flex-1 min-w-[110px]" value={country} onChange={e => setCountry(e.target.value)}>
             <option value="">All countries</option>
             {countries.map(c => <option key={c}>{c}</option>)}
-          </select>
-          <select className="input flex-1 min-w-[110px]" value={review} onChange={e => setReview(e.target.value)}>
-            <option value="">Any review</option>
-            {MC_REVIEW.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
         </div>
       </div>
@@ -381,10 +488,10 @@ export default function MarketingContacts() {
         <p className="text-xs text-gray-500 flex items-center gap-2">
           {filtered.length.toLocaleString()} match{filtered.length === 1 ? '' : 'es'}
           {filtered.length > DISPLAY_CAP && ` — showing first ${DISPLAY_CAP}, refine to narrow`}
-          {matchedOnly && (
+          {inApp === 'yes' && (
             <span className="inline-flex items-center gap-1 text-brand-600 bg-brand-50 rounded-full px-2 py-0.5">
-              matched to a customer
-              <button onClick={() => setMatchedOnly(false)} className="hover:text-brand-800"><X size={11} /></button>
+              in the app
+              <button onClick={() => setInApp('')} className="hover:text-brand-800"><X size={11} /></button>
             </span>
           )}
         </p>
@@ -422,7 +529,6 @@ export default function MarketingContacts() {
                 <th className="px-3 py-2 font-medium">Audience</th>
                 <th className="px-3 py-2 font-medium">Tags</th>
                 <th className="px-3 py-2 font-medium">Status</th>
-                <th className="px-3 py-2 font-medium">Review</th>
                 <th className="px-3 py-2 font-medium w-12 text-right">Edit</th>
               </tr>
             </thead>
@@ -475,15 +581,6 @@ export default function MarketingContacts() {
                   <td className="px-3 py-2">
                     <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${STATUS_STYLE[c.status] || 'bg-gray-100 text-gray-500'}`}>{c.status}</span>
                   </td>
-                  <td className="px-3 py-2">
-                    <select
-                      value={c.review_status}
-                      onChange={e => setReviewStatus(c.id, e.target.value)}
-                      className={`text-xs bg-transparent border-0 focus:ring-0 cursor-pointer ${REVIEW_STYLE[c.review_status] || ''}`}
-                    >
-                      {MC_REVIEW.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                    </select>
-                  </td>
                   <td className="px-3 py-2 text-right">
                     <button onClick={() => setEditing(c)} title="Edit contact"
                       className="inline-flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700 hover:underline">
@@ -493,7 +590,7 @@ export default function MarketingContacts() {
                 </tr>
               ))}
               {!loading && filtered.length === 0 && (
-                <tr><td colSpan={10} className="px-3 py-12 text-center text-gray-400">
+                <tr><td colSpan={9} className="px-3 py-12 text-center text-gray-400">
                   <AlertCircle size={32} strokeWidth={1.25} className="mx-auto mb-2 text-gray-300" />
                   No contacts match these filters.
                 </td></tr>
