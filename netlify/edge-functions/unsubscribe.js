@@ -15,7 +15,26 @@
 //   RESEND_API_KEY           — required (shared with send-email.js / send-campaign.js)
 //   VITE_FIREBASE_PROJECT_ID — reused from the app
 //   FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY — service-account (shared with subscribe.js)
+//   MAIL_FROM / MAIL_ADMIN   — optional; if set, fires a best-effort admin
+//     alert to the same destination as subscribe.js's/send-email.js's alerts.
 import { SignJWT, importPKCS8 } from 'https://esm.sh/jose@5.9.6'
+
+const notifyEsc = s => String(s ?? '').replace(/[&<>"]/g, c => (
+  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]
+))
+
+async function notifyAdmin(apiKey, subject, bodyHtml) {
+  const ADMIN = Deno.env.get('MAIL_ADMIN')
+  if (!apiKey || !ADMIN) return
+  const FROM = Deno.env.get('MAIL_FROM') || 'Crystocraft <onboarding@resend.dev>'
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: FROM, to: ADMIN, subject, html: bodyHtml }),
+    })
+  } catch { /* best-effort — never fails the unsubscribe itself */ }
+}
 
 function normalizePkcs8(input) {
   let s = String(input || '').trim()
@@ -107,6 +126,12 @@ export default async function handler(req) {
     if (!patchR.ok && patchR.status !== 404) {
       throw new Error(`patch ${patchR.status}: ${(await patchR.text()).slice(0, 200)}`)
     }
+    // Awaited (not fire-and-forget) for the same reason as subscribe.js: an
+    // edge function's isolate can be torn down right after the response is
+    // sent. `id` doubles as the email — it IS the lowercased email under this
+    // collection's id scheme (see idFromEmail in marketingContact.js).
+    await notifyAdmin(RESEND_KEY, `Marketing unsubscribe — ${id}`,
+      `<p><b>Marketing unsubscribe</b></p><p>Email: ${notifyEsc(id)}</p>`)
     return html('You’re unsubscribed', 'You will no longer receive marketing emails from Crystocraft. If this was a mistake, contact us at sales@uart.com.hk.')
   } catch {
     return html('Something went wrong', 'Please try again later, or contact sales@uart.com.hk to be removed manually.', 502)

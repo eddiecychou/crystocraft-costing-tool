@@ -21,6 +21,9 @@
 //   FIREBASE_PRIVATE_KEY      — service-account private_key (literal \n allowed)
 //   SUBSCRIBE_ALLOWED_ORIGINS — optional CSV of allowed CORS origins
 //                               (default: the crystocraft.com origins)
+//   RESEND_API_KEY / MAIL_FROM / MAIL_ADMIN — optional; if set, fires a
+//     best-effort admin alert (same MAIL_ADMIN destination as send-email.js's
+//     signup/enquiry alerts). Never blocks or fails the signup itself.
 import { SignJWT, importPKCS8 } from 'https://esm.sh/jose@5.9.6'
 
 const DEFAULT_ORIGINS = [
@@ -119,6 +122,28 @@ async function getAccessToken(clientEmail, privateKeyPem) {
 // Same id rule as the Mailchimp import, so a signup lands on the SAME doc as an
 // already-imported contact with that email (idempotent, never a duplicate).
 const idFor = (email) => email.trim().toLowerCase().replace(/\s+/g, '')
+
+const escHtml = s => String(s ?? '').replace(/[&<>"]/g, c => (
+  { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]
+))
+
+// Best-effort admin alert — same destination (MAIL_ADMIN) as send-email.js's
+// signup/enquiry alerts, so there's one place admin notifications land.
+// Deliberately swallows its own errors: a Resend hiccup must never fail the
+// visitor's actual signup.
+async function notifyAdmin(subject, bodyHtml) {
+  const API_KEY = Deno.env.get('RESEND_API_KEY')
+  const ADMIN = Deno.env.get('MAIL_ADMIN')
+  if (!API_KEY || !ADMIN) return
+  const FROM = Deno.env.get('MAIL_FROM') || 'Crystocraft <onboarding@resend.dev>'
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: FROM, to: ADMIN, subject, html: bodyHtml }),
+    })
+  } catch { /* best-effort */ }
+}
 
 export default async function handler(req) {
   const allowed = (Deno.env.get('SUBSCRIBE_ALLOWED_ORIGINS') || '')
@@ -239,6 +264,15 @@ export default async function handler(req) {
       body: JSON.stringify({ fields: encodeFields(fields) }),
     })
     if (!patchR.ok) throw new Error(`patch ${patchR.status}: ${(await patchR.text()).slice(0, 200)}`)
+
+    // Awaited, not fire-and-forget: an edge function's isolate can be torn
+    // down right after the response is sent, which would silently drop a
+    // detached fetch. notifyAdmin() already swallows its own errors, so this
+    // adds a little latency but never fails the visitor's actual signup.
+    const who = [data.company, data.first_name, data.last_name].filter(Boolean).join(' ') || email
+    const label = !ex ? 'New marketing signup' : suppressed ? 'Resubscribe request (was suppressed)' : 'Marketing re-opt-in'
+    await notifyAdmin(`${label} — ${who}`,
+      `<p><b>${escHtml(label)}</b></p><p>Email: ${escHtml(email)}<br>${escHtml(who)}</p>`)
 
     return json({ ok: true, id, created: !ex, suppressed: !!suppressed })
   } catch (e) {
