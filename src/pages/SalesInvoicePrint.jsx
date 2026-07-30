@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { getOrder, getOrderLines, computeOrderTotals, orderUc } from '../shipping'
 import { loadCustomers } from '../domain/customer'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '../firebase'
 import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
 import { amountInWords } from '../constants'
 
@@ -36,6 +38,10 @@ export default function SalesInvoicePrint() {
   const [lines, setLines] = useState([])
   const [customer, setCustomer] = useState(null)
   const [bank, setBank] = useState(null)
+  // Same chop as the Proforma Invoice — one asset (Settings → Quote branding),
+  // so every document the customer receives from us carries the same signature
+  // rather than needing its own upload to go stale independently.
+  const [stampUrl, setStampUrl] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -54,6 +60,11 @@ export default function SalesInvoicePrint() {
           const accounts = await listBankAccounts()
           if (alive) setBank(accountForCurrency(accounts || [], o.currency))
         } catch { /* non-admin: print without the remittance block */ }
+        // Missing/unreadable chop prints an unstamped invoice, not a failed page.
+        try {
+          const snap = await getDoc(doc(db, 'settings', 'quote_branding'))
+          if (alive && snap.exists()) setStampUrl(snap.data().stamp_url || '')
+        } catch { /* unstamped */ }
       } catch (e) {
         if (alive) setError(e.message || 'Could not load this order.')
       } finally {
@@ -126,7 +137,13 @@ export default function SalesInvoicePrint() {
         .si-notes { font-size: 10px; color: #555; margin-bottom: 22px; white-space: pre-wrap; }
         .si-notes .lbl { font-size: 8.5px; text-transform: uppercase; letter-spacing: .1em; color: #999; display: block; margin-bottom: 3px; }
         .si-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 26px; }
-        .si-sign .space { height: 70px; }
+        .si-sign .space { height: 70px; position: relative; }
+        /* Same chop, same placement as the PI (see ProformaInvoicePrint) — one
+           signature across every document a customer receives from us.
+           print-color-adjust keeps it from being dropped when "background
+           graphics" is off in the print dialog. */
+        .si-sign .stamp { position: absolute; bottom: 0; left: 4px; max-width: 240px; max-height: 92px;
+          object-fit: contain; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
         .si-sign .line { border-top: 1px solid #999; padding-top: 5px; font-size: 9px; color: #777; }
         .si-foot { margin-top: 26px; padding-top: 10px; border-top: 1px solid #eee; text-align: center; font-size: 9px; color: #888; line-height: 1.6; }
         .si-foot .nm { font-weight: 600; color: #555; }
@@ -267,7 +284,9 @@ export default function SalesInvoicePrint() {
 
       <div className="si-sign">
         <div>
-          <div className="space" />
+          <div className="space">
+            {stampUrl && <img className="stamp" src={stampUrl} alt="" />}
+          </div>
           <div className="line">ISSUED BY · {SELLER.name}</div>
         </div>
         <div>
