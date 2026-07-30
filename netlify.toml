@@ -81,6 +81,14 @@
   path = "/api/subscribe"
 
 [[edge_functions]]
+  function = "send-campaign"
+  path = "/api/send-campaign"
+
+[[edge_functions]]
+  function = "unsubscribe"
+  path = "/api/unsubscribe"
+
+[[edge_functions]]
   function = "customizer-render"
   path = "/api/customizer-render"
 

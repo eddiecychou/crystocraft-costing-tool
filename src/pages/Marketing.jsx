@@ -2,11 +2,13 @@ import { useState } from 'react'
 import Catalogues from './Catalogues'
 import BlogGenerator from './BlogGenerator'
 import MarketingContacts from './MarketingContacts'
+import Campaigns from './Campaigns'
 
 const TABS = [
   { v: 'catalogues', label: 'Catalogues' },
   { v: 'blog',       label: 'Blog Writer' },
   { v: 'contacts',   label: 'Contacts' },
+  { v: 'campaigns',  label: 'Campaigns' },
 ]
 
 export default function Marketing() {
@@ -31,6 +33,7 @@ export default function Marketing() {
       {tab === 'catalogues' && <Catalogues embedded />}
       {tab === 'blog'       && <BlogGenerator embedded />}
       {tab === 'contacts'   && <MarketingContacts />}
+      {tab === 'campaigns'  && <Campaigns />}
     </div>
   )
 }

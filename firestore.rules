@@ -135,6 +135,13 @@ service cloud.firestore {
     match /marketing_contacts/{contactId} {
       allow read, write: if isAdmin();
     }
+    // Marketing campaigns — batched Resend sends to marketing_contacts
+    // segments. Admin-only, same posture as marketing_contacts. Unsubscribes
+    // are written server-side by the /api/unsubscribe edge function (service
+    // account, bypasses these rules) directly onto marketing_contacts, not here.
+    match /marketing_campaigns/{campaignId} {
+      allow read, write: if isAdmin();
+    }
     match /{path=**}/supplier_quotes/{quoteId} {
       allow read, write: if isAdmin();
     }
