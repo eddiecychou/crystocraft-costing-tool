@@ -119,7 +119,17 @@ create function public.allocate_sales_invoice(
   p_uc_no      text default null,     -- full form, e.g. 'UC4920/26'
   p_created_by text default null
 ) returns table (o_si_no text, o_uc_no text, o_uc_id bigint, o_invoice_id bigint)
-language plpgsql
+-- SECURITY DEFINER on purpose, same reason as bank_accounts_audit_fn in
+-- bank_accounts.sql. service_role (what PostgREST/the API connects as) has no
+-- grant on schema raw at all — the curated erp_* views work around that because a view runs
+-- with its OWNER's privileges by default, but a plain plpgsql function runs as
+-- the CALLER. Without this, every allocation failed with "permission denied
+-- for schema raw" (CuiLing, 2026-07-30) the moment it read raw.salesinvoice.
+-- Running as the owner (postgres, who does have access) fixes that without
+-- granting service_role any broader access to the 73-table JES mirror.
+-- search_path is pinned, as required for any SECURITY DEFINER function; every
+-- reference in this body is already schema-qualified so nothing else changes.
+language plpgsql security definer set search_path = public, pg_temp
 as $$
 declare
   v_next int; v_app int; v_jes int;
