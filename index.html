@@ -14,6 +14,18 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Questrial&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+    <!-- Google Analytics (GA4) — portal.crystocraft.com property.
+         "Enhanced measurement" (default on for new properties) tracks
+         History API navigation automatically, so this SPA's route changes
+         are picked up without any custom React Router wiring. -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-HRTV0QWTNG"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-HRTV0QWTNG');
+    </script>
   </head>
   <body>
     <div id="root"></div>
