@@ -4,14 +4,14 @@
 // reaches the browser).
 import { authedUser } from './firebase'
 
-export async function sendCampaignBatch({ subject, bodyText, contacts }) {
+export async function sendCampaignBatch({ subject, bodyHtml, contacts }) {
   const user = await authedUser()
   if (!user) throw new Error('Please sign in.')
   const token = await user.getIdToken()
   const res = await fetch('/api/send-campaign', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ subject, bodyText, contacts }),
+    body: JSON.stringify({ subject, bodyHtml, contacts }),
   })
   let data = {}
   try { data = await res.json() } catch { /* non-JSON error body */ }

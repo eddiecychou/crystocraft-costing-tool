@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import EmailEditor from 'react-email-editor'
 import { Send, Loader2, CheckCircle2 } from 'lucide-react'
-import { useMarketingContacts, MC_CATEGORIES, MC_AUDIENCES } from '../domain/marketingContact'
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { storage } from '../firebase'
+import { useMarketingContacts, MC_AUDIENCES } from '../domain/marketingContact'
 import {
   listCampaigns, createCampaign, recordBatchResults, setCampaignStatus, eligibleContacts,
 } from '../domain/campaigns'
@@ -14,11 +17,18 @@ import { sendCampaignBatch } from '../campaignApi'
 // reasoning (Resend free plan: 1 domain, 100/day, 3,000/month).
 const BATCH_SIZE = 80
 
-const SEGMENT_OPTIONS = [
-  { v: 'all', label: 'All subscribed contacts' },
-  ...MC_AUDIENCES.map(a => ({ v: `audience:${a}`, label: `Audience — ${a}` })),
-  ...MC_CATEGORIES.map(t => ({ v: `tag:${t}`, label: `Tag — ${t}` })),
-]
+// Tags come from whatever contacts actually carry, not the fixed MC_CATEGORIES
+// list — that list is only the "promoted for filtering" subset shown on the
+// Contacts page; a one-off tag like "test" (added there for exactly this kind
+// of dry run) still needs to be selectable here.
+function segmentOptions(contacts) {
+  const tags = [...new Set(contacts.flatMap(c => c.tags))].sort((a, b) => a.localeCompare(b))
+  return [
+    { v: 'all', label: 'All subscribed contacts' },
+    ...MC_AUDIENCES.map(a => ({ v: `audience:${a}`, label: `Audience — ${a}` })),
+    ...tags.map(t => ({ v: `tag:${t}`, label: `Tag — ${t}` })),
+  ]
+}
 
 function segmentFromValue(v) {
   if (v === 'all') return { all: true }
@@ -44,12 +54,13 @@ export default function Campaigns() {
   const [segValue, setSegValue] = useState('all')
   const [name, setName] = useState('')
   const [subject, setSubject] = useState('')
-  const [bodyText, setBodyText] = useState('')
   const [creating, setCreating] = useState(false)
+  const editorRef = useRef(null)
 
   const reload = () => listCampaigns().then(setCampaigns).finally(() => setLoading(false))
   useEffect(() => { reload() }, [])
 
+  const segOptions = useMemo(() => segmentOptions(contacts), [contacts])
   const segment = segmentFromValue(segValue)
   const previewCount = useMemo(
     () => contacts.filter(c => c.status === 'subscribed' && c.emailable && (
@@ -58,14 +69,43 @@ export default function Campaigns() {
     [contacts, segValue]
   )
 
+  // Unlayer's default image upload goes through their own hosted service,
+  // which wants an account/project id. Overriding it to Firebase Storage
+  // instead matches how every other image upload in this app works (see
+  // ImageGallery.jsx) and keeps campaign images in the same place as
+  // everything else — one less external account to provision.
+  function handleEditorReady(unlayer) {
+    unlayer.registerCallback('image', async (file, done) => {
+      try {
+        const path = `campaign_images/${Date.now()}_${file.attachments[0].name}`
+        const sRef = storageRef(storage, path)
+        await uploadBytes(sRef, file.attachments[0])
+        const url = await getDownloadURL(sRef)
+        done({ progress: 100, url })
+      } catch {
+        done({ progress: 100, url: '' })
+      }
+    })
+  }
+
+  function exportDesign() {
+    return new Promise((resolve, reject) => {
+      const editor = editorRef.current?.editor
+      if (!editor) return reject(new Error('Editor not ready yet.'))
+      editor.exportHtml(({ design, html }) => resolve({ design, html }))
+    })
+  }
+
   async function handleCreate() {
-    if (!name.trim() || !subject.trim() || !bodyText.trim()) {
-      setError('Name, subject and message are all required.'); return
+    if (!name.trim() || !subject.trim()) {
+      setError('Name and subject are required.'); return
     }
     setCreating(true); setError('')
     try {
-      await createCampaign({ name: name.trim(), subject: subject.trim(), bodyText: bodyText.trim(), segment })
-      setName(''); setSubject(''); setBodyText('')
+      const { design, html } = await exportDesign()
+      await createCampaign({ name: name.trim(), subject: subject.trim(), bodyHtml: html, design, segment })
+      setName(''); setSubject('')
+      editorRef.current?.editor?.loadDesign({ body: { rows: [] } })
       await reload()
     } catch (e) {
       setError(e.message || 'Could not create the campaign.')
@@ -81,7 +121,7 @@ export default function Campaigns() {
     try {
       const results = await sendCampaignBatch({
         subject: campaign.subject,
-        bodyText: campaign.bodyText,
+        bodyHtml: campaign.bodyHtml,
         contacts: batch.map(c => ({ id: c.id, email: c.email, first_name: c.first_name })),
       })
       await recordBatchResults(campaign.id, results)
@@ -97,34 +137,41 @@ export default function Campaigns() {
   if (loading || contactsLoading) return <div className="p-6 text-sm text-gray-500">Loading…</div>
 
   return (
-    <div className="p-4 md:p-6 max-w-3xl space-y-8">
+    <div className="p-4 md:p-6 max-w-5xl space-y-8">
       <div className="card p-5 space-y-4">
         <h2 className="text-sm font-semibold text-gray-900">New campaign</h2>
         {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</div>}
 
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Campaign name (internal)</label>
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Q3 2026 wholesale re-engagement"
-            className="input w-full" />
+        <div className="grid md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Campaign name (internal)</label>
+            <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Q3 2026 wholesale re-engagement"
+              className="input w-full" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Subject</label>
+            <input value={subject} onChange={e => setSubject(e.target.value)} className="input w-full" />
+          </div>
         </div>
 
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Segment</label>
-          <select value={segValue} onChange={e => setSegValue(e.target.value)} className="input w-full">
-            {SEGMENT_OPTIONS.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
+          <select value={segValue} onChange={e => setSegValue(e.target.value)} className="input w-full md:w-96">
+            {segOptions.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
           </select>
           <div className="text-xs text-gray-500 mt-1">{previewCount.toLocaleString()} subscribed contact{previewCount === 1 ? '' : 's'} match this segment</div>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Subject</label>
-          <input value={subject} onChange={e => setSubject(e.target.value)} className="input w-full" />
-        </div>
-
-        <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Message</label>
-          <textarea value={bodyText} onChange={e => setBodyText(e.target.value)} rows={8}
-            placeholder="Blank line starts a new paragraph." className="input w-full font-sans" />
+          {/* Unlayer drag-and-drop email builder — proper columns, images,
+              buttons, exported as mobile-responsive/Outlook-safe HTML.
+              Unsubscribe link + List-Unsubscribe header are added
+              server-side (send-campaign.js) regardless of what's built here,
+              so compliance doesn't depend on the sender remembering it. */}
+          <div className="border border-ivory-dark rounded overflow-hidden" style={{ height: 600 }}>
+            <EmailEditor ref={editorRef} onReady={handleEditorReady} minHeight="600px" />
+          </div>
         </div>
 
         <button onClick={handleCreate} disabled={creating} className="btn-primary">

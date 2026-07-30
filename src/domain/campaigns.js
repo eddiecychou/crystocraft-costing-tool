@@ -15,9 +15,12 @@ export async function listCampaigns() {
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
 
-export async function createCampaign({ name, subject, bodyText, segment }) {
+// bodyHtml is the Unlayer-exported HTML (see Campaigns.jsx); design is its
+// JSON source, kept so a campaign could be reopened for editing later even
+// though that's not part of "one campaign at a time" scope yet.
+export async function createCampaign({ name, subject, bodyHtml, design, segment }) {
   const ref = await addDoc(COL(), {
-    name, subject, bodyText, segment,
+    name, subject, bodyHtml, design, segment,
     status: 'active',
     sent: {}, failed: {},
     created_at: serverTimestamp(),

@@ -8,8 +8,14 @@
 // deliberately NOT a fresh subdomain, since the free Resend plan caps at one
 // verified domain and a second would need Pro.
 //
-// POST { contacts: [{ id, email, first_name? }], subject, bodyText }
+// POST { contacts: [{ id, email, first_name? }], subject, bodyHtml }
 //   -> { ok, results: [{ id, ok, error? }] }
+// bodyHtml is a full HTML document exported by the Unlayer drag-and-drop
+// editor (src/pages/Campaigns.jsx) — already mobile-responsive/Outlook-safe.
+// This function does NOT re-wrap it in its own shell (unlike send-email.js's
+// transactional templates); it only injects a per-recipient unsubscribe
+// footer before </body>, so compliance doesn't depend on the sender
+// remembering to build one in the editor.
 //
 // Env (Netlify site vars, server-side only):
 //   RESEND_API_KEY        — required (shared with send-email.js)
@@ -42,32 +48,20 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => (
   { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]
 ))
 
-// Plain-text body → paragraphs. Deliberately simple (no rich-text editor yet —
-// "one campaign at a time" scope) — a blank line starts a new paragraph, single
-// newlines soft-wrap within one.
-function bodyHtml(text) {
-  return String(text || '').trim().split(/\n\s*\n/).map(para =>
-    `<p style="font-size:14px;line-height:1.6;color:#444;margin:0 0 14px;">${esc(para).replace(/\n/g, '<br>')}</p>`
-  ).join('')
-}
-
-function emailHtml({ subject, text, unsubUrl }) {
-  return `
-<div style="margin:0;padding:24px;background:#F7EEE3;font-family:Helvetica,Arial,sans-serif;color:#222;">
-  <div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #E9E8E6;">
-    <div style="background:#1C1C1A;padding:18px 24px;">
-      <span style="color:#fff;font-size:18px;letter-spacing:3px;font-weight:bold;">CRYSTOCRAFT</span>
-    </div>
-    <div style="padding:28px 24px;">
-      <h1 style="font-size:19px;color:#222;margin:0 0 16px;font-weight:normal;">${esc(subject)}</h1>
-      ${bodyHtml(text)}
-    </div>
-    <div style="padding:16px 24px;border-top:1px solid #E9E8E6;color:#888;font-size:11px;">
-      Crystocraft — craftsmanship that catches the light, since 1958.<br>
-      <a href="${esc(unsubUrl)}" style="color:#888;">Unsubscribe</a>
-    </div>
-  </div>
-</div>`
+// Table-based (Outlook-safe) footer, inserted just before </body> of the
+// Unlayer-exported document. If for any reason there's no </body> tag
+// (shouldn't happen — Unlayer always exports a full document), append it —
+// an email with the footer in the wrong place is still better than one
+// missing an unsubscribe link.
+function withUnsubscribeFooter(html, unsubUrl) {
+  const footer = `
+<table role="presentation" width="100%" style="max-width:600px;margin:0 auto;">
+  <tr><td style="padding:16px 24px;text-align:center;color:#888;font-size:11px;font-family:Helvetica,Arial,sans-serif;">
+    Crystocraft — craftsmanship that catches the light, since 1958.<br>
+    <a href="${esc(unsubUrl)}" style="color:#888;">Unsubscribe</a>
+  </td></tr>
+</table>`
+  return html.includes('</body>') ? html.replace('</body>', `${footer}</body>`) : html + footer
 }
 
 // HMAC-SHA256(id, RESEND_API_KEY) — a lightweight unsubscribe token so the
@@ -102,9 +96,9 @@ export default async function handler(req) {
 
   let body
   try { body = await req.json() } catch { return json({ error: 'Bad JSON' }, 400) }
-  const { subject, bodyText } = body || {}
+  const { subject, bodyHtml } = body || {}
   const contacts = Array.isArray(body?.contacts) ? body.contacts.slice(0, MAX_BATCH) : []
-  if (!subject || !bodyText) return json({ error: 'subject and bodyText are required' }, 400)
+  if (!subject || !bodyHtml) return json({ error: 'subject and bodyHtml are required' }, 400)
   if (!contacts.length) return json({ error: 'No contacts in this batch' }, 400)
 
   const FROM = 'Crystocraft <news@crystocraft.com>'
@@ -123,7 +117,7 @@ export default async function handler(req) {
         headers: { Authorization: `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           from: FROM, to: email, subject,
-          html: emailHtml({ subject, text: bodyText, unsubUrl }),
+          html: withUnsubscribeFooter(bodyHtml, unsubUrl),
           ...(REPLY_TO ? { reply_to: REPLY_TO } : {}),
           headers: { 'List-Unsubscribe': `<${unsubUrl}>` },
         }),
