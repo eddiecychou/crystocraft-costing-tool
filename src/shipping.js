@@ -96,6 +96,21 @@ export function matchRangeProduct(itemCode, rangeProducts) {
 // duplicate-UC slip the invoice-chained allocation was built to stop.
 export const orderUc = o => (o && (o.uc_no || o.erp_pi_no)) || ''
 
+// erp_so_no is really a catch-all "primary ERP document number": the import
+// parser writes whatever reference it read into it, so it can hold an SO
+// (SO260031), a quote (QU260709), or — for imported invoices / older JES
+// records — an SI (SI260085). That's why an SI can appear under a column
+// labelled "SO #" (Cindy, 2026-07-31). These two helpers split it back apart
+// for display without any data migration:
+//   orderSi(o)         — the order's invoice number, whether it's in its own
+//                        erp_si_no field or landed in erp_so_no on import.
+//   orderSoDisplay(o)  — erp_so_no ONLY when it's a real SO/QU, blank when the
+//                        value is actually an SI (so the "SO #" column stops
+//                        showing invoice numbers).
+const looksLikeSi = v => /^SI/i.test((v || '').trim())
+export const orderSi = o => (o && (o.erp_si_no || (looksLikeSi(o.erp_so_no) ? o.erp_so_no.trim() : ''))) || ''
+export const orderSoDisplay = o => (o && !looksLikeSi(o.erp_so_no) ? (o.erp_so_no || '') : '')
+
 const ORDERS = () => collection(db, 'orders')
 const LINES  = orderId => collection(db, 'orders', orderId, 'lines')
 

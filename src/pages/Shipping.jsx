@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
-import { useOrders, orderStatusOf, orderUc, getOrder, getOrderLines, createOrderWithLines } from '../shipping'
+import { useOrders, orderStatusOf, orderUc, orderSi, orderSoDisplay, getOrder, getOrderLines, createOrderWithLines } from '../shipping'
 import { allocateOrderUc } from '../ucRegistry'
 import { useVendors, FREIGHT_MODES, modeLabel, strengthOf } from '../logistics'
 import { erpLookup } from '../erpApi'
@@ -207,7 +207,7 @@ function ShipmentsList() {
                     onClick={() => navigate(`/shipments/${o.id}`)}>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-600">{fmtOrderDate(o.order_date)}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-600">{orderUc(o) || '—'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{o.erp_so_no || '—'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{orderSoDisplay(o) || '—'}</td>
                     <td className="px-4 py-3 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-gray-900 truncate">{o.customer_name || 'Unnamed customer'}</span>
@@ -238,10 +238,10 @@ function ShipmentsList() {
                             SI so "this has become a Sales Invoice" is visible at a
                             glance. Not hidden from the list: a wholesale order is
                             invoiced at confirmation but still ships from here. */}
-                        {o.erp_si_no && (
-                          <span title={`Invoiced — ${o.erp_si_no}. Also listed under Sales Invoices.`}
+                        {orderSi(o) && (
+                          <span title={`Invoiced — ${orderSi(o)}. Also listed under Sales Invoices.`}
                             className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700 whitespace-nowrap">
-                            {o.erp_si_no}
+                            {orderSi(o)}
                           </span>
                         )}
                       </div>
