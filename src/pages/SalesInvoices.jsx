@@ -95,8 +95,14 @@ export default function SalesInvoices() {
     // "needs invoice" list.
     const invoicedAlready = (o) => !!o.erp_si_no || /^SI/i.test(o.erp_so_no || '')
     return {
+      // Was `.filter(o => o.erp_si_no)` — inconsistent with invoicedAlready()
+      // below, which also treats an SI landed in erp_so_no as invoiced. That
+      // asymmetry meant such an order was correctly excluded from "awaiting"
+      // but never counted as "invoiced" either — it just vanished from both
+      // lists. Matching invoicedAlready() here so every invoiced order lands
+      // in exactly one list.
       invoiced: all
-        .filter((o) => o.erp_si_no)
+        .filter(invoicedAlready)
         .sort((a, b) => (b.invoiced_at || b.order_date || '').localeCompare(a.invoiced_at || a.order_date || '')),
       // Newest first. This was oldest-first on the reasoning that the oldest is
       // the most overdue — but the tail is pre-app JES history that will never
@@ -136,8 +142,11 @@ export default function SalesInvoices() {
   const merged = useMemo(() => {
     const app = invoiced.map((o) => ({
       key: `app-${o.id}`, src: 'app', id: o.id,
-      no: o.erp_si_no, date: o.invoiced_at || o.order_date,
-      so: o.erp_so_no, uc: o.uc_no, customer: o.customer_name,
+      // Falls back to erp_so_no for the rare JES-imported order where the SI
+      // landed there instead — see invoicedAlready() above. Without this an
+      // order that's genuinely invoiced would show a blank invoice number.
+      no: o.erp_si_no || o.erp_so_no, date: o.invoiced_at || o.order_date,
+      so: o.erp_si_no ? o.erp_so_no : null, uc: o.uc_no, customer: o.customer_name,
       currency: o.currency, amount: o.total_amount ?? o.subtotal, status: null,
     }))
     // The app's own invoices may also exist in the mirror once a sync runs;
