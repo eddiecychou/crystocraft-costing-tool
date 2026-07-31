@@ -229,7 +229,22 @@ function ShipmentsList() {
                       {value != null ? fmtValue(value) : <span className="text-gray-300">—</span>}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${st.style}`}>{st.label}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${st.style}`}>{st.label}</span>
+                        {/* An order that has been invoiced is easy to mistake for
+                            one still awaiting invoice — the two look identical in
+                            this list otherwise, so an already-issued SI reads as a
+                            proforma still sitting here (Cindy, 2026-07-31). Show the
+                            SI so "this has become a Sales Invoice" is visible at a
+                            glance. Not hidden from the list: a wholesale order is
+                            invoiced at confirmation but still ships from here. */}
+                        {o.erp_si_no && (
+                          <span title={`Invoiced — ${o.erp_si_no}. Also listed under Sales Invoices.`}
+                            className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700 whitespace-nowrap">
+                            {o.erp_si_no}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-2 py-3 whitespace-nowrap text-right" onClick={e => e.stopPropagation()}>
                       <button type="button" onClick={() => handleDuplicate(o)} disabled={duplicatingId === o.id}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Search, Hash, Plus, X, AlertCircle, FileText } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
-import { useUcList, listUc, createUcInvoice, updateUcInvoice, UC_SOURCES, UC_CURRENCIES, ucSource } from '../ucRegistry'
+import { useUcList, listUc, createUcInvoice, updateUcInvoice, listAppInvoices, UC_SOURCES, UC_CURRENCIES, ucSource } from '../ucRegistry'
 import ExportFilterBar from '../components/ExportFilterBar'
 import { downloadCsv, exportStem } from '../exportCsv'
 import { erpLines, erpLookup } from '../erpApi'
@@ -36,15 +36,26 @@ const LOCATION_TITLE = {
 const BLANK = { source: '', currency: 'HKD', status: 'open', confirmed: false }
 
 // ── ERP invoice picker ────────────────────────────────────────────────────────
-// Type part of an SI# or customer name to search the ERP invoices and link one.
-// Left blank when the UC is created first; linked later once the SI exists.
+// Type part of an SI# or customer name to search and link one. Searches BOTH
+// the JES mirror and the app's own invoice ledger (app_sales_invoice, written
+// whenever an order is saved with an erp_si_no — see ShipmentForm's handleSave)
+// — an invoice raised directly in the app never reaches JES on its own, so a
+// JES-only search could never find it (Cindy: "SI260095 doesn't show up in the
+// pulldown" — it's an app-native invoice, not a JES one). Left blank when the
+// UC is created first; linked later once the SI exists.
 function SiPicker({ value, onChange }) {
   const [q, setQ] = useState(value || '')
   const [results, setResults] = useState([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [appInvoices, setAppInvoices] = useState(null)   // fetched once, filtered client-side
 
   useEffect(() => { setQ(value || '') }, [value])
+
+  useEffect(() => {
+    if (!open || appInvoices !== null) return
+    listAppInvoices(1000).then(setAppInvoices)
+  }, [open, appInvoices])
 
   useEffect(() => {
     if (!open) return
@@ -53,19 +64,37 @@ function SiPicker({ value, onChange }) {
     let alive = true
     setLoading(true)
     const t = setTimeout(() => {
+      const termLower = term.toLowerCase()
+      const appMatches = (appInvoices || [])
+        .filter(r => r.si_no?.toLowerCase().includes(termLower) || r.customer?.toLowerCase().includes(termLower))
+        .slice(0, 8)
+        .map(r => ({ code: r.si_no, customer: r.customer, amount: r.total, currency: r.currency, src: 'app' }))
       erpLookup('sales_invoice', { q: term, limit: 8 })
-        .then((r) => { if (alive) setResults(r) })
-        .catch(() => { if (alive) setResults([]) })
+        .then((r) => {
+          if (!alive) return
+          const jes = (r || []).map(x => ({ ...x, src: 'jes' }))
+          // App-native first (it's the one a JES-only search would otherwise
+          // miss entirely) and de-duplicated — once JES syncs an app-raised
+          // invoice, don't show it twice.
+          const seen = new Set()
+          const merged = [...appMatches, ...jes].filter(x => {
+            const key = (x.code || '').toUpperCase()
+            if (seen.has(key)) return false
+            seen.add(key); return true
+          })
+          setResults(merged.slice(0, 8))
+        })
+        .catch(() => { if (alive) setResults(appMatches) })
         .finally(() => { if (alive) setLoading(false) })
     }, 300)
     return () => { alive = false; clearTimeout(t) }
-  }, [q, open])
+  }, [q, open, appInvoices])
 
   const pick = (r) => { setQ(r.code); onChange(r.code); setOpen(false) }
 
   return (
     <label className="flex flex-col gap-1 relative">
-      <span className="text-xs font-medium text-gray-500">ERP invoice (JES SI#) — search to link</span>
+      <span className="text-xs font-medium text-gray-500">Invoice (SI#) — search to link, JES or app</span>
       <div className="relative">
         <input
           value={q}
@@ -83,12 +112,15 @@ function SiPicker({ value, onChange }) {
       </div>
       {open && (loading || results.length > 0) && (
         <ul className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-auto">
-          {loading && <li className="px-3 py-2 text-xs text-gray-400">Searching ERP invoices…</li>}
+          {loading && <li className="px-3 py-2 text-xs text-gray-400">Searching…</li>}
           {results.map((r) => (
             <li key={r.code}>
               <button type="button" onMouseDown={() => pick(r)}
                 className="w-full text-left px-3 py-1.5 hover:bg-teal-50 flex items-baseline gap-2">
                 <span className="font-mono text-xs text-teal-700">{r.code}</span>
+                <span className={`text-[10px] px-1 rounded ${r.src === 'app' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
+                  {r.src === 'app' ? 'app' : 'JES'}
+                </span>
                 <span className="text-xs text-gray-600 truncate flex-1">{r.customer}</span>
                 <span className="text-xs tabular-nums text-gray-400">{money(r.amount)} {r.currency}</span>
               </button>
