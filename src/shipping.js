@@ -344,6 +344,11 @@ export function autoMatchLines(lines, rangeProducts) {
         line_type: 'range', packable: true,
         matched_product_ref: { collection: 'range_products', id: p.id, name: p.name },
         match_status: 'matched',
+        // Fill Description from the catalogue match, but only if it's still
+        // empty — never clobber a description already extracted from the PI
+        // or typed by hand (which can carry customer-specific detail like
+        // "Tunes: You are my Sunshine" that isn't in the catalogue record).
+        description: l.description || p.name || l.description,
       }
     }
     return { ...l, line_no: l.line_no ?? i + 1, line_type: null, match_status: 'unmatched' }
@@ -364,6 +369,7 @@ export function rematchLines(lines, rangeProducts) {
         line_type: 'range', packable: true,
         matched_product_ref: { collection: 'range_products', id: p.id, name: p.name },
         match_status: 'matched',
+        description: l.description || p.name || l.description,
       }
     }
     return { ...l, line_no: l.line_no ?? i + 1, line_type: null, matched_product_ref: null, match_status: 'unmatched' }

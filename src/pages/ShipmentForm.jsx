@@ -455,6 +455,9 @@ export default function ShipmentForm() {
         line_type: 'range', packable: true,
         matched_product_ref: p ? { collection: 'range_products', id: p.id, name: p.name } : null,
         match_status: p ? 'manual' : 'unmatched',
+        // Fill Description from the match, but only if it's still empty —
+        // see shipping.js autoMatchLines/rematchLines for why.
+        description: p ? (l.description || p.name || l.description) : l.description,
       })
     } else {
       setLine(i, { line_type: type, packable: isPackable(type), matched_product_ref: null, match_status: 'manual' })
