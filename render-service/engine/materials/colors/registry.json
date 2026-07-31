@@ -1,0 +1,156 @@
+{
+  "crystal": {
+    "White": {
+      "rgb": [
+        0.85,
+        0.86,
+        0.88
+      ],
+      "fabric": {
+        "Unspecified": {
+          "file": "white_ab.jpg",
+          "pitch": 20.0
+        }
+      },
+      "rock": {
+        "Unspecified": {
+          "file": "white_ab.jpg",
+          "pitch": 20.0
+        }
+      }
+    },
+    "Jet": {
+      "rgb": [
+        0.1,
+        0.1,
+        0.11
+      ],
+      "fabric": {
+        "Unspecified": {
+          "file": "jet.jpg",
+          "pitch": 38.0
+        }
+      },
+      "rock": {
+        "Unspecified": {
+          "file": "jet.jpg",
+          "pitch": 38.0
+        }
+      }
+    },
+    "Red": {
+      "rgb": [
+        0.83,
+        0.27,
+        0.1
+      ],
+      "fabric": {
+        "Unspecified": {
+          "file": "red.jpg",
+          "pitch": 15.0
+        }
+      },
+      "rock": {
+        "Unspecified": {
+          "file": "red.jpg",
+          "pitch": 15.0
+        }
+      }
+    },
+    "Pink": {
+      "rgb": [
+        0.88,
+        0.39,
+        0.52
+      ],
+      "fabric": {
+        "Unspecified": {
+          "file": "pink.jpg",
+          "pitch": 30.0
+        }
+      },
+      "rock": {
+        "Unspecified": {
+          "file": "pink.jpg",
+          "pitch": 30.0
+        }
+      }
+    },
+    "LightPink": {
+      "rgb": [
+        0.81,
+        0.56,
+        0.59
+      ],
+      "fabric": {
+        "Unspecified": {
+          "file": "light_pink.jpg",
+          "pitch": 24.0
+        }
+      },
+      "rock": {
+        "Unspecified": {
+          "file": "light_pink.jpg",
+          "pitch": 24.0
+        }
+      }
+    },
+    "Violet": {
+      "rgb": [
+        0.78,
+        0.7,
+        0.79
+      ],
+      "fabric": {
+        "Unspecified": {
+          "file": "violet.jpg",
+          "pitch": 30.0
+        }
+      },
+      "rock": {
+        "Unspecified": {
+          "file": "violet.jpg",
+          "pitch": 30.0
+        }
+      }
+    },
+    "Peach": {
+      "rgb": [
+        0.88,
+        0.64,
+        0.54
+      ],
+      "fabric": {
+        "Unspecified": {
+          "file": "peach.jpg",
+          "pitch": 14.0
+        }
+      },
+      "rock": {
+        "Unspecified": {
+          "file": "peach.jpg",
+          "pitch": 14.0
+        }
+      }
+    },
+    "Hematite": {
+      "rgb": [
+        0.32,
+        0.32,
+        0.33
+      ],
+      "fabric": {
+        "Unspecified": {
+          "file": "hematite.jpg",
+          "pitch": 16.0
+        }
+      },
+      "rock": {
+        "Unspecified": {
+          "file": "hematite.jpg",
+          "pitch": 16.0
+        }
+      }
+    }
+  }
+}

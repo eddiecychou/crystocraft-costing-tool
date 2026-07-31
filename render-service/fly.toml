@@ -1,11 +1,25 @@
 # Fly.io config for the crystal customizer render service.
-# Deploy:  fly launch --no-deploy   (first time, to create the app)  then  fly deploy
-# Set the shared secret:  fly secrets set RENDER_TOKEN=<long-random-string>
+#
+# First-time setup (one-time, run these yourself — needs your Fly account):
+#   fly launch --no-deploy                          # create the app
+#   fly volumes create swatch_data --region nrt --size 1     # 1GB is enormous overkill for JPEGs; cheap either way
+#   fly secrets set RENDER_TOKEN=<long-random-string>         # already required — the Netlify proxy's shared secret
+#   fly secrets set ADMIN_PASSWORD=<a real password>          # gates /admin — the swatch library is unusable without this
+#   fly deploy
+#
+# The volume is what makes the /admin swatch-library tool's edits durable —
+# without it, SWATCH_DATA_DIR still "works" (falls back to the container's
+# own ephemeral disk) but every deploy or machine restart would silently
+# roll back to whatever swatches were last committed to git. See
+# engine/palette.py's module docstring for the full seeding mechanics.
 
 app = "crystocraft-customizer-render"     # change if the name is taken
 primary_region = "nrt"                     # Tokyo — closest Fly region to Hong Kong
 
 [build]
+
+[env]
+  SWATCH_DATA_DIR = "/data"
 
 [http_service]
   internal_port = 8080
@@ -13,6 +27,10 @@ primary_region = "nrt"                     # Tokyo — closest Fly region to Hon
   auto_stop_machines = true                # scale to zero when idle (near-zero cost)
   auto_start_machines = true               # wake on the next request (cold start ~few s)
   min_machines_running = 0
+
+[[mounts]]
+  source = "swatch_data"
+  destination = "/data"
 
 [[vm]]
   size = "shared-cpu-1x"

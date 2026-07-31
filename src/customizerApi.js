@@ -6,17 +6,21 @@ import { ref as sref, uploadBytes, uploadString, getDownloadURL } from 'firebase
 import { db, storage } from './firebase'
 
 // Crystal colours (name = what the render service expects; hex = swatch preview).
+// Rebuilt 2026-07-30 around REAL photographed swatches only — see
+// render-service/engine/palette.py for the full reasoning. The previous list
+// (CrystalAB/Moonlight/CrystalBlueLight/MetallicSilver/GoldenShadow/
+// CrystalDorado/CrystalCopper) had no photographic backing; the render
+// recoloured one generic photo toward each name, which can shift hue but
+// can't reproduce a different colour's actual sparkle/facet character.
 export const CRYSTAL_COLORS = [
-  { name: 'CrystalAB',        label: 'Crystal AB',        hex: '#EDEFF7' },
-  { name: 'Crystal',          label: 'Crystal (clear)',   hex: '#F0F2F5' },
-  { name: 'Moonlight',        label: 'Moonlight',         hex: '#E4EAF6' },
-  { name: 'CrystalBlueLight', label: 'Crystal Blue Light',hex: '#C9D6EE' },
-  { name: 'MetallicSilver',   label: 'Metallic Silver',   hex: '#BFC1CB' },
-  { name: 'GoldenShadow',     label: 'Golden Shadow',     hex: '#C7AD80' },
-  { name: 'CrystalDorado',    label: 'Crystal Dorado',    hex: '#CC9E4D' },
-  { name: 'CrystalCopper',    label: 'Crystal Copper',    hex: '#B87A5C' },
-  { name: 'Hematite',         label: 'Hematite',          hex: '#2E2E33' },
-  { name: 'Jet',              label: 'Jet (black)',       hex: '#0D0D12' },
+  { name: 'White',     label: 'White / Crystal AB', hex: '#D9DADE' },
+  { name: 'Jet',       label: 'Jet (black)',         hex: '#19191C' },
+  { name: 'Red',       label: 'Red',                 hex: '#D4451A' },
+  { name: 'Pink',      label: 'Pink',                hex: '#E06385' },
+  { name: 'LightPink', label: 'Light Pink',          hex: '#CE8F96' },
+  { name: 'Violet',    label: 'Violet',              hex: '#C7B3CA' },
+  { name: 'Peach',     label: 'Peach',                hex: '#E1A48A' },
+  { name: 'Hematite',  label: 'Hematite',            hex: '#525356' },
 ]
 export const colorHex = name => (CRYSTAL_COLORS.find(c => c.name === name) || {}).hex || '#ccc'
 export const colorLabel = name => (CRYSTAL_COLORS.find(c => c.name === name) || {}).label || name

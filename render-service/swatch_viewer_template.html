@@ -1,0 +1,439 @@
+<title>Crystocraft Swatch Library</title>
+<style>
+  /* ── Tokens ─────────────────────────────────────────────────────────────
+     Deliberately single-theme (dark only): this is a tray for inspecting
+     specular/sparkle photography, and a light ground would wash out exactly
+     the highlights the tool exists to compare — a real photographic
+     constraint, not a stylistic default. Gold/burgundy nod to Crystocraft's
+     own brand pair (used in its transactional email templates). */
+  :root {
+    --bg: #131319;
+    --surface: #1b1c24;
+    --surface-2: #23252f;
+    --border: rgba(255,255,255,0.09);
+    --text: #ece8df;
+    --text-dim: #93939f;
+    --text-faint: #5f606c;
+    --accent: #c6a664;
+    --accent-soft: rgba(198,166,100,0.14);
+    --accent-2: #7a2d40;
+    --radius: 3px;
+    --font-display: ui-serif, "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --font-mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    --font-sans: -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--accent-soft); color: var(--text); }
+
+  a { color: var(--accent); }
+
+  /* ── Top bar ─────────────────────────────────────────────────────────── */
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(19,19,25,0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 28px 16px;
+  }
+  .title-row {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 14px;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 22px;
+    letter-spacing: 0.01em;
+    margin: 0;
+    text-wrap: balance;
+  }
+  h1 .accent { color: var(--accent); font-style: italic; }
+  .subhead {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-faint);
+    letter-spacing: 0.03em;
+  }
+  .count {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+  .count b { color: var(--accent); font-weight: 600; }
+
+  .controls {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .tabs {
+    display: flex; gap: 2px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2px;
+  }
+  .tab {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    letter-spacing: 0.02em;
+    color: var(--text-dim);
+    background: transparent;
+    border: none;
+    padding: 7px 12px;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { background: var(--accent-soft); color: var(--accent); }
+
+  select, input[type="text"] {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 7px 10px;
+    outline: none;
+  }
+  select:focus, input[type="text"]:focus {
+    border-color: var(--accent);
+  }
+  input[type="text"] { width: 180px; }
+  input[type="text"]::placeholder { color: var(--text-faint); }
+
+  .legend {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 14px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-faint);
+  }
+  .legend-dot {
+    display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+    margin-right: 5px; vertical-align: middle;
+  }
+
+  /* ── Grid ────────────────────────────────────────────────────────────── */
+  main { padding: 24px 28px 60px; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .card:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+  .card:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .card img {
+    display: block; width: 100%; aspect-ratio: 1; object-fit: cover;
+    background: var(--surface-2);
+  }
+  .card-meta {
+    padding: 9px 10px 10px;
+    display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  }
+  .card-color {
+    font-size: 12.5px; color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .swatch-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.25);
+    flex-shrink: 0;
+  }
+  .card-sub {
+    font-family: var(--font-mono);
+    font-size: 9.5px; color: var(--text-faint);
+    padding: 0 10px 9px;
+    letter-spacing: 0.02em;
+  }
+  .coated-flag {
+    color: var(--accent);
+  }
+
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    margin: 30px 2px 12px;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  .empty {
+    font-family: var(--font-mono);
+    color: var(--text-faint);
+    font-size: 13px;
+    padding: 60px 0;
+    text-align: center;
+  }
+
+  /* ── Lightbox ────────────────────────────────────────────────────────── */
+  .lightbox {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(10,10,13,0.88);
+    backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center;
+    padding: 5vh 5vw;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.18s;
+  }
+  .lightbox.open { opacity: 1; pointer-events: auto; }
+  .lightbox-inner {
+    display: flex; gap: 28px; align-items: flex-start;
+    max-width: 900px; width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px;
+  }
+  .lightbox img {
+    width: min(46vh, 420px); height: min(46vh, 420px);
+    object-fit: cover; border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .lightbox-meta { padding-top: 4px; min-width: 200px; }
+  .lightbox-meta h2 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: 19px;
+    margin: 0 0 16px;
+    text-wrap: balance;
+  }
+  .spec-row {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 8px 0;
+    border-top: 1px solid var(--border);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .spec-row:first-of-type { border-top: none; padding-top: 0; }
+  .spec-label { color: var(--text-faint); letter-spacing: 0.03em; }
+  .spec-val { color: var(--text); text-align: right; }
+  .spec-val.accent { color: var(--accent); }
+  .hex-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .hex-chip .swatch-dot { width: 12px; height: 12px; }
+  .lightbox-close {
+    position: absolute; top: 18px; right: 24px;
+    background: none; border: none; color: var(--text-dim);
+    font-family: var(--font-mono); font-size: 20px; cursor: pointer;
+    line-height: 1;
+  }
+  .lightbox-close:hover { color: var(--text); }
+  .lightbox-nav {
+    display: flex; gap: 8px; margin-top: 18px;
+  }
+  .lightbox-nav button {
+    font-family: var(--font-mono); font-size: 11px;
+    background: var(--surface-2); color: var(--text-dim);
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 6px 10px; cursor: pointer;
+  }
+  .lightbox-nav button:hover { color: var(--text); border-color: var(--accent); }
+
+  footer {
+    padding: 20px 28px 40px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-faint);
+    border-top: 1px solid var(--border);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card, .lightbox { transition: none; }
+  }
+
+  @media (max-width: 640px) {
+    .lightbox-inner { flex-direction: column; }
+    .lightbox img { width: 100%; height: auto; aspect-ratio: 1; }
+    .legend { display: none; }
+  }
+</style>
+
+<header>
+  <div class="title-row">
+    <div>
+      <h1>Crystal Swatch <span class="accent">Library</span></h1>
+      <div class="subhead">crystocraft render engine — reference materials, live from source photography</div>
+    </div>
+    <div class="count"><b id="count">0</b> swatches shown</div>
+  </div>
+  <div class="controls">
+    <div class="tabs" id="section-tabs">
+      <button class="tab active" data-section="all">All</button>
+      <button class="tab" data-section="A">A · Material × Colour</button>
+      <button class="tab" data-section="C">C · Graphic beneath crystal</button>
+    </div>
+    <select id="material-filter">
+      <option value="all">All materials</option>
+      <option value="fabric_1.0">Crystal Fabric (0.8–1mm)</option>
+      <option value="fine_rock_1.5">Crystal Fine Rock (1.5mm)</option>
+      <option value="rock_2.0">Crystal Rock (2.0mm)</option>
+    </select>
+    <input type="text" id="search" placeholder="Search colour…" />
+  </div>
+</header>
+
+<main>
+  <div id="content"></div>
+</main>
+
+<footer>
+  Generated by render-service/build_swatch_viewer.py — rerun after any colour, coating, or swatch-photo change to refresh this page.
+</footer>
+
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" id="lightbox-close" aria-label="Close">&times;</button>
+  <div class="lightbox-inner">
+    <img id="lightbox-img" src="" alt="" />
+    <div class="lightbox-meta">
+      <h2 id="lightbox-title"></h2>
+      <div class="spec-row"><span class="spec-label">Material</span><span class="spec-val" id="lightbox-material"></span></div>
+      <div class="spec-row"><span class="spec-label">Colour</span><span class="spec-val hex-chip" id="lightbox-color"></span></div>
+      <div class="spec-row"><span class="spec-label">Section</span><span class="spec-val" id="lightbox-section"></span></div>
+      <div class="lightbox-nav">
+        <button id="nav-prev">&larr; prev</button>
+        <button id="nav-next">next &rarr;</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const DATA = __SWATCH_DATA__;
+  const SECTION_NAMES = { A: "A · Material × Colour", C: "C · Graphic beneath crystal" };
+  const MATERIAL_NAMES = { "fabric_1.0": "Crystal Fabric (0.8–1mm)", "fine_rock_1.5": "Crystal Fine Rock (1.5mm)", "rock_2.0": "Crystal Rock (2.0mm)" };
+
+  let state = { section: "all", material: "all", search: "" };
+  let visible = [];
+  let lightboxIndex = -1;
+
+  function matches(item) {
+    if (state.section !== "all" && item.section !== state.section) return false;
+    if (state.material !== "all" && item.material !== state.material) return false;
+    if (state.search && !item.color.toLowerCase().includes(state.search.toLowerCase())) return false;
+    return true;
+  }
+
+  function render() {
+    visible = DATA.filter(matches);
+    document.getElementById("count").textContent = visible.length;
+    const content = document.getElementById("content");
+    content.innerHTML = "";
+
+    if (!visible.length) {
+      content.innerHTML = '<div class="empty">No swatches match these filters.</div>';
+      return;
+    }
+
+    const sections = state.section === "all" ? ["A", "C"] : [state.section];
+    sections.forEach(sec => {
+      const items = visible.filter(i => i.section === sec);
+      if (!items.length) return;
+      if (state.section === "all") {
+        const label = document.createElement("div");
+        label.className = "section-label";
+        label.textContent = SECTION_NAMES[sec];
+        content.appendChild(label);
+      }
+      const grid = document.createElement("div");
+      grid.className = "grid";
+      items.forEach(item => {
+        const idx = DATA.indexOf(item);
+        const card = document.createElement("div");
+        card.className = "card";
+        card.tabIndex = 0;
+        card.innerHTML = `
+          <img src="${item.src}" alt="${item.label}" loading="lazy" />
+          <div class="card-meta">
+            <span class="card-color">${item.color}</span>
+            <span class="swatch-dot" style="background:${item.hex}"></span>
+          </div>
+          <div class="card-sub">${MATERIAL_NAMES[item.material] || item.material}</div>
+        `;
+        card.addEventListener("click", () => openLightbox(idx));
+        card.addEventListener("keydown", e => { if (e.key === "Enter") openLightbox(idx); });
+        grid.appendChild(card);
+      });
+      content.appendChild(grid);
+    });
+  }
+
+  function openLightbox(dataIndex) {
+    const item = DATA[dataIndex];
+    lightboxIndex = visible.indexOf(item);
+    const lb = document.getElementById("lightbox");
+    document.getElementById("lightbox-img").src = item.src;
+    document.getElementById("lightbox-title").textContent = item.label;
+    document.getElementById("lightbox-material").textContent = MATERIAL_NAMES[item.material] || item.material;
+    document.getElementById("lightbox-color").innerHTML = `<span class="swatch-dot" style="background:${item.hex}"></span>${item.color}`;
+    document.getElementById("lightbox-section").textContent = SECTION_NAMES[item.section] || item.section;
+    lb.classList.add("open");
+  }
+
+  function closeLightbox() {
+    document.getElementById("lightbox").classList.remove("open");
+  }
+
+  function step(delta) {
+    if (lightboxIndex < 0 || !visible.length) return;
+    lightboxIndex = (lightboxIndex + delta + visible.length) % visible.length;
+    openLightbox(DATA.indexOf(visible[lightboxIndex]));
+  }
+
+  document.getElementById("lightbox-close").addEventListener("click", closeLightbox);
+  document.getElementById("lightbox").addEventListener("click", e => { if (e.target.id === "lightbox") closeLightbox(); });
+  document.getElementById("nav-prev").addEventListener("click", () => step(-1));
+  document.getElementById("nav-next").addEventListener("click", () => step(1));
+  document.addEventListener("keydown", e => {
+    if (!document.getElementById("lightbox").classList.contains("open")) return;
+    if (e.key === "Escape") closeLightbox();
+    if (e.key === "ArrowLeft") step(-1);
+    if (e.key === "ArrowRight") step(1);
+  });
+
+  document.getElementById("section-tabs").addEventListener("click", e => {
+    const btn = e.target.closest(".tab");
+    if (!btn) return;
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    btn.classList.add("active");
+    state.section = btn.dataset.section;
+    render();
+  });
+  document.getElementById("material-filter").addEventListener("change", e => {
+    state.material = e.target.value;
+    render();
+  });
+  document.getElementById("search").addEventListener("input", e => {
+    state.search = e.target.value;
+    render();
+  });
+
+  render();
+</script>

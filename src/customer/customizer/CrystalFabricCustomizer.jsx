@@ -11,7 +11,7 @@ import {
 
 const DEFAULTS = {
   mode: 'zone_map', crystal_type: 'fine_rock_1.5',
-  fg_color: 'Jet', bg_color: 'CrystalAB', message: '', panel_mm: 50,
+  fg_color: 'Jet', bg_color: 'White', message: '', panel_mm: 80,
 }
 
 // Crystal-fabric customization engine. Receives the product (loaded by the

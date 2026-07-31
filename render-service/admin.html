@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Swatch Library — Admin</title>
+<style>
+  :root {
+    --bg: #131319; --surface: #1b1c24; --surface-2: #23252f;
+    --border: rgba(255,255,255,0.09); --text: #ece8df; --text-dim: #93939f; --text-faint: #5f606c;
+    --accent: #c6a664; --accent-soft: rgba(198,166,100,0.14); --danger: #c1553f; --ok: #7fae7f;
+    --font-display: ui-serif, "Iowan Old Style", Georgia, serif;
+    --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --font-sans: -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-sans); }
+  h1 { font-family: var(--font-display); font-weight: 500; font-size: 22px; margin: 0; }
+  h1 .accent { color: var(--accent); font-style: italic; }
+  header { padding: 16px 28px; border-bottom: 1px solid var(--border); }
+  .subhead { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+  main { display: grid; grid-template-columns: 300px 1fr; min-height: calc(100vh - 76px); }
+  .sidebar { border-right: 1px solid var(--border); padding: 20px; overflow-y: auto; }
+  .sidebar h2 { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-faint); margin: 0 0 12px; }
+  .swatch-row { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 3px; cursor: pointer; border: 1px solid transparent; }
+  .swatch-row:hover { background: var(--surface); }
+  .swatch-row.active { border-color: var(--accent); background: var(--accent-soft); }
+  .swatch-row .dot { width: 26px; height: 26px; border-radius: 50%; background: var(--surface-2); flex-shrink: 0; border: 1px solid var(--border); background-size: cover; background-position: center; }
+  .swatch-row .name { font-size: 13px; flex: 1; }
+  .badge-row { display: flex; gap: 3px; }
+  .badge { font-family: var(--font-mono); font-size: 8.5px; padding: 1px 4px; border-radius: 2px; background: var(--surface-2); color: var(--text-faint); }
+  .badge.have { background: var(--accent-soft); color: var(--accent); }
+  button { font-family: var(--font-mono); font-size: 12px; cursor: pointer; border-radius: 3px; border: 1px solid var(--border); background: var(--surface-2); color: var(--text); padding: 8px 14px; }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: var(--accent); color: #1a1408; border-color: var(--accent); font-weight: 600; }
+  button.primary:hover { opacity: .9; color: #1a1408; }
+  button.danger:hover { border-color: var(--danger); color: var(--danger); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  button.small { padding: 5px 10px; font-size: 11px; }
+  button.active-toggle { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+  #add-new { width: 100%; margin-bottom: 14px; }
+  .editor { padding: 24px 28px; }
+  .editor-grid { display: grid; grid-template-columns: 1fr 340px; gap: 24px; }
+  .style-tabs { display: flex; gap: 2px; margin-bottom: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 2px; width: fit-content; }
+  .style-tabs button { font-size: 11.5px; padding: 7px 12px; }
+  .style-tabs button.active { background: var(--accent-soft); color: var(--accent); }
+  .style-note { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); margin-bottom: 16px; line-height: 1.5; max-width: 700px; }
+  .backfilm-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; max-width: 700px; }
+  .backfilm-chip { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
+  .backfilm-chip .swatch { width: 52px; height: 52px; border-radius: 4px; border: 2px solid var(--border); background-size: cover; background-position: center; background-color: var(--surface-2); }
+  .backfilm-chip.active .swatch { border-color: var(--accent); }
+  .backfilm-chip .label { font-family: var(--font-mono); font-size: 10px; color: var(--text-faint); max-width: 60px; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .backfilm-chip.active .label { color: var(--accent); }
+  .backfilm-chip.new .swatch { border-style: dashed; display: flex; align-items: center; justify-content: center; font-size: 20px; color: var(--text-faint); }
+  .drop-zone { border: 1px dashed var(--border); border-radius: 4px; padding: 40px; text-align: center; color: var(--text-faint); font-family: var(--font-mono); font-size: 12px; cursor: pointer; }
+  .drop-zone:hover { border-color: var(--accent); color: var(--accent); }
+  canvas { max-width: 100%; border-radius: 3px; cursor: crosshair; display: block; }
+  .canvas-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 12px; }
+  .canvas-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 8px; }
+  .canvas-hint { font-family: var(--font-mono); font-size: 11px; color: var(--text-faint); }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 16px; margin-bottom: 14px; }
+  .panel label { display: block; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-faint); letter-spacing: .03em; margin-bottom: 6px; }
+  .panel .help { font-family: var(--font-sans); font-size: 11px; color: var(--text-faint); margin: -3px 0 10px; line-height: 1.5; }
+  .panel input[type=text] { width: 100%; font-size: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 3px; padding: 8px 10px; color: var(--text); margin-bottom: 14px; }
+  .panel select { width: 100%; font-size: 13px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 3px; padding: 8px 10px; color: var(--text); }
+  .pitch-val { font-family: var(--font-mono); color: var(--accent); font-size: 13px; }
+  .preview-tile { width: 100%; aspect-ratio: 1; background: var(--surface-2); border-radius: 3px; object-fit: cover; }
+  .preview-hint { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-faint); margin-top: 8px; }
+  .actions { display: flex; gap: 8px; margin-top: 14px; }
+  .actions button { flex: 1; }
+  .status { font-family: var(--font-mono); font-size: 11px; padding: 8px 10px; border-radius: 3px; margin-bottom: 14px; display: none; }
+  .status.show { display: block; }
+  .status.ok { background: rgba(127,174,127,.12); color: var(--ok); }
+  .status.err { background: rgba(193,85,63,.12); color: var(--danger); }
+  .empty-state { color: var(--text-faint); font-family: var(--font-mono); font-size: 13px; padding: 60px 0; text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Swatch <span class="accent">Library</span> — Admin</h1>
+  <div class="subhead">capture, crop, and calibrate crystal swatches — each colour × stone size × backfilm is its own real photo, changes apply on the next render, no deploy needed</div>
+</header>
+<main>
+  <div class="sidebar">
+    <button id="add-new" class="primary">+ Add new colour</button>
+    <h2>Crystal colours</h2>
+    <div id="swatch-list"></div>
+  </div>
+  <div class="editor" id="editor">
+    <div class="empty-state">Select a colour to edit, or add a new one.</div>
+  </div>
+</main>
+
+<script>
+  const AUTH_TEST = fetch('/swatches').then(r => { if (!r.ok) throw new Error('auth'); return r.json(); });
+
+  let swatches = { crystal: {} };
+  let knownBackfilms = [];
+  let currentName = null;
+  let currentStyle = 'fabric';       // 'fabric' | 'rock' — no generic, see palette.py
+  let currentBackfilm = null;        // null while capturing a NEW backfilm
+  let workingImage = null;
+  let workingBlob = null;
+  let displayScale = 1;
+  let crop = null;
+  let dragStart = null;
+  let measureMode = false;
+  let measurePoint = null;           // first click while measuring
+  let pitchPx = 16;
+  let compare = { name: '', style: '', backfilm: '' };
+  let previewDebounce = null;
+
+  const STYLE_LABEL = {
+    fabric: 'Crystal Fabric (0.8–1mm) — a genuinely different cut/mix than Rock, needs its own photo',
+    rock: 'Crystal Rock — used for BOTH Fine Rock (1.5mm) and Rock (2.0mm): same cut, just a size difference',
+  };
+
+  async function loadSwatches() {
+    const [sw, bf] = await Promise.all([
+      fetch('/swatches').then(r => r.json()),
+      fetch('/swatches/backfilms').then(r => r.json()),
+    ]);
+    swatches = sw;
+    knownBackfilms = bf;
+    renderList();
+  }
+
+  function renderList() {
+    const el = document.getElementById('swatch-list');
+    el.innerHTML = '';
+    const entries = Object.entries(swatches.crystal || {}).sort(([a], [b]) => a.localeCompare(b));
+    entries.forEach(([name, s]) => {
+      const row = document.createElement('div');
+      row.className = 'swatch-row' + (name === currentName ? ' active' : '');
+      const anyFabric = Object.values(s.slots.fabric || {})[0];
+      const anyRock = Object.values(s.slots.rock || {})[0];
+      const thumbUrl = (anyFabric || anyRock)?.url;
+      const dotStyle = thumbUrl ? `background-image:url(${thumbUrl})` : `background:rgb(${s.rgb.map(x => Math.round(x * 255)).join(',')})`;
+      const fCount = Object.keys(s.slots.fabric || {}).length;
+      const rCount = Object.keys(s.slots.rock || {}).length;
+      row.innerHTML = `
+        <div class="dot" style="${dotStyle}"></div>
+        <span class="name">${name}</span>
+        <div class="badge-row">
+          <span class="badge ${fCount ? 'have' : ''}">F${fCount ? '·' + fCount : ''}</span>
+          <span class="badge ${rCount ? 'have' : ''}">R${rCount ? '·' + rCount : ''}</span>
+        </div>`;
+      row.addEventListener('click', () => editCrystal(name));
+      el.appendChild(row);
+    });
+  }
+
+  function allCombos(excludeName) {
+    const out = [];
+    Object.entries(swatches.crystal || {}).forEach(([name, s]) => {
+      ['fabric', 'rock'].forEach(style => {
+        Object.keys(s.slots[style] || {}).forEach(bf => {
+          if (!(name === excludeName && style === currentStyle && bf === currentBackfilm)) {
+            out.push({ name, style, backfilm: bf });
+          }
+        });
+      });
+    });
+    return out;
+  }
+
+  // ── Editor shell ─────────────────────────────────────────────────────────
+  function crystalShell(name, isNew) {
+    document.getElementById('editor').innerHTML = `
+      <div class="panel" style="max-width:560px">
+        <label>Colour name</label>
+        <input type="text" id="name-input" value="${name}" ${isNew ? 'placeholder="e.g. Colorado Topaz"' : 'readonly style="opacity:.6"'} />
+      </div>
+      <div class="style-tabs" id="style-tabs">
+        <button class="active" data-style="fabric">Fabric</button>
+        <button data-style="rock">Rock (Fine Rock + Rock)</button>
+      </div>
+      <div class="style-note" id="style-note"></div>
+      <div class="backfilm-row" id="backfilm-row"></div>
+      <div class="editor-grid">
+        <div>
+          <div class="canvas-wrap" id="canvas-wrap">
+            <div class="drop-zone" id="drop-zone">Click to choose a photo, or drag one here.<br>A flat, evenly-lit, in-focus patch of the material works best.</div>
+          </div>
+          <input type="file" id="file-input" accept="image/*" style="display:none">
+          <!-- Live preview sits RIGHT UNDER the crop canvas, not off in the
+               far column, so you always see your crop and its tiled result
+               together — and a save (which reflows the chip row above) can't
+               push it out of view. -->
+          <div class="panel" style="margin-top:14px">
+            <label>Live preview — how this swatch will tile in a render</label>
+            <img class="preview-tile" id="preview-tile" alt="" />
+            <div class="preview-hint" id="preview-hint">Draw a crop box on the photo, then measure a stone, to see the tiled result here.</div>
+          </div>
+        </div>
+        <div>
+          <div class="status" id="status"></div>
+          <div class="panel" id="backfilm-name-panel">
+            <label>Backfilm — what is this crystal photographed against?</label>
+            <div class="help">Not a colour you pick from a fixed list — this is the REAL backing in the photo you're about to crop. "Crystal AB on white" and "Crystal AB on black" are different swatches, not the same photo tinted two ways.</div>
+            <input type="text" id="backfilm-input" list="backfilm-suggestions" placeholder="e.g. White, Black, Rose Gold" />
+            <datalist id="backfilm-suggestions">${knownBackfilms.map(n => `<option value="${n}">`).join('')}</datalist>
+          </div>
+          <div class="panel">
+            <label>Stone pitch — <span class="pitch-val" id="pitch-val">16</span>px <span id="pitch-source" style="color:var(--text-faint);font-weight:normal"></span></label>
+            <div class="help">Not an abstract number to guess — click "Measure a stone", then click one edge of a single stone in the photo and its opposite edge. The distance between your two clicks becomes the pitch, directly.</div>
+            <button class="small" id="measure-btn" type="button">📏 Measure a stone</button>
+          </div>
+          <div class="actions">
+            <button id="save-btn" class="primary" disabled>Save this swatch</button>
+          </div>
+          <div class="actions" id="remove-row" style="display:none">
+            <button id="remove-style-btn" class="danger">Remove this photo</button>
+          </div>
+          <div class="panel" style="margin-top:14px">
+            <label>Compare with (optional)</label>
+            <div class="help">Show this crop next to another already-saved REAL photo — e.g. the same colour's other backfilm — for consistency-checking. Both sides are real captures, nothing is synthesized.</div>
+            <select id="compare-select"></select>
+          </div>
+        </div>
+      </div>
+      ${isNew ? '' : `<div class="actions" style="max-width:560px;margin-top:24px;border-top:1px solid var(--border);padding-top:16px"><button id="delete-btn" class="danger">Delete "${name}" entirely (all photos)</button></div>`}
+    `;
+    document.getElementById('style-tabs').addEventListener('click', e => {
+      const btn = e.target.closest('button'); if (!btn) return;
+      document.querySelectorAll('#style-tabs button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentStyle = btn.dataset.style;
+      renderBackfilmRow();
+      selectBackfilm(Object.keys((swatches.crystal[currentName]?.slots[currentStyle]) || {})[0] || null);
+    });
+    wireDropZone();
+    document.getElementById('measure-btn').addEventListener('click', () => {
+      if (!workingImage) { showStatus('Choose a photo first.', 'err'); return; }
+      measureMode = true;
+      measurePoint = null;
+      document.getElementById('measure-btn').classList.add('active-toggle');
+      document.getElementById('measure-btn').textContent = '📏 Click one edge of a stone…';
+    });
+    document.getElementById('compare-select').addEventListener('change', e => {
+      const v = e.target.value;
+      if (!v) { compare = { name: '', style: '', backfilm: '' }; }
+      else { const [name, style, backfilm] = v.split('::'); compare = { name, style, backfilm }; }
+      schedulePreview();
+    });
+    document.getElementById('save-btn').addEventListener('click', saveCrystal);
+    const del = document.getElementById('delete-btn');
+    if (del) del.addEventListener('click', () => removeCrystal(name));
+  }
+
+  function renderBackfilmRow() {
+    const note = document.getElementById('style-note');
+    note.textContent = STYLE_LABEL[currentStyle];
+    note.className = 'style-note';
+    const entry = currentName ? swatches.crystal[currentName] : null;
+    const slots = entry ? (entry.slots[currentStyle] || {}) : {};
+    if (entry && Object.keys(slots).length === 0) {
+      note.className = 'style-note missing';
+      note.textContent += ' — NOT YET CAPTURED for any backfilm. A render asking for this will raise an error until you add one.';
+    }
+    const row = document.getElementById('backfilm-row');
+    row.innerHTML = '';
+    Object.entries(slots).sort(([a], [b]) => a.localeCompare(b)).forEach(([bf, slot]) => {
+      const chip = document.createElement('div');
+      chip.className = 'backfilm-chip' + (bf === currentBackfilm ? ' active' : '');
+      chip.innerHTML = `<div class="swatch" style="background-image:url(${slot.url})"></div><div class="label">${bf}</div>`;
+      chip.addEventListener('click', () => selectBackfilm(bf));
+      row.appendChild(chip);
+    });
+    const addChip = document.createElement('div');
+    addChip.className = 'backfilm-chip new';
+    addChip.innerHTML = `<div class="swatch">+</div><div class="label">Add backfilm</div>`;
+    addChip.addEventListener('click', () => selectBackfilm(null));
+    row.appendChild(addChip);
+    updateCompareOptions();
+  }
+
+  function updateCompareOptions() {
+    const sel = document.getElementById('compare-select');
+    if (!sel) return;
+    const combos = allCombos(currentName);
+    sel.innerHTML = '<option value="">— none —</option>' +
+      combos.map(c => `<option value="${c.name}::${c.style}::${c.backfilm}">${c.name} · ${c.style} · ${c.backfilm}</option>`).join('');
+  }
+
+  function markSaved(bf) {
+    // Post-save UI refresh that leaves canvas/crop/preview untouched — see
+    // saveCrystal()'s comment for why selectBackfilm()/crystalShell() are
+    // wrong here.
+    renderBackfilmRow();
+    document.querySelectorAll('.backfilm-chip').forEach(c => {
+      c.classList.toggle('active', c.querySelector('.label')?.textContent === bf);
+    });
+    const nameInput = document.getElementById('backfilm-input');
+    nameInput.value = bf;
+    nameInput.readOnly = true;
+    nameInput.style.opacity = '.6';
+    document.getElementById('remove-row').style.display = 'flex';
+    document.getElementById('remove-style-btn').onclick = () => removePhoto(currentName, currentStyle, bf);
+    document.getElementById('pitch-source').textContent = '(saved)';
+  }
+
+  function selectBackfilm(bf) {
+    currentBackfilm = bf;
+    crop = null; workingImage = null; workingBlob = null; pitchPx = 16;
+    measureMode = false; measurePoint = null;
+    document.querySelectorAll('.backfilm-chip').forEach(c => c.classList.remove('active'));
+    document.getElementById('preview-tile').src = '';
+    document.getElementById('preview-hint').textContent = 'Draw a crop box on the photo, then measure a stone, to see the tiled result here.';
+    document.getElementById('save-btn').disabled = true;
+    document.getElementById('pitch-val').textContent = '16';
+    document.getElementById('pitch-source').textContent = '';
+    const nameInput = document.getElementById('backfilm-input');
+    const removeRow = document.getElementById('remove-row');
+    const entry = currentName ? swatches.crystal[currentName] : null;
+    const slot = (bf && entry) ? entry.slots[currentStyle][bf] : null;
+    if (bf) {
+      nameInput.value = bf;
+      nameInput.readOnly = true;
+      nameInput.style.opacity = '.6';
+    } else {
+      nameInput.value = '';
+      nameInput.readOnly = false;
+      nameInput.style.opacity = '1';
+    }
+    removeRow.style.display = slot ? 'flex' : 'none';
+    document.getElementById('canvas-wrap').innerHTML = '<div class="drop-zone" id="drop-zone">Click to choose a photo, or drag one here.<br>A flat, evenly-lit, in-focus patch of the material works best.</div>';
+    wireDropZone();
+    if (slot) {
+      // Load the saved photo straight into the SAME interactive crop
+      // canvas, editable immediately — no separate "view" vs "edit" step.
+      // drawCanvas() always displays at a fixed comfortable width regardless
+      // of the source photo's actual size, so re-dragging a crop on an
+      // already-small saved swatch is still precise, not fiddly.
+      document.getElementById('remove-style-btn').onclick = () => removePhoto(currentName, currentStyle, bf);
+      pitchPx = slot.pitch;
+      document.getElementById('pitch-val').textContent = slot.pitch;
+      document.getElementById('pitch-source').textContent = '(saved)';
+      fetch(slot.url).then(r => r.blob()).then(b => loadFile(b));
+    }
+    document.querySelectorAll('.backfilm-chip').forEach(c => {
+      if (c.querySelector('.label')?.textContent === bf) c.classList.add('active');
+    });
+    updateCompareOptions();
+  }
+
+  function wireDropZone() {
+    const dz = document.getElementById('drop-zone');
+    if (!dz) return;
+    dz.addEventListener('click', () => document.getElementById('file-input').click());
+    const wrap = document.getElementById('canvas-wrap');
+    wrap.addEventListener('dragover', e => e.preventDefault());
+    wrap.addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]); });
+  }
+
+  document.body.addEventListener('change', e => {
+    if (e.target.id === 'file-input' && e.target.files[0]) loadFile(e.target.files[0]);
+  });
+
+  function addNew() {
+    currentName = null;
+    renderList();
+    crystalShell('', true);
+    currentStyle = 'fabric';
+    renderBackfilmRow();
+    selectBackfilm(null);
+  }
+
+  function editCrystal(name) {
+    currentName = name;
+    renderList();
+    crystalShell(name, false);
+    currentStyle = 'fabric';
+    renderBackfilmRow();
+    const firstBf = Object.keys((swatches.crystal[name]?.slots.fabric) || {})[0] || null;
+    selectBackfilm(firstBf);
+  }
+
+  function loadFile(fileOrBlob) {
+    return new Promise(resolve => {
+      const url = URL.createObjectURL(fileOrBlob);
+      const img = new Image();
+      img.onload = () => { workingImage = img; workingBlob = fileOrBlob; measureMode = false; measurePoint = null; drawCanvas(); resolve(); };
+      img.src = url;
+    });
+  }
+
+  function drawCanvas() {
+    const wrap = document.getElementById('canvas-wrap');
+    wrap.innerHTML = `
+      <div class="canvas-toolbar">
+        <button class="small" id="change-photo-btn">Change photo</button>
+        <span class="canvas-hint" id="canvas-hint">Drag a box over a clean patch of texture to crop it.</span>
+      </div>`;
+    document.getElementById('change-photo-btn').addEventListener('click', () => document.getElementById('file-input').click());
+    // Always fit to a fixed comfortable width — including scaling UP a
+    // small already-cropped saved photo — so dragging a precise crop box
+    // is never fighting a tiny canvas. displayScale still maps every
+    // on-screen coordinate back to the source photo's real pixels.
+    const maxW = 480;
+    displayScale = maxW / workingImage.naturalWidth;
+    const w = Math.round(workingImage.naturalWidth * displayScale);
+    const h = Math.round(workingImage.naturalHeight * displayScale);
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    wrap.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(workingImage, 0, 0, w, h);
+
+    function toCanvasXY(e) {
+      const r = canvas.getBoundingClientRect();
+      return { x: (e.clientX - r.left) * (canvas.width / r.width), y: (e.clientY - r.top) * (canvas.height / r.height) };
+    }
+
+    canvas.addEventListener('mousedown', e => {
+      if (measureMode) return; // measuring uses click, not drag
+      dragStart = toCanvasXY(e);
+    });
+    canvas.addEventListener('mousemove', e => {
+      if (measureMode || !dragStart) return;
+      redrawWithBox(ctx, w, h, dragStart, toCanvasXY(e));
+    });
+    // onmouseup (not addEventListener): drawCanvas() runs again on every
+    // backfilm/style/photo switch, and a stray addEventListener listener
+    // from a PREVIOUS canvas would stay registered on window forever, its
+    // toCanvasXY bound to a now-detached (0×0 rect) canvas — that stale
+    // listener firing before the fresh one corrupted crop to NaN and
+    // consumed dragStart before the correct listener could run. Assigning
+    // onmouseup always replaces the previous one, so only the current
+    // canvas's listener ever exists.
+    window.onmouseup = e => {
+      if (measureMode || !dragStart) return;
+      const { x, y } = toCanvasXY(e);
+      const bx0 = Math.min(dragStart.x, x), by0 = Math.min(dragStart.y, y);
+      const bw = Math.abs(x - dragStart.x), bh = Math.abs(y - dragStart.y);
+      dragStart = null;
+      if (bw < 10 || bh < 10) {
+        // Too small to count as a crop — reset the canvas to a clean view
+        // instead of leaving it frozen mid-drag (dimmed overlay + partial
+        // box) with no visible way forward, which read as "stuck."
+        redrawCanvasBase(ctx, w, h);
+        return;
+      }
+      crop = { x: bx0 / displayScale, y: by0 / displayScale, w: bw / displayScale, h: bh / displayScale };
+      const saveBtn = document.getElementById('save-btn');
+      if (saveBtn) saveBtn.disabled = false;
+      schedulePreview();
+    };
+    canvas.addEventListener('click', e => {
+      if (!measureMode) return;
+      const p = toCanvasXY(e);
+      if (!measurePoint) {
+        measurePoint = p;
+        document.getElementById('measure-btn').textContent = '📏 Click the opposite edge of that stone…';
+        redrawCanvasBase(ctx, w, h);
+        ctx.fillStyle = '#c6a664';
+        ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill();
+        return;
+      }
+      const dx = p.x - measurePoint.x, dy = p.y - measurePoint.y;
+      const distPx = Math.sqrt(dx * dx + dy * dy) / displayScale;
+      pitchPx = Math.max(2, Math.round(distPx * 10) / 10);
+      document.getElementById('pitch-val').textContent = pitchPx;
+      document.getElementById('pitch-source').textContent = '(measured)';
+      redrawCanvasBase(ctx, w, h);
+      ctx.strokeStyle = '#c6a664'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(measurePoint.x, measurePoint.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+      [measurePoint, p].forEach(pt => { ctx.fillStyle = '#c6a664'; ctx.beginPath(); ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2); ctx.fill(); });
+      measureMode = false; measurePoint = null;
+      const btn = document.getElementById('measure-btn');
+      btn.classList.remove('active-toggle');
+      btn.textContent = '📏 Measure a stone';
+      schedulePreview();
+    });
+  }
+
+  function redrawCanvasBase(ctx, w, h) {
+    ctx.drawImage(workingImage, 0, 0, w, h);
+    if (crop) {
+      const x0 = crop.x * displayScale, y0 = crop.y * displayScale, bw = crop.w * displayScale, bh = crop.h * displayScale;
+      ctx.strokeStyle = '#c6a664'; ctx.lineWidth = 1.5;
+      ctx.strokeRect(x0, y0, bw, bh);
+    }
+  }
+
+  function redrawWithBox(ctx, w, h, a, b) {
+    ctx.drawImage(workingImage, 0, 0, w, h);
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(0, 0, w, h);
+    const x0 = Math.min(a.x, b.x), y0 = Math.min(a.y, b.y), bw = Math.abs(b.x - a.x), bh = Math.abs(b.y - a.y);
+    ctx.clearRect(x0, y0, bw, bh);
+    ctx.drawImage(workingImage, x0 / displayScale, y0 / displayScale, bw / displayScale, bh / displayScale, x0, y0, bw, bh);
+    ctx.strokeStyle = '#c6a664';
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(x0, y0, bw, bh);
+  }
+
+  function schedulePreview() {
+    clearTimeout(previewDebounce);
+    previewDebounce = setTimeout(runPreview, 250);
+  }
+
+  async function runPreview() {
+    if (!crop || !workingBlob) return;
+    const hint = document.getElementById('preview-hint');
+    hint.textContent = 'Rendering…';
+    const fd = new FormData();
+    fd.append('image', workingBlob, 'photo.jpg');
+    fd.append('crop_x', crop.x); fd.append('crop_y', crop.y);
+    fd.append('crop_w', crop.w); fd.append('crop_h', crop.h);
+    fd.append('pitch', pitchPx);
+    fd.append('material', currentStyle === 'fabric' ? 'fabric_1.0' : 'rock_2.0');
+    if (compare.name) {
+      fd.append('compare_name', compare.name);
+      fd.append('compare_style', compare.style);
+      fd.append('compare_backfilm', compare.backfilm);
+    }
+    try {
+      const res = await fetch('/swatches/preview', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      document.getElementById('preview-tile').src = URL.createObjectURL(blob);
+      hint.textContent = compare.name ? `Compared with ${compare.name} · ${compare.style} · ${compare.backfilm}.` : '';
+    } catch (e) {
+      hint.textContent = 'Preview failed — try a different crop.';
+    }
+  }
+
+  async function saveCrystal() {
+    const name = document.getElementById('name-input').value.trim();
+    const backfilm = document.getElementById('backfilm-input').value.trim();
+    if (!name) { showStatus('A colour name is required.', 'err'); return; }
+    if (!backfilm) { showStatus('A backfilm name is required — what is this photographed against?', 'err'); return; }
+    if (!crop || !workingBlob) { showStatus('Draw a crop box first.', 'err'); return; }
+    const fd = new FormData();
+    fd.append('name', name); fd.append('style', currentStyle); fd.append('backfilm', backfilm);
+    fd.append('image', workingBlob, 'photo.jpg');
+    fd.append('crop_x', crop.x); fd.append('crop_y', crop.y);
+    fd.append('crop_w', crop.w); fd.append('crop_h', crop.h);
+    fd.append('pitch', pitchPx);
+    document.getElementById('save-btn').disabled = true;
+    try {
+      const res = await fetch('/swatches/save', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error((await res.json()).detail || 'Save failed');
+      showStatus(`Saved "${name}" — ${currentStyle} on ${backfilm}.`, 'ok');
+      currentName = name;
+      currentBackfilm = backfilm;
+      // Deliberately NOT crystalShell()/selectBackfilm() here — both wipe
+      // the canvas, crop box, and live preview you just confirmed, which
+      // made the save feel like it discarded your work. loadSwatches()
+      // only touches the sidebar list; markSaved() updates the backfilm
+      // chip row and this panel's "saved" state without touching the
+      // canvas/crop/preview at all, so what you see after Save is exactly
+      // what you had before it.
+      await loadSwatches();
+      markSaved(backfilm);
+    } catch (e) {
+      showStatus(e.message, 'err');
+    } finally {
+      const b = document.getElementById('save-btn'); if (b) b.disabled = false;
+    }
+  }
+
+  async function removePhoto(name, style, backfilm) {
+    if (!confirm(`Remove the "${backfilm}" ${style} photo for "${name}"? Renders asking for this exact combo will error until a new one is captured.`)) return;
+    const res = await fetch(`/swatches/crystal/${encodeURIComponent(name)}/${style}/${encodeURIComponent(backfilm)}`, { method: 'DELETE' });
+    if (!res.ok) { alert((await res.json()).detail || 'Failed'); return; }
+    await loadSwatches();
+    crystalShell(name, false);
+    renderBackfilmRow();
+    selectBackfilm(null);
+  }
+
+  async function removeCrystal(name) {
+    if (!confirm(`Delete "${name}" entirely (all photos, all backfilms)?`)) return;
+    const res = await fetch(`/swatches/crystal/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    if (!res.ok) { alert((await res.json()).detail || 'Failed'); return; }
+    currentName = null;
+    await loadSwatches();
+    document.getElementById('editor').innerHTML = '<div class="empty-state">Select a colour to edit, or add a new one.</div>';
+  }
+
+  function showStatus(msg, kind) {
+    const el = document.getElementById('status');
+    if (!el) return;
+    el.textContent = msg; el.className = `status show ${kind}`;
+  }
+
+  document.getElementById('add-new').addEventListener('click', addNew);
+  AUTH_TEST.then(loadSwatches).catch(() => {
+    document.body.innerHTML = '<div style="padding:40px;font-family:monospace;color:#c1553f">Sign-in required or ADMIN_PASSWORD not configured.</div>';
+  });
+</script>
+</body>
+</html>
