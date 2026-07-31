@@ -432,6 +432,12 @@ export default function UcRegistry() {
   const [editing, setEditing] = useState(null)   // record | 'new' | null
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
+  // Inline Source editing — 103 rows landed as 'Other' from the original
+  // registry migration (see erp-sync's uc_registry backfill), 63 were fixed
+  // by matching each customer's other rows; the rest need a human glance, and
+  // opening the full Edit modal for each one is slow. A one-click dropdown
+  // right in the row is the fast path Cindy asked for (2026-07-31).
+  const [savingSourceId, setSavingSourceId] = useState(null)
   // Column sort, Excel-style. Default id.desc = newest first, which is what the
   // registry showed before sorting existed.
   const [sort, setSort] = useState({ col: 'id', dir: 'desc' })
@@ -459,6 +465,18 @@ export default function UcRegistry() {
   const arList = useUcList({ status: 'open', confirmed, limit: 1000 })
   const rows = list.rows
   const refreshAll = () => { list.refresh(); arList.refresh() }
+
+  async function setSourceInline(r, value) {
+    setSavingSourceId(r.id)
+    try {
+      await updateUcInvoice(r.id, { source: value })
+      refreshAll()
+    } catch (e) {
+      alert(e.message || 'Could not update source.')
+    } finally {
+      setSavingSourceId(null)
+    }
+  }
 
   // The registry as Cindy reads it, plus invoice_location so an app-raised or
   // not-yet-synced invoice is visible in the sheet rather than only on screen.
@@ -615,9 +633,18 @@ export default function UcRegistry() {
                       : r.year}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
-                    {ucSource(r.source)
-                      ? <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${SOURCE_STYLE[ucSource(r.source)] || SOURCE_STYLE.Other}`}>{ucSource(r.source)}</span>
-                      : <span className="text-xs text-gray-300">—</span>}
+                    <select
+                      value={ucSource(r.source)}
+                      disabled={savingSourceId === r.id}
+                      onChange={(e) => setSourceInline(r, e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      title="Click to reclassify this UC's sales channel"
+                      className={`text-xs rounded px-1.5 py-0.5 border-0 cursor-pointer disabled:opacity-50 ${
+                        ucSource(r.source) ? (SOURCE_STYLE[ucSource(r.source)] || SOURCE_STYLE.Other) : 'bg-gray-50 text-gray-300'
+                      }`}>
+                      <option value="">—</option>
+                      {UC_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
                     {r.invoice_location && (
                       <span className="ml-1.5 text-[10px] text-gray-400" title={LOCATION_TITLE[r.invoice_location]}>
                         {LOCATION_LABEL[r.invoice_location]}
