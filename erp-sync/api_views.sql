@@ -510,21 +510,37 @@ select
   -- Amazon (103) invoices are all in JES too. 'ERP' is a residual "direct
   -- sale" bucket wearing a system's name. Measured 2026-07-21.
   --
-  -- Deliberately NOT called 'App' when absent. An invoice raised in JES this
-  -- afternoon is not in the mirror either — the sync runs on the office LAN
-  -- only. Absence means "not in the mirror", which is app-raised OR not yet
-  -- synced, and the two cannot be told apart from here.
+  -- UPDATED 2026-07-31 (Cindy): a THIRD source now exists —
+  -- app_sales_invoice, the permanent record an invoice raised directly in the
+  -- app writes to Postgres (see app_sales_invoice.sql). Previously 'app-raised'
+  -- and 'not yet synced' were genuinely indistinguishable, so both showed as
+  -- 'not_in_mirror' ("not in sync") even for an invoice that was never going
+  -- to be in JES at all — confusing once the UC registry's picker could find
+  -- and link that same app invoice by name. Now:
+  --   'jes'           — found in the JES mirror.
+  --   'app'           — found in the app's own ledger, not (yet, or ever)
+  --                     JES's — this is a legitimate, permanent state for an
+  --                     app-issued invoice, not a sync lag.
+  --   'not_in_mirror' — found in neither. THIS is the one that still means
+  --                     "raised in JES this afternoon, sync hasn't run" (or
+  --                     something is genuinely wrong) — the ambiguity the
+  --                     original comment described, now narrowed to only the
+  --                     cases where it still applies.
   case
     -- coalesce is required: `NULL !~ pattern` is NULL, not true, so a row
     -- with no jes_si would fall through and be reported as not_in_mirror.
     when coalesce(u.jes_si, '') !~ '^SI[0-9]' then null   -- no invoice, or a status word
     when si.sino is not null    then 'jes'
+    when asi.si_no is not null  then 'app'
     else 'not_in_mirror'
   end                                      as invoice_location
 from public.uc_registry u
 left join raw.salesinvoice si
   on u.jes_si ~ '^SI[0-9]'
- and si.sino = u.jes_si;
+ and si.sino = u.jes_si
+left join public.app_sales_invoice asi
+  on u.jes_si ~ '^SI[0-9]'
+ and asi.si_no = u.jes_si;
 
 revoke all on public.uc_registry_dated from anon, authenticated;
 grant select on public.uc_registry_dated to service_role;

@@ -22,13 +22,17 @@ const SOURCE_STYLE = {
   Other: 'bg-gray-100 text-gray-500',
 }
 
-// Where the invoice lives — derived on uc_registry_dated, never typed.
-// "not in the mirror" is not the same as "raised in the app": the sync runs on
-// the office LAN, so an invoice raised in JES this morning is also absent.
-const LOCATION_LABEL = { jes: 'JES', not_in_mirror: 'not in sync' }
+// Where the invoice lives — derived on uc_registry_dated, never typed. Since
+// 2026-07-31 the view also checks app_sales_invoice, so an app-issued invoice
+// (findable in the picker above, "app" tag) now shows its own state instead
+// of being lumped in with "not in sync" — that badge used to fire for both
+// "raised in the app" and "raised in JES, sync hasn't run yet", which read as
+// a problem for an invoice that was never going to be in JES at all.
+const LOCATION_LABEL = { jes: 'JES', app: 'App', not_in_mirror: 'not in sync' }
 const LOCATION_TITLE = {
   jes: 'This invoice is in the JES mirror.',
-  not_in_mirror: 'This invoice number is not in the JES mirror — either it was raised in the app, or JES has not been synced since it was issued.',
+  app: 'This invoice was raised in the app. It may also reach JES later, but does not need to — this is not a sync problem.',
+  not_in_mirror: 'This invoice number is not in the JES mirror or the app’s own ledger — either it was raised in JES and the LAN sync has not run since, or the number needs checking.',
 }
 
 // No source: the channel is chosen when the invoice is filled in, not when the
@@ -462,7 +466,7 @@ export default function UcRegistry() {
     { label: 'UC#',        value: (r) => `${r.uc_no || ''}${r.year || ''}`, text: true },
     { label: 'Date',       value: (r) => r.effective_date },
     { label: 'JES SI#',    value: (r) => r.jes_si, text: true },
-    { label: 'Invoice in', value: (r) => (r.invoice_location === 'jes' ? 'JES' : r.invoice_location === 'not_in_mirror' ? 'not in sync' : '') },
+    { label: 'Invoice in', value: (r) => LOCATION_LABEL[r.invoice_location] || '' },
     { label: 'Source',     value: (r) => ucSource(r.source) },
     { label: 'Customer',   value: (r) => r.customer },
     { label: 'Order no.',  value: (r) => r.order_no, text: true },
