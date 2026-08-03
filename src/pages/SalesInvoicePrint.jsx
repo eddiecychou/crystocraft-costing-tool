@@ -7,6 +7,7 @@ import { db } from '../firebase'
 import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
 import { amountInWords } from '../constants'
 import { pdfFileTitle } from '../pdfFilename'
+import logoUrl from '../assets/logo.png'
 
 // Sales Invoice — the commercial invoice, raised from an order the same way
 // CuiLing's JES workflow does it ("Load Document" pulls the sales order into a
@@ -96,6 +97,12 @@ export default function SalesInvoicePrint() {
   const { subtotal, chargesTotal, discountAmount, total } = computeOrderTotals(order, lines)
   const productLines = lines.filter((l) => (parseFloat(l.qty_ordered) || 0) > 0)
   const chargeLines = lines.filter((l) => !((parseFloat(l.qty_ordered) || 0) > 0) && (parseFloat(l.unit_price) || 0) !== 0)
+  // Sum across all product lines regardless of each line's own unit (almost
+  // always PCS in practice) — a count of "how many pieces total", not a
+  // unit-aware conversion.
+  const totalQty = productLines.reduce((sum, l) => sum + (parseFloat(l.qty_ordered) || 0), 0)
+  const qtyUnits = new Set(productLines.map((l) => (l.unit || '').trim()).filter(Boolean))
+  const qtyUnitLabel = qtyUnits.size === 1 ? [...qtyUnits][0] : ''
   const dest = order.destination || {}
   const destText = [dest.city, dest.country].filter(Boolean).join(', ')
   const bankBlock = formatBankDetails(bank)
@@ -125,6 +132,7 @@ export default function SalesInvoicePrint() {
         .si-warn.red { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
         .si-accent { height: 4px; background: #b8935a; border-radius: 2px; margin-bottom: 16px; }
         .si-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+        .si-logo { height: 30px; width: auto; margin-bottom: 10px; display: block; }
         .si-company { text-align: right; font-size: 9.5px; color: #555; line-height: 1.5; }
         .si-company .nm { font-size: 11px; color: #1a1a1a; font-weight: 600; }
         .si-title { font-size: 22px; font-weight: 700; letter-spacing: .06em; margin: 4px 0 2px; }
@@ -203,6 +211,7 @@ export default function SalesInvoicePrint() {
 
       <div className="si-head">
         <div>
+          <img className="si-logo" src={logoUrl} alt="" />
           <div className="si-title">INVOICE</div>
         </div>
         <div className="si-company">
@@ -277,6 +286,9 @@ export default function SalesInvoicePrint() {
       <div className="si-totals">
         <table>
           <tbody>
+            {totalQty > 0 && (
+              <tr><td className="k">Total Qty</td><td className="v">{totalQty.toLocaleString()}{qtyUnitLabel ? ` ${qtyUnitLabel}` : ''}</td></tr>
+            )}
             <tr><td className="k">Subtotal</td><td className="v">{money(subtotal, cur)}</td></tr>
             {discountAmount > 0 && (
               <tr><td className="k">Discount{order.discount_pct ? ` (${order.discount_pct}%)` : ''}</td>

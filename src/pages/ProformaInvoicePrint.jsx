@@ -8,6 +8,7 @@ import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bank
 import { downloadCsv } from '../exportCsv'
 import { amountInWords } from '../constants'
 import { pdfFileTitle } from '../pdfFilename'
+import logoUrl from '../assets/logo.png'
 
 // Proforma Invoice — the document CuiLing currently generates in JES and prints
 // to PDF for the customer. Reproducing it here is what lets an order be
@@ -108,6 +109,12 @@ export default function ProformaInvoicePrint() {
   // empty line table.
   const productLines = lines.filter((l) => (parseFloat(l.qty_ordered) || 0) > 0)
   const chargeLines = lines.filter((l) => !((parseFloat(l.qty_ordered) || 0) > 0) && (parseFloat(l.unit_price) || 0) !== 0)
+  // Sum across all product lines regardless of each line's own unit (almost
+  // always PCS in practice) — a count of "how many pieces total", not a
+  // unit-aware conversion.
+  const totalQty = productLines.reduce((sum, l) => sum + (parseFloat(l.qty_ordered) || 0), 0)
+  const qtyUnits = new Set(productLines.map((l) => (l.unit || '').trim()).filter(Boolean))
+  const qtyUnitLabel = qtyUnits.size === 1 ? [...qtyUnits][0] : ''
   const dest = order.destination || {}
   const destText = [dest.city, dest.country].filter(Boolean).join(', ')
   const bankBlock = formatBankDetails(bank)
@@ -172,6 +179,7 @@ export default function ProformaInvoicePrint() {
           border-radius: 6px; color: #9a3412; font-size: 11px; text-align: center; }
         .pi-accent { height: 4px; background: #b8935a; border-radius: 2px; margin-bottom: 16px; }
         .pi-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+        .pi-logo { height: 30px; width: auto; margin-bottom: 10px; display: block; }
         .pi-company { text-align: right; font-size: 9.5px; color: #555; line-height: 1.5; }
         .pi-company .nm { font-size: 11px; color: #1a1a1a; font-weight: 600; }
         .pi-title { font-size: 22px; font-weight: 700; letter-spacing: .06em; margin: 4px 0 2px; }
@@ -259,6 +267,7 @@ export default function ProformaInvoicePrint() {
 
       <div className="pi-head">
         <div>
+          <img className="pi-logo" src={logoUrl} alt="" />
           <div className="pi-title">PROFORMA INVOICE</div>
         </div>
         <div className="pi-company">
@@ -336,6 +345,9 @@ export default function ProformaInvoicePrint() {
       <div className="pi-totals">
         <table>
           <tbody>
+            {totalQty > 0 && (
+              <tr><td className="k">Total Qty</td><td className="v">{totalQty.toLocaleString()}{qtyUnitLabel ? ` ${qtyUnitLabel}` : ''}</td></tr>
+            )}
             <tr><td className="k">Subtotal</td><td className="v">{money(subtotal, cur)}</td></tr>
             {discountAmount > 0 && (
               <tr><td className="k">Discount{order.discount_pct ? ` (${order.discount_pct}%)` : ''}</td>
