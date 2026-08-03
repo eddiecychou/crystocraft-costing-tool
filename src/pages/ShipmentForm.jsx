@@ -950,7 +950,7 @@ export default function ShipmentForm() {
 
         {/* ── Order totals & discount ──────────────────────────────────── */}
         {lines.length > 0 && (() => {
-          const { subtotal: computedSubtotal, chargesTotal, discountAmount: discAmt, total: computedTotal } = computeOrderTotals(header, lines)
+          const { subtotal: computedSubtotal, chargesTotal, total: computedTotal } = computeOrderTotals(header, lines)
           const piSubtotal   = parseFloat(header.pi_subtotal) || null
           const piTotal      = parseFloat(header.pi_total) || null
           const subtotalMatch = piSubtotal == null || Math.abs(computedSubtotal - piSubtotal) < 0.02
@@ -986,7 +986,14 @@ export default function ShipmentForm() {
                   </div>
                 )}
 
-                {/* Discount row */}
+                {/* Discount row — either field can drive it (Cuiling, 2026-08-01:
+                    typing the exact discount PRICE is often easier than working
+                    out what percentage it is). Editing % derives the amount, same
+                    as before; editing the amount now works the other way, deriving
+                    % back for display. computeOrderTotals() already preferred
+                    discount_amount over discount_pct when both are present — this
+                    just exposes the input that was missing, it doesn't add new
+                    calculation logic. */}
                 <div className="flex items-center justify-between pt-1 border-t border-gray-100 mt-1">
                   <div className="flex items-center gap-2">
                     <span className="text-gray-500">Discount</span>
@@ -1005,9 +1012,21 @@ export default function ShipmentForm() {
                       <span className="text-xs text-gray-400">%</span>
                     </div>
                   </div>
-                  <span className="font-mono text-sm text-red-600">
-                    {discAmt > 0 ? `− ${header.currency} ${fmt(discAmt)}` : '—'}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-gray-400">−  {header.currency}</span>
+                    <input
+                      type="number" step="0.01" min="0"
+                      className="input py-0.5 text-xs w-20 text-right font-mono text-red-600"
+                      value={header.discount_amount}
+                      onChange={e => {
+                        const amt = e.target.value
+                        const base = parseFloat(piSubtotal || computedSubtotal)
+                        const pct = amt !== '' && base > 0 ? +((parseFloat(amt) / base) * 100).toFixed(2) : ''
+                        setHeader(h => ({ ...h, discount_amount: amt, discount_pct: isNaN(pct) ? '' : pct }))
+                      }}
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
 
                 {/* Total */}
