@@ -6,6 +6,7 @@ import {
   Document, Page, View, Text, Image, Font, StyleSheet,
 } from '@react-pdf/renderer'
 import logoUrl from '../assets/logo.png'
+import { pdfFileTitle } from '../pdfFilename'
 import QuestrialRegular from '../assets/fonts/Questrial-Regular.ttf'
 import WorkSansRegular  from '../assets/fonts/WorkSans-Regular.ttf'
 import WorkSansMedium   from '../assets/fonts/WorkSans-Medium.ttf'
@@ -133,8 +134,7 @@ export default function QuotePDF({ quote, items }) {
 
   return (
     <Document
-      title={[quote.quote_no, clientName, quote.quote_date]
-        .filter(Boolean).join(' - ') || `Quotation ${clientName}`}
+      title={pdfFileTitle([quote.quote_no, clientName, quote.quote_date]) || `Quotation ${clientName}`}
       author="Crystocraft"
     >
       <Page size="A4" style={s.page}>

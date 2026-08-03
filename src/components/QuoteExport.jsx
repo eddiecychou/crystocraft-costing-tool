@@ -4,6 +4,7 @@ import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Download, Eye } from 'lucide-react'
 import logoUrl from '../assets/logo.png'
+import { pdfFileTitle } from '../pdfFilename'
 
 // Fetch a product image and return a data: URL so react-pdf can embed it without
 // hitting CORS. Tries the Netlify proxy first (handles Firebase Storage), then a
@@ -85,12 +86,11 @@ export default function QuoteExport({ quote, items, onClose }) {
 
   // "QU260602-1 - Widdop Bingham - 2026-07-21" — the three things anyone
   // looking for this file later would search on. Falls back cleanly when the
-  // quote has no QU number or no client yet.
+  // quote has no QU number or no client yet. Same helper (and so the same
+  // naming convention) as the Proforma/Sales Invoice print pages.
   function exportName(ext) {
     const date = quote.quote_date || new Date().toISOString().slice(0, 10)
-    const parts = [quote.quote_no, quote.client_name, date].filter(Boolean)
-    // Strip characters that are illegal in filenames on Windows or macOS.
-    return `${parts.join(' - ').replace(/[\\/:*?"<>|]/g, '-')}.${ext}`
+    return `${pdfFileTitle([quote.quote_no, quote.client_name, date])}.${ext}`
   }
 
   async function exportPDF() {
@@ -119,6 +119,16 @@ export default function QuoteExport({ quote, items, onClose }) {
     try {
       const blob = await buildPdfBlob()
       const url  = URL.createObjectURL(blob)
+      // A blob: URL's own address is a random id (e.g.
+      // "6327ed2a-dbc7-...pdf") — if the browser's Save dialog falls back to
+      // that instead of reading the PDF's embedded /Title metadata, saving
+      // straight from the preview tab produces exactly that messy filename.
+      // Setting the tab's title before it navigates is the same fix the
+      // Proforma/Sales Invoice print pages use for their own "Save as PDF" —
+      // no ".pdf" here either, same as those two: the Save dialog appends
+      // the extension itself, so including it here would double it up.
+      const date = quote.quote_date || new Date().toISOString().slice(0, 10)
+      if (tab) { try { tab.document.title = pdfFileTitle([quote.quote_no, quote.client_name, date]) } catch { /* cross-origin, ignore */ } }
       if (tab) tab.location = url
       else window.open(url, '_blank')   // popup blocked — fall back
     } catch (err) {
