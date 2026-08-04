@@ -533,7 +533,13 @@ select
     when si.sino is not null    then 'jes'
     when asi.si_no is not null  then 'app'
     else 'not_in_mirror'
-  end                                      as invoice_location
+  end                                      as invoice_location,
+  -- The Firestore order behind an app-raised invoice, so the registry can
+  -- open the app's OWN invoice document for it. Without this, clicking an
+  -- app-native SI# ran the JES-only drill-down and dead-ended on "No ERP
+  -- invoice found for SI260095" (owner, 2026-08-04) — the invoice exists,
+  -- just not in JES. Null for JES rows, which drill down the ERP path.
+  asi.order_id                             as app_order_id
 from public.uc_registry u
 left join raw.salesinvoice si
   on u.jes_si ~ '^SI[0-9]'

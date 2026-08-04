@@ -352,8 +352,16 @@ function ErpInvoiceModal({ si, data, loading, error, onClose }) {
               <AlertCircle size={16} /> {error}
             </div>
           )}
+          {/* App-raised invoices never reach this modal (openInvoice routes
+              them to the app's own document), so landing here means the
+              number genuinely isn't in the mirror — almost always a JES
+              invoice issued since the last office-LAN sync. Say that, rather
+              than a bare "not found" that reads like a bad number. */}
           {!loading && !error && rows.length === 0 && surcharges.length === 0 && (
-            <p className="text-sm text-gray-400 py-6 text-center">No ERP invoice found for {si}.</p>
+            <div className="text-sm text-gray-400 py-6 text-center">
+              <p>{si} is not in the JES mirror.</p>
+              <p className="text-xs mt-1">If it was raised in JES recently, the ERP sync has not run since — it is not necessarily missing.</p>
+            </div>
           )}
           {!loading && (rows.length > 0 || surcharges.length > 0) && (
             <table className="w-full text-sm">
@@ -506,6 +514,23 @@ export default function UcRegistry() {
     UC_COLUMNS, rows,
   )
 
+  // Invoice drill-down. An SI# in this registry can live in EITHER system, so
+  // the click has to route on invoice_location rather than assuming JES:
+  // an app-raised invoice has no ERP document to fetch, and running the JES
+  // lookup on one dead-ended at "No ERP invoice found for SI260095" even
+  // though the invoice exists and the app can print it (owner, 2026-08-04).
+  function openInvoice(r) {
+    if (r.invoice_location === 'app') {
+      if (r.app_order_id) { window.open(`/shipments/${r.app_order_id}/invoice`, '_blank', 'noopener'); return }
+      // Allocated in the app but never attached to an order — nothing to open.
+      // Say so plainly instead of showing an ERP "not found" that implies the
+      // number is wrong.
+      alert(`${r.jes_si} was raised in the app but is not linked to an order, so there is no document to open.`)
+      return
+    }
+    openErpInvoice(r.jes_si)
+  }
+
   // ERP invoice drill-down (for rows with a JES SI#).
   const [erpSi, setErpSi] = useState(null)
   const [erpData, setErpData] = useState(null)
@@ -654,7 +679,10 @@ export default function UcRegistry() {
                   <td className="px-3 py-2">{r.customer}</td>
                   <td className="px-3 py-2 font-mono text-xs">
                     {r.jes_si
-                      ? <button onClick={() => openErpInvoice(r.jes_si)} className="text-teal-600 hover:underline">{r.jes_si}</button>
+                      ? <button onClick={() => openInvoice(r)} className="text-teal-600 hover:underline"
+                          title={r.invoice_location === 'app'
+                            ? 'Raised in the app — opens the app’s own invoice'
+                            : 'Opens the JES invoice from the ERP mirror'}>{r.jes_si}</button>
                       : <span className="text-gray-300">—</span>}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap text-gray-500">{r.currency}</td>
