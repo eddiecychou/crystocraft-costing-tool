@@ -109,6 +109,13 @@
   let pitchPx = 16;
   let compare = { name: '', style: '', backfilm: '' };
   let previewDebounce = null;
+  // Batch capture — see the batch-row button's HTML comment. freshUpload
+  // distinguishes "user just picked a photo" (batch capture makes sense)
+  // from "we loaded an already-saved slot's photo to re-edit it" (a single
+  // fix, not a batch op). batchCount resets whenever a genuinely new photo
+  // is chosen, not on every save-next iteration.
+  let freshUpload = false;
+  let batchCount = 0;
 
   const STYLE_LABEL = {
     fabric: 'Crystal Fabric (0.8–1mm) — a genuinely different cut/mix than Rock, needs its own photo',
@@ -209,6 +216,21 @@
           <div class="actions">
             <button id="save-btn" class="primary" disabled>Save this swatch</button>
           </div>
+          <!-- Batch capture: one photo (a swatch card) commonly shows MANY
+               backfilm colours at once. Re-uploading that same photo for
+               every single patch was the friction that made "shoot 15-20
+               real sellers" feel like "shoot 100" (owner, 2026-08-01).
+               This button saves the current crop, then keeps the SAME
+               photo loaded — just clears the crop box and backfilm name —
+               so the next region on the same card is a drag + a name away,
+               no re-upload. Pitch carries over too: one physical photo has
+               one real scale, so it's very likely still correct. -->
+          <div class="actions" id="batch-row" style="display:none">
+            <button id="save-next-btn" class="primary" disabled>Save &amp; capture next region →</button>
+          </div>
+          <div class="panel" id="batch-status" style="display:none">
+            <span id="batch-count"></span> saved from this photo so far.
+          </div>
           <div class="actions" id="remove-row" style="display:none">
             <button id="remove-style-btn" class="danger">Remove this photo</button>
           </div>
@@ -244,6 +266,11 @@
       schedulePreview();
     });
     document.getElementById('save-btn').addEventListener('click', saveCrystal);
+    document.getElementById('save-next-btn').addEventListener('click', saveCrystalAndNext);
+    document.getElementById('backfilm-input').addEventListener('input', e => {
+      const btn = document.getElementById('save-next-btn');
+      if (btn) btn.disabled = !(crop && e.target.value.trim());
+    });
     const del = document.getElementById('delete-btn');
     if (del) del.addEventListener('click', () => removeCrystal(name));
   }
@@ -304,10 +331,13 @@
     currentBackfilm = bf;
     crop = null; workingImage = null; workingBlob = null; pitchPx = 16;
     measureMode = false; measurePoint = null;
+    freshUpload = false; batchCount = 0;   // stale until the next loadFile() sets it
     document.querySelectorAll('.backfilm-chip').forEach(c => c.classList.remove('active'));
     document.getElementById('preview-tile').src = '';
     document.getElementById('preview-hint').textContent = 'Draw a crop box on the photo, then measure a stone, to see the tiled result here.';
     document.getElementById('save-btn').disabled = true;
+    document.getElementById('batch-row').style.display = 'none';
+    document.getElementById('batch-status').style.display = 'none';
     document.getElementById('pitch-val').textContent = '16';
     document.getElementById('pitch-source').textContent = '';
     const nameInput = document.getElementById('backfilm-input');
@@ -336,7 +366,7 @@
       pitchPx = slot.pitch;
       document.getElementById('pitch-val').textContent = slot.pitch;
       document.getElementById('pitch-source').textContent = '(saved)';
-      fetch(slot.url).then(r => r.blob()).then(b => loadFile(b));
+      fetch(slot.url).then(r => r.blob()).then(b => loadFile(b, false));
     }
     document.querySelectorAll('.backfilm-chip').forEach(c => {
       if (c.querySelector('.label')?.textContent === bf) c.classList.add('active');
@@ -376,7 +406,9 @@
     selectBackfilm(firstBf);
   }
 
-  function loadFile(fileOrBlob) {
+  function loadFile(fileOrBlob, isFresh = true) {
+    freshUpload = isFresh;
+    if (isFresh) batchCount = 0;
     return new Promise(resolve => {
       const url = URL.createObjectURL(fileOrBlob);
       const img = new Image();
@@ -393,6 +425,11 @@
         <span class="canvas-hint" id="canvas-hint">Drag a box over a clean patch of texture to crop it.</span>
       </div>`;
     document.getElementById('change-photo-btn').addEventListener('click', () => document.getElementById('file-input').click());
+    const batchRow = document.getElementById('batch-row');
+    const batchStatus = document.getElementById('batch-status');
+    if (batchRow) batchRow.style.display = freshUpload ? 'flex' : 'none';
+    if (batchStatus) batchStatus.style.display = (freshUpload && batchCount > 0) ? 'block' : 'none';
+    if (batchStatus) document.getElementById('batch-count').textContent = batchCount;
     // Always fit to a fixed comfortable width — including scaling UP a
     // small already-cropped saved photo — so dragging a precise crop box
     // is never fighting a tiny canvas. displayScale still maps every
@@ -444,6 +481,8 @@
       crop = { x: bx0 / displayScale, y: by0 / displayScale, w: bw / displayScale, h: bh / displayScale };
       const saveBtn = document.getElementById('save-btn');
       if (saveBtn) saveBtn.disabled = false;
+      const saveNextBtn = document.getElementById('save-next-btn');
+      if (saveNextBtn) saveNextBtn.disabled = !document.getElementById('backfilm-input').value.trim();
       schedulePreview();
     };
     canvas.addEventListener('click', e => {
@@ -526,22 +565,30 @@
     }
   }
 
-  async function saveCrystal() {
-    const name = document.getElementById('name-input').value.trim();
-    const backfilm = document.getElementById('backfilm-input').value.trim();
-    if (!name) { showStatus('A colour name is required.', 'err'); return; }
-    if (!backfilm) { showStatus('A backfilm name is required — what is this photographed against?', 'err'); return; }
-    if (!crop || !workingBlob) { showStatus('Draw a crop box first.', 'err'); return; }
+  // Shared by saveCrystal() and saveCrystalAndNext() — one POST, one place
+  // that knows the request shape. Throws on failure; caller decides what
+  // "after" looks like (single-save locks the row, batch clears for the
+  // next region).
+  async function postSwatchSave(name, backfilm) {
     const fd = new FormData();
     fd.append('name', name); fd.append('style', currentStyle); fd.append('backfilm', backfilm);
     fd.append('image', workingBlob, 'photo.jpg');
     fd.append('crop_x', crop.x); fd.append('crop_y', crop.y);
     fd.append('crop_w', crop.w); fd.append('crop_h', crop.h);
     fd.append('pitch', pitchPx);
+    const res = await fetch('/swatches/save', { method: 'POST', body: fd });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Save failed');
+  }
+
+  async function saveCrystal() {
+    const name = document.getElementById('name-input').value.trim();
+    const backfilm = document.getElementById('backfilm-input').value.trim();
+    if (!name) { showStatus('A colour name is required.', 'err'); return; }
+    if (!backfilm) { showStatus('A backfilm name is required — what is this photographed against?', 'err'); return; }
+    if (!crop || !workingBlob) { showStatus('Draw a crop box first.', 'err'); return; }
     document.getElementById('save-btn').disabled = true;
     try {
-      const res = await fetch('/swatches/save', { method: 'POST', body: fd });
-      if (!res.ok) throw new Error((await res.json()).detail || 'Save failed');
+      await postSwatchSave(name, backfilm);
       showStatus(`Saved "${name}" — ${currentStyle} on ${backfilm}.`, 'ok');
       currentName = name;
       currentBackfilm = backfilm;
@@ -558,6 +605,47 @@
       showStatus(e.message, 'err');
     } finally {
       const b = document.getElementById('save-btn'); if (b) b.disabled = false;
+    }
+  }
+
+  // Batch capture's save — keeps the SAME photo loaded, clears just the
+  // crop box and backfilm name so the next region is a drag + a name away.
+  // Pitch is deliberately NOT reset: one physical photo has one real scale,
+  // so the last measurement is very likely still correct for the next
+  // region on the same card. Re-measure only if this crop looks off.
+  async function saveCrystalAndNext() {
+    const name = document.getElementById('name-input').value.trim();
+    const backfilm = document.getElementById('backfilm-input').value.trim();
+    if (!name) { showStatus('A colour name is required.', 'err'); return; }
+    if (!backfilm) { showStatus('A backfilm name is required — what is this photographed against?', 'err'); return; }
+    if (!crop || !workingBlob) { showStatus('Draw a crop box first.', 'err'); return; }
+    const nextBtn = document.getElementById('save-next-btn');
+    nextBtn.disabled = true;
+    document.getElementById('save-btn').disabled = true;
+    try {
+      await postSwatchSave(name, backfilm);
+      batchCount += 1;
+      showStatus(`Saved "${name}" — ${currentStyle} on ${backfilm}. Drag the next region and name it.`, 'ok');
+      currentName = name;
+      await loadSwatches();
+      renderBackfilmRow();   // refreshes the chip row; does NOT touch the canvas
+      // Clear crop + name, keep photo + pitch, ready for the next region.
+      crop = null;
+      const ctx = document.querySelector('#canvas-wrap canvas')?.getContext('2d');
+      const c = document.querySelector('#canvas-wrap canvas');
+      if (ctx && c) ctx.drawImage(workingImage, 0, 0, c.width, c.height);   // clear the old crop-box outline
+      const nameInput = document.getElementById('backfilm-input');
+      nameInput.value = '';
+      nameInput.readOnly = false;
+      nameInput.style.opacity = '1';
+      nameInput.focus();
+      document.getElementById('save-btn').disabled = true;
+      document.getElementById('batch-status').style.display = 'block';
+      document.getElementById('batch-count').textContent = batchCount;
+    } catch (e) {
+      showStatus(e.message, 'err');
+    } finally {
+      nextBtn.disabled = true;
     }
   }
 
