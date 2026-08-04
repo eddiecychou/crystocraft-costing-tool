@@ -120,16 +120,22 @@ export default function SalesInvoicePrint() {
         @page { size: A4 portrait; margin: 1.8cm; }
         @media print { body { margin: 0; } .print-btn, .si-warn { display: none !important; } }
         /* Plain white, unconditionally — not gated behind @media print and not
-           wrapped in a card (max-width/padding/box-shadow). A card needs
-           @media print to strip it back to a flat page, and several mobile
-           "Save as PDF" paths (iOS Share Sheet in particular) render the
-           on-screen layout as-is without ever applying print media — so the
-           shadow and margins baked straight into the PDF instead of being
-           stripped. A plain white block has nothing that needs stripping.
-           Reported by the owner 2026-07-30, then again 2026-07-30 after the
-           first (card-based) fix regressed this exact document on mobile. */
+           wrapped in a CARD (max-width/box-shadow/border, a different colour
+           behind it). A card needs @media print to strip it back to a flat
+           page, and several mobile "Save as PDF" paths (iOS Share Sheet in
+           particular) render the on-screen layout as-is without ever applying
+           print media — so the shadow/border baked straight into the PDF
+           instead of being stripped. Reported by the owner 2026-07-30, then
+           again 2026-07-30 after the first (card-based) fix regressed this
+           exact document on mobile.
+           PADDING is not the same risk and is added below unconditionally:
+           it has no border, no shadow, and sits on the SAME white as the
+           page itself, so there is nothing for a path that skips print media
+           to bake in visibly — white space next to white space either way.
+           (Reported again 2026-08-04: on-screen, the text ran edge-to-edge
+           with no breathing room at all.) */
         .si-doc { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; font-size: 10.5px; line-height: 1.45;
-          background: #fff; }
+          background: #fff; padding: 32px clamp(16px, 5vw, 48px); }
         .si-doc * { box-sizing: border-box; }
         .print-btn { display: block; margin: 0 auto 18px; padding: 9px 26px; background: #1a1a1a; color: #fff;
           border: none; border-radius: 6px; cursor: pointer; font-size: 13px; letter-spacing: .02em; }
