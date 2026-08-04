@@ -314,7 +314,7 @@ function UcForm({ record, onClose, onSaved }) {
   )
 }
 
-// Read-only ERP invoice detail (from the Supabase ERP mirror) for a UC row's JES SI#.
+// Read-only ERP invoice detail (from the Supabase ERP mirror) for a UC row's SI#.
 function ErpInvoiceModal({ si, data, loading, error, onClose }) {
   const rows = data?.rows || []
   const surcharges = data?.surcharges || []
@@ -491,7 +491,7 @@ export default function UcRegistry() {
   const UC_COLUMNS = [
     { label: 'UC#',        value: (r) => `${r.uc_no || ''}${r.year || ''}`, text: true },
     { label: 'Date',       value: (r) => r.effective_date },
-    { label: 'JES SI#',    value: (r) => r.jes_si, text: true },
+    { label: 'SI #',       value: (r) => r.jes_si, text: true },
     { label: 'Invoice in', value: (r) => LOCATION_LABEL[r.invoice_location] || '' },
     { label: 'Source',     value: (r) => ucSource(r.source) },
     { label: 'Customer',   value: (r) => r.customer },
@@ -531,7 +531,7 @@ export default function UcRegistry() {
     openErpInvoice(r.jes_si)
   }
 
-  // ERP invoice drill-down (for rows with a JES SI#).
+  // ERP invoice drill-down (for rows whose SI# is a JES invoice).
   const [erpSi, setErpSi] = useState(null)
   const [erpData, setErpData] = useState(null)
   const [erpLoading, setErpLoading] = useState(false)
@@ -638,7 +638,7 @@ export default function UcRegistry() {
               <tr className="text-left text-gray-500 border-b border-gray-200 bg-gray-50">
                 {[
                   ['UC #', 'uc_no'], ['Date', 'effective_date'], ['Source', 'source'],
-                  ['Customer', 'customer'], ['JES SI#', 'jes_si'], ['Cur', 'currency'],
+                  ['Customer', 'customer'], ['SI #', 'jes_si'], ['Cur', 'currency'],
                 ].map(([h, col]) => <SortTh key={h} label={h} col={col} sort={sort} onSort={toggleSort} />)}
                 <SortTh label="Total"   col="total"   sort={sort} onSort={toggleSort} align="right" />
                 <SortTh label="Balance" col="balance" sort={sort} onSort={toggleSort} align="right" />
