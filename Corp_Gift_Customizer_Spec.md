@@ -583,6 +583,16 @@ faceting like the reference. Structure is correct; black material is a tuning it
 
 ### 14.11 Crystal material fidelity — open tuning notes (owner domain input)
 
+**Superseded 2026-08-01 — see §14.12.** This section proposed *synthesising*
+per-facet iridescence with a hue-by-angle model, modulated by underlying
+darkness. That path was abandoned: the darkness-dependence described below
+turned out to be exactly right, but the fix was to **capture a real photo per
+crystal × backfilm combination** (the registry rewrite of 2026-07-31) rather
+than model the darkness-dependence mathematically. Kept below for the
+historical reasoning — the physics intuition here is correct and is *why*
+the registry is shaped the way it is now — but do not implement the hue
+model.
+
 Not yet modelled; captured for the next realism pass. The current POC treats
 crystal colour too flatly — real crystals are transparent with iridescent facets.
 
@@ -626,3 +636,86 @@ on black there's no competing light so the reflected iridescence dominates.)
 So the AB/Moonlight facet hue model (§14.11) must be **modulated by the underlying
 darkness**, not applied at constant strength. Capture both a light-ground and a
 dark-ground swatch per coating to sample the true range.
+
+### 14.12 Portal render-request config layer (reconciled with an external draft, 2026-08-01)
+
+**Where this came from.** The owner had Perplexity draft a render spec
+(`crystal_fabric_render_spec.md`) without sight of this file or the deployed
+code, and asked for an honest review. Its rendering *approach* — a prompted
+generative-AI call per request — was rejected outright: it contradicts §0's
+first principle ("deterministic compositing, not generative AI... anything
+the customer scrutinises against their brand = deterministic") and would
+replace the one part of this engine that's actually trustworthy. But its
+*vocabulary and config shape* were good, independently converged on several
+things §14 already learned the hard way (two-layer system, mm-based size
+grades, "same crystal reads differently on different film"), and named gaps
+this spec hadn't written down yet. This section keeps those parts and maps
+them onto the real, deployed API — `render-service/` on Fly.io
+(`crystocraft-customizer-render`), not a future build.
+
+**What the deployed engine actually is**, for context on everything below:
+deterministic numpy/PIL compositing over **real photographed swatches**,
+keyed `crystal colour × stone style (fabric/rock) × backfilm name` — see
+`engine/palette.py`'s module docstring and the 2026-07-31 registry rewrite.
+Every cell in that registry is a photo captured in `/admin`, never a
+synthesized colour. Two render modes exist server-side today:
+Mode B `zone_map` (two crystal colours forming a logo shape, no backfilm —
+`engine/stones.py`) and Mode A `printed` (a graphic viewed through
+translucent crystal, resolved against a specific backfilm —
+`engine/refraction.py`). `POST /render`'s current parameters are
+`mode`, `crystal_type`, `panel_mm`, `fg_color`, `bg_color`, `logo_png_b64`
+(see `app.py`'s `RenderRequest`).
+
+**Vocabulary reconciliation** — the draft's terms, and what they actually
+are in the deployed model:
+
+| Draft term | Real equivalent | Note |
+|---|---|---|
+| `crystalType` (Fabric / Fine Rock / Rock) | `crystal_type` (`fabric_1.0` / `fine_rock_1.5` / `rock_2.0`) | Same three grades, same mm values (0.8–1 / 1.5 / 2mm). Confirmed correct. |
+| `crystalSize` | *(folded into `crystal_type` above)* | The draft treats size as a separate field from type; in the real model one selection carries both — there's no independent size dial. |
+| `crystalEffect` (Clear / AB / Moonlight / Coloured) | `fg_color` (Mode A) or `fg_color`/`bg_color` (Mode B) — a **colour name in the registry**, not a separate axis | This is the one real design disagreement, not just a naming gap — see below. |
+| `backfilmMode` / `backfilmColor` | `bg_color` in Mode A = a **backfilm name** resolved via `palette.list_backfilms()` | Already real, already deployed. The draft's "printed graphic underlay" and "transparent base" modes don't exist and aren't needed — Mode A's own printed-graphic-under-crystal *is* that mode. |
+| `crystalDensity` | *(no equivalent — deliberately)* | See below. |
+| Swatch behaviour rules (AB+black = dramatic, etc.) | The registry itself | The draft describes in prose what the registry now proves with photos. Correct instinct, wrong storage — see §14.11's supersede note. |
+
+**Why `crystalEffect` as a free axis is rejected, not just renamed.** In the
+draft, "Crystal AB" is an *effect* you apply to any colour. In the deployed
+registry, AB/Moonlight/Jet/etc. are each their own **colour entries with
+their own captured photos** — asking for "Jet with AB effect" has no
+answer unless someone photographs that exact combination. Making effect a
+free-standing field either (a) implies synthesizing combinations no photo
+backs — the rejected path — or (b) requires the capture matrix to grow by
+one more multiplied dimension. If new named effect+colour combinations are
+wanted, they're new rows in `/admin`, not a new field.
+
+**Why `crystalDensity` has no equivalent, and shouldn't.** This is the
+same mistake the *pitch slider* was, fixed on 2026-07-31: an abstract
+number with no physical reference is unusable (owner: "I have no idea how
+to tune the pitch"). Density is implicitly fixed by `crystal_type` (stone
+size) and the swatch photo's own real stone spacing (`pitch`, measured in
+`/admin` by clicking across one real stone — see `admin.html`). Do not add
+a density field; if a denser/sparser look is wanted, that's a different
+photographed swatch, measured the same way.
+
+**Fields worth adding** — genuinely missing, not covered by the API today,
+and don't conflict with the deterministic-compositing model:
+
+- `design_name` — human label for a saved render request, for the "saved
+  render presets per customer" idea below.
+- `usage_intent` (logo / text / full graphic / pattern fill / decorative
+  swatch / proposal mockup) — not consumed by the render engine, but useful
+  metadata for staff triage and for choosing Mode A vs Mode B automatically
+  (a full graphic implies Mode A; a two-colour logo shape implies Mode B).
+- `notes` — free text, same pattern as elsewhere in this app.
+- `swatch_reference_ids` — **the most valuable addition.** Record exactly
+  which registry row(s) (`crystal name`, `style`, `backfilm`) produced a
+  given render. Real traceability if a customer later disputes a mockup
+  against the physical product — "this is what was rendered, and this is
+  the exact photographed swatch it came from," not a description of one.
+
+**What NOT to add**, and why, restated for anyone revisiting this later:
+`crystalEffect` and `crystalDensity` as free inputs, any "printed graphic
+underlay" concept beyond what Mode A already is, and — above everything —
+**no prompted/generative render path**. If a future request needs a look
+the registry can't produce, the fix is capturing a new photo in `/admin`,
+the same fix every gap in this system has had since 2026-07-30.
