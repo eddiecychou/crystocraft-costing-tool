@@ -43,6 +43,159 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
+## Current Status — V7.20 CLOSED as of 2026-08-04
+
+Commit chain `604580c`→`25f8a5c` (17 commits), all deployed (app via Netlify,
+`render-service/` separately to Fly.io). Two threads: the **crystal fabric
+customizer's swatch library went from a single generic recoloured photo to a
+real per-colour × backfilm photo registry with a self-serve capture tool**,
+and a long run of **real invoicing/UC-registry bugs CuiLing and Cindy hit
+while actually using the app** — the same pattern as V7.19's "found by
+CuiLing actually invoicing" thread, just this cycle's crop of it.
+
+### The numbers
+
+| | |
+|---|---:|
+| Commits | 17 |
+| Crystal swatch photos | 1 generic recoloured photo → real captures, keyed colour × style × backfilm |
+| Real bugs found by Cindy/CuiLing actually using the app | 6 |
+| New Postgres view column | `app_order_id` on `uc_registry_dated` |
+| New Firestore field | `line_image` on order lines |
+| New corp gift category | Fitness & Wellness |
+| Files touched | ~20, across `render-service/` and `src/` |
+
+### 1. Crystal fabric customizer — real swatch photos, self-serve admin tool
+
+The render engine used **one generic material photo, recoloured by formula**
+for every crystal colour — the owner's own reference photos showed this was
+simply wrong (a colour's sparkle/facet character isn't derivable from another
+colour's photo by recolouring it). Rebuilt around real photographed swatches:
+
+- **Registry schema rewrite**: a crystal colour's photo is now keyed by
+  `style` (fabric/rock) **and** `backfilm` (what it's photographed against) —
+  not because of a "generic" fallback removed earlier this cycle, but because
+  the owner's own AB-on-white vs. AB-on-black photos proved a translucent
+  crystal genuinely looks different by backing, not just tinted differently.
+  `engine/palette.py`'s `crystal_photo()` raises rather than substitutes when
+  an exact combo hasn't been captured — fail-loud, no synthesized colours,
+  ever.
+- **Self-serve `/admin` tool** deployed to Fly.io (`crystocraft-customizer-render`,
+  persistent Volume) so swatches can be captured without a code deploy:
+  upload, crop, measure pitch by clicking across one real stone (replacing an
+  earlier unusable abstract slider), save. A real production bug was caught
+  and fixed before it could reach the live registry: `_write_registry()`
+  truncated the file before recomputing the data being written to it,
+  corrupting `registry.json` to zero bytes on every save — found only by
+  testing a save end-to-end, not by reading the code.
+- **Batch capture**: one swatch-card photo commonly shows many backfilm
+  colours at once; re-uploading the same photo per colour was the friction
+  that made "shoot the 15–20 real sellers" feel like "shoot the 100+ in the
+  film catalogue." "Save & capture next region" now keeps the same photo
+  loaded and just clears the crop box + name between captures, carrying the
+  measured pitch forward (one photo, one real scale).
+- **Two real interaction bugs found only by driving the UI**, not by reading
+  the code: a stale `window.addEventListener('mouseup', …)` accumulated a new
+  listener on every backfilm switch, and the *older* one — bound to a
+  now-detached canvas — fired first and corrupted the crop to `NaN`; fixed by
+  assigning `onmouseup` (always replaces) instead. And re-editing an existing
+  swatch loaded its already-cropped, often-small saved photo into the same
+  canvas at native size, making precise re-cropping fiddly; the canvas now
+  always displays at a fixed comfortable width, upscaling a small saved photo
+  rather than fighting it.
+- Reconciled an external Perplexity-drafted render spec against the deployed
+  engine (§14.12 of `Corp_Gift_Customizer_Spec.md`): kept the useful config
+  fields (`design_name`, `usage_intent`, `swatch_reference_ids`), rejected its
+  generative-prompt rendering approach outright as a direct violation of §0's
+  "deterministic compositing, not generative AI," and rejected `crystalEffect`
+  /`crystalDensity` as free-standing fields for the same reason the pitch
+  slider was replaced with real measurement — abstract dials with no
+  photographed ground truth.
+
+### 2. Real invoicing/UC-registry bugs, found by Cindy and CuiLing using the app
+
+- **SI260095 wasn't findable when linking a UC.** The UC registry's SI picker
+  only ever searched the JES mirror — an invoice raised directly in the app
+  (never entered into JES) could never appear in it. Fixed by merging in the
+  app's own invoice ledger (`app_sales_invoice`), tagged `app`/`JES` in the
+  dropdown.
+- **…and once linked, it still showed "not in sync."** `invoice_location` was
+  computed by comparing only against the JES mirror, so "raised in the app"
+  and "raised in JES, sync hasn't run yet" were indistinguishable — both read
+  as a problem. The view (`uc_registry_dated`) now also joins
+  `app_sales_invoice` and reports a third state, `'app'`, for a genuinely
+  app-native invoice — not a sync lag.
+- **Clicking that SI# still dead-ended** on "No ERP invoice found," because
+  the click handler always ran the JES lookup regardless of where the invoice
+  actually lived. Now routes on `invoice_location`: an app-native row opens
+  the app's own invoice document (`app_order_id`, newly exposed by the view).
+- **The Order Listing's "SO #" column could show an invoice number.**
+  `erp_so_no` is really a catch-all "primary ERP document number" — the PI
+  import parser writes whatever reference it read into it, so it can hold an
+  SO, a quote, *or* (for imported invoices) an SI. Split back apart for
+  display only (`orderSi()`/`orderSoDisplay()`, no data migration): the SO#
+  column blanks when the value is really an SI, which now surfaces instead as
+  a green "invoiced" badge next to Status.
+- **An already-invoiced order could vanish from both the "invoiced" and
+  "awaiting" lists at once** for the same reason — `awaiting`'s exclusion
+  already accounted for an SI landed in `erp_so_no`, but the `invoiced` list's
+  own filter didn't, so that edge case fell into neither. Now both use the
+  same check.
+- Column renamed **"JES SI#" → "SI #"** (it shows either system's invoice now,
+  not JES-only) and **Source became inline-editable** in the registry table —
+  103 historical rows had landed as unclassified "Other" from the original
+  migration; 63 were bulk-corrected by matching each customer's other rows
+  (all turned out to be Wholesale), the inline dropdown makes cleaning up the
+  remaining 40 a click each instead of opening the full Edit modal.
+
+### 3. Document polish — Proforma, Sales Invoice, Quote
+
+- **Corp Gift / Ad-hoc order lines can now carry a picture**, printed on both
+  the PI and Invoice (a Photo column appears only when at least one line on
+  that order has one, so existing text-only documents are unaffected). New
+  shared `LineImagePicker`: browse a catalogue product's gallery, or upload a
+  one-off photo for an ad-hoc line with no catalogue entry. Deliberately a
+  plain URL on the line (`line_image`), not a product reference — it says
+  "print this picture here," not "this line IS that catalogue product."
+  Figurine lines were explicitly left out: a range product's gallery shot
+  won't reflect the specific plating × crystal-colour combination ordered.
+- Both documents gained the **Crystocraft logo**, a **Total Qty** row, and
+  actual **screen/print padding** — `.si-doc`/`.pi-doc` had been stripped to
+  zero padding entirely (not just the "card" border/shadow) by an earlier
+  mobile-PDF fix, so text ran flush to the browser edge on screen. Plain
+  padding on the same white as the page carries none of that fix's original
+  risk (nothing for a print-media-skipping path to bake in visibly).
+- **Order Totals discount** gained a directly-editable amount field next to
+  the percentage one — `computeOrderTotals()` already preferred a typed
+  amount over a computed one, the amount field itself just didn't exist yet.
+  Either field now drives the other.
+- **Quote PDF filenames** were landing as a raw blob-URL UUID
+  (`6327ed2a-dbc7-....pdf`) when saved from the Preview tab, since that tab
+  navigates directly to a `blob:` URL whose address is always random. Now
+  routed through the same `pdfFileTitle()` helper the Proforma/Invoice print
+  pages already use, with the preview tab's `document.title` set before it
+  navigates — same fix, same reason.
+
+### 4. Catalogue
+
+- New **"Fitness & Wellness"** category (water bottles, resistance bands,
+  yoga mats, sports items) — no existing category fit; closest was "Dining &
+  Kitchen" for bottles and nothing at all for fitness equipment.
+
+### Deployment notes
+
+- **`render-service/` redeployed to Fly.io** (`crystocraft-customizer-render`)
+  three times this cycle — swatch schema rewrite, admin UI fixes, batch
+  capture. Persistent Volume data survived every deploy.
+- **New Postgres**: `uc_registry_dated` view altered to add `app_order_id`
+  and the `'app'` `invoice_location` state — applied directly via
+  `erp-sync/api_views.sql` against Supabase (idempotent, drop-view/create-view),
+  verified against live data before and after.
+- No new Firestore collections; `line_image` is a new field on the existing
+  order-lines subcollection, nullable, no migration needed for existing docs.
+
+---
+
 ## Current Status — V7.19 CLOSED as of 2026-07-30
 
 Commit chain `81ed82d`→`d06cb78` (25 commits), all deployed. V7.19 did not do
