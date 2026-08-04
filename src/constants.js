@@ -32,6 +32,7 @@ export const CATEGORIES = [
   'Travel Accessories',
   'Apparel & Wearables',
   'Accessories',
+  'Fitness & Wellness',   // water bottles, resistance bands, yoga mats, sports items — 2026-08-04
   'Games & Leisure',
   'Stationery',
   'Decor Objects',
