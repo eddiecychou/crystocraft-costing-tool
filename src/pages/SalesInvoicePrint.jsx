@@ -103,6 +103,12 @@ export default function SalesInvoicePrint() {
   const totalQty = productLines.reduce((sum, l) => sum + (parseFloat(l.qty_ordered) || 0), 0)
   const qtyUnits = new Set(productLines.map((l) => (l.unit || '').trim()).filter(Boolean))
   const qtyUnitLabel = qtyUnits.size === 1 ? [...qtyUnits][0] : ''
+  // Photo column appears only when a line actually carries an image, so the
+  // many text-only invoices (figurine and charge lines never get one — see
+  // ShipmentForm) are laid out exactly as before rather than gaining an empty
+  // column. Set per line on the order; corp gift / ad-hoc only.
+  const hasImages = lines.some((l) => l.line_image)
+  const colCount = hasImages ? 7 : 6
   const dest = order.destination || {}
   const destText = [dest.city, dest.country].filter(Boolean).join(', ')
   const bankBlock = formatBankDetails(bank)
@@ -155,6 +161,11 @@ export default function SalesInvoicePrint() {
         table.si-lines td.desc { white-space: pre-wrap; }
         table.si-lines tr:nth-child(even) td { background: #fafafa; }
         .si-code { font-family: 'SF Mono', Menlo, monospace; font-size: 9.5px; }
+        /* print-color-adjust keeps the photo from being dropped when
+           "background graphics" is off in the print dialog — same reason the
+           chop below needs it. */
+        .si-lineimg { width: 100%; max-width: 72px; aspect-ratio: 1; object-fit: cover; border-radius: 3px;
+          display: block; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
         .si-totals { display: flex; justify-content: flex-end; margin-top: 10px; }
         .si-totals table { width: 260px; }
         .si-totals td { padding: 3px 8px; }
@@ -245,8 +256,9 @@ export default function SalesInvoicePrint() {
         <thead>
           <tr>
             <th style={{ width: '3%' }}>#</th>
-            <th style={{ width: '20%' }}>Item Code</th>
-            <th style={{ width: '41%' }}>Description</th>
+            {hasImages && <th style={{ width: '12%' }}></th>}
+            <th style={{ width: hasImages ? '17%' : '20%' }}>Item Code</th>
+            <th style={{ width: hasImages ? '32%' : '41%' }}>Description</th>
             <th className="r" style={{ width: '10%' }}>Qty</th>
             <th className="r" style={{ width: '13%' }}>Unit Price</th>
             <th className="r" style={{ width: '13%' }}>Amount</th>
@@ -259,6 +271,9 @@ export default function SalesInvoicePrint() {
             return (
               <tr key={i}>
                 <td>{i + 1}</td>
+                {hasImages && (
+                  <td>{l.line_image && <img className="si-lineimg" src={l.line_image} alt="" />}</td>
+                )}
                 <td className="si-code">{l.item_code || '—'}</td>
                 <td className="desc">{l.description || '—'}</td>
                 <td className="r">{qty.toLocaleString()}{l.unit ? ` ${l.unit}` : ''}</td>
@@ -270,6 +285,9 @@ export default function SalesInvoicePrint() {
           {chargeLines.map((l, i) => (
             <tr key={`c${i}`}>
               <td>{productLines.length + i + 1}</td>
+              {hasImages && (
+                <td>{l.line_image && <img className="si-lineimg" src={l.line_image} alt="" />}</td>
+              )}
               <td className="si-code">{l.item_code || '—'}</td>
               <td className="desc">{l.description || 'Charge'}</td>
               <td className="r" />
@@ -278,7 +296,7 @@ export default function SalesInvoicePrint() {
             </tr>
           ))}
           {productLines.length === 0 && chargeLines.length === 0 && (
-            <tr><td colSpan={6} style={{ textAlign: 'center', color: '#aaa', padding: '18px 0' }}>No line items on this order.</td></tr>
+            <tr><td colSpan={colCount} style={{ textAlign: 'center', color: '#aaa', padding: '18px 0' }}>No line items on this order.</td></tr>
           )}
         </tbody>
       </table>

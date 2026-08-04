@@ -222,6 +222,12 @@ export const normLine = l => {
     unit_price: numOrNull(l.unit_price),
     line_type: type,                       // null until reconciled
     packable: type ? isPackable(type) : true,
+    // Optional picture for this line on the Proforma / Sales Invoice. A plain
+    // URL, chosen by hand (see components/LineImagePicker) — corp-gift line
+    // codes are bespoke per order, not catalogue SKUs, so there is nothing to
+    // derive it from. Deliberately NOT a product reference: it says "print
+    // this picture on this line", not "this line IS that catalogue product".
+    line_image: str(l.line_image) || null,
     matched_product_ref: l.matched_product_ref || null,
     match_status: ['matched', 'unmatched', 'manual'].includes(l.match_status) ? l.match_status : 'unmatched',
   }

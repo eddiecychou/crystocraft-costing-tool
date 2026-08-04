@@ -11,8 +11,9 @@ import {
 import { loadCustomers, saveCustomer } from '../domain/customer'
 import { fetchErpSoLines, diffLines } from '../erpSoImport'
 import { CURRENCIES } from '../constants'
-import { FileInput, FolderOpen, FileText, Trash2, CheckCircle2, AlertTriangle, RefreshCw, Database, Receipt } from 'lucide-react'
+import { FileInput, FolderOpen, FileText, Trash2, CheckCircle2, AlertTriangle, RefreshCw, Database, Receipt, Image as ImageIcon } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
+import LineImagePicker from '../components/LineImagePicker'
 import PackingListEditor from './PackingListEditor'
 import FreightComparison from './FreightComparison'
 import OrderStockIssue from '../components/OrderStockIssue'
@@ -251,6 +252,7 @@ export default function ShipmentForm() {
   // Same as the SO allocator, own counter. Stamps invoiced_at so the invoice
   // carries its own date rather than reusing the order date — an order raised in
   // June and invoiced in July is normal and the books need the later one.
+  const [imgPickerLine, setImgPickerLine] = useState(null)   // index of the line whose image picker is open
   const [allocatingSi, setAllocatingSi] = useState(false)
   const [siError, setSiError] = useState('')
   // An invoice must carry a UC — that is the required key, not the SO (see
@@ -902,8 +904,28 @@ export default function ShipmentForm() {
                 const t = l.line_type ? lineTypeOf(l.line_type) : null
                 return (
                   <div key={i} className={`rounded-lg border p-3 ${l.line_type ? 'border-gray-200' : 'border-amber-200 bg-amber-50/40'}`}>
-                    <div className="grid grid-cols-[auto_1fr_auto] gap-3 items-start">
+                    <div className="grid grid-cols-[auto_auto_1fr_auto] gap-3 items-start">
                       <div className="text-xs text-gray-400 pt-2 w-6">{l.line_no ?? i + 1}</div>
+                      {/* Line image — Corp Gift and Ad-hoc only. Figurine lines
+                          are deliberately excluded (owner, 2026-08-01): a range
+                          product's gallery shot won't reflect the specific
+                          plating × crystal-colour combination ordered, so
+                          offering one would put a subtly wrong picture on an
+                          invoice. Charge lines have nothing to show. */}
+                      {(l.line_type === 'corp_gift' || l.line_type === 'ad_hoc') ? (
+                        <button type="button" onClick={() => setImgPickerLine(i)}
+                          title={l.line_image ? 'Change this line’s invoice image' : 'Add an image for the Proforma / Invoice'}
+                          className="group relative w-14 h-14 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center shrink-0">
+                          {l.line_image
+                            ? <img src={l.line_image} alt="" className="w-full h-full object-cover" />
+                            : <ImageIcon size={16} strokeWidth={1.5} className="text-gray-300" />}
+                          <span className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <span className="bg-white/90 text-[9px] px-1 py-0.5 rounded text-gray-700">
+                              {l.line_image ? 'change' : 'add'}
+                            </span>
+                          </span>
+                        </button>
+                      ) : <div className="w-0" />}
                       <div className="min-w-0 space-y-2">
                         <div className="grid grid-cols-[100px_1fr] sm:grid-cols-[140px_1fr] gap-2">
                           <input className="input py-1.5 text-sm font-mono" value={l.item_code} onChange={e => setLine(i, { item_code: e.target.value })} placeholder="Item code" />
@@ -945,6 +967,16 @@ export default function ShipmentForm() {
                 )
               })}
             </div>
+
+            {imgPickerLine != null && (
+              <LineImagePicker
+                orderId={id}
+                selectedUrl={lines[imgPickerLine]?.line_image || null}
+                onSelect={url => { setLine(imgPickerLine, { line_image: url }); setImgPickerLine(null) }}
+                onClear={() => { setLine(imgPickerLine, { line_image: null }); setImgPickerLine(null) }}
+                onClose={() => setImgPickerLine(null)}
+              />
+            )}
           </div>
         )}
 
