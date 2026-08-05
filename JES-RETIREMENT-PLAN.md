@@ -9,6 +9,55 @@ not assumed; the numbers are there so a future reader can re-check them.
 
 ---
 
+## 0. STATUS — JES was frozen 2026-08-05. Read §0 before §1.
+
+**The owner has instructed CuiLing, Cindy and XiangXia to stop entering or
+updating anything in JES.** It is now a read-only archive, fully mirrored to
+Supabase for reference. Everything from §1 onward was written while JES was
+still live and describes a sequence that has now largely happened — it is kept
+because the *reasoning* behind each decision is still the record of why things
+are the way they are, but **the plan below is no longer a to-do list.**
+
+Where the nine steps actually stand:
+
+| Step | Status |
+|---|---|
+| 1 — Make the data current | **Done** (V7.17: incremental sync, 4h31m → 59min) |
+| 2 — Find out what the team does | **Overtaken.** Answered by migrating, not by surveying |
+| 3 — Stop double-entry | **Done** — SO/SI/PU are raised in the app |
+| 4 — Production / job orders | **Done** — the document was dropped, not rebuilt (§4) |
+| 5 — Purchasing | **Done** — PU migrated |
+| 6 — Item master + BOM | **Decided**, entry outstanding — see below |
+| 7 — Stock | **The remaining gap.** See below |
+| 8 — Sales documents | **Done** — SO and SI both raised in the app |
+| 9 — Switch off | **In progress** — the read-only period started 2026-08-05 |
+
+**Step 6's open question is answered.** It asked whether the app should take
+over *maintaining* products and BOMs, or whether JES's version should be frozen
+as reference data with new products maintained only in the app. The freeze
+settles it: **option two**, which this document already judged "much less work
+and probably right." The two versions now diverge permanently and that is
+intended. The outstanding work is data entry — the owner reports all BOMs
+including crystals are ready to go into the app's own item model, after which
+nothing operational reads `erp_item` / `erp_bom` except as a cross-check.
+
+**Step 7 is the one genuinely unfinished job.** The app displays stock; it is
+not yet where the movements are recorded, and the plan's own warning stands: a
+cutover needs a physical stocktake, because an error in the opening balances
+becomes permanent. It is also the step most exposed to the fact recorded in
+`CLAUDE.md` — **JES stock was never maintained except for crystals**, so the
+opening balances mostly have to come from XiangXia's metals spreadsheet and
+ChunCi's B2C finished-goods spreadsheet, not from the mirror.
+
+**What the freeze changes about risk.** Until now the danger was double-entry —
+two systems disagreeing. From 2026-08-05 the danger inverts: the mirror is
+frozen, so anything in the app still presenting JES data as current will drift
+further from reality every day without ever looking wrong. `ErpLookup` already
+labels itself "Read-only search of the legacy JES ERP archive… not live," which
+is the right treatment; anything that doesn't say so needs to.
+
+---
+
 ## 1. What retiring JES actually means
 
 JES isn't one system, it's about six jobs it still does. Retiring it means

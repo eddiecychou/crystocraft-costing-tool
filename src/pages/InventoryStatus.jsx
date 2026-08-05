@@ -5,6 +5,7 @@ import { db } from '../firebase'
 import { useComponents } from '../criticalComponents'
 import { useCrystals } from '../crystals'
 import { usePackaging } from '../packaging'
+import { useB2cStock } from '../b2cStock'
 import { Download, Boxes, ArrowUp, ArrowDown } from 'lucide-react'
 
 // Inventory Status (V7.13a) — one screen across all three inventory classes
@@ -12,8 +13,8 @@ import { Download, Boxes, ArrowUp, ArrowDown } from 'lucide-react'
 // Available. A per-SKU reorder point flags hot items before they run out:
 // reorder when Available ≤ reorder point (or, if none set, only when negative).
 
-const CLASSES = ['All', 'Metal', 'Crystal', 'Packaging']
-const COL_OF = { Metal: 'range_components', Crystal: 'crystals', Packaging: 'packaging' }
+const CLASSES = ['All', 'Metal', 'Crystal', 'Packaging', 'B2C']
+const COL_OF = { Metal: 'range_components', Crystal: 'crystals', Packaging: 'packaging', B2C: 'b2c_stock' }
 const fmt = n => (Number.isFinite(Number(n)) ? Number(n).toLocaleString() : '0')
 
 // Does a row need reordering? With a reorder point set, flag at/below it;
@@ -32,12 +33,13 @@ export default function InventoryStatus() {
   const { components, loading: lc } = useComponents()
   const { items: crystals, loading: lx } = useCrystals()
   const { items: packaging, loading: lp } = usePackaging()
+  const { items: b2c, loading: lb } = useB2cStock()
   const [search, setSearch] = useState('')
   const [cls, setCls] = useState('All')
   const [reorderOnly, setReorderOnly] = useState(false)
   const [sort, setSort] = useState({ key: 'available', dir: 'asc' })
 
-  const loading = lc || lx || lp
+  const loading = lc || lx || lp || lb
 
   const rows = useMemo(() => {
     const mk = (cls, arr, attrKey) => (arr || []).map(c => {
@@ -49,8 +51,9 @@ export default function InventoryStatus() {
       ...mk('Metal', components, 'plating_code'),
       ...mk('Crystal', crystals, 'colour'),
       ...mk('Packaging', packaging, 'type'),
+      ...mk('B2C', b2c, 'category'),
     ]
-  }, [components, crystals, packaging])
+  }, [components, crystals, packaging, b2c])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -84,7 +87,7 @@ export default function InventoryStatus() {
 
   const toggleSort = key => setSort(s => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'code' || key === 'name' || key === 'cls' ? 'asc' : 'desc' })
 
-  const BADGE = { Metal: 'bg-ivory text-ink-70', Crystal: 'bg-brand-50 text-brand-700', Packaging: 'bg-sky-50 text-sky-700' }
+  const BADGE = { Metal: 'bg-ivory text-ink-70', Crystal: 'bg-brand-50 text-brand-700', Packaging: 'bg-sky-50 text-sky-700', B2C: 'bg-violet-50 text-violet-700' }
   const linkFor = r => r.cls === 'Metal' ? `/components/critical/${r.id}` : '/components'
 
   const Th = ({ k, label, align = 'left' }) => (
@@ -100,7 +103,7 @@ export default function InventoryStatus() {
     <div className="max-w-5xl mx-auto p-4 sm:p-6">
       <h1 className="text-xl font-semibold mb-1 inline-flex items-center gap-2"><Boxes size={20} className="text-brand-500" /> Inventory Status</h1>
       <p className="text-sm text-ink-60 mb-4">
-        On-hand, reserved and available across metal components, crystals and packaging.
+        On-hand, reserved and available across metal components, crystals, packaging and B2C finished goods.
         <span className="text-ink-50"> Available = On-hand − Reserved.</span> Set a reorder point on hot items to flag them before they run out.
       </p>
 

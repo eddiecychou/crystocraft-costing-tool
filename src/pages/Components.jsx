@@ -5,6 +5,7 @@ import { db } from '../firebase'
 import { useComponents, importStockList, buildProductIndex, matchProductCode } from '../criticalComponents'
 import { crystalInventory } from '../crystals'
 import { packagingInventory } from '../packaging'
+import { b2cInventory } from '../b2cStock'
 import InventoryStockTab from '../components/InventoryStockTab'
 import StockEditor from '../components/StockEditor'
 import { loadRangeProductsWithPacking } from '../packing'
@@ -25,7 +26,7 @@ export default function Components() {
       </p>
 
       <div className="flex gap-1 border-b border-ivory-dark mb-5 overflow-x-auto overflow-y-hidden whitespace-nowrap">
-        {[['critical', 'Critical Components'], ['crystalstock', 'Crystal Stock'], ['packagingstock', 'Packaging Stock'], ['colours', 'Crystal Colours'], ['crystalcosts', 'Crystal Costs'], ['formatmoq', 'Format MOQs'], ['categories', 'Categories']].map(([k, label]) => (
+        {[['critical', 'Critical Components'], ['crystalstock', 'Crystal Stock'], ['packagingstock', 'Packaging Stock'], ['b2cstock', 'B2C Finished Goods'], ['colours', 'Crystal Colours'], ['crystalcosts', 'Crystal Costs'], ['formatmoq', 'Format MOQs'], ['categories', 'Categories']].map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 shrink-0 transition-colors ${
               tab === k ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-80'}`}>
@@ -37,6 +38,7 @@ export default function Components() {
       {tab === 'critical' ? <CriticalComponents />
         : tab === 'crystalstock' ? <InventoryStockTab key="crystals" inv={crystalInventory} />
         : tab === 'packagingstock' ? <InventoryStockTab key="packaging" inv={packagingInventory} />
+        : tab === 'b2cstock' ? <InventoryStockTab key="b2c" inv={b2cInventory} />
         : tab === 'colours' ? <CrystalColours />
         : tab === 'crystalcosts' ? <CrystalCosts />
         : tab === 'formatmoq' ? <FormatMoqs />

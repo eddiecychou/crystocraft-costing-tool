@@ -179,6 +179,15 @@ service cloud.firestore {
       }
     }
 
+    // B2C finished-goods stock (V7.21) — trading stock, unconnected to
+    // production; same shape as crystals/packaging, admin only.
+    match /b2c_stock/{b2cId} {
+      allow read, write: if isAdmin();
+      match /movements/{movementId} {
+        allow read, write: if isAdmin();
+      }
+    }
+
     // ---- Shipping & Logistics module (admin only) -----------------------
     match /orders/{orderId} {
       allow read, write: if isAdmin();
