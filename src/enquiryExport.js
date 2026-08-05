@@ -11,6 +11,7 @@
 // components/QuoteExport.jsx (Netlify /api/download-image proxy first, direct
 // fetch as the local-dev fallback). ExcelJS is dynamically imported so its
 // weight stays out of the Enquiries page bundle until someone actually exports.
+import { RANGE_PLATINGS } from './constants'
 
 // ── Brand theme (subset of QuoteExport's) ──────────────────────────────────
 const B = {
@@ -24,6 +25,26 @@ const B = {
 }
 const FONT = 'Calibri Light'
 const IMG_SIZE = 90        // px — embedded photo, square, same as the quote export
+
+// Full variant code, e.g. "U0001-001-GC1" — base design/format code plus the
+// plating letter and crystal-colour code the customer chose. Enquiry items
+// carry the base `code` (U0001-001), the plating as a name in `finish` ("Gold")
+// and the crystal colour as a code in `color` ("C1"); the item-code anatomy is
+// {design}-{format}-{plating}{crystal} (see constants.js). Non-figurine lines
+// (corp gift / ad-hoc) have no finish/colour, so this returns the base as-is.
+function platingCode(finish) {
+  const f = (finish || '').trim()
+  if (!f) return ''
+  const byCode = RANGE_PLATINGS.find(p => p.code === f.toUpperCase())
+  if (byCode) return byCode.code
+  const byName = RANGE_PLATINGS.find(p => p.name.toLowerCase() === f.toLowerCase())
+  return byName ? byName.code : ''
+}
+function variantCode(it) {
+  const base = (it.code || '').trim()
+  const suffix = `${platingCode(it.finish)}${(it.color || '').trim().toUpperCase()}`
+  return suffix ? `${base}-${suffix}` : base
+}
 
 // Fetch an image and return { buffer, extension } for wb.addImage, or null.
 // Proxy first (handles Firebase Storage CORS in production), direct fetch as
@@ -105,7 +126,7 @@ export async function exportEnquiryExcel(r) {
     rr.height = Math.max(20, IMG_SIZE * PT_PER_PX + 8)
 
     rr.getCell(COL.PRODUCT).value = it.name || ''
-    rr.getCell(COL.CODE).value    = it.code || ''
+    rr.getCell(COL.CODE).value    = variantCode(it)
     rr.getCell(COL.TYPE).value    = it.type || ''
     rr.getCell(COL.FINISH).value  = it.finish || ''
     rr.getCell(COL.COLOUR).value  = it.color_name || it.color || ''
