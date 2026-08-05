@@ -15,6 +15,7 @@ export default function ProductDetail() {
   const [product, setProduct]       = useState(null)
   const [components, setComponents] = useState([])
   const [images, setImages]         = useState([])
+  const [customers, setCustomers]   = useState([])   // for "branded for" tagging on images
   const [loading, setLoading]       = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [duplicating, setDuplicating]     = useState(false)
@@ -42,6 +43,13 @@ export default function ProductDetail() {
     const q = query(collection(db, 'products', id, 'images'), orderBy('sort_order'))
     return onSnapshot(q, snap => setImages(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
   }, [id])
+
+  // Lightweight customer list for "branded for" image tagging — id + name only.
+  useEffect(() => {
+    getDocs(query(collection(db, 'customers'), orderBy('company_name')))
+      .then(snap => setCustomers(snap.docs.map(d => ({ id: d.id, company_name: d.data().company_name || '' }))))
+      .catch(() => setCustomers([]))
+  }, [])
 
   async function handleHeroChange(url) {
     await updateDoc(doc(db, 'products', id), { heroImage: url })
@@ -246,6 +254,9 @@ export default function ProductDetail() {
               <span className="inline-block mx-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium">Storefront</span> shown to logged-in customers,
               <span className="inline-block mx-1 px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-medium">Public</span> also allowed in blog posts.
               New uploads start <span className="font-medium">Internal</span> — set client-logo images carefully before sharing.
+              If a storefront photo shows a specific client's branding, tag it
+              <span className="inline-block mx-1 px-1.5 py-0.5 rounded bg-red-50 text-red-700 text-[10px] font-medium">Branded for</span>
+              that customer — anyone flagged "sensitive" (Customers → edit) will never see it, automatically.
             </p>
             <ImageGallery
               images={images}
@@ -254,6 +265,7 @@ export default function ProductDetail() {
               typeOptions={IMAGE_TYPES}
               captionable
               showVisibility
+              brandedForCustomers={customers}
               onHeroChange={handleHeroChange}
               downloadPrefix={product?.name}
               enhanceable

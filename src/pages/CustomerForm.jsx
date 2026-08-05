@@ -97,6 +97,7 @@ export default function CustomerForm() {
   const [tagInput, setTagInput]       = useState('')
   const [isPersonalWa, setIsPersonalWa] = useState(false)
   const [isVip, setIsVip]             = useState(false)
+  const [isSensitive, setIsSensitive] = useState(false)
   const [loading, setLoading]         = useState(false)
   const [issues, setIssues]           = useState(null)   // validation result on failed save
   const [countrySearch, setCountrySearch] = useState('')
@@ -131,6 +132,7 @@ export default function CustomerForm() {
         setTags(d.tags || [])
         setIsPersonalWa(d.is_personal_wa || false)
         setIsVip(d.is_vip || false)
+        setIsSensitive(d.sensitive || false)
       }
       setFetching(false)
     })
@@ -172,6 +174,7 @@ export default function CustomerForm() {
         channels,
         is_personal_wa: isPersonalWa,
         is_vip: isVip,
+        sensitive: isSensitive,
         contact_emails: emails.filter(Boolean),
         contact_phones: phones.filter(Boolean),
         contact_whatsapps: whatsapps.filter(Boolean),
@@ -415,6 +418,17 @@ export default function CustomerForm() {
                 onChange={e => setIsVip(e.target.checked)}
               />
               <span className="inline-flex items-center gap-1"><Star size={14} className="fill-current text-yellow-500" />VIP customer</span>
+            </label>
+            <label className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="w-4 h-4 rounded border-gray-300 text-brand-600"
+                checked={isSensitive}
+                onChange={e => setIsSensitive(e.target.checked)}
+              />
+              <span>
+                <strong>Sensitive</strong> — never show storefront photos tagged "Branded for" another customer
+              </span>
             </label>
           </div>
         </div>

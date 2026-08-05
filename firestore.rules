@@ -20,6 +20,19 @@ service cloud.firestore {
     function canShop() {
       return isAdmin() || isApprovedCustomer();
     }
+    // A customer flagged "sensitive" on their customers/ record (Customers →
+    // edit) must never be shown a storefront product photo tagged
+    // "branded_for_customer_id" for a DIFFERENT customer — e.g. Sunlife must
+    // never see a Manulife-branded case-study photo. get() inside a rule reads
+    // the target document's raw data regardless of that document's own read
+    // rule (same mechanism profile() already relies on for users/{uid}), so
+    // this needs no new client-readable field on customers/.
+    function viewerIsSensitive() {
+      return hasProfile()
+        && profile().get('customer_id', '') != ''
+        && exists(/databases/$(database)/documents/customers/$(profile().get('customer_id', '')))
+        && get(/databases/$(database)/documents/customers/$(profile().get('customer_id', ''))).data.get('sensitive', false) == true;
+    }
 
     match /users/{uid} {
       allow read: if isAdmin() || request.auth.uid == uid;
@@ -40,8 +53,16 @@ service cloud.firestore {
     match /products/{productId} {
       allow read: if canShop();
       allow write: if isAdmin();
+      // Storefront product photos. Screened per-viewer against
+      // branded_for_customer_id + the viewer's own "sensitive" flag — see
+      // viewerIsSensitive() above. A blank/unset branded_for is generic and
+      // always visible; nothing changes for the existing catalogue.
       match /images/{imageId} {
-        allow read: if canShop();
+        allow read: if isAdmin()
+          || (isApprovedCustomer()
+              && (resource.data.get('branded_for_customer_id', '') == ''
+                  || resource.data.get('branded_for_customer_id', '') == profile().get('customer_id', '')
+                  || !viewerIsSensitive()));
         allow write: if isAdmin();
       }
       match /pricing_tiers/{tierId} {

@@ -76,7 +76,7 @@ function downloadImage(img, filename) {
   document.body.removeChild(a)
 }
 
-function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility, onHeroChange, onDelete, onLightbox, downloadPrefix, firestorePath, onEnhance }) {
+function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility, brandedForCustomers, onHeroChange, onDelete, onLightbox, downloadPrefix, firestorePath, onEnhance }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: img.id })
 
@@ -104,6 +104,14 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
 
   async function handleVisibilityChange(visibility) {
     await updateDoc(doc(db, ...firestorePath.split('/'), img.id), { visibility })
+  }
+
+  // Which client's branding appears in this photo, if any. Drives the
+  // sensitive-customer screening rule (Firestore rules + Customer_Brand_Gallery
+  // amendments, 2026-08): a customer flagged "sensitive" never sees a storefront
+  // image tagged for a DIFFERENT customer. Blank = generic, visible to everyone.
+  async function handleBrandedForChange(customerId) {
+    await updateDoc(doc(db, ...firestorePath.split('/'), img.id), { branded_for_customer_id: customerId || null })
   }
 
   const vis = imageVisibility(img)
@@ -214,6 +222,17 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
           {IMAGE_VISIBILITY.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
         </select>
       )}
+      {brandedForCustomers && (
+        <select
+          className={`text-xs border rounded px-1.5 py-1 w-full ${img.branded_for_customer_id ? 'bg-red-50 text-red-700 border-red-200 font-medium' : 'bg-white text-gray-500 border-gray-200'}`}
+          value={img.branded_for_customer_id || ''}
+          onChange={e => handleBrandedForChange(e.target.value)}
+          title="Whose branding appears in this photo — a customer flagged 'sensitive' never sees another client's tagged photo"
+        >
+          <option value="">Branded for: none (generic)</option>
+          {brandedForCustomers.map(c => <option key={c.id} value={c.id}>Branded for: {c.company_name || c.id}</option>)}
+        </select>
+      )}
       <div className="flex gap-1">
         {IMAGE_ORIENTATIONS.map(o => (
           <button
@@ -235,7 +254,7 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
   )
 }
 
-export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, captionable, showVisibility, onHeroChange, downloadPrefix, enhanceable }) {
+export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, captionable, showVisibility, brandedForCustomers, onHeroChange, downloadPrefix, enhanceable }) {
   const fileIdRef = useRef(0)
   const [uploading, setUploading]         = useState(false)
   const [lightbox, setLightbox]           = useState(null)
@@ -437,6 +456,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                     typeOptions={typeOptions}
                     captionable={captionable}
                     showVisibility={showVisibility}
+                    brandedForCustomers={brandedForCustomers}
                     onHeroChange={onHeroChange ? setAsHero : null}
                     onDelete={setConfirmDelete}
                     onLightbox={setLightbox}
