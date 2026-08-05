@@ -18,7 +18,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import QuoteExport from '../components/QuoteExport'
 import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
-import { loadCustomerAssets, TYPE_LABEL } from '../customerAssets'
+import { loadCustomerAssets, TYPE_LABEL, CATEGORIES, CATEGORY_LABEL } from '../customerAssets'
 import { Package, X, Check, Paperclip, FileText, Copy, Banknote, AlertCircle } from 'lucide-react'
 
 const STATUS_OPTIONS = ['draft', 'sent', 'won', 'lost']
@@ -762,6 +762,10 @@ function ProductImagePicker({ productId, customerId, selectedUrl, onSelect, onCl
   const [tab, setTab] = useState('product')   // 'product' | 'brand'
   const [brandAssets, setBrandAssets] = useState([])
   const [brandLoading, setBrandLoading] = useState(false)
+  // Which of the customer's asset categories to show. A quote line is itself
+  // a product image, so Product Gallery is the natural default; Brand Assets
+  // (the logo) stays a click away for a cover-page style use.
+  const [brandCategory, setBrandCategory] = useState('product_gallery')
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -829,13 +833,23 @@ function ProductImagePicker({ productId, customerId, selectedUrl, onSelect, onCl
 
         <div className="overflow-y-auto flex-1 p-4">
           {tab === 'brand' ? (
-            brandLoading ? (
+            <>
+            <div className="flex gap-1 mb-3">
+              {CATEGORIES.map(c => (
+                <button key={c} type="button" onClick={() => setBrandCategory(c)}
+                  className={`px-2.5 py-1 text-[11px] font-medium rounded-full border transition-colors ${
+                    brandCategory === c ? 'bg-brand-50 border-brand-300 text-brand-700' : 'border-gray-200 text-gray-400 hover:text-gray-600'}`}>
+                  {CATEGORY_LABEL[c]}
+                </button>
+              ))}
+            </div>
+            {brandLoading ? (
               <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
-            ) : brandAssets.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-6">No brand assets for this customer yet. Add them on the Customer page.</p>
+            ) : brandAssets.filter(a => a.category === brandCategory).length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-6">No {CATEGORY_LABEL[brandCategory].toLowerCase()} for this customer yet. Add them on the Customer page.</p>
             ) : (
               <div className="grid grid-cols-3 gap-2">
-                {brandAssets.map(a => {
+                {brandAssets.filter(a => a.category === brandCategory).map(a => {
                   const isSelected = a.file_url === selectedUrl
                   return (
                     <div key={a.id} onClick={() => onSelect(a.file_url)} title={a.title || a.filename}
@@ -851,7 +865,8 @@ function ProductImagePicker({ productId, customerId, selectedUrl, onSelect, onCl
                   )
                 })}
               </div>
-            )
+            )}
+            </>
           ) : loading ? (
             <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
           ) : images.length === 0 ? (

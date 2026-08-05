@@ -1,14 +1,22 @@
 import { useState, useRef, useMemo } from 'react'
 import {
   useCustomerAssets, uploadCustomerAsset, updateCustomerAsset, deleteCustomerAsset,
-  ASSET_TYPES, VISIBILITIES, VISIBILITY_LABEL, TYPE_LABEL, usableInMarketing,
+  CATEGORIES, CATEGORY_LABEL, TYPES_BY_CATEGORY, VISIBILITIES, VISIBILITY_LABEL, TYPE_LABEL,
+  usableInMarketing,
 } from '../customerAssets'
 import { ImagePlus, ShieldCheck, Lock, Globe, Megaphone, X, Trash2 } from 'lucide-react'
 
 // Brand Gallery section on Customer Detail (Customer_Brand_Gallery_Spec.md §5.1).
-// Admin-only surface: upload a customer's logos/mockups, set visibility +
-// marketing consent, edit, delete. The privacy guarantee itself is the Firestore
-// rule (spec §6); this is the curation UI behind it.
+// Admin-only surface: upload a customer's assets, set visibility + marketing
+// consent, edit, delete. The privacy guarantee itself is the Firestore rule
+// (spec §6); this is the curation UI behind it.
+//
+// Split into two categories (owner, 2026-08-05): "Brand Assets" (the
+// customer's own logo/guidelines — low sensitivity once cleared) and
+// "Product Gallery" (OUR photos of THEIR branded product — the sensitive one,
+// needs a per-photo call, not a per-customer one). Same visibility/consent
+// model underneath; the tabs are about which type list an admin picks from and
+// keeping the two purposes visually distinct.
 
 const VIS_BADGE = {
   internal_only:    { cls: 'bg-gray-100 text-gray-600', Icon: Lock },
@@ -18,6 +26,7 @@ const VIS_BADGE = {
 
 export default function CustomerBrandGallery({ customerId }) {
   const { assets, loading } = useCustomerAssets(customerId)
+  const [category, setCategory] = useState('brand_asset')
   const [typeFilter, setTypeFilter] = useState('')
   const [visFilter, setVisFilter] = useState('')
   const [tagQuery, setTagQuery] = useState('')
@@ -25,22 +34,25 @@ export default function CustomerBrandGallery({ customerId }) {
   const [editing, setEditing] = useState(null)   // asset open in the drawer
   const fileRef = useRef(null)
 
+  const inCategory = useMemo(() => assets.filter(a => a.category === category), [assets, category])
   const filtered = useMemo(() => {
     const q = tagQuery.trim().toLowerCase()
-    return assets.filter(a => {
+    return inCategory.filter(a => {
       if (typeFilter && a.type !== typeFilter) return false
       if (visFilter && a.visibility !== visFilter) return false
       if (q && ![a.title, a.filename, ...(a.tags || [])].some(v => (v || '').toLowerCase().includes(q))) return false
       return true
     })
-  }, [assets, typeFilter, visFilter, tagQuery])
+  }, [inCategory, typeFilter, visFilter, tagQuery])
+
+  function switchCategory(c) { setCategory(c); setTypeFilter('') }
 
   async function onFiles(e) {
     const files = [...(e.target.files || [])]
     if (!files.length) return
     setUploading(true)
     try {
-      for (const f of files) await uploadCustomerAsset(customerId, f, { type: 'logo' })
+      for (const f of files) await uploadCustomerAsset(customerId, f, { category })
     } catch (err) {
       alert(`Upload failed: ${err.message || err}`)
     } finally {
@@ -55,20 +67,32 @@ export default function CustomerBrandGallery({ customerId }) {
         <h2 className="text-sm font-semibold text-gray-700">Brand Gallery ({assets.length})</h2>
         <button onClick={() => fileRef.current?.click()} disabled={uploading}
                 className="btn-primary text-xs py-1.5 px-3 inline-flex items-center gap-1">
-          <ImagePlus size={13} /> {uploading ? 'Uploading…' : 'Add asset'}
+          <ImagePlus size={13} /> {uploading ? 'Uploading…' : `Add to ${CATEGORY_LABEL[category]}`}
         </button>
         <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onFiles} />
       </div>
+
+      <div className="flex gap-1 border-b border-gray-100 mb-3 mt-2">
+        {CATEGORIES.map(c => (
+          <button key={c} onClick={() => switchCategory(c)}
+                  className={`px-3 py-1.5 text-xs font-medium -mb-px border-b-2 transition-colors ${
+                    category === c ? 'border-brand-500 text-brand-700' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+            {CATEGORY_LABEL[c]} ({assets.filter(a => a.category === c).length})
+          </button>
+        ))}
+      </div>
       <p className="text-xs text-gray-400 mb-3">
-        Customer logos &amp; brand assets. New uploads default to <strong>Internal only</strong> — open them deliberately.
-        Only <em>Public reference + marketing OK</em> assets can appear in public content.
+        {category === 'brand_asset'
+          ? <>The customer's own logo &amp; guidelines.</>
+          : <>Our photos of their branded product — check each one before opening it up; some are fine to reuse, some aren't.</>}
+        {' '}New uploads default to <strong>Internal only</strong> — open them deliberately.
       </p>
 
-      {assets.length > 0 && (
+      {inCategory.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <select className="input text-xs w-auto" value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
             <option value="">All types</option>
-            {ASSET_TYPES.map(t => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
+            {TYPES_BY_CATEGORY[category].map(t => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
           </select>
           <select className="input text-xs w-auto" value={visFilter} onChange={e => setVisFilter(e.target.value)}>
             <option value="">All visibility</option>
@@ -81,9 +105,9 @@ export default function CustomerBrandGallery({ customerId }) {
 
       {loading ? (
         <p className="text-sm text-gray-400 py-6 text-center">Loading…</p>
-      ) : assets.length === 0 ? (
+      ) : inCategory.length === 0 ? (
         <p className="text-sm text-gray-400 py-6 text-center">
-          No brand assets yet. <button onClick={() => fileRef.current?.click()} className="text-brand-600 hover:underline">Add one</button>.
+          No {CATEGORY_LABEL[category].toLowerCase()} yet. <button onClick={() => fileRef.current?.click()} className="text-brand-600 hover:underline">Add one</button>.
         </p>
       ) : filtered.length === 0 ? (
         <p className="text-sm text-gray-400 py-6 text-center">Nothing matches those filters.</p>
@@ -126,13 +150,17 @@ export default function CustomerBrandGallery({ customerId }) {
 
 function AssetDrawer({ customerId, asset, onClose }) {
   const [f, setF] = useState({
-    type: asset.type, visibility: asset.visibility,
+    category: asset.category, type: asset.type, visibility: asset.visibility,
     can_use_in_marketing: asset.can_use_in_marketing,
     title: asset.title || '', tags: (asset.tags || []).join(', '),
   })
   const [saving, setSaving] = useState(false)
   const [confirmDel, setConfirmDel] = useState(false)
   const set = k => e => setF(x => ({ ...x, [k]: e.target.value }))
+
+  function setCategory(cat) {
+    setF(x => ({ ...x, category: cat, type: TYPES_BY_CATEGORY[cat][0] }))
+  }
 
   // Consent only means anything on a public asset; keep the data honest.
   const marketingAllowed = f.visibility === 'public_reference'
@@ -141,7 +169,7 @@ function AssetDrawer({ customerId, asset, onClose }) {
     setSaving(true)
     try {
       await updateCustomerAsset(customerId, asset.id, {
-        type: f.type, visibility: f.visibility,
+        category: f.category, type: f.type, visibility: f.visibility,
         can_use_in_marketing: marketingAllowed && f.can_use_in_marketing,
         title: f.title,
         tags: f.tags.split(',').map(s => s.trim()).filter(Boolean),
@@ -174,9 +202,15 @@ function AssetDrawer({ customerId, asset, onClose }) {
             <input className="input text-sm" value={f.title} onChange={set('title')} placeholder="e.g. Primary logo (dark)" />
           </div>
           <div>
+            <label className="label text-xs">Category</label>
+            <select className="input text-sm" value={f.category} onChange={e => setCategory(e.target.value)}>
+              {CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
+            </select>
+          </div>
+          <div>
             <label className="label text-xs">Type</label>
             <select className="input text-sm" value={f.type} onChange={set('type')}>
-              {ASSET_TYPES.map(t => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
+              {TYPES_BY_CATEGORY[f.category].map(t => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
             </select>
           </div>
           <div>

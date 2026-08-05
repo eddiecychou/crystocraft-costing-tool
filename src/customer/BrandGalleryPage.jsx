@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react'
-import { loadCustomerVisibleAssets, TYPE_LABEL } from '../customerAssets'
+import { loadCustomerVisibleAssets, TYPE_LABEL, CATEGORIES, CATEGORY_LABEL } from '../customerAssets'
 import { Images, Download } from 'lucide-react'
 
 // Portal "My Brand Gallery" (Customer_Brand_Gallery_Spec.md §5.4). Read-only:
 // a logged-in customer sees only their own linked customer's non-internal
 // assets (the loader constrains the query to match the Firestore rule). No
 // edit / delete / upload — curation stays admin-side in Phase 1.
+//
+// Split into the same two sections the admin gallery uses (owner, 2026-08-05):
+// Brand Assets (their own logo/guidelines) and Product Gallery (photos of
+// their branded product we've cleared to show them) — only shown when that
+// section actually has something, since most customers won't have both.
 export default function BrandGalleryPage({ profile }) {
   const customerId = profile?.customer_id || null
   const [assets, setAssets] = useState([])
@@ -41,24 +46,35 @@ export default function BrandGalleryPage({ profile }) {
           Nothing here yet — we haven't added any of your brand assets to the portal.
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-          {assets.map(a => (
-            <div key={a.id} className="bg-white rounded-xl border border-ivory-dark overflow-hidden flex flex-col">
-              <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
-                <img src={a.file_url} alt={a.title || a.filename} className="w-full h-full object-contain" />
-              </div>
-              <div className="p-2.5 flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-xs text-ink truncate">{a.title || a.filename}</p>
-                  <p className="text-[10px] text-ink-40">{TYPE_LABEL[a.type]}</p>
+        <div className="space-y-8">
+          {CATEGORIES.map(cat => {
+            const inCat = assets.filter(a => a.category === cat)
+            if (inCat.length === 0) return null
+            return (
+              <div key={cat}>
+                <h2 className="text-sm font-semibold text-ink-70 mb-3">{CATEGORY_LABEL[cat]}</h2>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {inCat.map(a => (
+                    <div key={a.id} className="bg-white rounded-xl border border-ivory-dark overflow-hidden flex flex-col">
+                      <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
+                        <img src={a.file_url} alt={a.title || a.filename} className="w-full h-full object-contain" />
+                      </div>
+                      <div className="p-2.5 flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-xs text-ink truncate">{a.title || a.filename}</p>
+                          <p className="text-[10px] text-ink-40">{TYPE_LABEL[a.type]}</p>
+                        </div>
+                        <a href={a.file_url} target="_blank" rel="noopener noreferrer" download
+                           title="Download" className="shrink-0 text-ink-40 hover:text-brand-600">
+                          <Download size={15} />
+                        </a>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <a href={a.file_url} target="_blank" rel="noopener noreferrer" download
-                   title="Download" className="shrink-0 text-ink-40 hover:text-brand-600">
-                  <Download size={15} />
-                </a>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

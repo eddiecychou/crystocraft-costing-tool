@@ -14,7 +14,25 @@ import { resizeToJpeg } from './imageResize'
 // privacy promise lives in the Firestore rule (spec §6); these helpers are the
 // single place the same visibility logic is expressed on the client.
 
-export const ASSET_TYPES = ['logo', 'mockup', 'in_use', 'other']
+// Two categories, deliberately separate (owner, 2026-08-05):
+//   'brand_asset'     — the client's own logo / brand guidelines. Never shows
+//                        anyone else's branding; low sensitivity once cleared.
+//   'product_gallery'  — OUR photos of THEIR branded product (a mockup, an
+//                        in-use shot). This is the sensitive one — some are
+//                        fine to reuse, some are not, and it needs a
+//                        per-photo call, not a per-customer one.
+// Both share the same visibility/consent model (§4); the split is about which
+// types of asset an admin is choosing between, and how the galleries group.
+export const CATEGORIES = ['brand_asset', 'product_gallery']
+export const CATEGORY_LABEL = {
+  brand_asset: 'Brand Assets',
+  product_gallery: 'Product Gallery',
+}
+export const TYPES_BY_CATEGORY = {
+  brand_asset: ['logo', 'guideline'],
+  product_gallery: ['mockup', 'in_use', 'photo', 'other'],
+}
+export const ASSET_TYPES = [...TYPES_BY_CATEGORY.brand_asset, ...TYPES_BY_CATEGORY.product_gallery]
 export const VISIBILITIES = ['internal_only', 'customer_private', 'public_reference']
 
 export const VISIBILITY_LABEL = {
@@ -23,8 +41,16 @@ export const VISIBILITY_LABEL = {
   public_reference: 'Public reference',
 }
 export const TYPE_LABEL = {
-  logo: 'Logo', mockup: 'Mockup', in_use: 'In use', other: 'Other',
+  logo: 'Logo', guideline: 'Brand Guideline',
+  mockup: 'Mockup', in_use: 'In use', photo: 'Product Photo', other: 'Other',
 }
+
+// Category a type belongs to — used to backfill `category` on assets written
+// before the field existed, so nothing already saved needs a migration.
+const CATEGORY_OF_TYPE = Object.fromEntries(
+  Object.entries(TYPES_BY_CATEGORY).flatMap(([cat, types]) => types.map(t => [t, cat]))
+)
+export const categoryOfType = type => CATEGORY_OF_TYPE[type] || 'product_gallery'
 
 // ── Visibility helpers — the one source of truth, used by every surface ──────
 // A customer may see any of their own assets that aren't internal-only.
@@ -38,11 +64,15 @@ const COL = customerId => collection(db, 'customers', customerId, 'assets')
 
 const norm = d => {
   const x = d.data()
+  const type = ASSET_TYPES.includes(x.type) ? x.type : 'other'
   return {
     id: d.id,
     file_url: x.file_url || '',
     filename: x.filename || '',
-    type: ASSET_TYPES.includes(x.type) ? x.type : 'other',
+    type,
+    // Backfilled from type when absent — covers assets written before this
+    // field existed, no migration script needed.
+    category: CATEGORIES.includes(x.category) ? x.category : categoryOfType(type),
     visibility: VISIBILITIES.includes(x.visibility) ? x.visibility : 'internal_only',
     can_use_in_marketing: x.can_use_in_marketing === true,
     title: x.title || '',
@@ -100,9 +130,12 @@ export async function uploadCustomerAsset(customerId, file, meta = {}) {
   await uploadBytes(sRef, blob, { contentType: 'image/jpeg' })
   const file_url = await getDownloadURL(sRef)
   const by = auth.currentUser?.email || auth.currentUser?.uid || ''
+  const category = CATEGORIES.includes(meta.category) ? meta.category : 'brand_asset'
+  const typesHere = TYPES_BY_CATEGORY[category]
+  const type = typesHere.includes(meta.type) ? meta.type : typesHere[0]
   await setDoc(ref, {
     file_url, filename: safeName, storage_path: path,
-    type: ASSET_TYPES.includes(meta.type) ? meta.type : 'logo',
+    category, type,
     visibility: 'internal_only',
     can_use_in_marketing: false,
     title: (meta.title || '').trim(),
@@ -113,11 +146,18 @@ export async function uploadCustomerAsset(customerId, file, meta = {}) {
   return ref.id
 }
 
-// Update descriptor fields (type / visibility / consent / title / tags).
+// Update descriptor fields (category / type / visibility / consent / title / tags).
 export async function updateCustomerAsset(customerId, assetId, patch) {
   const by = auth.currentUser?.email || auth.currentUser?.uid || ''
   const clean = {}
-  if ('type' in patch)       clean.type = ASSET_TYPES.includes(patch.type) ? patch.type : 'other'
+  if ('category' in patch)   clean.category = CATEGORIES.includes(patch.category) ? patch.category : 'product_gallery'
+  // The caller (AssetDrawer) always sends category alongside type when either
+  // changes, so this doc doesn't need a read to know the "other" one. If type
+  // arrives alone, validate against the full list rather than guess a category.
+  if ('type' in patch) {
+    const typesHere = clean.category ? TYPES_BY_CATEGORY[clean.category] : ASSET_TYPES
+    clean.type = typesHere.includes(patch.type) ? patch.type : typesHere[0]
+  }
   if ('visibility' in patch) clean.visibility = VISIBILITIES.includes(patch.visibility) ? patch.visibility : 'internal_only'
   if ('can_use_in_marketing' in patch) clean.can_use_in_marketing = patch.can_use_in_marketing === true
   if ('title' in patch)      clean.title = (patch.title || '').trim()
