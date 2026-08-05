@@ -3,6 +3,7 @@ import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc, serv
 import { db } from '../firebase'
 import { Gem, Package, Mail, Download, Pencil, Trash2, X } from 'lucide-react'
 import { fmtMoney } from '../currency'
+import { exportEnquiryExcel } from '../enquiryExport'
 import LoadingBar from '../components/LoadingBar'
 import ConfirmDialog from '../components/ConfirmDialog'
 
@@ -80,55 +81,17 @@ export default function Enquiries({ embedded = false }) {
   )
 }
 
-// ── CSV export ───────────────────────────────────────────────────────────────
-function csvCell(v) {
-  const s = v == null ? '' : String(v)
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-}
-
-function exportCsv(r) {
-  const cur = r.currency || r.base_currency || 'USD'
-  const when = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString() : ''
-  const lines = []
-  lines.push(['Enquiry'].map(csvCell).join(','))
-  lines.push(['Company', r.company_name || ''].map(csvCell).join(','))
-  lines.push(['Contact', r.contact_name || ''].map(csvCell).join(','))
-  lines.push(['Email', r.email || ''].map(csvCell).join(','))
-  lines.push(['Date', when].map(csvCell).join(','))
-  lines.push(['Currency', cur].map(csvCell).join(','))
-  if (r.message) lines.push(['Message', r.message].map(csvCell).join(','))
-  lines.push('')
-  lines.push(['Product', 'Code', 'Type', 'Finish', 'Colour', 'Note', 'Qty', 'Unit Price', 'Line Total'].map(csvCell).join(','))
-  for (const i of (r.items || [])) {
-    const qty = Number(i.qty || 1)
-    const unit = i.line_total != null && qty ? Number(i.line_total) / qty : ''
-    lines.push([
-      i.name || '', i.code || '', i.type || '', i.finish || '',
-      i.color_name || i.color || '', i.note || '', qty,
-      unit === '' ? '' : unit.toFixed(2),
-      i.line_total != null ? Number(i.line_total).toFixed(2) : '',
-    ].map(csvCell).join(','))
-  }
-  if (r.estimated_total != null) {
-    lines.push('')
-    lines.push(['', '', '', '', '', '', '', 'Estimated total', Number(r.estimated_total).toFixed(2)].map(csvCell).join(','))
-  }
-  const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
-  const safe = (r.company_name || r.email || 'enquiry').replace(/[/\\?%*:|"<>]/g, '-').trim()
-  const datePart = r.createdAt?.toDate ? r.createdAt.toDate().toISOString().slice(0, 10) : ''
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = `Enquiry - ${safe}${datePart ? ` - ${datePart}` : ''}.csv`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(a.href)
-}
-
 function Card({ r, set, onEdit, onDelete }) {
   const when = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleString() : ''
   const st = STATUS[r.status || 'new']
   const cur = r.currency || r.base_currency || 'USD'
+  const [exporting, setExporting] = useState(false)
+  async function handleExport() {
+    setExporting(true)
+    try { await exportEnquiryExcel(r) }
+    catch (e) { console.error('[Enquiries] Excel export failed:', e); alert(`Export failed: ${e.message}`) }
+    finally { setExporting(false) }
+  }
   return (
     <div className="card p-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -199,8 +162,8 @@ function Card({ r, set, onEdit, onDelete }) {
           <button onClick={() => set(r.id, 'new')} className="text-xs text-ink-50 hover:text-ink">Reopen</button>
         )}
         <span className="flex-1" />
-        <button onClick={() => exportCsv(r)} className="text-xs text-ink-50 hover:text-brand-600 inline-flex items-center gap-1">
-          <Download size={13} /> Export CSV
+        <button onClick={handleExport} disabled={exporting} className="text-xs text-ink-50 hover:text-brand-600 inline-flex items-center gap-1 disabled:opacity-50">
+          <Download size={13} /> {exporting ? 'Exporting…' : 'Export Excel'}
         </button>
         <button onClick={onEdit} className="text-xs text-ink-50 hover:text-brand-600 inline-flex items-center gap-1">
           <Pencil size={13} /> Edit
