@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
-  collection, doc, getDocs, setDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp,
+  collection, doc, getDocs, setDoc, deleteDoc, onSnapshot, query, where, orderBy, serverTimestamp,
 } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage, auth } from './firebase'
@@ -57,6 +57,21 @@ export async function loadCustomerAssets(customerId) {
   if (!customerId) return []
   try { return (await getDocs(query(COL(customerId), orderBy('created_at', 'desc')))).docs.map(norm) }
   catch { return [] }
+}
+
+// Customer-facing loader (portal "My Brand Gallery", spec §5.4). The query MUST
+// exclude internal_only, because the Firestore rule (spec §6) rejects a read
+// that could return an internal asset — the query constraint and the rule are
+// two halves of the same guarantee. Admins use loadCustomerAssets (unconstrained)
+// instead; a customer must use this one.
+export async function loadCustomerVisibleAssets(customerId) {
+  if (!customerId) return []
+  try {
+    // Filter only (no orderBy) to avoid needing a composite index; sort in JS.
+    const q = query(COL(customerId), where('visibility', 'in', ['customer_private', 'public_reference']))
+    const rows = (await getDocs(q)).docs.map(norm)
+    return rows.sort((a, b) => (b.created_at?.seconds || 0) - (a.created_at?.seconds || 0))
+  } catch { return [] }
 }
 
 export function useCustomerAssets(customerId) {

@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
-import { Gem, Package, Heart, ClipboardList } from 'lucide-react'
+import { Gem, Package, Heart, ClipboardList, Images } from 'lucide-react'
 import { useCart, useFavourites } from './store'
 import logo from '../assets/logo.png'
 
@@ -18,6 +18,8 @@ export default function CustomerLayout({ children, profile }) {
     { to: '/shop/corporate', label: 'Corporate Gifts', Icon: Package },
     { to: '/shop/favourites', label: 'Favourites', Icon: Heart, badge: fav?.count },
     { to: '/shop/enquiry', label: 'Enquiry', Icon: ClipboardList, badge: cart?.count },
+    // Only linked customers have a brand gallery to show.
+    ...(profile?.customer_id ? [{ to: '/shop/brand-gallery', label: 'My Brand Gallery', Icon: Images }] : []),
   ]
   return (
     <div className="min-h-screen flex flex-col bg-ivory">
