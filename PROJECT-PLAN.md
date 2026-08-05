@@ -43,6 +43,183 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
+## Current Status — V7.21 CLOSED as of 2026-08-06
+
+Commit chain `013a1aa`→`43483cf` (20 commits), all deployed. V7.20 closed
+without writing a "Where V7.21 starts" — this cycle's theme emerged from two
+things the owner raised mid-session rather than a pre-planned scope: **JES was
+frozen** (no more entry by CuiLing/Cindy/XiangXia — read-only from here), which
+made B2C finished-goods stock the one real gap left in the app's own inventory
+story; and **corporate-client logo privacy**, which grew from "customers are
+sensitive about their logos" into the biggest thread of the cycle — a full
+Customer Brand Gallery, competitor-photo screening, and a rebuild of how the
+app models a customer's contacts at all.
+
+### The numbers
+
+| | |
+|---|---:|
+| Commits | 20 |
+| B2C finished-goods SKUs imported | 0 → 560 |
+| New Firestore collection | `customers/{id}/assets` (Brand Gallery) |
+| New Firestore field | `contacts[]` replacing `contact_name` + 4 parallel arrays, on every customer |
+| Surfaces wired to "which contact" | Quotes, PI/Orders + their print pages, Interaction Log, portal accounts |
+| Pre-existing bugs found and fixed along the way | 4 (see §4) |
+| Firestore/Storage rule files touched | both — `firestore.rules` (3 rounds), `storage.rules` (1 missing path) |
+
+### 1. JES fully frozen — and the one real gap it left, closed
+
+The owner instructed CuiLing, Cindy and XiangXia to stop entering or updating
+anything in JES: SO/SI/PU/production had already migrated to the app over
+prior cycles, so this was a formality more than a cutover. `JES-RETIREMENT-PLAN.md`
+gained a §0 recording where the nine original steps actually stand — most were
+already done by the migration itself. The one real gap was **finished-goods
+stock (§7)**: crystals and metals already had live app-based stock; B2C did
+not. XiangXia's metals import already existed; **B2C did not**, so it was
+built the same way — a `b2c_stock` inventory class on the existing generic
+`createInventoryClass` factory (crystals/packaging's shared machinery),
+deliberately with no order/reservation wiring since B2C is a pure trading
+operation. A header-aware parser (`b2cImport.js`) reads ChunCi's `卡斯库存`
+export by column name rather than position, sums a SKU appearing under both
+warehouses, and strips the ERP's `.[NN]` category suffix. **560 SKUs imported
+against the real August file**, verified against its own footer total (5,835
+units) before it went live. `retail_price` is stored as China-market
+reference only — SRP is derived from wholesale × 3.5+, never from this field.
+A category filter was added to the shared stock tab afterward (560 SKUs
+across 15 categories was too many to scroll).
+
+### 2. Enquiry export — Excel with photos, not flat CSV
+
+CuiLing asked for the enquiry download to carry product photos, matching a
+format she'd mocked up by hand. Rebuilt as a two-sheet `.xlsx`
+(`enquiryExport.js`): item table with embedded photos (reusing the
+image-proxy approach `QuoteExport.jsx` already proved) on one sheet, customer
+header on the other. The Code column was later extended to compose the full
+variant SKU (`U0001-001-GC1`, not just the base `U0001-001`) from the item's
+`finish` (plating name → letter, via `RANGE_PLATINGS`) and `color` (crystal
+code) — unit-tested against the known cases including the corp-gift fallback
+with no plating/colour at all.
+
+### 3. Customer Brand Gallery — the cycle's real thread
+
+Started from a Perplexity-drafted spec the owner asked to be reconciled
+against the actual codebase (`Customer_Brand_Gallery_Spec.md`). The key
+grounding fact: the portal↔customer link (`users.customer_id →
+customers/{id}`) already existed, which made the customer-facing half of the
+feature — the actual reason it mattered, since the owner had held off
+inviting corporate customers over exactly this logo-privacy concern — far
+cheaper than the draft assumed.
+
+- **Phase 1 (admin)**: a nested `customers/{id}/assets` subcollection (not a
+  top-level collection with a `customerId` field — nesting makes the security
+  rule a simple field comparison), a Brand Gallery section on Customer
+  Detail, and a "Customer brand images" tab in the existing quote image
+  picker so a client's logo flows straight into a proposal.
+- **Phase 2 (portal)**: a read-only "My Brand Gallery" page, gated by a
+  Firestore rule (`customers/{cid}/assets`) that only a signed-in customer's
+  own linked `customer_id` can read, and only non-`internal_only` assets —
+  the query and the rule are two halves of the same guarantee, tested
+  logically but not yet against a real linked login (flagged open below).
+- **Two categories**, not one: **Brand Assets** (the client's own logo/
+  guidelines) vs. **Product Gallery** (photos of THEIR branded product we
+  took) — the owner's distinction, because the second is the genuinely
+  sensitive one and needed a per-photo call, not a per-customer one.
+- **Competitor-photo screening**: a `sensitive` flag on the customer record
+  plus a `branded_for_customer_id` tag on catalogue product photos
+  (`ProductDetail.jsx`), enforced as a **real Firestore security rule**
+  (`viewerIsSensitive()`), not a client-side filter — a sensitive customer's
+  read of a competitor-tagged photo is denied at the database level. This
+  guards the *shared storefront catalogue* specifically; "My Brand Gallery"'s
+  own Product Gallery section was never at risk, because its query is already
+  scoped to `branded_for_customer_id == self`.
+- **The two features were linked, not parallel**: tagging a photo
+  "branded for X" on a product now surfaces it directly in that customer's
+  own Product Gallery (admin and portal), instead of requiring the same
+  photo to be uploaded a second time as a separate asset.
+- **Upload format widened**: a logo often only exists as vector art or a
+  guideline deck — `.ai`/`.eps`/`.svg`/`.pdf`/`.pptx` now upload as-is
+  (skipping the JPEG resize pipeline entirely, since rasterizing an `.svg`
+  would destroy the point of it), with a file-type icon shown where no
+  thumbnail is possible.
+
+### 4. Customer contacts — rebuilt from one shared name to real people
+
+A late question — "can several contacts within one company stay separate
+instead of merging into one?" — turned into the cycle's second-largest
+change. `customers.contact_name` + four parallel, unattributed
+email/phone/whatsapp/wechat arrays became `contacts[]`: real named people,
+each with their own single email/phone/whatsapp/wechat and an optional
+per-contact address override (different departments can sit in different
+offices). Legacy data folds into one synthesized contact automatically, no
+migration script, and every existing reader of the old scalar/array fields
+(print pages, ERP import, marketing-contact conversion) keeps working
+because those fields are now *derived* from whichever contact is Primary.
+
+Wired everywhere a document or interaction needs to say **who**, not just
+**which customer**, via one shared `ContactPicker`: quotes, PI/Orders (and
+their print pages, which now address whoever was actually chosen instead of
+always the primary mirror), the Interaction Log, and portal accounts — the
+last of these **auto-matched by the login's own email** against the
+customer's contacts, with a manual picker (and now a quick-add-from-here
+shortcut) as fallback. `CustomerForm.jsx` gained a full contacts editor —
+add/remove, primary radio, manual reorder.
+
+### 5. Bugs found and fixed along the way, not part of the plan
+
+- **`storage.rules` had no rule at all for `customer-assets/{customerId}/…`**
+  — the exact path the Brand Gallery uploads to. Under Storage's
+  default-deny, every upload had likely been silently failing since the
+  feature shipped a few commits earlier in this same cycle.
+- **The `sensitive` checkbox (added mid-cycle) was never actually
+  persisted** — `CustomerForm` read it correctly but `toCustomerDoc` omitted
+  it from the write shape, so checking the box and saving did nothing. Found
+  while touching the same function for the contacts rebuild.
+- **`QuoteForm`'s contact prefill silently never worked** — it read
+  `contact_email`/`contact_phone` (singular) off a customer object that only
+  ever carried the plural array shape post-refactor. Reported by the owner,
+  confirmed by reading the actual field names in play.
+- **The customer-merge tool dropped two things**: `customers/{id}/assets`
+  (Brand Gallery) and `customers/{id}/enquiries` (the CRM Interaction Log)
+  are both subcollections, which `deleteDoc` on the parent does not cascade
+  into — merging a customer with either would have silently orphaned them.
+  Both now copy across (`copySubcollection()`), and the merge preview
+  reports the counts before anyone commits to it.
+
+### Deployment notes
+
+- **`firestore.rules` published three times this cycle**: `customers/{id}/assets`
+  (Brand Gallery), `products/{id}/images` (competitor screening,
+  `viewerIsSensitive()`), and the `profile().get('customer_id', '')` safe-accessor
+  fix. All pasted to the owner for manual publish (this app has no CI rules
+  deploy) — see `Customer_Brand_Gallery_Spec.md` §6 for the guarantee each
+  rule is actually making.
+- **`storage.rules` published once** — the missing `customer-assets/` path
+  (§5 above).
+- **New Firestore collection**: `customers/{id}/assets`. **New field**:
+  `contacts[]` on every customer document (additive; nothing deleted or
+  migrated).
+- No new Postgres/Supabase surface this cycle.
+
+### Open — not verified, because the app is login-gated for this assistant
+
+Everything in this cycle was built and parse/build-verified, but never
+click-tested end-to-end, because Claude Code cannot sign in to the app.
+Worth a real pass before treating any of the following as proven:
+
+- The full Brand Gallery rule matrix (admin sees all; customer A can't read
+  customer B's assets; an `internal_only` asset never reaches a customer
+  query) — the logic is straightforward but "should work" isn't "verified,"
+  and this is the one guarantee the whole cycle exists to make.
+- A real merge of two customers that both carry contacts, Brand Gallery
+  assets, and interaction log entries.
+- The contacts rebuild end-to-end: add/edit/reorder in `CustomerForm`, then
+  confirm a quote, a PI, and an interaction log entry each pick up the right
+  contact.
+- Uploading each of the newly-accepted brand-asset formats
+  (`.ai`/`.eps`/`.svg`/`.pdf`/`.pptx`).
+
+---
+
 ## Current Status — V7.20 CLOSED as of 2026-08-04
 
 Commit chain `604580c`→`25f8a5c` (17 commits), all deployed (app via Netlify,
