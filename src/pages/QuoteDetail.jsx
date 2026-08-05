@@ -18,6 +18,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import QuoteExport from '../components/QuoteExport'
 import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
+import { loadCustomerAssets, TYPE_LABEL } from '../customerAssets'
 import { Package, X, Check, Paperclip, FileText, Copy, Banknote, AlertCircle } from 'lucide-react'
 
 const STATUS_OPTIONS = ['draft', 'sent', 'won', 'lost']
@@ -427,6 +428,7 @@ export default function QuoteDetail() {
                     key={item.id}
                     item={{ ...item, _quoteId: id }}
                     quoteCurrency={quoteCurrency}
+                    customerId={quote.customer_id || null}
                     heroImage={liveImages[item.product_id] ?? item.hero_image}
                     rates={quoteRates}
                     onTiersChange={tiers => handleTiersChange(item.id, tiers)}
@@ -520,7 +522,7 @@ function marginColor(m) {
   return 'text-red-500'
 }
 
-function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUnitChange, onImageChange, onItemRemarksChange, onRemove }) {
+function QuoteItem({ item, quoteCurrency, customerId, rates, heroImage, onTiersChange, onUnitChange, onImageChange, onItemRemarksChange, onRemove }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const currency = quoteCurrency || 'HKD'
   const baseTiers = (item.tiers || [{ quantity: item.quantity || 200, price: item.price_hkd || 0, currency }])
@@ -603,6 +605,7 @@ function QuoteItem({ item, quoteCurrency, rates, heroImage, onTiersChange, onUni
       {showImgPicker && (
         <ProductImagePicker
           productId={item.product_id}
+          customerId={customerId}
           selectedUrl={item.custom_image}
           onSelect={url => { onImageChange(url); setShowImgPicker(false) }}
           onClear={() => { onImageChange(null); setShowImgPicker(false) }}
@@ -752,10 +755,13 @@ async function resizeToJpeg(file, maxPx = 2400, quality = 0.93) {
   return canvas.convertToBlob({ type: 'image/jpeg', quality })
 }
 
-function ProductImagePicker({ productId, selectedUrl, onSelect, onClear, onClose }) {
+function ProductImagePicker({ productId, customerId, selectedUrl, onSelect, onClear, onClose }) {
   const [images, setImages] = useState([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [tab, setTab] = useState('product')   // 'product' | 'brand'
+  const [brandAssets, setBrandAssets] = useState([])
+  const [brandLoading, setBrandLoading] = useState(false)
   const fileInputRef = useRef(null)
 
   useEffect(() => {
@@ -763,6 +769,14 @@ function ProductImagePicker({ productId, selectedUrl, onSelect, onClear, onClose
       .then(snap => { setImages(snap.docs.map(d => ({ id: d.id, ...d.data() }))) })
       .finally(() => setLoading(false))
   }, [productId])
+
+  // Customer brand images (spec §5.2). Admin picking sees ALL of this customer's
+  // assets. Loaded once, the first time the Brand tab is opened.
+  useEffect(() => {
+    if (tab !== 'brand' || !customerId || brandAssets.length || brandLoading) return
+    setBrandLoading(true)
+    loadCustomerAssets(customerId).then(setBrandAssets).finally(() => setBrandLoading(false))
+  }, [tab, customerId, brandAssets.length, brandLoading])
 
   async function handleUpload(e) {
     const file = e.target.files?.[0]
@@ -801,8 +815,44 @@ function ProductImagePicker({ productId, selectedUrl, onSelect, onClear, onClose
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
         </div>
 
+        {customerId && (
+          <div className="flex gap-1 px-4 pt-3">
+            {[['product', 'Product images'], ['brand', 'Customer brand images']].map(([k, label]) => (
+              <button key={k} onClick={() => setTab(k)}
+                className={`px-3 py-1.5 text-xs font-medium rounded-t-lg border-b-2 -mb-px ${
+                  tab === k ? 'border-brand-500 text-brand-700' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="overflow-y-auto flex-1 p-4">
-          {loading ? (
+          {tab === 'brand' ? (
+            brandLoading ? (
+              <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
+            ) : brandAssets.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-6">No brand assets for this customer yet. Add them on the Customer page.</p>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {brandAssets.map(a => {
+                  const isSelected = a.file_url === selectedUrl
+                  return (
+                    <div key={a.id} onClick={() => onSelect(a.file_url)} title={a.title || a.filename}
+                      className={`relative cursor-pointer rounded-lg overflow-hidden aspect-square border-2 bg-gray-50 transition-all ${isSelected ? 'border-brand-500 ring-2 ring-brand-200' : 'border-transparent hover:border-brand-300'}`}>
+                      <img src={a.file_url} alt={a.title || a.filename} className="w-full h-full object-contain" />
+                      <span className="absolute top-1 left-1 bg-black/50 text-white text-[9px] px-1 rounded leading-tight">{TYPE_LABEL[a.type]}</span>
+                      {isSelected && (
+                        <div className="absolute inset-0 bg-brand-500/20 flex items-center justify-center">
+                          <span className="bg-brand-500 text-white rounded-full w-5 h-5 flex items-center justify-center"><Check size={12} /></span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          ) : loading ? (
             <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
           ) : images.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-6">No images uploaded for this product yet.</p>
@@ -831,14 +881,16 @@ function ProductImagePicker({ productId, selectedUrl, onSelect, onClear, onClose
 
         <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between gap-2">
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="btn-secondary text-xs py-1.5 px-3"
-            >
-              {uploading ? 'Uploading…' : '+ Upload new'}
-            </button>
+            {tab === 'product' && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="btn-secondary text-xs py-1.5 px-3"
+              >
+                {uploading ? 'Uploading…' : '+ Upload new'}
+              </button>
+            )}
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
             {selectedUrl && (
               <button type="button" onClick={onClear} className="text-xs text-gray-400 hover:text-red-500 py-1.5 px-2">
@@ -846,7 +898,7 @@ function ProductImagePicker({ productId, selectedUrl, onSelect, onClear, onClose
               </button>
             )}
           </div>
-          <p className="text-xs text-gray-400">New uploads saved to product</p>
+          <p className="text-xs text-gray-400">{tab === 'brand' ? 'Curated on the Customer page' : 'New uploads saved to product'}</p>
         </div>
       </div>
     </div>

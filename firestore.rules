@@ -126,6 +126,18 @@ service cloud.firestore {
       match /enquiries/{enquiryId} {
         allow read, write: if isAdmin();
       }
+      // Brand Gallery assets (V7.21) — customer logos / brand images.
+      // The privacy guarantee (Customer_Brand_Gallery_Spec.md §6): admins have
+      // full access; a logged-in customer may read ONLY their own linked
+      // customer's non-internal assets. A customer-facing list query MUST
+      // constrain itself to non-internal visibility, or the read is rejected.
+      match /assets/{assetId} {
+        allow read: if isAdmin()
+          || (signedIn()
+              && profile().customer_id == customerId
+              && resource.data.visibility != 'internal_only');
+        allow write: if isAdmin();
+      }
     }
 
     // Marketing contacts — the cleaned Mailchimp list + WordPress signups.

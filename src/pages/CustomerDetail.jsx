@@ -9,6 +9,7 @@ import { ref as storageRef, deleteObject } from 'firebase/storage'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
+import CustomerBrandGallery from '../components/CustomerBrandGallery'
 import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
@@ -625,6 +626,9 @@ export default function CustomerDetail() {
           </div>
         )}
       </div>
+
+      {/* Brand Gallery — customer logos / brand assets (admin-curated) */}
+      <CustomerBrandGallery customerId={id} />
 
       {/* Portal Enquiries (from the storefront) */}
       <div className="card mb-4">
