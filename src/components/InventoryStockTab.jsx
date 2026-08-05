@@ -81,6 +81,8 @@ export default function InventoryStockTab({ inv }) {
                     </div>
                     <p className="text-xs text-ink-60 truncate">
                       {c.name || '—'}
+                      {inv.retailField && Number.isFinite(Number(c[inv.retailField])) && c[inv.retailField] !== '' && c[inv.retailField] != null &&
+                        <span className="text-ink-40"> · ¥{Number(c[inv.retailField]).toLocaleString()}</span>}
                       {(() => {
                         const onHand = Number(c.stock_qty) || 0
                         const reserved = Number(c.reserved_qty) || 0
@@ -126,9 +128,12 @@ export default function InventoryStockTab({ inv }) {
 // Stock is deliberately not here. `save` writes descriptive fields only;
 // quantity belongs to the ledger, via StockEditor and StockLedger below.
 function EditRow({ inv, item }) {
+  const rf = inv.retailField   // e.g. 'retail_price' for Finished Goods; undefined otherwise
+  const retailOf = it => (rf && it[rf] != null && it[rf] !== '' ? String(it[rf]) : '')
   const initial = () => ({
     code: item.code || '', name: item.name || '',
     attr: item[inv.attrField] || '', size: item.size || '', notes: item.notes || '',
+    retail: retailOf(item),
   })
   const [f, setF] = useState(initial)
   const [saving, setSaving] = useState(false)
@@ -137,15 +142,15 @@ function EditRow({ inv, item }) {
 
   const dirty = f.code !== (item.code || '') || f.name !== (item.name || '') ||
     f.attr !== (item[inv.attrField] || '') || f.size !== (item.size || '') ||
-    f.notes !== (item.notes || '')
+    f.notes !== (item.notes || '') || (!!rf && f.retail !== retailOf(item))
 
   async function save() {
     if (!f.code.trim() || !dirty) return
     setSaving(true)
     try {
-      await inv.save(item.id, {
-        code: f.code, name: f.name, [inv.attrField]: f.attr, size: f.size, notes: f.notes,
-      })
+      const payload = { code: f.code, name: f.name, [inv.attrField]: f.attr, size: f.size, notes: f.notes }
+      if (rf) payload[rf] = f.retail
+      await inv.save(item.id, payload)
       setSaved(true)
     } finally { setSaving(false) }
   }
@@ -175,6 +180,12 @@ function EditRow({ inv, item }) {
           <input className="input text-sm" value={f.attr} onChange={set('attr')}
                  placeholder={inv.attrPlaceholder} />
         </div>
+        {rf && (
+          <div>
+            <label className="label text-xs">Retail (¥)</label>
+            <input className="input text-sm" inputMode="decimal" value={f.retail} onChange={set('retail')} placeholder="China ref." />
+          </div>
+        )}
         <div className="flex gap-2">
           <input className="input text-sm flex-1" value={f.size} onChange={set('size')} placeholder="Size" />
           <button onClick={save} disabled={saving || !dirty || !f.code.trim()}
@@ -212,7 +223,8 @@ function ImportModal({ inv, onClose }) {
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null)
-  const rows = useMemo(() => parseStockPaste(text), [text])
+  const parse = inv.parsePaste || parseStockPaste
+  const rows = useMemo(() => parse(text), [text, parse])
 
   async function run() {
     setBusy(true)
@@ -224,8 +236,9 @@ function ImportModal({ inv, onClose }) {
       <div className="bg-white rounded-xl max-w-lg w-full p-5 max-h-[85vh] overflow-y-auto">
         <h3 className="text-base font-semibold mb-1">Import stock</h3>
         <p className="text-xs text-ink-60 mb-3">
-          Paste rows as <span className="font-mono">code · name · qty</span> (tab or comma separated).
-          Each row is an absolute count and posts a stock-take to the ledger; re-run any time.
+          {inv.parsePaste
+            ? <>Paste the full stock export <em>including its header row</em> — columns are matched by name. Each row is an absolute count and posts a stock-take; re-run any time.</>
+            : <>Paste rows as <span className="font-mono">code · name · qty</span> (tab or comma separated). Each row is an absolute count and posts a stock-take to the ledger; re-run any time.</>}
         </p>
         <textarea className="input font-mono text-xs h-40" value={text} onChange={e => setText(e.target.value)}
                   placeholder={inv.importExample} />

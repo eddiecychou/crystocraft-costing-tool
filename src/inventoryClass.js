@@ -43,10 +43,23 @@ export function parseStockPaste(text) {
 }
 
 // Build the data API for one collection. `attrField` is the extra categorising
-// attribute (kept as the real field name). Returns load / useItems / save /
-// remove / importStock.
-export function createInventoryClass({ collectionName, attrField }) {
+// attribute (kept as the real field name). `extraFields` is an optional list of
+// additional descriptor fields a class needs beyond the shared five — each
+// { key, num } (num: true stores it as a number). Finished Goods uses it for a
+// China-market retail price; crystals/packaging pass none, so their behaviour is
+// unchanged. Returns load / useItems / save / remove / importStock.
+export function createInventoryClass({ collectionName, attrField, extraFields = [] }) {
   const COL = () => collection(db, collectionName)
+
+  // Extra descriptor fields (empty for crystals/packaging → {} → no change).
+  const normExtra = c => {
+    const o = {}
+    for (const f of extraFields) {
+      const v = c[f.key]
+      o[f.key] = f.num ? num(v) : (v == null ? '' : String(v).trim())
+    }
+    return o
+  }
 
   const normItem = c => ({
     code: (c.code || '').trim().toUpperCase(),
@@ -54,6 +67,7 @@ export function createInventoryClass({ collectionName, attrField }) {
     [attrField]: (c[attrField] || '').trim(),
     size: (c.size || '').trim(),
     notes: (c.notes || '').trim(),
+    ...normExtra(c),
     stock_qty: num(c.stock_qty),
   })
   const fromDoc = d => ({ id: d.id, ...d.data(), ...normItem(d.data()) })
@@ -90,7 +104,9 @@ export function createInventoryClass({ collectionName, attrField }) {
   // Descriptive fields only — stock_qty is owned by the ledger, never written here.
   const descriptorOf = c => {
     const n = normItem(c)
-    return { code: n.code, name: n.name, [attrField]: n[attrField], size: n.size, notes: n.notes }
+    const out = { code: n.code, name: n.name, [attrField]: n[attrField], size: n.size, notes: n.notes }
+    for (const f of extraFields) out[f.key] = n[f.key]
+    return out
   }
 
   async function save(id, data) {
@@ -110,16 +126,21 @@ export function createInventoryClass({ collectionName, attrField }) {
     const clean = (rows || []).map(r => ({
       code: norm(r.code), name: (r.name || '').trim(),
       [attrField]: (r[attrField] || '').trim(), size: (r.size || '').trim(),
+      notes: (r.notes || '').trim(),
+      ...normExtra(r),
       stock_qty: num(r.stock_qty),
     })).filter(r => r.code)
     if (!clean.length) return { created: 0, updated: 0 }
 
+    const blankExtra = () => { const o = {}; for (const f of extraFields) o[f.key] = f.num ? null : ''; return o }
     const byCode = {}
     for (const r of clean) {
-      const c = byCode[r.code] || (byCode[r.code] = { code: r.code, name: '', [attrField]: '', size: '', stock_qty: null })
+      const c = byCode[r.code] || (byCode[r.code] = { code: r.code, name: '', [attrField]: '', size: '', notes: '', ...blankExtra(), stock_qty: null })
       if (r.name) c.name = r.name
       if (r[attrField]) c[attrField] = r[attrField]
       if (r.size) c.size = r.size
+      if (r.notes) c.notes = r.notes
+      for (const f of extraFields) { const v = r[f.key]; if (v != null && v !== '') c[f.key] = v }
       if (r.stock_qty != null) c.stock_qty = r.stock_qty
     }
 
@@ -152,14 +173,18 @@ export function createInventoryClass({ collectionName, attrField }) {
       const ex = existing[c.code]
       if (ex) {
         const data = { [attrField]: c[attrField], size: c.size, updatedAt: serverTimestamp() }
+        if (c.notes) data.notes = c.notes
+        for (const f of extraFields) if (c[f.key] != null && c[f.key] !== '') data[f.key] = c[f.key]
         if (!ex.hasName && c.name) data.name = c.name
         if (counted != null) { data.stock_qty = counted; data.ledger_seeded = true; ops.push(stocktakeOp(ex.id, counted, ex.prevStock)) }
         ops.push({ ref: doc(db, collectionName, ex.id), data, merge: true })
         updated++
       } else {
         const ref = doc(COL())
+        const extra = {}; for (const f of extraFields) extra[f.key] = c[f.key]
         ops.push({ ref, data: {
-          code: c.code, name: c.name, [attrField]: c[attrField], size: c.size, notes: '',
+          code: c.code, name: c.name, [attrField]: c[attrField], size: c.size, notes: c.notes || '',
+          ...extra,
           stock_qty: counted, ledger_seeded: counted != null,
           createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
         }, merge: false })
