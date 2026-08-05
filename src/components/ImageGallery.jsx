@@ -229,8 +229,14 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
           onChange={e => handleBrandedForChange(e.target.value)}
           title="Whose branding appears in this photo — a customer flagged 'sensitive' never sees another client's tagged photo"
         >
-          <option value="">Branded for: none (generic)</option>
-          {brandedForCustomers.map(c => <option key={c.id} value={c.id}>Branded for: {c.company_name || c.id}</option>)}
+          {/* Company name leads each option (not "Branded for: X") so typing
+              jumps straight to it — a <select>'s browser-native type-ahead
+              matches from the start of the option text, and every option
+              sharing the same prefix defeated that. The Visibility select
+              right below already sets the convention of no redundant label
+              per option; this field's own tooltip explains the column. */}
+          <option value="">— none (generic) —</option>
+          {brandedForCustomers.map(c => <option key={c.id} value={c.id}>{c.company_name || c.id}</option>)}
         </select>
       )}
       <div className="flex gap-1">
