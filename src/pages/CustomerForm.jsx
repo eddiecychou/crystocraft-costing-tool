@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
-import { Store, ShoppingCart, Gift, Sparkles, Check, Star, AlertCircle, AlertTriangle, Plus, Trash2 } from 'lucide-react'
+import { Store, ShoppingCart, Gift, Sparkles, Check, Star, AlertCircle, AlertTriangle, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
 import { saveCustomer, contactsOf, CRM_STATUSES, CRM_CATEGORIES, CHANNELS, CUSTOMER_SOURCES, CUSTOMER_COUNTRIES } from '../domain/customer'
 
 const blankContact = (isPrimary = false) => ({
@@ -24,6 +24,16 @@ function ContactsEditor({ contacts, onChange }) {
     onChange(next)
   }
   function setPrimary(i) { onChange(contacts.map((c, j) => ({ ...c, is_primary: j === i }))) }
+  // Display order is just array order — CustomerDetail and ContactPicker both
+  // render contacts in the order they're stored, so moving a card here is the
+  // whole feature; nothing else needs to change.
+  function move(i, dir) {
+    const j = i + dir
+    if (j < 0 || j >= contacts.length) return
+    const next = [...contacts]
+    ;[next[i], next[j]] = [next[j], next[i]]
+    onChange(next)
+  }
 
   return (
     <div className="space-y-3">
@@ -35,11 +45,25 @@ function ContactsEditor({ contacts, onChange }) {
                      className="w-3.5 h-3.5 text-brand-600" />
               Primary contact
             </label>
-            {contacts.length > 1 && (
-              <button type="button" onClick={() => remove(i)} className="text-gray-400 hover:text-red-500">
-                <Trash2 size={14} />
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              {contacts.length > 1 && (
+                <div className="flex items-center">
+                  <button type="button" onClick={() => move(i, -1)} disabled={i === 0}
+                          className="text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:hover:text-gray-400" title="Move up">
+                    <ChevronUp size={14} />
+                  </button>
+                  <button type="button" onClick={() => move(i, 1)} disabled={i === contacts.length - 1}
+                          className="text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:hover:text-gray-400" title="Move down">
+                    <ChevronDown size={14} />
+                  </button>
+                </div>
+              )}
+              {contacts.length > 1 && (
+                <button type="button" onClick={() => remove(i)} className="text-gray-400 hover:text-red-500">
+                  <Trash2 size={14} />
+                </button>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <input className="input" value={c.name} onChange={e => update(i, 'name', e.target.value)} placeholder="Name, e.g. Sarah Chan" />
