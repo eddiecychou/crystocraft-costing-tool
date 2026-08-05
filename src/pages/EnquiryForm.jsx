@@ -4,6 +4,7 @@ import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject }
 import { db, storage } from '../firebase'
 import { Check, FileText, Image as ImageIcon, X, Paperclip } from 'lucide-react'
 import { loadBlogProducts } from '../productSource'
+import ContactPicker from '../components/ContactPicker'
 
 const CHANNELS  = ['Email', 'WhatsApp', 'Alibaba', 'Personal WhatsApp']
 const STATUSES  = ['Open', 'Quoted', 'Confirmed', 'Lost', 'On Hold']
@@ -22,6 +23,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
   const isEdit = Boolean(enquiry)
 
   const [date, setDate]               = useState(todayStr())
+  const [contactId, setContactId]     = useState(null)
   const [description, setDescription] = useState('')
   const [channel, setChannel]         = useState('')
   const [status, setStatus]           = useState('Open')
@@ -58,6 +60,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
   useEffect(() => {
     if (!enquiry) return
     setDate(tsToDateStr(enquiry.date) || todayStr())
+    setContactId(enquiry.contact_id || null)
     setDescription(enquiry.description || '')
     setChannel(enquiry.channel || '')
     setStatus(enquiry.status || 'Open')
@@ -129,6 +132,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
     try {
       const payload = {
         date:             date ? Timestamp.fromDate(new Date(date)) : Timestamp.now(),
+        contact_id:       contactId || null,
         description:      description.trim(),
         product_interest: selectedProducts,
         channel,
@@ -202,6 +206,9 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
               </select>
             </div>
           </div>
+
+          {/* Which contact this interaction was with (optional) */}
+          <ContactPicker customerId={customerId} value={contactId} onChange={setContactId} label="With" />
 
           {/* Description */}
           <div>

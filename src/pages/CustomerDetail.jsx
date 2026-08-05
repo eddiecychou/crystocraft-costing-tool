@@ -15,12 +15,6 @@ import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
 import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers } from '../domain/customer'
 
-function toArray(val) {
-  if (Array.isArray(val)) return val.filter(Boolean)
-  if (val && typeof val === 'string') return [val]
-  return []
-}
-
 const STATUS_STYLES = {
   draft: 'bg-gray-100 text-gray-600',
   sent:  'bg-blue-100 text-blue-700',
@@ -89,12 +83,11 @@ function fmtDate(ts) {
 }
 
 const MERGE_FIELD_LABELS = {
-  contact_name: 'contact name', website: 'website', address: 'address', country: 'country',
+  website: 'website', address: 'address', country: 'country',
   crm_category: 'type', crm_status: 'status', source: 'source', segment: 'segment',
   erp_code: 'ERP code', notes: 'notes', folder_path: 'folder',
-  contact_emails: 'email(s)', contact_phones: 'phone(s)', contact_whatsapps: 'WhatsApp(s)',
-  contact_wechats: 'WeChat(s)', tags: 'tags', channels: 'channels',
-  is_vip: 'VIP flag', is_personal_wa: 'personal-WhatsApp flag',
+  tags: 'tags', channels: 'channels', contacts: 'contact(s)',
+  is_vip: 'VIP flag', is_personal_wa: 'personal-WhatsApp flag', sensitive: 'sensitive flag',
 }
 
 // Merges `customer` into another record you pick — the survivor's data wins,
@@ -449,47 +442,41 @@ export default function CustomerDetail() {
         </div>
       )}
 
-      {/* Contact info */}
+      {/* Contacts — separate named people (owner, 2026-08-05), not one shared
+          contact_name + unattributed emails. */}
       <div className="card p-5 mb-4">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Contact Details</h2>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-700">Contacts ({(customer.contacts || []).length})</h2>
+          <Link to={`/customers/${id}/edit`} className="text-xs text-brand-600 hover:underline">Edit →</Link>
+        </div>
+        {(customer.contacts || []).length === 0 ? (
+          <p className="text-sm text-gray-400">No contacts on file yet.</p>
+        ) : (
+          <div className="space-y-3">
+            {customer.contacts.map(c => (
+              <div key={c.id} className="rounded-lg border border-gray-100 p-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm font-medium text-gray-800">{c.name || '(no name)'}</span>
+                  {c.title && <span className="text-xs text-gray-400">· {c.title}</span>}
+                  {c.is_primary && <Star size={12} className="fill-current text-amber-400 shrink-0" />}
+                </div>
+                <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
+                  {c.email && <a href={`mailto:${c.email}`} className="text-brand-600 hover:underline">{c.email}</a>}
+                  {c.phone && <a href={`tel:${c.phone}`} className="text-brand-600 hover:underline">{c.phone}</a>}
+                  {c.whatsapp && <a href={`https://wa.me/${c.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">WA: {c.whatsapp}</a>}
+                  {c.wechat && <span className="text-gray-600">WeChat: {c.wechat}</span>}
+                </div>
+                {c.address && <p className="mt-1 text-xs text-gray-500">{c.address}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Company details */}
+      <div className="card p-5 mb-4">
+        <h2 className="text-sm font-semibold text-gray-700 mb-3">Company Details</h2>
         <dl className="space-y-2">
-          {customer.contact_name && <Row label="Contact" value={customer.contact_name} />}
-          {toArray(customer.contact_emails ?? customer.contact_email).length > 0 && (
-            <Row label="Email" value={
-              <div className="space-y-0.5">
-                {toArray(customer.contact_emails ?? customer.contact_email).map((e, i) => (
-                  <a key={i} href={`mailto:${e}`} className="text-brand-600 hover:underline block">{e}</a>
-                ))}
-              </div>
-            } />
-          )}
-          {toArray(customer.contact_phones ?? customer.contact_phone).length > 0 && (
-            <Row label="Phone" value={
-              <div className="space-y-0.5">
-                {toArray(customer.contact_phones ?? customer.contact_phone).map((p, i) => (
-                  <a key={i} href={`tel:${p}`} className="text-brand-600 hover:underline block">{p}</a>
-                ))}
-              </div>
-            } />
-          )}
-          {toArray(customer.contact_whatsapps ?? customer.whatsapp).length > 0 && (
-            <Row label="WhatsApp" value={
-              <div className="space-y-0.5">
-                {toArray(customer.contact_whatsapps ?? customer.whatsapp).map((w, i) => (
-                  <a key={i} href={`https://wa.me/${w.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline block">{w}</a>
-                ))}
-              </div>
-            } />
-          )}
-          {toArray(customer.contact_wechats).length > 0 && (
-            <Row label="WeChat" value={
-              <div className="space-y-0.5">
-                {toArray(customer.contact_wechats).map((w, i) => (
-                  <span key={i} className="block text-gray-700">{w}</span>
-                ))}
-              </div>
-            } />
-          )}
           {customer.website && (
             <Row label="Website" value={
               <a href={customer.website} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline truncate block">{customer.website.replace(/^https?:\/\//, '')}</a>
@@ -727,6 +714,10 @@ export default function CustomerDetail() {
                     <div className="flex items-center gap-2 flex-wrap mb-1.5">
                       <span className="text-xs text-gray-500">{fmtDate(enq.date)}</span>
                       {enq.channel && <span className="text-xs text-gray-400">· {enq.channel}</span>}
+                      {enq.contact_id && (() => {
+                        const c = (customer.contacts || []).find(x => x.id === enq.contact_id)
+                        return c ? <span className="text-xs text-gray-400">· with {c.name || '(no name)'}</span> : null
+                      })()}
                       {enq.status && (
                         <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${ENQUIRY_STATUS_STYLES[enq.status] || 'bg-gray-100 text-gray-500'}`}>
                           <span className={`w-1.5 h-1.5 rounded-full ${ENQUIRY_STATUS_DOT[enq.status] || 'bg-gray-400'}`} />

@@ -75,21 +75,83 @@ const channelsOf = i =>
   (Array.isArray(i.channels) && i.channels.length) ? cleanArray(i.channels)
     : (str(i.primary_channel) ? [str(i.primary_channel)] : [])
 
+// ── Contacts ─────────────────────────────────────────────────────────────────
+// A customer's contacts are separate NAMED people (owner, 2026-08-05: several
+// real contacts within one company deserve to stay distinct, not merged into
+// one "contact_name + a pile of un-attributed emails" blob). Each contact has
+// its own single email/phone/whatsapp/wechat — a real person has one of each,
+// not an ambiguous shared list nobody can attribute. `address` is an
+// OPTIONAL per-contact override — different departments in the same company
+// can genuinely sit in different offices; blank means "same as the company
+// address" (see contactAddress() below), which is the common case.
+const genContactId = () => `c_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`
+
+function normalizeContact(c) {
+  return {
+    id: str(c?.id) || genContactId(),
+    name: str(c?.name),
+    title: str(c?.title),
+    email: str(c?.email),
+    phone: str(c?.phone),
+    whatsapp: str(c?.whatsapp),
+    wechat: str(c?.wechat),
+    address: str(c?.address),
+    is_primary: !!c?.is_primary,
+  }
+}
+
+// contacts[] with the legacy scalar/array contact fields folded in as ONE
+// synthesized contact when no contacts[] exists yet. A legacy record's
+// several un-attributed emails can't be safely split into distinct people —
+// nothing on the old record says which belongs to whom — so they collapse
+// onto that one contact's own email; an admin splits them apart by hand once
+// they know who's who. Never emits more than one contact for a legacy record.
+// The synthesized contact's address is left blank (not copied from the
+// customer's own address) so contactAddress() falls back to the company
+// address exactly as it always effectively did before contacts existed.
+export function contactsOf(r) {
+  if (Array.isArray(r.contacts) && r.contacts.length) {
+    const list = r.contacts.map(normalizeContact)
+    if (!list.some(c => c.is_primary)) list[0].is_primary = true
+    return list
+  }
+  const name = str(r.contact_name)
+  const email = arrFrom(r.contact_emails, r.contact_email)[0] || ''
+  const phone = arrFrom(r.contact_phones, r.contact_phone)[0] || ''
+  const whatsapp = arrFrom(r.contact_whatsapps, r.whatsapp)[0] || ''
+  const wechat = cleanArray(r.contact_wechats)[0] || ''
+  if (!name && !email && !phone && !whatsapp && !wechat) return []
+  return [{ id: 'legacy', name, title: '', email, phone, whatsapp, wechat, address: '', is_primary: true }]
+}
+
+export const primaryContact = list => (list || []).find(c => c.is_primary) || (list || [])[0] || null
+
+// The address to use for a specific contact — their own if they have one set,
+// otherwise the company's. Both quotes and orders resolve through this so
+// "address a document to contact X" does the sensible thing whether or not
+// that contact happens to have their own office on file.
+export const contactAddress = (contact, customer) => contact?.address || customer?.address || ''
+
 // Raw Firestore doc (or form state) → canonical customer object. READ shape:
 // returns only canonical fields, with every legacy alias folded in. Never emits
 // legacy keys (`name`, `region`, `primary_channel`).
 export function normalizeCustomer(raw) {
   const r = raw || {}
-  const emails    = arrFrom(r.contact_emails,    r.contact_email)
-  const phones    = arrFrom(r.contact_phones,    r.contact_phone)
-  const whatsapps = arrFrom(r.contact_whatsapps, r.whatsapp)
+  const contacts = contactsOf(r)
+  const primary = primaryContact(contacts)
   return {
     company_name:      str(r.company_name || r.name),     // fold legacy `name`
-    contact_name:      str(r.contact_name),
-    contact_emails:    emails,
-    contact_phones:    phones,
-    contact_whatsapps: whatsapps,
-    contact_wechats:   cleanArray(r.contact_wechats),
+    contacts,
+    // Derived mirrors of the PRIMARY contact — kept so anything not yet
+    // reading contacts[] (print pages, the ERP customer import, marketing-
+    // contact conversion) keeps working unchanged. Never the source of truth
+    // once contacts[] exists; always max one entry now (a real per-contact
+    // value, not an unattributed pile).
+    contact_name:      primary?.name || '',
+    contact_emails:    primary?.email ? [primary.email] : [],
+    contact_phones:    primary?.phone ? [primary.phone] : [],
+    contact_whatsapps: primary?.whatsapp ? [primary.whatsapp] : [],
+    contact_wechats:   primary?.wechat ? [primary.wechat] : [],
     website:           str(r.website),
     address:           str(r.address),
     country:           str(r.country || r.region),        // fold legacy `region`
@@ -102,6 +164,7 @@ export function normalizeCustomer(raw) {
     tags:              cleanArray(r.tags),
     is_vip:            !!r.is_vip,
     is_personal_wa:    !!r.is_personal_wa,
+    sensitive:         !!r.sensitive,
     notes:             str(r.notes),
     folder_path:       str(r.folder_path),
     last_contacted:    r.last_contacted ?? null,
@@ -139,13 +202,20 @@ export function validateCustomer(input) {
 // for any consumer not yet routed through normalizeCustomer. Never writes `name`.
 function toCustomerDoc(input) {
   const i = input || {}
-  const emails    = arrFrom(i.contact_emails,    i.contact_email)
-  const phones    = arrFrom(i.contact_phones,    i.contact_phone)
-  const whatsapps = arrFrom(i.contact_whatsapps, i.whatsapp)
   const channels  = channelsOf(i)
+  // contacts[] is the canonical source now. Accept it directly if the caller
+  // supplies it (CustomerForm does); otherwise fold in whatever legacy scalar
+  // fields are present, same as the read path — keeps saveCustomer safe to
+  // call from anything not yet updated to the contacts[] shape.
+  const contacts = Array.isArray(i.contacts) ? i.contacts.map(normalizeContact) : contactsOf(i)
+  if (contacts.length && !contacts.some(c => c.is_primary)) contacts[0].is_primary = true
+  const primary = primaryContact(contacts)
   return {
     company_name:  str(i.company_name || i.name),
-    contact_name:  str(i.contact_name),
+    contacts,
+    // Denormalized mirrors of the primary contact — kept in sync for any
+    // consumer not yet routed through contacts[] (print pages, ERP import).
+    contact_name:  primary?.name || '',
     erp_code:      str(i.erp_code),
     website:       str(i.website),
     country:       str(i.country || i.region),
@@ -159,13 +229,14 @@ function toCustomerDoc(input) {
     primary_channel: channels[0] || '',           // denormalized mirror (compat)
     is_personal_wa: !!i.is_personal_wa,
     is_vip:         !!i.is_vip,
-    contact_emails:    emails,
-    contact_phones:    phones,
-    contact_whatsapps: whatsapps,
-    contact_wechats:   cleanArray(i.contact_wechats),
-    contact_email: emails[0] || '',               // denormalized mirror (compat)
-    contact_phone: phones[0] || '',               // denormalized mirror (compat)
-    whatsapp:      whatsapps[0] || '',            // denormalized mirror (compat)
+    sensitive:      !!i.sensitive,                // was accepted from CustomerForm but never persisted — fixed 2026-08-05
+    contact_emails:    primary?.email ? [primary.email] : [],
+    contact_phones:    primary?.phone ? [primary.phone] : [],
+    contact_whatsapps: primary?.whatsapp ? [primary.whatsapp] : [],
+    contact_wechats:   primary?.wechat ? [primary.wechat] : [],
+    contact_email: primary?.email || '',          // denormalized mirror (compat)
+    contact_phone: primary?.phone || '',          // denormalized mirror (compat)
+    whatsapp:      primary?.whatsapp || '',       // denormalized mirror (compat)
   }
 }
 
@@ -213,12 +284,16 @@ export async function getCustomer(id) {
 // is filled from the duplicate, array fields are unioned (never dropped), and a
 // boolean flag OR's (a true on either side survives). Nothing on the survivor
 // that already has a value is ever overwritten.
+// contact_name/contact_emails/contact_phones/contact_whatsapps/contact_wechats
+// are DERIVED from contacts[] now (see normalizeCustomer) — merging them here
+// would just be re-deriving stale values, so they're deliberately absent from
+// these lists. contacts[] itself is merged by mergeContactLists() below.
 const MERGE_SCALAR_FIELDS = [
-  'contact_name', 'website', 'address', 'country',
+  'website', 'address', 'country',
   'crm_category', 'crm_status', 'source', 'segment', 'erp_code', 'notes', 'folder_path',
 ]
-const MERGE_ARRAY_FIELDS = ['contact_emails', 'contact_phones', 'contact_whatsapps', 'contact_wechats', 'tags', 'channels']
-const MERGE_BOOL_FIELDS = ['is_vip', 'is_personal_wa']
+const MERGE_ARRAY_FIELDS = ['tags', 'channels']
+const MERGE_BOOL_FIELDS = ['is_vip', 'is_personal_wa', 'sensitive']
 
 function unionArrays(a, b) {
   const seen = new Set(); const out = []
@@ -226,6 +301,30 @@ function unionArrays(a, b) {
     const k = String(v).trim().toLowerCase()
     if (k && !seen.has(k)) { seen.add(k); out.push(v) }
   }
+  return out
+}
+
+// Union two contact lists, treating the same email (or, failing that, the
+// same name) as the same person so a contact already on the survivor isn't
+// duplicated. The survivor's own contacts are never altered or dropped; only
+// genuinely new people are appended, and never as a second primary — the
+// survivor's existing primary (or, if it had none, the first contact) stays
+// primary.
+function mergeContactLists(survivorContacts, duplicateContacts) {
+  const survivor = survivorContacts || []
+  const out = [...survivor]
+  const seenEmails = new Set(survivor.map(c => c.email.toLowerCase()).filter(Boolean))
+  const seenNames = new Set(survivor.map(c => c.name.toLowerCase()).filter(Boolean))
+  for (const c of (duplicateContacts || [])) {
+    const emailKey = c.email.toLowerCase()
+    const nameKey = c.name.toLowerCase()
+    const isSamePerson = (emailKey && seenEmails.has(emailKey)) || (!emailKey && nameKey && seenNames.has(nameKey))
+    if (isSamePerson) continue
+    out.push({ ...normalizeContact(c), is_primary: false })
+    if (emailKey) seenEmails.add(emailKey)
+    if (nameKey) seenNames.add(nameKey)
+  }
+  if (out.length && !out.some(c => c.is_primary)) out[0].is_primary = true
   return out
 }
 
@@ -243,6 +342,8 @@ function fieldsToFillFrom(survivor, duplicate) {
   for (const f of MERGE_BOOL_FIELDS) {
     if (!survivor[f] && duplicate[f]) out[f] = true
   }
+  const mergedContacts = mergeContactLists(survivor.contacts, duplicate.contacts)
+  if (mergedContacts.length !== (survivor.contacts || []).length) out.contacts = mergedContacts
   return out
 }
 

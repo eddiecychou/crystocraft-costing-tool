@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { getOrder, getOrderLines, computeOrderTotals, orderUc } from '../shipping'
-import { loadCustomers } from '../domain/customer'
+import { loadCustomers, primaryContact, contactAddress } from '../domain/customer'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
@@ -242,9 +242,17 @@ export default function SalesInvoicePrint() {
         <div className="si-box si-cust">
           <h4>Bill To</h4>
           <div className="name">{order.customer_name || customer?.company_name || '—'}</div>
-          {customer?.contact_name && <div className="addr">Attn: {customer.contact_name}</div>}
-          {customer?.address && <div className="addr">{customer.address}</div>}
-          {customer?.contact_emails?.[0] && <div className="addr">{customer.contact_emails[0]}</div>}
+          {(() => {
+            const docContact = (customer?.contacts || []).find(c => c.id === order.contact_id) || primaryContact(customer?.contacts)
+            const addr = contactAddress(docContact, customer)
+            return (
+              <>
+                {docContact?.name && <div className="addr">Attn: {docContact.name}</div>}
+                {addr && <div className="addr">{addr}</div>}
+                {docContact?.email && <div className="addr">{docContact.email}</div>}
+              </>
+            )
+          })()}
         </div>
         <div className="si-box">
           <div className="si-kv"><span className="k">Invoice No.</span><span className="v big si-code">{order.erp_si_no || '—'}</span></div>

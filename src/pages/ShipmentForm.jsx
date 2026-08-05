@@ -8,7 +8,8 @@ import {
   loadRangeProductsLite, autoMatchLines, matchRangeProduct, rematchLines, validateOrder, computeOrderTotals,
   orderUc,
 } from '../shipping'
-import { loadCustomers, saveCustomer } from '../domain/customer'
+import { loadCustomers, saveCustomer, primaryContact } from '../domain/customer'
+import ContactPicker from '../components/ContactPicker'
 import { fetchErpSoLines, diffLines } from '../erpSoImport'
 import { CURRENCIES } from '../constants'
 import { FileInput, FolderOpen, FileText, Trash2, CheckCircle2, AlertTriangle, RefreshCw, Database, Receipt, Image as ImageIcon } from 'lucide-react'
@@ -36,7 +37,7 @@ const STOCK_CFGS = [metalOrderConfig, crystalInventory, packagingInventory]
 const SHIPPED_STATUSES = new Set(['shipped', 'delivered'])
 
 const blankHeader = {
-  customer_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', erp_si_no: '', uc_no: '', customer_po: '', order_date: '',
+  customer_id: '', contact_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', erp_si_no: '', uc_no: '', customer_po: '', order_date: '',
   est_ship_date: '',
   invoiced_at: '',
   currency: 'USD', incoterm: 'FOB', payment_terms: '', status: 'draft',
@@ -188,7 +189,7 @@ export default function ShipmentForm() {
         const o = await getOrder(id)
         if (o) {
           setHeader({
-            customer_id: o.customer_id, customer_name: o.customer_name,
+            customer_id: o.customer_id, contact_id: o.contact_id || '', customer_name: o.customer_name,
             // uc_no is seeded through orderUc so an order whose UC lives in the
             // legacy erp_pi_no shows it in the UC# field and does not look
             // un-allocated to doAllocateSi. erp_pi_no is still carried so
@@ -318,6 +319,7 @@ export default function ShipmentForm() {
     const c = customers.find(x => x.id === e.target.value)
     setHeader(h => ({
       ...h, customer_id: e.target.value,
+      contact_id: c ? (primaryContact(c.contacts)?.id || '') : '',
       customer_name: c ? c.company_name : h.customer_name,
       destination: c ? {
         country: c.country || c.region || h.destination.country,
@@ -596,7 +598,7 @@ export default function ShipmentForm() {
       const computed = computeOrderTotals(header, lines)
       const write = Promise.all([
         updateOrder(id, {
-          customer_id: header.customer_id, customer_name: header.customer_name,
+          customer_id: header.customer_id, contact_id: header.contact_id || null, customer_name: header.customer_name,
           erp_pi_no: header.erp_pi_no, erp_so_no: header.erp_so_no, erp_si_no: header.erp_si_no,
           customer_po: header.customer_po,
           invoiced_at: header.invoiced_at || null, uc_no: header.uc_no,
@@ -772,6 +774,11 @@ export default function ShipmentForm() {
                     {addingCustomer ? 'Adding…' : '+ Add as new customer'}
                   </button>
                 </div>
+              )}
+              {header.customer_id && (
+                <ContactPicker customerId={header.customer_id} value={header.contact_id}
+                               onChange={cid => setHeader(h => ({ ...h, contact_id: cid || '' }))}
+                               label="Addressed to" className="mt-2" />
               )}
             </div>
             <div className="grid grid-cols-3 gap-2">

@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { doc, getDoc, updateDoc, deleteDoc, serverTimestamp, collection, getDocs, query, where } from 'firebase/firestore'
 import { db, auth } from '../firebase'
 import { useCustomers } from '../domain/customer'
 import { CUSTOMER_CURRENCIES, useRates, fromUSD } from '../currency'
 import { CustomerPicker, TypeBadge } from './CustomerAccounts'
+import ContactPicker from '../components/ContactPicker'
 import { notifyEmail } from '../notify'
 import LoadingBar from '../components/LoadingBar'
 import { ArrowLeft } from 'lucide-react'
@@ -12,6 +13,15 @@ import { ArrowLeft } from 'lucide-react'
 const fmtDate = ts => {
   const d = ts?.toDate?.() || (ts instanceof Date ? ts : null)
   return d ? d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '—'
+}
+
+// A portal login IS a real email — if it matches one of the linked customer's
+// contacts, that's almost certainly the same person, so there's no reason to
+// make an admin pick it by hand.
+function autoMatchContact(customer, email) {
+  if (!customer || !email) return ''
+  const hit = (customer.contacts || []).find(c => c.email && c.email.toLowerCase() === email.toLowerCase())
+  return hit?.id || ''
 }
 
 export default function AccountEdit() {
@@ -31,6 +41,7 @@ export default function AccountEdit() {
   const [override, setOverride] = useState('')
   const [type, setType]         = useState('customer')
   const [customerId, setCustomerId] = useState('')
+  const [contactId, setContactId] = useState('')
   const [enquiries, setEnquiries] = useState([])
 
   useEffect(() => {
@@ -44,6 +55,7 @@ export default function AccountEdit() {
         setOverride(d.corp_markup_override ?? '')
         setType(d.account_type === 'internal' ? 'internal' : 'customer')
         setCustomerId(d.customer_id || '')
+        setContactId(d.contact_id || '')
       }
       setLoading(false)
     })
@@ -56,6 +68,17 @@ export default function AccountEdit() {
       ))
       .catch(() => {})
   }, [id])
+
+  // One-shot auto-match by email for accounts LINKED before contact_id
+  // existed, or linked elsewhere without a contact chosen. Only fires once —
+  // an admin explicitly clearing the picker afterwards must stay cleared, not
+  // get silently reset back by this effect re-running.
+  const autoMatchedRef = useRef(false)
+  useEffect(() => {
+    if (autoMatchedRef.current || !u || contactId || !customerId || !customers.length) return
+    const match = autoMatchContact(customers.find(c => c.id === customerId), u.email)
+    if (match) { setContactId(match); autoMatchedRef.current = true }
+  }, [u, customers, customerId, contactId])
 
   if (loading) return <LoadingBar />
   if (!u) return <div className="p-6 text-ink-60">Account not found. <Link to="/portal" className="text-brand-600">Back to Portal</Link></div>
@@ -88,6 +111,7 @@ export default function AccountEdit() {
   const saveForm = () => apply({
     account_type: type,
     customer_id: customerId || null,
+    contact_id: contactId || null,
     base_currency: cur,
     ws_discount_pct: Number(disc) > 0 ? Number(disc) : 100,
     fx_rate: fxRate === '' ? 0 : Number(fxRate) || 0,
@@ -161,7 +185,15 @@ export default function AccountEdit() {
           Link this login to a customer record so the account shows that customer's name and country.
           Edit the name itself on the <Link to="/customers" className="text-brand-600 hover:underline">Customers</Link> page.
         </p>
-        <CustomerPicker customers={customers} value={customerId} onChange={setCustomerId} />
+        <CustomerPicker customers={customers} value={customerId}
+                        onChange={cid => {
+                          setCustomerId(cid)
+                          setContactId(autoMatchContact(customers.find(c => c.id === cid), u?.email))
+                        }} />
+        {customerId && (
+          <ContactPicker customerId={customerId} value={contactId} onChange={setContactId}
+                         label="This login is (optional)" className="mt-3" />
+        )}
       </div>
 
       {/* Category */}

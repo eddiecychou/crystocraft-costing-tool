@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { getOrder, getOrderLines, computeOrderTotals, orderUc } from '../shipping'
-import { loadCustomers } from '../domain/customer'
+import { loadCustomers, primaryContact, contactAddress } from '../domain/customer'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
@@ -298,9 +298,20 @@ export default function ProformaInvoicePrint() {
         <div className="pi-box pi-cust">
           <h4>Bill To</h4>
           <div className="name">{order.customer_name || customer?.company_name || '—'}</div>
-          {customer?.contact_name && <div className="addr">Attn: {customer.contact_name}</div>}
-          {customer?.address && <div className="addr">{customer.address}</div>}
-          {customer?.contact_emails?.[0] && <div className="addr">{customer.contact_emails[0]}</div>}
+          {(() => {
+            // order.contact_id, if set, addresses this PI to a SPECIFIC
+            // contact rather than always the customer's primary — falls back
+            // to primary for older orders with no contact chosen.
+            const docContact = (customer?.contacts || []).find(c => c.id === order.contact_id) || primaryContact(customer?.contacts)
+            const addr = contactAddress(docContact, customer)
+            return (
+              <>
+                {docContact?.name && <div className="addr">Attn: {docContact.name}</div>}
+                {addr && <div className="addr">{addr}</div>}
+                {docContact?.email && <div className="addr">{docContact.email}</div>}
+              </>
+            )
+          })()}
         </div>
         <div className="pi-box">
           {/* One reference, not two. "PI No." and "UC#" printed the same

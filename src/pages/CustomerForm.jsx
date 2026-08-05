@@ -2,39 +2,64 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
-import { Store, ShoppingCart, Gift, Sparkles, Check, Star, AlertCircle, AlertTriangle } from 'lucide-react'
-import { saveCustomer, CRM_STATUSES, CRM_CATEGORIES, CHANNELS, CUSTOMER_SOURCES, CUSTOMER_COUNTRIES } from '../domain/customer'
+import { Store, ShoppingCart, Gift, Sparkles, Check, Star, AlertCircle, AlertTriangle, Plus, Trash2 } from 'lucide-react'
+import { saveCustomer, contactsOf, CRM_STATUSES, CRM_CATEGORIES, CHANNELS, CUSTOMER_SOURCES, CUSTOMER_COUNTRIES } from '../domain/customer'
 
-function toArray(val) {
-  if (Array.isArray(val)) return val.length ? val : ['']
-  if (val && typeof val === 'string') return [val]
-  return ['']
-}
+const blankContact = (isPrimary = false) => ({
+  id: null, name: '', title: '', email: '', phone: '', whatsapp: '', wechat: '', address: '', is_primary: isPrimary,
+})
 
-function MultiInput({ label, values, onChange, type = 'text', placeholder }) {
-  function update(i, v) { onChange(values.map((x, j) => j === i ? v : x)) }
-  function add() { onChange([...values, '']) }
-  function remove(i) { onChange(values.filter((_, j) => j !== i)) }
+// Several real, separate people within one company (owner, 2026-08-05) — not
+// one contact_name plus a pile of un-attributed emails. Each card is one
+// person; exactly one is Primary (the quote/PI default, and what print pages
+// fall back to when a document isn't addressed to anyone specific).
+function ContactsEditor({ contacts, onChange }) {
+  function update(i, field, value) {
+    onChange(contacts.map((c, j) => j === i ? { ...c, [field]: value } : c))
+  }
+  function add() { onChange([...contacts, blankContact(contacts.length === 0)]) }
+  function remove(i) {
+    const next = contacts.filter((_, j) => j !== i)
+    if (next.length && !next.some(c => c.is_primary)) next[0].is_primary = true
+    onChange(next)
+  }
+  function setPrimary(i) { onChange(contacts.map((c, j) => ({ ...c, is_primary: j === i }))) }
+
   return (
-    <div>
-      <label className="label">{label}</label>
-      <div className="space-y-2">
-        {values.map((v, i) => (
-          <div key={i} className="flex gap-2">
-            <input
-              className="input flex-1"
-              type={type}
-              value={v}
-              onChange={e => update(i, e.target.value)}
-              placeholder={placeholder}
-            />
-            {values.length > 1 && (
-              <button type="button" onClick={() => remove(i)} className="text-gray-400 hover:text-red-500 px-1 text-lg leading-none">×</button>
+    <div className="space-y-3">
+      {contacts.map((c, i) => (
+        <div key={i} className="rounded-lg border border-gray-200 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+              <input type="radio" name="primary-contact" checked={c.is_primary} onChange={() => setPrimary(i)}
+                     className="w-3.5 h-3.5 text-brand-600" />
+              Primary contact
+            </label>
+            {contacts.length > 1 && (
+              <button type="button" onClick={() => remove(i)} className="text-gray-400 hover:text-red-500">
+                <Trash2 size={14} />
+              </button>
             )}
           </div>
-        ))}
-      </div>
-      <button type="button" onClick={add} className="mt-1.5 text-xs text-brand-600 hover:text-brand-800">+ Add another</button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input className="input" value={c.name} onChange={e => update(i, 'name', e.target.value)} placeholder="Name, e.g. Sarah Chan" />
+            <input className="input" value={c.title} onChange={e => update(i, 'title', e.target.value)} placeholder="Title (optional)" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input className="input" type="email" value={c.email} onChange={e => update(i, 'email', e.target.value)} placeholder="Email" />
+            <input className="input" value={c.phone} onChange={e => update(i, 'phone', e.target.value)} placeholder="Phone" />
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input className="input" value={c.whatsapp} onChange={e => update(i, 'whatsapp', e.target.value)} placeholder="WhatsApp (optional)" />
+            <input className="input" value={c.wechat} onChange={e => update(i, 'wechat', e.target.value)} placeholder="WeChat ID (optional)" />
+          </div>
+          <input className="input" value={c.address} onChange={e => update(i, 'address', e.target.value)}
+                 placeholder="Address override — leave blank to use the company address" />
+        </div>
+      ))}
+      <button type="button" onClick={add} className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
+        <Plus size={13} /> Add another contact
+      </button>
     </div>
   )
 }
@@ -76,9 +101,7 @@ export default function CustomerForm() {
 
   const [form, setForm] = useState({
     company_name: '',
-    contact_name: '',
     erp_code: '',
-    whatsapp: '',
     website: '',
     country: 'Hong Kong',
     address: '',
@@ -89,10 +112,7 @@ export default function CustomerForm() {
     crm_status: 'Prospect',
   })
   const [channels, setChannels] = useState([])
-  const [emails, setEmails]           = useState([''])
-  const [phones, setPhones]           = useState([''])
-  const [whatsapps, setWhatsapps]     = useState([''])
-  const [wechats, setWechats]         = useState([''])
+  const [contacts, setContacts] = useState([blankContact(true)])
   const [tags, setTags]               = useState([])
   const [tagInput, setTagInput]       = useState('')
   const [isPersonalWa, setIsPersonalWa] = useState(false)
@@ -112,9 +132,7 @@ export default function CustomerForm() {
         setForm(f => ({
           ...f,
           company_name:    d.company_name    || '',
-          contact_name:    d.contact_name    || '',
           erp_code:        d.erp_code        || '',
-          whatsapp:        d.whatsapp        || '',
           website:         d.website         || '',
           country:         d.country || d.region || 'Hong Kong',
           address:         d.address         || '',
@@ -125,10 +143,11 @@ export default function CustomerForm() {
         }))
         // Backwards compat: old single primary_channel → array
         setChannels(d.channels?.length ? d.channels : d.primary_channel ? [d.primary_channel] : [])
-        setEmails(toArray(d.contact_emails ?? d.contact_email))
-        setPhones(toArray(d.contact_phones ?? d.contact_phone))
-        setWhatsapps(toArray(d.contact_whatsapps?.length ? d.contact_whatsapps : d.whatsapp))
-        setWechats(toArray(d.contact_wechats))
+        // contactsOf() folds any legacy contact_name/contact_email(s)/etc into
+        // one synthesized contact for a record saved before contacts[]
+        // existed — same logic the read path (normalizeCustomer) uses.
+        const existingContacts = contactsOf(d)
+        setContacts(existingContacts.length ? existingContacts : [blankContact(true)])
         setTags(d.tags || [])
         setIsPersonalWa(d.is_personal_wa || false)
         setIsVip(d.is_vip || false)
@@ -175,10 +194,9 @@ export default function CustomerForm() {
         is_personal_wa: isPersonalWa,
         is_vip: isVip,
         sensitive: isSensitive,
-        contact_emails: emails.filter(Boolean),
-        contact_phones: phones.filter(Boolean),
-        contact_whatsapps: whatsapps.filter(Boolean),
-        contact_wechats: wechats.filter(Boolean),
+        // Drop fully-blank cards (e.g. an unused "+ Add another contact" left
+        // empty) — saveCustomer/toCustomerDoc re-normalizes whatever's left.
+        contacts: contacts.filter(c => c.name || c.email || c.phone || c.whatsapp || c.wechat),
       }
       const res = await saveCustomer(isEdit ? id : null, input)
       if (!res.ok) { setIssues(res.result); return }
@@ -316,19 +334,15 @@ export default function CustomerForm() {
           </div>
         </div>
 
-        {/* Contact */}
+        {/* Contacts */}
         <div className="card p-5 space-y-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Primary Contact</p>
           <div>
-            <label className="label">Contact Name</label>
-            <input className="input" value={form.contact_name} onChange={set('contact_name')} placeholder="e.g. Sarah Chan" />
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Contacts</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Separate real people — quotes, orders and the interaction log can each be addressed to a specific one.
+            </p>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <MultiInput label="Email" values={emails} onChange={setEmails} type="email" placeholder="e.g. sarah@company.com" />
-            <MultiInput label="Phone" values={phones} onChange={setPhones} placeholder="e.g. +852 1234 5678" />
-            <MultiInput label="WhatsApp Number" values={whatsapps} onChange={setWhatsapps} placeholder="e.g. +852 9876 5432" />
-            <MultiInput label="WeChat ID" values={wechats} onChange={setWechats} placeholder="e.g. wechat_username" />
-          </div>
+          <ContactsEditor contacts={contacts} onChange={setContacts} />
           <div>
             <label className="label">Website</label>
             <input className="input" type="url" value={form.website} onChange={set('website')} placeholder="https://www.example.com" />

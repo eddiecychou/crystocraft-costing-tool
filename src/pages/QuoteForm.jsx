@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { collection, addDoc, serverTimestamp, getDoc, doc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { CURRENCIES } from '../constants'
-import { loadCustomers } from '../domain/customer'
+import { loadCustomers, primaryContact, contactAddress } from '../domain/customer'
+import ContactPicker from '../components/ContactPicker'
 
 const DEFAULT_RATES = { rmb_to_hkd: 1.09, usd_to_hkd: 7.78, eur_to_hkd: 8.60 }
 
@@ -17,7 +18,7 @@ export default function QuoteForm() {
   const todayISO = new Date().toISOString().split('T')[0]
 
   const [form, setForm] = useState({
-    client_name: '', contact_name: '', contact_email: '',
+    client_name: '', contact_id: '', contact_name: '', contact_email: '',
     contact_phone: '', contact_address: '', notes: '', status: 'draft',
     quote_currency: 'HKD',
     quote_date: todayISO,
@@ -50,21 +51,21 @@ export default function QuoteForm() {
     if (c) prefillFromCustomer(c)
   }, [selectedCustomerId, customers])
 
-  // c comes from loadCustomers() — the canonical customer shape carries
-  // contact_emails/contact_phones as ARRAYS (normalizeCustomer, domain/
-  // customer.js), not the singular contact_email/contact_phone this used to
-  // read. Those no longer exist on the object, so this was silently always
-  // falling through to the (empty) form default. Take the first of each list —
-  // same "first wins" convention CustomerForm itself uses for its primary
-  // contact fields.
+  // c comes from loadCustomers() — the canonical customer shape carries a
+  // contacts[] list of real, separate people (domain/customer.js), not one
+  // shared contact_name + un-attributed emails. Defaults to whichever contact
+  // is flagged Primary; the ContactPicker below lets the admin pick a
+  // different one when the customer has several.
   function prefillFromCustomer(c) {
+    const contact = primaryContact(c.contacts)
     setForm(f => ({
       ...f,
       client_name: c.company_name || f.client_name,
-      contact_name: c.contact_name || f.contact_name,
-      contact_email: c.contact_emails?.[0] || f.contact_email,
-      contact_phone: c.contact_phones?.[0] || f.contact_phone,
-      contact_address: c.address || f.contact_address,
+      contact_id: contact?.id || '',
+      contact_name: contact?.name || f.contact_name,
+      contact_email: contact?.email || f.contact_email,
+      contact_phone: contact?.phone || f.contact_phone,
+      contact_address: contactAddress(contact, c) || f.contact_address,
     }))
   }
 
@@ -74,6 +75,21 @@ export default function QuoteForm() {
     if (!cid) return
     const c = customers.find(c => c.id === cid)
     if (c) prefillFromCustomer(c)
+  }
+
+  // Switching the ContactPicker away from the auto-selected Primary — re-fill
+  // name/email/phone/address from whichever contact was picked instead.
+  function handleContactChange(contactId) {
+    const c = customers.find(x => x.id === selectedCustomerId)
+    const contact = (c?.contacts || []).find(x => x.id === contactId) || null
+    setForm(f => ({
+      ...f,
+      contact_id: contactId || '',
+      contact_name: contact?.name || '',
+      contact_email: contact?.email || '',
+      contact_phone: contact?.phone || '',
+      contact_address: contactAddress(contact, c) || '',
+    }))
   }
 
   function set(field) { return e => setForm(f => ({ ...f, [field]: e.target.value })) }
@@ -125,6 +141,10 @@ export default function QuoteForm() {
               <Link to="/customers/new" className="text-brand-500 hover:underline" target="_blank">+ Add new customer</Link>
             </p>
           </div>
+          {selectedCustomerId && (
+            <ContactPicker customerId={selectedCustomerId} value={form.contact_id} onChange={handleContactChange}
+                           label="Addressed to" />
+          )}
         </div>
 
         {/* Client details */}
