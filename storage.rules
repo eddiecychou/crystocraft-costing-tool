@@ -37,6 +37,17 @@ service firebase.storage {
       allow read, write: if isAuth();
     }
 
+    // Customer Brand Gallery (V7.21) — uploaded to customer-assets/{customerId}/…
+    // (customerAssets.js), a DIFFERENT top-level path from customers/{customerId}
+    // above (that one is enquiry attachments). Was missing entirely — with no
+    // matching rule, Storage's default-deny would have silently rejected every
+    // Brand Gallery upload. The real access control is the Firestore doc's rule
+    // (firestore.rules, admin-write / owner-read); this just needs to not block
+    // the object write, same posture as the other admin-curated paths above.
+    match /customer-assets/{customerId}/{allPaths=**} {
+      allow read, write: if isAuth();
+    }
+
     // Figurine Gifts (Crystocraft Range) images
     match /range_products/{rangeId}/{allPaths=**} {
       allow read, write: if isAuth();

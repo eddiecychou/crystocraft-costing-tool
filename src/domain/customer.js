@@ -258,6 +258,23 @@ async function relatedDocs(customerId) {
   return { ordersSnap, quotesSnap, usersSnap }
 }
 
+// Product images tagged "branded for" this customer (Customer Brand Gallery
+// amendments, V7.21 — see firestore.rules viewerIsSensitive()). Iterates each
+// product's own images subcollection rather than a collectionGroup query
+// deliberately: a collectionGroup equality filter needs a manually-created
+// composite index, whereas a collection-scoped where() gets Firestore's
+// automatic single-field index for free. Merges are a rare admin action, not a
+// hot path, so the extra round trips per product are the right trade.
+async function brandedImageDocs(customerId) {
+  const productsSnap = await getDocs(collection(db, 'products'))
+  const perProduct = await Promise.all(
+    productsSnap.docs.map(p =>
+      getDocs(query(collection(db, 'products', p.id, 'images'), where('branded_for_customer_id', '==', customerId)))
+    )
+  )
+  return perProduct.flatMap(s => s.docs)
+}
+
 // Read-only — never writes. Lets the UI show what a merge would do before
 // anyone commits to it: how many orders/quotes/portal-accounts move, and which
 // fields the survivor would gain.
@@ -271,12 +288,18 @@ export async function previewCustomerMerge(duplicateId, survivorId) {
   const duplicate = { id: duplicateId, ...normalizeCustomer(dupSnap.data()) }
   const survivor  = { id: survivorId, ...normalizeCustomer(survSnap.data()) }
   const { ordersSnap, quotesSnap, usersSnap } = await relatedDocs(duplicateId)
+  const [assetsSnap, brandedImages] = await Promise.all([
+    getDocs(collection(db, 'customers', duplicateId, 'assets')),
+    brandedImageDocs(duplicateId),
+  ])
   return {
     duplicate, survivor,
     fieldsToFill: fieldsToFillFrom(survivor, duplicate),
     ordersCount: ordersSnap.size,
     quotesCount: quotesSnap.size,
     accountsCount: usersSnap.size,
+    assetsCount: assetsSnap.size,
+    brandedImagesCount: brandedImages.length,
   }
 }
 
@@ -284,22 +307,69 @@ export async function previewCustomerMerge(duplicateId, survivorId) {
 // duplicate onto the survivor, fill the survivor's blank fields from the
 // duplicate, then delete the duplicate. Chunked batches (Firestore's 500-write
 // limit) — in practice one customer's related docs are far fewer than that.
+//
+// Two things beyond the original three collections, added when the Customer
+// Brand Gallery landed (V7.21) — the duplicate's Firestore doc gets deleted at
+// the end, and neither of these survives that on its own:
+//   - Brand Gallery assets (customers/{id}/assets) — a SUBcollection, so
+//     deleting the parent customer doc does NOT delete it; it would be
+//     silently orphaned (unreachable — nothing ever queries a dangling
+//     customer id again) rather than actually removed. Copied to the
+//     survivor's own assets subcollection under the SAME doc ids (safe —
+//     Firestore auto-ids are effectively collision-free across parents), then
+//     the duplicate's copies deleted. The underlying Storage file is NOT
+//     moved — `storage_path`/`file_url` on the copied doc still point at it,
+//     which is fine, moving the metadata doesn't require moving the blob.
+//   - branded_for_customer_id tags on product images (see
+//     firestore.rules viewerIsSensitive()) — repointed to the survivor so a
+//     photo already tagged for the duplicate doesn't silently stop matching
+//     anyone (which would either wrongly hide it from the survivor if later
+//     marked sensitive, or just leave a tag nothing can ever resolve again).
 export async function mergeCustomers(duplicateId, survivorId) {
   const preview = await previewCustomerMerge(duplicateId, survivorId)
   const { ordersSnap, quotesSnap, usersSnap } = await relatedDocs(duplicateId)
+  const [assetsSnap, brandedImages] = await Promise.all([
+    getDocs(collection(db, 'customers', duplicateId, 'assets')),
+    brandedImageDocs(duplicateId),
+  ])
+
+  // Brand Gallery assets: copy under the survivor (same id), then drop the
+  // duplicate's copy. Own loop, own batches — a different collection path per
+  // doc (assets → assets), not a field update like the others below.
+  for (let i = 0; i < assetsSnap.docs.length; i += 400) {
+    const batch = writeBatch(db)
+    for (const d of assetsSnap.docs.slice(i, i + 400)) {
+      batch.set(doc(db, 'customers', survivorId, 'assets', d.id), d.data())
+      batch.delete(d.ref)
+    }
+    await batch.commit()
+  }
+
   const allRefs = [...ordersSnap.docs, ...quotesSnap.docs, ...usersSnap.docs].map(d => d.ref)
+  const brandedRefs = brandedImages.map(d => d.ref)
   const hasFields = Object.keys(preview.fieldsToFill).length > 0
   const CHUNK = 400
-  if (allRefs.length === 0) {
-    if (hasFields) await updateDoc(doc(db, 'customers', survivorId), { ...preview.fieldsToFill, updatedAt: serverTimestamp() })
-  } else {
-    for (let i = 0; i < allRefs.length; i += CHUNK) {
-      const batch = writeBatch(db)
-      allRefs.slice(i, i + CHUNK).forEach(ref => batch.update(ref, { customer_id: survivorId }))
-      if (i === 0 && hasFields) batch.update(doc(db, 'customers', survivorId), { ...preview.fieldsToFill, updatedAt: serverTimestamp() })
-      await batch.commit()
-    }
+
+  // Fill the survivor's blank fields once, up front — independent of which
+  // (if any) of the two repoint loops below actually runs.
+  if (hasFields) {
+    await updateDoc(doc(db, 'customers', survivorId), { ...preview.fieldsToFill, updatedAt: serverTimestamp() })
   }
+  // customer_id on orders/quotes/users.
+  for (let i = 0; i < allRefs.length; i += CHUNK) {
+    const batch = writeBatch(db)
+    allRefs.slice(i, i + CHUNK).forEach(ref => batch.update(ref, { customer_id: survivorId }))
+    await batch.commit()
+  }
+  // branded_for_customer_id on product images — same repoint, different field
+  // name and collection, so its own loop rather than forcing one field name
+  // across both.
+  for (let i = 0; i < brandedRefs.length; i += CHUNK) {
+    const batch = writeBatch(db)
+    brandedRefs.slice(i, i + CHUNK).forEach(ref => batch.update(ref, { branded_for_customer_id: survivorId }))
+    await batch.commit()
+  }
+
   await deleteDoc(doc(db, 'customers', duplicateId))
   return preview
 }
