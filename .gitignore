@@ -29,3 +29,7 @@ qa/out/
 migration/marketing_contacts/
 *audience_export*.zip
 *audience_export*.csv
+
+# Legacy PHP B2B site — kept locally as build reference only, not useful
+# now that the app exists, too large/stale for git.
+LocalWeb/

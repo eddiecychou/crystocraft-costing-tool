@@ -1,0 +1,256 @@
+<!-- @template name="Blog Article" description="Crystocraft editorial article — heritage and craft storytelling, with related products" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How we built the premium Swarovski alternative — Crystocraft</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Questrial&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--color-ivory); color: var(--color-ink); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+
+/* Nav */
+.nav {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--color-ivory); border-bottom: 1px solid var(--color-border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 56px; height: 68px;
+}
+.nav-logo { height: 32px; mix-blend-mode: multiply; }
+.nav-links { display: flex; gap: 32px; }
+.nav-link { font-size: 11px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-graphite); cursor: pointer; border: none; background: none; transition: color 0.15s; }
+.nav-link:hover { color: var(--color-ink); }
+
+/* Hero */
+.hero {
+  background: var(--color-ink);
+  padding: 80px 56px 72px;
+  position: relative; overflow: hidden;
+}
+.hero-bg { position: absolute; right: -40px; top: 50%; transform: translateY(-50%); width: 420px; opacity: 0.04; pointer-events: none; filter: invert(1); }
+.hero-inner { max-width: 800px; }
+.hero-meta { display: flex; align-items: center; gap: 16px; margin-bottom: 22px; }
+.hero-eyebrow { font-size: 10px; font-weight: 500; letter-spacing: 0.24em; text-transform: uppercase; color: var(--color-gold); }
+.hero-dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(247,244,239,0.25); }
+.hero-date { font-size: 10px; font-weight: 400; letter-spacing: 0.12em; color: rgba(247,244,239,0.4); }
+.hero-title { font-family: var(--font-serif); font-size: 48px; font-weight: 400; line-height: 1.1; text-transform: uppercase; letter-spacing: 0.01em; color: var(--color-ivory); margin-bottom: 24px; }
+.hero-lead { font-size: 18px; font-weight: 300; line-height: 1.7; color: rgba(247,244,239,0.7); max-width: 580px; }
+
+/* Article layout */
+.article-wrap { max-width: 720px; margin: 0 auto; padding: 64px 32px 80px; }
+
+/* Lead paragraph */
+.lead-p {
+  font-family: var(--font-serif); font-size: 22px; font-weight: 400;
+  line-height: 1.65; color: var(--color-ink);
+  margin-bottom: 36px;
+  border-top: 2px solid var(--color-ink); padding-top: 28px;
+}
+
+/* Body copy */
+.body-p { font-size: 16px; font-weight: 300; line-height: 1.85; color: var(--color-ink); margin-bottom: 24px; text-wrap: pretty; }
+
+/* Section heading */
+.section-h { font-family: var(--font-serif); font-size: 26px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.02em; color: var(--color-ink); margin: 48px 0 18px; line-height: 1.3; }
+
+/* Pull quote */
+.pull-quote {
+  margin: 52px 0;
+  padding: 40px 48px;
+  background: var(--color-ink);
+  position: relative;
+}
+.pull-quote::before { content: ''; position: absolute; top: 0; left: 48px; right: 48px; height: 1px; background: var(--color-gold); opacity: 0.5; }
+.pull-quote::after  { content: ''; position: absolute; bottom: 0; left: 48px; right: 48px; height: 1px; background: var(--color-gold); opacity: 0.5; }
+.pull-text { font-family: var(--font-serif); font-size: 26px; font-weight: 400; font-style: normal; line-height: 1.45; color: var(--color-ivory); text-align: center; }
+.pull-attr { font-size: 10px; font-weight: 500; letter-spacing: 0.22em; text-transform: uppercase; color: var(--color-gold); text-align: center; margin-top: 18px; }
+
+/* Spec callout */
+.spec-box {
+  border: 1px solid var(--color-border-mid);
+  padding: 28px 32px; margin: 40px 0;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+}
+.spec-item-label { font-size: 9px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(--color-graphite); margin-bottom: 5px; }
+.spec-item-val { font-family: var(--font-serif); font-size: 24px; font-weight: 400; color: var(--color-ink); font-variant-numeric: tabular-nums; }
+
+/* Article image placeholder */
+.article-img {
+  background: var(--color-ink); aspect-ratio: 16/7; width: 100%;
+  display: flex; align-items: center; justify-content: center; margin: 40px 0;
+}
+.article-img-mark { width: 56px; height: 56px; opacity: 0.12; filter: invert(1); }
+
+/* Tags */
+.tags-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 48px 0 0; padding-top: 32px; border-top: 1px solid var(--color-border); }
+
+/* Author row */
+.author-row {
+  display: flex; align-items: center; gap: 16px;
+  margin: 36px 0 48px; padding-top: 32px;
+  border-top: 1px solid var(--color-border);
+}
+.author-avatar { width: 44px; height: 44px; border-radius: 50%; background: var(--color-ink-08); border: 1px solid var(--color-border); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.author-name { font-size: 13px; font-weight: 500; color: var(--color-ink); margin-bottom: 2px; }
+.author-meta { font-size: 11px; color: var(--color-graphite); }
+
+/* Related articles */
+.related-section { background: var(--color-white); padding: 64px 56px; border-top: 1px solid var(--color-border); }
+.related-eyebrow { font-size: 10px; font-weight: 500; letter-spacing: 0.24em; text-transform: uppercase; color: var(--color-graphite); margin-bottom: 8px; }
+.related-title { font-family: var(--font-serif); font-size: 28px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 36px; }
+.related-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--color-border); }
+.related-card { background: var(--color-white); cursor: pointer; transition: box-shadow 0.2s; }
+.related-card:hover { box-shadow: var(--shadow-md); z-index: 1; }
+.related-img { aspect-ratio: 4/3; background: var(--color-ink); display: flex; align-items: center; justify-content: center; }
+.related-img-mark { width: 36px; height: 36px; opacity: 0.10; filter: invert(1); }
+.related-body { padding: 18px 18px 22px; }
+.related-cat { font-size: 9px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(--color-graphite); margin-bottom: 6px; }
+.related-h { font-family: var(--font-serif); font-size: 18px; font-weight: 400; line-height: 1.3; margin-bottom: 6px; }
+.related-date { font-size: 11px; color: var(--color-graphite); }
+
+/* Footer */
+.footer { padding: 36px 56px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--color-border); background: var(--color-ivory-dark); }
+.footer-logo { height: 24px; mix-blend-mode: multiply; opacity: 0.5; }
+.footer-copy { font-size: 11px; color: rgba(110,108,102,0.55); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { Button, Badge, Tag } = window.CrystocraftDesignSystem_25701b || {};
+
+const RELATED = [
+  { cat:'Heritage', title:'The butterfly that started it all — the 1958 Suncatcher story', date:'12 April 2025', bg:'#1C1C1A' },
+  { cat:'Craft', title:'Cold stamping: the metalwork technique that defines Crystocraft', date:'28 March 2025', bg:'#2A2A27' },
+  { cat:'Crystals', title:'Smooth-Spin: why a spinning crystal catches more light', date:'14 March 2025', bg:'#1C4F64' },
+];
+
+function App() {
+  return (
+    <div>
+      {/* Nav */}
+      <nav className="nav">
+        <img src="../../assets/logos/logo-horizontal.jpg" className="nav-logo" alt="Crystocraft" />
+        <div className="nav-links">
+          {['Collections','Heritage','Crystals','Bespoke Gifting','Journal'].map(n => (
+            <button key={n} className="nav-link">{n}</button>
+          ))}
+        </div>
+        {Button && <Button variant="outline" size="sm">Subscribe</Button>}
+      </nav>
+
+      {/* Hero */}
+      <section className="hero">
+        <img src="../../assets/logos/logo-mark.png" className="hero-bg" alt="" />
+        <div className="hero-inner">
+          <div className="hero-meta">
+            <span className="hero-eyebrow">Heritage · Craft</span>
+            <span className="hero-dot" />
+            <span className="hero-date">18 May 2025 · 6 min read</span>
+          </div>
+          <h1 className="hero-title">How we built the premium<br/>Swarovski alternative.</h1>
+          <p className="hero-lead">When Swarovski discontinued its crystal supply in 2020, Crystocraft didn't find a substitute. We built our own — to a higher standard than we had sourced before.</p>
+        </div>
+      </section>
+
+      {/* Article */}
+      <article className="article-wrap">
+        <p className="lead-p">Quality kept alive when the rest of the market chased cost. That has been Crystocraft's working principle since Mr. Chou founded the company in 1958 — and it was tested more seriously than ever when a key supply chain collapsed overnight.</p>
+
+        <p className="body-p">For decades, the premium end of the crystal gifting market relied on a single source for its most recognisable material. When that source chose to exit the B2B supply business, most manufacturers scrambled for cheaper alternatives. Crystocraft did not.</p>
+
+        <p className="body-p">Instead, the company turned inward — to the same engineering culture that had developed cold stamping, Smooth-Spin rotation technology, and sixty-seven years of metalwork expertise. If the market could no longer supply crystal to our standard, we would supply it ourselves.</p>
+
+        <div className="article-img">
+          <img src="../../assets/logos/logo-mark.png" className="article-img-mark" alt="" />
+        </div>
+
+        <h2 className="section-h">The Dazzle Crystal Cut</h2>
+
+        <p className="body-p">The result is the Dazzle Crystal Cut — a proprietary 32-facet geometry inspired by the crystallographic structure of a snowflake. Each facet is positioned to maximise internal reflection at every angle of incidence, producing the characteristic Crystocraft "sparkle band" visible across a room even in indirect light.</p>
+
+        <p className="body-p">Thirty-two facets is not arbitrary. Fewer facets — the standard for most alternative crystals — produce larger reflection patches. The effect is coarser, less brilliant, and directionally limited. The Dazzle geometry distributes light more evenly across the full hemisphere visible to the observer.</p>
+
+        <div className="spec-box">
+          <div>
+            <p className="spec-item-label">Facets</p>
+            <p className="spec-item-val">32</p>
+          </div>
+          <div>
+            <p className="spec-item-label">Available sizes</p>
+            <p className="spec-item-val">4–20 mm</p>
+          </div>
+          <div>
+            <p className="spec-item-label">Geometry</p>
+            <p className="spec-item-val">Snowflake axis</p>
+          </div>
+        </div>
+
+        <div className="pull-quote">
+          <p className="pull-text">"Quality kept alive when the rest of the market chased cost."</p>
+          <p className="pull-attr">Crystocraft · Brand Principle</p>
+        </div>
+
+        <h2 className="section-h">Premium origins, made to our standard</h2>
+
+        <p className="body-p">Crystocraft Crystals — the division that manufactures and supplies the Dazzle Crystal Cut — operates with minimum order quantities of 1,000 pieces and standard lead times of fourteen days. The components are available in clear, AB coating, jet, and rose finishes, with bespoke specifications available on application.</p>
+
+        <p className="body-p">Every piece is sealed with the Crystocraft Authentication Mark before dispatch — a guarantee that the crystal in your product meets the geometric, optical, and material specification it was sold under. The brilliance lives on.</p>
+
+        <div className="author-row">
+          <div className="author-avatar">
+            <img src="../../assets/logos/logo-mark.png" style={{width:22, height:22, opacity:0.3, mixBlendMode:'multiply'}} alt="" />
+          </div>
+          <div>
+            <p className="author-name">Crystocraft Editorial</p>
+            <p className="author-meta">18 May 2025 · Crystals · Heritage</p>
+          </div>
+        </div>
+
+        <div className="tags-row">
+          {Tag && ['Dazzle Crystal Cut', 'Crystal Technology', 'Heritage', 'Crystocraft Crystals', 'Since 1958'].map(t => (
+            <Tag key={t}>{t}</Tag>
+          ))}
+        </div>
+      </article>
+
+      {/* Related */}
+      <section className="related-section">
+        <p className="related-eyebrow">Continue reading</p>
+        <h2 className="related-title">More from the journal.</h2>
+        <div className="related-grid">
+          {RELATED.map((r, i) => (
+            <div key={i} className="related-card">
+              <div className="related-img" style={{background: r.bg}}>
+                <img src="../../assets/logos/logo-mark.png" className="related-img-mark" alt="" />
+              </div>
+              <div className="related-body">
+                <p className="related-cat">{r.cat}</p>
+                <h3 className="related-h">{r.title}</h3>
+                <p className="related-date">{r.date}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="footer">
+        <img src="../../assets/logos/logo-horizontal.jpg" className="footer-logo" alt="Crystocraft" />
+        <p className="footer-copy">© Crystocraft 2025</p>
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

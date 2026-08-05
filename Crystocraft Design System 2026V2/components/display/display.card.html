@@ -1,0 +1,91 @@
+<!-- @dsCard group="Components" viewport="700x420" name="Display" subtitle="Card · TrustSeal — containers and authentication" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Questrial&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--color-ivory); font-family: var(--font-sans); padding: 22px 28px; }
+.sec { margin-bottom: 20px; }
+.lbl { display: block; font-family: var(--font-label); font-size: 10px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-graphite); margin-bottom: 12px; }
+.cards-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.card-body { font-size: 13px; color: var(--color-graphite); line-height: 1.5; }
+.card-title { font-family: var(--font-serif); font-size: 17px; font-weight: 400; margin-bottom: 4px; }
+.seals-row { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+.seal-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.seal-lbl { font-family: var(--font-label); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-graphite); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const ns = window.CrystocraftDesignSystem_25701b || {};
+const { Card, TrustSeal, Badge } = ns;
+function App() {
+  if (!Card) return <div style={{color:'#999',fontSize:12}}>Loading DS bundle…</div>;
+  return (
+    <div>
+      <div className="sec">
+        <span className="lbl">Card</span>
+        <div className="cards-row">
+          <Card padding="md">
+            <Badge size="xs">Default</Badge>
+            <p className="card-title" style={{marginTop:6}}>Crystal Figurine</p>
+            <p className="card-body">Butterfly Suncatcher — from HK$280</p>
+          </Card>
+          <Card variant="ivory" padding="md">
+            <Badge variant="gifts" size="xs">Gifts</Badge>
+            <p className="card-title" style={{marginTop:6}}>Crystal Rose</p>
+            <p className="card-body">Eternal, hand-finished — from HK$360</p>
+          </Card>
+          <Card variant="dark" padding="md">
+            <Badge variant="solid-gold" size="xs">Featured</Badge>
+            <p className="card-title" style={{marginTop:6}}>Music Box</p>
+            <p className="card-body" style={{color:'rgba(247,244,239,0.6)'}}>Crystal & metal — from HK$480</p>
+          </Card>
+          <Card padding="md" hoverable flat borderless>
+            <Badge variant="crystals" size="xs">Crystals</Badge>
+            <p className="card-title" style={{marginTop:6}}>Flat Card</p>
+            <p className="card-body">No shadow, hoverable</p>
+          </Card>
+        </div>
+      </div>
+      <div className="sec">
+        <span className="lbl">Trust Seal</span>
+        <div className="seals-row">
+          <div className="seal-wrap">
+            <TrustSeal variant="authentication" size={96} />
+            <span className="seal-lbl">Authentication</span>
+          </div>
+          <div className="seal-wrap">
+            <TrustSeal variant="heritage" size={96} />
+            <span className="seal-lbl">Heritage</span>
+          </div>
+          <div className="seal-wrap">
+            <TrustSeal variant="origin" size={96} />
+            <span className="seal-lbl">Origin</span>
+          </div>
+          <div className="seal-wrap">
+            <TrustSeal variant="dazzle" size={96} color="var(--color-gold-dark)" />
+            <span className="seal-lbl">Dazzle Cut</span>
+          </div>
+          <div className="seal-wrap">
+            <TrustSeal variant="smooth" size={96} />
+            <span className="seal-lbl">Smooth-Spin</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

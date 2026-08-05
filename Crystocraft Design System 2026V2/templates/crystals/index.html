@@ -1,0 +1,329 @@
+<!-- @template name="Crystals Hub" description="Crystocraft Crystals B2B website — specification catalogue, interactive detail panel, trade enquiry" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crystocraft Crystals — Brilliance, crafted to standard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Questrial&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--color-white); color: var(--color-ink); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+
+/* Nav */
+.nav {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--color-ink);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 56px; height: 64px;
+  border-bottom: 1px solid rgba(247,244,239,0.08);
+}
+.nav-brand { display: flex; flex-direction: column; gap: 0; text-decoration: none; }
+.nav-wordmark { display: flex; align-items: center; gap: 10px; }
+.nav-logo-mark { height: 22px; filter: invert(1); opacity: 0.9; }
+.nav-name {
+  font-family: var(--font-sans); font-size: 13px; font-weight: 500;
+  letter-spacing: 0.22em; text-transform: uppercase; color: var(--color-ivory);
+}
+.nav-descriptor {
+  font-family: var(--font-sans); font-size: 8px; font-weight: 400;
+  letter-spacing: 0.28em; text-transform: uppercase;
+  color: var(--color-crystals-light); margin-top: 3px;
+  border-top: 1px solid rgba(28,79,100,0.6); padding-top: 3px;
+}
+.nav-links { display: flex; gap: 28px; }
+.nav-link {
+  font-size: 10px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(247,244,239,0.5); cursor: pointer; border: none; background: none;
+  transition: color 0.15s; padding: 0;
+}
+.nav-link:hover, .nav-link.active { color: var(--color-ivory); }
+.nav-cta {
+  font-family: var(--font-sans); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  background: var(--color-crystals); color: var(--color-white);
+  border: none; padding: 9px 20px; cursor: pointer;
+  transition: background 0.15s;
+}
+.nav-cta:hover { background: var(--color-crystals-light); }
+
+/* Hero */
+.hero {
+  background: var(--color-crystals);
+  padding: 80px 56px 72px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center;
+  position: relative; overflow: hidden;
+}
+.hero-bg { position: absolute; right: 40px; top: 50%; transform: translateY(-50%); width: 380px; opacity: 0.07; pointer-events: none; filter: invert(1); }
+.hero-left {}
+.hero-eyebrow {
+  font-size: 10px; font-weight: 500; letter-spacing: 0.24em; text-transform: uppercase;
+  color: rgba(247,244,239,0.55); margin-bottom: 18px; display: block;
+}
+.hero-title {
+  font-family: var(--font-serif); font-size: 48px; font-weight: 400; line-height: 1.1;
+  text-transform: uppercase; letter-spacing: 0.01em;
+  color: var(--color-ivory); margin-bottom: 20px;
+}
+.hero-subtitle {
+  font-size: 14px; font-weight: 300; line-height: 1.75;
+  color: rgba(247,244,239,0.65); max-width: 400px; margin-bottom: 32px;
+}
+.hero-actions { display: flex; gap: 12px; }
+
+/* Stats row */
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--color-border); }
+.stat { padding: 28px 32px; border-right: 1px solid var(--color-border); }
+.stat:last-child { border-right: none; }
+.stat-num {
+  font-family: var(--font-serif); font-size: 36px; font-weight: 400; color: var(--color-crystals);
+  letter-spacing: 0; margin-bottom: 4px;
+}
+.stat-label { font-size: 10px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-graphite); }
+
+/* Section header */
+.section-header { padding: 48px 56px 0; }
+.section-eyebrow { font-size: 10px; font-weight: 500; letter-spacing: 0.24em; text-transform: uppercase; color: var(--color-crystals); margin-bottom: 8px; }
+.section-title { font-family: var(--font-serif); font-size: 30px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.02em; color: var(--color-ink); }
+
+/* Catalog */
+.catalog-controls { padding: 20px 56px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.catalog-divider { width: 1px; height: 20px; background: var(--color-border); margin: 0 4px; }
+
+.spec-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; padding: 0 56px 56px; background: var(--color-border); margin-top: 1px; }
+.spec-card {
+  background: var(--color-white); padding: 28px; cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.spec-card:hover { box-shadow: var(--shadow-md); z-index: 1; transform: translateY(-1px); }
+.spec-card.active-card { box-shadow: var(--shadow-sapphire); border: 1px solid rgba(28,79,100,0.3); }
+.spec-card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+.spec-card-vis {
+  width: 52px; height: 52px; border-radius: 50%;
+  border: 1px solid var(--color-border);
+  display: flex; align-items: center; justify-content: center;
+  background: var(--color-ivory);
+}
+.spec-dot { border-radius: 50%; background: var(--color-crystals); }
+.spec-name { font-family: var(--font-serif); font-size: 18px; font-weight: 400; margin-bottom: 6px; }
+.spec-type { font-size: 9px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(--color-crystals); margin-bottom: 12px; }
+.spec-table { width: 100%; border-collapse: collapse; }
+.spec-table td { font-size: 12px; padding: 4px 0; vertical-align: top; font-variant-numeric: tabular-nums; }
+.spec-table td:first-child { color: var(--color-graphite); width: 50%; }
+.spec-table td:last-child { color: var(--color-ink); font-weight: 500; }
+
+/* Detail panel */
+.detail-panel {
+  background: var(--color-ink); padding: 48px 56px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 48px;
+}
+.detail-left {}
+.detail-eyebrow { font-size: 10px; font-weight: 500; letter-spacing: 0.24em; text-transform: uppercase; color: var(--color-crystals-light); margin-bottom: 12px; }
+.detail-name { font-family: var(--font-serif); font-size: 36px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.01em; color: var(--color-ivory); margin-bottom: 16px; line-height: 1.12; }
+.detail-desc { font-size: 14px; font-weight: 300; line-height: 1.8; color: rgba(247,244,239,0.6); margin-bottom: 28px; }
+.detail-spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+.detail-spec-item { border-top: 1px solid rgba(247,244,239,0.12); padding-top: 10px; }
+.detail-spec-label { font-size: 9px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(247,244,239,0.4); margin-bottom: 4px; }
+.detail-spec-val { font-size: 14px; font-weight: 500; color: var(--color-ivory); font-variant-numeric: tabular-nums; }
+.detail-right { display: flex; flex-direction: column; justify-content: center; align-items: center; }
+.detail-crystal-vis {
+  width: 200px; height: 200px; border-radius: 50%;
+  border: 1px solid rgba(28,79,100,0.5);
+  background: radial-gradient(circle at 35% 35%, rgba(42,106,132,0.4), rgba(28,79,100,0.1));
+  display: flex; align-items: center; justify-content: center; margin-bottom: 24px;
+}
+.detail-crystal-inner { opacity: 0.25; filter: invert(1); width: 70px; height: 70px; }
+
+/* Footer */
+.footer {
+  border-top: 1px solid var(--color-border); padding: 36px 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--color-white);
+}
+.footer-left { display: flex; align-items: center; gap: 14px; }
+.footer-logo { height: 24px; mix-blend-mode: multiply; opacity: 0.55; }
+.footer-div { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--color-crystals); font-weight: 500; }
+.footer-links { display: flex; gap: 24px; }
+.footer-link { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--color-graphite); cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { Button, Badge, Tag } = window.CrystocraftDesignSystem_25701b || {};
+
+const CRYSTALS = [
+  { id:1, cut:'Dazzle Crystal Cut', name:'Flat Round', sizes:['6 mm','8 mm','10 mm','12 mm','14 mm'], facets:32, moq:'1,000 pcs', lead:'14 days', finish:'Clear · AB · Jet', pattern:'Snowflake geometry' },
+  { id:2, cut:'Dazzle Crystal Cut', name:'Bicone', sizes:['4 mm','6 mm','8 mm','10 mm'], facets:32, moq:'2,000 pcs', lead:'14 days', finish:'Clear · AB · Rose', pattern:'Double-cone symmetry' },
+  { id:3, cut:'Dazzle Crystal Cut', name:'Teardrop', sizes:['8 mm','10 mm','14 mm','18 mm'], facets:24, moq:'500 pcs', lead:'21 days', finish:'Clear · AB · Crystal Golden', pattern:'Pear-axis brilliance' },
+  { id:4, cut:'Smooth-Spin', name:'Ball Bearing', sizes:['8 mm','10 mm','12 mm'], facets:0, moq:'500 pcs', lead:'21 days', finish:'Clear · Jet', pattern:'Patented rotation' },
+  { id:5, cut:'Dazzle Crystal Cut', name:'Octagon', sizes:['10 mm','12 mm','16 mm','20 mm'], facets:40, moq:'500 pcs', lead:'28 days', finish:'Clear · Jet · AB', pattern:'Eight-axis precision' },
+  { id:6, cut:'Custom', name:'Bespoke Cut', sizes:['On request'], facets:null, moq:'On request', lead:'On request', finish:'Any', pattern:'Custom geometry from brief' },
+];
+
+const FILTERS = ['All','Dazzle Crystal Cut','Smooth-Spin','Custom'];
+const NAV = ['Products','Specifications','Technology','Trade Account','About'];
+
+function App() {
+  const [activeFilter, setActiveFilter] = React.useState('All');
+  const [activeNav, setActiveNav] = React.useState('Products');
+  const [selected, setSelected] = React.useState(CRYSTALS[0]);
+
+  const filtered = activeFilter === 'All' ? CRYSTALS : CRYSTALS.filter(c => c.cut === activeFilter);
+
+  return (
+    <div>
+      {/* Nav */}
+      <nav className="nav">
+        <a className="nav-brand" href="#">
+          <div className="nav-wordmark">
+            <img src="../../assets/logos/logo-mark.png" className="nav-logo-mark" alt="" />
+            <span className="nav-name">Crystocraft</span>
+          </div>
+          <span className="nav-descriptor">Crystals</span>
+        </a>
+        <div className="nav-links">
+          {NAV.map(n => (
+            <button key={n} className={`nav-link${activeNav===n?' active':''}`} onClick={()=>setActiveNav(n)}>{n}</button>
+          ))}
+        </div>
+        <button className="nav-cta">Request Samples</button>
+      </nav>
+
+      {/* Hero */}
+      <section className="hero">
+        <img src="../../assets/logos/logo-mark.png" className="hero-bg" alt="" />
+        <div className="hero-left">
+          <span className="hero-eyebrow">Crystocraft Crystals · B2B</span>
+          <h1 className="hero-title">Brilliance,<br/>crafted to<br/>standard.</h1>
+          <p className="hero-subtitle">The premium Swarovski alternative. Proprietary Dazzle Crystal Cut — 32 facets, snowflake geometry, manufactured in-house to our specification since 2021.</p>
+          <div className="hero-actions">
+            {Button
+              ? <><Button variant="reversed" size="md">View Catalogue</Button><Button variant="outline" size="md" style={{color:'rgba(247,244,239,0.7)',borderColor:'rgba(247,244,239,0.3)'}}>Request Trade Account</Button></>
+              : null}
+          </div>
+        </div>
+        <div />
+      </section>
+
+      {/* Stats */}
+      <div className="stats-row">
+        {[
+          { num:'32', label:'Facets — Dazzle Cut' },
+          { num:'12+', label:'Sizes, 4–20 mm' },
+          { num:'14', label:'Days lead time' },
+          { num:'1,000', label:'Min. order quantity' },
+        ].map(s => (
+          <div key={s.label} className="stat">
+            <p className="stat-num">{s.num}</p>
+            <p className="stat-label">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Catalog section */}
+      <div className="section-header">
+        <p className="section-eyebrow">Crystal Components</p>
+        <h2 className="section-title">Specification catalogue</h2>
+      </div>
+
+      {/* Filters */}
+      <div className="catalog-controls">
+        {FILTERS.map((f, i) => (
+          Tag
+            ? <Tag key={f} active={activeFilter===f} onClick={()=>setActiveFilter(f)} variant={activeFilter===f?'default':'default'}>{f}</Tag>
+            : <button key={f} onClick={()=>setActiveFilter(f)} style={{fontSize:11,padding:'5px 14px',background:activeFilter===f?'#1C4F64':'transparent',color:activeFilter===f?'#fff':'#666666',border:'1px solid rgba(34,34,34,0.2)',cursor:'pointer'}}>{f}</button>
+        ))}
+      </div>
+
+      {/* Spec grid */}
+      <div className="spec-grid">
+        {filtered.map(c => (
+          <div key={c.id} className={`spec-card${selected?.id===c.id?' active-card':''}`} onClick={()=>setSelected(c)}>
+            <div className="spec-card-top">
+              <div className="spec-card-vis">
+                <div className="spec-dot" style={{width: c.id*6+18, height: c.id*6+18, maxWidth:36, maxHeight:36}} />
+              </div>
+              {Badge && <Badge variant={c.cut==='Dazzle Crystal Cut'?'crystals':c.cut==='Smooth-Spin'?'default':'bespoke'} size="xs">{c.cut==='Dazzle Crystal Cut'?'Dazzle Cut':c.cut}</Badge>}
+            </div>
+            <p className="spec-name">{c.name}</p>
+            <p className="spec-type">Crystal Component</p>
+            <table className="spec-table">
+              <tbody>
+                {c.facets ? <tr><td>Facets</td><td>{c.facets}</td></tr> : null}
+                <tr><td>Sizes</td><td>{c.sizes.join(', ')}</td></tr>
+                <tr><td>Min. order</td><td>{c.moq}</td></tr>
+                <tr><td>Lead time</td><td>{c.lead}</td></tr>
+                <tr><td>Finish</td><td>{c.finish}</td></tr>
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </div>
+
+      {/* Detail panel */}
+      {selected && (
+        <div className="detail-panel">
+          <div className="detail-left">
+            <p className="detail-eyebrow">{selected.cut} · Specification Sheet</p>
+            <h2 className="detail-name">{selected.name}</h2>
+            <p className="detail-desc">
+              {selected.cut === 'Dazzle Crystal Cut'
+                ? `The Dazzle Crystal Cut features ${selected.facets} precision facets arranged in a snowflake-inspired geometry. Engineered to maximise light refraction at every angle — a proprietary geometry Crystocraft manufactures in-house.`
+                : selected.cut === 'Smooth-Spin'
+                  ? 'Patented rotation-bearing crystal component. Designed for hanging installations — chandeliers, mobile displays, and suncatchers — where continuous motion enhances light-play.'
+                  : 'Bespoke crystal cuts designed to your brief. Full geometry specification, tooling, and sampling service. Minimum runs and lead times on application.'}
+            </p>
+            <div className="detail-spec-grid">
+              {[
+                { label:'Cut type', val: selected.cut },
+                { label:'Pattern', val: selected.pattern },
+                { label:'Facets', val: selected.facets || 'Custom' },
+                { label:'Finish options', val: selected.finish },
+                { label:'Available sizes', val: selected.sizes.join(' · ') },
+                { label:'Min. order', val: selected.moq },
+              ].map(s => (
+                <div key={s.label} className="detail-spec-item">
+                  <p className="detail-spec-label">{s.label}</p>
+                  <p className="detail-spec-val">{s.val}</p>
+                </div>
+              ))}
+            </div>
+            {Button && <Button variant="sapphire" size="md">Request Samples for {selected.name}</Button>}
+          </div>
+          <div className="detail-right">
+            <div className="detail-crystal-vis">
+              <img src="../../assets/logos/logo-mark.png" className="detail-crystal-inner" alt="" />
+            </div>
+            {Button && <Button variant="outline" size="sm" style={{color:'rgba(247,244,239,0.5)',borderColor:'rgba(247,244,239,0.2)'}}>Download Spec PDF</Button>}
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <footer className="footer">
+        <div className="footer-left">
+          <img src="../../assets/logos/logo-horizontal.jpg" className="footer-logo" alt="Crystocraft" />
+          <span className="footer-div">Crystals</span>
+        </div>
+        <div className="footer-links">
+          {['Trade Account','Samples','Specifications','Technology','Contact'].map(l => (
+            <span key={l} className="footer-link">{l}</span>
+          ))}
+        </div>
+        <p style={{fontSize:11,color:'var(--color-graphite)',opacity:0.55}}>© Crystocraft 2025</p>
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

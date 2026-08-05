@@ -1,0 +1,127 @@
+<!-- @dsCard group="Brand" viewport="700x560" name="Logo Lockups" subtitle="Three-tier usage system: large format · small (<1cm) · micro (<5mm)" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--color-white); font-family: 'Work Sans', sans-serif; }
+
+.section { padding: 20px 24px 18px; border-bottom: 1px solid var(--color-border); }
+.section:last-child { border-bottom: none; }
+
+.opt-label {
+  font-size: 9px; font-weight: 500; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--color-graphite); margin-bottom: 4px; display: block;
+}
+.opt-use {
+  font-size: 10px; color: rgba(110,108,102,0.65); margin-bottom: 16px; display: block;
+}
+
+/* Option 1 — large */
+.opt1-row { display: flex; gap: 0; }
+.opt1-cell {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 20px 16px 14px;
+  border-right: 1px solid var(--color-border);
+  gap: 10px;
+}
+.opt1-cell:last-child { border-right: none; }
+.opt1-logo-stacked { height: 90px; mix-blend-mode: multiply; }
+.opt1-logo-stacked-inv { height: 90px; filter: invert(1) brightness(1.1); }
+.cell-note { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(110,108,102,0.5); text-align: center; }
+
+/* Option 2 — small */
+.opt2-row { display: flex; gap: 0; }
+.opt2-cell {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 16px 12px 12px;
+  border-right: 1px solid var(--color-border);
+  gap: 10px; min-height: 80px;
+}
+.opt2-cell:last-child { border-right: none; }
+.opt2-logo-h { height: 22px; mix-blend-mode: multiply; }
+.opt2-logo-mark { height: 32px; mix-blend-mode: multiply; }
+.opt2-logo-stacked { height: 40px; mix-blend-mode: multiply; }
+
+/* Option 4 — micro */
+.opt4-row { display: flex; gap: 0; }
+.opt4-cell {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 14px 16px 12px; gap: 10px;
+  border-right: 1px solid var(--color-border);
+}
+.opt4-cell:last-child { border-right: none; }
+.opt4-logo-h { height: 14px; mix-blend-mode: multiply; }
+.opt4-logo-mark { height: 14px; mix-blend-mode: multiply; }
+
+/* Reversed variant bg */
+.bg-70black { background: #4D4D4D; }
+</style>
+</head>
+<body>
+
+<!-- Option 1 -->
+<div class="section">
+  <span class="opt-label">Option 1 — Graphic emphasis</span>
+  <span class="opt-use">Large format: packaging, product base plate, signage</span>
+  <div class="opt1-row">
+    <div class="opt1-cell" style="background:#FFFFFF">
+      <img src="../assets/logos/logo-stacked.jpg" class="opt1-logo-stacked" alt="Crystocraft stacked with ®">
+      <span class="cell-note">Standard · with ®</span>
+    </div>
+    <div class="opt1-cell" style="background:#F7EEE3">
+      <img src="../assets/logos/logo-stacked.jpg" class="opt1-logo-stacked" alt="Crystocraft stacked">
+      <span class="cell-note">Standard · no ®</span>
+    </div>
+    <div class="opt1-cell bg-70black">
+      <img src="../assets/logos/logo-stacked-white.png" class="opt1-logo-stacked" style="mix-blend-mode:normal" alt="Crystocraft reversed white">
+      <span class="cell-note" style="color:rgba(247,238,227,0.4)">Reversed · 70% black</span>
+    </div>
+  </div>
+</div>
+
+<!-- Option 2 -->
+<div class="section">
+  <span class="opt-label">Option 2 — Small logo, under 1 cm</span>
+  <span class="opt-use">Letterhead, invoice, Tmall, website header, email signature</span>
+  <div class="opt2-row">
+    <div class="opt2-cell" style="background:#FFFFFF">
+      <img src="../assets/logos/logo-horizontal.jpg" class="opt2-logo-h" alt="Horizontal with ®">
+      <span class="cell-note">Horizontal · with ®</span>
+    </div>
+    <div class="opt2-cell" style="background:#F7EEE3">
+      <img src="../assets/logos/logo-horizontal.jpg" class="opt2-logo-h" alt="Horizontal">
+      <span class="cell-note">Horizontal · no ®</span>
+    </div>
+    <div class="opt2-cell" style="background:#FFFFFF">
+      <img src="../assets/logos/logo-mark.png" class="opt2-logo-mark" alt="Mark only">
+      <span class="cell-note">Mark only</span>
+    </div>
+  </div>
+</div>
+
+<!-- Option 4 -->
+<div class="section">
+  <span class="opt-label">Option 4 — Micro, under 5 mm</span>
+  <span class="opt-use">Small laser logo, small die press — mark detail not visible at this scale</span>
+  <div class="opt4-row">
+    <div class="opt4-cell" style="background:#FFFFFF">
+      <img src="../assets/logos/logo-horizontal.jpg" class="opt4-logo-h" alt="Wordmark micro">
+      <span class="cell-note">Wordmark only</span>
+    </div>
+    <div class="opt4-cell" style="background:#F7EEE3">
+      <img src="../assets/logos/logo-mark.png" class="opt4-logo-mark" alt="Mark micro">
+      <span class="cell-note">Mark only</span>
+    </div>
+    <div class="opt4-cell" style="background:#FFFFFF">
+      <span style="font-size:9px;color:rgba(110,108,102,0.55);text-align:center;max-width:140px;line-height:1.5;">At &lt;5 mm the ® and butterfly detail are suppressed — outline mark or wordmark only</span>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
