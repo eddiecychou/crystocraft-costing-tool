@@ -247,8 +247,12 @@ function fieldsToFillFrom(survivor, duplicate) {
 }
 
 // The three collections that reference a customer by id — everything a merge
-// has to repoint. (favourites/customer_designs/enquiries key on the portal
-// login's own uid, not customer_id, so a customer merge doesn't touch them.)
+// has to repoint. (favourites/customer_designs/the TOP-LEVEL enquiries
+// collection key on the portal login's own uid, not customer_id, so a
+// customer merge doesn't touch them. That does NOT extend to
+// customers/{id}/enquiries — the CRM Interaction Log — which is a different
+// collection entirely, keyed by the customer's own path; see
+// interactionDocs() below, found missing 2026-08-05.)
 async function relatedDocs(customerId) {
   const [ordersSnap, quotesSnap, usersSnap] = await Promise.all([
     getDocs(query(collection(db, 'orders'), where('customer_id', '==', customerId))),
@@ -275,6 +279,24 @@ async function brandedImageDocs(customerId) {
   return perProduct.flatMap(s => s.docs)
 }
 
+// Copy every doc of a customer subcollection onto another customer, under the
+// SAME doc ids (safe — Firestore auto-ids are effectively collision-free
+// across parents), then delete the originals. Shared by Brand Gallery assets
+// and the CRM Interaction Log — both are customers/{id}/{sub} subcollections
+// that a plain deleteDoc(customers/{id}) would otherwise silently orphan.
+async function copySubcollection(subcollection, fromCustomerId, toCustomerId) {
+  const snap = await getDocs(collection(db, 'customers', fromCustomerId, subcollection))
+  for (let i = 0; i < snap.docs.length; i += 400) {
+    const batch = writeBatch(db)
+    for (const d of snap.docs.slice(i, i + 400)) {
+      batch.set(doc(db, 'customers', toCustomerId, subcollection, d.id), d.data())
+      batch.delete(d.ref)
+    }
+    await batch.commit()
+  }
+  return snap.size
+}
+
 // Read-only — never writes. Lets the UI show what a merge would do before
 // anyone commits to it: how many orders/quotes/portal-accounts move, and which
 // fields the survivor would gain.
@@ -288,8 +310,9 @@ export async function previewCustomerMerge(duplicateId, survivorId) {
   const duplicate = { id: duplicateId, ...normalizeCustomer(dupSnap.data()) }
   const survivor  = { id: survivorId, ...normalizeCustomer(survSnap.data()) }
   const { ordersSnap, quotesSnap, usersSnap } = await relatedDocs(duplicateId)
-  const [assetsSnap, brandedImages] = await Promise.all([
+  const [assetsSnap, interactionsSnap, brandedImages] = await Promise.all([
     getDocs(collection(db, 'customers', duplicateId, 'assets')),
+    getDocs(collection(db, 'customers', duplicateId, 'enquiries')),
     brandedImageDocs(duplicateId),
   ])
   return {
@@ -299,6 +322,7 @@ export async function previewCustomerMerge(duplicateId, survivorId) {
     quotesCount: quotesSnap.size,
     accountsCount: usersSnap.size,
     assetsCount: assetsSnap.size,
+    interactionsCount: interactionsSnap.size,
     brandedImagesCount: brandedImages.length,
   }
 }
@@ -308,18 +332,18 @@ export async function previewCustomerMerge(duplicateId, survivorId) {
 // duplicate, then delete the duplicate. Chunked batches (Firestore's 500-write
 // limit) — in practice one customer's related docs are far fewer than that.
 //
-// Two things beyond the original three collections, added when the Customer
-// Brand Gallery landed (V7.21) — the duplicate's Firestore doc gets deleted at
-// the end, and neither of these survives that on its own:
-//   - Brand Gallery assets (customers/{id}/assets) — a SUBcollection, so
-//     deleting the parent customer doc does NOT delete it; it would be
-//     silently orphaned (unreachable — nothing ever queries a dangling
-//     customer id again) rather than actually removed. Copied to the
-//     survivor's own assets subcollection under the SAME doc ids (safe —
-//     Firestore auto-ids are effectively collision-free across parents), then
-//     the duplicate's copies deleted. The underlying Storage file is NOT
-//     moved — `storage_path`/`file_url` on the copied doc still point at it,
-//     which is fine, moving the metadata doesn't require moving the blob.
+// Beyond the original three collections, three more things get carried
+// across — the duplicate's Firestore doc gets deleted at the end, and none of
+// these survives that on its own:
+//   - Brand Gallery assets (customers/{id}/assets, V7.21) and the CRM
+//     Interaction Log (customers/{id}/enquiries — found missing 2026-08-05,
+//     same bug shape) — both SUBcollections, so deleting the parent customer
+//     doc does NOT delete them; each would be silently orphaned (unreachable —
+//     nothing ever queries a dangling customer id again) rather than actually
+//     removed. Both copied via copySubcollection() above. Any Storage files
+//     they reference are NOT moved — the copied docs' URLs/paths still point
+//     at the originals, which is fine; moving metadata doesn't require moving
+//     the blob.
 //   - branded_for_customer_id tags on product images (see
 //     firestore.rules viewerIsSensitive()) — repointed to the survivor so a
 //     photo already tagged for the duplicate doesn't silently stop matching
@@ -328,22 +352,10 @@ export async function previewCustomerMerge(duplicateId, survivorId) {
 export async function mergeCustomers(duplicateId, survivorId) {
   const preview = await previewCustomerMerge(duplicateId, survivorId)
   const { ordersSnap, quotesSnap, usersSnap } = await relatedDocs(duplicateId)
-  const [assetsSnap, brandedImages] = await Promise.all([
-    getDocs(collection(db, 'customers', duplicateId, 'assets')),
-    brandedImageDocs(duplicateId),
-  ])
+  const brandedImages = await brandedImageDocs(duplicateId)
 
-  // Brand Gallery assets: copy under the survivor (same id), then drop the
-  // duplicate's copy. Own loop, own batches — a different collection path per
-  // doc (assets → assets), not a field update like the others below.
-  for (let i = 0; i < assetsSnap.docs.length; i += 400) {
-    const batch = writeBatch(db)
-    for (const d of assetsSnap.docs.slice(i, i + 400)) {
-      batch.set(doc(db, 'customers', survivorId, 'assets', d.id), d.data())
-      batch.delete(d.ref)
-    }
-    await batch.commit()
-  }
+  await copySubcollection('assets', duplicateId, survivorId)
+  await copySubcollection('enquiries', duplicateId, survivorId)
 
   const allRefs = [...ordersSnap.docs, ...quotesSnap.docs, ...usersSnap.docs].map(d => d.ref)
   const brandedRefs = brandedImages.map(d => d.ref)

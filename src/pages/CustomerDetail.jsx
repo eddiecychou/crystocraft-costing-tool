@@ -179,11 +179,13 @@ function MergeCustomerModal({ customer, onClose, onMerged }) {
                 <strong>{preview.accountsCount}</strong> portal account{preview.accountsCount === 1 ? '' : 's'} will move to{' '}
                 <strong>{preview.survivor.company_name}</strong>.
               </p>
-              {(preview.assetsCount > 0 || preview.brandedImagesCount > 0) && (
+              {(preview.assetsCount > 0 || preview.interactionsCount > 0 || preview.brandedImagesCount > 0) && (
                 <p>
-                  {preview.assetsCount > 0 && <><strong>{preview.assetsCount}</strong> Brand Gallery asset{preview.assetsCount === 1 ? '' : 's'}{preview.brandedImagesCount > 0 ? ', and ' : ' '}</>}
-                  {preview.brandedImagesCount > 0 && <><strong>{preview.brandedImagesCount}</strong> "branded for" product photo tag{preview.brandedImagesCount === 1 ? '' : 's'} </>}
-                  will also move to <strong>{preview.survivor.company_name}</strong>.
+                  {[
+                    preview.interactionsCount > 0 && `${preview.interactionsCount} interaction log entr${preview.interactionsCount === 1 ? 'y' : 'ies'}`,
+                    preview.assetsCount > 0 && `${preview.assetsCount} Brand Gallery asset${preview.assetsCount === 1 ? '' : 's'}`,
+                    preview.brandedImagesCount > 0 && `${preview.brandedImagesCount} "branded for" product photo tag${preview.brandedImagesCount === 1 ? '' : 's'}`,
+                  ].filter(Boolean).join(', ')} will also move to <strong>{preview.survivor.company_name}</strong>.
                 </p>
               )}
               <p className="text-xs text-amber-800">

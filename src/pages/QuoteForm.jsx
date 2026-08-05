@@ -50,13 +50,20 @@ export default function QuoteForm() {
     if (c) prefillFromCustomer(c)
   }, [selectedCustomerId, customers])
 
+  // c comes from loadCustomers() — the canonical customer shape carries
+  // contact_emails/contact_phones as ARRAYS (normalizeCustomer, domain/
+  // customer.js), not the singular contact_email/contact_phone this used to
+  // read. Those no longer exist on the object, so this was silently always
+  // falling through to the (empty) form default. Take the first of each list —
+  // same "first wins" convention CustomerForm itself uses for its primary
+  // contact fields.
   function prefillFromCustomer(c) {
     setForm(f => ({
       ...f,
       client_name: c.company_name || f.client_name,
       contact_name: c.contact_name || f.contact_name,
-      contact_email: c.contact_email || f.contact_email,
-      contact_phone: c.contact_phone || f.contact_phone,
+      contact_email: c.contact_emails?.[0] || f.contact_email,
+      contact_phone: c.contact_phones?.[0] || f.contact_phone,
       contact_address: c.address || f.contact_address,
     }))
   }
