@@ -20,16 +20,28 @@ const needsReorder = (available, reorderPoint) => {
 export default function InventoryStockTab({ inv }) {
   const { items, loading } = inv.useItems()
   const [search, setSearch] = useState('')
+  const [attrFilter, setAttrFilter] = useState('')
   const [expanded, setExpanded] = useState(null)
   const [adding, setAdding] = useState(false)
   const [importing, setImporting] = useState(false)
   const Icon = ICONS[inv.iconKey] || Box
 
+  // Distinct values of the categorising attribute (colour / type / category),
+  // for the filter dropdown. Only worth showing once there are a few.
+  const attrValues = useMemo(() => {
+    const s = new Set()
+    for (const c of items) { const v = (c[inv.attrField] || '').trim(); if (v) s.add(v) }
+    return [...s].sort((a, b) => a.localeCompare(b))
+  }, [items, inv.attrField])
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return items
-    return items.filter(c => [c.code, c.name, c[inv.attrField], c.size].some(v => (v || '').toLowerCase().includes(q)))
-  }, [items, search, inv.attrField])
+    return items.filter(c => {
+      if (attrFilter && (c[inv.attrField] || '').trim() !== attrFilter) return false
+      if (!q) return true
+      return [c.code, c.name, c[inv.attrField], c.size].some(v => (v || '').toLowerCase().includes(q))
+    })
+  }, [items, search, attrFilter, inv.attrField])
 
   const totals = useMemo(() => items.reduce((t, c) => {
     const onHand = Number.isFinite(c.stock_qty) ? c.stock_qty : 0
@@ -45,6 +57,12 @@ export default function InventoryStockTab({ inv }) {
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <input className="input text-sm flex-1 min-w-[180px]" placeholder={`Search code, name, ${inv.attrLabel.toLowerCase()}…`}
                value={search} onChange={e => setSearch(e.target.value)} />
+        {attrValues.length > 1 && (
+          <select className="input text-sm w-auto" value={attrFilter} onChange={e => setAttrFilter(e.target.value)}>
+            <option value="">All {inv.attrLabel.toLowerCase()}s</option>
+            {attrValues.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+        )}
         <button onClick={() => setImporting(true)} className="btn-secondary text-sm">Import stock</button>
         <button onClick={() => setAdding(a => !a)} className="btn-primary text-sm">+ New</button>
       </div>
