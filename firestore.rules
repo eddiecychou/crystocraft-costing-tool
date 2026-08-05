@@ -134,7 +134,7 @@ service cloud.firestore {
       match /assets/{assetId} {
         allow read: if isAdmin()
           || (signedIn()
-              && profile().customer_id == customerId
+              && profile().get('customer_id', '') == customerId
               && resource.data.visibility != 'internal_only');
         allow write: if isAdmin();
       }
