@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { doc, getDoc, updateDoc, deleteDoc, serverTimestamp, collection, getDocs, query, where } from 'firebase/firestore'
 import { db, auth } from '../firebase'
-import { useCustomers } from '../domain/customer'
+import { useCustomers, getCustomer, saveCustomer } from '../domain/customer'
 import { CUSTOMER_CURRENCIES, useRates, fromUSD } from '../currency'
 import { CustomerPicker, TypeBadge } from './CustomerAccounts'
 import ContactPicker from '../components/ContactPicker'
@@ -42,6 +42,8 @@ export default function AccountEdit() {
   const [type, setType]         = useState('customer')
   const [customerId, setCustomerId] = useState('')
   const [contactId, setContactId] = useState('')
+  const [contactsVersion, setContactsVersion] = useState(0)   // bumped to force ContactPicker to re-fetch after quick-add
+  const [addingContact, setAddingContact] = useState(false)
   const [enquiries, setEnquiries] = useState([])
 
   useEffect(() => {
@@ -118,6 +120,38 @@ export default function AccountEdit() {
     corp_markup_override: override === '' ? 0 : Number(override) || 0,
   })
 
+  // "The person genuinely isn't in this customer's contacts yet" shortcut —
+  // seeds a new contact from the login's own email/name straight from here,
+  // instead of leaving the Customer edit page as the only way to add one.
+  // Reads the FULL customer first: saveCustomer writes the whole document
+  // shape it's given, so sending only { contacts } would blank out every
+  // other field (company_name, address, ...) on this customer.
+  async function quickAddContact() {
+    if (!customerId || !u?.email) return
+    setAddingContact(true)
+    setStatus('saving')
+    try {
+      const full = await getCustomer(customerId)
+      if (!full) throw new Error('Customer not found')
+      const newId = `c_${crypto.randomUUID().slice(0, 8)}`
+      const newContact = {
+        id: newId, name: u.contact_name || u.company_name || '', title: '',
+        email: u.email, phone: '', whatsapp: '', wechat: '', address: '',
+        is_primary: (full.contacts || []).length === 0,
+      }
+      const res = await saveCustomer(customerId, { ...full, contacts: [...(full.contacts || []), newContact] })
+      if (!res.ok) throw new Error(res.result.errors?.[0]?.message || 'Could not save contact')
+      setContactId(newId)
+      setContactsVersion(v => v + 1)   // force ContactPicker to re-fetch the customer it already loaded
+      setStatus('saved')
+      setTimeout(() => setStatus(s => (s === 'saved' ? null : s)), 2500)
+    } catch (e) {
+      setStatus('Error: ' + (e?.message || 'could not add contact'))
+    } finally {
+      setAddingContact(false)
+    }
+  }
+
   async function del() {
     if (!confirm(`Delete the portal login for ${displayName}${isAdmin ? ' (ADMIN)' : ''}? This removes their portal access and settings. Note: their sign-in credential still exists (it can only be fully removed from the Firebase console), but they will have no access here.`)) return
     setStatus('saving')
@@ -191,8 +225,16 @@ export default function AccountEdit() {
                           setContactId(autoMatchContact(customers.find(c => c.id === cid), u?.email))
                         }} />
         {customerId && (
-          <ContactPicker customerId={customerId} value={contactId} onChange={setContactId}
-                         label="This login is (optional)" className="mt-3" />
+          <div className="mt-3">
+            <ContactPicker key={contactsVersion} customerId={customerId} value={contactId} onChange={setContactId}
+                           label="This login is (optional)" />
+            {u.email && (
+              <button type="button" onClick={quickAddContact} disabled={addingContact}
+                      className="mt-1.5 text-xs text-brand-600 hover:text-brand-800 disabled:opacity-50">
+                {addingContact ? 'Adding…' : `+ Add "${u.email}" as a new contact on this customer`}
+              </button>
+            )}
+          </div>
         )}
       </div>
 

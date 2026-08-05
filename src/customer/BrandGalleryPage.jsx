@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { loadCustomerVisibleAssets, loadBrandedProductImages, TYPE_LABEL, CATEGORIES, CATEGORY_LABEL } from '../customerAssets'
+import { loadCustomerVisibleAssets, loadBrandedProductImages, isNonRasterAsset, TYPE_LABEL, CATEGORIES, CATEGORY_LABEL } from '../customerAssets'
 import { isStorefrontVisible } from '../constants'
-import { Images, Download } from 'lucide-react'
+import { Images, Download, FileText } from 'lucide-react'
 
 // Portal "My Brand Gallery" (Customer_Brand_Gallery_Spec.md §5.4). Read-only:
 // a logged-in customer sees only their own linked customer's non-internal
@@ -91,7 +91,14 @@ export default function BrandGalleryPage({ profile }) {
                   {inCat.map(a => (
                     <div key={a.id} className="bg-white rounded-xl border border-ivory-dark overflow-hidden flex flex-col">
                       <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
-                        <img src={a.file_url} alt={a.title || a.filename} className="w-full h-full object-contain" />
+                        {isNonRasterAsset(a.filename) ? (
+                          <div className="flex flex-col items-center gap-1 text-ink-30">
+                            <FileText size={26} strokeWidth={1.5} />
+                            <span className="text-[10px] font-medium">{(a.filename.match(/\.[^.]+$/)?.[0] || '').replace('.', '').toUpperCase()}</span>
+                          </div>
+                        ) : (
+                          <img src={a.file_url} alt={a.title || a.filename} className="w-full h-full object-contain" />
+                        )}
                       </div>
                       <div className="p-2.5 flex items-center justify-between gap-2">
                         <div className="min-w-0">

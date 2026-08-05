@@ -2,12 +2,28 @@ import { useState, useRef, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   useCustomerAssets, uploadCustomerAsset, updateCustomerAsset, deleteCustomerAsset,
-  loadBrandedProductImages,
+  loadBrandedProductImages, isNonRasterAsset, ASSET_UPLOAD_ACCEPT,
   CATEGORIES, CATEGORY_LABEL, TYPES_BY_CATEGORY, VISIBILITIES, VISIBILITY_LABEL, TYPE_LABEL,
   usableInMarketing,
 } from '../customerAssets'
 import { IMAGE_VISIBILITY, imageVisibility } from '../constants'
-import { ImagePlus, ShieldCheck, Lock, Globe, Megaphone, X, Trash2, ExternalLink } from 'lucide-react'
+import { ImagePlus, ShieldCheck, Lock, Globe, Megaphone, X, Trash2, ExternalLink, FileText } from 'lucide-react'
+
+// A non-raster asset (.ai/.eps/.pdf/.pptx, and .svg which we deliberately
+// never rasterize) can't render as an <img> thumbnail — show the file type
+// instead of a broken image icon.
+function AssetThumb({ asset, className = '' }) {
+  if (isNonRasterAsset(asset.filename)) {
+    const ext = (asset.filename.match(/\.[^.]+$/)?.[0] || '').replace('.', '').toUpperCase()
+    return (
+      <div className={`flex flex-col items-center justify-center gap-1 text-gray-400 ${className}`}>
+        <FileText size={28} strokeWidth={1.5} />
+        <span className="text-[10px] font-medium">{ext}</span>
+      </div>
+    )
+  }
+  return <img src={asset.file_url} alt={asset.title || asset.filename} className={className} />
+}
 
 // Brand Gallery section on Customer Detail (Customer_Brand_Gallery_Spec.md §5.1).
 // Admin-only surface: upload a customer's assets, set visibility + marketing
@@ -86,7 +102,7 @@ export default function CustomerBrandGallery({ customerId }) {
                 className="btn-primary text-xs py-1.5 px-3 inline-flex items-center gap-1">
           <ImagePlus size={13} /> {uploading ? 'Uploading…' : `Add to ${CATEGORY_LABEL[category]}`}
         </button>
-        <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onFiles} />
+        <input ref={fileRef} type="file" accept={ASSET_UPLOAD_ACCEPT} multiple className="hidden" onChange={onFiles} />
       </div>
 
       <div className="flex gap-1 border-b border-gray-100 mb-3 mt-2">
@@ -176,7 +192,7 @@ export default function CustomerBrandGallery({ customerId }) {
               <button key={a.id} onClick={() => setEditing(a)}
                       className="group text-left rounded-lg border border-gray-100 overflow-hidden hover:border-brand-300 hover:shadow-sm transition-all">
                 <div className="aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
-                  <img src={a.file_url} alt={a.title || a.filename} className="w-full h-full object-contain" />
+                  <AssetThumb asset={a} className="w-full h-full object-contain" />
                 </div>
                 <div className="p-2">
                   <p className="text-xs text-gray-700 truncate">{a.title || a.filename}</p>
@@ -250,9 +266,12 @@ function AssetDrawer({ customerId, asset, onClose }) {
         </div>
         <div className="p-5 space-y-4">
           <div className="rounded-lg bg-gray-50 border border-gray-100 aspect-video flex items-center justify-center overflow-hidden">
-            <img src={asset.file_url} alt={asset.title || asset.filename} className="max-w-full max-h-full object-contain" />
+            <AssetThumb asset={asset} className="max-w-full max-h-full object-contain" />
           </div>
-          <p className="text-[11px] text-gray-400 break-all">{asset.filename}</p>
+          <p className="text-[11px] text-gray-400 break-all">
+            {asset.filename}{' — '}
+            <a href={asset.file_url} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">open original</a>
+          </p>
 
           <div>
             <label className="label text-xs">Title</label>

@@ -52,6 +52,24 @@ const CATEGORY_OF_TYPE = Object.fromEntries(
 )
 export const categoryOfType = type => CATEGORY_OF_TYPE[type] || 'product_gallery'
 
+// Brand assets aren't only photos — a logo often only exists as vector art or
+// a brand-guideline PDF/deck. These formats can't go through resizeToJpeg
+// (nothing in a browser can decode .ai/.eps into pixels, and rasterizing an
+// .svg would defeat the point of it being vector), so uploadCustomerAsset
+// uploads them as-is instead. Kept as one shared list so the file picker's
+// `accept` and the gallery's "can this render as an <img>" check never drift.
+export const NON_RASTER_EXT = {
+  '.ai':   'application/postscript',
+  '.eps':  'application/postscript',
+  '.pdf':  'application/pdf',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.svg':  'image/svg+xml',   // technically renderable, but never rasterized — see above
+}
+export const ASSET_UPLOAD_ACCEPT = `image/*,${Object.keys(NON_RASTER_EXT).join(',')}`
+
+const extOf = filename => (/\.[^.]+$/.exec(filename || '')?.[0] || '').toLowerCase()
+export const isNonRasterAsset = filename => extOf(filename) in NON_RASTER_EXT
+
 // ── Visibility helpers — the one source of truth, used by every surface ──────
 // A customer may see any of their own assets that aren't internal-only.
 export const visibleToCustomer = a => (a?.visibility || 'internal_only') !== 'internal_only'
@@ -145,11 +163,21 @@ export function useCustomerAssets(customerId) {
 // internal-only, no marketing consent — an admin must deliberately open it.
 export async function uploadCustomerAsset(customerId, file, meta = {}) {
   const ref = doc(COL(customerId))                 // pre-generate id so the path can use it
-  const { blob } = await resizeToJpeg(file)
   const safeName = (file.name || 'image').replace(/[/\\?%*:|"<>]/g, '-')
+  let blob, contentType
+  if (isNonRasterAsset(file.name)) {
+    // Vector art / documents go through untouched — resizing would either
+    // fail outright (.ai/.eps/.pptx aren't image-decodable in a browser) or,
+    // for .svg, silently rasterize away the thing that makes it useful.
+    blob = file
+    contentType = file.type || NON_RASTER_EXT[extOf(file.name)] || 'application/octet-stream'
+  } else {
+    ;({ blob } = await resizeToJpeg(file))
+    contentType = 'image/jpeg'
+  }
   const path = `customer-assets/${customerId}/${ref.id}/${safeName}`
   const sRef = storageRef(storage, path)
-  await uploadBytes(sRef, blob, { contentType: 'image/jpeg' })
+  await uploadBytes(sRef, blob, { contentType })
   const file_url = await getDownloadURL(sRef)
   const by = auth.currentUser?.email || auth.currentUser?.uid || ''
   const category = CATEGORIES.includes(meta.category) ? meta.category : 'brand_asset'
