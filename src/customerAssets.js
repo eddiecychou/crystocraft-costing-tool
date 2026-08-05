@@ -104,6 +104,28 @@ export async function loadCustomerVisibleAssets(customerId) {
   } catch { return [] }
 }
 
+// Catalogue product photos tagged "branded for" this customer
+// (products/{id}/images.branded_for_customer_id — see ProductDetail.jsx and
+// firestore.rules viewerIsSensitive()). This is a SEPARATE source from the
+// customers/{id}/assets docs above — tagging a photo on a product does not
+// create an asset doc — so the Product Gallery views (admin + portal) read
+// both and show them together, rather than requiring the same photo to be
+// uploaded twice. Iterates each product's own images subcollection rather
+// than a collectionGroup query, same reasoning as domain/customer.js's
+// brandedImageDocs(): a collectionGroup equality filter needs a manually-
+// created composite index; a collection-scoped where() doesn't.
+export async function loadBrandedProductImages(customerId) {
+  if (!customerId) return []
+  try {
+    const productsSnap = await getDocs(collection(db, 'products'))
+    const perProduct = await Promise.all(productsSnap.docs.map(async p => {
+      const imgSnap = await getDocs(query(collection(db, 'products', p.id, 'images'), where('branded_for_customer_id', '==', customerId)))
+      return imgSnap.docs.map(d => ({ id: d.id, product_id: p.id, product_name: p.data().name || '', ...d.data() }))
+    }))
+    return perProduct.flat()
+  } catch { return [] }
+}
+
 export function useCustomerAssets(customerId) {
   const [assets, setAssets] = useState([])
   const [loading, setLoading] = useState(true)

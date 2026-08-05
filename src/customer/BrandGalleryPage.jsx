@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { loadCustomerVisibleAssets, TYPE_LABEL, CATEGORIES, CATEGORY_LABEL } from '../customerAssets'
+import { loadCustomerVisibleAssets, loadBrandedProductImages, TYPE_LABEL, CATEGORIES, CATEGORY_LABEL } from '../customerAssets'
+import { isStorefrontVisible } from '../constants'
 import { Images, Download } from 'lucide-react'
 
 // Portal "My Brand Gallery" (Customer_Brand_Gallery_Spec.md §5.4). Read-only:
@@ -11,19 +12,35 @@ import { Images, Download } from 'lucide-react'
 // Brand Assets (their own logo/guidelines) and Product Gallery (photos of
 // their branded product we've cleared to show them) — only shown when that
 // section actually has something, since most customers won't have both.
+//
+// Product Gallery combines TWO sources, same as the admin view
+// (CustomerBrandGallery.jsx): manually-added customer assets, AND catalogue
+// product photos tagged "branded for" this customer (ProductDetail.jsx).
+// Tagging a photo is the one action; it doesn't need uploading twice. Filtered
+// here to isStorefrontVisible — an "Internal" tagged photo must never reach
+// this page, even though the Firestore rule itself would allow the read (the
+// rule only screens against OTHER customers, not the image's own internal/
+// private/public setting — that's a curation call, enforced client-side here,
+// the same way the storefront catalogue already does it in CorporateDetail.jsx).
 export default function BrandGalleryPage({ profile }) {
   const customerId = profile?.customer_id || null
   const [assets, setAssets] = useState([])
+  const [brandedImages, setBrandedImages] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     let alive = true
     setLoading(true)
-    loadCustomerVisibleAssets(customerId)
-      .then(a => { if (alive) setAssets(a) })
+    Promise.all([
+      loadCustomerVisibleAssets(customerId),
+      loadBrandedProductImages(customerId).then(imgs => imgs.filter(isStorefrontVisible)),
+    ])
+      .then(([a, b]) => { if (alive) { setAssets(a); setBrandedImages(b) } })
       .finally(() => { if (alive) setLoading(false) })
     return () => { alive = false }
   }, [customerId])
+
+  const total = assets.length + brandedImages.length
 
   return (
     <div>
@@ -41,7 +58,7 @@ export default function BrandGalleryPage({ profile }) {
         <div className="bg-white rounded-xl border border-ivory-dark p-8 text-center text-sm text-ink-60">
           No brand assets are linked to your account yet. Contact us and we'll set them up.
         </div>
-      ) : assets.length === 0 ? (
+      ) : total === 0 ? (
         <div className="bg-white rounded-xl border border-ivory-dark p-8 text-center text-sm text-ink-60">
           Nothing here yet — we haven't added any of your brand assets to the portal.
         </div>
@@ -49,11 +66,28 @@ export default function BrandGalleryPage({ profile }) {
         <div className="space-y-8">
           {CATEGORIES.map(cat => {
             const inCat = assets.filter(a => a.category === cat)
-            if (inCat.length === 0) return null
+            const brandedHere = cat === 'product_gallery' ? brandedImages : []
+            if (inCat.length === 0 && brandedHere.length === 0) return null
             return (
               <div key={cat}>
                 <h2 className="text-sm font-semibold text-ink-70 mb-3">{CATEGORY_LABEL[cat]}</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {brandedHere.map(img => (
+                    <div key={`p-${img.id}`} className="bg-white rounded-xl border border-ivory-dark overflow-hidden flex flex-col">
+                      <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
+                        <img src={img.file_url} alt={img.caption || img.product_name} className="w-full h-full object-contain" />
+                      </div>
+                      <div className="p-2.5 flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-xs text-ink truncate">{img.caption || img.product_name || 'Product photo'}</p>
+                        </div>
+                        <a href={img.file_url} target="_blank" rel="noopener noreferrer" download
+                           title="Download" className="shrink-0 text-ink-40 hover:text-brand-600">
+                          <Download size={15} />
+                        </a>
+                      </div>
+                    </div>
+                  ))}
                   {inCat.map(a => (
                     <div key={a.id} className="bg-white rounded-xl border border-ivory-dark overflow-hidden flex flex-col">
                       <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">

@@ -1,10 +1,13 @@
-import { useState, useRef, useMemo } from 'react'
+import { useState, useRef, useMemo, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import {
   useCustomerAssets, uploadCustomerAsset, updateCustomerAsset, deleteCustomerAsset,
+  loadBrandedProductImages,
   CATEGORIES, CATEGORY_LABEL, TYPES_BY_CATEGORY, VISIBILITIES, VISIBILITY_LABEL, TYPE_LABEL,
   usableInMarketing,
 } from '../customerAssets'
-import { ImagePlus, ShieldCheck, Lock, Globe, Megaphone, X, Trash2 } from 'lucide-react'
+import { IMAGE_VISIBILITY, imageVisibility } from '../constants'
+import { ImagePlus, ShieldCheck, Lock, Globe, Megaphone, X, Trash2, ExternalLink } from 'lucide-react'
 
 // Brand Gallery section on Customer Detail (Customer_Brand_Gallery_Spec.md §5.1).
 // Admin-only surface: upload a customer's assets, set visibility + marketing
@@ -33,6 +36,20 @@ export default function CustomerBrandGallery({ customerId }) {
   const [uploading, setUploading] = useState(false)
   const [editing, setEditing] = useState(null)   // asset open in the drawer
   const fileRef = useRef(null)
+
+  // Catalogue photos tagged "branded for" this customer (ProductDetail.jsx) —
+  // a SEPARATE source from the assets above. Shown inline in Product Gallery
+  // so tagging a photo is the one action, not tag-there-then-upload-again-here.
+  const [brandedImages, setBrandedImages] = useState([])
+  const [brandedLoading, setBrandedLoading] = useState(true)
+  useEffect(() => {
+    let alive = true
+    setBrandedLoading(true)
+    loadBrandedProductImages(customerId)
+      .then(imgs => { if (alive) setBrandedImages(imgs) })
+      .finally(() => { if (alive) setBrandedLoading(false) })
+    return () => { alive = false }
+  }, [customerId])
 
   const inCategory = useMemo(() => assets.filter(a => a.category === category), [assets, category])
   const filtered = useMemo(() => {
@@ -77,7 +94,7 @@ export default function CustomerBrandGallery({ customerId }) {
           <button key={c} onClick={() => switchCategory(c)}
                   className={`px-3 py-1.5 text-xs font-medium -mb-px border-b-2 transition-colors ${
                     category === c ? 'border-brand-500 text-brand-700' : 'border-transparent text-gray-400 hover:text-gray-600'}`}>
-            {CATEGORY_LABEL[c]} ({assets.filter(a => a.category === c).length})
+            {CATEGORY_LABEL[c]} ({assets.filter(a => a.category === c).length + (c === 'product_gallery' ? brandedImages.length : 0)})
           </button>
         ))}
       </div>
@@ -87,6 +104,46 @@ export default function CustomerBrandGallery({ customerId }) {
           : <>Our photos of their branded product — check each one before opening it up; some are fine to reuse, some aren't.</>}
         {' '}New uploads default to <strong>Internal only</strong> — open them deliberately.
       </p>
+
+      {category === 'product_gallery' && (
+        <div className="mb-4">
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">From Product Catalogue</h3>
+          {brandedLoading ? (
+            <p className="text-xs text-gray-400 py-2">Loading…</p>
+          ) : brandedImages.length === 0 ? (
+            <p className="text-xs text-gray-400 py-2">
+              No catalogue photos tagged for this customer yet. Tag one on a product's Images tab (look for "Branded for").
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {brandedImages.map(img => {
+                const vis = imageVisibility(img)
+                const visMeta = IMAGE_VISIBILITY.find(v => v.value === vis)
+                return (
+                  <Link key={img.id} to={`/products/${img.product_id}`}
+                        className="group text-left rounded-lg border border-gray-100 overflow-hidden hover:border-brand-300 hover:shadow-sm transition-all block">
+                    <div className="aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
+                      <img src={img.file_url} alt={img.caption || img.product_name} className="w-full h-full object-contain" />
+                    </div>
+                    <div className="p-2">
+                      <p className="text-xs text-gray-700 truncate inline-flex items-center gap-1">
+                        {img.product_name || 'Untitled product'} <ExternalLink size={10} className="text-gray-300 group-hover:text-brand-500 shrink-0" />
+                      </p>
+                      <span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${visMeta?.cls || 'bg-gray-200 text-gray-600'}`}>
+                        {visMeta?.short || vis}
+                      </span>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
+          <p className="text-[11px] text-gray-400 mt-2">
+            Visibility and tagging for these are managed on the product itself, not here.
+          </p>
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 mt-5">Additional Photos</h3>
+        </div>
+      )}
 
       {inCategory.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -107,7 +164,7 @@ export default function CustomerBrandGallery({ customerId }) {
         <p className="text-sm text-gray-400 py-6 text-center">Loading…</p>
       ) : inCategory.length === 0 ? (
         <p className="text-sm text-gray-400 py-6 text-center">
-          No {CATEGORY_LABEL[category].toLowerCase()} yet. <button onClick={() => fileRef.current?.click()} className="text-brand-600 hover:underline">Add one</button>.
+          No {category === 'product_gallery' ? 'additional photos' : CATEGORY_LABEL[category].toLowerCase()} yet. <button onClick={() => fileRef.current?.click()} className="text-brand-600 hover:underline">Add one</button>.
         </p>
       ) : filtered.length === 0 ? (
         <p className="text-sm text-gray-400 py-6 text-center">Nothing matches those filters.</p>
