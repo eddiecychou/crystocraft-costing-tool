@@ -20,9 +20,9 @@ export const importB2cStock = api.importStock
 export const b2cInventory = {
   ...api,
   collectionPath: 'b2c_stock',
-  noun: 'B2C item', nounPlural: 'B2C stock',
+  noun: 'finished good', nounPlural: 'finished goods',
   attrField: 'category', attrLabel: 'Category',
-  cardTitle: 'B2C Finished Goods', iconKey: 'box',
+  cardTitle: 'Finished Goods', iconKey: 'box',
   codePlaceholder: 'D0268-001-GC1', namePlaceholder: 'Butterfly Suncatcher', attrPlaceholder: 'Figurine',
   importExample: 'D0268-001-GC1\tButterfly Suncatcher\t42\nD0019-001-GC1\tDuckling\t18',
 }

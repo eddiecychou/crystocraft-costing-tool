@@ -13,8 +13,8 @@ import { Download, Boxes, ArrowUp, ArrowDown } from 'lucide-react'
 // Available. A per-SKU reorder point flags hot items before they run out:
 // reorder when Available ≤ reorder point (or, if none set, only when negative).
 
-const CLASSES = ['All', 'Metal', 'Crystal', 'Packaging', 'B2C']
-const COL_OF = { Metal: 'range_components', Crystal: 'crystals', Packaging: 'packaging', B2C: 'b2c_stock' }
+const CLASSES = ['All', 'Metal', 'Crystal', 'Packaging', 'Finished Goods']
+const COL_OF = { Metal: 'range_components', Crystal: 'crystals', Packaging: 'packaging', 'Finished Goods': 'b2c_stock' }
 const fmt = n => (Number.isFinite(Number(n)) ? Number(n).toLocaleString() : '0')
 
 // Does a row need reordering? With a reorder point set, flag at/below it;
@@ -51,7 +51,7 @@ export default function InventoryStatus() {
       ...mk('Metal', components, 'plating_code'),
       ...mk('Crystal', crystals, 'colour'),
       ...mk('Packaging', packaging, 'type'),
-      ...mk('B2C', b2c, 'category'),
+      ...mk('Finished Goods', b2c, 'category'),
     ]
   }, [components, crystals, packaging, b2c])
 
@@ -87,7 +87,7 @@ export default function InventoryStatus() {
 
   const toggleSort = key => setSort(s => s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'code' || key === 'name' || key === 'cls' ? 'asc' : 'desc' })
 
-  const BADGE = { Metal: 'bg-ivory text-ink-70', Crystal: 'bg-brand-50 text-brand-700', Packaging: 'bg-sky-50 text-sky-700', B2C: 'bg-violet-50 text-violet-700' }
+  const BADGE = { Metal: 'bg-ivory text-ink-70', Crystal: 'bg-brand-50 text-brand-700', Packaging: 'bg-sky-50 text-sky-700', 'Finished Goods': 'bg-violet-50 text-violet-700' }
   const linkFor = r => r.cls === 'Metal' ? `/components/critical/${r.id}` : '/components'
 
   const Th = ({ k, label, align = 'left' }) => (

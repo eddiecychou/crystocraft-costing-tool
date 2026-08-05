@@ -26,7 +26,7 @@ export default function Components() {
       </p>
 
       <div className="flex gap-1 border-b border-ivory-dark mb-5 overflow-x-auto overflow-y-hidden whitespace-nowrap">
-        {[['critical', 'Critical Components'], ['crystalstock', 'Crystal Stock'], ['packagingstock', 'Packaging Stock'], ['b2cstock', 'B2C Finished Goods'], ['colours', 'Crystal Colours'], ['crystalcosts', 'Crystal Costs'], ['formatmoq', 'Format MOQs'], ['categories', 'Categories']].map(([k, label]) => (
+        {[['critical', 'Critical Components'], ['crystalstock', 'Crystal Stock'], ['packagingstock', 'Packaging Stock'], ['b2cstock', 'Finished Goods'], ['colours', 'Crystal Colours'], ['crystalcosts', 'Crystal Costs'], ['formatmoq', 'Format MOQs'], ['categories', 'Categories']].map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`px-4 py-2 text-sm font-medium -mb-px border-b-2 shrink-0 transition-colors ${
               tab === k ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-80'}`}>
