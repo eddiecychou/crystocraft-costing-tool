@@ -139,6 +139,36 @@ def admin_page():
         return Response(content=f.read(), media_type="text/html")
 
 
+@app.post("/admin/render-test", dependencies=[Depends(require_admin)])
+async def admin_render_test(
+    image: UploadFile,
+    mode: str = Form("zone_map"),
+    crystal_type: str = Form("fine_rock_1.5"),
+    fg_color: str = Form("Jet"),
+    bg_color: str = Form("White"),
+    panel_mm: float = Form(80.0),
+):
+    """Runs the SAME engine.render() the live customer flow calls, straight
+    from the admin tool — no product page, no customer login, no need to
+    know the Netlify RENDER_TOKEN (this route is gated by ADMIN_PASSWORD
+    instead, same as the rest of /admin). Exists so a bad colour/backfilm
+    combo can be caught here, with the real error, before a customer hits
+    it."""
+    logo = _decode_upload(await image.read()).convert("RGBA")
+    try:
+        img = engine.render(
+            logo, mode=mode, crystal_type=crystal_type,
+            panel_mm=panel_mm, fg_color=fg_color, bg_color=bg_color,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"render failed: {e}")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return Response(content=buf.getvalue(), media_type="image/png")
+
+
 def _crystal_out(name, e):
     slots = {}
     for style in ("fabric", "rock"):

@@ -81,7 +81,11 @@ export async function renderPreview(selections) {
   })
   if (!res.ok) {
     let msg = `Preview failed (${res.status})`
-    try { msg = (await res.json()).error || msg } catch { /* non-JSON */ }
+    // FastAPI's HTTPException body is {"detail": "..."} — this used to look
+    // for {"error": "..."} instead, which every real error had, so the UI
+    // only ever showed the generic "Preview failed (500)" and never the
+    // actual reason (e.g. which colour/backfilm combo isn't captured yet).
+    try { msg = (await res.json()).detail || msg } catch { /* non-JSON */ }
     throw new Error(msg)
   }
   return res.blob()

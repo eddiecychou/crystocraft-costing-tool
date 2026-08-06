@@ -83,6 +83,7 @@
 <main>
   <div class="sidebar">
     <button id="add-new" class="primary">+ Add new colour</button>
+    <button id="test-render" style="width:100%;margin-bottom:14px">🧪 Test render</button>
     <h2>Crystal colours</h2>
     <div id="swatch-list"></div>
   </div>
@@ -387,6 +388,130 @@
     if (e.target.id === 'file-input' && e.target.files[0]) loadFile(e.target.files[0]);
   });
 
+  // ── Test render ──────────────────────────────────────────────────────────
+  // Runs the exact same engine.render() the customer flow calls (via
+  // /admin/render-test, gated by ADMIN_PASSWORD — not the customer-facing
+  // RENDER_TOKEN route), so a colour/backfilm/mode combo can be checked here
+  // — with the real error message — before a customer hits it in the portal.
+  let testLogoFile = null;
+
+  function testRenderShell() {
+    currentName = null;
+    renderList();
+    const names = Object.keys(swatches.crystal || {}).sort();
+    document.getElementById('editor').innerHTML = `
+      <div class="editor-grid">
+        <div>
+          <div class="canvas-wrap">
+            <div class="drop-zone" id="test-drop-zone">Click to choose a logo, or drag one here.<br>Transparent PNG works best.</div>
+            <input type="file" id="test-file-input" accept="image/*" style="display:none">
+            <img id="test-logo-preview" style="max-width:100%;display:none;border-radius:3px" />
+          </div>
+          <div class="panel" style="margin-top:14px">
+            <label>Result</label>
+            <img class="preview-tile" id="test-result" alt="" style="display:none" />
+            <div class="preview-hint" id="test-hint">Pick a logo and options, then Render.</div>
+          </div>
+        </div>
+        <div>
+          <div class="status" id="status"></div>
+          <div class="panel">
+            <label>Mode</label>
+            <select id="test-mode">
+              <option value="zone_map">zone_map — crystals form the logo</option>
+              <option value="printed">printed — logo under crystals</option>
+            </select>
+          </div>
+          <div class="panel">
+            <label>Crystal type</label>
+            <select id="test-crystal-type">
+              <option value="fabric_1.0">Crystal Fabric (fabric_1.0)</option>
+              <option value="fine_rock_1.5">Crystal Fine Rock (fine_rock_1.5, rock style)</option>
+              <option value="rock_2.0">Crystal Rock (rock_2.0, rock style)</option>
+            </select>
+          </div>
+          <div class="panel">
+            <label id="test-fg-label">Logo crystal colour</label>
+            <div class="help">A crystal colour name registered in the sidebar (e.g. "Crystal AB").</div>
+            <input type="text" id="test-fg" list="test-names" value="${names[0] || ''}" />
+          </div>
+          <div class="panel">
+            <label id="test-bg-label">Background crystal colour</label>
+            <div class="help" id="test-bg-help">zone_map: another crystal colour name. printed: the exact BACKFILM name captured for the logo colour above (see its backfilm chips in the sidebar editor).</div>
+            <input type="text" id="test-bg" list="test-bg-suggestions" value="${names[0] || ''}" />
+          </div>
+          <datalist id="test-names">${names.map(n => `<option value="${n}">`).join('')}</datalist>
+          <datalist id="test-bg-suggestions">${names.concat(knownBackfilms).map(n => `<option value="${n}">`).join('')}</datalist>
+          <div class="panel">
+            <label>Panel size — <span id="test-panel-val">80</span>mm</label>
+            <div class="help">The physical crystal panel size on the actual product — affects how large the stones look relative to the logo. No per-product size is stored yet (see PROJECT-PLAN.md); enter the real dimension for the product you're checking.</div>
+            <input type="range" id="test-panel-mm" min="20" max="200" step="5" value="80" style="width:100%">
+          </div>
+          <div class="actions">
+            <button id="test-render-btn" class="primary" disabled>Render</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.getElementById('test-mode').addEventListener('change', e => {
+      const printed = e.target.value === 'printed';
+      document.getElementById('test-bg-label').textContent = printed ? 'Backfilm (what the logo prints on)' : 'Background crystal colour';
+    });
+    document.getElementById('test-panel-mm').addEventListener('input', e => {
+      document.getElementById('test-panel-val').textContent = e.target.value;
+    });
+    const dz = document.getElementById('test-drop-zone');
+    dz.addEventListener('click', () => document.getElementById('test-file-input').click());
+    const wrap = dz.parentElement;
+    wrap.addEventListener('dragover', e => e.preventDefault());
+    wrap.addEventListener('drop', e => { e.preventDefault(); if (e.dataTransfer.files[0]) loadTestLogo(e.dataTransfer.files[0]); });
+    document.getElementById('test-render-btn').addEventListener('click', runTestRender);
+  }
+
+  function loadTestLogo(file) {
+    testLogoFile = file;
+    const img = document.getElementById('test-logo-preview');
+    img.src = URL.createObjectURL(file);
+    img.style.display = 'block';
+    document.getElementById('test-render-btn').disabled = false;
+  }
+
+  document.body.addEventListener('change', e => {
+    if (e.target.id === 'test-file-input' && e.target.files[0]) loadTestLogo(e.target.files[0]);
+  });
+
+  async function runTestRender() {
+    if (!testLogoFile) return;
+    const btn = document.getElementById('test-render-btn');
+    const hint = document.getElementById('test-hint');
+    const result = document.getElementById('test-result');
+    btn.disabled = true;
+    hint.textContent = 'Rendering…';
+    result.style.display = 'none';
+    const fd = new FormData();
+    fd.append('image', testLogoFile);
+    fd.append('mode', document.getElementById('test-mode').value);
+    fd.append('crystal_type', document.getElementById('test-crystal-type').value);
+    fd.append('fg_color', document.getElementById('test-fg').value.trim());
+    fd.append('bg_color', document.getElementById('test-bg').value.trim());
+    fd.append('panel_mm', document.getElementById('test-panel-mm').value);
+    try {
+      const res = await fetch('/admin/render-test', { method: 'POST', body: fd });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || `Failed (${res.status})`);
+      }
+      const blob = await res.blob();
+      result.src = URL.createObjectURL(blob);
+      result.style.display = 'block';
+      hint.textContent = '';
+    } catch (e) {
+      hint.textContent = e.message;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
   function addNew() {
     currentName = null;
     renderList();
@@ -675,6 +800,7 @@
   }
 
   document.getElementById('add-new').addEventListener('click', addNew);
+  document.getElementById('test-render').addEventListener('click', testRenderShell);
   AUTH_TEST.then(loadSwatches).catch(() => {
     document.body.innerHTML = '<div style="padding:40px;font-family:monospace;color:#c1553f">Sign-in required or ADMIN_PASSWORD not configured.</div>';
   });
