@@ -187,7 +187,7 @@
       <div class="editor-grid">
         <div>
           <div class="canvas-wrap" id="canvas-wrap">
-            <div class="drop-zone" id="drop-zone">Click to choose a photo, or drag one here.<br>A flat, evenly-lit, in-focus patch of the material works best.</div>
+            <div class="drop-zone" id="drop-zone">Click to choose a photo, or drag one here.<br>The whole photo is used as-is — crop it before uploading.</div>
           </div>
           <input type="file" id="file-input" accept="image/*" style="display:none">
           <!-- Live preview sits RIGHT UNDER the crop canvas, not off in the
@@ -354,7 +354,7 @@
       nameInput.style.opacity = '1';
     }
     removeRow.style.display = slot ? 'flex' : 'none';
-    document.getElementById('canvas-wrap').innerHTML = '<div class="drop-zone" id="drop-zone">Click to choose a photo, or drag one here.<br>A flat, evenly-lit, in-focus patch of the material works best.</div>';
+    document.getElementById('canvas-wrap').innerHTML = '<div class="drop-zone" id="drop-zone">Click to choose a photo, or drag one here.<br>The whole photo is used as-is — crop it before uploading.</div>';
     wireDropZone();
     if (slot) {
       // Load the saved photo straight into the SAME interactive crop
