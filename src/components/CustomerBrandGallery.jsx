@@ -16,7 +16,7 @@ function AssetThumb({ asset, className = '' }) {
   if (isNonRasterAsset(asset.filename)) {
     const ext = (asset.filename.match(/\.[^.]+$/)?.[0] || '').replace('.', '').toUpperCase()
     return (
-      <div className={`flex flex-col items-center justify-center gap-1 text-gray-400 ${className}`}>
+      <div className={`flex flex-col items-center justify-center gap-1 text-white/80 ${className}`}>
         <FileText size={28} strokeWidth={1.5} />
         <span className="text-[10px] font-medium">{ext}</span>
       </div>
@@ -191,7 +191,7 @@ export default function CustomerBrandGallery({ customerId }) {
             return (
               <button key={a.id} onClick={() => setEditing(a)}
                       className="group text-left rounded-lg border border-gray-100 overflow-hidden hover:border-brand-300 hover:shadow-sm transition-all">
-                <div className="aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
+                <div className="aspect-square bg-gray-400 flex items-center justify-center overflow-hidden">
                   <AssetThumb asset={a} className="w-full h-full object-contain" />
                 </div>
                 <div className="p-2">
@@ -265,7 +265,7 @@ function AssetDrawer({ customerId, asset, onClose }) {
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-4">
-          <div className="rounded-lg bg-gray-50 border border-gray-100 aspect-video flex items-center justify-center overflow-hidden">
+          <div className="rounded-lg bg-gray-400 border border-gray-100 aspect-video flex items-center justify-center overflow-hidden">
             <AssetThumb asset={asset} className="max-w-full max-h-full object-contain" />
           </div>
           <p className="text-[11px] text-gray-400 break-all">

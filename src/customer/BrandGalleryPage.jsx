@@ -90,9 +90,9 @@ export default function BrandGalleryPage({ profile }) {
                   ))}
                   {inCat.map(a => (
                     <div key={a.id} className="bg-white rounded-xl border border-ivory-dark overflow-hidden flex flex-col">
-                      <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
+                      <div className="aspect-square bg-gray-400 flex items-center justify-center overflow-hidden">
                         {isNonRasterAsset(a.filename) ? (
-                          <div className="flex flex-col items-center gap-1 text-ink-30">
+                          <div className="flex flex-col items-center gap-1 text-white/80">
                             <FileText size={26} strokeWidth={1.5} />
                             <span className="text-[10px] font-medium">{(a.filename.match(/\.[^.]+$/)?.[0] || '').replace('.', '').toUpperCase()}</span>
                           </div>
