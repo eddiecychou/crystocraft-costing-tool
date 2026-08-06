@@ -24,6 +24,7 @@ of record, one function at a time.
 | `erp-sync/ERP-SYNC-V1.0.md` | How the ERP mirror works |
 | `erp-sync/IMAGE-SYNC-PLAN.md` | Item images: prepared, needs the LAN |
 | `Corp_Gift_Customizer_Spec.md`, `Customizer_Build_Plan.md` | Customizer — **on hold** |
+| `Crystal_Fabric_Studio_Spec.md` | V7.22 plan: swatch library for designers, reconciled against the existing (on-hold) customizer |
 
 ## Environment quirks that will otherwise waste your time
 

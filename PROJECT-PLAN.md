@@ -220,6 +220,23 @@ Worth a real pass before treating any of the following as proven:
 
 ---
 
+## Where V7.22 starts
+
+The owner asked for review of a Perplexity-drafted "Crystal Fabric Studio"
+brief (product configurator + swatch library for designers replacing
+discontinued Swarovski components). Full plan, reconciled against what's
+actually in the codebase, is in `Crystal_Fabric_Studio_Spec.md` — read that
+first. Short version: the draft's "Track 1" configurator already exists
+(`src/customer/customizer/CrystalFabricCustomizer.jsx`, on hold per
+`Customizer_Build_Plan.md`) and its proposed data model
+(`effect`/`density`) would reintroduce invented option names the app
+deliberately removed on 2026-07-30. The real new work is Track 2 — a swatch
+library for designers, admin-facing first, built on the existing
+`CRYSTAL_COLORS`/`CRYSTAL_TYPES` shape in `customizerApi.js`, with physical
+sample-request as the actual conversion event (not a rendered price band).
+
+---
+
 ## Current Status — V7.20 CLOSED as of 2026-08-04
 
 Commit chain `604580c`→`25f8a5c` (17 commits), all deployed (app via Netlify,
