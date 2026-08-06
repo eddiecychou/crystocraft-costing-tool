@@ -18,7 +18,6 @@ const nav = [
   { group: 'Catalogue' },
   { to: '/products',   label: 'Corp Gifts',    short: 'Corp',     Icon: Package, primary: true },
   { to: '/range',      label: 'Figurine Gifts',short: 'Figurine', Icon: Gem, primary: true },
-  { to: '/components', label: 'Components',    short: 'Comps',    Icon: Puzzle },
 
   { group: 'Sales' },
   { to: '/quotes',     label: 'Quotes',        short: 'Quotes',   Icon: ClipboardList, primary: true },
@@ -28,6 +27,7 @@ const nav = [
   { to: '/portal',     label: 'Portal',        short: 'Portal',   Icon: Users },
 
   { group: 'Supply' },
+  { to: '/components', label: 'Components',    short: 'Comps',    Icon: Puzzle },
   { to: '/suppliers',  label: 'Suppliers',     short: 'Suppliers',Icon: Factory },
   { to: '/purchase-orders', label: 'Purchase Orders', short: 'POs', Icon: FileText },
   { to: '/inventory',  label: 'Inventory',     short: 'Stock',    Icon: Boxes },
