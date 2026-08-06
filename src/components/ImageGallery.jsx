@@ -111,7 +111,17 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
   // amendments, 2026-08): a customer flagged "sensitive" never sees a storefront
   // image tagged for a DIFFERENT customer. Blank = generic, visible to everyone.
   async function handleBrandedForChange(customerId) {
-    await updateDoc(doc(db, ...firestorePath.split('/'), img.id), { branded_for_customer_id: customerId || null })
+    const value = customerId || null
+    await updateDoc(doc(db, ...firestorePath.split('/'), img.id), { branded_for_customer_id: value })
+    // If this image is ALREADY the hero, the product doc's own mirror
+    // (heroImage_branded_for_customer_id — see ProductDetail.jsx's
+    // handleHeroChange) would otherwise go stale: re-tagging an existing hero
+    // doesn't naturally re-trigger a hero pick. firestorePath is
+    // "products/{id}/images"; its parent is the product doc itself.
+    if (img.is_hero) {
+      const parentPath = firestorePath.split('/').slice(0, -1)
+      await updateDoc(doc(db, ...parentPath), { heroImage_branded_for_customer_id: value })
+    }
   }
 
   const vis = imageVisibility(img)

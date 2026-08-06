@@ -50,9 +50,21 @@ export default function CorporateDetail({ profile }) {
     </div>
   )
 
-  // Show all storefront-visible images except the hero (already shown large above).
-  // Internal-only images are hidden from customers.
-  const gallery = images.filter(im => im.file_url && im.file_url !== p.heroImage && isStorefrontVisible(im))
+  // p.heroImage is a plain cached URL — unlike `images` (live-queried from
+  // products/{id}/images, so the Firestore rule already screened it per-
+  // viewer before it ever reached this component), it bypasses that
+  // protection. A sensitive viewer whose hero is branded for someone else
+  // falls back to the first gallery image the rule DID let through — if
+  // there isn't one either, the existing "no photo" placeholder icon covers
+  // it, which is the right outcome for a product with nothing appropriate
+  // to show this viewer.
+  const heroBlocked = !!(profile?.sensitive && p.heroImage_branded_for_customer_id
+    && p.heroImage_branded_for_customer_id !== profile?.customer_id)
+  const visibleImages = images.filter(im => im.file_url && isStorefrontVisible(im))
+  const displayHero = heroBlocked ? (visibleImages[0]?.file_url || null) : (p.heroImage || null)
+
+  // Show all storefront-visible images except whichever one is the hero.
+  const gallery = visibleImages.filter(im => im.file_url !== displayHero)
 
   const inCart = cart?.has({ type: 'corporate', id: p.id })
   const tierQtys = tiers.map(t => Number(t.quantity) || 0).filter(q => q > 0)
@@ -65,9 +77,9 @@ export default function CorporateDetail({ profile }) {
       </Link>
       <div className="grid md:grid-cols-2 gap-6">
         <div className="card overflow-hidden bg-gray-100 aspect-square flex items-center justify-center relative">
-          {p.heroImage ? <img src={p.heroImage} alt={p.name} className="w-full h-full object-cover" />
+          {displayHero ? <img src={displayHero} alt={p.name} className="w-full h-full object-cover" />
             : <Package size={56} className="text-gray-300" />}
-          <FavHeart item={{ type: 'corporate', id: p.id, name: p.name, code: '', image: p.heroImage || '' }} className="absolute top-3 right-3" />
+          <FavHeart item={{ type: 'corporate', id: p.id, name: p.name, code: '', image: displayHero || '' }} className="absolute top-3 right-3" />
         </div>
         <div>
           <h1 className="text-xl md:text-2xl text-ink">{p.name}</h1>
@@ -82,7 +94,7 @@ export default function CorporateDetail({ profile }) {
           </div>
 
           <div className="mt-5">
-            <button onClick={() => cart?.add({ type: 'corporate', id: p.id, name: p.name, code: '', image: p.heroImage || '', qty: minQty || 1, moq: minQty })}
+            <button onClick={() => cart?.add({ type: 'corporate', id: p.id, name: p.name, code: '', image: displayHero || '', qty: minQty || 1, moq: minQty })}
               disabled={inCart}
               className={`btn-primary ${inCart ? 'opacity-60 pointer-events-none' : ''}`}>
               {inCart ? <><Check size={16} /> In enquiry</> : <><Plus size={16} /> Add to enquiry</>}

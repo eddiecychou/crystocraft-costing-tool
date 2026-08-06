@@ -27,12 +27,22 @@ export default function CorporateShop({ profile }) {
       setProducts(
         snap.docs.map(d => ({ id: d.id, ...d.data() }))
           .filter(p => p.active !== false && productStatusOf(p.status).value !== 'retired')
+          // heroImage is a plain cached URL on the product doc — it bypasses
+          // the Firestore rule that screens products/{id}/images per-viewer
+          // (see ProductDetail.jsx's handleHeroChange). A sensitive customer
+          // (profile.sensitive, mirrored from their linked customer — see
+          // domain/customer.js) must not see a hero branded for someone else,
+          // and there is no cheap per-product image to fall back to on a
+          // listing page, so the product is left off the shelf entirely
+          // rather than shown with a leaked or blank thumbnail.
+          .filter(p => !(profile?.sensitive && p.heroImage_branded_for_customer_id
+            && p.heroImage_branded_for_customer_id !== profile?.customer_id))
           // New-tagged products first (C0), then alphabetical.
           .sort((a, b) => newFirst(a, b) || (a.name || '').localeCompare(b.name || ''))
       )
       setLoading(false)
     }, () => setLoading(false))
-  }, [])
+  }, [profile?.sensitive, profile?.customer_id])
 
   const categories = useMemo(() => [...new Set(products.map(p => p.category).filter(Boolean))].sort(), [products])
   // Light list the Shop-by band can render image tiles from.

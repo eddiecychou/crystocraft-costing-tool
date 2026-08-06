@@ -251,11 +251,28 @@ export async function saveCustomer(id, input) {
   let savedId = id
   if (id) {
     await updateDoc(doc(db, 'customers', id), payload)
+    await mirrorSensitiveToLinkedAccounts(id, payload.sensitive)
   } else {
     const ref = await addDoc(COL(), { ...payload, createdAt: serverTimestamp() })
     savedId = ref.id
   }
   return { ok: true, id: savedId, result: v }
+}
+
+// `sensitive` gates what a logged-in customer's own storefront browsing shows
+// them (CorporateShop.jsx screens a competitor-branded hero image) — but a
+// customer cannot read their own customers/{id} doc (admin-only rule), so the
+// flag has nowhere to check it from. Mirrored onto every users/{uid} doc
+// linked to this customer, which the signed-in user CAN already read (their
+// own doc). Cheap: a customer normally has one or a few linked accounts.
+async function mirrorSensitiveToLinkedAccounts(customerId, sensitive) {
+  try {
+    const snap = await getDocs(query(collection(db, 'users'), where('customer_id', '==', customerId)))
+    if (snap.empty) return
+    const batch = writeBatch(db)
+    snap.forEach(d => batch.update(d.ref, { sensitive: !!sensitive }))
+    await batch.commit()
+  } catch { /* best-effort mirror — a stale flag is a screening gap, not a crash */ }
 }
 
 const fromDoc = d => ({ id: d.id, ...normalizeCustomer(d.data()), _raw: d.data() })

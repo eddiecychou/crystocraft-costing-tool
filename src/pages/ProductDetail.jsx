@@ -51,9 +51,20 @@ export default function ProductDetail() {
       .catch(() => setCustomers([]))
   }, [])
 
+  // heroImage is a plain cached URL on the product doc — unlike the gallery
+  // (loaded live from products/{id}/images, which the Firestore rule already
+  // screens per-viewer), this field bypasses that protection entirely: any
+  // approved customer can read it straight off the product document, sensitive
+  // or not. Mirroring the chosen image's own branded_for_customer_id here lets
+  // the storefront (CorporateShop.jsx / CorporateDetail.jsx) hide it for a
+  // sensitive viewer without needing its own extra read. Stale if someone
+  // later changes the ALREADY-hero image's own tag without re-picking it —
+  // known gap, not yet closed.
   async function handleHeroChange(url) {
-    await updateDoc(doc(db, 'products', id), { heroImage: url })
-    setProduct(p => ({ ...p, heroImage: url }))
+    const chosen = images.find(im => im.file_url === url)
+    const heroImage_branded_for_customer_id = chosen?.branded_for_customer_id || null
+    await updateDoc(doc(db, 'products', id), { heroImage: url, heroImage_branded_for_customer_id })
+    setProduct(p => ({ ...p, heroImage: url, heroImage_branded_for_customer_id }))
   }
 
   async function handleDelete() {
