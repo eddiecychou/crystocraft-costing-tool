@@ -70,6 +70,14 @@ export const ASSET_UPLOAD_ACCEPT = `image/*,${Object.keys(NON_RASTER_EXT).join('
 const extOf = filename => (/\.[^.]+$/.exec(filename || '')?.[0] || '').toLowerCase()
 export const isNonRasterAsset = filename => extOf(filename) in NON_RASTER_EXT
 
+// .svg IS in NON_RASTER_EXT (it must skip the resize-to-JPEG pipeline on
+// upload — rasterizing it would defeat the point) but, unlike .ai/.eps/.pdf/
+// .pptx, a browser renders it fine via a plain <img src>. Conflating the two
+// meant SVGs got the file-icon placeholder instead of actually showing —
+// this is the one exception the gallery's "can I render this as a thumbnail"
+// check needs.
+export const cannotRenderAsImage = filename => isNonRasterAsset(filename) && extOf(filename) !== '.svg'
+
 // ── Visibility helpers — the one source of truth, used by every surface ──────
 // A customer may see any of their own assets that aren't internal-only.
 export const visibleToCustomer = a => (a?.visibility || 'internal_only') !== 'internal_only'

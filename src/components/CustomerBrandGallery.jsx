@@ -2,7 +2,7 @@ import { useState, useRef, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   useCustomerAssets, uploadCustomerAsset, updateCustomerAsset, deleteCustomerAsset,
-  loadBrandedProductImages, isNonRasterAsset, ASSET_UPLOAD_ACCEPT,
+  loadBrandedProductImages, cannotRenderAsImage, ASSET_UPLOAD_ACCEPT,
   CATEGORIES, CATEGORY_LABEL, TYPES_BY_CATEGORY, VISIBILITIES, VISIBILITY_LABEL, TYPE_LABEL,
   usableInMarketing,
 } from '../customerAssets'
@@ -13,7 +13,7 @@ import { ImagePlus, ShieldCheck, Lock, Globe, Megaphone, X, Trash2, ExternalLink
 // never rasterize) can't render as an <img> thumbnail — show the file type
 // instead of a broken image icon.
 function AssetThumb({ asset, className = '' }) {
-  if (isNonRasterAsset(asset.filename)) {
+  if (cannotRenderAsImage(asset.filename)) {
     const ext = (asset.filename.match(/\.[^.]+$/)?.[0] || '').replace('.', '').toUpperCase()
     return (
       <div className={`flex flex-col items-center justify-center gap-1 text-white/80 ${className}`}>
@@ -77,6 +77,26 @@ export default function CustomerBrandGallery({ customerId }) {
       return true
     })
   }, [inCategory, typeFilter, visFilter, tagQuery])
+
+  // Grouped by type (Logo / Brand Guideline / ...), then by file extension
+  // within each group — a dozen logos in mixed formats reads as chaos flat;
+  // grouping by "what it is" first and "what format" second is the two axes
+  // that actually matter for finding one (owner, 2026-08-06).
+  const grouped = useMemo(() => {
+    const byType = new Map()
+    for (const a of filtered) {
+      if (!byType.has(a.type)) byType.set(a.type, [])
+      byType.get(a.type).push(a)
+    }
+    const extOf = f => (f.match(/\.[^.]+$/)?.[0] || '').toLowerCase()
+    for (const list of byType.values()) {
+      list.sort((a, b) => extOf(a.filename).localeCompare(extOf(b.filename)) || a.filename.localeCompare(b.filename))
+    }
+    // Declared type order (Logo before Guideline, etc.), not insertion order.
+    return TYPES_BY_CATEGORY[category]
+      .map(t => [t, byType.get(t) || []])
+      .filter(([, list]) => list.length > 0)
+  }, [filtered, category])
 
   function switchCategory(c) { setCategory(c); setTypeFilter('') }
 
@@ -185,32 +205,43 @@ export default function CustomerBrandGallery({ customerId }) {
       ) : filtered.length === 0 ? (
         <p className="text-sm text-gray-400 py-6 text-center">Nothing matches those filters.</p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {filtered.map(a => {
-            const vb = VIS_BADGE[a.visibility] || VIS_BADGE.internal_only
-            return (
-              <button key={a.id} onClick={() => setEditing(a)}
-                      className="group text-left rounded-lg border border-gray-100 overflow-hidden hover:border-brand-300 hover:shadow-sm transition-all">
-                <div className="aspect-square bg-gray-400 flex items-center justify-center overflow-hidden">
-                  <AssetThumb asset={a} className="w-full h-full object-contain" />
-                </div>
-                <div className="p-2">
-                  <p className="text-xs text-gray-700 truncate">{a.title || a.filename}</p>
-                  <div className="flex items-center gap-1 mt-1 flex-wrap">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{TYPE_LABEL[a.type]}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5 ${vb.cls}`}>
-                      <vb.Icon size={9} />{VISIBILITY_LABEL[a.visibility]}
-                    </span>
-                    {usableInMarketing(a) && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 inline-flex items-center gap-0.5">
-                        <Megaphone size={9} />OK
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </button>
-            )
-          })}
+        <div className="space-y-4">
+          {grouped.map(([type, list]) => (
+            <div key={type}>
+              {grouped.length > 1 && (
+                <h4 className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">
+                  {TYPE_LABEL[type]} ({list.length})
+                </h4>
+              )}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {list.map(a => {
+                  const vb = VIS_BADGE[a.visibility] || VIS_BADGE.internal_only
+                  return (
+                    <button key={a.id} onClick={() => setEditing(a)}
+                            className="group text-left rounded-lg border border-gray-100 overflow-hidden hover:border-brand-300 hover:shadow-sm transition-all">
+                      <div className="aspect-square bg-gray-400 flex items-center justify-center overflow-hidden">
+                        <AssetThumb asset={a} className="w-full h-full object-contain" />
+                      </div>
+                      <div className="p-2">
+                        <p className="text-xs text-gray-700 truncate">{a.title || a.filename}</p>
+                        <div className="flex items-center gap-1 mt-1 flex-wrap">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{TYPE_LABEL[a.type]}</span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5 ${vb.cls}`}>
+                            <vb.Icon size={9} />{VISIBILITY_LABEL[a.visibility]}
+                          </span>
+                          {usableInMarketing(a) && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 inline-flex items-center gap-0.5">
+                              <Megaphone size={9} />OK
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

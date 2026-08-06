@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { loadCustomerVisibleAssets, loadBrandedProductImages, isNonRasterAsset, TYPE_LABEL, CATEGORIES, CATEGORY_LABEL } from '../customerAssets'
+import { loadCustomerVisibleAssets, loadBrandedProductImages, cannotRenderAsImage, TYPE_LABEL, CATEGORIES, CATEGORY_LABEL } from '../customerAssets'
 import { isStorefrontVisible } from '../constants'
 import { Images, Download, FileText } from 'lucide-react'
 
@@ -91,7 +91,7 @@ export default function BrandGalleryPage({ profile }) {
                   {inCat.map(a => (
                     <div key={a.id} className="bg-white rounded-xl border border-ivory-dark overflow-hidden flex flex-col">
                       <div className="aspect-square bg-gray-400 flex items-center justify-center overflow-hidden">
-                        {isNonRasterAsset(a.filename) ? (
+                        {cannotRenderAsImage(a.filename) ? (
                           <div className="flex flex-col items-center gap-1 text-white/80">
                             <FileText size={26} strokeWidth={1.5} />
                             <span className="text-[10px] font-medium">{(a.filename.match(/\.[^.]+$/)?.[0] || '').replace('.', '').toUpperCase()}</span>
