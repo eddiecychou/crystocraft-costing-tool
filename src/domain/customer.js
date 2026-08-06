@@ -24,7 +24,7 @@ const COL = () => collection(db, 'customers')
 // Canonical enum vocabularies (single source — CustomerForm imports these too).
 export const CRM_STATUSES   = ['Active', 'Prospect', 'Dormant', 'Inactive']
 export const CRM_CATEGORIES = ['Distributor', 'Small B2B', 'Gift / OEM', 'Crystal Fabric']
-export const CHANNELS       = ['Email', 'WhatsApp Business', 'Alibaba', 'Personal WhatsApp']
+export const CHANNELS       = ['Email', 'WhatsApp Business', 'Alibaba', 'Personal WhatsApp', 'WeChat']
 export const CUSTOMER_SOURCES = ['Alibaba', 'Website', 'Email Marketing', 'Referral', 'Trade Show', 'BNI', 'Direct']
 
 // Country picker — single source (previously duplicated, and drifted, between

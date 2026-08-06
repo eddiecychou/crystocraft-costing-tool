@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { doc, getDoc, updateDoc, deleteDoc, serverTimestamp, collection, getDocs, query, where } from 'firebase/firestore'
 import { db, auth } from '../firebase'
-import { useCustomers, getCustomer, saveCustomer } from '../domain/customer'
+import { useCustomers, getCustomer, saveCustomer, CUSTOMER_COUNTRIES, CRM_CATEGORIES, CUSTOMER_SOURCES } from '../domain/customer'
 import { CUSTOMER_CURRENCIES, useRates, fromUSD } from '../currency'
 import { CustomerPicker, TypeBadge } from './CustomerAccounts'
 import ContactPicker from '../components/ContactPicker'
@@ -45,6 +45,10 @@ export default function AccountEdit() {
   const [contactsVersion, setContactsVersion] = useState(0)   // bumped to force ContactPicker to re-fetch after quick-add
   const [addingContact, setAddingContact] = useState(false)
   const [creatingCustomer, setCreatingCustomer] = useState(false)
+  const [showCreatePanel, setShowCreatePanel] = useState(false)
+  const [newCountry, setNewCountry] = useState('Hong Kong')
+  const [newType, setNewType] = useState(CRM_CATEGORIES[0])
+  const [newSource, setNewSource] = useState('Website')
   const [enquiries, setEnquiries] = useState([])
 
   useEffect(() => {
@@ -174,14 +178,16 @@ export default function AccountEdit() {
       }
       const res = await saveCustomer(null, {
         company_name: u.company_name?.trim() || u.contact_name?.trim() || u.email || 'New customer',
-        country: 'Hong Kong',
+        country: newCountry,
         contacts: [newContact],
         crm_status: 'Prospect',
-        source: 'Website',
+        crm_category: newType,
+        source: newSource,
       })
       if (!res.ok) throw new Error(res.result.errors?.[0]?.message || 'Could not create customer')
       setCustomerId(res.id)
       setContactId(newContact.id)
+      setShowCreatePanel(false)
       setStatus('saved')
       setTimeout(() => setStatus(s => (s === 'saved' ? null : s)), 2500)
     } catch (e) {
@@ -264,13 +270,47 @@ export default function AccountEdit() {
                             setCustomerId(cid)
                             setContactId(autoMatchContact(customers.find(c => c.id === cid), u?.email))
                           }} />
-          {!customerId && (u.company_name?.trim() || u.contact_name?.trim()) && (
-            <button type="button" onClick={quickCreateCustomer} disabled={creatingCustomer}
-                    className="text-xs text-brand-600 hover:text-brand-800 disabled:opacity-50">
-              {creatingCustomer ? 'Creating…' : `+ Create new customer from this signup`}
+          {!customerId && !showCreatePanel && (u.company_name?.trim() || u.contact_name?.trim()) && (
+            <button type="button" onClick={() => setShowCreatePanel(true)}
+                    className="text-xs text-brand-600 hover:text-brand-800">
+              + Create new customer from this signup
             </button>
           )}
         </div>
+        {!customerId && showCreatePanel && (
+          <div className="mt-3 p-3 rounded-lg bg-ivory-light border border-ivory-dark space-y-2.5">
+            <div className="grid grid-cols-3 gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase tracking-wide text-ink-40">Country</span>
+                <select className="input text-xs" value={newCountry} onChange={e => setNewCountry(e.target.value)}>
+                  {CUSTOMER_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase tracking-wide text-ink-40">Customer type</span>
+                <select className="input text-xs" value={newType} onChange={e => setNewType(e.target.value)}>
+                  {CRM_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="text-[10px] uppercase tracking-wide text-ink-40">Source</span>
+                <select className="input text-xs" value={newSource} onChange={e => setNewSource(e.target.value)}>
+                  {CUSTOMER_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={quickCreateCustomer} disabled={creatingCustomer}
+                      className="text-xs btn-primary py-1 px-3 disabled:opacity-50">
+                {creatingCustomer ? 'Creating…' : 'Create customer'}
+              </button>
+              <button type="button" onClick={() => setShowCreatePanel(false)} disabled={creatingCustomer}
+                      className="text-xs text-ink-50 hover:text-ink">
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
         {customerId && (
           <div className="mt-3">
             <ContactPicker key={contactsVersion} customerId={customerId} value={contactId} onChange={setContactId}
