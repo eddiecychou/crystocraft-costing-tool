@@ -56,14 +56,17 @@ def _stone_centers(sp, seed=0):
     return cy, cx
 
 
-def render_zone_map(logo_img, crystal_type, fg_color, bg_color, px_per_mm):
+def render_zone_map(logo_img, crystal_type, fg_color, bg_color, px_per_mm, bg_crystal_type="fabric_1.0"):
     """Hybrid Mode B render. Returns a PIL image.
 
-    Background stone SIZE is always fabric scale (1.0mm) regardless of
-    crystal_type — that parameter sizes the FOREGROUND (logo) only. The logo
-    stays confined to its own region by the Voronoi `region` mask below."""
+    Logo and background can be different stone SIZES — a real product can be
+    e.g. a Jet Fine Rock logo on a Crystal AB Fabric 1mm background (owner,
+    2026-08-06). `crystal_type` sizes the FOREGROUND (logo); `bg_crystal_type`
+    sizes the background independently, defaulting to fabric_1.0 (the prior
+    hardcoded behaviour) when a caller doesn't specify one. The logo stays
+    confined to its own region by the Voronoi `region` mask below."""
     fg_sp = max(4.0, stone_mm(crystal_type) * px_per_mm)
-    bg_sp = max(4.0, stone_mm("fabric_1.0") * px_per_mm)
+    bg_sp = max(4.0, stone_mm(bg_crystal_type) * px_per_mm)
 
     design = design_mask_from_image(logo_img, frac=0.80)
     binm = (design > 0.4).astype(np.float32)
@@ -76,7 +79,7 @@ def render_zone_map(logo_img, crystal_type, fg_color, bg_color, px_per_mm):
     # step. fg uses the requested crystal_type's style (fabric/rock); bg is
     # always fabric style, matching its always-fabric SIZE above.
     fg_path, fg_pitch = crystal_photo(fg_color, crystal_type)
-    bg_path, bg_pitch = crystal_photo(bg_color, "fabric_1.0")
+    bg_path, bg_pitch = crystal_photo(bg_color, bg_crystal_type)
     fg_mat = build_material(fg_sp / fg_pitch, seed=9, path=fg_path)
     bg_mat = build_material(bg_sp / bg_pitch, seed=3, path=bg_path)
 

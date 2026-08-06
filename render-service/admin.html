@@ -439,6 +439,15 @@
             <div class="help" id="test-bg-help">zone_map: another crystal colour name. printed: the exact BACKFILM name captured for the logo colour above (see its backfilm chips in the sidebar editor).</div>
             <input type="text" id="test-bg" list="test-bg-suggestions" value="${names[0] || ''}" />
           </div>
+          <div class="panel" id="test-bg-type-panel">
+            <label>Background crystal type</label>
+            <div class="help">zone_map only — the background's own stone SIZE, independent of the logo's crystal type above (e.g. a Fine Rock logo on a Fabric 1mm background). Defaults to Crystal Fabric if left as-is.</div>
+            <select id="test-bg-crystal-type">
+              <option value="fabric_1.0">Crystal Fabric (fabric_1.0)</option>
+              <option value="fine_rock_1.5">Crystal Fine Rock (fine_rock_1.5, rock style)</option>
+              <option value="rock_2.0">Crystal Rock (rock_2.0, rock style)</option>
+            </select>
+          </div>
           <datalist id="test-names">${names.map(n => `<option value="${n}">`).join('')}</datalist>
           <datalist id="test-bg-suggestions">${names.concat(knownBackfilms).map(n => `<option value="${n}">`).join('')}</datalist>
           <div class="panel">
@@ -455,6 +464,7 @@
     document.getElementById('test-mode').addEventListener('change', e => {
       const printed = e.target.value === 'printed';
       document.getElementById('test-bg-label').textContent = printed ? 'Backfilm (what the logo prints on)' : 'Background crystal colour';
+      document.getElementById('test-bg-type-panel').style.display = printed ? 'none' : 'block';
     });
     document.getElementById('test-panel-mm').addEventListener('input', e => {
       document.getElementById('test-panel-val').textContent = e.target.value;
@@ -494,6 +504,7 @@
     fd.append('fg_color', document.getElementById('test-fg').value.trim());
     fd.append('bg_color', document.getElementById('test-bg').value.trim());
     fd.append('panel_mm', document.getElementById('test-panel-mm').value);
+    fd.append('bg_crystal_type', document.getElementById('test-bg-crystal-type').value);
     try {
       const res = await fetch('/admin/render-test', { method: 'POST', body: fd });
       if (!res.ok) {

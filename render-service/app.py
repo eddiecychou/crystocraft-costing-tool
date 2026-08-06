@@ -61,6 +61,10 @@ class RenderRequest(BaseModel):
     # not a flat colour — see engine/refraction.py's module docstring).
     fg_color: str = "Jet"
     bg_color: str = "White"
+    # zone_map only: the background's own stone size, independent of
+    # crystal_type (which sizes the logo). Defaults to fabric_1.0 (matches
+    # the prior hardcoded behaviour) when not given. Ignored in printed mode.
+    bg_crystal_type: str = ""
     message: str = ""
     logo_png_b64: str = Field("", description="transparent PNG, base64 (data-URL prefix ok)")
 
@@ -129,6 +133,7 @@ def render(req: RenderRequest, x_render_token: str = Header(default="")):
             fg_color=req.fg_color,
             bg_color=req.bg_color,
             message=req.message,
+            bg_crystal_type=req.bg_crystal_type or None,
         )
     except HTTPException:
         raise
@@ -174,6 +179,7 @@ async def admin_render_test(
     fg_color: str = Form("Jet"),
     bg_color: str = Form("White"),
     panel_mm: float = Form(80.0),
+    bg_crystal_type: str = Form(""),
 ):
     """Runs the SAME engine.render() the live customer flow calls, straight
     from the admin tool — no product page, no customer login, no need to
@@ -186,6 +192,7 @@ async def admin_render_test(
         img = engine.render(
             logo, mode=mode, crystal_type=crystal_type,
             panel_mm=panel_mm, fg_color=fg_color, bg_color=bg_color,
+            bg_crystal_type=bg_crystal_type or None,
         )
     except HTTPException:
         raise
