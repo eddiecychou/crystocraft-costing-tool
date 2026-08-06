@@ -34,7 +34,7 @@ from engine.palette import list_crystal_colors, REGISTRY_PATH, COLORS_DIR
 # on the admin page header, so it's visible from the outside whether a given
 # deploy actually landed (owner, 2026-08-06, after several redeploys in a
 # row with no visible confirmation the new code was live).
-app = FastAPI(title="Crystocraft Customizer Render", version="0.5.0")
+app = FastAPI(title="Crystocraft Customizer Render", version="0.6.0")
 
 RENDER_TOKEN = os.environ.get("RENDER_TOKEN", "")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")

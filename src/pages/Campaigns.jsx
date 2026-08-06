@@ -55,28 +55,39 @@ function segmentLabel(segment) {
 // smallest safe way to preload starter copy into the drag-and-drop editor.
 // Portal invite is the one the owner named explicitly; add more here as
 // needed rather than building a general template CMS for a first cut.
+// `cells: [1]` is not optional — Unlayer's layout engine reduces over each
+// row's `cells` array to compute column widths, and crashes ("Cannot read
+// properties of undefined (reading 'reduce')") without it. Every row/column/
+// content node also needs its own (possibly empty) `values` object; Unlayer
+// reads defaults off these rather than tolerating a missing key. Confirmed
+// against the real editor after the first hand-built version (missing both)
+// crashed on load.
+const textBlock = html => ({
+  type: 'text',
+  values: { containerPadding: '10px', text: html },
+})
+const oneColumnRow = content => ({
+  cells: [1],
+  columns: [{ contents: [content], values: {} }],
+  values: {},
+})
+
 const TEMPLATES = {
   portal_invite: {
     subject: "You're invited to the Crystocraft Portal",
     design: {
       body: {
-        rows: [{
-          columns: [{
-            contents: [{
-              type: 'text',
-              values: {
-                // No merge-tag support server-side (send-campaign.js sends
-                // bodyHtml as-is, no per-recipient substitution) — a
-                // {{first_name}} placeholder would go out literally, so this
-                // stays generic rather than a broken personalization.
-                text: `<p>Hi there,</p>
+        rows: [
+          oneColumnRow(textBlock(`<p>Hi there,</p>
 <p>We'd like to invite you to the Crystocraft Portal, where you can browse our catalogue, request quotes, and track your orders directly.</p>
 <p><a href="https://portal.crystocraft.com" target="_blank">Create your account →</a></p>
-<p>Best regards,<br>Crystocraft</p>`,
-              },
-            }],
-          }],
-        }],
+<p>Best regards,<br>Crystocraft</p>`)),
+          // No merge-tag support server-side (send-campaign.js sends
+          // bodyHtml as-is, no per-recipient substitution) — a
+          // {{first_name}} placeholder would go out literally, so the copy
+          // above stays generic rather than a broken personalization.
+        ],
+        values: {},
       },
     },
   },

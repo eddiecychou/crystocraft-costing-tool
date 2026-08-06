@@ -166,11 +166,12 @@ def crystal_photo(name, crystal_type, backfilm=None):
     """(path, pitch) for this colour at this crystal_type's style (fabric or
     rock), against a specific backfilm. Two real callers:
       - Mode B (stones.py) doesn't care which backfilm — no graphic sits
-        behind these zones — so it calls with backfilm=None and gets
-        whichever variant was captured (still a REAL photo, just not a
-        chosen one).
-      - Mode A (refraction.py) always passes the specific backfilm the
-        design sits on, because that's the entire point of the effect.
+        behind these zones — so it calls with backfilm=None and gets a
+        representative captured photo (see the Black/White preference
+        below), not a chosen one.
+      - Mode A (refraction.py) always passes backfilm=None too now (the
+        uploaded graphic itself is the backfilm — see its module docstring)
+        — same representative-photo path as Mode B.
     Raises if that exact (style, backfilm) was never captured — no synthetic
     substitute, ever."""
     e = _crystal_entry(name)
@@ -179,7 +180,17 @@ def crystal_photo(name, crystal_type, backfilm=None):
     if not slots:
         raise ValueError(f"{name!r} has no {style} photo captured yet — add one in /admin")
     if backfilm is None:
-        slot = next(iter(slots.values()))
+        # A colour's AB/iridescent character reads far more vividly against
+        # a dark backing than a white one — same stones, same coating, but
+        # white backfilm reflects enough ambient light to wash the rainbow
+        # out (confirmed 2026-08-06 against real captures: Crystal AB on
+        # White read as near-colourless "clear crystal"; the same colour on
+        # Black showed strong teal/gold/purple shimmer). Since backfilm=None
+        # means "just show this crystal's own real character" — not a
+        # specific customer-chosen backing — Black is the more honest
+        # representative photo whenever it exists. Falls back to White, then
+        # to whatever else was captured, rather than an arbitrary dict order.
+        slot = slots.get('Black') or slots.get('White') or next(iter(slots.values()))
     else:
         slot = slots.get(backfilm)
         if not slot:
