@@ -112,3 +112,25 @@ def design_mask_from_image(logo_img, frac=0.80):
     y0, x0 = (CANVAS - h) // 2, (CANVAS - w) // 2
     full[y0:y0 + h, x0:x0 + w] = a
     return full
+
+
+# ── full-colour graphic (not reduced to a silhouette) from an uploaded image ──
+def design_rgba_from_image(logo_img, frac=0.80):
+    """Same centring/scaling as design_mask_from_image, but keeps the FULL
+    colour content instead of collapsing to a single-colour mask — for
+    printed mode, where the uploaded graphic itself is what's seen through
+    the crystal (not a logo silhouette recoloured to one ink tone). Returns
+    (rgb, alpha) each CANVAS x CANVAS; alpha is 1.0 everywhere for an image
+    with no alpha channel (opaque graphic fills its own bounding box)."""
+    im = logo_img.convert("RGBA")
+    ah, aw = im.height, im.width
+    s = int(CANVAS * frac) / max(ah, aw)
+    im = im.resize((max(1, int(aw * s)), max(1, int(ah * s))), Image.LANCZOS)
+    h, w = im.height, im.width
+    y0, x0 = (CANVAS - h) // 2, (CANVAS - w) // 2
+    rgb_full = np.ones((CANVAS, CANVAS, 3), np.float32)   # white outside the graphic's bounds
+    a_full = np.zeros((CANVAS, CANVAS), np.float32)
+    arr = to_np(im)                                        # H x W x 4, RGBA
+    rgb_full[y0:y0 + h, x0:x0 + w] = arr[..., :3]
+    a_full[y0:y0 + h, x0:x0 + w] = arr[..., 3]
+    return rgb_full, a_full

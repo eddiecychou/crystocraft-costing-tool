@@ -5,7 +5,7 @@ import { db, auth } from '../../firebase'
 import { ArrowLeft, Upload, Sparkles, Check, Gem, AlertTriangle } from 'lucide-react'
 import { useCart } from '../store'
 import {
-  CRYSTAL_TYPES, MODES, styleOfType, typeLabel,
+  CRYSTAL_TYPES, MODES, styleOfType, typeLabel, PRINTED_MODE_COLORS,
   fileToPngDataUrl, renderPreview, saveDesign, fetchPalette,
 } from '../../customizerApi'
 
@@ -73,12 +73,18 @@ export default function CrystalFabricCustomizer({ product, profile }) {
   const bgStyle = styleOfType(sel.bg_crystal_type)       // background's own stone style (zone_map only)
 
   // Colours photographed for the LOGO's stone style, permitted by the
-  // product template if it restricts the palette.
+  // product template if it restricts the palette. printed mode is further
+  // restricted to PRINTED_MODE_COLORS — only Crystal AB is a genuinely
+  // transparent/coated crystal; every other captured colour is opaque or
+  // metallic-coated and would hide the graphic underneath in the real
+  // product (owner, 2026-08-06), even though the render engine has no
+  // physical "transparency" flag and would technically produce an image.
   const fgAvailColors = useMemo(() => {
     let list = palette.filter(c => (c[style] || []).length > 0)
     if (tmpl?.palette) list = list.filter(c => tmpl.palette.includes(c.name))
+    if (!isZone) list = list.filter(c => PRINTED_MODE_COLORS.includes(c.name))
     return list
-  }, [palette, style, tmpl])
+  }, [palette, style, tmpl, isZone])
 
   // zone_map only: colours photographed for the BACKGROUND's own stone
   // style — can differ from the logo's (e.g. logo in Fine Rock, background
@@ -89,36 +95,25 @@ export default function CrystalFabricCustomizer({ product, profile }) {
     return list
   }, [palette, bgStyle, tmpl])
 
-  // printed mode: the background is a real BACKFILM captured for the chosen
-  // top crystal colour at the LOGO's style — not a free crystal colour, and
-  // not affected by bg_crystal_type (engine ignores it in printed mode).
-  const backfilmOptions = useMemo(() => {
-    const fg = palette.find(c => c.name === sel.fg_color)
-    return fg ? (fg[style] || []) : []
-  }, [palette, sel.fg_color, style])
-
   const set = patch => { setSel(p => ({ ...p, ...patch })); setPreviewUrl(null); lastBlob.current = null }
 
-  // Keep the colour/backfilm selections valid as mode/type/palette change —
-  // a stale pick would render an error. Snap to the first available option.
+  // Keep the colour selections valid as mode/type/palette change — a stale
+  // pick would render an error. Snap to the first available option. printed
+  // mode has no background pick at all (the graphic itself is the
+  // backfilm — see customizerApi.js's MODES), only fg matters there.
   useEffect(() => {
     if (!palette.length) return
     const fgNames = fgAvailColors.map(c => c.name)
     if (!fgNames.length) return
     const fg = fgNames.includes(sel.fg_color) ? sel.fg_color : fgNames[0]
-    let bg
-    if (isZone) {
-      const bgNames = bgAvailColors.map(c => c.name)
-      bg = bgNames.includes(sel.bg_color) ? sel.bg_color : (bgNames[0] || '')
-    } else {
-      const bfs = (palette.find(c => c.name === fg)?.[style]) || []
-      bg = bfs.includes(sel.bg_color) ? sel.bg_color : (bfs[0] || '')
-    }
+    const bg = isZone
+      ? (bgAvailColors.map(c => c.name).includes(sel.bg_color) ? sel.bg_color : (bgAvailColors[0]?.name || ''))
+      : ''
     if (fg !== sel.fg_color || bg !== sel.bg_color) {
       setSel(p => ({ ...p, fg_color: fg, bg_color: bg }))
       setPreviewUrl(null); lastBlob.current = null
     }
-  }, [palette, fgAvailColors, bgAvailColors, isZone, style, sel.fg_color, sel.bg_color])
+  }, [palette, fgAvailColors, bgAvailColors, isZone, sel.fg_color, sel.bg_color])
 
   async function onLogo(file) {
     if (!file) return
@@ -261,30 +256,36 @@ export default function CrystalFabricCustomizer({ product, profile }) {
             </Section>
           )}
 
-          <Section title={isZone ? '5. Crystal colours' : '4. Crystal colours'}>
+          <Section title={isZone ? '5. Crystal colours' : '4. Crystal colour'}>
             {paletteLoading && <p className="text-sm text-ink-50">Loading colours…</p>}
             {paletteError && <p className="text-sm text-red-600">{paletteError}</p>}
-            {noColors && <p className="text-sm text-ink-50">No crystal colours are available for this stone type yet.</p>}
+            {noColors && (
+              <p className="text-sm text-ink-50">
+                {isZone ? 'No crystal colours are available for this stone type yet.'
+                  : 'Crystal AB isn’t captured for this stone type yet — try a different crystal type above.'}
+              </p>
+            )}
             {!paletteLoading && !paletteError && fgAvailColors.length > 0 && (
               <>
+                {!isZone && (
+                  <p className="text-[11px] text-ink-40 mb-2">
+                    Only Crystal AB is transparent enough to show your graphic through it — the other captured colours are opaque or metallic-coated.
+                  </p>
+                )}
                 <Swatches label={isZone ? 'Logo crystals' : 'Crystal layer (transparent top)'}
                   value={sel.fg_color} palette={fgAvailColors} colorHex={colorHex}
                   onChange={name => set({ fg_color: name })} />
-                <div className="mt-3">
-                  {isZone ? (
-                    bgAvailColors.length > 0 ? (
+                {isZone && (
+                  <div className="mt-3">
+                    {bgAvailColors.length > 0 ? (
                       <Swatches label="Background crystals"
                         value={sel.bg_color} palette={bgAvailColors} colorHex={colorHex}
                         onChange={name => set({ bg_color: name })} />
                     ) : (
                       <p className="text-[11px] text-ink-40">No crystal colours captured for this background stone type yet — pick another type above.</p>
-                    )
-                  ) : (
-                    <Backfilms label="Backfilm — what the logo prints on"
-                      value={sel.bg_color} options={backfilmOptions}
-                      onChange={name => set({ bg_color: name })} />
-                  )}
-                </div>
+                    )}
+                  </div>
+                )}
               </>
             )}
           </Section>
@@ -326,27 +327,6 @@ function Swatches({ label, value, palette, colorHex, onChange }) {
             style={{ background: colorHex(c.name) }} />
         ))}
       </div>
-    </div>
-  )
-}
-
-function Backfilms({ label, value, options, onChange }) {
-  return (
-    <div>
-      <p className="text-xs text-ink-60 mb-1.5">{label}: <span className="text-ink">{value || '—'}</span></p>
-      {options.length === 0 ? (
-        <p className="text-[11px] text-ink-40">No backfilms captured for this crystal colour yet — pick another colour above.</p>
-      ) : (
-        <div className="flex flex-wrap gap-1.5">
-          {options.map(bf => (
-            <button key={bf} type="button" onClick={() => onChange(bf)}
-              className={`px-2.5 py-1 rounded-full border text-xs transition-colors ${
-                value === bf ? 'border-brand-400 bg-brand-50 text-ink' : 'border-ivory-dark text-ink-60 hover:bg-gray-50'}`}>
-              {bf}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

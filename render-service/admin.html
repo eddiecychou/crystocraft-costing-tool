@@ -77,7 +77,7 @@
 </head>
 <body>
 <header>
-  <h1>Swatch <span class="accent">Library</span> — Admin</h1>
+  <h1>Swatch <span class="accent">Library</span> — Admin <span class="subhead" id="service-version" style="display:inline"></span></h1>
   <div class="subhead">capture, crop, and calibrate crystal swatches — each colour × stone size × backfilm is its own real photo, changes apply on the next render, no deploy needed</div>
 </header>
 <main>
@@ -94,6 +94,13 @@
 
 <script>
   const AUTH_TEST = fetch('/swatches').then(r => { if (!r.ok) throw new Error('auth'); return r.json(); });
+
+  // Shows which build is actually live — bump app.py's FastAPI `version` on
+  // any deploy that changes render behaviour (owner, 2026-08-06).
+  fetch('/health').then(r => r.json()).then(h => {
+    const el = document.getElementById('service-version');
+    if (el && h.version) el.textContent = `· v${h.version}`;
+  }).catch(() => {});
 
   let swatches = { crystal: {} };
   let knownBackfilms = [];
@@ -394,10 +401,27 @@
   // — with the real error message — before a customer hits it in the portal.
   let testLogoFile = null;
 
+  // Colour names that actually have a photo for the given style ('fabric' or
+  // 'rock') — the ONLY thing that should ever be offered, so picking a
+  // colour can never itself produce a render error (owner, 2026-08-06: "for
+  // the crystals which doesn't have the swatch will return error. Better
+  // just filter it out").
+  function namesForStyle(style) {
+    return Object.entries(swatches.crystal || {})
+      .filter(([, s]) => Object.keys(s.slots[style] || {}).length > 0)
+      .map(([name]) => name)
+      .sort();
+  }
+  const STYLE_OF_TYPE = { 'fabric_1.0': 'fabric', 'fine_rock_1.5': 'rock', 'rock_2.0': 'rock' };
+  // Only Crystal AB is genuinely transparent/coated — every other captured
+  // colour is opaque or metallic-coated and would hide the printed graphic
+  // underneath in the real product (owner, 2026-08-06). Mirrors
+  // src/customizerApi.js's PRINTED_MODE_COLORS.
+  const PRINTED_MODE_COLORS = ['Crystal AB'];
+
   function testRenderShell() {
     currentName = null;
     renderList();
-    const names = Object.keys(swatches.crystal || {}).sort();
     document.getElementById('editor').innerHTML = `
       <div class="editor-grid">
         <div>
@@ -418,11 +442,11 @@
             <label>Mode</label>
             <select id="test-mode">
               <option value="zone_map">zone_map — crystals form the logo</option>
-              <option value="printed">printed — logo under crystals</option>
+              <option value="printed">printed — Printed Graphics Under Crystals</option>
             </select>
           </div>
           <div class="panel">
-            <label>Crystal type</label>
+            <label id="test-type-label">Crystal type</label>
             <select id="test-crystal-type">
               <option value="fabric_1.0">Crystal Fabric (fabric_1.0)</option>
               <option value="fine_rock_1.5">Crystal Fine Rock (fine_rock_1.5, rock style)</option>
@@ -431,13 +455,13 @@
           </div>
           <div class="panel">
             <label id="test-fg-label">Logo crystal colour</label>
-            <div class="help">A crystal colour name registered in the sidebar (e.g. "Crystal AB").</div>
-            <input type="text" id="test-fg" list="test-names" value="${names[0] || ''}" />
+            <div class="help" id="test-fg-help">Only colours with a photo captured for the crystal type above are listed.</div>
+            <select id="test-fg"></select>
           </div>
-          <div class="panel">
-            <label id="test-bg-label">Background crystal colour</label>
-            <div class="help" id="test-bg-help">zone_map: another crystal colour name. printed: the exact BACKFILM name captured for the logo colour above (see its backfilm chips in the sidebar editor).</div>
-            <input type="text" id="test-bg" list="test-bg-suggestions" value="${names[0] || ''}" />
+          <div class="panel" id="test-bg-color-panel">
+            <label>Background crystal colour</label>
+            <div class="help">zone_map only — another crystal colour, filtered to the background crystal type below.</div>
+            <select id="test-bg"></select>
           </div>
           <div class="panel" id="test-bg-type-panel">
             <label>Background crystal type</label>
@@ -448,8 +472,6 @@
               <option value="rock_2.0">Crystal Rock (rock_2.0, rock style)</option>
             </select>
           </div>
-          <datalist id="test-names">${names.map(n => `<option value="${n}">`).join('')}</datalist>
-          <datalist id="test-bg-suggestions">${names.concat(knownBackfilms).map(n => `<option value="${n}">`).join('')}</datalist>
           <div class="panel">
             <label>Panel size — <span id="test-panel-val">80</span>mm</label>
             <div class="help">The physical crystal panel size on the actual product — affects how large the stones look relative to the logo. No per-product size is stored yet (see PROJECT-PLAN.md); enter the real dimension for the product you're checking.</div>
@@ -461,11 +483,35 @@
         </div>
       </div>
     `;
+    function fillSelect(sel, style, keepValue, restrictTo) {
+      let opts = namesForStyle(style);
+      if (restrictTo) opts = opts.filter(n => restrictTo.includes(n));
+      const prev = keepValue && opts.includes(sel.value) ? sel.value : opts[0];
+      sel.innerHTML = opts.map(n => `<option value="${n}">${n}</option>`).join('') ||
+        `<option value="">— none captured for this type —</option>`;
+      if (prev) sel.value = prev;
+    }
+    function refreshFg() {
+      const printed = document.getElementById('test-mode').value === 'printed';
+      fillSelect(document.getElementById('test-fg'), STYLE_OF_TYPE[document.getElementById('test-crystal-type').value], true,
+        printed ? PRINTED_MODE_COLORS : null);
+    }
+    function refreshBg() { fillSelect(document.getElementById('test-bg'), STYLE_OF_TYPE[document.getElementById('test-bg-crystal-type').value], true); }
+    refreshFg();
+    refreshBg();
     document.getElementById('test-mode').addEventListener('change', e => {
       const printed = e.target.value === 'printed';
-      document.getElementById('test-bg-label').textContent = printed ? 'Backfilm (what the logo prints on)' : 'Background crystal colour';
+      document.getElementById('test-type-label').textContent = printed ? 'Crystal type (top layer)' : 'Logo crystal type';
+      document.getElementById('test-fg-label').textContent = printed ? 'Crystal colour (top layer)' : 'Logo crystal colour';
+      document.getElementById('test-fg-help').textContent = printed
+        ? 'Only Crystal AB is transparent enough to show the graphic through it — every other captured colour is opaque or metallic-coated.'
+        : 'Only colours with a photo captured for the crystal type above are listed.';
+      document.getElementById('test-bg-color-panel').style.display = printed ? 'none' : 'block';
       document.getElementById('test-bg-type-panel').style.display = printed ? 'none' : 'block';
+      refreshFg();
     });
+    document.getElementById('test-crystal-type').addEventListener('change', refreshFg);
+    document.getElementById('test-bg-crystal-type').addEventListener('change', refreshBg);
     document.getElementById('test-panel-mm').addEventListener('input', e => {
       document.getElementById('test-panel-val').textContent = e.target.value;
     });

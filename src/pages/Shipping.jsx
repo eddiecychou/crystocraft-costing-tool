@@ -5,6 +5,7 @@ import { useOrders, orderStatusOf, orderUc, orderSi, orderSoDisplay, getOrder, g
 import { allocateOrderUc } from '../ucRegistry'
 import { useVendors, FREIGHT_MODES, modeLabel, strengthOf } from '../logistics'
 import { erpLookup } from '../erpApi'
+import { useCustomers } from '../domain/customer'
 import { MapPin, FileInput, ClipboardCheck, MessageCircle, Star, Truck, Copy, Plus, Database } from 'lucide-react'
 import ComponentRequirements from './ComponentRequirements'
 import ErpDocModal from '../components/ErpDocModal'
@@ -85,6 +86,16 @@ function ShipmentsList() {
 
   const erp = useErpOrders(search)
   const [erpDoc, setErpDoc] = useState(null)   // JES order being viewed, read-only
+
+  // Customer code next to the name — Cindy keys this into PBIS (same need as
+  // Sales Invoices, see SalesInvoices.jsx). App rows resolve via the order's
+  // own customer_id; JES rows already carry customer_code straight from
+  // erp_sales_order (socustomer), no extra lookup needed.
+  const { customers } = useCustomers()
+  const erpCodeByCustomerId = useMemo(
+    () => Object.fromEntries(customers.map(c => [c.id, c.erp_code]).filter(([, code]) => code)),
+    [customers],
+  )
 
   // App rows and JES rows in one list, de-duplicated by SO number with the app
   // row winning. That is what implements "only wire what is not already parsed"
@@ -211,6 +222,9 @@ function ShipmentsList() {
                     <td className="px-4 py-3 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-gray-900 truncate">{o.customer_name || 'Unnamed customer'}</span>
+                        {erpCodeByCustomerId[o.customer_id] && (
+                          <span className="text-xs text-gray-400 font-mono">{erpCodeByCustomerId[o.customer_id]}</span>
+                        )}
                         {o.uc_no && <span className="text-xs text-gray-400">{o.uc_no}</span>}
                         {needsReconcile && (
                           <span title="Needs reconcile" className="inline-flex items-center text-amber-600">
@@ -278,6 +292,7 @@ function JesOrderRow({ r, onOpen }) {
       <td className="px-4 py-3 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="font-medium text-gray-900 truncate">{r.customer || 'Unnamed customer'}</span>
+          {r.customer_code && <span className="text-xs text-gray-400 font-mono">{r.customer_code}</span>}
           {r.customer_po && <span className="text-xs text-gray-400">{r.customer_po}</span>}
         </div>
       </td>

@@ -34,14 +34,24 @@ export const typeLabel = v => {
   return t ? `${t.label} ${t.mm}` : v
 }
 
-// Both modes are live now that real backfilm photos exist in the registry.
-// zone_map: fg/bg are crystal colour NAMES (background is another crystal).
-// printed: fg is the top crystal colour, bg is a BACKFILM NAME captured for
-// that fg colour at the chosen style — so its options depend on the fg pick.
+// zone_map: fg/bg are crystal colour NAMES (background is another crystal,
+// independently sized — see bg_crystal_type).
+// printed: fg is the top crystal colour; there is no separate backfilm to
+// pick — the uploaded graphic itself is what's seen through the crystal
+// (rewritten 2026-08-06, see render-service/engine/refraction.py).
 export const MODES = [
   { value: 'zone_map', label: 'Crystals form the logo', desc: 'Your logo is made of crystals on a crystal background.', available: true },
-  { value: 'printed',  label: 'Logo under crystals',    desc: 'Your printed graphic sits under a layer of transparent crystals.', available: true },
+  { value: 'printed',  label: 'Printed Graphics Under Crystals', desc: 'Your printed graphic sits under a layer of transparent crystals.', available: true },
 ]
+
+// Only Crystal AB is a genuinely TRANSPARENT/coated crystal in the current
+// library — every other captured colour is an opaque or metallic-coated
+// finish that would visually hide the graphic underneath in the real
+// product, even though the render engine has no physical "transparency"
+// flag and would technically produce an image for any of them (owner,
+// 2026-08-06). Printed mode's colour picker is restricted to this list;
+// extend it if a genuinely transparent colour is added to the library.
+export const PRINTED_MODE_COLORS = ['Crystal AB']
 
 // Read a logo file → a downscaled PNG data URL (alpha preserved for masking).
 export function fileToPngDataUrl(file, maxPx = 1000) {

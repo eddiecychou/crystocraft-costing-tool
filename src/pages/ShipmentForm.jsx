@@ -764,7 +764,7 @@ export default function ShipmentForm() {
               <label className="label">Customer</label>
               <select className="input" value={customers.find(c => c.id === header.customer_id) ? header.customer_id : ''} onChange={onCustomer}>
                 <option value="">— select customer —</option>
-                {customers.map(c => <option key={c.id} value={c.id}>{c.company_name}</option>)}
+                {customers.map(c => <option key={c.id} value={c.id}>{c.erp_code ? `[${c.erp_code}] ` : ''}{c.company_name}</option>)}
               </select>
               {!header.customer_id && header.customer_name && (
                 <div className="mt-1.5 flex items-center gap-2 flex-wrap">
