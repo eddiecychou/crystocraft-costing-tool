@@ -5,6 +5,7 @@ import { Search, Hash, Plus, X, AlertCircle, FileText } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import { useUcList, listUc, createUcInvoice, updateUcInvoice, listAppInvoices, UC_SOURCES, UC_CURRENCIES, ucSource } from '../ucRegistry'
 import { useCustomers } from '../domain/customer'
+import { CustomerPicker } from './CustomerAccounts'
 import ExportFilterBar from '../components/ExportFilterBar'
 import { downloadCsv, exportStem } from '../exportCsv'
 import { erpLines, erpLookup } from '../erpApi'
@@ -181,6 +182,7 @@ function UcForm({ record, onClose, onSaved }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const set = (k) => (e) => setF({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value })
+  const { customers } = useCustomers()
 
   // Warnings, not errors: shown once, and saving again goes through. The
   // registry has to be able to record what actually happened, including the
@@ -253,7 +255,24 @@ function UcForm({ record, onClose, onSaved }) {
                 className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
             )}
           </label>
-          {field('Customer', 'customer', 'text', true)}
+          <label className="flex flex-col gap-1 col-span-2">
+            <span className="text-xs font-medium text-gray-500">Customer</span>
+            <input type="text" value={f.customer ?? ''} onChange={set('customer')}
+              className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
+            {/* Free text stays the record of what the invoice actually says
+                (JES history, one-off names) — this links it to a real app
+                customer record when one exists, so the code (Cindy needs it
+                for PBIS) resolves reliably instead of guessing by name match.
+                Picking one overwrites the name above to keep them in sync;
+                the name stays editable afterward if it needs to differ. */}
+            <div className="mt-0.5">
+              <CustomerPicker customers={customers} value={f.customer_id || ''}
+                onChange={(id) => {
+                  const c = customers.find((x) => x.id === id)
+                  setF({ ...f, customer_id: id, customer: c ? c.company_name : f.customer })
+                }} />
+            </div>
+          </label>
           <SiPicker value={f.jes_si} onChange={(v) => setF({ ...f, jes_si: v })} />
           {field('Order no.', 'order_no')}
           <label className="flex flex-col gap-1">
@@ -503,6 +522,10 @@ export default function UcRegistry() {
   }, [rows, orderCustomerId])
 
   function customerCodeFor(r) {
+    // Direct link (r.customer_id, set via the row's own CustomerPicker) wins —
+    // it's an explicit choice, not an inferred match. Falls back to JES's own
+    // code, then to the app-order join, for rows never linked directly.
+    if (r.customer_id) return erpCodeByCustomerId[r.customer_id] || null
     if (r.jes_customer_code) return r.jes_customer_code
     if (r.app_order_id) {
       const cid = orderCustomerId[r.app_order_id]

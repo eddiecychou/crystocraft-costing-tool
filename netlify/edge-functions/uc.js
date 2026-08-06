@@ -16,7 +16,7 @@ const json = (b, status = 200) =>
 
 // Columns the client may set. uc_no is server-allocated (DB default), never client-set.
 const WRITABLE = new Set([
-  'doc_date', 'year', 'source', 'jes_si', 'order_no', 'customer', 'currency', 'total', 'deposit',
+  'doc_date', 'year', 'source', 'jes_si', 'order_no', 'customer', 'customer_id', 'currency', 'total', 'deposit',
   // shipping_cost and delivery_date are deliberately absent: retired from the
   // registry on 2026-07-21 (Cindy). The columns still hold their history, but
   // nothing may write them again.
