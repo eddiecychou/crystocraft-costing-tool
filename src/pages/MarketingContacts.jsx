@@ -5,7 +5,10 @@ import {
   useMarketingContacts, saveContact, deleteContact, deleteContacts,
   contactName, MC_CATEGORIES, MC_STATUSES, MC_AUDIENCES, isCategoryTag, sortTags,
   promoteContactsToCustomers, tagCounts, renameTagEverywhere, deleteTagEverywhere,
+  linkContactToCustomer, unlinkContactFromCustomer,
 } from '../domain/marketingContact'
+import { useCustomers, customerName } from '../domain/customer'
+import { CustomerPicker } from './CustomerAccounts'
 
 const STATUS_STYLE = {
   subscribed:    'bg-green-100 text-green-700',
@@ -68,7 +71,7 @@ function exportCsv(rows) {
 
 // Edit one contact. Local form state seeded from the row; the imported Mailchimp
 // fields not shown here are preserved on save (the domain merges them).
-function EditContactModal({ contact, onClose, onSaved, onDeleted }) {
+function EditContactModal({ contact, customers, onClose, onSaved, onLinked, onDeleted }) {
   const [f, setF] = useState({
     first_name: contact.first_name, last_name: contact.last_name, email: contact.email,
     company: contact.company, country: contact.country, phone: contact.phone,
@@ -78,10 +81,44 @@ function EditContactModal({ contact, onClose, onSaved, onDeleted }) {
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // Kept separate from `f` (and from saveContact's patch shape) — linking is
+  // its own immediate write via linkContactToCustomer/unlinkContactFromCustomer,
+  // not deferred to the Save button, same as AccountEdit.jsx's customer link.
+  const [match, setMatch] = useState(contact.possible_customer_match || null)
+  const [linking, setLinking] = useState(false)
   const set = k => e => setF(s => ({ ...s, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
   const toggleAudience = a => setF(s => ({
     ...s, audiences: s.audiences.includes(a) ? s.audiences.filter(x => x !== a) : [...s.audiences, a],
   }))
+
+  async function doLink(customerId) {
+    if (!customerId) return
+    const c = customers.find(x => x.id === customerId)
+    setLinking(true); setError('')
+    try {
+      await linkContactToCustomer(contact.id, customerId, customerName(c))
+      const newMatch = { customer_id: customerId, company_name: customerName(c) }
+      setMatch(newMatch)
+      setF(s => ({ ...s, is_customer: true }))
+      onLinked(contact.id, { possible_customer_match: newMatch, is_customer: true })
+    } catch (e) {
+      setError(e.message || 'Could not link this contact.')
+    } finally {
+      setLinking(false)
+    }
+  }
+  async function doUnlink() {
+    setLinking(true); setError('')
+    try {
+      await unlinkContactFromCustomer(contact.id)
+      setMatch(null)
+      onLinked(contact.id, { possible_customer_match: null })
+    } catch (e) {
+      setError(e.message || 'Could not unlink this contact.')
+    } finally {
+      setLinking(false)
+    }
+  }
 
   async function save() {
     setBusy(true); setError('')
@@ -161,6 +198,21 @@ function EditContactModal({ contact, onClose, onSaved, onDeleted }) {
                    className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
             Likely customer
           </label>
+          <div className="block border-t border-gray-100 pt-3">
+            <span className="text-xs text-gray-500">Linked app customer</span>
+            <p className="text-[11px] text-gray-400 mb-1.5">
+              {match ? `Currently linked to "${match.company_name}".` : 'Not linked — pick a customer if you know this contact is already in the app.'}
+            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <CustomerPicker customers={customers} value={match?.customer_id || ''} onChange={doLink} />
+              {match && (
+                <button type="button" onClick={doUnlink} disabled={linking}
+                        className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50">
+                  {linking ? 'Unlinking…' : 'Unlink'}
+                </button>
+              )}
+            </div>
+          </div>
           <label className="block">
             <span className="text-xs text-gray-500">Notes</span>
             <textarea className="input w-full mt-0.5" rows={2} value={f.app_notes} onChange={set('app_notes')} />
@@ -267,6 +319,7 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
 
 export default function MarketingContacts() {
   const { contacts, loading, setContacts } = useMarketingContacts()
+  const { customers } = useCustomers()
   const [search, setSearch] = useState('')
   const [audience, setAudience] = useState('')
   const [status, setStatus] = useState('subscribed')  // default to the emailable list
@@ -345,6 +398,12 @@ export default function MarketingContacts() {
     setContacts(prev => prev.map(c => c.id === oldId ? { ...c, ...updated } : c))
     setEditing(null)
   }
+  // Link/unlink is an immediate write (see EditContactModal's doLink/doUnlink)
+  // — reflects into local state WITHOUT closing the modal, unlike applySaved,
+  // so the admin can keep editing other fields right after linking.
+  function applyLinked(id, patch) {
+    setContacts(prev => prev.map(c => c.id === id ? { ...c, ...patch } : c))
+  }
 
   // Reflect a tag rename/delete already committed in Firestore (see
   // TagManagerModal) into local state, so the list updates without a full
@@ -405,8 +464,8 @@ export default function MarketingContacts() {
       {loading && <LoadingBar />}
 
       {editing && (
-        <EditContactModal contact={editing} onClose={() => setEditing(null)}
-          onSaved={applySaved} onDeleted={removeLocal} />
+        <EditContactModal contact={editing} customers={customers} onClose={() => setEditing(null)}
+          onSaved={applySaved} onLinked={applyLinked} onDeleted={removeLocal} />
       )}
       {managingTags && (
         <TagManagerModal contacts={contacts} onClose={() => setManagingTags(false)} onApplied={applyTagChange} />

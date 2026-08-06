@@ -66,9 +66,20 @@ def render_printed(logo_img, crystal_type, px_per_mm, top_color=DEFAULT_FG):
     L = luminance(mat)
     lo, hi = np.percentile(L, 3), np.percentile(L, 99)
     Ln = np.clip((L - lo) / (hi - lo + 1e-6), 0, 1)
-    trans = (0.55 + 0.55 * Ln)[..., None]                # transparent crystal passes the print
+    # Retuned 2026-08-06 (owner: "crystal fabric is too opaque to show the
+    # background, fine rock is okay"). Root cause: Crystal AB's fabric photo
+    # is much brighter/lower-contrast than its rock photo (measured mean
+    # luminance 0.86 vs 0.74, tightly clustered near-white) — the old
+    # params (0.55 floor, sparkle from 0.64, glint*1.7) treated that near-
+    # uniform brightness as sparkle almost everywhere, screening the graphic
+    # to near-white. Lower floor + narrower/higher sparkle band + lower
+    # glint gain means only genuinely bright specular points read as
+    # sparkle, regardless of the material photo's own average brightness —
+    # tuned against both a fabric_1.0 and a fine_rock_1.5 render of the same
+    # graphic; the rock result got moderately richer/darker, not worse.
+    trans = (0.20 + 0.80 * Ln)[..., None]                # transparent crystal passes the print
     base = np.clip(Gr * trans, 0, 1)
-    sparkle = smoothstep(0.64, 0.95, L)[..., None]
-    glint = np.clip(mat * 1.7, 0, 1)
+    sparkle = smoothstep(0.85, 0.995, L)[..., None]
+    glint = np.clip(mat * 0.9, 0, 1)
     out = screen(base, glint * sparkle)
     return to_pil(np.clip(out, 0, 1))
