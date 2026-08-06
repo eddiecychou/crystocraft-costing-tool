@@ -13,6 +13,10 @@ const TABS = [
 
 export default function Marketing() {
   const [tab, setTab] = useState('catalogues')
+  // Contacts tab hands off a hand-picked contact list to the Campaigns tab
+  // (owner: "click a few contacts and send a template email") — lifted here
+  // since both are sibling tabs of the same page, not separate routes.
+  const [presetContactIds, setPresetContactIds] = useState(null)
 
   return (
     <div>
@@ -32,8 +36,12 @@ export default function Marketing() {
 
       {tab === 'catalogues' && <Catalogues embedded />}
       {tab === 'blog'       && <BlogGenerator embedded />}
-      {tab === 'contacts'   && <MarketingContacts />}
-      {tab === 'campaigns'  && <Campaigns />}
+      {tab === 'contacts'   && (
+        <MarketingContacts onSendEmail={ids => { setPresetContactIds(ids); setTab('campaigns') }} />
+      )}
+      {tab === 'campaigns'  && (
+        <Campaigns presetContactIds={presetContactIds} onConsumedPreset={() => setPresetContactIds(null)} />
+      )}
     </div>
   )
 }

@@ -321,7 +321,7 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
   )
 }
 
-export default function MarketingContacts() {
+export default function MarketingContacts({ onSendEmail }) {
   const { contacts, loading, setContacts } = useMarketingContacts()
   const { customers } = useCustomers()
   const [search, setSearch] = useState('')
@@ -566,6 +566,12 @@ export default function MarketingContacts() {
               className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 border border-brand-200 rounded-md px-2 py-1 disabled:opacity-50">
               <UserPlus size={13} /> {promoting ? 'Adding…' : 'Add to Customers'}
             </button>
+            {onSendEmail && (
+              <button onClick={() => onSendEmail([...selected])}
+                className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 border border-brand-200 rounded-md px-2 py-1">
+                <Mail size={13} /> Send email
+              </button>
+            )}
             <button onClick={bulkDelete}
               className="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 border border-red-200 rounded-md px-2 py-1">
               <Trash2 size={13} /> Delete selected

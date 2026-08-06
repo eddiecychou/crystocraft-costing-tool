@@ -55,12 +55,17 @@ export async function setCampaignStatus(campaignId, status) {
 }
 
 // Segment filter over the already-loaded marketing_contacts list (2.4k docs,
-// loaded once — see useMarketingContacts). { tag } | { audience } | { all: true }.
+// loaded once — see useMarketingContacts).
+// { tag } | { audience } | { all: true } | { ids: [...] } — the last is a
+// hand-picked list (owner, 2026-08-06: "click a few contacts and send a
+// template email"), set from the Contacts tab's row checkboxes rather than a
+// tag/audience filter.
 export function matchesSegment(contact, segment) {
   if (!segment) return false
   if (segment.all) return true
   if (segment.tag) return contact.tags.includes(segment.tag)
   if (segment.audience) return contact.audiences.includes(segment.audience)
+  if (segment.ids) return segment.ids.includes(contact.id)
   return false
 }
 

@@ -5,7 +5,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { storage } from '../firebase'
 import { useMarketingContacts, MC_AUDIENCES } from '../domain/marketingContact'
 import {
-  listCampaigns, createCampaign, recordBatchResults, setCampaignStatus, eligibleContacts,
+  listCampaigns, createCampaign, recordBatchResults, setCampaignStatus, eligibleContacts, matchesSegment,
 } from '../domain/campaigns'
 import { sendCampaignBatch } from '../campaignApi'
 
@@ -21,16 +21,22 @@ const BATCH_SIZE = 80
 // list — that list is only the "promoted for filtering" subset shown on the
 // Contacts page; a one-off tag like "test" (added there for exactly this kind
 // of dry run) still needs to be selectable here.
-function segmentOptions(contacts) {
+//
+// 'selected:N' is a synthetic option only present when arriving from the
+// Contacts tab with a hand-picked list (see presetContactIds) — not a real
+// tag/audience, so it's prepended here rather than living in MC_AUDIENCES.
+function segmentOptions(contacts, presetCount) {
   const tags = [...new Set(contacts.flatMap(c => c.tags))].sort((a, b) => a.localeCompare(b))
   return [
+    ...(presetCount ? [{ v: 'selected', label: `${presetCount} selected contact${presetCount === 1 ? '' : 's'} (from Contacts)` }] : []),
     { v: 'all', label: 'All subscribed contacts' },
     ...MC_AUDIENCES.map(a => ({ v: `audience:${a}`, label: `Audience — ${a}` })),
     ...tags.map(t => ({ v: `tag:${t}`, label: `Tag — ${t}` })),
   ]
 }
 
-function segmentFromValue(v) {
+function segmentFromValue(v, presetIds) {
+  if (v === 'selected') return { ids: presetIds || [] }
   if (v === 'all') return { all: true }
   const [kind, val] = v.split(':')
   return kind === 'tag' ? { tag: val } : { audience: val }
@@ -41,10 +47,42 @@ function segmentLabel(segment) {
   if (segment.all) return 'All subscribed contacts'
   if (segment.tag) return `Tag — ${segment.tag}`
   if (segment.audience) return `Audience — ${segment.audience}`
+  if (segment.ids) return `${segment.ids.length} hand-picked contact${segment.ids.length === 1 ? '' : 's'}`
   return '—'
 }
 
-export default function Campaigns() {
+// A minimal, valid Unlayer design (one row, one column, one text block) — the
+// smallest safe way to preload starter copy into the drag-and-drop editor.
+// Portal invite is the one the owner named explicitly; add more here as
+// needed rather than building a general template CMS for a first cut.
+const TEMPLATES = {
+  portal_invite: {
+    subject: "You're invited to the Crystocraft Portal",
+    design: {
+      body: {
+        rows: [{
+          columns: [{
+            contents: [{
+              type: 'text',
+              values: {
+                // No merge-tag support server-side (send-campaign.js sends
+                // bodyHtml as-is, no per-recipient substitution) — a
+                // {{first_name}} placeholder would go out literally, so this
+                // stays generic rather than a broken personalization.
+                text: `<p>Hi there,</p>
+<p>We'd like to invite you to the Crystocraft Portal, where you can browse our catalogue, request quotes, and track your orders directly.</p>
+<p><a href="https://portal.crystocraft.com" target="_blank">Create your account →</a></p>
+<p>Best regards,<br>Crystocraft</p>`,
+              },
+            }],
+          }],
+        }],
+      },
+    },
+  },
+}
+
+export default function Campaigns({ presetContactIds, onConsumedPreset }) {
   const { contacts, loading: contactsLoading } = useMarketingContacts()
   const [campaigns, setCampaigns] = useState([])
   const [loading, setLoading] = useState(true)
@@ -60,14 +98,34 @@ export default function Campaigns() {
   const reload = () => listCampaigns().then(setCampaigns).finally(() => setLoading(false))
   useEffect(() => { reload() }, [])
 
-  const segOptions = useMemo(() => segmentOptions(contacts), [contacts])
-  const segment = segmentFromValue(segValue)
+  // Arriving from the Contacts tab with a hand-picked list — select that
+  // segment automatically. Kept in its own state (not read straight off the
+  // prop) because onConsumedPreset clears the prop in the parent right away
+  // (so switching tabs and back doesn't keep re-triggering this) — reading
+  // the prop directly for segment matching would lose the ids the moment
+  // that happens.
+  const [localPresetIds, setLocalPresetIds] = useState(null)
+  useEffect(() => {
+    if (presetContactIds && presetContactIds.length) {
+      setLocalPresetIds(presetContactIds)
+      setSegValue('selected')
+      onConsumedPreset()
+    }
+  }, [presetContactIds])
+
+  const segOptions = useMemo(() => segmentOptions(contacts, localPresetIds?.length), [contacts, localPresetIds])
+  const segment = segmentFromValue(segValue, localPresetIds)
   const previewCount = useMemo(
-    () => contacts.filter(c => c.status === 'subscribed' && c.emailable && (
-      segment.all ? true : segment.tag ? c.tags.includes(segment.tag) : c.audiences.includes(segment.audience)
-    )).length,
-    [contacts, segValue]
+    () => contacts.filter(c => c.status === 'subscribed' && c.emailable && matchesSegment(c, segment)).length,
+    [contacts, segValue, localPresetIds]
   )
+
+  function applyTemplate(key) {
+    const t = TEMPLATES[key]
+    if (!t) return
+    setSubject(t.subject)
+    editorRef.current?.editor?.loadDesign(t.design)
+  }
 
   // Unlayer's default image upload goes through their own hosted service,
   // which wants an account/project id. Overriding it to Firebase Storage
@@ -160,6 +218,15 @@ export default function Campaigns() {
             {segOptions.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
           </select>
           <div className="text-xs text-gray-500 mt-1">{previewCount.toLocaleString()} subscribed contact{previewCount === 1 ? '' : 's'} match this segment</div>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Start from a template (optional)</label>
+          <select defaultValue="" onChange={e => { applyTemplate(e.target.value); e.target.value = '' }} className="input w-full md:w-96">
+            <option value="" disabled>Choose a template…</option>
+            <option value="portal_invite">Portal invite</option>
+          </select>
+          <div className="text-[11px] text-gray-400 mt-1">Fills the subject and message below — edit freely before sending. Resets the editor's current content.</div>
         </div>
 
         <div>
