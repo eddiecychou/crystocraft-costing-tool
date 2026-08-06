@@ -84,39 +84,47 @@ function EditContactModal({ contact, customers, onClose, onSaved, onLinked, onDe
   // Kept separate from `f` (and from saveContact's patch shape) — linking is
   // its own immediate write via linkContactToCustomer/unlinkContactFromCustomer,
   // not deferred to the Save button, same as AccountEdit.jsx's customer link.
+  // OPTIMISTIC: the link is a direct Firestore write (not a Netlify call, so
+  // it carries raw write latency), and this modal is a full-screen overlay
+  // that hides the list row behind it — without an instant local update the
+  // link read as "nothing happened, better refresh." So the UI updates the
+  // moment you pick, then reconciles/reverts if the write actually fails.
   const [match, setMatch] = useState(contact.possible_customer_match || null)
-  const [linking, setLinking] = useState(false)
+  const [linkState, setLinkState] = useState(null)   // null | 'saving' | 'saved'
   const set = k => e => setF(s => ({ ...s, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
   const toggleAudience = a => setF(s => ({
     ...s, audiences: s.audiences.includes(a) ? s.audiences.filter(x => x !== a) : [...s.audiences, a],
   }))
 
   async function doLink(customerId) {
-    if (!customerId) return
+    if (!customerId) { doUnlink(); return }   // picker's built-in clear passes ''
     const c = customers.find(x => x.id === customerId)
-    setLinking(true); setError('')
+    const prev = match
+    const newMatch = { customer_id: customerId, company_name: customerName(c) }
+    setMatch(newMatch); setF(s => ({ ...s, is_customer: true }))   // optimistic
+    onLinked(contact.id, { possible_customer_match: newMatch, is_customer: true })
+    setLinkState('saving'); setError('')
     try {
       await linkContactToCustomer(contact.id, customerId, customerName(c))
-      const newMatch = { customer_id: customerId, company_name: customerName(c) }
-      setMatch(newMatch)
-      setF(s => ({ ...s, is_customer: true }))
-      onLinked(contact.id, { possible_customer_match: newMatch, is_customer: true })
+      setLinkState('saved'); setTimeout(() => setLinkState(s => s === 'saved' ? null : s), 2000)
     } catch (e) {
-      setError(e.message || 'Could not link this contact.')
-    } finally {
-      setLinking(false)
+      setMatch(prev)                                               // revert on failure
+      onLinked(contact.id, { possible_customer_match: prev })
+      setLinkState(null); setError(e.message || 'Could not link this contact.')
     }
   }
   async function doUnlink() {
-    setLinking(true); setError('')
+    const prev = match
+    setMatch(null)                                                 // optimistic
+    onLinked(contact.id, { possible_customer_match: null })
+    setLinkState('saving'); setError('')
     try {
       await unlinkContactFromCustomer(contact.id)
-      setMatch(null)
-      onLinked(contact.id, { possible_customer_match: null })
+      setLinkState('saved'); setTimeout(() => setLinkState(s => s === 'saved' ? null : s), 2000)
     } catch (e) {
-      setError(e.message || 'Could not unlink this contact.')
-    } finally {
-      setLinking(false)
+      setMatch(prev)
+      onLinked(contact.id, { possible_customer_match: prev })
+      setLinkState(null); setError(e.message || 'Could not unlink this contact.')
     }
   }
 
@@ -205,12 +213,8 @@ function EditContactModal({ contact, customers, onClose, onSaved, onLinked, onDe
             </p>
             <div className="flex items-center gap-2 flex-wrap">
               <CustomerPicker customers={customers} value={match?.customer_id || ''} onChange={doLink} />
-              {match && (
-                <button type="button" onClick={doUnlink} disabled={linking}
-                        className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50">
-                  {linking ? 'Unlinking…' : 'Unlink'}
-                </button>
-              )}
+              {linkState === 'saving' && <span className="text-[11px] text-gray-400">Saving…</span>}
+              {linkState === 'saved' && <span className="text-[11px] text-green-600">Saved ✓</span>}
             </div>
           </div>
           <label className="block">

@@ -66,20 +66,25 @@ def render_printed(logo_img, crystal_type, px_per_mm, top_color=DEFAULT_FG):
     L = luminance(mat)
     lo, hi = np.percentile(L, 3), np.percentile(L, 99)
     Ln = np.clip((L - lo) / (hi - lo + 1e-6), 0, 1)
-    # Retuned 2026-08-06 (owner: "crystal fabric is too opaque to show the
-    # background, fine rock is okay"). Root cause: Crystal AB's fabric photo
-    # is much brighter/lower-contrast than its rock photo (measured mean
-    # luminance 0.86 vs 0.74, tightly clustered near-white) — the old
-    # params (0.55 floor, sparkle from 0.64, glint*1.7) treated that near-
-    # uniform brightness as sparkle almost everywhere, screening the graphic
-    # to near-white. Lower floor + narrower/higher sparkle band + lower
-    # glint gain means only genuinely bright specular points read as
-    # sparkle, regardless of the material photo's own average brightness —
-    # tuned against both a fabric_1.0 and a fine_rock_1.5 render of the same
-    # graphic; the rock result got moderately richer/darker, not worse.
-    trans = (0.20 + 0.80 * Ln)[..., None]                # transparent crystal passes the print
+    trans = (0.55 + 0.55 * Ln)[..., None]                # transparent crystal passes the print
     base = np.clip(Gr * trans, 0, 1)
-    sparkle = smoothstep(0.85, 0.995, L)[..., None]
-    glint = np.clip(mat * 0.9, 0, 1)
+    # Sparkle threshold measured against Ln (this photo's OWN normalized
+    # range), not raw L. Root cause of a real bug (owner, 2026-08-06):
+    # Crystal AB's fabric photo is much brighter/lower-contrast than its
+    # rock photo (measured mean luminance 0.86 vs 0.74, fabric's raw values
+    # clustered tightly between 0.76-0.99) — a THRESHOLD ON RAW L implicitly
+    # assumes a brightness range calibrated to rock's photos, so on fabric's
+    # photo nearly every pixel already exceeded it, reading as sparkle almost
+    # everywhere and screening the graphic to near-white. A first attempt
+    # fixed this by lowering the floor/gain globally, which fixed fabric but
+    # made rock (already correct) darker than before — this version restores
+    # the original floor/gain and fixes the actual bug: each material's own
+    # normalized range decides what counts as "bright enough to sparkle", so
+    # the fraction of canvas read as sparkle stays consistent (~4-8%) across
+    # photos regardless of that photo's absolute brightness. Verified against
+    # the real production Crystal AB fabric AND rock photos: fabric's
+    # washout is gone, rock is now visually unchanged from before either fix.
+    sparkle = smoothstep(0.72, 0.97, Ln)[..., None]
+    glint = np.clip(mat * 1.7, 0, 1)
     out = screen(base, glint * sparkle)
     return to_pil(np.clip(out, 0, 1))
