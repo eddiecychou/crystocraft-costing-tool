@@ -67,6 +67,11 @@ export default function ProductDetail() {
     setProduct(p => ({ ...p, heroImage: url, heroImage_branded_for_customer_id }))
   }
 
+  async function toggleField(field, value) {
+    await updateDoc(doc(db, 'products', id), { [field]: value })
+    setProduct(p => ({ ...p, [field]: value }))
+  }
+
   async function handleDelete() {
     await deleteDoc(doc(db, 'products', id))
     navigate('/products')
@@ -177,6 +182,18 @@ export default function ProductDetail() {
             <div className="flex items-center gap-2 mt-1">
               <span className={`badge-${productStatusOf(product.status).value}`}>{productStatusOf(product.status).label}</span>
               <span className="text-sm text-gray-500">{product.category}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" className="w-4 h-4 accent-emerald-600" checked={!!product.is_new}
+                       onChange={e => toggleField('is_new', e.target.checked)} />
+                <span className="text-xs text-gray-600">New arrival</span>
+              </label>
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" className="w-4 h-4 accent-emerald-600" checked={product.active !== false}
+                       onChange={e => toggleField('active', e.target.checked)} />
+                <span className="text-xs text-gray-600">Visible in catalogue</span>
+              </label>
             </div>
           </div>
           <div className="flex gap-2 shrink-0">
