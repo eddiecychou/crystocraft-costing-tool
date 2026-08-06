@@ -152,7 +152,7 @@ export default function CrystalFabricCustomizer({ product, profile }) {
 
           <Section title="2. Style">
             <div className="grid grid-cols-1 gap-2">
-              {MODES.map(m => (
+              {MODES.filter(m => m.available).map(m => (
                 <button key={m.value} type="button" onClick={() => set({ mode: m.value })}
                   className={`text-left p-2.5 rounded-lg border text-sm transition-colors ${
                     sel.mode === m.value ? 'border-brand-400 bg-brand-50' : 'border-ivory-dark hover:bg-gray-50'}`}>

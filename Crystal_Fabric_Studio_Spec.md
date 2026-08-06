@@ -85,13 +85,29 @@ request, not a number.
 
 ## 3. Scope
 
-**In scope (Phase 1 — re-enable + extend Track 1, cheap):**
-- Confirm the existing customizer still renders correctly end-to-end (it's
-  parked, not verified recently).
-- Un-park it (`Customizer_Build_Plan.md`'s hold status) if the check passes.
-- Extend `customizer_type: 'crystal_fabric'` to more hero products (MagSafe
-  wallet, spinning coaster) via the existing per-product admin field — no new
-  architecture needed, this is data entry on already-built plumbing.
+**In scope (Phase 1 — re-enable + extend Track 1, cheap): DONE 2026-08-06**
+- Confirmed the existing engine renders correctly end-to-end: ran
+  `render-service/test_local.py` against the deployed engine code and a
+  fresh HTTP round-trip against `app.py`'s `/render` locally. **Zone-map
+  mode** ("crystals form the logo") works — real photographed crystal
+  texture composing into the logo shape.
+- **Found a live bug in the process**: **printed mode** ("logo under
+  crystals") throws for every colour — `engine/palette.py`'s
+  `crystal_photo()` requires a photo of the chosen crystal colour captured
+  against the chosen backfilm, and every colour in `registry.json` only has
+  `'Unspecified'` captured. Not a code bug — the engine correctly refuses to
+  fake a photo — a photography gap. Fixed by hiding printed mode from the
+  customer-facing UI (`MODES` in `customizerApi.js` gained an `available`
+  flag, `CrystalFabricCustomizer.jsx` filters to it) until backfilm-specific
+  photos exist. Re-enable by flipping `available: true` once they do.
+- Enabled `customizer_type: 'crystal_fabric'` on the two `status: active`
+  hero products already matching the draft's suggestion: "Crystal Fine Rock
+  Magsafe Wallet Stand" and "Spinning Glass with Crystal Fabric on Stainless
+  Steel Coaster" — both previously had the field unset (customizer wasn't
+  linked from anywhere live before this).
+- NOT verified: actual click-through in the customer portal (login-gated for
+  the assistant) — worth a real pass on both products before telling
+  customers about it.
 
 **In scope (Phase 2 — the actual new work: Track 2, swatch library):**
 - A swatch library page (`SwatchLibrary` under `src/customer/` for portal

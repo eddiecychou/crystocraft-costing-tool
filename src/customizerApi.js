@@ -36,9 +36,16 @@ export const typeLabel = v => {
   return t ? `${t.label} ${t.mm}` : v
 }
 
+// `printed` is coded but not customer-facing yet: engine/palette.py's
+// crystal_photo() requires a photo of the chosen crystal colour captured
+// against the chosen backfilm, and every colour in registry.json currently
+// has only 'Unspecified' captured — so printed mode throws for every colour
+// combination today (verified 2026-08-06 via render-service/test_local.py).
+// Flip `available: true` once backfilm-specific photos exist for at least
+// the default palette.
 export const MODES = [
-  { value: 'zone_map', label: 'Crystals form the logo', desc: 'Your logo is made of crystals on a crystal background.' },
-  { value: 'printed',  label: 'Logo under crystals',    desc: 'Your printed graphic sits under a layer of transparent crystals.' },
+  { value: 'zone_map', label: 'Crystals form the logo', desc: 'Your logo is made of crystals on a crystal background.', available: true },
+  { value: 'printed',  label: 'Logo under crystals',    desc: 'Your printed graphic sits under a layer of transparent crystals.', available: false },
 ]
 
 // Read a logo file → a downscaled PNG data URL (alpha preserved for masking).
