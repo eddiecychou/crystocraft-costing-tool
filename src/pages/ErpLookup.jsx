@@ -1027,6 +1027,21 @@ export default function ErpLookup() {
                             className="text-teal-600 hover:underline font-medium">
                             {r.code}
                           </button>
+                        // Invoice/Sales Order customer code, PO supplier code —
+                        // Cindy keys this into PBIS alongside the document
+                        // (same need already covered on the app-side Sales
+                        // Invoices / Shipping / Purchase Orders pages; JES
+                        // Lookup itself was still missing it).
+                        : (entity === 'sales_invoice' || entity === 'sales_order') && c.key === 'customer' && r.customer_code
+                        ? <span className="inline-flex items-center gap-1.5 flex-wrap">
+                            {r.customer}
+                            <span className="text-[10px] text-gray-400 font-mono">{r.customer_code}</span>
+                          </span>
+                        : entity === 'purchase' && c.key === 'supplier' && r.supplier_code
+                        ? <span className="inline-flex items-center gap-1.5 flex-wrap">
+                            {r.supplier}
+                            <span className="text-[10px] text-gray-400 font-mono">{r.supplier_code}</span>
+                          </span>
                         : cellValue(c, r)}
                     </td>
                   ))}

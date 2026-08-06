@@ -216,6 +216,18 @@ export async function linkContactToCustomer(id, customerId, companyName) {
   })
 }
 
+// Clear a manually- or import-set link — for when it was matched wrong, or
+// the owner wants to unlink a contact from a customer without deleting
+// either record. Deliberately does NOT touch is_customer: a contact can
+// still be a genuine likely-customer without being pointed at a specific
+// app record.
+export async function unlinkContactFromCustomer(id) {
+  await updateDoc(doc(db, 'marketing_contacts', id), {
+    possible_customer_match: null,
+    updatedAt: serverTimestamp(),
+  })
+}
+
 // Promote selected marketing contacts into real app Customer records — the
 // reverse direction from possible_customer_match, for a contact that turns out
 // to be worth tracking as a customer. Contacts already linked are skipped (no
