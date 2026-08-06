@@ -175,6 +175,11 @@ service cloud.firestore {
     match /marketing_campaigns/{campaignId} {
       allow read, write: if isAdmin();
     }
+    // Reusable campaign starting points, owner-saved from the Unlayer editor
+    // (Campaigns.jsx's "Save current as template") — same admin-only posture.
+    match /campaign_templates/{templateId} {
+      allow read, write: if isAdmin();
+    }
     match /{path=**}/supplier_quotes/{quoteId} {
       allow read, write: if isAdmin();
     }

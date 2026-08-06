@@ -1,5 +1,5 @@
 import {
-  collection, doc, addDoc, updateDoc, getDocs, orderBy, query, serverTimestamp,
+  collection, doc, addDoc, updateDoc, deleteDoc, getDocs, orderBy, query, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 
@@ -83,4 +83,29 @@ export function eligibleContacts(campaign, allContacts, batchSize = 80) {
     !sent[c.id] && !failed[c.id]
   )
   return { batch: pool.slice(0, batchSize), remaining: pool.length }
+}
+
+// Reusable starting points for a new campaign, owner-authored from the
+// editor (not the hardcoded TEMPLATES in Campaigns.jsx, which are this
+// app's own built-in starters) — "where do I add a template?" (owner,
+// 2026-08-07). Separate collection, not campaigns themselves: a template has
+// no segment/send-state, and browsing past sent campaigns to find "the one
+// with the good layout" isn't what a template picker is for.
+const TEMPLATE_COL = () => collection(db, 'campaign_templates')
+
+export async function listTemplates() {
+  const snap = await getDocs(query(TEMPLATE_COL(), orderBy('created_at', 'desc')))
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+}
+
+export async function saveTemplate({ name, subject, design }) {
+  const ref = await addDoc(TEMPLATE_COL(), {
+    name, subject, design: stripUndefined(design),
+    created_at: serverTimestamp(),
+  })
+  return ref.id
+}
+
+export async function deleteTemplate(id) {
+  await deleteDoc(doc(db, 'campaign_templates', id))
 }

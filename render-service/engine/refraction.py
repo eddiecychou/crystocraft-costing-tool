@@ -28,8 +28,8 @@ distortion and the sparkle/transmission look.
 """
 import numpy as np
 
-from .core import (CANVAS, build_material, luminance,
-                   smoothstep, screen, pil_blur, to_pil, design_rgba_from_image)
+from .core import (build_material, luminance,
+                   pil_blur, to_pil, design_rgba_from_image)
 from .palette import crystal_photo, stone_mm, DEFAULT_FG
 
 
@@ -63,28 +63,32 @@ def render_printed(logo_img, crystal_type, px_per_mm, top_color=DEFAULT_FG):
     G = rgb * alpha[..., None] + np.ones_like(rgb) * (1 - alpha[..., None])
     Gr = _refract(G, mat, blur_px=sp * 0.13, refract_px=sp * 5.5)
 
-    L = luminance(mat)
-    lo, hi = np.percentile(L, 3), np.percentile(L, 99)
-    Ln = np.clip((L - lo) / (hi - lo + 1e-6), 0, 1)
-    trans = (0.55 + 0.55 * Ln)[..., None]                # transparent crystal passes the print
-    base = np.clip(Gr * trans, 0, 1)
-    # Sparkle threshold measured against Ln (this photo's OWN normalized
-    # range), not raw L. Root cause of a real bug (owner, 2026-08-06):
-    # Crystal AB's fabric photo is much brighter/lower-contrast than its
-    # rock photo (measured mean luminance 0.86 vs 0.74, fabric's raw values
-    # clustered tightly between 0.76-0.99) — a THRESHOLD ON RAW L implicitly
-    # assumes a brightness range calibrated to rock's photos, so on fabric's
-    # photo nearly every pixel already exceeded it, reading as sparkle almost
-    # everywhere and screening the graphic to near-white. A first attempt
-    # fixed this by lowering the floor/gain globally, which fixed fabric but
-    # made rock (already correct) darker than before — this version restores
-    # the original floor/gain and fixes the actual bug: each material's own
-    # normalized range decides what counts as "bright enough to sparkle", so
-    # the fraction of canvas read as sparkle stays consistent (~4-8%) across
-    # photos regardless of that photo's absolute brightness. Verified against
-    # the real production Crystal AB fabric AND rock photos: fabric's
-    # washout is gone, rock is now visually unchanged from before either fix.
-    sparkle = smoothstep(0.72, 0.97, Ln)[..., None]
-    glint = np.clip(mat * 1.7, 0, 1)
-    out = screen(base, glint * sparkle)
+    # Redesigned 2026-08-07 (owner, third pass): the previous version derived
+    # colour from `Gr` (the refracted GRAPHIC) everywhere, with the crystal
+    # material contributing only a grey luminance-based transmission factor
+    # plus a sparse "sparkle" highlight mask. Two owner reports traced to that
+    # same structural choice: (1) still "kind of dark" overall — a luminance
+    # multiplier can only ever dim, never brighten past the graphic's own
+    # colour; (2) "the AB effect is gone... your rendering only considers
+    # transparent, not the crystal AB facets colours that occur randomly" —
+    # correct: the material's own per-facet colour variation was discarded
+    # everywhere except the rare bright-highlight fraction the sparkle mask
+    # selected, and a photographed AB crystal's iridescence is NOT confined
+    # to bright specular points (measured: saturation is often HIGHER in
+    # its dark/mid-tones than at its brightest pixels — see git history).
+    #
+    # The reference is `engine/stones.py`'s Mode B, which has never had this
+    # problem: it just tiles the real material photo directly, no luminance
+    # dimming at all, and looks right. Mode A does the analogous thing now —
+    # the material photo IS the base look, brightened for a punchy panel
+    # rather than left at the raw photo's own (often dim) exposure — and
+    # blends toward the refracted graphic only where the upload actually has
+    # opaque ink (alpha), so a transparent-background upload still shows the
+    # crystal's true random per-facet colour on its "no logo" margin instead
+    # of a flat grey. Tuned against the real Crystal AB fabric AND rock
+    # photos with both a dark- and light-background test graphic — verified
+    # in PROJECT-PLAN.md.
+    mat_b = np.clip(mat * 1.9, 0, 1)
+    a3 = alpha[..., None]
+    out = mat_b * (1 - a3 * 0.45) + Gr * (a3 * 0.45)
     return to_pil(np.clip(out, 0, 1))

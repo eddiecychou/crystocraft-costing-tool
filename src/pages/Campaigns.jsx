@@ -5,7 +5,8 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { storage } from '../firebase'
 import { useMarketingContacts, MC_AUDIENCES } from '../domain/marketingContact'
 import {
-  listCampaigns, createCampaign, recordBatchResults, setCampaignStatus, eligibleContacts, matchesSegment,
+  listCampaigns, createCampaign, recordBatchResults, setCampaignStatus, eligibleContacts,
+  listTemplates, saveTemplate, deleteTemplate, matchesSegment,
 } from '../domain/campaigns'
 import { sendCampaignBatch } from '../campaignApi'
 
@@ -78,14 +79,14 @@ const TEMPLATES = {
     design: {
       body: {
         rows: [
-          oneColumnRow(textBlock(`<p>Hi there,</p>
+          oneColumnRow(textBlock(`<p>Hi {{first_name:there}},</p>
 <p>We'd like to invite you to the Crystocraft Portal, where you can browse our catalogue, request quotes, and track your orders directly.</p>
 <p><a href="https://portal.crystocraft.com" target="_blank">Create your account →</a></p>
 <p>Best regards,<br>Crystocraft</p>`)),
-          // No merge-tag support server-side (send-campaign.js sends
-          // bodyHtml as-is, no per-recipient substitution) — a
-          // {{first_name}} placeholder would go out literally, so the copy
-          // above stays generic rather than a broken personalization.
+          // {{first_name:there}} is resolved per-recipient server-side by
+          // send-campaign.js's mergeTags() — falls back to "there" for a
+          // contact with no first name on file, same idea as Mailchimp's
+          // *|FNAME|Fallback|*.
         ],
         values: {},
       },
@@ -109,6 +110,11 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
   const reload = () => listCampaigns().then(setCampaigns).finally(() => setLoading(false))
   useEffect(() => { reload() }, [])
 
+  const [templates, setTemplates] = useState([])
+  const [savingTemplate, setSavingTemplate] = useState(false)
+  const reloadTemplates = () => listTemplates().then(setTemplates)
+  useEffect(() => { reloadTemplates() }, [])
+
   // Arriving from the Contacts tab with a hand-picked list — select that
   // segment automatically. Kept in its own state (not read straight off the
   // prop) because onConsumedPreset clears the prop in the parent right away
@@ -131,11 +137,46 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
     [contacts, segValue, localPresetIds]
   )
 
+  // Built-in keys are plain (e.g. "portal_invite"); owner-saved templates use
+  // a "db:" prefix in the <select> so both lists can share one dropdown
+  // without a name collision.
   function applyTemplate(key) {
+    if (!key) return
+    if (key.startsWith('db:')) {
+      const t = templates.find(x => x.id === key.slice(3))
+      if (!t) return
+      setSubject(t.subject)
+      editorRef.current?.editor?.loadDesign(t.design)
+      return
+    }
     const t = TEMPLATES[key]
     if (!t) return
     setSubject(t.subject)
     editorRef.current?.editor?.loadDesign(t.design)
+  }
+
+  // "Where do I add a template?" (owner, 2026-08-07) — captures whatever's
+  // currently in the editor (same exportDesign() the Create button uses) as
+  // a new reusable starting point, not tied to any one campaign.
+  async function handleSaveTemplate() {
+    const name = window.prompt('Name this template (e.g. "Autumn newsletter"):')
+    if (!name || !name.trim()) return
+    setSavingTemplate(true); setError('')
+    try {
+      const { design } = await exportDesign()
+      await saveTemplate({ name: name.trim(), subject: subject.trim(), design })
+      await reloadTemplates()
+    } catch (e) {
+      setError(e.message || 'Could not save this template.')
+    } finally {
+      setSavingTemplate(false)
+    }
+  }
+
+  async function handleDeleteTemplate(id, name) {
+    if (!window.confirm(`Delete the template "${name}"? This can't be undone.`)) return
+    await deleteTemplate(id)
+    await reloadTemplates()
   }
 
   // Unlayer's default image upload goes through their own hosted service,
@@ -191,7 +232,7 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
       const results = await sendCampaignBatch({
         subject: campaign.subject,
         bodyHtml: campaign.bodyHtml,
-        contacts: batch.map(c => ({ id: c.id, email: c.email, first_name: c.first_name })),
+        contacts: batch.map(c => ({ id: c.id, email: c.email, first_name: c.first_name, last_name: c.last_name })),
       })
       await recordBatchResults(campaign.id, results)
       if (remaining - batch.length <= 0) await setCampaignStatus(campaign.id, 'completed')
@@ -233,11 +274,33 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
 
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Start from a template (optional)</label>
-          <select defaultValue="" onChange={e => { applyTemplate(e.target.value); e.target.value = '' }} className="input w-full md:w-96">
-            <option value="" disabled>Choose a template…</option>
-            <option value="portal_invite">Portal invite</option>
-          </select>
+          <div className="flex items-center gap-2 flex-wrap">
+            <select defaultValue="" onChange={e => { applyTemplate(e.target.value); e.target.value = '' }} className="input w-full md:w-96">
+              <option value="" disabled>Choose a template…</option>
+              <option value="portal_invite">Portal invite</option>
+              {templates.length > 0 && (
+                <optgroup label="Saved templates">
+                  {templates.map(t => <option key={t.id} value={`db:${t.id}`}>{t.name}</option>)}
+                </optgroup>
+              )}
+            </select>
+            <button type="button" onClick={handleSaveTemplate} disabled={savingTemplate}
+                    className="text-xs text-brand-600 hover:text-brand-800 disabled:opacity-50 whitespace-nowrap">
+              {savingTemplate ? 'Saving…' : '+ Save current as template'}
+            </button>
+          </div>
           <div className="text-[11px] text-gray-400 mt-1">Fills the subject and message below — edit freely before sending. Resets the editor's current content.</div>
+          {templates.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap mt-1.5">
+              {templates.map(t => (
+                <span key={t.id} className="inline-flex items-center gap-1 text-[11px] text-gray-400 bg-gray-50 rounded px-1.5 py-0.5">
+                  {t.name}
+                  <button type="button" onClick={() => handleDeleteTemplate(t.id, t.name)}
+                          className="text-gray-300 hover:text-red-500" title={`Delete "${t.name}"`}>×</button>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         <div>

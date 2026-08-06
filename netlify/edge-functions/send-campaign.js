@@ -8,14 +8,17 @@
 // deliberately NOT a fresh subdomain, since the free Resend plan caps at one
 // verified domain and a second would need Pro.
 //
-// POST { contacts: [{ id, email, first_name? }], subject, bodyHtml }
+// POST { contacts: [{ id, email, first_name?, last_name? }], subject, bodyHtml }
 //   -> { ok, results: [{ id, ok, error? }] }
 // bodyHtml is a full HTML document exported by the Unlayer drag-and-drop
 // editor (src/pages/Campaigns.jsx) — already mobile-responsive/Outlook-safe.
 // This function does NOT re-wrap it in its own shell (unlike send-email.js's
 // transactional templates); it only injects a per-recipient unsubscribe
 // footer before </body>, so compliance doesn't depend on the sender
-// remembering to build one in the editor.
+// remembering to build one in the editor. It DOES resolve {{merge_tags}}
+// (see mergeTags() below) against each contact before sending — the one
+// per-recipient personalization step, since everything else about bodyHtml
+// is identical across the batch.
 //
 // Env (Netlify site vars, server-side only):
 //   RESEND_API_KEY        — required (shared with send-email.js)
@@ -47,6 +50,20 @@ async function isAdmin(uid, idToken, projectId) {
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => (
   { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]
 ))
+
+// Mailchimp-style merge tags, resolved server-side per recipient since this
+// is the one place that already has both the raw bodyHtml and each
+// contact's fields in scope. Syntax: {{first_name}}, or {{first_name:there}}
+// for a fallback when that contact has no value — same idea as Mailchimp's
+// *|FNAME|Fallback|*, just JS-template-literal-shaped to match how the rest
+// of this app writes placeholders. Values are HTML-escaped (a contact's own
+// name landing raw in an email body is a real injection surface).
+function mergeTags(html, contact) {
+  return html.replace(/\{\{\s*(\w+)\s*(?::([^}]*))?\}\}/g, (_, key, fallback = '') => {
+    const val = String(contact[key] ?? '').trim()
+    return esc(val || fallback)
+  })
+}
 
 // Table-based (Outlook-safe) footer, inserted just before </body> of the
 // Unlayer-exported document. If for any reason there's no </body> tag
@@ -117,7 +134,7 @@ export default async function handler(req) {
         headers: { Authorization: `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           from: FROM, to: email, subject,
-          html: withUnsubscribeFooter(bodyHtml, unsubUrl),
+          html: withUnsubscribeFooter(mergeTags(bodyHtml, c), unsubUrl),
           ...(REPLY_TO ? { reply_to: REPLY_TO } : {}),
           headers: { 'List-Unsubscribe': `<${unsubUrl}>` },
         }),
