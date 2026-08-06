@@ -1,27 +1,32 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db, auth } from '../../firebase'
 import { ArrowLeft, Upload, Sparkles, Check, Gem, AlertTriangle } from 'lucide-react'
 import { useCart } from '../store'
 import {
-  CRYSTAL_COLORS, CRYSTAL_TYPES, MODES, colorHex, colorLabel, typeLabel,
-  fileToPngDataUrl, renderPreview, saveDesign,
+  CRYSTAL_TYPES, MODES, styleOfType, typeLabel,
+  fileToPngDataUrl, renderPreview, saveDesign, fetchPalette,
 } from '../../customizerApi'
 
 const DEFAULTS = {
   mode: 'zone_map', crystal_type: 'fine_rock_1.5',
-  fg_color: 'Jet', bg_color: 'White', message: '', panel_mm: 80,
+  fg_color: '', bg_color: '', message: '', panel_mm: 80,
 }
 
 // Crystal-fabric customization engine. Receives the product (loaded by the
-// dispatcher); loads its own optional product_templates config.
+// dispatcher); loads its own optional product_templates config. The colour
+// palette is fetched live from the render service — see customizerApi.js's
+// fetchPalette for why it's not hard-coded here.
 export default function CrystalFabricCustomizer({ product, profile }) {
   const nav = useNavigate()
   const cart = useCart()
   const productId = product.id
 
   const [tmpl, setTmpl] = useState(null)
+  const [palette, setPalette] = useState([])
+  const [paletteError, setPaletteError] = useState('')
+  const [paletteLoading, setPaletteLoading] = useState(true)
   const [sel, setSel] = useState(DEFAULTS)
   const [logoDataUrl, setLogoDataUrl] = useState(null)
   const [logoName, setLogoName] = useState('')
@@ -30,6 +35,13 @@ export default function CrystalFabricCustomizer({ product, profile }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const lastBlob = useRef(null)
+
+  useEffect(() => {
+    fetchPalette()
+      .then(setPalette)
+      .catch(e => setPaletteError(e.message || 'Could not load the crystal palette.'))
+      .finally(() => setPaletteLoading(false))
+  }, [])
 
   // Optional per-product template (crystal types / palette / defaults).
   useEffect(() => {
@@ -50,8 +62,45 @@ export default function CrystalFabricCustomizer({ product, profile }) {
   useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl) }, [previewUrl])
 
   const crystalTypes = CRYSTAL_TYPES.filter(t => !tmpl?.crystal_types || tmpl.crystal_types.includes(t.value))
-  const palette = CRYSTAL_COLORS.filter(c => !tmpl?.palette || tmpl.palette.includes(c.name))
+  const isZone = sel.mode === 'zone_map'
+  const style = styleOfType(sel.crystal_type)
+
+  // Colours photographed for the current stone style (fabric vs rock), and
+  // permitted by the product template if it restricts the palette.
+  const availColors = useMemo(() => {
+    let list = palette.filter(c => (c[style] || []).length > 0)
+    if (tmpl?.palette) list = list.filter(c => tmpl.palette.includes(c.name))
+    return list
+  }, [palette, style, tmpl])
+
+  // printed mode: the background is a real BACKFILM captured for the chosen
+  // top crystal colour at this style — not a free crystal colour.
+  const backfilmOptions = useMemo(() => {
+    const fg = palette.find(c => c.name === sel.fg_color)
+    return fg ? (fg[style] || []) : []
+  }, [palette, sel.fg_color, style])
+
   const set = patch => { setSel(p => ({ ...p, ...patch })); setPreviewUrl(null); lastBlob.current = null }
+
+  // Keep the colour/backfilm selections valid as mode/type/palette change —
+  // a stale pick would render an error. Snap to the first available option.
+  useEffect(() => {
+    if (!palette.length) return
+    const names = availColors.map(c => c.name)
+    if (!names.length) return
+    const fg = names.includes(sel.fg_color) ? sel.fg_color : names[0]
+    let bg
+    if (isZone) {
+      bg = names.includes(sel.bg_color) ? sel.bg_color : names[0]
+    } else {
+      const bfs = (palette.find(c => c.name === fg)?.[style]) || []
+      bg = bfs.includes(sel.bg_color) ? sel.bg_color : (bfs[0] || '')
+    }
+    if (fg !== sel.fg_color || bg !== sel.bg_color) {
+      setSel(p => ({ ...p, fg_color: fg, bg_color: bg }))
+      setPreviewUrl(null); lastBlob.current = null
+    }
+  }, [palette, availColors, isZone, style, sel.fg_color, sel.bg_color])
 
   async function onLogo(file) {
     if (!file) return
@@ -94,7 +143,8 @@ export default function CrystalFabricCustomizer({ product, profile }) {
     finally { setSaving(false) }
   }
 
-  const isZone = sel.mode === 'zone_map'
+  const colorHex = name => (palette.find(c => c.name === name) || {}).hex || '#ccc'
+  const noColors = !paletteLoading && !paletteError && availColors.length === 0
 
   return (
     <div>
@@ -177,20 +227,33 @@ export default function CrystalFabricCustomizer({ product, profile }) {
           </Section>
 
           <Section title="4. Crystal colours">
-            <Swatches label={isZone ? 'Logo crystals' : 'Printed graphic'}
-              value={isZone ? sel.fg_color : sel.bg_color} palette={palette}
-              onChange={name => set(isZone ? { fg_color: name } : { bg_color: name })} />
-            <div className="mt-3">
-              <Swatches label={isZone ? 'Background crystals' : 'Crystal layer (transparent)'}
-                value={isZone ? sel.bg_color : sel.fg_color} palette={palette}
-                onChange={name => set(isZone ? { bg_color: name } : { fg_color: name })} />
-            </div>
+            {paletteLoading && <p className="text-sm text-ink-50">Loading colours…</p>}
+            {paletteError && <p className="text-sm text-red-600">{paletteError}</p>}
+            {noColors && <p className="text-sm text-ink-50">No crystal colours are available for this stone type yet.</p>}
+            {!paletteLoading && !paletteError && availColors.length > 0 && (
+              <>
+                <Swatches label={isZone ? 'Logo crystals' : 'Crystal layer (transparent top)'}
+                  value={sel.fg_color} palette={availColors} colorHex={colorHex}
+                  onChange={name => set({ fg_color: name })} />
+                <div className="mt-3">
+                  {isZone ? (
+                    <Swatches label="Background crystals"
+                      value={sel.bg_color} palette={availColors} colorHex={colorHex}
+                      onChange={name => set({ bg_color: name })} />
+                  ) : (
+                    <Backfilms label="Backfilm — what the logo prints on"
+                      value={sel.bg_color} options={backfilmOptions}
+                      onChange={name => set({ bg_color: name })} />
+                  )}
+                </div>
+              </>
+            )}
           </Section>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <div className="flex flex-wrap gap-2 pt-1">
-            <button onClick={updatePreview} disabled={rendering || !logoDataUrl} className="btn-primary">
+            <button onClick={updatePreview} disabled={rendering || !logoDataUrl || noColors || !!paletteError} className="btn-primary">
               <Sparkles size={16} /> {rendering ? 'Rendering…' : previewUrl ? 'Update preview' : 'Generate preview'}
             </button>
             <button onClick={addToEnquiry} disabled={saving || !previewUrl} className="btn-secondary">
@@ -212,18 +275,39 @@ function Section({ title, children }) {
   )
 }
 
-function Swatches({ label, value, palette, onChange }) {
+function Swatches({ label, value, palette, colorHex, onChange }) {
   return (
     <div>
-      <p className="text-xs text-ink-60 mb-1.5">{label}: <span className="text-ink">{colorLabel(value)}</span></p>
+      <p className="text-xs text-ink-60 mb-1.5">{label}: <span className="text-ink">{value || '—'}</span></p>
       <div className="flex flex-wrap gap-1.5">
         {palette.map(c => (
-          <button key={c.name} type="button" title={c.label} onClick={() => onChange(c.name)}
+          <button key={c.name} type="button" title={c.name} onClick={() => onChange(c.name)}
             className={`w-7 h-7 rounded-full border-2 transition ${
               value === c.name ? 'border-brand-500 ring-2 ring-brand-200' : 'border-white shadow-sm'}`}
             style={{ background: colorHex(c.name) }} />
         ))}
       </div>
+    </div>
+  )
+}
+
+function Backfilms({ label, value, options, onChange }) {
+  return (
+    <div>
+      <p className="text-xs text-ink-60 mb-1.5">{label}: <span className="text-ink">{value || '—'}</span></p>
+      {options.length === 0 ? (
+        <p className="text-[11px] text-ink-40">No backfilms captured for this crystal colour yet — pick another colour above.</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {options.map(bf => (
+            <button key={bf} type="button" onClick={() => onChange(bf)}
+              className={`px-2.5 py-1 rounded-full border text-xs transition-colors ${
+                value === bf ? 'border-brand-400 bg-brand-50 text-ink' : 'border-ivory-dark text-ink-60 hover:bg-gray-50'}`}>
+              {bf}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

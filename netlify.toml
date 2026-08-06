@@ -92,6 +92,10 @@
   function = "customizer-render"
   path = "/api/customizer-render"
 
+[[edge_functions]]
+  function = "customizer-palette"
+  path = "/api/customizer-palette"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

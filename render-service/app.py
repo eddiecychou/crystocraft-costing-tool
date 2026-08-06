@@ -87,6 +87,33 @@ def health():
     return {"ok": True, "service": "customizer-render", "version": app.version}
 
 
+@app.get("/palette")
+def palette(x_render_token: str = Header(default="")):
+    """The customer-facing colour palette, straight from the live registry —
+    so the customizer UI never hard-codes a colour list that drifts out of
+    sync with what's actually been photographed (that exact drift caused
+    every render to 500 for colours the registry didn't have). Token-gated
+    like /render (the Netlify edge proxy adds the header); returns, per
+    crystal colour, its swatch-dot hex and the backfilm names captured for
+    each style (fabric / rock). A colour is usable in zone_map for a given
+    crystal type if that style's list is non-empty; in printed mode the
+    style's list IS the choosable backfilms."""
+    if RENDER_TOKEN and x_render_token != RENDER_TOKEN:
+        raise HTTPException(status_code=401, detail="bad or missing X-Render-Token")
+    out = []
+    for name, e in list_crystal_colors().items():
+        rgb = e.get("rgb", [0.5, 0.5, 0.5])
+        hex_ = "#" + "".join(f"{max(0, min(255, round(c * 255))):02x}" for c in rgb)
+        out.append({
+            "name": name,
+            "hex": hex_,
+            "fabric": sorted((e.get("fabric") or {}).keys()),
+            "rock": sorted((e.get("rock") or {}).keys()),
+        })
+    out.sort(key=lambda c: c["name"])
+    return {"colors": out}
+
+
 @app.post("/render")
 def render(req: RenderRequest, x_render_token: str = Header(default="")):
     if RENDER_TOKEN and x_render_token != RENDER_TOKEN:

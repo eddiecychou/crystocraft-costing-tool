@@ -5,47 +5,42 @@ import { doc, setDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { ref as sref, uploadBytes, uploadString, getDownloadURL } from 'firebase/storage'
 import { db, storage } from './firebase'
 
-// Crystal colours (name = what the render service expects; hex = swatch preview).
-// Rebuilt 2026-07-30 around REAL photographed swatches only — see
-// render-service/engine/palette.py for the full reasoning. The previous list
-// (CrystalAB/Moonlight/CrystalBlueLight/MetallicSilver/GoldenShadow/
-// CrystalDorado/CrystalCopper) had no photographic backing; the render
-// recoloured one generic photo toward each name, which can shift hue but
-// can't reproduce a different colour's actual sparkle/facet character.
-export const CRYSTAL_COLORS = [
-  { name: 'White',     label: 'White / Crystal AB', hex: '#D9DADE' },
-  { name: 'Jet',       label: 'Jet (black)',         hex: '#19191C' },
-  { name: 'Red',       label: 'Red',                 hex: '#D4451A' },
-  { name: 'Pink',      label: 'Pink',                hex: '#E06385' },
-  { name: 'LightPink', label: 'Light Pink',          hex: '#CE8F96' },
-  { name: 'Violet',    label: 'Violet',              hex: '#C7B3CA' },
-  { name: 'Peach',     label: 'Peach',                hex: '#E1A48A' },
-  { name: 'Hematite',  label: 'Hematite',            hex: '#525356' },
-]
-export const colorHex = name => (CRYSTAL_COLORS.find(c => c.name === name) || {}).hex || '#ccc'
-export const colorLabel = name => (CRYSTAL_COLORS.find(c => c.name === name) || {}).label || name
+// The colour palette is NO LONGER hard-coded here — it's fetched live from
+// the render service (fetchPalette below), which reads the real registry of
+// photographed swatches. A hard-coded list drifted out of sync with what was
+// actually photographed and made every render 500 for colours the registry
+// didn't have (2026-08-06). Each palette entry is:
+//   { name, hex, fabric: [backfilm names…], rock: [backfilm names…] }
+// A colour is usable for a given crystal type only if that type's STYLE
+// (fabric vs rock, see CRYSTAL_TYPES) has a non-empty backfilm list.
+export async function fetchPalette() {
+  const res = await fetch('/api/customizer-palette')
+  if (!res.ok) throw new Error(`Palette unavailable (${res.status})`)
+  const data = await res.json()
+  return data.colors || []
+}
 
 // Crystal types (stone size). `hint` sets expectations on fine-detail survival.
+// `style` maps to the registry slot the render reads: fine_rock and rock share
+// the "rock" photos (same cut, different size), fabric is its own cut.
 export const CRYSTAL_TYPES = [
-  { value: 'fabric_1.0',    label: 'Crystal Fabric', mm: '1.0mm', hint: 'Finest stones — best for small logos and fine lines.' },
-  { value: 'fine_rock_1.5', label: 'Crystal Fine Rock', mm: '1.5mm', hint: 'Balanced sparkle and detail.' },
-  { value: 'rock_2.0',      label: 'Crystal Rock', mm: '2.0mm', hint: 'Largest stones, most sparkle — bold logos; fine detail is lost.' },
+  { value: 'fabric_1.0',    style: 'fabric', label: 'Crystal Fabric', mm: '1.0mm', hint: 'Finest stones — best for small logos and fine lines.' },
+  { value: 'fine_rock_1.5', style: 'rock',   label: 'Crystal Fine Rock', mm: '1.5mm', hint: 'Balanced sparkle and detail.' },
+  { value: 'rock_2.0',      style: 'rock',   label: 'Crystal Rock', mm: '2.0mm', hint: 'Largest stones, most sparkle — bold logos; fine detail is lost.' },
 ]
+export const styleOfType = v => (CRYSTAL_TYPES.find(x => x.value === v) || {}).style || 'rock'
 export const typeLabel = v => {
   const t = CRYSTAL_TYPES.find(x => x.value === v)
   return t ? `${t.label} ${t.mm}` : v
 }
 
-// `printed` is coded but not customer-facing yet: engine/palette.py's
-// crystal_photo() requires a photo of the chosen crystal colour captured
-// against the chosen backfilm, and every colour in registry.json currently
-// has only 'Unspecified' captured — so printed mode throws for every colour
-// combination today (verified 2026-08-06 via render-service/test_local.py).
-// Flip `available: true` once backfilm-specific photos exist for at least
-// the default palette.
+// Both modes are live now that real backfilm photos exist in the registry.
+// zone_map: fg/bg are crystal colour NAMES (background is another crystal).
+// printed: fg is the top crystal colour, bg is a BACKFILM NAME captured for
+// that fg colour at the chosen style — so its options depend on the fg pick.
 export const MODES = [
   { value: 'zone_map', label: 'Crystals form the logo', desc: 'Your logo is made of crystals on a crystal background.', available: true },
-  { value: 'printed',  label: 'Logo under crystals',    desc: 'Your printed graphic sits under a layer of transparent crystals.', available: false },
+  { value: 'printed',  label: 'Logo under crystals',    desc: 'Your printed graphic sits under a layer of transparent crystals.', available: true },
 ]
 
 // Read a logo file → a downscaled PNG data URL (alpha preserved for masking).
