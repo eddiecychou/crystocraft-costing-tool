@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, doc, deleteDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
@@ -63,6 +63,56 @@ export default function PurchaseOrders() {
   const [to, setTo] = useState('')
   const [erpDoc, setErpDoc] = useState(null)   // JES purchase order being viewed, read-only
   const remember = useScrollMemory('purchase-orders', !loading)
+
+  // JES-duplicate cleanup (owner, 2026-08-06): every app PO number that was
+  // typed to match an existing JES record should follow JES from here on —
+  // JES stays frozen (no new PU numbers there, ever again; Cindy may still
+  // EDIT an existing one, synced back in), and the app is the sole source of
+  // new numbers. Manual trigger, not automatic on load — an 11-record check
+  // is cheap, but a delete action should never run itself. One exact-match
+  // query per app PO rather than relying on the page's own (search/limit-
+  // bounded) ERP list, so this is authoritative regardless of what's
+  // currently filtered on screen.
+  const [dupCheck, setDupCheck] = useState(null)   // null = not run; [] = run, none found; [...] = matches
+  const [checkingDup, setCheckingDup] = useState(false)
+  const [deletingDup, setDeletingDup] = useState(false)
+  const [dupError, setDupError] = useState('')
+
+  async function checkErpDuplicates() {
+    setCheckingDup(true); setDupError('')
+    try {
+      const found = []
+      for (const po of pos) {
+        const puNo = (po.pu_number || '').trim()
+        if (!puNo) continue
+        const rows = await erpLookup('purchase', { q: puNo, limit: 5 })
+        const match = rows.find(r => (r.code || '').trim().toUpperCase() === puNo.toUpperCase())
+        if (match) found.push({ po, erp: match })
+      }
+      setDupCheck(found)
+    } catch (e) {
+      setDupError(e.message || 'Could not check the ERP archive.')
+    } finally {
+      setCheckingDup(false)
+    }
+  }
+
+  async function deleteDuplicate(id) {
+    await deleteDoc(doc(db, 'purchase_orders', id))
+    setDupCheck(list => (list || []).filter(x => x.po.id !== id))
+  }
+
+  async function deleteAllDuplicates() {
+    if (!dupCheck?.length) return
+    if (!confirm(`Delete ${dupCheck.length} app PO(s) that duplicate an existing JES record? The JES record stays as the archive copy. This cannot be undone.`)) return
+    setDeletingDup(true)
+    try {
+      for (const { po } of dupCheck) await deleteDoc(doc(db, 'purchase_orders', po.id))
+      setDupCheck([])
+    } finally {
+      setDeletingDup(false)
+    }
+  }
 
   useEffect(() => {
     // Order by createdAt so every doc is included (issued_date can be blank).
@@ -162,6 +212,54 @@ export default function PurchaseOrders() {
           </p>
         </div>
         <Link to="/purchase-orders/new" className="btn-primary text-sm whitespace-nowrap">+ New PO</Link>
+      </div>
+
+      {/* JES-duplicate cleanup — see checkErpDuplicates() above for why. */}
+      <div className="mb-4">
+        {dupCheck === null ? (
+          <button type="button" onClick={checkErpDuplicates} disabled={checkingDup || pos.length === 0}
+                  className="text-xs text-brand-600 hover:text-brand-800 disabled:opacity-50">
+            {checkingDup ? 'Checking against JES…' : 'Check app POs for JES duplicates'}
+          </button>
+        ) : dupError ? (
+          <p className="text-xs text-amber-600">Could not check — {dupError}</p>
+        ) : dupCheck.length === 0 ? (
+          <p className="text-xs text-gray-400">No app PO duplicates an existing JES record.</p>
+        ) : (
+          <div className="card border-amber-200 bg-amber-50 p-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
+              <p className="text-sm font-medium text-amber-800">
+                {dupCheck.length} app PO{dupCheck.length === 1 ? '' : 's'} duplicate{dupCheck.length === 1 ? 's' : ''} an existing JES record
+              </p>
+              <button type="button" onClick={deleteAllDuplicates} disabled={deletingDup}
+                      className="text-xs font-medium text-red-600 hover:text-red-800 disabled:opacity-50">
+                {deletingDup ? 'Deleting…' : `Delete all ${dupCheck.length}`}
+              </button>
+            </div>
+            <div className="space-y-1.5">
+              {dupCheck.map(({ po, erp: e }) => {
+                const appTotal = poTotals(po).grandTotal
+                const erpAmount = Number(e.amount) || 0
+                const mismatch = Math.abs(appTotal - erpAmount) > 0.01
+                return (
+                  <div key={po.id} className="flex items-center justify-between gap-3 text-xs bg-white rounded px-2.5 py-1.5 border border-amber-100">
+                    <div className="min-w-0">
+                      <span className="font-mono font-medium text-gray-800">{po.pu_number}</span>
+                      <span className="text-gray-500 ml-2 truncate">{po.supplier_name}</span>
+                      {mismatch && (
+                        <span className="text-red-600 ml-2" title="App total differs from the JES amount">
+                          app {fmtMoney(appTotal, po.currency || 'RMB')} ≠ JES {fmtMoney(erpAmount, e.currency || 'RMB')}
+                        </span>
+                      )}
+                    </div>
+                    <button type="button" onClick={() => deleteDuplicate(po.id)}
+                            className="text-red-500 hover:text-red-700 shrink-0">Delete</button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       <ExportFilterBar
