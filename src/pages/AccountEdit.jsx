@@ -44,6 +44,7 @@ export default function AccountEdit() {
   const [contactId, setContactId] = useState('')
   const [contactsVersion, setContactsVersion] = useState(0)   // bumped to force ContactPicker to re-fetch after quick-add
   const [addingContact, setAddingContact] = useState(false)
+  const [creatingCustomer, setCreatingCustomer] = useState(false)
   const [enquiries, setEnquiries] = useState([])
 
   useEffect(() => {
@@ -158,6 +159,38 @@ export default function AccountEdit() {
     }
   }
 
+  // Prospect signs up on the portal before any customer record exists for
+  // them — this creates one straight from what they gave us at signup
+  // (Login.jsx captures company_name/contact_name/email) and links this
+  // login to it immediately, same shape as an ordinary new customer.
+  async function quickCreateCustomer() {
+    if (!u?.company_name?.trim() && !u?.contact_name?.trim()) return
+    setCreatingCustomer(true)
+    setStatus('saving')
+    try {
+      const newContact = {
+        id: `c_${crypto.randomUUID().slice(0, 8)}`, name: u.contact_name || '', title: '',
+        email: u.email || '', phone: '', whatsapp: '', wechat: '', address: '', is_primary: true,
+      }
+      const res = await saveCustomer(null, {
+        company_name: u.company_name?.trim() || u.contact_name?.trim() || u.email || 'New customer',
+        country: 'Hong Kong',
+        contacts: [newContact],
+        crm_status: 'Prospect',
+        source: 'Website',
+      })
+      if (!res.ok) throw new Error(res.result.errors?.[0]?.message || 'Could not create customer')
+      setCustomerId(res.id)
+      setContactId(newContact.id)
+      setStatus('saved')
+      setTimeout(() => setStatus(s => (s === 'saved' ? null : s)), 2500)
+    } catch (e) {
+      setStatus('Error: ' + (e?.message || 'could not create customer'))
+    } finally {
+      setCreatingCustomer(false)
+    }
+  }
+
   async function del() {
     if (!confirm(`Delete the portal login for ${displayName}${isAdmin ? ' (ADMIN)' : ''}? This removes their portal access and settings. Note: their sign-in credential still exists (it can only be fully removed from the Firebase console), but they will have no access here.`)) return
     setStatus('saving')
@@ -225,11 +258,19 @@ export default function AccountEdit() {
           Link this login to a customer record so the account shows that customer's name and country.
           Edit the name itself on the <Link to="/customers" className="text-brand-600 hover:underline">Customers</Link> page.
         </p>
-        <CustomerPicker customers={customers} value={customerId}
-                        onChange={cid => {
-                          setCustomerId(cid)
-                          setContactId(autoMatchContact(customers.find(c => c.id === cid), u?.email))
-                        }} />
+        <div className="flex items-center gap-3 flex-wrap">
+          <CustomerPicker customers={customers} value={customerId}
+                          onChange={cid => {
+                            setCustomerId(cid)
+                            setContactId(autoMatchContact(customers.find(c => c.id === cid), u?.email))
+                          }} />
+          {!customerId && (u.company_name?.trim() || u.contact_name?.trim()) && (
+            <button type="button" onClick={quickCreateCustomer} disabled={creatingCustomer}
+                    className="text-xs text-brand-600 hover:text-brand-800 disabled:opacity-50">
+              {creatingCustomer ? 'Creating…' : `+ Create new customer from this signup`}
+            </button>
+          )}
+        </div>
         {customerId && (
           <div className="mt-3">
             <ContactPicker key={contactsVersion} customerId={customerId} value={contactId} onChange={setContactId}
