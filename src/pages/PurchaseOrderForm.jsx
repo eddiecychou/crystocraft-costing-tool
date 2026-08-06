@@ -6,6 +6,7 @@ import { useComponents } from '../criticalComponents'
 import { CURRENCIES, PO_PAYMENT_TERMS, PO_UNITS } from '../constants'
 import { fmtMoney } from '../currency'
 import { emptyLine, lineAmount, poTotals, cleanLines, linkedComponentIds, emptyAdjustment, cleanAdjustments } from '../purchaseOrders'
+import { allocatePuNo } from '../puNumber'
 import ComponentLinkPicker from '../components/ComponentLinkPicker'
 import { Trash2, Plus, FileInput, FolderOpen, FileText, Link2, X } from 'lucide-react'
 
@@ -65,6 +66,22 @@ export default function PurchaseOrderForm() {
   const [extractError, setExtractError] = useState('')
   const [dragOver, setDragOver] = useState(false)
   const [linkingUid, setLinkingUid] = useState(null)   // line _uid whose picker is open
+  const [allocatingPu, setAllocatingPu] = useState(false)
+  const [puError, setPuError] = useState('')
+
+  // Same pattern as ShipmentForm's doAllocateSo — a manual trigger, not
+  // automatic on page load, so an abandoned draft never eats a number.
+  async function doAllocatePu() {
+    setAllocatingPu(true); setPuError('')
+    try {
+      const no = await allocatePuNo()
+      setForm(f => ({ ...f, pu_number: no }))
+    } catch (e) {
+      setPuError(e.message || 'Could not allocate a PU number.')
+    } finally {
+      setAllocatingPu(false)
+    }
+  }
 
   // Load supplier list for the picker.
   useEffect(() => {
@@ -95,7 +112,7 @@ export default function PurchaseOrderForm() {
   }, [id, isEdit])
 
   // Duplicate / reorder from ?from=<id> — copies supplier, lines, currency and
-  // terms, but resets the PU number (ERP assigns a new one), dates, status, and
+  // terms, but resets the PU number (allocate a new one), dates, status, and
   // PO-specific remarks so it starts as a clean draft.
   useEffect(() => {
     if (isEdit || !fromId) return
@@ -247,8 +264,8 @@ export default function PurchaseOrderForm() {
     e.preventDefault()
     setError('')
     // PU number is optional at any status — "Issued" here means sent to the
-    // supplier, which can happen before the order is keyed into the ERP at
-    // month-end. The PU number gets typed in later, whenever it's assigned.
+    // supplier, which can happen before anyone gets round to clicking
+    // Allocate. Not required at save time; the number can be added later.
     if (!form.supplier_id) { setError('Select a supplier.'); return }
     const clean = cleanLines(lines)
     if (!clean.length) { setError('Add at least one line item.'); return }
@@ -330,9 +347,19 @@ export default function PurchaseOrderForm() {
         <div className="card p-4 md:p-6 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="label">PU Number <span className="text-gray-400 font-normal">(from ERP — leave blank until assigned, add it later)</span></label>
+              <label className="label flex items-center justify-between gap-2">
+                <span>PU Number</span>
+                {!form.pu_number && (
+                  <button type="button" onClick={doAllocatePu} disabled={allocatingPu}
+                          className="text-[11px] text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case"
+                          title="Allocate the next PU number in the app's own series.">
+                    {allocatingPu ? 'Allocating…' : 'Allocate'}
+                  </button>
+                )}
+              </label>
               <input className="input font-mono" value={form.pu_number} onChange={set('pu_number')}
-                     placeholder="e.g. PU260014 — or leave blank for now" />
+                     placeholder="e.g. PU260048 — or click Allocate" />
+              {puError && <p className="text-xs text-red-600 mt-1">{puError}</p>}
             </div>
             <div>
               <label className="label">Supplier *</label>
