@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { collection, query, orderBy, onSnapshot, doc, deleteDoc } from 'firebase/firestore'
 import { db } from '../firebase'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { PO_STATUSES } from '../constants'
@@ -9,7 +9,7 @@ import { fmtMoney } from '../currency'
 import { poTotals } from '../purchaseOrders'
 import { erpLookup } from '../erpApi'
 import ErpDocModal from '../components/ErpDocModal'
-import { FileText, Database } from 'lucide-react'
+import { FileText, Database, ArrowUp, ArrowDown } from 'lucide-react'
 import ExportFilterBar from '../components/ExportFilterBar'
 import { downloadCsv, exportStem, inDateRange } from '../exportCsv'
 
@@ -286,19 +286,6 @@ export default function PurchaseOrders() {
         </div>
       </div>
 
-      <div className="flex items-center gap-1.5 mb-4">
-        <span className="text-xs text-gray-400">Sort:</span>
-        {[
-          ['date', 'Date'], ['pu', 'PU No.'], ['supplier', 'Supplier'], ['supplier_code', 'Supplier code'],
-        ].map(([key, label]) => (
-          <button key={key} onClick={() => toggleSort(key)}
-                  className={`px-2.5 py-1 rounded-full text-xs border transition-colors inline-flex items-center gap-1 ${
-                    sortKey === key ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-200 hover:border-brand-400'}`}>
-            {label}{sortKey === key && (sortDir === 'asc' ? ' ↑' : ' ↓')}
-          </button>
-        ))}
-      </div>
-
       {erpDoc && <ErpDocModal of="purchase" doc={erpDoc} onClose={() => setErpDoc(null)} />}
 
       {!loading && merged.length === 0 && !erp.loading ? (
@@ -306,42 +293,76 @@ export default function PurchaseOrders() {
           No purchase orders yet. <Link to="/purchase-orders/new" className="text-brand-600 hover:underline">Create your first PO</Link>.
         </div>
       ) : (
-        <div className="card divide-y divide-gray-100 overflow-hidden">
-          {merged.map(row => row.src === 'app'
-            ? <AppPoRow key={row.key} p={row.o} onNavigate={remember} />
-            : <JesPoRow key={row.key} r={row.r} onOpen={() => setErpDoc(row.r)} />
-          )}
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-[10px] uppercase tracking-wide text-ink-40 border-b border-ivory-dark">
+                  <Th sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} k="pu" label="PU No." />
+                  <Th sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} k="supplier" label="Supplier" />
+                  <Th sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} k="supplier_code" label="Supplier code" />
+                  <Th sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} k="date" label="Date" />
+                  <th className="px-3 py-2 font-medium text-left">Status</th>
+                  <th className="px-3 py-2 font-medium text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {merged.map(row => row.src === 'app'
+                  ? <AppPoRow key={row.key} p={row.o} onNavigate={remember} />
+                  : <JesPoRow key={row.key} r={row.r} onOpen={() => setErpDoc(row.r)} />
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
   )
 }
 
+// Excel-style sortable column header — click to sort by it, click again to
+// flip direction, matching InventoryStatus.jsx's own Th (same interaction
+// everywhere a sortable table appears in the app, not a bespoke one here).
+function Th({ sortKey, sortDir, onSort, k, label, align = 'left' }) {
+  return (
+    <th className={`px-3 py-2 font-medium cursor-pointer select-none ${align === 'right' ? 'text-right' : 'text-left'}`}
+        onClick={() => onSort(k)}>
+      <span className={`inline-flex items-center gap-1 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
+        {label}
+        {sortKey === k && (sortDir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />)}
+      </span>
+    </th>
+  )
+}
+
 function AppPoRow({ p, onNavigate }) {
   const meta = STATUS_META[p.status || 'draft'] || STATUS_META.draft
   const { balance } = poTotals(p)
+  const navigate = useNavigate()
+  const go = () => { onNavigate?.(); navigate(`/purchase-orders/${p.id}`) }
   return (
-    <Link to={`/purchase-orders/${p.id}`} onClick={onNavigate}
-          className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors">
-      <FileText size={18} className="text-gray-300 shrink-0" />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
+    <tr onClick={go} className="hover:bg-gray-50 transition-colors cursor-pointer">
+      <td className="px-3 py-2.5">
+        <span className="inline-flex items-center gap-2">
+          <FileText size={14} className="text-gray-300 shrink-0" />
           <span className="font-mono text-sm font-medium text-gray-900">{p.pu_number || '(no PU no.)'}</span>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${meta.badge}`}>{meta.label}</span>
-          {!p.pu_number && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Needs PU #</span>
-          )}
-        </div>
-        <p className="text-xs text-gray-500 truncate">
-          {p.supplier_name || '—'}{p.supplier_name_cn ? ` · ${p.supplier_name_cn}` : ''}
-          {p.issued_date ? ` · ${fmtDate(p.issued_date)}` : ''}
-        </p>
-      </div>
-      <div className="text-right shrink-0">
-        <p className="text-sm font-medium tabular-nums text-gray-800">{fmtMoney(balance, p.currency || 'RMB')}</p>
-        <p className="text-[10px] text-gray-400">{(p.lines?.length || 0)} line{(p.lines?.length || 0) === 1 ? '' : 's'}</p>
-      </div>
-    </Link>
+        </span>
+      </td>
+      <td className="px-3 py-2.5 text-gray-700">
+        {p.supplier_name || '—'}{p.supplier_name_cn ? ` · ${p.supplier_name_cn}` : ''}
+      </td>
+      <td className="px-3 py-2.5 text-gray-500 font-mono text-xs">{p.supplier_erp_code || '—'}</td>
+      <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{p.issued_date ? fmtDate(p.issued_date) : '—'}</td>
+      <td className="px-3 py-2.5">
+        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${meta.badge}`}>{meta.label}</span>
+        {!p.pu_number && (
+          <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Needs PU #</span>
+        )}
+      </td>
+      <td className="px-3 py-2.5 text-right tabular-nums text-gray-800 font-medium whitespace-nowrap">
+        {fmtMoney(balance, p.currency || 'RMB')}
+      </td>
+    </tr>
   )
 }
 
@@ -351,28 +372,28 @@ function AppPoRow({ p, onNavigate }) {
 function JesPoRow({ r, onOpen }) {
   const void_ = (r.status || '').trim().toUpperCase() === 'VOID'
   return (
-    <button type="button" onClick={onOpen}
-            className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left ${void_ ? 'opacity-60' : ''}`}>
-      <Database size={18} className="text-gray-300 shrink-0" />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
+    <tr onClick={onOpen} className={`hover:bg-gray-50 transition-colors cursor-pointer ${void_ ? 'opacity-60' : ''}`}>
+      <td className="px-3 py-2.5">
+        <span className="inline-flex items-center gap-2">
+          <Database size={14} className="text-gray-300 shrink-0" />
           <span className="font-mono text-sm font-medium text-gray-900">{(r.code || '').trim()}</span>
           <span title="Historical purchase order from JES — read-only archive"
                 className="text-[10px] font-medium text-ink-40 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
             <Database size={10} /> JES
           </span>
-          {void_ && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">Void</span>}
-        </div>
-        <p className="text-xs text-gray-500 truncate">
-          {r.supplier || '—'}{r.date ? ` · ${fmtDate(r.date)}` : ''}
-        </p>
-      </div>
-      <div className="text-right shrink-0">
-        <p className="text-sm font-medium tabular-nums text-gray-800">
-          {r.amount != null ? fmtMoney(Number(r.amount), r.currency || 'RMB') : '—'}
-        </p>
-        <p className="text-[10px] text-gray-400">{(r.status || '').trim() || '—'}</p>
-      </div>
-    </button>
+        </span>
+      </td>
+      <td className="px-3 py-2.5 text-gray-700">{r.supplier || '—'}</td>
+      <td className="px-3 py-2.5 text-gray-500 font-mono text-xs">{r.supplier_code || '—'}</td>
+      <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{r.date ? fmtDate(r.date) : '—'}</td>
+      <td className="px-3 py-2.5">
+        {void_
+          ? <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">Void</span>
+          : <span className="text-xs text-gray-500">{(r.status || '').trim() || '—'}</span>}
+      </td>
+      <td className="px-3 py-2.5 text-right tabular-nums text-gray-800 font-medium whitespace-nowrap">
+        {r.amount != null ? fmtMoney(Number(r.amount), r.currency || 'RMB') : '—'}
+      </td>
+    </tr>
   )
 }
