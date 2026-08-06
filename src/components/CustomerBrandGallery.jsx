@@ -7,18 +7,26 @@ import {
   usableInMarketing,
 } from '../customerAssets'
 import { IMAGE_VISIBILITY, imageVisibility } from '../constants'
-import { ImagePlus, ShieldCheck, Lock, Globe, Megaphone, X, Trash2, ExternalLink, FileText } from 'lucide-react'
+import { ImagePlus, ShieldCheck, Lock, Globe, Megaphone, X, Trash2, ExternalLink, FileText, Download } from 'lucide-react'
+
+const extOf = filename => (filename.match(/\.[^.]+$/)?.[0] || '').replace('.', '').toUpperCase()
+
+// Reliable cross-origin download — a plain <a href=".." download> is silently
+// ignored by most browsers for a different-origin URL (Firebase Storage is),
+// so it just opens the file instead of saving it. Same Netlify proxy
+// ImageGallery.jsx already relies on for this exact reason.
+const downloadUrl = (fileUrl, filename) =>
+  `/api/download-image?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(filename || 'file')}`
 
 // A non-raster asset (.ai/.eps/.pdf/.pptx, and .svg which we deliberately
 // never rasterize) can't render as an <img> thumbnail — show the file type
 // instead of a broken image icon.
 function AssetThumb({ asset, className = '' }) {
   if (cannotRenderAsImage(asset.filename)) {
-    const ext = (asset.filename.match(/\.[^.]+$/)?.[0] || '').replace('.', '').toUpperCase()
     return (
       <div className={`flex flex-col items-center justify-center gap-1 text-white/80 ${className}`}>
         <FileText size={28} strokeWidth={1.5} />
-        <span className="text-[10px] font-medium">{ext}</span>
+        <span className="text-[10px] font-medium">{extOf(asset.filename)}</span>
       </div>
     )
   }
@@ -156,20 +164,27 @@ export default function CustomerBrandGallery({ customerId }) {
                 const vis = imageVisibility(img)
                 const visMeta = IMAGE_VISIBILITY.find(v => v.value === vis)
                 return (
-                  <Link key={img.id} to={`/products/${img.product_id}`}
-                        className="group text-left rounded-lg border border-gray-100 overflow-hidden hover:border-brand-300 hover:shadow-sm transition-all block">
-                    <div className="aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
-                      <img src={img.file_url} alt={img.caption || img.product_name} className="w-full h-full object-contain" />
-                    </div>
+                  <div key={img.id} className="group rounded-lg border border-gray-100 overflow-hidden hover:border-brand-300 hover:shadow-sm transition-all">
+                    <Link to={`/products/${img.product_id}`} className="block">
+                      <div className="aspect-square bg-gray-50 flex items-center justify-center overflow-hidden">
+                        <img src={img.file_url} alt={img.caption || img.product_name} className="w-full h-full object-contain" />
+                      </div>
+                    </Link>
                     <div className="p-2">
-                      <p className="text-xs text-gray-700 truncate inline-flex items-center gap-1">
+                      <Link to={`/products/${img.product_id}`} className="text-xs text-gray-700 truncate inline-flex items-center gap-1 hover:text-brand-600">
                         {img.product_name || 'Untitled product'} <ExternalLink size={10} className="text-gray-300 group-hover:text-brand-500 shrink-0" />
-                      </p>
-                      <span className={`inline-block mt-1 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${visMeta?.cls || 'bg-gray-200 text-gray-600'}`}>
-                        {visMeta?.short || vis}
-                      </span>
+                      </Link>
+                      <div className="flex items-center justify-between mt-1">
+                        <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded-full font-medium ${visMeta?.cls || 'bg-gray-200 text-gray-600'}`}>
+                          {visMeta?.short || vis}
+                        </span>
+                        <a href={downloadUrl(img.file_url, `${img.product_name || 'product'}.jpg`)}
+                           title="Download" className="text-gray-400 hover:text-brand-600">
+                          <Download size={12} />
+                        </a>
+                      </div>
                     </div>
-                  </Link>
+                  </div>
                 )
               })}
             </div>
@@ -217,26 +232,35 @@ export default function CustomerBrandGallery({ customerId }) {
                 {list.map(a => {
                   const vb = VIS_BADGE[a.visibility] || VIS_BADGE.internal_only
                   return (
-                    <button key={a.id} onClick={() => setEditing(a)}
-                            className="group text-left rounded-lg border border-gray-100 overflow-hidden hover:border-brand-300 hover:shadow-sm transition-all">
-                      <div className="aspect-square bg-gray-400 flex items-center justify-center overflow-hidden">
-                        <AssetThumb asset={a} className="w-full h-full object-contain" />
-                      </div>
-                      <div className="p-2">
-                        <p className="text-xs text-gray-700 truncate">{a.title || a.filename}</p>
-                        <div className="flex items-center gap-1 mt-1 flex-wrap">
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{TYPE_LABEL[a.type]}</span>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5 ${vb.cls}`}>
-                            <vb.Icon size={9} />{VISIBILITY_LABEL[a.visibility]}
-                          </span>
-                          {usableInMarketing(a) && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 inline-flex items-center gap-0.5">
-                              <Megaphone size={9} />OK
+                    <div key={a.id} className="group text-left rounded-lg border border-gray-100 overflow-hidden hover:border-brand-300 hover:shadow-sm transition-all">
+                      <button type="button" onClick={() => setEditing(a)} className="block w-full text-left">
+                        <div className="aspect-square bg-gray-400 flex items-center justify-center overflow-hidden">
+                          <AssetThumb asset={a} className="w-full h-full object-contain" />
+                        </div>
+                        <div className="px-2 pt-2">
+                          <p className="text-xs text-gray-700 truncate">{a.title || a.filename}</p>
+                        </div>
+                      </button>
+                      <div className="px-2 pb-2">
+                        <div className="flex items-center justify-between gap-1 mt-1 flex-wrap">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{TYPE_LABEL[a.type]} · {extOf(a.filename)}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5 ${vb.cls}`}>
+                              <vb.Icon size={9} />{VISIBILITY_LABEL[a.visibility]}
                             </span>
-                          )}
+                            {usableInMarketing(a) && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 inline-flex items-center gap-0.5">
+                                <Megaphone size={9} />OK
+                              </span>
+                            )}
+                          </div>
+                          <a href={downloadUrl(a.file_url, a.filename)}
+                             title="Download" className="shrink-0 text-gray-400 hover:text-brand-600">
+                            <Download size={12} />
+                          </a>
                         </div>
                       </div>
-                    </button>
+                    </div>
                   )
                 })}
               </div>
@@ -301,7 +325,9 @@ function AssetDrawer({ customerId, asset, onClose }) {
           </div>
           <p className="text-[11px] text-gray-400 break-all">
             {asset.filename}{' — '}
-            <a href={asset.file_url} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">open original</a>
+            <a href={asset.file_url} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">view</a>
+            {' · '}
+            <a href={downloadUrl(asset.file_url, asset.filename)} className="text-brand-600 hover:underline">download</a>
           </p>
 
           <div>

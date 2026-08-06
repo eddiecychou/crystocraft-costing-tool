@@ -4,7 +4,6 @@ import {
 } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage, auth } from './firebase'
-import { resizeToJpeg } from './imageResize'
 
 // Customer Brand Gallery data layer — see Customer_Brand_Gallery_Spec.md.
 //
@@ -53,17 +52,17 @@ const CATEGORY_OF_TYPE = Object.fromEntries(
 export const categoryOfType = type => CATEGORY_OF_TYPE[type] || 'product_gallery'
 
 // Brand assets aren't only photos — a logo often only exists as vector art or
-// a brand-guideline PDF/deck. These formats can't go through resizeToJpeg
-// (nothing in a browser can decode .ai/.eps into pixels, and rasterizing an
-// .svg would defeat the point of it being vector), so uploadCustomerAsset
-// uploads them as-is instead. Kept as one shared list so the file picker's
-// `accept` and the gallery's "can this render as an <img>" check never drift.
+// a brand-guideline PDF/deck. NON_RASTER_EXT is the set of formats a browser
+// can't (or shouldn't) decode to pixels — used for the file picker's `accept`
+// and content-type fallback. It is NOT what decides whether an upload gets
+// resized: nothing does anymore (uploadCustomerAsset always keeps the
+// original bytes — see the 2026-08-06 note there on why).
 export const NON_RASTER_EXT = {
   '.ai':   'application/postscript',
   '.eps':  'application/postscript',
   '.pdf':  'application/pdf',
   '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  '.svg':  'image/svg+xml',   // technically renderable, but never rasterized — see above
+  '.svg':  'image/svg+xml',   // technically renderable, but never rasterized — see below
 }
 export const ASSET_UPLOAD_ACCEPT = `image/*,${Object.keys(NON_RASTER_EXT).join(',')}`
 
@@ -172,17 +171,16 @@ export function useCustomerAssets(customerId) {
 export async function uploadCustomerAsset(customerId, file, meta = {}) {
   const ref = doc(COL(customerId))                 // pre-generate id so the path can use it
   const safeName = (file.name || 'image').replace(/[/\\?%*:|"<>]/g, '-')
-  let blob, contentType
-  if (isNonRasterAsset(file.name)) {
-    // Vector art / documents go through untouched — resizing would either
-    // fail outright (.ai/.eps/.pptx aren't image-decodable in a browser) or,
-    // for .svg, silently rasterize away the thing that makes it useful.
-    blob = file
-    contentType = file.type || NON_RASTER_EXT[extOf(file.name)] || 'application/octet-stream'
-  } else {
-    ;({ blob } = await resizeToJpeg(file))
-    contentType = 'image/jpeg'
-  }
+  // NEVER resizeToJpeg here, for ANY format — found 2026-08-06: it draws onto
+  // a canvas and exports JPEG, which has no alpha channel. A transparent PNG
+  // logo's transparent pixels default to black on the canvas, and JPEG bakes
+  // that in permanently — every transparent logo silently became "logo on a
+  // solid black rectangle." Brand assets are comparatively small, occasional
+  // uploads (not the phone-photo volume resizeToJpeg exists for), so the
+  // right fix is uploading the original bytes untouched, always — same
+  // handling non-raster files already had, just no longer the special case.
+  const blob = file
+  const contentType = file.type || NON_RASTER_EXT[extOf(file.name)] || 'application/octet-stream'
   const path = `customer-assets/${customerId}/${ref.id}/${safeName}`
   const sRef = storageRef(storage, path)
   await uploadBytes(sRef, blob, { contentType })

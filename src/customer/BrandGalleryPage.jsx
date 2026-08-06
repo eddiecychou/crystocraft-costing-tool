@@ -1,7 +1,18 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { loadCustomerVisibleAssets, loadBrandedProductImages, cannotRenderAsImage, TYPE_LABEL, CATEGORIES, CATEGORY_LABEL } from '../customerAssets'
 import { isStorefrontVisible } from '../constants'
 import { Images, Download, FileText } from 'lucide-react'
+
+// Reliable cross-origin download — a plain <a href=".." download> is silently
+// ignored by most browsers for a different-origin URL (Firebase Storage is),
+// so it just opens the file instead of saving it. Routes through the same
+// Netlify proxy ImageGallery.jsx already uses, which sets a real
+// Content-Disposition: attachment.
+const downloadUrl = (fileUrl, filename) =>
+  `/api/download-image?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(filename || 'file')}`
+
+const extOf = filename => (filename.match(/\.[^.]+$/)?.[0] || '').replace('.', '').toUpperCase()
 
 // Portal "My Brand Gallery" (Customer_Brand_Gallery_Spec.md §5.4). Read-only:
 // a logged-in customer sees only their own linked customer's non-internal
@@ -74,14 +85,14 @@ export default function BrandGalleryPage({ profile }) {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                   {brandedHere.map(img => (
                     <div key={`p-${img.id}`} className="bg-white rounded-xl border border-ivory-dark overflow-hidden flex flex-col">
-                      <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
+                      <Link to={`/shop/corporate/${img.product_id}`} className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
                         <img src={img.file_url} alt={img.caption || img.product_name} className="w-full h-full object-contain" />
-                      </div>
+                      </Link>
                       <div className="p-2.5 flex items-center justify-between gap-2">
-                        <div className="min-w-0">
+                        <Link to={`/shop/corporate/${img.product_id}`} className="min-w-0 hover:text-brand-600">
                           <p className="text-xs text-ink truncate">{img.caption || img.product_name || 'Product photo'}</p>
-                        </div>
-                        <a href={img.file_url} target="_blank" rel="noopener noreferrer" download
+                        </Link>
+                        <a href={downloadUrl(img.file_url, `${img.product_name || 'product'}.jpg`)}
                            title="Download" className="shrink-0 text-ink-40 hover:text-brand-600">
                           <Download size={15} />
                         </a>
@@ -103,9 +114,9 @@ export default function BrandGalleryPage({ profile }) {
                       <div className="p-2.5 flex items-center justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-xs text-ink truncate">{a.title || a.filename}</p>
-                          <p className="text-[10px] text-ink-40">{TYPE_LABEL[a.type]}</p>
+                          <p className="text-[10px] text-ink-40">{TYPE_LABEL[a.type]} · {extOf(a.filename)}</p>
                         </div>
-                        <a href={a.file_url} target="_blank" rel="noopener noreferrer" download
+                        <a href={downloadUrl(a.file_url, a.filename)}
                            title="Download" className="shrink-0 text-ink-40 hover:text-brand-600">
                           <Download size={15} />
                         </a>
