@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
-import { collection, query, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, doc, getDoc, getDocs } from 'firebase/firestore'
 import { Link } from 'react-router-dom'
 import { db, auth } from '../firebase'
 import { Package } from 'lucide-react'
 import { useRates, convertFromHKD, fmtMoney } from '../currency'
 import { isNew, newFirst } from '../newArrivals'
-import { productStatusOf } from '../constants'
+import { productStatusOf, isStorefrontVisible } from '../constants'
 import CollectionBand from './CollectionBand'
 import { collectionProducts } from '../catalogueCollections'
 import FavHeart from './FavHeart'
@@ -27,16 +27,6 @@ export default function CorporateShop({ profile }) {
       setProducts(
         snap.docs.map(d => ({ id: d.id, ...d.data() }))
           .filter(p => p.active !== false && productStatusOf(p.status).value !== 'retired')
-          // heroImage is a plain cached URL on the product doc — it bypasses
-          // the Firestore rule that screens products/{id}/images per-viewer
-          // (see ProductDetail.jsx's handleHeroChange). A sensitive customer
-          // (profile.sensitive, mirrored from their linked customer — see
-          // domain/customer.js) must not see a hero branded for someone else,
-          // and there is no cheap per-product image to fall back to on a
-          // listing page, so the product is left off the shelf entirely
-          // rather than shown with a leaked or blank thumbnail.
-          .filter(p => !(profile?.sensitive && p.heroImage_branded_for_customer_id
-            && p.heroImage_branded_for_customer_id !== profile?.customer_id))
           // New-tagged products first (C0), then alphabetical.
           .sort((a, b) => newFirst(a, b) || (a.name || '').localeCompare(b.name || ''))
       )
@@ -108,6 +98,31 @@ export default function CorporateShop({ profile }) {
 
 function CorpCard({ p, cur, rates, profile }) {
   const [fromPrice, setFromPrice] = useState(undefined) // undefined=loading, null=none
+  // heroImage is a plain cached URL on the product doc — it bypasses the
+  // Firestore rule that screens products/{id}/images per-viewer (see
+  // ProductDetail.jsx's handleHeroChange). A sensitive customer must not see
+  // a hero branded for someone else. Rather than dropping the product off
+  // the shelf entirely (the old behaviour), fetch the rule-screened images
+  // subcollection for just this card and fall back to the first other
+  // storefront-visible photo — same fallback CorporateDetail.jsx already
+  // does on the detail page. Only fires for sensitive viewers on a blocked
+  // hero, so it's not an extra read on the common case.
+  const heroBlocked = !!(profile?.sensitive && p.heroImage_branded_for_customer_id
+    && p.heroImage_branded_for_customer_id !== profile?.customer_id)
+  const [fallbackImage, setFallbackImage] = useState(undefined) // undefined=loading, null=none found
+
+  useEffect(() => {
+    if (!heroBlocked) { setFallbackImage(undefined); return }
+    getDocs(query(collection(db, 'products', p.id, 'images'), orderBy('sort_order')))
+      .then(snap => {
+        const img = snap.docs.map(d => d.data()).find(im => im.file_url && isStorefrontVisible(im))
+        setFallbackImage(img?.file_url || null)
+      })
+      .catch(() => setFallbackImage(null))
+  }, [heroBlocked, p.id])
+
+  const displayImage = heroBlocked ? fallbackImage : (p.heroImage || null)
+
   useEffect(() => {
     const uid = profile?.id || auth.currentUser?.uid
     if (!uid) { setFromPrice(null); return }
@@ -124,13 +139,13 @@ function CorpCard({ p, cur, rates, profile }) {
       onClick={() => sessionStorage.setItem('cs-last-id', p.id)}
       className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">
       <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
-        {p.heroImage
-          ? <img src={p.heroImage} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
+        {displayImage
+          ? <img src={displayImage} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
           : <Package size={32} strokeWidth={1.25} className="text-gray-300" />}
         {isNew(p) && (
           <span className="absolute top-1.5 left-1.5 badge bg-emerald-600 text-white" title="New arrival">New</span>
         )}
-        <FavHeart item={{ type: 'corporate', id: p.id, name: p.name, code: '', image: p.heroImage || '' }}
+        <FavHeart item={{ type: 'corporate', id: p.id, name: p.name, code: '', image: displayImage || '' }}
           className="absolute top-1.5 right-1.5" />
       </div>
       <div className="p-3 flex flex-col gap-1 flex-1">
