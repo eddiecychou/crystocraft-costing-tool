@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import { useOrders, updateOrder, NO_INVOICE_REASONS, noInvoiceReasonOf } from '../shipping'
 import { listAppInvoices, upsertInvoice } from '../ucRegistry'
+import { useCustomers } from '../domain/customer'
 import { erpLookup } from '../erpApi'
 import { Receipt, AlertTriangle, FileText, Database } from 'lucide-react'
 import ErpDocModal from '../components/ErpDocModal'
@@ -83,6 +84,16 @@ export default function SalesInvoices() {
 
   const erp = useErpInvoices(search)
 
+  // Customer code next to the name — Cindy keys this into PBIS alongside the
+  // invoice (2026-08-06). App rows resolve via the order's own customer_id;
+  // JES rows already carry customer_code straight from erp_sales_invoice
+  // (sicustomer), no extra lookup needed.
+  const { customers } = useCustomers()
+  const erpCodeByCustomerId = useMemo(
+    () => Object.fromEntries(customers.map(c => [c.id, c.erp_code]).filter(([, code]) => code)),
+    [customers],
+  )
+
   const { invoiced, awaiting, resolved } = useMemo(() => {
     const q = search.trim().toLowerCase()
     const match = (o) =>
@@ -147,6 +158,7 @@ export default function SalesInvoices() {
       // order that's genuinely invoiced would show a blank invoice number.
       no: o.erp_si_no || o.erp_so_no, date: o.invoiced_at || o.order_date,
       so: o.erp_si_no ? o.erp_so_no : null, uc: o.uc_no, customer: o.customer_name,
+      code: erpCodeByCustomerId[o.customer_id] || null,
       currency: o.currency, amount: o.total_amount ?? o.subtotal, status: null,
     }))
     // The app's own invoices may also exist in the mirror once a sync runs;
@@ -158,11 +170,12 @@ export default function SalesInvoices() {
         key: `erp-${r.code}`, src: 'jes', id: null,
         no: (r.code || '').trim(), date: r.date,
         so: null, uc: (r.ref || '').trim(), customer: r.customer,
+        code: r.customer_code || null,
         currency: r.currency, amount: r.amount, status: (r.status || '').trim().toUpperCase(),
         raw: r,
       }))
     return [...app, ...jes].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
-  }, [invoiced, erp.rows])
+  }, [invoiced, erp.rows, erpCodeByCustomerId])
 
   // Reconcile Firestore against Postgres. Compares only the fields the ledger
   // claims to hold — comparing anything else would report drift that does not
@@ -220,6 +233,7 @@ export default function SalesInvoices() {
     { label: 'UC#',         value: (r) => r.uc, text: true },
     { label: 'SO no.',      value: (r) => r.so, text: true },
     { label: 'Customer',    value: (r) => r.customer },
+    { label: 'Customer code', value: (r) => r.code, text: true },
     { label: 'Currency',    value: (r) => r.currency },
     { label: 'Amount',      value: (r) => r.amount },
     { label: 'Status',      value: (r) => r.status || '' },
@@ -334,7 +348,10 @@ export default function SalesInvoices() {
                   <tr key={o.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/shipments/${o.id}`)}>
                     <td className="px-4 py-2.5 whitespace-nowrap text-gray-600">{fmtDate(o.order_date)}</td>
                     <td className="px-4 py-2.5 whitespace-nowrap text-gray-500 font-mono text-xs">{o.erp_so_no || '—'}</td>
-                    <td className="px-4 py-2.5 font-medium text-gray-900">{o.customer_name || 'Unnamed customer'}</td>
+                    <td className="px-4 py-2.5 font-medium text-gray-900">
+                      {o.customer_name || 'Unnamed customer'}
+                      {erpCodeByCustomerId[o.customer_id] && <span className="ml-1.5 text-xs font-mono font-normal text-gray-400">· {erpCodeByCustomerId[o.customer_id]}</span>}
+                    </td>
                     <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{o.currency}</td>
                     <td className="px-4 py-2.5 whitespace-nowrap text-right tabular-nums text-gray-800">
                       {fmtValue(o.total_amount ?? o.subtotal)}
@@ -393,7 +410,10 @@ export default function SalesInvoices() {
                       <tr key={o.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/shipments/${o.id}`)}>
                         <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{fmtDate(o.order_date)}</td>
                         <td className="px-4 py-2.5 whitespace-nowrap text-gray-500 font-mono text-xs">{o.erp_so_no || '—'}</td>
-                        <td className="px-4 py-2.5 text-gray-700">{o.customer_name || 'Unnamed customer'}</td>
+                        <td className="px-4 py-2.5 text-gray-700">
+                          {o.customer_name || 'Unnamed customer'}
+                          {erpCodeByCustomerId[o.customer_id] && <span className="ml-1.5 text-xs font-mono text-gray-400">· {erpCodeByCustomerId[o.customer_id]}</span>}
+                        </td>
                         <td className="px-4 py-2.5 whitespace-nowrap text-right tabular-nums text-gray-600">
                           {fmtValue(o.total_amount ?? o.subtotal)}
                         </td>
@@ -475,6 +495,7 @@ export default function SalesInvoices() {
                       <td className="px-4 py-3 whitespace-nowrap text-gray-500 font-mono text-xs">{r.uc || '—'}</td>
                       <td className="px-4 py-3 font-medium text-gray-900 min-w-0 cursor-pointer" onClick={open}>
                         <span className="truncate">{r.customer || 'Unnamed customer'}</span>
+                        {r.code && <span className="ml-1.5 text-xs font-mono font-normal text-gray-400">· {r.code}</span>}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-gray-500">{r.currency}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-800">{fmtValue(r.amount)}</td>

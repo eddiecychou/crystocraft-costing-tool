@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '../firebase'
 import { Search, Hash, Plus, X, AlertCircle, FileText } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import { useUcList, listUc, createUcInvoice, updateUcInvoice, listAppInvoices, UC_SOURCES, UC_CURRENCIES, ucSource } from '../ucRegistry'
+import { useCustomers } from '../domain/customer'
 import ExportFilterBar from '../components/ExportFilterBar'
 import { downloadCsv, exportStem } from '../exportCsv'
 import { erpLines, erpLookup } from '../erpApi'
@@ -474,6 +477,40 @@ export default function UcRegistry() {
   const rows = list.rows
   const refreshAll = () => { list.refresh(); arList.refresh() }
 
+  // Customer code next to the name — Cindy keys this into PBIS alongside the
+  // invoice (2026-08-06). Two sources, because a UC row's `customer` is
+  // free text with no link of its own:
+  //   - a JES-side row already carries jes_customer_code (uc_registry_dated,
+  //     JES's own sicustomer — added for this).
+  //   - an app-native row (invoice_location === 'app') has no JES code, but
+  //     carries app_order_id; resolve that order's customer_id, then this
+  //     customer's own erp_code.
+  const { customers } = useCustomers()
+  const erpCodeByCustomerId = useMemo(
+    () => Object.fromEntries(customers.map(c => [c.id, c.erp_code]).filter(([, code]) => code)),
+    [customers],
+  )
+  const [orderCustomerId, setOrderCustomerId] = useState({})   // order_id -> customer_id
+  useEffect(() => {
+    const ids = [...new Set(rows.map(r => r.app_order_id).filter(Boolean))]
+      .filter(id => !(id in orderCustomerId))
+    if (!ids.length) return
+    let alive = true
+    Promise.all(ids.map(id =>
+      getDoc(doc(db, 'orders', id)).then(s => [id, s.exists() ? (s.data().customer_id || null) : null])
+    )).then(pairs => { if (alive) setOrderCustomerId(prev => ({ ...prev, ...Object.fromEntries(pairs) })) })
+    return () => { alive = false }
+  }, [rows, orderCustomerId])
+
+  function customerCodeFor(r) {
+    if (r.jes_customer_code) return r.jes_customer_code
+    if (r.app_order_id) {
+      const cid = orderCustomerId[r.app_order_id]
+      if (cid) return erpCodeByCustomerId[cid] || null
+    }
+    return null
+  }
+
   async function setSourceInline(r, value) {
     setSavingSourceId(r.id)
     try {
@@ -495,6 +532,7 @@ export default function UcRegistry() {
     { label: 'Invoice in', value: (r) => LOCATION_LABEL[r.invoice_location] || '' },
     { label: 'Source',     value: (r) => ucSource(r.source) },
     { label: 'Customer',   value: (r) => r.customer },
+    { label: 'Customer code', value: (r) => customerCodeFor(r), text: true },
     { label: 'Order no.',  value: (r) => r.order_no, text: true },
     { label: 'Currency',   value: (r) => r.currency },
     { label: 'Total',      value: (r) => r.total },
@@ -676,7 +714,10 @@ export default function UcRegistry() {
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-2">{r.customer}</td>
+                  <td className="px-3 py-2">
+                    {r.customer}
+                    {customerCodeFor(r) && <span className="ml-1.5 text-xs text-gray-400 font-mono">· {customerCodeFor(r)}</span>}
+                  </td>
                   <td className="px-3 py-2 font-mono text-xs">
                     {r.jes_si
                       ? <button onClick={() => openInvoice(r)} className="text-teal-600 hover:underline"

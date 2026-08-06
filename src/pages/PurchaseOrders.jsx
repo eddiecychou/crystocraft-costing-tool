@@ -87,6 +87,26 @@ export default function PurchaseOrders() {
   }, [pos, search, statusFilter, from, to])
 
   const erp = useErpPurchaseOrders(search)
+  const [sortKey, setSortKey] = useState('date')
+  const [sortDir, setSortDir] = useState('desc')
+
+  // Clicking the active column flips direction; picking a new column starts
+  // it at a sensible default (dates newest-first, text columns A→Z).
+  function toggleSort(key) {
+    if (sortKey === key) { setSortDir(d => (d === 'asc' ? 'desc' : 'asc')); return }
+    setSortKey(key)
+    setSortDir(key === 'date' ? 'desc' : 'asc')
+  }
+
+  // One accessor per sortable column, working across both row sources — a
+  // JES row has no supplier_erp_code equivalent to the app's field name
+  // (erp_purchase's own `supplier_code` is the closest match).
+  const SORT_VALUE = {
+    pu:            row => (row.src === 'app' ? row.o.pu_number : row.r.code) || '',
+    supplier:      row => (row.src === 'app' ? row.o.supplier_name : row.r.supplier) || '',
+    supplier_code: row => (row.src === 'app' ? row.o.supplier_erp_code : row.r.supplier_code) || '',
+    date:          row => (row.src === 'app' ? row.o.issued_date : row.r.date) || '',
+  }
 
   // App rows and JES rows in one list, de-duplicated by PU number with the app
   // row winning — an app PO that was also typed into JES before the freeze
@@ -100,12 +120,10 @@ export default function PurchaseOrders() {
       // doesn't map to PO_STATUSES) — showing JES rows regardless keeps
       // "Draft"/"Issued" from silently hiding archive history.
       .map(r => ({ src: 'jes', key: `erp-${r.code}`, r }))
-    return [...app, ...jes].sort((a, b) => {
-      const da = a.src === 'app' ? (a.o.issued_date || '') : (a.r.date || '')
-      const db_ = b.src === 'app' ? (b.o.issued_date || '') : (b.r.date || '')
-      return String(db_).localeCompare(String(da))
-    })
-  }, [filtered, erp.rows])
+    const get = SORT_VALUE[sortKey] || SORT_VALUE.date
+    const dir = sortDir === 'asc' ? 1 : -1
+    return [...app, ...jes].sort((a, b) => String(get(a)).localeCompare(String(get(b))) * dir)
+  }, [filtered, erp.rows, sortKey, sortDir])
 
   const jesOnlyCount = merged.length - filtered.length
 
@@ -156,7 +174,7 @@ export default function PurchaseOrders() {
         <p className="text-xs text-amber-600 mb-2">JES history unavailable — {erp.error}</p>
       )}
 
-      <div className="flex flex-col sm:flex-row gap-2 mb-4">
+      <div className="flex flex-col sm:flex-row gap-2 mb-2">
         <input type="text" placeholder="Search PU no. or supplier…" className="input w-full sm:flex-1"
                value={search} onChange={e => setSearch(e.target.value)} />
         <div className="flex gap-1.5">
@@ -168,6 +186,19 @@ export default function PurchaseOrders() {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="flex items-center gap-1.5 mb-4">
+        <span className="text-xs text-gray-400">Sort:</span>
+        {[
+          ['date', 'Date'], ['pu', 'PU No.'], ['supplier', 'Supplier'], ['supplier_code', 'Supplier code'],
+        ].map(([key, label]) => (
+          <button key={key} onClick={() => toggleSort(key)}
+                  className={`px-2.5 py-1 rounded-full text-xs border transition-colors inline-flex items-center gap-1 ${
+                    sortKey === key ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-500 border-gray-200 hover:border-brand-400'}`}>
+            {label}{sortKey === key && (sortDir === 'asc' ? ' ↑' : ' ↓')}
+          </button>
+        ))}
       </div>
 
       {erpDoc && <ErpDocModal of="purchase" doc={erpDoc} onClose={() => setErpDoc(null)} />}

@@ -539,7 +539,14 @@ select
   -- app-native SI# ran the JES-only drill-down and dead-ended on "No ERP
   -- invoice found for SI260095" (owner, 2026-08-04) — the invoice exists,
   -- just not in JES. Null for JES rows, which drill down the ERP path.
-  asi.order_id                             as app_order_id
+  asi.order_id                             as app_order_id,
+  -- JES's own customer code (sicustomer) — Cindy keys this into PBIS
+  -- alongside the invoice, and typing it from the registry's free-text
+  -- `customer` name column risked a mismatch against what JES actually has
+  -- on file. Only populated for a row with a JES-side SI (si.sino matched
+  -- above); an app-native invoice has no JES customer code to give — the
+  -- UI resolves that case separately, via the app's own customers.erp_code.
+  nullif(si.sicustomer, '')                as jes_customer_code
 from public.uc_registry u
 left join raw.salesinvoice si
   on u.jes_si ~ '^SI[0-9]'
