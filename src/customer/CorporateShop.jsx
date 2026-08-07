@@ -69,11 +69,18 @@ export default function CorporateShop({ profile }) {
   // entirely). Only runs for sensitive viewers; everyone else uses
   // p.heroImage directly with no extra reads, same as before.
   const [safeImageByProductId, setSafeImageByProductId] = useState({})
+  // Whether the resolution pass has finished for the CURRENT product list —
+  // used to hold the grid back until we actually know which products have
+  // no safe photo at all, rather than flashing a photo-less card and then
+  // yanking it away a moment later.
+  const [safeImagesReady, setSafeImagesReady] = useState(false)
   useEffect(() => {
-    if (!sensitive || products.length === 0) { setSafeImageByProductId({}); return }
+    if (!sensitive) { setSafeImageByProductId({}); setSafeImagesReady(true); return }
+    if (products.length === 0) { setSafeImageByProductId({}); setSafeImagesReady(false); return }
     let alive = true
+    setSafeImagesReady(false)
     Promise.all(products.map(p => resolveSafeImage(p.id, p.heroImage, profile).then(img => [p.id, img])))
-      .then(entries => { if (alive) setSafeImageByProductId(Object.fromEntries(entries)) })
+      .then(entries => { if (alive) { setSafeImageByProductId(Object.fromEntries(entries)); setSafeImagesReady(true) } })
     return () => { alive = false }
   }, [sensitive, products])
 
@@ -89,23 +96,37 @@ export default function CorporateShop({ profile }) {
     return base.filter(p => {
       const q = search.toLowerCase()
       const ms = !q || p.name?.toLowerCase().includes(q)
-      return ms && (coll || !cat || p.category === cat)
+      if (!ms || (!coll && cat && p.category !== cat)) return false
+      // Owner, 2026-08-07: "for the items that doesn't have enough fallback
+      // images after the branded ones are taken out, it should be hidden
+      // instead of showing the products without photos." A product with NO
+      // safe image left for this sensitive viewer (every photo either IS
+      // the branded one or was screened out with it) is dropped from the
+      // shelf entirely, rather than shown as an empty box — same call
+      // already made for a genuinely-imageless product elsewhere in this
+      // app, just now also covering "imageless because of screening."
+      if (sensitive && !safeImageByProductId[p.id]) return false
+      return true
     })
-  }, [products, coll, search, cat])
+  }, [products, coll, search, cat, sensitive, safeImageByProductId])
 
   // After returning from a product detail, scroll the last-opened card back into
   // view so you can carry on browsing where you left off.
   useEffect(() => {
-    if (loading) return
+    if (loading || (sensitive && !safeImagesReady)) return
     const lastId = sessionStorage.getItem('cs-last-id')
     if (!lastId) return
     const el = document.getElementById(`corp-card-${lastId}`)
     if (el) { el.scrollIntoView({ block: 'center' }); sessionStorage.removeItem('cs-last-id') }
-  }, [loading, filtered])
+  }, [loading, filtered, sensitive, safeImagesReady])
+
+  // Held back until the resolution pass finishes for a sensitive viewer, so
+  // the grid never flashes a would-be-hidden card before yanking it away.
+  const stillResolving = sensitive && !safeImagesReady
 
   return (
     <div>
-      {loading && <LoadingBar />}
+      {(loading || stillResolving) && <LoadingBar />}
       <div className="mb-2">
         <h1 className="text-xl md:text-2xl">Corporate Gifts</h1>
         <p className="text-sm text-ink-60 mt-0.5">{filtered.length} products · indicative prices in {cur}</p>
@@ -130,7 +151,7 @@ export default function CorporateShop({ profile }) {
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
-      {filtered.length === 0 ? (
+      {stillResolving ? null : filtered.length === 0 ? (
         <div className="text-center py-20 text-ink-60">No products match your search.</div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
