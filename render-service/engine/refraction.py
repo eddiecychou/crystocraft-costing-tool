@@ -28,7 +28,7 @@ distortion and the sparkle/transmission look.
 """
 import numpy as np
 
-from .core import (build_material, luminance, boost_ab_flecks,
+from .core import (build_material, luminance, boost_ab_flecks, apply_facet_relief,
                    pil_blur, to_pil, design_rgba_from_image)
 from .palette import crystal_photo, stone_mm, DEFAULT_FG
 
@@ -66,29 +66,18 @@ def render_printed(logo_img, crystal_type, px_per_mm, top_color=DEFAULT_FG):
     G = rgb * alpha[..., None] + np.ones_like(rgb) * (1 - alpha[..., None])
     Gr = _refract(G, mat, blur_px=sp * 0.10, refract_px=sp * 3.0)
 
-    # Rewritten 2026-08-07 (owner, fourth pass) against a REAL photo of the
-    # finished product (a bright white AB-crystal MagSafe card): it is bright,
-    # clean, and sharp — a vivid printed graphic seen THROUGH clear crystal,
-    # its white areas bright white with occasional random rainbow flecks, NOT
-    # a dark tinted overlay. Two prior attempts each fixed one half and broke
-    # the other:
-    #   - deriving colour from the crystal photo everywhere + defaulting to
-    #     the Black-backfilm capture (to make AB colour visible) turned the
-    #     whole panel dark/blurred — wrong base look entirely;
-    #   - the White-backfilm capture is the right bright base, but its AB
-    #     colour is faint, so a naive blend lost the iridescence the owner
-    #     wanted back.
-    # This version keeps the GRAPHIC as the base (bright, sharp, full colour),
-    # applies the crystal photo only as (a) a stone TEXTURE multiplier centred
-    # on 1.0 — light/dark facet shading that darkens nothing overall — and
-    # (b) real AB colour FLECKS screen-added only where the photo already has
-    # meaningful chroma (a ramp on |chroma|), so white/grey stone stays white
-    # and contributes brightness, while the genuine coloured flecks pop.
-    # `top_color`'s White-backfilm photo (palette.py's default) is correct
-    # again — no Black-backfilm swap needed. Tuned against the real Crystal
-    # AB fabric AND rock White photos with the owner's own graphic.
-    L = luminance(mat)
-    tex = (1.0 + (L / (L.mean() + 1e-6) - 1.0) * 0.9)[..., None]   # facet shading, mean≈1
-    base = np.clip(Gr * tex, 0, 1)
-    out = boost_ab_flecks(base, source=mat)                       # AB colour flecks from the crystal
+    # Rewritten 2026-08-07 (owner, fourth+fifth pass) against real photos of
+    # the finished product: bright, clean, sharp — a vivid printed graphic
+    # seen THROUGH clear crystal with visible individual facets and
+    # occasional random rainbow flecks, NOT a dark tinted overlay and NOT a
+    # flat colour wash. Keeps the GRAPHIC as the base (bright, sharp, full
+    # colour); the crystal photo contributes (a) visible facet relief — see
+    # apply_facet_relief()'s docstring for why a plain multiply wasn't
+    # enough — and (b) real AB colour flecks screen-added from its own
+    # chroma (boost_ab_flecks()). `top_color`'s White-backfilm photo
+    # (palette.py's default) is the correct bright base; no Black-backfilm
+    # swap needed. Tuned against the real Crystal AB fabric AND rock White
+    # photos with the owner's own graphic.
+    base = apply_facet_relief(Gr, mat)
+    out = boost_ab_flecks(base, source=mat)
     return to_pil(np.clip(out, 0, 1))

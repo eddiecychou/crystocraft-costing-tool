@@ -54,6 +54,30 @@ def boost_ab_flecks(base, source=None, gain=8.0, lo=0.04, ramp=0.10):
     fleck = np.clip((cmag - lo) / ramp, 0, 1)
     return screen(base, np.clip(chroma * gain * fleck, 0, 1))
 
+def apply_facet_relief(base, mat, hi_gain=0.5, lo_gain=0.35):
+    """Make individual crystal FACETS visible on `base` — the raised/faceted
+    diamond-cut structure real crystal photos show, not just a flat colour
+    wash. Owner (2026-08-07), on the previous version: "the dark one is
+    losing the crystal texture... the lighter one, it will be better if the
+    facets are more clear."
+
+    A plain multiply-by-luminance shading (tried first) is imperceptible on
+    a dark base — multiplying near-zero values by anything near 1 barely
+    changes them, so the texture vanished exactly on the pixels the owner
+    flagged. This instead reads relief from `mat`'s own per-pixel luminance
+    deviation (normalized by its OWN mean/std, so it self-calibrates per
+    photo): facet PEAKS (bright, `hi`) are SCREEN-added as highlights, which
+    brightens regardless of how dark `base` already is; facet VALLEYS (dark,
+    `lo`) are multiplied in as shading. The combination reads as a real
+    faceted surface on both a bright and a dark base — verified against both
+    a dark-background and a white-background test graphic."""
+    L = luminance(mat)
+    Lc = (L - L.mean()) / (L.std() + 1e-6)
+    hi = np.clip(Lc, 0, 2.0)[..., None]
+    lo = np.clip(-Lc, 0, 2.0)[..., None]
+    out = np.clip(base * (1 - lo * lo_gain), 0, 1)
+    return screen(out, hi * hi_gain)
+
 def pil_blur(arr, radius):
     if radius <= 0:
         return arr
