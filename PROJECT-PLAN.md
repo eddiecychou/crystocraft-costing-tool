@@ -43,29 +43,33 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
-## Current Status — V7.21 CLOSED as of 2026-08-06
+## Current Status — V7.21 CLOSED as of 2026-08-07
 
-Commit chain `013a1aa`→`43483cf` (20 commits), all deployed. V7.20 closed
-without writing a "Where V7.21 starts" — this cycle's theme emerged from two
-things the owner raised mid-session rather than a pre-planned scope: **JES was
-frozen** (no more entry by CuiLing/Cindy/XiangXia — read-only from here), which
-made B2C finished-goods stock the one real gap left in the app's own inventory
-story; and **corporate-client logo privacy**, which grew from "customers are
-sensitive about their logos" into the biggest thread of the cycle — a full
-Customer Brand Gallery, competitor-photo screening, and a rebuild of how the
-app models a customer's contacts at all.
+Commit chain `013a1aa`→`88057fb` (61 commits), all deployed. This cycle ran
+long — closed once already (as of 2026-08-06, §1-5 below), then the owner
+kept it open through a second, much bigger wave: JES-freeze cleanup on
+Purchase Orders/Sales Invoices/UC Registry, a full "Crystal Fabric Studio"
+customizer build-out, portal order history with real invoice PDF/Excel
+export, and — the cycle's real headline — a **customer-logo privacy leak
+that took three genuine attempts to actually close**, the last of which
+required minting a real auth token for the affected customer's own account
+and running the exact query her browser runs to prove what was actually
+happening, because two structurally-correct-looking fixes in a row had no
+effect at all. See §9.
 
 ### The numbers
 
 | | |
 |---|---:|
-| Commits | 20 |
+| Commits | 61 |
 | B2C finished-goods SKUs imported | 0 → 560 |
 | New Firestore collection | `customers/{id}/assets` (Brand Gallery) |
 | New Firestore field | `contacts[]` replacing `contact_name` + 4 parallel arrays, on every customer |
 | Surfaces wired to "which contact" | Quotes, PI/Orders + their print pages, Interaction Log, portal accounts |
-| Pre-existing bugs found and fixed along the way | 4 (see §4) |
-| Firestore/Storage rule files touched | both — `firestore.rules` (3 rounds), `storage.rules` (1 missing path) |
+| Render-service (Fly.io) version | 0.1.0 → 0.9.0, 9 deploys tuning the crystal render |
+| Crystal colours in the live swatch library | 0 (hardcoded 8-name palette) → 17 (owner-photographed) |
+| Attempts to close the sensitive-customer photo leak | 3 (§9) |
+| Firestore/Storage rule files touched | both — `firestore.rules` (7 rounds across the cycle), `storage.rules` (1 missing path) |
 
 ### 1. JES fully frozen — and the one real gap it left, closed
 
@@ -185,55 +189,283 @@ add/remove, primary radio, manual reorder.
   Both now copy across (`copySubcollection()`), and the merge preview
   reports the counts before anyone commits to it.
 
+### 6. Purchase Orders rebuilt on the JES freeze
+
+With JES frozen for new entry, Purchase Orders had to become fully
+app-usable rather than a read-only mirror: PU-column sort now defaults
+newest-first on entry (matching the Date column's existing default —
+`toggleSort()`'s default-direction rule became `key === 'date' || key ===
+'pu' ? 'desc' : 'asc'`, since PU numbers are themselves chronological), and
+the JES-side fetch gained a row-limit selector (50/100/500/1000, default
+100, disabled while actively searching) after the previous hardcoded
+400-row fetch made "find an old PU" a search-only path. This surfaced a
+real bug: the `purchase` entity in `netlify/edge-functions/erp.js` had no
+`maxLimit` override, so it silently capped at the shared default of 500
+even with 1000 selected in the UI — fixed by adding `maxLimit: 1000`.
+
+### 7. Customers wired to their ERP sales history
+
+**In ERP Lookup**: customer/supplier codes now display inline next to the
+name on `sales_invoice`, `sales_order`, and `purchase` rows — a direct ask,
+straightforward to build. Building it surfaced a real data-quality fact
+worth remembering: JES customer codes **A29, C13, and O07 are shared
+"bucket" codes spanning many unrelated real customers** (confirmed against
+live ERP data, not assumed) — so a customer's `erp_code` cannot be trusted
+to uniquely identify their invoices when it's one of these codes. The fix
+threads all the way through: `saveCustomer()` now computes
+`erp_code_shared` (true when more than one customer doc shares the same
+`erp_code`) whenever a customer with an `erp_code` is saved, persists it on
+the customer doc, and mirrors it (alongside `erp_code`/`sensitive`) to every
+linked `users/{uid}` portal account via the renamed
+`mirrorToLinkedAccounts()`. Every downstream consumer of "this customer's
+ERP history" checks the flag and shows an explicit warning instead of a
+(potentially wrong) merged list.
+
+**Portal Order History** (new): customers can now see their own Sales
+Invoice History from the shop nav ("My Orders", `src/customer/
+OrderHistoryPage.jsx`). Deliberately **SI only, not SO/"PI"** — the owner's
+call: "since I only concern about what's being ordered and sold to the
+customer." A new customer-self-service edge function,
+`netlify/edge-functions/customer-order-history.js`, reads the caller's own
+`users/{uid}` doc under their own token (not admin-gated like `/api/erp`),
+trusts the now rule-locked `erp_code`/`erp_code_shared` fields, and queries
+`erp_sales_invoice` by exact `customer_code` match (not the admin's `ilike`
+substring search). A second action re-verifies an invoice's `customer_code`
+against the caller's own `erp_code` server-side before returning any line
+items, so a customer can't view another customer's invoice by guessing a
+number. The admin side (`CustomerDetail.jsx`'s "Sales Invoice History"
+card) and the portal share one merge/de-dupe module,
+`src/domain/salesInvoiceHistory.js`, so app-invoiced orders and their JES
+mirror rows collapse into one row (app wins) instead of showing twice.
+
+Clicking an invoice opens a real, printable, downloadable document
+(`src/customer/CustomerInvoicePrint.jsx`, route `/shop/invoice/:key`,
+rendered outside `CustomerLayout` the same way admin print pages sit
+outside `Layout`) — reusing the exact `.si-*` CSS from the internal
+`SalesInvoicePrint.jsx` and adding an Excel download via `ExcelJS`. It
+deliberately omits bank remittance details and the full billing address,
+neither of which has a customer-readable data path. Opens in a new tab
+(`window.open(..., '_blank', 'noopener')`) per the owner's explicit ask,
+rather than navigating the portal away.
+
+Two rounds of portal feedback shaped the final shape: an initial version
+had separate "Orders" and "Invoice History" sections that the owner found
+"duplicated and very confusing" — the Orders section was removed entirely;
+and a "UC UC4900/26" doubled-label bug (the `ref`/`uc_no` value already
+contains the "UC" prefix; both `CustomerDetail.jsx` and
+`OrderHistoryPage.jsx` had a redundant literal "UC " in their JSX) was
+found and fixed in both places.
+
+**Print page-break bug, found while checking this**: `SalesInvoicePrint.jsx`
+and `PurchaseOrderPrint.jsx` were both missing the `page-break-inside:
+avoid` / `break-inside: avoid` CSS (on every table row and on the
+totals/words/bank/sign/foot blocks) and `thead`/`tfoot` header-repeat rules
+that `ProformaInvoicePrint.jsx` has had since 2026-07-24 — a real,
+previously-unnoticed bug on any multi-page invoice or PO. Fixed in both;
+`PackingListPrint.jsx` and `QuotePDF.jsx` (a different, `@react-pdf/
+renderer`-based mechanism using `wrap={false}` per row) were checked and
+already correct.
+
+### 8. Crystal Fabric Studio — Phase 1 built out
+
+What `Crystal_Fabric_Studio_Spec.md` scoped as future "V7.22" work was
+substantially built this cycle instead, at the owner's direction ("please
+start with phase 1 for crystal fabric"): the on-hold zone-map customizer
+(`src/customer/customizer/CrystalFabricCustomizer.jsx`) was un-parked and
+enabled on two real products, with printed mode kept hidden
+(`MODES[].available` flag) until backfilm photos exist for it.
+
+A 500 error during testing turned out to be a silent error-message bug —
+`customizerApi.js`'s `renderPreview()` checked a response body for
+`.error`, but FastAPI's `HTTPException` returns `.detail`; every real
+render failure was being swallowed into a generic "Preview failed (500)."
+Fixed, and an admin-only test-render tool (`render-service/app.py`'s
+`POST /admin/render-test`, gated by `ADMIN_PASSWORD`, plus a new panel in
+`render-service/admin.html`) was added so render issues can be diagnosed
+without needing a live product page.
+
+The swatch admin tool's crop step was removed — uploads are already
+pre-cropped, so `admin.html`'s drag-to-crop canvas interaction and its
+copy were replaced with an auto-full-image crop.
+
+**Render-quality tuning went through three genuine, evidence-based
+redesigns** (`render-service/engine/refraction.py`, `core.py`,
+`palette.py`), each verified against real downloaded production swatch
+photos before deploying, not guessed and re-guessed:
+1. First pass derived colour from the crystal photo everywhere and
+   defaulted to a Black backfilm — owner: "very dark and blurred... actual
+   object is bright and clean and sharp."
+2. Second pass kept the graphic as the base layer with the crystal
+   contributing only a near-1-mean texture multiplier plus AB colour via
+   `boost_ab_flecks()` — fixed the darkness, but facet definition still
+   vanished on darker material because a plain multiply is imperceptible
+   near zero.
+3. Final: added `apply_facet_relief()` (screen-adds highlights, multiplies
+   shadows — visible regardless of base brightness) and restored White as
+   the base backfilm, with AB colour still pulled in only where the
+   material's own chroma deviation is already meaningfully present. Owner
+   confirmed: "Ok it looks fine now." A related earlier bug in the same
+   area — the sparkle threshold was computed against raw luminance instead
+   of each photo's own normalized range, washing out colour on uniformly-
+   bright fabric photos — was fixed by switching the threshold basis to the
+   normalized value.
+
+Render service version bumped 0.1.0 → 0.9.0 across nine deploys this
+cycle.
+
+### 9. The sensitive-customer photo leak — three rounds to actually close
+
+The headline bug of the cycle. Owner, live-testing as the Sunlife portal
+account: "The sensitive customer function doesn't screen out the product
+images from other customers products image tagged in brand gallery." Two
+fixes in a row looked structurally correct and still didn't work in
+production — each was found insufficient only because the owner re-tested
+live rather than the fix being assumed to have worked:
+
+1. **First fix**: found 19 products whose `heroImage_branded_for_customer_id`
+   mirror field was stale or never backfilled (only ever written at
+   pick/re-tag time, never for pre-existing tags) — via a direct Firestore
+   query, not assumed. Fixed by reading the live `images` subcollection
+   instead of the mirror. Correct in isolation, but incomplete.
+2. **Second fix attempt** (owner: "I can still see the product images
+   tagged for brands of other customers when i logged in as sunlife") — a
+   re-grep of every raw `heroImage` usage found a second leak surface:
+   `CollectionBand`'s "Shop by" band (`bandItems` in
+   `CorporateShop.jsx`) read `p.heroImage` directly, completely bypassing
+   the card-level fix. Fixed by feeding the band from the same screened
+   image resolution as the cards.
+3. **Still failed** (owner: "I just tried and still doesn't work, same as
+   before"). At this point the investigation stopped guessing at more
+   client code and instead verified the actual production stack directly:
+   fetched the LIVE published Firestore rules via the Rules REST API and
+   diffed against the repo (identical, ruling out "not published");
+   confirmed via the Netlify deploy API that the latest commit was in
+   fact the live deploy (ruling out a stale deploy); then **minted a real
+   Firebase auth token for Sunlife's actual account** (`firebase-admin`'s
+   `createCustomToken`, exchanged via the Auth REST API) and ran the exact
+   Firestore "list documents" REST call her browser's SDK runs against a
+   product known to have its hero branded for a different customer. It
+   returned 200 with the blocked document included. **Root cause**:
+   Firestore's `get()`/`exists()`-based security rules (`viewerIsSensitive()`)
+   reliably gate a single-document `get`, but do not reliably filter an
+   unconstrained collection `list()`/query's results per-document — a rule
+   that reads like a per-doc filter isn't actually applied that way to list
+   reads. This is a durable lesson for this codebase: any privacy screening
+   that depends on a rule filtering a list/query must also be enforced
+   client-side after the fetch.
+
+   Fixed with `src/sensitiveImages.js` (`screenSensitiveImages()`),
+   applied at the fetch boundary in both `CorporateShop.jsx` (feeding both
+   the card grid and the Shop-by band from one shared resolution pass) and
+   `CorporateDetail.jsx` (filtering the `images` `onSnapshot` result before
+   anything downstream — hero derivation or gallery — reads it). Verified
+   by re-running the same real Sunlife query and confirming the new filter
+   correctly drops the bad document from the raw response.
+
+   Final refinement, owner: "for the items that doesn't have enough fall
+   back images after the branded ones are taken out, it should be hidden
+   instead of showing the products without photos" — `CorporateShop.jsx`'s
+   `filtered` list now drops any product with no safe image left for a
+   sensitive viewer entirely, rather than showing it with a blank
+   placeholder. A `safeImagesReady` gate holds the whole grid back (loading
+   state) until the resolution pass completes, so a would-be-hidden card
+   never flashes before disappearing.
+
+### 10. Smaller fixes this cycle
+
+- WeChat added as a marketing/contact channel; Tunisia and other Maghreb
+  countries added to the country list.
+- Components nav reorganised; product detail gained separate New/Visible
+  toggles.
+- Corporate shop hero now falls back gracefully instead of fully hiding a
+  product when its designated hero is unavailable (a separate, narrower
+  case than §9's sensitive-customer screening).
+- Marketing: campaign templates moved from a hardcoded object to Firestore
+  (`campaign_templates` collection, `src/domain/campaigns.js`), with
+  save-as-template / update-this-template UI in `Campaigns.jsx`; per-
+  recipient `{{first_name:there}}`-style personalization added server-side
+  in `send-campaign.js`; `MarketingContacts.jsx` gained a link/unlink-to-
+  customer workflow.
+- A near-miss, disclosed directly to the owner: an in-progress edit to this
+  file was accidentally done with `Write` and placeholder content,
+  overwriting this entire document. Caught immediately before anything was
+  committed and restored cleanly via `git checkout`. No data was lost;
+  noted here only because it's the reason this close-out was written with
+  careful, narrow `Edit` calls rather than a full rewrite.
+
 ### Deployment notes
 
-- **`firestore.rules` published three times this cycle**: `customers/{id}/assets`
-  (Brand Gallery), `products/{id}/images` (competitor screening,
-  `viewerIsSensitive()`), and the `profile().get('customer_id', '')` safe-accessor
-  fix. All pasted to the owner for manual publish (this app has no CI rules
-  deploy) — see `Customer_Brand_Gallery_Spec.md` §6 for the guarantee each
-  rule is actually making.
-- **`storage.rules` published once** — the missing `customer-assets/` path
-  (§5 above).
-- **New Firestore collection**: `customers/{id}/assets`. **New field**:
-  `contacts[]` on every customer document (additive; nothing deleted or
-  migrated).
+- **`firestore.rules` published multiple times this cycle**, each pasted in
+  full to the owner for manual publish (this app has no CI rules deploy):
+  `customers/{id}/assets` (Brand Gallery), `products/{id}/images`
+  (competitor screening, `viewerIsSensitive()`), the
+  `profile().get('customer_id', '')` safe-accessor fix, a new
+  `campaign_templates/{id}` admin-only rule, locking `sensitive`/`erp_code`/
+  `erp_code_shared` on `users/{uid}` to admin-only writes (closing a real,
+  lower-severity pre-existing gap found as a side effect of building
+  customer order history — a customer's own token could previously have
+  overwritten these fields on their own doc), and a customer-scoped read
+  rule on `orders/{orderId}` (and its subcollections) gated on
+  `customer_id` matching, with an explicit empty-string guard so an
+  unlinked customer can't match a blank/malformed order.
+- **`storage.rules` published once** — the missing `customer-assets/` path.
+- **New Firestore collections**: `customers/{id}/assets` (Brand Gallery),
+  `campaign_templates`. **New fields**: `contacts[]` on every customer
+  document; `erp_code`/`erp_code_shared` on customers and linked portal
+  accounts (additive; nothing deleted or migrated).
+- **Render service (Fly.io, `crystocraft-customizer-render`)** redeployed
+  nine times this cycle, version 0.1.0 → 0.9.0. Swatch photo library lives
+  on the Fly persistent volume (`/data`), not in git.
 - No new Postgres/Supabase surface this cycle.
 
 ### Open — not verified, because the app is login-gated for this assistant
 
-Everything in this cycle was built and parse/build-verified, but never
-click-tested end-to-end, because Claude Code cannot sign in to the app.
-Worth a real pass before treating any of the following as proven:
+Everything in this cycle was built and parse/build-verified, and the
+sensitive-image fix specifically was verified against a real minted auth
+token, but most of the rest was never click-tested end-to-end by this
+assistant, because Claude Code cannot sign in to the app. Worth a real pass
+before treating any of the following as proven:
 
 - The full Brand Gallery rule matrix (admin sees all; customer A can't read
   customer B's assets; an `internal_only` asset never reaches a customer
-  query) — the logic is straightforward but "should work" isn't "verified,"
-  and this is the one guarantee the whole cycle exists to make.
+  query).
 - A real merge of two customers that both carry contacts, Brand Gallery
   assets, and interaction log entries.
 - The contacts rebuild end-to-end: add/edit/reorder in `CustomerForm`, then
-  confirm a quote, a PI, and an interaction log entry each pick up the right
-  contact.
+  confirm a quote, a PI, and an interaction log entry each pick up the
+  right contact.
 - Uploading each of the newly-accepted brand-asset formats
   (`.ai`/`.eps`/`.svg`/`.pdf`/`.pptx`).
+- The portal Order History page and `CustomerInvoicePrint.jsx` end-to-end
+  on a real customer login — including its Excel download and a genuine
+  multi-page PDF print (to confirm the page-break fix in §7 actually
+  repeats headers and avoids splitting a row across pages in a real
+  browser print dialog, not just in CSS review).
+- Whether the `erp_code_shared` warning actually surfaces correctly for a
+  customer on one of the known shared codes (A29/C13/O07) rather than
+  silently showing a wrong merged history.
 
 ---
 
 ## Where V7.22 starts
 
-The owner asked for review of a Perplexity-drafted "Crystal Fabric Studio"
-brief (product configurator + swatch library for designers replacing
-discontinued Swarovski components). Full plan, reconciled against what's
-actually in the codebase, is in `Crystal_Fabric_Studio_Spec.md` — read that
-first. Short version: the draft's "Track 1" configurator already exists
-(`src/customer/customizer/CrystalFabricCustomizer.jsx`, on hold per
-`Customizer_Build_Plan.md`) and its proposed data model
-(`effect`/`density`) would reintroduce invented option names the app
-deliberately removed on 2026-07-30. The real new work is Track 2 — a swatch
-library for designers, admin-facing first, built on the existing
-`CRYSTAL_COLORS`/`CRYSTAL_TYPES` shape in `customizerApi.js`, with physical
-sample-request as the actual conversion event (not a rendered price band).
+**Crystal Fabric Studio, Track 2** is the main open thread: a swatch
+library for designers is still not built (Phase 1 this cycle only
+un-parked and tuned the existing zone-map configurator on 2 products).
+`Crystal_Fabric_Studio_Spec.md` has the plan — build on the existing
+`CRYSTAL_COLORS`/`CRYSTAL_TYPES` shape in `customizerApi.js`, admin-facing
+first, with physical sample-request as the actual conversion event rather
+than a rendered price band. Printed mode stays hidden from customers
+(`MODES[].available === false`) until backfilm photos are captured for it
+— the owner is continuing to photograph and upload swatches to the Fly
+volume; check `render-service` swatch counts before assuming printed mode
+is still blocked. Panel size is not yet stored per-product, only chosen
+per-session in the customizer UI.
+
+Everything in §"Open — not verified" above is also fair game for a first
+real pass — in particular the portal Order History feature, since it was
+built and shipped without this assistant ever being able to click through
+it as a real customer.
 
 ---
 
