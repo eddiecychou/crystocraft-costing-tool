@@ -1,10 +1,11 @@
 // Portal order history — lets a signed-in, approved portal customer see
-// their OWN JES (legacy ERP) sales invoice + order ("PI") history. Separate
-// from /api/erp on purpose: that endpoint is deliberately hard admin-only
-// ("the ERP archive holds costs, margins, and supplier pricing — trade
-// secrets") — this one exposes only a customer's OWN order-level rows
-// (code, date, status, amount, currency), the same information they'd see
-// on their own invoice, and reads the caller's OWN users/{uid} doc with
+// their OWN JES (legacy ERP) sales invoice history, and the line items of
+// one invoice. Separate from /api/erp on purpose: that endpoint is
+// deliberately hard admin-only ("the ERP archive holds costs, margins, and
+// supplier pricing — trade secrets") — this one exposes only a customer's
+// OWN order-level rows (invoice #, date, status, amount, currency) and line
+// items (item, qty, unit price, line amount) — the same information they'd
+// see on their own invoice — and reads the caller's OWN users/{uid} doc with
 // their OWN token (Firestore rules already allow that self-read).
 //
 // Security note: this endpoint has NO elevated Firestore access — it never
@@ -13,6 +14,10 @@
 // firestore.rules locks those two fields (plus `sensitive`) to admin-only
 // writes — a customer's own token cannot set them on their own doc. See
 // domain/customer.js's mirrorToLinkedAccounts() for where they get written.
+// The `lines` action ALSO re-verifies the requested invoice actually belongs
+// to the caller's own erp_code server-side before returning anything — a
+// customer passing an arbitrary invoice number must not see someone else's
+// line items just because they guessed a code.
 //
 // A handful of JES codes (A29, C13, O07 — confirmed 2026-08-07) are shared
 // "bucket" codes used for many different Alibaba/website/walk-in customers,
@@ -20,10 +25,12 @@
 // means "don't return history," same guard CustomerDetail.jsx's admin view
 // applies, computed the same way (domain/customer.js's saveCustomer).
 //
-// POST (no body needed — the caller's own token IS the request)
-//   -> { rows: [] }                      no erp_code on file yet
-//   -> { rows: [], shared: true }        erp_code is a shared bucket code
-//   -> { rows: [{ kind, code, date, status, amount, currency, ... }] }
+// POST { action?: 'history' | 'lines', code? }  (code required for 'lines')
+//   history -> { rows: [] }                      no erp_code on file yet
+//           -> { rows: [], shared: true }        erp_code is a shared bucket code
+//           -> { rows: [{ code, date, status, amount, currency, ref, ... }] }
+//   lines   -> { lines: [{ item_code, description, qty, unit_price, amount }] }
+//           -> 403 if `code` doesn't belong to the caller's own erp_code
 //
 // Env: SUPABASE_URL, SUPABASE_SECRET_KEY (or SUPABASE_SERVICE_ROLE_KEY),
 //      VITE_FIREBASE_PROJECT_ID (or FIREBASE_PROJECT_ID)
@@ -52,26 +59,19 @@ async function getOwnProfile(uid, idToken, projectId) {
   }
 }
 
-// Safe subset of erp_sales_invoice/erp_sales_order columns — order-level
-// info a customer already sees on their own invoice, nothing cost/margin
-// related (that distinction is what keeps this endpoint separate from the
-// admin-only /api/erp — see this file's header comment).
-const SAFE_COLS = 'code,date,status,amount,currency,customer_po,ship_date'
-
-async function fetchRows(SUPABASE_URL, SERVICE_KEY, view, code, kind) {
-  const params = new URLSearchParams({
-    select: SAFE_COLS,
-    customer_code: `eq.${code}`,
-    order: 'date.desc',
-    limit: '200',
-  })
-  const r = await fetch(`${SUPABASE_URL}/rest/v1/${view}?${params.toString()}`, {
+async function sb(SUPABASE_URL, SERVICE_KEY, path) {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, Accept: 'application/json' },
   })
-  if (!r.ok) return []
-  const rows = await r.json()
-  return rows.map(row => ({ ...row, kind }))
+  if (!r.ok) return null
+  return r.json()
 }
+
+// Safe subset — order-level info a customer already sees on their own
+// invoice, nothing cost/margin related (that distinction is what keeps this
+// endpoint separate from the admin-only /api/erp — see this file's header).
+const HEADER_COLS = 'code,date,status,amount,currency,customer_po,ship_date,ref'
+const LINE_COLS = 'item_code,description,qty,unit_price,amount'
 
 export default async function handler(req) {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
@@ -97,13 +97,31 @@ export default async function handler(req) {
   if (!profile || profile.role !== 'customer' || profile.status !== 'approved') {
     return json({ error: 'Approved customer account required' }, 403)
   }
+
+  let body = {}
+  try { body = await req.json() } catch { /* no body = default action */ }
+  const action = body?.action === 'lines' ? 'lines' : 'history'
+
+  if (action === 'lines') {
+    const code = String(body?.code || '').trim()
+    if (!code) return json({ error: 'code is required' }, 400)
+    if (!profile.erp_code || profile.erp_code_shared) return json({ error: 'Not available' }, 403)
+    // Re-verify server-side that this invoice actually belongs to the
+    // caller's own erp_code before returning any line items — see header.
+    const header = await sb(SUPABASE_URL, SERVICE_KEY,
+      `erp_sales_invoice?select=code,customer_code&code=eq.${encodeURIComponent(code)}&limit=1`)
+    if (!header?.length || String(header[0].customer_code || '').toUpperCase() !== profile.erp_code.toUpperCase()) {
+      return json({ error: 'Not found' }, 404)
+    }
+    const lines = await sb(SUPABASE_URL, SERVICE_KEY,
+      `erp_sales_invoice_line?select=${LINE_COLS}&invoice_no=eq.${encodeURIComponent(code)}&order=seq.asc`)
+    return json({ lines: lines || [] })
+  }
+
   if (!profile.erp_code) return json({ rows: [] })
   if (profile.erp_code_shared) return json({ rows: [], shared: true })
 
-  const [invoices, orders] = await Promise.all([
-    fetchRows(SUPABASE_URL, SERVICE_KEY, 'erp_sales_invoice', profile.erp_code, 'SI'),
-    fetchRows(SUPABASE_URL, SERVICE_KEY, 'erp_sales_order', profile.erp_code, 'PI'),
-  ])
-  const rows = [...invoices, ...orders].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
-  return json({ rows })
+  const rows = await sb(SUPABASE_URL, SERVICE_KEY,
+    `erp_sales_invoice?select=${HEADER_COLS}&customer_code=eq.${encodeURIComponent(profile.erp_code)}&order=date.desc&limit=200`)
+  return json({ rows: rows || [] })
 }

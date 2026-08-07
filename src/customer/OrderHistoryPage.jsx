@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import { myOrderHistory } from '../customerOrderHistoryApi'
-import { ClipboardList, Receipt } from 'lucide-react'
+import { mergeSalesInvoiceHistory } from '../domain/salesInvoiceHistory'
+import InvoiceDetailModal from './InvoiceDetailModal'
+import { ClipboardList, Receipt, ChevronDown, ChevronUp } from 'lucide-react'
 
 const STATUS_STYLE = {
   draft: 'bg-gray-100 text-gray-600',
@@ -19,16 +21,24 @@ const fmtDate = d => {
 }
 
 // "My Orders" — owner, 2026-08-07: "let customers be able to see their order
-// history on portal." Two sources, shown as separate sections rather than
-// merged into one list (their shapes and what they mean genuinely differ):
+// history on portal", then: "combine both in JES and in App sales invoice
+// in 'Sales Invoice History'... sales invoices should be clickable... an
+// icon to expand and collapse... more on bottom to see more."
+//
+// Two sections:
 //  - Orders: this app's own orders/ collection (customer_id-scoped Firestore
-//    rule — see firestore.rules), the live/current production pipeline.
-//  - ERP history: legacy JES sales invoices + orders ("PI"), fetched via the
-//    customer-scoped /api/customer-order-history edge function (never the
-//    admin-only /api/erp — see that function's header comment for why).
-//    Some accounts' ERP code is a shared JES "bucket" code (not unique to
-//    them); `shared: true` from that endpoint means history genuinely can't
-//    be attributed to just this customer, so it's explained, not just empty.
+//    rule — see firestore.rules), the live/current production pipeline —
+//    useful for tracking status even before an invoice exists.
+//  - Sales Invoice History: what's actually been sold to this customer,
+//    merged from the app's own invoiced orders AND legacy JES invoices
+//    (domain/salesInvoiceHistory.js — same merge CustomerDetail.jsx's admin
+//    view uses, minus the App/JES source badge — a customer doesn't need to
+//    know which system it lives in). Clicking a row opens InvoiceDetailModal
+//    for line-item detail. Some accounts' ERP code is a shared JES "bucket"
+//    code (owner confirmed A29/C13/O07 each cover many different real
+//    customers) — `shared: true` from the edge function means history
+//    genuinely can't be attributed to just this customer, so it's
+//    explained, not just empty.
 export default function OrderHistoryPage({ profile }) {
   const customerId = profile?.customer_id || null
   const [orders, setOrders] = useState([])
@@ -36,6 +46,9 @@ export default function OrderHistoryPage({ profile }) {
   const [erpRows, setErpRows] = useState([])
   const [erpShared, setErpShared] = useState(false)
   const [erpLoading, setErpLoading] = useState(true)
+  const [invoicesOpen, setInvoicesOpen] = useState(true)
+  const [invoicesShown, setInvoicesShown] = useState(10)
+  const [openRow, setOpenRow] = useState(null)   // row being viewed in InvoiceDetailModal
 
   useEffect(() => {
     if (!customerId) { setOrders([]); setOrdersLoading(false); return }
@@ -62,6 +75,9 @@ export default function OrderHistoryPage({ profile }) {
       .finally(() => { if (alive) setErpLoading(false) })
     return () => { alive = false }
   }, [])
+
+  const invoiceHistory = useMemo(() => mergeSalesInvoiceHistory(orders, erpRows, null), [orders, erpRows])
+  const historyLoading = ordersLoading || erpLoading
 
   return (
     <div>
@@ -98,40 +114,55 @@ export default function OrderHistoryPage({ profile }) {
       </div>
 
       <div>
-        <h2 className="text-sm font-semibold text-ink-70 mb-3">Invoice history</h2>
-        {erpLoading ? (
-          <p className="text-sm text-ink-40 py-6 text-center">Loading…</p>
-        ) : erpShared ? (
-          <div className="bg-white rounded-xl border border-ivory-dark p-6 text-center text-sm text-ink-60">
-            Your invoice history isn't linked to an individual account yet — contact us if you'd like a copy of a past invoice.
-          </div>
-        ) : erpRows.length === 0 ? (
-          <div className="bg-white rounded-xl border border-ivory-dark p-6 text-center text-sm text-ink-60">
-            No invoice history on file yet.
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl border border-ivory-dark divide-y divide-ivory-dark">
-            {erpRows.map((r, i) => (
-              <div key={`${r.kind}-${r.code}-${i}`} className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Receipt size={14} className="text-ink-30 shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-ink truncate">
-                      <span className="text-[10px] font-mono px-1 py-0.5 rounded bg-ivory text-ink-50 mr-1.5">{r.kind}</span>
-                      {r.code}
-                    </p>
-                    <p className="text-xs text-ink-50 mt-0.5">{fmtDate(r.date)}{r.currency ? ` · ${r.currency}` : ''}</p>
+        <button type="button" onClick={() => setInvoicesOpen(v => !v)}
+                className="w-full flex items-center justify-between mb-3 text-left">
+          <h2 className="text-sm font-semibold text-ink-70">Sales Invoice History</h2>
+          {invoicesOpen ? <ChevronUp size={16} className="text-ink-40" /> : <ChevronDown size={16} className="text-ink-40" />}
+        </button>
+        {invoicesOpen && (
+          historyLoading ? (
+            <p className="text-sm text-ink-40 py-6 text-center">Loading…</p>
+          ) : erpShared && invoiceHistory.length === 0 ? (
+            <div className="bg-white rounded-xl border border-ivory-dark p-6 text-center text-sm text-ink-60">
+              Your invoice history isn't linked to an individual account yet — contact us if you'd like a copy of a past invoice.
+            </div>
+          ) : invoiceHistory.length === 0 ? (
+            <div className="bg-white rounded-xl border border-ivory-dark p-6 text-center text-sm text-ink-60">
+              No invoices on file yet.
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-ivory-dark divide-y divide-ivory-dark">
+              {invoiceHistory.slice(0, invoicesShown).map(r => (
+                <div key={r.key} onClick={() => setOpenRow(r)}
+                     className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-ivory transition-colors">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Receipt size={14} className="text-ink-30 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-ink truncate">
+                        {r.no || '—'}
+                        {r.uc && <span className="ml-1.5 text-xs font-mono text-ink-40">UC {r.uc}</span>}
+                      </p>
+                      <p className="text-xs text-ink-50 mt-0.5">{fmtDate(r.date)}{r.currency ? ` · ${r.currency}` : ''}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    {r.amount != null && <span className="text-sm text-ink-70 tabular-nums">{Number(r.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>}
+                    {r.status && <span className="badge bg-gray-100 text-gray-600">{r.status}</span>}
                   </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  {r.amount != null && <span className="text-sm text-ink-70 tabular-nums">{Number(r.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>}
-                  <span className="badge bg-gray-100 text-gray-600">{r.status || '—'}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+              {invoiceHistory.length > invoicesShown && (
+                <button type="button" onClick={() => setInvoicesShown(n => n + 20)}
+                        className="w-full text-xs text-brand-600 hover:text-brand-800 text-center py-2.5">
+                  …and {invoiceHistory.length - invoicesShown} more — show more
+                </button>
+              )}
+            </div>
+          )
         )}
       </div>
+
+      {openRow && <InvoiceDetailModal row={openRow} onClose={() => setOpenRow(null)} />}
     </div>
   )
 }
