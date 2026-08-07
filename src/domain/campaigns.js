@@ -106,6 +106,17 @@ export async function saveTemplate({ name, subject, design }) {
   return ref.id
 }
 
+// Overwrite an existing template in place — "I can't even edit and save the
+// existing template" (owner, 2026-08-07). Name is deliberately NOT updated
+// here (rename is a separate, rarer action than "I tweaked the copy, save
+// it back") — callers that want a rename can pass it, but the common path
+// (Campaigns.jsx's "Update this template") only ever changes subject/design.
+export async function updateTemplate(id, { name, subject, design }) {
+  const patch = { subject, design: stripUndefined(design), updated_at: serverTimestamp() }
+  if (name != null) patch.name = name
+  await updateDoc(doc(db, 'campaign_templates', id), patch)
+}
+
 export async function deleteTemplate(id) {
   await deleteDoc(doc(db, 'campaign_templates', id))
 }

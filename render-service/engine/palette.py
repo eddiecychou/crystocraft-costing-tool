@@ -180,17 +180,16 @@ def crystal_photo(name, crystal_type, backfilm=None):
     if not slots:
         raise ValueError(f"{name!r} has no {style} photo captured yet — add one in /admin")
     if backfilm is None:
-        # A colour's AB/iridescent character reads far more vividly against
-        # a dark backing than a white one — same stones, same coating, but
-        # white backfilm reflects enough ambient light to wash the rainbow
-        # out (confirmed 2026-08-06 against real captures: Crystal AB on
-        # White read as near-colourless "clear crystal"; the same colour on
-        # Black showed strong teal/gold/purple shimmer). Since backfilm=None
-        # means "just show this crystal's own real character" — not a
-        # specific customer-chosen backing — Black is the more honest
-        # representative photo whenever it exists. Falls back to White, then
-        # to whatever else was captured, rather than an arbitrary dict order.
-        slot = slots.get('Black') or slots.get('White') or next(iter(slots.values()))
+        # Prefer the White-backfilm capture — it's the bright, clean base the
+        # real finished products actually show (owner, 2026-08-07, with a
+        # photo of a bright white AB-crystal MagSafe card). An earlier version
+        # preferred Black here to make AB colour more visible, but that made
+        # the whole panel read dark — wrong base look. The AB iridescence is
+        # instead recovered at render time from White's own (faint but real)
+        # per-facet chroma: see core.boost_ab_flecks(), used by both render
+        # modes. Falls back to Black, then to whatever else was captured,
+        # rather than arbitrary dict order.
+        slot = slots.get('White') or slots.get('Black') or next(iter(slots.values()))
     else:
         slot = slots.get(backfilm)
         if not slot:

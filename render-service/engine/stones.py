@@ -25,7 +25,7 @@ fabric_1.0 gets its own).
 """
 import numpy as np
 
-from .core import CANVAS, build_material, dilate, thin_width_px, to_pil, design_mask_from_image, pil_blur
+from .core import CANVAS, build_material, dilate, thin_width_px, to_pil, design_mask_from_image, pil_blur, boost_ab_flecks
 from .palette import crystal_photo, stone_mm
 
 
@@ -82,6 +82,14 @@ def render_zone_map(logo_img, crystal_type, fg_color, bg_color, px_per_mm, bg_cr
     bg_path, bg_pitch = crystal_photo(bg_color, bg_crystal_type)
     fg_mat = build_material(fg_sp / fg_pitch, seed=9, path=fg_path)
     bg_mat = build_material(bg_sp / bg_pitch, seed=3, path=bg_path)
+    # Same AB-fleck boost Mode A uses (core.boost_ab_flecks): the White-
+    # backfilm photos are the correct bright base but their iridescence is
+    # faint; amplify the real coloured flecks without a colour cast so a
+    # Crystal AB zone reads as sparkly rainbow-on-white, not flat grey. A
+    # non-AB colour (Jet, Red, ...) has little chroma variation, so the ramp
+    # leaves it essentially untouched — this is safe to apply unconditionally.
+    fg_mat = boost_ab_flecks(fg_mat)
+    bg_mat = boost_ab_flecks(bg_mat)
 
     # Edge quantisation is deliberately FINER than the fill's own stone size
     # (fg_sp/2.2): comparing against real product photos (2026-07-30), a

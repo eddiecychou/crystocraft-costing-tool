@@ -32,6 +32,28 @@ def smoothstep(a, b, x):
 def screen(a, b):
     return 1 - (1 - a) * (1 - b)
 
+def boost_ab_flecks(base, source=None, gain=8.0, lo=0.04, ramp=0.10):
+    """Screen the real but faint AB (Aurora Borealis) colour flecks of a
+    White-backfilm crystal photo onto `base`, without adding an overall
+    colour cast.
+
+    A White-backed AB swatch is mostly bright near-neutral stone with
+    occasional strongly-coloured facet flecks. A flat saturation boost tints
+    the whole thing (the neutral stone has a slight warm bias that blows up);
+    instead this takes each pixel's own chroma (`source` minus its luminance)
+    scaled by a ramp on that chroma's MAGNITUDE — so a near-neutral pixel
+    (|chroma| < lo) contributes nothing and only genuine flecks get pushed —
+    and screen-adds it (additive, never darkens). `source` is the crystal
+    material to read flecks FROM (defaults to `base` when they're the same
+    image, e.g. Mode B where the material itself is the surface); Mode A
+    passes the crystal material separately since its `base` is the graphic."""
+    src = base if source is None else source
+    L = luminance(src)
+    chroma = src - L[..., None]
+    cmag = np.abs(chroma).sum(-1, keepdims=True)
+    fleck = np.clip((cmag - lo) / ramp, 0, 1)
+    return screen(base, np.clip(chroma * gain * fleck, 0, 1))
+
 def pil_blur(arr, radius):
     if radius <= 0:
         return arr

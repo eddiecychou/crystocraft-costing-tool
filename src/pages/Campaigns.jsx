@@ -6,7 +6,7 @@ import { storage } from '../firebase'
 import { useMarketingContacts, MC_AUDIENCES } from '../domain/marketingContact'
 import {
   listCampaigns, createCampaign, recordBatchResults, setCampaignStatus, eligibleContacts,
-  listTemplates, saveTemplate, deleteTemplate, matchesSegment,
+  listTemplates, saveTemplate, updateTemplate, deleteTemplate, matchesSegment,
 } from '../domain/campaigns'
 import { sendCampaignBatch } from '../campaignApi'
 
@@ -52,47 +52,13 @@ function segmentLabel(segment) {
   return '—'
 }
 
-// A minimal, valid Unlayer design (one row, one column, one text block) — the
-// smallest safe way to preload starter copy into the drag-and-drop editor.
-// Portal invite is the one the owner named explicitly; add more here as
-// needed rather than building a general template CMS for a first cut.
-// `cells: [1]` is not optional — Unlayer's layout engine reduces over each
-// row's `cells` array to compute column widths, and crashes ("Cannot read
-// properties of undefined (reading 'reduce')") without it. Every row/column/
-// content node also needs its own (possibly empty) `values` object; Unlayer
-// reads defaults off these rather than tolerating a missing key. Confirmed
-// against the real editor after the first hand-built version (missing both)
-// crashed on load.
-const textBlock = html => ({
-  type: 'text',
-  values: { containerPadding: '10px', text: html },
-})
-const oneColumnRow = content => ({
-  cells: [1],
-  columns: [{ contents: [content], values: {} }],
-  values: {},
-})
-
-const TEMPLATES = {
-  portal_invite: {
-    subject: "You're invited to the Crystocraft Portal",
-    design: {
-      body: {
-        rows: [
-          oneColumnRow(textBlock(`<p>Hi {{first_name:there}},</p>
-<p>We'd like to invite you to the Crystocraft Portal, where you can browse our catalogue, request quotes, and track your orders directly.</p>
-<p><a href="https://portal.crystocraft.com" target="_blank">Create your account →</a></p>
-<p>Best regards,<br>Crystocraft</p>`)),
-          // {{first_name:there}} is resolved per-recipient server-side by
-          // send-campaign.js's mergeTags() — falls back to "there" for a
-          // contact with no first name on file, same idea as Mailchimp's
-          // *|FNAME|Fallback|*.
-        ],
-        values: {},
-      },
-    },
-  },
-}
+// Templates used to be a hardcoded JS object here — "I can't even edit and
+// save the existing template 'Portal Invite'" (owner, 2026-08-07), because
+// it wasn't a real record, just code. All templates now live in Firestore
+// (campaign_templates, see domain/campaigns.js) and are uniformly
+// save/update/delete-able from the UI below. "Portal invite" itself was
+// migrated into a real template doc via a one-off script — see
+// scripts/seed-portal-invite-template.mjs — rather than living here.
 
 export default function Campaigns({ presetContactIds, onConsumedPreset }) {
   const { contacts, loading: contactsLoading } = useMarketingContacts()
@@ -112,6 +78,11 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
 
   const [templates, setTemplates] = useState([])
   const [savingTemplate, setSavingTemplate] = useState(false)
+  // The template currently loaded into the editor, if any — lets "Update
+  // this template" overwrite it in place instead of always creating a new
+  // one. Cleared whenever a DIFFERENT template loads or a campaign starts
+  // from scratch; NOT cleared just by editing (that's the whole point).
+  const [loadedTemplateId, setLoadedTemplateId] = useState(null)
   const reloadTemplates = () => listTemplates().then(setTemplates)
   useEffect(() => { reloadTemplates() }, [])
 
@@ -137,37 +108,46 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
     [contacts, segValue, localPresetIds]
   )
 
-  // Built-in keys are plain (e.g. "portal_invite"); owner-saved templates use
-  // a "db:" prefix in the <select> so both lists can share one dropdown
-  // without a name collision.
-  function applyTemplate(key) {
-    if (!key) return
-    if (key.startsWith('db:')) {
-      const t = templates.find(x => x.id === key.slice(3))
-      if (!t) return
-      setSubject(t.subject)
-      editorRef.current?.editor?.loadDesign(t.design)
-      return
-    }
-    const t = TEMPLATES[key]
+  function applyTemplate(id) {
+    if (!id) return
+    const t = templates.find(x => x.id === id)
     if (!t) return
     setSubject(t.subject)
     editorRef.current?.editor?.loadDesign(t.design)
+    setLoadedTemplateId(id)
   }
 
   // "Where do I add a template?" (owner, 2026-08-07) — captures whatever's
   // currently in the editor (same exportDesign() the Create button uses) as
   // a new reusable starting point, not tied to any one campaign.
-  async function handleSaveTemplate() {
+  async function handleSaveAsTemplate() {
     const name = window.prompt('Name this template (e.g. "Autumn newsletter"):')
     if (!name || !name.trim()) return
     setSavingTemplate(true); setError('')
     try {
       const { design } = await exportDesign()
-      await saveTemplate({ name: name.trim(), subject: subject.trim(), design })
+      const id = await saveTemplate({ name: name.trim(), subject: subject.trim(), design })
       await reloadTemplates()
+      setLoadedTemplateId(id)
     } catch (e) {
       setError(e.message || 'Could not save this template.')
+    } finally {
+      setSavingTemplate(false)
+    }
+  }
+
+  // "I can't even edit and save the existing template" (owner, 2026-08-07) —
+  // overwrites the currently-loaded template with whatever's in the editor
+  // now, rather than forcing a new template every time.
+  async function handleUpdateTemplate() {
+    if (!loadedTemplateId) return
+    setSavingTemplate(true); setError('')
+    try {
+      const { design } = await exportDesign()
+      await updateTemplate(loadedTemplateId, { subject: subject.trim(), design })
+      await reloadTemplates()
+    } catch (e) {
+      setError(e.message || 'Could not update this template.')
     } finally {
       setSavingTemplate(false)
     }
@@ -176,6 +156,7 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
   async function handleDeleteTemplate(id, name) {
     if (!window.confirm(`Delete the template "${name}"? This can't be undone.`)) return
     await deleteTemplate(id)
+    if (loadedTemplateId === id) setLoadedTemplateId(null)
     await reloadTemplates()
   }
 
@@ -214,7 +195,7 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
     try {
       const { design, html } = await exportDesign()
       await createCampaign({ name: name.trim(), subject: subject.trim(), bodyHtml: html, design, segment })
-      setName(''); setSubject('')
+      setName(''); setSubject(''); setLoadedTemplateId(null)
       editorRef.current?.editor?.loadDesign({ body: { rows: [] } })
       await reload()
     } catch (e) {
@@ -275,21 +256,22 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Start from a template (optional)</label>
           <div className="flex items-center gap-2 flex-wrap">
-            <select defaultValue="" onChange={e => { applyTemplate(e.target.value); e.target.value = '' }} className="input w-full md:w-96">
-              <option value="" disabled>Choose a template…</option>
-              <option value="portal_invite">Portal invite</option>
-              {templates.length > 0 && (
-                <optgroup label="Saved templates">
-                  {templates.map(t => <option key={t.id} value={`db:${t.id}`}>{t.name}</option>)}
-                </optgroup>
-              )}
+            <select value={loadedTemplateId || ''} onChange={e => applyTemplate(e.target.value)} className="input w-full md:w-96">
+              <option value="" disabled>{templates.length ? 'Choose a template…' : 'No templates yet — save one below'}</option>
+              {templates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
             </select>
-            <button type="button" onClick={handleSaveTemplate} disabled={savingTemplate}
+            {loadedTemplateId && (
+              <button type="button" onClick={handleUpdateTemplate} disabled={savingTemplate}
+                      className="text-xs text-brand-600 hover:text-brand-800 disabled:opacity-50 whitespace-nowrap">
+                {savingTemplate ? 'Updating…' : 'Update this template'}
+              </button>
+            )}
+            <button type="button" onClick={handleSaveAsTemplate} disabled={savingTemplate}
                     className="text-xs text-brand-600 hover:text-brand-800 disabled:opacity-50 whitespace-nowrap">
-              {savingTemplate ? 'Saving…' : '+ Save current as template'}
+              {savingTemplate ? 'Saving…' : '+ Save as new template'}
             </button>
           </div>
-          <div className="text-[11px] text-gray-400 mt-1">Fills the subject and message below — edit freely before sending. Resets the editor's current content.</div>
+          <div className="text-[11px] text-gray-400 mt-1">Fills the subject and message below — edit freely before sending.</div>
           {templates.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap mt-1.5">
               {templates.map(t => (

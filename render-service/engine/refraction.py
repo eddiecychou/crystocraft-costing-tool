@@ -28,7 +28,7 @@ distortion and the sparkle/transmission look.
 """
 import numpy as np
 
-from .core import (build_material, luminance,
+from .core import (build_material, luminance, boost_ab_flecks,
                    pil_blur, to_pil, design_rgba_from_image)
 from .palette import crystal_photo, stone_mm, DEFAULT_FG
 
@@ -56,39 +56,39 @@ def render_printed(logo_img, crystal_type, px_per_mm, top_color=DEFAULT_FG):
     top_path, top_pitch = crystal_photo(top_color, crystal_type, backfilm=None)
     mat = build_material(sp / top_pitch, seed=5, path=top_path)
 
-    # The graphic IS the backfilm now — its own colour, alpha-composited onto
+    # The graphic IS the backfilm — its own colour, alpha-composited onto
     # white (most uploads are transparent-background PNGs; opaque uploads are
-    # unaffected since alpha=1 everywhere already).
+    # unaffected since alpha=1 everywhere already). Lower blur/refraction than
+    # before keeps the printed graphic SHARP — the real product's print reads
+    # crisp under the crystal, not smeared (owner, 2026-08-07: "the actual
+    # object is bright and clean and sharp").
     rgb, alpha = design_rgba_from_image(logo_img, frac=0.80)
     G = rgb * alpha[..., None] + np.ones_like(rgb) * (1 - alpha[..., None])
-    Gr = _refract(G, mat, blur_px=sp * 0.13, refract_px=sp * 5.5)
+    Gr = _refract(G, mat, blur_px=sp * 0.10, refract_px=sp * 3.0)
 
-    # Redesigned 2026-08-07 (owner, third pass): the previous version derived
-    # colour from `Gr` (the refracted GRAPHIC) everywhere, with the crystal
-    # material contributing only a grey luminance-based transmission factor
-    # plus a sparse "sparkle" highlight mask. Two owner reports traced to that
-    # same structural choice: (1) still "kind of dark" overall — a luminance
-    # multiplier can only ever dim, never brighten past the graphic's own
-    # colour; (2) "the AB effect is gone... your rendering only considers
-    # transparent, not the crystal AB facets colours that occur randomly" —
-    # correct: the material's own per-facet colour variation was discarded
-    # everywhere except the rare bright-highlight fraction the sparkle mask
-    # selected, and a photographed AB crystal's iridescence is NOT confined
-    # to bright specular points (measured: saturation is often HIGHER in
-    # its dark/mid-tones than at its brightest pixels — see git history).
-    #
-    # The reference is `engine/stones.py`'s Mode B, which has never had this
-    # problem: it just tiles the real material photo directly, no luminance
-    # dimming at all, and looks right. Mode A does the analogous thing now —
-    # the material photo IS the base look, brightened for a punchy panel
-    # rather than left at the raw photo's own (often dim) exposure — and
-    # blends toward the refracted graphic only where the upload actually has
-    # opaque ink (alpha), so a transparent-background upload still shows the
-    # crystal's true random per-facet colour on its "no logo" margin instead
-    # of a flat grey. Tuned against the real Crystal AB fabric AND rock
-    # photos with both a dark- and light-background test graphic — verified
-    # in PROJECT-PLAN.md.
-    mat_b = np.clip(mat * 1.9, 0, 1)
-    a3 = alpha[..., None]
-    out = mat_b * (1 - a3 * 0.45) + Gr * (a3 * 0.45)
+    # Rewritten 2026-08-07 (owner, fourth pass) against a REAL photo of the
+    # finished product (a bright white AB-crystal MagSafe card): it is bright,
+    # clean, and sharp — a vivid printed graphic seen THROUGH clear crystal,
+    # its white areas bright white with occasional random rainbow flecks, NOT
+    # a dark tinted overlay. Two prior attempts each fixed one half and broke
+    # the other:
+    #   - deriving colour from the crystal photo everywhere + defaulting to
+    #     the Black-backfilm capture (to make AB colour visible) turned the
+    #     whole panel dark/blurred — wrong base look entirely;
+    #   - the White-backfilm capture is the right bright base, but its AB
+    #     colour is faint, so a naive blend lost the iridescence the owner
+    #     wanted back.
+    # This version keeps the GRAPHIC as the base (bright, sharp, full colour),
+    # applies the crystal photo only as (a) a stone TEXTURE multiplier centred
+    # on 1.0 — light/dark facet shading that darkens nothing overall — and
+    # (b) real AB colour FLECKS screen-added only where the photo already has
+    # meaningful chroma (a ramp on |chroma|), so white/grey stone stays white
+    # and contributes brightness, while the genuine coloured flecks pop.
+    # `top_color`'s White-backfilm photo (palette.py's default) is correct
+    # again — no Black-backfilm swap needed. Tuned against the real Crystal
+    # AB fabric AND rock White photos with the owner's own graphic.
+    L = luminance(mat)
+    tex = (1.0 + (L / (L.mean() + 1e-6) - 1.0) * 0.9)[..., None]   # facet shading, mean≈1
+    base = np.clip(Gr * tex, 0, 1)
+    out = boost_ab_flecks(base, source=mat)                       # AB colour flecks from the crystal
     return to_pil(np.clip(out, 0, 1))
