@@ -10,6 +10,7 @@ import LoadingBar from '../components/LoadingBar'
 import VideoEmbed from '../components/VideoEmbed'
 import { isStorefrontVisible, normVideos, youtubeEmbed } from '../constants'
 import { engineTypeOf, engineAvailable, engineLabel } from '../customizerEngines'
+import { screenSensitiveImages } from '../sensitiveImages'
 
 export default function CorporateDetail({ profile }) {
   const { id } = useParams()
@@ -25,9 +26,14 @@ export default function CorporateDetail({ profile }) {
 
   useEffect(() => onSnapshot(
     query(collection(db, 'products', id, 'images'), orderBy('sort_order')),
-    snap => setImages(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+    // screenSensitiveImages: the Firestore rule does NOT reliably filter
+    // this list query per-document for a sensitive viewer — confirmed
+    // empirically, see sensitiveImages.js's header comment. Filtered again
+    // here, client-side, right at the fetch boundary so nothing downstream
+    // in this file can accidentally see an unfiltered `images`.
+    snap => setImages(screenSensitiveImages(snap.docs.map(d => ({ id: d.id, ...d.data() })), profile)),
     () => setImages([])
-  ), [id])
+  ), [id, profile?.sensitive, profile?.customer_id])
 
   useEffect(() => {
     const uid = profile?.id || auth.currentUser?.uid
@@ -50,28 +56,15 @@ export default function CorporateDetail({ profile }) {
     </div>
   )
 
-  // p.heroImage is a plain cached URL on the product doc — unlike `images`
-  // (live-queried from products/{id}/images), it bypasses the Firestore
-  // rule's per-viewer screening entirely: any approved customer can read it
-  // straight off the product document, sensitive or not.
-  //
-  // Rewritten 2026-08-07 (owner: "the sensitive customer function doesn't
-  // screen out the product images from other customers' products image
-  // tagged in brand gallery — checked on live version"). The PREVIOUS
-  // version trusted a mirrored heroImage_branded_for_customer_id field,
-  // written only at the moment someone picked or re-tagged the CURRENT
-  // hero. Confirmed against real data: 19 products had a hero genuinely
-  // tagged for another customer with that mirror sitting at null — never
-  // backfilled for pre-existing tags, a real live leak, not a hypothetical.
-  //
-  // This version derives "blocked" from the live rule-enforced read
-  // instead of a cached copy: `images` is loaded straight from
-  // products/{id}/images, and the Firestore rule already excludes any
-  // image doc branded for someone else when the viewer is sensitive — so
-  // if p.heroImage's URL is genuinely missing from a sensitive viewer's OWN
-  // `images` result, the only reason is the rule blocked it. No mirror, no
-  // backfill, nothing to drift out of sync — it's correct by construction
-  // for every product, past and future, the moment the rule is live.
+  // p.heroImage is a plain cached URL on the product doc — it bypasses the
+  // images subcollection entirely, so it needs its own explicit check
+  // against the tag on whichever image doc actually IS the hero (found via
+  // matching file_url, since `images` here is already screenSensitiveImages()-
+  // filtered at the fetch above — see that effect's comment for the full
+  // "why", including the empirical proof the Firestore rule alone doesn't
+  // do this). If the hero's URL isn't in the (already-filtered) `images`,
+  // it was blocked — same derivation as before, just no longer trusting the
+  // rule to have done the filtering; the filter already ran client-side.
   const heroBlocked = !!(profile?.sensitive && p.heroImage && !images.some(im => im.file_url === p.heroImage))
   const visibleImages = images.filter(im => im.file_url && isStorefrontVisible(im))
   const displayHero = heroBlocked ? (visibleImages[0]?.file_url || null) : (p.heroImage || null)

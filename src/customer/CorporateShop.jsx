@@ -10,20 +10,27 @@ import CollectionBand from './CollectionBand'
 import { collectionProducts } from '../catalogueCollections'
 import FavHeart from './FavHeart'
 import LoadingBar from '../components/LoadingBar'
+import { screenSensitiveImages } from '../sensitiveImages'
 
 // Resolve the image a SENSITIVE viewer is actually allowed to see for one
-// product, from a live (rule-filtered) read of its images subcollection —
-// see CorporateDetail.jsx's heroBlocked comment for the full root-cause
-// story (a hand-maintained mirror field silently disabled screening for 19
-// products). Shared by every place in this file that renders a product
-// image, not just the card grid — the "Shop by" band (bandItems below) was
-// found to be a SECOND leak surface using the same unscreened p.heroImage
-// directly (owner, 2026-08-07, after re-checking as Sunlife: "I can still
-// see the product images tagged for brands of other customers").
-async function resolveSafeImage(productId, heroImage) {
+// product. Shared by every place in this file that renders a product image
+// — the "Shop by" band (bandItems below) was found to be a SECOND leak
+// surface using the same unscreened p.heroImage directly (owner,
+// 2026-08-07: "I can still see the product images tagged for brands of
+// other customers").
+//
+// screenSensitiveImages() filters CLIENT-SIDE, after the fetch — do not
+// remove this and trust the Firestore rule alone. Confirmed empirically
+// (see sensitiveImages.js's header comment: minted a real auth token for
+// Sunlife's own account and ran the exact list query her browser runs) that
+// the rule does NOT reliably filter this kind of unconstrained collection
+// list per-document, even though it correctly gates a direct single-doc
+// read. Two earlier attempts at this exact fix both still leaked in
+// production because they trusted the rule to have already done this.
+async function resolveSafeImage(productId, heroImage, profile) {
   try {
     const snap = await getDocs(query(collection(db, 'products', productId, 'images'), orderBy('sort_order')))
-    const imgs = snap.docs.map(d => d.data())
+    const imgs = screenSensitiveImages(snap.docs.map(d => d.data()), profile)
     if (heroImage && imgs.some(im => im.file_url === heroImage)) return heroImage
     const fallback = imgs.find(im => im.file_url && isStorefrontVisible(im))
     return fallback?.file_url || null
@@ -65,7 +72,7 @@ export default function CorporateShop({ profile }) {
   useEffect(() => {
     if (!sensitive || products.length === 0) { setSafeImageByProductId({}); return }
     let alive = true
-    Promise.all(products.map(p => resolveSafeImage(p.id, p.heroImage).then(img => [p.id, img])))
+    Promise.all(products.map(p => resolveSafeImage(p.id, p.heroImage, profile).then(img => [p.id, img])))
       .then(entries => { if (alive) setSafeImageByProductId(Object.fromEntries(entries)) })
     return () => { alive = false }
   }, [sensitive, products])
