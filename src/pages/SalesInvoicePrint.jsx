@@ -162,6 +162,22 @@ export default function SalesInvoicePrint() {
           letter-spacing: .05em; padding: 7px 8px; text-align: left; }
         table.si-lines th.r, table.si-lines td.r { text-align: right; }
         table.si-lines td { padding: 7px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+        /* A line must never be sliced by a page boundary — same bug, same
+           fix as ProformaInvoicePrint.jsx's .pi-lines (reported by CuiLing
+           2026-07-24: row 50 of a 52-line invoice printed as "1," with the
+           rest of the amount on the far side of the break). This sibling
+           document never got the same fix at the time — found 2026-08-07
+           via the portal's CustomerInvoicePrint.jsx (which copies this
+           file's CSS) hitting the identical break mid-table.
+           Both spellings: page-break-inside is what most print engines still
+           honour, break-inside is the modern one. */
+        table.si-lines tr, table.si-lines td { page-break-inside: avoid; break-inside: avoid; }
+        /* Repeat the column headers on every page. */
+        table.si-lines thead { display: table-header-group; }
+        table.si-lines tfoot { display: table-footer-group; }
+        /* Keep the closing blocks whole; splitting a total across pages is
+           the same class of problem as splitting a line. */
+        .si-totals, .si-words, .si-bank, .si-sign, .si-foot { page-break-inside: avoid; break-inside: avoid; }
         /* One-off MISC lines carry multi-line descriptions; without this they
            collapse into one run-on line. */
         table.si-lines td.desc { white-space: pre-wrap; }

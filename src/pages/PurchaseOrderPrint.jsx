@@ -57,6 +57,15 @@ function PrintDoc({ po }) {
           letter-spacing: .05em; padding: 7px 8px; text-align: left; }
         table.po-lines th.r, table.po-lines td.r { text-align: right; }
         table.po-lines td { padding: 7px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+        /* A line must never be sliced by a page boundary — same bug, same
+           fix as ProformaInvoicePrint.jsx's .pi-lines (reported by CuiLing
+           2026-07-24). This sibling document never got the same fix at the
+           time — found 2026-08-07 while auditing every print document for
+           the same gap. */
+        table.po-lines tr, table.po-lines td { page-break-inside: avoid; break-inside: avoid; }
+        table.po-lines thead { display: table-header-group; }
+        table.po-lines tfoot { display: table-footer-group; }
+        .po-totals, .po-words, .po-remarks, .po-sign { page-break-inside: avoid; break-inside: avoid; }
         table.po-lines tr:nth-child(even) td { background: #fafafa; }
         .po-code { font-family: 'SF Mono', Menlo, monospace; font-size: 9.5px; }
         .po-totals { display: flex; justify-content: flex-end; margin-top: 10px; }

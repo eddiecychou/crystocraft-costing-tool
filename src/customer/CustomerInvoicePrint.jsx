@@ -156,6 +156,13 @@ export default function CustomerInvoicePrint({ profile }) {
           letter-spacing: .05em; padding: 7px 8px; text-align: left; }
         table.si-lines th.r, table.si-lines td.r { text-align: right; }
         table.si-lines td { padding: 7px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+        /* A line must never be sliced by a page boundary — owner, 2026-08-07,
+           on a real printed test invoice: a row split mid-way across the
+           page break. Same fix as ProformaInvoicePrint.jsx's .pi-lines. */
+        table.si-lines tr, table.si-lines td { page-break-inside: avoid; break-inside: avoid; }
+        table.si-lines thead { display: table-header-group; }
+        table.si-lines tfoot { display: table-footer-group; }
+        .si-totals, .si-words, .si-sign, .si-foot { page-break-inside: avoid; break-inside: avoid; }
         table.si-lines td.desc { white-space: pre-wrap; }
         table.si-lines tr:nth-child(even) td { background: #fafafa; }
         .si-code { font-family: 'SF Mono', Menlo, monospace; font-size: 9.5px; }
