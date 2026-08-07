@@ -99,29 +99,45 @@ export default function CorporateShop({ profile }) {
 function CorpCard({ p, cur, rates, profile }) {
   const [fromPrice, setFromPrice] = useState(undefined) // undefined=loading, null=none
   // heroImage is a plain cached URL on the product doc — it bypasses the
-  // Firestore rule that screens products/{id}/images per-viewer (see
-  // ProductDetail.jsx's handleHeroChange). A sensitive customer must not see
-  // a hero branded for someone else. Rather than dropping the product off
-  // the shelf entirely (the old behaviour), fetch the rule-screened images
-  // subcollection for just this card and fall back to the first other
-  // storefront-visible photo — same fallback CorporateDetail.jsx already
-  // does on the detail page. Only fires for sensitive viewers on a blocked
-  // hero, so it's not an extra read on the common case.
-  const heroBlocked = !!(profile?.sensitive && p.heroImage_branded_for_customer_id
-    && p.heroImage_branded_for_customer_id !== profile?.customer_id)
-  const [fallbackImage, setFallbackImage] = useState(undefined) // undefined=loading, null=none found
+  // Firestore rule that screens products/{id}/images per-viewer.
+  //
+  // Rewritten 2026-08-07 (owner: "the sensitive customer function doesn't
+  // screen out the product images from other customers' products image
+  // tagged in brand gallery — checked on live version"). This card
+  // PREVIOUSLY only fetched the rule-screened images subcollection when a
+  // mirrored heroImage_branded_for_customer_id flag said the hero was
+  // blocked — but that mirror was only ever written at pick/re-tag time,
+  // and confirmed against real data: 19 products had a hero genuinely
+  // tagged for another customer with the mirror sitting at null, so the
+  // fetch never fired and the branded photo showed anyway. A real leak.
+  //
+  // Now: for ANY sensitive viewer, always fetch this card's own images
+  // subcollection (rule-filtered) and resolve the image from THAT live
+  // result rather than trusting a cached flag — if the cached heroImage
+  // URL isn't in the viewer's own allowed set, the rule blocked it, so
+  // fall back to the first other storefront-visible photo from the same
+  // fetch, same as CorporateDetail.jsx's product-page fallback. One extra
+  // read per card, but only for sensitive viewers (currently one active
+  // portal account) — correctness here outweighs that cost.
+  const sensitive = !!profile?.sensitive
+  const [resolvedImage, setResolvedImage] = useState(undefined) // undefined=not yet resolved, null=none found
 
   useEffect(() => {
-    if (!heroBlocked) { setFallbackImage(undefined); return }
+    if (!sensitive) return
     getDocs(query(collection(db, 'products', p.id, 'images'), orderBy('sort_order')))
       .then(snap => {
-        const img = snap.docs.map(d => d.data()).find(im => im.file_url && isStorefrontVisible(im))
-        setFallbackImage(img?.file_url || null)
+        const imgs = snap.docs.map(d => d.data())
+        if (p.heroImage && imgs.some(im => im.file_url === p.heroImage)) {
+          setResolvedImage(p.heroImage)
+          return
+        }
+        const fallback = imgs.find(im => im.file_url && isStorefrontVisible(im))
+        setResolvedImage(fallback?.file_url || null)
       })
-      .catch(() => setFallbackImage(null))
-  }, [heroBlocked, p.id])
+      .catch(() => setResolvedImage(null))
+  }, [sensitive, p.id, p.heroImage])
 
-  const displayImage = heroBlocked ? fallbackImage : (p.heroImage || null)
+  const displayImage = sensitive ? resolvedImage : (p.heroImage || null)
 
   useEffect(() => {
     const uid = profile?.id || auth.currentUser?.uid

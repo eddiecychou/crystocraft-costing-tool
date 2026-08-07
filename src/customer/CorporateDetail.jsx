@@ -50,16 +50,29 @@ export default function CorporateDetail({ profile }) {
     </div>
   )
 
-  // p.heroImage is a plain cached URL — unlike `images` (live-queried from
-  // products/{id}/images, so the Firestore rule already screened it per-
-  // viewer before it ever reached this component), it bypasses that
-  // protection. A sensitive viewer whose hero is branded for someone else
-  // falls back to the first gallery image the rule DID let through — if
-  // there isn't one either, the existing "no photo" placeholder icon covers
-  // it, which is the right outcome for a product with nothing appropriate
-  // to show this viewer.
-  const heroBlocked = !!(profile?.sensitive && p.heroImage_branded_for_customer_id
-    && p.heroImage_branded_for_customer_id !== profile?.customer_id)
+  // p.heroImage is a plain cached URL on the product doc — unlike `images`
+  // (live-queried from products/{id}/images), it bypasses the Firestore
+  // rule's per-viewer screening entirely: any approved customer can read it
+  // straight off the product document, sensitive or not.
+  //
+  // Rewritten 2026-08-07 (owner: "the sensitive customer function doesn't
+  // screen out the product images from other customers' products image
+  // tagged in brand gallery — checked on live version"). The PREVIOUS
+  // version trusted a mirrored heroImage_branded_for_customer_id field,
+  // written only at the moment someone picked or re-tagged the CURRENT
+  // hero. Confirmed against real data: 19 products had a hero genuinely
+  // tagged for another customer with that mirror sitting at null — never
+  // backfilled for pre-existing tags, a real live leak, not a hypothetical.
+  //
+  // This version derives "blocked" from the live rule-enforced read
+  // instead of a cached copy: `images` is loaded straight from
+  // products/{id}/images, and the Firestore rule already excludes any
+  // image doc branded for someone else when the viewer is sensitive — so
+  // if p.heroImage's URL is genuinely missing from a sensitive viewer's OWN
+  // `images` result, the only reason is the rule blocked it. No mirror, no
+  // backfill, nothing to drift out of sync — it's correct by construction
+  // for every product, past and future, the moment the rule is live.
+  const heroBlocked = !!(profile?.sensitive && p.heroImage && !images.some(im => im.file_url === p.heroImage))
   const visibleImages = images.filter(im => im.file_url && isStorefrontVisible(im))
   const displayHero = heroBlocked ? (visibleImages[0]?.file_url || null) : (p.heroImage || null)
 
