@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import { myOrderHistory } from '../customerOrderHistoryApi'
@@ -32,13 +31,17 @@ const fmtDate = d => {
 // Clicking a row opens the invoice's own formatted print/PDF page
 // (CustomerInvoicePrint.jsx, /shop/invoice/:key — "the clicked view needs
 // to be more serious, with the same format as our sales invoices, and
-// customer can view and download with PDF or Excel"). Some accounts' ERP
+// customer can view and download with PDF or Excel") in a NEW TAB
+// (window.open, not navigate()) — "open new page instead of staying in
+// same page... unless you add a back button" (owner, 2026-08-07). Same
+// pattern the admin Sales Invoices page already uses for its own invoice
+// link (target="_blank"), so this list stays put behind it rather than
+// being replaced. Some accounts' ERP
 // code is a shared JES "bucket" code (owner confirmed A29/C13/O07 each
 // cover many different real customers) — `shared: true` from the edge
 // function means history genuinely can't be attributed to just this
 // customer, so it's explained, not just empty.
 export default function OrderHistoryPage({ profile }) {
-  const navigate = useNavigate()
   const customerId = profile?.customer_id || null
   const [orders, setOrders] = useState([])
   const [ordersLoading, setOrdersLoading] = useState(true)
@@ -105,7 +108,7 @@ export default function OrderHistoryPage({ profile }) {
           ) : (
             <div className="bg-white rounded-xl border border-ivory-dark divide-y divide-ivory-dark">
               {invoiceHistory.slice(0, invoicesShown).map(r => (
-                <div key={r.key} onClick={() => navigate(`/shop/invoice/${r.key}`)}
+                <div key={r.key} onClick={() => window.open(`/shop/invoice/${r.key}`, '_blank', 'noopener')}
                      className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-ivory transition-colors">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Receipt size={14} className="text-ink-30 shrink-0" />
