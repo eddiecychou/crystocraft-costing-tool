@@ -10,10 +10,11 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
 import CustomerBrandGallery from '../components/CustomerBrandGallery'
-import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X } from 'lucide-react'
+import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
 import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers } from '../domain/customer'
+import { erpLookup } from '../erpApi'
 
 const STATUS_STYLES = {
   draft: 'bg-gray-100 text-gray-600',
@@ -213,6 +214,18 @@ export default function CustomerDetail() {
   const [accounts, setAccounts]         = useState([])
   const [enquiries, setEnquiries]       = useState([])
   const [portalEnquiries, setPortalEnquiries] = useState([])
+  const [erpHistory, setErpHistory] = useState([])           // merged SI+SO rows from JES, by erp_code
+  const [erpHistoryLoading, setErpHistoryLoading] = useState(false)
+  // Some erp_codes are shared JES "bucket" codes (owner, 2026-08-07: "for C13
+  // and A29 (alibaba) customer code we share across different customers").
+  // Confirmed: A29 (generic Alibaba), C13 (another shared retail bucket), and
+  // O07 (website orders) each map to a dozen-plus DIFFERENT real customers —
+  // JES never created individual codes for one-off marketplace/website
+  // buyers. Filtering ERP history by customer_code alone would attribute
+  // every other customer's orders on that same code to whoever's page you're
+  // viewing. Holds the count of app customers sharing this customer's code;
+  // >1 means "don't claim per-customer history for this code."
+  const [erpCodeShareCount, setErpCodeShareCount] = useState(null)
   const [loading, setLoading]           = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [confirmDeleteEnquiry, setConfirmDeleteEnquiry] = useState(null)
@@ -317,6 +330,46 @@ export default function CustomerDetail() {
       () => setPortalEnquiries([]),                           // permission/other error → show none, never crash
     )
   }, [accountUidKey])
+
+  // JES sales history (SI = invoices, SO/"PI" = orders) for this customer,
+  // matched by erp_code — separate from the "PI Orders" section above, which
+  // is only the app's OWN orders/ collection. A customer with real JES
+  // history predating the app (or from before this customer was linked to
+  // an ERP code) has none of that in orders/, so this is the only place
+  // that history is visible per-customer (owner, 2026-08-07: "wire the ERP
+  // Sales invoices and PI to customers"). erp_code substring-matches via
+  // erpLookup's existing search (same ilike pattern every other ERP search
+  // box uses) — no new backend needed, /api/erp is already admin-gated and
+  // this page is admin-only.
+  useEffect(() => {
+    const code = customer?.erp_code
+    if (!code) { setErpHistory([]); setErpCodeShareCount(null); return }
+    let cancelled = false
+    setErpHistoryLoading(true)
+    getDocs(query(collection(db, 'customers'), where('erp_code', '==', code)))
+      .then(shareSnap => {
+        if (cancelled) return
+        setErpCodeShareCount(shareSnap.size)
+        if (shareSnap.size > 1) { setErpHistory([]); setErpHistoryLoading(false); return }
+        return Promise.all([
+          erpLookup('sales_invoice', { q: code, limit: 100 }),
+          erpLookup('sales_order', { q: code, limit: 100 }),
+        ]).then(([invoices, orders]) => {
+          if (cancelled) return
+          const rows = [
+            ...invoices.map(r => ({ ...r, _kind: 'SI' })),
+            ...orders.map(r => ({ ...r, _kind: 'PI' })),
+          ]
+            // erpLookup's ilike is a substring match on customer_code among
+            // other columns — an exact match on THIS customer's code is
+            // required here, not "contains it as a substring of a longer code."
+            .filter(r => String(r.customer_code || '').toUpperCase() === code.toUpperCase())
+            .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))
+          setErpHistory(rows)
+        }).finally(() => { if (!cancelled) setErpHistoryLoading(false) })
+      }).catch(() => { if (!cancelled) { setErpHistory([]); setErpHistoryLoading(false) } })
+    return () => { cancelled = true }
+  }, [customer?.erp_code])
 
   async function handleDelete() {
     await deleteDoc(doc(db, 'customers', id))
@@ -591,6 +644,56 @@ export default function CustomerDetail() {
           </div>
         )}
       </div>
+
+      {/* ERP (JES) sales history — separate from the app-native PI Orders
+          above; see the useEffect's comment for the shared-code guard. */}
+      {customer.erp_code && (
+        <div className="card mb-4">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-700">ERP history (JES) {erpCodeShareCount === null || erpCodeShareCount > 1 ? '' : `(${erpHistory.length})`}</h2>
+            <span className="text-xs font-mono text-gray-400">{customer.erp_code}</span>
+          </div>
+          {erpHistoryLoading ? (
+            <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
+          ) : erpCodeShareCount > 1 ? (
+            <div className="px-5 py-4 flex items-start gap-2 text-sm text-amber-700 bg-amber-50">
+              <AlertTriangle size={15} className="shrink-0 mt-0.5" />
+              <span>
+                ERP code <strong className="font-mono">{customer.erp_code}</strong> is shared by {erpCodeShareCount} customers in the app
+                (a JES "bucket" code, not unique to this one) — individual sales history can't be attributed
+                to just this customer, so it isn't shown here.
+              </span>
+            </div>
+          ) : erpHistory.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-8">No JES sales history found for this ERP code.</p>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {erpHistory.slice(0, 30).map((r, i) => {
+                const dateStr = r.date ? new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
+                return (
+                  <div key={`${r._kind}-${r.code}-${i}`} className="flex items-center justify-between px-5 py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <Receipt size={15} className="text-gray-400 shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          <span className="text-[10px] font-mono px-1 py-0.5 rounded bg-gray-100 text-gray-500 mr-1.5">{r._kind}</span>
+                          {r.code}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">{dateStr}{r.currency ? ` · ${r.currency}` : ''}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      {r.amount != null && <span className="text-sm text-gray-700 tabular-nums">{Number(r.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>}
+                      <span className="badge bg-gray-100 text-gray-600">{r.status || '—'}</span>
+                    </div>
+                  </div>
+                )
+              })}
+              {erpHistory.length > 30 && <p className="text-xs text-gray-400 text-center py-2">…and {erpHistory.length - 30} more.</p>}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Quote history */}
       <div className="card mb-4">

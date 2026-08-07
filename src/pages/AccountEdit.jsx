@@ -119,12 +119,14 @@ export default function AccountEdit() {
     account_type: type,
     customer_id: customerId || null,
     contact_id: contactId || null,
-    // Mirrors the linked customer's sensitive flag onto this account (see
-    // domain/customer.js's mirrorSensitiveToLinkedAccounts for why — a
+    // Mirrors the linked customer's sensitive flag + erp_code onto this
+    // account (see domain/customer.js's mirrorToLinkedAccounts for why — a
     // customer can't read their own customers/ doc to check it themselves).
-    // Covers the "link happens after the flag was already set" order; saving
-    // the customer record itself covers the reverse order.
+    // Covers the "link happens after the flag/code was already set" order;
+    // saving the customer record itself covers the reverse order.
     sensitive: linked?.sensitive || false,
+    erp_code: linked?.erp_code || '',
+    erp_code_shared: linked?.erp_code_shared || false,
     base_currency: cur,
     ws_discount_pct: Number(disc) > 0 ? Number(disc) : 100,
     fx_rate: fxRate === '' ? 0 : Number(fxRate) || 0,

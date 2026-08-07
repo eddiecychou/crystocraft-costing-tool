@@ -161,6 +161,10 @@ export function normalizeCustomer(raw) {
     source:            str(r.source),
     segment:           str(r.segment),
     erp_code:          str(r.erp_code),
+    // Computed + persisted at save time (saveCustomer) — see
+    // mirrorToLinkedAccounts's comment. Read-only elsewhere: never accept
+    // this from a form, it's not something an admin sets directly.
+    erp_code_shared:   !!r.erp_code_shared,
     tags:              cleanArray(r.tags),
     is_vip:            !!r.is_vip,
     is_personal_wa:    !!r.is_personal_wa,
@@ -250,8 +254,20 @@ export async function saveCustomer(id, input) {
   const payload = { ...toCustomerDoc(input), updatedAt: serverTimestamp() }
   let savedId = id
   if (id) {
-    await updateDoc(doc(db, 'customers', id), payload)
-    await mirrorSensitiveToLinkedAccounts(id, payload.sensitive)
+    const erp_code = payload.erp_code || ''
+    // A few JES codes (A29, C13, O07 — confirmed 2026-08-07) are shared
+    // "bucket" codes used for many different Alibaba/website/walk-in
+    // customers, not unique per customer. Computed here (not trusted from
+    // the client) so it's honest wherever it's read — the order-history
+    // edge function refuses to return JES history when this is true, same
+    // guard CustomerDetail.jsx's admin view already applies.
+    let erp_code_shared = false
+    if (erp_code) {
+      const shareSnap = await getDocs(query(collection(db, 'customers'), where('erp_code', '==', erp_code)))
+      erp_code_shared = shareSnap.size > 1
+    }
+    await updateDoc(doc(db, 'customers', id), { ...payload, erp_code_shared })
+    await mirrorToLinkedAccounts(id, { sensitive: payload.sensitive, erp_code, erp_code_shared })
   } else {
     const ref = await addDoc(COL(), { ...payload, createdAt: serverTimestamp() })
     savedId = ref.id
@@ -260,17 +276,19 @@ export async function saveCustomer(id, input) {
 }
 
 // `sensitive` gates what a logged-in customer's own storefront browsing shows
-// them (CorporateShop.jsx screens a competitor-branded hero image) — but a
-// customer cannot read their own customers/{id} doc (admin-only rule), so the
-// flag has nowhere to check it from. Mirrored onto every users/{uid} doc
+// them (CorporateShop.jsx screens a competitor-branded hero image); `erp_code`
+// is what the portal order-history feature needs to ask the ERP-history edge
+// function "which JES customer am I" (see netlify/edge-functions/
+// customer-order-history.js). Neither can be read off customers/{id} directly
+// — that doc is admin-only — so both are mirrored onto every users/{uid} doc
 // linked to this customer, which the signed-in user CAN already read (their
 // own doc). Cheap: a customer normally has one or a few linked accounts.
-async function mirrorSensitiveToLinkedAccounts(customerId, sensitive) {
+async function mirrorToLinkedAccounts(customerId, { sensitive, erp_code, erp_code_shared }) {
   try {
     const snap = await getDocs(query(collection(db, 'users'), where('customer_id', '==', customerId)))
     if (snap.empty) return
     const batch = writeBatch(db)
-    snap.forEach(d => batch.update(d.ref, { sensitive: !!sensitive }))
+    snap.forEach(d => batch.update(d.ref, { sensitive: !!sensitive, erp_code: erp_code || '', erp_code_shared: !!erp_code_shared }))
     await batch.commit()
   } catch { /* best-effort mirror — a stale flag is a screening gap, not a crash */ }
 }

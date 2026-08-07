@@ -40,13 +40,25 @@ service cloud.firestore {
         && request.resource.data.role == 'customer'
         && request.resource.data.status == 'pending'
         && request.resource.data.ws_discount_pct == 0;
+      // sensitive/erp_code/erp_code_shared are ADMIN-MIRRORED fields (see
+      // domain/customer.js's mirrorToLinkedAccounts) — a customer must never
+      // be able to set these on their own doc, since sensitive gates whether
+      // they see a competitor's branded photos and erp_code/erp_code_shared
+      // gate whether the portal order-history feature will hand them ANOTHER
+      // customer's JES sales data (netlify/edge-functions/
+      // customer-order-history.js trusts these fields straight off the
+      // caller's own users/{uid} doc — it has no elevated Firestore access to
+      // re-verify them, so the write-side lock IS the security boundary).
       allow update: if isAdmin()
         || (request.auth.uid == uid
             && request.resource.data.role == resource.data.role
             && request.resource.data.status == resource.data.status
             && request.resource.data.ws_discount_pct == resource.data.ws_discount_pct
             && request.resource.data.get('pricing_group', '') == resource.data.get('pricing_group', '')
-            && request.resource.data.get('corp_markup_override', 0) == resource.data.get('corp_markup_override', 0));
+            && request.resource.data.get('corp_markup_override', 0) == resource.data.get('corp_markup_override', 0)
+            && request.resource.data.get('sensitive', false) == resource.data.get('sensitive', false)
+            && request.resource.data.get('erp_code', '') == resource.data.get('erp_code', '')
+            && request.resource.data.get('erp_code_shared', false) == resource.data.get('erp_code_shared', false));
       allow delete: if isAdmin();
     }
 
@@ -226,11 +238,24 @@ service cloud.firestore {
       }
     }
 
-    // ---- Shipping & Logistics module (admin only) -----------------------
+    // ---- Shipping & Logistics module (admin only, except a customer's own
+    // orders — portal order history, owner 2026-08-07) ---------------------
     match /orders/{orderId} {
-      allow read, write: if isAdmin();
+      // profile().get('customer_id','') == '' for an unlinked customer login
+      // — require it non-empty too, or that would match an order with an
+      // equally-blank/malformed customer_id and leak it to any unlinked
+      // customer account.
+      allow read: if isAdmin()
+        || (isApprovedCustomer()
+            && profile().get('customer_id', '') != ''
+            && resource.data.get('customer_id', '') == profile().get('customer_id', ''));
+      allow write: if isAdmin();
       match /{allPaths=**} {
-        allow read, write: if isAdmin();
+        allow read: if isAdmin()
+          || (isApprovedCustomer()
+              && profile().get('customer_id', '') != ''
+              && get(/databases/$(database)/documents/orders/$(orderId)).data.get('customer_id', '') == profile().get('customer_id', ''));
+        allow write: if isAdmin();
       }
     }
     match /packing_lists/{plId} {

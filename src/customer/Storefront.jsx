@@ -8,6 +8,7 @@ import FavouritesPage from './FavouritesPage'
 import EnquiryPage from './EnquiryPage'
 import CustomizerPage from './CustomizerPage'
 import BrandGalleryPage from './BrandGalleryPage'
+import OrderHistoryPage from './OrderHistoryPage'
 import { CartProvider, FavouritesProvider } from './store'
 import ErrorBoundary from '../components/ErrorBoundary'
 
@@ -25,6 +26,7 @@ export default function Storefront({ profile }) {
             <Route path="/shop/favourites" element={<FavouritesPage profile={profile} />} />
             <Route path="/shop/enquiry" element={<EnquiryPage profile={profile} />} />
             <Route path="/shop/brand-gallery" element={<BrandGalleryPage profile={profile} />} />
+            <Route path="/shop/orders" element={<OrderHistoryPage profile={profile} />} />
             <Route path="/customize/:productId" element={<CustomizerPage profile={profile} />} />
             <Route path="*" element={<Navigate to="/shop/figurine" replace />} />
           </Routes>
