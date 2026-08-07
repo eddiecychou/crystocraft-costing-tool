@@ -11,6 +11,27 @@ import { collectionProducts } from '../catalogueCollections'
 import FavHeart from './FavHeart'
 import LoadingBar from '../components/LoadingBar'
 
+// Resolve the image a SENSITIVE viewer is actually allowed to see for one
+// product, from a live (rule-filtered) read of its images subcollection —
+// see CorporateDetail.jsx's heroBlocked comment for the full root-cause
+// story (a hand-maintained mirror field silently disabled screening for 19
+// products). Shared by every place in this file that renders a product
+// image, not just the card grid — the "Shop by" band (bandItems below) was
+// found to be a SECOND leak surface using the same unscreened p.heroImage
+// directly (owner, 2026-08-07, after re-checking as Sunlife: "I can still
+// see the product images tagged for brands of other customers").
+async function resolveSafeImage(productId, heroImage) {
+  try {
+    const snap = await getDocs(query(collection(db, 'products', productId, 'images'), orderBy('sort_order')))
+    const imgs = snap.docs.map(d => d.data())
+    if (heroImage && imgs.some(im => im.file_url === heroImage)) return heroImage
+    const fallback = imgs.find(im => im.file_url && isStorefrontVisible(im))
+    return fallback?.file_url || null
+  } catch {
+    return null
+  }
+}
+
 export default function CorporateShop({ profile }) {
   const [products, setProducts] = useState([])
   const [loading, setLoading] = useState(true)
@@ -20,6 +41,7 @@ export default function CorporateShop({ profile }) {
   const [coll, setColl] = useState(null)
   const rates = useRates()
   const cur = profile?.base_currency || 'USD'
+  const sensitive = !!profile?.sensitive
 
   useEffect(() => {
     const q = query(collection(db, 'products'), orderBy('createdAt', 'desc'))
@@ -34,11 +56,27 @@ export default function CorporateShop({ profile }) {
     }, () => setLoading(false))
   }, [profile?.sensitive, profile?.customer_id])
 
+  // One shared resolution pass for every sensitive viewer's product list —
+  // both the card grid and the "Shop by" band read from this instead of
+  // each re-deriving (or, previously, one of them skipping the check
+  // entirely). Only runs for sensitive viewers; everyone else uses
+  // p.heroImage directly with no extra reads, same as before.
+  const [safeImageByProductId, setSafeImageByProductId] = useState({})
+  useEffect(() => {
+    if (!sensitive || products.length === 0) { setSafeImageByProductId({}); return }
+    let alive = true
+    Promise.all(products.map(p => resolveSafeImage(p.id, p.heroImage).then(img => [p.id, img])))
+      .then(entries => { if (alive) setSafeImageByProductId(Object.fromEntries(entries)) })
+    return () => { alive = false }
+  }, [sensitive, products])
+
+  const imageFor = p => (sensitive ? safeImageByProductId[p.id] : p.heroImage) || ''
+
   const categories = useMemo(() => [...new Set(products.map(p => p.category).filter(Boolean))].sort(), [products])
   // Light list the Shop-by band can render image tiles from.
   const bandItems = useMemo(() => products.map(p => ({
-    id: p.id, category: p.category || '', is_new: !!p.is_new, image: p.heroImage || '', name: p.name || '',
-  })), [products])
+    id: p.id, category: p.category || '', is_new: !!p.is_new, image: imageFor(p), name: p.name || '',
+  })), [products, sensitive, safeImageByProductId])
   const filtered = useMemo(() => {
     const base = coll ? collectionProducts(coll, products, 'corp_gift') : products
     return base.filter(p => {
@@ -89,55 +127,18 @@ export default function CorporateShop({ profile }) {
         <div className="text-center py-20 text-ink-60">No products match your search.</div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-          {filtered.map(p => <CorpCard key={p.id} p={p} cur={cur} rates={rates} profile={profile} />)}
+          {filtered.map(p => (
+            <CorpCard key={p.id} p={p} cur={cur} rates={rates} profile={profile}
+              displayImage={sensitive ? safeImageByProductId[p.id] : (p.heroImage || null)} />
+          ))}
         </div>
       )}
     </div>
   )
 }
 
-function CorpCard({ p, cur, rates, profile }) {
+function CorpCard({ p, cur, rates, profile, displayImage }) {
   const [fromPrice, setFromPrice] = useState(undefined) // undefined=loading, null=none
-  // heroImage is a plain cached URL on the product doc — it bypasses the
-  // Firestore rule that screens products/{id}/images per-viewer.
-  //
-  // Rewritten 2026-08-07 (owner: "the sensitive customer function doesn't
-  // screen out the product images from other customers' products image
-  // tagged in brand gallery — checked on live version"). This card
-  // PREVIOUSLY only fetched the rule-screened images subcollection when a
-  // mirrored heroImage_branded_for_customer_id flag said the hero was
-  // blocked — but that mirror was only ever written at pick/re-tag time,
-  // and confirmed against real data: 19 products had a hero genuinely
-  // tagged for another customer with the mirror sitting at null, so the
-  // fetch never fired and the branded photo showed anyway. A real leak.
-  //
-  // Now: for ANY sensitive viewer, always fetch this card's own images
-  // subcollection (rule-filtered) and resolve the image from THAT live
-  // result rather than trusting a cached flag — if the cached heroImage
-  // URL isn't in the viewer's own allowed set, the rule blocked it, so
-  // fall back to the first other storefront-visible photo from the same
-  // fetch, same as CorporateDetail.jsx's product-page fallback. One extra
-  // read per card, but only for sensitive viewers (currently one active
-  // portal account) — correctness here outweighs that cost.
-  const sensitive = !!profile?.sensitive
-  const [resolvedImage, setResolvedImage] = useState(undefined) // undefined=not yet resolved, null=none found
-
-  useEffect(() => {
-    if (!sensitive) return
-    getDocs(query(collection(db, 'products', p.id, 'images'), orderBy('sort_order')))
-      .then(snap => {
-        const imgs = snap.docs.map(d => d.data())
-        if (p.heroImage && imgs.some(im => im.file_url === p.heroImage)) {
-          setResolvedImage(p.heroImage)
-          return
-        }
-        const fallback = imgs.find(im => im.file_url && isStorefrontVisible(im))
-        setResolvedImage(fallback?.file_url || null)
-      })
-      .catch(() => setResolvedImage(null))
-  }, [sensitive, p.id, p.heroImage])
-
-  const displayImage = sensitive ? resolvedImage : (p.heroImage || null)
 
   useEffect(() => {
     const uid = profile?.id || auth.currentUser?.uid
