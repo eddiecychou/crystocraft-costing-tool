@@ -39,6 +39,10 @@ const ENTITIES = {
   purchase: {
     view: 'erp_purchase', hasActive: false, orderBy: 'code.desc',
     search: ['code', 'supplier', 'supplier_code', 'ref'],
+    // Default cap (500) was silently truncating PurchaseOrders.jsx's new
+    // "JES limit" selector's 1000 option — owner, 2026-08-07: "we need to
+    // parse all PU from JES, have a box limit for 50/100/500/1000".
+    maxLimit: 1000,
   },
   warehouse: {
     view: 'erp_warehouse', orderBy: 'code.asc',

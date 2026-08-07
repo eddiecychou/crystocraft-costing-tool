@@ -25,9 +25,12 @@ function fmtDate(s) {
 // useErpOrders (JES was frozen 2026-08-05: no new rows will ever appear here,
 // but everything raised before the freeze still needs to be visible). Search-
 // driven and debounced so a blank search doesn't try to pull all 4,256
-// historical rows; a bounded default limit keeps the unfiltered view to
-// roughly the last couple of years without a full-history fetch.
-function useErpPurchaseOrders(search) {
+// historical rows. The unfiltered fetch size is owner-controlled (50/100/
+// 500/1000 — "we need to parse all PU from JES, have a box limit", 2026-08-07)
+// rather than a fixed hardcoded cap, since "all of it" vs "just the recent
+// ones" is a real tradeoff (1000 rows is a much heavier fetch) the owner
+// should pick, not one this code should assume.
+function useErpPurchaseOrders(search, limit) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -35,13 +38,13 @@ function useErpPurchaseOrders(search) {
     let alive = true
     setLoading(true); setError('')
     const t = setTimeout(() => {
-      erpLookup('purchase', { q: search.trim(), limit: search.trim() ? 200 : 400 })
+      erpLookup('purchase', { q: search.trim(), limit: search.trim() ? 200 : limit })
         .then(r => { if (alive) setRows(r || []) })
         .catch(e => { if (alive) { setError(e.message || 'Could not reach the ERP archive.'); setRows([]) } })
         .finally(() => { if (alive) setLoading(false) })
     }, 300)
     return () => { alive = false; clearTimeout(t) }
-  }, [search])
+  }, [search, limit])
   return { rows, loading, error }
 }
 
@@ -136,16 +139,23 @@ export default function PurchaseOrders() {
     })
   }, [pos, search, statusFilter, from, to])
 
-  const erp = useErpPurchaseOrders(search)
+  const [historyLimit, setHistoryLimit] = useState(100)
+  const erp = useErpPurchaseOrders(search, historyLimit)
   const [sortKey, setSortKey] = useState('date')
   const [sortDir, setSortDir] = useState('desc')
 
   // Clicking the active column flips direction; picking a new column starts
-  // it at a sensible default (dates newest-first, text columns A→Z).
+  // it at a sensible default. "pu" defaults newest-first same as "date" — PU
+  // numbers are assigned chronologically, so a plain A→Z default would show
+  // the OLDEST PU first, the opposite of what "latest to old" means for this
+  // column (owner, 2026-08-07: "sort in PU from latest to old... when first
+  // enter" — the page already defaulted to date-desc, but clicking the PU
+  // column itself defaulted the wrong way). Other, genuinely alphabetical
+  // columns (supplier name/code) still default A→Z.
   function toggleSort(key) {
     if (sortKey === key) { setSortDir(d => (d === 'asc' ? 'desc' : 'asc')); return }
     setSortKey(key)
-    setSortDir(key === 'date' ? 'desc' : 'asc')
+    setSortDir(key === 'date' || key === 'pu' ? 'desc' : 'asc')
   }
 
   // One accessor per sortable column, working across both row sources — a
@@ -275,6 +285,15 @@ export default function PurchaseOrders() {
       <div className="flex flex-col sm:flex-row gap-2 mb-2">
         <input type="text" placeholder="Search PU no. or supplier…" className="input w-full sm:flex-1"
                value={search} onChange={e => setSearch(e.target.value)} />
+        {/* Only affects the unfiltered JES fetch (search narrows the query
+            itself, capped separately at 200 — see useErpPurchaseOrders). */}
+        <label className="flex items-center gap-1.5 text-xs text-gray-500 shrink-0" title="How many JES purchase orders to fetch when not searching">
+          JES limit
+          <select className="input py-1.5 text-xs w-auto" value={historyLimit} disabled={!!search.trim()}
+                  onChange={e => setHistoryLimit(Number(e.target.value))}>
+            {[50, 100, 500, 1000].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
         <div className="flex gap-1.5">
           {[{ value: '', label: 'All' }, ...PO_STATUSES].map(s => (
             <button key={s.value || 'all'} onClick={() => setStatusFilter(s.value)}
