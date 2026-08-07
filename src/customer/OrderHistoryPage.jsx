@@ -1,18 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import { myOrderHistory } from '../customerOrderHistoryApi'
 import { mergeSalesInvoiceHistory } from '../domain/salesInvoiceHistory'
-import InvoiceDetailModal from './InvoiceDetailModal'
 import { ClipboardList, Receipt, ChevronDown, ChevronUp } from 'lucide-react'
-
-const STATUS_STYLE = {
-  draft: 'bg-gray-100 text-gray-600',
-  confirmed: 'bg-blue-100 text-blue-700',
-  shipped: 'bg-amber-100 text-amber-700',
-  delivered: 'bg-green-100 text-green-700',
-  cancelled: 'bg-red-100 text-red-600',
-}
 
 const fmtDate = d => {
   if (!d) return '—'
@@ -23,23 +15,30 @@ const fmtDate = d => {
 // "My Orders" — owner, 2026-08-07: "let customers be able to see their order
 // history on portal", then: "combine both in JES and in App sales invoice
 // in 'Sales Invoice History'... sales invoices should be clickable... an
-// icon to expand and collapse... more on bottom to see more."
+// icon to expand and collapse... more on bottom to see more." Then, after a
+// real click-through: "the orders and [sales invoices are] duplicated...
+// very confusing. I rather only display the sales invoices which is
+// confirmed. The sales orders is for our internal so it is not necessary to
+// show to customers." So: ONE list, confirmed invoices only — the separate
+// "Orders" section (general in-production status) was dropped entirely.
 //
-// Two sections:
-//  - Orders: this app's own orders/ collection (customer_id-scoped Firestore
-//    rule — see firestore.rules), the live/current production pipeline —
-//    useful for tracking status even before an invoice exists.
-//  - Sales Invoice History: what's actually been sold to this customer,
-//    merged from the app's own invoiced orders AND legacy JES invoices
-//    (domain/salesInvoiceHistory.js — same merge CustomerDetail.jsx's admin
-//    view uses, minus the App/JES source badge — a customer doesn't need to
-//    know which system it lives in). Clicking a row opens InvoiceDetailModal
-//    for line-item detail. Some accounts' ERP code is a shared JES "bucket"
-//    code (owner confirmed A29/C13/O07 each cover many different real
-//    customers) — `shared: true` from the edge function means history
-//    genuinely can't be attributed to just this customer, so it's
-//    explained, not just empty.
+// Sales Invoice History: what's actually been sold to this customer, merged
+// from the app's own invoiced orders AND legacy JES invoices
+// (domain/salesInvoiceHistory.js — same merge CustomerDetail.jsx's admin
+// view uses, minus the App/JES source badge — a customer doesn't need to
+// know which system it lives in), filtered to confirmed only (an app row's
+// invoiced-ness IS its confirmation; a JES row needs status === 'CONFIRMED'
+// — VOID/other statuses are an internal JES state, not something to show).
+// Clicking a row opens the invoice's own formatted print/PDF page
+// (CustomerInvoicePrint.jsx, /shop/invoice/:key — "the clicked view needs
+// to be more serious, with the same format as our sales invoices, and
+// customer can view and download with PDF or Excel"). Some accounts' ERP
+// code is a shared JES "bucket" code (owner confirmed A29/C13/O07 each
+// cover many different real customers) — `shared: true` from the edge
+// function means history genuinely can't be attributed to just this
+// customer, so it's explained, not just empty.
 export default function OrderHistoryPage({ profile }) {
+  const navigate = useNavigate()
   const customerId = profile?.customer_id || null
   const [orders, setOrders] = useState([])
   const [ordersLoading, setOrdersLoading] = useState(true)
@@ -48,7 +47,6 @@ export default function OrderHistoryPage({ profile }) {
   const [erpLoading, setErpLoading] = useState(true)
   const [invoicesOpen, setInvoicesOpen] = useState(true)
   const [invoicesShown, setInvoicesShown] = useState(10)
-  const [openRow, setOpenRow] = useState(null)   // row being viewed in InvoiceDetailModal
 
   useEffect(() => {
     if (!customerId) { setOrders([]); setOrdersLoading(false); return }
@@ -57,10 +55,7 @@ export default function OrderHistoryPage({ profile }) {
     getDocs(query(collection(db, 'orders'), where('customer_id', '==', customerId)))
       .then(snap => {
         if (!alive) return
-        setOrders(
-          snap.docs.map(d => ({ id: d.id, ...d.data() }))
-            .sort((a, b) => (b.order_date || '').localeCompare(a.order_date || ''))
-        )
+        setOrders(snap.docs.map(d => ({ id: d.id, ...d.data() })))
       })
       .catch(() => { if (alive) setOrders([]) })
       .finally(() => { if (alive) setOrdersLoading(false) })
@@ -76,7 +71,10 @@ export default function OrderHistoryPage({ profile }) {
     return () => { alive = false }
   }, [])
 
-  const invoiceHistory = useMemo(() => mergeSalesInvoiceHistory(orders, erpRows, null), [orders, erpRows])
+  const invoiceHistory = useMemo(
+    () => mergeSalesInvoiceHistory(orders, erpRows, null).filter(r => r.src === 'app' || r.status === 'CONFIRMED'),
+    [orders, erpRows],
+  )
   const historyLoading = ordersLoading || erpLoading
 
   return (
@@ -86,32 +84,6 @@ export default function OrderHistoryPage({ profile }) {
         <h1 className="text-lg font-semibold text-ink">My Orders</h1>
       </div>
       <p className="text-sm text-ink-60 mb-5">Your order and invoice history with Crystocraft.</p>
-
-      <div className="mb-8">
-        <h2 className="text-sm font-semibold text-ink-70 mb-3">Orders</h2>
-        {ordersLoading ? (
-          <p className="text-sm text-ink-40 py-6 text-center">Loading…</p>
-        ) : orders.length === 0 ? (
-          <div className="bg-white rounded-xl border border-ivory-dark p-6 text-center text-sm text-ink-60">
-            No orders yet.
-          </div>
-        ) : (
-          <div className="bg-white rounded-xl border border-ivory-dark divide-y divide-ivory-dark">
-            {orders.map(o => {
-              const piNo = o.uc_no || o.erp_pi_no || o.erp_so_no || '—'
-              return (
-                <div key={o.id} className="flex items-center justify-between px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-ink truncate">{piNo}</p>
-                    <p className="text-xs text-ink-50 mt-0.5">{fmtDate(o.order_date)}{o.currency ? ` · ${o.currency}` : ''}</p>
-                  </div>
-                  <span className={`badge shrink-0 ${STATUS_STYLE[o.status] || 'bg-gray-100 text-gray-600'}`}>{o.status || 'draft'}</span>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
 
       <div>
         <button type="button" onClick={() => setInvoicesOpen(v => !v)}
@@ -133,14 +105,15 @@ export default function OrderHistoryPage({ profile }) {
           ) : (
             <div className="bg-white rounded-xl border border-ivory-dark divide-y divide-ivory-dark">
               {invoiceHistory.slice(0, invoicesShown).map(r => (
-                <div key={r.key} onClick={() => setOpenRow(r)}
+                <div key={r.key} onClick={() => navigate(`/shop/invoice/${r.key}`)}
                      className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-ivory transition-colors">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Receipt size={14} className="text-ink-30 shrink-0" />
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-ink truncate">
                         {r.no || '—'}
-                        {r.uc && <span className="ml-1.5 text-xs font-mono text-ink-40">UC {r.uc}</span>}
+                        {/* r.uc (JES siref / app uc_no) already reads "UC4920/26" — no extra label prefix, or it doubles up. */}
+                        {r.uc && <span className="ml-1.5 text-xs font-mono text-ink-40">{r.uc}</span>}
                       </p>
                       <p className="text-xs text-ink-50 mt-0.5">{fmtDate(r.date)}{r.currency ? ` · ${r.currency}` : ''}</p>
                     </div>
@@ -162,7 +135,6 @@ export default function OrderHistoryPage({ profile }) {
         )}
       </div>
 
-      {openRow && <InvoiceDetailModal row={openRow} onClose={() => setOpenRow(null)} />}
     </div>
   )
 }

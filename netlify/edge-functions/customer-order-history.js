@@ -107,15 +107,20 @@ export default async function handler(req) {
     if (!code) return json({ error: 'code is required' }, 400)
     if (!profile.erp_code || profile.erp_code_shared) return json({ error: 'Not available' }, 403)
     // Re-verify server-side that this invoice actually belongs to the
-    // caller's own erp_code before returning any line items — see header.
+    // caller's own erp_code before returning anything — a customer passing
+    // an arbitrary SI number must not see someone else's invoice just by
+    // guessing one. Fetches the full header in the same call the ownership
+    // check needs, so the print page (CustomerInvoicePrint.jsx) gets
+    // everything in one round trip.
     const header = await sb(SUPABASE_URL, SERVICE_KEY,
-      `erp_sales_invoice?select=code,customer_code&code=eq.${encodeURIComponent(code)}&limit=1`)
+      `erp_sales_invoice?select=${HEADER_COLS},customer_code&code=eq.${encodeURIComponent(code)}&limit=1`)
     if (!header?.length || String(header[0].customer_code || '').toUpperCase() !== profile.erp_code.toUpperCase()) {
       return json({ error: 'Not found' }, 404)
     }
     const lines = await sb(SUPABASE_URL, SERVICE_KEY,
       `erp_sales_invoice_line?select=${LINE_COLS}&invoice_no=eq.${encodeURIComponent(code)}&order=seq.asc`)
-    return json({ lines: lines || [] })
+    const { customer_code, ...safeHeader } = header[0]
+    return json({ header: safeHeader, lines: lines || [] })
   }
 
   if (!profile.erp_code) return json({ rows: [] })

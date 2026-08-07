@@ -692,7 +692,8 @@ export default function CustomerDetail() {
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">
                             {r.no || '—'}
-                            {r.uc && <span className="ml-1.5 text-xs font-mono font-normal text-gray-400">UC {r.uc}</span>}
+                            {/* r.uc (JES siref / app uc_no) already reads "UC4920/26" — no extra label prefix, or it doubles up. */}
+                            {r.uc && <span className="ml-1.5 text-xs font-mono font-normal text-gray-400">{r.uc}</span>}
                           </p>
                           <p className="text-xs text-gray-500 mt-0.5">{dateStr}{r.currency ? ` · ${r.currency}` : ''}</p>
                         </div>

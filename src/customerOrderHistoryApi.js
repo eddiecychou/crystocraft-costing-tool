@@ -27,10 +27,10 @@ export async function myOrderHistory() {
   return { rows: data?.rows || [], shared: !!data?.shared }
 }
 
-// Line items for one of the caller's OWN JES invoices — the server re-checks
-// ownership, so a bad/foreign code just comes back empty rather than erroring
-// the page.
-export async function myInvoiceLines(code) {
+// Header + line items for one of the caller's OWN JES invoices — the server
+// re-checks ownership, so a bad/foreign code just comes back empty rather
+// than erroring the page. Returns { header, lines }.
+export async function myInvoiceDetail(code) {
   const data = await call({ action: 'lines', code })
-  return data?.lines || []
+  return { header: data?.header || null, lines: data?.lines || [] }
 }

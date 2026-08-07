@@ -9,6 +9,7 @@ import EnquiryPage from './EnquiryPage'
 import CustomizerPage from './CustomizerPage'
 import BrandGalleryPage from './BrandGalleryPage'
 import OrderHistoryPage from './OrderHistoryPage'
+import CustomerInvoicePrint from './CustomerInvoicePrint'
 import { CartProvider, FavouritesProvider } from './store'
 import ErrorBoundary from '../components/ErrorBoundary'
 
@@ -16,22 +17,30 @@ export default function Storefront({ profile }) {
   return (
     <FavouritesProvider uid={profile?.id}>
       <CartProvider>
-        <CustomerLayout profile={profile}>
-          <ErrorBoundary home="/shop/figurine">
-          <Routes>
-            <Route path="/shop/figurine" element={<FigurineShop profile={profile} />} />
-            <Route path="/shop/figurine/:id" element={<FigurineDetail profile={profile} />} />
-            <Route path="/shop/corporate" element={<CorporateShop profile={profile} />} />
-            <Route path="/shop/corporate/:id" element={<CorporateDetail profile={profile} />} />
-            <Route path="/shop/favourites" element={<FavouritesPage profile={profile} />} />
-            <Route path="/shop/enquiry" element={<EnquiryPage profile={profile} />} />
-            <Route path="/shop/brand-gallery" element={<BrandGalleryPage profile={profile} />} />
-            <Route path="/shop/orders" element={<OrderHistoryPage profile={profile} />} />
-            <Route path="/customize/:productId" element={<CustomizerPage profile={profile} />} />
-            <Route path="*" element={<Navigate to="/shop/figurine" replace />} />
-          </Routes>
-          </ErrorBoundary>
-        </CustomerLayout>
+        <Routes>
+          {/* Print route — no CustomerLayout wrapper, same reason the admin
+              print routes (SalesInvoicePrint etc.) sit outside Layout: the
+              nav chrome must not print or bleed into the "Save as PDF". */}
+          <Route path="/shop/invoice/:key" element={<CustomerInvoicePrint profile={profile} />} />
+          <Route path="/*" element={
+            <CustomerLayout profile={profile}>
+              <ErrorBoundary home="/shop/figurine">
+              <Routes>
+                <Route path="/shop/figurine" element={<FigurineShop profile={profile} />} />
+                <Route path="/shop/figurine/:id" element={<FigurineDetail profile={profile} />} />
+                <Route path="/shop/corporate" element={<CorporateShop profile={profile} />} />
+                <Route path="/shop/corporate/:id" element={<CorporateDetail profile={profile} />} />
+                <Route path="/shop/favourites" element={<FavouritesPage profile={profile} />} />
+                <Route path="/shop/enquiry" element={<EnquiryPage profile={profile} />} />
+                <Route path="/shop/brand-gallery" element={<BrandGalleryPage profile={profile} />} />
+                <Route path="/shop/orders" element={<OrderHistoryPage profile={profile} />} />
+                <Route path="/customize/:productId" element={<CustomizerPage profile={profile} />} />
+                <Route path="*" element={<Navigate to="/shop/figurine" replace />} />
+              </Routes>
+              </ErrorBoundary>
+            </CustomerLayout>
+          } />
+        </Routes>
       </CartProvider>
     </FavouritesProvider>
   )
