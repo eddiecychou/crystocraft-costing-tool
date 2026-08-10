@@ -17,14 +17,14 @@ of record, one function at a time.
 
 | File | What it holds |
 |---|---|
-| `PROJECT-PLAN.md` | The running record. Newest cycle first. **"Where V7.17 starts" is the current entry point.** |
+| `PROJECT-PLAN.md` | The running record. Newest cycle first. **"Where V7.23 starts" is the current entry point.** |
 | `JES-RETIREMENT-PLAN.md` | The nine-step route to switching JES off, in plain language |
 | `V7.15_ERP_Inventory.md` | What the ERP actually contains — measured, not assumed |
 | `PBIS-IMPORT-FORMAT.md` | The JES→PBIS import contract — what an app-generated invoice must reproduce |
 | `erp-sync/ERP-SYNC-V1.0.md` | How the ERP mirror works |
 | `erp-sync/IMAGE-SYNC-PLAN.md` | Item images: prepared, needs the LAN |
 | `Corp_Gift_Customizer_Spec.md`, `Customizer_Build_Plan.md` | Customizer engine design — build history, superseded by current status below |
-| `Crystal_Fabric_Studio_Spec.md` | Swatch library + Physical Design Workbench build history (all closed under V7.21). Workbench paused mid-build: templates/canvas/zones/zone-rendering done, mode-unification and photo-compositing (workstreams 3/5) not started — see doc's own §5j and `PROJECT-PLAN.md`'s "Where V7.22 starts" |
+| `Crystal_Fabric_Studio_Spec.md` | Swatch library + Physical Design Workbench build history (all closed under V7.21). Workbench paused mid-build: templates/canvas/zones/zone-rendering done, mode-unification and photo-compositing (workstreams 3/5) not started — see doc's own §5j. V7.22 fixed four real bugs in the render engine/admin tool itself (stone size, colour, caching, auth) without touching workstreams 3/5 — see `PROJECT-PLAN.md`'s V7.22 §2 and "Where V7.23 starts" |
 
 ## Environment quirks that will otherwise waste your time
 
