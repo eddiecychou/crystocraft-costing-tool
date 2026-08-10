@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
-import { Gem, Package, Heart, ClipboardList, Images, Receipt } from 'lucide-react'
+import { Gem, Package, Heart, ClipboardList, Images, Receipt, Sparkles } from 'lucide-react'
 import { useCart, useFavourites } from './store'
 import logo from '../assets/logo.png'
 
@@ -16,6 +16,7 @@ export default function CustomerLayout({ children, profile }) {
   const nav = [
     { to: '/shop/figurine', label: 'Figurine Gifts', Icon: Gem },
     { to: '/shop/corporate', label: 'Corporate Gifts', Icon: Package },
+    { to: '/shop/swatches', label: 'Swatch Library', Icon: Sparkles },
     { to: '/shop/favourites', label: 'Favourites', Icon: Heart, badge: fav?.count },
     { to: '/shop/enquiry', label: 'Enquiry', Icon: ClipboardList, badge: cart?.count },
     // Only linked customers have order history / a brand gallery to show.

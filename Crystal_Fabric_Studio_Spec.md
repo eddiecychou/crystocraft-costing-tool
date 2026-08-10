@@ -243,6 +243,41 @@ the Fly.io persistent volume, served through `app.py`'s own endpoints.
   per §5's existing phasing. This page has exactly one user type: internal
   staff on a sales call.
 
+## 5b. Phase 2b — portal-facing (2026-08-11)
+
+Shipped the same day as 2a's carousel/notes refinements, at the owner's
+call: "I want to make it simple and grant every approved portal customer
+[access] because the product rendering part will be related to corp gift
+and Crystocraft gift customers." No new "designer/distributor" account
+type — every approved `role: 'customer'` account gets it, riding on the
+existing corporate-gift customer base rather than a separate onboarding
+flow.
+
+- **`/api/swatch-library` widened from admin-only to `canShop()`-equivalent**
+  (admin OR approved customer) — the registry is swatch photos, not
+  pricing/margin data, so the same posture `products/` reads already use
+  was the right bar, not the ERP endpoint's admin-only one. Same Basic-auth
+  proxy to Fly underneath; the browser still never sees
+  `RENDER_ADMIN_PASSWORD`.
+- **`crystal_swatch_notes` read opened to `isApprovedCustomer()`** — the
+  legacy-Swarovski-reference list only has a point if a designer can
+  actually see it. Writes stay admin-only.
+- **New page, `src/customer/SwatchLibraryPage.jsx`**, route
+  `/shop/swatches`, nav entry in `CustomerLayout.jsx`. Same grid/carousel
+  as the admin page (shared visual pattern, separate file — the two have
+  different data-editing permissions and it wasn't worth a shared
+  abstraction for one component). Detail panel shows the captured photos
+  and read-only legacy refs, no editing UI.
+- **Sample-request CTA, not a price band** — per §4's standing call that a
+  physical sample is the actual conversion event. Reuses the existing
+  `enquiries` collection (same collection the wholesale enquiry cart
+  writes to, same admin `Enquiries.jsx` inbox already built to review it)
+  with a `type: 'swatch_sample'` item, rather than a parallel lead table —
+  one admin inbox for both. `requestSwatchSample()` in
+  `swatchLibraryApi.js`.
+- **Not built**: "Match my old Swarovski" photo matcher, Designer Project
+  Board, funnel analytics — all still explicitly out of scope (§3/§5).
+
 ## 6. Open questions for the owner
 
 - Does Crystocraft (or the owner personally) actually hold enough Swarovski

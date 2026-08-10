@@ -1,15 +1,18 @@
-// Admin-only proxy from the browser to the Fly.io render service's
-// swatch-registry endpoints (/swatches, /swatches/image/{filename}) — see
-// Crystal_Fabric_Studio_Spec.md §5a. Those routes are gated on the Fly side
-// by HTTP Basic auth (ADMIN_PASSWORD, app.py's require_admin) built for
-// admin.html's photo-capture tool. This function holds the matching
+// Proxy from the browser to the Fly.io render service's swatch-registry
+// endpoints (/swatches, /swatches/image/{filename}) — see
+// Crystal_Fabric_Studio_Spec.md §5a/§5b. Those routes are gated on the Fly
+// side by HTTP Basic auth (ADMIN_PASSWORD, app.py's require_admin) built
+// for admin.html's photo-capture tool. This function holds the matching
 // password server-side (RENDER_ADMIN_PASSWORD) and sends it as the Basic
 // credential itself, so the browser never sees it — same reasoning as
 // erp.js keeping the Supabase service key server-side.
 //
-// Gated on the CALLER being a signed-in Firebase admin (not the shared
-// RENDER_TOKEN customizer-palette.js uses) — this exposes the swatch
-// registry, an internal sales tool, not customer-facing data.
+// Gated on the caller being a signed-in Firebase admin OR an approved
+// portal customer (Phase 2b, owner 2026-08-11: "grant every approved
+// portal customer" — the crystal fabric line rides on the same corporate
+// gift customer base, no separate designer/distributor account type).
+// Registry photos are the swatch material itself, not pricing or margin
+// data — safe to hand any signed-in customer, unlike /api/erp.
 //
 // Env (Netlify site vars, server-side only):
 //   RENDER_SERVICE_URL     — e.g. https://crystocraft-customizer-render.fly.dev
@@ -27,13 +30,17 @@ const JWKS = createRemoteJWKSet(
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
-// Same self-read admin check erp.js uses.
-async function isAdmin(uid, idToken, projectId) {
+// Same self-read pattern erp.js's isAdmin() uses, widened to "canShop"
+// (admin, or an approved customer) — the client-side equivalent this app
+// already uses for Firestore rules (canShop() in firestore.rules).
+async function canAccess(uid, idToken, projectId) {
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`
   const r = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } })
   if (!r.ok) return false
   const doc = await r.json()
-  return doc?.fields?.role?.stringValue === 'admin'
+  const role = doc?.fields?.role?.stringValue
+  const status = doc?.fields?.status?.stringValue
+  return role === 'admin' || (role === 'customer' && status === 'approved')
 }
 
 export default async function handler(req) {
@@ -56,7 +63,7 @@ export default async function handler(req) {
     uid = payload.sub
   } catch { return json({ error: 'Invalid or expired session' }, 401) }
 
-  if (!(await isAdmin(uid, token, PROJECT_ID))) return json({ error: 'Admin only' }, 403)
+  if (!(await canAccess(uid, token, PROJECT_ID))) return json({ error: 'Approved account required' }, 403)
 
   const url = new URL(req.url)
   const action = url.searchParams.get('action')
