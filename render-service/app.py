@@ -5,8 +5,10 @@ GET  /health  -> liveness check.
 GET  /admin   -> swatch-library admin tool (capture/crop/preview/save colours
                  without a code deploy — see engine/palette.py's registry.json).
 GET/POST/DELETE /templates* -> product template library (photo + SVG outline +
-                 real mm size, see engine/templates.py) — foundation for the
-                 physical design workbench, no drawing/compositing yet.
+                 real mm size, see engine/templates.py) plus manual SVG
+                 alignment and user-drawn crystal zones (workstreams 1-2 of
+                 the physical design workbench) — no compositing/rendering
+                 of zones yet, geometry + material assignment only.
 
 Auth:
 - /render: if RENDER_TOKEN is set, requests must send a matching
@@ -39,7 +41,7 @@ from engine import templates as tmpl_registry
 # on the admin page header, so it's visible from the outside whether a given
 # deploy actually landed (owner, 2026-08-06, after several redeploys in a
 # row with no visible confirmation the new code was live).
-app = FastAPI(title="Crystocraft Customizer Render", version="0.14.1")
+app = FastAPI(title="Crystocraft Customizer Render", version="0.15.0")
 
 RENDER_TOKEN = os.environ.get("RENDER_TOKEN", "")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
@@ -517,4 +519,36 @@ def templates_align(
         )
     except KeyError:
         raise HTTPException(status_code=404, detail="No such template")
+    return _template_out(template_id, entry)
+
+
+class ZonePoint(BaseModel):
+    x_mm: float
+    y_mm: float
+
+
+class Zone(BaseModel):
+    name: str
+    crystal_type: str
+    color: str
+    points: list[ZonePoint]
+
+
+class ZonesPayload(BaseModel):
+    zones: list[Zone] = Field(default_factory=list)
+
+
+@app.post("/templates/{template_id}/zones", dependencies=[Depends(require_admin)])
+def templates_save_zones(template_id: str, payload: ZonesPayload):
+    """User-drawn crystal zones (workstream 2, Crystal_Fabric_Studio_Spec.md
+    §5e) — replaces the whole zone list, same as swatches_save's registry
+    writes. Not rendered yet; this endpoint only persists the geometry and
+    material assignment the design canvas draws."""
+    zones_raw = [z.model_dump() for z in payload.zones]
+    try:
+        entry = tmpl_registry.save_zones(template_id, zones_raw)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="No such template")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return _template_out(template_id, entry)

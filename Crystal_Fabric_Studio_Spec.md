@@ -452,6 +452,41 @@ current session, reset each time a template is reopened.
 
 Render service version 0.14.0 → 0.14.1.
 
+## 5e. User-definable zones (2026-08-11) — workstream 2
+
+Owner said "please go ahead" once alignment tooling was confirmed working
+— proceeding to the next dependency-ordered workstream from the original
+plan (§5's rollout order) rather than re-asking, since the direction was
+already set.
+
+Adds a "✏️ Draw zone" toggle to the design canvas: while active, clicking
+the photo places polygon vertices (min 3) instead of dragging the
+graphic; "Finish zone" closes it and attaches a name, crystal type
+(fabric_1.0/fine_rock_1.5/rock_2.0 — the real `STONE_TYPES` from
+`engine/palette.py`, not invented values) and crystal colour (populated
+live from `GET /swatches`, filtered to colours actually captured for that
+type's style — same filtering logic the customer-facing customizer
+already does in `CrystalFabricCustomizer.jsx`). Up to 5 zones per
+template (`MAX_ZONES` in `templates.py`, matching the original plan's own
+first-cut limit), each a translucent coloured polygon on the canvas,
+cycling through 5 fixed colours by slot index. Persisted via new `POST
+/templates/{id}/zones` (`templates.py`'s `save_zones()`), replacing the
+whole list each save, same pattern the swatch registry's writes already
+use.
+
+**Deliberately still just geometry + material assignment — no crystal
+rendering of a zone happens anywhere yet.** That's compositing work
+(workstream 5): today a saved zone is `{name, crystal_type, color,
+points: [{x_mm, y_mm}, ...]}` and nothing reads it back except the
+design canvas that drew it. The two hard-coded regions in the live
+`crystal_fabric` zone-map engine (`stones.py`'s logo/background split)
+are completely untouched — this doesn't replace them yet, it only proves
+out an admin can now define arbitrary per-product zone geometry instead
+of it being fixed in code, which was the actual point of workstream 2 per
+§3/§0.
+
+Render service version 0.14.1 → 0.15.0.
+
 ## 6. Open questions for the owner
 
 - Photography budget/cadence for growing past 27 swatches — who shoots them,

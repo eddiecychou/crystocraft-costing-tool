@@ -144,6 +144,9 @@ def save_template(template_id, *, name, width_mm, height_mm, photo_bytes, photo_
         # thin outline at a fixed 50% — the admin needs to turn it down to
         # actually see the product photo underneath while aligning.
         "svg_opacity": existing.get("svg_opacity", 0.5),
+        # Zones (workstream 2) — kept on re-save, same reasoning as the
+        # alignment fields above.
+        "zones": existing.get("zones", []),
     }
     _write(reg)
     return reg[template_id]
@@ -158,6 +161,51 @@ def save_alignment(template_id, *, scale, offset_x_mm, offset_y_mm, opacity=None
     reg[template_id]["svg_offset_y_mm"] = round(float(offset_y_mm), 2)
     if opacity is not None:
         reg[template_id]["svg_opacity"] = round(max(0.0, min(1.0, float(opacity))), 2)
+    _write(reg)
+    return reg[template_id]
+
+
+MAX_ZONES = 5
+
+
+def save_zones(template_id, zones):
+    """zones: list of {name, crystal_type, color, points: [{x_mm, y_mm}, ...]}.
+    Replaces the whole list — the admin tool always sends the complete
+    current set, same as swatches.py's registry writes. crystal_type/color
+    aren't validated against the live swatch registry here (they change
+    independently, via /swatches) — a stale combo simply fails loud at
+    render time later, same fail-loud rule as everywhere else in this
+    service, not silently dropped or substituted here."""
+    from .palette import STONE_TYPES  # local import: avoids a hard dependency for callers that only touch templates
+
+    if not isinstance(zones, list):
+        raise ValueError("zones must be a list")
+    if len(zones) > MAX_ZONES:
+        raise ValueError(f"At most {MAX_ZONES} zones per template — this first cut doesn't support more")
+
+    clean = []
+    for z in zones:
+        name = str(z.get("name", "")).strip()
+        if not name:
+            raise ValueError("Every zone needs a name")
+        crystal_type = z.get("crystal_type", "")
+        if crystal_type not in STONE_TYPES:
+            raise ValueError(f"Unknown crystal_type {crystal_type!r} — must be one of {sorted(STONE_TYPES)}")
+        color = str(z.get("color", "")).strip()
+        if not color:
+            raise ValueError(f"Zone {name!r} needs a crystal colour")
+        points = z.get("points") or []
+        if len(points) < 3:
+            raise ValueError(f"Zone {name!r} needs at least 3 points to be a real shape")
+        clean_points = []
+        for p in points:
+            clean_points.append({"x_mm": round(float(p["x_mm"]), 2), "y_mm": round(float(p["y_mm"]), 2)})
+        clean.append({"name": name, "crystal_type": crystal_type, "color": color, "points": clean_points})
+
+    reg = _load()
+    if template_id not in reg:
+        raise KeyError(f"Unknown template {template_id!r}")
+    reg[template_id]["zones"] = clean
     _write(reg)
     return reg[template_id]
 

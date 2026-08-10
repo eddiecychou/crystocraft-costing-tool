@@ -983,11 +983,40 @@
   let dcDrag = null; // { mode: 'move'|'resize', handle, startX, startY, orig }
   let dcWindowListenersBound = false; // window listeners are idempotent-safe (read globals), but only bind once — a new <canvas> is created each time design mode opens
 
+  // ── Zones (workstream 2) ──────────────────────────────────────────────
+  const ZONE_COLORS = ['#c6a664', '#7fae7f', '#7f9fae', '#ae7f9f', '#ae957f']; // one per zone slot, cycled by index
+  let dcZoneMode = false;           // true while click-to-place-vertex is active (graphic drag disabled)
+  let dcCurrentZonePoints = [];     // in-progress zone, mm coords, before "Finish zone"
+  let dcZones = [];                 // completed zones for this template, mm coords — loaded from t.zones, saved via /templates/{id}/zones
+  let dcSwatchColorsCache = null;   // GET /swatches result, fetched once per admin session
+
+  async function dcColorOptionsFor(crystalType) {
+    if (!dcSwatchColorsCache) {
+      dcSwatchColorsCache = (await (await fetch('/swatches')).json()).crystal || {};
+    }
+    const style = crystalType === 'fabric_1.0' ? 'fabric' : 'rock';
+    return Object.keys(dcSwatchColorsCache)
+      .filter(name => Object.keys(dcSwatchColorsCache[name]?.slots?.[style] || {}).length > 0)
+      .sort();
+  }
+
+  async function dcRefreshZoneColorSelect() {
+    const typeSel = document.getElementById('dc-zone-type');
+    const colorSel = document.getElementById('dc-zone-color');
+    if (!typeSel || !colorSel) return;
+    const names = await dcColorOptionsFor(typeSel.value);
+    const keep = colorSel.value;
+    colorSel.innerHTML = names.length
+      ? names.map(n => `<option value="${n}">${n}</option>`).join('')
+      : '<option value="">No colours captured for this type yet</option>';
+    if (names.includes(keep)) colorSel.value = keep;
+  }
+
   function designCanvasShell(id, t) {
     document.getElementById('editor').innerHTML = `
       <button class="small" id="dc-back" style="margin-bottom:14px">← Back to templates</button>
       <h2 style="margin:0 0 4px">${t.name} <span class="canvas-hint">${t.width_mm}×${t.height_mm}mm</span></h2>
-      <p class="style-note">Drag the graphic to move it, drag a corner to resize. Grid lines every 10mm. This positions a graphic in real space only — crystal zones and materials are a later phase.</p>
+      <p class="style-note">Drag the graphic to move it, drag a corner to resize. Grid lines every 10mm. Click "✏️ Draw zone" below to trace a crystal-material zone instead — no crystal is actually rendered yet, this only records geometry and material assignment for a later compositing phase.</p>
       <div class="editor-grid">
         <div>
           <div class="canvas-wrap"><div id="dc-canvas-wrap"></div></div>
@@ -1021,6 +1050,31 @@
             <label style="margin-top:10px">Graphic opacity (%)</label>
             <input type="text" id="dc-graphic-opacity" value="100">
           </div>
+          <div class="panel">
+            <label style="display:flex;align-items:center;justify-content:space-between">
+              Crystal zones (workstream 2)
+              <button class="small" id="dc-zone-draw-toggle">✏️ Draw zone</button>
+            </label>
+            <p class="help">Click points on the photo to trace a zone (min 3), then Finish. While drawing, the graphic can't be dragged — click "Draw zone" again to stop and go back to positioning the graphic.</p>
+            <label>Zone name</label>
+            <input type="text" id="dc-zone-name" placeholder="e.g. Logo area">
+            <label>Crystal type</label>
+            <select id="dc-zone-type">
+              <option value="fabric_1.0">Crystal Fabric 1.0mm</option>
+              <option value="fine_rock_1.5" selected>Crystal Fine Rock 1.5mm</option>
+              <option value="rock_2.0">Crystal Rock 2.0mm</option>
+            </select>
+            <label>Crystal colour</label>
+            <select id="dc-zone-color"><option value="">Loading…</option></select>
+            <div class="actions">
+              <button class="small primary" id="dc-zone-finish" disabled>Finish zone (need 3+ points)</button>
+            </div>
+            <div id="dc-zone-list" style="margin-top:12px"></div>
+            <div class="actions" style="margin-top:10px">
+              <button class="small" id="dc-zones-save">Save zones (${(t.zones || []).length}/5)</button>
+            </div>
+            <div class="preview-hint" id="dc-zones-status" style="margin-top:6px"></div>
+          </div>
           <div class="panel" id="dc-readout">
             <label>Placed size (real mm)</label>
             <div class="canvas-hint" id="dc-size-readout">No graphic placed yet.</div>
@@ -1049,6 +1103,14 @@
     });
     document.getElementById('dc-svg-save-align').addEventListener('click', () => dcSaveAlignment(id));
     document.getElementById('dc-graphic-opacity').addEventListener('input', dcOnGraphicOpacityInput);
+
+    dcZoneMode = false; dcCurrentZonePoints = []; dcZones = (t.zones || []).map(z => ({ ...z }));
+    document.getElementById('dc-zone-draw-toggle').addEventListener('click', dcToggleZoneMode);
+    document.getElementById('dc-zone-type').addEventListener('change', dcRefreshZoneColorSelect);
+    document.getElementById('dc-zone-finish').addEventListener('click', dcFinishZone);
+    document.getElementById('dc-zones-save').addEventListener('click', () => dcSaveZones(id));
+    dcRefreshZoneColorSelect();
+    dcRenderZoneList();
 
     // Alignment (scale % + mm offset + overlay opacity) persists per
     // template — see templates.py's save_template()/save_alignment().
@@ -1104,6 +1166,64 @@
     const pct = parseFloat(document.getElementById('dc-graphic-opacity').value);
     dcState.imgOpacity = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) / 100 : dcState.imgOpacity;
     dcDrawCanvas();
+  }
+
+  function dcToggleZoneMode() {
+    dcZoneMode = !dcZoneMode;
+    dcCurrentZonePoints = [];
+    const btn = document.getElementById('dc-zone-draw-toggle');
+    if (btn) { btn.textContent = dcZoneMode ? '✕ Stop drawing' : '✏️ Draw zone'; btn.classList.toggle('active-toggle', dcZoneMode); }
+    const finishBtn = document.getElementById('dc-zone-finish');
+    if (finishBtn) { finishBtn.disabled = true; finishBtn.textContent = 'Finish zone (need 3+ points)'; }
+    dcDrawCanvas();
+  }
+
+  function dcFinishZone() {
+    if (dcCurrentZonePoints.length < 3 || dcZones.length >= 5) return;
+    const name = document.getElementById('dc-zone-name').value.trim() || `Zone ${dcZones.length + 1}`;
+    const crystal_type = document.getElementById('dc-zone-type').value;
+    const color = document.getElementById('dc-zone-color').value;
+    if (!color) { alert('Pick a crystal colour first.'); return; }
+    dcZones.push({ name, crystal_type, color, points: dcCurrentZonePoints });
+    dcCurrentZonePoints = [];
+    document.getElementById('dc-zone-name').value = '';
+    document.getElementById('dc-zone-finish').disabled = true;
+    document.getElementById('dc-zone-finish').textContent = 'Finish zone (need 3+ points)';
+    dcRenderZoneList();
+    dcDrawCanvas();
+  }
+
+  function dcRemoveZone(i) {
+    dcZones.splice(i, 1);
+    dcRenderZoneList();
+    dcDrawCanvas();
+  }
+
+  function dcRenderZoneList() {
+    const list = document.getElementById('dc-zone-list');
+    const saveBtn = document.getElementById('dc-zones-save');
+    if (saveBtn) saveBtn.textContent = `Save zones (${dcZones.length}/5)`;
+    if (!list) return;
+    if (dcZones.length === 0) { list.innerHTML = '<p class="canvas-hint">No zones drawn yet.</p>'; return; }
+    list.innerHTML = dcZones.map((z, i) => `
+      <div class="swatch-row" style="cursor:default">
+        <div class="dot" style="background:${ZONE_COLORS[i % ZONE_COLORS.length]}"></div>
+        <div class="name">${z.name}<br><span class="canvas-hint">${z.crystal_type} · ${z.color} · ${z.points.length} pts</span></div>
+        <button class="small danger" data-zone-remove="${i}">✕</button>
+      </div>`).join('');
+    list.querySelectorAll('[data-zone-remove]').forEach(btn => {
+      btn.addEventListener('click', () => dcRemoveZone(Number(btn.dataset.zoneRemove)));
+    });
+  }
+
+  async function dcSaveZones(templateId) {
+    const status = document.getElementById('dc-zones-status');
+    const res = await fetch(`/templates/${encodeURIComponent(templateId)}/zones`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ zones: dcZones }),
+    });
+    if (!res.ok) { if (status) status.textContent = '⚠ ' + ((await res.json()).detail || 'Save failed'); return; }
+    if (status) status.textContent = '✓ Zones saved.';
   }
 
   async function dcSaveAlignment(templateId) {
@@ -1216,6 +1336,41 @@
       if (mm % 50 === 0 && mm > 0) ctx.fillText(`${mm}`, 2, y - 2);
     }
 
+    // Completed zones — translucent fill + outline, one colour per slot
+    // (cycled), name labelled at the first vertex. Geometry only, no
+    // crystal material is actually rendered here — that's later
+    // compositing work; this is the authoring surface.
+    dcZones.forEach((z, i) => {
+      const col = ZONE_COLORS[i % ZONE_COLORS.length];
+      ctx.beginPath();
+      z.points.forEach((p, j) => {
+        const x = p.x_mm * pxPerMM, y = p.y_mm * pxPerMM;
+        if (j === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+      ctx.fillStyle = col + '55'; ctx.fill();
+      ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
+      const p0 = z.points[0];
+      ctx.fillStyle = col; ctx.font = 'bold 11px monospace';
+      ctx.fillText(z.name, p0.x_mm * pxPerMM + 4, p0.y_mm * pxPerMM - 4);
+    });
+
+    // In-progress zone (while dcZoneMode is on) — plain points + connecting
+    // lines, no fill yet since it isn't closed.
+    if (dcZoneMode && dcCurrentZonePoints.length) {
+      ctx.beginPath();
+      dcCurrentZonePoints.forEach((p, j) => {
+        const x = p.x_mm * pxPerMM, y = p.y_mm * pxPerMM;
+        if (j === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+      dcCurrentZonePoints.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x_mm * pxPerMM, p.y_mm * pxPerMM, 4, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff'; ctx.fill();
+      });
+    }
+
     if (dcState.img) {
       const gx = dcState.xMM * pxPerMM, gy = dcState.yMM * pxPerMM;
       const gw = dcState.wMM * pxPerMM, gh = dcState.hMM * pxPerMM;
@@ -1268,8 +1423,20 @@
   }
 
   function dcOnMouseDown(e) {
-    if (!dcState?.img) return;
+    if (!dcState) return;
     const { x: px, y: py } = dcToCanvasXY(e, e.target);
+    if (dcZoneMode) {
+      dcCurrentZonePoints.push({ x_mm: px / dcState.pxPerMM, y_mm: py / dcState.pxPerMM });
+      const finishBtn = document.getElementById('dc-zone-finish');
+      if (finishBtn) {
+        finishBtn.disabled = dcCurrentZonePoints.length < 3;
+        finishBtn.textContent = dcCurrentZonePoints.length < 3
+          ? `Finish zone (need 3+ points)` : `Finish zone (${dcCurrentZonePoints.length} points)`;
+      }
+      dcDrawCanvas();
+      return;
+    }
+    if (!dcState.img) return;
     const hit = dcHandleAt(px, py);
     if (!hit) return;
     dcPushUndo();
