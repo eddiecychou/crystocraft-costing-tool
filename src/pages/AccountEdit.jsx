@@ -200,7 +200,17 @@ export default function AccountEdit() {
   }
 
   async function del() {
-    if (!confirm(`Delete the portal login for ${displayName}${isAdmin ? ' (ADMIN)' : ''}? This removes their portal access and settings. Note: their sign-in credential still exists (it can only be fully removed from the Firebase console), but they will have no access here.`)) return
+    // Deleting a fellow admin's login is what silently locked Eddie out of
+    // his own account (2026-08-10) — the click-through confirm() gave no real
+    // friction. canDelete already blocks deleting your OWN account; this adds
+    // a typed confirmation on top, same pattern as "Make admin" above, for
+    // the one case that guard doesn't cover: deleting SOMEONE ELSE'S admin login.
+    if (isAdmin) {
+      const ans = prompt(`⚠️ Delete the ADMIN login for ${displayName}?\n\nThis removes their access to every cost, margin, supplier and customer in the tool. Their sign-in credential still exists (only removable from the Firebase console), but they lose all access here.\n\nType the account's email (${u.email}) to confirm.`)
+      if ((ans || '').trim().toLowerCase() !== (u.email || '').trim().toLowerCase()) return
+    } else if (!confirm(`Delete the portal login for ${displayName}? This removes their portal access and settings. Note: their sign-in credential still exists (it can only be fully removed from the Firebase console), but they will have no access here.`)) {
+      return
+    }
     setStatus('saving')
     try { await deleteDoc(doc(db, 'users', id)); navigate('/portal') }
     catch (e) { setStatus('Error: ' + (e?.message || 'could not delete')) }
