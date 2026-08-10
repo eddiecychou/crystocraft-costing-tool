@@ -54,10 +54,7 @@ export default function HomePage({ profile }) {
           </p>
           <h1 className="text-2xl md:text-4xl text-ink leading-tight mb-3">{heroContent.heading}</h1>
           <p className="text-sm md:text-base text-ink-60 leading-relaxed mb-6 max-w-md">{heroContent.supporting}</p>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <button onClick={scrollToPillars} className="btn-primary w-full sm:w-auto">{heroContent.primaryCta.label}</button>
-            <Link to={heroContent.secondaryCta.to} className="btn-secondary text-center w-full sm:w-auto">{heroContent.secondaryCta.label}</Link>
-          </div>
+          <button onClick={scrollToPillars} className="btn-primary w-full sm:w-auto">{heroContent.primaryCta.label}</button>
         </div>
         <div className="aspect-[4/3] md:aspect-[3/2] rounded-lg overflow-hidden bg-ivory-dark">
           <img src={heroImage} alt="" className="w-full h-full object-cover" />

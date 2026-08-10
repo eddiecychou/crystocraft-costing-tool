@@ -12,7 +12,6 @@ export const heroContent = {
   heading: 'Explore the Crystocraft Collection',
   supporting: 'Discover collectible figurines, custom corporate gifts and premium crystal embellishment materials for your next project.',
   primaryCta: { label: 'Explore the Collection' }, // scrolls to #pillars, no route
-  secondaryCta: { label: 'Start an Enquiry', to: '/shop/enquiry' },
 }
 
 export const pillarsSection = {
@@ -55,7 +54,7 @@ export const quickAccessSection = {
 // (not the component itself) so this file stays a plain content module.
 export const quickActions = [
   { key: 'favourites', label: 'My Favourites', to: '/shop/favourites', iconKey: 'Heart' },
-  { key: 'enquiry', label: 'Start an Enquiry', to: '/shop/enquiry', iconKey: 'ClipboardList' },
+  { key: 'enquiry', label: 'My Enquiry', to: '/shop/enquiry', iconKey: 'ClipboardList' },
   { key: 'orders', label: 'My Orders', to: '/shop/orders', iconKey: 'Receipt', requiresCustomer: true },
   { key: 'brand_gallery', label: 'My Brand Gallery', to: '/shop/brand-gallery', iconKey: 'Images', requiresCustomer: true },
 ]
