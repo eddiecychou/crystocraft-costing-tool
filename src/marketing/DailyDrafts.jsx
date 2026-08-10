@@ -27,18 +27,28 @@ const daysAgo = (ts) => {
 // manually blocked, cooldown-cleared, never sent THIS product recently.
 // Capped and prioritized (never-contacted first, then longest since last
 // contact) rather than sent unbounded — see MAX_CANDIDATES above.
-function eligibleCandidates(customers, excludedIds) {
+//
+// Excludes and dedupes by EMAIL, not just customer id. This CRM has known
+// duplicate customer records for the same company (see the merge feature in
+// domain/customer.js) — two docs with the same email have different ids, so
+// an id-only exclusion lets each duplicate slip through on a separate
+// Generate click, piling up near-identical drafts to the same real inbox.
+function eligibleCandidates(customers, excludedIds, excludedEmails) {
   const now = Date.now()
+  const seenEmails = new Set()
   const pool = customers.filter(c => {
     if (!['Active', 'Prospect'].includes(c.crm_status)) return false
     const contact = primaryContact(c.contacts)
-    if (!contact?.email) return false
+    const email = contact?.email?.trim().toLowerCase()
+    if (!email) return false
     if (c.blockOutreachUntil) {
       const until = c.blockOutreachUntil.toMillis ? c.blockOutreachUntil.toMillis() : new Date(c.blockOutreachUntil).getTime()
       if (until > now) return false
     }
     if (daysAgo(c.lastOutreachAt) < COOLDOWN_DAYS) return false
-    if (excludedIds.has(c.id)) return false
+    if (excludedIds.has(c.id) || excludedEmails.has(email)) return false
+    if (seenEmails.has(email)) return false // a duplicate customer record for someone already picked this run
+    seenEmails.add(email)
     return true
   })
   pool.sort((a, b) => daysAgo(b.lastOutreachAt) - daysAgo(a.lastOutreachAt)) // never-contacted (Infinity) sorts first
@@ -95,13 +105,15 @@ export default function DailyDrafts() {
       ])
       // Exclude anyone already sitting in pending_review for this product
       // outright (regenerating must never duplicate an unreviewed draft), and
-      // anyone sent this product within the cooldown window.
-      const excludedIds = new Set(
-        existingDrafts
-          .filter(d => d.status === 'pending_review' || (d.status === 'sent' && daysAgo(d.sentAt) < PRODUCT_COOLDOWN_DAYS))
-          .map(d => d.customerId)
+      // anyone sent this product within the cooldown window. Excluded by both
+      // customerId and email — see eligibleCandidates' comment on duplicate
+      // customer records.
+      const alreadyDrafted = existingDrafts.filter(d =>
+        d.status === 'pending_review' || (d.status === 'sent' && daysAgo(d.sentAt) < PRODUCT_COOLDOWN_DAYS)
       )
-      const candidates = eligibleCandidates(customers, excludedIds)
+      const excludedIds = new Set(alreadyDrafted.map(d => d.customerId))
+      const excludedEmails = new Set(alreadyDrafted.map(d => (d.customerEmail || '').trim().toLowerCase()).filter(Boolean))
+      const candidates = eligibleCandidates(customers, excludedIds, excludedEmails)
       if (!candidates.length) { setError('No eligible customers right now (cooldowns/blocks cleared the whole pool).'); return }
 
       const generated = await generateDrafts(
