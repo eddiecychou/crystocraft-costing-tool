@@ -532,6 +532,33 @@ space; it would have been a much harder problem to bolt on afterward.
 
 Render service version 0.15.1 → 0.16.0.
 
+## 5g. Zone-editing usability (2026-08-11)
+
+Owner, after drawing the butterfly zones: three concrete usability
+problems, all fixed same day.
+
+1. **"I usually mess up for the last closing dot"** — an imprecise
+   closing click left a stray sliver in the shape. Fixed by snapping: if
+   a click while drawing lands within 10 canvas px of the ring's own
+   first point (and the ring already has 3+ points), its coordinates are
+   replaced with that first point's exact coordinates rather than
+   whatever the mouse actually landed on.
+2. **"Any way I can edit the zone with the choice of crystal?"** — added
+   a ✎ button per zone row that loads its name/type/colour into the form
+   and swaps in a "💾 Save material change" button, updating just those
+   fields on the existing zone object without touching its `rings`.
+3. **"Any way I can edit the zone drawing? If this is too difficult I
+   will just delete and redraw it"** — true vertex-level editing (drag an
+   existing point, insert/delete a point on a closed shape) was judged
+   too large to build in this pass, so a ↺ "Redraw" button was built
+   instead: deletes the zone and re-enters drawing mode with its name/
+   type/colour already filled in, so fixing a shape mistake is "trace it
+   again" rather than "reconfigure everything from scratch." Real
+   vertex-dragging is still open if the redraw shortcut isn't enough in
+   practice.
+
+Render service version 0.16.0 → 0.17.0.
+
 ## 6. Open questions for the owner
 
 - Photography budget/cadence for growing past 27 swatches — who shoots them,

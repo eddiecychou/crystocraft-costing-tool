@@ -1080,7 +1080,11 @@
             <div class="actions" style="margin-top:6px">
               <button class="small" id="dc-zone-add-background" disabled>Add background zone (everything else)</button>
             </div>
-            <p class="help">Hollow logos/text: trace the OUTER edge first, click "Finish boundary, start a hole", then trace the INNER edge (e.g. inside a letter O) — repeat for more holes, then Finish zone. "Add background" fills the rest of the canvas around every zone drawn so far, holes included.</p>
+            <div class="actions" style="margin-top:6px" id="dc-zone-edit-material-row">
+              <button class="small primary" id="dc-zone-save-material" style="display:none">💾 Save material change</button>
+              <button class="small" id="dc-zone-cancel-edit" style="display:none">Cancel</button>
+            </div>
+            <p class="help">Hollow logos/text: trace the OUTER edge first, click "Finish boundary, start a hole", then trace the INNER edge (e.g. inside a letter O) — repeat for more holes, then Finish zone. "Add background" fills the rest of the canvas around every zone drawn so far, holes included. Per zone below: ✎ changes its crystal type/colour without redrawing; ↺ deletes it and reopens drawing with the same name/material pre-filled, so a shape mistake is a quick redraw, not starting over.</p>
             <div id="dc-zone-list" style="margin-top:12px"></div>
             <div class="actions" style="margin-top:10px">
               <button class="small" id="dc-zones-save">Save zones (${(t.zones || []).length}/5)</button>
@@ -1126,7 +1130,10 @@
     document.getElementById('dc-zone-add-hole').addEventListener('click', dcAddHoleRing);
     document.getElementById('dc-zone-finish').addEventListener('click', dcFinishZone);
     document.getElementById('dc-zone-add-background').addEventListener('click', dcAddBackgroundZone);
+    document.getElementById('dc-zone-save-material').addEventListener('click', dcSaveMaterialEdit);
+    document.getElementById('dc-zone-cancel-edit').addEventListener('click', dcCancelEditMaterial);
     document.getElementById('dc-zones-save').addEventListener('click', () => dcSaveZones(id));
+    dcEditingZoneIndex = null;
     dcRefreshZoneColorSelect();
     dcRenderZoneList();
 
@@ -1231,6 +1238,7 @@
   }
 
   function dcFinishZone() {
+    dcCancelEditMaterial();
     const rings = dcCurrentZoneRings.slice();
     if (dcCurrentRingPoints.length >= 3) rings.push(dcCurrentRingPoints);
     if (rings.length === 0 || dcZones.length >= 5) return;
@@ -1257,6 +1265,7 @@
   // background material, not empty space and not double-counted crystal.
   // No new geometry math, just reusing the same ring list twice.
   function dcAddBackgroundZone() {
+    dcCancelEditMaterial();
     if (!dcState || dcZones.length === 0 || dcZones.length >= 5) return;
     const name = document.getElementById('dc-zone-name').value.trim() || 'Background';
     const crystal_type = document.getElementById('dc-zone-type').value;
@@ -1291,12 +1300,71 @@
       <div class="swatch-row" style="cursor:default">
         <div class="dot" style="background:${ZONE_COLORS[i % ZONE_COLORS.length]}"></div>
         <div class="name">${z.name}<br><span class="canvas-hint">${z.crystal_type} · ${z.color} · ${ringDesc}</span></div>
+        <button class="small" data-zone-edit="${i}" title="Edit crystal type/colour">✎</button>
+        <button class="small" data-zone-redraw="${i}" title="Delete and redraw with the same name/material">↺</button>
         <button class="small danger" data-zone-remove="${i}">✕</button>
       </div>`;
     }).join('');
     list.querySelectorAll('[data-zone-remove]').forEach(btn => {
       btn.addEventListener('click', () => dcRemoveZone(Number(btn.dataset.zoneRemove)));
     });
+    list.querySelectorAll('[data-zone-edit]').forEach(btn => {
+      btn.addEventListener('click', () => dcStartEditMaterial(Number(btn.dataset.zoneEdit)));
+    });
+    list.querySelectorAll('[data-zone-redraw]').forEach(btn => {
+      btn.addEventListener('click', () => dcRedrawZone(Number(btn.dataset.zoneRedraw)));
+    });
+  }
+
+  // ── Edit an existing zone's material (type/colour) without redrawing ────
+  let dcEditingZoneIndex = null;
+
+  async function dcStartEditMaterial(i) {
+    dcEditingZoneIndex = i;
+    const z = dcZones[i];
+    document.getElementById('dc-zone-name').value = z.name;
+    document.getElementById('dc-zone-type').value = z.crystal_type;
+    await dcRefreshZoneColorSelect();
+    document.getElementById('dc-zone-color').value = z.color;
+    document.getElementById('dc-zone-save-material').style.display = '';
+    document.getElementById('dc-zone-cancel-edit').style.display = '';
+  }
+
+  function dcCancelEditMaterial() {
+    // No-op unless an edit is actually in progress — dcFinishZone() and
+    // dcAddBackgroundZone() call this defensively to clear stale edit
+    // state, and must NOT wipe the name field the admin just typed for a
+    // brand-new zone in the process.
+    if (dcEditingZoneIndex === null) return;
+    dcEditingZoneIndex = null;
+    document.getElementById('dc-zone-name').value = '';
+    document.getElementById('dc-zone-save-material').style.display = 'none';
+    document.getElementById('dc-zone-cancel-edit').style.display = 'none';
+  }
+
+  function dcSaveMaterialEdit() {
+    if (dcEditingZoneIndex === null) return;
+    const name = document.getElementById('dc-zone-name').value.trim() || dcZones[dcEditingZoneIndex].name;
+    const crystal_type = document.getElementById('dc-zone-type').value;
+    const color = document.getElementById('dc-zone-color').value;
+    if (!color) { alert('Pick a crystal colour first.'); return; }
+    dcZones[dcEditingZoneIndex] = { ...dcZones[dcEditingZoneIndex], name, crystal_type, color };
+    dcCancelEditMaterial();
+    dcRenderZoneList();
+    dcDrawCanvas();
+  }
+
+  // ── Delete a zone and reopen drawing with the same name/material,
+  // rather than making the admin retype everything to fix a shape mistake.
+  function dcRedrawZone(i) {
+    const z = dcZones[i];
+    dcZones.splice(i, 1);
+    document.getElementById('dc-zone-name').value = z.name;
+    document.getElementById('dc-zone-type').value = z.crystal_type;
+    dcRefreshZoneColorSelect().then(() => { document.getElementById('dc-zone-color').value = z.color; });
+    dcRenderZoneList();
+    if (!dcZoneMode) dcToggleZoneMode();
+    dcDrawCanvas();
   }
 
   async function dcSaveZones(templateId) {
@@ -1534,7 +1602,19 @@
     if (!dcState) return;
     const { x: px, y: py } = dcToCanvasXY(e, e.target);
     if (dcZoneMode) {
-      dcCurrentRingPoints.push({ x_mm: px / dcState.pxPerMM, y_mm: py / dcState.pxPerMM });
+      let x_mm = px / dcState.pxPerMM, y_mm = py / dcState.pxPerMM;
+      // Snap the closing click onto the ring's first point instead of
+      // wherever the mouse actually landed — owner: "i usually mess up for
+      // the last closing dot which i either went pass it so that the
+      // shape looks weird." A near-miss click no longer leaves a stray
+      // sliver; within ~10 canvas px of the first point counts as "back
+      // at the start."
+      if (dcCurrentRingPoints.length >= 3) {
+        const p0 = dcCurrentRingPoints[0];
+        const dx = px - p0.x_mm * dcState.pxPerMM, dy = py - p0.y_mm * dcState.pxPerMM;
+        if (Math.sqrt(dx * dx + dy * dy) <= 10) { x_mm = p0.x_mm; y_mm = p0.y_mm; }
+      }
+      dcCurrentRingPoints.push({ x_mm, y_mm });
       dcUpdateZoneDrawButtons();
       dcDrawCanvas();
       return;
