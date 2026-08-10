@@ -382,7 +382,32 @@ ways, both worth knowing before workstream 2 builds on this:
   else" framing in the original plan rather than a shippable authoring
   tool on its own.
 
-Render service version bumped 0.10.0 → 0.11.0.
+Render service version bumped 0.10.0 → 0.11.0, then 0.11.1 (bug fix, below)
+then 0.12.0 (SVG overlay, below).
+
+**Bug found and fixed same day**: resize handles didn't respond to drag at
+all (move worked fine). Root cause: the canvas element has `max-width:100%`
+(global admin.html CSS), so its on-screen size can be smaller than its
+internal pixel resolution — mouse coordinates need scaling by
+`canvas.width / boundingRect.width`, same as the existing swatch editor's
+`toCanvasXY()` already does. Move's hit region is the whole placed
+rectangle, big enough to survive the resulting offset; the 9px corner
+handles weren't. Fixed with a shared `dcToCanvasXY()` helper used by both
+mousedown and mousemove.
+
+**SVG outline overlay added same day**, owner: "it doesn't see the svg area,
+and the svg area doesn't have the alignment with the actual product image."
+The canvas now optionally draws the saved SVG stretched over the whole
+photo at 50% opacity (toggleable). This is a diagnostic overlay, not a real
+coordinate mapping — there is still no registration/anchor step between the
+SVG's own coordinate space and the photo's, so it's drawn on the bald
+assumption the SVG was traced at the same pixel size as the photo. If it
+visibly doesn't line up, that's the SVG having been authored at a different
+canvas size than the photo, not a bug in this overlay — the fix is
+re-exporting the SVG sized to match the photo, not code. A real anchored
+mapping (crop offset + scale, stored with the template) is a fair
+candidate for workstream 2, once zones need the SVG boundary to actually
+be load-bearing rather than just visually checked.
 
 ## 6. Open questions for the owner
 

@@ -991,9 +991,16 @@
       <div class="editor-grid">
         <div>
           <div class="canvas-wrap"><div id="dc-canvas-wrap"></div></div>
+          <div id="dc-svg-status" class="preview-hint"></div>
           <div id="dc-warning" class="preview-hint" style="color:var(--danger)"></div>
         </div>
         <div>
+          <div class="panel">
+            <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;margin-bottom:0">
+              <input type="checkbox" id="dc-show-svg" checked style="width:auto;margin:0"> Show SVG outline overlay
+            </label>
+            <p class="help">Draws the saved SVG stretched over the whole photo — it assumes the SVG's own canvas matches the photo's pixel size 1:1. If it doesn't line up with the coaster's real edge below, the SVG was very likely traced at a different canvas size than the photo — re-export it sized to match the photo exactly.</p>
+          </div>
           <div class="panel">
             <label>Graphic to position</label>
             <div class="drop-zone" id="dc-graphic-zone" style="padding:20px;margin-bottom:14px">Click or drag a PNG/JPG here</div>
@@ -1023,15 +1030,27 @@
     document.getElementById('dc-graphic-zone').addEventListener('drop', e => {
       e.preventDefault(); if (e.dataTransfer.files[0]) dcLoadGraphic(e.dataTransfer.files[0]);
     });
+    document.getElementById('dc-show-svg').addEventListener('change', dcDrawCanvas);
 
     dcUndo = []; dcRedo = [];
     const bg = new Image();
     bg.onload = () => {
       dcState = {
-        tmpl: t, bgImg: bg, img: null,
+        tmpl: t, bgImg: bg, img: null, svgImg: null,
         xMM: t.width_mm / 2, yMM: t.height_mm / 2, wMM: 0, hMM: 0, aspect: 1,
       };
       dcDrawCanvas();
+      // Loaded separately from the background so a broken/missing SVG never
+      // blocks the photo from showing — same-origin fetch of app.py's
+      // /templates/svg/{filename} (image/svg+xml), rasterizable via <img>
+      // like any other image source.
+      const svg = new Image();
+      svg.onload = () => { dcState.svgImg = svg; dcDrawCanvas(); };
+      svg.onerror = () => {
+        const el = document.getElementById('dc-svg-status');
+        if (el) el.textContent = '⚠ Could not load the saved SVG for preview.';
+      };
+      svg.src = t.svg_url;
     };
     bg.src = t.photo_url;
   }
@@ -1095,6 +1114,22 @@
     canvas.width = dispW; canvas.height = dispH;
     const ctx = canvas.getContext('2d');
     ctx.drawImage(dcState.bgImg, 0, 0, dispW, dispH);
+
+    // SVG outline overlay — stretched to the full photo, on the ASSUMPTION
+    // the SVG's own canvas was traced 1:1 against the photo (see the
+    // checkbox's help text). Not a registered/anchored overlay — there's no
+    // offset or scale step between photo and SVG yet, so this is purely a
+    // visual sanity check for now, not a real coordinate mapping. Shown at
+    // reduced opacity, whatever colour the SVG itself was authored with —
+    // no colour-forcing, since a CSS filter guess at a specific tint isn't
+    // reliable enough to promise.
+    const showSvg = document.getElementById('dc-show-svg')?.checked;
+    if (showSvg && dcState.svgImg) {
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      ctx.drawImage(dcState.svgImg, 0, 0, dispW, dispH);
+      ctx.restore();
+    }
 
     // Grid every 10mm, labelled every 50mm.
     ctx.strokeStyle = 'rgba(198,166,100,0.25)';
