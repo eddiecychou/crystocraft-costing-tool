@@ -999,7 +999,15 @@
             <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;margin-bottom:0">
               <input type="checkbox" id="dc-show-svg" checked style="width:auto;margin:0"> Show SVG outline overlay
             </label>
-            <p class="help">Draws the saved SVG stretched over the whole photo — it assumes the SVG's own canvas matches the photo's pixel size 1:1. If it doesn't line up with the coaster's real edge below, the SVG was very likely traced at a different canvas size than the photo — re-export it sized to match the photo exactly.</p>
+            <p class="help">Drawn stretched over the whole photo, then scaled/offset by the numbers below — dial them in by eye until the outline sits on the coaster's real edge. Saved per-template so it's remembered next time.</p>
+            <label>Scale (%)</label>
+            <input type="text" id="dc-svg-scale" value="100">
+            <label>Offset X (mm)</label>
+            <input type="text" id="dc-svg-offx" value="0">
+            <label>Offset Y (mm)</label>
+            <input type="text" id="dc-svg-offy" value="0">
+            <button class="small" id="dc-svg-save-align">Save alignment</button>
+            <div class="preview-hint" id="dc-svg-align-status" style="margin-top:6px"></div>
           </div>
           <div class="panel">
             <label>Graphic to position</label>
@@ -1031,6 +1039,17 @@
       e.preventDefault(); if (e.dataTransfer.files[0]) dcLoadGraphic(e.dataTransfer.files[0]);
     });
     document.getElementById('dc-show-svg').addEventListener('change', dcDrawCanvas);
+    ['dc-svg-scale', 'dc-svg-offx', 'dc-svg-offy'].forEach(id => {
+      document.getElementById(id).addEventListener('input', dcOnAlignInput);
+    });
+    document.getElementById('dc-svg-save-align').addEventListener('click', () => dcSaveAlignment(id));
+
+    // Alignment (scale % + mm offset) persists per template — see
+    // templates.py's save_template()/save_alignment(). Defaults to
+    // 100%/0/0 for a template that's never been aligned.
+    document.getElementById('dc-svg-scale').value = String((t.svg_scale ?? 1) * 100);
+    document.getElementById('dc-svg-offx').value = String(t.svg_offset_x_mm ?? 0);
+    document.getElementById('dc-svg-offy').value = String(t.svg_offset_y_mm ?? 0);
 
     dcUndo = []; dcRedo = [];
     const bg = new Image();
@@ -1038,6 +1057,7 @@
       dcState = {
         tmpl: t, bgImg: bg, img: null, svgImg: null,
         xMM: t.width_mm / 2, yMM: t.height_mm / 2, wMM: 0, hMM: 0, aspect: 1,
+        svgScale: t.svg_scale ?? 1, svgOffXMM: t.svg_offset_x_mm ?? 0, svgOffYMM: t.svg_offset_y_mm ?? 0,
       };
       dcDrawCanvas();
       // Loaded separately from the background so a broken/missing SVG never
@@ -1053,6 +1073,29 @@
       svg.src = t.svg_url;
     };
     bg.src = t.photo_url;
+  }
+
+  function dcOnAlignInput() {
+    if (!dcState) return;
+    const scalePct = parseFloat(document.getElementById('dc-svg-scale').value);
+    const offX = parseFloat(document.getElementById('dc-svg-offx').value);
+    const offY = parseFloat(document.getElementById('dc-svg-offy').value);
+    dcState.svgScale = Number.isFinite(scalePct) && scalePct > 0 ? scalePct / 100 : dcState.svgScale;
+    dcState.svgOffXMM = Number.isFinite(offX) ? offX : dcState.svgOffXMM;
+    dcState.svgOffYMM = Number.isFinite(offY) ? offY : dcState.svgOffYMM;
+    dcDrawCanvas();
+  }
+
+  async function dcSaveAlignment(templateId) {
+    if (!dcState) return;
+    const fd = new FormData();
+    fd.append('scale', dcState.svgScale);
+    fd.append('offset_x_mm', dcState.svgOffXMM);
+    fd.append('offset_y_mm', dcState.svgOffYMM);
+    const status = document.getElementById('dc-svg-align-status');
+    const res = await fetch(`/templates/${encodeURIComponent(templateId)}/align`, { method: 'POST', body: fd });
+    if (!res.ok) { if (status) status.textContent = '⚠ ' + ((await res.json()).detail || 'Save failed'); return; }
+    if (status) status.textContent = '✓ Alignment saved.';
   }
 
   function dcLoadGraphic(file) {
@@ -1115,19 +1158,24 @@
     const ctx = canvas.getContext('2d');
     ctx.drawImage(dcState.bgImg, 0, 0, dispW, dispH);
 
-    // SVG outline overlay — stretched to the full photo, on the ASSUMPTION
-    // the SVG's own canvas was traced 1:1 against the photo (see the
-    // checkbox's help text). Not a registered/anchored overlay — there's no
-    // offset or scale step between photo and SVG yet, so this is purely a
-    // visual sanity check for now, not a real coordinate mapping. Shown at
-    // reduced opacity, whatever colour the SVG itself was authored with —
-    // no colour-forcing, since a CSS filter guess at a specific tint isn't
-    // reliable enough to promise.
+    // SVG outline overlay — base size is the full photo (still assuming the
+    // SVG's own canvas was traced 1:1 against it), then manually scaled and
+    // mm-offset by the admin's alignment controls until it visually sits on
+    // the real product edge. Anchored at the photo's centre so scaling
+    // grows/shrinks symmetrically rather than drifting toward one corner.
+    // Persisted per template (svg_scale/svg_offset_x_mm/svg_offset_y_mm) —
+    // see templates.py's save_alignment(). Shown at reduced opacity,
+    // whatever colour the SVG itself was authored with.
     const showSvg = document.getElementById('dc-show-svg')?.checked;
     if (showSvg && dcState.svgImg) {
+      const scale = dcState.svgScale ?? 1;
+      const offXpx = (dcState.svgOffXMM ?? 0) * pxPerMM;
+      const offYpx = (dcState.svgOffYMM ?? 0) * pxPerMM;
+      const w = dispW * scale, h = dispH * scale;
+      const x = (dispW - w) / 2 + offXpx, y = (dispH - h) / 2 + offYpx;
       ctx.save();
       ctx.globalAlpha = 0.5;
-      ctx.drawImage(dcState.svgImg, 0, 0, dispW, dispH);
+      ctx.drawImage(dcState.svgImg, x, y, w, h);
       ctx.restore();
     }
 

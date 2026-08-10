@@ -120,14 +120,35 @@ def save_template(template_id, *, name, width_mm, height_mm, photo_bytes, photo_
         f.write(svg_text)
 
     reg = _load()
+    existing = reg.get(template_id, {})
     reg[template_id] = {
         "name": name.strip(),
         "photo_file": photo_file,
         "svg_file": svg_file,
         "width_mm": round(float(width_mm), 1),
         "height_mm": round(float(height_mm), 1),
-        "created_at": reg.get(template_id, {}).get("created_at") or datetime.now(timezone.utc).isoformat(),
+        "created_at": existing.get("created_at") or datetime.now(timezone.utc).isoformat(),
+        # Manual SVG-over-photo registration (admin.html's design canvas,
+        # "Show SVG outline overlay") — there's no automatic mapping between
+        # an uploaded SVG's own coordinate space and the photo's, so this is
+        # a plain uniform scale + mm offset the admin dials in by eye until
+        # the traced outline visually sits on the real product edge. Kept
+        # on re-save — editing name/dims/files doesn't need re-alignment.
+        "svg_scale": existing.get("svg_scale", 1.0),
+        "svg_offset_x_mm": existing.get("svg_offset_x_mm", 0.0),
+        "svg_offset_y_mm": existing.get("svg_offset_y_mm", 0.0),
     }
+    _write(reg)
+    return reg[template_id]
+
+
+def save_alignment(template_id, *, scale, offset_x_mm, offset_y_mm):
+    reg = _load()
+    if template_id not in reg:
+        raise KeyError(f"Unknown template {template_id!r}")
+    reg[template_id]["svg_scale"] = round(float(scale), 4)
+    reg[template_id]["svg_offset_x_mm"] = round(float(offset_x_mm), 2)
+    reg[template_id]["svg_offset_y_mm"] = round(float(offset_y_mm), 2)
     _write(reg)
     return reg[template_id]
 

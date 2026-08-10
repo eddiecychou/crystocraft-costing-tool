@@ -382,8 +382,9 @@ ways, both worth knowing before workstream 2 builds on this:
   else" framing in the original plan rather than a shippable authoring
   tool on its own.
 
-Render service version bumped 0.10.0 → 0.11.0, then 0.11.1 (bug fix, below)
-then 0.12.0 (SVG overlay, below).
+Render service version bumped 0.10.0 → 0.11.0, then 0.11.1 (bug fix,
+below), then 0.12.0 (SVG overlay, below), then 0.13.0 (manual alignment
+controls, below).
 
 **Bug found and fixed same day**: resize handles didn't respond to drag at
 all (move worked fine). Root cause: the canvas element has `max-width:100%`
@@ -408,6 +409,22 @@ re-exporting the SVG sized to match the photo, not code. A real anchored
 mapping (crop offset + scale, stored with the template) is a fair
 candidate for workstream 2, once zones need the SVG boundary to actually
 be load-bearing rather than just visually checked.
+
+**Manual alignment controls added same day**, owner: "need to be able to
+resize the svg, now there is no way to resize so that it fits the product
+behind." Rather than wait for a real registration step, added exactly
+three numbers the admin dials in by eye — scale (%) and X/Y offset (mm) —
+applied to the overlay (anchored at the photo's centre so scaling grows/
+shrinks symmetrically), with live preview and a "Save alignment" button.
+Persisted per template as `svg_scale`/`svg_offset_x_mm`/`svg_offset_y_mm`
+via a new `POST /templates/{id}/align` endpoint
+(`templates.py`'s `save_alignment()`) — remembered next time the template
+is opened, not just for the current session. This IS the "real anchored
+mapping" flagged as workstream-2 material above, just built now, minimally
+(uniform scale + offset, no rotation or non-uniform stretch), because the
+owner needed it to actually check a template rather than wait.
+
+Render service version 0.12.0 → 0.13.0.
 
 ## 6. Open questions for the owner
 

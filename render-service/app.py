@@ -39,7 +39,7 @@ from engine import templates as tmpl_registry
 # on the admin page header, so it's visible from the outside whether a given
 # deploy actually landed (owner, 2026-08-06, after several redeploys in a
 # row with no visible confirmation the new code was live).
-app = FastAPI(title="Crystocraft Customizer Render", version="0.12.0")
+app = FastAPI(title="Crystocraft Customizer Render", version="0.13.0")
 
 RENDER_TOKEN = os.environ.get("RENDER_TOKEN", "")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
@@ -495,3 +495,23 @@ def templates_delete(template_id: str):
     except KeyError:
         raise HTTPException(status_code=404, detail="No such template")
     return {"ok": True}
+
+
+@app.post("/templates/{template_id}/align", dependencies=[Depends(require_admin)])
+def templates_align(
+    template_id: str,
+    scale: float = Form(...),
+    offset_x_mm: float = Form(...),
+    offset_y_mm: float = Form(...),
+):
+    """Manual SVG-over-photo registration — a plain uniform scale + mm
+    offset the admin dials in by eye in the design canvas until the traced
+    outline sits on the real product edge. See templates.py's
+    save_template() docstring for why there's no automatic mapping."""
+    if scale <= 0:
+        raise HTTPException(status_code=400, detail="scale must be positive")
+    try:
+        entry = tmpl_registry.save_alignment(template_id, scale=scale, offset_x_mm=offset_x_mm, offset_y_mm=offset_y_mm)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="No such template")
+    return _template_out(template_id, entry)
