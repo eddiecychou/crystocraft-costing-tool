@@ -41,17 +41,35 @@ def boost_ab_flecks(base, source=None, gain=8.0, lo=0.04, ramp=0.10):
     occasional strongly-coloured facet flecks. A flat saturation boost tints
     the whole thing (the neutral stone has a slight warm bias that blows up);
     instead this takes each pixel's own chroma (`source` minus its luminance)
-    scaled by a ramp on that chroma's MAGNITUDE — so a near-neutral pixel
-    (|chroma| < lo) contributes nothing and only genuine flecks get pushed —
-    and screen-adds it (additive, never darkens). `source` is the crystal
+    scaled by a ramp on that chroma's MAGNITUDE relative to the photo's OWN
+    typical chroma — so a near-neutral pixel with below-average chroma
+    contributes nothing and only genuine outlier flecks get pushed — and
+    screen-adds it (additive, never darkens). `source` is the crystal
     material to read flecks FROM (defaults to `base` when they're the same
     image, e.g. Mode B where the material itself is the surface); Mode A
-    passes the crystal material separately since its `base` is the graphic."""
+    passes the crystal material separately since its `base` is the graphic.
+
+    Threshold made relative 2026-08-11 (owner: "Copper became orange and
+    lost all the crystal facets"). This is called unconditionally for every
+    colour, not just actual AB ones — the original fixed `lo` threshold
+    assumed "a non-AB colour has little chroma variation, so this is safe,"
+    which holds for a muted/near-neutral colour (Jet) but not a richly
+    saturated one (Copper, Gold, ...): its chroma is uniformly HIGH, not
+    varying, so the fixed threshold read almost every pixel as a "fleck" and
+    screen-boosted the whole material at gain=8, blowing the colour out flat
+    and washing out the facet-relief contrast underneath. Subtracting the
+    photo's own median chroma before thresholding makes a fleck mean
+    "brighter than what's typical for THIS photo" instead of "brighter than
+    one constant assumed to fit every colour" — a White/AB photo (near-zero
+    baseline, rare bright flecks) renders the same as before; a uniformly
+    saturated photo (high baseline, little pixel-to-pixel variation) is now
+    correctly left close to untouched instead of blown out."""
     src = base if source is None else source
     L = luminance(src)
     chroma = src - L[..., None]
     cmag = np.abs(chroma).sum(-1, keepdims=True)
-    fleck = np.clip((cmag - lo) / ramp, 0, 1)
+    baseline = np.median(cmag)
+    fleck = np.clip((cmag - baseline - lo) / ramp, 0, 1)
     return screen(base, np.clip(chroma * gain * fleck, 0, 1))
 
 def apply_facet_relief(base, mat, hi_gain=0.5, lo_gain=0.35):
