@@ -1053,9 +1053,9 @@
           <div class="panel">
             <label style="display:flex;align-items:center;justify-content:space-between">
               Crystal zones (workstream 2)
-              <button class="small" id="dc-zone-draw-toggle">✏️ Draw zone</button>
+              <button class="small" id="dc-zone-draw-toggle" disabled>✏️ Draw zone</button>
             </label>
-            <p class="help">Click points on the photo to trace a zone (min 3), then Finish. While drawing, the graphic can't be dragged — click "Draw zone" again to stop and go back to positioning the graphic.</p>
+            <p class="help" id="dc-zone-hint">Upload a graphic above first — zones are drawn with it visible as a reference, so you can trace around where it actually sits rather than guessing blind.</p>
             <label>Zone name</label>
             <input type="text" id="dc-zone-name" placeholder="e.g. Logo area">
             <label>Crystal type</label>
@@ -1169,6 +1169,7 @@
   }
 
   function dcToggleZoneMode() {
+    if (!dcState?.img) return;
     dcZoneMode = !dcZoneMode;
     dcCurrentZonePoints = [];
     const btn = document.getElementById('dc-zone-draw-toggle');
@@ -1251,6 +1252,10 @@
       dcState.xMM = (dcState.tmpl.width_mm - dcState.wMM) / 2;
       dcState.yMM = (dcState.tmpl.height_mm - dcState.hMM) / 2;
       dcUndo = []; dcRedo = [];
+      const zoneBtn = document.getElementById('dc-zone-draw-toggle');
+      const zoneHint = document.getElementById('dc-zone-hint');
+      if (zoneBtn) zoneBtn.disabled = false;
+      if (zoneHint) zoneHint.textContent = 'Click points on the photo to trace a zone (min 3), then Finish. While drawing, the graphic can\'t be dragged — click "Draw zone" again to stop and go back to positioning the graphic.';
       dcDrawCanvas();
     };
     img.src = URL.createObjectURL(file);

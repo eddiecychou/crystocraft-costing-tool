@@ -487,6 +487,16 @@ of it being fixed in code, which was the actual point of workstream 2 per
 
 Render service version 0.14.1 → 0.15.0.
 
+**Zone-drawing gated on a placed graphic, same day**, owner: "I think need
+to overlay the graphic in order to draw this. So the workflow need to add
+a image first." The "Draw zone" button is now disabled until a graphic
+has been uploaded and placed — zones are meant to be traced with the
+actual logo/graphic visible as a reference (where it really sits), not
+drawn blind against the bare product photo. The hint text changes from
+"upload a graphic first" to the drawing instructions once one's loaded.
+
+Render service version 0.15.0 → 0.15.1.
+
 ## 6. Open questions for the owner
 
 - Photography budget/cadence for growing past 27 swatches — who shoots them,
