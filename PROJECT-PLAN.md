@@ -43,6 +43,186 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
+## Current Status — V7.22 CLOSED as of 2026-08-11
+
+Commit chain `d8e355e`→`ec467fc` (17 commits), all deployed (app via
+Netlify, `render-service/` separately to Fly.io — 8 of those deploys).
+Two threads, run back to back in one long session: the **customer portal
+finally got a real homepage** (`/shop` — hero, pillar cards, hand-curated
+Featured Products, quick access), and a **real-usage bug hunt on the
+Physical Design Workbench** the owner drove by actually using it while
+reviewing the homepage work, which surfaced and fixed four separate,
+previously-invisible defects in the render engine and its admin tool. A
+fifth, unrelated thread landed in the middle: an admin account
+(`eddie@uart.com.hk`) lost its own role and got locked out mid-session,
+traced to a one-click "delete account" with no real friction — fixed with
+a typed-confirmation guard.
+
+### The numbers
+
+| | |
+|---|---:|
+| Commits | 17 |
+| New customer portal route | `/shop` — homepage, replacing the `/shop/figurine` post-login default |
+| Render-service (Fly.io) version | 0.20.0 → 0.28.0, 8 deploys |
+| Real render-engine bugs found and fixed | 4 (design-canvas scroll, render caching, stone-size math, colour blow-out) |
+| Admin auth mechanism | HTTP Basic (uncached-credential dead end) → real login + signed session cookie |
+| New Firestore collection | `settings/front_page` (Featured Products) |
+| New Zone field | `backfilm` (White/Black), wired end-to-end from admin picker to render |
+| Security fix | typed-email confirmation required to delete another admin's login |
+
+### 1. Customer portal homepage (`/shop`)
+
+No portal "front page" existed before this cycle — signing in dropped a
+customer straight onto the Figurine Gifts catalogue. Built from scratch
+against a spec the owner supplied, then iterated hard against real
+feedback over several rounds:
+
+- **Structure**: full-bleed hero banner (`heroImage`, edge-to-edge —
+  `mx-[calc(50%-50vw)]` breakout technique, matching crystocraft.com's own
+  wide-banner treatment after the first boxed-photo version read as "weak"
+  by comparison), three pillar cards (Figurine / Corporate / Crystal
+  Materials, each a real owner-vetted photo — including one showing a
+  specific client's branded trophies, explicitly approved for portal-wide
+  display), and a Quick Access grid (Favourites/Enquiry/Orders/Brand
+  Gallery).
+- **Hero copy iteration**: a "Start an Enquiry" hero button was removed
+  after the owner pointed out `/shop/enquiry` is the cart/review screen,
+  not a place to actually start one from scratch — an enquiry only begins
+  by adding a product from the catalogue. The matching quick-access tile
+  was relabelled "My Enquiry" to stop implying otherwise.
+- **Featured Products** (`settings/front_page`, `src/frontPageFeatured.js`):
+  the owner wanted to hand-pick 8+ showcase products AND which specific
+  photo of each to use, not an automatic "new/bestseller" algorithm. New
+  admin page (Marketing → Front Page) with a two-step picker — search
+  either catalogue, then pick one of that product's own photos
+  (`src/components/FrontPageProductPicker.jsx`, built from
+  `LineImagePicker.jsx`'s shape). Corporate-gift photos are filtered to
+  `isStorefrontVisible()` and exclude anything `branded_for_customer_id`-
+  tagged — this list is public to every customer, so a client-branded
+  photo must never even be selectable there.
+- **Polish pass**: pillar images and Featured Product photos zoom
+  slightly on hover; Quick Access tiles rebuilt with a circular
+  brand-tinted icon badge instead of a bare icon (owner: "a bit too
+  simple"), plus a card lift on hover.
+- Not verified by this assistant: the actual admin add/reorder/save flow
+  for Featured Products and a populated render with real data — no admin
+  login available to this assistant, only structural/mount-without-error
+  checks. Owner confirmed "works great" after their own test.
+
+### 2. Physical Design Workbench — four real bugs, found by actually using it
+
+None of this was planned work — the owner opened the design canvas to
+review homepage progress, hit real friction, and each fix surfaced the
+next issue underneath it:
+
+- **Design canvas panel wouldn't stay usable.** First fix
+  (`position: sticky`) was itself wrong — it only stays pinned within its
+  own grid row, so it broke loose and the whole page scrolled anyway once
+  the canvas column (shorter than the panel) scrolled past. Real fix:
+  JS-computed explicit height locking the panel to actual remaining
+  viewport space, so it's a genuinely bounded box that scrolls only
+  within itself — verified by comparing `window.scrollY` before/after a
+  real scroll gesture, not just eyeballing it.
+- **"Render as crystal" silently served a stale cached image.** Switching
+  a zone from `fine_rock_1.5` to `rock_2.0`, saving, and re-rendering
+  produced pixel-identical output. `GET /templates/{id}/render-zones` was
+  the same URL on every click with no cache-control header — added
+  `Cache-Control: no-store` server-side and `cache: 'no-store'`
+  client-side (also applied to `/admin` itself, since a cached copy of
+  *that* page would silently run stale JS after any future fix).
+- **Stone size was never actually calibrated to the measured pitch.**
+  Traced `build_material()`: it resized the WHOLE source photo to a
+  size derived from `sp/pitch`, and pitch cancels out of that formula
+  algebraically — final stone size tracked the uploaded photo's
+  incidental resolution, not the "measure a stone" click the capture
+  tool asks for. Rewrote to crop a pitch-anchored patch (a fixed number
+  of real stones) before resizing, so the render is structurally
+  independent of source-photo resolution. Verified against real
+  photographed swatches, not synthetic placeholders — a first
+  verification attempt using flat noise gave a false negative, since
+  noise has no facet structure to survive resizing regardless of the fix.
+- **Saturated colours (Copper) blew out to a flat wash.**
+  `boost_ab_flecks()` — meant only for the specific "AB" (Aurora
+  Borealis) colour's white-backfilm iridescence — was called
+  unconditionally on every colour, on the documented assumption that
+  "a non-AB colour has little chroma variation." True for a muted colour
+  (Jet) but wrong for a saturated one: uniformly high chroma isn't
+  "flecks," so the fixed threshold boosted the whole material. Owner's
+  follow-up findings ("even real Crystal AB itself doesn't look right,"
+  "everything except jet black is off") ruled out threshold-tuning
+  entirely — the function was disabled at all three call sites rather
+  than re-guessed, same "no synthetic substitute" principle already used
+  elsewhere in this engine. Every material now renders as the real
+  photographed crystal directly.
+- **New: backfilm (White/Black) selection per zone.** The render engine
+  already supported it (`crystal_photo(..., backfilm=...)`, documented
+  since the 2026-07-30 schema rewrite as a real photographed difference,
+  not a tint) but zones had no way to choose it. Added end-to-end: `Zone`
+  model field, admin dropdown populated from whichever backfilms were
+  actually captured for the selected colour, wired through to the
+  render. Verified by saving one colour under two distinct backfilm
+  photos and confirming a template's two zones render visibly different
+  halves.
+- **Admin auth replaced.** The owner was locked out of the *admin tool
+  itself* in a normal Chrome window — no password prompt, just a bare
+  401 — and it only worked in a fresh private window. Root cause: HTTP
+  Basic Auth credentials are cached by the browser per-origin
+  indefinitely with no logout and no way to clear a stale/wrong one
+  short of wiping site data. Replaced with a real login page + signed
+  session cookie (HMAC keyed on `ADMIN_PASSWORD` itself, so rotating the
+  password invalidates every session for free) and an actual Sign Out
+  link. This also explains most of the browser-automation flakiness this
+  assistant hit testing the admin tool all session — same root cause.
+
+### 3. Admin account delete-guard (unplanned, mid-session incident)
+
+`eddie@uart.com.hk` lost its `role: admin` and landed on the customer
+"Awaiting approval" screen mid-session — traced to its Firestore
+`users/{uid}` doc having briefly gone missing, which triggered a
+self-heal effect (`App.jsx`) that recreates a blank pending-customer doc
+whenever a signed-in session finds no matching doc. Owner fixed the
+immediate issue by hand in the Firestore console. Root cause almost
+certainly `AccountEdit.jsx`'s one-click "Delete account" button — a
+`canDelete = !isSelf` guard already blocked deleting your *own* account,
+but deleting a *different* admin's login had no real friction, and the
+owner confirmed "it happens a few times already before." Fixed: deleting
+an admin account now requires typing that account's exact email, same
+"type to confirm" pattern already used by "Make admin" on the same page.
+Not confirmed by Firestore audit logs (not accessible from this
+environment) — the mechanism is inferred from code + timeline, not
+directly observed.
+
+### 4. What's genuinely new vs. this cycle's own conventions
+
+- **First Firestore collection this cycle reusing the `settings/{docId}`
+  pattern rather than a dedicated collection** (`settings/front_page`) —
+  same reasoning as `catalogueCollections.js`'s `settings/catalogue_band`:
+  the existing rule already permits storefront read + admin write, no new
+  rule to deploy for a small admin-curated config blob.
+- **First real login system on the render-service admin tool** — every
+  prior cycle's swatch/template/zone tooling sat behind HTTP Basic since
+  the tool was first built; this is the first time that's been swapped
+  for something with an actual logout.
+- No new Postgres/Supabase surface, no ERP-mirror changes, this cycle.
+
+### Open — not verified
+
+- Featured Products' real admin flow (add/reorder/save with actual
+  products) and a populated homepage render — owner tested and confirmed
+  "works great," but this assistant never had admin credentials to
+  click through it directly.
+- The render-engine fixes (stone size, colour) are verified against real
+  photographed swatches for ONE template's math, not against every
+  colour in the live registry — worth a broader visual pass across the
+  full swatch library now that the underlying formula is actually
+  correct.
+- Whether the admin-account delete-guard fix would have been enough on
+  its own, or whether the earlier incidents were something else
+  entirely — no audit-log confirmation either way.
+
+---
+
 ## Current Status — V7.21 CLOSED as of 2026-08-11
 
 Commit chain `013a1aa`→`5662770` (82 commits), all deployed. This cycle ran
@@ -536,34 +716,49 @@ before treating any of the following as proven:
 
 ---
 
-## Where V7.22 starts
+## Where V7.23 starts
 
-**The owner's stated plan**: start V7.22 on the **customer portal front
-page**, then come back to the Physical Design Workbench afterward. So the
-render-service thread below is a deliberate pause, not abandoned or
-blocked — pick it back up when asked, don't treat it as done.
+**No stated plan from the owner yet this time** — V7.22 closed
+mid-session on its own (homepage + an unplanned Design Workbench bug
+hunt), so unlike prior "Where X starts" entries this one is genuinely
+open. Check with the owner first; the two live threads below are both
+real options, not a decided order.
 
-**Customer portal front page** — no scoping done yet this cycle; the
-portal's current landing route is whatever `Storefront.jsx` defaults to
-(`/shop/figurine`), not a dedicated front/home page. Worth checking with
-the owner what "front page" actually means before assuming: a real
-landing/dashboard view, a redesign of an existing shop page, or something
-else. Nothing in this codebase currently distinguishes a portal "front
-page" from the catalogue itself.
+**Customer portal homepage (`/shop`) — V1 shipped, several real gaps
+still open:**
+- Done: hero, pillar cards, Featured Products (admin-curated), Quick
+  Access, all with a hover-polish pass. See V7.22 §1.
+- Not done: Featured Products' actual admin flow was never click-tested
+  by this assistant (no admin login available) — the owner confirmed it
+  "works great" from their own test, but a second look wouldn't hurt,
+  especially the reorder/remove/change-photo paths.
+- Not done: no analytics on the homepage (deliberately deferred in the
+  original V1 spec) — worth revisiting if the owner wants to know
+  whether Featured Products actually drives clicks.
+- Not done: mobile/tablet responsive check on the Featured Products grid
+  and the redesigned Quick Access tiles specifically — the rest of the
+  homepage was checked at both widths, these two pieces shipped after
+  that pass and weren't re-checked.
 
-**Physical Design Workbench — paused mid-build, exactly here:**
+**Physical Design Workbench — paused mid-build, same place as before,
+plus four real bugs now fixed underneath it:**
 - Done: product template library (workstream 4), real-mm canvas +
   positioning (workstream 1), user-drawn zones with holes + background
-  auto-fill (workstream 2), and rendering saved zones as real crystal
-  texture (`engine/zone_render.py`) — all proven against one real
-  template, "Round Coaster."
+  auto-fill (workstream 2), rendering saved zones as real crystal
+  texture (`engine/zone_render.py`), backfilm (White/Black) selection
+  per zone, and — new this cycle — the render is now actually correctly
+  calibrated and coloured (V7.22 §2), the admin tool has a real login,
+  and the design canvas is usable without fighting page scroll. All
+  proven against one real template, "Round Coaster."
 - Not started: **workstream 3** (unifying zone-map/printed mode into one
   workspace with a mode toggle — today they're still separate code
   paths) and **workstream 5** (warping the rendered crystal layer onto
   the template's SVG outline and pasting it onto the product photo for a
   finished, photorealistic image — the actual "eliminates Photoshop"
   payoff of the whole plan). `Crystal_Fabric_Studio_Spec.md` §5c-§5j has
-  the full build history and reasoning for everything done so far.
+  the full build history and reasoning for everything done through
+  workstream 2; V7.22 §2 above covers what's changed in the render
+  engine itself since.
 - The template↔SVG registration is still a manually-dialed-in scale/
   offset/opacity overlay (§5f-§5h of the spec), not a real coordinate
   mapping — worth knowing before workstream 5 tries to use the SVG as an
@@ -571,12 +766,24 @@ page" from the catalogue itself.
   "mathematically registered" are different bars.
 - Only one real template exists. Before trusting the render engine's
   output generally (not just for the Round Coaster), it's worth building
-  a second template end-to-end.
+  a second template end-to-end — now more worthwhile than before V7.22,
+  since the underlying size/colour math was actually broken until this
+  cycle and a second template would have been testing against wrong
+  numbers.
+- Now that stone size and colour are fixed, worth a broader visual pass
+  across the full swatch library (V7.22's fixes were verified against
+  real photos for the general mechanism, not every registered colour).
 
-Everything in §"Open — not verified" above the deployment notes is also
-fair game for a first real pass — in particular the portal Order History
-feature, since it was built and shipped without this assistant ever being
-able to click through it as a real customer.
+**Also unresolved from V7.22**: whether the admin-account delete-guard
+(§3) was the whole story behind "it happens a few times already before"
+— no Firestore audit-log confirmation, just the typed-confirmation fix
+already shipped. Consider checking Cloud Logging if it's ever enabled
+for this project.
+
+Everything in V7.21's §"Open — not verified" is still fair game for a
+first real pass too — in particular the portal Order History feature,
+since it was built and shipped without this assistant ever being able
+to click through it as a real customer.
 
 ---
 
