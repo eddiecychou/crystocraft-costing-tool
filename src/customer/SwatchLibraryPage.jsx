@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Sparkles, Search, X, ChevronLeft, ChevronRight, PackageCheck } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import { fetchSwatchRegistry, fetchSwatchImageUrl, loadSwatchNotes, requestSwatchSample } from '../swatchLibraryApi'
-import { CRYSTAL_TYPES } from '../customizerApi'
 
 // Portal-facing swatch browser — Crystal_Fabric_Studio_Spec.md §5b. Same
 // registry the admin Swatch Library reads (src/pages/SwatchLibrary.jsx),
@@ -172,7 +171,6 @@ export default function SwatchLibraryPage({ profile }) {
   const [registry, setRegistry] = useState(null)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
-  const [styleFilter, setStyleFilter] = useState('')
   const [selected, setSelected] = useState(null)
 
   useEffect(() => {
@@ -183,13 +181,9 @@ export default function SwatchLibraryPage({ profile }) {
     if (!registry) return []
     const q = search.trim().toLowerCase()
     return Object.entries(registry)
-      .filter(([name, entry]) => {
-        if (q && !name.toLowerCase().includes(q)) return false
-        if (styleFilter && !Object.keys(entry.slots?.[styleFilter] || {}).length) return false
-        return true
-      })
+      .filter(([name]) => !q || name.toLowerCase().includes(q))
       .sort(([a], [b]) => a.localeCompare(b))
-  }, [registry, search, styleFilter])
+  }, [registry, search])
 
   return (
     <div>
@@ -202,18 +196,10 @@ export default function SwatchLibraryPage({ profile }) {
 
       {error && <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 mb-4">{error}</div>}
 
-      <div className="flex flex-col sm:flex-row gap-2 mb-5">
-        <div className="relative flex-1">
-          <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-30" />
-          <input type="text" placeholder="Search colour name…" className="input w-full pl-8"
-            value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        <select className="input sm:w-56" value={styleFilter} onChange={e => setStyleFilter(e.target.value)}>
-          <option value="">All crystal types</option>
-          {[...new Set(CRYSTAL_TYPES.map(t => t.style))].map(s => (
-            <option key={s} value={s}>{STYLE_LABEL[s] || s}</option>
-          ))}
-        </select>
+      <div className="relative mb-5">
+        <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-30" />
+        <input type="text" placeholder="Search colour name…" className="input w-full pl-8"
+          value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       {!registry && !error ? <LoadingBar /> : entries.length === 0 ? (
