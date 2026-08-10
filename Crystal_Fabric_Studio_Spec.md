@@ -439,6 +439,19 @@ scale/offset via the same `/templates/{id}/align` endpoint
 
 Render service version 0.13.0 → 0.14.0.
 
+**Graphic opacity added same day**, owner: "I can see the opacity of the
+svg, but I don't see the opacity for the image overlay on it" — the
+placed graphic (the customer logo/photo being positioned) sits on top of
+the SVG overlay and had no way to see through it either. Added a
+"Graphic opacity (%)" control next to the aspect-lock checkbox, same
+live-redraw pattern as the SVG's opacity field. Deliberately NOT
+persisted — unlike the SVG's alignment numbers, the placed graphic itself
+isn't saved anywhere in this phase (see this section's earlier note on
+"nothing persists" for the graphic), so its opacity is view-only for the
+current session, reset each time a template is reopened.
+
+Render service version 0.14.0 → 0.14.1.
+
 ## 6. Open questions for the owner
 
 - Photography budget/cadence for growing past 27 swatches — who shoots them,

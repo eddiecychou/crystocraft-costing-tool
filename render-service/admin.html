@@ -1018,6 +1018,8 @@
             <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px">
               <input type="checkbox" id="dc-aspect-lock" checked style="width:auto;margin:0"> Lock aspect ratio while resizing
             </label>
+            <label style="margin-top:10px">Graphic opacity (%)</label>
+            <input type="text" id="dc-graphic-opacity" value="100">
           </div>
           <div class="panel" id="dc-readout">
             <label>Placed size (real mm)</label>
@@ -1046,6 +1048,7 @@
       document.getElementById(id).addEventListener('input', dcOnAlignInput);
     });
     document.getElementById('dc-svg-save-align').addEventListener('click', () => dcSaveAlignment(id));
+    document.getElementById('dc-graphic-opacity').addEventListener('input', dcOnGraphicOpacityInput);
 
     // Alignment (scale % + mm offset + overlay opacity) persists per
     // template — see templates.py's save_template()/save_alignment().
@@ -1060,7 +1063,7 @@
     bg.onload = () => {
       dcState = {
         tmpl: t, bgImg: bg, img: null, svgImg: null,
-        xMM: t.width_mm / 2, yMM: t.height_mm / 2, wMM: 0, hMM: 0, aspect: 1,
+        xMM: t.width_mm / 2, yMM: t.height_mm / 2, wMM: 0, hMM: 0, aspect: 1, imgOpacity: 1,
         svgScale: t.svg_scale ?? 1, svgOffXMM: t.svg_offset_x_mm ?? 0, svgOffYMM: t.svg_offset_y_mm ?? 0,
         svgOpacity: t.svg_opacity ?? 0.5,
       };
@@ -1090,6 +1093,16 @@
     dcState.svgOffXMM = Number.isFinite(offX) ? offX : dcState.svgOffXMM;
     dcState.svgOffYMM = Number.isFinite(offY) ? offY : dcState.svgOffYMM;
     dcState.svgOpacity = Number.isFinite(opacityPct) ? Math.max(0, Math.min(100, opacityPct)) / 100 : dcState.svgOpacity;
+    dcDrawCanvas();
+  }
+
+  // Separate from dcOnAlignInput/dcSaveAlignment — the placed graphic isn't
+  // persisted anywhere in this phase (see designCanvasShell's comment), so
+  // its opacity is view-only, not saved with the template like the SVG's.
+  function dcOnGraphicOpacityInput() {
+    if (!dcState) return;
+    const pct = parseFloat(document.getElementById('dc-graphic-opacity').value);
+    dcState.imgOpacity = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) / 100 : dcState.imgOpacity;
     dcDrawCanvas();
   }
 
@@ -1206,7 +1219,10 @@
     if (dcState.img) {
       const gx = dcState.xMM * pxPerMM, gy = dcState.yMM * pxPerMM;
       const gw = dcState.wMM * pxPerMM, gh = dcState.hMM * pxPerMM;
+      ctx.save();
+      ctx.globalAlpha = dcState.imgOpacity ?? 1;
       ctx.drawImage(dcState.img, gx, gy, gw, gh);
+      ctx.restore();
       ctx.strokeStyle = '#c6a664'; ctx.lineWidth = 1.5;
       ctx.strokeRect(gx, gy, gw, gh);
       ctx.fillStyle = '#c6a664';
