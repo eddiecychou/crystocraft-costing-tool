@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Gem, Search, X, Plus } from 'lucide-react'
+import { Gem, Search, X, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import { fetchSwatchRegistry, fetchSwatchImageUrl, loadSwatchNotes, saveSwatchNotes } from '../swatchLibraryApi'
 import { CRYSTAL_TYPES } from '../customizerApi'
@@ -23,6 +23,66 @@ function SwatchThumb({ filename, alt }) {
   return (
     <div className="aspect-square bg-gray-100 rounded-md overflow-hidden flex items-center justify-center">
       {url ? <img src={url} alt={alt} className="w-full h-full object-cover" /> : <Gem size={20} className="text-gray-300" />}
+    </div>
+  )
+}
+
+// Flattened [{ style, backfilm, file }] list for one colour, every captured
+// photo across both styles — what the card carousel cycles through.
+function photosOf(entry) {
+  const out = []
+  for (const [style, backfilms] of Object.entries(entry.slots || {})) {
+    for (const [backfilm, slot] of Object.entries(backfilms)) {
+      out.push({ style, backfilm, file: slot.file })
+    }
+  }
+  return out
+}
+
+// Grid-card carousel — owner, 2026-08-11: "see different effects and colors
+// with arrows" on the first-level grid, not just the single static
+// thumbnail it had before. Cycles every captured (style, backfilm) photo
+// for the colour; arrows stop propagation so they don't also open the
+// detail modal (the card's own onClick does that).
+function SwatchCardCarousel({ name, entry }) {
+  const photos = useMemo(() => photosOf(entry), [entry])
+  const [i, setI] = useState(0)
+  const [url, setUrl] = useState(null)
+  const current = photos[i]
+
+  useEffect(() => {
+    if (!current) { setUrl(null); return }
+    let alive = true
+    let objUrl = null
+    fetchSwatchImageUrl(current.file).then(u => { if (alive) { objUrl = u; setUrl(u) } }).catch(() => {})
+    return () => { alive = false; if (objUrl) URL.revokeObjectURL(objUrl) }
+  }, [current?.file])
+
+  const step = (dir, e) => {
+    e.stopPropagation()
+    e.preventDefault()
+    setI(n => (n + dir + photos.length) % photos.length)
+  }
+
+  return (
+    <div className="aspect-square bg-gray-100 relative overflow-hidden group">
+      {url ? <img src={url} alt={`${name} — ${current.style} on ${current.backfilm}`} className="w-full h-full object-cover" />
+        : <div className="w-full h-full flex items-center justify-center"><Gem size={20} className="text-gray-300" /></div>}
+      {photos.length > 1 && (
+        <>
+          <button type="button" onClick={e => step(-1, e)}
+            className="absolute left-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <ChevronLeft size={14} />
+          </button>
+          <button type="button" onClick={e => step(1, e)}
+            className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <ChevronRight size={14} />
+          </button>
+          <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-white bg-black/40 rounded-full px-1.5 py-0.5">
+            {i + 1}/{photos.length}
+          </span>
+        </>
+      )}
     </div>
   )
 }
@@ -165,20 +225,21 @@ export default function SwatchLibrary() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {entries.map(([name, entry]) => {
-            const anyPhoto = Object.values(entry.slots || {}).flatMap(s => Object.values(s))[0]
             return (
-              <button key={name} onClick={() => setSelected([name, entry])}
-                className="card overflow-hidden flex flex-col text-left hover:shadow-md transition-shadow">
-                {anyPhoto ? <SwatchThumb filename={anyPhoto.file} alt={name} /> : (
-                  <div className="aspect-square bg-gray-100 flex items-center justify-center"><Gem size={20} className="text-gray-300" /></div>
-                )}
+              // Not a <button> — SwatchCardCarousel renders real <button>
+              // arrows inside it, and a button can't nest another button.
+              <div key={name} role="button" tabIndex={0}
+                onClick={() => setSelected([name, entry])}
+                onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected([name, entry]) } }}
+                className="card overflow-hidden flex flex-col text-left hover:shadow-md transition-shadow cursor-pointer">
+                <SwatchCardCarousel name={name} entry={entry} />
                 <div className="p-2">
                   <p className="text-sm text-ink truncate">{name}</p>
                   <p className="text-[11px] text-ink-50">
                     {Object.entries(entry.slots || {}).filter(([, bf]) => Object.keys(bf).length).map(([s]) => STYLE_LABEL[s] || s).join(' · ') || 'No photos'}
                   </p>
                 </div>
-              </button>
+              </div>
             )
           })}
         </div>
