@@ -626,4 +626,13 @@ def templates_render_zones(template_id: str):
         raise HTTPException(status_code=500, detail=f"render failed: {e}")
     buf = io.BytesIO()
     img.save(buf, format="PNG")
-    return Response(content=buf.getvalue(), media_type="image/png")
+    # This URL is byte-identical across "render again after changing a zone's
+    # material" clicks (no query param, no ETag) — without an explicit
+    # no-store, the browser's default heuristic caching for a GET image
+    # response can silently keep serving the FIRST render forever, making a
+    # real material/size change look like it had no effect at all. Found
+    # 2026-08-11: switching a zone from fine_rock_1.5 to rock_2.0, saving,
+    # and re-rendering produced pixel-identical output (down to fleck
+    # position) — a cached response, not a rendering bug.
+    return Response(content=buf.getvalue(), media_type="image/png",
+                     headers={"Cache-Control": "no-store"})

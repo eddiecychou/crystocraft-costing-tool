@@ -1474,7 +1474,12 @@
     if (status) status.textContent = 'Rendering…';
     if (btn) btn.disabled = true;
     try {
-      const res = await fetch(`/templates/${encodeURIComponent(templateId)}/render-zones`);
+      // no-store here (and Cache-Control: no-store on the server response,
+      // app.py) — this URL is otherwise byte-identical on every click, so a
+      // browser's default heuristic caching can silently keep serving the
+      // FIRST render forever, making a real "change material, save,
+      // re-render" look like nothing happened at all.
+      const res = await fetch(`/templates/${encodeURIComponent(templateId)}/render-zones`, { cache: 'no-store' });
       if (!res.ok) {
         let detail = 'Render failed';
         try { detail = (await res.json()).detail || detail; } catch {}
