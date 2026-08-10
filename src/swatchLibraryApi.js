@@ -5,10 +5,17 @@
 // (§5b); curated notes (legacy_swarovski_refs) are a small Firestore
 // collection this app owns directly, customer-readable / admin-writable.
 // recommended_use_cases dropped 2026-08-11 (owner: too fiddly to enter).
-import { doc, getDoc, setDoc, addDoc, collection, serverTimestamp } from 'firebase/firestore'
+//
+// The Phase 2b "request a sample" CTA does NOT submit here directly — it
+// adds a `type: 'swatch_sample'` line to the same enquiry cart (store.jsx's
+// useCart) Corporate/Figurine Gifts use, so it goes through the existing
+// /shop/enquiry review-and-send flow (EnquiryPage.jsx) like every other
+// product. First version submitted straight to Firestore on its own; owner,
+// 2026-08-11: it didn't show up under the portal's Enquiry tab the way
+// adding a product does — this module has no submission function anymore.
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from './firebase'
 import { authedUser } from './firebase'
-import { notifyEmail } from './notify'
 
 async function authedGet(path) {
   const user = await authedUser()
@@ -60,38 +67,4 @@ export async function saveSwatchNotes(colorName, { legacy_swarovski_refs }) {
     legacy_swarovski_refs: Array.isArray(legacy_swarovski_refs) ? legacy_swarovski_refs : [],
     updated_at: serverTimestamp(),
   }, { merge: true })
-}
-
-// Phase 2b sample-request CTA — the actual conversion event per
-// Crystal_Fabric_Studio_Spec.md §4 ("physical samples are the actual
-// conversion event, not a rendered PNG"), not a price band. Reuses the
-// existing `enquiries` collection (same lead-capture shape the wholesale
-// enquiry cart already writes, same admin Enquiries.jsx inbox picks it up
-// from) rather than a parallel lead table — a single `type: 'swatch_sample'`
-// item distinguishes it in the admin list.
-export async function requestSwatchSample(profile, { colorName, style, backfilm, note }) {
-  const user = await authedUser()
-  if (!user) throw new Error('Please sign in.')
-  const payload = {
-    uid: user.uid,
-    company_name: profile?.company_name || '',
-    contact_name: profile?.contact_name || '',
-    email: profile?.email || user.email || '',
-    base_currency: profile?.base_currency || '',
-    items: [{
-      type: 'swatch_sample', name: colorName, color_name: colorName,
-      finish: style === 'fabric' ? 'Crystal Fabric' : 'Fine Rock / Rock',
-      note: [backfilm ? `${backfilm} backfilm` : '', note].filter(Boolean).join(' — '),
-      qty: 1, line_total: null,
-    }],
-    message: note || '',
-    status: 'new',
-    createdAt: serverTimestamp(),
-  }
-  await addDoc(collection(db, 'enquiries'), payload)
-  notifyEmail('enquiry', {
-    company_name: payload.company_name, contact_name: payload.contact_name, email: payload.email,
-    currency: payload.base_currency, estimated_total: null,
-    items: [{ name: `Swatch sample — ${colorName}`, qty: 1 }],
-  })
 }

@@ -1,7 +1,9 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { Sparkles, Search, X, ChevronLeft, ChevronRight, PackageCheck } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
-import { fetchSwatchRegistry, fetchSwatchImageUrl, loadSwatchNotes, requestSwatchSample } from '../swatchLibraryApi'
+import { fetchSwatchRegistry, fetchSwatchImageUrl, loadSwatchNotes } from '../swatchLibraryApi'
+import { useCart } from './store'
 
 // Portal-facing swatch browser — Crystal_Fabric_Studio_Spec.md §5b. Same
 // registry the admin Swatch Library reads (src/pages/SwatchLibrary.jsx),
@@ -10,6 +12,15 @@ import { fetchSwatchRegistry, fetchSwatchImageUrl, loadSwatchNotes, requestSwatc
 // read-only here), and the detail panel's primary action is "Request a
 // sample" — per §4, physical samples are the actual conversion event, not
 // a rendered image, so this page never shows a price.
+//
+// "Request a sample" adds a `type: 'swatch_sample'` line to the SAME
+// enquiry cart Corporate/Figurine Gifts use (useCart, store.jsx) rather
+// than submitting straight to Firestore on its own — owner, 2026-08-11:
+// tried it and it "doesn't go to the enquiry tab" the way adding a product
+// does. Review/submit/combine-with-other-items now all go through the
+// existing /shop/enquiry flow (EnquiryPage.jsx), so a sample request can
+// ride along with a real product enquiry in one submission, same as
+// everything else in the cart.
 const STYLE_LABEL = { fabric: 'Crystal Fabric', rock: 'Fine Rock / Rock' }
 
 function photosOf(entry) {
@@ -77,30 +88,25 @@ function SwatchCardCarousel({ name, entry }) {
   )
 }
 
-function SwatchDetail({ name, entry, profile, onClose }) {
+function SwatchDetail({ name, entry, onClose }) {
+  const cart = useCart()
   const [notes, setNotes] = useState(null)
   const [pickedStyle, setPickedStyle] = useState(null)
-  const [pickedBackfilm, setPickedBackfilm] = useState(null)
   const [note, setNote] = useState('')
-  const [sending, setSending] = useState(false)
-  const [sent, setSent] = useState(false)
-  const [error, setError] = useState('')
+  const [added, setAdded] = useState(false)
 
   useEffect(() => { loadSwatchNotes(name).then(setNotes) }, [name])
 
   const styles = Object.entries(entry.slots || {}).filter(([, bf]) => Object.keys(bf).length)
 
-  const submit = useCallback(async () => {
-    setSending(true); setError('')
-    try {
-      await requestSwatchSample(profile, { colorName: name, style: pickedStyle, backfilm: pickedBackfilm, note })
-      setSent(true)
-    } catch (e) {
-      setError(e.message || 'Could not send your request. Please try again.')
-    } finally {
-      setSending(false)
-    }
-  }, [profile, name, pickedStyle, pickedBackfilm, note])
+  const addToEnquiry = () => {
+    cart.add({
+      type: 'swatch_sample', id: name, name, code: '', image: '',
+      finish: pickedStyle ? (STYLE_LABEL[pickedStyle] || pickedStyle) : '',
+      note, qty: 1,
+    })
+    setAdded(true)
+  }
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -139,9 +145,10 @@ function SwatchDetail({ name, entry, profile, onClose }) {
         )}
 
         <div className="pt-3 border-t border-ivory-dark">
-          {sent ? (
+          {added ? (
             <div className="flex items-center gap-2 text-emerald-700 text-sm py-2">
-              <PackageCheck size={16} /> Sample request sent — we'll be in touch.
+              <PackageCheck size={16} /> Added to your enquiry.{' '}
+              <Link to="/shop/enquiry" className="underline hover:text-emerald-900">Review &amp; send it</Link>
             </div>
           ) : (
             <>
@@ -154,10 +161,8 @@ function SwatchDetail({ name, entry, profile, onClose }) {
               )}
               <textarea className="input w-full text-sm" rows={2} value={note} onChange={e => setNote(e.target.value)}
                 placeholder="What are you making, and how many? (optional)" />
-              {error && <p className="text-xs text-red-600 mt-1.5">{error}</p>}
-              <button onClick={submit} disabled={sending}
-                className="btn-primary mt-2.5 w-full sm:w-auto disabled:opacity-60">
-                {sending ? 'Sending…' : 'Request a sample'}
+              <button onClick={addToEnquiry} className="btn-primary mt-2.5 w-full sm:w-auto">
+                Add sample request to enquiry
               </button>
             </>
           )}
@@ -223,7 +228,7 @@ export default function SwatchLibraryPage({ profile }) {
         </div>
       )}
 
-      {selected && <SwatchDetail name={selected[0]} entry={selected[1]} profile={profile} onClose={() => setSelected(null)} />}
+      {selected && <SwatchDetail name={selected[0]} entry={selected[1]} onClose={() => setSelected(null)} />}
     </div>
   )
 }
