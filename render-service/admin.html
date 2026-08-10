@@ -41,6 +41,12 @@
   #add-new { width: 100%; margin-bottom: 14px; }
   .editor { padding: 24px 28px; }
   .editor-grid { display: grid; grid-template-columns: 1fr 340px; gap: 24px; }
+  /* Design canvas's right-hand panel column (SVG alignment, graphic
+     positioning, zone drawing) used to grow as tall as its content, so
+     reaching the zone buttons meant scrolling the whole page away from the
+     canvas and back — annoying mid-trace, when you need both visible at
+     once. Pinned to the viewport and scrolls independently instead. */
+  .dc-side-panel { position: sticky; top: 16px; align-self: start; max-height: calc(100vh - 32px); overflow-y: auto; padding-right: 4px; }
   .style-tabs { display: flex; gap: 2px; margin-bottom: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 2px; width: fit-content; }
   .style-tabs button { font-size: 11.5px; padding: 7px 12px; }
   .style-tabs button.active { background: var(--accent-soft); color: var(--accent); }
@@ -1030,7 +1036,7 @@
           <div id="dc-svg-status" class="preview-hint"></div>
           <div id="dc-warning" class="preview-hint" style="color:var(--danger)"></div>
         </div>
-        <div>
+        <div class="dc-side-panel">
           <div class="panel">
             <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;margin-bottom:0">
               <input type="checkbox" id="dc-show-svg" checked style="width:auto;margin:0"> Show SVG outline overlay
