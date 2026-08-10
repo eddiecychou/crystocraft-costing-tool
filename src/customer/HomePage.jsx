@@ -46,18 +46,24 @@ export default function HomePage({ profile }) {
 
   return (
     <div>
-      {/* Hero */}
-      <section className="grid md:grid-cols-2 gap-8 items-center py-4 md:py-8">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-ink-50 font-label mb-2">
-            {profile?.company_name ? `Welcome back, ${profile.company_name}` : 'Welcome back'}
-          </p>
-          <h1 className="text-2xl md:text-4xl text-ink leading-tight mb-3">{heroContent.heading}</h1>
-          <p className="text-sm md:text-base text-ink-60 leading-relaxed mb-6 max-w-md">{heroContent.supporting}</p>
-          <button onClick={scrollToPillars} className="btn-primary w-full sm:w-auto">{heroContent.primaryCta.label}</button>
-        </div>
-        <div className="aspect-[4/3] md:aspect-[3/2] rounded-lg overflow-hidden bg-ivory-dark">
-          <img src={heroImage} alt="" className="w-full h-full object-cover" />
+      {/* Hero — full-bleed edge-to-edge banner (breaks out of CustomerLayout's
+          max-w-6xl content column on purpose: mx-[calc(50%-50vw)] + w-screen
+          is the standard full-bleed-inside-a-centered-container technique).
+          Matches the wide-banner treatment on crystocraft.com and
+          swarovski.com — a boxed half-width photo read as visually weak by
+          comparison (owner, 2026-08-11). */}
+      <section className="relative w-screen mx-[calc(50%-50vw)] h-[60vh] min-h-[380px] max-h-[640px] -mt-6 overflow-hidden">
+        <img src={heroImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/20 to-transparent" />
+        <div className="absolute inset-0 flex items-end">
+          <div className="max-w-6xl w-full mx-auto px-4 pb-10 md:pb-14">
+            <p className="text-xs uppercase tracking-widest text-white/70 font-label mb-2">
+              {profile?.company_name ? `Welcome back, ${profile.company_name}` : 'Welcome back'}
+            </p>
+            <h1 className="text-3xl md:text-5xl text-white leading-tight mb-3 max-w-2xl">{heroContent.heading}</h1>
+            <p className="text-sm md:text-base text-white/85 leading-relaxed mb-6 max-w-md">{heroContent.supporting}</p>
+            <button onClick={scrollToPillars} className="btn-primary w-full sm:w-auto">{heroContent.primaryCta.label}</button>
+          </div>
         </div>
       </section>
 
