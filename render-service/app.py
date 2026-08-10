@@ -181,9 +181,15 @@ def _decode_upload(data: bytes) -> Image.Image:
 
 @app.get("/admin", dependencies=[Depends(require_admin)])
 def admin_page():
+    # no-store — same reasoning as render-zones's Cache-Control (2026-08-11):
+    # without it, a browser that cached this page before an admin.html
+    # change ships keeps silently running the OLD JS indefinitely, with no
+    # way to tell. A stale copy of THIS response is what made a same-day fix
+    # to render-zones look like it hadn't deployed at all.
     path = os.path.join(os.path.dirname(__file__), "admin.html")
     with open(path) as f:
-        return Response(content=f.read(), media_type="text/html")
+        return Response(content=f.read(), media_type="text/html",
+                         headers={"Cache-Control": "no-store"})
 
 
 @app.post("/admin/render-test", dependencies=[Depends(require_admin)])
