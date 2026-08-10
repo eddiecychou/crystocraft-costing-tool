@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import CustomerLayout from './CustomerLayout'
+import HomePage from './HomePage'
 import FigurineShop from './FigurineShop'
 import CorporateShop from './CorporateShop'
 import FigurineDetail from './FigurineDetail'
@@ -25,8 +26,9 @@ export default function Storefront({ profile }) {
           <Route path="/shop/invoice/:key" element={<CustomerInvoicePrint profile={profile} />} />
           <Route path="/*" element={
             <CustomerLayout profile={profile}>
-              <ErrorBoundary home="/shop/figurine">
+              <ErrorBoundary home="/shop">
               <Routes>
+                <Route path="/shop" element={<HomePage profile={profile} />} />
                 <Route path="/shop/figurine" element={<FigurineShop profile={profile} />} />
                 <Route path="/shop/figurine/:id" element={<FigurineDetail profile={profile} />} />
                 <Route path="/shop/corporate" element={<CorporateShop profile={profile} />} />
@@ -37,7 +39,7 @@ export default function Storefront({ profile }) {
                 <Route path="/shop/orders" element={<OrderHistoryPage profile={profile} />} />
                 <Route path="/shop/swatches" element={<SwatchLibraryPage profile={profile} />} />
                 <Route path="/customize/:productId" element={<CustomizerPage profile={profile} />} />
-                <Route path="*" element={<Navigate to="/shop/figurine" replace />} />
+                <Route path="*" element={<Navigate to="/shop" replace />} />
               </Routes>
               </ErrorBoundary>
             </CustomerLayout>

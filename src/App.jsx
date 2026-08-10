@@ -115,7 +115,7 @@ function AppRoutes({ user }) {
       <Route path="/login" element={
         !user ? <Login />
         : role === 'admin' ? <Navigate to="/dashboard" replace />
-        : role === 'customer' ? <Navigate to="/shop/figurine" replace />
+        : role === 'customer' ? <Navigate to="/shop" replace />
         : <PendingScreen profile={profile} />
       } />
       <Route path="/*" element={
