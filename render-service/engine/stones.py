@@ -25,7 +25,7 @@ fabric_1.0 gets its own).
 """
 import numpy as np
 
-from .core import CANVAS, build_material, dilate, thin_width_px, to_pil, design_mask_from_image, pil_blur, boost_ab_flecks
+from .core import CANVAS, build_material, dilate, thin_width_px, to_pil, design_mask_from_image, pil_blur
 from .palette import crystal_photo, stone_mm
 
 
@@ -82,14 +82,13 @@ def render_zone_map(logo_img, crystal_type, fg_color, bg_color, px_per_mm, bg_cr
     bg_path, bg_pitch = crystal_photo(bg_color, bg_crystal_type)
     fg_mat = build_material(fg_sp, fg_pitch, fg_path, seed=9)
     bg_mat = build_material(bg_sp, bg_pitch, bg_path, seed=3)
-    # Same AB-fleck boost Mode A uses (core.boost_ab_flecks): the White-
-    # backfilm photos are the correct bright base but their iridescence is
-    # faint; amplify the real coloured flecks without a colour cast so a
-    # Crystal AB zone reads as sparkly rainbow-on-white, not flat grey. A
-    # non-AB colour (Jet, Red, ...) has little chroma variation, so the ramp
-    # leaves it essentially untouched — this is safe to apply unconditionally.
-    fg_mat = boost_ab_flecks(fg_mat)
-    bg_mat = boost_ab_flecks(bg_mat)
+    # boost_ab_flecks() disabled here 2026-08-11 (owner: "everything except
+    # jet black is off," and even real Crystal AB itself didn't look right
+    # with it — the "non-AB colours are safe, little chroma variation"
+    # assumption below turned out wrong for any colour with real chroma, and
+    # it wasn't even correctly boosting AB itself). Renders the real
+    # photographed material directly instead — revisit properly calibrated
+    # AB sparkle later, don't re-guess a threshold.
 
     # Edge quantisation is deliberately FINER than the fill's own stone size
     # (fg_sp/2.2): comparing against real product photos (2026-07-30), a

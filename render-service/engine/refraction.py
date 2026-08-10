@@ -28,7 +28,7 @@ distortion and the sparkle/transmission look.
 """
 import numpy as np
 
-from .core import (build_material, luminance, boost_ab_flecks, apply_facet_relief,
+from .core import (build_material, luminance, apply_facet_relief,
                    pil_blur, to_pil, design_rgba_from_image)
 from .palette import crystal_photo, stone_mm, DEFAULT_FG
 
@@ -68,16 +68,19 @@ def render_printed(logo_img, crystal_type, px_per_mm, top_color=DEFAULT_FG):
 
     # Rewritten 2026-08-07 (owner, fourth+fifth pass) against real photos of
     # the finished product: bright, clean, sharp — a vivid printed graphic
-    # seen THROUGH clear crystal with visible individual facets and
-    # occasional random rainbow flecks, NOT a dark tinted overlay and NOT a
-    # flat colour wash. Keeps the GRAPHIC as the base (bright, sharp, full
-    # colour); the crystal photo contributes (a) visible facet relief — see
-    # apply_facet_relief()'s docstring for why a plain multiply wasn't
-    # enough — and (b) real AB colour flecks screen-added from its own
-    # chroma (boost_ab_flecks()). `top_color`'s White-backfilm photo
+    # seen THROUGH clear crystal with visible individual facets, NOT a dark
+    # tinted overlay and NOT a flat colour wash. Keeps the GRAPHIC as the
+    # base (bright, sharp, full colour); the crystal photo contributes
+    # visible facet relief — see apply_facet_relief()'s docstring for why a
+    # plain multiply wasn't enough. `top_color`'s White-backfilm photo
     # (palette.py's default) is the correct bright base; no Black-backfilm
-    # swap needed. Tuned against the real Crystal AB fabric AND rock White
-    # photos with the owner's own graphic.
-    base = apply_facet_relief(Gr, mat)
-    out = boost_ab_flecks(base, source=mat)
+    # swap needed.
+    #
+    # boost_ab_flecks() (real AB colour flecks screen-added from mat's own
+    # chroma) disabled 2026-08-11 (owner: "everything except jet black is
+    # off," and even real Crystal AB itself didn't look right with it).
+    # Renders the real photographed material's relief directly instead —
+    # revisit properly calibrated AB sparkle later, don't re-guess a
+    # threshold.
+    out = apply_facet_relief(Gr, mat)
     return to_pil(np.clip(out, 0, 1))

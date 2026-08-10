@@ -20,7 +20,7 @@ is authoritative; this only turns it into pixels.
 import numpy as np
 from PIL import Image, ImageDraw
 
-from .core import CANVAS, build_material, boost_ab_flecks, to_pil
+from .core import CANVAS, build_material, to_pil
 from .palette import crystal_photo, stone_mm
 
 _SUPERSAMPLE = 2  # rasterize at 2x then downsample — antialiases the hard-edged PIL polygon fill
@@ -68,8 +68,14 @@ def render_zone_layer(zones, width_mm):
         sp = max(4.0, stone_mm(zone["crystal_type"]) * px_per_mm)
         path, pitch = crystal_photo(zone["color"], zone["crystal_type"])
         seed = abs(hash(zone["name"])) % 1000
+        # boost_ab_flecks() disabled here 2026-08-11 (owner: "everything
+        # except jet black is off," and even real Crystal AB itself didn't
+        # look right with it) — it doesn't correctly serve even its own
+        # target case right now, so every zone renders the real photographed
+        # material directly instead, same "no synthetic substitute"
+        # principle already used everywhere else in this engine. Revisit
+        # properly calibrated AB sparkle later; don't re-guess a threshold.
         mat = build_material(sp, pitch, path, seed=seed)
-        mat = boost_ab_flecks(mat)
         canvas = mat * mask + canvas * (1 - mask)
 
     return to_pil(np.clip(canvas, 0, 1))

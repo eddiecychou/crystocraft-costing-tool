@@ -184,11 +184,12 @@ def crystal_photo(name, crystal_type, backfilm=None):
         # real finished products actually show (owner, 2026-08-07, with a
         # photo of a bright white AB-crystal MagSafe card). An earlier version
         # preferred Black here to make AB colour more visible, but that made
-        # the whole panel read dark — wrong base look. The AB iridescence is
-        # instead recovered at render time from White's own (faint but real)
-        # per-facet chroma: see core.boost_ab_flecks(), used by both render
-        # modes. Falls back to Black, then to whatever else was captured,
-        # rather than arbitrary dict order.
+        # the whole panel read dark — wrong base look. (core.boost_ab_flecks()
+        # was meant to recover White's iridescence at render time but is
+        # disabled as of 2026-08-11 — didn't render AB correctly either;
+        # White is still the right default base regardless.) Falls back to
+        # Black, then to whatever else was captured, rather than arbitrary
+        # dict order.
         slot = slots.get('White') or slots.get('Black') or next(iter(slots.values()))
     else:
         slot = slots.get(backfilm)
