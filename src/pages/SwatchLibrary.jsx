@@ -138,7 +138,7 @@ export default function SwatchLibrary() {
   }, [registry, search, styleFilter])
 
   return (
-    <div>
+    <div className="p-4 md:p-6">
       <div className="mb-2">
         <h1 className="text-xl md:text-2xl flex items-center gap-2"><Gem size={20} className="text-brand-500" /> Swatch Library</h1>
         <p className="text-sm text-ink-60 mt-0.5">
