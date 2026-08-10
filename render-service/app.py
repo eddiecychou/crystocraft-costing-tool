@@ -41,7 +41,7 @@ from engine import templates as tmpl_registry
 # on the admin page header, so it's visible from the outside whether a given
 # deploy actually landed (owner, 2026-08-06, after several redeploys in a
 # row with no visible confirmation the new code was live).
-app = FastAPI(title="Crystocraft Customizer Render", version="0.17.0")
+app = FastAPI(title="Crystocraft Customizer Render", version="0.18.0")
 
 RENDER_TOKEN = os.environ.get("RENDER_TOKEN", "")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
@@ -409,11 +409,14 @@ _TEMPLATE_PHOTO_EXT = {"image/jpeg": ".jpg", "image/jpg": ".jpg", "image/png": "
 
 
 def _template_out(tid, entry):
-    return {
+    out = {
         "id": tid, **entry,
         "photo_url": f"/templates/image/{entry['photo_file']}",
         "svg_url": f"/templates/svg/{entry['svg_file']}",
     }
+    if entry.get("graphic"):
+        out["graphic"] = {**entry["graphic"], "url": f"/templates/graphic/{entry['graphic']['file']}"}
+    return out
 
 
 @app.get("/templates", dependencies=[Depends(require_admin)])
@@ -442,6 +445,17 @@ def templates_svg(filename: str):
     path = os.path.join(tmpl_registry.TEMPLATES_DIR, filename)
     with open(path, "r") as f:
         return Response(content=f.read(), media_type="image/svg+xml")
+
+
+@app.get("/templates/graphic/{filename}", dependencies=[Depends(require_admin)])
+def templates_graphic_image(filename: str):
+    known = {e["graphic"]["file"] for e in tmpl_registry.list_templates().values() if e.get("graphic")}
+    if filename not in known:
+        raise HTTPException(status_code=404, detail="Not a registered graphic")
+    path = os.path.join(tmpl_registry.TEMPLATES_DIR, filename)
+    media = "image/png" if filename.lower().endswith(".png") else "image/jpeg"
+    with open(path, "rb") as f:
+        return Response(content=f.read(), media_type=media)
 
 
 @app.post("/templates/save", dependencies=[Depends(require_admin)])
@@ -519,6 +533,42 @@ def templates_align(
         )
     except KeyError:
         raise HTTPException(status_code=404, detail="No such template")
+    return _template_out(template_id, entry)
+
+
+@app.post("/templates/{template_id}/graphic", dependencies=[Depends(require_admin)])
+async def templates_save_graphic(
+    template_id: str,
+    x_mm: float = Form(...),
+    y_mm: float = Form(...),
+    w_mm: float = Form(...),
+    h_mm: float = Form(...),
+    opacity: float = Form(1.0),
+    image: UploadFile = None,
+):
+    """Placed graphic — was session-only (workstream 1's original scope);
+    owner, 2026-08-11, once zone-editing came to depend on it as a tracing
+    reference: "the image is gone and it doesn't stay there when
+    refresh." `image` is optional — a plain drag/resize/opacity change
+    re-saves position only, without re-uploading the file."""
+    image_bytes = image_ext = None
+    if image is not None and image.filename:
+        photo_ct = (image.content_type or "").lower()
+        image_ext = _TEMPLATE_PHOTO_EXT.get(photo_ct)
+        if not image_ext:
+            raise HTTPException(status_code=400, detail=f"Graphic must be JPEG or PNG (got {photo_ct or 'unknown type'})")
+        image_bytes = await image.read()
+        if len(image_bytes) > MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="Graphic too large")
+    try:
+        entry = tmpl_registry.save_graphic(
+            template_id, x_mm=x_mm, y_mm=y_mm, w_mm=w_mm, h_mm=h_mm, opacity=opacity,
+            image_bytes=image_bytes, image_ext=image_ext,
+        )
+    except KeyError:
+        raise HTTPException(status_code=404, detail="No such template")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     return _template_out(template_id, entry)
 
 

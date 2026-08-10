@@ -147,6 +147,12 @@ def save_template(template_id, *, name, width_mm, height_mm, photo_bytes, photo_
         # Zones (workstream 2) — kept on re-save, same reasoning as the
         # alignment fields above.
         "zones": existing.get("zones", []),
+        # Placed graphic (workstream 1) — was session-only originally;
+        # owner, 2026-08-11, after zone-editing came to depend on it as a
+        # tracing reference: "the image is gone and it doesn't stay there
+        # when refresh." Same file-on-volume + registry-metadata pattern
+        # as the photo/SVG above. None until a graphic is actually saved.
+        "graphic": existing.get("graphic"),
     }
     _write(reg)
     return reg[template_id]
@@ -161,6 +167,34 @@ def save_alignment(template_id, *, scale, offset_x_mm, offset_y_mm, opacity=None
     reg[template_id]["svg_offset_y_mm"] = round(float(offset_y_mm), 2)
     if opacity is not None:
         reg[template_id]["svg_opacity"] = round(max(0.0, min(1.0, float(opacity))), 2)
+    _write(reg)
+    return reg[template_id]
+
+
+def save_graphic(template_id, *, x_mm, y_mm, w_mm, h_mm, opacity, image_bytes=None, image_ext=None):
+    """Placed graphic (the customer logo/photo being positioned) — same
+    file-on-volume pattern as the product photo/SVG. `image_bytes` is
+    optional: a plain reposition/resize/opacity change (dragging on the
+    canvas) re-saves the same file, so the browser doesn't need to re-
+    upload the image just to move it. A brand-new upload always includes
+    image_bytes and replaces the file."""
+    reg = _load()
+    if template_id not in reg:
+        raise KeyError(f"Unknown template {template_id!r}")
+    existing = reg[template_id].get("graphic") or {}
+    graphic_file = existing.get("file")
+    if image_bytes is not None:
+        graphic_file = f"{template_id}-graphic{image_ext}"
+        with open(os.path.join(TEMPLATES_DIR, graphic_file), "wb") as f:
+            f.write(image_bytes)
+    if not graphic_file:
+        raise ValueError("No graphic file — upload an image the first time")
+    reg[template_id]["graphic"] = {
+        "file": graphic_file,
+        "x_mm": round(float(x_mm), 2), "y_mm": round(float(y_mm), 2),
+        "w_mm": round(float(w_mm), 2), "h_mm": round(float(h_mm), 2),
+        "opacity": round(max(0.0, min(1.0, float(opacity))), 2),
+    }
     _write(reg)
     return reg[template_id]
 

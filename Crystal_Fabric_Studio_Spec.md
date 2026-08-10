@@ -559,6 +559,40 @@ problems, all fixed same day.
 
 Render service version 0.16.0 → 0.17.0.
 
+## 5h. Placed-graphic persistence (2026-08-11) — the actual root cause of "Redraw doesn't work"
+
+Owner: "the redraw edit doesn't work at all," then, mid-diagnosis: "also
+the image is gone and it doesn't stay there when refresh."
+
+The two reports were the same bug. The placed graphic was deliberately
+session-only from workstream 1 ("nothing persists," §5d) — a reasonable
+call when it was purely a positioning-mechanics demo. But workstream 2's
+zone-drawing came to depend on the graphic being visible as a tracing
+reference (§5f), and `dcToggleZoneMode()` refused to turn on zone-drawing
+at all without `dcState.img` set. A returning admin session — zones
+persisted from last time, but the graphic gone — hit exactly that gate:
+clicking "↺ Redraw" called the same gated toggle and silently no-op'd,
+with no error shown.
+
+**Two independent fixes, both needed:**
+- **The graphic now persists.** Same file-on-volume + registry-metadata
+  pattern as the photo/SVG/zones (`templates.py`'s `save_graphic()`),
+  reachable via `POST /templates/{id}/graphic` and served from `GET
+  /templates/graphic/{filename}`. A "💾 Save graphic" button in the
+  Graphic panel persists position/size/opacity; the image file itself is
+  only re-uploaded when actually replaced (`image` is an optional field
+  — a plain drag/resize save just resends the numbers). Opening a
+  template now restores a previously-saved graphic automatically, same
+  as the SVG overlay already did.
+- **Redraw no longer requires a graphic at all**, as a second, independent
+  safety net — `dcToggleZoneMode()`'s gate was split into a shared
+  `dcSetZoneMode(on)` that `dcRedrawZone()` calls directly, bypassing the
+  "must have a reference image" requirement. An admin fixing a zone they
+  already know the shape of shouldn't be blocked by that check, even in
+  the now-rarer case where no graphic was ever saved for that template.
+
+Render service version 0.17.0 → 0.18.0.
+
 ## 6. Open questions for the owner
 
 - Photography budget/cadence for growing past 27 swatches — who shoots them,

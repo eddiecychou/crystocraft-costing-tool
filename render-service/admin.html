@@ -978,6 +978,7 @@
   // only proves out the canvas mechanics the later workstreams build on.
   const MIN_FEATURE_MM = 4; // generous heuristic floor, not real stroke-width detection — see designCanvasShell's comment
   let dcState = null; // { tmpl, img, xMM, yMM, wMM, hMM, aspect, pxPerMM, dispW, dispH }
+  let dcGraphicFile = null; // the raw File from a fresh upload — only set when re-uploading; a position-only save (drag/resize) doesn't need it, the server keeps the existing file
   let dcUndo = [];
   let dcRedo = [];
   let dcDrag = null; // { mode: 'move'|'resize', handle, startX, startY, orig }
@@ -1055,6 +1056,11 @@
             </label>
             <label style="margin-top:10px">Graphic opacity (%)</label>
             <input type="text" id="dc-graphic-opacity" value="100">
+            <div class="actions" style="margin-top:10px">
+              <button class="small primary" id="dc-graphic-save">💾 Save graphic</button>
+            </div>
+            <p class="help">Position, size and the image itself are lost on refresh until you save — they weren't persisted at first, which broke zone-drawing (and Redraw) on a return visit with no graphic loaded.</p>
+            <div class="preview-hint" id="dc-graphic-save-status" style="margin-top:2px"></div>
           </div>
           <div class="panel">
             <label style="display:flex;align-items:center;justify-content:space-between">
@@ -1119,6 +1125,7 @@
     });
     document.getElementById('dc-svg-save-align').addEventListener('click', () => dcSaveAlignment(id));
     document.getElementById('dc-graphic-opacity').addEventListener('input', dcOnGraphicOpacityInput);
+    document.getElementById('dc-graphic-save').addEventListener('click', () => dcSaveGraphicPosition(id));
 
     dcZoneMode = false; dcCurrentZoneRings = []; dcCurrentRingPoints = [];
     // Back-compat: zones saved before hole support (rings[]) only had a
@@ -1166,6 +1173,24 @@
         if (el) el.textContent = '⚠ Could not load the saved SVG for preview.';
       };
       svg.src = t.svg_url;
+
+      // Restore a previously-saved graphic, same as the SVG above — was
+      // session-only before, which silently broke zone-drawing (and
+      // Redraw) on any return visit. No graphic saved yet -> nothing to do.
+      if (t.graphic) {
+        const gimg = new Image();
+        gimg.onload = () => {
+          dcState.img = gimg;
+          dcState.aspect = gimg.naturalWidth / gimg.naturalHeight;
+          dcState.xMM = t.graphic.x_mm; dcState.yMM = t.graphic.y_mm;
+          dcState.wMM = t.graphic.w_mm; dcState.hMM = t.graphic.h_mm;
+          dcState.imgOpacity = t.graphic.opacity ?? 1;
+          document.getElementById('dc-graphic-opacity').value = String((t.graphic.opacity ?? 1) * 100);
+          dcEnableZoneDrawing();
+          dcDrawCanvas();
+        };
+        gimg.src = t.graphic.url;
+      }
     };
     bg.src = t.photo_url;
   }
@@ -1195,10 +1220,18 @@
 
   function dcToggleZoneMode() {
     if (!dcState?.img) return;
-    dcZoneMode = !dcZoneMode;
+    dcSetZoneMode(!dcZoneMode);
+  }
+
+  // Split out from dcToggleZoneMode so dcRedrawZone can force zone mode ON
+  // even with no graphic loaded this session — Redraw is fixing a zone
+  // that already exists, it shouldn't be blocked by the (now much rarer,
+  // since the graphic persists) case of no reference image being present.
+  function dcSetZoneMode(on) {
+    dcZoneMode = on;
     dcCurrentZoneRings = []; dcCurrentRingPoints = [];
     const btn = document.getElementById('dc-zone-draw-toggle');
-    if (btn) { btn.textContent = dcZoneMode ? '✕ Stop drawing' : '✏️ Draw zone'; btn.classList.toggle('active-toggle', dcZoneMode); }
+    if (btn) { btn.disabled = false; btn.textContent = dcZoneMode ? '✕ Stop drawing' : '✏️ Draw zone'; btn.classList.toggle('active-toggle', dcZoneMode); }
     dcUpdateZoneDrawButtons();
     dcDrawCanvas();
   }
@@ -1363,7 +1396,7 @@
     document.getElementById('dc-zone-type').value = z.crystal_type;
     dcRefreshZoneColorSelect().then(() => { document.getElementById('dc-zone-color').value = z.color; });
     dcRenderZoneList();
-    if (!dcZoneMode) dcToggleZoneMode();
+    if (!dcZoneMode) dcSetZoneMode(true);
     dcDrawCanvas();
   }
 
@@ -1392,6 +1425,7 @@
 
   function dcLoadGraphic(file) {
     if (!file || !dcState) return;
+    dcGraphicFile = file;
     const img = new Image();
     img.onload = () => {
       dcState.img = img;
@@ -1402,13 +1436,34 @@
       dcState.xMM = (dcState.tmpl.width_mm - dcState.wMM) / 2;
       dcState.yMM = (dcState.tmpl.height_mm - dcState.hMM) / 2;
       dcUndo = []; dcRedo = [];
-      const zoneBtn = document.getElementById('dc-zone-draw-toggle');
-      const zoneHint = document.getElementById('dc-zone-hint');
-      if (zoneBtn) zoneBtn.disabled = false;
-      if (zoneHint) zoneHint.textContent = 'Click points on the photo to trace a zone (min 3), then Finish. While drawing, the graphic can\'t be dragged — click "Draw zone" again to stop and go back to positioning the graphic.';
+      dcEnableZoneDrawing();
       dcDrawCanvas();
     };
     img.src = URL.createObjectURL(file);
+  }
+
+  // Shared by a fresh upload and by loading a previously-saved graphic on
+  // template open — both end with a usable dcState.img, so both should
+  // unlock zone-drawing the same way.
+  function dcEnableZoneDrawing() {
+    const zoneBtn = document.getElementById('dc-zone-draw-toggle');
+    const zoneHint = document.getElementById('dc-zone-hint');
+    if (zoneBtn) zoneBtn.disabled = false;
+    if (zoneHint) zoneHint.textContent = 'Click points on the photo to trace a zone (min 3), then Finish. While drawing, the graphic can\'t be dragged — click "Draw zone" again to stop and go back to positioning the graphic.';
+  }
+
+  async function dcSaveGraphicPosition(templateId) {
+    if (!dcState?.img) return;
+    const status = document.getElementById('dc-graphic-save-status');
+    const fd = new FormData();
+    fd.append('x_mm', dcState.xMM); fd.append('y_mm', dcState.yMM);
+    fd.append('w_mm', dcState.wMM); fd.append('h_mm', dcState.hMM);
+    fd.append('opacity', dcState.imgOpacity ?? 1);
+    if (dcGraphicFile) fd.append('image', dcGraphicFile);
+    const res = await fetch(`/templates/${encodeURIComponent(templateId)}/graphic`, { method: 'POST', body: fd });
+    if (!res.ok) { if (status) status.textContent = '⚠ ' + ((await res.json()).detail || 'Save failed'); return; }
+    dcGraphicFile = null; // now persisted server-side — next save doesn't need to re-upload it
+    if (status) status.textContent = '✓ Graphic saved — stays after a refresh now.';
   }
 
   function dcSnapshot() {
