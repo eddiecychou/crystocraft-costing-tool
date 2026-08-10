@@ -17,21 +17,31 @@ Auth:
 - /render: if RENDER_TOKEN is set, requests must send a matching
   `X-Render-Token` header (the Netlify edge proxy adds it). Unset in local
   dev, auth is skipped.
-- /admin, /swatches*, /templates*: HTTP Basic, gated by ADMIN_PASSWORD. If
-  unset, the admin tool is disabled entirely (500) rather than left open — a
-  swatch library with no password on a public Fly.io URL is a real
-  content-tampering surface (anyone who finds the URL could overwrite what
-  customers see).
+- /admin, /swatches*, /templates*: gated by ADMIN_PASSWORD via a real login
+  page (/admin/login) and a signed session cookie — NOT HTTP Basic Auth
+  anymore (removed 2026-08-11). Basic Auth has no logout and browsers cache
+  its credentials per-origin indefinitely with no way to clear a stale/wrong
+  one short of wiping site data — the owner hit exactly this: the real admin
+  tool was unreachable in a normal Chrome window (silently sent a stale
+  cached credential, no prompt at all) and only worked in a fresh private
+  window. A signed cookie has an actual sign-out (GET /admin/logout, clears
+  it) and expires on its own (30 days) instead of persisting forever. If
+  ADMIN_PASSWORD is unset, the admin tool is disabled entirely (500) rather
+  than left open — a swatch library with no password on a public Fly.io URL
+  is a real content-tampering surface (anyone who finds the URL could
+  overwrite what customers see).
 """
-import base64
+import hashlib
+import hmac
 import io
 import json
 import os
 import secrets
+import time
 
 import numpy as np
-from fastapi import FastAPI, Header, HTTPException, Response, Depends, UploadFile, Form
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi import FastAPI, Header, HTTPException, Response, Depends, UploadFile, Form, Cookie
+from fastapi.responses import RedirectResponse, HTMLResponse
 from pydantic import BaseModel, Field
 from PIL import Image
 
@@ -45,24 +55,96 @@ from engine.zone_render import render_zone_layer
 # on the admin page header, so it's visible from the outside whether a given
 # deploy actually landed (owner, 2026-08-06, after several redeploys in a
 # row with no visible confirmation the new code was live).
-app = FastAPI(title="Crystocraft Customizer Render", version="0.23.0")
+app = FastAPI(title="Crystocraft Customizer Render", version="0.24.0")
 
 RENDER_TOKEN = os.environ.get("RENDER_TOKEN", "")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 MAX_LOGO_BYTES = 8 * 1024 * 1024
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 
-_basic = HTTPBasic()
+SESSION_COOKIE = "admin_session"
+SESSION_MAX_AGE = 60 * 60 * 24 * 30  # 30 days
 
 
-def require_admin(creds: HTTPBasicCredentials = Depends(_basic)):
+def _session_token() -> str:
+    """Signed `<issued-at>.<hmac>` cookie value — HMAC keyed on ADMIN_PASSWORD
+    itself, so no separate secret needs generating/storing, and rotating
+    ADMIN_PASSWORD automatically invalidates every existing session."""
+    payload = str(int(time.time()))
+    mac = hmac.new(ADMIN_PASSWORD.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return f"{payload}.{mac}"
+
+
+def _session_valid(token) -> bool:
+    if not token or not ADMIN_PASSWORD:
+        return False
+    payload, _, mac = token.partition(".")
+    if not payload or not mac:
+        return False
+    expected = hmac.new(ADMIN_PASSWORD.encode(), payload.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(mac, expected):
+        return False
+    try:
+        issued_at = int(payload)
+    except ValueError:
+        return False
+    return (time.time() - issued_at) < SESSION_MAX_AGE
+
+
+def require_admin(admin_session: str = Cookie(default=None)):
     if not ADMIN_PASSWORD:
         raise HTTPException(status_code=500, detail="Admin tool disabled: ADMIN_PASSWORD not set")
-    ok_user = secrets.compare_digest(creds.username, "admin")
-    ok_pass = secrets.compare_digest(creds.password, ADMIN_PASSWORD)
-    if not (ok_user and ok_pass):
-        raise HTTPException(status_code=401, detail="Bad credentials", headers={"WWW-Authenticate": "Basic"})
+    if not _session_valid(admin_session):
+        raise HTTPException(status_code=401, detail="Not authenticated")
     return True
+
+
+_LOGIN_PAGE = """<!doctype html><html><head><meta charset="utf-8">
+<title>Swatch Library — Sign in</title>
+<style>
+  body {{ margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:#131319; color:#ece8df; font-family:-apple-system,"Segoe UI",Roboto,sans-serif; }}
+  form {{ background:#1b1c24; border:1px solid rgba(255,255,255,0.09); border-radius:6px; padding:32px; width:280px; }}
+  h1 {{ font-family:ui-serif,"Iowan Old Style",Georgia,serif; font-weight:500; font-size:20px; margin:0 0 20px; }}
+  input {{ width:100%; box-sizing:border-box; padding:9px 10px; margin-bottom:14px; border-radius:3px;
+    border:1px solid rgba(255,255,255,0.15); background:#131319; color:#ece8df; font-size:14px; }}
+  button {{ width:100%; padding:9px; border-radius:3px; border:1px solid #c6a664; background:#c6a664;
+    color:#1a1408; font-weight:600; font-size:13px; cursor:pointer; }}
+  .err {{ color:#c1553f; font-size:13px; margin:-8px 0 14px; }}
+</style></head><body>
+<form method="post" action="/admin/login">
+  <h1>Swatch Library</h1>
+  {error_html}
+  <input type="password" name="password" placeholder="Admin password" autofocus autocomplete="current-password">
+  <button type="submit">Sign in</button>
+</form>
+</body></html>"""
+
+
+@app.get("/admin/login")
+def admin_login_page(error: str = ""):
+    if not ADMIN_PASSWORD:
+        raise HTTPException(status_code=500, detail="Admin tool disabled: ADMIN_PASSWORD not set")
+    error_html = '<p class="err">Wrong password.</p>' if error else ""
+    return HTMLResponse(_LOGIN_PAGE.format(error_html=error_html), headers={"Cache-Control": "no-store"})
+
+
+@app.post("/admin/login")
+def admin_login_submit(password: str = Form(...)):
+    if not ADMIN_PASSWORD:
+        raise HTTPException(status_code=500, detail="Admin tool disabled: ADMIN_PASSWORD not set")
+    if not secrets.compare_digest(password, ADMIN_PASSWORD):
+        return RedirectResponse(url="/admin/login?error=1", status_code=303)
+    resp = RedirectResponse(url="/admin", status_code=303)
+    resp.set_cookie(SESSION_COOKIE, _session_token(), max_age=SESSION_MAX_AGE, httponly=True, samesite="lax")
+    return resp
+
+
+@app.get("/admin/logout")
+def admin_logout():
+    resp = RedirectResponse(url="/admin/login", status_code=303)
+    resp.delete_cookie(SESSION_COOKIE)
+    return resp
 
 
 class RenderRequest(BaseModel):
@@ -179,8 +261,16 @@ def _decode_upload(data: bytes) -> Image.Image:
         raise HTTPException(status_code=400, detail="Not a readable image")
 
 
-@app.get("/admin", dependencies=[Depends(require_admin)])
-def admin_page():
+@app.get("/admin")
+def admin_page(admin_session: str = Cookie(default=None)):
+    if not ADMIN_PASSWORD:
+        raise HTTPException(status_code=500, detail="Admin tool disabled: ADMIN_PASSWORD not set")
+    # A page navigation gets sent to the login form on a bad/missing session,
+    # not the bare 401 JSON require_admin raises for the fetch-based API
+    # routes below — this is the one route a human actually navigates to
+    # directly, so it should behave like a real page, not an API error.
+    if not _session_valid(admin_session):
+        return RedirectResponse(url="/admin/login", status_code=303)
     # no-store — same reasoning as render-zones's Cache-Control (2026-08-11):
     # without it, a browser that cached this page before an admin.html
     # change ships keeps silently running the OLD JS indefinitely, with no
