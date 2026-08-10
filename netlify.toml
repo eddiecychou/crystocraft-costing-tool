@@ -85,6 +85,14 @@
   path = "/api/send-campaign"
 
 [[edge_functions]]
+  function = "generate-outreach-drafts"
+  path = "/api/generate-outreach-drafts"
+
+[[edge_functions]]
+  function = "send-personal-email"
+  path = "/api/send-personal-email"
+
+[[edge_functions]]
   function = "unsubscribe"
   path = "/api/unsubscribe"
 

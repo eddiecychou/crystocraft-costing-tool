@@ -4,6 +4,7 @@ import BlogGenerator from './BlogGenerator'
 import MarketingContacts from './MarketingContacts'
 import Campaigns from './Campaigns'
 import FrontPageConfig from './FrontPageConfig'
+import DailyDrafts from '../marketing/DailyDrafts'
 
 const TABS = [
   { v: 'catalogues', label: 'Catalogues' },
@@ -11,6 +12,7 @@ const TABS = [
   { v: 'blog',       label: 'Blog Writer' },
   { v: 'contacts',   label: 'Contacts' },
   { v: 'campaigns',  label: 'Campaigns' },
+  { v: 'drafts',     label: 'Daily Drafts' },
 ]
 
 export default function Marketing() {
@@ -45,6 +47,7 @@ export default function Marketing() {
       {tab === 'campaigns'  && (
         <Campaigns presetContactIds={presetContactIds} onConsumedPreset={() => setPresetContactIds(null)} />
       )}
+      {tab === 'drafts'     && <DailyDrafts />}
     </div>
   )
 }

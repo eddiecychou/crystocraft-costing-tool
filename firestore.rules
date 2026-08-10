@@ -192,6 +192,13 @@ service cloud.firestore {
     match /campaign_templates/{templateId} {
       allow read, write: if isAdmin();
     }
+    // Daily Drafts re-engagement engine (V7.23) — AI-drafted outreach emails,
+    // pending human review before send. Admin-only, same posture as the other
+    // marketing collections; both the browser (create/skip) and the admin's
+    // own token via the generate/send edge functions read and write here.
+    match /outreach_drafts/{draftId} {
+      allow read, write: if isAdmin();
+    }
     match /{path=**}/supplier_quotes/{quoteId} {
       allow read, write: if isAdmin();
     }

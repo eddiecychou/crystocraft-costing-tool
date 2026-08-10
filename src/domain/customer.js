@@ -172,6 +172,13 @@ export function normalizeCustomer(raw) {
     notes:             str(r.notes),
     folder_path:       str(r.folder_path),
     last_contacted:    r.last_contacted ?? null,
+    // Daily Drafts outreach engine (V7.23): lastOutreachAt is set only on an
+    // actual send (send-personal-email.js), never on draft generation.
+    // blockOutreachUntil is a manual "don't suggest this customer" flag — set
+    // far in the future for an indefinite block, or to a specific date; also
+    // covers "temporarily pause" without a separate boolean.
+    lastOutreachAt:      r.lastOutreachAt ?? null,
+    blockOutreachUntil:  r.blockOutreachUntil ?? null,
     createdAt:         r.createdAt ?? null,
     updatedAt:         r.updatedAt ?? null,
   }
