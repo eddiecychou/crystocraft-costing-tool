@@ -28,14 +28,15 @@ export async function listPendingDrafts() {
     .sort((a, b) => (b.fitScore ?? 0) - (a.fitScore ?? 0))
 }
 
-// Drafts already sent for a product, for the per-product cooldown check in
-// the "Generate Drafts" flow (DailyDrafts.jsx) — kept separate from
-// listPendingDrafts so the generate flow doesn't have to pull every draft
-// ever created just to find the handful sent recently for this product.
-export async function listSentDraftsForProduct(productId) {
-  const snap = await getDocs(
-    query(COL(), where('productId', '==', productId), where('status', '==', 'sent'))
-  )
+// Every draft ever created for a product (any status), for the "Generate
+// Drafts" flow's exclusion check (DailyDrafts.jsx). A customer already
+// sitting in pending_review for this product must be excluded outright —
+// otherwise clicking Generate again (or a second run re-picking the same
+// top-fit customers) creates duplicate drafts for the same person, which is
+// exactly what happened before this function existed. A 'sent' draft is
+// excluded only within the cooldown window (the caller applies that part).
+export async function listDraftsForProduct(productId) {
+  const snap = await getDocs(query(COL(), where('productId', '==', productId)))
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
 

@@ -3,7 +3,7 @@ import { collection, doc, getDocs, orderBy, query, serverTimestamp, updateDoc } 
 import { Send, Loader2, SkipForward, Sparkles } from 'lucide-react'
 import { db, authedUser } from '../firebase'
 import { loadCustomers, primaryContact } from '../domain/customer'
-import { listPendingDrafts, listSentDraftsForProduct, createDrafts, markDraftSent, skipDraft } from '../domain/outreachDrafts'
+import { listPendingDrafts, listDraftsForProduct, createDrafts, markDraftSent, skipDraft } from '../domain/outreachDrafts'
 import { generateDrafts, sendPersonalEmail } from '../outreachApi'
 
 // Daily Drafts re-engagement engine (V7.23) — pick a product, generate 10-20
@@ -27,7 +27,7 @@ const daysAgo = (ts) => {
 // manually blocked, cooldown-cleared, never sent THIS product recently.
 // Capped and prioritized (never-contacted first, then longest since last
 // contact) rather than sent unbounded — see MAX_CANDIDATES above.
-function eligibleCandidates(customers, recentlySentIds) {
+function eligibleCandidates(customers, excludedIds) {
   const now = Date.now()
   const pool = customers.filter(c => {
     if (!['Active', 'Prospect'].includes(c.crm_status)) return false
@@ -38,7 +38,7 @@ function eligibleCandidates(customers, recentlySentIds) {
       if (until > now) return false
     }
     if (daysAgo(c.lastOutreachAt) < COOLDOWN_DAYS) return false
-    if (recentlySentIds.has(c.id)) return false
+    if (excludedIds.has(c.id)) return false
     return true
   })
   pool.sort((a, b) => daysAgo(b.lastOutreachAt) - daysAgo(a.lastOutreachAt)) // never-contacted (Infinity) sorts first
@@ -89,12 +89,19 @@ export default function DailyDrafts() {
     if (!product) { setError('Pick a product first.'); return }
     setGenerating(true); setError('')
     try {
-      const [customers, sentDrafts] = await Promise.all([
+      const [customers, existingDrafts] = await Promise.all([
         loadCustomers(),
-        listSentDraftsForProduct(product.id).then(list => list.filter(d => daysAgo(d.sentAt) < PRODUCT_COOLDOWN_DAYS)),
+        listDraftsForProduct(product.id),
       ])
-      const recentlySentIds = new Set(sentDrafts.map(d => d.customerId))
-      const candidates = eligibleCandidates(customers, recentlySentIds)
+      // Exclude anyone already sitting in pending_review for this product
+      // outright (regenerating must never duplicate an unreviewed draft), and
+      // anyone sent this product within the cooldown window.
+      const excludedIds = new Set(
+        existingDrafts
+          .filter(d => d.status === 'pending_review' || (d.status === 'sent' && daysAgo(d.sentAt) < PRODUCT_COOLDOWN_DAYS))
+          .map(d => d.customerId)
+      )
+      const candidates = eligibleCandidates(customers, excludedIds)
       if (!candidates.length) { setError('No eligible customers right now (cooldowns/blocks cleared the whole pool).'); return }
 
       const generated = await generateDrafts(
