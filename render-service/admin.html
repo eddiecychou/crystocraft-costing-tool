@@ -1006,6 +1006,9 @@
             <input type="text" id="dc-svg-offx" value="0">
             <label>Offset Y (mm)</label>
             <input type="text" id="dc-svg-offy" value="0">
+            <label>Overlay opacity (%)</label>
+            <input type="text" id="dc-svg-opacity" value="50">
+            <p class="help">Some SVG exports embed a full reference image alongside the traced path, not just a thin outline — turn this down to see the actual product photo underneath while aligning.</p>
             <button class="small" id="dc-svg-save-align">Save alignment</button>
             <div class="preview-hint" id="dc-svg-align-status" style="margin-top:6px"></div>
           </div>
@@ -1039,17 +1042,18 @@
       e.preventDefault(); if (e.dataTransfer.files[0]) dcLoadGraphic(e.dataTransfer.files[0]);
     });
     document.getElementById('dc-show-svg').addEventListener('change', dcDrawCanvas);
-    ['dc-svg-scale', 'dc-svg-offx', 'dc-svg-offy'].forEach(id => {
+    ['dc-svg-scale', 'dc-svg-offx', 'dc-svg-offy', 'dc-svg-opacity'].forEach(id => {
       document.getElementById(id).addEventListener('input', dcOnAlignInput);
     });
     document.getElementById('dc-svg-save-align').addEventListener('click', () => dcSaveAlignment(id));
 
-    // Alignment (scale % + mm offset) persists per template — see
-    // templates.py's save_template()/save_alignment(). Defaults to
-    // 100%/0/0 for a template that's never been aligned.
+    // Alignment (scale % + mm offset + overlay opacity) persists per
+    // template — see templates.py's save_template()/save_alignment().
+    // Defaults to 100%/0/0/50% for a template that's never been aligned.
     document.getElementById('dc-svg-scale').value = String((t.svg_scale ?? 1) * 100);
     document.getElementById('dc-svg-offx').value = String(t.svg_offset_x_mm ?? 0);
     document.getElementById('dc-svg-offy').value = String(t.svg_offset_y_mm ?? 0);
+    document.getElementById('dc-svg-opacity').value = String((t.svg_opacity ?? 0.5) * 100);
 
     dcUndo = []; dcRedo = [];
     const bg = new Image();
@@ -1058,6 +1062,7 @@
         tmpl: t, bgImg: bg, img: null, svgImg: null,
         xMM: t.width_mm / 2, yMM: t.height_mm / 2, wMM: 0, hMM: 0, aspect: 1,
         svgScale: t.svg_scale ?? 1, svgOffXMM: t.svg_offset_x_mm ?? 0, svgOffYMM: t.svg_offset_y_mm ?? 0,
+        svgOpacity: t.svg_opacity ?? 0.5,
       };
       dcDrawCanvas();
       // Loaded separately from the background so a broken/missing SVG never
@@ -1080,9 +1085,11 @@
     const scalePct = parseFloat(document.getElementById('dc-svg-scale').value);
     const offX = parseFloat(document.getElementById('dc-svg-offx').value);
     const offY = parseFloat(document.getElementById('dc-svg-offy').value);
+    const opacityPct = parseFloat(document.getElementById('dc-svg-opacity').value);
     dcState.svgScale = Number.isFinite(scalePct) && scalePct > 0 ? scalePct / 100 : dcState.svgScale;
     dcState.svgOffXMM = Number.isFinite(offX) ? offX : dcState.svgOffXMM;
     dcState.svgOffYMM = Number.isFinite(offY) ? offY : dcState.svgOffYMM;
+    dcState.svgOpacity = Number.isFinite(opacityPct) ? Math.max(0, Math.min(100, opacityPct)) / 100 : dcState.svgOpacity;
     dcDrawCanvas();
   }
 
@@ -1092,6 +1099,7 @@
     fd.append('scale', dcState.svgScale);
     fd.append('offset_x_mm', dcState.svgOffXMM);
     fd.append('offset_y_mm', dcState.svgOffYMM);
+    fd.append('opacity', dcState.svgOpacity);
     const status = document.getElementById('dc-svg-align-status');
     const res = await fetch(`/templates/${encodeURIComponent(templateId)}/align`, { method: 'POST', body: fd });
     if (!res.ok) { if (status) status.textContent = '⚠ ' + ((await res.json()).detail || 'Save failed'); return; }
@@ -1174,7 +1182,7 @@
       const w = dispW * scale, h = dispH * scale;
       const x = (dispW - w) / 2 + offXpx, y = (dispH - h) / 2 + offYpx;
       ctx.save();
-      ctx.globalAlpha = 0.5;
+      ctx.globalAlpha = dcState.svgOpacity ?? 0.5;
       ctx.drawImage(dcState.svgImg, x, y, w, h);
       ctx.restore();
     }

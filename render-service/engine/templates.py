@@ -137,18 +137,27 @@ def save_template(template_id, *, name, width_mm, height_mm, photo_bytes, photo_
         "svg_scale": existing.get("svg_scale", 1.0),
         "svg_offset_x_mm": existing.get("svg_offset_x_mm", 0.0),
         "svg_offset_y_mm": existing.get("svg_offset_y_mm", 0.0),
+        # Overlay opacity while aligning — separate from the scale/offset
+        # above because some SVG exports embed a full reference raster
+        # alongside the traced path (common from Illustrator "trace over
+        # a photo" workflows), which reads as an opaque image rather than a
+        # thin outline at a fixed 50% — the admin needs to turn it down to
+        # actually see the product photo underneath while aligning.
+        "svg_opacity": existing.get("svg_opacity", 0.5),
     }
     _write(reg)
     return reg[template_id]
 
 
-def save_alignment(template_id, *, scale, offset_x_mm, offset_y_mm):
+def save_alignment(template_id, *, scale, offset_x_mm, offset_y_mm, opacity=None):
     reg = _load()
     if template_id not in reg:
         raise KeyError(f"Unknown template {template_id!r}")
     reg[template_id]["svg_scale"] = round(float(scale), 4)
     reg[template_id]["svg_offset_x_mm"] = round(float(offset_x_mm), 2)
     reg[template_id]["svg_offset_y_mm"] = round(float(offset_y_mm), 2)
+    if opacity is not None:
+        reg[template_id]["svg_opacity"] = round(max(0.0, min(1.0, float(opacity))), 2)
     _write(reg)
     return reg[template_id]
 

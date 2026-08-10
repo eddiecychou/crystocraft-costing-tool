@@ -424,7 +424,20 @@ mapping" flagged as workstream-2 material above, just built now, minimally
 (uniform scale + offset, no rotation or non-uniform stretch), because the
 owner needed it to actually check a template rather than wait.
 
-Render service version 0.12.0 → 0.13.0.
+Render service version 0.12.0 → 0.13.0, then 0.14.0 (opacity control,
+below).
+
+**Overlay opacity made adjustable same day**, owner: "make the overlay
+image some transparent so that we know what is the svg area." The fixed
+50% opacity wasn't enough to see through in practice — likely because the
+uploaded SVG embeds a full reference raster alongside the traced path
+(a common Illustrator "trace over a photo" export), which reads as a
+mostly-opaque image rather than a thin line. Added a fourth alignment
+number, Overlay opacity (%), live-adjustable and persisted alongside
+scale/offset via the same `/templates/{id}/align` endpoint
+(`svg_opacity`, defaults to 50%).
+
+Render service version 0.13.0 → 0.14.0.
 
 ## 6. Open questions for the owner
 
