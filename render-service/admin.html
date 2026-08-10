@@ -45,8 +45,16 @@
      positioning, zone drawing) used to grow as tall as its content, so
      reaching the zone buttons meant scrolling the whole page away from the
      canvas and back — annoying mid-trace, when you need both visible at
-     once. Pinned to the viewport and scrolls independently instead. */
-  .dc-side-panel { position: sticky; top: 16px; align-self: start; max-height: calc(100vh - 32px); overflow-y: auto; padding-right: 4px; }
+     once. A first attempt used position:sticky, but that only stays pinned
+     within its own grid row — since the canvas column next to it is
+     shorter, the panel broke loose partway down and the page scrolled
+     anyway, on top of the panel's own scroll. Fixed properly here: JS
+     (designCanvasShell, below) sets an explicit pixel height on this column
+     equal to the actual remaining viewport space, so it's a real bounded
+     box that scrolls ONLY within itself — the page never scrolls at all
+     for this view, canvas stays fully visible the whole time. */
+  .dc-side-panel { overflow-y: auto; padding-right: 4px; min-height: 0; }
+  .dc-editor-grid { display: grid; grid-template-columns: 1fr 340px; gap: 24px; align-items: start; }
   .style-tabs { display: flex; gap: 2px; margin-bottom: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: 2px; width: fit-content; }
   .style-tabs button { font-size: 11.5px; padding: 7px 12px; }
   .style-tabs button.active { background: var(--accent-soft); color: var(--accent); }
@@ -1025,18 +1033,31 @@
     if (names.includes(keep)) colorSel.value = keep;
   }
 
+  // Locks the side panel's height to whatever vertical space is actually
+  // left below it in the viewport, so it becomes its own bounded scroll
+  // box (overflow-y:auto in CSS) instead of growing with its content and
+  // pushing the page taller. Recomputed on resize since the available
+  // space depends on window height, not just this element's content.
+  function dcSizeSidePanel() {
+    const grid = document.getElementById('dc-editor-grid');
+    const panel = document.getElementById('dc-side-panel');
+    if (!grid || !panel) return;
+    const top = grid.getBoundingClientRect().top;
+    panel.style.height = Math.max(200, window.innerHeight - top - 20) + 'px';
+  }
+
   function designCanvasShell(id, t) {
     document.getElementById('editor').innerHTML = `
       <button class="small" id="dc-back" style="margin-bottom:14px">← Back to templates</button>
       <h2 style="margin:0 0 4px">${t.name} <span class="canvas-hint">${t.width_mm}×${t.height_mm}mm</span></h2>
       <p class="style-note">Drag the graphic to move it, drag a corner to resize. Grid lines every 10mm. Click "✏️ Draw zone" below to trace a crystal-material zone instead — no crystal is actually rendered yet, this only records geometry and material assignment for a later compositing phase.</p>
-      <div class="editor-grid">
+      <div class="dc-editor-grid" id="dc-editor-grid">
         <div>
           <div class="canvas-wrap"><div id="dc-canvas-wrap"></div></div>
           <div id="dc-svg-status" class="preview-hint"></div>
           <div id="dc-warning" class="preview-hint" style="color:var(--danger)"></div>
         </div>
-        <div class="dc-side-panel">
+        <div class="dc-side-panel" id="dc-side-panel">
           <div class="panel">
             <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;margin-bottom:0">
               <input type="checkbox" id="dc-show-svg" checked style="width:auto;margin:0"> Show SVG outline overlay
@@ -1119,6 +1140,8 @@
           </div>
         </div>
       </div>`;
+    dcSizeSidePanel();
+    window.onresize = dcSizeSidePanel; // direct assignment, not addEventListener — always replaces rather than stacking a new listener each time this shell re-renders
     document.getElementById('dc-back').addEventListener('click', templatesShell);
     document.getElementById('dc-undo').addEventListener('click', dcApplyUndo);
     document.getElementById('dc-redo').addEventListener('click', dcApplyRedo);
