@@ -72,7 +72,10 @@ export default function DailyDrafts() {
 
   function reload() {
     setLoading(true)
-    listPendingDrafts().then(setDrafts).finally(() => setLoading(false))
+    listPendingDrafts()
+      .then(setDrafts)
+      .catch(e => setError(e.message || 'Could not load pending drafts.'))
+      .finally(() => setLoading(false))
   }
 
   const filteredProducts = useMemo(() => {

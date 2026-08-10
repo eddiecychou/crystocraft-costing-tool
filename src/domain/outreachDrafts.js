@@ -1,5 +1,5 @@
 import {
-  collection, doc, addDoc, updateDoc, getDocs, orderBy, query, where, serverTimestamp,
+  collection, doc, addDoc, updateDoc, getDocs, query, where, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 
@@ -15,11 +15,17 @@ const COL = () => collection(db, 'outreach_drafts')
 // from several optional sources can easily end up with stray undefineds.
 const stripUndefined = (v) => (v == null ? v : JSON.parse(JSON.stringify(v)))
 
+// NOTE: no orderBy() here even though the caller wants fitScore-desc order —
+// where('status','==',...) + orderBy('fitScore') are on different fields,
+// which needs a composite index that doesn't exist (and creating one is a
+// manual step in the Firebase console, not something a git push applies).
+// Same reasoning as loadCustomers() in domain/customer.js: fetch unordered,
+// sort client-side.
 export async function listPendingDrafts() {
-  const snap = await getDocs(
-    query(COL(), where('status', '==', 'pending_review'), orderBy('fitScore', 'desc'))
-  )
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+  const snap = await getDocs(query(COL(), where('status', '==', 'pending_review')))
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.fitScore ?? 0) - (a.fitScore ?? 0))
 }
 
 // Drafts already sent for a product, for the per-product cooldown check in
