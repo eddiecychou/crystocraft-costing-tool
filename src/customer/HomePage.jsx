@@ -56,7 +56,8 @@ function PillarCard({ pillar, spanFull }) {
     <Link to={pillar.to}
       className={`card overflow-hidden flex flex-col hover:shadow-md transition-shadow group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${spanFull ? 'sm:col-span-2 lg:col-span-1' : ''}`}>
       <div className="aspect-[4/3] bg-ivory-dark overflow-hidden">
-        <img src={PILLAR_IMAGE[pillar.key]} alt="" className="w-full h-full object-cover" loading="lazy" />
+        <img src={PILLAR_IMAGE[pillar.key]} alt="" loading="lazy"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
       </div>
       <div className="p-4 flex flex-col gap-1.5 flex-1">
         <h3 className="text-lg text-ink">{pillar.title}</h3>
@@ -74,9 +75,11 @@ function QuickActionTile({ action }) {
   const Icon = ICONS[action.iconKey]
   return (
     <Link to={action.to}
-      className="card flex flex-col items-center justify-center gap-2 py-5 px-3 text-center hover:shadow-md hover:border-brand-200 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
-      <Icon size={22} strokeWidth={1.5} className="text-brand-600" />
-      <span className="text-sm text-ink">{action.label}</span>
+      className="card group flex flex-col items-center justify-center gap-3 py-6 px-3 text-center hover:shadow-lg hover:-translate-y-0.5 hover:border-brand-200 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
+      <span className="w-11 h-11 rounded-full bg-brand-50 flex items-center justify-center group-hover:bg-brand-100 group-hover:scale-110 transition-all duration-200">
+        <Icon size={20} strokeWidth={1.5} className="text-brand-600" />
+      </span>
+      <span className="text-sm text-ink font-medium">{action.label}</span>
     </Link>
   )
 }
