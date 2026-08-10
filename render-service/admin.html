@@ -1146,10 +1146,23 @@
     return null;
   }
 
+  // canvas has `max-width:100%` (global CSS), so its on-screen CSS size can
+  // be smaller than its internal pixel resolution (canvas.width/height) —
+  // client coords must be scaled back into canvas-pixel space, same as the
+  // swatch editor's toCanvasXY() does in drawCanvas(). Missing this made
+  // resize handles miss (tolerance too small to survive the scale error)
+  // while drag-to-move still worked, since its hit region is much bigger.
+  function dcToCanvasXY(e, canvas) {
+    const r = canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - r.left) * (canvas.width / r.width),
+      y: (e.clientY - r.top) * (canvas.height / r.height),
+    };
+  }
+
   function dcOnMouseDown(e) {
     if (!dcState?.img) return;
-    const r = e.target.getBoundingClientRect();
-    const px = e.clientX - r.left, py = e.clientY - r.top;
+    const { x: px, y: py } = dcToCanvasXY(e, e.target);
     const hit = dcHandleAt(px, py);
     if (!hit) return;
     dcPushUndo();
@@ -1163,8 +1176,7 @@
     if (!dcDrag || !dcState) return;
     const canvas = document.querySelector('#dc-canvas-wrap canvas');
     if (!canvas) return;
-    const r = canvas.getBoundingClientRect();
-    const px = e.clientX - r.left, py = e.clientY - r.top;
+    const { x: px, y: py } = dcToCanvasXY(e, canvas);
     const dMM_x = (px - dcDrag.startPX) / dcState.pxPerMM;
     const dMM_y = (py - dcDrag.startPY) / dcState.pxPerMM;
     const o = dcDrag.orig;
