@@ -1,9 +1,9 @@
 // Client for the Crystal Fabric Studio swatch library — see
 // Crystal_Fabric_Studio_Spec.md §5a. Registry data (photos, colours,
 // backfilms) is proxied read-only from the render service via
-// /api/swatch-library; curated notes (recommended_use_cases,
-// legacy_swarovski_refs) are a small admin-only Firestore collection this
-// app owns directly.
+// /api/swatch-library; curated notes (legacy_swarovski_refs) are a small
+// admin-only Firestore collection this app owns directly.
+// recommended_use_cases dropped 2026-08-11 (owner: too fiddly to enter).
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from './firebase'
 import { authedUser } from './firebase'
@@ -41,7 +41,6 @@ const NOTES_COL = 'crystal_swatch_notes'
 
 const normNotes = (id, x) => ({
   id,
-  recommended_use_cases: Array.isArray(x?.recommended_use_cases) ? x.recommended_use_cases : [],
   legacy_swarovski_refs: Array.isArray(x?.legacy_swarovski_refs) ? x.legacy_swarovski_refs : [],
 })
 
@@ -54,9 +53,8 @@ export async function loadSwatchNotes(colorName) {
   }
 }
 
-export async function saveSwatchNotes(colorName, { recommended_use_cases, legacy_swarovski_refs }) {
+export async function saveSwatchNotes(colorName, { legacy_swarovski_refs }) {
   await setDoc(doc(db, NOTES_COL, colorName), {
-    recommended_use_cases: Array.isArray(recommended_use_cases) ? recommended_use_cases : [],
     legacy_swarovski_refs: Array.isArray(legacy_swarovski_refs) ? legacy_swarovski_refs : [],
     updated_at: serverTimestamp(),
   }, { merge: true })

@@ -100,9 +100,6 @@ function SwatchDetail({ name, entry, onClose }) {
 
         {notes ? (
           <div className="space-y-4 pt-2 border-t border-ivory-dark">
-            <TagEditor label="Recommended use cases" values={notes.recommended_use_cases}
-              onChange={v => persist({ ...notes, recommended_use_cases: v })}
-              placeholder="e.g. apparel trim — press Enter" />
             <TagEditor label="Legacy Swarovski references" values={notes.legacy_swarovski_refs}
               onChange={v => persist({ ...notes, legacy_swarovski_refs: v })}
               placeholder="e.g. 2058 Xilion Rose — press Enter" />
