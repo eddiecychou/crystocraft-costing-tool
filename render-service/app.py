@@ -4,15 +4,19 @@ POST /render  -> returns an image/png preview of the customised crystal product.
 GET  /health  -> liveness check.
 GET  /admin   -> swatch-library admin tool (capture/crop/preview/save colours
                  without a code deploy — see engine/palette.py's registry.json).
+GET/POST/DELETE /templates* -> product template library (photo + SVG outline +
+                 real mm size, see engine/templates.py) — foundation for the
+                 physical design workbench, no drawing/compositing yet.
 
 Auth:
 - /render: if RENDER_TOKEN is set, requests must send a matching
   `X-Render-Token` header (the Netlify edge proxy adds it). Unset in local
   dev, auth is skipped.
-- /admin and /swatches*: HTTP Basic, gated by ADMIN_PASSWORD. If unset, the
-  admin tool is disabled entirely (500) rather than left open — a swatch
-  library with no password on a public Fly.io URL is a real content-tampering
-  surface (anyone who finds the URL could overwrite what customers see).
+- /admin, /swatches*, /templates*: HTTP Basic, gated by ADMIN_PASSWORD. If
+  unset, the admin tool is disabled entirely (500) rather than left open — a
+  swatch library with no password on a public Fly.io URL is a real
+  content-tampering surface (anyone who finds the URL could overwrite what
+  customers see).
 """
 import base64
 import io
@@ -29,12 +33,13 @@ from PIL import Image
 import engine
 from engine.core import build_material, to_pil
 from engine.palette import list_crystal_colors, REGISTRY_PATH, COLORS_DIR
+from engine import templates as tmpl_registry
 
 # Bump on every deploy that changes render behaviour — shown in /health and
 # on the admin page header, so it's visible from the outside whether a given
 # deploy actually landed (owner, 2026-08-06, after several redeploys in a
 # row with no visible confirmation the new code was live).
-app = FastAPI(title="Crystocraft Customizer Render", version="0.9.0")
+app = FastAPI(title="Crystocraft Customizer Render", version="0.10.0")
 
 RENDER_TOKEN = os.environ.get("RENDER_TOKEN", "")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
@@ -387,4 +392,106 @@ def swatches_delete_photo(name: str, style: str, backfilm: str):
         raise HTTPException(status_code=404, detail="No such backfilm photo")
     del reg[name][style][backfilm]
     _write_registry()
+    return {"ok": True}
+
+
+# ── product template library (admin) ────────────────────────────────────────
+# Foundation for the physical design workbench (Crystal_Fabric_Studio_Spec.md
+# §5c workstream 4) — everything else in that plan (real-mm canvas, drawn
+# zones, composite-onto-product-photo) needs a template with a real photo,
+# a single-closed-path SVG outline, and real mm dimensions to work against.
+# This phase is ONLY that: upload/list/delete. No drawing UI, no zones, no
+# compositing yet — those are separate, later builds.
+
+_TEMPLATE_PHOTO_EXT = {"image/jpeg": ".jpg", "image/jpg": ".jpg", "image/png": ".png"}
+
+
+def _template_out(tid, entry):
+    return {
+        "id": tid, **entry,
+        "photo_url": f"/templates/image/{entry['photo_file']}",
+        "svg_url": f"/templates/svg/{entry['svg_file']}",
+    }
+
+
+@app.get("/templates", dependencies=[Depends(require_admin)])
+def templates_list():
+    reg = tmpl_registry.list_templates()
+    return {"templates": {tid: _template_out(tid, e) for tid, e in reg.items()}}
+
+
+@app.get("/templates/image/{filename}", dependencies=[Depends(require_admin)])
+def templates_image(filename: str):
+    # No path traversal: only serve a bare filename actually registered.
+    known = {e["photo_file"] for e in tmpl_registry.list_templates().values()}
+    if filename not in known:
+        raise HTTPException(status_code=404, detail="Not a registered template photo")
+    path = os.path.join(tmpl_registry.TEMPLATES_DIR, filename)
+    media = "image/png" if filename.lower().endswith(".png") else "image/jpeg"
+    with open(path, "rb") as f:
+        return Response(content=f.read(), media_type=media)
+
+
+@app.get("/templates/svg/{filename}", dependencies=[Depends(require_admin)])
+def templates_svg(filename: str):
+    known = {e["svg_file"] for e in tmpl_registry.list_templates().values()}
+    if filename not in known:
+        raise HTTPException(status_code=404, detail="Not a registered template SVG")
+    path = os.path.join(tmpl_registry.TEMPLATES_DIR, filename)
+    with open(path, "r") as f:
+        return Response(content=f.read(), media_type="image/svg+xml")
+
+
+@app.post("/templates/save", dependencies=[Depends(require_admin)])
+async def templates_save(
+    name: str = Form(...),
+    width_mm: float = Form(...),
+    height_mm: float = Form(...),
+    template_id: str = Form(""),        # blank = new, derived from name; set = editing/replacing
+    photo: UploadFile = None,
+    svg: UploadFile = None,
+):
+    name = name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Template name is required")
+    if width_mm <= 0 or height_mm <= 0:
+        raise HTTPException(status_code=400, detail="Width and height must be positive millimetre values")
+    if photo is None or not photo.filename:
+        raise HTTPException(status_code=400, detail="A straight-on product photo is required")
+    if svg is None or not svg.filename:
+        raise HTTPException(status_code=400, detail="An SVG outline of the crystal-application area is required")
+
+    tid = template_id.strip() or tmpl_registry.slugify(name)
+    if not tid:
+        raise HTTPException(status_code=400, detail="Could not derive a template id from that name")
+
+    photo_ct = (photo.content_type or "").lower()
+    ext = _TEMPLATE_PHOTO_EXT.get(photo_ct)
+    if not ext:
+        raise HTTPException(status_code=400, detail=f"Photo must be JPEG or PNG (got {photo_ct or 'unknown type'})")
+    photo_bytes = await photo.read()
+    if len(photo_bytes) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Photo too large")
+
+    svg_bytes = await svg.read()
+    if len(svg_bytes) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="SVG too large")
+    svg_text = svg_bytes.decode("utf-8", errors="replace")
+
+    try:
+        entry = tmpl_registry.save_template(
+            tid, name=name, width_mm=width_mm, height_mm=height_mm,
+            photo_bytes=photo_bytes, photo_ext=ext, svg_text=svg_text,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return _template_out(tid, entry)
+
+
+@app.delete("/templates/{template_id}", dependencies=[Depends(require_admin)])
+def templates_delete(template_id: str):
+    try:
+        tmpl_registry.delete_template(template_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="No such template")
     return {"ok": True}

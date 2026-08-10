@@ -269,23 +269,86 @@ flow.
   abstraction for one component). Detail panel shows the captured photos
   and read-only legacy refs, no editing UI.
 - **Sample-request CTA, not a price band** — per §4's standing call that a
-  physical sample is the actual conversion event. Reuses the existing
-  `enquiries` collection (same collection the wholesale enquiry cart
-  writes to, same admin `Enquiries.jsx` inbox already built to review it)
-  with a `type: 'swatch_sample'` item, rather than a parallel lead table —
-  one admin inbox for both. `requestSwatchSample()` in
-  `swatchLibraryApi.js`.
-- **Not built**: "Match my old Swarovski" photo matcher, Designer Project
-  Board, funnel analytics — all still explicitly out of scope (§3/§5).
+  physical sample is the actual conversion event. Adds a `type:
+  'swatch_sample'` line to the SAME enquiry cart Corporate/Figurine Gifts
+  use (`useCart`, `store.jsx`), not a direct Firestore submit — first
+  version submitted straight to Firestore on its own and, owner 2026-08-11,
+  didn't show up under the portal's Enquiry tab the way adding a product
+  does. Now goes through the normal `/shop/enquiry` review-and-send flow
+  like everything else in the cart.
+- **Not built, and now formally out of scope** (owner, 2026-08-11): "Match
+  my old Swarovski" photo matcher — dropped entirely, not deferred.
+  Designer Project Board — superseded by the existing Customer Brand
+  Gallery (`src/customer/BrandGalleryPage.jsx`), which already does the
+  "designer's saved collection" job. Sample logistics (cost/shipping
+  workflow) — not needed per the owner; the enquiry-cart CTA is the whole
+  loop, fulfilment happens off-app like every other enquiry.
+
+## 5c. Product template library (2026-08-11) — foundation for the physical design workbench
+
+The owner brought a much larger follow-on spec: a "physical design
+workbench" covering five workstreams — (1) a real-millimetre canvas with
+drag/resize/undo, (2) admin-drawn polygon zones replacing the two hard-coded
+crystal_fabric zone-map regions, (3) unifying zone-map and printed mode into
+one workspace, (4) an admin-managed product template library (photo + SVG
+outline + real mm size), (5) composite rendering that warps the crystal
+layer onto the SVG outline and pastes it into the product photo, eliminating
+manual Photoshop compositing.
+
+That doc corrected one of its own claims before I could: "today's live
+zone-map customizer has five zones per product, defined in code" doesn't
+match `render-service/engine/stones.py` — the real `crystal_fabric`
+zone-map mode is a two-region split (a logo-shaped mask vs. everything
+else), not five hard-coded zones. The "5 zone type" concept (colour/logo/
+text/graphic, admin-authored mask templates) is real, but belongs to the
+*other*, never-built engine — `surface_print` in `customizerEngines.js`,
+designed in `Corp_Gift_Customizer_Spec.md` and marked `available: false`.
+This plan effectively proposes building `surface_print` for real, redesigned
+around live SVG zone-drawing, and merging it with the working
+`crystal_fabric` engine.
+
+Given the size (a new interactive drawing canvas, new Python compositing —
+SVG-mask rasterizing, warp, alpha-composite — none of which exists yet, new
+Fly-volume template storage, new admin tooling), the owner chose to build
+**only workstream 4 first** — the product template library — since
+everything else needs a real template (photo + SVG + mm size) to work
+against.
+
+**What shipped (admin-only, no drawing UI, no zones, no compositing yet):**
+
+- **`render-service/engine/templates.py`** (new) — its own registry file
+  (`templates_registry.json`), own directory on the Fly volume (sibling to
+  `colors/`, same `SWATCH_DATA_DIR`-backed durability pattern
+  `engine/palette.py` already established). Deliberately not merged into
+  the swatch registry — different lifecycle, different shape.
+- **First-cut constraint enforced server-side**: `validate_single_path_svg()`
+  counts top-level shape elements (`path`/`polygon`/`polyline`/`rect`/
+  `circle`/`ellipse`) anywhere in the document (including nested in a `<g>`,
+  common from Illustrator exports) and rejects anything but exactly one —
+  per the plan's own "single closed path only" limitation for this version.
+  The admin.html uploader also does a client-side count for instant
+  feedback, but the server check is the real gate.
+- **New endpoints in `app.py`** (admin-gated, same `ADMIN_PASSWORD` HTTP
+  Basic pattern as `/swatches*`): `GET /templates` (list), `GET
+  /templates/image/{filename}` / `GET /templates/svg/{filename}` (serve,
+  path-traversal-safe — only registered filenames are servable), `POST
+  /templates/save` (name, width_mm, height_mm, photo, svg), `DELETE
+  /templates/{id}`.
+- **New "🗂️ Product templates" section in `admin.html`** — self-contained
+  editor swap (same pattern `testRenderShell()` already used for the
+  render-test tool), list of saved templates with thumbnails, upload form.
+  Render service version bumped 0.9.0 → 0.10.0.
+- **Not built yet, and each is its own future phase**: the real-mm drawing
+  canvas (workstream 1), user-drawn zones replacing the fixed logo/
+  background split (workstream 2), mode unification (workstream 3), and
+  the warp-and-composite render step (workstream 5) — none of these read
+  or write the new template registry yet. A saved template today has no
+  consumer.
 
 ## 6. Open questions for the owner
 
-- Does Crystocraft (or the owner personally) actually hold enough Swarovski
-  article-number knowledge to seed a legacy-ref lookup table, or does that
-  live with the supplier? This gates whether the curated-mapping half of
-  "Match my old Swarovski" is buildable at all in Phase 2b.
-- What does a sample actually cost to produce and ship, and is that
-  absorbed, charged, or minimum-order-gated? Needed before "request a
-  sample" can be a real CTA rather than a form that goes nowhere.
 - Photography budget/cadence for growing past 27 swatches — who shoots them,
-  how often.
+  how often. (Owner, 2026-08-11: not a build item, just a reminder that the
+  library only grows if someone keeps shooting.)
+- Which workstream (1/2/3/5) is next for the physical design workbench, once
+  the template library above has real templates in it to build against.

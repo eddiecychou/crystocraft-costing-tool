@@ -84,6 +84,7 @@
   <div class="sidebar">
     <button id="add-new" class="primary">+ Add new colour</button>
     <button id="test-render" style="width:100%;margin-bottom:14px">🧪 Test render</button>
+    <button id="templates-nav" style="width:100%;margin-bottom:14px">🗂️ Product templates</button>
     <h2>Crystal colours</h2>
     <div id="swatch-list"></div>
   </div>
@@ -822,8 +823,150 @@
     el.textContent = msg; el.className = `status show ${kind}`;
   }
 
+  // ── Product template library ─────────────────────────────────────────────
+  // Foundation for the later physical design workbench (canvas/zones/
+  // composite) — see engine/templates.py's module docstring. This is ONLY
+  // upload/list/delete: a straight-on product photo, a single-closed-path
+  // SVG marking the crystal-application area, and its real mm size.
+  // Self-contained editor swap, same pattern as testRenderShell — doesn't
+  // touch the swatch sidebar/state at all.
+  let templatePhotoFile = null;
+  let templateSvgFile = null;
+  let templateSvgText = '';
+
+  async function templatesShell() {
+    currentName = null;
+    renderList();
+    document.getElementById('editor').innerHTML = `
+      <div class="editor-grid">
+        <div>
+          <div id="template-list"></div>
+        </div>
+        <div>
+          <div class="status" id="status"></div>
+          <div class="panel">
+            <label>Template name</label>
+            <input type="text" id="tmpl-name" placeholder="e.g. Round Coaster 80mm">
+            <label>Crystal-area width (mm)</label>
+            <input type="text" id="tmpl-width" placeholder="e.g. 80">
+            <label>Crystal-area height (mm)</label>
+            <input type="text" id="tmpl-height" placeholder="e.g. 80">
+            <label>Straight-on product photo (JPEG/PNG)</label>
+            <div class="drop-zone" id="tmpl-photo-zone" style="padding:20px;margin-bottom:14px">Click or drag a photo here</div>
+            <label>SVG outline — single closed path around the crystal area</label>
+            <div class="drop-zone" id="tmpl-svg-zone" style="padding:20px">Click or drag an .svg file here</div>
+            <div class="preview-hint" id="tmpl-svg-status"></div>
+          </div>
+          <div class="actions">
+            <button class="primary" id="tmpl-save-btn">Save template</button>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('tmpl-photo-zone').addEventListener('click', () => {
+      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/jpeg,image/png';
+      inp.onchange = e => setTemplatePhoto(e.target.files[0]);
+      inp.click();
+    });
+    document.getElementById('tmpl-svg-zone').addEventListener('click', () => {
+      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.svg,image/svg+xml';
+      inp.onchange = e => setTemplateSvg(e.target.files[0]);
+      inp.click();
+    });
+    ['tmpl-photo-zone', 'tmpl-svg-zone'].forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener('dragover', e => e.preventDefault());
+    });
+    document.getElementById('tmpl-photo-zone').addEventListener('drop', e => {
+      e.preventDefault(); if (e.dataTransfer.files[0]) setTemplatePhoto(e.dataTransfer.files[0]);
+    });
+    document.getElementById('tmpl-svg-zone').addEventListener('drop', e => {
+      e.preventDefault(); if (e.dataTransfer.files[0]) setTemplateSvg(e.dataTransfer.files[0]);
+    });
+    document.getElementById('tmpl-save-btn').addEventListener('click', saveTemplate);
+    await loadTemplateList();
+  }
+
+  function setTemplatePhoto(file) {
+    if (!file) return;
+    templatePhotoFile = file;
+    document.getElementById('tmpl-photo-zone').textContent = `✓ ${file.name}`;
+  }
+
+  function setTemplateSvg(file) {
+    if (!file) return;
+    templateSvgFile = file;
+    const reader = new FileReader();
+    reader.onload = () => {
+      templateSvgText = reader.result;
+      const status = document.getElementById('tmpl-svg-status');
+      const shapeCount = (templateSvgText.match(/<(?:\w+:)?(path|polygon|polyline|rect|circle|ellipse)[\s/>]/g) || []).length;
+      status.textContent = shapeCount === 1 ? '✓ one shape found' : `⚠ ${shapeCount} shapes found — server will reject anything but exactly 1`;
+    };
+    reader.readAsText(file);
+    document.getElementById('tmpl-svg-zone').textContent = `✓ ${file.name}`;
+  }
+
+  async function loadTemplateList() {
+    const res = await fetch('/templates');
+    const { templates } = await res.json();
+    const list = document.getElementById('template-list');
+    if (!list) return;
+    const ids = Object.keys(templates);
+    if (ids.length === 0) {
+      list.innerHTML = '<div class="empty-state">No templates yet.</div>';
+      return;
+    }
+    list.innerHTML = ids.map(id => {
+      const t = templates[id];
+      return `
+        <div class="swatch-row" style="cursor:default">
+          <div class="dot" style="background-image:url('${t.photo_url}')"></div>
+          <div class="name">${t.name}<br><span class="canvas-hint">${t.width_mm}×${t.height_mm}mm · ${id}</span></div>
+          <button class="small danger" data-tmpl-delete="${id}">✕</button>
+        </div>`;
+    }).join('');
+    list.querySelectorAll('[data-tmpl-delete]').forEach(btn => {
+      btn.addEventListener('click', () => deleteTemplateRow(btn.dataset.tmplDelete));
+    });
+  }
+
+  async function deleteTemplateRow(id) {
+    if (!confirm(`Delete template "${id}"? This removes its photo and SVG.`)) return;
+    const res = await fetch(`/templates/${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (!res.ok) { alert((await res.json()).detail || 'Failed'); return; }
+    await loadTemplateList();
+  }
+
+  async function saveTemplate() {
+    const name = document.getElementById('tmpl-name').value.trim();
+    const width_mm = document.getElementById('tmpl-width').value;
+    const height_mm = document.getElementById('tmpl-height').value;
+    if (!name || !width_mm || !height_mm || !templatePhotoFile || !templateSvgFile) {
+      showStatus('Name, width, height, photo and SVG are all required.', 'err');
+      return;
+    }
+    const fd = new FormData();
+    fd.append('name', name);
+    fd.append('width_mm', width_mm);
+    fd.append('height_mm', height_mm);
+    fd.append('photo', templatePhotoFile);
+    fd.append('svg', templateSvgFile);
+    const res = await fetch('/templates/save', { method: 'POST', body: fd });
+    if (!res.ok) { showStatus((await res.json()).detail || 'Save failed', 'err'); return; }
+    showStatus('Template saved.', 'ok');
+    templatePhotoFile = null; templateSvgFile = null; templateSvgText = '';
+    document.getElementById('tmpl-name').value = '';
+    document.getElementById('tmpl-width').value = '';
+    document.getElementById('tmpl-height').value = '';
+    document.getElementById('tmpl-photo-zone').textContent = 'Click or drag a photo here';
+    document.getElementById('tmpl-svg-zone').textContent = 'Click or drag an .svg file here';
+    document.getElementById('tmpl-svg-status').textContent = '';
+    await loadTemplateList();
+  }
+
   document.getElementById('add-new').addEventListener('click', addNew);
   document.getElementById('test-render').addEventListener('click', testRenderShell);
+  document.getElementById('templates-nav').addEventListener('click', templatesShell);
   AUTH_TEST.then(loadSwatches).catch(() => {
     document.body.innerHTML = '<div style="padding:40px;font-family:monospace;color:#c1553f">Sign-in required or ADMIN_PASSWORD not configured.</div>';
   });
