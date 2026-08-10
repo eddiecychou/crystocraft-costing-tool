@@ -55,7 +55,7 @@ from engine.zone_render import render_zone_layer
 # on the admin page header, so it's visible from the outside whether a given
 # deploy actually landed (owner, 2026-08-06, after several redeploys in a
 # row with no visible confirmation the new code was live).
-app = FastAPI(title="Crystocraft Customizer Render", version="0.24.0")
+app = FastAPI(title="Crystocraft Customizer Render", version="0.25.0")
 
 RENDER_TOKEN = os.environ.get("RENDER_TOKEN", "")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
@@ -388,7 +388,7 @@ async def swatches_preview(
     tmp_path = os.path.join(tmp_dir, f"_preview_{os.getpid()}.jpg")
     crop.save(tmp_path, format="JPEG", quality=92)
     try:
-        mat = build_material(sp / max(pitch, 2.0), seed=3, path=tmp_path)
+        mat = build_material(sp, pitch, tmp_path, seed=3)
     finally:
         try:
             os.remove(tmp_path)
@@ -398,7 +398,7 @@ async def swatches_preview(
 
     if compare_name and compare_style and compare_backfilm:
         cmp_path, cmp_pitch = _crystal_photo(compare_name, material if compare_style == "fabric" else "rock_2.0", backfilm=compare_backfilm)
-        cmp_mat = build_material(sp / max(cmp_pitch, 2.0), seed=3, path=cmp_path)
+        cmp_mat = build_material(sp, cmp_pitch, cmp_path, seed=3)
         right = cmp_mat[:300, :300]
         panel = to_pil(np.concatenate([left, np.ones((300, 6, 3), np.float32), right], axis=1))
     else:

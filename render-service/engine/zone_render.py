@@ -68,7 +68,7 @@ def render_zone_layer(zones, width_mm):
         sp = max(4.0, stone_mm(zone["crystal_type"]) * px_per_mm)
         path, pitch = crystal_photo(zone["color"], zone["crystal_type"])
         seed = abs(hash(zone["name"])) % 1000
-        mat = build_material(sp / pitch, seed=seed, path=path)
+        mat = build_material(sp, pitch, path, seed=seed)
         mat = boost_ab_flecks(mat)
         canvas = mat * mask + canvas * (1 - mask)
 

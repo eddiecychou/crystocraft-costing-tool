@@ -104,12 +104,45 @@ def thin_width_px(mask):
 
 
 # ── crystal material (feathered-overlap tiling, seamless) ─────────────────────
-def build_material(scale, path, seed=7):
+def build_material(sp, pitch_px, path, seed=7, patch_stones=5.0):
     """Tiles the photo at `path` (a real crystal-colour swatch — see
-    palette.py's registry) into a seamless CANVAS x CANVAS material."""
+    palette.py's registry) into a seamless CANVAS x CANVAS material, with
+    ONE real stone rendering as `sp` pixels.
+
+    `pitch_px` is how many pixels one stone spans in `path`'s own native
+    resolution (measured in the capture tool by clicking across a real
+    stone — see admin.html's "Measure a stone"). Fixed 2026-08-11: the
+    previous version took a single pre-divided `scale = sp/pitch_px` and
+    resized the WHOLE photo to `500*scale` — which means pitch_px cancels
+    out of the final apparent stone size algebraically (final size reduces
+    to `500*sp/photo_width`), so the measured pitch had ZERO effect on the
+    render; actual stone size instead tracked the uploaded photo's
+    incidental resolution. Symptoms this caused, both confirmed real:
+    changing a zone from fine_rock_1.5 to rock_2.0 looked identical (a
+    SEPARATE caching bug made this worse, but the underlying size math was
+    also never right), and one colour rendered as a near-flat colour wash
+    with no visible facets at all — its source photo's resolution happened
+    to collapse `tile_px` down near the 8px floor, and resizing an ENTIRE
+    photo to 8x8 blurs out every bit of texture.
+
+    Fixed by cropping a `patch_stones`-stones-wide patch out of the photo,
+    ANCHORED to pitch_px, before resizing — so the crop always contains a
+    known number of real stones regardless of the photo's raw resolution,
+    and resizing it to `sp*patch_stones` pixels necessarily makes each
+    stone span `sp` pixels, independent of anything about the source file
+    except the actual measured pitch."""
     rng = np.random.default_rng(seed)
-    tile_px = max(8, int(round(500 * scale)))
-    src = load_rgb(path, (tile_px, tile_px))
+    im_full = Image.open(path).convert("RGB")
+    w0, h0 = im_full.size
+    pitch_px = max(1.0, float(pitch_px))
+    crop_px = max(8, min(int(round(pitch_px * patch_stones)), w0, h0))
+    cx, cy = w0 / 2.0, h0 / 2.0
+    left = int(round(max(0, min(w0 - crop_px, cx - crop_px / 2.0))))
+    top = int(round(max(0, min(h0 - crop_px, cy - crop_px / 2.0))))
+    crop = im_full.crop((left, top, left + crop_px, top + crop_px))
+
+    tile_px = max(8, int(round(sp * patch_stones)))
+    src = np.asarray(crop.resize((tile_px, tile_px), Image.LANCZOS)).astype(np.float32) / 255.0
     win = np.outer(np.hanning(tile_px), np.hanning(tile_px))[..., None] + 1e-3
     step = max(1, int(tile_px * 0.5))
     H = W = CANVAS + tile_px

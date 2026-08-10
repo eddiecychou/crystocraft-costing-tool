@@ -54,7 +54,7 @@ def render_printed(logo_img, crystal_type, px_per_mm, top_color=DEFAULT_FG):
     sp = max(4.0, stone_mm(crystal_type) * px_per_mm)
 
     top_path, top_pitch = crystal_photo(top_color, crystal_type, backfilm=None)
-    mat = build_material(sp / top_pitch, seed=5, path=top_path)
+    mat = build_material(sp, top_pitch, top_path, seed=5)
 
     # The graphic IS the backfilm — its own colour, alpha-composited onto
     # white (most uploads are transparent-background PNGs; opaque uploads are

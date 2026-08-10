@@ -80,8 +80,8 @@ def render_zone_map(logo_img, crystal_type, fg_color, bg_color, px_per_mm, bg_cr
     # always fabric style, matching its always-fabric SIZE above.
     fg_path, fg_pitch = crystal_photo(fg_color, crystal_type)
     bg_path, bg_pitch = crystal_photo(bg_color, bg_crystal_type)
-    fg_mat = build_material(fg_sp / fg_pitch, seed=9, path=fg_path)
-    bg_mat = build_material(bg_sp / bg_pitch, seed=3, path=bg_path)
+    fg_mat = build_material(fg_sp, fg_pitch, fg_path, seed=9)
+    bg_mat = build_material(bg_sp, bg_pitch, bg_path, seed=3)
     # Same AB-fleck boost Mode A uses (core.boost_ab_flecks): the White-
     # backfilm photos are the correct bright base but their iridescence is
     # faint; amplify the real coloured flecks without a colour cast so a
