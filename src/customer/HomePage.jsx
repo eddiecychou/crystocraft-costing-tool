@@ -54,7 +54,12 @@ export default function HomePage({ profile }) {
           comparison (owner, 2026-08-11). */}
       <section className="relative w-screen mx-[calc(50%-50vw)] h-[60vh] min-h-[380px] max-h-[640px] -mt-6 overflow-hidden">
         <img src={heroImage} alt="" className="absolute inset-0 w-full h-full object-cover" />
-        <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-ink/20 to-transparent" />
+        {/* Flat tint across the whole photo (not just the bottom gradient)
+            — a bright, high-frequency close-up crystal texture like this
+            one still fights white text even where the gradient alone was
+            lightest (owner, 2026-08-11: text hard to read). */}
+        <div className="absolute inset-0 bg-ink/35" />
+        <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/40 to-transparent" />
         <div className="absolute inset-0 flex items-end">
           <div className="max-w-6xl w-full mx-auto px-4 pb-10 md:pb-14">
             <p className="text-xs uppercase tracking-widest text-white/70 font-label mb-2">
