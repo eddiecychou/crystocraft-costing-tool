@@ -24,7 +24,7 @@ of record, one function at a time.
 | `erp-sync/ERP-SYNC-V1.0.md` | How the ERP mirror works |
 | `erp-sync/IMAGE-SYNC-PLAN.md` | Item images: prepared, needs the LAN |
 | `Corp_Gift_Customizer_Spec.md`, `Customizer_Build_Plan.md` | Customizer engine design — build history, superseded by current status below |
-| `Crystal_Fabric_Studio_Spec.md` | V7.22 plan: swatch library for designers. Phase 1 (un-park + extend the customizer) done 2026-08-06 — zone-map mode live on 2 products; printed mode stays hidden until backfilm photos are captured (see spec doc) |
+| `Crystal_Fabric_Studio_Spec.md` | Swatch library + Physical Design Workbench build history (all closed under V7.21). Workbench paused mid-build: templates/canvas/zones/zone-rendering done, mode-unification and photo-compositing (workstreams 3/5) not started — see doc's own §5j and `PROJECT-PLAN.md`'s "Where V7.22 starts" |
 
 ## Environment quirks that will otherwise waste your time
 

@@ -43,33 +43,33 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
-## Current Status — V7.21 CLOSED as of 2026-08-07
+## Current Status — V7.21 CLOSED as of 2026-08-11
 
-Commit chain `013a1aa`→`88057fb` (61 commits), all deployed. This cycle ran
-long — closed once already (as of 2026-08-06, §1-5 below), then the owner
-kept it open through a second, much bigger wave: JES-freeze cleanup on
-Purchase Orders/Sales Invoices/UC Registry, a full "Crystal Fabric Studio"
-customizer build-out, portal order history with real invoice PDF/Excel
-export, and — the cycle's real headline — a **customer-logo privacy leak
-that took three genuine attempts to actually close**, the last of which
-required minting a real auth token for the affected customer's own account
-and running the exact query her browser runs to prove what was actually
-happening, because two structurally-correct-looking fixes in a row had no
-effect at all. See §9.
+Commit chain `013a1aa`→`5662770` (82 commits), all deployed. This cycle ran
+very long — closed once already (as of 2026-08-06, §1-5), reopened for a
+second wave (as of 2026-08-07, JES-freeze cleanup + the customer-logo
+privacy leak, §6-9), then reopened a third time for the whole **Crystal
+Fabric Studio Phase 2/2b swatch library** and, its real headline, the
+**Physical Design Workbench** — a from-scratch admin tool on the render
+service (product templates, a real-millimetre canvas, user-drawn crystal
+zones with holes, and actually rendering those zones as photographed
+crystal texture) built out over one continuous session of real usage and
+real bug reports. See §10.
 
 ### The numbers
 
 | | |
 |---|---:|
-| Commits | 61 |
+| Commits | 82 |
 | B2C finished-goods SKUs imported | 0 → 560 |
 | New Firestore collection | `customers/{id}/assets` (Brand Gallery) |
 | New Firestore field | `contacts[]` replacing `contact_name` + 4 parallel arrays, on every customer |
 | Surfaces wired to "which contact" | Quotes, PI/Orders + their print pages, Interaction Log, portal accounts |
-| Render-service (Fly.io) version | 0.1.0 → 0.9.0, 9 deploys tuning the crystal render |
-| Crystal colours in the live swatch library | 0 (hardcoded 8-name palette) → 17 (owner-photographed) |
+| Render-service (Fly.io) version | 0.1.0 → 0.20.0, ~24 deploys — swatch tuning, then the whole Design Workbench |
+| Crystal colours in the live swatch library | 0 (hardcoded 8-name palette) → 27 (owner-photographed) |
 | Attempts to close the sensitive-customer photo leak | 3 (§9) |
-| Firestore/Storage rule files touched | both — `firestore.rules` (7 rounds across the cycle), `storage.rules` (1 missing path) |
+| Product templates (photo + SVG outline + real mm size) | 0 → workbench built, 1 real template authored (Round Coaster) |
+| Firestore/Storage rule files touched | both — `firestore.rules` (8 rounds across the cycle), `storage.rules` (1 missing path) |
 
 ### 1. JES fully frozen — and the one real gap it left, closed
 
@@ -393,6 +393,79 @@ live rather than the fix being assumed to have worked:
   noted here only because it's the reason this close-out was written with
   careful, narrow `Edit` calls rather than a full rewrite.
 
+### 10. Crystal Fabric Studio Phase 2/2b, then the Physical Design Workbench
+
+The cycle's third and final reopening. Full detail lives in
+`Crystal_Fabric_Studio_Spec.md` (§5a onward) — this is the summary.
+
+**Swatch library polish (Phase 2a/2b)**: a Perplexity-drafted "Phase 2a"
+implementation packet was corrected against the real codebase (invented a
+`src/admin/` directory that doesn't exist, tried to reintroduce a static
+`CRYSTAL_COLORS` list the app deliberately removed) and built properly
+instead — an admin-only `/swatch-library` page reading the render
+service's own photo registry live, no duplicate Firestore copy of the
+photo data. Opened to every approved portal customer as Phase 2b
+(`/shop/swatches`) at the owner's call, with a "request a sample" CTA that
+— after a bug where it bypassed the enquiry cart and never showed up
+under the portal's Enquiry tab — now correctly rides the same
+review-and-send flow as every other product enquiry. A carousel with
+arrows was added to the grid cards so a colour's different captured
+photos are browsable from the first-level list, not just the detail
+modal.
+
+**Then the owner brought a much larger, unrelated-looking spec**: a
+five-workstream "physical design workbench" (real-mm canvas, user-drawn
+zones, unified zone-map/printed mode, an admin template library, and
+warp-and-composite rendering onto the product photo) — genuinely large,
+so the plan was to build one workstream at a time rather than all five
+blind. **Workstream 4 (product template library) went first**, since
+everything else needs a real template — photo + SVG outline + real mm
+size — to work against. It's admin-gated tooling on the render service
+(`render-service/admin.html`'s new "🗂️ Product templates" section),
+completely separate from the main app's Firebase auth.
+
+From there, built in direct response to real usage on one real template
+(a "Round Coaster," 85×85mm) rather than speculatively:
+
+- **Workstream 1 (canvas & positioning)**: a real-millimetre canvas
+  showing the template's own photo at correct scale, with drag/resize
+  placement for a logo graphic and undo/redo. Caught and fixed a real bug
+  the same day — resize handles didn't respond because the canvas's
+  `max-width:100%` CSS meant its on-screen size didn't match its internal
+  pixel resolution, and mouse coordinates weren't being rescaled for that.
+- **Manual SVG alignment tooling**, added because there's no automatic
+  mapping between an uploaded SVG's own coordinate space and the photo's:
+  a scale/offset/opacity overlay the admin dials in by eye, persisted per
+  template.
+- **Workstream 2 (user-drawn zones)**, replacing the idea of hard-coded
+  per-product geometry: click-to-place-vertex polygon zones, each
+  assigned a real crystal type and colour. Extended same-day to support
+  **hollow zones** (outer boundary + holes, even-odd fill — "most logos
+  and text is hollow inside") after the owner tried tracing a butterfly
+  mark, plus an **"Add background zone"** button that reuses every other
+  zone's own rings so a hole in one zone correctly re-appears as exposed
+  background rather than double-subtracted empty space.
+- **A real, load-bearing bug** found and fixed the same day: the placed
+  graphic was deliberately session-only, which silently broke the new
+  "Redraw" shortcut on any return visit (zones persisted, the graphic
+  didn't, and zone-drawing was gated on a graphic being present). Fixed
+  by persisting the graphic too and by no longer gating Redraw on one
+  being loaded at all.
+- **Zone-drawing usability**, entirely owner-driven: an undo-last-point
+  button, much more visible point markers with the ring's starting point
+  highlighted as an actual closing target, a per-zone material-only edit
+  action, and a "delete and redraw with the same name/material
+  pre-filled" shortcut in place of true vertex-level editing (judged too
+  large for this pass, left open).
+- **The actual payoff, last**: `render-service/engine/zone_render.py`
+  renders a template's saved zones as real photographed crystal texture
+  — one material per zone, even-odd holes verified to render a genuinely
+  white hole against real textured crystal, not just visually plausible.
+  This is still the flat crystal layer only — no warp onto the SVG
+  outline, no paste onto the product photo. That's workstream 5,
+  unstarted, and workstream 3 (unifying zone-map/printed mode) is also
+  still open.
+
 ### Deployment notes
 
 - **`firestore.rules` published multiple times this cycle**, each pasted in
@@ -410,12 +483,21 @@ live rather than the fix being assumed to have worked:
   unlinked customer can't match a blank/malformed order.
 - **`storage.rules` published once** — the missing `customer-assets/` path.
 - **New Firestore collections**: `customers/{id}/assets` (Brand Gallery),
-  `campaign_templates`. **New fields**: `contacts[]` on every customer
-  document; `erp_code`/`erp_code_shared` on customers and linked portal
-  accounts (additive; nothing deleted or migrated).
+  `campaign_templates`, `crystal_swatch_notes` (legacy Swarovski
+  references, admin-write/customer-read). **New fields**: `contacts[]` on
+  every customer document; `erp_code`/`erp_code_shared` on customers and
+  linked portal accounts (additive; nothing deleted or migrated).
 - **Render service (Fly.io, `crystocraft-customizer-render`)** redeployed
-  nine times this cycle, version 0.1.0 → 0.9.0. Swatch photo library lives
-  on the Fly persistent volume (`/data`), not in git.
+  roughly two dozen times across the whole cycle, version 0.1.0 → 0.20.0
+  — nine early on tuning the crystal render, the rest building out the
+  Physical Design Workbench (§10). Swatch photos, product-template photos/
+  SVGs/graphics all live on the Fly persistent volume (`/data`), not in
+  git — `templates_registry.json` is its own file there, separate from the
+  swatch registry.
+- **New render-service admin endpoints** (all `ADMIN_PASSWORD`-gated,
+  separate from the main app's Firebase auth): `/templates*` (CRUD +
+  align + graphic + zones + render-zones) and `/api/swatch-library`
+  (Netlify proxy, admin OR approved-customer gated) on the main app side.
 - No new Postgres/Supabase surface this cycle.
 
 ### Open — not verified, because the app is login-gated for this assistant
@@ -444,28 +526,57 @@ before treating any of the following as proven:
 - Whether the `erp_code_shared` warning actually surfaces correctly for a
   customer on one of the known shared codes (A29/C13/O07) rather than
   silently showing a wrong merged history.
+- The Physical Design Workbench (§10) WAS click-tested, unusually — the
+  owner used it directly against a real template throughout, which is how
+  the resize-handle bug, the Redraw/graphic-persistence bug, and the
+  zone-drawing usability issues actually got found. What's still
+  unverified is the render engine's colour/material output on a *second*
+  real product template — everything so far is proven against one Round
+  Coaster.
 
 ---
 
 ## Where V7.22 starts
 
-**Crystal Fabric Studio, Track 2** is the main open thread: a swatch
-library for designers is still not built (Phase 1 this cycle only
-un-parked and tuned the existing zone-map configurator on 2 products).
-`Crystal_Fabric_Studio_Spec.md` has the plan — build on the existing
-`CRYSTAL_COLORS`/`CRYSTAL_TYPES` shape in `customizerApi.js`, admin-facing
-first, with physical sample-request as the actual conversion event rather
-than a rendered price band. Printed mode stays hidden from customers
-(`MODES[].available === false`) until backfilm photos are captured for it
-— the owner is continuing to photograph and upload swatches to the Fly
-volume; check `render-service` swatch counts before assuming printed mode
-is still blocked. Panel size is not yet stored per-product, only chosen
-per-session in the customizer UI.
+**The owner's stated plan**: start V7.22 on the **customer portal front
+page**, then come back to the Physical Design Workbench afterward. So the
+render-service thread below is a deliberate pause, not abandoned or
+blocked — pick it back up when asked, don't treat it as done.
 
-Everything in §"Open — not verified" above is also fair game for a first
-real pass — in particular the portal Order History feature, since it was
-built and shipped without this assistant ever being able to click through
-it as a real customer.
+**Customer portal front page** — no scoping done yet this cycle; the
+portal's current landing route is whatever `Storefront.jsx` defaults to
+(`/shop/figurine`), not a dedicated front/home page. Worth checking with
+the owner what "front page" actually means before assuming: a real
+landing/dashboard view, a redesign of an existing shop page, or something
+else. Nothing in this codebase currently distinguishes a portal "front
+page" from the catalogue itself.
+
+**Physical Design Workbench — paused mid-build, exactly here:**
+- Done: product template library (workstream 4), real-mm canvas +
+  positioning (workstream 1), user-drawn zones with holes + background
+  auto-fill (workstream 2), and rendering saved zones as real crystal
+  texture (`engine/zone_render.py`) — all proven against one real
+  template, "Round Coaster."
+- Not started: **workstream 3** (unifying zone-map/printed mode into one
+  workspace with a mode toggle — today they're still separate code
+  paths) and **workstream 5** (warping the rendered crystal layer onto
+  the template's SVG outline and pasting it onto the product photo for a
+  finished, photorealistic image — the actual "eliminates Photoshop"
+  payoff of the whole plan). `Crystal_Fabric_Studio_Spec.md` §5c-§5j has
+  the full build history and reasoning for everything done so far.
+- The template↔SVG registration is still a manually-dialed-in scale/
+  offset/opacity overlay (§5f-§5h of the spec), not a real coordinate
+  mapping — worth knowing before workstream 5 tries to use the SVG as an
+  actual clipping mask, since "close enough to look right" and
+  "mathematically registered" are different bars.
+- Only one real template exists. Before trusting the render engine's
+  output generally (not just for the Round Coaster), it's worth building
+  a second template end-to-end.
+
+Everything in §"Open — not verified" above the deployment notes is also
+fair game for a first real pass — in particular the portal Order History
+feature, since it was built and shipped without this assistant ever being
+able to click through it as a real customer.
 
 ---
 
