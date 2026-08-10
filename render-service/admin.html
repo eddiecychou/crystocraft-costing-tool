@@ -922,11 +922,15 @@
         <div class="swatch-row" style="cursor:default">
           <div class="dot" style="background-image:url('${t.photo_url}')"></div>
           <div class="name">${t.name}<br><span class="canvas-hint">${t.width_mm}×${t.height_mm}mm · ${id}</span></div>
+          <button class="small" data-tmpl-design="${id}">Design</button>
           <button class="small danger" data-tmpl-delete="${id}">✕</button>
         </div>`;
     }).join('');
     list.querySelectorAll('[data-tmpl-delete]').forEach(btn => {
       btn.addEventListener('click', () => deleteTemplateRow(btn.dataset.tmplDelete));
+    });
+    list.querySelectorAll('[data-tmpl-design]').forEach(btn => {
+      btn.addEventListener('click', () => designCanvasShell(btn.dataset.tmplDesign, templates[btn.dataset.tmplDesign]));
     });
   }
 
@@ -962,6 +966,232 @@
     document.getElementById('tmpl-svg-zone').textContent = 'Click or drag an .svg file here';
     document.getElementById('tmpl-svg-status').textContent = '';
     await loadTemplateList();
+  }
+
+  // ── Design canvas — workstream 1 (Crystal_Fabric_Studio_Spec.md §5d) ─────
+  // Real-millimetre positioning surface for a graphic on top of a saved
+  // template's product photo: drag to move, drag a corner to resize
+  // (aspect-locked by default), grid/ruler in mm, undo/redo, and an
+  // approximate small-size warning. Deliberately NOT the SVG-outline-aware
+  // zone system (that's workstream 2) — the whole photo stands in for the
+  // template's mm extent here, and nothing is persisted yet; this phase
+  // only proves out the canvas mechanics the later workstreams build on.
+  const MIN_FEATURE_MM = 4; // generous heuristic floor, not real stroke-width detection — see designCanvasShell's comment
+  let dcState = null; // { tmpl, img, xMM, yMM, wMM, hMM, aspect, pxPerMM, dispW, dispH }
+  let dcUndo = [];
+  let dcRedo = [];
+  let dcDrag = null; // { mode: 'move'|'resize', handle, startX, startY, orig }
+  let dcWindowListenersBound = false; // window listeners are idempotent-safe (read globals), but only bind once — a new <canvas> is created each time design mode opens
+
+  function designCanvasShell(id, t) {
+    document.getElementById('editor').innerHTML = `
+      <button class="small" id="dc-back" style="margin-bottom:14px">← Back to templates</button>
+      <h2 style="margin:0 0 4px">${t.name} <span class="canvas-hint">${t.width_mm}×${t.height_mm}mm</span></h2>
+      <p class="style-note">Drag the graphic to move it, drag a corner to resize. Grid lines every 10mm. This positions a graphic in real space only — crystal zones and materials are a later phase.</p>
+      <div class="editor-grid">
+        <div>
+          <div class="canvas-wrap"><div id="dc-canvas-wrap"></div></div>
+          <div id="dc-warning" class="preview-hint" style="color:var(--danger)"></div>
+        </div>
+        <div>
+          <div class="panel">
+            <label>Graphic to position</label>
+            <div class="drop-zone" id="dc-graphic-zone" style="padding:20px;margin-bottom:14px">Click or drag a PNG/JPG here</div>
+            <label style="display:flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px">
+              <input type="checkbox" id="dc-aspect-lock" checked style="width:auto;margin:0"> Lock aspect ratio while resizing
+            </label>
+          </div>
+          <div class="panel" id="dc-readout">
+            <label>Placed size (real mm)</label>
+            <div class="canvas-hint" id="dc-size-readout">No graphic placed yet.</div>
+          </div>
+          <div class="actions">
+            <button class="small" id="dc-undo">↩ Undo</button>
+            <button class="small" id="dc-redo">↪ Redo</button>
+          </div>
+        </div>
+      </div>`;
+    document.getElementById('dc-back').addEventListener('click', templatesShell);
+    document.getElementById('dc-undo').addEventListener('click', dcApplyUndo);
+    document.getElementById('dc-redo').addEventListener('click', dcApplyRedo);
+    document.getElementById('dc-graphic-zone').addEventListener('click', () => {
+      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/png,image/jpeg';
+      inp.onchange = e => dcLoadGraphic(e.target.files[0]);
+      inp.click();
+    });
+    document.getElementById('dc-graphic-zone').addEventListener('dragover', e => e.preventDefault());
+    document.getElementById('dc-graphic-zone').addEventListener('drop', e => {
+      e.preventDefault(); if (e.dataTransfer.files[0]) dcLoadGraphic(e.dataTransfer.files[0]);
+    });
+
+    dcUndo = []; dcRedo = [];
+    const bg = new Image();
+    bg.onload = () => {
+      dcState = {
+        tmpl: t, bgImg: bg, img: null,
+        xMM: t.width_mm / 2, yMM: t.height_mm / 2, wMM: 0, hMM: 0, aspect: 1,
+      };
+      dcDrawCanvas();
+    };
+    bg.src = t.photo_url;
+  }
+
+  function dcLoadGraphic(file) {
+    if (!file || !dcState) return;
+    const img = new Image();
+    img.onload = () => {
+      dcState.img = img;
+      dcState.aspect = img.naturalWidth / img.naturalHeight;
+      // Default: 30% of the template's width, aspect-preserved, centred.
+      dcState.wMM = dcState.tmpl.width_mm * 0.3;
+      dcState.hMM = dcState.wMM / dcState.aspect;
+      dcState.xMM = (dcState.tmpl.width_mm - dcState.wMM) / 2;
+      dcState.yMM = (dcState.tmpl.height_mm - dcState.hMM) / 2;
+      dcUndo = []; dcRedo = [];
+      dcDrawCanvas();
+    };
+    img.src = URL.createObjectURL(file);
+  }
+
+  function dcSnapshot() {
+    return { xMM: dcState.xMM, yMM: dcState.yMM, wMM: dcState.wMM, hMM: dcState.hMM };
+  }
+  function dcPushUndo() { dcUndo.push(dcSnapshot()); dcRedo = []; }
+  function dcApplyUndo() {
+    if (!dcUndo.length || !dcState) return;
+    dcRedo.push(dcSnapshot());
+    Object.assign(dcState, dcUndo.pop());
+    dcDrawCanvas();
+  }
+  function dcApplyRedo() {
+    if (!dcRedo.length || !dcState) return;
+    dcUndo.push(dcSnapshot());
+    Object.assign(dcState, dcRedo.pop());
+    dcDrawCanvas();
+  }
+
+  const DC_HANDLE_PX = 9;
+
+  function dcDrawCanvas() {
+    const wrap = document.getElementById('dc-canvas-wrap');
+    if (!wrap || !dcState) return;
+    const maxW = 640;
+    const dispW = Math.min(maxW, dcState.bgImg.naturalWidth);
+    const dispH = Math.round(dispW * (dcState.bgImg.naturalHeight / dcState.bgImg.naturalWidth));
+    const pxPerMM = dispW / dcState.tmpl.width_mm;
+    dcState.dispW = dispW; dcState.dispH = dispH; dcState.pxPerMM = pxPerMM;
+
+    let canvas = wrap.querySelector('canvas');
+    if (!canvas) {
+      canvas = document.createElement('canvas');
+      wrap.appendChild(canvas);
+      canvas.addEventListener('mousedown', dcOnMouseDown);
+      if (!dcWindowListenersBound) {
+        window.addEventListener('mousemove', dcOnMouseMove);
+        window.addEventListener('mouseup', dcOnMouseUp);
+        dcWindowListenersBound = true;
+      }
+    }
+    canvas.width = dispW; canvas.height = dispH;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(dcState.bgImg, 0, 0, dispW, dispH);
+
+    // Grid every 10mm, labelled every 50mm.
+    ctx.strokeStyle = 'rgba(198,166,100,0.25)';
+    ctx.fillStyle = 'rgba(198,166,100,0.6)';
+    ctx.font = '9px monospace';
+    ctx.lineWidth = 1;
+    for (let mm = 0; mm * pxPerMM < dispW; mm += 10) {
+      const x = mm * pxPerMM;
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, dispH); ctx.stroke();
+      if (mm % 50 === 0 && mm > 0) ctx.fillText(`${mm}`, x + 2, 10);
+    }
+    for (let mm = 0; mm * pxPerMM < dispH; mm += 10) {
+      const y = mm * pxPerMM;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(dispW, y); ctx.stroke();
+      if (mm % 50 === 0 && mm > 0) ctx.fillText(`${mm}`, 2, y - 2);
+    }
+
+    if (dcState.img) {
+      const gx = dcState.xMM * pxPerMM, gy = dcState.yMM * pxPerMM;
+      const gw = dcState.wMM * pxPerMM, gh = dcState.hMM * pxPerMM;
+      ctx.drawImage(dcState.img, gx, gy, gw, gh);
+      ctx.strokeStyle = '#c6a664'; ctx.lineWidth = 1.5;
+      ctx.strokeRect(gx, gy, gw, gh);
+      ctx.fillStyle = '#c6a664';
+      [[gx, gy], [gx + gw, gy], [gx, gy + gh], [gx + gw, gy + gh]].forEach(([hx, hy]) => {
+        ctx.fillRect(hx - DC_HANDLE_PX / 2, hy - DC_HANDLE_PX / 2, DC_HANDLE_PX, DC_HANDLE_PX);
+      });
+
+      const readout = document.getElementById('dc-size-readout');
+      if (readout) readout.textContent = `${dcState.wMM.toFixed(1)} × ${dcState.hMM.toFixed(1)} mm, at (${dcState.xMM.toFixed(1)}, ${dcState.yMM.toFixed(1)}) mm from top-left`;
+      const warn = document.getElementById('dc-warning');
+      if (warn) {
+        warn.textContent = (dcState.wMM < MIN_FEATURE_MM || dcState.hMM < MIN_FEATURE_MM)
+          ? `⚠ Placed very small (under ${MIN_FEATURE_MM}mm on one side) — fine detail likely won't survive as crystal fabric (min bead size ~1mm). This is a size check only, not real stroke-width detection inside the artwork.`
+          : '';
+      }
+    }
+  }
+
+  function dcHandleAt(px, py) {
+    if (!dcState?.img) return null;
+    const { pxPerMM, xMM, yMM, wMM, hMM } = dcState;
+    const gx = xMM * pxPerMM, gy = yMM * pxPerMM, gw = wMM * pxPerMM, gh = hMM * pxPerMM;
+    const corners = { nw: [gx, gy], ne: [gx + gw, gy], sw: [gx, gy + gh], se: [gx + gw, gy + gh] };
+    for (const [name, [hx, hy]] of Object.entries(corners)) {
+      if (Math.abs(px - hx) <= DC_HANDLE_PX && Math.abs(py - hy) <= DC_HANDLE_PX) return name;
+    }
+    if (px >= gx && px <= gx + gw && py >= gy && py <= gy + gh) return 'body';
+    return null;
+  }
+
+  function dcOnMouseDown(e) {
+    if (!dcState?.img) return;
+    const r = e.target.getBoundingClientRect();
+    const px = e.clientX - r.left, py = e.clientY - r.top;
+    const hit = dcHandleAt(px, py);
+    if (!hit) return;
+    dcPushUndo();
+    dcDrag = {
+      mode: hit === 'body' ? 'move' : 'resize', handle: hit,
+      startPX: px, startPY: py, orig: dcSnapshot(),
+    };
+  }
+
+  function dcOnMouseMove(e) {
+    if (!dcDrag || !dcState) return;
+    const canvas = document.querySelector('#dc-canvas-wrap canvas');
+    if (!canvas) return;
+    const r = canvas.getBoundingClientRect();
+    const px = e.clientX - r.left, py = e.clientY - r.top;
+    const dMM_x = (px - dcDrag.startPX) / dcState.pxPerMM;
+    const dMM_y = (py - dcDrag.startPY) / dcState.pxPerMM;
+    const o = dcDrag.orig;
+
+    if (dcDrag.mode === 'move') {
+      dcState.xMM = o.xMM + dMM_x;
+      dcState.yMM = o.yMM + dMM_y;
+    } else {
+      const lock = document.getElementById('dc-aspect-lock')?.checked;
+      let { xMM, yMM, wMM, hMM } = o;
+      if (dcDrag.handle === 'se') { wMM = o.wMM + dMM_x; hMM = lock ? wMM / dcState.aspect : o.hMM + dMM_y; }
+      else if (dcDrag.handle === 'nw') { wMM = o.wMM - dMM_x; hMM = lock ? wMM / dcState.aspect : o.hMM - dMM_y; xMM = o.xMM + o.wMM - wMM; yMM = o.yMM + o.hMM - hMM; }
+      else if (dcDrag.handle === 'ne') { wMM = o.wMM + dMM_x; hMM = lock ? wMM / dcState.aspect : o.hMM - dMM_y; yMM = o.yMM + o.hMM - hMM; }
+      else if (dcDrag.handle === 'sw') { wMM = o.wMM - dMM_x; hMM = lock ? wMM / dcState.aspect : o.hMM + dMM_y; xMM = o.xMM + o.wMM - wMM; }
+      if (wMM > 2 && hMM > 2) { dcState.wMM = wMM; dcState.hMM = hMM; dcState.xMM = xMM; dcState.yMM = yMM; }
+    }
+    dcDrawCanvas();
+  }
+
+  function dcOnMouseUp() {
+    if (!dcDrag) return;
+    // If nothing actually moved, the pushed undo entry is a no-op waste —
+    // harmless (undo would just restore the same values) but pop it anyway
+    // to keep the undo stack meaningful.
+    const now = dcSnapshot(), before = dcDrag.orig;
+    if (JSON.stringify(now) === JSON.stringify(before)) dcUndo.pop();
+    dcDrag = null;
   }
 
   document.getElementById('add-new').addEventListener('click', addNew);

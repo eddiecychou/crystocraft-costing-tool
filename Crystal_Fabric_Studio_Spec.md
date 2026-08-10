@@ -344,6 +344,45 @@ against.
   the warp-and-composite render step (workstream 5) — none of these read
   or write the new template registry yet. A saved template today has no
   consumer.
+- **Verified working live** (owner, 2026-08-11): saved a real "Round
+  Coaster" template (85×85mm) via the admin tool and confirmed it lists
+  correctly with a thumbnail — not just a parse-check, the actual upload/
+  save/list round trip.
+
+## 5d. Canvas & positioning overhaul (2026-08-11) — workstream 1
+
+The first consumer of a saved template. A "Design" button on each template
+row in the admin Templates section opens a canvas showing the template's
+own product photo at the correct real-millimetre scale (a 10mm grid with
+50mm labels, computed from `pxPerMM = displayWidthPx / template.width_mm`),
+onto which the admin can drop a graphic and drag it to reposition, or drag
+a corner handle to resize (aspect-locked by default, a checkbox frees it).
+Undo/redo is a plain snapshot stack of `{x, y, w, h}` in mm, pushed on
+drag-start and popped on Cmd/Ctrl-independent Undo/Redo buttons — no
+keyboard shortcuts wired yet.
+
+Deliberately simplified against the original workstream description in two
+ways, both worth knowing before workstream 2 builds on this:
+
+- **The whole product photo stands in for the template's mm extent.** The
+  SVG outline saved alongside the template isn't read or drawn here at
+  all — this phase only proves out the drag/resize/grid/undo mechanics.
+  Workstream 2 (user-drawn zones) is where the SVG boundary actually
+  becomes load-bearing, both as the zone-drawing canvas boundary and later
+  as the composite clipping mask.
+- **The "thin-line constraint warning" is a placement-size heuristic, not
+  real stroke-width detection.** It warns when the graphic's placed width
+  or height drops under a flat 4mm floor — it has no way to inspect actual
+  line thickness inside the uploaded artwork itself. Genuine fine-detail
+  detection (measuring the thinnest stroke in the source image) is a
+  materially harder computer-vision problem and wasn't attempted; flagged
+  here so the warning isn't mistaken for something it isn't.
+- **Nothing persists.** No save button, no Firestore/registry write — this
+  is proof-of-mechanics only, matching the "prerequisite to everything
+  else" framing in the original plan rather than a shippable authoring
+  tool on its own.
+
+Render service version bumped 0.10.0 → 0.11.0.
 
 ## 6. Open questions for the owner
 
