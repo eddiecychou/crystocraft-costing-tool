@@ -593,6 +593,27 @@ with no error shown.
 
 Render service version 0.17.0 → 0.18.0.
 
+## 5i. Point-click undo + more visible markers (2026-08-11)
+
+Owner: "the dots are not showing clearly and somehow I can't see where
+is the beginning. So I always mess up on the closing the loop... maybe
+using a undo button will help a lot. also if the dot are more obvious i
+will make less mistakes."
+
+- **"↩ Undo last point"** — pops the last click off the ring being drawn
+  right now; if that ring is empty (nothing clicked since the last
+  "Finish boundary/hole"), it reopens the most recently completed ring
+  instead, so one button keeps working back through an entire
+  in-progress zone, not just the current ring.
+- **Markers made deliberately obvious**: every point now has a black
+  outline so it reads against both light and dark photo areas, at nearly
+  double the previous radius. The ring's first point — the actual target
+  the §5g closing-snap logic looks for — is bigger still, gold, with a
+  ring drawn around it, so there's a real thing to aim the closing click
+  at instead of guessing.
+
+Render service version 0.18.0 → 0.19.0.
+
 ## 6. Open questions for the owner
 
 - Photography budget/cadence for growing past 27 swatches — who shoots them,

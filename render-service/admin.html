@@ -1079,6 +1079,9 @@
             <label>Crystal colour</label>
             <select id="dc-zone-color"><option value="">Loading…</option></select>
             <div class="actions">
+              <button class="small" id="dc-zone-undo-point" disabled>↩ Undo last point</button>
+            </div>
+            <div class="actions" style="margin-top:6px">
               <button class="small" id="dc-zone-add-hole" disabled>🕳 Finish boundary, start a hole</button>
               <button class="small primary" id="dc-zone-finish" disabled>Finish zone (need 3+ points)</button>
             </div>
@@ -1090,7 +1093,7 @@
               <button class="small primary" id="dc-zone-save-material" style="display:none">💾 Save material change</button>
               <button class="small" id="dc-zone-cancel-edit" style="display:none">Cancel</button>
             </div>
-            <p class="help">Hollow logos/text: trace the OUTER edge first, click "Finish boundary, start a hole", then trace the INNER edge (e.g. inside a letter O) — repeat for more holes, then Finish zone. "Add background" fills the rest of the canvas around every zone drawn so far, holes included. Per zone below: ✎ changes its crystal type/colour without redrawing; ↺ deletes it and reopens drawing with the same name/material pre-filled, so a shape mistake is a quick redraw, not starting over.</p>
+            <p class="help">The FIRST point of whatever you're tracing shows as a bigger gold dot with a ring around it — click back on it (or within ~10px) to close the loop cleanly. "Undo last point" backs out one click at a time, including across "Finish boundary/hole" if you go back far enough. Hollow logos/text: trace the OUTER edge first, click "Finish boundary, start a hole", then trace the INNER edge (e.g. inside a letter O) — repeat for more holes, then Finish zone. "Add background" fills the rest of the canvas around every zone drawn so far, holes included. Per zone below: ✎ changes its crystal type/colour without redrawing; ↺ deletes it and reopens drawing with the same name/material pre-filled, so a shape mistake is a quick redraw, not starting over.</p>
             <div id="dc-zone-list" style="margin-top:12px"></div>
             <div class="actions" style="margin-top:10px">
               <button class="small" id="dc-zones-save">Save zones (${(t.zones || []).length}/5)</button>
@@ -1135,6 +1138,7 @@
     document.getElementById('dc-zone-draw-toggle').addEventListener('click', dcToggleZoneMode);
     document.getElementById('dc-zone-type').addEventListener('change', dcRefreshZoneColorSelect);
     document.getElementById('dc-zone-add-hole').addEventListener('click', dcAddHoleRing);
+    document.getElementById('dc-zone-undo-point').addEventListener('click', dcUndoLastPoint);
     document.getElementById('dc-zone-finish').addEventListener('click', dcFinishZone);
     document.getElementById('dc-zone-add-background').addEventListener('click', dcAddBackgroundZone);
     document.getElementById('dc-zone-save-material').addEventListener('click', dcSaveMaterialEdit);
@@ -1241,8 +1245,10 @@
   function dcUpdateZoneDrawButtons() {
     const holeBtn = document.getElementById('dc-zone-add-hole');
     const finishBtn = document.getElementById('dc-zone-finish');
+    const undoBtn = document.getElementById('dc-zone-undo-point');
     const status = document.getElementById('dc-zone-ring-status');
     const canCloseCurrentRing = dcCurrentRingPoints.length >= 3;
+    if (undoBtn) undoBtn.disabled = dcCurrentRingPoints.length === 0 && dcCurrentZoneRings.length === 0;
     if (holeBtn) {
       holeBtn.disabled = !canCloseCurrentRing;
       holeBtn.textContent = dcCurrentZoneRings.length === 0
@@ -1266,6 +1272,24 @@
     if (dcCurrentRingPoints.length < 3) return;
     dcCurrentZoneRings.push(dcCurrentRingPoints);
     dcCurrentRingPoints = [];
+    dcUpdateZoneDrawButtons();
+    dcDrawCanvas();
+  }
+
+  // Undo one click at a time: pops the last point off the ring being
+  // drawn right now; if that ring is empty (nothing clicked since the
+  // last "Finish boundary/hole"), it instead reopens the most recently
+  // completed ring so the last point of THAT ring can be undone too —
+  // one button, keeps working back through the whole in-progress zone.
+  function dcUndoLastPoint() {
+    if (dcCurrentRingPoints.length > 0) {
+      dcCurrentRingPoints.pop();
+    } else if (dcCurrentZoneRings.length > 0) {
+      dcCurrentRingPoints = dcCurrentZoneRings.pop();
+      dcCurrentRingPoints.pop();
+    } else {
+      return;
+    }
     dcUpdateZoneDrawButtons();
     dcDrawCanvas();
   }
@@ -1593,11 +1617,28 @@
           const x = p.x_mm * pxPerMM, y = p.y_mm * pxPerMM;
           if (j === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         });
-        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
-        dcCurrentRingPoints.forEach(p => {
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.setLineDash([5, 4]); ctx.stroke(); ctx.setLineDash([]);
+        // Points made much more obvious — owner: "the dots are not
+        // showing clearly and somehow I can't see where is the
+        // beginning... if the dots are more obvious i will make less
+        // mistakes." Every point gets a dark outline so it reads against
+        // both light and dark photo areas; point 0 (the "close here"
+        // target the snap-to-close logic in dcOnMouseDown looks for) is
+        // drawn bigger, gold, with a ring around it — a real target to aim
+        // for instead of guessing where the loop started.
+        dcCurrentRingPoints.forEach((p, j) => {
+          const x = p.x_mm * pxPerMM, y = p.y_mm * pxPerMM;
+          const isFirst = j === 0;
+          const r = isFirst ? 8 : 5;
+          if (isFirst && dcCurrentRingPoints.length >= 3) {
+            ctx.beginPath(); ctx.arc(x, y, 13, 0, Math.PI * 2);
+            ctx.strokeStyle = '#c6a664'; ctx.lineWidth = 2; ctx.stroke();
+          }
           ctx.beginPath();
-          ctx.arc(p.x_mm * pxPerMM, p.y_mm * pxPerMM, 4, 0, Math.PI * 2);
-          ctx.fillStyle = '#ffffff'; ctx.fill();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fillStyle = isFirst ? '#c6a664' : '#ffffff';
+          ctx.fill();
+          ctx.strokeStyle = '#000000'; ctx.lineWidth = 2; ctx.stroke();
         });
       }
     }
