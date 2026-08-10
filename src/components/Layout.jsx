@@ -6,7 +6,7 @@ import logo from '../assets/logo.png'
 import { APP_NAME, APP_VERSION, versionLabel } from '../appInfo'
 import {
   LayoutDashboard, Package, Gem, ClipboardList, Puzzle,
-  Factory, Building2, Megaphone, Settings, MoreHorizontal, Users, Truck, FileText, Boxes, Database, Hash, Receipt,
+  Factory, Building2, Megaphone, Settings, MoreHorizontal, Users, Truck, FileText, Boxes, Database, Hash, Receipt, Sparkles,
 } from 'lucide-react'
 
 // Grouped so the list stays readable as it grows — it reached 16 destinations
@@ -18,6 +18,7 @@ const nav = [
   { group: 'Catalogue' },
   { to: '/products',   label: 'Corp Gifts',    short: 'Corp',     Icon: Package, primary: true },
   { to: '/range',      label: 'Figurine Gifts',short: 'Figurine', Icon: Gem, primary: true },
+  { to: '/swatch-library', label: 'Swatch Library', short: 'Swatches', Icon: Sparkles },
 
   { group: 'Sales' },
   { to: '/quotes',     label: 'Quotes',        short: 'Quotes',   Icon: ClipboardList, primary: true },

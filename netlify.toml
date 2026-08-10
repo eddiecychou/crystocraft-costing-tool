@@ -100,6 +100,10 @@
   function = "customizer-palette"
   path = "/api/customizer-palette"
 
+[[edge_functions]]
+  function = "swatch-library"
+  path = "/api/swatch-library"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

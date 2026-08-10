@@ -221,6 +221,14 @@ service cloud.firestore {
       }
     }
 
+    // Crystal Fabric Studio swatch notes (V7.22 §5a) — curated
+    // recommended-use-cases / legacy-Swarovski-ref metadata per crystal
+    // colour, admin only. The photos themselves live in the render
+    // service's own registry, not here — see Crystal_Fabric_Studio_Spec.md.
+    match /crystal_swatch_notes/{colorId} {
+      allow read, write: if isAdmin();
+    }
+
     // Packaging inventory (V7.13a) — gift boxes / cartons / inserts, admin only.
     match /packaging/{packagingId} {
       allow read, write: if isAdmin();

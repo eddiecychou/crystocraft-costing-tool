@@ -180,6 +180,69 @@ strangers.
    price bands, funnel analytics. Revisit only if Phase 2b shows real
    external usage that these would meaningfully improve.
 
+## 5a. Phase 2a — corrected implementation plan (2026-08-11)
+
+The owner brought a Perplexity-drafted implementation packet for Phase 2a.
+It got the shape of the feature right (admin-facing swatch browser, filters,
+detail view, use-case/legacy-ref metadata) but was written without the repo
+open and got several concrete things wrong: it invents a `src/admin/`
+directory that doesn't exist in this app (admin pages live in `src/pages/`,
+routed from `src/App.jsx`); it re-imports `CRYSTAL_COLORS` as a static array
+from `customizerApi.js`, which was deliberately removed on 2026-07-30 in
+favour of fetching the palette live, for the exact reason a duplicate static
+list would cause here again — drift against what's actually photographed; it
+proposes seeding a *new* Firestore collection with the full colour × type ×
+backfilm cross product, duplicating data the render-service's own
+`registry.json` already owns; it calls `crystal_photo()` with
+`backfilm="Unspecified"`, which doesn't match any real captured slot and
+would 404 every swatch; and its image URLs
+(`crystocraft.com/swatch_gallery/*.jpg`) aren't real — swatch photos live on
+the Fly.io persistent volume, served through `app.py`'s own endpoints.
+
+**What Phase 2a actually needs, corrected:**
+
+- **No new photo data store.** `render-service/app.py` already has
+  everything a browsing tool needs: `GET /swatches` (full registry, every
+  colour's fabric/rock slots with `url`s), `GET /swatches/image/{filename}`
+  (serves the actual photo), `GET /swatches/backfilms`. All admin-gated by
+  `ADMIN_PASSWORD` HTTP Basic auth already, built for `admin.html`'s
+  photo-capture workflow. Phase 2a's browsing page reads the same registry
+  through the same endpoints — it does not re-seed it into Firestore, and it
+  does not touch `render-service/` at all (no Fly deploy needed for this
+  phase).
+- **One new Netlify edge function, `swatch-library.js`**, proxying those two
+  GET routes — same shape as the existing `customizer-palette.js` proxy, but
+  gated on the caller being a signed-in Firebase **admin** (same
+  `isAdmin(uid, idToken, projectId)` check `erp.js` already uses), not a
+  shared render token. It holds a new server-side secret,
+  `RENDER_ADMIN_PASSWORD` (must equal the Fly service's `ADMIN_PASSWORD`),
+  and sends it as the HTTP Basic credential (`admin` / that password) when
+  calling Fly — the browser never sees Fly's admin password, same pattern
+  `erp.js` uses to keep the Supabase service key server-side.
+- **One new Firestore collection, `crystal_swatch_notes/{colorName}`** —
+  admin-only (`allow read, write: if isAdmin();`, matching the `crystals`
+  collection's existing rule right next to it), holding only the metadata
+  that has no other home: `recommended_use_cases: string[]`,
+  `legacy_swarovski_refs: string[]`. Keyed by colour name only, not the full
+  colour×type×backfilm product — the photos already carry that granularity
+  in the registry; the notes are a business judgement about the colour, not
+  the individual photo.
+- **One new page, `src/pages/SwatchLibrary.jsx`**, route `/swatch-library`,
+  nav entry in `src/components/Layout.jsx`. Grid of crystal colours (swatch
+  photo, hex dot, captured styles/backfilms) with type/search filters; a
+  detail panel showing every captured photo for that colour plus an
+  editable recommended-use-cases / legacy-Swarovski-refs form, writing to
+  `crystal_swatch_notes`.
+- **No render-on-demand preview in this phase.** The original broader
+  Phase-2 scope (§3) mentioned example renders on the swatch detail page —
+  trimmed here to keep Phase 2a cheap and internal-only, consistent with
+  §5's "admin-first, buy time on supplier-risk" reasoning. The captured
+  macro photo is enough for a sales call; a rendered example can follow in
+  2b if it's actually asked for.
+- **No sample-request CTA in this phase** — that's still 2b, portal-facing,
+  per §5's existing phasing. This page has exactly one user type: internal
+  staff on a sales call.
+
 ## 6. Open questions for the owner
 
 - Does Crystocraft (or the owner personally) actually hold enough Swarovski
