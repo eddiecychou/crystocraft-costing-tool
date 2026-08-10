@@ -614,6 +614,49 @@ will make less mistakes."
 
 Render service version 0.18.0 → 0.19.0.
 
+## 5j. Rendering the drawn zones as real crystal (2026-08-11)
+
+Everything up to this point (templates, canvas, zones) was authoring
+only — no zone had ever actually been rendered as crystal texture. Owner
+chose this as the next build over unifying zone-map/printed mode
+(workstream 3) or jumping straight to full photo compositing (workstream
+5), since it's the real test of whether the tool's output looks right,
+and a hard prerequisite for both of those.
+
+**New `render-service/engine/zone_render.py`, `render_zone_layer(zones,
+width_mm)`.** Rasterizes each zone's ring set into a CANVAS×CANVAS
+(1000×1000, same square-panel convention `panel_mm` already uses
+elsewhere in this service) antialiased mask, even-odd across rings via
+XOR of 0/1 fills — matching the exact rule the design canvas's own
+preview already draws with (`ctx.fill('evenodd')`), not a reimplemented
+approximation. Each zone gets its own real photographed crystal material
+(`palette.crystal_photo()`, `core.build_material()`,
+`core.boost_ab_flecks()` — same material pipeline `stones.py`'s existing
+zone-map render already uses), composited in list order onto a white
+base — "last zone drawn on top," the same convention the design canvas's
+translucent preview already established. Verified directly (not just
+imported cleanly): a hollow test zone rendered with a pure-white hole and
+real textured Jet crystal in the solid area, confirming the even-odd
+implementation actually matches the canvas preview's rule rather than
+just resembling it.
+
+**New `GET /templates/{id}/render-zones`** (admin-gated) loads the
+template's saved zones and calls it. **New "🎨 Render as crystal" button**
+in the design canvas's zones panel shows the result inline. Explicitly
+renders the last *saved* state, not whatever's currently being drawn —
+the status message says so, since forgetting to save first and getting a
+stale render would be a confusing failure mode otherwise.
+
+**Deliberately still not composited.** This produces the flat crystal
+design layer alone, at the template's own real-mm scale — it does not
+warp onto the SVG outline and does not paste onto the product photo.
+Those are workstream 5, unstarted. A zone that doesn't fully cover the
+canvas (no "Add background zone" used) currently shows plain white where
+it's missing — visible, not silently hidden, so a gap in the zone
+coverage is obvious rather than mysterious.
+
+Render service version 0.19.0 → 0.20.0.
+
 ## 6. Open questions for the owner
 
 - Photography budget/cadence for growing past 27 swatches — who shoots them,

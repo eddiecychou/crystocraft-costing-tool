@@ -7,8 +7,11 @@ GET  /admin   -> swatch-library admin tool (capture/crop/preview/save colours
 GET/POST/DELETE /templates* -> product template library (photo + SVG outline +
                  real mm size, see engine/templates.py) plus manual SVG
                  alignment and user-drawn crystal zones (workstreams 1-2 of
-                 the physical design workbench) — no compositing/rendering
-                 of zones yet, geometry + material assignment only.
+                 the physical design workbench). GET /templates/{id}/render-
+                 zones renders the saved zones as real crystal texture
+                 (engine/zone_render.py) — still just the flat crystal
+                 layer, no warp onto the SVG outline or paste onto the
+                 product photo yet (that's compositing, workstream 5).
 
 Auth:
 - /render: if RENDER_TOKEN is set, requests must send a matching
@@ -36,12 +39,13 @@ import engine
 from engine.core import build_material, to_pil
 from engine.palette import list_crystal_colors, REGISTRY_PATH, COLORS_DIR
 from engine import templates as tmpl_registry
+from engine.zone_render import render_zone_layer
 
 # Bump on every deploy that changes render behaviour — shown in /health and
 # on the admin page header, so it's visible from the outside whether a given
 # deploy actually landed (owner, 2026-08-06, after several redeploys in a
 # row with no visible confirmation the new code was live).
-app = FastAPI(title="Crystocraft Customizer Render", version="0.19.0")
+app = FastAPI(title="Crystocraft Customizer Render", version="0.20.0")
 
 RENDER_TOKEN = os.environ.get("RENDER_TOKEN", "")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
@@ -602,3 +606,24 @@ def templates_save_zones(template_id: str, payload: ZonesPayload):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return _template_out(template_id, entry)
+
+
+@app.get("/templates/{template_id}/render-zones", dependencies=[Depends(require_admin)])
+def templates_render_zones(template_id: str):
+    """Renders the template's saved zones as real crystal texture — the
+    first thing that reads `zones` for anything besides a translucent
+    canvas preview. See engine/zone_render.py's module docstring for what
+    this is and, importantly, isn't yet (no SVG warp, no photo composite)."""
+    try:
+        tmpl = tmpl_registry.get_template(template_id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="No such template")
+    try:
+        img = render_zone_layer(tmpl.get("zones") or [], tmpl["width_mm"])
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"render failed: {e}")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return Response(content=buf.getvalue(), media_type="image/png")
