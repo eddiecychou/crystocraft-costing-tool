@@ -3,9 +3,11 @@ import Catalogues from './Catalogues'
 import BlogGenerator from './BlogGenerator'
 import MarketingContacts from './MarketingContacts'
 import Campaigns from './Campaigns'
+import FrontPageConfig from './FrontPageConfig'
 
 const TABS = [
   { v: 'catalogues', label: 'Catalogues' },
+  { v: 'frontpage',  label: 'Front Page' },
   { v: 'blog',       label: 'Blog Writer' },
   { v: 'contacts',   label: 'Contacts' },
   { v: 'campaigns',  label: 'Campaigns' },
@@ -35,6 +37,7 @@ export default function Marketing() {
       </div>
 
       {tab === 'catalogues' && <Catalogues embedded />}
+      {tab === 'frontpage'  && <FrontPageConfig embedded />}
       {tab === 'blog'       && <BlogGenerator embedded />}
       {tab === 'contacts'   && (
         <MarketingContacts onSendEmail={ids => { setPresetContactIds(ids); setTab('campaigns') }} />
