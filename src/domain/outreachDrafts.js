@@ -1,5 +1,5 @@
 import {
-  collection, doc, addDoc, updateDoc, getDocs, query, where, serverTimestamp,
+  collection, doc, addDoc, updateDoc, getDocs, query, where, serverTimestamp, writeBatch,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 
@@ -81,4 +81,19 @@ export async function skipDraft(draftId, reviewerUid, skipReason) {
     reviewedAt: serverTimestamp(),
     reviewedBy: reviewerUid || '',
   })
+}
+
+// Bulk cleanup — deletes every pending_review draft outright (not marked
+// skipped: these are almost always testing/duplicate clutter, not real
+// decisions worth an audit trail). Chunked at Firestore's 500-write batch
+// limit, same idiom as domain/customer.js's deleteContacts.
+export async function deleteAllPending() {
+  const snap = await getDocs(query(COL(), where('status', '==', 'pending_review')))
+  const refs = snap.docs.map(d => d.ref)
+  for (let i = 0; i < refs.length; i += 400) {
+    const batch = writeBatch(db)
+    refs.slice(i, i + 400).forEach(ref => batch.delete(ref))
+    await batch.commit()
+  }
+  return refs.length
 }

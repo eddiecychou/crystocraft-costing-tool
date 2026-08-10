@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { collection, doc, getDocs, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore'
-import { Send, Loader2, SkipForward, Sparkles } from 'lucide-react'
+import { Send, Loader2, SkipForward, Sparkles, Trash2 } from 'lucide-react'
 import { db, authedUser } from '../firebase'
 import { loadCustomers, primaryContact } from '../domain/customer'
-import { listPendingDrafts, listDraftsForProduct, createDrafts, markDraftSent, skipDraft } from '../domain/outreachDrafts'
+import { listPendingDrafts, listDraftsForProduct, createDrafts, markDraftSent, skipDraft, deleteAllPending } from '../domain/outreachDrafts'
 import { generateDrafts, sendPersonalEmail } from '../outreachApi'
 
 // Daily Drafts re-engagement engine (V7.23) — pick a product, generate 10-20
@@ -156,6 +156,18 @@ export default function DailyDrafts() {
     }
   }
 
+  async function handleClearAllPending() {
+    if (!drafts.length) return
+    if (!window.confirm(`Delete all ${drafts.length} pending drafts? This can't be undone — use this for clearing out test/duplicate runs, not for real review.`)) return
+    setError('')
+    try {
+      await deleteAllPending()
+      reload()
+    } catch (e) {
+      setError(e.message || 'Could not clear pending drafts.')
+    }
+  }
+
   async function handleSkip(d) {
     const reason = window.prompt('Why skip this one? (optional)') || ''
     setBusyId(d.id); setError('')
@@ -201,7 +213,14 @@ export default function DailyDrafts() {
       </div>
 
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-900">Pending review ({drafts.length})</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-gray-900">Pending review ({drafts.length})</h2>
+          {drafts.length > 0 && (
+            <button onClick={handleClearAllPending} className="text-xs text-red-600 hover:text-red-800 inline-flex items-center gap-1">
+              <Trash2 size={12} /> Clear all pending
+            </button>
+          )}
+        </div>
         {drafts.length === 0 && <div className="text-sm text-gray-400">No drafts waiting — generate some above.</div>}
         {drafts.map(d => {
           const fields = fieldsFor(d)
