@@ -169,7 +169,17 @@ MAX_ZONES = 5
 
 
 def save_zones(template_id, zones):
-    """zones: list of {name, crystal_type, color, points: [{x_mm, y_mm}, ...]}.
+    """zones: list of {name, crystal_type, color, rings: [[{x_mm,y_mm},...], ...]}.
+    rings[0] is the outer boundary; rings[1:] are holes cut from it — filled
+    even-odd, same convention admin.html's canvas draw uses (a point's
+    "insideness" toggles each time a ring boundary is crossed, so a hole
+    ring just needs to exist in the list, not be tagged specially). A
+    background zone is the same shape, just with rings = [full canvas
+    rect, ...every other zone's own rings] — the even-odd rule then
+    naturally re-includes each zone's own holes as background, without any
+    special-casing here (see admin.html's dcAddBackgroundZone comment for
+    the full reasoning).
+
     Replaces the whole list — the admin tool always sends the complete
     current set, same as swatches.py's registry writes. crystal_type/color
     aren't validated against the live swatch registry here (they change
@@ -194,13 +204,15 @@ def save_zones(template_id, zones):
         color = str(z.get("color", "")).strip()
         if not color:
             raise ValueError(f"Zone {name!r} needs a crystal colour")
-        points = z.get("points") or []
-        if len(points) < 3:
-            raise ValueError(f"Zone {name!r} needs at least 3 points to be a real shape")
-        clean_points = []
-        for p in points:
-            clean_points.append({"x_mm": round(float(p["x_mm"]), 2), "y_mm": round(float(p["y_mm"]), 2)})
-        clean.append({"name": name, "crystal_type": crystal_type, "color": color, "points": clean_points})
+        rings = z.get("rings") or []
+        if not rings:
+            raise ValueError(f"Zone {name!r} needs at least one ring (its outer boundary)")
+        clean_rings = []
+        for ring in rings:
+            if len(ring) < 3:
+                raise ValueError(f"Zone {name!r} has a ring with fewer than 3 points — not a real shape")
+            clean_rings.append([{"x_mm": round(float(p["x_mm"]), 2), "y_mm": round(float(p["y_mm"]), 2)} for p in ring])
+        clean.append({"name": name, "crystal_type": crystal_type, "color": color, "rings": clean_rings})
 
     reg = _load()
     if template_id not in reg:

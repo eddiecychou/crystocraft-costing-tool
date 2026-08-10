@@ -41,7 +41,7 @@ from engine import templates as tmpl_registry
 # on the admin page header, so it's visible from the outside whether a given
 # deploy actually landed (owner, 2026-08-06, after several redeploys in a
 # row with no visible confirmation the new code was live).
-app = FastAPI(title="Crystocraft Customizer Render", version="0.15.1")
+app = FastAPI(title="Crystocraft Customizer Render", version="0.16.0")
 
 RENDER_TOKEN = os.environ.get("RENDER_TOKEN", "")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
@@ -531,7 +531,7 @@ class Zone(BaseModel):
     name: str
     crystal_type: str
     color: str
-    points: list[ZonePoint]
+    rings: list[list[ZonePoint]]  # rings[0] = outer boundary, rings[1:] = holes (even-odd fill)
 
 
 class ZonesPayload(BaseModel):

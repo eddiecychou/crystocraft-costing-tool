@@ -986,7 +986,13 @@
   // ── Zones (workstream 2) ──────────────────────────────────────────────
   const ZONE_COLORS = ['#c6a664', '#7fae7f', '#7f9fae', '#ae7f9f', '#ae957f']; // one per zone slot, cycled by index
   let dcZoneMode = false;           // true while click-to-place-vertex is active (graphic drag disabled)
-  let dcCurrentZonePoints = [];     // in-progress zone, mm coords, before "Finish zone"
+  // In-progress zone: rings already closed (outer boundary + any finished
+  // holes) plus the ring currently being clicked. A hollow shape (logo,
+  // letter) is outer boundary ring[0] + one hole ring per enclosed gap —
+  // filled even-odd, so the parity naturally handles "hole inside a hole"
+  // too without special-casing, though that's not a real case here.
+  let dcCurrentZoneRings = [];      // completed rings for the zone being drawn now
+  let dcCurrentRingPoints = [];     // points for whichever ring is active right now
   let dcZones = [];                 // completed zones for this template, mm coords — loaded from t.zones, saved via /templates/{id}/zones
   let dcSwatchColorsCache = null;   // GET /swatches result, fetched once per admin session
 
@@ -1067,8 +1073,14 @@
             <label>Crystal colour</label>
             <select id="dc-zone-color"><option value="">Loading…</option></select>
             <div class="actions">
+              <button class="small" id="dc-zone-add-hole" disabled>🕳 Finish boundary, start a hole</button>
               <button class="small primary" id="dc-zone-finish" disabled>Finish zone (need 3+ points)</button>
             </div>
+            <p class="help" id="dc-zone-ring-status"></p>
+            <div class="actions" style="margin-top:6px">
+              <button class="small" id="dc-zone-add-background" disabled>Add background zone (everything else)</button>
+            </div>
+            <p class="help">Hollow logos/text: trace the OUTER edge first, click "Finish boundary, start a hole", then trace the INNER edge (e.g. inside a letter O) — repeat for more holes, then Finish zone. "Add background" fills the rest of the canvas around every zone drawn so far, holes included.</p>
             <div id="dc-zone-list" style="margin-top:12px"></div>
             <div class="actions" style="margin-top:10px">
               <button class="small" id="dc-zones-save">Save zones (${(t.zones || []).length}/5)</button>
@@ -1104,10 +1116,16 @@
     document.getElementById('dc-svg-save-align').addEventListener('click', () => dcSaveAlignment(id));
     document.getElementById('dc-graphic-opacity').addEventListener('input', dcOnGraphicOpacityInput);
 
-    dcZoneMode = false; dcCurrentZonePoints = []; dcZones = (t.zones || []).map(z => ({ ...z }));
+    dcZoneMode = false; dcCurrentZoneRings = []; dcCurrentRingPoints = [];
+    // Back-compat: zones saved before hole support (rings[]) only had a
+    // flat `points` array — treat that as a single-ring (no-hole) zone
+    // rather than losing anything already saved.
+    dcZones = (t.zones || []).map(z => ({ ...z, rings: z.rings || (z.points ? [z.points] : []) }));
     document.getElementById('dc-zone-draw-toggle').addEventListener('click', dcToggleZoneMode);
     document.getElementById('dc-zone-type').addEventListener('change', dcRefreshZoneColorSelect);
+    document.getElementById('dc-zone-add-hole').addEventListener('click', dcAddHoleRing);
     document.getElementById('dc-zone-finish').addEventListener('click', dcFinishZone);
+    document.getElementById('dc-zone-add-background').addEventListener('click', dcAddBackgroundZone);
     document.getElementById('dc-zones-save').addEventListener('click', () => dcSaveZones(id));
     dcRefreshZoneColorSelect();
     dcRenderZoneList();
@@ -1171,25 +1189,84 @@
   function dcToggleZoneMode() {
     if (!dcState?.img) return;
     dcZoneMode = !dcZoneMode;
-    dcCurrentZonePoints = [];
+    dcCurrentZoneRings = []; dcCurrentRingPoints = [];
     const btn = document.getElementById('dc-zone-draw-toggle');
     if (btn) { btn.textContent = dcZoneMode ? '✕ Stop drawing' : '✏️ Draw zone'; btn.classList.toggle('active-toggle', dcZoneMode); }
+    dcUpdateZoneDrawButtons();
+    dcDrawCanvas();
+  }
+
+  // Enables/labels the "finish boundary / add hole" and "finish zone"
+  // buttons based on how much of the current zone has been traced.
+  function dcUpdateZoneDrawButtons() {
+    const holeBtn = document.getElementById('dc-zone-add-hole');
     const finishBtn = document.getElementById('dc-zone-finish');
-    if (finishBtn) { finishBtn.disabled = true; finishBtn.textContent = 'Finish zone (need 3+ points)'; }
+    const status = document.getElementById('dc-zone-ring-status');
+    const canCloseCurrentRing = dcCurrentRingPoints.length >= 3;
+    if (holeBtn) {
+      holeBtn.disabled = !canCloseCurrentRing;
+      holeBtn.textContent = dcCurrentZoneRings.length === 0
+        ? '🕳 Finish boundary, start a hole' : '🕳 Finish this hole, start another';
+    }
+    if (finishBtn) {
+      const ringsReady = dcCurrentZoneRings.length + (canCloseCurrentRing ? 1 : 0);
+      finishBtn.disabled = ringsReady === 0;
+      finishBtn.textContent = ringsReady === 0 ? 'Finish zone (need 3+ points)' : `Finish zone (${ringsReady} ring${ringsReady > 1 ? 's' : ''})`;
+    }
+    if (status) {
+      status.textContent = dcCurrentZoneRings.length === 0 && dcCurrentRingPoints.length === 0
+        ? '' : `Boundary${dcCurrentZoneRings.length > 1 ? ' + ' + (dcCurrentZoneRings.length - 1) + ' hole(s)' : ''} drawn so far${canCloseCurrentRing ? ` — ${dcCurrentRingPoints.length} points in the current ring` : ''}.`;
+    }
+  }
+
+  // Locks the ring being clicked right now into dcCurrentZoneRings and
+  // starts a fresh, empty one — used both for "finish outer boundary,
+  // start a hole" and "finish this hole, start another".
+  function dcAddHoleRing() {
+    if (dcCurrentRingPoints.length < 3) return;
+    dcCurrentZoneRings.push(dcCurrentRingPoints);
+    dcCurrentRingPoints = [];
+    dcUpdateZoneDrawButtons();
     dcDrawCanvas();
   }
 
   function dcFinishZone() {
-    if (dcCurrentZonePoints.length < 3 || dcZones.length >= 5) return;
+    const rings = dcCurrentZoneRings.slice();
+    if (dcCurrentRingPoints.length >= 3) rings.push(dcCurrentRingPoints);
+    if (rings.length === 0 || dcZones.length >= 5) return;
     const name = document.getElementById('dc-zone-name').value.trim() || `Zone ${dcZones.length + 1}`;
     const crystal_type = document.getElementById('dc-zone-type').value;
     const color = document.getElementById('dc-zone-color').value;
     if (!color) { alert('Pick a crystal colour first.'); return; }
-    dcZones.push({ name, crystal_type, color, points: dcCurrentZonePoints });
-    dcCurrentZonePoints = [];
+    dcZones.push({ name, crystal_type, color, rings });
+    dcCurrentZoneRings = []; dcCurrentRingPoints = [];
     document.getElementById('dc-zone-name').value = '';
-    document.getElementById('dc-zone-finish').disabled = true;
-    document.getElementById('dc-zone-finish').textContent = 'Finish zone (need 3+ points)';
+    dcUpdateZoneDrawButtons();
+    dcRenderZoneList();
+    dcDrawCanvas();
+  }
+
+  // "Add background zone" — same shape data as any other zone, just
+  // computed instead of clicked: outer ring is the full template canvas,
+  // and every OTHER zone's own rings (its outer boundary AND its holes)
+  // become rings here too. Filled even-odd, a point's insideness toggles
+  // once per ring boundary crossed — so a zone's hole ring appears twice
+  // in the full picture (once as that zone's own hole, once here in the
+  // background's ring list), and the two togglings cancel out exactly
+  // where physical reality says they should: the hole is exposed
+  // background material, not empty space and not double-counted crystal.
+  // No new geometry math, just reusing the same ring list twice.
+  function dcAddBackgroundZone() {
+    if (!dcState || dcZones.length === 0 || dcZones.length >= 5) return;
+    const name = document.getElementById('dc-zone-name').value.trim() || 'Background';
+    const crystal_type = document.getElementById('dc-zone-type').value;
+    const color = document.getElementById('dc-zone-color').value;
+    if (!color) { alert('Pick a crystal colour first.'); return; }
+    const w = dcState.tmpl.width_mm, h = dcState.tmpl.height_mm;
+    const canvasRing = [{ x_mm: 0, y_mm: 0 }, { x_mm: w, y_mm: 0 }, { x_mm: w, y_mm: h }, { x_mm: 0, y_mm: h }];
+    const rings = [canvasRing, ...dcZones.flatMap(z => z.rings)];
+    dcZones.push({ name, crystal_type, color, rings });
+    document.getElementById('dc-zone-name').value = '';
     dcRenderZoneList();
     dcDrawCanvas();
   }
@@ -1203,15 +1280,20 @@
   function dcRenderZoneList() {
     const list = document.getElementById('dc-zone-list');
     const saveBtn = document.getElementById('dc-zones-save');
+    const bgBtn = document.getElementById('dc-zone-add-background');
     if (saveBtn) saveBtn.textContent = `Save zones (${dcZones.length}/5)`;
+    if (bgBtn) bgBtn.disabled = dcZones.length === 0 || dcZones.length >= 5;
     if (!list) return;
     if (dcZones.length === 0) { list.innerHTML = '<p class="canvas-hint">No zones drawn yet.</p>'; return; }
-    list.innerHTML = dcZones.map((z, i) => `
+    list.innerHTML = dcZones.map((z, i) => {
+      const ringDesc = z.rings.length > 1 ? `${z.rings.length - 1} hole${z.rings.length > 2 ? 's' : ''}` : 'no holes';
+      return `
       <div class="swatch-row" style="cursor:default">
         <div class="dot" style="background:${ZONE_COLORS[i % ZONE_COLORS.length]}"></div>
-        <div class="name">${z.name}<br><span class="canvas-hint">${z.crystal_type} · ${z.color} · ${z.points.length} pts</span></div>
+        <div class="name">${z.name}<br><span class="canvas-hint">${z.crystal_type} · ${z.color} · ${ringDesc}</span></div>
         <button class="small danger" data-zone-remove="${i}">✕</button>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     list.querySelectorAll('[data-zone-remove]').forEach(btn => {
       btn.addEventListener('click', () => dcRemoveZone(Number(btn.dataset.zoneRemove)));
     });
@@ -1341,39 +1423,60 @@
       if (mm % 50 === 0 && mm > 0) ctx.fillText(`${mm}`, 2, y - 2);
     }
 
-    // Completed zones — translucent fill + outline, one colour per slot
-    // (cycled), name labelled at the first vertex. Geometry only, no
-    // crystal material is actually rendered here — that's later
-    // compositing work; this is the authoring surface.
+    // Adds every ring of a zone as one continuous path (multiple subpaths,
+    // one per ring) so a single fill('evenodd') call handles holes
+    // correctly — canvas 2D's even-odd rule toggles "insideness" once per
+    // ring boundary crossed, independent of draw order or which ring is
+    // "the hole"; it just needs all rings in one path.
+    function pathForRings(rings) {
+      rings.forEach(ring => {
+        ring.forEach((p, j) => {
+          const x = p.x_mm * pxPerMM, y = p.y_mm * pxPerMM;
+          if (j === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.closePath();
+      });
+    }
+
+    // Completed zones — translucent even-odd fill + outline per ring, one
+    // colour per slot (cycled), name labelled at the outer ring's first
+    // vertex. Geometry only, no crystal material is actually rendered here
+    // — that's later compositing work; this is the authoring surface.
     dcZones.forEach((z, i) => {
       const col = ZONE_COLORS[i % ZONE_COLORS.length];
       ctx.beginPath();
-      z.points.forEach((p, j) => {
-        const x = p.x_mm * pxPerMM, y = p.y_mm * pxPerMM;
-        if (j === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      });
-      ctx.closePath();
-      ctx.fillStyle = col + '55'; ctx.fill();
+      pathForRings(z.rings);
+      ctx.fillStyle = col + '55'; ctx.fill('evenodd');
       ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.stroke();
-      const p0 = z.points[0];
+      const p0 = z.rings[0][0];
       ctx.fillStyle = col; ctx.font = 'bold 11px monospace';
       ctx.fillText(z.name, p0.x_mm * pxPerMM + 4, p0.y_mm * pxPerMM - 4);
     });
 
-    // In-progress zone (while dcZoneMode is on) — plain points + connecting
-    // lines, no fill yet since it isn't closed.
-    if (dcZoneMode && dcCurrentZonePoints.length) {
-      ctx.beginPath();
-      dcCurrentZonePoints.forEach((p, j) => {
-        const x = p.x_mm * pxPerMM, y = p.y_mm * pxPerMM;
-        if (j === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      });
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
-      dcCurrentZonePoints.forEach(p => {
+    // In-progress zone (while dcZoneMode is on) — completed rings so far
+    // (e.g. a finished outer boundary while a hole is being clicked) get
+    // the same even-odd fill preview; the ring currently being clicked is
+    // drawn as plain dashed lines + point markers since it isn't closed yet.
+    if (dcZoneMode) {
+      if (dcCurrentZoneRings.length) {
         ctx.beginPath();
-        ctx.arc(p.x_mm * pxPerMM, p.y_mm * pxPerMM, 4, 0, Math.PI * 2);
-        ctx.fillStyle = '#ffffff'; ctx.fill();
-      });
+        pathForRings(dcCurrentZoneRings);
+        ctx.fillStyle = '#ffffff33'; ctx.fill('evenodd');
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.stroke();
+      }
+      if (dcCurrentRingPoints.length) {
+        ctx.beginPath();
+        dcCurrentRingPoints.forEach((p, j) => {
+          const x = p.x_mm * pxPerMM, y = p.y_mm * pxPerMM;
+          if (j === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+        dcCurrentRingPoints.forEach(p => {
+          ctx.beginPath();
+          ctx.arc(p.x_mm * pxPerMM, p.y_mm * pxPerMM, 4, 0, Math.PI * 2);
+          ctx.fillStyle = '#ffffff'; ctx.fill();
+        });
+      }
     }
 
     if (dcState.img) {
@@ -1431,13 +1534,8 @@
     if (!dcState) return;
     const { x: px, y: py } = dcToCanvasXY(e, e.target);
     if (dcZoneMode) {
-      dcCurrentZonePoints.push({ x_mm: px / dcState.pxPerMM, y_mm: py / dcState.pxPerMM });
-      const finishBtn = document.getElementById('dc-zone-finish');
-      if (finishBtn) {
-        finishBtn.disabled = dcCurrentZonePoints.length < 3;
-        finishBtn.textContent = dcCurrentZonePoints.length < 3
-          ? `Finish zone (need 3+ points)` : `Finish zone (${dcCurrentZonePoints.length} points)`;
-      }
+      dcCurrentRingPoints.push({ x_mm: px / dcState.pxPerMM, y_mm: py / dcState.pxPerMM });
+      dcUpdateZoneDrawButtons();
       dcDrawCanvas();
       return;
     }

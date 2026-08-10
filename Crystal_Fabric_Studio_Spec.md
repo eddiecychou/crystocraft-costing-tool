@@ -497,6 +497,41 @@ drawn blind against the bare product photo. The hint text changes from
 
 Render service version 0.15.0 → 0.15.1.
 
+## 5f. Hollow zones + auto background fill (2026-08-11)
+
+Owner, testing zone-drawing on a butterfly-mark logo (two crescent wings,
+each hollow inside — most logos and text are): "I cannot create a hollow
+out graphic zone like this. How to do that? ... once the logo is zoned,
+can the background be recognized as 1 zone?"
+
+**Data model changed from a single polygon (`points`) to a list of rings
+(`rings: [[...], [...], ...]`)** — `rings[0]` is the outer boundary,
+`rings[1:]` are holes, filled even-odd (a point's insideness toggles once
+per ring boundary crossed — standard SVG/canvas hole convention, not a
+custom scheme). `templates.py`'s `save_zones()` validates each ring has
+3+ points; `MAX_ZONES` (5) is unchanged. Zones saved under the old
+single-ring schema are read as `rings: [points]` for backward
+compatibility, not lost.
+
+**Drawing flow**: trace the outer edge, click "🕳 Finish boundary, start a
+hole", trace the inner edge (e.g. inside a letter's counter), repeat for
+more holes, then "Finish zone." Same click-to-place-vertex mechanic as
+before, just tracking which ring is currently active.
+
+**"Add background zone (everything else)"** answers the owner's second
+question directly. Its rings are the full canvas rectangle PLUS every
+other already-drawn zone's own rings (both their outer boundaries and
+their holes) — reusing the same ring list twice rather than computing new
+geometry. Even-odd fill does the rest: a point inside some zone's outer
+ring but also inside that same zone's hole ring gets toggled twice by the
+background's ring list (both rings are in there), landing back at
+"inside the background" — which is physically correct, since a hole in a
+logo is exposed background-coloured crystal, not empty space. This only
+works because holes were built as real rings in the same coordinate
+space; it would have been a much harder problem to bolt on afterward.
+
+Render service version 0.15.1 → 0.16.0.
+
 ## 6. Open questions for the owner
 
 - Photography budget/cadence for growing past 27 swatches — who shoots them,
