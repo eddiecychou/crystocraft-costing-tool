@@ -1034,6 +1034,28 @@
       ? names.map(n => `<option value="${n}">${n}</option>`).join('')
       : '<option value="">No colours captured for this type yet</option>';
     if (names.includes(keep)) colorSel.value = keep;
+    await dcRefreshZoneBackfilmSelect();
+  }
+
+  // Backfilm options depend on which backfilms were ACTUALLY photographed
+  // for the currently-selected colour+type — not a fixed White/Black list,
+  // since not every colour has both captured (same reasoning as
+  // dcColorOptionsFor). Reads the same /swatches cache colour options use.
+  async function dcRefreshZoneBackfilmSelect() {
+    const typeSel = document.getElementById('dc-zone-type');
+    const colorSel = document.getElementById('dc-zone-color');
+    const bfSel = document.getElementById('dc-zone-backfilm');
+    if (!typeSel || !colorSel || !bfSel) return;
+    const style = typeSel.value === 'fabric_1.0' ? 'fabric' : 'rock';
+    const names = colorSel.value
+      ? Object.keys(dcSwatchColorsCache?.[colorSel.value]?.slots?.[style] || {}).sort()
+      : [];
+    const keep = bfSel.value;
+    bfSel.innerHTML = names.length
+      ? names.map(n => `<option value="${n}">${n}</option>`).join('')
+      : '<option value="">No backfilm captured yet</option>';
+    if (names.includes(keep)) bfSel.value = keep;
+    else if (names.includes('White')) bfSel.value = 'White';
   }
 
   // Locks the side panel's height to whatever vertical space is actually
@@ -1108,6 +1130,9 @@
             </select>
             <label>Crystal colour</label>
             <select id="dc-zone-color"><option value="">Loading…</option></select>
+            <label>Backfilm</label>
+            <select id="dc-zone-backfilm"><option value="">Loading…</option></select>
+            <p class="help">Same crystal, genuinely different look — pick whichever was actually captured for this colour.</p>
             <div class="actions">
               <button class="small" id="dc-zone-undo-point" disabled>↩ Undo last point</button>
             </div>
@@ -1169,9 +1194,10 @@
     // Back-compat: zones saved before hole support (rings[]) only had a
     // flat `points` array — treat that as a single-ring (no-hole) zone
     // rather than losing anything already saved.
-    dcZones = (t.zones || []).map(z => ({ ...z, rings: z.rings || (z.points ? [z.points] : []) }));
+    dcZones = (t.zones || []).map(z => ({ ...z, backfilm: z.backfilm || 'White', rings: z.rings || (z.points ? [z.points] : []) }));
     document.getElementById('dc-zone-draw-toggle').addEventListener('click', dcToggleZoneMode);
     document.getElementById('dc-zone-type').addEventListener('change', dcRefreshZoneColorSelect);
+    document.getElementById('dc-zone-color').addEventListener('change', dcRefreshZoneBackfilmSelect);
     document.getElementById('dc-zone-add-hole').addEventListener('click', dcAddHoleRing);
     document.getElementById('dc-zone-undo-point').addEventListener('click', dcUndoLastPoint);
     document.getElementById('dc-zone-finish').addEventListener('click', dcFinishZone);
@@ -1338,8 +1364,10 @@
     const name = document.getElementById('dc-zone-name').value.trim() || `Zone ${dcZones.length + 1}`;
     const crystal_type = document.getElementById('dc-zone-type').value;
     const color = document.getElementById('dc-zone-color').value;
+    const backfilm = document.getElementById('dc-zone-backfilm').value;
     if (!color) { alert('Pick a crystal colour first.'); return; }
-    dcZones.push({ name, crystal_type, color, rings });
+    if (!backfilm) { alert('Pick a backfilm first.'); return; }
+    dcZones.push({ name, crystal_type, color, backfilm, rings });
     dcCurrentZoneRings = []; dcCurrentRingPoints = [];
     document.getElementById('dc-zone-name').value = '';
     dcUpdateZoneDrawButtons();
@@ -1363,11 +1391,13 @@
     const name = document.getElementById('dc-zone-name').value.trim() || 'Background';
     const crystal_type = document.getElementById('dc-zone-type').value;
     const color = document.getElementById('dc-zone-color').value;
+    const backfilm = document.getElementById('dc-zone-backfilm').value;
     if (!color) { alert('Pick a crystal colour first.'); return; }
+    if (!backfilm) { alert('Pick a backfilm first.'); return; }
     const w = dcState.tmpl.width_mm, h = dcState.tmpl.height_mm;
     const canvasRing = [{ x_mm: 0, y_mm: 0 }, { x_mm: w, y_mm: 0 }, { x_mm: w, y_mm: h }, { x_mm: 0, y_mm: h }];
     const rings = [canvasRing, ...dcZones.flatMap(z => z.rings)];
-    dcZones.push({ name, crystal_type, color, rings });
+    dcZones.push({ name, crystal_type, color, backfilm, rings });
     document.getElementById('dc-zone-name').value = '';
     dcRenderZoneList();
     dcDrawCanvas();
@@ -1392,7 +1422,7 @@
       return `
       <div class="swatch-row" style="cursor:default">
         <div class="dot" style="background:${ZONE_COLORS[i % ZONE_COLORS.length]}"></div>
-        <div class="name">${z.name}<br><span class="canvas-hint">${z.crystal_type} · ${z.color} · ${ringDesc}</span></div>
+        <div class="name">${z.name}<br><span class="canvas-hint">${z.crystal_type} · ${z.color} (${z.backfilm || 'White'} backfilm) · ${ringDesc}</span></div>
         <button class="small" data-zone-edit="${i}" title="Edit crystal type/colour">✎</button>
         <button class="small" data-zone-redraw="${i}" title="Delete and redraw with the same name/material">↺</button>
         <button class="small danger" data-zone-remove="${i}">✕</button>
@@ -1419,6 +1449,8 @@
     document.getElementById('dc-zone-type').value = z.crystal_type;
     await dcRefreshZoneColorSelect();
     document.getElementById('dc-zone-color').value = z.color;
+    await dcRefreshZoneBackfilmSelect();
+    document.getElementById('dc-zone-backfilm').value = z.backfilm || 'White';
     document.getElementById('dc-zone-save-material').style.display = '';
     document.getElementById('dc-zone-cancel-edit').style.display = '';
   }
@@ -1440,8 +1472,10 @@
     const name = document.getElementById('dc-zone-name').value.trim() || dcZones[dcEditingZoneIndex].name;
     const crystal_type = document.getElementById('dc-zone-type').value;
     const color = document.getElementById('dc-zone-color').value;
+    const backfilm = document.getElementById('dc-zone-backfilm').value;
     if (!color) { alert('Pick a crystal colour first.'); return; }
-    dcZones[dcEditingZoneIndex] = { ...dcZones[dcEditingZoneIndex], name, crystal_type, color };
+    if (!backfilm) { alert('Pick a backfilm first.'); return; }
+    dcZones[dcEditingZoneIndex] = { ...dcZones[dcEditingZoneIndex], name, crystal_type, color, backfilm };
     dcCancelEditMaterial();
     dcRenderZoneList();
     dcDrawCanvas();
@@ -1454,7 +1488,11 @@
     dcZones.splice(i, 1);
     document.getElementById('dc-zone-name').value = z.name;
     document.getElementById('dc-zone-type').value = z.crystal_type;
-    dcRefreshZoneColorSelect().then(() => { document.getElementById('dc-zone-color').value = z.color; });
+    dcRefreshZoneColorSelect().then(async () => {
+      document.getElementById('dc-zone-color').value = z.color;
+      await dcRefreshZoneBackfilmSelect();
+      document.getElementById('dc-zone-backfilm').value = z.backfilm || 'White';
+    });
     dcRenderZoneList();
     if (!dcZoneMode) dcSetZoneMode(true);
     dcDrawCanvas();

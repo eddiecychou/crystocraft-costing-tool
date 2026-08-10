@@ -203,7 +203,7 @@ MAX_ZONES = 5
 
 
 def save_zones(template_id, zones):
-    """zones: list of {name, crystal_type, color, rings: [[{x_mm,y_mm},...], ...]}.
+    """zones: list of {name, crystal_type, color, backfilm, rings: [[{x_mm,y_mm},...], ...]}.
     rings[0] is the outer boundary; rings[1:] are holes cut from it — filled
     even-odd, same convention admin.html's canvas draw uses (a point's
     "insideness" toggles each time a ring boundary is crossed, so a hole
@@ -238,6 +238,7 @@ def save_zones(template_id, zones):
         color = str(z.get("color", "")).strip()
         if not color:
             raise ValueError(f"Zone {name!r} needs a crystal colour")
+        backfilm = str(z.get("backfilm") or "White").strip() or "White"
         rings = z.get("rings") or []
         if not rings:
             raise ValueError(f"Zone {name!r} needs at least one ring (its outer boundary)")
@@ -246,7 +247,7 @@ def save_zones(template_id, zones):
             if len(ring) < 3:
                 raise ValueError(f"Zone {name!r} has a ring with fewer than 3 points — not a real shape")
             clean_rings.append([{"x_mm": round(float(p["x_mm"]), 2), "y_mm": round(float(p["y_mm"]), 2)} for p in ring])
-        clean.append({"name": name, "crystal_type": crystal_type, "color": color, "rings": clean_rings})
+        clean.append({"name": name, "crystal_type": crystal_type, "color": color, "backfilm": backfilm, "rings": clean_rings})
 
     reg = _load()
     if template_id not in reg:

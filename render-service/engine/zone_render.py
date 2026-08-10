@@ -49,10 +49,10 @@ def _zone_mask(rings, px_per_mm):
 
 def render_zone_layer(zones, width_mm):
     """zones: templates.py's saved shape, [{name, crystal_type, color,
-    rings: [[{x_mm,y_mm}, ...], ...]}, ...]. Raises ValueError for an empty
-    list, and whatever palette.crystal_photo() raises for a colour/type
-    combo that was never actually photographed — same fail-loud rule as
-    every other render path, no synthetic substitute."""
+    backfilm, rings: [[{x_mm,y_mm}, ...], ...]}, ...]. Raises ValueError for
+    an empty list, and whatever palette.crystal_photo() raises for a
+    colour/type/backfilm combo that was never actually photographed — same
+    fail-loud rule as every other render path, no synthetic substitute."""
     if not zones:
         raise ValueError("No zones to render — draw at least one in the design canvas first")
 
@@ -66,7 +66,7 @@ def render_zone_layer(zones, width_mm):
     for zone in zones:
         mask = _zone_mask(zone["rings"], px_per_mm)
         sp = max(4.0, stone_mm(zone["crystal_type"]) * px_per_mm)
-        path, pitch = crystal_photo(zone["color"], zone["crystal_type"])
+        path, pitch = crystal_photo(zone["color"], zone["crystal_type"], backfilm=zone.get("backfilm"))
         seed = abs(hash(zone["name"])) % 1000
         # boost_ab_flecks() disabled here 2026-08-11 (owner: "everything
         # except jet black is off," and even real Crystal AB itself didn't
