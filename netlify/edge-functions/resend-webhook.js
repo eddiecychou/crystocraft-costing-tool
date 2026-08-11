@@ -166,7 +166,14 @@ export default async function handler(req) {
   const field = EVENT_FIELD[payload?.type]
   if (!field) return new Response('ok', { status: 200 }) // event type we don't track — accept, don't error
 
-  const draftId = (payload?.data?.tags || []).find(t => t?.name === 'draft_id')?.value
+  // Resend's webhook payload echoes tags back as a plain { name: value }
+  // object — NOT the [{ name, value }] array shape used when SPECIFYING tags
+  // on send (send-personal-email.js). Confirmed live 2026-08-12: assuming
+  // the array shape here threw "((intermediate value) || []).find is not a
+  // function" on every single delivery, an uncaught exception (this line
+  // sits before the handler's own try/catch) that surfaced to Resend/Netlify
+  // as an opaque 500 with zero detail.
+  const draftId = payload?.data?.tags?.draft_id
   if (!draftId) return new Response('ok', { status: 200 }) // not a Daily Drafts send (or untagged) — nothing to update
 
   try {
