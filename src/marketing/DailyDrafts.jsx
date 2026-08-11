@@ -132,6 +132,20 @@ function summarizeHistory(decisions) {
   return parts.join(' ')
 }
 
+// Always shown (not just for contacts) so it's obvious at a glance which
+// pool a draft came from — customers/ (real account, richer context) vs
+// marketing_contacts/ (a trade lead, thinner context — see contactToEntity).
+function SourceBadge({ source }) {
+  const isContact = source === 'contact'
+  return (
+    <span className={`ml-1.5 text-[10px] uppercase tracking-wide rounded px-1 py-0.5 shrink-0 ${
+      isContact ? 'text-amber-600 bg-amber-50' : 'text-blue-600 bg-blue-50'
+    }`}>
+      {isContact ? 'Lead' : 'Customer'}
+    </span>
+  )
+}
+
 const ENGAGEMENT_BADGES = [
   { key: 'delivered', label: 'Delivered', Icon: CheckCircle2 },
   { key: 'opened', label: 'Opened', Icon: Eye },
@@ -548,7 +562,7 @@ export default function DailyDrafts() {
                 <div className="min-w-0">
                   <div className="font-medium text-gray-900 truncate">
                     {d.customerName} <span className="text-gray-400 font-normal">— {d.customerEmail}</span>
-                    {d.source === 'contact' && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-amber-600 bg-amber-50 rounded px-1 py-0.5">Lead</span>}
+                    <SourceBadge source={d.source} />
                   </div>
                   <div className="text-xs text-gray-500 mt-0.5">
                     {d.productName} · fit {Math.round((d.fitScore || 0) * 100)}%
@@ -691,7 +705,10 @@ export default function DailyDrafts() {
         {sentDrafts.map(d => (
           <div key={d.id} className="card p-3 flex items-center justify-between gap-4">
             <div className="min-w-0">
-              <div className="text-sm text-gray-900 truncate">{d.customerName} <span className="text-gray-400">— {d.productName}</span></div>
+              <div className="text-sm text-gray-900 truncate">
+                {d.customerName} <span className="text-gray-400">— {d.productName}</span>
+                <SourceBadge source={d.source} />
+              </div>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 {ENGAGEMENT_BADGES.map(({ key, label, Icon }) => (
                   <span key={key} className={`inline-flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5 ${
