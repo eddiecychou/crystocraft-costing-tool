@@ -17,7 +17,7 @@ import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers 
 import { erpLookup } from '../erpApi'
 import { mergeSalesInvoiceHistory } from '../domain/salesInvoiceHistory'
 import ErpDocModal from '../components/ErpDocModal'
-import { refreshEmailSummary, discussCustomerEmail, renderThreadsText, buildYearIndex, routeEmailQuestion, renderThreadsTextForYears } from '../emailSummaryApi'
+import { refreshEmailSummary, discussCustomerEmail, renderThreadsText, buildYearIndex, routeEmailQuestion, renderThreadsTextForYears, renderThreadsTextByKeyword } from '../emailSummaryApi'
 
 const STATUS_STYLES = {
   draft: 'bg-gray-100 text-gray-600',
@@ -337,18 +337,23 @@ export default function CustomerDetail() {
     setEmailChatHistory(prev => [...prev, { role: 'user', content: message }])
     setEmailChatInput('')
     try {
-      // Year-routing (2026-08-12): for a high-volume customer, ask which
-      // year(s) this specific question is about before deciding what to
-      // send — "what's the earliest order"/"what happened in 2020" need
-      // that year's actual threads, which a blind recency/oldest split
-      // might not include at all. Falls back to the general mix if the
-      // router can't tell (a broad question) or the call itself fails.
-      let threadsText = null
-      try {
-        const yearIndex = buildYearIndex(emailThreads)
-        const years = yearIndex ? await routeEmailQuestion(yearIndex, message) : []
-        if (years.length) threadsText = renderThreadsTextForYears(emailThreads, years)
-      } catch { /* routing is a nice-to-have — fall through to the general mix below */ }
+      // Three layers, most targeted first, each falling through to the next
+      // if it finds nothing — for a high-volume customer, a blind recency/
+      // oldest split (the last resort) misses most of the history:
+      //   1. Keyword/name search (2026-08-12, no API call) — "when did I
+      //      last contact Stephen" has no year to route on, so this catches
+      //      person/topic-shaped questions the year-router can't.
+      //   2. Year-routing (2026-08-12) — "what happened in 2020"/"earliest
+      //      order" need that specific year's threads.
+      //   3. General recent+oldest-on-file split — the original safety net.
+      let threadsText = renderThreadsTextByKeyword(emailThreads, message)
+      if (!threadsText) {
+        try {
+          const yearIndex = buildYearIndex(emailThreads)
+          const years = yearIndex ? await routeEmailQuestion(yearIndex, message) : []
+          if (years.length) threadsText = renderThreadsTextForYears(emailThreads, years)
+        } catch { /* routing is a nice-to-have — fall through to the general mix below */ }
+      }
       if (!threadsText) threadsText = renderThreadsText(emailThreads)
 
       const result = await discussCustomerEmail(threadsText, emailChatHistory, message)

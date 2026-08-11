@@ -106,6 +106,61 @@ export function renderThreadsTextForYears(threads, years) {
   return chunks.join('\n')
 }
 
+// Local keyword/name search (added 2026-08-12, no API call) — year-routing
+// only helps a "when" question. "When did I last contact Stephen" or "did I
+// email Stephen before 2024" has no year to route on for the FIRST part of
+// the question, so it fell back to the general recent+oldest split, which
+// for a high-volume customer misses everything in the middle — confirmed
+// live: real correspondence with a contact ("stephen@widdop.co.uk", matched
+// 9+ times during ingestion) came back as "no direct correspondence found"
+// because it simply wasn't in the 60% recent / 40% oldest slice sent.
+// This is a genuinely cheap, deterministic alternative to real retrieval
+// for name/keyword-shaped questions: search ALL loaded threads (already in
+// the browser) for the question's content words in participants/subject/
+// body, and prioritize matches over pure recency.
+const STOPWORDS = new Set([
+  'when', 'did', 'the', 'and', 'with', 'from', 'that', 'this', 'have', 'were',
+  'been', 'what', 'who', 'how', 'many', 'order', 'orders', 'email', 'emails',
+  'contact', 'contacted', 'before', 'after', 'about', 'their', 'they', 'them',
+  'said', 'tell', 'list', 'last', 'first', 'earliest', 'recent', 'does', 'was',
+  'are', 'for', 'you', 'your', 'all', 'any', 'not', 'has', 'our', 'out',
+])
+
+function extractKeywords(question) {
+  return [...new Set((question.toLowerCase().match(/[a-z][a-z'-]{2,}/g) || []).filter(w => !STOPWORDS.has(w)))]
+}
+
+function threadKeywordScore(t, keywords) {
+  const hay = (
+    `${t.subject || ''} ` +
+    (t.messages || []).map(m => `${m.from || ''} ${m.to || ''} ${m.cc || ''} ${m.body_text || ''}`).join(' ')
+  ).toLowerCase()
+  return keywords.reduce((n, k) => n + (hay.includes(k) ? 1 : 0), 0)
+}
+
+// Returns '' if the question has no useful keywords or nothing matches —
+// caller falls through to year-routing/the general split in that case.
+export function renderThreadsTextByKeyword(threads, question) {
+  const keywords = extractKeywords(question)
+  if (!keywords.length) return ''
+  const scored = threads
+    .map(t => ({ t, score: threadKeywordScore(t, keywords) }))
+    .filter(x => x.score > 0)
+  if (!scored.length) return ''
+  // stable sort — ties keep `threads`' original most-recent-first order
+  scored.sort((a, b) => b.score - a.score)
+
+  const chunks = []
+  let total = 0
+  for (const { t } of scored) {
+    const block = threadBlock(t)
+    if (total + block.length > MAX_OUTPUT_CHARS) break
+    chunks.push(block)
+    total += block.length
+  }
+  return chunks.join('\n')
+}
+
 function threadBlock(t) {
   const header = `\n=== Thread: ${t.subject || '(no subject)'} (${t.message_count || (t.messages || []).length} messages) ===`
   const body = (t.messages || []).map(m =>
