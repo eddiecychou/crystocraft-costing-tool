@@ -6,7 +6,7 @@ import {
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import {
   Send, Loader2, SkipForward, Sparkles, Trash2, X, Link2, Upload,
-  MessageCircle, CheckCircle2, Eye, MousePointerClick, AlertTriangle, Bookmark, BellOff,
+  MessageCircle, CheckCircle2, Eye, MousePointerClick, AlertTriangle, Bookmark, BellOff, Mail, FileText, Receipt,
 } from 'lucide-react'
 import { db, storage, authedUser } from '../firebase'
 import { loadCustomers, primaryContact } from '../domain/customer'
@@ -138,7 +138,16 @@ function eligibleCandidates(entities, excludedIds, excludedEmails) {
     seenEmails.add(e.email)
     return true
   })
-  pool.sort((a, b) => daysAgo(b.lastOutreachAt) - daysAgo(a.lastOutreachAt)) // never-contacted (Infinity) sorts first
+  // never-contacted (Infinity) sorts first — but Array.sort is stable, and
+  // customers are concatenated before contacts (see caller), so a plain
+  // recency sort left every tie (very common: 108 never-contacted customers
+  // alone, already over MAX_CANDIDATES) in source order. With more
+  // never-contacted customers than MAX_CANDIDATES, marketing_contacts could
+  // mathematically never reach the slice below regardless of how many were
+  // eligible — confirmed live 2026-08-12, the owner had never once seen a
+  // contact-sourced draft. Random tiebreaker so ties don't systematically
+  // favor whichever source happened to be concatenated first.
+  pool.sort((a, b) => daysAgo(b.lastOutreachAt) - daysAgo(a.lastOutreachAt) || Math.random() - 0.5)
   return pool.slice(0, MAX_CANDIDATES).map(e => ({
     id: e.id, name: e.name, email: e.email, source: e.source,
     crm_category: e.crm_category, crm_status: e.crm_status, notes: e.notes, erp_code: e.erp_code,
@@ -951,6 +960,25 @@ export default function DailyDrafts() {
                     {d.productName || d.topicLabel} · fit {Math.round((d.fitScore || 0) * 100)}%
                     {d.fitReason && <span className="text-gray-400"> — {d.fitReason}</span>}
                   </div>
+                  {d.contextSources?.length > 0 && (
+                    <div className="flex items-center gap-2 mt-1">
+                      {d.contextSources.includes('email') && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-gray-500" title="This draft used the customer's ingested email history">
+                          <Mail size={11} /> Email history
+                        </span>
+                      )}
+                      {d.contextSources.includes('notes') && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-gray-500" title="This draft used the CRM notes field">
+                          <FileText size={11} /> CRM notes
+                        </span>
+                      )}
+                      {d.contextSources.includes('invoices') && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-gray-500" title="This draft used recent ERP order history">
+                          <Receipt size={11} /> Recent orders
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
               <input value={fields.subject} onChange={e => setField(d.id, 'subject', e.target.value)}

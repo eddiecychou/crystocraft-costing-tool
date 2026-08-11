@@ -206,6 +206,18 @@ function buildCustomerContext(candidate, invoices) {
   return parts.join('\n\n')
 }
 
+// Which context actually fed this draft — owner asked 2026-08-12 "how do I
+// know if email/CRM notes were considered", and there was no way to tell
+// short of reading the raw customerContext text. Small, explicit, so the
+// review UI can just show it rather than the owner having to infer it.
+function contextSources(candidate, invoices) {
+  const sources = []
+  if (candidate.emailSummary?.summary) sources.push('email')
+  if (candidate.notes) sources.push('notes')
+  if (invoices.length) sources.push('invoices')
+  return sources
+}
+
 export default async function handler(req) {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
@@ -263,6 +275,7 @@ export default async function handler(req) {
       customerEmail: candidate.email,
       customerName: candidate.name,
       customerContext,
+      contextSources: contextSources(candidate, invoices),
       source: candidate.source || 'customer',
       fitScore,
       fitReason: fitReason || draft.explanation || '',

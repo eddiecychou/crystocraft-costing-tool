@@ -76,6 +76,11 @@ export async function createDrafts(meta, drafts, { imageUrls, links } = {}) {
       productSource: meta.productId ? (meta.productSource || 'corporate') : null,
       fitScore: d.fitScore ?? null,
       fitReason: d.fitReason || '',
+      // Which context sources actually fed this draft (see
+      // generate-outreach-drafts.js's contextSources()) — shown as a small
+      // indicator on the review card so "was the email history actually
+      // used?" has a real answer instead of the owner having to guess.
+      contextSources: d.contextSources || [],
       draftSubject: d.draftSubject,
       draftBody: d.draftBody,
       imageUrls: imageUrls || [],
