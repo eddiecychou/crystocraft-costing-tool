@@ -1111,7 +1111,9 @@ export default function DailyDrafts() {
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     {ENGAGEMENT_BADGES.map(({ key, label, Icon }) => (
                       <span key={key} className={`inline-flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5 ${
-                        d.engagement?.[key] ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-300'
+                        d.engagement?.[key]
+                          ? (key === 'bounced' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700')
+                          : 'bg-gray-50 text-gray-300'
                       }`}>
                         <Icon size={11} /> {label}
                       </span>
