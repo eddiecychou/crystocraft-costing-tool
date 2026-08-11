@@ -199,6 +199,18 @@ service cloud.firestore {
     match /outreach_drafts/{draftId} {
       allow read, write: if isAdmin();
     }
+    // Daily Drafts topic de-duplication (V8.0) — before targeting anyone
+    // about a topic, DailyDrafts.jsx checks whether they already have a
+    // logged Interaction Log entry for it, via a collectionGroup('enquiries')
+    // query across every customer's own subcollection at once. The nested
+    // `match /customers/{customerId} { match /enquiries/{enquiryId} {...} } }`
+    // rule above does NOT authorize a collection-group query — Firestore
+    // requires this separate top-level wildcard rule for that, same pattern
+    // already used for supplier_quotes below. Read-only; writes still only
+    // ever happen through the nested customers/{id}/enquiries path.
+    match /{path=**}/enquiries/{enquiryId} {
+      allow read: if isAdmin();
+    }
     match /{path=**}/supplier_quotes/{quoteId} {
       allow read, write: if isAdmin();
     }

@@ -1,39 +1,57 @@
 import { useEffect, useMemo, useState } from 'react'
-import { addDoc, collection, doc, getDoc, getDocs, serverTimestamp, Timestamp, updateDoc } from 'firebase/firestore'
 import {
-  Send, Loader2, SkipForward, Sparkles, Trash2, X, Link2,
+  addDoc, collection, collectionGroup, doc, getDoc, getDocs, query, where,
+  serverTimestamp, Timestamp, updateDoc,
+} from 'firebase/firestore'
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
+import {
+  Send, Loader2, SkipForward, Sparkles, Trash2, X, Link2, Upload,
   MessageCircle, CheckCircle2, Eye, MousePointerClick, AlertTriangle, Bookmark, BellOff,
 } from 'lucide-react'
-import { db, authedUser } from '../firebase'
+import { db, storage, authedUser } from '../firebase'
 import { loadCustomers, primaryContact } from '../domain/customer'
 import { normalizeContact, markContactOutreach, blockContactOutreach } from '../domain/marketingContact'
 import {
-  listPendingDrafts, listDraftsForProduct, listSentDrafts, listRecentDecisions,
+  listPendingDrafts, listDraftsForTopic, listSentDrafts, listRecentDecisions,
   createDrafts, markDraftSent, markDraftReplied, skipDraft, deleteAllPending,
 } from '../domain/outreachDrafts'
-import { generateDrafts, sendPersonalEmail, searchBlogPosts, discussDraft } from '../outreachApi'
+import { generateDrafts, draftTopic, sendPersonalEmail, searchBlogPosts, discussDraft } from '../outreachApi'
 import { isPublicVisible } from '../constants'
 import { loadBlogProducts, loadBlogImages } from '../productSource'
 
-// Daily Drafts re-engagement engine (V7.23) — pick a product, generate 10-20
-// AI-drafted personal emails against the eligible customer+contact pool,
-// review (optionally discussing/correcting with AI) and send one at a time.
-// See PROJECT-PLAN.md V7.23 and the plan this shipped from for the design
-// reasoning throughout this file — in particular: AI fit-scoring instead of
-// a hand-built category map, no persistent "recommended pick" flag (product
-// is chosen manually each run), trade-audience-only marketing_contacts, and
-// why "reply tracking" here is a manual toggle, not detection (Resend can't
-// see inbound replies — see resend-webhook.js).
+// Daily Drafts re-engagement engine — compose ANY topic (a product, "news
+// and update", "invite to the portal"), refine it with AI until it's right,
+// THEN target and personalize per recipient. See PROJECT-PLAN.md V7.23/V8.0
+// and the plan this shipped from for the design reasoning throughout this
+// file — in particular: two phases (Compose, then Target & Generate) so
+// fixing the pitch happens once, not per-draft; AI fit-scoring instead of a
+// hand-built category map; no persistent "recommended pick" flag; trade-
+// audience-only marketing_contacts; why "reply tracking" is a manual toggle,
+// not detection (Resend can't see inbound replies — see resend-webhook.js);
+// and why topic-based candidate exclusion checks the CRM Interaction Log,
+// not just this app's own send history (see checkAlreadyContacted below).
 
 const COOLDOWN_DAYS = 14        // don't re-suggest someone within this many days of their last outreach
-const PRODUCT_COOLDOWN_DAYS = 21 // don't re-suggest the SAME product to someone already sent it recently
+const TOPIC_COOLDOWN_DAYS = 21  // don't re-suggest the SAME topic to someone already sent it recently (via outreach_drafts)
 const MAX_CANDIDATES = 60        // sent to fit-scoring; protects DeepSeek rate limits and function run time
 const MAX_HISTORY_DECISIONS = 60 // how many recent sent/skipped drafts feed the historicalHints summary
+const MAX_ATTACHED_IMAGES = 2
 
 const daysAgo = (ts) => {
   if (!ts) return Infinity
   const ms = ts.toMillis ? ts.toMillis() : new Date(ts).getTime()
   return (Date.now() - ms) / 86400000
+}
+
+// Direct upload (not from a product gallery) — Compose-phase images and the
+// per-draft fallback when a draft has no linked product to pick from. Same
+// idiom as Campaigns.jsx's Unlayer image callback (storageRef/uploadBytes/
+// getDownloadURL), new path daily_draft_images/ (see storage.rules).
+async function uploadImage(file) {
+  const path = `daily_draft_images/${Date.now()}_${file.name}`
+  const sRef = storageRef(storage, path)
+  await uploadBytes(sRef, file)
+  return await getDownloadURL(sRef)
 }
 
 // customers/{id} -> a common "entity" shape, or null if ineligible outright
@@ -165,15 +183,21 @@ function SourceBadge({ source }) {
 // instead (same appendNote path the "Save as note" chat action already
 // uses), not this function.
 //
+// `product_interest` tags what this was ABOUT (a topic label or product
+// name) — the enquiry schema already had this field, just never populated
+// by this feature until now. It's what checkAlreadyContacted() below
+// queries on, so every send/reply MUST carry it or de-duplication silently
+// stops working for future runs.
+//
 // `status: 'Open'` on every entry (not a dedicated "sent"/"replied" status —
 // the enquiry schema doesn't have one) mirrors how a human logging this by
 // hand would leave it for themselves to follow up on, not mark resolved.
-async function logInteraction(customerId, { description, channel }) {
+async function logInteraction(customerId, { description, channel, productInterest }) {
   await addDoc(collection(db, 'customers', customerId, 'enquiries'), {
     date: Timestamp.now(),
     contact_id: null,
     description,
-    product_interest: [],
+    product_interest: productInterest ? [productInterest] : [],
     channel: channel || 'Email',
     status: 'Open',
     follow_up_date: null,
@@ -192,6 +216,33 @@ async function appendNote(collectionName, id, field, text) {
   })
 }
 
+// "Don't keep re-inviting someone I already told" — checks the CRM
+// Interaction Log (the actual complete history: manually logged entries,
+// entries from before this feature existed, everything — not just what this
+// app itself has sent) for a prior entry about this exact topicLabel, across
+// EVERY customer at once via a collection-group query rather than one query
+// per candidate. Requires firestore.rules' top-level `enquiries` wildcard
+// rule AND the collection-group field index enabled in the Firebase console
+// — if either isn't set up yet this throws, so the caller treats a failure
+// as "couldn't check, proceeding without this filter" rather than crashing
+// the whole generate.
+// Returns Map<customerId, dateString> (most recent contact date per person).
+async function checkAlreadyContacted(topicLabel) {
+  const snap = await getDocs(query(collectionGroup(db, 'enquiries'), where('product_interest', 'array-contains', topicLabel)))
+  const map = new Map()
+  snap.forEach(docSnap => {
+    const customerId = docSnap.ref.parent.parent?.id
+    if (!customerId) return
+    const data = docSnap.data()
+    const ts = data.date?.toMillis?.() ?? 0
+    const prev = map.get(customerId)
+    if (!prev || ts > prev.ts) {
+      map.set(customerId, { ts, dateStr: data.date?.toDate?.().toLocaleDateString() || 'previously' })
+    }
+  })
+  return map
+}
+
 // Matches CustomerDetail.jsx's Compose Message channel list (which already
 // distinguishes WhatsApp Business from Personal WhatsApp) plus WeChat, which
 // exists nowhere in this app's channel enums yet despite being a real
@@ -206,26 +257,50 @@ const ENGAGEMENT_BADGES = [
 ]
 
 export default function DailyDrafts() {
-  const [products, setProducts] = useState([]) // merged corporate + Crystocraft Range, each tagged .source
-  const [selectedProduct, setSelectedProduct] = useState(null) // the normalized product object, not just an id — .source decides which collection/shape everything downstream uses
-  const [productQuery, setProductQuery] = useState('')
-  const [drafts, setDrafts] = useState([])
-  const [sentDrafts, setSentDrafts] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [generating, setGenerating] = useState(false)
-  const [busyId, setBusyId] = useState(null)
-  const [error, setError] = useState('')
-  const [edits, setEdits] = useState({}) // draftId -> { subject, body }
-
-  // Optional per-generate-run attachments — same for every draft in the
-  // batch (same product == same photos/link make sense across the batch).
-  const [productImages, setProductImages] = useState([])
-  const [selectedImageUrls, setSelectedImageUrls] = useState([])
+  // ── Compose phase ──────────────────────────────────────────────────────
+  const [topic, setTopic] = useState('')
+  const [masterSubject, setMasterSubject] = useState('')
+  const [masterBody, setMasterBody] = useState('')
+  const [drafting, setDrafting] = useState(false)
+  const [masterImageUrls, setMasterImageUrls] = useState([])
+  const [masterUploading, setMasterUploading] = useState(false)
+  const [masterBlogLink, setMasterBlogLink] = useState(null) // { title, url }
+  const [manualLinkMode, setManualLinkMode] = useState(false)
+  const [manualLinkUrl, setManualLinkUrl] = useState('')
+  const [manualLinkTitle, setManualLinkTitle] = useState('')
   const [blogQuery, setBlogQuery] = useState('')
   const [blogResults, setBlogResults] = useState([])
   const [blogSearching, setBlogSearching] = useState(false)
-  const [blogLink, setBlogLink] = useState(null) // { title, url }
-  const [targetingNote, setTargetingNote] = useState('') // e.g. "Crystocraft distributors in Europe" — folded into the fit-score prompt as a strong steer, see generate-outreach-drafts.js
+
+  // Refine-with-AI chat on the MASTER message — same discuss-outreach-draft.js
+  // endpoint the per-draft chat uses, called with customerContext: '' since
+  // no candidate is chosen yet at this stage.
+  const [masterChatOpen, setMasterChatOpen] = useState(false)
+  const [masterChatHistory, setMasterChatHistory] = useState([])
+  const [masterChatInput, setMasterChatInput] = useState('')
+  const [masterChatBusy, setMasterChatBusy] = useState(false)
+
+  // Optional: link a product just to unlock its photo gallery. NOT required
+  // to compose a topic — most topics (news/update, portal invite) have no
+  // product at all.
+  const [products, setProducts] = useState([]) // merged corporate + Crystocraft Range, each tagged .source
+  const [linkedProduct, setLinkedProduct] = useState(null)
+  const [linkProductOpen, setLinkProductOpen] = useState(false)
+  const [linkProductQuery, setLinkProductQuery] = useState('')
+  const [linkedProductImages, setLinkedProductImages] = useState([])
+
+  // ── Target & Generate phase ────────────────────────────────────────────
+  const [targetingNote, setTargetingNote] = useState('')
+  const [includeAlreadyContacted, setIncludeAlreadyContacted] = useState(false)
+  const [generating, setGenerating] = useState(false)
+
+  // ── Review (Pending / Sent) ─────────────────────────────────────────────
+  const [drafts, setDrafts] = useState([])
+  const [sentDrafts, setSentDrafts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [busyId, setBusyId] = useState(null)
+  const [error, setError] = useState('')
+  const [edits, setEdits] = useState({}) // draftId -> { subject, body, imageUrls, blogLink }
 
   // Per-draft "discuss with AI" chat — working scratch, not persisted to
   // Firestore (see discuss-outreach-draft.js's header comment).
@@ -234,15 +309,15 @@ export default function DailyDrafts() {
   const [chatInput, setChatInput] = useState({}) // draftId -> string
   const [chatBusy, setChatBusy] = useState(null)
 
-  // Per-draft attachment editing — separate from the generate-time picker
-  // above (which just sets the batch default). Each draft's photos/link can
-  // be added to or removed from independently on its own card.
-  const [productImagesCache, setProductImagesCache] = useState({}) // productId -> images[]
+  // Per-draft attachment editing — separate from the compose-phase default.
+  // Each draft's photos/link can be added to or removed from independently.
+  const [productImagesCache, setProductImagesCache] = useState({}) // "source:productId" -> images[]
   const [photoPickerOpenId, setPhotoPickerOpenId] = useState(null)
   const [blogPickerOpenId, setBlogPickerOpenId] = useState(null)
   const [draftBlogQuery, setDraftBlogQuery] = useState({}) // draftId -> string
   const [draftBlogResults, setDraftBlogResults] = useState({}) // draftId -> posts[]
   const [draftBlogSearching, setDraftBlogSearching] = useState(null)
+  const [draftUploading, setDraftUploading] = useState(null)
 
   // "Log a reply" mini-form on Sent cards — channel + optionally the pasted
   // reply text, since replies mostly land on WhatsApp/WeChat/Alibaba, not
@@ -265,70 +340,76 @@ export default function DailyDrafts() {
     reloadSent()
   }, [])
 
-  // Selected product's own image gallery, filtered to visibility:'public'.
-  // loadBlogImages() already knows how to resolve either shape (corporate =
-  // a Firestore subcollection query; range = the inline gallery array
-  // already on the normalized object) — range images carry no visibility
-  // field at all, and isPublicVisible treats a missing field as public, so
-  // the same filter still applies uniformly. Reset selections when the
-  // product changes so a leftover photo from a previous product can't ride
-  // along silently.
+  // Linked product's own image gallery, filtered to visibility:'public'.
   useEffect(() => {
-    setSelectedImageUrls([])
-    if (!selectedProduct) { setProductImages([]); return }
-    loadBlogImages(selectedProduct.source, selectedProduct).then(imgs => {
-      setProductImages(imgs.filter(isPublicVisible))
+    if (!linkedProduct) { setLinkedProductImages([]); return }
+    loadBlogImages(linkedProduct.source, linkedProduct).then(imgs => {
+      setLinkedProductImages(imgs.filter(isPublicVisible))
     })
-  }, [selectedProduct])
+  }, [linkedProduct])
 
-  function toggleImage(url) {
-    setSelectedImageUrls(prev =>
-      prev.includes(url) ? prev.filter(u => u !== url) : prev.length < 2 ? [...prev, url] : prev
+  const filteredLinkProducts = useMemo(() => {
+    const q = linkProductQuery.trim().toLowerCase()
+    if (!q) return products.slice(0, 50)
+    return products.filter(p => (p.name || '').toLowerCase().includes(q)).slice(0, 50)
+  }, [products, linkProductQuery])
+
+  function toggleMasterImage(url) {
+    setMasterImageUrls(prev =>
+      prev.includes(url) ? prev.filter(u => u !== url) : prev.length < MAX_ATTACHED_IMAGES ? [...prev, url] : prev
     )
   }
 
-  // Lazily loads and caches a product's public images, keyed by
-  // "source:productId" (not draftId — every draft in a batch shares the same
-  // product, no need to fetch the same gallery once per draft; keyed by
-  // source too since a corporate-products id and a range_products id are
-  // independent namespaces). Range images resolve from the already-loaded
-  // `products` list (their gallery is an inline array, not a subcollection —
-  // see loadBlogImages) rather than a fresh Firestore read.
-  async function ensureProductImages(pid, source) {
-    const key = `${source || 'corporate'}:${pid}`
-    if (!pid || productImagesCache[key]) return
-    const product = products.find(p => p.id === pid && p.source === (source || 'corporate')) || { id: pid }
-    const imgs = await loadBlogImages(source || 'corporate', product)
-    setProductImagesCache(prev => ({ ...prev, [key]: imgs.filter(isPublicVisible) }))
-  }
-
-  function toggleDraftImage(d, url) {
-    const cur = fieldsFor(d).imageUrls || []
-    const next = cur.includes(url) ? cur.filter(u => u !== url) : (cur.length < 2 ? [...cur, url] : cur)
-    setField(d.id, 'imageUrls', next)
-  }
-  function removeDraftImage(d, url) {
-    setField(d.id, 'imageUrls', (fieldsFor(d).imageUrls || []).filter(u => u !== url))
-  }
-  function removeDraftBlogLink(d) {
-    setField(d.id, 'blogLink', null)
-  }
-
-  async function handleDraftBlogSearch(d) {
-    setDraftBlogSearching(d.id)
+  async function handleMasterUpload(file) {
+    if (!file || masterImageUrls.length >= MAX_ATTACHED_IMAGES) return
+    setMasterUploading(true); setError('')
     try {
-      const posts = await searchBlogPosts(draftBlogQuery[d.id] || '')
-      setDraftBlogResults(prev => ({ ...prev, [d.id]: posts }))
+      const url = await uploadImage(file)
+      setMasterImageUrls(prev => [...prev, url])
     } catch (e) {
-      setError(e.message || 'Blog search failed.')
+      setError(e.message || 'Upload failed.')
     } finally {
-      setDraftBlogSearching(null)
+      setMasterUploading(false)
     }
   }
-  function pickDraftBlogLink(d, post) {
-    setField(d.id, 'blogLink', { title: post.title, url: post.link })
-    setDraftBlogResults(prev => ({ ...prev, [d.id]: [] }))
-    setBlogPickerOpenId(null)
+
+  async function handleDraftTopic() {
+    if (!topic.trim()) return
+    setDrafting(true); setError('')
+    try {
+      const result = await draftTopic(topic.trim())
+      setMasterSubject(result.subject)
+      setMasterBody(result.body)
+      setMasterChatHistory([])
+    } catch (e) {
+      setError(e.message || 'Could not draft a starting message.')
+    } finally {
+      setDrafting(false)
+    }
+  }
+
+  async function handleMasterChatSend() {
+    const message = masterChatInput.trim()
+    if (!message) return
+    setMasterChatBusy(true); setError('')
+    try {
+      const result = await discussDraft({
+        productContext: topic.trim() || linkedProduct?.name || '',
+        customerContext: '',
+        draftSubject: masterSubject,
+        draftBody: masterBody,
+        history: masterChatHistory,
+        message,
+      })
+      setMasterChatHistory(prev => [...prev, { role: 'user', content: message }, { role: 'assistant', content: result.reply }])
+      setMasterChatInput('')
+      if (result.subject) setMasterSubject(result.subject)
+      if (result.body) setMasterBody(result.body)
+    } catch (e) {
+      setError(e.message || 'Chat failed.')
+    } finally {
+      setMasterChatBusy(false)
+    }
   }
 
   async function handleBlogSearch() {
@@ -340,6 +421,13 @@ export default function DailyDrafts() {
     } finally {
       setBlogSearching(false)
     }
+  }
+
+  function applyManualLink() {
+    const url = manualLinkUrl.trim()
+    if (!url) return
+    setMasterBlogLink({ title: manualLinkTitle.trim() || url, url })
+    setManualLinkUrl(''); setManualLinkTitle(''); setManualLinkMode(false)
   }
 
   function reload() {
@@ -354,48 +442,74 @@ export default function DailyDrafts() {
     listSentDrafts().then(setSentDrafts).catch(() => {}) // engagement/sent history is a nicety — never blocks the page
   }
 
-  const filteredProducts = useMemo(() => {
-    const q = productQuery.trim().toLowerCase()
-    if (!q) return products.slice(0, 50)
-    return products.filter(p => (p.name || '').toLowerCase().includes(q)).slice(0, 50)
-  }, [products, productQuery])
+  function resetCompose() {
+    setTopic(''); setMasterSubject(''); setMasterBody(''); setMasterChatHistory([]); setMasterChatOpen(false)
+    setMasterImageUrls([]); setMasterBlogLink(null)
+    setLinkedProduct(null); setLinkProductQuery(''); setLinkProductOpen(false)
+    setTargetingNote(''); setIncludeAlreadyContacted(false)
+  }
 
   async function handleGenerate() {
-    const product = selectedProduct
-    if (!product) { setError('Pick a product first.'); return }
+    if (!masterSubject.trim() || !masterBody.trim()) { setError('Draft and approve a message first.'); return }
+    const topicLabel = (topic.trim() || linkedProduct?.name || masterSubject).slice(0, 200)
     setGenerating(true); setError('')
     try {
       const [customers, contactDocs, existingDrafts, recentDecisions] = await Promise.all([
         loadCustomers(),
         getDocs(collection(db, 'marketing_contacts')),
-        listDraftsForProduct(product.id),
+        listDraftsForTopic(topicLabel),
         listRecentDecisions(MAX_HISTORY_DECISIONS),
       ])
       const contacts = contactDocs.docs.map(d => normalizeContact(d.id, d.data()))
 
-      // Exclude anyone already sitting in pending_review for this product
+      // Exclude anyone already sitting in pending_review for this topic
       // outright (regenerating must never duplicate an unreviewed draft), and
-      // anyone sent this product within the cooldown window. Excluded by both
+      // anyone sent this topic within the cooldown window. Excluded by both
       // id and email — see eligibleCandidates' comment on duplicate records.
       const alreadyDrafted = existingDrafts.filter(d =>
-        d.status === 'pending_review' || (d.status === 'sent' && daysAgo(d.sentAt) < PRODUCT_COOLDOWN_DAYS)
+        d.status === 'pending_review' || (d.status === 'sent' && daysAgo(d.sentAt) < TOPIC_COOLDOWN_DAYS)
       )
       const excludedIds = new Set(alreadyDrafted.map(d => d.customerId))
       const excludedEmails = new Set(alreadyDrafted.map(d => (d.customerEmail || '').trim().toLowerCase()).filter(Boolean))
 
+      // CRM Interaction Log check — the REAL complete history, not just what
+      // this app has sent. Best-effort: a missing collection-group index/
+      // rule shouldn't crash the whole generate, just skip this extra filter.
+      let alreadyContactedMap = new Map()
+      try {
+        alreadyContactedMap = await checkAlreadyContacted(topicLabel)
+      } catch (e) {
+        setError(`Could not check prior contact history (${e.message || 'index may still be enabling'}) — proceeding without that filter this time.`)
+      }
+      if (!includeAlreadyContacted) {
+        for (const customerId of alreadyContactedMap.keys()) excludedIds.add(customerId)
+      }
+
       const entities = [...customers.map(customerToEntity), ...contacts.map(contactToEntity)]
-      const candidates = eligibleCandidates(entities, excludedIds, excludedEmails)
+      let candidates = eligibleCandidates(entities, excludedIds, excludedEmails)
+      if (includeAlreadyContacted) {
+        candidates = candidates.map(c => {
+          const prior = alreadyContactedMap.get(c.id)
+          return prior ? { ...c, previouslyContactedAt: prior.dateStr } : c
+        })
+      }
       if (!candidates.length) { setError('No eligible customers/contacts right now (cooldowns/blocks cleared the whole pool).'); return }
 
       const historicalHints = summarizeHistory(recentDecisions)
       const generated = await generateDrafts(
-        { id: product.id, name: product.name, description: product.description, category: product.category },
+        { subject: masterSubject, body: masterBody },
+        topicLabel,
         candidates,
         historicalHints,
         targetingNote.trim(),
       )
       if (!generated.length) { setError('DeepSeek returned no usable drafts — try again.'); return }
-      await createDrafts(product, generated, { imageUrls: selectedImageUrls, blogLink })
+      await createDrafts(
+        { topicLabel, productId: linkedProduct?.id || null, productName: linkedProduct?.name || null, productSource: linkedProduct?.source || null },
+        generated,
+        { imageUrls: masterImageUrls, blogLink: masterBlogLink },
+      )
+      resetCompose()
       reload()
     } catch (e) {
       setError(e.message || 'Could not generate drafts.')
@@ -404,7 +518,7 @@ export default function DailyDrafts() {
     }
   }
 
-  // imageUrls/blogLink start from whatever generate-time attached (see
+  // imageUrls/blogLink start from whatever the compose phase attached (see
   // handleGenerate), but are editable per draft below — add/remove
   // independent of what the batch default was.
   function fieldsFor(d) {
@@ -434,6 +548,7 @@ export default function DailyDrafts() {
         await logInteraction(d.customerId, {
           description: `Sent Daily Drafts outreach email — ${subject}\n\n${body}`,
           channel: 'Email',
+          productInterest: d.topicLabel || d.productName,
         })
       }
       setDrafts(prev => prev.filter(x => x.id !== d.id))
@@ -516,7 +631,7 @@ export default function DailyDrafts() {
       await markDraftReplied(d.id, { channel, replyText: text })
       const description = `Replied via ${channel}${text ? `: ${text}` : ''}`
       if (d.source === 'contact') await appendNote('marketing_contacts', d.customerId, 'app_notes', description)
-      else await logInteraction(d.customerId, { description, channel })
+      else await logInteraction(d.customerId, { description, channel, productInterest: d.topicLabel || d.productName })
       setSentDrafts(prev => prev.map(x => x.id === d.id ? { ...x, repliedAt: new Date(), repliedChannel: channel, replyText: text } : x))
       setReplyFormOpenId(null)
       setReplyText(prev => ({ ...prev, [d.id]: '' }))
@@ -527,6 +642,64 @@ export default function DailyDrafts() {
     }
   }
 
+  // Lazily loads and caches a linked product's public images, keyed by
+  // "source:productId" (not draftId — every draft in a batch shares the same
+  // product, no need to fetch the same gallery once per draft). Range images
+  // resolve from the already-loaded `products` list (their gallery is an
+  // inline array, not a subcollection — see loadBlogImages) rather than a
+  // fresh Firestore read.
+  async function ensureProductImages(pid, source) {
+    const key = `${source || 'corporate'}:${pid}`
+    if (!pid || productImagesCache[key]) return
+    const product = products.find(p => p.id === pid && p.source === (source || 'corporate')) || { id: pid }
+    const imgs = await loadBlogImages(source || 'corporate', product)
+    setProductImagesCache(prev => ({ ...prev, [key]: imgs.filter(isPublicVisible) }))
+  }
+
+  function toggleDraftImage(d, url) {
+    const cur = fieldsFor(d).imageUrls || []
+    const next = cur.includes(url) ? cur.filter(u => u !== url) : (cur.length < MAX_ATTACHED_IMAGES ? [...cur, url] : cur)
+    setField(d.id, 'imageUrls', next)
+  }
+  function removeDraftImage(d, url) {
+    setField(d.id, 'imageUrls', (fieldsFor(d).imageUrls || []).filter(u => u !== url))
+  }
+  function removeDraftBlogLink(d) {
+    setField(d.id, 'blogLink', null)
+  }
+
+  // Draft has no linked product to pick a photo from (a generic topic) —
+  // direct upload instead, same helper the Compose phase uses.
+  async function handleDraftUpload(d, file) {
+    if (!file || (fieldsFor(d).imageUrls || []).length >= MAX_ATTACHED_IMAGES) return
+    setDraftUploading(d.id); setError('')
+    try {
+      const url = await uploadImage(file)
+      setField(d.id, 'imageUrls', [...(fieldsFor(d).imageUrls || []), url])
+    } catch (e) {
+      setError(e.message || 'Upload failed.')
+    } finally {
+      setDraftUploading(null)
+    }
+  }
+
+  async function handleDraftBlogSearch(d) {
+    setDraftBlogSearching(d.id)
+    try {
+      const posts = await searchBlogPosts(draftBlogQuery[d.id] || '')
+      setDraftBlogResults(prev => ({ ...prev, [d.id]: posts }))
+    } catch (e) {
+      setError(e.message || 'Blog search failed.')
+    } finally {
+      setDraftBlogSearching(null)
+    }
+  }
+  function pickDraftBlogLink(d, post) {
+    setField(d.id, 'blogLink', { title: post.title, url: post.link })
+    setDraftBlogResults(prev => ({ ...prev, [d.id]: [] }))
+    setBlogPickerOpenId(null)
+  }
+
   async function handleChatSend(d) {
     const message = (chatInput[d.id] || '').trim()
     if (!message) return
@@ -535,7 +708,7 @@ export default function DailyDrafts() {
     setChatBusy(d.id); setError('')
     try {
       const result = await discussDraft({
-        productContext: d.productName,
+        productContext: d.productName || d.topicLabel,
         customerContext: d.customerContext,
         draftSubject: fields.subject,
         draftBody: fields.body,
@@ -571,20 +744,37 @@ export default function DailyDrafts() {
 
   if (loading) return <div className="p-6 text-sm text-gray-500">Loading…</div>
 
+  const hasMaster = masterSubject.trim() && masterBody.trim()
+
   return (
     <div className="p-4 md:p-6 max-w-4xl space-y-8">
+      {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</div>}
+
+      {/* ── 1. Compose ─────────────────────────────────────────────────── */}
       <div className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-gray-900">Generate today's drafts</h2>
-        {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</div>}
-        <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Product to feature</label>
-          <input value={productQuery} onChange={e => { setProductQuery(e.target.value); setSelectedProduct(null) }}
-            placeholder="Search Corporate Gifts or Crystocraft Range…" className="input w-full md:w-96 mb-1" />
-          {productQuery && !selectedProduct && (
+        <h2 className="text-sm font-semibold text-gray-900">1. What do you want to say?</h2>
+
+        {!linkedProduct ? (
+          <button type="button" onClick={() => setLinkProductOpen(!linkProductOpen)}
+            className="text-xs text-gray-400 hover:text-brand-600">
+            + Link a product (optional, unlocks its photos)
+          </button>
+        ) : (
+          <div className="inline-flex items-center gap-1.5 text-sm bg-ivory-light rounded px-2 py-1">
+            <span className="truncate max-w-xs">{linkedProduct.name}</span>
+            <button type="button" onClick={() => setLinkedProduct(null)} className="text-gray-400 hover:text-red-600">
+              <X size={12} />
+            </button>
+          </div>
+        )}
+        {linkProductOpen && !linkedProduct && (
+          <div>
+            <input value={linkProductQuery} onChange={e => setLinkProductQuery(e.target.value)}
+              placeholder="Search Corporate Gifts or Crystocraft Range…" className="input w-full md:w-96 mb-1" />
             <div className="border border-ivory-dark rounded max-h-48 overflow-y-auto w-full md:w-96">
-              {filteredProducts.map(p => (
+              {filteredLinkProducts.map(p => (
                 <button key={`${p.source}-${p.id}`} type="button"
-                  onClick={() => { setSelectedProduct(p); setProductQuery(p.name) }}
+                  onClick={() => { setLinkedProduct(p); setLinkProductOpen(false); setLinkProductQuery('') }}
                   className="w-full flex items-center justify-between gap-2 text-left px-3 py-1.5 text-sm hover:bg-ivory-light">
                   <span className="truncate">{p.name}</span>
                   <span className={`text-[10px] uppercase tracking-wide rounded px-1 py-0.5 shrink-0 ${
@@ -594,78 +784,171 @@ export default function DailyDrafts() {
                   </span>
                 </button>
               ))}
-              {!filteredProducts.length && <div className="px-3 py-1.5 text-sm text-gray-400">No matches.</div>}
-            </div>
-          )}
-        </div>
-
-        {selectedProduct && productImages.length > 0 && (
-          <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">
-              Include photos (up to 2, optional)
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {productImages.map(img => {
-                const picked = selectedImageUrls.includes(img.file_url)
-                return (
-                  // Range gallery images have no .id (they're a plain array on the
-                  // doc, not Firestore subcollection docs) — file_url is unique
-                  // enough within one product's gallery either way.
-                  <button key={img.id || img.file_url} type="button" onClick={() => toggleImage(img.file_url)}
-                    className={`relative w-16 h-16 rounded overflow-hidden border-2 ${picked ? 'border-brand-600' : 'border-transparent'}`}>
-                    <img src={img.file_url} alt="" className="w-full h-full object-cover" />
-                    {picked && <div className="absolute inset-0 bg-brand-600/20" />}
-                  </button>
-                )
-              })}
+              {!filteredLinkProducts.length && <div className="px-3 py-1.5 text-sm text-gray-400">No matches.</div>}
             </div>
           </div>
         )}
 
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Attach a blog link (optional)</label>
-          {blogLink ? (
-            <div className="inline-flex items-center gap-1.5 text-sm bg-ivory-light rounded px-2 py-1">
-              <Link2 size={12} className="text-gray-400" />
-              <span className="truncate max-w-xs">{blogLink.title}</span>
-              <button type="button" onClick={() => setBlogLink(null)} className="text-gray-400 hover:text-red-600">
-                <X size={12} />
+          <label className="block text-xs font-medium text-gray-500 mb-1">Topic</label>
+          <textarea value={topic} onChange={e => setTopic(e.target.value)} rows={2}
+            placeholder={'e.g. "News and update on what we\'ve been up to" or "Invite long-time customers to try the new customer portal"'}
+            className="input w-full text-sm" />
+          <button onClick={handleDraftTopic} disabled={drafting || !topic.trim()}
+            className="btn-primary mt-2 inline-flex items-center gap-1.5">
+            {drafting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+            {drafting ? 'Drafting…' : hasMaster ? 'Draft again' : 'Draft with AI'}
+          </button>
+        </div>
+
+        {hasMaster && (
+          <>
+            <input value={masterSubject} onChange={e => setMasterSubject(e.target.value)}
+              className="input w-full text-sm font-medium" placeholder="Subject" />
+            <textarea value={masterBody} onChange={e => setMasterBody(e.target.value)} rows={4}
+              className="input w-full text-sm" placeholder="Message" />
+
+            <div>
+              <button type="button" onClick={() => setMasterChatOpen(!masterChatOpen)}
+                className="text-xs text-gray-500 hover:text-brand-600 inline-flex items-center gap-1">
+                <MessageCircle size={13} /> {masterChatOpen ? 'Close' : 'Rewrite / fine-tune with AI'}
               </button>
+              {masterChatOpen && (
+                <div className="border border-ivory-dark rounded-lg p-3 bg-ivory-light space-y-2 mt-2">
+                  {masterChatHistory.length > 0 && (
+                    <div className="space-y-2 max-h-56 overflow-y-auto">
+                      {masterChatHistory.map((h, i) => (
+                        <div key={i} className={`text-sm ${h.role === 'assistant' ? 'text-gray-700' : 'text-gray-900'}`}>
+                          <span className="font-medium">{h.role === 'assistant' ? 'AI:' : 'You:'}</span> {h.content}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <input value={masterChatInput} onChange={e => setMasterChatInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && !masterChatBusy && handleMasterChatSend()}
+                      placeholder="e.g. shorter, and mention the summer catalogue"
+                      className="input w-full text-sm" autoFocus
+                      autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck="false"
+                      data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"
+                      data-lpignore="true" data-1p-ignore="true" />
+                    <button type="button" onClick={handleMasterChatSend} disabled={masterChatBusy} className="btn-secondary shrink-0">
+                      {masterChatBusy ? <Loader2 size={14} className="animate-spin" /> : 'Send'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-          ) : (
-            <>
-              <div className="flex gap-2">
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {masterImageUrls.map(url => (
+                <div key={url} className="relative">
+                  <img src={url} alt="" className="w-10 h-10 rounded object-cover border border-ivory-dark" />
+                  <button type="button" onClick={() => setMasterImageUrls(prev => prev.filter(u => u !== url))}
+                    className="absolute -top-1.5 -right-1.5 bg-white rounded-full border border-ivory-dark text-gray-400 hover:text-red-600">
+                    <X size={11} />
+                  </button>
+                </div>
+              ))}
+              {masterImageUrls.length < MAX_ATTACHED_IMAGES && (
+                <label className="text-xs text-gray-400 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5 cursor-pointer inline-flex items-center gap-1">
+                  {masterUploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                  Upload
+                  <input type="file" accept="image/*" className="hidden" disabled={masterUploading}
+                    onChange={e => { handleMasterUpload(e.target.files?.[0]); e.target.value = '' }} />
+                </label>
+              )}
+              {masterBlogLink ? (
+                <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-ivory-light rounded px-2 py-1">
+                  <Link2 size={11} /> {masterBlogLink.title}
+                  <button type="button" onClick={() => setMasterBlogLink(null)} className="text-gray-400 hover:text-red-600">
+                    <X size={11} />
+                  </button>
+                </span>
+              ) : (
+                <button type="button" onClick={() => setManualLinkMode(!manualLinkMode)}
+                  className="text-xs text-gray-400 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5">
+                  + Link
+                </button>
+              )}
+            </div>
+
+            {linkedProduct && linkedProductImages.length > 0 && masterImageUrls.length < MAX_ATTACHED_IMAGES && (
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">…or from {linkedProduct.name}'s gallery</label>
+                <div className="flex flex-wrap gap-2">
+                  {linkedProductImages.map(img => {
+                    const picked = masterImageUrls.includes(img.file_url)
+                    return (
+                      <button key={img.id || img.file_url} type="button" onClick={() => toggleMasterImage(img.file_url)}
+                        className={`relative w-12 h-12 rounded overflow-hidden border-2 ${picked ? 'border-brand-600' : 'border-transparent'}`}>
+                        <img src={img.file_url} alt="" className="w-full h-full object-cover" />
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {!masterBlogLink && manualLinkMode && (
+              <div className="border border-ivory-dark rounded p-2 space-y-2">
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setManualLinkMode(false)}
+                    className="text-xs text-gray-400 hover:text-brand-600">← Search the blog instead</button>
+                </div>
+                <input value={manualLinkUrl} onChange={e => setManualLinkUrl(e.target.value)}
+                  placeholder="https://…" className="input w-full text-sm" />
+                <input value={manualLinkTitle} onChange={e => setManualLinkTitle(e.target.value)}
+                  placeholder="Link text (optional)" className="input w-full text-sm" />
+                <button type="button" onClick={applyManualLink} disabled={!manualLinkUrl.trim()} className="btn-secondary text-xs py-1.5 px-3">
+                  Attach link
+                </button>
+              </div>
+            )}
+            {!masterBlogLink && !manualLinkMode && (
+              <div className="flex gap-2 items-center">
                 <input value={blogQuery} onChange={e => setBlogQuery(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleBlogSearch()}
-                  placeholder="Search crystocraft.com blog…" className="input w-full md:w-80" />
+                  placeholder="Search crystocraft.com blog…" className="input w-full md:w-80 text-sm" />
                 <button type="button" onClick={handleBlogSearch} disabled={blogSearching} className="btn-secondary shrink-0">
                   {blogSearching ? <Loader2 size={14} className="animate-spin" /> : 'Search'}
                 </button>
+                <button type="button" onClick={() => setManualLinkMode(true)} className="text-xs text-gray-400 hover:text-brand-600 whitespace-nowrap">
+                  paste instead
+                </button>
               </div>
-              {blogResults.length > 0 && (
-                <div className="border border-ivory-dark rounded max-h-40 overflow-y-auto w-full md:w-96 mt-1">
-                  {blogResults.map(p => (
-                    <button key={p.id} type="button"
-                      onClick={() => { setBlogLink({ title: p.title, url: p.link }); setBlogResults([]) }}
-                      className="block w-full text-left px-3 py-1.5 text-sm hover:bg-ivory-light truncate">
-                      {p.title}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-        </div>
+            )}
+            {blogResults.length > 0 && (
+              <div className="border border-ivory-dark rounded max-h-40 overflow-y-auto w-full md:w-96">
+                {blogResults.map(p => (
+                  <button key={p.id} type="button"
+                    onClick={() => { setMasterBlogLink({ title: p.title, url: p.link }); setBlogResults([]) }}
+                    className="block w-full text-left px-3 py-1.5 text-sm hover:bg-ivory-light truncate">
+                    {p.title}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
+      {/* ── 2. Target & Generate ───────────────────────────────────────── */}
+      <div className={`card p-5 space-y-4 ${!hasMaster ? 'opacity-50' : ''}`}>
+        <h2 className="text-sm font-semibold text-gray-900">2. Who do you want to reach?</h2>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Who do you want to reach today? (optional)</label>
-          <input value={targetingNote} onChange={e => setTargetingNote(e.target.value)}
+          <label className="block text-xs font-medium text-gray-500 mb-1">Targeting (optional)</label>
+          <input value={targetingNote} onChange={e => setTargetingNote(e.target.value)} disabled={!hasMaster}
             placeholder='e.g. "Hong Kong corporate gift customers" or "Crystocraft distributors in Europe"'
             className="input w-full md:w-96" />
-          <div className="text-[11px] text-gray-400 mt-1">Narrows today's picks — a strong steer, not just a hint.</div>
+          <div className="text-[11px] text-gray-400 mt-1">Leave blank and DeepSeek picks who's most relevant on its own judgment.</div>
         </div>
-
-        <button onClick={handleGenerate} disabled={generating || !selectedProduct} className="btn-primary inline-flex items-center gap-1.5">
+        <label className="flex items-center gap-2 text-sm text-gray-600">
+          <input type="checkbox" checked={includeAlreadyContacted} disabled={!hasMaster}
+            onChange={e => setIncludeAlreadyContacted(e.target.checked)} />
+          Include people already contacted about this (drafted as a reminder, not a repeat pitch)
+        </label>
+        <button onClick={handleGenerate} disabled={generating || !hasMaster} className="btn-primary inline-flex items-center gap-1.5">
           {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
           {generating ? 'Generating…' : 'Generate Drafts'}
         </button>
@@ -696,7 +979,7 @@ export default function DailyDrafts() {
                     <SourceBadge source={d.source} />
                   </div>
                   <div className="text-xs text-gray-500 mt-0.5">
-                    {d.productName} · fit {Math.round((d.fitScore || 0) * 100)}%
+                    {d.productName || d.topicLabel} · fit {Math.round((d.fitScore || 0) * 100)}%
                     {d.fitReason && <span className="text-gray-400"> — {d.fitReason}</span>}
                   </div>
                 </div>
@@ -715,12 +998,21 @@ export default function DailyDrafts() {
                     </button>
                   </div>
                 ))}
-                {(fields.imageUrls || []).length < 2 && (
-                  <button type="button"
-                    onClick={() => { setPhotoPickerOpenId(photoPickerOpenId === d.id ? null : d.id); ensureProductImages(d.productId, d.productSource) }}
-                    className="text-xs text-gray-400 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5">
-                    + Photo
-                  </button>
+                {(fields.imageUrls || []).length < MAX_ATTACHED_IMAGES && (
+                  d.productId ? (
+                    <button type="button"
+                      onClick={() => { setPhotoPickerOpenId(photoPickerOpenId === d.id ? null : d.id); ensureProductImages(d.productId, d.productSource) }}
+                      className="text-xs text-gray-400 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5">
+                      + Photo
+                    </button>
+                  ) : (
+                    <label className="text-xs text-gray-400 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5 cursor-pointer inline-flex items-center gap-1">
+                      {draftUploading === d.id ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
+                      Upload
+                      <input type="file" accept="image/*" className="hidden" disabled={draftUploading === d.id}
+                        onChange={e => { handleDraftUpload(d, e.target.files?.[0]); e.target.value = '' }} />
+                    </label>
+                  )
                 )}
                 {fields.blogLink ? (
                   <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-ivory-light rounded px-2 py-1">
@@ -846,7 +1138,7 @@ export default function DailyDrafts() {
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <div className="text-sm text-gray-900 truncate">
-                    {d.customerName} <span className="text-gray-400">— {d.productName}</span>
+                    {d.customerName} <span className="text-gray-400">— {d.productName || d.topicLabel}</span>
                     <SourceBadge source={d.source} />
                   </div>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">

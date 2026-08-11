@@ -1,18 +1,28 @@
-// Daily Drafts re-engagement engine (V7.23) — turns a hand-picked product and
-// a pre-filtered candidate list into 10-20 AI-drafted, plain-text outreach
-// emails for human review (src/marketing/DailyDrafts.jsx). Admin-triggered,
-// no cron — same "a human clicks a button" posture as send-campaign.js.
+// Daily Drafts re-engagement engine (V8.0) — turns an OWNER-APPROVED master
+// message (composed + refined beforehand via draft-outreach-topic.js and
+// discuss-outreach-draft.js — see src/marketing/DailyDrafts.jsx's Compose
+// phase) and a pre-filtered candidate list into 10-20 personalized
+// plain-text outreach emails for human review. Admin-triggered, no cron —
+// same "a human clicks a button" posture as send-campaign.js.
+//
+// This is no longer product-shaped: earlier versions took a `product` and
+// asked DeepSeek to draft an email introducing it from scratch per
+// candidate. Now the owner already wrote and approved the actual message
+// (any topic — a product, a portal invite, "just checking in") BEFORE
+// anyone is targeted; this function's per-candidate step is
+// PERSONALIZATION of that approved text, not drafting from scratch.
 //
 // This function does NOT touch Firestore. Candidate eligibility (crm_status,
-// cooldown, blockOutreachUntil) is computed client-side in DailyDrafts.jsx
-// from data the browser can already read under the existing customers rules
-// — the same split Campaigns.jsx uses (it builds segments client-side, the
-// edge function only does the part that needs a secret). Once this returns,
-// the browser writes the outreach_drafts docs itself via
-// domain/outreachDrafts.js.
+// cooldown, blockOutreachUntil, prior Interaction Log history for this exact
+// topic) is computed client-side in DailyDrafts.jsx from data the browser
+// can already read under the existing rules — the same split Campaigns.js
+// uses (it builds segments client-side, the edge function only does the
+// part that needs a secret). Once this returns, the browser writes the
+// outreach_drafts docs itself via domain/outreachDrafts.js.
 //
-// POST { product: { id, name, description, category },
-//        candidates: [{ id, name, email, crm_category, crm_status, notes, erp_code, country, source? }],
+// POST { master: { subject, body }, topicLabel: string,
+//        candidates: [{ id, name, email, crm_category, crm_status, notes,
+//                        erp_code, country, source?, previouslyContactedAt? }],
 //        historicalHints?: string, targetingNote?: string }
 //   -> { drafts: [{ customerId, customerEmail, customerName, customerContext,
 //                    fitScore, fitReason, draftSubject, draftBody, source }] }
@@ -24,12 +34,20 @@
 // memory or training hook available here; each generate run is still
 // stateless, it's just told what happened recently.
 //
-// targetingNote — free text the owner types on the Generate card, e.g. "I
+// targetingNote — free text the owner types on the Target card, e.g. "I
 // want to interact with Crystocraft distributors in Europe". Treated as a
 // STRONG steering instruction in the fit-score prompt (unlike
 // historicalHints' "soft guidance") — a candidate that plainly doesn't match
 // gets scored near 0 rather than just nudged down, since the whole point of
-// typing this is to narrow today's batch, not gently bias it.
+// typing this is to narrow today's batch, not gently bias it. Left blank,
+// scoring just runs on topic/candidate fit alone — DeepSeek picks on its own
+// judgment, same as always.
+//
+// previouslyContactedAt — set client-side only for candidates the owner
+// explicitly chose to re-include despite an existing Interaction Log entry
+// for this exact topic ("Include people already contacted about this" on
+// the Target card). When present, the personalization step is told to write
+// a reminder/follow-up, not repeat the original pitch.
 //
 // Env (Netlify site vars, server-side only):
 //   DEEPSEEK_API_KEY       — required
@@ -86,32 +104,42 @@ async function callDeepSeek(apiKey, { system, user, temperature, maxTokens }) {
   return null
 }
 
-function fitScorePrompt(product, candidate, historicalHints, targetingNote) {
+function fitScorePrompt(topicLabel, candidate, historicalHints, targetingNote) {
   return {
     system: 'You are a B2B sales analyst for Crystocraft, a premium Hong Kong corporate gift manufacturer. ' +
-      'Given a customer profile and a product, judge how likely that specific customer is to engage with an ' +
-      'email introducing this product. Return ONLY a valid JSON object: { "fitScore": number between 0 and 1, "fitReason": "one short sentence" }.' +
-      (targetingNote ? `\n\nToday's targeting focus, set by the owner — this is a STRONG requirement, not a preference: "${targetingNote}". A candidate that clearly does not fit this focus should score near 0, even if they would otherwise be a good match for the product.` : '') +
+      'Given a customer profile and a topic the owner wants to reach out about, judge how likely that specific ' +
+      'customer is to engage with an email on this topic. Return ONLY a valid JSON object: ' +
+      '{ "fitScore": number between 0 and 1, "fitReason": "one short sentence" }.' +
+      (targetingNote ? `\n\nToday's targeting focus, set by the owner — this is a STRONG requirement, not a preference: "${targetingNote}". A candidate that clearly does not fit this focus should score near 0, even if they would otherwise be a good match for the topic.` : '') +
       (historicalHints ? `\n\nKnown patterns from past outreach decisions (use as soft guidance, not a hard rule):\n${historicalHints}` : ''),
-    user: `Product: ${product.name}\nCategory: ${product.category || 'n/a'}\nDescription: ${(product.description || '').slice(0, 500)}\n\n` +
+    user: `Topic: ${topicLabel}\n\n` +
       `Customer: ${candidate.name}\nCountry: ${candidate.country || 'unknown'}\nRelationship type: ${candidate.crm_category || 'unknown'}\nStatus: ${candidate.crm_status || 'unknown'}\n` +
       `CRM notes: ${(candidate.notes || 'none').slice(0, 500)}`,
   }
 }
 
-function draftPrompt(product, candidate, customerContext) {
+// The candidate step is now PERSONALIZATION of an owner-approved message,
+// not drafting from scratch — the master subject/body already went through
+// the Compose phase's own draft + refine loop (draft-outreach-topic.js,
+// discuss-outreach-draft.js) before anyone was targeted.
+function personalizePrompt(master, candidate, customerContext) {
+  const reminderNote = candidate.previouslyContactedAt
+    ? `\n\nIMPORTANT: this person was already told about this on ${candidate.previouslyContactedAt} (per the CRM record) — the owner chose to include them again anyway. Write this as a polite REMINDER or follow-up with clear next steps, not a repeat of the original pitch.`
+    : ''
   return {
-    system: 'You are an expert B2B sales assistant for Crystocraft. Your task is to write a very short, personal, ' +
-      'plain-text email from the owner (Eddie) to a customer.\n\n' +
+    system: 'You are an expert B2B sales assistant for Crystocraft. The owner (Eddie) has already written and ' +
+      'approved the message below — your job is to PERSONALIZE it for one specific recipient, not write a new one.\n\n' +
       'Requirements:\n' +
+      '- Keep the core message/topic and plain-text style intact — adapt tone, add a specific reference to THIS ' +
+      'customer\'s history if it genuinely fits, but do not change what the email is actually about.\n' +
       '- Use plain English; no HTML or markdown.\n' +
       '- Keep it under 4 sentences.\n' +
-      '- Mention the product name and why it might interest THIS specific customer, based on their history.\n' +
       '- Sound like a real person, not a marketing robot.\n' +
-      '- Do NOT mention any other customer names.\n' +
-      '- NEVER start with "Elevate", "Discover", "Introducing", "Transform", or "Unleash".\n\n' +
-      'Return ONLY a valid JSON object: { "subject": "string", "body": "string", "explanation": "one short sentence on why this angle" }.',
-    user: `Customer context:\n${customerContext}\n\nProduct to introduce: ${product.name} — ${(product.description || '').slice(0, 500)}\nProduct category: ${product.category || 'n/a'}\n\nWrite a friendly email that Eddie could send today.`,
+      '- Do NOT mention any other customer names.' +
+      reminderNote + '\n\n' +
+      'Return ONLY a valid JSON object: { "subject": "string", "body": "string", "explanation": "one short sentence on what you personalized" }.',
+    user: `Approved message:\nSubject: ${master.subject}\nBody: ${master.body}\n\n` +
+      `Customer context:\n${customerContext}\n\nPersonalize this for ${candidate.name}.`,
   }
 }
 
@@ -177,11 +205,12 @@ export default async function handler(req) {
 
   let body
   try { body = await req.json() } catch { return json({ error: 'Bad JSON' }, 400) }
-  const product = body?.product
+  const master = body?.master
+  const topicLabel = String(body?.topicLabel || '').slice(0, 200)
   const candidates = Array.isArray(body?.candidates) ? body.candidates.slice(0, MAX_CANDIDATES) : []
   const historicalHints = String(body?.historicalHints || '').slice(0, 1500)
   const targetingNote = String(body?.targetingNote || '').slice(0, 300)
-  if (!product?.id || !product?.name) return json({ error: 'product is required' }, 400)
+  if (!master?.subject || !master?.body) return json({ error: 'An approved master subject/body is required' }, 400)
   if (!candidates.length) return json({ error: 'No candidates supplied' }, 400)
 
   // 1) Fit-score every candidate, chunked to stay polite to DeepSeek's rate limit.
@@ -189,7 +218,7 @@ export default async function handler(req) {
   for (let i = 0; i < candidates.length; i += SCORE_CHUNK) {
     const chunk = candidates.slice(i, i + SCORE_CHUNK)
     const results = await Promise.all(chunk.map(async (c) => {
-      const r = await callDeepSeek(DEEPSEEK_API_KEY, { ...fitScorePrompt(product, c, historicalHints, targetingNote), temperature: 0.3, maxTokens: 200 })
+      const r = await callDeepSeek(DEEPSEEK_API_KEY, { ...fitScorePrompt(topicLabel || master.subject, c, historicalHints, targetingNote), temperature: 0.3, maxTokens: 200 })
       return { candidate: c, fitScore: typeof r?.fitScore === 'number' ? r.fitScore : 0, fitReason: r?.fitReason || '' }
     }))
     scored.push(...results)
@@ -198,11 +227,11 @@ export default async function handler(req) {
   // 2) Keep the top N.
   const finalists = scored.sort((a, b) => b.fitScore - a.fitScore).slice(0, TOP_N)
 
-  // 3) For each finalist: pull real purchase history, then draft the email.
+  // 3) For each finalist: pull real purchase history, then personalize the approved message.
   const drafts = await Promise.all(finalists.map(async ({ candidate, fitScore, fitReason }) => {
     const invoices = await recentInvoices(SUPABASE_URL, SUPABASE_KEY, candidate.erp_code)
     const customerContext = buildCustomerContext(candidate, invoices)
-    const draft = await callDeepSeek(DEEPSEEK_API_KEY, { ...draftPrompt(product, candidate, customerContext), temperature: 0.8, maxTokens: 400 })
+    const draft = await callDeepSeek(DEEPSEEK_API_KEY, { ...personalizePrompt(master, candidate, customerContext), temperature: 0.8, maxTokens: 400 })
     if (!draft?.subject || !draft?.body) return null
     return {
       customerId: candidate.id,

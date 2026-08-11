@@ -105,6 +105,10 @@
   path = "/api/resend-webhook"
 
 [[edge_functions]]
+  function = "draft-outreach-topic"
+  path = "/api/draft-outreach-topic"
+
+[[edge_functions]]
   function = "unsubscribe"
   path = "/api/unsubscribe"
 

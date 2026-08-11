@@ -83,5 +83,17 @@ service firebase.storage {
     match /freight_quotes/{quoteId}/{allPaths=**} {
       allow read, write: if isAuth();
     }
+
+    // Daily Drafts (V8.0) — images uploaded directly in the Compose phase
+    // (not from a product's existing gallery — see DailyDrafts.jsx), same
+    // idiom as campaign_images (Campaigns.jsx's Unlayer editor uploads).
+    // NOTE while adding this: campaign_images/ itself has NO matching rule
+    // anywhere in this file — same "no rule = silent Storage reject" bug
+    // this file's own customer-assets/ comment already documents once.
+    // Not fixed here (out of scope for this feature), flagged to the owner
+    // separately.
+    match /daily_draft_images/{allPaths=**} {
+      allow read, write: if isAuth();
+    }
   }
 }

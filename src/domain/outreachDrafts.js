@@ -28,26 +28,32 @@ export async function listPendingDrafts() {
     .sort((a, b) => (b.fitScore ?? 0) - (a.fitScore ?? 0))
 }
 
-// Every draft ever created for a product (any status), for the "Generate
-// Drafts" flow's exclusion check (DailyDrafts.jsx). A customer already
-// sitting in pending_review for this product must be excluded outright —
-// otherwise clicking Generate again (or a second run re-picking the same
-// top-fit customers) creates duplicate drafts for the same person, which is
-// exactly what happened before this function existed. A 'sent' draft is
-// excluded only within the cooldown window (the caller applies that part).
-export async function listDraftsForProduct(productId) {
-  const snap = await getDocs(query(COL(), where('productId', '==', productId)))
+// Every draft ever created for a topic (any status), for the "Generate"
+// flow's exclusion check (DailyDrafts.jsx). A customer already sitting in
+// pending_review for this topic must be excluded outright — otherwise
+// clicking Generate again (or a second run re-picking the same top-fit
+// customers) creates duplicate drafts for the same person, which is exactly
+// what happened before this function existed. A 'sent' draft is excluded
+// only within the cooldown window (the caller applies that part). Every
+// draft carries a topicLabel — for a product-linked compose it defaults to
+// the product name (V7.23's `productId`-scoped exclusion generalizes into
+// this rather than needing two separate code paths).
+export async function listDraftsForTopic(topicLabel) {
+  const snap = await getDocs(query(COL(), where('topicLabel', '==', topicLabel)))
   return snap.docs.map(d => ({ id: d.id, ...d.data() }))
 }
 
 // One Firestore write per draft (not a batch) — drafts are created in the
 // tens, not hundreds, and a partial failure here should surface per-item
 // rather than fail the whole generate as one unit.
-// `imageUrls`/`blogLink` are chosen once per generate run (same product ==
-// same photos/link make sense for every draft in the batch) and stored on
-// each draft so review/send doesn't need to re-derive them — see
-// DailyDrafts.jsx's image picker and blog search.
-export async function createDrafts(product, drafts, { imageUrls, blogLink } = {}) {
+// `meta.productId`/`productName`/`productSource` are optional — present
+// only when the Compose phase was linked to a specific product (for its
+// photo gallery); a generic topic (news/update, portal invite, etc.) has
+// none of them, just `topicLabel`. `imageUrls`/`blogLink` are chosen once
+// per generate run (same message == same photos/link make sense for every
+// draft in the batch) and stored on each draft so review/send doesn't need
+// to re-derive them — see DailyDrafts.jsx's image picker and blog search.
+export async function createDrafts(meta, drafts, { imageUrls, blogLink } = {}) {
   const created = []
   for (const d of drafts) {
     const ref = await addDoc(COL(), stripUndefined({
@@ -60,12 +66,14 @@ export async function createDrafts(product, drafts, { imageUrls, blogLink } = {}
       // so send-time knows whether to stamp lastOutreachAt on customers/ or
       // marketing_contacts/ (see DailyDrafts.jsx's handleSend).
       source: d.source || 'customer',
-      productId: product.id,
-      productName: product.name,
+      topicLabel: meta.topicLabel,
+      productId: meta.productId || null,
+      productName: meta.productName || null,
       // 'corporate' | 'range' — which product catalogue this came from (see
       // productSource.js); needed at review time to fetch the RIGHT product's
-      // images when adding a photo to this specific draft.
-      productSource: product.source || 'corporate',
+      // images when adding a photo to this specific draft. Null when this
+      // wasn't linked to a product at all.
+      productSource: meta.productId ? (meta.productSource || 'corporate') : null,
       fitScore: d.fitScore ?? null,
       fitReason: d.fitReason || '',
       draftSubject: d.draftSubject,
