@@ -15,7 +15,7 @@ import {
   listPendingDrafts, listDraftsForTopic, listSentDrafts, listRecentDecisions,
   createDrafts, markDraftSent, markDraftReplied, skipDraft, deleteAllPending,
 } from '../domain/outreachDrafts'
-import { generateDrafts, draftTopic, sendPersonalEmail, searchBlogPosts, discussDraft } from '../outreachApi'
+import { generateDrafts, draftTopic, sendPersonalEmail, discussDraft } from '../outreachApi'
 import { isPublicVisible } from '../constants'
 import { loadBlogProducts, loadBlogImages } from '../productSource'
 
@@ -264,13 +264,10 @@ export default function DailyDrafts() {
   const [drafting, setDrafting] = useState(false)
   const [masterImageUrls, setMasterImageUrls] = useState([])
   const [masterUploading, setMasterUploading] = useState(false)
-  const [masterBlogLink, setMasterBlogLink] = useState(null) // { title, url }
-  const [manualLinkMode, setManualLinkMode] = useState(false)
-  const [manualLinkUrl, setManualLinkUrl] = useState('')
-  const [manualLinkTitle, setManualLinkTitle] = useState('')
-  const [blogQuery, setBlogQuery] = useState('')
-  const [blogResults, setBlogResults] = useState([])
-  const [blogSearching, setBlogSearching] = useState(false)
+  const [masterLinks, setMasterLinks] = useState([]) // [{ title, url }, ...] — pasted in manually
+  const [masterLinkFormOpen, setMasterLinkFormOpen] = useState(false)
+  const [masterLinkUrl, setMasterLinkUrl] = useState('')
+  const [masterLinkTitle, setMasterLinkTitle] = useState('')
 
   // Refine-with-AI chat on the MASTER message — same discuss-outreach-draft.js
   // endpoint the per-draft chat uses, called with customerContext: '' since
@@ -300,7 +297,7 @@ export default function DailyDrafts() {
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState('')
-  const [edits, setEdits] = useState({}) // draftId -> { subject, body, imageUrls, blogLink }
+  const [edits, setEdits] = useState({}) // draftId -> { subject, body, imageUrls, links }
 
   // Per-draft "discuss with AI" chat — working scratch, not persisted to
   // Firestore (see discuss-outreach-draft.js's header comment).
@@ -310,13 +307,12 @@ export default function DailyDrafts() {
   const [chatBusy, setChatBusy] = useState(null)
 
   // Per-draft attachment editing — separate from the compose-phase default.
-  // Each draft's photos/link can be added to or removed from independently.
+  // Each draft's photos/links can be added to or removed from independently.
   const [productImagesCache, setProductImagesCache] = useState({}) // "source:productId" -> images[]
   const [photoPickerOpenId, setPhotoPickerOpenId] = useState(null)
-  const [blogPickerOpenId, setBlogPickerOpenId] = useState(null)
-  const [draftBlogQuery, setDraftBlogQuery] = useState({}) // draftId -> string
-  const [draftBlogResults, setDraftBlogResults] = useState({}) // draftId -> posts[]
-  const [draftBlogSearching, setDraftBlogSearching] = useState(null)
+  const [linkFormOpenId, setLinkFormOpenId] = useState(null)
+  const [draftLinkUrl, setDraftLinkUrl] = useState({}) // draftId -> string
+  const [draftLinkTitle, setDraftLinkTitle] = useState({}) // draftId -> string
   const [draftUploading, setDraftUploading] = useState(null)
 
   // "Log a reply" mini-form on Sent cards — channel + optionally the pasted
@@ -412,22 +408,14 @@ export default function DailyDrafts() {
     }
   }
 
-  async function handleBlogSearch() {
-    setBlogSearching(true); setError('')
-    try {
-      setBlogResults(await searchBlogPosts(blogQuery))
-    } catch (e) {
-      setError(e.message || 'Blog search failed.')
-    } finally {
-      setBlogSearching(false)
-    }
-  }
-
-  function applyManualLink() {
-    const url = manualLinkUrl.trim()
+  function applyMasterLink() {
+    const url = masterLinkUrl.trim()
     if (!url) return
-    setMasterBlogLink({ title: manualLinkTitle.trim() || url, url })
-    setManualLinkUrl(''); setManualLinkTitle(''); setManualLinkMode(false)
+    setMasterLinks(prev => [...prev, { title: masterLinkTitle.trim() || url, url }])
+    setMasterLinkUrl(''); setMasterLinkTitle(''); setMasterLinkFormOpen(false)
+  }
+  function removeMasterLink(url) {
+    setMasterLinks(prev => prev.filter(l => l.url !== url))
   }
 
   function reload() {
@@ -444,7 +432,7 @@ export default function DailyDrafts() {
 
   function resetCompose() {
     setTopic(''); setMasterSubject(''); setMasterBody(''); setMasterChatHistory([]); setMasterChatOpen(false)
-    setMasterImageUrls([]); setMasterBlogLink(null)
+    setMasterImageUrls([]); setMasterLinks([]); setMasterLinkFormOpen(false); setMasterLinkUrl(''); setMasterLinkTitle('')
     setLinkedProduct(null); setLinkProductQuery(''); setLinkProductOpen(false)
     setTargetingNote(''); setIncludeAlreadyContacted(false)
   }
@@ -507,7 +495,7 @@ export default function DailyDrafts() {
       await createDrafts(
         { topicLabel, productId: linkedProduct?.id || null, productName: linkedProduct?.name || null, productSource: linkedProduct?.source || null },
         generated,
-        { imageUrls: masterImageUrls, blogLink: masterBlogLink },
+        { imageUrls: masterImageUrls, links: masterLinks },
       )
       resetCompose()
       reload()
@@ -518,11 +506,15 @@ export default function DailyDrafts() {
     }
   }
 
-  // imageUrls/blogLink start from whatever the compose phase attached (see
+  // imageUrls/links start from whatever the compose phase attached (see
   // handleGenerate), but are editable per draft below — add/remove
-  // independent of what the batch default was.
+  // independent of what the batch default was. `d.blogLink` is read as a
+  // fallback for drafts created before V8.1's move to a `links` array.
   function fieldsFor(d) {
-    return edits[d.id] || { subject: d.draftSubject, body: d.draftBody, imageUrls: d.imageUrls || [], blogLink: d.blogLink || null }
+    return edits[d.id] || {
+      subject: d.draftSubject, body: d.draftBody, imageUrls: d.imageUrls || [],
+      links: d.links || (d.blogLink ? [d.blogLink] : []),
+    }
   }
   function setField(draftId, key, value) {
     setEdits(prev => ({
@@ -532,10 +524,10 @@ export default function DailyDrafts() {
   }
 
   async function handleSend(d) {
-    const { subject, body, imageUrls, blogLink } = fieldsFor(d)
+    const { subject, body, imageUrls, links } = fieldsFor(d)
     setBusyId(d.id); setError('')
     try {
-      await sendPersonalEmail({ customerEmail: d.customerEmail, subject, body, draftId: d.id, imageUrls, blogLink })
+      await sendPersonalEmail({ customerEmail: d.customerEmail, subject, body, draftId: d.id, imageUrls, links })
       const user = await authedUser()
       await markDraftSent(d.id, user?.uid)
       if (d.source === 'contact') {
@@ -664,8 +656,17 @@ export default function DailyDrafts() {
   function removeDraftImage(d, url) {
     setField(d.id, 'imageUrls', (fieldsFor(d).imageUrls || []).filter(u => u !== url))
   }
-  function removeDraftBlogLink(d) {
-    setField(d.id, 'blogLink', null)
+  function removeDraftLink(d, url) {
+    setField(d.id, 'links', (fieldsFor(d).links || []).filter(l => l.url !== url))
+  }
+  function applyDraftLink(d) {
+    const url = (draftLinkUrl[d.id] || '').trim()
+    if (!url) return
+    const title = (draftLinkTitle[d.id] || '').trim() || url
+    setField(d.id, 'links', [...(fieldsFor(d).links || []), { title, url }])
+    setDraftLinkUrl(prev => ({ ...prev, [d.id]: '' }))
+    setDraftLinkTitle(prev => ({ ...prev, [d.id]: '' }))
+    setLinkFormOpenId(null)
   }
 
   // Draft has no linked product to pick a photo from (a generic topic) —
@@ -681,23 +682,6 @@ export default function DailyDrafts() {
     } finally {
       setDraftUploading(null)
     }
-  }
-
-  async function handleDraftBlogSearch(d) {
-    setDraftBlogSearching(d.id)
-    try {
-      const posts = await searchBlogPosts(draftBlogQuery[d.id] || '')
-      setDraftBlogResults(prev => ({ ...prev, [d.id]: posts }))
-    } catch (e) {
-      setError(e.message || 'Blog search failed.')
-    } finally {
-      setDraftBlogSearching(null)
-    }
-  }
-  function pickDraftBlogLink(d, post) {
-    setField(d.id, 'blogLink', { title: post.title, url: post.link })
-    setDraftBlogResults(prev => ({ ...prev, [d.id]: [] }))
-    setBlogPickerOpenId(null)
   }
 
   async function handleChatSend(d) {
@@ -858,19 +842,18 @@ export default function DailyDrafts() {
                     onChange={e => { handleMasterUpload(e.target.files?.[0]); e.target.value = '' }} />
                 </label>
               )}
-              {masterBlogLink ? (
-                <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-ivory-light rounded px-2 py-1">
-                  <Link2 size={11} /> {masterBlogLink.title}
-                  <button type="button" onClick={() => setMasterBlogLink(null)} className="text-gray-400 hover:text-red-600">
+              {masterLinks.map(l => (
+                <span key={l.url} className="inline-flex items-center gap-1 text-xs text-gray-500 bg-ivory-light rounded px-2 py-1">
+                  <Link2 size={11} /> {l.title}
+                  <button type="button" onClick={() => removeMasterLink(l.url)} className="text-gray-400 hover:text-red-600">
                     <X size={11} />
                   </button>
                 </span>
-              ) : (
-                <button type="button" onClick={() => setManualLinkMode(!manualLinkMode)}
-                  className="text-xs text-gray-400 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5">
-                  + Link
-                </button>
-              )}
+              ))}
+              <button type="button" onClick={() => setMasterLinkFormOpen(!masterLinkFormOpen)}
+                className="text-xs text-gray-400 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5">
+                + Link
+              </button>
             </div>
 
             {linkedProduct && linkedProductImages.length > 0 && masterImageUrls.length < MAX_ATTACHED_IMAGES && (
@@ -890,43 +873,20 @@ export default function DailyDrafts() {
               </div>
             )}
 
-            {!masterBlogLink && manualLinkMode && (
+            {masterLinkFormOpen && (
               <div className="border border-ivory-dark rounded p-2 space-y-2">
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => setManualLinkMode(false)}
-                    className="text-xs text-gray-400 hover:text-brand-600">← Search the blog instead</button>
-                </div>
-                <input value={manualLinkUrl} onChange={e => setManualLinkUrl(e.target.value)}
+                <input value={masterLinkUrl} onChange={e => setMasterLinkUrl(e.target.value)}
                   placeholder="https://…" className="input w-full text-sm" />
-                <input value={manualLinkTitle} onChange={e => setManualLinkTitle(e.target.value)}
+                <input value={masterLinkTitle} onChange={e => setMasterLinkTitle(e.target.value)}
                   placeholder="Link text (optional)" className="input w-full text-sm" />
-                <button type="button" onClick={applyManualLink} disabled={!manualLinkUrl.trim()} className="btn-secondary text-xs py-1.5 px-3">
-                  Attach link
-                </button>
-              </div>
-            )}
-            {!masterBlogLink && !manualLinkMode && (
-              <div className="flex gap-2 items-center">
-                <input value={blogQuery} onChange={e => setBlogQuery(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleBlogSearch()}
-                  placeholder="Search crystocraft.com blog…" className="input w-full md:w-80 text-sm" />
-                <button type="button" onClick={handleBlogSearch} disabled={blogSearching} className="btn-secondary shrink-0">
-                  {blogSearching ? <Loader2 size={14} className="animate-spin" /> : 'Search'}
-                </button>
-                <button type="button" onClick={() => setManualLinkMode(true)} className="text-xs text-gray-400 hover:text-brand-600 whitespace-nowrap">
-                  paste instead
-                </button>
-              </div>
-            )}
-            {blogResults.length > 0 && (
-              <div className="border border-ivory-dark rounded max-h-40 overflow-y-auto w-full md:w-96">
-                {blogResults.map(p => (
-                  <button key={p.id} type="button"
-                    onClick={() => { setMasterBlogLink({ title: p.title, url: p.link }); setBlogResults([]) }}
-                    className="block w-full text-left px-3 py-1.5 text-sm hover:bg-ivory-light truncate">
-                    {p.title}
+                <div className="flex gap-2">
+                  <button type="button" onClick={applyMasterLink} disabled={!masterLinkUrl.trim()} className="btn-secondary text-xs py-1.5 px-3">
+                    Attach link
                   </button>
-                ))}
+                  <button type="button" onClick={() => setMasterLinkFormOpen(false)} className="text-xs text-gray-400 hover:text-brand-600">
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
           </>
@@ -1014,19 +974,18 @@ export default function DailyDrafts() {
                     </label>
                   )
                 )}
-                {fields.blogLink ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-ivory-light rounded px-2 py-1">
-                    <Link2 size={11} /> {fields.blogLink.title}
-                    <button type="button" onClick={() => removeDraftBlogLink(d)} className="text-gray-400 hover:text-red-600">
+                {(fields.links || []).map(l => (
+                  <span key={l.url} className="inline-flex items-center gap-1 text-xs text-gray-500 bg-ivory-light rounded px-2 py-1">
+                    <Link2 size={11} /> {l.title}
+                    <button type="button" onClick={() => removeDraftLink(d, l.url)} className="text-gray-400 hover:text-red-600">
                       <X size={11} />
                     </button>
                   </span>
-                ) : (
-                  <button type="button" onClick={() => setBlogPickerOpenId(blogPickerOpenId === d.id ? null : d.id)}
-                    className="text-xs text-gray-400 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5">
-                    + Link
-                  </button>
-                )}
+                ))}
+                <button type="button" onClick={() => setLinkFormOpenId(linkFormOpenId === d.id ? null : d.id)}
+                  className="text-xs text-gray-400 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5">
+                  + Link
+                </button>
               </div>
 
               {photoPickerOpenId === d.id && (
@@ -1041,23 +1000,22 @@ export default function DailyDrafts() {
                 </div>
               )}
 
-              {blogPickerOpenId === d.id && (
-                <div className="border border-ivory-dark rounded p-2 space-y-1">
+              {linkFormOpenId === d.id && (
+                <div className="border border-ivory-dark rounded p-2 space-y-2">
+                  <input value={draftLinkUrl[d.id] || ''}
+                    onChange={e => setDraftLinkUrl(prev => ({ ...prev, [d.id]: e.target.value }))}
+                    placeholder="https://…" className="input w-full text-sm" />
+                  <input value={draftLinkTitle[d.id] || ''}
+                    onChange={e => setDraftLinkTitle(prev => ({ ...prev, [d.id]: e.target.value }))}
+                    placeholder="Link text (optional)" className="input w-full text-sm" />
                   <div className="flex gap-2">
-                    <input value={draftBlogQuery[d.id] || ''}
-                      onChange={e => setDraftBlogQuery(prev => ({ ...prev, [d.id]: e.target.value }))}
-                      onKeyDown={e => e.key === 'Enter' && handleDraftBlogSearch(d)}
-                      placeholder="Search crystocraft.com blog…" className="input w-full text-sm" />
-                    <button type="button" onClick={() => handleDraftBlogSearch(d)} disabled={draftBlogSearching === d.id} className="btn-secondary shrink-0">
-                      {draftBlogSearching === d.id ? <Loader2 size={14} className="animate-spin" /> : 'Search'}
+                    <button type="button" onClick={() => applyDraftLink(d)} disabled={!(draftLinkUrl[d.id] || '').trim()} className="btn-secondary text-xs py-1.5 px-3">
+                      Attach link
+                    </button>
+                    <button type="button" onClick={() => setLinkFormOpenId(null)} className="text-xs text-gray-400 hover:text-brand-600">
+                      Cancel
                     </button>
                   </div>
-                  {(draftBlogResults[d.id] || []).map(p => (
-                    <button key={p.id} type="button" onClick={() => pickDraftBlogLink(d, p)}
-                      className="block w-full text-left px-2 py-1 text-sm hover:bg-ivory-light truncate rounded">
-                      {p.title}
-                    </button>
-                  ))}
                 </div>
               )}
               <div className="flex items-center gap-2">

@@ -49,11 +49,11 @@ export async function listDraftsForTopic(topicLabel) {
 // `meta.productId`/`productName`/`productSource` are optional — present
 // only when the Compose phase was linked to a specific product (for its
 // photo gallery); a generic topic (news/update, portal invite, etc.) has
-// none of them, just `topicLabel`. `imageUrls`/`blogLink` are chosen once
-// per generate run (same message == same photos/link make sense for every
+// none of them, just `topicLabel`. `imageUrls`/`links` are chosen once
+// per generate run (same message == same photos/links make sense for every
 // draft in the batch) and stored on each draft so review/send doesn't need
-// to re-derive them — see DailyDrafts.jsx's image picker and blog search.
-export async function createDrafts(meta, drafts, { imageUrls, blogLink } = {}) {
+// to re-derive them — see DailyDrafts.jsx's image picker and link form.
+export async function createDrafts(meta, drafts, { imageUrls, links } = {}) {
   const created = []
   for (const d of drafts) {
     const ref = await addDoc(COL(), stripUndefined({
@@ -79,7 +79,7 @@ export async function createDrafts(meta, drafts, { imageUrls, blogLink } = {}) {
       draftSubject: d.draftSubject,
       draftBody: d.draftBody,
       imageUrls: imageUrls || [],
-      blogLink: blogLink || null,
+      links: links || [],
       status: 'pending_review',
     }))
     created.push(ref.id)

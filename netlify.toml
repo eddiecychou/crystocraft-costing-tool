@@ -93,10 +93,6 @@
   path = "/api/send-personal-email"
 
 [[edge_functions]]
-  function = "wp-blog-search"
-  path = "/api/wp-blog-search"
-
-[[edge_functions]]
   function = "discuss-outreach-draft"
   path = "/api/discuss-outreach-draft"
 
