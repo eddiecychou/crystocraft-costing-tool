@@ -10,7 +10,7 @@ import json
 import os
 import urllib.request
 
-from sync import Firestore, load_env, sign_in
+from common import Firestore, load_env, sign_in
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
