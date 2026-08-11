@@ -97,6 +97,14 @@
   path = "/api/wp-blog-search"
 
 [[edge_functions]]
+  function = "discuss-outreach-draft"
+  path = "/api/discuss-outreach-draft"
+
+[[edge_functions]]
+  function = "resend-webhook"
+  path = "/api/resend-webhook"
+
+[[edge_functions]]
   function = "unsubscribe"
   path = "/api/unsubscribe"
 

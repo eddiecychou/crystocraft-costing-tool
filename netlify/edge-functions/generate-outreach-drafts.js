@@ -12,9 +12,17 @@
 // domain/outreachDrafts.js.
 //
 // POST { product: { id, name, description, category },
-//        candidates: [{ id, name, email, crm_category, crm_status, notes, erp_code }] }
+//        candidates: [{ id, name, email, crm_category, crm_status, notes, erp_code, source? }],
+//        historicalHints?: string }
 //   -> { drafts: [{ customerId, customerEmail, customerName, customerContext,
-//                    fitScore, fitReason, draftSubject, draftBody }] }
+//                    fitScore, fitReason, draftSubject, draftBody, source }] }
+//
+// historicalHints — a short client-computed summary of recent skip/send
+// outcomes (domain/outreachDrafts.js's listRecentDecisions(), summarized in
+// DailyDrafts.jsx), folded into the fit-score prompt as one more paragraph of
+// context. This is prompt-engineering, not fine-tuning — DeepSeek has no
+// memory or training hook available here; each generate run is still
+// stateless, it's just told what happened recently.
 //
 // Env (Netlify site vars, server-side only):
 //   DEEPSEEK_API_KEY       — required
@@ -71,11 +79,12 @@ async function callDeepSeek(apiKey, { system, user, temperature, maxTokens }) {
   return null
 }
 
-function fitScorePrompt(product, candidate) {
+function fitScorePrompt(product, candidate, historicalHints) {
   return {
     system: 'You are a B2B sales analyst for Crystocraft, a premium Hong Kong corporate gift manufacturer. ' +
       'Given a customer profile and a product, judge how likely that specific customer is to engage with an ' +
-      'email introducing this product. Return ONLY a valid JSON object: { "fitScore": number between 0 and 1, "fitReason": "one short sentence" }.',
+      'email introducing this product. Return ONLY a valid JSON object: { "fitScore": number between 0 and 1, "fitReason": "one short sentence" }.' +
+      (historicalHints ? `\n\nKnown patterns from past outreach decisions (use as soft guidance, not a hard rule):\n${historicalHints}` : ''),
     user: `Product: ${product.name}\nCategory: ${product.category || 'n/a'}\nDescription: ${(product.description || '').slice(0, 500)}\n\n` +
       `Customer: ${candidate.name}\nRelationship type: ${candidate.crm_category || 'unknown'}\nStatus: ${candidate.crm_status || 'unknown'}\n` +
       `CRM notes: ${(candidate.notes || 'none').slice(0, 500)}`,
@@ -162,6 +171,7 @@ export default async function handler(req) {
   try { body = await req.json() } catch { return json({ error: 'Bad JSON' }, 400) }
   const product = body?.product
   const candidates = Array.isArray(body?.candidates) ? body.candidates.slice(0, MAX_CANDIDATES) : []
+  const historicalHints = String(body?.historicalHints || '').slice(0, 1500)
   if (!product?.id || !product?.name) return json({ error: 'product is required' }, 400)
   if (!candidates.length) return json({ error: 'No candidates supplied' }, 400)
 
@@ -170,7 +180,7 @@ export default async function handler(req) {
   for (let i = 0; i < candidates.length; i += SCORE_CHUNK) {
     const chunk = candidates.slice(i, i + SCORE_CHUNK)
     const results = await Promise.all(chunk.map(async (c) => {
-      const r = await callDeepSeek(DEEPSEEK_API_KEY, { ...fitScorePrompt(product, c), temperature: 0.3, maxTokens: 200 })
+      const r = await callDeepSeek(DEEPSEEK_API_KEY, { ...fitScorePrompt(product, c, historicalHints), temperature: 0.3, maxTokens: 200 })
       return { candidate: c, fitScore: typeof r?.fitScore === 'number' ? r.fitScore : 0, fitReason: r?.fitReason || '' }
     }))
     scored.push(...results)
@@ -190,6 +200,7 @@ export default async function handler(req) {
       customerEmail: candidate.email,
       customerName: candidate.name,
       customerContext,
+      source: candidate.source || 'customer',
       fitScore,
       fitReason: fitReason || draft.explanation || '',
       draftSubject: draft.subject,

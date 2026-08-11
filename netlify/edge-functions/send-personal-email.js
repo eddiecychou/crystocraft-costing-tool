@@ -8,11 +8,17 @@
 // lastOutreachAt itself via domain/outreachDrafts.js / domain/customer.js,
 // same split as Campaigns.jsx (send-campaign.js sends; the page records).
 //
-// POST { customerEmail, subject, body, imageUrls?, blogLink? } -> { ok: true } | { error }
+// POST { customerEmail, subject, body, draftId?, imageUrls?, blogLink? } -> { ok: true } | { error }
 //   imageUrls — up to 2 product-photo URLs (Firebase Storage download URLs,
 //     already public — see DailyDrafts.jsx), embedded below the note.
 //   blogLink  — { title, url } for one crystocraft.com blog post, linked
 //     below the images.
+//   draftId   — the outreach_drafts Firestore doc id, sent to Resend as a
+//     tag (Resend echoes tags back in webhook payloads — see
+//     resend-webhook.js). This is how a later delivered/opened/clicked
+//     event gets matched back to the right draft with a plain GET/PATCH by
+//     known id, no Firestore query needed. Resend tag values are restricted
+//     to [a-zA-Z0-9_-]+, which Firestore's auto-generated ids satisfy.
 // Sends BOTH text and html — html renders the images/link inline; text is
 // the plain-text fallback (with the blog link appended as a bare URL, since
 // images can't degrade into plain text).
@@ -99,6 +105,7 @@ export default async function handler(req) {
   const text = String(body?.body || '').trim()
   const imageUrls = Array.isArray(body?.imageUrls) ? body.imageUrls.filter(Boolean).slice(0, 2) : []
   const blogLink = body?.blogLink?.url ? { title: String(body.blogLink.title || ''), url: String(body.blogLink.url) } : null
+  const draftId = String(body?.draftId || '').trim()
   if (!customerEmail || !subject || !text) return json({ error: 'customerEmail, subject and body are required' }, 400)
 
   try {
@@ -110,6 +117,7 @@ export default async function handler(req) {
         text: buildTextFallback(text, blogLink),
         html: buildHtml(text, imageUrls, blogLink),
         ...(REPLY_TO ? { reply_to: REPLY_TO } : {}),
+        ...(draftId ? { tags: [{ name: 'draft_id', value: draftId }] } : {}),
       }),
     })
     if (!r.ok) return json({ error: (await r.text()).slice(0, 300) }, 502)

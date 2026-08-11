@@ -65,6 +65,10 @@ export function normalizeContact(id, raw) {
     // App-side organising fields (editable).
     review_status: str(r.review_status),
     app_notes:     str(r.app_notes),
+    // Daily Drafts outreach engine (V7.23) — mirrors customer.js's
+    // lastOutreachAt; set only on an actual send, via markContactOutreach()
+    // below, never through saveContact (that's the admin-edit-form path).
+    lastOutreachAt: r.lastOutreachAt ?? null,
   }
 }
 
@@ -143,6 +147,14 @@ export async function saveContact(currentId, data) {
   await setDoc(doc(db, 'marketing_contacts', newId), { ...base, ...patch })
   await deleteDoc(doc(db, 'marketing_contacts', currentId))
   return newId
+}
+
+// Daily Drafts outreach engine (V7.23) — stamps the cooldown timestamp on an
+// actual send. Deliberately a direct updateDoc, not routed through
+// saveContact (that's the admin-edit-form path with its own rename/validation
+// semantics) — same split customer.js already has for lastOutreachAt.
+export async function markContactOutreach(id) {
+  await updateDoc(doc(db, 'marketing_contacts', id), { lastOutreachAt: serverTimestamp() })
 }
 
 export async function deleteContact(id) {

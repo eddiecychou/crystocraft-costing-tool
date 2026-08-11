@@ -1,22 +1,33 @@
 import { useEffect, useMemo, useState } from 'react'
-import { collection, doc, getDocs, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore'
-import { Send, Loader2, SkipForward, Sparkles, Trash2, X, Link2 } from 'lucide-react'
+import { collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore'
+import {
+  Send, Loader2, SkipForward, Sparkles, Trash2, X, Link2,
+  MessageCircle, CheckCircle2, Eye, MousePointerClick, AlertTriangle, Bookmark,
+} from 'lucide-react'
 import { db, authedUser } from '../firebase'
 import { loadCustomers, primaryContact } from '../domain/customer'
-import { listPendingDrafts, listDraftsForProduct, createDrafts, markDraftSent, skipDraft, deleteAllPending } from '../domain/outreachDrafts'
-import { generateDrafts, sendPersonalEmail, searchBlogPosts } from '../outreachApi'
+import { normalizeContact, markContactOutreach } from '../domain/marketingContact'
+import {
+  listPendingDrafts, listDraftsForProduct, listSentDrafts, listRecentDecisions,
+  createDrafts, markDraftSent, markDraftReplied, skipDraft, deleteAllPending,
+} from '../domain/outreachDrafts'
+import { generateDrafts, sendPersonalEmail, searchBlogPosts, discussDraft } from '../outreachApi'
 import { isPublicVisible } from '../constants'
 
 // Daily Drafts re-engagement engine (V7.23) — pick a product, generate 10-20
-// AI-drafted personal emails against the eligible customer pool, review and
-// send one at a time. See PROJECT-PLAN.md V7.23 and the plan this shipped
-// from for why matching is AI fit-scoring rather than a hand-built category
-// map, and why there's no persistent "recommended pick" flag yet — the owner
-// wants to pick the product manually while this is still new.
+// AI-drafted personal emails against the eligible customer+contact pool,
+// review (optionally discussing/correcting with AI) and send one at a time.
+// See PROJECT-PLAN.md V7.23 and the plan this shipped from for the design
+// reasoning throughout this file — in particular: AI fit-scoring instead of
+// a hand-built category map, no persistent "recommended pick" flag (product
+// is chosen manually each run), trade-audience-only marketing_contacts, and
+// why "reply tracking" here is a manual toggle, not detection (Resend can't
+// see inbound replies — see resend-webhook.js).
 
-const COOLDOWN_DAYS = 14        // don't re-suggest a customer within this many days of their last outreach
+const COOLDOWN_DAYS = 14        // don't re-suggest someone within this many days of their last outreach
 const PRODUCT_COOLDOWN_DAYS = 21 // don't re-suggest the SAME product to someone already sent it recently
 const MAX_CANDIDATES = 60        // sent to fit-scoring; protects DeepSeek rate limits and function run time
+const MAX_HISTORY_DECISIONS = 60 // how many recent sent/skipped drafts feed the historicalHints summary
 
 const daysAgo = (ts) => {
   if (!ts) return Infinity
@@ -24,50 +35,116 @@ const daysAgo = (ts) => {
   return (Date.now() - ms) / 86400000
 }
 
-// Eligible candidates: active/prospect, has a contactable email, not
-// manually blocked, cooldown-cleared, never sent THIS product recently.
-// Capped and prioritized (never-contacted first, then longest since last
-// contact) rather than sent unbounded — see MAX_CANDIDATES above.
-//
-// Excludes and dedupes by EMAIL, not just customer id. This CRM has known
-// duplicate customer records for the same company (see the merge feature in
-// domain/customer.js) — two docs with the same email have different ids, so
-// an id-only exclusion lets each duplicate slip through on a separate
-// Generate click, piling up near-identical drafts to the same real inbox.
-function eligibleCandidates(customers, excludedIds, excludedEmails) {
+// customers/{id} -> a common "entity" shape, or null if ineligible outright
+// (wrong crm_status, no email). Kept separate from contactToEntity so each
+// source's own eligibility rules stay readable, rather than one filter
+// function branching on source internally.
+function customerToEntity(c) {
+  if (!['Active', 'Prospect'].includes(c.crm_status)) return null
+  const contact = primaryContact(c.contacts)
+  const email = contact?.email?.trim().toLowerCase()
+  if (!email) return null
+  return {
+    source: 'customer', id: c.id, name: c.company_name, email,
+    crm_category: c.crm_category, crm_status: c.crm_status,
+    notes: c.notes, erp_code: c.erp_code,
+    lastOutreachAt: c.lastOutreachAt, blockOutreachUntil: c.blockOutreachUntil,
+  }
+}
+
+// marketing_contacts/{id} -> the same common shape. Trade-audience only (a
+// personal "Hi, I'm Eddie" note is a strange fit for a retail/e-com buyer —
+// agreed with the owner), subscribed+emailable (same suppression check
+// domain/campaigns.js's eligibleContacts uses), and never a contact already
+// linked to a customer record (possible_customer_match) — that person is
+// already representable via their customer entity above, with real cooldown
+// tracking; including them again here would double-message the same real
+// inbox from two records with no shared suppression state.
+function contactToEntity(c) {
+  if (c.status !== 'subscribed' || !c.emailable) return null
+  if (!c.audiences.includes('trade')) return null
+  if (c.possible_customer_match) return null
+  const email = c.email?.trim().toLowerCase()
+  if (!email) return null
+  const name = [c.first_name, c.last_name].filter(Boolean).join(' ') || c.company || email
+  const notes = [
+    c.company && `Company: ${c.company}`,
+    c.country && `Country: ${c.country}`,
+    c.tags.length && `Tags: ${c.tags.join(', ')}`,
+  ].filter(Boolean).join('. ')
+  return {
+    source: 'contact', id: c.id, name, email,
+    crm_category: 'Marketing contact (trade lead, not yet a customer)', crm_status: 'Prospect',
+    notes, erp_code: '',
+    lastOutreachAt: c.lastOutreachAt, blockOutreachUntil: null,
+  }
+}
+
+// Shared filter/dedupe/sort over the merged customer+contact entity pool.
+// Excludes and dedupes by EMAIL, not just id — this CRM has known duplicate
+// customer records for the same company, and a contact can independently
+// share an email with a not-yet-linked customer record; either way the same
+// real inbox must only get one draft. Customers are processed first (richer
+// context — CRM notes, ERP history), so a same-email overlap with an
+// unlinked contact resolves in the customer's favor.
+function eligibleCandidates(entities, excludedIds, excludedEmails) {
   const now = Date.now()
   const seenEmails = new Set()
-  const pool = customers.filter(c => {
-    if (!['Active', 'Prospect'].includes(c.crm_status)) return false
-    const contact = primaryContact(c.contacts)
-    const email = contact?.email?.trim().toLowerCase()
-    if (!email) return false
-    if (c.blockOutreachUntil) {
-      const until = c.blockOutreachUntil.toMillis ? c.blockOutreachUntil.toMillis() : new Date(c.blockOutreachUntil).getTime()
+  const pool = entities.filter(e => {
+    if (!e) return false
+    if (e.blockOutreachUntil) {
+      const until = e.blockOutreachUntil.toMillis ? e.blockOutreachUntil.toMillis() : new Date(e.blockOutreachUntil).getTime()
       if (until > now) return false
     }
-    if (daysAgo(c.lastOutreachAt) < COOLDOWN_DAYS) return false
-    if (excludedIds.has(c.id) || excludedEmails.has(email)) return false
-    if (seenEmails.has(email)) return false // a duplicate customer record for someone already picked this run
-    seenEmails.add(email)
+    if (daysAgo(e.lastOutreachAt) < COOLDOWN_DAYS) return false
+    if (excludedIds.has(e.id) || excludedEmails.has(e.email)) return false
+    if (seenEmails.has(e.email)) return false
+    seenEmails.add(e.email)
     return true
   })
   pool.sort((a, b) => daysAgo(b.lastOutreachAt) - daysAgo(a.lastOutreachAt)) // never-contacted (Infinity) sorts first
-  return pool.slice(0, MAX_CANDIDATES).map(c => {
-    const contact = primaryContact(c.contacts)
-    return {
-      id: c.id, name: c.company_name, email: contact.email,
-      crm_category: c.crm_category, crm_status: c.crm_status,
-      notes: c.notes, erp_code: c.erp_code,
-    }
-  })
+  return pool.slice(0, MAX_CANDIDATES).map(e => ({
+    id: e.id, name: e.name, email: e.email, source: e.source,
+    crm_category: e.crm_category, crm_status: e.crm_status, notes: e.notes, erp_code: e.erp_code,
+  }))
 }
+
+// A short plain-text summary of recent sent/skipped decisions, folded into
+// the fit-score prompt (generate-outreach-drafts.js) as soft guidance. This
+// is prompt-engineering, not fine-tuning — DeepSeek has no memory or
+// training hook here; each run is still stateless, it's just told what
+// happened recently.
+function summarizeHistory(decisions) {
+  if (!decisions.length) return ''
+  const sent = decisions.filter(d => d.status === 'sent').length
+  const skipped = decisions.filter(d => d.status === 'skipped')
+  const reasonCounts = new Map()
+  for (const d of skipped) {
+    const r = (d.skipReason || '').trim()
+    if (!r) continue
+    reasonCounts.set(r, (reasonCounts.get(r) || 0) + 1)
+  }
+  const topReasons = [...reasonCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
+  const parts = [`Of the last ${decisions.length} reviewed drafts: ${sent} were sent, ${skipped.length} were skipped.`]
+  if (topReasons.length) {
+    parts.push('Common skip reasons: ' + topReasons.map(([r, n]) => `"${r}" (${n}x)`).join(', ') + '.')
+  }
+  return parts.join(' ')
+}
+
+const ENGAGEMENT_BADGES = [
+  { key: 'delivered', label: 'Delivered', Icon: CheckCircle2 },
+  { key: 'opened', label: 'Opened', Icon: Eye },
+  { key: 'clicked', label: 'Clicked', Icon: MousePointerClick },
+  { key: 'bounced', label: 'Bounced', Icon: AlertTriangle },
+]
 
 export default function DailyDrafts() {
   const [products, setProducts] = useState([])
   const [productId, setProductId] = useState('')
   const [productQuery, setProductQuery] = useState('')
   const [drafts, setDrafts] = useState([])
+  const [sentDrafts, setSentDrafts] = useState([])
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [busyId, setBusyId] = useState(null)
@@ -83,11 +160,19 @@ export default function DailyDrafts() {
   const [blogSearching, setBlogSearching] = useState(false)
   const [blogLink, setBlogLink] = useState(null) // { title, url }
 
+  // Per-draft "discuss with AI" chat — working scratch, not persisted to
+  // Firestore (see discuss-outreach-draft.js's header comment).
+  const [chatOpenId, setChatOpenId] = useState(null)
+  const [chatHistory, setChatHistory] = useState({}) // draftId -> [{role, content}]
+  const [chatInput, setChatInput] = useState({}) // draftId -> string
+  const [chatBusy, setChatBusy] = useState(null)
+
   useEffect(() => {
     getDocs(query(collection(db, 'products'), orderBy('name'))).then(snap => {
       setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     })
     reload()
+    reloadSent()
   }, [])
 
   // Product's own image gallery, filtered to visibility:'public' — same
@@ -127,6 +212,10 @@ export default function DailyDrafts() {
       .finally(() => setLoading(false))
   }
 
+  function reloadSent() {
+    listSentDrafts().then(setSentDrafts).catch(() => {}) // engagement/sent history is a nicety — never blocks the page
+  }
+
   const filteredProducts = useMemo(() => {
     const q = productQuery.trim().toLowerCase()
     if (!q) return products.slice(0, 50)
@@ -138,26 +227,33 @@ export default function DailyDrafts() {
     if (!product) { setError('Pick a product first.'); return }
     setGenerating(true); setError('')
     try {
-      const [customers, existingDrafts] = await Promise.all([
+      const [customers, contactDocs, existingDrafts, recentDecisions] = await Promise.all([
         loadCustomers(),
+        getDocs(collection(db, 'marketing_contacts')),
         listDraftsForProduct(product.id),
+        listRecentDecisions(MAX_HISTORY_DECISIONS),
       ])
+      const contacts = contactDocs.docs.map(d => normalizeContact(d.id, d.data()))
+
       // Exclude anyone already sitting in pending_review for this product
       // outright (regenerating must never duplicate an unreviewed draft), and
       // anyone sent this product within the cooldown window. Excluded by both
-      // customerId and email — see eligibleCandidates' comment on duplicate
-      // customer records.
+      // id and email — see eligibleCandidates' comment on duplicate records.
       const alreadyDrafted = existingDrafts.filter(d =>
         d.status === 'pending_review' || (d.status === 'sent' && daysAgo(d.sentAt) < PRODUCT_COOLDOWN_DAYS)
       )
       const excludedIds = new Set(alreadyDrafted.map(d => d.customerId))
       const excludedEmails = new Set(alreadyDrafted.map(d => (d.customerEmail || '').trim().toLowerCase()).filter(Boolean))
-      const candidates = eligibleCandidates(customers, excludedIds, excludedEmails)
-      if (!candidates.length) { setError('No eligible customers right now (cooldowns/blocks cleared the whole pool).'); return }
 
+      const entities = [...customers.map(customerToEntity), ...contacts.map(contactToEntity)]
+      const candidates = eligibleCandidates(entities, excludedIds, excludedEmails)
+      if (!candidates.length) { setError('No eligible customers/contacts right now (cooldowns/blocks cleared the whole pool).'); return }
+
+      const historicalHints = summarizeHistory(recentDecisions)
       const generated = await generateDrafts(
         { id: product.id, name: product.name, description: product.description, category: product.category },
-        candidates
+        candidates,
+        historicalHints,
       )
       if (!generated.length) { setError('DeepSeek returned no usable drafts — try again.'); return }
       await createDrafts(product, generated, { imageUrls: selectedImageUrls, blogLink })
@@ -183,11 +279,16 @@ export default function DailyDrafts() {
     const { subject, body } = fieldsFor(d)
     setBusyId(d.id); setError('')
     try {
-      await sendPersonalEmail({ customerEmail: d.customerEmail, subject, body, imageUrls: d.imageUrls, blogLink: d.blogLink })
+      await sendPersonalEmail({ customerEmail: d.customerEmail, subject, body, draftId: d.id, imageUrls: d.imageUrls, blogLink: d.blogLink })
       const user = await authedUser()
       await markDraftSent(d.id, user?.uid)
-      await updateDoc(doc(db, 'customers', d.customerId), { lastOutreachAt: serverTimestamp() })
+      if (d.source === 'contact') {
+        await markContactOutreach(d.customerId)
+      } else {
+        await updateDoc(doc(db, 'customers', d.customerId), { lastOutreachAt: serverTimestamp() })
+      }
       setDrafts(prev => prev.filter(x => x.id !== d.id))
+      reloadSent()
     } catch (e) {
       setError(e.message || 'Send failed.')
     } finally {
@@ -218,6 +319,68 @@ export default function DailyDrafts() {
       setError(e.message || 'Could not skip.')
     } finally {
       setBusyId(null)
+    }
+  }
+
+  async function handleMarkReplied(d) {
+    try {
+      await markDraftReplied(d.id)
+      setSentDrafts(prev => prev.map(x => x.id === d.id ? { ...x, repliedAt: new Date() } : x))
+    } catch (e) {
+      setError(e.message || 'Could not mark as replied.')
+    }
+  }
+
+  async function handleChatSend(d) {
+    const message = (chatInput[d.id] || '').trim()
+    if (!message) return
+    const history = chatHistory[d.id] || []
+    const fields = fieldsFor(d)
+    setChatBusy(d.id); setError('')
+    try {
+      const result = await discussDraft({
+        productContext: d.productName,
+        customerContext: d.customerContext,
+        draftSubject: fields.subject,
+        draftBody: fields.body,
+        history,
+        message,
+      })
+      setChatHistory(prev => ({
+        ...prev,
+        [d.id]: [...history, { role: 'user', content: message }, { role: 'assistant', content: result.reply }],
+      }))
+      setChatInput(prev => ({ ...prev, [d.id]: '' }))
+      if (result.subject) setField(d.id, 'subject', result.subject)
+      if (result.body) setField(d.id, 'body', result.body)
+    } catch (e) {
+      setError(e.message || 'Chat failed.')
+    } finally {
+      setChatBusy(null)
+    }
+  }
+
+  // Pushes the owner's OWN message text onto the customer/contact's CRM
+  // notes, verbatim — no AI involved in deciding what's worth keeping (see
+  // discuss-outreach-draft.js's header comment on why this is a separate,
+  // explicit action rather than something the AI does automatically).
+  async function handleSaveNote(d, text) {
+    try {
+      if (d.source === 'contact') {
+        const snap = await getDoc(doc(db, 'marketing_contacts', d.customerId))
+        const existing = snap.exists() ? (snap.data().app_notes || '') : ''
+        await updateDoc(doc(db, 'marketing_contacts', d.customerId), {
+          app_notes: [existing, text].filter(Boolean).join('\n'), updatedAt: serverTimestamp(),
+        })
+      } else {
+        const snap = await getDoc(doc(db, 'customers', d.customerId))
+        const existing = snap.exists() ? (snap.data().notes || '') : ''
+        await updateDoc(doc(db, 'customers', d.customerId), {
+          notes: [existing, text].filter(Boolean).join('\n'), updatedAt: serverTimestamp(),
+        })
+      }
+    } catch (e) {
+      setError(e.message || 'Could not save that note.')
     }
   }
 
@@ -320,11 +483,17 @@ export default function DailyDrafts() {
         {drafts.map(d => {
           const fields = fieldsFor(d)
           const isBusy = busyId === d.id
+          const isChatOpen = chatOpenId === d.id
+          const isChatBusy = chatBusy === d.id
+          const history = chatHistory[d.id] || []
           return (
             <div key={d.id} className="card p-4 space-y-3">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="font-medium text-gray-900 truncate">{d.customerName} <span className="text-gray-400 font-normal">— {d.customerEmail}</span></div>
+                  <div className="font-medium text-gray-900 truncate">
+                    {d.customerName} <span className="text-gray-400 font-normal">— {d.customerEmail}</span>
+                    {d.source === 'contact' && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-amber-600 bg-amber-50 rounded px-1 py-0.5">Lead</span>}
+                  </div>
                   <div className="text-xs text-gray-500 mt-0.5">
                     {d.productName} · fit {Math.round((d.fitScore || 0) * 100)}%
                     {d.fitReason && <span className="text-gray-400"> — {d.fitReason}</span>}
@@ -355,10 +524,82 @@ export default function DailyDrafts() {
                 <button onClick={() => handleSkip(d)} disabled={isBusy} className="btn-secondary shrink-0 inline-flex items-center gap-1.5">
                   <SkipForward size={14} /> Skip
                 </button>
+                <button onClick={() => setChatOpenId(isChatOpen ? null : d.id)}
+                  className="text-xs text-gray-500 hover:text-brand-600 inline-flex items-center gap-1 ml-auto">
+                  <MessageCircle size={13} /> {isChatOpen ? 'Close' : 'Discuss with AI'}
+                </button>
               </div>
+
+              {isChatOpen && (
+                <div className="border border-ivory-dark rounded-lg p-3 bg-ivory-light space-y-2">
+                  {history.length > 0 && (
+                    <div className="space-y-2 max-h-56 overflow-y-auto">
+                      {history.map((h, i) => (
+                        <div key={i} className={`text-sm ${h.role === 'assistant' ? 'text-gray-700' : 'text-gray-900'}`}>
+                          <div className="flex items-start gap-1.5">
+                            <span className="font-medium shrink-0">{h.role === 'assistant' ? 'AI:' : 'You:'}</span>
+                            <span className="min-w-0">{h.content}</span>
+                            {h.role === 'user' && (
+                              <button type="button" onClick={() => handleSaveNote(d, h.content)}
+                                title="Save this as a note on the customer record"
+                                className="text-gray-400 hover:text-brand-600 shrink-0">
+                                <Bookmark size={12} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <input value={chatInput[d.id] || ''}
+                      onChange={e => setChatInput(prev => ({ ...prev, [d.id]: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && !isChatBusy && handleChatSend(d)}
+                      placeholder="e.g. they prefer WhatsApp, not email — mention that instead"
+                      className="input w-full text-sm" autoFocus />
+                    <button type="button" onClick={() => handleChatSend(d)} disabled={isChatBusy} className="btn-secondary shrink-0">
+                      {isChatBusy ? <Loader2 size={14} className="animate-spin" /> : 'Send'}
+                    </button>
+                  </div>
+                  <div className="text-[11px] text-gray-400">
+                    The AI only rewrites this email — it never edits the CRM record. Click <Bookmark size={10} className="inline" /> next to your own message to save it as a note instead.
+                  </div>
+                </div>
+              )}
             </div>
           )
         })}
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-gray-900">Sent ({sentDrafts.length})</h2>
+        {sentDrafts.length === 0 && <div className="text-sm text-gray-400">Nothing sent yet.</div>}
+        {sentDrafts.map(d => (
+          <div key={d.id} className="card p-3 flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-sm text-gray-900 truncate">{d.customerName} <span className="text-gray-400">— {d.productName}</span></div>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                {ENGAGEMENT_BADGES.map(({ key, label, Icon }) => (
+                  <span key={key} className={`inline-flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5 ${
+                    d.engagement?.[key] ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-300'
+                  }`}>
+                    <Icon size={11} /> {label}
+                  </span>
+                ))}
+                {d.repliedAt && (
+                  <span className="inline-flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5 bg-brand-50 text-brand-700">
+                    <CheckCircle2 size={11} /> Replied
+                  </span>
+                )}
+              </div>
+            </div>
+            {!d.repliedAt && (
+              <button onClick={() => handleMarkReplied(d)} className="text-xs text-gray-500 hover:text-brand-600 shrink-0 whitespace-nowrap">
+                Mark as replied
+              </button>
+            )}
+          </div>
+        ))}
       </div>
     </div>
   )

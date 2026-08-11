@@ -56,6 +56,10 @@ export async function createDrafts(product, drafts, { imageUrls, blogLink } = {}
       customerEmail: d.customerEmail,
       customerName: d.customerName,
       customerContext: d.customerContext || '',
+      // 'customer' | 'contact' — which collection customerId points into,
+      // so send-time knows whether to stamp lastOutreachAt on customers/ or
+      // marketing_contacts/ (see DailyDrafts.jsx's handleSend).
+      source: d.source || 'customer',
       productId: product.id,
       productName: product.name,
       fitScore: d.fitScore ?? null,
@@ -87,6 +91,37 @@ export async function skipDraft(draftId, reviewerUid, skipReason) {
     reviewedAt: serverTimestamp(),
     reviewedBy: reviewerUid || '',
   })
+}
+
+// Sent drafts, for the "Sent" section (engagement badges + Mark as replied —
+// see DailyDrafts.jsx). No orderBy, same composite-index reasoning as above;
+// sorted client-side by sentAt descending.
+export async function listSentDrafts() {
+  const snap = await getDocs(query(COL(), where('status', '==', 'sent')))
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.sentAt?.toMillis?.() ?? 0) - (a.sentAt?.toMillis?.() ?? 0))
+}
+
+export async function markDraftReplied(draftId) {
+  await updateDoc(doc(db, 'outreach_drafts', draftId), { repliedAt: serverTimestamp() })
+}
+
+// Recent sent/skipped decisions, for the "historicalHints" fed into the
+// fit-score prompt (see generate-outreach-drafts.js) — a single-field 'in'
+// filter needs no composite index (unlike the status+orderBy combo above),
+// but still sorted client-side rather than trusting Firestore's default
+// order, and capped to the most recent N once sorted.
+export async function listRecentDecisions(limitCount = 60) {
+  const snap = await getDocs(query(COL(), where('status', 'in', ['sent', 'skipped'])))
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => {
+      const at = a.reviewedAt?.toMillis?.() ?? 0
+      const bt = b.reviewedAt?.toMillis?.() ?? 0
+      return bt - at
+    })
+    .slice(0, limitCount)
 }
 
 // Bulk cleanup — deletes every pending_review draft outright (not marked
