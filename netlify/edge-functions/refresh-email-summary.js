@@ -49,7 +49,10 @@ const SYSTEM = 'You are reading a real B2B sales email history between Crystocra
   'in the emails — if something is unclear, say so rather than guessing. Return ONLY a valid JSON object: ' +
   '{ "summary": "2-4 sentence overview of the relationship and what is generally discussed", ' +
   '"recent_activity": "1-3 sentences on what happened most recently, with rough dates", ' +
-  '"open_commitments": ["short bullet", "..."] }'
+  '"open_commitments": ["short bullet", "..."] }\n\n' +
+  'For a high-volume customer, the threads below may be split into a "MOST RECENT THREADS" section and an ' +
+  '"EARLIEST THREADS ON FILE" section, with a real time gap between them that is NOT included here — the ' +
+  '"recent_activity" field should describe the MOST RECENT section specifically, not assume it covers everything.'
 
 // Was 2 attempts, no delay, no visibility into WHY a call failed — see
 // discuss-customer-email.js's identical fix for the live symptom that

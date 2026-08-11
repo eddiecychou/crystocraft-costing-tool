@@ -28,6 +28,17 @@ export async function discussCustomerEmail(threadsText, history, message) {
   return authedPost('/api/discuss-customer-email', { threadsText, history, message })
 }
 
+// Year-routing (added 2026-08-12) — for a high-volume customer, ask which
+// year(s) a question is actually about BEFORE fetching content, so
+// "what's the earliest order" or "what happened in 2020" can pull that
+// specific year's threads instead of whatever a blind recency/oldest split
+// happened to include. Only ever sends thread COUNTS, never content — see
+// route-email-question.js.
+export async function routeEmailQuestion(yearIndex, question) {
+  const { years } = await authedPost('/api/route-email-question', { yearIndex, question })
+  return Array.isArray(years) ? years : []
+}
+
 // customers/{id}/email_threads docs -> one text block, same rendering shape
 // the Phase 1 spike (email-spike/summarize.py) and email-sync/sync.py's data
 // use, so the model sees the same kind of input either way.
@@ -38,23 +49,111 @@ export async function discussCustomerEmail(threadsText, history, message) {
 // no cap at all here, building a multi-megabyte request body that failed
 // silently as "DeepSeek did not return a usable reply" (the real failure —
 // an oversized POST — was several layers removed from that generic
-// message). CustomerDetail.jsx already sorts `threads` most-recent-first,
-// so capping here by simply stopping once the budget's spent keeps the most
-// relevant history, same truncation strategy the server-side crop uses.
-const MAX_OUTPUT_CHARS = 60000
+// message).
+//
+// A pure "most recent first, stop at budget" cap (the original fix) then
+// hit a second real problem the same day: it made "what's the earliest
+// order" / "any older history" questions on a high-volume customer
+// unanswerable — that data was never sent to the model at all, only the
+// newest slice was. This is real retrieval's job (embeddings/vector search
+// — see PROJECT-PLAN.md's V8.1 entry, explicitly not built this cycle), but
+// a cheap partial fix that doesn't need that infrastructure: split the
+// budget between the newest AND oldest threads on file, so both directions
+// of "when" question have SOMETHING to answer from, clearly labeled so the
+// model doesn't assume the two sections are contiguous (there is very
+// likely a real gap in between that never made it into context).
+// Slightly under the edge functions' own MAX_INPUT_CHARS (60000) — leaves
+// room for the section labels below so the server's own blind
+// `.slice(0, MAX_INPUT_CHARS)` safety net never lands mid-label or chops
+// the tail off the "earliest threads" section.
+const MAX_OUTPUT_CHARS = 58500
+const RECENT_SHARE = 0.6 // rest goes to the oldest-on-file section
 
-export function renderThreadsText(threads) {
+function threadYear(t) {
+  const d = t.date_range?.[1] || t.date_range?.[0]
+  if (!d) return null
+  const y = new Date(d).getFullYear()
+  return Number.isNaN(y) ? null : y
+}
+
+// Compact "2018: 12, 2019: 45, ..." index for route-email-question.js —
+// counts only, never content, so the routing call stays tiny regardless of
+// how much history a customer has.
+export function buildYearIndex(threads) {
+  const counts = {}
+  for (const t of threads) {
+    const y = threadYear(t)
+    if (y == null) continue
+    counts[y] = (counts[y] || 0) + 1
+  }
+  return Object.keys(counts).sort().map(y => `${y}: ${counts[y]} thread(s)`).join(', ')
+}
+
+// Once route-email-question.js has picked year(s), render just those
+// threads (still capped, in case one year alone is large) instead of the
+// general recent+oldest mix — much more targeted for a "when" question.
+export function renderThreadsTextForYears(threads, years) {
+  const yearSet = new Set(years)
+  const filtered = threads.filter(t => yearSet.has(threadYear(t)))
   const chunks = []
   let total = 0
-  for (const t of threads) {
-    const header = `\n=== Thread: ${t.subject || '(no subject)'} (${t.message_count || (t.messages || []).length} messages) ===`
-    const body = (t.messages || []).map(m =>
-      `--- ${m.date || ''} | From: ${m.from || ''} | To: ${m.to || ''} ---\n${(m.body_text || '').trim()}`
-    ).join('\n')
-    const block = `${header}\n${body}`
+  for (const t of filtered) {
+    const block = threadBlock(t)
     if (total + block.length > MAX_OUTPUT_CHARS) break
     chunks.push(block)
     total += block.length
   }
   return chunks.join('\n')
+}
+
+function threadBlock(t) {
+  const header = `\n=== Thread: ${t.subject || '(no subject)'} (${t.message_count || (t.messages || []).length} messages) ===`
+  const body = (t.messages || []).map(m =>
+    `--- ${m.date || ''} | From: ${m.from || ''} | To: ${m.to || ''} ---\n${(m.body_text || '').trim()}`
+  ).join('\n')
+  return `${header}\n${body}`
+}
+
+// `threads` arrives most-recent-first (CustomerDetail.jsx's sort).
+export function renderThreadsText(threads) {
+  const recentBudget = Math.floor(MAX_OUTPUT_CHARS * RECENT_SHARE)
+  const oldestBudget = MAX_OUTPUT_CHARS - recentBudget
+
+  const used = new Set()
+  const recentChunks = []
+  let recentTotal = 0
+  for (const t of threads) {
+    const block = threadBlock(t)
+    if (recentTotal + block.length > recentBudget) break
+    recentChunks.push(block)
+    recentTotal += block.length
+    used.add(t)
+  }
+
+  const oldestChunks = []
+  let oldestTotal = 0
+  for (let i = threads.length - 1; i >= 0; i--) {
+    const t = threads[i]
+    if (used.has(t)) continue
+    const block = threadBlock(t)
+    if (oldestTotal + block.length > oldestBudget) break
+    oldestChunks.push(block)
+    oldestTotal += block.length
+    used.add(t)
+  }
+  oldestChunks.reverse() // chronological within this section (oldest first)
+
+  const parts = []
+  if (recentChunks.length) {
+    parts.push(`\n########## MOST RECENT THREADS ##########${recentChunks.join('\n')}`)
+  }
+  if (oldestChunks.length) {
+    parts.push(
+      '\n########## EARLIEST THREADS ON FILE ##########\n' +
+      '(There is very likely a real gap in time between this section and the "most recent" ' +
+      'section above that is not included here — do not assume these two sections are contiguous.)' +
+      oldestChunks.join('\n')
+    )
+  }
+  return parts.join('\n')
 }

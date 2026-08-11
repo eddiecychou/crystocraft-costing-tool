@@ -40,6 +40,10 @@ const SYSTEM = 'You are answering questions about a real B2B customer for the Cr
   'from what is actually in the threads provided — if the answer isn\'t there, say so plainly rather than ' +
   'guessing or inventing a plausible-sounding answer. Cite rough dates when relevant. Keep answers to 2-5 ' +
   'sentences unless the owner asks for more detail.\n\n' +
+  'For a high-volume customer, the threads below may be split into a "MOST RECENT THREADS" section and an ' +
+  '"EARLIEST THREADS ON FILE" section, with a real time gap between them that is NOT included here — do not ' +
+  'assume the two sections are contiguous, and if asked about a period that falls in that gap, say the ' +
+  'available history does not cover it rather than guessing.\n\n' +
   'Return ONLY a valid JSON object: { "reply": "your answer" }.'
 
 // Was 2 attempts, no delay, no visibility into WHY a call failed — under

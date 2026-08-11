@@ -105,6 +105,10 @@
   path = "/api/discuss-customer-email"
 
 [[edge_functions]]
+  function = "route-email-question"
+  path = "/api/route-email-question"
+
+[[edge_functions]]
   function = "resend-webhook"
   path = "/api/resend-webhook"
 
