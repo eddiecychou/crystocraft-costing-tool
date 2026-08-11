@@ -167,6 +167,16 @@ export default function DailyDrafts() {
   const [chatInput, setChatInput] = useState({}) // draftId -> string
   const [chatBusy, setChatBusy] = useState(null)
 
+  // Per-draft attachment editing — separate from the generate-time picker
+  // above (which just sets the batch default). Each draft's photos/link can
+  // be added to or removed from independently on its own card.
+  const [productImagesCache, setProductImagesCache] = useState({}) // productId -> images[]
+  const [photoPickerOpenId, setPhotoPickerOpenId] = useState(null)
+  const [blogPickerOpenId, setBlogPickerOpenId] = useState(null)
+  const [draftBlogQuery, setDraftBlogQuery] = useState({}) // draftId -> string
+  const [draftBlogResults, setDraftBlogResults] = useState({}) // draftId -> posts[]
+  const [draftBlogSearching, setDraftBlogSearching] = useState(null)
+
   useEffect(() => {
     getDocs(query(collection(db, 'products'), orderBy('name'))).then(snap => {
       setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })))
@@ -191,6 +201,45 @@ export default function DailyDrafts() {
     setSelectedImageUrls(prev =>
       prev.includes(url) ? prev.filter(u => u !== url) : prev.length < 2 ? [...prev, url] : prev
     )
+  }
+
+  // Lazily loads and caches a product's public images by productId (not
+  // draftId — every draft in a batch shares the same product, no need to
+  // fetch the same gallery once per draft).
+  async function ensureProductImages(pid) {
+    if (!pid || productImagesCache[pid]) return
+    const snap = await getDocs(collection(db, 'products', pid, 'images'))
+    const imgs = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(isPublicVisible)
+    setProductImagesCache(prev => ({ ...prev, [pid]: imgs }))
+  }
+
+  function toggleDraftImage(d, url) {
+    const cur = fieldsFor(d).imageUrls || []
+    const next = cur.includes(url) ? cur.filter(u => u !== url) : (cur.length < 2 ? [...cur, url] : cur)
+    setField(d.id, 'imageUrls', next)
+  }
+  function removeDraftImage(d, url) {
+    setField(d.id, 'imageUrls', (fieldsFor(d).imageUrls || []).filter(u => u !== url))
+  }
+  function removeDraftBlogLink(d) {
+    setField(d.id, 'blogLink', null)
+  }
+
+  async function handleDraftBlogSearch(d) {
+    setDraftBlogSearching(d.id)
+    try {
+      const posts = await searchBlogPosts(draftBlogQuery[d.id] || '')
+      setDraftBlogResults(prev => ({ ...prev, [d.id]: posts }))
+    } catch (e) {
+      setError(e.message || 'Blog search failed.')
+    } finally {
+      setDraftBlogSearching(null)
+    }
+  }
+  function pickDraftBlogLink(d, post) {
+    setField(d.id, 'blogLink', { title: post.title, url: post.link })
+    setDraftBlogResults(prev => ({ ...prev, [d.id]: [] }))
+    setBlogPickerOpenId(null)
   }
 
   async function handleBlogSearch() {
@@ -265,8 +314,11 @@ export default function DailyDrafts() {
     }
   }
 
+  // imageUrls/blogLink start from whatever generate-time attached (see
+  // handleGenerate), but are editable per draft below — add/remove
+  // independent of what the batch default was.
   function fieldsFor(d) {
-    return edits[d.id] || { subject: d.draftSubject, body: d.draftBody }
+    return edits[d.id] || { subject: d.draftSubject, body: d.draftBody, imageUrls: d.imageUrls || [], blogLink: d.blogLink || null }
   }
   function setField(draftId, key, value) {
     setEdits(prev => ({
@@ -276,10 +328,10 @@ export default function DailyDrafts() {
   }
 
   async function handleSend(d) {
-    const { subject, body } = fieldsFor(d)
+    const { subject, body, imageUrls, blogLink } = fieldsFor(d)
     setBusyId(d.id); setError('')
     try {
-      await sendPersonalEmail({ customerEmail: d.customerEmail, subject, body, draftId: d.id, imageUrls: d.imageUrls, blogLink: d.blogLink })
+      await sendPersonalEmail({ customerEmail: d.customerEmail, subject, body, draftId: d.id, imageUrls, blogLink })
       const user = await authedUser()
       await markDraftSent(d.id, user?.uid)
       if (d.source === 'contact') {
@@ -308,12 +360,16 @@ export default function DailyDrafts() {
     }
   }
 
+  // No confirmation prompt — Skip is reviewing 10-20 of these at a time and a
+  // blocking native dialog on every click was the complaint. skipReason stays
+  // blank; historicalHints (see summarizeHistory) just has less to say about
+  // WHY this one was skipped, which is an acceptable trade for not annoying
+  // the one person actually using this daily.
   async function handleSkip(d) {
-    const reason = window.prompt('Why skip this one? (optional)') || ''
     setBusyId(d.id); setError('')
     try {
       const user = await authedUser()
-      await skipDraft(d.id, user?.uid, reason)
+      await skipDraft(d.id, user?.uid, '')
       setDrafts(prev => prev.filter(x => x.id !== d.id))
     } catch (e) {
       setError(e.message || 'Could not skip.')
@@ -504,16 +560,67 @@ export default function DailyDrafts() {
                 className="input w-full text-sm font-medium" />
               <textarea value={fields.body} onChange={e => setField(d.id, 'body', e.target.value)}
                 rows={4} className="input w-full text-sm" />
-              {(d.imageUrls?.length > 0 || d.blogLink) && (
-                <div className="flex items-center gap-2 flex-wrap">
-                  {d.imageUrls?.map(url => (
-                    <img key={url} src={url} alt="" className="w-10 h-10 rounded object-cover border border-ivory-dark" />
+              <div className="flex items-center gap-2 flex-wrap">
+                {(fields.imageUrls || []).map(url => (
+                  <div key={url} className="relative">
+                    <img src={url} alt="" className="w-10 h-10 rounded object-cover border border-ivory-dark" />
+                    <button type="button" onClick={() => removeDraftImage(d, url)}
+                      className="absolute -top-1.5 -right-1.5 bg-white rounded-full border border-ivory-dark text-gray-400 hover:text-red-600">
+                      <X size={11} />
+                    </button>
+                  </div>
+                ))}
+                {(fields.imageUrls || []).length < 2 && (
+                  <button type="button"
+                    onClick={() => { setPhotoPickerOpenId(photoPickerOpenId === d.id ? null : d.id); ensureProductImages(d.productId) }}
+                    className="text-xs text-gray-400 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5">
+                    + Photo
+                  </button>
+                )}
+                {fields.blogLink ? (
+                  <span className="inline-flex items-center gap-1 text-xs text-gray-500 bg-ivory-light rounded px-2 py-1">
+                    <Link2 size={11} /> {fields.blogLink.title}
+                    <button type="button" onClick={() => removeDraftBlogLink(d)} className="text-gray-400 hover:text-red-600">
+                      <X size={11} />
+                    </button>
+                  </span>
+                ) : (
+                  <button type="button" onClick={() => setBlogPickerOpenId(blogPickerOpenId === d.id ? null : d.id)}
+                    className="text-xs text-gray-400 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5">
+                    + Link
+                  </button>
+                )}
+              </div>
+
+              {photoPickerOpenId === d.id && (
+                <div className="flex flex-wrap gap-2 border border-ivory-dark rounded p-2">
+                  {(productImagesCache[d.productId] || []).map(img => (
+                    <button key={img.id} type="button" onClick={() => toggleDraftImage(d, img.file_url)}
+                      className={`relative w-12 h-12 rounded overflow-hidden border-2 ${(fields.imageUrls || []).includes(img.file_url) ? 'border-brand-600' : 'border-transparent'}`}>
+                      <img src={img.file_url} alt="" className="w-full h-full object-cover" />
+                    </button>
                   ))}
-                  {d.blogLink && (
-                    <span className="inline-flex items-center gap-1 text-xs text-gray-500">
-                      <Link2 size={11} /> {d.blogLink.title}
-                    </span>
-                  )}
+                  {!(productImagesCache[d.productId] || []).length && <div className="text-xs text-gray-400 py-1">No public photos for this product.</div>}
+                </div>
+              )}
+
+              {blogPickerOpenId === d.id && (
+                <div className="border border-ivory-dark rounded p-2 space-y-1">
+                  <div className="flex gap-2">
+                    <input value={draftBlogQuery[d.id] || ''}
+                      onChange={e => setDraftBlogQuery(prev => ({ ...prev, [d.id]: e.target.value }))}
+                      onKeyDown={e => e.key === 'Enter' && handleDraftBlogSearch(d)}
+                      placeholder="Search crystocraft.com blog…" className="input w-full text-sm" />
+                    <button type="button" onClick={() => handleDraftBlogSearch(d)} disabled={draftBlogSearching === d.id} className="btn-secondary shrink-0">
+                      {draftBlogSearching === d.id ? <Loader2 size={14} className="animate-spin" /> : 'Search'}
+                    </button>
+                  </div>
+                  {(draftBlogResults[d.id] || []).map(p => (
+                    <button key={p.id} type="button" onClick={() => pickDraftBlogLink(d, p)}
+                      className="block w-full text-left px-2 py-1 text-sm hover:bg-ivory-light truncate rounded">
+                      {p.title}
+                    </button>
+                  ))}
                 </div>
               )}
               <div className="flex items-center gap-2">
@@ -552,11 +659,18 @@ export default function DailyDrafts() {
                     </div>
                   )}
                   <div className="flex gap-2">
+                    {/* data-gramm/data-lpignore/data-1p-ignore: this input kept getting a
+                        browser-extension icon (Grammarly/password-manager) rendered on top of
+                        typed text, mid-line — these are the standard attributes to opt an
+                        input out of that injected UI. */}
                     <input value={chatInput[d.id] || ''}
                       onChange={e => setChatInput(prev => ({ ...prev, [d.id]: e.target.value }))}
                       onKeyDown={e => e.key === 'Enter' && !isChatBusy && handleChatSend(d)}
                       placeholder="e.g. they prefer WhatsApp, not email — mention that instead"
-                      className="input w-full text-sm" autoFocus />
+                      className="input w-full text-sm" autoFocus
+                      autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck="false"
+                      data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"
+                      data-lpignore="true" data-1p-ignore="true" />
                     <button type="button" onClick={() => handleChatSend(d)} disabled={isChatBusy} className="btn-secondary shrink-0">
                       {isChatBusy ? <Loader2 size={14} className="animate-spin" /> : 'Send'}
                     </button>
