@@ -46,18 +46,12 @@ const SYSTEM = 'You are answering questions about a real B2B customer for the Cr
   'available history does not cover it rather than guessing.\n\n' +
   'Return ONLY a valid JSON object: { "reply": "your answer" }.'
 
-// Was 2 attempts, no delay, no visibility into WHY a call failed — under
-// real use (owner firing several questions back to back) that's enough to
-// eat a transient DeepSeek 429/5xx/empty-response blip and surface only the
-// generic "did not return a usable reply" with nothing to debug from.
-// Confirmed live 2026-08-12: two consecutive "DeepSeek returned an empty
-// response" failures, then the exact same request (fresh call, moments
-// later) succeeded cleanly — a brief upstream hiccup, not a code bug. 4
-// attempts with a longer backoff to actually ride out a short DeepSeek-side
-// dip; the real failure reason still travels back in `reason` either way.
+// 2 attempts with backoff per call — rides out a brief transient DeepSeek
+// blip (confirmed live: identical request succeeded moments after failing).
+// Real failure reason travels back in `reason` regardless.
 async function callDeepSeek(apiKey, messages) {
   let reason = 'unknown'
-  for (let attempt = 0; attempt < 4; attempt++) {
+  for (let attempt = 0; attempt < 2; attempt++) {
     if (attempt > 0) await new Promise(r => setTimeout(r, 800 * attempt))
     try {
       const res = await fetch('https://api.deepseek.com/chat/completions', {
@@ -112,14 +106,35 @@ export default async function handler(req) {
   if (!threadsText) return json({ error: 'threadsText is required — nothing ingested for this customer yet' }, 400)
   if (!message) return json({ error: 'message is required' }, 400)
 
-  const messages = [
+  const buildMessages = (textChars, includeHistory) => [
     { role: 'system', content: SYSTEM },
-    { role: 'user', content: `Email history:\n${threadsText.slice(0, MAX_INPUT_CHARS)}` },
-    ...history.map(h => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: String(h.content || '') })),
+    { role: 'user', content: `Email history:\n${threadsText.slice(0, textChars)}` },
+    ...(includeHistory ? history.map(h => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: String(h.content || '') })) : []),
     { role: 'user', content: message },
   ]
 
-  const { result, reason } = await callDeepSeek(DEEPSEEK_API_KEY, messages)
+  // Confirmed live 2026-08-12: a large single-thread threadsText (~56K
+  // chars, well under MAX_INPUT_CHARS on its own) succeeded with an empty
+  // history, then failed deterministically — same content, same question,
+  // repeatable — the moment even a short 2-turn history was added back in.
+  // Root cause not confirmed (DeepSeek gave no error, just empty content —
+  // possibly a real context-window edge near this size), but retrying the
+  // IDENTICAL oversized prompt 4x (the previous fix) was pointless against a
+  // deterministic failure, not a transient one. Try progressively smaller
+  // prompts instead: full content, then content without history (history is
+  // usually short — the bulk of the payload is threadsText), then a halved
+  // threadsText with no history, before actually giving up.
+  const variants = [
+    [MAX_INPUT_CHARS, true],
+    [MAX_INPUT_CHARS, false],
+    [Math.floor(MAX_INPUT_CHARS / 2), false],
+  ]
+  let result = null, reason = 'unknown'
+  for (const [textChars, includeHistory] of variants) {
+    const attempt = await callDeepSeek(DEEPSEEK_API_KEY, buildMessages(textChars, includeHistory))
+    if (attempt.result?.reply) { result = attempt.result; break }
+    reason = attempt.reason
+  }
   if (!result?.reply) return json({ error: `DeepSeek did not return a usable reply: ${reason || 'unknown'}` }, 502)
 
   return json({ reply: result.reply })
