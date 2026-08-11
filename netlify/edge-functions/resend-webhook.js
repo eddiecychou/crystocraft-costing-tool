@@ -141,13 +141,23 @@ export default async function handler(req) {
   }
 
   const rawBody = await req.text()
-  const ok = await verifySvix(
-    WEBHOOK_SECRET,
-    req.headers.get('svix-id'),
-    req.headers.get('svix-timestamp'),
-    req.headers.get('svix-signature'),
-    rawBody,
-  )
+  let ok
+  try {
+    ok = await verifySvix(
+      WEBHOOK_SECRET,
+      req.headers.get('svix-id'),
+      req.headers.get('svix-timestamp'),
+      req.headers.get('svix-signature'),
+      rawBody,
+    )
+  } catch (e) {
+    // Was previously unguarded — a malformed WEBHOOK_SECRET (bad base64,
+    // wrong char somewhere) threw here as an opaque platform-level
+    // "uncaught exception during edge function invocation" with zero
+    // detail, on 2026-08-11 while first configuring this webhook's env
+    // vars. Surface the real reason instead.
+    return new Response(`Signature check failed: ${String(e?.message || e).slice(0, 200)}`, { status: 500 })
+  }
   if (!ok) return new Response('Invalid signature', { status: 400 })
 
   let payload
