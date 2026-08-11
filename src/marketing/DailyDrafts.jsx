@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, serverTimestamp, updateDoc } from 'firebase/firestore'
 import {
   Send, Loader2, SkipForward, Sparkles, Trash2, X, Link2,
   MessageCircle, CheckCircle2, Eye, MousePointerClick, AlertTriangle, Bookmark, BellOff,
@@ -13,6 +13,7 @@ import {
 } from '../domain/outreachDrafts'
 import { generateDrafts, sendPersonalEmail, searchBlogPosts, discussDraft } from '../outreachApi'
 import { isPublicVisible } from '../constants'
+import { loadBlogProducts, loadBlogImages } from '../productSource'
 
 // Daily Drafts re-engagement engine (V7.23) — pick a product, generate 10-20
 // AI-drafted personal emails against the eligible customer+contact pool,
@@ -162,8 +163,8 @@ const ENGAGEMENT_BADGES = [
 ]
 
 export default function DailyDrafts() {
-  const [products, setProducts] = useState([])
-  const [productId, setProductId] = useState('')
+  const [products, setProducts] = useState([]) // merged corporate + Crystocraft Range, each tagged .source
+  const [selectedProduct, setSelectedProduct] = useState(null) // the normalized product object, not just an id — .source decides which collection/shape everything downstream uses
   const [productQuery, setProductQuery] = useState('')
   const [drafts, setDrafts] = useState([])
   const [sentDrafts, setSentDrafts] = useState([])
@@ -199,25 +200,35 @@ export default function DailyDrafts() {
   const [draftBlogResults, setDraftBlogResults] = useState({}) // draftId -> posts[]
   const [draftBlogSearching, setDraftBlogSearching] = useState(null)
 
+  // Both catalogues, merged — Corporate Gifts (`products`) and the
+  // Crystocraft Range (`range_products`) are separate collections with very
+  // different shapes; productSource.js's loadBlogProducts() already
+  // normalizes either into one common shape (id, source, name, category,
+  // description, images/heroImage). Same adapter FrontPageProductPicker.jsx
+  // and the Blog Writer use for the same "search both catalogues" need.
   useEffect(() => {
-    getDocs(query(collection(db, 'products'), orderBy('name'))).then(snap => {
-      setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+    Promise.all([loadBlogProducts('corporate'), loadBlogProducts('range')]).then(([corp, range]) => {
+      setProducts([...corp, ...range])
     })
     reload()
     reloadSent()
   }, [])
 
-  // Product's own image gallery, filtered to visibility:'public' — same
-  // filter BlogGenerator.jsx already applies before letting an image reach a
-  // public surface. Reset selections when the product changes so a leftover
-  // photo from a previous product can't ride along silently.
+  // Selected product's own image gallery, filtered to visibility:'public'.
+  // loadBlogImages() already knows how to resolve either shape (corporate =
+  // a Firestore subcollection query; range = the inline gallery array
+  // already on the normalized object) — range images carry no visibility
+  // field at all, and isPublicVisible treats a missing field as public, so
+  // the same filter still applies uniformly. Reset selections when the
+  // product changes so a leftover photo from a previous product can't ride
+  // along silently.
   useEffect(() => {
     setSelectedImageUrls([])
-    if (!productId) { setProductImages([]); return }
-    getDocs(collection(db, 'products', productId, 'images')).then(snap => {
-      setProductImages(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(isPublicVisible))
+    if (!selectedProduct) { setProductImages([]); return }
+    loadBlogImages(selectedProduct.source, selectedProduct).then(imgs => {
+      setProductImages(imgs.filter(isPublicVisible))
     })
-  }, [productId])
+  }, [selectedProduct])
 
   function toggleImage(url) {
     setSelectedImageUrls(prev =>
@@ -225,14 +236,19 @@ export default function DailyDrafts() {
     )
   }
 
-  // Lazily loads and caches a product's public images by productId (not
-  // draftId — every draft in a batch shares the same product, no need to
-  // fetch the same gallery once per draft).
-  async function ensureProductImages(pid) {
-    if (!pid || productImagesCache[pid]) return
-    const snap = await getDocs(collection(db, 'products', pid, 'images'))
-    const imgs = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(isPublicVisible)
-    setProductImagesCache(prev => ({ ...prev, [pid]: imgs }))
+  // Lazily loads and caches a product's public images, keyed by
+  // "source:productId" (not draftId — every draft in a batch shares the same
+  // product, no need to fetch the same gallery once per draft; keyed by
+  // source too since a corporate-products id and a range_products id are
+  // independent namespaces). Range images resolve from the already-loaded
+  // `products` list (their gallery is an inline array, not a subcollection —
+  // see loadBlogImages) rather than a fresh Firestore read.
+  async function ensureProductImages(pid, source) {
+    const key = `${source || 'corporate'}:${pid}`
+    if (!pid || productImagesCache[key]) return
+    const product = products.find(p => p.id === pid && p.source === (source || 'corporate')) || { id: pid }
+    const imgs = await loadBlogImages(source || 'corporate', product)
+    setProductImagesCache(prev => ({ ...prev, [key]: imgs.filter(isPublicVisible) }))
   }
 
   function toggleDraftImage(d, url) {
@@ -294,7 +310,7 @@ export default function DailyDrafts() {
   }, [products, productQuery])
 
   async function handleGenerate() {
-    const product = products.find(p => p.id === productId)
+    const product = selectedProduct
     if (!product) { setError('Pick a product first.'); return }
     setGenerating(true); setError('')
     try {
@@ -497,15 +513,20 @@ export default function DailyDrafts() {
         {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</div>}
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Product to feature</label>
-          <input value={productQuery} onChange={e => { setProductQuery(e.target.value); setProductId('') }}
-            placeholder="Search products…" className="input w-full md:w-96 mb-1" />
-          {productQuery && !productId && (
+          <input value={productQuery} onChange={e => { setProductQuery(e.target.value); setSelectedProduct(null) }}
+            placeholder="Search Corporate Gifts or Crystocraft Range…" className="input w-full md:w-96 mb-1" />
+          {productQuery && !selectedProduct && (
             <div className="border border-ivory-dark rounded max-h-48 overflow-y-auto w-full md:w-96">
               {filteredProducts.map(p => (
-                <button key={p.id} type="button"
-                  onClick={() => { setProductId(p.id); setProductQuery(p.name) }}
-                  className="block w-full text-left px-3 py-1.5 text-sm hover:bg-ivory-light">
-                  {p.name}
+                <button key={`${p.source}-${p.id}`} type="button"
+                  onClick={() => { setSelectedProduct(p); setProductQuery(p.name) }}
+                  className="w-full flex items-center justify-between gap-2 text-left px-3 py-1.5 text-sm hover:bg-ivory-light">
+                  <span className="truncate">{p.name}</span>
+                  <span className={`text-[10px] uppercase tracking-wide rounded px-1 py-0.5 shrink-0 ${
+                    p.source === 'range' ? 'bg-brand-50 text-brand-700' : 'bg-blue-50 text-blue-700'
+                  }`}>
+                    {p.source === 'range' ? 'Range' : 'Corporate'}
+                  </span>
                 </button>
               ))}
               {!filteredProducts.length && <div className="px-3 py-1.5 text-sm text-gray-400">No matches.</div>}
@@ -513,7 +534,7 @@ export default function DailyDrafts() {
           )}
         </div>
 
-        {productId && productImages.length > 0 && (
+        {selectedProduct && productImages.length > 0 && (
           <div>
             <label className="block text-xs font-medium text-gray-500 mb-1">
               Include photos (up to 2, optional)
@@ -522,7 +543,10 @@ export default function DailyDrafts() {
               {productImages.map(img => {
                 const picked = selectedImageUrls.includes(img.file_url)
                 return (
-                  <button key={img.id} type="button" onClick={() => toggleImage(img.file_url)}
+                  // Range gallery images have no .id (they're a plain array on the
+                  // doc, not Firestore subcollection docs) — file_url is unique
+                  // enough within one product's gallery either way.
+                  <button key={img.id || img.file_url} type="button" onClick={() => toggleImage(img.file_url)}
                     className={`relative w-16 h-16 rounded overflow-hidden border-2 ${picked ? 'border-brand-600' : 'border-transparent'}`}>
                     <img src={img.file_url} alt="" className="w-full h-full object-cover" />
                     {picked && <div className="absolute inset-0 bg-brand-600/20" />}
@@ -568,7 +592,7 @@ export default function DailyDrafts() {
           )}
         </div>
 
-        <button onClick={handleGenerate} disabled={generating || !productId} className="btn-primary inline-flex items-center gap-1.5">
+        <button onClick={handleGenerate} disabled={generating || !selectedProduct} className="btn-primary inline-flex items-center gap-1.5">
           {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
           {generating ? 'Generating…' : 'Generate Drafts'}
         </button>
@@ -620,7 +644,7 @@ export default function DailyDrafts() {
                 ))}
                 {(fields.imageUrls || []).length < 2 && (
                   <button type="button"
-                    onClick={() => { setPhotoPickerOpenId(photoPickerOpenId === d.id ? null : d.id); ensureProductImages(d.productId) }}
+                    onClick={() => { setPhotoPickerOpenId(photoPickerOpenId === d.id ? null : d.id); ensureProductImages(d.productId, d.productSource) }}
                     className="text-xs text-gray-400 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5">
                     + Photo
                   </button>
@@ -642,13 +666,13 @@ export default function DailyDrafts() {
 
               {photoPickerOpenId === d.id && (
                 <div className="flex flex-wrap gap-2 border border-ivory-dark rounded p-2">
-                  {(productImagesCache[d.productId] || []).map(img => (
-                    <button key={img.id} type="button" onClick={() => toggleDraftImage(d, img.file_url)}
+                  {(productImagesCache[`${d.productSource || 'corporate'}:${d.productId}`] || []).map(img => (
+                    <button key={img.id || img.file_url} type="button" onClick={() => toggleDraftImage(d, img.file_url)}
                       className={`relative w-12 h-12 rounded overflow-hidden border-2 ${(fields.imageUrls || []).includes(img.file_url) ? 'border-brand-600' : 'border-transparent'}`}>
                       <img src={img.file_url} alt="" className="w-full h-full object-cover" />
                     </button>
                   ))}
-                  {!(productImagesCache[d.productId] || []).length && <div className="text-xs text-gray-400 py-1">No public photos for this product.</div>}
+                  {!(productImagesCache[`${d.productSource || 'corporate'}:${d.productId}`] || []).length && <div className="text-xs text-gray-400 py-1">No public photos for this product.</div>}
                 </div>
               )}
 

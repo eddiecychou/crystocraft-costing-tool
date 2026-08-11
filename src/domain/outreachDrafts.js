@@ -62,6 +62,10 @@ export async function createDrafts(product, drafts, { imageUrls, blogLink } = {}
       source: d.source || 'customer',
       productId: product.id,
       productName: product.name,
+      // 'corporate' | 'range' — which product catalogue this came from (see
+      // productSource.js); needed at review time to fetch the RIGHT product's
+      // images when adding a photo to this specific draft.
+      productSource: product.source || 'corporate',
       fitScore: d.fitScore ?? null,
       fitReason: d.fitReason || '',
       draftSubject: d.draftSubject,
