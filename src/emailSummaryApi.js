@@ -124,27 +124,52 @@ const STOPWORDS = new Set([
   'contact', 'contacted', 'before', 'after', 'about', 'their', 'they', 'them',
   'said', 'tell', 'list', 'last', 'first', 'earliest', 'recent', 'does', 'was',
   'are', 'for', 'you', 'your', 'all', 'any', 'not', 'has', 'our', 'out',
+  // Generic verbs/fillers found live to slip past the doc-frequency filter
+  // (low enough occurrence to look "specific" without actually being
+  // about anything) — "did widdop PLACE any order" pulled in an
+  // unrelated 13%-of-threads slice via "place" alone.
+  'place', 'placed', 'make', 'made', 'get', 'got', 'know', 'see', 'seen',
+  'much', 'more', 'still', 'also', 'just', 'like', 'speak', 'spoke', 'talk',
+  'talked', 'discuss', 'discussed', 'mention', 'mentioned', 'regard', 'regarding',
 ])
 
 function extractKeywords(question) {
   return [...new Set((question.toLowerCase().match(/[a-z][a-z'-]{2,}/g) || []).filter(w => !STOPWORDS.has(w)))]
 }
 
-function threadKeywordScore(t, keywords) {
-  const hay = (
+function threadHay(t) {
+  return (
     `${t.subject || ''} ` +
     (t.messages || []).map(m => `${m.from || ''} ${m.to || ''} ${m.cc || ''} ${m.body_text || ''}`).join(' ')
   ).toLowerCase()
+}
+
+function threadKeywordScore(hay, keywords) {
   return keywords.reduce((n, k) => n + (hay.includes(k) ? 1 : 0), 0)
 }
 
 // Returns '' if the question has no useful keywords or nothing matches —
 // caller falls through to year-routing/the general split in that case.
 export function renderThreadsTextByKeyword(threads, question) {
-  const keywords = extractKeywords(question)
+  let keywords = extractKeywords(question)
   if (!keywords.length) return ''
+
+  const hays = threads.map(threadHay)
+
+  // Drop any keyword that's too common to be discriminating — confirmed
+  // live 2026-08-12: "did widdop place any order in 2020" extracted
+  // "widdop" (the customer's own name, present in nearly every thread) as
+  // a keyword, which matched almost everything and made this function
+  // falsely report "found something", blocking the more precise
+  // year-router from ever running for a question that literally names the
+  // year. A keyword present in over 40% of all threads isn't selective
+  // enough to be worth anything as a search signal.
+  const DOC_FREQ_LIMIT = 0.4
+  keywords = keywords.filter(k => hays.filter(h => h.includes(k)).length / hays.length <= DOC_FREQ_LIMIT)
+  if (!keywords.length) return ''
+
   const scored = threads
-    .map(t => ({ t, score: threadKeywordScore(t, keywords) }))
+    .map((t, i) => ({ t, score: threadKeywordScore(hays[i], keywords) }))
     .filter(x => x.score > 0)
   if (!scored.length) return ''
   // stable sort — ties keep `threads`' original most-recent-first order
