@@ -51,8 +51,15 @@ const SYSTEM = 'You are reading a real B2B sales email history between Crystocra
   '"recent_activity": "1-3 sentences on what happened most recently, with rough dates", ' +
   '"open_commitments": ["short bullet", "..."] }'
 
+// Was 2 attempts, no delay, no visibility into WHY a call failed — see
+// discuss-customer-email.js's identical fix for the live symptom that
+// exposed this (rapid-fire questions eating a transient DeepSeek 429/5xx
+// with nothing left to debug from). 3 attempts with a short backoff, real
+// failure reason returned in `reason`.
 async function callDeepSeek(apiKey, system, user) {
-  for (let attempt = 0; attempt < 2; attempt++) {
+  let reason = 'unknown'
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, 500 * attempt))
     try {
       const res = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
@@ -64,14 +71,21 @@ async function callDeepSeek(apiKey, system, user) {
           temperature: 0.3, max_tokens: 700,
         }),
       })
-      if (!res.ok) continue
+      if (!res.ok) { reason = `DeepSeek ${res.status}: ${(await res.text()).slice(0, 200)}`; continue }
       const data = await res.json()
       const text = data.choices?.[0]?.message?.content?.trim()
-      if (!text) continue
-      return JSON.parse(text)
-    } catch { /* try again, or fall through to null below */ }
+      if (!text) { reason = 'DeepSeek returned an empty response'; continue }
+      try {
+        return { result: JSON.parse(text), reason: null }
+      } catch {
+        reason = `DeepSeek returned non-JSON: ${text.slice(0, 200)}`
+        continue
+      }
+    } catch (e) {
+      reason = `Request failed: ${String(e?.message || e).slice(0, 200)}`
+    }
   }
-  return null
+  return { result: null, reason }
 }
 
 export default async function handler(req) {
@@ -97,8 +111,8 @@ export default async function handler(req) {
   const threadsText = String(body?.threadsText || '').trim()
   if (!threadsText) return json({ error: 'threadsText is required — nothing ingested for this customer yet' }, 400)
 
-  const result = await callDeepSeek(DEEPSEEK_API_KEY, SYSTEM, threadsText.slice(0, MAX_INPUT_CHARS))
-  if (!result?.summary) return json({ error: 'DeepSeek did not return a usable summary — try again.' }, 502)
+  const { result, reason } = await callDeepSeek(DEEPSEEK_API_KEY, SYSTEM, threadsText.slice(0, MAX_INPUT_CHARS))
+  if (!result?.summary) return json({ error: `DeepSeek did not return a usable summary: ${reason || 'unknown'}` }, 502)
 
   return json({
     summary: result.summary,

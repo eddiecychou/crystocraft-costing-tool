@@ -42,8 +42,16 @@ const SYSTEM = 'You are answering questions about a real B2B customer for the Cr
   'sentences unless the owner asks for more detail.\n\n' +
   'Return ONLY a valid JSON object: { "reply": "your answer" }.'
 
+// Was 2 attempts, no delay, no visibility into WHY a call failed — under
+// real use (owner firing several questions back to back) that's enough to
+// eat a transient DeepSeek 429/5xx and surface only the generic "did not
+// return a usable reply" with nothing to debug from. 3 attempts with a
+// short backoff, and the real failure reason travels back in `reason` so
+// it actually shows up in the response instead of getting swallowed.
 async function callDeepSeek(apiKey, messages) {
-  for (let attempt = 0; attempt < 2; attempt++) {
+  let reason = 'unknown'
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, 500 * attempt))
     try {
       const res = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
@@ -54,14 +62,21 @@ async function callDeepSeek(apiKey, messages) {
           temperature: 0.3, max_tokens: 600,
         }),
       })
-      if (!res.ok) continue
+      if (!res.ok) { reason = `DeepSeek ${res.status}: ${(await res.text()).slice(0, 200)}`; continue }
       const data = await res.json()
       const text = data.choices?.[0]?.message?.content?.trim()
-      if (!text) continue
-      return JSON.parse(text)
-    } catch { /* try again, or fall through to null below */ }
+      if (!text) { reason = 'DeepSeek returned an empty response'; continue }
+      try {
+        return { result: JSON.parse(text), reason: null }
+      } catch {
+        reason = `DeepSeek returned non-JSON: ${text.slice(0, 200)}`
+        continue
+      }
+    } catch (e) {
+      reason = `Request failed: ${String(e?.message || e).slice(0, 200)}`
+    }
   }
-  return null
+  return { result: null, reason }
 }
 
 export default async function handler(req) {
@@ -97,8 +112,8 @@ export default async function handler(req) {
     { role: 'user', content: message },
   ]
 
-  const result = await callDeepSeek(DEEPSEEK_API_KEY, messages)
-  if (!result?.reply) return json({ error: 'DeepSeek did not return a usable reply — try again.' }, 502)
+  const { result, reason } = await callDeepSeek(DEEPSEEK_API_KEY, messages)
+  if (!result?.reply) return json({ error: `DeepSeek did not return a usable reply: ${reason || 'unknown'}` }, 502)
 
   return json({ reply: result.reply })
 }
