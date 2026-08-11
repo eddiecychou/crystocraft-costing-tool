@@ -43,7 +43,11 @@ export async function listDraftsForProduct(productId) {
 // One Firestore write per draft (not a batch) — drafts are created in the
 // tens, not hundreds, and a partial failure here should surface per-item
 // rather than fail the whole generate as one unit.
-export async function createDrafts(product, drafts) {
+// `imageUrls`/`blogLink` are chosen once per generate run (same product ==
+// same photos/link make sense for every draft in the batch) and stored on
+// each draft so review/send doesn't need to re-derive them — see
+// DailyDrafts.jsx's image picker and blog search.
+export async function createDrafts(product, drafts, { imageUrls, blogLink } = {}) {
   const created = []
   for (const d of drafts) {
     const ref = await addDoc(COL(), stripUndefined({
@@ -58,6 +62,8 @@ export async function createDrafts(product, drafts) {
       fitReason: d.fitReason || '',
       draftSubject: d.draftSubject,
       draftBody: d.draftBody,
+      imageUrls: imageUrls || [],
+      blogLink: blogLink || null,
       status: 'pending_review',
     }))
     created.push(ref.id)

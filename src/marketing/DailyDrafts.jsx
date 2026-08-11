@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { collection, doc, getDocs, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore'
-import { Send, Loader2, SkipForward, Sparkles, Trash2 } from 'lucide-react'
+import { Send, Loader2, SkipForward, Sparkles, Trash2, X, Link2 } from 'lucide-react'
 import { db, authedUser } from '../firebase'
 import { loadCustomers, primaryContact } from '../domain/customer'
 import { listPendingDrafts, listDraftsForProduct, createDrafts, markDraftSent, skipDraft, deleteAllPending } from '../domain/outreachDrafts'
-import { generateDrafts, sendPersonalEmail } from '../outreachApi'
+import { generateDrafts, sendPersonalEmail, searchBlogPosts } from '../outreachApi'
+import { isPublicVisible } from '../constants'
 
 // Daily Drafts re-engagement engine (V7.23) — pick a product, generate 10-20
 // AI-drafted personal emails against the eligible customer pool, review and
@@ -73,12 +74,50 @@ export default function DailyDrafts() {
   const [error, setError] = useState('')
   const [edits, setEdits] = useState({}) // draftId -> { subject, body }
 
+  // Optional per-generate-run attachments — same for every draft in the
+  // batch (same product == same photos/link make sense across the batch).
+  const [productImages, setProductImages] = useState([])
+  const [selectedImageUrls, setSelectedImageUrls] = useState([])
+  const [blogQuery, setBlogQuery] = useState('')
+  const [blogResults, setBlogResults] = useState([])
+  const [blogSearching, setBlogSearching] = useState(false)
+  const [blogLink, setBlogLink] = useState(null) // { title, url }
+
   useEffect(() => {
     getDocs(query(collection(db, 'products'), orderBy('name'))).then(snap => {
       setProducts(snap.docs.map(d => ({ id: d.id, ...d.data() })))
     })
     reload()
   }, [])
+
+  // Product's own image gallery, filtered to visibility:'public' — same
+  // filter BlogGenerator.jsx already applies before letting an image reach a
+  // public surface. Reset selections when the product changes so a leftover
+  // photo from a previous product can't ride along silently.
+  useEffect(() => {
+    setSelectedImageUrls([])
+    if (!productId) { setProductImages([]); return }
+    getDocs(collection(db, 'products', productId, 'images')).then(snap => {
+      setProductImages(snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(isPublicVisible))
+    })
+  }, [productId])
+
+  function toggleImage(url) {
+    setSelectedImageUrls(prev =>
+      prev.includes(url) ? prev.filter(u => u !== url) : prev.length < 2 ? [...prev, url] : prev
+    )
+  }
+
+  async function handleBlogSearch() {
+    setBlogSearching(true); setError('')
+    try {
+      setBlogResults(await searchBlogPosts(blogQuery))
+    } catch (e) {
+      setError(e.message || 'Blog search failed.')
+    } finally {
+      setBlogSearching(false)
+    }
+  }
 
   function reload() {
     setLoading(true)
@@ -121,7 +160,7 @@ export default function DailyDrafts() {
         candidates
       )
       if (!generated.length) { setError('DeepSeek returned no usable drafts — try again.'); return }
-      await createDrafts(product, generated)
+      await createDrafts(product, generated, { imageUrls: selectedImageUrls, blogLink })
       reload()
     } catch (e) {
       setError(e.message || 'Could not generate drafts.')
@@ -144,7 +183,7 @@ export default function DailyDrafts() {
     const { subject, body } = fieldsFor(d)
     setBusyId(d.id); setError('')
     try {
-      await sendPersonalEmail({ customerEmail: d.customerEmail, subject, body })
+      await sendPersonalEmail({ customerEmail: d.customerEmail, subject, body, imageUrls: d.imageUrls, blogLink: d.blogLink })
       const user = await authedUser()
       await markDraftSent(d.id, user?.uid)
       await updateDoc(doc(db, 'customers', d.customerId), { lastOutreachAt: serverTimestamp() })
@@ -206,6 +245,62 @@ export default function DailyDrafts() {
             </div>
           )}
         </div>
+
+        {productId && productImages.length > 0 && (
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">
+              Include photos (up to 2, optional)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {productImages.map(img => {
+                const picked = selectedImageUrls.includes(img.file_url)
+                return (
+                  <button key={img.id} type="button" onClick={() => toggleImage(img.file_url)}
+                    className={`relative w-16 h-16 rounded overflow-hidden border-2 ${picked ? 'border-brand-600' : 'border-transparent'}`}>
+                    <img src={img.file_url} alt="" className="w-full h-full object-cover" />
+                    {picked && <div className="absolute inset-0 bg-brand-600/20" />}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Attach a blog link (optional)</label>
+          {blogLink ? (
+            <div className="inline-flex items-center gap-1.5 text-sm bg-ivory-light rounded px-2 py-1">
+              <Link2 size={12} className="text-gray-400" />
+              <span className="truncate max-w-xs">{blogLink.title}</span>
+              <button type="button" onClick={() => setBlogLink(null)} className="text-gray-400 hover:text-red-600">
+                <X size={12} />
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="flex gap-2">
+                <input value={blogQuery} onChange={e => setBlogQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleBlogSearch()}
+                  placeholder="Search crystocraft.com blog…" className="input w-full md:w-80" />
+                <button type="button" onClick={handleBlogSearch} disabled={blogSearching} className="btn-secondary shrink-0">
+                  {blogSearching ? <Loader2 size={14} className="animate-spin" /> : 'Search'}
+                </button>
+              </div>
+              {blogResults.length > 0 && (
+                <div className="border border-ivory-dark rounded max-h-40 overflow-y-auto w-full md:w-96 mt-1">
+                  {blogResults.map(p => (
+                    <button key={p.id} type="button"
+                      onClick={() => { setBlogLink({ title: p.title, url: p.link }); setBlogResults([]) }}
+                      className="block w-full text-left px-3 py-1.5 text-sm hover:bg-ivory-light truncate">
+                      {p.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
         <button onClick={handleGenerate} disabled={generating || !productId} className="btn-primary inline-flex items-center gap-1.5">
           {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
           {generating ? 'Generating…' : 'Generate Drafts'}
@@ -240,6 +335,18 @@ export default function DailyDrafts() {
                 className="input w-full text-sm font-medium" />
               <textarea value={fields.body} onChange={e => setField(d.id, 'body', e.target.value)}
                 rows={4} className="input w-full text-sm" />
+              {(d.imageUrls?.length > 0 || d.blogLink) && (
+                <div className="flex items-center gap-2 flex-wrap">
+                  {d.imageUrls?.map(url => (
+                    <img key={url} src={url} alt="" className="w-10 h-10 rounded object-cover border border-ivory-dark" />
+                  ))}
+                  {d.blogLink && (
+                    <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                      <Link2 size={11} /> {d.blogLink.title}
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <button onClick={() => handleSend(d)} disabled={isBusy} className="btn-primary shrink-0 inline-flex items-center gap-1.5">
                   {isBusy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
