@@ -33,7 +33,10 @@
 //     opened/clicked/bounced/complained events.
 //   VITE_FIREBASE_PROJECT_ID  — reused from the app
 //   FIREBASE_CLIENT_EMAIL / FIREBASE_PRIVATE_KEY — service-account,
-//     shared with subscribe.js/unsubscribe.js
+//     shared with subscribe.js/unsubscribe.js. All four confirmed set in
+//     Netlify 2026-08-11 (owner had never actually added the service-account
+//     pair; this whole webhook — and likely subscribe/unsubscribe too — had
+//     been silently 500ing "Server not configured" since it shipped).
 import { SignJWT, importPKCS8 } from 'https://esm.sh/jose@5.9.6'
 
 const EVENT_FIELD = {
