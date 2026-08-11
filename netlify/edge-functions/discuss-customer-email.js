@@ -48,14 +48,17 @@ const SYSTEM = 'You are answering questions about a real B2B customer for the Cr
 
 // Was 2 attempts, no delay, no visibility into WHY a call failed — under
 // real use (owner firing several questions back to back) that's enough to
-// eat a transient DeepSeek 429/5xx and surface only the generic "did not
-// return a usable reply" with nothing to debug from. 3 attempts with a
-// short backoff, and the real failure reason travels back in `reason` so
-// it actually shows up in the response instead of getting swallowed.
+// eat a transient DeepSeek 429/5xx/empty-response blip and surface only the
+// generic "did not return a usable reply" with nothing to debug from.
+// Confirmed live 2026-08-12: two consecutive "DeepSeek returned an empty
+// response" failures, then the exact same request (fresh call, moments
+// later) succeeded cleanly — a brief upstream hiccup, not a code bug. 4
+// attempts with a longer backoff to actually ride out a short DeepSeek-side
+// dip; the real failure reason still travels back in `reason` either way.
 async function callDeepSeek(apiKey, messages) {
   let reason = 'unknown'
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt > 0) await new Promise(r => setTimeout(r, 500 * attempt))
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, 800 * attempt))
     try {
       const res = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',

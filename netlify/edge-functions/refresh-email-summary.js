@@ -56,13 +56,13 @@ const SYSTEM = 'You are reading a real B2B sales email history between Crystocra
 
 // Was 2 attempts, no delay, no visibility into WHY a call failed — see
 // discuss-customer-email.js's identical fix for the live symptom that
-// exposed this (rapid-fire questions eating a transient DeepSeek 429/5xx
-// with nothing left to debug from). 3 attempts with a short backoff, real
-// failure reason returned in `reason`.
+// exposed this (rapid-fire questions eating a transient DeepSeek 429/5xx/
+// empty-response blip with nothing left to debug from). 4 attempts with a
+// longer backoff, real failure reason returned in `reason`.
 async function callDeepSeek(apiKey, system, user) {
   let reason = 'unknown'
-  for (let attempt = 0; attempt < 3; attempt++) {
-    if (attempt > 0) await new Promise(r => setTimeout(r, 500 * attempt))
+  for (let attempt = 0; attempt < 4; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, 800 * attempt))
     try {
       const res = await fetch('https://api.deepseek.com/chat/completions', {
         method: 'POST',
