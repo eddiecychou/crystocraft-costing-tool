@@ -299,6 +299,7 @@ export default function CustomerDetail() {
   // V8.1 entry), never by the browser. This just reads what's there.
   const [emailThreads, setEmailThreads] = useState([])
   const [emailSummaryBusy, setEmailSummaryBusy] = useState(false)
+  const [emailSummaryError, setEmailSummaryError] = useState('')
   const [emailChatOpen, setEmailChatOpen] = useState(false)
   const [emailChatHistory, setEmailChatHistory] = useState([])
   const [emailChatInput, setEmailChatInput] = useState('')
@@ -312,14 +313,14 @@ export default function CustomerDetail() {
   }, [id])
 
   async function handleRefreshEmailSummary() {
-    setEmailSummaryBusy(true)
+    setEmailSummaryBusy(true); setEmailSummaryError('')
     try {
       const result = await refreshEmailSummary(renderThreadsText(emailThreads))
       await updateDoc(doc(db, 'customers', id), {
         email_summary: { ...result, thread_count: emailThreads.length, generated_at: serverTimestamp() },
       })
     } catch (e) {
-      setError(e.message || 'Could not refresh the email summary.')
+      setEmailSummaryError(e.message || 'Could not refresh the email summary.')
     } finally {
       setEmailSummaryBusy(false)
     }
@@ -872,6 +873,11 @@ export default function CustomerDetail() {
             </button>
           </div>
           <div className="px-5 py-4 space-y-3">
+            {emailSummaryError && (
+              <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 flex items-start gap-1.5">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {emailSummaryError}
+              </div>
+            )}
             {!customer?.email_summary ? (
               <p className="text-sm text-gray-400">Not generated yet — click {emailSummaryBusy ? '…' : 'Generate'} to have DeepSeek read the ingested threads.</p>
             ) : (
