@@ -37,6 +37,10 @@
 //     Netlify 2026-08-11 (owner had never actually added the service-account
 //     pair; this whole webhook — and likely subscribe/unsubscribe too — had
 //     been silently 500ing "Server not configured" since it shipped).
+//     IMPORTANT: do NOT mark these "secret" env vars in Netlify — secret-
+//     scoped variables aren't exposed to Edge Functions at all (a platform
+//     boundary, not a bug here), which is why the first attempt at setting
+//     these still 500'd after a fresh deploy.
 import { SignJWT, importPKCS8 } from 'https://esm.sh/jose@5.9.6'
 
 const EVENT_FIELD = {
