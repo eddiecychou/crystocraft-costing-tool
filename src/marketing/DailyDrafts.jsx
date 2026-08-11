@@ -56,7 +56,7 @@ function customerToEntity(c) {
   return {
     source: 'customer', id: c.id, name: c.company_name, email,
     crm_category: c.crm_category, crm_status: c.crm_status,
-    notes: c.notes, erp_code: c.erp_code,
+    notes: c.notes, erp_code: c.erp_code, country: c.country,
     lastOutreachAt: c.lastOutreachAt, blockOutreachUntil: c.blockOutreachUntil,
   }
 }
@@ -84,7 +84,7 @@ function contactToEntity(c) {
   return {
     source: 'contact', id: c.id, name, email,
     crm_category: 'Marketing contact (trade lead, not yet a customer)', crm_status: 'Prospect',
-    notes, erp_code: '',
+    notes, erp_code: '', country: c.country,
     lastOutreachAt: c.lastOutreachAt, blockOutreachUntil: c.blockOutreachUntil,
   }
 }
@@ -115,6 +115,7 @@ function eligibleCandidates(entities, excludedIds, excludedEmails) {
   return pool.slice(0, MAX_CANDIDATES).map(e => ({
     id: e.id, name: e.name, email: e.email, source: e.source,
     crm_category: e.crm_category, crm_status: e.crm_status, notes: e.notes, erp_code: e.erp_code,
+    country: e.country,
   }))
 }
 
@@ -224,6 +225,7 @@ export default function DailyDrafts() {
   const [blogResults, setBlogResults] = useState([])
   const [blogSearching, setBlogSearching] = useState(false)
   const [blogLink, setBlogLink] = useState(null) // { title, url }
+  const [targetingNote, setTargetingNote] = useState('') // e.g. "Crystocraft distributors in Europe" — folded into the fit-score prompt as a strong steer, see generate-outreach-drafts.js
 
   // Per-draft "discuss with AI" chat — working scratch, not persisted to
   // Firestore (see discuss-outreach-draft.js's header comment).
@@ -390,6 +392,7 @@ export default function DailyDrafts() {
         { id: product.id, name: product.name, description: product.description, category: product.category },
         candidates,
         historicalHints,
+        targetingNote.trim(),
       )
       if (!generated.length) { setError('DeepSeek returned no usable drafts — try again.'); return }
       await createDrafts(product, generated, { imageUrls: selectedImageUrls, blogLink })
@@ -652,6 +655,14 @@ export default function DailyDrafts() {
               )}
             </>
           )}
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Who do you want to reach today? (optional)</label>
+          <input value={targetingNote} onChange={e => setTargetingNote(e.target.value)}
+            placeholder='e.g. "Hong Kong corporate gift customers" or "Crystocraft distributors in Europe"'
+            className="input w-full md:w-96" />
+          <div className="text-[11px] text-gray-400 mt-1">Narrows today's picks — a strong steer, not just a hint.</div>
         </div>
 
         <button onClick={handleGenerate} disabled={generating || !selectedProduct} className="btn-primary inline-flex items-center gap-1.5">

@@ -12,8 +12,8 @@
 // domain/outreachDrafts.js.
 //
 // POST { product: { id, name, description, category },
-//        candidates: [{ id, name, email, crm_category, crm_status, notes, erp_code, source? }],
-//        historicalHints?: string }
+//        candidates: [{ id, name, email, crm_category, crm_status, notes, erp_code, country, source? }],
+//        historicalHints?: string, targetingNote?: string }
 //   -> { drafts: [{ customerId, customerEmail, customerName, customerContext,
 //                    fitScore, fitReason, draftSubject, draftBody, source }] }
 //
@@ -23,6 +23,13 @@
 // context. This is prompt-engineering, not fine-tuning — DeepSeek has no
 // memory or training hook available here; each generate run is still
 // stateless, it's just told what happened recently.
+//
+// targetingNote — free text the owner types on the Generate card, e.g. "I
+// want to interact with Crystocraft distributors in Europe". Treated as a
+// STRONG steering instruction in the fit-score prompt (unlike
+// historicalHints' "soft guidance") — a candidate that plainly doesn't match
+// gets scored near 0 rather than just nudged down, since the whole point of
+// typing this is to narrow today's batch, not gently bias it.
 //
 // Env (Netlify site vars, server-side only):
 //   DEEPSEEK_API_KEY       — required
@@ -79,14 +86,15 @@ async function callDeepSeek(apiKey, { system, user, temperature, maxTokens }) {
   return null
 }
 
-function fitScorePrompt(product, candidate, historicalHints) {
+function fitScorePrompt(product, candidate, historicalHints, targetingNote) {
   return {
     system: 'You are a B2B sales analyst for Crystocraft, a premium Hong Kong corporate gift manufacturer. ' +
       'Given a customer profile and a product, judge how likely that specific customer is to engage with an ' +
       'email introducing this product. Return ONLY a valid JSON object: { "fitScore": number between 0 and 1, "fitReason": "one short sentence" }.' +
+      (targetingNote ? `\n\nToday's targeting focus, set by the owner — this is a STRONG requirement, not a preference: "${targetingNote}". A candidate that clearly does not fit this focus should score near 0, even if they would otherwise be a good match for the product.` : '') +
       (historicalHints ? `\n\nKnown patterns from past outreach decisions (use as soft guidance, not a hard rule):\n${historicalHints}` : ''),
     user: `Product: ${product.name}\nCategory: ${product.category || 'n/a'}\nDescription: ${(product.description || '').slice(0, 500)}\n\n` +
-      `Customer: ${candidate.name}\nRelationship type: ${candidate.crm_category || 'unknown'}\nStatus: ${candidate.crm_status || 'unknown'}\n` +
+      `Customer: ${candidate.name}\nCountry: ${candidate.country || 'unknown'}\nRelationship type: ${candidate.crm_category || 'unknown'}\nStatus: ${candidate.crm_status || 'unknown'}\n` +
       `CRM notes: ${(candidate.notes || 'none').slice(0, 500)}`,
   }
 }
@@ -172,6 +180,7 @@ export default async function handler(req) {
   const product = body?.product
   const candidates = Array.isArray(body?.candidates) ? body.candidates.slice(0, MAX_CANDIDATES) : []
   const historicalHints = String(body?.historicalHints || '').slice(0, 1500)
+  const targetingNote = String(body?.targetingNote || '').slice(0, 300)
   if (!product?.id || !product?.name) return json({ error: 'product is required' }, 400)
   if (!candidates.length) return json({ error: 'No candidates supplied' }, 400)
 
@@ -180,7 +189,7 @@ export default async function handler(req) {
   for (let i = 0; i < candidates.length; i += SCORE_CHUNK) {
     const chunk = candidates.slice(i, i + SCORE_CHUNK)
     const results = await Promise.all(chunk.map(async (c) => {
-      const r = await callDeepSeek(DEEPSEEK_API_KEY, { ...fitScorePrompt(product, c, historicalHints), temperature: 0.3, maxTokens: 200 })
+      const r = await callDeepSeek(DEEPSEEK_API_KEY, { ...fitScorePrompt(product, c, historicalHints, targetingNote), temperature: 0.3, maxTokens: 200 })
       return { candidate: c, fitScore: typeof r?.fitScore === 'number' ? r.fitScore : 0, fitReason: r?.fitReason || '' }
     }))
     scored.push(...results)

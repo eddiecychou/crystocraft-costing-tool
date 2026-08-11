@@ -4,14 +4,14 @@ import { authedUser } from './firebase'
 // campaignApi.js's shape exactly: authedUser() -> getIdToken() -> fetch with
 // bearer -> defensive JSON parse -> throw on !res.ok.
 
-export async function generateDrafts(product, candidates, historicalHints) {
+export async function generateDrafts(product, candidates, historicalHints, targetingNote) {
   const user = await authedUser()
   if (!user) throw new Error('Please sign in.')
   const token = await user.getIdToken()
   const res = await fetch('/api/generate-outreach-drafts', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ product, candidates, historicalHints }),
+    body: JSON.stringify({ product, candidates, historicalHints, targetingNote }),
   })
   let data = {}
   try { data = await res.json() } catch { /* non-JSON error body */ }
