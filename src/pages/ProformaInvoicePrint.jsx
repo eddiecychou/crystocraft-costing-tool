@@ -191,7 +191,7 @@ export default function ProformaInvoicePrint() {
           border-radius: 6px; color: #9a3412; font-size: 11px; text-align: center; }
         .pi-accent { height: 4px; background: #b8935a; border-radius: 2px; margin-bottom: 16px; }
         .pi-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
-        .pi-logo { height: 30px; width: auto; margin-bottom: 10px; display: block; }
+        .pi-logo { height: 30px; width: auto; aspect-ratio: 617 / 108; margin-bottom: 10px; display: block; }
         .pi-company { text-align: right; font-size: 9.5px; color: #555; line-height: 1.5; }
         .pi-company .nm { font-size: 11px; color: #1a1a1a; font-weight: 600; }
         .pi-title { font-size: 22px; font-weight: 700; letter-spacing: .06em; margin: 4px 0 2px; }
@@ -284,7 +284,7 @@ export default function ProformaInvoicePrint() {
 
       <div className="pi-head">
         <div>
-          <img className="pi-logo" src={logoUrl} alt="" />
+          <img className="pi-logo" src={logoUrl} alt="" width="617" height="108" />
           <div className="pi-title">PROFORMA INVOICE</div>
         </div>
         <div className="pi-company">

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Sparkles, Search, X, ChevronLeft, ChevronRight, PackageCheck } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
@@ -31,16 +31,39 @@ function photosOf(entry) {
   return out
 }
 
+// Fires an authed fetch (JWT verify + Firestore role check + Fly.io proxy —
+// see swatch-library.js) per photo, with no pagination on the grid below —
+// on a page with dozens of colours that's dozens of concurrent round trips
+// at once, which is what made the swatch library "very slow" on mobile.
+// Deferring each photo's fetch until its card actually scrolls into view
+// keeps only what's on screen in flight at a time.
+function useInViewOnce() {
+  const ref = useRef(null)
+  const [inView, setInView] = useState(false)
+  useEffect(() => {
+    if (inView || !ref.current) return
+    const el = ref.current
+    const obs = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setInView(true); obs.disconnect() }
+    }, { rootMargin: '200px' })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [inView])
+  return [ref, inView]
+}
+
 function SwatchThumb({ filename, alt }) {
   const [url, setUrl] = useState(null)
+  const [ref, inView] = useInViewOnce()
   useEffect(() => {
+    if (!inView) return
     let alive = true
     let objUrl = null
     fetchSwatchImageUrl(filename).then(u => { if (alive) { objUrl = u; setUrl(u) } }).catch(() => {})
     return () => { alive = false; if (objUrl) URL.revokeObjectURL(objUrl) }
-  }, [filename])
+  }, [filename, inView])
   return (
-    <div className="aspect-square bg-gray-100 rounded-md overflow-hidden flex items-center justify-center">
+    <div ref={ref} className="aspect-square bg-gray-100 rounded-md overflow-hidden flex items-center justify-center">
       {url ? <img src={url} alt={alt} className="w-full h-full object-cover" /> : <Sparkles size={20} className="text-gray-300" />}
     </div>
   )
@@ -51,14 +74,15 @@ function SwatchCardCarousel({ name, entry }) {
   const [i, setI] = useState(0)
   const [url, setUrl] = useState(null)
   const current = photos[i]
+  const [ref, inView] = useInViewOnce()
 
   useEffect(() => {
-    if (!current) { setUrl(null); return }
+    if (!current || !inView) { if (!current) setUrl(null); return }
     let alive = true
     let objUrl = null
     fetchSwatchImageUrl(current.file).then(u => { if (alive) { objUrl = u; setUrl(u) } }).catch(() => {})
     return () => { alive = false; if (objUrl) URL.revokeObjectURL(objUrl) }
-  }, [current?.file])
+  }, [current?.file, inView])
 
   const step = (dir, e) => {
     e.stopPropagation(); e.preventDefault()
@@ -66,7 +90,7 @@ function SwatchCardCarousel({ name, entry }) {
   }
 
   return (
-    <div className="aspect-square bg-gray-100 relative overflow-hidden group">
+    <div ref={ref} className="aspect-square bg-gray-100 relative overflow-hidden group">
       {url ? <img src={url} alt={`${name} — ${current.style} on ${current.backfilm}`} className="w-full h-full object-cover" />
         : <div className="w-full h-full flex items-center justify-center"><Sparkles size={20} className="text-gray-300" /></div>}
       {photos.length > 1 && (

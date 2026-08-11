@@ -17,11 +17,16 @@ import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from './firebase'
 import { authedUser } from './firebase'
 
-async function authedGet(path) {
+// forceRefresh retries once with a forced token refresh on a 401 — the SDK's
+// cached ID token can be stale by the time this fires on mobile (background
+// tab throttling delays its proactive refresh timer), which showed up as
+// intermittent "Request failed (401)" while browsing the swatch library.
+async function authedGet(path, forceRefresh = false) {
   const user = await authedUser()
   if (!user) throw new Error('Please sign in.')
-  const token = await user.getIdToken()
+  const token = await user.getIdToken(forceRefresh)
   const res = await fetch(path, { headers: { Authorization: `Bearer ${token}` } })
+  if (res.status === 401 && !forceRefresh) return authedGet(path, true)
   if (!res.ok) {
     let data = {}
     try { data = await res.json() } catch { /* non-JSON error body, e.g. image proxy */ }

@@ -138,7 +138,7 @@ export default function CustomerInvoicePrint({ profile }) {
         .print-btn-row { text-align: center; }
         .si-accent { height: 4px; background: #b8935a; border-radius: 2px; margin-bottom: 16px; }
         .si-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
-        .si-logo { height: 30px; width: auto; margin-bottom: 10px; display: block; }
+        .si-logo { height: 30px; width: auto; aspect-ratio: 617 / 108; margin-bottom: 10px; display: block; }
         .si-company { text-align: right; font-size: 9.5px; color: #555; line-height: 1.5; }
         .si-company .nm { font-size: 11px; color: #1a1a1a; font-weight: 600; }
         .si-title { font-size: 22px; font-weight: 700; letter-spacing: .06em; margin: 4px 0 2px; }
@@ -194,7 +194,7 @@ export default function CustomerInvoicePrint({ profile }) {
 
       <div className="si-head">
         <div>
-          <img className="si-logo" src={logoUrl} alt="" />
+          <img className="si-logo" src={logoUrl} alt="" width="617" height="108" />
           <div className="si-title">INVOICE</div>
         </div>
         <div className="si-company">
