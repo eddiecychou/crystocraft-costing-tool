@@ -43,6 +43,196 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
+## Current Status — V7.23 CLOSED as of 2026-08-11
+
+Commit chain `54b2422`→`94d2425` (13 commits), all deployed. One thread,
+run in several waves across a single long session: the **Daily Drafts
+re-engagement engine** — a daily queue of AI-drafted, plain-text personal
+outreach emails (product + customer picked by fit-scoring, reviewed and
+sent one at a time), built out from a first slice into a genuinely full
+CRM-touching tool. The owner supplied a detailed spec up front describing
+this as "repurposing V3 AI infrastructure" — that infrastructure did not
+exist anywhere in this codebase (verified: no DeepSeek integration, no
+context builder, no tag library, nothing). Everything below is new, built
+from real working pieces already in the app (the Resend send pattern,
+admin-token auth, the ERP mirror, the CRM Interaction Log), not a reuse of
+something that was already there.
+
+### The numbers
+
+| | |
+|---|---:|
+| Commits | 13 |
+| New Firestore collection | `outreach_drafts` |
+| New Firestore fields | `customers.lastOutreachAt`/`blockOutreachUntil`, `marketing_contacts.lastOutreachAt`/`blockOutreachUntil` |
+| New edge functions | 4 — `generate-outreach-drafts`, `send-personal-email`, `wp-blog-search`, `discuss-outreach-draft`, `resend-webhook` (5, plus registration in `netlify.toml`) |
+| First multi-turn AI call in this codebase | `discuss-outreach-draft.js` — every other AI function here (`rewrite-section.js`, the fit-score/draft calls) is single-shot |
+| Real bugs found through actual daily use | 3 (composite-index silent failure, duplicate-draft generation, duplicate-customer-record double-messaging) |
+| LLM provider for this feature | DeepSeek (owner's own key) — distinct from the app's existing Gemini usage (`rewrite-section.js` etc.) |
+
+### 1. The core engine — first slice
+
+Product picker (manual pick per run, no persistent "recommended" flag —
+kept deliberately simple while new) → DeepSeek fit-scores the eligible
+candidate pool against the product → drafts a short plain-text email per
+finalist, using real ERP purchase history (`customer.erp_code` → the
+curated `erp_sales_invoice` Supabase view, same one `erp.js` already
+queries) plus CRM notes → human reviews/edits/sends one at a time via
+Resend, from a crystocraft.com address with replies forwarded to the
+owner's real inbox (`sales@uart.com.hk` → personal forward, confirmed
+already set up).
+
+Candidate matching is AI fit-scoring over the whole eligible pool, not a
+hand-built product-category-to-customer-type map — the data has no field
+that supports that mapping cleanly (`crm_category` is a relationship type,
+not a product-interest axis).
+
+### 2. Real bugs, found by the owner actually using it daily
+
+- **Pending drafts silently never loaded.** `listPendingDrafts()` combined
+  `where('status','==','pending_review')` with `orderBy('fitScore')` on a
+  different field — needs a composite index that doesn't exist, and
+  creating one is a manual Firebase-console step, not something a `git
+  push` applies. The rejection was swallowed (no `.catch`), so the page
+  rendered fine but the list stayed empty. Fixed by fetching unordered and
+  sorting client-side (same pattern `loadCustomers()` already uses for the
+  same reason).
+- **Regenerating created duplicates, repeatedly.** Two stacked causes:
+  exclusion only checked past **sent** drafts, never drafts already sitting
+  in `pending_review` (fixed first) — and even after that, this CRM has
+  known duplicate customer records for the same company (different ids,
+  same email; there's already a merge tool elsewhere in the app for
+  exactly this), so an id-only exclusion let each duplicate slip through
+  on its own Generate click. Fixed by excluding/deduping by **email**, not
+  just id, both against existing drafts and within one run's candidate
+  pool. A "Clear all pending" bulk-delete button was added alongside this
+  so a bad batch is one click to clear, not 60+ individual Skips.
+
+### 3. Photos and a blog link, embedded in the actual email
+
+Up to 2 product photos (from that product's own gallery,
+`visibility:'public'` only) and a link to a real published crystocraft.com
+blog post (new `wp-blog-search.js`, admin-gated, reusing
+`WP_BASE_URL`/`WP_USER`/`WP_PASS` from `publish-to-wordpress.js`) can be
+attached per generate run, then added/removed per individual draft
+afterward. `send-personal-email.js` now sends both `text` and `html` —
+html embeds the images/link inline as plain paragraphs (deliberately not a
+styled template; the whole point is a personal note, not a marketing
+email), text carries a link-only fallback.
+
+### 4. Candidate pool widened — contacts, then all CRM statuses
+
+Two rounds, both owner-driven corrections to the original design:
+
+- **`marketing_contacts` merged into the pool**, trade-audience only (a
+  personal "Hi, I'm Eddie" note is a bad fit for a retail/e-com buyer),
+  subscribed+emailable, and never a contact already linked to a customer
+  record — that person is already representable via their customer entity,
+  with real cooldown tracking. Every draft now carries a `source`
+  (`customer`/`contact`) field and a visible Customer/Lead badge.
+- **The `crm_status` filter (Active/Prospect only) was removed entirely**
+  after the owner pointed out it was solving the wrong problem — an active
+  customer can still have gone quiet for months, and the real "don't
+  suggest this person" signal was never going to be a status guess, it's
+  the owner's own knowledge of who they're already talking to manually
+  (which the app can't see — no email visibility yet). That knowledge is
+  now actionable: a **"Already in contact" button** pauses a person for 90
+  days via `blockOutreachUntil` (a field that existed in the schema since
+  the first slice but had no UI to actually set until now).
+
+### 5. "Discuss with AI" — correct a draft, or just ask about it
+
+Per-draft chat panel, this codebase's first multi-turn AI conversation
+(`discuss-outreach-draft.js`). Redrafts the email from the conversation;
+deliberately never writes to the customer's CRM record on its own — a
+separate, explicit "Save as note" button lets the owner push their own
+message text onto `customers.notes`/`marketing_contacts.app_notes`
+verbatim when something's worth keeping. The owner's call, made explicitly
+up front: an AI-inferred auto-save into a real CRM record was rejected as
+too risky a default.
+
+### 6. Engagement tracking, and wiring the CRM Interaction Log both ways
+
+- **Resend webhook** (`resend-webhook.js`, public, Svix-signature
+  verified — the verification algorithm was checked against a standalone
+  sign/verify/tamper test before trusting it, not just "does it compile")
+  records delivered/opened/clicked/bounced/complained per draft, matched
+  via a Resend `tags` echo rather than a Firestore query. **Real reply
+  detection is NOT possible this way** — Resend has no visibility into
+  actual replies, which land as a new inbound email at
+  `sales@uart.com.hk`, entirely outside Resend. Said so plainly rather
+  than overselling the webhook.
+- **A real gap closed**: sending an email never touched the customer's CRM
+  Interaction Log (`customers/{id}/enquiries`, the same subcollection
+  `CustomerDetail.jsx`'s own "+ Log Interaction" writes to) at all. Now it
+  does automatically on send.
+- **"Log a reply"** replaces a bare "mark as replied" toggle — pick a
+  channel (Personal WhatsApp / WhatsApp Business / WeChat / Alibaba /
+  Email — most replies land on one of these, not this app's inbox) and
+  optionally paste the reply text; both get logged to the Interaction Log.
+  `marketing_contacts` has no Interaction Log (not a full CRM record yet),
+  so that path falls back to `app_notes`.
+
+### 7. Crystocraft Range included, not just Corporate Gifts
+
+The product picker only queried `products` (Corporate Gifts) — the second
+catalogue, `range_products` (Crystocraft Range / figurines), was invisible
+to this feature. Fixed by reusing `productSource.js`'s existing
+`loadBlogProducts()`/`loadBlogImages()` adapter (the same one
+`FrontPageProductPicker.jsx` and the Blog Writer already use to search
+both catalogues) rather than hand-rolling a second merge — it already
+normalizes the two very different shapes (range images are an inline
+gallery array; corporate images are a Firestore subcollection) into one
+common product/image shape. Draft docs gained a `productSource` field so
+the per-draft photo picker knows which catalogue to re-fetch from.
+
+### 8. Free-text targeting + a feedback hint
+
+- **"Who do you want to reach today?"** — free text on the Generate card
+  (e.g. "Crystocraft distributors in Europe"), folded into the fit-score
+  prompt as a strong steer (a clear non-match scores near 0), not a soft
+  hint. Surfaced a real gap while building it: customer candidates never
+  carried `country` into the scoring prompt at all — fixed alongside.
+- **Recent sent/skipped outcomes** are summarized client-side and folded
+  into the same prompt as softer guidance (`historicalHints`). This is
+  prompt-engineering, not fine-tuning — DeepSeek has no memory or training
+  hook available here, said so explicitly rather than overselling it as
+  "the AI learns."
+
+### Manual setup this cycle needed (owner-side, not code)
+
+- `DEEPSEEK_API_KEY`, `MAIL_PERSONAL_FROM`, `MAIL_REPLY_TO` — Netlify env vars.
+- Firestore rules republished (the `outreach_drafts` admin-only rule) —
+  confirmed the owner is uncomfortable with the Firestore console directly,
+  so a "Clear all pending" in-app button was built instead of ever asking
+  for a manual collection wipe there again.
+- **Still outstanding**: `RESEND_WEBHOOK_SECRET` — the owner needs to
+  create the webhook in the Resend dashboard (Webhooks → Add Endpoint →
+  `https://portal.crystocraft.com/api/resend-webhook`, the
+  delivered/opened/clicked/bounced/complained events) before engagement
+  badges will ever populate. Everything else works without it.
+
+### Open — not verified
+
+This assistant had no admin login for the entire cycle — every piece below
+was verified as far as possible without one (esbuild parse checks, a real
+Vite dev server catching import/resolution errors, and — for the one piece
+with real correctness risk that wasn't just "does it compile" — a
+standalone test of the Svix signature algorithm against known-good and
+tampered payloads). None of it was click-tested end to end by this
+assistant; the owner did all real verification live.
+
+- The actual generate → review → chat → send → webhook flow, full circle,
+  including whether DeepSeek's drafts stay good quality as the candidate
+  pool grows past the sizes tested so far.
+- Whether Crystocraft Range products' photo picker genuinely round-trips
+  correctly (range images resolve differently under the hood — an inline
+  array, not a subcollection — than corporate images do).
+- Whether `RESEND_WEBHOOK_SECRET` is set yet and engagement badges are
+  populating for real sends.
+
+---
+
 ## Current Status — V7.22 CLOSED as of 2026-08-11
 
 Commit chain `d8e355e`→`ec467fc` (17 commits), all deployed (app via
@@ -716,74 +906,71 @@ before treating any of the following as proven:
 
 ---
 
-## Where V7.23 starts
+## Where V8.0 starts
 
-**No stated plan from the owner yet this time** — V7.22 closed
-mid-session on its own (homepage + an unplanned Design Workbench bug
-hunt), so unlike prior "Where X starts" entries this one is genuinely
-open. Check with the owner first; the two live threads below are both
-real options, not a decided order.
+**Stated plan from the owner**: email archive + inbox ingestion — the
+owner's two Outlook PST mailboxes (`eddie@uart.com.hk`,
+`sales@uart.com.hk`, ~60-80GB combined) plus the live server inbox
+(~1 year of history). This has been flagged as a real, separate project
+since Daily Drafts' first slice (V7.23 §1) and deliberately kept out of
+every round since — it needs PST parsing, thread-to-customer matching,
+and a summarization pipeline, none of which exist yet anywhere in this
+codebase.
 
-**Customer portal homepage (`/shop`) — V1 shipped, several real gaps
-still open:**
-- Done: hero, pillar cards, Featured Products (admin-curated), Quick
-  Access, all with a hover-polish pass. See V7.22 §1.
-- Not done: Featured Products' actual admin flow was never click-tested
-  by this assistant (no admin login available) — the owner confirmed it
-  "works great" from their own test, but a second look wouldn't hurt,
-  especially the reorder/remove/change-photo paths.
-- Not done: no analytics on the homepage (deliberately deferred in the
-  original V1 spec) — worth revisiting if the owner wants to know
-  whether Featured Products actually drives clicks.
-- Not done: mobile/tablet responsive check on the Featured Products grid
-  and the redesigned Quick Access tiles specifically — the rest of the
-  homepage was checked at both widths, these two pieces shipped after
-  that pass and weren't re-checked.
+**Explicit sequencing from the owner, not to be skipped**: this surfaces
+**first in the Customer section** (`CustomerDetail.jsx` and friends) as an
+AI-generated summary of a customer's email history, plus a
+conversational "discover more about this customer" chat — asking
+questions of their own correspondence, not just reading a static digest.
+**Only once that's built and proven** does wiring it into Daily Drafts
+(richer `customerContext` for fit-scoring and drafting, replacing today's
+CRM-notes-only context) get considered. Building the Daily Drafts wiring
+first, before the underlying summary/chat exists to wire in, would be
+building on nothing.
 
-**Physical Design Workbench — paused mid-build, same place as before,
-plus four real bugs now fixed underneath it:**
-- Done: product template library (workstream 4), real-mm canvas +
-  positioning (workstream 1), user-drawn zones with holes + background
-  auto-fill (workstream 2), rendering saved zones as real crystal
-  texture (`engine/zone_render.py`), backfilm (White/Black) selection
-  per zone, and — new this cycle — the render is now actually correctly
-  calibrated and coloured (V7.22 §2), the admin tool has a real login,
-  and the design canvas is usable without fighting page scroll. All
-  proven against one real template, "Round Coaster."
-- Not started: **workstream 3** (unifying zone-map/printed mode into one
-  workspace with a mode toggle — today they're still separate code
-  paths) and **workstream 5** (warping the rendered crystal layer onto
-  the template's SVG outline and pasting it onto the product photo for a
-  finished, photorealistic image — the actual "eliminates Photoshop"
-  payoff of the whole plan). `Crystal_Fabric_Studio_Spec.md` §5c-§5j has
-  the full build history and reasoning for everything done through
-  workstream 2; V7.22 §2 above covers what's changed in the render
-  engine itself since.
-- The template↔SVG registration is still a manually-dialed-in scale/
-  offset/opacity overlay (§5f-§5h of the spec), not a real coordinate
-  mapping — worth knowing before workstream 5 tries to use the SVG as an
-  actual clipping mask, since "close enough to look right" and
-  "mathematically registered" are different bars.
-- Only one real template exists. Before trusting the render engine's
-  output generally (not just for the Round Coaster), it's worth building
-  a second template end-to-end — now more worthwhile than before V7.22,
-  since the underlying size/colour math was actually broken until this
-  cycle and a second template would have been testing against wrong
-  numbers.
-- Now that stone size and colour are fixed, worth a broader visual pass
-  across the full swatch library (V7.22's fixes were verified against
-  real photos for the general mechanism, not every registered colour).
+**The owner's own framing of the approach, worth keeping**: the email
+archive is a similar shape of problem to the legacy JES ERP mirror — a
+large pile of real operational history that's unusable as-is, not because
+it's inaccessible but because it's unstructured (free-text threads
+instead of JES's rows-and-columns). Same as the ERP mirror needed curated
+Supabase views to turn raw legacy tables into something a query could
+actually use (`erp-sync/api_views.sql`), the email archive needs DeepSeek
+to do the equivalent structuring pass — reading a thread and extracting
+what's actually in it (who, what was discussed, commitments made, when)
+into something a summary/chat feature can use — rather than treating this
+as a search-and-retrieve problem over raw text. Worth designing the
+ingestion pipeline around "DeepSeek structures each thread into real
+fields" from the start, not bolting it on after a naive text dump.
 
-**Also unresolved from V7.22**: whether the admin-account delete-guard
-(§3) was the whole story behind "it happens a few times already before"
-— no Firestore audit-log confirmation, just the typed-confirmation fix
-already shipped. Consider checking Cloud Logging if it's ever enabled
-for this project.
+Open design questions for whoever starts this (not yet discussed with the
+owner):
+- PST parsing approach — a library like `libpff`/`readpst`, run where
+  (this needs real compute, not a Netlify edge function's constraints).
+  This is the one part DeepSeek doesn't help with — PST is a binary
+  container format, not unstructured text, so it still needs a real parser
+  before there's any text for DeepSeek to structure.
+- Thread-to-customer matching — email addresses vs. `contacts[]` on each
+  customer record is the obvious first pass, but company domains and
+  personal-vs-work addresses will need real handling.
+- Where the ingested/summarized data lives — a new Firestore field per
+  customer, a subcollection, or something else — and how it's kept
+  current once the one-time backfill is done (the live inbox is ongoing,
+  not a one-time import).
+- Whether this needs the office-LAN Mac (per this file's "Two Macs"
+  section) or can run anywhere — likely the latter, mailboxes aren't
+  LAN-gated the way the ERP SQL Server is, but confirm before assuming.
 
-Everything in V7.21's §"Open — not verified" is still fair game for a
-first real pass too — in particular the portal Order History feature,
-since it was built and shipped without this assistant ever being able
-to click through it as a real customer.
+Also still open from V7.23 (§ "Open — not verified" above): the full
+Daily Drafts flow has never been click-tested by this assistant end to
+end, and `RESEND_WEBHOOK_SECRET` may still not be set — worth confirming
+both are actually working before building more on top in V8.0.
+
+Everything in V7.22's own "Where V7.23 starts" entry that didn't get
+picked up this cycle is still open too: the customer portal homepage
+Featured Products admin flow (owner confirmed "works great" from their
+own test, never click-tested by this assistant), and the Physical Design
+Workbench's workstreams 3 and 5 (still paused, owner said they need time
+to evaluate next steps there before resuming).
 
 ---
 
