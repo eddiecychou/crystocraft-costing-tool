@@ -22,8 +22,17 @@
 //
 // POST { master: { subject, body }, topicLabel: string,
 //        candidates: [{ id, name, email, crm_category, crm_status, notes,
-//                        erp_code, country, source?, previouslyContactedAt? }],
+//                        erp_code, country, source?, previouslyContactedAt?,
+//                        emailSummary?: { summary, recent_activity, open_commitments } }],
 //        historicalHints?: string, targetingNote?: string }
+//   emailSummary — V8.1 email ingestion's DeepSeek-generated read of the
+//     customer's actual email history (customers/{id}.email_summary,
+//     generated on-demand from CustomerDetail.jsx — see
+//     refresh-email-summary.js). Only present for a `customer` candidate
+//     that's had a summary generated; marketing_contacts never has one
+//     (email ingestion matches customers.contacts[], not contacts).
+//     Genuine correspondence, so it outranks the CRM `notes` free-text
+//     field where the two disagree — see buildCustomerContext().
 //   -> { drafts: [{ customerId, customerEmail, customerName, customerContext,
 //                    fitScore, fitReason, draftSubject, draftBody, source }] }
 //
@@ -114,7 +123,11 @@ function fitScorePrompt(topicLabel, candidate, historicalHints, targetingNote) {
       (historicalHints ? `\n\nKnown patterns from past outreach decisions (use as soft guidance, not a hard rule):\n${historicalHints}` : ''),
     user: `Topic: ${topicLabel}\n\n` +
       `Customer: ${candidate.name}\nCountry: ${candidate.country || 'unknown'}\nRelationship type: ${candidate.crm_category || 'unknown'}\nStatus: ${candidate.crm_status || 'unknown'}\n` +
-      `CRM notes: ${(candidate.notes || 'none').slice(0, 500)}`,
+      `CRM notes: ${(candidate.notes || 'none').slice(0, 500)}` +
+      (candidate.emailSummary?.summary
+        ? `\nActual email history: ${candidate.emailSummary.summary.slice(0, 400)}` +
+          (candidate.emailSummary.recent_activity ? ` Recent activity: ${candidate.emailSummary.recent_activity.slice(0, 300)}` : '')
+        : ''),
   }
 }
 
@@ -170,6 +183,18 @@ function buildCustomerContext(candidate, invoices) {
   const parts = []
   if (candidate.crm_category || candidate.crm_status) {
     parts.push(`Relationship: ${candidate.crm_category || 'unknown'} (${candidate.crm_status || 'unknown'})`)
+  }
+  // Real correspondence outranks the hand-typed CRM notes field where the
+  // two might disagree or the notes have gone stale — listed first for that
+  // reason, not just because it's usually more specific.
+  if (candidate.emailSummary?.summary) {
+    parts.push(`Actual email history: ${candidate.emailSummary.summary.slice(0, 600)}`)
+    if (candidate.emailSummary.recent_activity) {
+      parts.push(`Most recent email activity: ${candidate.emailSummary.recent_activity.slice(0, 400)}`)
+    }
+    if (candidate.emailSummary.open_commitments?.length) {
+      parts.push(`Open commitments from email: ${candidate.emailSummary.open_commitments.slice(0, 5).join('; ')}`)
+    }
   }
   if (candidate.notes) parts.push(`CRM notes: ${candidate.notes.slice(0, 800)}`)
   if (invoices.length) {

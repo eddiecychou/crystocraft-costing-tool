@@ -76,6 +76,15 @@ function customerToEntity(c) {
     crm_category: c.crm_category, crm_status: c.crm_status,
     notes: c.notes, erp_code: c.erp_code, country: c.country,
     lastOutreachAt: c.lastOutreachAt, blockOutreachUntil: c.blockOutreachUntil,
+    // V8.1 email ingestion — a DeepSeek read of this customer's actual email
+    // history (see refresh-email-summary.js), only present once an admin's
+    // generated one from CustomerDetail.jsx. Only summary/recent_activity/
+    // open_commitments travel to the edge function — generated_at is a
+    // Firestore Timestamp, not JSON-serializable, and thread_count isn't
+    // needed for a prompt.
+    emailSummary: c.email_summary
+      ? { summary: c.email_summary.summary, recent_activity: c.email_summary.recent_activity, open_commitments: c.email_summary.open_commitments }
+      : null,
   }
 }
 
@@ -133,7 +142,7 @@ function eligibleCandidates(entities, excludedIds, excludedEmails) {
   return pool.slice(0, MAX_CANDIDATES).map(e => ({
     id: e.id, name: e.name, email: e.email, source: e.source,
     crm_category: e.crm_category, crm_status: e.crm_status, notes: e.notes, erp_code: e.erp_code,
-    country: e.country,
+    country: e.country, emailSummary: e.emailSummary || null,
   }))
 }
 
