@@ -30,6 +30,7 @@ Reads email-sync/.env — IMAP + Firebase Web API key + an admin user's own
 email/password (used only to mint a short-lived ID token via Firebase Auth,
 exactly like the browser app itself does; never stored beyond this process).
 """
+import argparse
 import email
 import imaplib
 import json
@@ -55,13 +56,13 @@ def save_state(state):
         json.dump(state, f, indent=2)
 
 
-def fetch_new_messages(M, folder, last_uid):
+def fetch_new_messages(M, folder, last_uid, rescan=False):
     typ, _ = M.select(folder, readonly=True)
     if typ != 'OK':
         print(f'  [skip] could not select {folder}')
         return [], last_uid
 
-    if last_uid:
+    if last_uid and not rescan:
         typ, data = M.uid('search', None, f'UID {last_uid + 1}:*')
     else:
         since = (datetime.now(timezone.utc) - timedelta(days=BACKFILL_DAYS)).strftime('%d-%b-%Y')
@@ -72,8 +73,10 @@ def fetch_new_messages(M, folder, last_uid):
 
     uids = [int(u) for u in data[0].split()]
     # a bare "UID N:*" search with nothing newer than N returns [N] itself on
-    # some servers (Dovecot included) rather than an empty set — drop it
-    if last_uid:
+    # some servers (Dovecot included) rather than an empty set — drop it.
+    # Skipped entirely on --rescan: the whole point is to re-fetch messages
+    # already below last_uid, to catch a customer added to Firestore since.
+    if last_uid and not rescan:
         uids = [u for u in uids if u > last_uid]
     if not uids:
         return [], last_uid
@@ -90,6 +93,12 @@ def fetch_new_messages(M, folder, last_uid):
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument('--rescan', action='store_true',
+                     help='re-fetch the full BACKFILL_DAYS window regardless of last_uid, '
+                          'to catch a customer added to Firestore since messages were first seen')
+    args = ap.parse_args()
+
     env = load_env()
     if not env.get('ADMIN_EMAIL') or not env.get('ADMIN_PASSWORD'):
         raise SystemExit('Set ADMIN_EMAIL / ADMIN_PASSWORD in email-sync/.env first (an admin login for this app).')
@@ -111,8 +120,11 @@ def main():
     for folder in FOLDERS:
         print(f'Fetching {folder}...')
         last_uid = state['uids'].get(folder, 0)
-        msgs, new_last_uid = fetch_new_messages(M, folder, last_uid)
+        msgs, new_last_uid = fetch_new_messages(M, folder, last_uid, rescan=args.rescan)
         all_new_msgs.extend(msgs)
+        # Still advance the checkpoint on a rescan (to whatever's newest seen)
+        # so the next NORMAL run continues incrementally rather than re-doing
+        # this same full sweep.
         if new_last_uid and new_last_uid != last_uid:
             state['uids'][folder] = new_last_uid
     M.close()

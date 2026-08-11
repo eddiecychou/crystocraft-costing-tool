@@ -167,7 +167,7 @@ def walk_pst_folder(folder, path=''):
         yield from walk_pst_folder(folder.get_sub_folder(i), here)
 
 
-def process_pst(which, fs, customer_index, state, log):
+def process_pst(which, fs, customer_index, state, log, rescan=False):
     path = PST_FILES[which]
     if not os.path.exists(path):
         log(f'[skip] {path} not found')
@@ -195,7 +195,7 @@ def process_pst(which, fs, customer_index, state, log):
 
     for folder_path, folder in folders:
         source_id = f'pst:{which}:{folder_path}'
-        if source_id in state['done']:
+        if source_id in state['done'] and not rescan:
             continue
 
         n = folder.get_number_of_sub_messages()
@@ -224,20 +224,21 @@ def process_pst(which, fs, customer_index, state, log):
         log(f'[{folder_path}] {len(msgs)} readable of {n} ({skipped} skipped) in {time.time()-t0:.0f}s — matching...')
         match_and_upsert(fs, customer_index, msgs, source=f'pst:{which}', log=log)
 
-        state['done'].append(source_id)
+        if source_id not in state['done']:
+            state['done'].append(source_id)
         save_archive_state(state)
 
     pst.close()
 
 
-def process_mbox(fs, customer_index, state, log):
+def process_mbox(fs, customer_index, state, log, rescan=False):
     mbox_dirs = sorted(glob.glob(os.path.join(ARCHIVE_DIR, '*.mbox')))
     for mbox_dir in mbox_dirs:
         mbox_file = os.path.join(mbox_dir, 'mbox')
         if not os.path.exists(mbox_file):
             continue
         source_id = f'mbox:{os.path.basename(mbox_dir)}'
-        if source_id in state['done']:
+        if source_id in state['done'] and not rescan:
             continue
 
         log(f'\n{os.path.basename(mbox_dir)}...')
@@ -252,7 +253,8 @@ def process_mbox(fs, customer_index, state, log):
         log(f'{len(msgs)} messages — matching...')
         match_and_upsert(fs, customer_index, msgs, source='mbox', log=log)
 
-        state['done'].append(source_id)
+        if source_id not in state['done']:
+            state['done'].append(source_id)
         save_archive_state(state)
 
 
@@ -261,6 +263,9 @@ def main():
     ap.add_argument('--mbox', action='store_true', help='process all 5 mbox archives')
     ap.add_argument('--pst', choices=['eddie', 'sales'], help='process one PST file')
     ap.add_argument('--all', action='store_true', help='mbox + both PSTs')
+    ap.add_argument('--rescan', action='store_true',
+                     help='ignore archive_state.json checkpoints and re-scan everything selected, '
+                          'to catch a customer added to Firestore since the archives were first ingested')
     args = ap.parse_args()
     if not (args.mbox or args.pst or args.all):
         ap.error('pass --mbox, --pst eddie/sales, or --all')
@@ -284,11 +289,11 @@ def main():
     state = load_archive_state()
 
     if args.mbox or args.all:
-        process_mbox(fs, customer_index, state, log)
+        process_mbox(fs, customer_index, state, log, rescan=args.rescan)
     if args.pst or args.all:
         which_list = [args.pst] if args.pst else ['eddie', 'sales']
         for which in which_list:
-            process_pst(which, fs, customer_index, state, log)
+            process_pst(which, fs, customer_index, state, log, rescan=args.rescan)
 
     log('\nDone.')
 
