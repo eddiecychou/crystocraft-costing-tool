@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { collection, doc, getDoc, getDocs, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { addDoc, collection, doc, getDoc, getDocs, serverTimestamp, Timestamp, updateDoc } from 'firebase/firestore'
 import {
   Send, Loader2, SkipForward, Sparkles, Trash2, X, Link2,
   MessageCircle, CheckCircle2, Eye, MousePointerClick, AlertTriangle, Bookmark, BellOff,
@@ -155,6 +155,48 @@ function SourceBadge({ source }) {
   )
 }
 
+// Writes one entry to the customer's CRM Interaction Log
+// (customers/{id}/enquiries — see CustomerDetail.jsx/EnquiryForm.jsx, which
+// own the UI for this same subcollection; no dedicated domain module exists
+// for it anywhere in the app, everything writes to it inline like this).
+// Only customers HAVE this log — marketing_contacts don't (they're not a
+// full CRM record yet), so a contact-sourced draft logs to app_notes
+// instead (same appendNote path the "Save as note" chat action already
+// uses), not this function.
+//
+// `status: 'Open'` on every entry (not a dedicated "sent"/"replied" status —
+// the enquiry schema doesn't have one) mirrors how a human logging this by
+// hand would leave it for themselves to follow up on, not mark resolved.
+async function logInteraction(customerId, { description, channel }) {
+  await addDoc(collection(db, 'customers', customerId, 'enquiries'), {
+    date: Timestamp.now(),
+    contact_id: null,
+    description,
+    product_interest: [],
+    channel: channel || 'Email',
+    status: 'Open',
+    follow_up_date: null,
+    outcome_notes: '',
+    linked_quote_ids: [],
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
+}
+
+async function appendNote(collectionName, id, field, text) {
+  const snap = await getDoc(doc(db, collectionName, id))
+  const existing = snap.exists() ? (snap.data()[field] || '') : ''
+  await updateDoc(doc(db, collectionName, id), {
+    [field]: [existing, text].filter(Boolean).join('\n'), updatedAt: serverTimestamp(),
+  })
+}
+
+// Matches CustomerDetail.jsx's Compose Message channel list (which already
+// distinguishes WhatsApp Business from Personal WhatsApp) plus WeChat, which
+// exists nowhere in this app's channel enums yet despite being a real
+// channel the owner uses.
+const REPLY_CHANNELS = ['Personal WhatsApp', 'WhatsApp Business', 'WeChat', 'Alibaba', 'Email']
+
 const ENGAGEMENT_BADGES = [
   { key: 'delivered', label: 'Delivered', Icon: CheckCircle2 },
   { key: 'opened', label: 'Opened', Icon: Eye },
@@ -199,6 +241,13 @@ export default function DailyDrafts() {
   const [draftBlogQuery, setDraftBlogQuery] = useState({}) // draftId -> string
   const [draftBlogResults, setDraftBlogResults] = useState({}) // draftId -> posts[]
   const [draftBlogSearching, setDraftBlogSearching] = useState(null)
+
+  // "Log a reply" mini-form on Sent cards — channel + optionally the pasted
+  // reply text, since replies mostly land on WhatsApp/WeChat/Alibaba, not
+  // this app's inbox (see handleLogReply).
+  const [replyFormOpenId, setReplyFormOpenId] = useState(null)
+  const [replyChannel, setReplyChannel] = useState({}) // draftId -> string
+  const [replyText, setReplyText] = useState({}) // draftId -> string
 
   // Both catalogues, merged — Corporate Gifts (`products`) and the
   // Crystocraft Range (`range_products`) are separate collections with very
@@ -376,6 +425,13 @@ export default function DailyDrafts() {
         await markContactOutreach(d.customerId)
       } else {
         await updateDoc(doc(db, 'customers', d.customerId), { lastOutreachAt: serverTimestamp() })
+        // Only customers/ has a CRM Interaction Log (customers/{id}/enquiries)
+        // — marketing_contacts isn't a full CRM record yet, nothing to log
+        // this against there.
+        await logInteraction(d.customerId, {
+          description: `Sent Daily Drafts outreach email — ${subject}\n\n${body}`,
+          channel: 'Email',
+        })
       }
       setDrafts(prev => prev.filter(x => x.id !== d.id))
       reloadSent()
@@ -442,12 +498,29 @@ export default function DailyDrafts() {
     }
   }
 
-  async function handleMarkReplied(d) {
+  // Replies very often land somewhere other than email (WhatsApp/WeChat/
+  // Alibaba, not this app's inbox — Resend's webhook only ever sees the
+  // OUTBOUND send, never a reply on another channel). This logs the reply
+  // both on the draft itself (a Daily-Drafts-local record) and — the part
+  // that actually matters — onto the customer's real CRM Interaction Log,
+  // the same one CustomerDetail.jsx's "+ Log Interaction" writes to, so it
+  // shows up there regardless of which channel it came in on.
+  async function handleLogReply(d) {
+    const channel = replyChannel[d.id] || REPLY_CHANNELS[0]
+    const text = (replyText[d.id] || '').trim()
+    setBusyId(d.id); setError('')
     try {
-      await markDraftReplied(d.id)
-      setSentDrafts(prev => prev.map(x => x.id === d.id ? { ...x, repliedAt: new Date() } : x))
+      await markDraftReplied(d.id, { channel, replyText: text })
+      const description = `Replied via ${channel}${text ? `: ${text}` : ''}`
+      if (d.source === 'contact') await appendNote('marketing_contacts', d.customerId, 'app_notes', description)
+      else await logInteraction(d.customerId, { description, channel })
+      setSentDrafts(prev => prev.map(x => x.id === d.id ? { ...x, repliedAt: new Date(), repliedChannel: channel, replyText: text } : x))
+      setReplyFormOpenId(null)
+      setReplyText(prev => ({ ...prev, [d.id]: '' }))
     } catch (e) {
-      setError(e.message || 'Could not mark as replied.')
+      setError(e.message || 'Could not log that reply.')
+    } finally {
+      setBusyId(null)
     }
   }
 
@@ -486,19 +559,8 @@ export default function DailyDrafts() {
   // explicit action rather than something the AI does automatically).
   async function handleSaveNote(d, text) {
     try {
-      if (d.source === 'contact') {
-        const snap = await getDoc(doc(db, 'marketing_contacts', d.customerId))
-        const existing = snap.exists() ? (snap.data().app_notes || '') : ''
-        await updateDoc(doc(db, 'marketing_contacts', d.customerId), {
-          app_notes: [existing, text].filter(Boolean).join('\n'), updatedAt: serverTimestamp(),
-        })
-      } else {
-        const snap = await getDoc(doc(db, 'customers', d.customerId))
-        const existing = snap.exists() ? (snap.data().notes || '') : ''
-        await updateDoc(doc(db, 'customers', d.customerId), {
-          notes: [existing, text].filter(Boolean).join('\n'), updatedAt: serverTimestamp(),
-        })
-      }
+      if (d.source === 'contact') await appendNote('marketing_contacts', d.customerId, 'app_notes', text)
+      else await appendNote('customers', d.customerId, 'notes', text)
     } catch (e) {
       setError(e.message || 'Could not save that note.')
     }
@@ -765,35 +827,71 @@ export default function DailyDrafts() {
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-gray-900">Sent ({sentDrafts.length})</h2>
         {sentDrafts.length === 0 && <div className="text-sm text-gray-400">Nothing sent yet.</div>}
-        {sentDrafts.map(d => (
-          <div key={d.id} className="card p-3 flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <div className="text-sm text-gray-900 truncate">
-                {d.customerName} <span className="text-gray-400">— {d.productName}</span>
-                <SourceBadge source={d.source} />
-              </div>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                {ENGAGEMENT_BADGES.map(({ key, label, Icon }) => (
-                  <span key={key} className={`inline-flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5 ${
-                    d.engagement?.[key] ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-300'
-                  }`}>
-                    <Icon size={11} /> {label}
-                  </span>
-                ))}
-                {d.repliedAt && (
-                  <span className="inline-flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5 bg-brand-50 text-brand-700">
-                    <CheckCircle2 size={11} /> Replied
-                  </span>
+        {sentDrafts.map(d => {
+          const isReplyOpen = replyFormOpenId === d.id
+          const isBusy = busyId === d.id
+          return (
+            <div key={d.id} className="card p-3 space-y-2">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="text-sm text-gray-900 truncate">
+                    {d.customerName} <span className="text-gray-400">— {d.productName}</span>
+                    <SourceBadge source={d.source} />
+                  </div>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {ENGAGEMENT_BADGES.map(({ key, label, Icon }) => (
+                      <span key={key} className={`inline-flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5 ${
+                        d.engagement?.[key] ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-300'
+                      }`}>
+                        <Icon size={11} /> {label}
+                      </span>
+                    ))}
+                    {d.repliedAt && (
+                      <span className="inline-flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5 bg-brand-50 text-brand-700">
+                        <CheckCircle2 size={11} /> Replied{d.repliedChannel ? ` via ${d.repliedChannel}` : ''}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {!d.repliedAt && (
+                  <button onClick={() => setReplyFormOpenId(isReplyOpen ? null : d.id)}
+                    className="text-xs text-gray-500 hover:text-brand-600 shrink-0 whitespace-nowrap">
+                    {isReplyOpen ? 'Cancel' : 'Log a reply'}
+                  </button>
                 )}
               </div>
+
+              {isReplyOpen && (
+                <div className="border border-ivory-dark rounded-lg p-3 bg-ivory-light space-y-2">
+                  <div className="flex gap-2 flex-wrap">
+                    {REPLY_CHANNELS.map(ch => (
+                      <button key={ch} type="button"
+                        onClick={() => setReplyChannel(prev => ({ ...prev, [d.id]: ch }))}
+                        className={`text-xs rounded px-2 py-1 border ${
+                          (replyChannel[d.id] || REPLY_CHANNELS[0]) === ch
+                            ? 'border-brand-600 bg-brand-50 text-brand-700'
+                            : 'border-ivory-dark text-gray-500 hover:bg-white'
+                        }`}>
+                        {ch}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea value={replyText[d.id] || ''}
+                    onChange={e => setReplyText(prev => ({ ...prev, [d.id]: e.target.value }))}
+                    placeholder="Paste their reply here (optional) — this and the channel get logged to their CRM record"
+                    rows={2} className="input w-full text-sm"
+                    autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck="false"
+                    data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"
+                    data-lpignore="true" data-1p-ignore="true" />
+                  <button onClick={() => handleLogReply(d)} disabled={isBusy} className="btn-primary text-xs py-1.5 px-3 inline-flex items-center gap-1.5">
+                    {isBusy ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+                    Log reply
+                  </button>
+                </div>
+              )}
             </div>
-            {!d.repliedAt && (
-              <button onClick={() => handleMarkReplied(d)} className="text-xs text-gray-500 hover:text-brand-600 shrink-0 whitespace-nowrap">
-                Mark as replied
-              </button>
-            )}
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

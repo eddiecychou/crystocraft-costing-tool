@@ -107,8 +107,18 @@ export async function listSentDrafts() {
     .sort((a, b) => (b.sentAt?.toMillis?.() ?? 0) - (a.sentAt?.toMillis?.() ?? 0))
 }
 
-export async function markDraftReplied(draftId) {
-  await updateDoc(doc(db, 'outreach_drafts', draftId), { repliedAt: serverTimestamp() })
+// channel/replyText are optional — the owner is often replied-to on
+// WhatsApp/WeChat/Alibaba rather than email, which Resend's webhook can't
+// see at all (it only knows about the outbound send). Stored on the draft
+// as a quick record; the same reply also gets logged to the customer's CRM
+// Interaction Log by the caller (DailyDrafts.jsx's handleLogReply) — this is
+// just the Daily-Drafts-local copy.
+export async function markDraftReplied(draftId, { channel, replyText } = {}) {
+  await updateDoc(doc(db, 'outreach_drafts', draftId), {
+    repliedAt: serverTimestamp(),
+    repliedChannel: channel || '',
+    replyText: replyText || '',
+  })
 }
 
 // Recent sent/skipped decisions, for the "historicalHints" fed into the
