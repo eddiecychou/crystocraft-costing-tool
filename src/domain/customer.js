@@ -181,6 +181,11 @@ export function normalizeCustomer(raw) {
     blockOutreachUntil:  r.blockOutreachUntil ?? null,
     createdAt:         r.createdAt ?? null,
     updatedAt:         r.updatedAt ?? null,
+    // V8.1 email ingestion (Phase 2) — a DeepSeek-generated draft over
+    // customers/{id}/email_threads, written by refresh-email-summary.js via
+    // CustomerDetail.jsx's "Refresh" action. Never set by anything else;
+    // pass through as-is rather than reconstructing its shape here.
+    email_summary:     r.email_summary ?? null,
   }
 }
 
@@ -453,9 +458,10 @@ export async function previewCustomerMerge(duplicateId, survivorId) {
   const duplicate = { id: duplicateId, ...normalizeCustomer(dupSnap.data()) }
   const survivor  = { id: survivorId, ...normalizeCustomer(survSnap.data()) }
   const { ordersSnap, quotesSnap, usersSnap } = await relatedDocs(duplicateId)
-  const [assetsSnap, interactionsSnap, brandedImages] = await Promise.all([
+  const [assetsSnap, interactionsSnap, emailThreadsSnap, brandedImages] = await Promise.all([
     getDocs(collection(db, 'customers', duplicateId, 'assets')),
     getDocs(collection(db, 'customers', duplicateId, 'enquiries')),
+    getDocs(collection(db, 'customers', duplicateId, 'email_threads')),
     brandedImageDocs(duplicateId),
   ])
   return {
@@ -466,6 +472,7 @@ export async function previewCustomerMerge(duplicateId, survivorId) {
     accountsCount: usersSnap.size,
     assetsCount: assetsSnap.size,
     interactionsCount: interactionsSnap.size,
+    emailThreadsCount: emailThreadsSnap.size,
     brandedImagesCount: brandedImages.length,
   }
 }
@@ -478,15 +485,19 @@ export async function previewCustomerMerge(duplicateId, survivorId) {
 // Beyond the original three collections, three more things get carried
 // across — the duplicate's Firestore doc gets deleted at the end, and none of
 // these survives that on its own:
-//   - Brand Gallery assets (customers/{id}/assets, V7.21) and the CRM
+//   - Brand Gallery assets (customers/{id}/assets, V7.21), the CRM
 //     Interaction Log (customers/{id}/enquiries — found missing 2026-08-05,
-//     same bug shape) — both SUBcollections, so deleting the parent customer
-//     doc does NOT delete them; each would be silently orphaned (unreachable —
-//     nothing ever queries a dangling customer id again) rather than actually
-//     removed. Both copied via copySubcollection() above. Any Storage files
-//     they reference are NOT moved — the copied docs' URLs/paths still point
-//     at the originals, which is fine; moving metadata doesn't require moving
-//     the blob.
+//     same bug shape), and email_threads (V8.1) — all SUBcollections, so
+//     deleting the parent customer doc does NOT delete them; each would be
+//     silently orphaned (unreachable — nothing ever queries a dangling
+//     customer id again) rather than actually removed. All copied via
+//     copySubcollection() above. Any Storage files they reference are NOT
+//     moved — the copied docs' URLs/paths still point at the originals,
+//     which is fine; moving metadata doesn't require moving the blob.
+//     email_summary itself (a generated field, not a subcollection) is
+//     deliberately NOT carried across — it's a stale draft either way once
+//     the survivor's thread set changes; hit Refresh after merging instead
+//     of trusting a merged-but-not-regenerated summary.
 //   - branded_for_customer_id tags on product images (see
 //     firestore.rules viewerIsSensitive()) — repointed to the survivor so a
 //     photo already tagged for the duplicate doesn't silently stop matching
@@ -499,6 +510,7 @@ export async function mergeCustomers(duplicateId, survivorId) {
 
   await copySubcollection('assets', duplicateId, survivorId)
   await copySubcollection('enquiries', duplicateId, survivorId)
+  await copySubcollection('email_threads', duplicateId, survivorId)
 
   const allRefs = [...ordersSnap.docs, ...quotesSnap.docs, ...usersSnap.docs].map(d => d.ref)
   const brandedRefs = brandedImages.map(d => d.ref)

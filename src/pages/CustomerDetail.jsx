@@ -10,13 +10,14 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
 import CustomerBrandGallery from '../components/CustomerBrandGallery'
-import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt, ChevronDown, ChevronUp, Database } from 'lucide-react'
+import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt, ChevronDown, ChevronUp, Database, Mail, MessageCircle, Loader2, RefreshCw } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
 import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers } from '../domain/customer'
 import { erpLookup } from '../erpApi'
 import { mergeSalesInvoiceHistory } from '../domain/salesInvoiceHistory'
 import ErpDocModal from '../components/ErpDocModal'
+import { refreshEmailSummary, discussCustomerEmail, renderThreadsText } from '../emailSummaryApi'
 
 const STATUS_STYLES = {
   draft: 'bg-gray-100 text-gray-600',
@@ -175,11 +176,12 @@ function MergeCustomerModal({ customer, onClose, onMerged }) {
                 <strong>{preview.accountsCount}</strong> portal account{preview.accountsCount === 1 ? '' : 's'} will move to{' '}
                 <strong>{preview.survivor.company_name}</strong>.
               </p>
-              {(preview.assetsCount > 0 || preview.interactionsCount > 0 || preview.brandedImagesCount > 0) && (
+              {(preview.assetsCount > 0 || preview.interactionsCount > 0 || preview.brandedImagesCount > 0 || preview.emailThreadsCount > 0) && (
                 <p>
                   {[
                     preview.interactionsCount > 0 && `${preview.interactionsCount} interaction log entr${preview.interactionsCount === 1 ? 'y' : 'ies'}`,
                     preview.assetsCount > 0 && `${preview.assetsCount} Brand Gallery asset${preview.assetsCount === 1 ? '' : 's'}`,
+                    preview.emailThreadsCount > 0 && `${preview.emailThreadsCount} email thread${preview.emailThreadsCount === 1 ? '' : 's'}`,
                     preview.brandedImagesCount > 0 && `${preview.brandedImagesCount} "branded for" product photo tag${preview.brandedImagesCount === 1 ? '' : 's'}`,
                   ].filter(Boolean).join(', ')} will also move to <strong>{preview.survivor.company_name}</strong>.
                 </p>
@@ -291,6 +293,53 @@ export default function CustomerDetail() {
       setLoading(false)
     })
   }, [id])
+
+  // V8.1 email ingestion (Phase 2) — customers/{id}/email_threads is written
+  // by email-sync/sync.py (a script run outside this app, see PROJECT-PLAN.md's
+  // V8.1 entry), never by the browser. This just reads what's there.
+  const [emailThreads, setEmailThreads] = useState([])
+  const [emailSummaryBusy, setEmailSummaryBusy] = useState(false)
+  const [emailChatOpen, setEmailChatOpen] = useState(false)
+  const [emailChatHistory, setEmailChatHistory] = useState([])
+  const [emailChatInput, setEmailChatInput] = useState('')
+  const [emailChatBusy, setEmailChatBusy] = useState(false)
+  useEffect(() => {
+    return onSnapshot(collection(db, 'customers', id, 'email_threads'), snap => {
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      all.sort((a, b) => String(b.date_range?.[1] || '').localeCompare(String(a.date_range?.[1] || '')))
+      setEmailThreads(all)
+    })
+  }, [id])
+
+  async function handleRefreshEmailSummary() {
+    setEmailSummaryBusy(true)
+    try {
+      const result = await refreshEmailSummary(renderThreadsText(emailThreads))
+      await updateDoc(doc(db, 'customers', id), {
+        email_summary: { ...result, thread_count: emailThreads.length, generated_at: serverTimestamp() },
+      })
+    } catch (e) {
+      setError(e.message || 'Could not refresh the email summary.')
+    } finally {
+      setEmailSummaryBusy(false)
+    }
+  }
+
+  async function handleEmailChatSend() {
+    const message = emailChatInput.trim()
+    if (!message || emailChatBusy) return
+    setEmailChatBusy(true)
+    setEmailChatHistory(prev => [...prev, { role: 'user', content: message }])
+    setEmailChatInput('')
+    try {
+      const result = await discussCustomerEmail(renderThreadsText(emailThreads), emailChatHistory, message)
+      setEmailChatHistory(prev => [...prev, { role: 'assistant', content: result.reply }])
+    } catch (e) {
+      setEmailChatHistory(prev => [...prev, { role: 'assistant', content: `(error: ${e.message || 'chat failed'})` }])
+    } finally {
+      setEmailChatBusy(false)
+    }
+  }
 
   // Real-time enquiry listener (no orderBy — sort client-side)
   const [contextAutoFilled, setContextAutoFilled] = useState(false)
@@ -804,6 +853,82 @@ export default function CustomerDetail() {
           </div>
         )}
       </div>
+
+      {/* Email Summary (V8.1) — draft AI read of customers/{id}/email_threads,
+          ingested by email-sync/sync.py outside this app. Hidden entirely
+          when nothing's been ingested yet, rather than showing an empty
+          card for the ~most customers not yet backfilled/matched. */}
+      {emailThreads.length > 0 && (
+        <div className="card mb-4">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+              <Mail size={15} className="text-gray-400" /> Email Summary
+              <span className="text-xs font-normal text-gray-400">({emailThreads.length} thread{emailThreads.length === 1 ? '' : 's'} ingested)</span>
+            </h2>
+            <button onClick={handleRefreshEmailSummary} disabled={emailSummaryBusy}
+              className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1.5">
+              {emailSummaryBusy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+              {customer?.email_summary ? 'Refresh' : 'Generate'}
+            </button>
+          </div>
+          <div className="px-5 py-4 space-y-3">
+            {!customer?.email_summary ? (
+              <p className="text-sm text-gray-400">Not generated yet — click {emailSummaryBusy ? '…' : 'Generate'} to have DeepSeek read the ingested threads.</p>
+            ) : (
+              <>
+                <p className="text-sm text-gray-700">{customer.email_summary.summary}</p>
+                {customer.email_summary.recent_activity && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Recent activity</h4>
+                    <p className="text-sm text-gray-600">{customer.email_summary.recent_activity}</p>
+                  </div>
+                )}
+                {customer.email_summary.open_commitments?.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Open commitments</h4>
+                    <ul className="text-sm text-gray-600 list-disc list-inside space-y-0.5">
+                      {customer.email_summary.open_commitments.map((c, i) => <li key={i}>{c}</li>)}
+                    </ul>
+                  </div>
+                )}
+                <p className="text-[11px] text-gray-400">
+                  Generated over {customer.email_summary.thread_count ?? emailThreads.length} thread{(customer.email_summary.thread_count ?? emailThreads.length) === 1 ? '' : 's'} — a draft, not verified. Refresh after new mail comes in.
+                </p>
+              </>
+            )}
+
+            <div className="pt-2 border-t border-gray-100">
+              <button onClick={() => setEmailChatOpen(v => !v)}
+                className="text-xs text-gray-500 hover:text-brand-600 inline-flex items-center gap-1">
+                <MessageCircle size={13} /> {emailChatOpen ? 'Close' : 'Discover more about this customer'}
+              </button>
+              {emailChatOpen && (
+                <div className="mt-2 border border-ivory-dark rounded-lg p-3 bg-ivory-light space-y-2">
+                  {emailChatHistory.length > 0 && (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {emailChatHistory.map((h, i) => (
+                        <div key={i} className={`text-sm ${h.role === 'assistant' ? 'text-gray-700' : 'text-gray-900'}`}>
+                          <span className="font-medium">{h.role === 'assistant' ? 'AI: ' : 'You: '}</span>{h.content}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <input value={emailChatInput} onChange={e => setEmailChatInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleEmailChatSend()}
+                      placeholder="e.g. What did we last discuss about pricing?"
+                      className="input w-full text-sm" disabled={emailChatBusy} />
+                    <button onClick={handleEmailChatSend} disabled={emailChatBusy || !emailChatInput.trim()}
+                      className="btn-secondary shrink-0 text-xs px-3">
+                      {emailChatBusy ? <Loader2 size={13} className="animate-spin" /> : 'Ask'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Interaction Log */}
       <div className="card mb-4">

@@ -159,6 +159,14 @@ service cloud.firestore {
       match /enquiries/{enquiryId} {
         allow read, write: if isAdmin();
       }
+      // Email ingestion (V8.1 spike) — raw thread envelopes pulled from the
+      // live IMAP mailbox, matched to this customer. Admin-only, always —
+      // this is real correspondence content, never customer-facing, unlike
+      // Brand Gallery assets below (see PROJECT-PLAN.md's V8.1 entry §6:
+      // "nothing leaks through portal or customer-facing routes").
+      match /email_threads/{threadId} {
+        allow read, write: if isAdmin();
+      }
       // Brand Gallery assets (V7.21) — customer logos / brand images.
       // The privacy guarantee (Customer_Brand_Gallery_Spec.md §6): admins have
       // full access; a logged-in customer may read ONLY their own linked

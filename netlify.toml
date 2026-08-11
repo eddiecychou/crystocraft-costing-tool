@@ -97,6 +97,14 @@
   path = "/api/discuss-outreach-draft"
 
 [[edge_functions]]
+  function = "refresh-email-summary"
+  path = "/api/refresh-email-summary"
+
+[[edge_functions]]
+  function = "discuss-customer-email"
+  path = "/api/discuss-customer-email"
+
+[[edge_functions]]
   function = "resend-webhook"
   path = "/api/resend-webhook"
 

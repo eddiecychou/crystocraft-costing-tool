@@ -1,0 +1,106 @@
+// V8.1 email ingestion, Phase 2 step 4 — the "Discover more about this
+// customer" chat on CustomerDetail.jsx, asking questions of a customer's own
+// ingested email history rather than reading a static summary. Same shape as
+// discuss-outreach-draft.js: a multi-turn chat where the client keeps the
+// running transcript (component state, not persisted — working scratch) and
+// resends it each turn; this function holds no state of its own.
+//
+// Same "stuff every ingested thread into the prompt" approach as
+// refresh-email-summary.js — real retrieval (embeddings/vector search) is a
+// bigger build than this cycle covers; see that function's MAX_INPUT_CHARS
+// comment for the same caveat here.
+//
+// POST { threadsText, history: [{role:'user'|'assistant', content}], message }
+//   -> { reply }
+//
+// Env (Netlify site vars, server-side only):
+//   DEEPSEEK_API_KEY — required (shared with the rest of the outreach/email AI functions)
+//   VITE_FIREBASE_PROJECT_ID / FIREBASE_PROJECT_ID — for admin-token verification
+import { jwtVerify, createRemoteJWKSet } from 'https://esm.sh/jose@5.9.6'
+
+const JWKS = createRemoteJWKSet(
+  new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
+)
+const json = (b, status = 200) =>
+  new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } })
+
+async function isAdmin(uid, idToken, projectId) {
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } })
+  if (!r.ok) return false
+  const doc = await r.json()
+  return doc?.fields?.role?.stringValue === 'admin'
+}
+
+const MAX_HISTORY_TURNS = 20
+const MAX_INPUT_CHARS = 60000
+
+const SYSTEM = 'You are answering questions about a real B2B customer for the Crystocraft sales owner, using ' +
+  'their raw email thread history (exported from the owner\'s live mailbox) as your only source. Answer ONLY ' +
+  'from what is actually in the threads provided — if the answer isn\'t there, say so plainly rather than ' +
+  'guessing or inventing a plausible-sounding answer. Cite rough dates when relevant. Keep answers to 2-5 ' +
+  'sentences unless the owner asks for more detail.\n\n' +
+  'Return ONLY a valid JSON object: { "reply": "your answer" }.'
+
+async function callDeepSeek(apiKey, messages) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch('https://api.deepseek.com/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model: 'deepseek-chat', messages,
+          response_format: { type: 'json_object' },
+          temperature: 0.3, max_tokens: 600,
+        }),
+      })
+      if (!res.ok) continue
+      const data = await res.json()
+      const text = data.choices?.[0]?.message?.content?.trim()
+      if (!text) continue
+      return JSON.parse(text)
+    } catch { /* try again, or fall through to null below */ }
+  }
+  return null
+}
+
+export default async function handler(req) {
+  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
+
+  const DEEPSEEK_API_KEY = Deno.env.get('DEEPSEEK_API_KEY')
+  const PROJECT_ID = Deno.env.get('VITE_FIREBASE_PROJECT_ID') || Deno.env.get('FIREBASE_PROJECT_ID')
+  if (!DEEPSEEK_API_KEY || !PROJECT_ID) return json({ error: 'Server not configured' }, 500)
+
+  const token = (req.headers.get('authorization') || '').match(/^Bearer (.+)$/i)?.[1]
+  if (!token) return json({ error: 'Not signed in' }, 401)
+  let uid
+  try {
+    const { payload } = await jwtVerify(token, JWKS, {
+      issuer: `https://securetoken.google.com/${PROJECT_ID}`, audience: PROJECT_ID,
+    })
+    uid = payload.sub
+  } catch { return json({ error: 'Invalid or expired session' }, 401) }
+  if (!(await isAdmin(uid, token, PROJECT_ID))) return json({ error: 'Admin access required' }, 403)
+
+  let body
+  try { body = await req.json() } catch { return json({ error: 'Bad JSON' }, 400) }
+  const threadsText = String(body?.threadsText || '').trim()
+  const message = String(body?.message || '').trim()
+  const history = Array.isArray(body?.history) ? body.history.slice(-MAX_HISTORY_TURNS) : []
+  if (!threadsText) return json({ error: 'threadsText is required — nothing ingested for this customer yet' }, 400)
+  if (!message) return json({ error: 'message is required' }, 400)
+
+  const messages = [
+    { role: 'system', content: SYSTEM },
+    { role: 'user', content: `Email history:\n${threadsText.slice(0, MAX_INPUT_CHARS)}` },
+    ...history.map(h => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: String(h.content || '') })),
+    { role: 'user', content: message },
+  ]
+
+  const result = await callDeepSeek(DEEPSEEK_API_KEY, messages)
+  if (!result?.reply) return json({ error: 'DeepSeek did not return a usable reply — try again.' }, 502)
+
+  return json({ reply: result.reply })
+}
+
+export const config = { path: '/api/discuss-customer-email' }
