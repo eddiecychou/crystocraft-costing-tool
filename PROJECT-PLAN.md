@@ -43,6 +43,116 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
+## Current Status — V8.0 CLOSED as of 2026-08-11
+
+Commit `d6abec8` (1 commit, substantial), deployed and manually
+click-tested live by the owner — the first time in this whole Daily
+Drafts arc that happened, not just parse-checked by this assistant.
+One thread: **Daily Drafts stopped being product-only**. Note this is
+NOT the email-archive/inbox-ingestion project the previous session's
+"Where V8.0 starts" stub described — the owner redirected mid-session to
+a different, real gap (see §1 below) before that project ever started.
+The email-archive plan carries forward unchanged into "Where V8.1
+starts" below.
+
+### The numbers
+
+| | |
+|---|---:|
+| Commits | 1 |
+| New edge function | `draft-outreach-topic.js` |
+| Reworked edge function | `generate-outreach-drafts.js` — product-shaped drafting → topic-shaped personalization |
+| New Firestore rule | top-level `{path=**}/enquiries` wildcard (collection-group read) |
+| New Firestore index | single-field exemption, `enquiries.product_interest`, Collection group + Arrays scope |
+| New Storage rule | `daily_draft_images/` |
+| Bug found in passing | `campaign_images/` has no Storage rule at all — flagged as a separate task, not fixed here |
+
+### 1. Compose any topic, refine once, before targeting anyone
+
+The gap: the tool only knew how to introduce a product. The owner wanted
+"news and update," "invite to the portal," anything — and wanted to
+perfect the pitch ONCE before it fans out to 10-20 people, not fix the
+same mistake in up to 20 separate drafts afterward. Split the page into
+two phases:
+
+- **Compose** — free-text topic → `draft-outreach-topic.js` (deliberately
+  the simplest new piece: one DeepSeek call, no candidates) → refine with
+  the SAME `discuss-outreach-draft.js` chat already built for per-draft
+  editing, reused unchanged (`customerContext: ''` since no recipient is
+  picked yet). Images can be uploaded directly now (new
+  `daily_draft_images/` Storage path) instead of only pulled from a
+  product's gallery; a product can still optionally be linked just to
+  unlock its photos. Blog links can be searched or pasted manually.
+- **Target & Generate** — the whole existing candidate pipeline
+  (contacts merge, all-CRM-statuses pool, cooldowns, `blockOutreachUntil`,
+  `historicalHints`, `targetingNote`) is unchanged. What changed is what
+  feeds the per-candidate step: `generate-outreach-drafts.js` now
+  **personalizes an owner-approved message** rather than drafting from
+  scratch against a product — same JSON-mode call shape, different job.
+
+### 2. Real de-duplication against the CRM Interaction Log, not just this app's memory
+
+The owner's own catch, mid-session: "I will not want to keep sending
+invite to someone which I email them before." The existing cooldown only
+ever checked `outreach_drafts` this app itself had sent — it had no idea
+about interactions logged manually, or anything predating this feature.
+The Interaction Log (`customers/{id}/enquiries`) is the real, complete
+history, and the owner already logs portal invites there by hand.
+
+- Every send/reply now tags `product_interest` with the topic/product
+  label — the field already existed in the enquiry schema, just never
+  populated by this feature.
+- Before targeting, a `collectionGroup('enquiries')` query checks every
+  customer's log at once for a prior entry on this exact topic. Excluded
+  by default; a new **"Include people already contacted"** checkbox keeps
+  them in the pool but tells the personalization prompt to write a
+  reminder/follow-up, not repeat the pitch — the "if I do, it should be a
+  reminder" half of the owner's ask.
+- This needed real Firebase-console setup, and it took three attempts to
+  get right, worth recording precisely since it'll recur the next time a
+  collection-group query gets added anywhere in this app:
+  1. `firestore.rules` needed a new top-level `{path=**}/enquiries` rule
+     — the existing nested `customers/{id}/enquiries` rule does not
+     authorize a collection-group query at all.
+  2. Firestore's **manual composite-index UI actively refuses** a
+     single-field array-contains + collection-group combination
+     ("this index is not necessary, configure using single field index
+     controls") — composite index creation is the wrong tool for this
+     shape of query.
+  3. The actual fix lives under Firestore → Indexes → **Automatic →
+     Exemptions → Add exemption**: Collection ID `enquiries`, Field Path
+     `product_interest`, Collection Group Scope → **Arrays** enabled.
+     Triggering the real query once and using the auto-generated link
+     in the error message (or in the browser console) pre-fills this
+     correctly and is far more reliable than configuring it by hand.
+
+### Manual setup this cycle needed (owner-side, not code)
+
+- Firestore rules republished (the new `enquiries` collection-group rule).
+- Storage rules republished (`daily_draft_images/`).
+- The single-field exemption above (Firestore console, Automatic indexing tab).
+- All three done live by the owner this session, then verified working
+  end to end on real data (20 real personalized portal-invite drafts,
+  correct photos/link, "Already in Contact" working) — genuinely
+  click-tested, not just deployed-and-assumed.
+
+### Open — not verified
+
+- One live 500 on `draft-outreach-topic.js` during testing that did not
+  reproduce on retry and left no trace in the real-time function log —
+  most likely a cold start on the freshly-deployed function or a
+  transient DeepSeek API blip (the function's own retry loop covers one
+  retry, not an indefinite one). Not chased further since it didn't
+  recur; worth a second look if it comes back.
+- The "Include people already contacted" reminder-framing path
+  (`previouslyContactedAt` in the personalization prompt) was built but
+  not exercised in the live test — the real run had no prior contact
+  history to hit it.
+- Range-linked photo picking through the new optional "link a product"
+  flow specifically (the corporate-gift path was what got tested live).
+
+---
+
 ## Current Status — V7.23 CLOSED as of 2026-08-11
 
 Commit chain `54b2422`→`94d2425` (13 commits), all deployed. One thread,
@@ -906,15 +1016,18 @@ before treating any of the following as proven:
 
 ---
 
-## Where V8.0 starts
+## Where V8.1 starts
 
 **Stated plan from the owner**: email archive + inbox ingestion — the
 owner's two Outlook PST mailboxes (`eddie@uart.com.hk`,
 `sales@uart.com.hk`, ~60-80GB combined) plus the live server inbox
 (~1 year of history). This has been flagged as a real, separate project
-since Daily Drafts' first slice (V7.23 §1) and deliberately kept out of
-every round since — it needs PST parsing, thread-to-customer matching,
-and a summarization pipeline, none of which exist yet anywhere in this
+since Daily Drafts' first slice (V7.23 §1), was expected to be "where
+V8.0 starts" per that entry, and was deliberately kept out of every
+round since including V8.0 itself — the owner redirected V8.0 to the
+Compose/topic redesign instead (see V8.0 §1). Carrying this plan forward
+unchanged: it needs PST parsing, thread-to-customer matching, and a
+summarization pipeline, none of which exist yet anywhere in this
 codebase.
 
 **Explicit sequencing from the owner, not to be skipped**: this surfaces
@@ -960,10 +1073,14 @@ owner):
   section) or can run anywhere — likely the latter, mailboxes aren't
   LAN-gated the way the ERP SQL Server is, but confirm before assuming.
 
-Also still open from V7.23 (§ "Open — not verified" above): the full
-Daily Drafts flow has never been click-tested by this assistant end to
-end, and `RESEND_WEBHOOK_SECRET` may still not be set — worth confirming
-both are actually working before building more on top in V8.0.
+V7.23's "full flow never click-tested" gap is now closed — V8.0 was
+genuinely click-tested live by the owner end to end (see V8.0's numbers
+table). Whether `RESEND_WEBHOOK_SECRET` is actually set and engagement
+badges are populating was NOT specifically re-confirmed during that
+test, though — worth a quick look. V8.0's own "Open — not verified"
+items (a non-reproducing 500, the reminder-framing path, range-linked
+photo picking) are also fair game for a first pass before building V8.1
+on top.
 
 Everything in V7.22's own "Where V7.23 starts" entry that didn't get
 picked up this cycle is still open too: the customer portal homepage
