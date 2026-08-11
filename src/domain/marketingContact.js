@@ -66,9 +66,11 @@ export function normalizeContact(id, raw) {
     review_status: str(r.review_status),
     app_notes:     str(r.app_notes),
     // Daily Drafts outreach engine (V7.23) — mirrors customer.js's
-    // lastOutreachAt; set only on an actual send, via markContactOutreach()
-    // below, never through saveContact (that's the admin-edit-form path).
+    // lastOutreachAt/blockOutreachUntil; set only via markContactOutreach()/
+    // blockContactOutreach() below, never through saveContact (that's the
+    // admin-edit-form path).
     lastOutreachAt: r.lastOutreachAt ?? null,
+    blockOutreachUntil: r.blockOutreachUntil ?? null,
   }
 }
 
@@ -155,6 +157,13 @@ export async function saveContact(currentId, data) {
 // semantics) — same split customer.js already has for lastOutreachAt.
 export async function markContactOutreach(id) {
   await updateDoc(doc(db, 'marketing_contacts', id), { lastOutreachAt: serverTimestamp() })
+}
+
+// "Don't suggest this person for now" — the owner's own knowledge that
+// they're already talking to this contact manually, which nothing in the
+// app can otherwise detect (see DailyDrafts.jsx's "Don't suggest" action).
+export async function blockContactOutreach(id, until) {
+  await updateDoc(doc(db, 'marketing_contacts', id), { blockOutreachUntil: until })
 }
 
 export async function deleteContact(id) {

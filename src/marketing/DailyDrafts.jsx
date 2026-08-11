@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { collection, doc, getDoc, getDocs, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore'
 import {
   Send, Loader2, SkipForward, Sparkles, Trash2, X, Link2,
-  MessageCircle, CheckCircle2, Eye, MousePointerClick, AlertTriangle, Bookmark,
+  MessageCircle, CheckCircle2, Eye, MousePointerClick, AlertTriangle, Bookmark, BellOff,
 } from 'lucide-react'
 import { db, authedUser } from '../firebase'
 import { loadCustomers, primaryContact } from '../domain/customer'
-import { normalizeContact, markContactOutreach } from '../domain/marketingContact'
+import { normalizeContact, markContactOutreach, blockContactOutreach } from '../domain/marketingContact'
 import {
   listPendingDrafts, listDraftsForProduct, listSentDrafts, listRecentDecisions,
   createDrafts, markDraftSent, markDraftReplied, skipDraft, deleteAllPending,
@@ -36,11 +36,19 @@ const daysAgo = (ts) => {
 }
 
 // customers/{id} -> a common "entity" shape, or null if ineligible outright
-// (wrong crm_status, no email). Kept separate from contactToEntity so each
-// source's own eligibility rules stay readable, rather than one filter
-// function branching on source internally.
+// (no email). Kept separate from contactToEntity so each source's own
+// eligibility rules stay readable, rather than one filter function branching
+// on source internally.
+//
+// Deliberately NOT filtered by crm_status — the owner's call (2026-08):
+// Active customers still belong in the pool (a few quiet months even on an
+// active account is worth a nudge, especially once real email visibility
+// lands — see the PST-archive idea, still deferred), and Inactive ones are
+// worth trying too unless their email is actually dead. The real "don't
+// suggest this person" signal is the owner's own knowledge of who they're
+// already talking to manually — that's what the blockOutreachUntil action
+// on each draft card is for, not a status guess.
 function customerToEntity(c) {
-  if (!['Active', 'Prospect'].includes(c.crm_status)) return null
   const contact = primaryContact(c.contacts)
   const email = contact?.email?.trim().toLowerCase()
   if (!email) return null
@@ -76,7 +84,7 @@ function contactToEntity(c) {
     source: 'contact', id: c.id, name, email,
     crm_category: 'Marketing contact (trade lead, not yet a customer)', crm_status: 'Prospect',
     notes, erp_code: '',
-    lastOutreachAt: c.lastOutreachAt, blockOutreachUntil: null,
+    lastOutreachAt: c.lastOutreachAt, blockOutreachUntil: c.blockOutreachUntil,
   }
 }
 
@@ -392,6 +400,32 @@ export default function DailyDrafts() {
     }
   }
 
+  const BLOCK_DAYS = 90 // "I'm already talking to this person" pause — see customerToEntity's comment
+
+  // The real "don't suggest this person" signal isn't a CRM status, it's the
+  // owner's own knowledge of who they're already emailing manually — nothing
+  // in the app can detect that (no email visibility yet). This is that
+  // knowledge made actionable: pause them for BLOCK_DAYS and skip the
+  // current draft in the same action.
+  async function handleBlockOutreach(d) {
+    setBusyId(d.id); setError('')
+    try {
+      const until = new Date(Date.now() + BLOCK_DAYS * 86400000)
+      if (d.source === 'contact') {
+        await blockContactOutreach(d.customerId, until)
+      } else {
+        await updateDoc(doc(db, 'customers', d.customerId), { blockOutreachUntil: until })
+      }
+      const user = await authedUser()
+      await skipDraft(d.id, user?.uid, `Already in direct contact — paused ${BLOCK_DAYS} days`)
+      setDrafts(prev => prev.filter(x => x.id !== d.id))
+    } catch (e) {
+      setError(e.message || 'Could not pause this person.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   async function handleMarkReplied(d) {
     try {
       await markDraftReplied(d.id)
@@ -644,6 +678,11 @@ export default function DailyDrafts() {
                 </button>
                 <button onClick={() => handleSkip(d)} disabled={isBusy} className="btn-secondary shrink-0 inline-flex items-center gap-1.5">
                   <SkipForward size={14} /> Skip
+                </button>
+                <button onClick={() => handleBlockOutreach(d)} disabled={isBusy}
+                  title={`Already talking to them directly — don't suggest for ${BLOCK_DAYS} days`}
+                  className="btn-secondary shrink-0 inline-flex items-center gap-1.5">
+                  <BellOff size={14} /> Already in contact
                 </button>
                 <button onClick={() => setChatOpenId(isChatOpen ? null : d.id)}
                   className="text-xs text-gray-500 hover:text-brand-600 inline-flex items-center gap-1 ml-auto">
