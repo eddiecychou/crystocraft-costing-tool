@@ -1,11 +1,18 @@
 // Proxy from the browser to the Fly.io render service's swatch-registry
 // endpoints (/swatches, /swatches/image/{filename}) — see
 // Crystal_Fabric_Studio_Spec.md §5a/§5b. Those routes are gated on the Fly
-// side by HTTP Basic auth (ADMIN_PASSWORD, app.py's require_admin) built
-// for admin.html's photo-capture tool. This function holds the matching
-// password server-side (RENDER_ADMIN_PASSWORD) and sends it as the Basic
-// credential itself, so the browser never sees it — same reasoning as
-// erp.js keeping the Supabase service key server-side.
+// side by a signed `admin_session` cookie (ADMIN_PASSWORD, app.py's
+// require_admin/_session_valid) — HTTP Basic auth was removed there on
+// 2026-08-11 (browsers cache Basic credentials per-origin with no way to
+// clear a stale one; see app.py's module docstring). This function holds
+// the matching password server-side (RENDER_ADMIN_PASSWORD) and computes
+// that same signed cookie itself (renderSessionCookie, below — same
+// `<issued-at>.<hmac-sha256>` scheme as app.py's _session_token/
+// _session_valid) rather than sending the password, so the browser never
+// sees it — same reasoning as erp.js keeping the Supabase service key
+// server-side. V8.1, owner: swatch photos were 401ing for every caller
+// (mis-attributed at first to mobile token staleness) once the Fly side's
+// auth scheme changed out from under this still-Basic-auth proxy.
 //
 // Gated on the caller being a signed-in Firebase admin OR an approved
 // portal customer (Phase 2b, owner 2026-08-11: "grant every approved
@@ -29,6 +36,21 @@ const JWKS = createRemoteJWKSet(
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+
+// Mirrors app.py's _session_token()/_session_valid(): a `<unix-ts>.<hex
+// hmac-sha256 of the ts, keyed on ADMIN_PASSWORD>` cookie value. Computed
+// fresh per request rather than cached, so there's no separate expiry to
+// track here — app.py accepts anything under 30 days old.
+async function renderSessionCookie(adminPassword) {
+  const enc = new TextEncoder()
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(adminPassword), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  )
+  const payload = String(Math.floor(Date.now() / 1000))
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(payload))
+  const mac = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('')
+  return `${payload}.${mac}`
+}
 
 // Same self-read pattern erp.js's isAdmin() uses, widened to "canShop"
 // (admin, or an approved customer) — the client-side equivalent this app
@@ -67,7 +89,7 @@ export default async function handler(req) {
 
   const url = new URL(req.url)
   const action = url.searchParams.get('action')
-  const flyAuth = { Authorization: `Basic ${btoa(`admin:${adminPassword}`)}` }
+  const flyAuth = { Cookie: `admin_session=${await renderSessionCookie(adminPassword)}` }
 
   try {
     if (action === 'image') {
