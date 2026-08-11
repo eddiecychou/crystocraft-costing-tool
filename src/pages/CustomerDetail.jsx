@@ -316,9 +316,13 @@ export default function CustomerDetail() {
     setEmailSummaryBusy(true); setEmailSummaryError('')
     try {
       const result = await refreshEmailSummary(renderThreadsText(emailThreads))
-      await updateDoc(doc(db, 'customers', id), {
-        email_summary: { ...result, thread_count: emailThreads.length, generated_at: serverTimestamp() },
-      })
+      const email_summary = { ...result, thread_count: emailThreads.length, generated_at: serverTimestamp() }
+      await updateDoc(doc(db, 'customers', id), { email_summary })
+      // `customer` is a one-time fetch (see the load effect above), not a
+      // live listener like emailThreads — without this the card would keep
+      // showing "Not generated yet" until the page was reloaded, even
+      // though the write above just succeeded.
+      setCustomer(prev => (prev ? { ...prev, email_summary: { ...result, thread_count: emailThreads.length, generated_at: new Date() } } : prev))
     } catch (e) {
       setEmailSummaryError(e.message || 'Could not refresh the email summary.')
     } finally {
