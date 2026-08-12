@@ -6,7 +6,7 @@ import {
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import {
   Send, Loader2, SkipForward, Sparkles, Trash2, X, Link2, Upload,
-  MessageCircle, CheckCircle2, Eye, MousePointerClick, AlertTriangle, Bookmark, BellOff, Mail, FileText, Receipt,
+  MessageCircle, CheckCircle2, Eye, MousePointerClick, AlertTriangle, Bookmark, BellOff, Mail, FileText, Receipt, Smartphone,
 } from 'lucide-react'
 import { db, storage, authedUser } from '../firebase'
 import { loadCustomers, primaryContact } from '../domain/customer'
@@ -84,6 +84,17 @@ function customerToEntity(c) {
     // needed for a prompt.
     emailSummary: c.email_summary
       ? { summary: c.email_summary.summary, recent_activity: c.email_summary.recent_activity, open_commitments: c.email_summary.open_commitments }
+      : null,
+    // V8.2 WhatsApp ingestion — same shape/posture as emailSummary above,
+    // generated on-demand from CustomerDetail.jsx's WhatsApp card (see
+    // refresh-whatsapp-summary.js). Only present once an admin's generated
+    // one; marketing_contacts leads never reach this function at all
+    // (contactToEntity below is trade-only, and WhatsApp leads default to
+    // audience 'retail' — see domain/marketingContact.js's
+    // findOrCreateLeadByPhone), so this only ever needs wiring for
+    // customers.
+    whatsappSummary: c.whatsapp_summary
+      ? { summary: c.whatsapp_summary.summary, recent_activity: c.whatsapp_summary.recent_activity, open_commitments: c.whatsapp_summary.open_commitments }
       : null,
   }
 }
@@ -965,6 +976,11 @@ export default function DailyDrafts() {
                       {d.contextSources.includes('email') && (
                         <span className="inline-flex items-center gap-1 text-[11px] text-gray-500" title="This draft used the customer's ingested email history">
                           <Mail size={11} /> Email history
+                        </span>
+                      )}
+                      {d.contextSources.includes('whatsapp') && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-gray-500" title="This draft used the customer's imported WhatsApp history">
+                          <Smartphone size={11} /> WhatsApp history
                         </span>
                       )}
                       {d.contextSources.includes('notes') && (

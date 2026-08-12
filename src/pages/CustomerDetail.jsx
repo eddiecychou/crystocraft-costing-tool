@@ -19,6 +19,7 @@ import { erpLookup } from '../erpApi'
 import { mergeSalesInvoiceHistory } from '../domain/salesInvoiceHistory'
 import ErpDocModal from '../components/ErpDocModal'
 import { refreshEmailSummary, discussCustomerEmail, renderThreadsText, buildYearIndex, routeEmailQuestion, renderThreadsTextForYears, buildKeywordFacets, composeEmailAnswer } from '../emailSummaryApi'
+import { refreshWhatsappSummary, renderThreadsText as renderWhatsappThreadsText } from '../whatsappSummaryApi'
 
 const STATUS_STYLES = {
   draft: 'bg-gray-100 text-gray-600',
@@ -361,6 +362,29 @@ export default function CustomerDetail() {
       if (failed.length) setTranscribeError(`${failed.length} of ${results.length} voice note(s) could not be transcribed.`)
     } finally {
       setTranscribingKey(null)
+    }
+  }
+
+  // V8.2 — customers/{id}.whatsapp_summary, generated on demand (same
+  // "admin reviews/refreshes" posture as email_summary above). This is what
+  // makes WhatsApp correspondence usable by Daily Drafts
+  // (generate-outreach-drafts.js): that function reads this cached field
+  // exactly the way it already reads email_summary, rather than re-rendering
+  // raw threads for every candidate on every batch run — see
+  // customerToEntity in DailyDrafts.jsx.
+  const [whatsappSummaryBusy, setWhatsappSummaryBusy] = useState(false)
+  const [whatsappSummaryError, setWhatsappSummaryError] = useState('')
+  async function handleRefreshWhatsappSummary() {
+    setWhatsappSummaryBusy(true); setWhatsappSummaryError('')
+    try {
+      const result = await refreshWhatsappSummary(renderWhatsappThreadsText(whatsappThreads))
+      const whatsapp_summary = { ...result, thread_count: whatsappThreads.length, generated_at: serverTimestamp() }
+      await updateDoc(doc(db, 'customers', id), { whatsapp_summary })
+      setCustomer(prev => (prev ? { ...prev, whatsapp_summary: { ...result, thread_count: whatsappThreads.length, generated_at: new Date() } } : prev))
+    } catch (e) {
+      setWhatsappSummaryError(e.message || 'Could not refresh the WhatsApp summary.')
+    } finally {
+      setWhatsappSummaryBusy(false)
     }
   }
 
@@ -1028,9 +1052,11 @@ export default function CustomerDetail() {
 
       {/* WhatsApp threads (V8.2) — see customers/{id}/whatsapp_threads comment
           above. Hidden entirely when nothing's imported yet, same posture as
-          Email Summary. No AI summary yet — raw ingested view only, plus
-          Deepgram transcription for voice notes (owner's own account,
-          2026-08-12) so a voice-heavy chat isn't silently missing content. */}
+          Email Summary — including its own AI summary now, generated the
+          same way (Generate/Refresh below) and read by Daily Drafts via
+          customers/{id}.whatsapp_summary. Deepgram transcription for voice
+          notes (owner's own account, 2026-08-12) so a voice-heavy chat isn't
+          silently missing content from that summary. */}
       {whatsappThreads.length > 0 && (
         <div className="card mb-4">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -1040,6 +1066,42 @@ export default function CustomerDetail() {
                 ({whatsappThreads.length} chat{whatsappThreads.length === 1 ? '' : 's'} imported)
               </span>
             </h2>
+            <button onClick={handleRefreshWhatsappSummary} disabled={whatsappSummaryBusy}
+              className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1.5">
+              {whatsappSummaryBusy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+              {customer?.whatsapp_summary ? 'Refresh' : 'Generate'}
+            </button>
+          </div>
+          <div className="px-5 py-4 space-y-3 border-b border-gray-100">
+            {whatsappSummaryError && (
+              <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 flex items-start gap-1.5">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {whatsappSummaryError}
+              </div>
+            )}
+            {!customer?.whatsapp_summary ? (
+              <p className="text-sm text-gray-400">Not generated yet — click {whatsappSummaryBusy ? '…' : 'Generate'} to have DeepSeek read the imported chats.</p>
+            ) : (
+              <>
+                <p className="text-sm text-gray-700">{customer.whatsapp_summary.summary}</p>
+                {customer.whatsapp_summary.recent_activity && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Recent activity</h4>
+                    <p className="text-sm text-gray-600">{customer.whatsapp_summary.recent_activity}</p>
+                  </div>
+                )}
+                {customer.whatsapp_summary.open_commitments?.length > 0 && (
+                  <div>
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Open commitments</h4>
+                    <ul className="text-sm text-gray-600 list-disc list-inside space-y-0.5">
+                      {customer.whatsapp_summary.open_commitments.map((c, i) => <li key={i}>{c}</li>)}
+                    </ul>
+                  </div>
+                )}
+                <p className="text-[11px] text-gray-400">
+                  Generated over {customer.whatsapp_summary.thread_count ?? whatsappThreads.length} chat{(customer.whatsapp_summary.thread_count ?? whatsappThreads.length) === 1 ? '' : 's'} — a draft, not verified. Refresh after new chats come in. Used by Daily Drafts.
+                </p>
+              </>
+            )}
           </div>
           {transcribeError && (
             <p className="px-5 pt-3 text-xs text-red-600">{transcribeError}</p>

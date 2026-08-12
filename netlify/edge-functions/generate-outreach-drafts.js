@@ -23,7 +23,8 @@
 // POST { master: { subject, body }, topicLabel: string,
 //        candidates: [{ id, name, email, crm_category, crm_status, notes,
 //                        erp_code, country, source?, previouslyContactedAt?,
-//                        emailSummary?: { summary, recent_activity, open_commitments } }],
+//                        emailSummary?: { summary, recent_activity, open_commitments },
+//                        whatsappSummary?: { summary, recent_activity, open_commitments } }],
 //        historicalHints?: string, targetingNote?: string }
 //   emailSummary — V8.1 email ingestion's DeepSeek-generated read of the
 //     customer's actual email history (customers/{id}.email_summary,
@@ -33,6 +34,12 @@
 //     (email ingestion matches customers.contacts[], not contacts).
 //     Genuine correspondence, so it outranks the CRM `notes` free-text
 //     field where the two disagree — see buildCustomerContext().
+//   whatsappSummary — V8.2 WhatsApp ingestion's own equivalent
+//     (customers/{id}.whatsapp_summary, see refresh-whatsapp-summary.js).
+//     Same posture as emailSummary — real correspondence, outranks notes —
+//     and same customer-only scope (WhatsApp leads saved under
+//     marketing_contacts never reach this function; see
+//     DailyDrafts.jsx's customerToEntity comment).
 //   -> { drafts: [{ customerId, customerEmail, customerName, customerContext,
 //                    fitScore, fitReason, draftSubject, draftBody, source }] }
 //
@@ -127,6 +134,10 @@ function fitScorePrompt(topicLabel, candidate, historicalHints, targetingNote) {
       (candidate.emailSummary?.summary
         ? `\nActual email history: ${candidate.emailSummary.summary.slice(0, 400)}` +
           (candidate.emailSummary.recent_activity ? ` Recent activity: ${candidate.emailSummary.recent_activity.slice(0, 300)}` : '')
+        : '') +
+      (candidate.whatsappSummary?.summary
+        ? `\nActual WhatsApp history: ${candidate.whatsappSummary.summary.slice(0, 400)}` +
+          (candidate.whatsappSummary.recent_activity ? ` Recent activity: ${candidate.whatsappSummary.recent_activity.slice(0, 300)}` : '')
         : ''),
   }
 }
@@ -196,6 +207,15 @@ function buildCustomerContext(candidate, invoices) {
       parts.push(`Open commitments from email: ${candidate.emailSummary.open_commitments.slice(0, 5).join('; ')}`)
     }
   }
+  if (candidate.whatsappSummary?.summary) {
+    parts.push(`Actual WhatsApp history: ${candidate.whatsappSummary.summary.slice(0, 600)}`)
+    if (candidate.whatsappSummary.recent_activity) {
+      parts.push(`Most recent WhatsApp activity: ${candidate.whatsappSummary.recent_activity.slice(0, 400)}`)
+    }
+    if (candidate.whatsappSummary.open_commitments?.length) {
+      parts.push(`Open commitments from WhatsApp: ${candidate.whatsappSummary.open_commitments.slice(0, 5).join('; ')}`)
+    }
+  }
   if (candidate.notes) parts.push(`CRM notes: ${candidate.notes.slice(0, 800)}`)
   if (invoices.length) {
     const lines = invoices.map(i => `- ${i.code} on ${i.order_date || '?'}: ${i.total ?? '?'}`).join('\n')
@@ -213,6 +233,7 @@ function buildCustomerContext(candidate, invoices) {
 function contextSources(candidate, invoices) {
   const sources = []
   if (candidate.emailSummary?.summary) sources.push('email')
+  if (candidate.whatsappSummary?.summary) sources.push('whatsapp')
   if (candidate.notes) sources.push('notes')
   if (invoices.length) sources.push('invoices')
   return sources
