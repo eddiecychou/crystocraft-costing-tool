@@ -1112,18 +1112,29 @@ export default function DailyDrafts() {
                     </div>
                   )}
                   <div className="flex gap-2">
-                    {/* data-gramm/data-lpignore/data-1p-ignore: this input kept getting a
-                        browser-extension icon (Grammarly/password-manager) rendered on top of
-                        typed text, mid-line — these are the standard attributes to opt an
-                        input out of that injected UI. */}
+                    {/* This input kept getting a browser-extension icon rendered ON TOP of
+                        typed text, mid-line — first seen with Grammarly/1Password (their
+                        data-gramm / data-lpignore / data-1p-ignore attributes below), still
+                        happening 2026-08-13 with a different extension's "···" overlay.
+                        These per-extension opt-out attributes aren't 100% reliable (some
+                        extensions attach via a MutationObserver that races a freshly-mounted
+                        input like this one — only rendered at all once isChatOpen is true —
+                        rather than respecting the attribute at mount), so this is now a
+                        broader set covering the other common offenders (Dashlane, Bitwarden,
+                        Microsoft Editor) rather than trusting any single one to be enough.
+                        If a specific extension keeps winning the race regardless, the actual
+                        fix is disabling it for this site — not something the app can force. */}
                     <input value={chatInput[d.id] || ''}
                       onChange={e => setChatInput(prev => ({ ...prev, [d.id]: e.target.value }))}
                       onKeyDown={e => e.key === 'Enter' && !isChatBusy && handleChatSend(d)}
                       placeholder="e.g. they prefer WhatsApp, not email — mention that instead"
                       className="input w-full text-sm" autoFocus
                       autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck="false"
+                      name="daily-drafts-chat-input"
                       data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"
-                      data-lpignore="true" data-1p-ignore="true" />
+                      data-lpignore="true" data-1p-ignore="true"
+                      data-dashlane-ignore="true" data-bwignore="true" data-form-type="other"
+                      data-ms-editor="false" />
                     <button type="button" onClick={() => handleChatSend(d)} disabled={isChatBusy} className="btn-secondary shrink-0">
                       {isChatBusy ? <Loader2 size={14} className="animate-spin" /> : 'Send'}
                     </button>
