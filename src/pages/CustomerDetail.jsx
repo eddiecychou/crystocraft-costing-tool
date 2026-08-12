@@ -13,7 +13,7 @@ import CustomerBrandGallery from '../components/CustomerBrandGallery'
 import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt, ChevronDown, ChevronUp, Database, Mail, MessageCircle, Loader2, RefreshCw } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
-import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers, CHANNELS, NO_API_CHANNELS } from '../domain/customer'
+import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers, CHANNELS, NO_API_CHANNELS, effectiveSalesType } from '../domain/customer'
 import { erpLookup } from '../erpApi'
 import { mergeSalesInvoiceHistory } from '../domain/salesInvoiceHistory'
 import ErpDocModal from '../components/ErpDocModal'
@@ -632,6 +632,14 @@ export default function CustomerDetail() {
               <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">{customer.crm_category}</span>
             } />
           )}
+          <Row label="Sales Type" value={
+            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+              effectiveSalesType(customer) === 'Retail' ? 'bg-pink-100 text-pink-700' : 'bg-indigo-100 text-indigo-700'
+            }`}>
+              {effectiveSalesType(customer)}
+              {!customer.sales_type && <span className="ml-1 opacity-70">(from Source)</span>}
+            </span>
+          } />
           {(() => {
             const chs = customer.channels?.length ? customer.channels : customer.primary_channel ? [customer.primary_channel] : []
             return chs.length > 0 ? (

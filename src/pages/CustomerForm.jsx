@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Store, ShoppingCart, Gift, Sparkles, Check, Star, AlertCircle, AlertTriangle, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
-import { saveCustomer, contactsOf, CRM_STATUSES, CRM_CATEGORIES, CHANNELS, NO_API_CHANNELS, CUSTOMER_SOURCES, CUSTOMER_COUNTRIES, TAG_GROUPS } from '../domain/customer'
+import { saveCustomer, contactsOf, CRM_STATUSES, CRM_CATEGORIES, CHANNELS, NO_API_CHANNELS, CUSTOMER_SOURCES, CUSTOMER_COUNTRIES, TAG_GROUPS, SALES_TYPES, suggestSalesType } from '../domain/customer'
 
 const blankContact = (isPrimary = false) => ({
   id: null, name: '', title: '', email: '', phone: '', whatsapp: '', wechat: '', address: '', is_primary: isPrimary,
@@ -119,6 +119,12 @@ export default function CustomerForm() {
     crm_status: 'Prospect',
   })
   const [channels, setChannels] = useState([])
+  // Retail vs Wholesale — defaults from Source ("Website" -> Retail, else
+  // Wholesale) until the admin explicitly picks one, at which point it stops
+  // following Source (salesTypeTouched). An already-saved customer's own
+  // value always wins over the suggestion — see the load effect below.
+  const [salesType, setSalesType] = useState('')
+  const [salesTypeTouched, setSalesTypeTouched] = useState(false)
   const [contacts, setContacts] = useState([blankContact(true)])
   const [tags, setTags]               = useState([])
   const [tagInput, setTagInput]       = useState('')
@@ -156,6 +162,8 @@ export default function CustomerForm() {
         const existingContacts = contactsOf(d)
         setContacts(existingContacts.length ? existingContacts : [blankContact(true)])
         setTags(d.tags || [])
+        setSalesType(d.sales_type || suggestSalesType(d.source || ''))
+        setSalesTypeTouched(true) // an existing customer's Source shouldn't silently re-suggest on load
         setIsPersonalWa(d.is_personal_wa || false)
         setIsVip(d.is_vip || false)
         setIsSensitive(d.sensitive || false)
@@ -165,6 +173,13 @@ export default function CustomerForm() {
   }, [id, isEdit])
 
   function set(field) { return e => setForm(f => ({ ...f, [field]: e.target.value })) }
+
+  // New customer only — live-follow Source until the admin overrides it by
+  // clicking a Sales Type pill directly (setSalesTypeTouched below).
+  useEffect(() => {
+    if (isEdit || salesTypeTouched) return
+    setSalesType(suggestSalesType(form.source))
+  }, [form.source, isEdit, salesTypeTouched])
 
   function toggleChannel(ch) {
     setChannels(prev => {
@@ -198,6 +213,7 @@ export default function CustomerForm() {
         ...form,
         tags,
         channels,
+        sales_type: salesType || suggestSalesType(form.source),
         is_personal_wa: isPersonalWa,
         is_vip: isVip,
         sensitive: isSensitive,
@@ -375,6 +391,31 @@ export default function CustomerForm() {
                   }`}
                 >
                   {(() => { const I = CATEGORY_ICON[cat]; return I ? <I size={14} className="inline align-[-2px] mr-1" /> : null })()}{cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="label">Sales Type</label>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {!salesTypeTouched && !isEdit
+                ? 'Auto-set from Source below — click to override.'
+                : 'Whether this customer buys at retail or trade/wholesale pricing.'}
+            </p>
+            <div className="flex gap-2 mt-1">
+              {SALES_TYPES.map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => { setSalesType(t); setSalesTypeTouched(true) }}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
+                    salesType === t
+                      ? 'bg-brand-600 text-white border-brand-600'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400'
+                  }`}
+                >
+                  {salesType === t && <Check size={13} className="inline align-[-2px] mr-1" />}{t}
                 </button>
               ))}
             </div>
