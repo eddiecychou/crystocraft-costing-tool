@@ -3,18 +3,13 @@ import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import { Store, ShoppingCart, Gift, Sparkles, Building2, Star, Smartphone } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
-import { useCustomers, CUSTOMER_COUNTRIES, CHANNELS, SALES_TYPES, effectiveSalesType } from '../domain/customer'
+import { useCustomers, CUSTOMER_COUNTRIES, CHANNELS, RETAIL_TAG } from '../domain/customer'
 
 const CRM_STATUS_STYLES = {
   Active:   'bg-green-100 text-green-700',
   Prospect: 'bg-blue-100 text-blue-700',
   Dormant:  'bg-amber-100 text-amber-700',
   Inactive: 'bg-gray-100 text-gray-500',
-}
-
-const SALES_TYPE_STYLES = {
-  Retail:    'bg-pink-100 text-pink-700',
-  Wholesale: 'bg-indigo-100 text-indigo-700',
 }
 
 const CATEGORY_TABS = [
@@ -25,8 +20,6 @@ const CATEGORY_TABS = [
   { key: 'Crystal Fabric',label: 'Crystal Fabric',Icon: Sparkles },
 ]
 
-const SALES_TYPE_TABS = [{ key: '', label: 'All' }, ...SALES_TYPES.map(t => ({ key: t, label: t }))]
-
 export default function Customers() {
   const { customers, loading }          = useCustomers()
   const [search, setSearch]             = useState('')
@@ -34,7 +27,7 @@ export default function Customers() {
   const [filterChannel, setFilterChannel]   = useState('')
   const [filterStatus, setFilterStatus]     = useState('')
   const [filterCategory, setFilterCategory] = useState('')
-  const [filterSalesType, setFilterSalesType] = useState('')
+  const [retailOnly, setRetailOnly]         = useState(false)
   const remember = useScrollMemory('customers', !loading)
 
   const filtered = customers.filter(c => {
@@ -48,8 +41,8 @@ export default function Customers() {
     const matchChannel   = !filterChannel   || c.channels?.includes(filterChannel) || c.primary_channel === filterChannel
     const matchStatus    = !filterStatus    || c.crm_status === filterStatus
     const matchCategory  = !filterCategory  || c.crm_category === filterCategory
-    const matchSalesType = !filterSalesType || effectiveSalesType(c) === filterSalesType
-    return matchSearch && matchCountry && matchChannel && matchStatus && matchCategory && matchSalesType
+    const matchRetail    = !retailOnly      || c.tags?.includes(RETAIL_TAG)
+    return matchSearch && matchCountry && matchChannel && matchStatus && matchCategory && matchRetail
   })
 
   return (
@@ -87,28 +80,22 @@ export default function Customers() {
         })}
       </div>
 
-      {/* Sales Type tabs — Retail vs Wholesale, orthogonal to Customer Type
-          above (a Small B2B customer can be either). Unset customers fall
-          back to a Source-derived guess (effectiveSalesType), so every
-          customer counts toward one tab or the other even before anyone's
-          gone through and set it explicitly. */}
-      <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1">
-        {SALES_TYPE_TABS.map(tab => {
-          const count = tab.key ? customers.filter(c => effectiveSalesType(c) === tab.key).length : customers.length
-          return (
-            <button
-              key={tab.key || 'all-sales-type'}
-              onClick={() => setFilterSalesType(tab.key)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap ${
-                filterSalesType === tab.key
-                  ? 'bg-gray-800 text-white border-gray-800'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              {tab.label} <span className={`ml-1 ${filterSalesType === tab.key ? 'text-white/70' : 'text-gray-400'}`}>{count}</span>
-            </button>
-          )
-        })}
+      {/* Retail toggle — most customers here are trade/wholesale by default
+          and stay unlabeled; this just isolates the tagged minority (see
+          RETAIL_TAG in domain/customer.js). Independent of Customer Type. */}
+      <div className="flex items-center gap-2 mb-4">
+        <button
+          onClick={() => setRetailOnly(v => !v)}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap ${
+            retailOnly
+              ? 'bg-pink-600 text-white border-pink-600'
+              : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+          }`}
+        >
+          {RETAIL_TAG} only <span className={retailOnly ? 'text-white/70' : 'text-gray-400'}>
+            {customers.filter(c => c.tags?.includes(RETAIL_TAG)).length}
+          </span>
+        </button>
       </div>
 
       {/* Filters */}
@@ -161,13 +148,18 @@ export default function Customers() {
                       {c.crm_status}
                     </span>
                   )}
-                  <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${SALES_TYPE_STYLES[effectiveSalesType(c)]}`}>
-                    {effectiveSalesType(c)}
-                  </span>
-                  {c.tags?.slice(0, 3).map(tag => (
-                    <span key={tag} className="px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-600 text-xs">{tag}</span>
-                  ))}
-                  {c.tags?.length > 3 && <span className="text-xs text-gray-400">+{c.tags.length - 3}</span>}
+                  {c.tags?.includes(RETAIL_TAG) && (
+                    <span className="px-1.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 text-pink-700">{RETAIL_TAG}</span>
+                  )}
+                  {(() => {
+                    const otherTags = (c.tags || []).filter(t => t !== RETAIL_TAG)
+                    return <>
+                      {otherTags.slice(0, 3).map(tag => (
+                        <span key={tag} className="px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-600 text-xs">{tag}</span>
+                      ))}
+                      {otherTags.length > 3 && <span className="text-xs text-gray-400">+{otherTags.length - 3}</span>}
+                    </>
+                  })()}
                 </div>
               </div>
               <span className="text-xs text-gray-400 ml-3 shrink-0">→</span>

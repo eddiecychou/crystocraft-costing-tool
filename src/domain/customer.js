@@ -34,18 +34,21 @@ export const CHANNELS       = ['Email', 'WhatsApp Business', 'Alibaba', 'Persona
 export const NO_API_CHANNELS = ['WhatsApp Business', 'Personal WhatsApp', 'WeChat']
 export const CUSTOMER_SOURCES = ['Alibaba', 'Website', 'Email Marketing', 'Referral', 'Trade Show', 'BNI', 'Direct']
 
-// Retail vs Wholesale (V8.2, owner request) — a second, independent axis from
-// crm_category (Distributor/Small B2B/Gift-OEM/Crystal Fabric describes WHAT
-// kind of buyer; this describes whether they buy at retail or trade pricing).
-// A customer whose Source is "Website" (the public online shop) is reliably
-// a retail buyer — everything else defaults to Wholesale. This is only a
-// DEFAULT: CustomerForm lets it be overridden per customer, and the override
-// (once saved) always wins. See effectiveSalesType() below — nothing writes
-// this default in bulk onto existing customers; it's computed on read so
-// every customer has a sensible value immediately, without a migration.
-export const SALES_TYPES = ['Retail', 'Wholesale']
-export const suggestSalesType = source => source === 'Website' ? 'Retail' : 'Wholesale'
-export const effectiveSalesType = c => c?.sales_type || suggestSalesType(c?.source)
+// Retail flag (V8.2, owner request) — NOT a Retail/Wholesale pair. Most
+// customers here are trade/wholesale by default and stay unlabeled; only
+// the minority who buy at retail/individual pricing get tagged. Real
+// sources of a retail customer, per the owner (2026-08-12): promoted from
+// Marketing Contacts or the public online shop (www.crystocraft.com,
+// WooCommerce — not yet synced to this app, see PROJECT-PLAN.md's "Where
+// V8.2 starts"), OR an existing trade-bucket customer (e.g. shared ERP code
+// C13) who ALSO buys cash/retail sometimes, invoiced through the portal by
+// FPS/PayPal instead of going through the website — so this has to stay a
+// plain manual tag, not something inferred once and locked in.
+// "Retail Customer" (not "Retail" — TAG_GROUPS' own Industry list already
+// uses "Retail" for a customer whose own business is IN the retail
+// industry, a completely different meaning; reusing that string would
+// collide two unrelated facts onto one tag).
+export const RETAIL_TAG = 'Retail Customer'
 
 // Tag picklist — single source (previously duplicated only in CustomerForm.jsx).
 // Anything a customer is tagged with outside these groups is a free-typed
@@ -57,7 +60,7 @@ export const TAG_GROUPS = [
   },
   {
     label: 'Client Type',
-    tags: ['VIP', 'Agency', 'Event Organiser', 'OEM / White Label', 'Referral', 'BNI'],
+    tags: ['VIP', 'Agency', 'Event Organiser', 'OEM / White Label', 'Referral', 'BNI', RETAIL_TAG],
   },
   {
     label: 'Order Profile',
@@ -203,7 +206,6 @@ export function normalizeCustomer(raw) {
     crm_status:        str(r.crm_status),
     channels:          channelsOf(r),
     source:            str(r.source),
-    sales_type:        str(r.sales_type),
     segment:           str(r.segment),
     erp_code:          str(r.erp_code),
     // Computed + persisted at save time (saveCustomer) — see
@@ -284,7 +286,6 @@ function toCustomerDoc(input) {
     notes:         str(i.notes),
     crm_category:  str(i.crm_category),
     source:        str(i.source),
-    sales_type:    str(i.sales_type),
     crm_status:    str(i.crm_status),
     tags:          cleanArray(i.tags),
     channels,
@@ -383,7 +384,7 @@ export async function getCustomer(id) {
 // these lists. contacts[] itself is merged by mergeContactLists() below.
 const MERGE_SCALAR_FIELDS = [
   'website', 'address', 'country',
-  'crm_category', 'crm_status', 'source', 'sales_type', 'segment', 'erp_code', 'notes', 'folder_path',
+  'crm_category', 'crm_status', 'source', 'segment', 'erp_code', 'notes', 'folder_path',
 ]
 const MERGE_ARRAY_FIELDS = ['tags', 'channels']
 const MERGE_BOOL_FIELDS = ['is_vip', 'is_personal_wa', 'sensitive']

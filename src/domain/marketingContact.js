@@ -4,7 +4,7 @@ import {
   writeBatch, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../firebase'
-import { saveCustomer } from './customer'
+import { saveCustomer, RETAIL_TAG } from './customer'
 
 // Marketing contacts — the cleaned Mailchimp list, kept DELIBERATELY SEPARATE
 // from the `customers` collection. Some people are in both; they are not merged.
@@ -259,13 +259,19 @@ export async function promoteContactsToCustomers(rows) {
   for (const c of rows) {
     if (c.possible_customer_match) { skipped.push(c.id); continue }
     const company = str(c.company) || displayName(c)
+    // A contact whose audience includes "retail" or "website" came in through
+    // the public online shop (www.crystocraft.com, WooCommerce) or is
+    // otherwise a known retail/individual buyer — owner, 2026-08-12: those
+    // are reliably retail, tagged here rather than left to be set by hand.
+    const isRetail = c.audiences.includes('retail') || c.audiences.includes('website')
+    const tags = isRetail && !c.tags.includes(RETAIL_TAG) ? [...c.tags, RETAIL_TAG] : c.tags
     const res = await saveCustomer(null, {
       company_name: company,
       contact_name: [c.first_name, c.last_name].filter(Boolean).join(' '),
       contact_emails: [c.email],
       contact_phones: c.phone ? [c.phone] : [],
       country: c.country,
-      tags: c.tags,
+      tags,
       crm_status: 'Prospect',
       source: c.tags.includes('alibaba') ? 'Alibaba' : (c.audiences.includes('website') ? 'Website' : ''),
       notes: 'Added from Marketing Contacts (Mailchimp import).',

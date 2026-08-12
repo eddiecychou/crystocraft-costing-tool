@@ -4,7 +4,7 @@ import { db } from '../firebase'
 import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
-import { normalizeCustomer, SALES_TYPES, effectiveSalesType } from '../domain/customer'
+import { normalizeCustomer, RETAIL_TAG } from '../domain/customer'
 import { orderStatusOf, orderUc } from '../shipping'
 
 // Orders in these statuses are "in production" — committed and being made, but
@@ -76,7 +76,7 @@ export default function Dashboard() {
   const [dismissing, setDismissing]     = useState(null)
   const [activeFilter, setActiveFilter]     = useState(null) // 'overdue' | 'open' | 'quotes' | 'won'
   const [categoryFilter, setCategoryFilter] = useState(null) // customer category pill
-  const [salesTypeFilter, setSalesTypeFilter] = useState(null) // Retail/Wholesale pill — independent axis from category
+  const [retailFilter, setRetailFilter] = useState(false) // Retail-tagged-only toggle — independent of category
 
   function refresh() { setRefreshKey(k => k + 1); setRefreshing(true) }
 
@@ -164,13 +164,13 @@ export default function Dashboard() {
     )
   }
 
-  // Apply category + sales-type filters to any enquiry list (both independent
-  // axes, AND'd together — e.g. "Small B2B" + "Retail" at once).
+  // Apply category + Retail-tag filters to any enquiry list (both independent
+  // axes, AND'd together — e.g. "Small B2B" + Retail-only at once).
   function byCat(list) {
     return list.filter(e => {
       const c = customerMap[e.customerId]
       return (!categoryFilter || c?.crm_category === categoryFilter) &&
-             (!salesTypeFilter || effectiveSalesType(c) === salesTypeFilter)
+             (!retailFilter || c?.tags?.includes(RETAIL_TAG))
     })
   }
 
@@ -179,7 +179,7 @@ export default function Dashboard() {
     return list.filter(o => {
       const c = customerMap[o.customer_id]
       return (!categoryFilter || c?.crm_category === categoryFilter) &&
-             (!salesTypeFilter || effectiveSalesType(c) === salesTypeFilter)
+             (!retailFilter || c?.tags?.includes(RETAIL_TAG))
     })
   }
 
@@ -332,33 +332,22 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Sales Type filter pills — Retail vs Wholesale, independent of the
-          Customer Type row above (both can be active at once). Unset
-          customers fall back to a Source-derived guess via effectiveSalesType. */}
+      {/* Retail toggle — most customers are trade/wholesale by default and
+          stay unlabeled; this isolates the tagged minority. Independent of
+          the Customer Type row above (both can be active at once). */}
       <div className="flex flex-wrap gap-2 mb-4">
-        {SALES_TYPES.map(value => (
-          <button
-            key={value}
-            onClick={() => setSalesTypeFilter(f => f === value ? null : value)}
-            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-              salesTypeFilter === value
-                ? 'bg-brand-600 border-brand-600 text-white'
-                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
-            }`}
-          >
-            {value} <span className={salesTypeFilter === value ? 'text-white/70' : 'text-gray-400'}>
-              {customers.filter(c => effectiveSalesType(c) === value).length}
-            </span>
-          </button>
-        ))}
-        {salesTypeFilter && (
-          <button
-            onClick={() => setSalesTypeFilter(null)}
-            className="px-3 py-1 rounded-full text-xs font-medium border border-dashed border-gray-300 text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            Clear filter
-          </button>
-        )}
+        <button
+          onClick={() => setRetailFilter(v => !v)}
+          className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+            retailFilter
+              ? 'bg-pink-600 border-pink-600 text-white'
+              : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
+          }`}
+        >
+          {RETAIL_TAG} only <span className={retailFilter ? 'text-white/70' : 'text-gray-400'}>
+            {customers.filter(c => c.tags?.includes(RETAIL_TAG)).length}
+          </span>
+        </button>
       </div>
 
       {/* Filtered panel — shown when a stat card is active */}
@@ -368,9 +357,9 @@ export default function Dashboard() {
             <h2 className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
               {(() => { const I = filterConfig[activeFilter].Icon; return I ? <I size={15} /> : null })()}
               {filterConfig[activeFilter].title}
-              {(categoryFilter || salesTypeFilter) && (
+              {(categoryFilter || retailFilter) && (
                 <span className="ml-2 text-xs font-normal text-gray-400">
-                  · {[categoryFilter, salesTypeFilter].filter(Boolean).join(' · ')}
+                  · {[categoryFilter, retailFilter ? RETAIL_TAG : null].filter(Boolean).join(' · ')}
                 </span>
               )}
             </h2>
@@ -497,8 +486,8 @@ export default function Dashboard() {
           </div>
           {priorityFollowUps.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">
-              {(categoryFilter || salesTypeFilter)
-                ? `No follow-ups for ${[categoryFilter, salesTypeFilter].filter(Boolean).join(' · ')} in the next 7 days`
+              {(categoryFilter || retailFilter)
+                ? `No follow-ups for ${[categoryFilter, retailFilter ? RETAIL_TAG : null].filter(Boolean).join(' · ')} in the next 7 days`
                 : 'No follow-ups due in the next 7 days'}
             </p>
           ) : (
