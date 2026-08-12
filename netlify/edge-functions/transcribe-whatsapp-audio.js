@@ -30,15 +30,18 @@ async function isAdmin(uid, idToken, projectId) {
   return doc?.fields?.role?.stringValue === 'admin'
 }
 
-// detect_language rather than a fixed one: the real chats seen so far mix
-// Cantonese and English in the same conversation (sometimes the same
-// message), and voice notes are likely the same mix — nova-2 handles this
-// far better than forcing a single language. Revisit if transcripts come
-// back consistently wrong for a language nova-2's auto-detect doesn't cover
-// well (Cantonese specifically is a known weaker spot for most ASR models
-// generally, not something this can fix at the request level).
+// Explicit language=zh-HK (Cantonese Traditional), not detect_language —
+// the first real transcription attempt (owner, 2026-08-12) came back
+// "no speech detected" on a real Cantonese voice note using nova-2 +
+// detect_language=true. Confirmed against Deepgram's own docs: Cantonese
+// auto-detection isn't reliably covered, and nova-2 has weaker Cantonese
+// support than nova-3, which added it properly. Since the owner's audio is
+// mostly Cantonese, forcing the known-good explicit path beats gambling on
+// auto-detect. Deepgram's Cantonese model still handles short embedded
+// English phrases reasonably (real chats mix the two), so this isn't a
+// pure regression for the English-heavy messages.
 const DEEPGRAM_URL =
-  'https://api.deepgram.com/v1/listen?model=nova-2&detect_language=true&smart_format=true&punctuate=true'
+  'https://api.deepgram.com/v1/listen?model=nova-3&language=zh-HK&smart_format=true&punctuate=true'
 
 async function callDeepgram(apiKey, audioUrl) {
   let reason = 'unknown'
