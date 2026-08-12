@@ -33,6 +33,7 @@ import QuoteForm from './pages/QuoteForm'
 import QuoteDetail from './pages/QuoteDetail'
 import Customers from './pages/Customers'
 import CustomerForm from './pages/CustomerForm'
+import TagManager from './pages/TagManager'
 import CustomerDetail from './pages/CustomerDetail'
 import Settings from './pages/Settings'
 import SchemaAudit from './pages/SchemaAudit'
@@ -179,6 +180,7 @@ function AdminApp({ user }) {
                 <Route path="/quotes/:id" element={<QuoteDetail />} />
                 <Route path="/customers" element={<Customers />} />
                 <Route path="/customers/new" element={<CustomerForm />} />
+                <Route path="/customers/tags" element={<TagManager />} />
                 <Route path="/customers/:id" element={<CustomerDetail />} />
                 <Route path="/customers/:id/edit" element={<CustomerForm />} />
                 <Route path="/catalogue-band" element={<CatalogueBand />} />

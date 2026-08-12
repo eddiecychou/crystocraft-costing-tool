@@ -52,7 +52,10 @@ export default function Customers() {
           <h1 className="text-xl md:text-2xl font-bold text-gray-900">Customers</h1>
           <p className="text-sm text-gray-500 mt-0.5">{customers.length} clients</p>
         </div>
-        <Link to="/customers/new" className="btn-primary text-sm">+ New</Link>
+        <div className="flex items-center gap-2">
+          <Link to="/customers/tags" className="btn-secondary text-sm">Manage Tags</Link>
+          <Link to="/customers/new" className="btn-primary text-sm">+ New</Link>
+        </div>
       </div>
 
       {/* Category tabs */}

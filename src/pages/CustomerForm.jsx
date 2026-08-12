@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Store, ShoppingCart, Gift, Sparkles, Check, Star, AlertCircle, AlertTriangle, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
-import { saveCustomer, contactsOf, CRM_STATUSES, CRM_CATEGORIES, CHANNELS, CUSTOMER_SOURCES, CUSTOMER_COUNTRIES } from '../domain/customer'
+import { saveCustomer, contactsOf, CRM_STATUSES, CRM_CATEGORIES, CHANNELS, NO_API_CHANNELS, CUSTOMER_SOURCES, CUSTOMER_COUNTRIES, TAG_GROUPS } from '../domain/customer'
 
 const blankContact = (isPrimary = false) => ({
   id: null, name: '', title: '', email: '', phone: '', whatsapp: '', wechat: '', address: '', is_primary: isPrimary,
@@ -97,25 +97,8 @@ function ContactsEditor({ contacts, onChange }) {
 // are the canonical lists imported from the domain module so the form and the
 // validator never drift.
 const CATEGORY_ICON  = { 'Distributor': Store, 'Small B2B': ShoppingCart, 'Gift / OEM': Gift, 'Crystal Fabric': Sparkles }
-
-const TAG_GROUPS = [
-  {
-    label: 'Industry',
-    tags: ['Banking & Finance', 'Insurance', 'Property & Real Estate', 'Retail', 'Hospitality & Hotel', 'F&B', 'Healthcare', 'Education', 'Government & Public Sector', 'NGO & Charity', 'Technology', 'Legal & Professional', 'Media & Entertainment', 'Luxury & Jewellery', 'Theme Park & Attractions'],
-  },
-  {
-    label: 'Client Type',
-    tags: ['VIP', 'Agency', 'Event Organiser', 'OEM / White Label', 'Referral', 'BNI'],
-  },
-  {
-    label: 'Order Profile',
-    tags: ['High Volume', 'Repeat Buyer', 'Sample Only', 'Custom Design', 'Urgent'],
-  },
-  {
-    label: 'Geography',
-    tags: ['Local HK', 'Asia Pacific', 'Europe', 'Middle East', 'Australia / NZ'],
-  },
-]
+// TAG_GROUPS now imported from ../domain/customer (single source — was
+// duplicated here before, drifting from what TagManager.jsx sees).
 
 export default function CustomerForm() {
   const { id } = useParams()
@@ -399,9 +382,13 @@ export default function CustomerForm() {
 
           <div>
             <label className="label">Channels <span className="text-gray-400 font-normal">(select all that apply)</span></label>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Channels marked <span className="text-gray-500">manual</span> have no API integration — the app can't see messages on them; interactions are logged by hand.
+            </p>
             <div className="flex flex-wrap gap-2 mt-1">
               {CHANNELS.map(ch => {
                 const selected = channels.includes(ch)
+                const manual = NO_API_CHANNELS.includes(ch)
                 return (
                   <button
                     key={ch}
@@ -414,6 +401,7 @@ export default function CustomerForm() {
                     }`}
                   >
                     {selected && <Check size={13} className="inline align-[-2px] mr-1" />}{ch}
+                    {manual && <span className={`ml-1 ${selected ? 'text-brand-100' : 'text-gray-400'}`}>· manual</span>}
                   </button>
                 )
               })}

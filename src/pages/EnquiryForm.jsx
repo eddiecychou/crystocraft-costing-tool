@@ -5,8 +5,8 @@ import { db, storage } from '../firebase'
 import { Check, FileText, Image as ImageIcon, X, Paperclip } from 'lucide-react'
 import { loadBlogProducts } from '../productSource'
 import ContactPicker from '../components/ContactPicker'
+import { CHANNELS, NO_API_CHANNELS } from '../domain/customer'
 
-const CHANNELS  = ['Email', 'WhatsApp', 'Alibaba', 'Personal WhatsApp']
 const STATUSES  = ['Open', 'Quoted', 'Confirmed', 'Lost', 'On Hold']
 
 function todayStr() {
@@ -202,7 +202,12 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
               <label className="label">Channel</label>
               <select className="input" value={channel} onChange={e => setChannel(e.target.value)}>
                 <option value="">— Select —</option>
-                {CHANNELS.map(c => <option key={c}>{c}</option>)}
+                {CHANNELS.map(c => <option key={c} value={c}>{c}{NO_API_CHANNELS.includes(c) ? ' (manual)' : ''}</option>)}
+                {/* A record saved before the channel list was unified (e.g. plain
+                    "WhatsApp") won't match any option above — show it as its own
+                    option so it stays selected instead of silently reading as
+                    "— Select —", which would overwrite it with blank on save. */}
+                {channel && !CHANNELS.includes(channel) && <option value={channel}>{channel} (legacy)</option>}
               </select>
             </div>
           </div>

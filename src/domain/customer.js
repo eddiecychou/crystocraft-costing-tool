@@ -25,7 +25,38 @@ const COL = () => collection(db, 'customers')
 export const CRM_STATUSES   = ['Active', 'Prospect', 'Dormant', 'Inactive']
 export const CRM_CATEGORIES = ['Distributor', 'Small B2B', 'Gift / OEM', 'Crystal Fabric']
 export const CHANNELS       = ['Email', 'WhatsApp Business', 'Alibaba', 'Personal WhatsApp', 'WeChat']
+// Channels with no API/integration behind them yet — every interaction on
+// these is manually typed in by an admin (no live sync, unlike Email). Used
+// to label channel pickers everywhere they appear so it's clear which
+// channels the app can't see into on its own. WhatsApp Business here means
+// the consumer WhatsApp Business *app*, not the Business Platform API — see
+// PROJECT-PLAN.md's "Where V8.2 starts" entry.
+export const NO_API_CHANNELS = ['WhatsApp Business', 'Personal WhatsApp', 'WeChat']
 export const CUSTOMER_SOURCES = ['Alibaba', 'Website', 'Email Marketing', 'Referral', 'Trade Show', 'BNI', 'Direct']
+
+// Tag picklist — single source (previously duplicated only in CustomerForm.jsx).
+// Anything a customer is tagged with outside these groups is a free-typed
+// "custom" tag, managed via TagManager.jsx.
+export const TAG_GROUPS = [
+  {
+    label: 'Industry',
+    tags: ['Banking & Finance', 'Insurance', 'Property & Real Estate', 'Retail', 'Hospitality & Hotel', 'F&B', 'Healthcare', 'Education', 'Government & Public Sector', 'NGO & Charity', 'Technology', 'Legal & Professional', 'Media & Entertainment', 'Luxury & Jewellery', 'Theme Park & Attractions'],
+  },
+  {
+    label: 'Client Type',
+    tags: ['VIP', 'Agency', 'Event Organiser', 'OEM / White Label', 'Referral', 'BNI'],
+  },
+  {
+    label: 'Order Profile',
+    tags: ['High Volume', 'Repeat Buyer', 'Sample Only', 'Custom Design', 'Urgent'],
+  },
+  {
+    label: 'Geography',
+    tags: ['Local HK', 'Asia Pacific', 'Europe', 'Middle East', 'Australia / NZ'],
+  },
+]
+const PICKLIST_TAGS = new Set(TAG_GROUPS.flatMap(g => g.tags))
+export const isPicklistTag = tag => PICKLIST_TAGS.has(tag)
 
 // Country picker — single source (previously duplicated, and drifted, between
 // Customers.jsx's filter dropdown and CustomerForm.jsx's search combobox).
@@ -592,4 +623,62 @@ export async function importErpCustomers(erpRows) {
     if (codeKey) seen.add(codeKey)
   }
   return { created, skipped }
+}
+
+// ── Tag management (TagManager.jsx) ─────────────────────────────────────────
+// Tags are a flat array on each customer — the picklist groups (TAG_GROUPS)
+// and free-typed "custom" tags live in the same field (CustomerForm.jsx adds
+// both to the same `tags` state), so cleanup works on whatever's actually on
+// customer docs rather than trying to special-case custom ones.
+
+// Every tag in use, with how many customers carry it and which ones. Reads
+// the live customer list (not a snapshot) so counts are always current when
+// TagManager opens.
+export async function loadTagStats() {
+  const customers = await loadCustomers()
+  const byTag = new Map()
+  for (const c of customers) {
+    for (const tag of c.tags || []) {
+      if (!byTag.has(tag)) byTag.set(tag, [])
+      byTag.get(tag).push({ id: c.id, company_name: c.company_name })
+    }
+  }
+  return [...byTag.entries()]
+    .map(([tag, customers]) => ({ tag, count: customers.length, customers, picklist: isPicklistTag(tag) }))
+    .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
+}
+
+// Rewrite one tag to another across every customer that has it — used for
+// both a rename (oldTag -> newTag) and a merge (several old tags -> one
+// canonical tag, called once per old tag). If a customer already has the
+// target tag, the old one is just dropped rather than creating a duplicate.
+// No-op (but still resolves) for a customer that doesn't have oldTag.
+export async function renameTagEverywhere(oldTag, newTag) {
+  if (!oldTag || !newTag || oldTag === newTag) return 0
+  const customers = await loadCustomers()
+  const affected = customers.filter(c => c.tags?.includes(oldTag))
+  for (let i = 0; i < affected.length; i += 400) {
+    const batch = writeBatch(db)
+    affected.slice(i, i + 400).forEach(c => {
+      const next = unionArrays(c.tags.filter(t => t !== oldTag), [newTag])
+      batch.update(doc(db, 'customers', c.id), { tags: next, updatedAt: serverTimestamp() })
+    })
+    await batch.commit()
+  }
+  return affected.length
+}
+
+// Remove one tag from every customer that has it.
+export async function deleteTagEverywhere(tag) {
+  if (!tag) return 0
+  const customers = await loadCustomers()
+  const affected = customers.filter(c => c.tags?.includes(tag))
+  for (let i = 0; i < affected.length; i += 400) {
+    const batch = writeBatch(db)
+    affected.slice(i, i + 400).forEach(c => {
+      batch.update(doc(db, 'customers', c.id), { tags: c.tags.filter(t => t !== tag), updatedAt: serverTimestamp() })
+    })
+    await batch.commit()
+  }
+  return affected.length
 }

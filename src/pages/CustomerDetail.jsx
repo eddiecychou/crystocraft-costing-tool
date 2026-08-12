@@ -13,7 +13,7 @@ import CustomerBrandGallery from '../components/CustomerBrandGallery'
 import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt, ChevronDown, ChevronUp, Database, Mail, MessageCircle, Loader2, RefreshCw } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
-import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers } from '../domain/customer'
+import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers, CHANNELS, NO_API_CHANNELS } from '../domain/customer'
 import { erpLookup } from '../erpApi'
 import { mergeSalesInvoiceHistory } from '../domain/salesInvoiceHistory'
 import ErpDocModal from '../components/ErpDocModal'
@@ -78,6 +78,7 @@ const CHANNEL_BADGE = {
   'WhatsApp Business': 'bg-green-100 text-green-700',
   'Alibaba':           'bg-orange-100 text-orange-700',
   'Personal WhatsApp': 'bg-amber-100 text-amber-700',
+  'WeChat':            'bg-emerald-100 text-emerald-700',
 }
 
 function fmtDate(ts) {
@@ -1167,7 +1168,10 @@ export default function CustomerDetail() {
             <label className="label">Channel</label>
             <select className="input" value={composeChannel} onChange={e => setComposeChannel(e.target.value)}>
               <option value="">— Select —</option>
-              {['Email', 'WhatsApp Business', 'Alibaba', 'Personal WhatsApp'].map(c => <option key={c}>{c}</option>)}
+              {CHANNELS.map(c => <option key={c} value={c}>{c}{NO_API_CHANNELS.includes(c) ? ' (manual)' : ''}</option>)}
+              {/* Customer.channels[] may still hold a pre-unification value (e.g.
+                  plain "WhatsApp") — show it rather than silently defaulting blank. */}
+              {composeChannel && !CHANNELS.includes(composeChannel) && <option value={composeChannel}>{composeChannel} (legacy)</option>}
             </select>
           </div>
 
