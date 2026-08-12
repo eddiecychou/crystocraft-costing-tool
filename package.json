@@ -15,6 +15,7 @@
     "@react-pdf/renderer": "^4.3.0",
     "exceljs": "^4.4.0",
     "firebase": "^11.8.1",
+    "jszip": "^3.10.1",
     "lucide-react": "^1.20.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

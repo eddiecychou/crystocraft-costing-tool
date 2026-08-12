@@ -10,7 +10,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
 import CustomerBrandGallery from '../components/CustomerBrandGallery'
-import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt, ChevronDown, ChevronUp, Database, Mail, MessageCircle, Loader2, RefreshCw } from 'lucide-react'
+import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt, ChevronDown, ChevronUp, Database, Mail, MessageCircle, Loader2, RefreshCw, Smartphone, Mic } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
 import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers, CHANNELS, NO_API_CHANNELS } from '../domain/customer'
@@ -85,6 +85,14 @@ function fmtDate(ts) {
   if (!ts) return '—'
   const d = ts.toDate ? ts.toDate() : new Date(ts.seconds * 1000)
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+// WhatsApp thread docs (domain/whatsappImport.js) store dates as plain ISO
+// strings, not Firestore Timestamps — fmtDate() above expects a Timestamp
+// (.toDate()/.seconds) and would silently produce "Invalid Date" on a string.
+function fmtIsoDate(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 const MERGE_FIELD_LABELS = {
@@ -310,6 +318,21 @@ export default function CustomerDetail() {
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
       all.sort((a, b) => String(b.date_range?.[1] || '').localeCompare(String(a.date_range?.[1] || '')))
       setEmailThreads(all)
+    })
+  }, [id])
+
+  // V8.2 WhatsApp ingestion — customers/{id}/whatsapp_threads, written by
+  // WhatsAppImport.jsx from the owner's manual "Export Chat" .zip files (no
+  // API access to either Business or Personal WhatsApp). Read-only here,
+  // same posture as emailThreads above; no AI summary yet, just the raw
+  // ingested list so an import is actually visible/verifiable afterward.
+  const [whatsappThreads, setWhatsappThreads] = useState([])
+  const [whatsappExpanded, setWhatsappExpanded] = useState(null) // thread id currently expanded
+  useEffect(() => {
+    return onSnapshot(collection(db, 'customers', id, 'whatsapp_threads'), snap => {
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      all.sort((a, b) => String(b.date_range?.[1] || '').localeCompare(String(a.date_range?.[1] || '')))
+      setWhatsappThreads(all)
     })
   }, [id])
 
@@ -971,6 +994,70 @@ export default function CustomerDetail() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* WhatsApp threads (V8.2) — see customers/{id}/whatsapp_threads comment
+          above. Hidden entirely when nothing's imported yet, same posture as
+          Email Summary. No AI summary yet — raw ingested view only. */}
+      {whatsappThreads.length > 0 && (
+        <div className="card mb-4">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+              <Smartphone size={15} className="text-gray-400" /> WhatsApp
+              <span className="text-xs font-normal text-gray-400">
+                ({whatsappThreads.length} chat{whatsappThreads.length === 1 ? '' : 's'} imported)
+              </span>
+            </h2>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {whatsappThreads.map(t => {
+              const voiceCount = (t.messages || []).filter(m => m.needs_transcription).length
+              const expanded = whatsappExpanded === t.id
+              return (
+                <div key={t.id} className="px-5 py-3">
+                  <button
+                    type="button"
+                    onClick={() => setWhatsappExpanded(v => v === t.id ? null : t.id)}
+                    className="w-full flex items-center justify-between text-left"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800">{t.subject || t.id}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {t.channel} · {t.message_count} message{t.message_count === 1 ? '' : 's'}
+                        {t.date_range?.length === 2 && ` · ${fmtIsoDate(t.date_range[0])} – ${fmtIsoDate(t.date_range[1])}`}
+                        {voiceCount > 0 && (
+                          <span className="inline-flex items-center gap-0.5 ml-2 text-amber-600">
+                            <Mic size={11} />{voiceCount} not transcribed
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                    {expanded ? <ChevronUp size={16} className="text-gray-400 shrink-0" /> : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
+                  </button>
+                  {expanded && (
+                    <div className="mt-3 max-h-80 overflow-y-auto space-y-2 border-t border-gray-100 pt-3">
+                      {(t.messages || []).map((m, i) => (
+                        <div key={i} className="text-sm">
+                          <span className="text-xs text-gray-400">{fmtIsoDate(m.date)} · {m.from}</span>
+                          {m.body_text && <p className="text-gray-700">{m.body_text}</p>}
+                          {m.attachment_filename && (
+                            m.attachment_url ? (
+                              <a href={m.attachment_url} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline text-xs">
+                                📎 {m.attachment_filename}{m.needs_transcription && ' (voice — not transcribed)'}
+                              </a>
+                            ) : (
+                              <span className="text-xs text-gray-400">📎 {m.attachment_filename} (file missing)</span>
+                            )
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </div>
       )}

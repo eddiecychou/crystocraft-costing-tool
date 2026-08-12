@@ -34,6 +34,7 @@ import QuoteDetail from './pages/QuoteDetail'
 import Customers from './pages/Customers'
 import CustomerForm from './pages/CustomerForm'
 import TagManager from './pages/TagManager'
+import WhatsAppImport from './pages/WhatsAppImport'
 import CustomerDetail from './pages/CustomerDetail'
 import Settings from './pages/Settings'
 import SchemaAudit from './pages/SchemaAudit'
@@ -197,6 +198,7 @@ function AdminApp({ user }) {
                 <Route path="/customers" element={<Customers />} />
                 <Route path="/customers/new" element={<CustomerForm />} />
                 <Route path="/customers/tags" element={<TagManager />} />
+                <Route path="/customers/whatsapp-import" element={<WhatsAppImport />} />
                 <Route path="/customers/:id" element={<CustomerDetail />} />
                 <Route path="/customers/:id/edit" element={<CustomerForm />} />
                 <Route path="/catalogue-band" element={<CatalogueBand />} />

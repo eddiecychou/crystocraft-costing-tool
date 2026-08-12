@@ -167,6 +167,15 @@ service cloud.firestore {
       match /email_threads/{threadId} {
         allow read, write: if isAdmin();
       }
+      // WhatsApp ingestion (V8.2) — parsed from the owner's manual "Export
+      // Chat" .txt exports (Business and Personal WhatsApp both — no API
+      // access to either), matched to this customer by hand at import time
+      // (the export carries no phone/email to auto-match against). Same
+      // admin-only, never-customer-facing posture as email_threads above —
+      // real correspondence content.
+      match /whatsapp_threads/{threadId} {
+        allow read, write: if isAdmin();
+      }
       // Brand Gallery assets (V7.21) — customer logos / brand images.
       // The privacy guarantee (Customer_Brand_Gallery_Spec.md §6): admins have
       // full access; a logged-in customer may read ONLY their own linked
