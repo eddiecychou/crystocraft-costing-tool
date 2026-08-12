@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Upload, Check, AlertCircle, Loader2, Mic, Plus, X, RefreshCw } from 'lucide-react'
+import { Upload, Check, AlertCircle, Loader2, Mic, Plus, X, RefreshCw, Sparkles } from 'lucide-react'
 import { useCustomers, CHANNELS, CRM_CATEGORIES, CUSTOMER_COUNTRIES, saveCustomer } from '../domain/customer'
 import { previewWhatsAppZip, importWhatsAppZip, findExistingThread } from '../domain/whatsappImport'
+import { loadWhatsappSummaryCandidates, generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
 
 // V8.2 — bulk uploader for WhatsApp's own "Export Chat" .zip files (Business
 // and Personal both — no API access to either, see PROJECT-PLAN.md's "Where
@@ -265,6 +266,113 @@ function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChange
   )
 }
 
+// Bulk "generate WhatsApp summaries" — owner asked directly (2026-08-12):
+// after importing everything, does Daily Drafts use it? It didn't, until
+// each customer's summary is generated at least once (see
+// whatsappSummaryApi.js's generateAndSaveWhatsappSummary). Doing that one
+// customer at a time was the obvious next friction point, so this scans
+// every customer with an import and (re)generates for anyone missing one OR
+// whose message count has grown since their last one — not just the ones
+// with zero, since a bulk pass that only filled gaps would leave anyone
+// re-imported-with-new-messages permanently stale.
+function SummaryScanSection() {
+  const [candidates, setCandidates] = useState(null) // null = not scanned yet
+  const [scanning, setScanning] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [progress, setProgress] = useState(null) // { done, total }
+  const [results, setResults] = useState({}) // customerId -> 'done' | error message
+
+  async function handleScan() {
+    setScanning(true)
+    try {
+      setCandidates(await loadWhatsappSummaryCandidates())
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  const pending = (candidates || []).filter(c => !c.upToDate)
+
+  async function handleGenerateAll() {
+    setGenerating(true); setResults({})
+    for (let i = 0; i < pending.length; i++) {
+      setProgress({ done: i, total: pending.length })
+      const c = pending[i]
+      try {
+        await generateAndSaveWhatsappSummary(c.customerId, c.threads)
+        setResults(r => ({ ...r, [c.customerId]: 'done' }))
+      } catch (e) {
+        setResults(r => ({ ...r, [c.customerId]: e.message || 'Failed' }))
+      }
+    }
+    setProgress(null)
+    setGenerating(false)
+    setCandidates(await loadWhatsappSummaryCandidates()) // refresh upToDate flags
+  }
+
+  return (
+    <div className="card p-5 mt-8">
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <h2 className="text-sm font-semibold text-gray-700">Generate WhatsApp Summaries</h2>
+        <button type="button" onClick={handleScan} disabled={scanning} className="btn-secondary text-xs px-3 py-1.5 inline-flex items-center gap-1.5">
+          {scanning ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+          {candidates ? 'Re-scan' : 'Scan customers'}
+        </button>
+      </div>
+      <p className="text-xs text-gray-400 mb-3">
+        Daily Drafts only uses a customer's WhatsApp history once a summary's been generated for them — this finds
+        everyone with imported chats and (re)generates for anyone missing one or whose message count has grown since.
+      </p>
+
+      {candidates && (
+        <>
+          <p className="text-sm text-gray-600 mb-2">
+            {candidates.length} customer{candidates.length === 1 ? '' : 's'} with imported WhatsApp —{' '}
+            <span className={pending.length ? 'text-amber-600 font-medium' : 'text-green-600'}>
+              {pending.length ? `${pending.length} need${pending.length === 1 ? 's' : ''} generating` : 'all up to date'}
+            </span>
+          </p>
+
+          {pending.length > 0 && (
+            <button type="button" onClick={handleGenerateAll} disabled={generating} className="btn-primary text-sm mb-3 inline-flex items-center gap-1.5">
+              {generating ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+              {generating
+                ? `Generating${progress ? ` (${progress.done + 1}/${progress.total})` : '…'}`
+                : `Generate all (${pending.length})`}
+            </button>
+          )}
+
+          <div className="divide-y divide-gray-100 border-t border-gray-100">
+            {candidates.map(c => (
+              <div key={c.customerId} className="flex items-center justify-between py-2 text-sm">
+                <div className="min-w-0">
+                  <span className="text-gray-800">{c.companyName || c.customerId}</span>
+                  <span className="text-xs text-gray-400 ml-2">
+                    {c.threadCount} chat{c.threadCount === 1 ? '' : 's'} · {c.messageCount} messages
+                  </span>
+                </div>
+                <span className="text-xs shrink-0 ml-2">
+                  {results[c.customerId] === 'done' ? (
+                    <span className="text-green-600 inline-flex items-center gap-1"><Check size={11} /> Generated</span>
+                  ) : results[c.customerId] ? (
+                    <span className="text-red-600">{results[c.customerId]}</span>
+                  ) : c.upToDate ? (
+                    <span className="text-gray-400">Up to date</span>
+                  ) : c.hasSummary ? (
+                    <span className="text-amber-600">Stale — new messages</span>
+                  ) : (
+                    <span className="text-amber-600">Not generated</span>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function WhatsAppImport() {
   const { customers } = useCustomers()
   const [entries, setEntries] = useState([]) // { key, file, status, preview, matchMode, customerId, leadPhone, channel, error, progress }
@@ -378,6 +486,8 @@ export default function WhatsAppImport() {
           </div>
         </>
       )}
+
+      <SummaryScanSection />
     </div>
   )
 }

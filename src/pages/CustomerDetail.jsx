@@ -19,7 +19,7 @@ import { erpLookup } from '../erpApi'
 import { mergeSalesInvoiceHistory } from '../domain/salesInvoiceHistory'
 import ErpDocModal from '../components/ErpDocModal'
 import { refreshEmailSummary, discussCustomerEmail, renderThreadsText, buildYearIndex, routeEmailQuestion, renderThreadsTextForYears, buildKeywordFacets, composeEmailAnswer } from '../emailSummaryApi'
-import { refreshWhatsappSummary, renderThreadsText as renderWhatsappThreadsText } from '../whatsappSummaryApi'
+import { generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
 
 const STATUS_STYLES = {
   draft: 'bg-gray-100 text-gray-600',
@@ -377,10 +377,10 @@ export default function CustomerDetail() {
   async function handleRefreshWhatsappSummary() {
     setWhatsappSummaryBusy(true); setWhatsappSummaryError('')
     try {
-      const result = await refreshWhatsappSummary(renderWhatsappThreadsText(whatsappThreads))
-      const whatsapp_summary = { ...result, thread_count: whatsappThreads.length, generated_at: serverTimestamp() }
-      await updateDoc(doc(db, 'customers', id), { whatsapp_summary })
-      setCustomer(prev => (prev ? { ...prev, whatsapp_summary: { ...result, thread_count: whatsappThreads.length, generated_at: new Date() } } : prev))
+      const whatsapp_summary = await generateAndSaveWhatsappSummary(id, whatsappThreads)
+      // `customer` is a one-time fetch, not a live listener — same reason
+      // Email Summary's handler patches it locally too (see above).
+      setCustomer(prev => (prev ? { ...prev, whatsapp_summary: { ...whatsapp_summary, generated_at: new Date() } } : prev))
     } catch (e) {
       setWhatsappSummaryError(e.message || 'Could not refresh the WhatsApp summary.')
     } finally {
