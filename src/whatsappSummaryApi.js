@@ -29,25 +29,59 @@ export async function refreshWhatsappSummary(threadsText) {
   return authedPost('/api/refresh-whatsapp-summary', { threadsText })
 }
 
+function messageLine(m) {
+  if (m.body_text) return `--- ${m.date || ''} | ${m.from || ''} ---\n${m.body_text}`
+  if (m.transcript) return `--- ${m.date || ''} | ${m.from || ''} (voice note, transcribed) ---\n${m.transcript}`
+  if (m.attachment_filename) return `--- ${m.date || ''} | ${m.from || ''} ---\n[attachment: ${m.attachment_filename}, no text content]`
+  return ''
+}
+
 // customers/{id}/whatsapp_threads docs -> one text block for the model.
 // `threads` sorted newest-first (CustomerDetail.jsx's own sort) — rendered
 // oldest-first within the cap so a conversation reads in its natural order
-// rather than backwards, stopping once the char budget runs out (drops the
-// OLDEST threads first, keeping the most recent ones — the ones most likely
-// to matter for "what's going on with this account lately").
+// rather than backwards, dropping the OLDEST *threads* first once the
+// overall budget runs out (most recent chats matter most).
+//
+// Within a single thread, this used to treat the whole thing as one atomic
+// block — fine for the "tens of threads" case this was designed for, but a
+// real single long-running chat (one customer, 548 messages spanning 10+
+// months, many with Deepgram transcripts) can alone exceed MAX_INPUT_CHARS,
+// which made the whole thread get dropped rather than shortened — confirmed
+// live, 2026-08-12: threadsText came back completely empty for exactly this
+// customer, failing with a misleading "nothing imported" error. Now
+// truncates WITHIN an oversized thread instead, keeping its MOST RECENT
+// messages (same "recent matters most" reasoning as the thread-level drop)
+// rather than silently omitting the whole conversation.
 export function renderThreadsText(threads) {
   const chunks = []
   let total = 0
   for (const t of [...threads].reverse()) {
+    if (total >= MAX_INPUT_CHARS) break
     const header = `\n=== WhatsApp chat: ${t.subject || '(unnamed)'} (${t.channel || 'WhatsApp'}, ${t.message_count || (t.messages || []).length} messages) ===`
-    const body = (t.messages || []).map(m => {
-      if (m.body_text) return `--- ${m.date || ''} | ${m.from || ''} ---\n${m.body_text}`
-      if (m.transcript) return `--- ${m.date || ''} | ${m.from || ''} (voice note, transcribed) ---\n${m.transcript}`
-      if (m.attachment_filename) return `--- ${m.date || ''} | ${m.from || ''} ---\n[attachment: ${m.attachment_filename}, no text content]`
-      return ''
-    }).filter(Boolean).join('\n')
-    const block = `${header}\n${body}`
-    if (total + block.length > MAX_INPUT_CHARS) break
+    const remaining = MAX_INPUT_CHARS - total - header.length
+    if (remaining <= 0) break
+
+    const lines = (t.messages || []).map(messageLine).filter(Boolean)
+    const fullBody = lines.join('\n')
+    let body, truncated
+    if (fullBody.length <= remaining) {
+      body = fullBody
+      truncated = false
+    } else {
+      // Keep the most recent messages that fit, in reverse-then-reversed
+      // order so they still read chronologically.
+      const kept = []
+      let used = 0
+      for (let i = lines.length - 1; i >= 0; i--) {
+        if (used + lines[i].length + 1 > remaining) break
+        kept.unshift(lines[i])
+        used += lines[i].length + 1
+      }
+      body = kept.join('\n')
+      truncated = true
+    }
+
+    const block = `${header}${truncated ? '\n(earlier messages in this chat omitted — showing the most recent that fit)' : ''}\n${body}`
     chunks.push(block)
     total += block.length
   }
