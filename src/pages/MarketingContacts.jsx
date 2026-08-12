@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react'
-import { Users, Mail, MailX, UserCheck, Link2, Tag, Tags, AlertCircle, Download, Trash2, X, Pencil, UserPlus } from 'lucide-react'
+import { useMemo, useState, useEffect } from 'react'
+import { collection, onSnapshot } from 'firebase/firestore'
+import { db } from '../firebase'
+import { Users, Mail, MailX, UserCheck, Link2, Tag, Tags, AlertCircle, Download, Trash2, X, Pencil, UserPlus, Smartphone, Mic, ChevronDown, ChevronUp } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import {
   useMarketingContacts, saveContact, deleteContact, deleteContacts,
@@ -9,6 +11,84 @@ import {
 } from '../domain/marketingContact'
 import { useCustomers, customerName } from '../domain/customer'
 import { CustomerPicker } from './CustomerAccounts'
+
+function fmtIsoDate(iso) {
+  if (!iso) return '—'
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+// WhatsApp threads (V8.2) — marketing_contacts/{id}/whatsapp_threads, written
+// by the WhatsApp import page's "Save as Lead" path (whatsappImport.js) for
+// a chat that never became a real customer. Read-only here, same shape/
+// posture as CustomerDetail.jsx's own WhatsApp card. Hidden entirely when
+// nothing's been imported for this contact.
+function WhatsAppThreads({ contactId }) {
+  const [threads, setThreads] = useState([])
+  const [expanded, setExpanded] = useState(null)
+  useEffect(() => {
+    return onSnapshot(collection(db, 'marketing_contacts', contactId, 'whatsapp_threads'), snap => {
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      all.sort((a, b) => String(b.date_range?.[1] || '').localeCompare(String(a.date_range?.[1] || '')))
+      setThreads(all)
+    })
+  }, [contactId])
+
+  if (threads.length === 0) return null
+
+  return (
+    <div className="block border-t border-gray-100 pt-3">
+      <span className="text-xs text-gray-500 flex items-center gap-1.5 mb-1.5">
+        <Smartphone size={13} className="text-gray-400" /> WhatsApp
+        <span className="text-gray-400 font-normal">({threads.length} chat{threads.length === 1 ? '' : 's'} imported)</span>
+      </span>
+      <div className="space-y-1.5">
+        {threads.map(t => {
+          const voiceCount = (t.messages || []).filter(m => m.needs_transcription).length
+          const isOpen = expanded === t.id
+          return (
+            <div key={t.id} className="border border-gray-100 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setExpanded(v => v === t.id ? null : t.id)}
+                className="w-full flex items-center justify-between text-left px-2.5 py-2"
+              >
+                <p className="text-xs text-gray-600">
+                  {t.channel} · {t.message_count} message{t.message_count === 1 ? '' : 's'}
+                  {t.date_range?.length === 2 && ` · ${fmtIsoDate(t.date_range[0])} – ${fmtIsoDate(t.date_range[1])}`}
+                  {voiceCount > 0 && (
+                    <span className="inline-flex items-center gap-0.5 ml-1.5 text-amber-600">
+                      <Mic size={10} />{voiceCount} not transcribed
+                    </span>
+                  )}
+                </p>
+                {isOpen ? <ChevronUp size={14} className="text-gray-400 shrink-0" /> : <ChevronDown size={14} className="text-gray-400 shrink-0" />}
+              </button>
+              {isOpen && (
+                <div className="max-h-56 overflow-y-auto space-y-1.5 border-t border-gray-100 px-2.5 py-2">
+                  {(t.messages || []).map((m, i) => (
+                    <div key={i} className="text-xs">
+                      <span className="text-gray-400">{fmtIsoDate(m.date)} · {m.from}</span>
+                      {m.body_text && <p className="text-gray-700">{m.body_text}</p>}
+                      {m.attachment_filename && (
+                        m.attachment_url ? (
+                          <a href={m.attachment_url} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">
+                            📎 {m.attachment_filename}{m.needs_transcription && ' (voice — not transcribed)'}
+                          </a>
+                        ) : (
+                          <span className="text-gray-400">📎 {m.attachment_filename} (file missing)</span>
+                        )
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 const STATUS_STYLE = {
   subscribed:    'bg-green-100 text-green-700',
@@ -217,6 +297,7 @@ function EditContactModal({ contact, customers, onClose, onSaved, onLinked, onDe
               {linkState === 'saved' && <span className="text-[11px] text-green-600">Saved ✓</span>}
             </div>
           </div>
+          <WhatsAppThreads contactId={contact.id} />
           <label className="block">
             <span className="text-xs text-gray-500">Notes</span>
             <textarea className="input w-full mt-0.5" rows={2} value={f.app_notes} onChange={set('app_notes')} />
