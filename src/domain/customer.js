@@ -123,6 +123,29 @@ function normalizeContact(c) {
   }
 }
 
+// Guarantees every contact in the list has a unique id — a real bug found
+// live, 2026-08-13: the Log Interaction "With" picker always resolved to
+// the primary contact no matter which name was clicked, for a customer
+// whose contacts[] had two entries both carrying the literal id "legacy"
+// (see contactsOf's fallback below). Root cause: mergeContactLists further
+// down keeps an existing id as-is via normalizeContact — including that
+// placeholder string — so merging two customers that were each
+// independently normalized from a pre-contacts[] record (or merging twice
+// into the same survivor) collides two real, different people onto one id.
+// A <select> (or anything else keying off contact id) can then only ever
+// resolve to whichever one comes first. Called wherever a contacts list is
+// finalized for read OR write, so this both prevents new collisions and
+// self-heals a customer that already has one the next time they're loaded.
+function dedupeContactIds(list) {
+  const seen = new Set()
+  return list.map(c => {
+    if (!seen.has(c.id)) { seen.add(c.id); return c }
+    const freshId = genContactId()
+    seen.add(freshId)
+    return { ...c, id: freshId }
+  })
+}
+
 // contacts[] with the legacy scalar/array contact fields folded in as ONE
 // synthesized contact when no contacts[] exists yet. A legacy record's
 // several un-attributed emails can't be safely split into distinct people —
@@ -134,7 +157,7 @@ function normalizeContact(c) {
 // address exactly as it always effectively did before contacts existed.
 export function contactsOf(r) {
   if (Array.isArray(r.contacts) && r.contacts.length) {
-    const list = r.contacts.map(normalizeContact)
+    const list = dedupeContactIds(r.contacts.map(normalizeContact))
     if (!list.some(c => c.is_primary)) list[0].is_primary = true
     return list
   }
@@ -246,7 +269,7 @@ function toCustomerDoc(input) {
   // supplies it (CustomerForm does); otherwise fold in whatever legacy scalar
   // fields are present, same as the read path — keeps saveCustomer safe to
   // call from anything not yet updated to the contacts[] shape.
-  const contacts = Array.isArray(i.contacts) ? i.contacts.map(normalizeContact) : contactsOf(i)
+  const contacts = Array.isArray(i.contacts) ? dedupeContactIds(i.contacts.map(normalizeContact)) : contactsOf(i)
   if (contacts.length && !contacts.some(c => c.is_primary)) contacts[0].is_primary = true
   const primary = primaryContact(contacts)
   return {
@@ -395,7 +418,7 @@ function mergeContactLists(survivorContacts, duplicateContacts) {
     if (nameKey) seenNames.add(nameKey)
   }
   if (out.length && !out.some(c => c.is_primary)) out[0].is_primary = true
-  return out
+  return dedupeContactIds(out)
 }
 
 // What would change on the survivor if merged with the duplicate — the fields
