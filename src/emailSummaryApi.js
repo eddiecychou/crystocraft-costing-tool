@@ -143,8 +143,20 @@ const STOPWORDS = new Set([
   'talked', 'discuss', 'discussed', 'mention', 'mentioned', 'regard', 'regarding',
 ])
 
+// Order/PO/SO codes (PO50081, SP505, SO210112, WD26002048, ...) never
+// matched at all before — the word regex is letters-only, so any token
+// containing a digit was silently dropped. These are exactly the concrete
+// identifiers real business questions use ("what happened with PO50081"),
+// so they need their own pattern: a run of 3+ digits, optionally with a
+// short letter prefix/suffix (covers a bare order number like "56909" too).
+const CODE_RE = /\b[a-z]*\d{3,}[a-z0-9]*\b/gi
+const WORD_RE = /[a-z][a-z'-]{2,}/g
+
 function extractKeywords(question) {
-  return [...new Set((question.toLowerCase().match(/[a-z][a-z'-]{2,}/g) || []).filter(w => !STOPWORDS.has(w)))]
+  const q = question.toLowerCase()
+  const words = q.match(WORD_RE) || []
+  const codes = q.match(CODE_RE) || []
+  return [...new Set([...words, ...codes])].filter(w => !STOPWORDS.has(w))
 }
 
 function threadHay(t) {
