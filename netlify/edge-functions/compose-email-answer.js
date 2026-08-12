@@ -37,7 +37,12 @@ const SYSTEM = 'You are combining several partial answers into one coherent repl
   'conflicting facts into one answer rather than picking just one partial. If genuinely none of the partials ' +
   'found anything relevant, say so plainly. Keep the final answer to 2-6 sentences unless the question clearly ' +
   'needs more detail.\n\n' +
-  'Return ONLY a valid JSON object: { "reply": "your combined answer" }.'
+  'One of the partials may itself be a clarifying question (a facet\'s own answer decided the question was too ' +
+  'ambiguous to answer directly) rather than a factual answer — if so, and the OTHER partials don\'t resolve ' +
+  'that ambiguity between them, pass the clarifying question through as the final reply instead of forcing a ' +
+  'guess. Only override it with a real combined answer if the other partials actually settle which option was ' +
+  'meant.\n\n' +
+  'Return ONLY a valid JSON object: { "reply": "your combined answer, OR a clarifying question" }.'
 
 async function callDeepSeek(apiKey, question, partials) {
   const user = `Original question: ${question}\n\n` +

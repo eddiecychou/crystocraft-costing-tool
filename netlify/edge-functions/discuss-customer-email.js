@@ -44,7 +44,14 @@ const SYSTEM = 'You are answering questions about a real B2B customer for the Cr
   '"EARLIEST THREADS ON FILE" section, with a real time gap between them that is NOT included here — do not ' +
   'assume the two sections are contiguous, and if asked about a period that falls in that gap, say the ' +
   'available history does not cover it rather than guessing.\n\n' +
-  'Return ONLY a valid JSON object: { "reply": "your answer" }.'
+  'If the question itself is genuinely ambiguous — it could reasonably mean two or more different things given ' +
+  'what\'s in the threads (e.g. two different orders/products/issues could each be "the" one meant, or the ' +
+  'timeframe is unclear) — do NOT guess which one and answer as if it were certain. Instead, ask a short, ' +
+  'specific clarifying question that names the real options you found, so the owner can just pick one in their ' +
+  'next message (this is a real back-and-forth conversation, not a single shot). Only do this when there is a ' +
+  'genuine fork in what\'s being asked, not just because the answer takes some inference — do not ask for ' +
+  'clarification as a way to avoid answering a question you can reasonably work out.\n\n' +
+  'Return ONLY a valid JSON object: { "reply": "your answer, OR a clarifying question" }.'
 
 // 2 attempts with backoff per call — rides out a brief transient DeepSeek
 // blip (confirmed live: identical request succeeded moments after failing).
