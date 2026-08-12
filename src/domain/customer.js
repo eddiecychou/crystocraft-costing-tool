@@ -44,35 +44,11 @@ export const CUSTOMER_SOURCES = ['Alibaba', 'Website', 'Email Marketing', 'Refer
 // C13) who ALSO buys cash/retail sometimes, invoiced through the portal by
 // FPS/PayPal instead of going through the website — so this has to stay a
 // plain manual tag, not something inferred once and locked in.
-// "Retail Customer" (not "Retail" — TAG_GROUPS' own Industry list already
-// uses "Retail" for a customer whose own business is IN the retail
-// industry, a completely different meaning; reusing that string would
-// collide two unrelated facts onto one tag).
+// "Retail Customer" (not "Retail" — plenty of existing customers already
+// carry a free-typed "Retail" tag meaning their own business is IN the
+// retail industry, a completely different meaning; reusing that string
+// would collide two unrelated facts onto one tag).
 export const RETAIL_TAG = 'Retail Customer'
-
-// Tag picklist — single source (previously duplicated only in CustomerForm.jsx).
-// Anything a customer is tagged with outside these groups is a free-typed
-// "custom" tag, managed via TagManager.jsx.
-export const TAG_GROUPS = [
-  {
-    label: 'Industry',
-    tags: ['Banking & Finance', 'Insurance', 'Property & Real Estate', 'Retail', 'Hospitality & Hotel', 'F&B', 'Healthcare', 'Education', 'Government & Public Sector', 'NGO & Charity', 'Technology', 'Legal & Professional', 'Media & Entertainment', 'Luxury & Jewellery', 'Theme Park & Attractions'],
-  },
-  {
-    label: 'Client Type',
-    tags: ['VIP', 'Agency', 'Event Organiser', 'OEM / White Label', 'Referral', 'BNI', RETAIL_TAG],
-  },
-  {
-    label: 'Order Profile',
-    tags: ['High Volume', 'Repeat Buyer', 'Sample Only', 'Custom Design', 'Urgent'],
-  },
-  {
-    label: 'Geography',
-    tags: ['Local HK', 'Asia Pacific', 'Europe', 'Middle East', 'Australia / NZ'],
-  },
-]
-const PICKLIST_TAGS = new Set(TAG_GROUPS.flatMap(g => g.tags))
-export const isPicklistTag = tag => PICKLIST_TAGS.has(tag)
 
 // Country picker — single source (previously duplicated, and drifted, between
 // Customers.jsx's filter dropdown and CustomerForm.jsx's search combobox).
@@ -642,10 +618,12 @@ export async function importErpCustomers(erpRows) {
 }
 
 // ── Tag management (TagManager.jsx) ─────────────────────────────────────────
-// Tags are a flat array on each customer — the picklist groups (TAG_GROUPS)
-// and free-typed "custom" tags live in the same field (CustomerForm.jsx adds
-// both to the same `tags` state), so cleanup works on whatever's actually on
-// customer docs rather than trying to special-case custom ones.
+// Tags are a flat, entirely free-typed array on each customer — there is no
+// picklist anymore (removed 2026-08-12: the owner found the old fixed
+// Industry/Client Type/Order Profile/Geography groups hard to use and
+// Geography redundant with the Country field). CustomerForm.jsx now offers
+// autocomplete from whatever tags are already in use (loadAllTagNames)
+// instead, Mailchimp-style — type to find an existing one, or add a new one.
 
 // Every tag in use, with how many customers carry it and which ones. Reads
 // the live customer list (not a snapshot) so counts are always current when
@@ -660,8 +638,20 @@ export async function loadTagStats() {
     }
   }
   return [...byTag.entries()]
-    .map(([tag, customers]) => ({ tag, count: customers.length, customers, picklist: isPicklistTag(tag) }))
+    .map(([tag, customers]) => ({ tag, count: customers.length, customers }))
     .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag))
+}
+
+// Tag names only, most-used first — CustomerForm.jsx's autocomplete. Cheap
+// version of loadTagStats() (no per-tag customer list) for a call that fires
+// on every form load.
+export async function loadAllTagNames() {
+  const customers = await loadCustomers()
+  const counts = new Map()
+  for (const c of customers) {
+    for (const tag of c.tags || []) counts.set(tag, (counts.get(tag) || 0) + 1)
+  }
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).map(([tag]) => tag)
 }
 
 // Rewrite one tag to another across every customer that has it — used for

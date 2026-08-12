@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
-import { Store, ShoppingCart, Gift, Sparkles, Check, Star, AlertCircle, AlertTriangle, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
-import { saveCustomer, contactsOf, CRM_STATUSES, CRM_CATEGORIES, CHANNELS, NO_API_CHANNELS, CUSTOMER_SOURCES, CUSTOMER_COUNTRIES, TAG_GROUPS, RETAIL_TAG } from '../domain/customer'
+import { Store, ShoppingCart, Gift, Sparkles, ShoppingBag, Check, Star, AlertCircle, AlertTriangle, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
+import { saveCustomer, contactsOf, loadAllTagNames, CRM_STATUSES, CRM_CATEGORIES, CHANNELS, NO_API_CHANNELS, CUSTOMER_SOURCES, CUSTOMER_COUNTRIES, RETAIL_TAG } from '../domain/customer'
 
 const blankContact = (isPrimary = false) => ({
   id: null, name: '', title: '', email: '', phone: '', whatsapp: '', wechat: '', address: '', is_primary: isPrimary,
@@ -97,8 +97,6 @@ function ContactsEditor({ contacts, onChange }) {
 // are the canonical lists imported from the domain module so the form and the
 // validator never drift.
 const CATEGORY_ICON  = { 'Distributor': Store, 'Small B2B': ShoppingCart, 'Gift / OEM': Gift, 'Crystal Fabric': Sparkles }
-// TAG_GROUPS now imported from ../domain/customer (single source — was
-// duplicated here before, drifting from what TagManager.jsx sees).
 
 export default function CustomerForm() {
   const { id } = useParams()
@@ -122,6 +120,8 @@ export default function CustomerForm() {
   const [contacts, setContacts] = useState([blankContact(true)])
   const [tags, setTags]               = useState([])
   const [tagInput, setTagInput]       = useState('')
+  const [tagSuggestions, setTagSuggestions] = useState([]) // every tag already in use, most-used first
+  const [tagInputFocused, setTagInputFocused] = useState(false)
   const [isPersonalWa, setIsPersonalWa] = useState(false)
   const [isVip, setIsVip]             = useState(false)
   const [isSensitive, setIsSensitive] = useState(false)
@@ -164,6 +164,13 @@ export default function CustomerForm() {
     })
   }, [id, isEdit])
 
+  // Tag autocomplete source — every tag already in use across customers,
+  // most-used first (Mailchimp-style: pick an existing one, or type a new
+  // one). Fetched once; the fixed Industry/Client Type/Order Profile/
+  // Geography picklist this replaced (owner, 2026-08-12: hard to use, and
+  // Geography duplicated the Country field) is gone.
+  useEffect(() => { loadAllTagNames().then(setTagSuggestions) }, [])
+
   function set(field) { return e => setForm(f => ({ ...f, [field]: e.target.value })) }
 
   // New customer only, one-time nudge: picking Source = Website suggests the
@@ -178,6 +185,14 @@ export default function CustomerForm() {
     setTags(t => [...t, RETAIL_TAG])
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.source, isEdit])
+
+  // Retail Customer — a tile in the same Customer Type grid, same styling,
+  // but NOT mutually exclusive with Distributor/Small B2B/Gift-OEM/Crystal
+  // Fabric (owner, 2026-08-12: an existing trade-bucket customer, e.g.
+  // shared ERP code C13, can ALSO buy cash/retail sometimes). Backed by the
+  // same tags[] as everything else — see RETAIL_TAG in domain/customer.js.
+  const isRetail = tags.includes(RETAIL_TAG)
+  function toggleRetail() { setTags(t => isRetail ? t.filter(x => x !== RETAIL_TAG) : [...t, RETAIL_TAG]) }
 
   function toggleChannel(ch) {
     setChannels(prev => {
@@ -283,11 +298,13 @@ export default function CustomerForm() {
           </div>
         </div>
 
-        {/* Tags */}
-        <div className="card p-5 space-y-4">
+        {/* Tags — free-typed with autocomplete over tags already in use
+            elsewhere (Mailchimp-style), not a fixed picklist. Manage/clean
+            up the vocabulary that builds up over time from /customers/tags. */}
+        <div className="card p-5 space-y-3">
           <div>
             <label className="label mb-0">Tags</label>
-            <p className="text-xs text-gray-400 mt-0.5">Tap to select · tap again to remove</p>
+            <p className="text-xs text-gray-400 mt-0.5">Pick an existing tag or type a new one.</p>
           </div>
 
           {/* Selected tags summary */}
@@ -302,55 +319,39 @@ export default function CustomerForm() {
             </div>
           )}
 
-          {/* Grouped toggle pills */}
-          {TAG_GROUPS.map(group => (
-            <div key={group.label}>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{group.label}</p>
-              <div className="flex flex-wrap gap-1.5">
-                {group.tags.map(tag => {
-                  const selected = tags.includes(tag)
-                  return (
+          <div className="relative">
+            <input
+              ref={tagInputRef}
+              type="text"
+              value={tagInput}
+              onChange={e => setTagInput(e.target.value)}
+              onKeyDown={handleTagKeyDown}
+              onFocus={() => setTagInputFocused(true)}
+              onBlur={() => setTimeout(() => setTagInputFocused(false), 150)}
+              placeholder="Search or add a tag…"
+              className="input text-sm"
+            />
+            {tagInputFocused && (() => {
+              const q = tagInput.trim().toLowerCase()
+              const matches = tagSuggestions
+                .filter(t => !tags.includes(t) && (!q || t.toLowerCase().includes(q)))
+                .slice(0, 8)
+              if (!matches.length) return null
+              return (
+                <div className="absolute z-20 left-0 right-0 mt-1 border border-gray-200 rounded-lg bg-white shadow-lg max-h-52 overflow-y-auto">
+                  {matches.map(t => (
                     <button
-                      key={tag}
+                      key={t}
                       type="button"
-                      onClick={() => selected ? removeTag(tag) : addTag(tag)}
-                      className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                        selected
-                          ? 'bg-brand-50 border-brand-400 text-brand-700'
-                          : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
-                      }`}
+                      onMouseDown={e => { e.preventDefault(); addTag(t) }}
+                      className="w-full text-left text-sm px-3 py-2 hover:bg-gray-50 transition-colors text-gray-700"
                     >
-                      {selected && <Check size={13} className="inline align-[-2px] mr-1" />}{tag}
+                      {t}
                     </button>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-
-          {/* Custom tag input */}
-          <div>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Custom</p>
-            <div className="flex gap-2">
-              <input
-                ref={tagInputRef}
-                type="text"
-                value={tagInput}
-                onChange={e => setTagInput(e.target.value)}
-                onKeyDown={handleTagKeyDown}
-                placeholder="Type a custom tag…"
-                className="input text-sm flex-1"
-              />
-              {tagInput.trim() && (
-                <button
-                  type="button"
-                  onMouseDown={e => { e.preventDefault(); addTag(tagInput) }}
-                  className="px-3 py-1.5 rounded-lg bg-brand-600 text-white text-sm font-medium hover:bg-brand-700 transition-colors shrink-0"
-                >
-                  + Add
-                </button>
-              )}
-            </div>
+                  ))}
+                </div>
+              )
+            })()}
           </div>
         </div>
 
@@ -375,7 +376,10 @@ export default function CustomerForm() {
 
           <div>
             <label className="label">Customer Type *</label>
-            <div className="grid grid-cols-2 gap-2">
+            <p className="text-xs text-gray-400 mt-0.5">
+              Retail Customer isn't exclusive with the others — a trade-bucket customer can also buy retail sometimes.
+            </p>
+            <div className="grid grid-cols-2 gap-2 mt-1">
               {CRM_CATEGORIES.map(cat => (
                 <button
                   key={cat}
@@ -390,6 +394,17 @@ export default function CustomerForm() {
                   {(() => { const I = CATEGORY_ICON[cat]; return I ? <I size={14} className="inline align-[-2px] mr-1" /> : null })()}{cat}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={toggleRetail}
+                className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors text-left ${
+                  isRetail
+                    ? 'border-pink-500 bg-pink-50 text-pink-700'
+                    : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                <ShoppingBag size={14} className="inline align-[-2px] mr-1" />{RETAIL_TAG}
+              </button>
             </div>
           </div>
 

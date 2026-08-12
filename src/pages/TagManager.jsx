@@ -6,13 +6,14 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import { loadTagStats, renameTagEverywhere, deleteTagEverywhere } from '../domain/customer'
 import { suggestTagMerges } from '../tagApi'
 
-// V8.2 — the custom-tag pile (CustomerForm.jsx's free-typed "Custom" field,
-// on top of the fixed TAG_GROUPS picklist) accumulated for years with no
-// vocabulary control, so the same real fact ends up spelled several
-// different ways across customers. This page: see everything in use with
-// counts, ask DeepSeek to propose merge groups (never applied without a
-// review), and rename/delete a tag everywhere by hand for anything the AI
-// pass doesn't catch or gets wrong.
+// V8.2 — customer tags are entirely free-typed (CustomerForm.jsx dropped its
+// fixed picklist groups the same cycle, in favor of autocomplete over
+// whatever's already in use) and accumulated for years with no vocabulary
+// control, so the same real fact ends up spelled several different ways
+// across customers. This page: see everything in use with counts, ask
+// DeepSeek to propose merge groups (never applied without a review), and
+// rename/delete a tag everywhere by hand for anything the AI pass doesn't
+// catch or gets wrong.
 export default function TagManager() {
   const [stats, setStats] = useState([])
   const [loading, setLoading] = useState(true)
@@ -31,14 +32,13 @@ export default function TagManager() {
   }
   useEffect(() => { refresh() }, [])
 
-  const customTags = stats.filter(s => !s.picklist)
-  const picklistTags = stats.filter(s => s.picklist)
+  const tags = stats
 
   async function handleSuggest() {
     setSuggesting(true)
     setSuggestError('')
     try {
-      const raw = await suggestTagMerges(customTags.map(s => s.tag))
+      const raw = await suggestTagMerges(tags.map(s => s.tag))
       setGroups(raw.map(g => ({ ...g, canonical: g.canonical, accepted: true })))
     } catch (e) {
       setSuggestError(e.message)
@@ -84,7 +84,7 @@ export default function TagManager() {
         <Link to="/customers" className="text-sm text-brand-600 hover:underline">← Customers</Link>
         <h1 className="text-2xl font-bold text-gray-900 mt-1">Manage Tags</h1>
         <p className="text-sm text-gray-500 mt-0.5">
-          {customTags.length} custom tag{customTags.length === 1 ? '' : 's'} in use, plus {picklistTags.length} from the fixed picklist.
+          {tags.length} tag{tags.length === 1 ? '' : 's'} in use across all customers.
         </p>
       </div>
 
@@ -101,7 +101,7 @@ export default function TagManager() {
           <button
             type="button"
             onClick={handleSuggest}
-            disabled={suggesting || customTags.length < 2}
+            disabled={suggesting || tags.length < 2}
             className="btn-secondary text-sm shrink-0 flex items-center gap-1.5"
           >
             {suggesting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
@@ -154,14 +154,14 @@ export default function TagManager() {
         )}
       </div>
 
-      {/* Every custom tag, manual rename/delete */}
+      {/* Every tag, manual rename/delete */}
       <div className="card p-5">
-        <p className="text-sm font-semibold text-gray-700 mb-3">All custom tags ({customTags.length})</p>
-        {customTags.length === 0 ? (
-          <p className="text-sm text-gray-400">No custom tags yet.</p>
+        <p className="text-sm font-semibold text-gray-700 mb-3">All tags ({tags.length})</p>
+        {tags.length === 0 ? (
+          <p className="text-sm text-gray-400">No tags yet.</p>
         ) : (
           <div className="divide-y divide-gray-100">
-            {customTags.map(s => (
+            {tags.map(s => (
               <div key={s.tag} className="flex items-center justify-between py-2.5 gap-3">
                 {renaming === s.tag ? (
                   <div className="flex items-center gap-2 flex-1">
@@ -203,26 +203,10 @@ export default function TagManager() {
         )}
       </div>
 
-      {picklistTags.length > 0 && (
-        <div className="card p-5 mt-6">
-          <p className="text-sm font-semibold text-gray-700 mb-1">Picklist tags in use</p>
-          <p className="text-xs text-gray-400 mb-3">
-            From the fixed Industry / Client Type / Order Profile / Geography groups — edit the picklist itself in
-            CustomerForm.jsx to change these, not here.
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {picklistTags.map(s => (
-              <span key={s.tag} className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">
-                {s.tag} <span className="text-gray-400">· {s.count}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
 
       {confirmDelete && (
         <ConfirmDialog
-          message={`Delete "${confirmDelete}" from every customer that has it (${customTags.find(s => s.tag === confirmDelete)?.count || 0})? This can't be undone.`}
+          message={`Delete "${confirmDelete}" from every customer that has it (${tags.find(s => s.tag === confirmDelete)?.count || 0})? This can't be undone.`}
           confirmLabel="Delete everywhere"
           onConfirm={() => commitDelete(confirmDelete)}
           onCancel={() => setConfirmDelete(null)}
