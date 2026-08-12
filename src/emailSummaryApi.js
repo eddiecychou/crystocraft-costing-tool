@@ -144,10 +144,6 @@ function threadHay(t) {
   ).toLowerCase()
 }
 
-function threadKeywordScore(hay, keywords) {
-  return keywords.reduce((n, k) => n + (hay.includes(k) ? 1 : 0), 0)
-}
-
 // Returns '' if the question has no useful keywords or nothing matches —
 // caller falls through to year-routing/the general split in that case.
 export function renderThreadsTextByKeyword(threads, question) {
@@ -158,32 +154,79 @@ export function renderThreadsTextByKeyword(threads, question) {
 
   // Drop any keyword that's too common to be discriminating — confirmed
   // live 2026-08-12: "did widdop place any order in 2020" extracted
-  // "widdop" (the customer's own name, present in nearly every thread) as
-  // a keyword, which matched almost everything and made this function
-  // falsely report "found something", blocking the more precise
-  // year-router from ever running for a question that literally names the
-  // year. A keyword present in over 40% of all threads isn't selective
-  // enough to be worth anything as a search signal.
-  const DOC_FREQ_LIMIT = 0.4
+  // "widdop" (the customer's own name, present in nearly every thread,
+  // effectively guaranteed to ~100% since every matched thread has a
+  // widdop.co.uk address in From/To by construction) as a keyword, which
+  // matched almost everything and made this function falsely report
+  // "found something", blocking the more precise year-router from ever
+  // running for a question that literally names the year.
+  //
+  // First cut used 0.4 as the cutoff, which was too aggressive — also
+  // confirmed live: "who is diane and karen" dropped Diane entirely
+  // because she's a busy, frequently-CC'd contact mentioned in 47.6% of
+  // threads, well above 0.4 but nowhere near the ~100% that marks an
+  // own-company-domain word. Raised to 0.75 so a real (if prolific) person
+  // still gets through while the customer's own name/domain — which is
+  // reliably ~100%, not just "common" — still gets filtered.
+  const DOC_FREQ_LIMIT = 0.75
   keywords = keywords.filter(k => hays.filter(h => h.includes(k)).length / hays.length <= DOC_FREQ_LIMIT)
   if (!keywords.length) return ''
 
-  const scored = threads
-    .map((t, i) => ({ t, score: threadKeywordScore(hays[i], keywords) }))
-    .filter(x => x.score > 0)
-  if (!scored.length) return ''
-  // stable sort — ties keep `threads`' original most-recent-first order
-  scored.sort((a, b) => b.score - a.score)
+  // Per-keyword, not one combined ranking — confirmed live 2026-08-12, two
+  // separate failure modes from a single "sort everything by total score"
+  // approach:
+  //   1. "who is diane and karen" lost Diane entirely — Karen (a far more
+  //      frequent contact) had enough matches to fill the whole budget
+  //      before Diane's much rarer threads were ever reached.
+  //   2. "earliest contact with Stephen" answered with a 2025 thread when
+  //      an actual 2023 one existed — sorting by score alone ties toward
+  //      recency (stable sort, `threads` arrives most-recent-first), so
+  //      "earliest" lost to a pile of more-recent equal-scoring matches.
+  // Fix: each keyword gets a roughly equal budget share, and within that
+  // share the SAME recent+oldest split renderThreadsText() uses — so a
+  // multi-name question can't let one name crowd out another, and an
+  // "earliest" question about any one of them still has a chance of
+  // reaching the true earliest match instead of just the most recent N.
+  const perKeywordBudget = Math.floor(MAX_OUTPUT_CHARS / keywords.length)
+  const recentShare = Math.floor(perKeywordBudget * RECENT_SHARE)
+  const oldestShare = perKeywordBudget - recentShare
+  const used = new Set()
+  const sections = []
 
-  const chunks = []
-  let total = 0
-  for (const { t } of scored) {
-    const block = threadBlock(t)
-    if (total + block.length > MAX_OUTPUT_CHARS) break
-    chunks.push(block)
-    total += block.length
+  for (const k of keywords) {
+    const matches = threads.filter((t, i) => hays[i].includes(k) && !used.has(t))
+    if (!matches.length) continue
+
+    const recentChunks = []
+    let recentTotal = 0
+    for (const t of matches) { // most-recent-first, inherited from `threads`
+      const block = threadBlock(t)
+      if (recentTotal + block.length > recentShare) break
+      recentChunks.push(block)
+      recentTotal += block.length
+      used.add(t)
+    }
+    const oldestChunks = []
+    let oldestTotal = 0
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const t = matches[i]
+      if (used.has(t)) continue
+      const block = threadBlock(t)
+      if (oldestTotal + block.length > oldestShare) break
+      oldestChunks.push(block)
+      oldestTotal += block.length
+      used.add(t)
+    }
+    oldestChunks.reverse()
+
+    if (recentChunks.length || oldestChunks.length) {
+      const gapNote = oldestChunks.length
+        ? '\n(There may be a real gap between the two groups below that is not included here.)'
+        : ''
+      sections.push(`\n########## THREADS MENTIONING "${k}" ##########${gapNote}${recentChunks.join('\n')}${oldestChunks.join('\n')}`)
+    }
   }
-  return chunks.join('\n')
+  return sections.join('\n')
 }
 
 function threadBlock(t) {
