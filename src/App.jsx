@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, setDoc, getDocFromServer, serverTimestamp } from 'firebase/firestore'
 import { db } from './firebase'
 import { useAuthState } from './hooks/useAuthState'
 import { useProfile, isAdmin, isApproved, isPending } from './hooks/useProfile'
@@ -87,9 +87,24 @@ function AppRoutes({ user }) {
   // doc exists to show in the Pending tab. Create a pending-customer doc for
   // them — the Firestore rules allow a user to self-create their own pending
   // doc — so an admin can see and approve them.
+  //
+  // INCIDENT (2026-08-12): this fired against a real admin account and
+  // silently overwrote it to role:'customer', status:'pending' — useProfile's
+  // live onSnapshot briefly reported the doc as missing (most likely a
+  // permission/auth-token-attachment race right after sign-in, on a freshly
+  // authenticated session with no local cache), which was enough to trigger
+  // this effect and clobber a doc that genuinely existed the whole time.
+  // Fixed by never trusting the live subscription's "missing" signal for
+  // something this destructive — re-confirm directly against the server,
+  // after a short delay to let any auth-token race settle, and only write if
+  // that fresh, authoritative read ALSO says the doc doesn't exist.
   useEffect(() => {
-    if (user && profile?.missing && !profile.error) {
-      setDoc(doc(db, 'users', user.uid), {
+    if (!(user && profile?.missing && !profile.error)) return
+    let cancelled = false
+    const timer = setTimeout(async () => {
+      const fresh = await getDocFromServer(doc(db, 'users', user.uid)).catch(() => null)
+      if (cancelled || !fresh || fresh.exists()) return // real doc exists after all (or the check itself failed) — never touch it
+      await setDoc(doc(db, 'users', user.uid), {
         role: 'customer',
         status: 'pending',
         email: user.email || '',
@@ -100,7 +115,8 @@ function AppRoutes({ user }) {
         createdAt: serverTimestamp(),
         self_healed: true,
       }, { merge: true }).catch(() => {})
-    }
+    }, 1500)
+    return () => { cancelled = true; clearTimeout(timer) }
   }, [user, profile])
 
   if (user === undefined) return <LoadingBar />
