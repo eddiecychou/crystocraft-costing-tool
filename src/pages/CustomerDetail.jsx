@@ -14,6 +14,7 @@ import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, R
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
 import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers, CHANNELS, NO_API_CHANNELS } from '../domain/customer'
+import { transcribeMessage, transcribeThread } from '../domain/whatsappImport'
 import { erpLookup } from '../erpApi'
 import { mergeSalesInvoiceHistory } from '../domain/salesInvoiceHistory'
 import ErpDocModal from '../components/ErpDocModal'
@@ -328,6 +329,8 @@ export default function CustomerDetail() {
   // ingested list so an import is actually visible/verifiable afterward.
   const [whatsappThreads, setWhatsappThreads] = useState([])
   const [whatsappExpanded, setWhatsappExpanded] = useState(null) // thread id currently expanded
+  const [transcribingKey, setTranscribingKey] = useState(null) // `${threadId}:${index}` mid-transcription, or `${threadId}:*` for a bulk run
+  const [transcribeError, setTranscribeError] = useState('')
   useEffect(() => {
     return onSnapshot(collection(db, 'customers', id, 'whatsapp_threads'), snap => {
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
@@ -335,6 +338,31 @@ export default function CustomerDetail() {
       setWhatsappThreads(all)
     })
   }, [id])
+
+  const whatsappTarget = { type: 'customer', customerId: id }
+
+  async function handleTranscribeMessage(threadId, index) {
+    setTranscribeError(''); setTranscribingKey(`${threadId}:${index}`)
+    try {
+      await transcribeMessage(whatsappTarget, threadId, index)
+      // whatsappThreads updates on its own via the onSnapshot listener above
+      // once the write lands — no local state patch needed here.
+    } catch (e) {
+      setTranscribeError(e.message || 'Could not transcribe this voice note.')
+    } finally {
+      setTranscribingKey(null)
+    }
+  }
+  async function handleTranscribeThread(t) {
+    setTranscribeError(''); setTranscribingKey(`${t.id}:*`)
+    try {
+      const results = await transcribeThread(whatsappTarget, t.id, t.messages || [])
+      const failed = results.filter(r => !r.ok)
+      if (failed.length) setTranscribeError(`${failed.length} of ${results.length} voice note(s) could not be transcribed.`)
+    } finally {
+      setTranscribingKey(null)
+    }
+  }
 
   async function handleRefreshEmailSummary() {
     setEmailSummaryBusy(true); setEmailSummaryError('')
@@ -1000,7 +1028,9 @@ export default function CustomerDetail() {
 
       {/* WhatsApp threads (V8.2) — see customers/{id}/whatsapp_threads comment
           above. Hidden entirely when nothing's imported yet, same posture as
-          Email Summary. No AI summary yet — raw ingested view only. */}
+          Email Summary. No AI summary yet — raw ingested view only, plus
+          Deepgram transcription for voice notes (owner's own account,
+          2026-08-12) so a voice-heavy chat isn't silently missing content. */}
       {whatsappThreads.length > 0 && (
         <div className="card mb-4">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
@@ -1011,48 +1041,86 @@ export default function CustomerDetail() {
               </span>
             </h2>
           </div>
+          {transcribeError && (
+            <p className="px-5 pt-3 text-xs text-red-600">{transcribeError}</p>
+          )}
           <div className="divide-y divide-gray-100">
             {whatsappThreads.map(t => {
               const voiceCount = (t.messages || []).filter(m => m.needs_transcription).length
               const expanded = whatsappExpanded === t.id
+              const threadBusy = transcribingKey === `${t.id}:*`
               return (
                 <div key={t.id} className="px-5 py-3">
-                  <button
-                    type="button"
-                    onClick={() => setWhatsappExpanded(v => v === t.id ? null : t.id)}
-                    className="w-full flex items-center justify-between text-left"
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-800">{t.subject || t.id}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {t.channel} · {t.message_count} message{t.message_count === 1 ? '' : 's'}
-                        {t.date_range?.length === 2 && ` · ${fmtIsoDate(t.date_range[0])} – ${fmtIsoDate(t.date_range[1])}`}
-                        {voiceCount > 0 && (
-                          <span className="inline-flex items-center gap-0.5 ml-2 text-amber-600">
-                            <Mic size={11} />{voiceCount} not transcribed
-                          </span>
-                        )}
-                      </p>
-                    </div>
-                    {expanded ? <ChevronUp size={16} className="text-gray-400 shrink-0" /> : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
-                  </button>
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setWhatsappExpanded(v => v === t.id ? null : t.id)}
+                      className="flex-1 min-w-0 flex items-center justify-between text-left"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-800">{t.subject || t.id}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {t.channel} · {t.message_count} message{t.message_count === 1 ? '' : 's'}
+                          {t.date_range?.length === 2 && ` · ${fmtIsoDate(t.date_range[0])} – ${fmtIsoDate(t.date_range[1])}`}
+                          {voiceCount > 0 && (
+                            <span className="inline-flex items-center gap-0.5 ml-2 text-amber-600">
+                              <Mic size={11} />{voiceCount} not transcribed
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      {expanded ? <ChevronUp size={16} className="text-gray-400 shrink-0" /> : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
+                    </button>
+                    {voiceCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => handleTranscribeThread(t)}
+                        disabled={!!transcribingKey}
+                        className="shrink-0 text-xs text-brand-600 hover:text-brand-800 disabled:opacity-50 inline-flex items-center gap-1"
+                      >
+                        {threadBusy ? <Loader2 size={12} className="animate-spin" /> : <Mic size={12} />}
+                        Transcribe all
+                      </button>
+                    )}
+                  </div>
                   {expanded && (
                     <div className="mt-3 max-h-80 overflow-y-auto space-y-2 border-t border-gray-100 pt-3">
-                      {(t.messages || []).map((m, i) => (
-                        <div key={i} className="text-sm">
-                          <span className="text-xs text-gray-400">{fmtIsoDate(m.date)} · {m.from}</span>
-                          {m.body_text && <p className="text-gray-700">{m.body_text}</p>}
-                          {m.attachment_filename && (
-                            m.attachment_url ? (
-                              <a href={m.attachment_url} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline text-xs">
-                                📎 {m.attachment_filename}{m.needs_transcription && ' (voice — not transcribed)'}
-                              </a>
-                            ) : (
-                              <span className="text-xs text-gray-400">📎 {m.attachment_filename} (file missing)</span>
-                            )
-                          )}
-                        </div>
-                      ))}
+                      {(t.messages || []).map((m, i) => {
+                        const msgBusy = transcribingKey === `${t.id}:${i}`
+                        return (
+                          <div key={i} className="text-sm">
+                            <span className="text-xs text-gray-400">{fmtIsoDate(m.date)} · {m.from}</span>
+                            {m.body_text && <p className="text-gray-700">{m.body_text}</p>}
+                            {m.transcript && (
+                              <p className="text-gray-700 italic">
+                                <Mic size={11} className="inline align-[-1px] mr-1 text-gray-400" />{m.transcript}
+                              </p>
+                            )}
+                            {m.attachment_filename && (
+                              <div className="flex items-center gap-2">
+                                {m.attachment_url ? (
+                                  <a href={m.attachment_url} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline text-xs">
+                                    📎 {m.attachment_filename}
+                                  </a>
+                                ) : (
+                                  <span className="text-xs text-gray-400">📎 {m.attachment_filename} (file missing)</span>
+                                )}
+                                {m.needs_transcription && m.attachment_url && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTranscribeMessage(t.id, i)}
+                                    disabled={!!transcribingKey}
+                                    className="text-xs text-brand-600 hover:text-brand-800 disabled:opacity-50 inline-flex items-center gap-1"
+                                  >
+                                    {msgBusy ? <Loader2 size={11} className="animate-spin" /> : null}
+                                    {msgBusy ? 'Transcribing…' : 'Transcribe'}
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
                   )}
                 </div>

@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
-import { Users, Mail, MailX, UserCheck, Link2, Tag, Tags, AlertCircle, Download, Trash2, X, Pencil, UserPlus, Smartphone, Mic, ChevronDown, ChevronUp } from 'lucide-react'
+import { Users, Mail, MailX, UserCheck, Link2, Tag, Tags, AlertCircle, Download, Trash2, X, Pencil, UserPlus, Smartphone, Mic, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import {
   useMarketingContacts, saveContact, deleteContact, deleteContacts,
@@ -10,6 +10,7 @@ import {
   linkContactToCustomer, unlinkContactFromCustomer,
 } from '../domain/marketingContact'
 import { useCustomers, customerName } from '../domain/customer'
+import { transcribeMessage, transcribeThread } from '../domain/whatsappImport'
 import { CustomerPicker } from './CustomerAccounts'
 
 function fmtIsoDate(iso) {
@@ -22,9 +23,11 @@ function fmtIsoDate(iso) {
 // a chat that never became a real customer. Read-only here, same shape/
 // posture as CustomerDetail.jsx's own WhatsApp card. Hidden entirely when
 // nothing's been imported for this contact.
-function WhatsAppThreads({ contactId }) {
+function WhatsAppThreads({ contactId, phone }) {
   const [threads, setThreads] = useState([])
   const [expanded, setExpanded] = useState(null)
+  const [transcribingKey, setTranscribingKey] = useState(null) // `${threadId}:${index}` or `${threadId}:*`
+  const [transcribeError, setTranscribeError] = useState('')
   useEffect(() => {
     return onSnapshot(collection(db, 'marketing_contacts', contactId, 'whatsapp_threads'), snap => {
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
@@ -35,51 +38,109 @@ function WhatsAppThreads({ contactId }) {
 
   if (threads.length === 0) return null
 
+  const target = { type: 'lead', phone }
+
+  async function handleTranscribeMessage(threadId, index) {
+    setTranscribeError(''); setTranscribingKey(`${threadId}:${index}`)
+    try {
+      await transcribeMessage(target, threadId, index)
+    } catch (e) {
+      setTranscribeError(e.message || 'Could not transcribe this voice note.')
+    } finally {
+      setTranscribingKey(null)
+    }
+  }
+  async function handleTranscribeThread(t) {
+    setTranscribeError(''); setTranscribingKey(`${t.id}:*`)
+    try {
+      const results = await transcribeThread(target, t.id, t.messages || [])
+      const failed = results.filter(r => !r.ok)
+      if (failed.length) setTranscribeError(`${failed.length} of ${results.length} voice note(s) could not be transcribed.`)
+    } finally {
+      setTranscribingKey(null)
+    }
+  }
+
   return (
     <div className="block border-t border-gray-100 pt-3">
       <span className="text-xs text-gray-500 flex items-center gap-1.5 mb-1.5">
         <Smartphone size={13} className="text-gray-400" /> WhatsApp
         <span className="text-gray-400 font-normal">({threads.length} chat{threads.length === 1 ? '' : 's'} imported)</span>
       </span>
+      {transcribeError && <p className="text-xs text-red-600 mb-1.5">{transcribeError}</p>}
       <div className="space-y-1.5">
         {threads.map(t => {
           const voiceCount = (t.messages || []).filter(m => m.needs_transcription).length
           const isOpen = expanded === t.id
+          const threadBusy = transcribingKey === `${t.id}:*`
           return (
             <div key={t.id} className="border border-gray-100 rounded-lg">
-              <button
-                type="button"
-                onClick={() => setExpanded(v => v === t.id ? null : t.id)}
-                className="w-full flex items-center justify-between text-left px-2.5 py-2"
-              >
-                <p className="text-xs text-gray-600">
-                  {t.channel} · {t.message_count} message{t.message_count === 1 ? '' : 's'}
-                  {t.date_range?.length === 2 && ` · ${fmtIsoDate(t.date_range[0])} – ${fmtIsoDate(t.date_range[1])}`}
-                  {voiceCount > 0 && (
-                    <span className="inline-flex items-center gap-0.5 ml-1.5 text-amber-600">
-                      <Mic size={10} />{voiceCount} not transcribed
-                    </span>
-                  )}
-                </p>
-                {isOpen ? <ChevronUp size={14} className="text-gray-400 shrink-0" /> : <ChevronDown size={14} className="text-gray-400 shrink-0" />}
-              </button>
+              <div className="flex items-center justify-between gap-2 px-2.5 py-2">
+                <button
+                  type="button"
+                  onClick={() => setExpanded(v => v === t.id ? null : t.id)}
+                  className="flex-1 min-w-0 flex items-center justify-between text-left"
+                >
+                  <p className="text-xs text-gray-600">
+                    {t.channel} · {t.message_count} message{t.message_count === 1 ? '' : 's'}
+                    {t.date_range?.length === 2 && ` · ${fmtIsoDate(t.date_range[0])} – ${fmtIsoDate(t.date_range[1])}`}
+                    {voiceCount > 0 && (
+                      <span className="inline-flex items-center gap-0.5 ml-1.5 text-amber-600">
+                        <Mic size={10} />{voiceCount} not transcribed
+                      </span>
+                    )}
+                  </p>
+                  {isOpen ? <ChevronUp size={14} className="text-gray-400 shrink-0" /> : <ChevronDown size={14} className="text-gray-400 shrink-0" />}
+                </button>
+                {voiceCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => handleTranscribeThread(t)}
+                    disabled={!!transcribingKey}
+                    className="shrink-0 text-xs text-brand-600 hover:text-brand-800 disabled:opacity-50 inline-flex items-center gap-1"
+                  >
+                    {threadBusy ? <Loader2 size={11} className="animate-spin" /> : <Mic size={11} />}
+                    Transcribe all
+                  </button>
+                )}
+              </div>
               {isOpen && (
                 <div className="max-h-56 overflow-y-auto space-y-1.5 border-t border-gray-100 px-2.5 py-2">
-                  {(t.messages || []).map((m, i) => (
-                    <div key={i} className="text-xs">
-                      <span className="text-gray-400">{fmtIsoDate(m.date)} · {m.from}</span>
-                      {m.body_text && <p className="text-gray-700">{m.body_text}</p>}
-                      {m.attachment_filename && (
-                        m.attachment_url ? (
-                          <a href={m.attachment_url} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">
-                            📎 {m.attachment_filename}{m.needs_transcription && ' (voice — not transcribed)'}
-                          </a>
-                        ) : (
-                          <span className="text-gray-400">📎 {m.attachment_filename} (file missing)</span>
-                        )
-                      )}
-                    </div>
-                  ))}
+                  {(t.messages || []).map((m, i) => {
+                    const msgBusy = transcribingKey === `${t.id}:${i}`
+                    return (
+                      <div key={i} className="text-xs">
+                        <span className="text-gray-400">{fmtIsoDate(m.date)} · {m.from}</span>
+                        {m.body_text && <p className="text-gray-700">{m.body_text}</p>}
+                        {m.transcript && (
+                          <p className="text-gray-700 italic">
+                            <Mic size={10} className="inline align-[-1px] mr-1 text-gray-400" />{m.transcript}
+                          </p>
+                        )}
+                        {m.attachment_filename && (
+                          <div className="flex items-center gap-2">
+                            {m.attachment_url ? (
+                              <a href={m.attachment_url} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">
+                                📎 {m.attachment_filename}
+                              </a>
+                            ) : (
+                              <span className="text-gray-400">📎 {m.attachment_filename} (file missing)</span>
+                            )}
+                            {m.needs_transcription && m.attachment_url && (
+                              <button
+                                type="button"
+                                onClick={() => handleTranscribeMessage(t.id, i)}
+                                disabled={!!transcribingKey}
+                                className="text-brand-600 hover:text-brand-800 disabled:opacity-50"
+                              >
+                                {msgBusy ? 'Transcribing…' : 'Transcribe'}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -297,7 +358,7 @@ function EditContactModal({ contact, customers, onClose, onSaved, onLinked, onDe
               {linkState === 'saved' && <span className="text-[11px] text-green-600">Saved ✓</span>}
             </div>
           </div>
-          <WhatsAppThreads contactId={contact.id} />
+          <WhatsAppThreads contactId={contact.id} phone={contact.phone} />
           <label className="block">
             <span className="text-xs text-gray-500">Notes</span>
             <textarea className="input w-full mt-0.5" rows={2} value={f.app_notes} onChange={set('app_notes')} />

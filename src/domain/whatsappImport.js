@@ -1,7 +1,7 @@
 import JSZip from 'jszip'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
-import { db, storage } from '../firebase'
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { db, storage, authedUser } from '../firebase'
 import { findOrCreateLeadByPhone, idFromPhone } from './marketingContact'
 
 // V8.2 — client-side parser + importer for WhatsApp's own "Export Chat"
@@ -251,4 +251,68 @@ export async function previewWhatsAppZip(file) {
     voiceCount,
     senders: [...new Set(messages.map(m => m.sender))],
   }
+}
+
+// Same target shape import/preview use ({type:'customer',customerId} or
+// {type:'lead',phone}) -> the doc path to read/write. Deliberately does NOT
+// call findOrCreateLeadByPhone — transcription only ever runs against an
+// already-imported thread, so the lead doc is known to exist; this just
+// needs its id, not permission to create one.
+function targetToPath(target) {
+  return target.type === 'lead'
+    ? { collectionName: 'marketing_contacts', parentId: idFromPhone(target.phone) }
+    : { collectionName: 'customers', parentId: target.customerId }
+}
+
+// Transcribes ONE voice note via Deepgram (transcribe-whatsapp-audio edge
+// function — see its own header comment) and writes the result back onto
+// that message in place. Firestore has no "update one element of an array
+// field" op, so this reads the whole thread doc, patches the one message,
+// and writes the whole messages array back — fine at the message counts a
+// single WhatsApp export actually has (tens, not thousands).
+export async function transcribeMessage(target, threadId, messageIndex) {
+  const { collectionName, parentId } = targetToPath(target)
+  const ref = doc(db, collectionName, parentId, 'whatsapp_threads', threadId)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) throw new Error('This thread no longer exists.')
+  const messages = [...(snap.data().messages || [])]
+  const msg = messages[messageIndex]
+  if (!msg) throw new Error('Message not found.')
+  if (!msg.attachment_url) throw new Error('No audio file to transcribe (the attachment may be missing from the original export).')
+
+  const user = await authedUser()
+  if (!user) throw new Error('Please sign in.')
+  const token = await user.getIdToken()
+  const res = await fetch('/api/transcribe-whatsapp-audio', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ audioUrl: msg.attachment_url }),
+  })
+  let data = {}
+  try { data = await res.json() } catch { /* non-JSON error body */ }
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`)
+
+  messages[messageIndex] = { ...msg, transcript: data.transcript || '(no speech detected)', needs_transcription: false }
+  await updateDoc(ref, { messages })
+  return messages[messageIndex]
+}
+
+// Bulk convenience — every remaining voice note in a thread, one at a time
+// (keeps each write simple and avoids racing Deepgram rate limits; a
+// voice-heavy chat has tens of notes, not enough for sequential to matter).
+// Best-effort: one failure doesn't stop the rest, and every outcome
+// (success or error) is returned so the caller can show which ones didn't
+// go through rather than silently dropping them.
+export async function transcribeThread(target, threadId, messages) {
+  const results = []
+  for (let i = 0; i < messages.length; i++) {
+    if (!messages[i].needs_transcription) continue
+    try {
+      await transcribeMessage(target, threadId, i)
+      results.push({ index: i, ok: true })
+    } catch (e) {
+      results.push({ index: i, ok: false, error: e.message })
+    }
+  }
+  return results
 }

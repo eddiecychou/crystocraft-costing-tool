@@ -117,6 +117,10 @@
   path = "/api/suggest-tag-merges"
 
 [[edge_functions]]
+  function = "transcribe-whatsapp-audio"
+  path = "/api/transcribe-whatsapp-audio"
+
+[[edge_functions]]
   function = "resend-webhook"
   path = "/api/resend-webhook"
 
