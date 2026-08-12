@@ -43,6 +43,175 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
+## Current Status — V8.1 CLOSED as of 2026-08-12
+
+27 commits, one long continuous session, deployed and click-tested live
+by the owner throughout (not just at the end) — the email-archive
+project flagged since V7.23 and carried forward, unbuilt, through every
+cycle since (see the old "Where V8.1 starts" entry, now superseded
+below). Owner's own summary: "it is working great."
+
+### The numbers
+
+| | |
+|---|---:|
+| Commits | 27 |
+| New edge functions | `refresh-email-summary.js`, `discuss-customer-email.js`, `route-email-question.js`, `compose-email-answer.js` |
+| Retired edge function | `wp-blog-search.js` (Daily Drafts — unrelated small fix, see §1) |
+| New Firestore rule | `customers/{id}/email_threads` subcollection, admin-only |
+| New Firestore field | `customers/{id}.email_summary` (DeepSeek draft, generated on demand) |
+| New local scripts | `email-spike/` (Phase 1 spike), `email-sync/` (`sync.py`, `archive_import.py`, `common.py`, `reset.py`) |
+| New local automation | weekly full re-scan, `launchd` job (`~/Library/LaunchAgents/com.crystocraft.email-rescan.plist`, not in git) |
+| Emails ingested | ~1,265 live IMAP (eddie@uart.com.hk, 90-day backfill) + full historical PST/mbox archive (see §3) |
+| Real production bugs found & fixed | 9 — see §1, §3, §6, §7 below |
+
+### 1. Warm-up fixes, before the email project started
+
+Small, unrelated bugs cleared first: Daily Drafts' WordPress blog-link
+search retired in favor of manual paste (the WP host was 503ing, and the
+owner just wanted copy/paste); the Swatch Library's real "slow +
+intermittent 401" cause found and fixed (the Fly.io render service
+dropped HTTP Basic auth for a signed session cookie the same day, and the
+Netlify proxy was never updated — nothing to do with mobile networks,
+the original hypothesis); the customer invoice logo's stretch fix
+(verified correct in every environment available here, but see V8.2's
+open items — the owner still sees it stretched on-device); the Marketing
+page's tab bar overflowing off-screen on mobile portrait.
+
+### 2. Phase 1 — proof-of-concept spike
+
+Real IMAP connection to `eddie@uart.com.hk`, five named customers,
+deterministic envelope parse, then DeepSeek summary + Q&A over the raw
+threads — no Firestore, no UI, `email-spike/`. Owner review (the actual
+gate the whole project hinged on): facts checked clean against the raw
+threads, no hallucination, correctly kept unrelated threads for the same
+customer separate rather than merging them. Passed — Phase 2 authorized.
+
+### 3. Phase 2 — the live pipeline
+
+`email-sync/sync.py` (live IMAP, UID-based incremental) and
+`email-sync/archive_import.py` (the historical PST/mbox backfill) share
+one matching/threading/upsert implementation (`common.py`) so a thread
+started in the archive and continued in live mail becomes one Firestore
+doc either way. Customer matching: exact `customers.contacts[]` email, or
+company-domain fallback — with freemail domains (gmail.com, hotmail.com,
+etc.) explicitly excluded from the domain fallback after a real bug where
+one customer's Gmail-using contact pulled in every unrelated Gmail sender
+in the mailbox as a false match (225 polluted thread docs found and wiped
+before anything was built on top of the data).
+
+The historical backfill itself: `eddie.pst` (38GB) + `sales.pst` (32GB,
+including a hand-organized `CUSTOMER/` folder tree — Widdop alone had
+4,628 messages filed there) + 5 Apple Mail `.mbox` exports (~8GB, 2025
+mail), read via `libpff-python` (pip-installable through Xcode Command
+Line Tools — no Homebrew/`readpst` needed) and stdlib `mailbox`. Two real
+bugs surfaced only at this volume and fixed without losing progress
+(per-folder/per-file checkpointing in `archive_state.json`): a charset
+label (`unknown-8bit`) that isn't a real Python codec, and `pypff`
+raising a real exception (not returning `None`) for a message with
+corrupt internal PST data. End state: Widdop alone reached 786 ingested
+thread docs.
+
+`refresh-email-summary.js`/`discuss-customer-email.js` hold no Firestore
+access of their own — the browser already has it (admin, via the SDK) and
+sends rendered thread text; these two only hold the `DEEPSEEK_API_KEY`
+secret, same split every other AI feature in this app already uses.
+
+### 4. Weekly full re-scan
+
+`--rescan` on both scripts ignores existing checkpoints so a customer
+added to Firestore *after* their history was already scanned still gets
+matched retroactively (the owner's own catch: normal incremental runs
+only ever look at new/unscanned mail, so a newly added customer's older
+history would otherwise never be revisited). Wired to a local `launchd`
+job, Sunday 3am — a real constraint of local scheduling, not a cloud job:
+it only fires if this Mac is actually awake at that time.
+
+### 5. Wired into Daily Drafts
+
+Per the explicit sequencing carried forward from the original plan
+("first prove the summary/chat, only then wire Daily Drafts") — now
+unblocked, since the owner used and confirmed both. `email_summary`
+(when present) now outranks the CRM notes free-text field in both
+fit-scoring and the personalization prompt. Building this surfaced an
+unrelated, real bug: `marketing_contacts` could **mathematically never**
+appear as a Daily Drafts candidate — 108 never-contacted customers
+already exceeded the 60-candidate cap, and a stable sort with customers
+concatenated first meant every tie resolved in customers' favor
+regardless of how many of the 1,058 eligible contacts existed. Fixed with
+a random tiebreaker.
+
+### 6. The "Discover more" chat's retrieval strategy — a real design arc
+
+This is the part that got iterated the most, live, against the owner's
+own real questions — worth understanding the sequence, not just the end
+state, since each layer exists because a specific real question broke
+the one before it:
+
+1. **No cap at all** → a 786-thread customer's full history became a
+   multi-megabyte request body, failing as an opaque "DeepSeek did not
+   return a usable reply."
+2. **Recency cap** (most-recent N chars) → fixed the size problem, broke
+   "what's the earliest order" — that data was never sent at all.
+3. **Recent + oldest-on-file split** → both directions covered, but a
+   *person*-specific question ("when did I last contact Stephen") has no
+   year to route on and still missed the middle of the history.
+4. **Year-routing** (`route-email-question.js`, a cheap DeepSeek call over
+   a compact year→count index, never real content) → answers "what
+   happened in 2020"-shaped questions directly.
+5. **Local keyword/name search** (no API call — content words extracted
+   from the question, matched against participants/subject/body) →
+   catches person/topic questions the year-router can't. Immediately hit
+   its own bugs: the customer's own name (~100% of threads by
+   construction) drowned out the real year-router; a genuinely frequent
+   but real contact (47.6% of threads) got caught by the same
+   too-aggressive frequency filter meant only for the company name.
+   Tuned the cutoff (0.4 → 0.75) and broadened the stopword list once
+   these were found live.
+6. **Map-reduce over facets** (owner's own suggestion) — the real fix,
+   not just another tuning pass: one combined ranking could still let a
+   frequent keyword (Karen) crowd out a rarer one (Diane) sharing the same
+   budget, and "earliest" could still lose to a pile of equal-scoring
+   recent hits. Now each facet (each surviving keyword, plus the routed
+   year range) gets the FULL context budget and its own parallel DeepSeek
+   call; `compose-email-answer.js` merges the short partial answers
+   (never raw thread text) into one reply.
+7. **Order/PO code extraction** — the keyword regex was letters-only, so
+   `PO50081`/`SP505`/a bare order number like `56909` were silently
+   dropped despite being exactly the identifiers real questions use.
+8. **Permission to ask for clarification** — genuinely ambiguous questions
+   (could mean two different orders/timeframes) now get a clarifying
+   question back instead of a confident guess, in both the per-facet
+   answer and the reduce step. No new plumbing needed — the chat was
+   already multi-turn.
+
+Also found and fixed along the way: a deterministic (not transient)
+empty-response failure once thread content plus growing conversation
+history crossed some real size threshold — fixed with progressively
+smaller retry variants (drop history, then halve the content) rather
+than blindly retrying an identical oversized prompt.
+
+### 7. `resend-webhook.js` — a separate, unrelated production bug
+
+Found because the owner happened to check Resend's dashboard: every
+webhook delivery had been failing since it shipped. Root cause was
+layered and took several real fixes to fully resolve: `RESEND_WEBHOOK_SECRET`
+had never been set; `FIREBASE_CLIENT_EMAIL`/`FIREBASE_PRIVATE_KEY` (a
+service-account pair shared with `subscribe.js`/`unsubscribe.js` — see
+V8.2's open items) had *also* never been set, at all, despite being
+required since this shipped; the env vars were initially set as Netlify
+"secret" variables, which are invisible to Edge Functions specifically (a
+platform boundary, not a bug); and once all the config was actually
+correct, a real code bug remained — Resend echoes `tags` back as a plain
+object in the webhook payload, not the array shape used when *specifying*
+tags on send, so every delivery threw an uncaught `TypeError` before ever
+reaching the handler's own error handling. Engagement badges (Delivered/
+Opened/Clicked/Bounced) now populate correctly; Bounced was also found
+rendering in the same green "success" color as the other three once it
+actually started lighting up — fixed to red.
+
+---
+
 ## Current Status — V8.0 CLOSED as of 2026-08-11
 
 Commit `d6abec8` (1 commit, substantial), deployed and manually
@@ -1016,62 +1185,67 @@ before treating any of the following as proven:
 
 ---
 
-## Where V8.1 starts
+## Where V8.2 starts
 
-**Stated plan from the owner**: email archive + inbox ingestion — the
-owner's two Outlook PST mailboxes (`eddie@uart.com.hk`,
-`sales@uart.com.hk`, ~60-80GB combined) plus the live server inbox
-(~1 year of history). This has been flagged as a real, separate project
-since Daily Drafts' first slice (V7.23 §1), was expected to be "where
-V8.0 starts" per that entry, and was deliberately kept out of every
-round since including V8.0 itself — the owner redirected V8.0 to the
-Compose/topic redesign instead (see V8.0 §1). Carrying this plan forward
-unchanged: it needs PST parsing, thread-to-customer matching, and a
-summarization pipeline, none of which exist yet anywhere in this
-codebase.
+V8.1 closed out the email-archive project this entry originally
+described end to end — Phase 1 spike, Phase 2 live pipeline, the full
+PST/mbox historical backfill, Daily Drafts wiring, and a genuinely
+iterated retrieval strategy for the "Discover more" chat (see V8.1's own
+entry above for the full arc). What's left:
 
-**Explicit sequencing from the owner, not to be skipped**: this surfaces
-**first in the Customer section** (`CustomerDetail.jsx` and friends) as an
-AI-generated summary of a customer's email history, plus a
-conversational "discover more about this customer" chat — asking
-questions of their own correspondence, not just reading a static digest.
-**Only once that's built and proven** does wiring it into Daily Drafts
-(richer `customerContext` for fit-scoring and drafting, replacing today's
-CRM-notes-only context) get considered. Building the Daily Drafts wiring
-first, before the underlying summary/chat exists to wire in, would be
-building on nothing.
+**Real retrieval is still not built.** Every layer added this cycle
+(recency cap → year-routing → keyword/name search → map-reduce facets)
+is a deliberately cheap, no-new-infrastructure stand-in for actual
+retrieval (embeddings/vector search), explicitly flagged as such at every
+step. It has held up well in practice, including on Widdop (786 ingested
+threads, the largest account by far) — but it's still fundamentally
+"guess which facets matter from the question's own words," not real
+semantic search. Revisit if a customer's history grows enough that even
+the facet approach starts missing things, or if a genuinely vague
+question ("what's going on with this account lately") needs to work well
+without any extractable keyword at all.
 
-**The owner's own framing of the approach, worth keeping**: the email
-archive is a similar shape of problem to the legacy JES ERP mirror — a
-large pile of real operational history that's unusable as-is, not because
-it's inaccessible but because it's unstructured (free-text threads
-instead of JES's rows-and-columns). Same as the ERP mirror needed curated
-Supabase views to turn raw legacy tables into something a query could
-actually use (`erp-sync/api_views.sql`), the email archive needs DeepSeek
-to do the equivalent structuring pass — reading a thread and extracting
-what's actually in it (who, what was discussed, commitments made, when)
-into something a summary/chat feature can use — rather than treating this
-as a search-and-retrieve problem over raw text. Worth designing the
-ingestion pipeline around "DeepSeek structures each thread into real
-fields" from the start, not bolting it on after a naive text dump.
+**WhatsApp Business correspondence — discussed, not built.** The owner
+uses the consumer WhatsApp Business app (no API access), so this would be
+a manual per-conversation export (`Export chat → Without Media`, one
+`.txt` file per customer, no bulk export exists) rather than anything
+like the PST/mbox bulk backfill. Plan discussed and agreed in principle:
+a `customers/{id}/whatsapp_threads` subcollection (mirroring
+`email_threads`), a parser for WhatsApp's export format, and the same
+CustomerDetail.jsx summary/chat combining both sources into one
+"Correspondence" view rather than a separate WhatsApp-only card. Matching
+would need to be manual per file (exports don't carry a reliable
+email/phone to auto-match against a customer record) — realistically only
+worth doing for a handful of the owner's highest-value accounts, not a
+bulk import. Nobody has exported a chat yet — needs the owner to do that
+manually before this can actually start.
 
-Open design questions for whoever starts this (not yet discussed with the
-owner):
-- PST parsing approach — a library like `libpff`/`readpst`, run where
-  (this needs real compute, not a Netlify edge function's constraints).
-  This is the one part DeepSeek doesn't help with — PST is a binary
-  container format, not unstructured text, so it still needs a real parser
-  before there's any text for DeepSeek to structure.
-- Thread-to-customer matching — email addresses vs. `contacts[]` on each
-  customer record is the obvious first pass, but company domains and
-  personal-vs-work addresses will need real handling.
-- Where the ingested/summarized data lives — a new Firestore field per
-  customer, a subcollection, or something else — and how it's kept
-  current once the one-time backfill is done (the live inbox is ongoing,
-  not a one-time import).
-- Whether this needs the office-LAN Mac (per this file's "Two Macs"
-  section) or can run anywhere — likely the latter, mailboxes aren't
-  LAN-gated the way the ERP SQL Server is, but confirm before assuming.
+**subscribe.js/unsubscribe.js were very likely broken the same way
+resend-webhook.js was, until this cycle.** All three share the
+`FIREBASE_CLIENT_EMAIL`/`FIREBASE_PRIVATE_KEY` service-account pair,
+which V8.1 discovered had never actually been set in Netlify at all (see
+V8.1 §7) — fixed as a side effect of fixing the webhook, but the
+portal's newsletter subscribe/unsubscribe links were never specifically
+re-tested after. Worth a quick real click-test.
+
+**Two known-imperfect things from V8.1, not urgent:**
+- The customer invoice logo still reportedly renders stretched on the
+  owner's phone in portrait mode, despite the fix being verified correct
+  in every environment available to this assistant (real production
+  bundle, isolated repro at a 375px mobile viewport) — see V8.1 §1. Owner
+  called it minor and said to drop it without a screen recording/photo to
+  actually diagnose against.
+- The email-ingestion matching (`customers.contacts[]` exact email or
+  company-domain fallback, freemail domains excluded) is solid but not
+  perfect — a contact using a personal address at a company whose
+  freemail-hosted domain isn't already on file could still be missed.
+  Hasn't come up as a real problem yet.
+
+**Housekeeping:** `email-sync/`'s weekly `--rescan` (Sunday 3am local
+`launchd` job) only fires if this Mac is actually awake at that time — no
+alerting if it's been silently skipped for weeks. Worth a periodic manual
+sanity check (`cat email-sync/rescan_*.log`) until/unless that matters
+enough to build real monitoring for.
 
 V7.23's "full flow never click-tested" gap is now closed — V8.0 was
 genuinely click-tested live by the owner end to end (see V8.0's numbers

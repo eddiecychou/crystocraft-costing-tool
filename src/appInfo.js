@@ -14,7 +14,7 @@ export const APP_NAME = 'Operation Center'
 // Deliberately the SAME number as the development cycle in PROJECT-PLAN.md, so
 // "which version are you on?" has one answer whether it's asked of the team or
 // of the docs. Bump it when a cycle closes, not on every commit.
-export const APP_VERSION = 'V8.0'
+export const APP_VERSION = 'V8.1'
 
 // Injected by Vite at build time (see vite.config.js). The version alone can't
 // tell you whether a deploy actually went out — several changes this cycle
