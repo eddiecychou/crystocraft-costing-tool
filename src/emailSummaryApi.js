@@ -28,6 +28,16 @@ export async function discussCustomerEmail(threadsText, history, message) {
   return authedPost('/api/discuss-customer-email', { threadsText, history, message })
 }
 
+// Reduce step (added 2026-08-12) — see buildSearchFacets()/the map-reduce
+// rewrite below. Combines several partial answers (each from its own
+// independent facet — one person, one time range — with a full context
+// budget) into one coherent reply. Only ever sees short answers, never raw
+// thread text, so this call stays small regardless of how much history the
+// facets themselves scanned.
+export async function composeEmailAnswer(question, partials) {
+  return authedPost('/api/compose-email-answer', { question, partials })
+}
+
 // Year-routing (added 2026-08-12) — for a high-volume customer, ask which
 // year(s) a question is actually about BEFORE fetching content, so
 // "what's the earliest order" or "what happened in 2020" can pull that
@@ -144,89 +154,79 @@ function threadHay(t) {
   ).toLowerCase()
 }
 
-// Returns '' if the question has no useful keywords or nothing matches —
-// caller falls through to year-routing/the general split in that case.
-export function renderThreadsTextByKeyword(threads, question) {
+// Renders one facet's own matches with a FULL (not divided) budget, using
+// the recent+oldest split so "earliest" questions have a real chance of
+// reaching the true earliest match within this facet specifically.
+function renderFacetThreads(matches, budget) {
+  const recentShare = Math.floor(budget * RECENT_SHARE)
+  const oldestShare = budget - recentShare
+  const used = new Set()
+
+  const recentChunks = []
+  let recentTotal = 0
+  for (const t of matches) { // most-recent-first, inherited from `threads`
+    const block = threadBlock(t)
+    if (recentTotal + block.length > recentShare) break
+    recentChunks.push(block)
+    recentTotal += block.length
+    used.add(t)
+  }
+  const oldestChunks = []
+  let oldestTotal = 0
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const t = matches[i]
+    if (used.has(t)) continue
+    const block = threadBlock(t)
+    if (oldestTotal + block.length > oldestShare) break
+    oldestChunks.push(block)
+    oldestTotal += block.length
+    used.add(t)
+  }
+  oldestChunks.reverse()
+  if (!recentChunks.length && !oldestChunks.length) return ''
+  const gapNote = oldestChunks.length
+    ? '\n(There may be a real gap between the two groups below that is not included here.)'
+    : ''
+  return `${gapNote}${recentChunks.join('\n')}${oldestChunks.join('\n')}`
+}
+
+// Map-reduce facet decomposition (added 2026-08-12, owner's suggestion) —
+// the previous version divided ONE shared budget across every keyword
+// found, which meant a multi-name question ("who is diane and karen")
+// could still starve a name of its fair share once enough OTHER facets
+// were in play, and any single facet's own budget stayed a fraction of
+// what one focused DeepSeek call could actually use. Instead: each facet
+// (each surviving keyword, plus the routed year range if any — see
+// CustomerDetail.jsx's handleEmailChatSend) gets rendered with the FULL
+// MAX_OUTPUT_CHARS budget on its own and answered by its OWN DeepSeek call
+// (run in parallel); composeEmailAnswer() then merges the short partial
+// answers into one reply. No single call ever sees more than one facet's
+// worth of content, so this scales to as many named people/time ranges as
+// the question mentions without any of them needing to share a shrinking
+// budget — and the final reduce call only ever handles a handful of short
+// answers, never raw thread text, regardless of how much was scanned.
+export function buildKeywordFacets(threads, question) {
   let keywords = extractKeywords(question)
-  if (!keywords.length) return ''
+  if (!keywords.length) return []
 
   const hays = threads.map(threadHay)
 
   // Drop any keyword that's too common to be discriminating — confirmed
-  // live 2026-08-12: "did widdop place any order in 2020" extracted
-  // "widdop" (the customer's own name, present in nearly every thread,
-  // effectively guaranteed to ~100% since every matched thread has a
-  // widdop.co.uk address in From/To by construction) as a keyword, which
-  // matched almost everything and made this function falsely report
-  // "found something", blocking the more precise year-router from ever
-  // running for a question that literally names the year.
-  //
-  // First cut used 0.4 as the cutoff, which was too aggressive — also
-  // confirmed live: "who is diane and karen" dropped Diane entirely
-  // because she's a busy, frequently-CC'd contact mentioned in 47.6% of
-  // threads, well above 0.4 but nowhere near the ~100% that marks an
-  // own-company-domain word. Raised to 0.75 so a real (if prolific) person
-  // still gets through while the customer's own name/domain — which is
-  // reliably ~100%, not just "common" — still gets filtered.
+  // live: "did widdop place any order in 2020" extracted "widdop" (the
+  // customer's own name, ~100% by construction — every matched thread has
+  // a widdop.co.uk address in From/To) as a keyword, drowning out
+  // everything else. 0.75 still excludes an own-domain word while letting
+  // a genuinely prolific real contact (confirmed: 47.6% for one) through.
   const DOC_FREQ_LIMIT = 0.75
   keywords = keywords.filter(k => hays.filter(h => h.includes(k)).length / hays.length <= DOC_FREQ_LIMIT)
-  if (!keywords.length) return ''
 
-  // Per-keyword, not one combined ranking — confirmed live 2026-08-12, two
-  // separate failure modes from a single "sort everything by total score"
-  // approach:
-  //   1. "who is diane and karen" lost Diane entirely — Karen (a far more
-  //      frequent contact) had enough matches to fill the whole budget
-  //      before Diane's much rarer threads were ever reached.
-  //   2. "earliest contact with Stephen" answered with a 2025 thread when
-  //      an actual 2023 one existed — sorting by score alone ties toward
-  //      recency (stable sort, `threads` arrives most-recent-first), so
-  //      "earliest" lost to a pile of more-recent equal-scoring matches.
-  // Fix: each keyword gets a roughly equal budget share, and within that
-  // share the SAME recent+oldest split renderThreadsText() uses — so a
-  // multi-name question can't let one name crowd out another, and an
-  // "earliest" question about any one of them still has a chance of
-  // reaching the true earliest match instead of just the most recent N.
-  const perKeywordBudget = Math.floor(MAX_OUTPUT_CHARS / keywords.length)
-  const recentShare = Math.floor(perKeywordBudget * RECENT_SHARE)
-  const oldestShare = perKeywordBudget - recentShare
-  const used = new Set()
-  const sections = []
-
+  const facets = []
   for (const k of keywords) {
-    const matches = threads.filter((t, i) => hays[i].includes(k) && !used.has(t))
-    if (!matches.length) continue
-
-    const recentChunks = []
-    let recentTotal = 0
-    for (const t of matches) { // most-recent-first, inherited from `threads`
-      const block = threadBlock(t)
-      if (recentTotal + block.length > recentShare) break
-      recentChunks.push(block)
-      recentTotal += block.length
-      used.add(t)
-    }
-    const oldestChunks = []
-    let oldestTotal = 0
-    for (let i = matches.length - 1; i >= 0; i--) {
-      const t = matches[i]
-      if (used.has(t)) continue
-      const block = threadBlock(t)
-      if (oldestTotal + block.length > oldestShare) break
-      oldestChunks.push(block)
-      oldestTotal += block.length
-      used.add(t)
-    }
-    oldestChunks.reverse()
-
-    if (recentChunks.length || oldestChunks.length) {
-      const gapNote = oldestChunks.length
-        ? '\n(There may be a real gap between the two groups below that is not included here.)'
-        : ''
-      sections.push(`\n########## THREADS MENTIONING "${k}" ##########${gapNote}${recentChunks.join('\n')}${oldestChunks.join('\n')}`)
-    }
+    const matches = threads.filter((t, i) => hays[i].includes(k))
+    const text = renderFacetThreads(matches, MAX_OUTPUT_CHARS)
+    if (text) facets.push({ label: k, threadsText: `\n########## THREADS MENTIONING "${k}" ##########${text}` })
   }
-  return sections.join('\n')
+  return facets
 }
 
 function threadBlock(t) {

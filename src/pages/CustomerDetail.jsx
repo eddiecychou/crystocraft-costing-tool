@@ -17,7 +17,7 @@ import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers 
 import { erpLookup } from '../erpApi'
 import { mergeSalesInvoiceHistory } from '../domain/salesInvoiceHistory'
 import ErpDocModal from '../components/ErpDocModal'
-import { refreshEmailSummary, discussCustomerEmail, renderThreadsText, buildYearIndex, routeEmailQuestion, renderThreadsTextForYears, renderThreadsTextByKeyword } from '../emailSummaryApi'
+import { refreshEmailSummary, discussCustomerEmail, renderThreadsText, buildYearIndex, routeEmailQuestion, renderThreadsTextForYears, buildKeywordFacets, composeEmailAnswer } from '../emailSummaryApi'
 
 const STATUS_STYLES = {
   draft: 'bg-gray-100 text-gray-600',
@@ -337,27 +337,42 @@ export default function CustomerDetail() {
     setEmailChatHistory(prev => [...prev, { role: 'user', content: message }])
     setEmailChatInput('')
     try {
-      // Three layers, most targeted first, each falling through to the next
-      // if it finds nothing — for a high-volume customer, a blind recency/
-      // oldest split (the last resort) misses most of the history:
-      //   1. Keyword/name search (2026-08-12, no API call) — "when did I
-      //      last contact Stephen" has no year to route on, so this catches
-      //      person/topic-shaped questions the year-router can't.
-      //   2. Year-routing (2026-08-12) — "what happened in 2020"/"earliest
-      //      order" need that specific year's threads.
-      //   3. General recent+oldest-on-file split — the original safety net.
-      let threadsText = renderThreadsTextByKeyword(emailThreads, message)
-      if (!threadsText) {
-        try {
-          const yearIndex = buildYearIndex(emailThreads)
-          const years = yearIndex ? await routeEmailQuestion(yearIndex, message) : []
-          if (years.length) threadsText = renderThreadsTextForYears(emailThreads, years)
-        } catch { /* routing is a nice-to-have — fall through to the general mix below */ }
-      }
-      if (!threadsText) threadsText = renderThreadsText(emailThreads)
+      // Map-reduce (2026-08-12, owner's suggestion) — decompose the
+      // question into independent facets (one per person/keyword, plus one
+      // for the routed time range if any), answer each against its OWN
+      // full-budget slice of thread content IN PARALLEL (map), then merge
+      // the short partial answers into one reply (reduce). Replaces the
+      // earlier approach of splitting one shared budget across facets,
+      // which could still starve a facet once enough others were in play.
+      // Falls back to the single general recent+oldest split only when no
+      // facet (keyword or year) was found at all.
+      const facets = buildKeywordFacets(emailThreads, message)
+      try {
+        const yearIndex = buildYearIndex(emailThreads)
+        const years = yearIndex ? await routeEmailQuestion(yearIndex, message) : []
+        if (years.length) {
+          const text = renderThreadsTextForYears(emailThreads, years)
+          if (text) facets.push({ label: `year ${years.join('/')}`, threadsText: text })
+        }
+      } catch { /* routing is a nice-to-have — proceed with whatever facets were found locally */ }
 
-      const result = await discussCustomerEmail(threadsText, emailChatHistory, message)
-      setEmailChatHistory(prev => [...prev, { role: 'assistant', content: result.reply }])
+      let reply
+      if (!facets.length) {
+        const result = await discussCustomerEmail(renderThreadsText(emailThreads), emailChatHistory, message)
+        reply = result.reply
+      } else if (facets.length === 1) {
+        const result = await discussCustomerEmail(facets[0].threadsText, emailChatHistory, message)
+        reply = result.reply
+      } else {
+        // Each map call is a fresh, focused question — no shared chat
+        // history (that's the ORIGINAL question's context, not relevant to
+        // "what does this one facet's slice say"), so each one only ever
+        // carries its own facet's content.
+        const partials = await Promise.all(facets.map(f => discussCustomerEmail(f.threadsText, [], message)))
+        const composed = await composeEmailAnswer(message, facets.map((f, i) => ({ label: f.label, answer: partials[i].reply })))
+        reply = composed.reply
+      }
+      setEmailChatHistory(prev => [...prev, { role: 'assistant', content: reply }])
     } catch (e) {
       setEmailChatHistory(prev => [...prev, { role: 'assistant', content: `(error: ${e.message || 'chat failed'})` }])
     } finally {

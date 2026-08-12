@@ -109,6 +109,10 @@
   path = "/api/route-email-question"
 
 [[edge_functions]]
+  function = "compose-email-answer"
+  path = "/api/compose-email-answer"
+
+[[edge_functions]]
   function = "resend-webhook"
   path = "/api/resend-webhook"
 
