@@ -37,6 +37,13 @@ service firebase.storage {
       allow read, write: if isAuth();
     }
 
+    // WhatsApp "weak lead" attachments (V8.2) — marketing_contacts/{id}/whatsapp/…,
+    // same idea as customers/{customerId}/whatsapp/… above but for a chat that
+    // was saved as a lead rather than matched to a real customer.
+    match /marketing_contacts/{contactId}/{allPaths=**} {
+      allow read, write: if isAuth();
+    }
+
     // Customer Brand Gallery (V7.21) — uploaded to customer-assets/{customerId}/…
     // (customerAssets.js), a DIFFERENT top-level path from customers/{customerId}
     // above (that one is enquiry attachments). Was missing entirely — with no

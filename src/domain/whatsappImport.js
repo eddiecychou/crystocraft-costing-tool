@@ -1,7 +1,8 @@
 import JSZip from 'jszip'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { db, storage } from '../firebase'
+import { findOrCreateLeadByPhone, idFromPhone } from './marketingContact'
 
 // V8.2 — client-side parser + importer for WhatsApp's own "Export Chat"
 // .txt format. No API access to either Business or Personal WhatsApp (see
@@ -88,9 +89,27 @@ export function parseWhatsAppExport(text) {
 // number or email in either the filename or the transcript itself
 // (confirmed against the real sample). Used as both the suggested-match
 // seed and the thread doc's display subject.
+// iOS wraps a phone-number-like filename in invisible Unicode bidi-control
+// characters (LEFT-TO-RIGHT EMBEDDING / POP DIRECTIONAL FORMATTING etc.) for
+// RTL-safe display — confirmed against a real export, 2026-08-12
+// ("WhatsApp Chat - ‪+852 6189 0268‬.zip"). Invisible on screen but
+// breaks a regex anchored on the string actually starting with a digit/+, so
+// strip the whole bidi-control range rather than special-casing the two
+// marks seen so far.
+const BIDI_CONTROL_RE = /[\u200e\u200f\u202a-\u202e\u2066-\u2069]/g
+
 export function guessContactName(zipFileName) {
-  return zipFileName.replace(/\.zip$/i, '').replace(/^WhatsApp Chat( with)? -\s*/i, '').trim()
+  return zipFileName.replace(BIDI_CONTROL_RE, '').replace(/\.zip$/i, '').replace(/^WhatsApp Chat( with)? -\s*/i, '').trim()
 }
+
+// A contact "name" that's really just a phone number (WhatsApp falls back to
+// this when the number was never saved to Contacts) — e.g. "+852 6189 0268".
+// Used to default the import page toward "Save as Lead" instead of "Match to
+// Customer" for exactly the un-named, never-converted chats the owner
+// described (2026-08-12) — a real customer relationship almost always has a
+// saved contact name by the time there's a chat worth archiving.
+const PHONE_LIKE_RE = /^[+\d][\d\s\-()]{6,}$/
+export const looksLikePhoneNumber = name => PHONE_LIKE_RE.test(String(name || '').trim())
 
 // Parsed messages -> the Firestore doc shape. Attachment URLs are filled
 // in separately by uploadAttachments() once the caller has actually
@@ -127,20 +146,20 @@ export function buildThreadDoc({ zipFileName, channel, messages }) {
 // caption-derived name) plausibly could.
 const sanitizeStorageName = name => name.replace(/[#[\]*?]/g, '_')
 
-// Uploads every attachment referenced in `threadDoc.messages` to
-// customers/{customerId}/whatsapp/{importId}/{filename} (reusing the
-// existing storage.rules wildcard for customers/{customerId}/**, no new
-// rule needed) and fills in each message's attachment_url in place.
-// `onProgress(done, total)` is optional — a real import can mean 70+
-// files, worth showing progress for.
-async function uploadAttachments(zip, threadDoc, customerId, importId, onProgress) {
+// Uploads every attachment referenced in `threadDoc.messages` under
+// `storagePrefix` (customers/{id}/whatsapp/{importId} or
+// marketing_contacts/{id}/whatsapp/{importId} — both covered by their own
+// storage.rules wildcard, no new rule needed per target) and fills in each
+// message's attachment_url in place. `onProgress(done, total)` is optional —
+// a real import can mean 70+ files, worth showing progress for.
+async function uploadAttachments(zip, threadDoc, storagePrefix, onProgress) {
   const withAttachment = threadDoc.messages.filter(m => m.attachment_filename)
   let done = 0
   for (const msg of withAttachment) {
     const entry = zip.file(msg.attachment_filename)
     if (!entry) { done++; continue } // referenced in the transcript but missing from the zip — leave attachment_url null rather than fail the whole import
     const blob = await entry.async('blob')
-    const path = `customers/${customerId}/whatsapp/${importId}/${sanitizeStorageName(msg.attachment_filename)}`
+    const path = `${storagePrefix}/${sanitizeStorageName(msg.attachment_filename)}`
     const ref = storageRef(storage, path)
     await uploadBytes(ref, blob)
     msg.attachment_url = await getDownloadURL(ref)
@@ -157,9 +176,35 @@ export function threadDocId(zipFileName) {
   return guessContactName(zipFileName).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'chat'
 }
 
-// Full pipeline for one export: parse -> upload attachments -> write the
-// Firestore doc. `file` is a browser File (from an <input type=file>).
-export async function importWhatsAppZip(file, { customerId, channel, onProgress }) {
+// Whether this exact file has already been imported for the given target —
+// re-importing is safe either way (setDoc overwrites the same doc id rather
+// than duplicating), but the admin should know before hitting Import again,
+// not find out only after. Read-only: never creates the lead/customer doc
+// just to check (uses idFromPhone directly rather than
+// findOrCreateLeadByPhone, which would create one).
+export async function findExistingThread(target, zipFileName) {
+  const importId = threadDocId(zipFileName)
+  let collectionName, parentId
+  if (target.type === 'lead') {
+    if (!target.phone?.trim()) return null
+    collectionName = 'marketing_contacts'
+    parentId = idFromPhone(target.phone)
+  } else {
+    if (!target.customerId) return null
+    collectionName = 'customers'
+    parentId = target.customerId
+  }
+  const snap = await getDoc(doc(db, collectionName, parentId, 'whatsapp_threads', importId))
+  return snap.exists() ? { importId, ...snap.data() } : null
+}
+
+// Full pipeline for one export: parse -> resolve target -> upload
+// attachments -> write the Firestore doc. `file` is a browser File (from an
+// <input type=file>). `target` is either { type: 'customer', customerId }
+// (matched to a real customers/ record) or { type: 'lead', phone } (a "weak
+// lead" — never converted, saved under marketing_contacts/ instead, see
+// findOrCreateLeadByPhone in domain/marketingContact.js).
+export async function importWhatsAppZip(file, { target, channel, onProgress }) {
   const zip = await JSZip.loadAsync(file)
   const chatEntry = zip.file('_chat.txt') || zip.file(/_chat\.txt$/i)?.[0]
   if (!chatEntry) throw new Error('No _chat.txt found in this zip — is it a real WhatsApp chat export?')
@@ -169,13 +214,16 @@ export async function importWhatsAppZip(file, { customerId, channel, onProgress 
 
   const threadDoc = buildThreadDoc({ zipFileName: file.name, channel, messages })
   const importId = threadDocId(file.name)
-  await uploadAttachments(zip, threadDoc, customerId, importId, onProgress)
 
-  await setDoc(doc(db, 'customers', customerId, 'whatsapp_threads', importId), {
+  const collectionName = target.type === 'lead' ? 'marketing_contacts' : 'customers'
+  const parentId = target.type === 'lead' ? await findOrCreateLeadByPhone(target.phone) : target.customerId
+
+  await uploadAttachments(zip, threadDoc, `${collectionName}/${parentId}/whatsapp/${importId}`, onProgress)
+  await setDoc(doc(db, collectionName, parentId, 'whatsapp_threads', importId), {
     ...threadDoc,
     imported_at: serverTimestamp(),
   })
-  return { importId, messageCount: threadDoc.message_count, dateRange: threadDoc.date_range }
+  return { importId, parentId, messageCount: threadDoc.message_count, dateRange: threadDoc.date_range }
 }
 
 // Cheap, upload-free pass for the import page's preview step — parses the
@@ -192,9 +240,11 @@ export async function previewWhatsAppZip(file) {
   const dates = messages.map(m => m.date.getTime())
   const attachmentCount = messages.filter(m => m.attachment_filename).length
   const voiceCount = messages.filter(m => m.attachment_filename && /\.opus$/i.test(m.attachment_filename)).length
+  const contactName = guessContactName(file.name)
   return {
     zip,
-    contactName: guessContactName(file.name),
+    contactName,
+    looksLikePhone: looksLikePhoneNumber(contactName),
     messageCount: messages.length,
     dateRange: dates.length ? [new Date(Math.min(...dates)), new Date(Math.max(...dates))] : null,
     attachmentCount,

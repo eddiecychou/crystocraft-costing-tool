@@ -5,6 +5,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { saveCustomer, RETAIL_TAG } from './customer'
+import { countryFromPhone } from './phoneCountry'
 
 // Marketing contacts — the cleaned Mailchimp list, kept DELIBERATELY SEPARATE
 // from the `customers` collection. Some people are in both; they are not merged.
@@ -75,7 +76,7 @@ export function normalizeContact(id, raw) {
 }
 
 const displayName = c =>
-  [c.first_name, c.last_name].filter(Boolean).join(' ').trim() || c.company || c.email
+  [c.first_name, c.last_name].filter(Boolean).join(' ').trim() || c.company || c.email || c.phone
 
 export const contactName = displayName
 
@@ -106,6 +107,46 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 // Doc id from an email — same rule as the import + /api/subscribe endpoint, so a
 // contact always resolves to one deterministic doc.
 export const idFromEmail = email => String(email || '').trim().toLowerCase().replace(/\s+/g, '')
+
+// Doc id from a phone number — for WhatsApp leads that never gave a name or
+// email (V8.2, owner 2026-08-12: numbers that message the shop but never
+// convert to a real order, "weak leads", mostly retail — deliberately NOT
+// filed under customers/). "wa-" prefixed so it can never collide with an
+// idFromEmail-keyed doc even if the digits happened to match something.
+export const idFromPhone = phone => 'wa-' + String(phone || '').replace(/[^\d]/g, '')
+
+// Find or create a marketing contact keyed by phone alone — the WhatsApp
+// import page's "Save as Lead" path (whatsappImport.js), for a chat that
+// isn't a real customer relationship. Deliberately bypasses saveContact()
+// above (which requires a valid email) — a phone-only lead has neither a
+// name nor an email, only the number WhatsApp exported. Idempotent: calling
+// this again for the same phone returns the existing doc rather than
+// resetting it, so re-importing that lead's chat doesn't wipe out anything
+// an admin already filled in by hand since the first import.
+export async function findOrCreateLeadByPhone(phone) {
+  const id = idFromPhone(phone)
+  if (id === 'wa-') throw new Error('No usable phone number for this lead.')
+  const ref = doc(db, 'marketing_contacts', id)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) {
+    // Country guessed from the number's own dialing code (owner, 2026-08-12
+    // — "so I don't need to key in every time") — a starting default, not
+    // authoritative; see phoneCountry.js's own caveats (e.g. +1 could be
+    // Canada, not just the US). Blank rather than guessed wrong is the
+    // fallback when the code isn't recognized.
+    await setDoc(ref, {
+      phone: str(phone),
+      country: countryFromPhone(phone),
+      status: 'subscribed',
+      emailable: false,
+      audiences: ['retail'],
+      tags: ['whatsapp-lead'],
+      is_customer: false,
+      createdAt: serverTimestamp(),
+    })
+  }
+  return id
+}
 
 // Full edit of a contact. `emailable` is derived from status so the two can never
 // disagree (subscribed = emailable, anything else = suppressed). Editing the email

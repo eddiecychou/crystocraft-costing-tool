@@ -196,6 +196,13 @@ service cloud.firestore {
     // which bypasses these rules), never by the browser.
     match /marketing_contacts/{contactId} {
       allow read, write: if isAdmin();
+      // WhatsApp ingestion (V8.2) — a "weak lead" chat (phone number only,
+      // never converted to a real customer) saved via the WhatsApp import
+      // page's "Save as Lead" path. Same shape/posture as
+      // customers/{id}/whatsapp_threads above.
+      match /whatsapp_threads/{threadId} {
+        allow read, write: if isAdmin();
+      }
     }
     // Marketing campaigns — batched Resend sends to marketing_contacts
     // segments. Admin-only, same posture as marketing_contacts. Unsubscribes
