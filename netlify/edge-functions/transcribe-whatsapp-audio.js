@@ -13,7 +13,18 @@
 // caller (whatsappImport.js's transcribeMessage) writes the result back onto
 // the message.
 //
-// POST { audioUrl } -> { transcript }
+// POST { audioUrl, language? } -> { transcript }
+//   language — Deepgram language code, defaults to zh-HK (Cantonese). Must
+//     be explicit, not detect_language: confirmed against Deepgram's own
+//     docs (2026-08-13) that Cantonese is NOT in detect_language's supported
+//     list at all, even on nova-3 (only generic Mandarin "zh" is) — so
+//     auto-detect can never correctly identify it, and there's no single
+//     language setting that serves both a Cantonese-heavy customer and a
+//     genuinely English-speaking one like this app's real contacts include.
+//     The caller picks per thread (see CustomerDetail.jsx's WhatsApp card);
+//     this only defaults to zh-HK since that's the owner's stated common
+//     case, and validates against an allowlist rather than passing through
+//     an arbitrary client-supplied string to Deepgram unchecked.
 import { jwtVerify, createRemoteJWKSet } from 'https://esm.sh/jose@5.9.6'
 
 const JWKS = createRemoteJWKSet(
@@ -30,25 +41,20 @@ async function isAdmin(uid, idToken, projectId) {
   return doc?.fields?.role?.stringValue === 'admin'
 }
 
-// Explicit language=zh-HK (Cantonese Traditional), not detect_language —
-// the first real transcription attempt (owner, 2026-08-12) came back
-// "no speech detected" on a real Cantonese voice note using nova-2 +
-// detect_language=true. Confirmed against Deepgram's own docs: Cantonese
-// auto-detection isn't reliably covered, and nova-2 has weaker Cantonese
-// support than nova-3, which added it properly. Since the owner's audio is
-// mostly Cantonese, forcing the known-good explicit path beats gambling on
-// auto-detect. Deepgram's Cantonese model still handles short embedded
-// English phrases reasonably (real chats mix the two), so this isn't a
-// pure regression for the English-heavy messages.
-const DEEPGRAM_URL =
-  'https://api.deepgram.com/v1/listen?model=nova-3&language=zh-HK&smart_format=true&punctuate=true'
+// Deepgram language codes this app actually offers a picker for — the two
+// real cases seen so far (Cantonese-heavy customers, and genuinely
+// English-speaking ones like Joe Feder). Add more here if a customer turns
+// out to need one (e.g. zh for Mandarin) rather than opening this up to any
+// string the client sends.
+const ALLOWED_LANGUAGES = new Set(['zh-HK', 'en', 'zh'])
 
-async function callDeepgram(apiKey, audioUrl) {
+async function callDeepgram(apiKey, audioUrl, language) {
+  const url = `https://api.deepgram.com/v1/listen?model=nova-3&language=${encodeURIComponent(language)}&smart_format=true&punctuate=true`
   let reason = 'unknown'
   for (let attempt = 0; attempt < 3; attempt++) {
     if (attempt > 0) await new Promise(r => setTimeout(r, 800 * attempt))
     try {
-      const res = await fetch(DEEPGRAM_URL, {
+      const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Token ${apiKey}` },
         body: JSON.stringify({ url: audioUrl }),
@@ -87,15 +93,19 @@ export default async function handler(req) {
   try { body = await req.json() } catch { return json({ error: 'Bad JSON' }, 400) }
   const audioUrl = String(body?.audioUrl || '').trim()
   if (!audioUrl) return json({ error: 'audioUrl is required' }, 400)
+  const requestedLanguage = String(body?.language || '').trim()
+  const language = ALLOWED_LANGUAGES.has(requestedLanguage) ? requestedLanguage : 'zh-HK'
 
-  const { transcript, reason } = await callDeepgram(DEEPGRAM_API_KEY, audioUrl)
+  const { transcript, reason } = await callDeepgram(DEEPGRAM_API_KEY, audioUrl, language)
   if (transcript == null) return json({ error: `Deepgram could not transcribe this file: ${reason || 'unknown'}` }, 502)
 
   // An empty-but-successful transcript is real information (silence, or a
   // very short/unclear clip) — return it as-is rather than treating it as
   // an error, so the caller can show "(no speech detected)" instead of a
-  // misleading failure.
-  return json({ transcript })
+  // misleading failure. `language` echoed back so the caller can store which
+  // one actually got used (relevant since an invalid request value silently
+  // fell back to zh-HK above).
+  return json({ transcript, language })
 }
 
 export const config = { path: '/api/transcribe-whatsapp-audio' }

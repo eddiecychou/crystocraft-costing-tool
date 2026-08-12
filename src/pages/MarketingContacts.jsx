@@ -10,7 +10,7 @@ import {
   linkContactToCustomer, unlinkContactFromCustomer,
 } from '../domain/marketingContact'
 import { useCustomers, customerName } from '../domain/customer'
-import { transcribeMessage, transcribeThread } from '../domain/whatsappImport'
+import { transcribeMessage, WHATSAPP_TRANSCRIBE_LANGUAGES } from '../domain/whatsappImport'
 import { CustomerPicker } from './CustomerAccounts'
 
 function fmtIsoDate(iso) {
@@ -26,8 +26,9 @@ function fmtIsoDate(iso) {
 function WhatsAppThreads({ contactId, phone }) {
   const [threads, setThreads] = useState([])
   const [expanded, setExpanded] = useState(null)
-  const [transcribingKey, setTranscribingKey] = useState(null) // `${threadId}:${index}` or `${threadId}:*`
+  const [transcribingKey, setTranscribingKey] = useState(null) // `${threadId}:${index}`
   const [transcribeError, setTranscribeError] = useState('')
+  const [transcribeLang, setTranscribeLang] = useState({}) // `${threadId}:${index}` -> Deepgram language code, per-message since a thread can mix languages
   useEffect(() => {
     return onSnapshot(collection(db, 'marketing_contacts', contactId, 'whatsapp_threads'), snap => {
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
@@ -40,22 +41,16 @@ function WhatsAppThreads({ contactId, phone }) {
 
   const target = { type: 'lead', phone }
 
-  async function handleTranscribeMessage(threadId, index) {
+  // No bulk "transcribe all" — a thread can have hundreds of voice notes,
+  // and transcribing all of them in one guessed language would waste
+  // Deepgram calls on whichever ones guessed wrong (owner's call,
+  // 2026-08-13, same reasoning as CustomerDetail.jsx's WhatsApp card).
+  async function handleTranscribeMessage(threadId, index, language) {
     setTranscribeError(''); setTranscribingKey(`${threadId}:${index}`)
     try {
-      await transcribeMessage(target, threadId, index)
+      await transcribeMessage(target, threadId, index, language)
     } catch (e) {
       setTranscribeError(e.message || 'Could not transcribe this voice note.')
-    } finally {
-      setTranscribingKey(null)
-    }
-  }
-  async function handleTranscribeThread(t) {
-    setTranscribeError(''); setTranscribingKey(`${t.id}:*`)
-    try {
-      const results = await transcribeThread(target, t.id, t.messages || [])
-      const failed = results.filter(r => !r.ok)
-      if (failed.length) setTranscribeError(`${failed.length} of ${results.length} voice note(s) could not be transcribed.`)
     } finally {
       setTranscribingKey(null)
     }
@@ -72,42 +67,30 @@ function WhatsAppThreads({ contactId, phone }) {
         {threads.map(t => {
           const voiceCount = (t.messages || []).filter(m => m.needs_transcription).length
           const isOpen = expanded === t.id
-          const threadBusy = transcribingKey === `${t.id}:*`
           return (
             <div key={t.id} className="border border-gray-100 rounded-lg">
-              <div className="flex items-center justify-between gap-2 px-2.5 py-2">
-                <button
-                  type="button"
-                  onClick={() => setExpanded(v => v === t.id ? null : t.id)}
-                  className="flex-1 min-w-0 flex items-center justify-between text-left"
-                >
-                  <p className="text-xs text-gray-600">
-                    {t.channel} · {t.message_count} message{t.message_count === 1 ? '' : 's'}
-                    {t.date_range?.length === 2 && ` · ${fmtIsoDate(t.date_range[0])} – ${fmtIsoDate(t.date_range[1])}`}
-                    {voiceCount > 0 && (
-                      <span className="inline-flex items-center gap-0.5 ml-1.5 text-amber-600">
-                        <Mic size={10} />{voiceCount} not transcribed
-                      </span>
-                    )}
-                  </p>
-                  {isOpen ? <ChevronUp size={14} className="text-gray-400 shrink-0" /> : <ChevronDown size={14} className="text-gray-400 shrink-0" />}
-                </button>
-                {voiceCount > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => handleTranscribeThread(t)}
-                    disabled={!!transcribingKey}
-                    className="shrink-0 text-xs text-brand-600 hover:text-brand-800 disabled:opacity-50 inline-flex items-center gap-1"
-                  >
-                    {threadBusy ? <Loader2 size={11} className="animate-spin" /> : <Mic size={11} />}
-                    Transcribe all
-                  </button>
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={() => setExpanded(v => v === t.id ? null : t.id)}
+                className="w-full flex items-center justify-between text-left px-2.5 py-2"
+              >
+                <p className="text-xs text-gray-600">
+                  {t.channel} · {t.message_count} message{t.message_count === 1 ? '' : 's'}
+                  {t.date_range?.length === 2 && ` · ${fmtIsoDate(t.date_range[0])} – ${fmtIsoDate(t.date_range[1])}`}
+                  {voiceCount > 0 && (
+                    <span className="inline-flex items-center gap-0.5 ml-1.5 text-amber-600">
+                      <Mic size={10} />{voiceCount} not transcribed
+                    </span>
+                  )}
+                </p>
+                {isOpen ? <ChevronUp size={14} className="text-gray-400 shrink-0" /> : <ChevronDown size={14} className="text-gray-400 shrink-0" />}
+              </button>
               {isOpen && (
                 <div className="max-h-56 overflow-y-auto space-y-1.5 border-t border-gray-100 px-2.5 py-2">
                   {(t.messages || []).map((m, i) => {
                     const msgBusy = transcribingKey === `${t.id}:${i}`
+                    const langKey = `${t.id}:${i}`
+                    const selectedLang = transcribeLang[langKey] || 'zh-HK'
                     return (
                       <div key={i} className="text-xs">
                         <span className="text-gray-400">{fmtIsoDate(m.date)} · {m.from}</span>
@@ -118,7 +101,7 @@ function WhatsAppThreads({ contactId, phone }) {
                           </p>
                         )}
                         {m.attachment_filename && (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             {m.attachment_url ? (
                               <a href={m.attachment_url} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">
                                 📎 {m.attachment_filename}
@@ -127,14 +110,24 @@ function WhatsAppThreads({ contactId, phone }) {
                               <span className="text-gray-400">📎 {m.attachment_filename} (file missing)</span>
                             )}
                             {/\.opus$/i.test(m.attachment_filename || '') && m.attachment_url && (
-                              <button
-                                type="button"
-                                onClick={() => handleTranscribeMessage(t.id, i)}
-                                disabled={!!transcribingKey}
-                                className="text-brand-600 hover:text-brand-800 disabled:opacity-50"
-                              >
-                                {msgBusy ? 'Transcribing…' : m.transcript ? 'Re-transcribe' : 'Transcribe'}
-                              </button>
+                              <>
+                                <select
+                                  value={selectedLang}
+                                  onChange={e => setTranscribeLang(prev => ({ ...prev, [langKey]: e.target.value }))}
+                                  disabled={!!transcribingKey}
+                                  className="border border-gray-200 rounded px-1 py-0.5 text-gray-600"
+                                >
+                                  {WHATSAPP_TRANSCRIBE_LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={() => handleTranscribeMessage(t.id, i, selectedLang)}
+                                  disabled={!!transcribingKey}
+                                  className="text-brand-600 hover:text-brand-800 disabled:opacity-50"
+                                >
+                                  {msgBusy ? 'Transcribing…' : m.transcript ? 'Re-transcribe' : 'Transcribe'}
+                                </button>
+                              </>
                             )}
                           </div>
                         )}

@@ -301,13 +301,24 @@ function targetToPath(target) {
     : { collectionName: 'customers', parentId: target.customerId }
 }
 
+// Deepgram language codes offered in the UI — mirrors the edge function's
+// own allowlist. Cantonese isn't in Deepgram's detect_language coverage at
+// all (confirmed against their docs, 2026-08-13), so there's no auto-detect
+// option here — the two real cases seen so far (a Cantonese-heavy customer,
+// a genuinely English-speaking one like Joe Feder) need an explicit pick.
+export const WHATSAPP_TRANSCRIBE_LANGUAGES = [
+  { value: 'zh-HK', label: 'Cantonese' },
+  { value: 'en', label: 'English' },
+  { value: 'zh', label: 'Mandarin' },
+]
+
 // Transcribes ONE voice note via Deepgram (transcribe-whatsapp-audio edge
 // function — see its own header comment) and writes the result back onto
 // that message in place. Firestore has no "update one element of an array
 // field" op, so this reads the whole thread doc, patches the one message,
 // and writes the whole messages array back — fine at the message counts a
 // single WhatsApp export actually has (tens, not thousands).
-export async function transcribeMessage(target, threadId, messageIndex) {
+export async function transcribeMessage(target, threadId, messageIndex, language = 'zh-HK') {
   const { collectionName, parentId } = targetToPath(target)
   const ref = doc(db, collectionName, parentId, 'whatsapp_threads', threadId)
   const snap = await getDoc(ref)
@@ -323,33 +334,19 @@ export async function transcribeMessage(target, threadId, messageIndex) {
   const res = await fetch('/api/transcribe-whatsapp-audio', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ audioUrl: msg.attachment_url }),
+    body: JSON.stringify({ audioUrl: msg.attachment_url, language }),
   })
   let data = {}
   try { data = await res.json() } catch { /* non-JSON error body */ }
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`)
 
-  messages[messageIndex] = { ...msg, transcript: data.transcript || '(no speech detected)', needs_transcription: false }
+  messages[messageIndex] = {
+    ...msg,
+    transcript: data.transcript || '(no speech detected)',
+    transcript_language: data.language || language,
+    needs_transcription: false,
+  }
   await updateDoc(ref, { messages })
   return messages[messageIndex]
 }
 
-// Bulk convenience — every remaining voice note in a thread, one at a time
-// (keeps each write simple and avoids racing Deepgram rate limits; a
-// voice-heavy chat has tens of notes, not enough for sequential to matter).
-// Best-effort: one failure doesn't stop the rest, and every outcome
-// (success or error) is returned so the caller can show which ones didn't
-// go through rather than silently dropping them.
-export async function transcribeThread(target, threadId, messages) {
-  const results = []
-  for (let i = 0; i < messages.length; i++) {
-    if (!messages[i].needs_transcription) continue
-    try {
-      await transcribeMessage(target, threadId, i)
-      results.push({ index: i, ok: true })
-    } catch (e) {
-      results.push({ index: i, ok: false, error: e.message })
-    }
-  }
-  return results
-}
