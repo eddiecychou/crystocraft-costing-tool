@@ -152,10 +152,18 @@ const sanitizeStorageName = name => name.replace(/[#[\]*?]/g, '_')
 // storage.rules wildcard, no new rule needed per target) and fills in each
 // message's attachment_url in place. `onProgress(done, total)` is optional —
 // a real import can mean 70+ files, worth showing progress for.
-async function uploadAttachments(zip, threadDoc, storagePrefix, onProgress) {
+//
+// `existingUrlsByFilename` (re-import only — see importWhatsAppZip) skips
+// re-uploading a file that's already there under the same name: WhatsApp
+// re-exports the FULL history every time, so without this, re-importing an
+// ongoing chat to pick up new messages would re-upload every old photo/voice
+// note too, on every single re-import.
+async function uploadAttachments(zip, threadDoc, storagePrefix, onProgress, existingUrlsByFilename = null) {
   const withAttachment = threadDoc.messages.filter(m => m.attachment_filename)
   let done = 0
   for (const msg of withAttachment) {
+    const existingUrl = existingUrlsByFilename?.get(msg.attachment_filename)
+    if (existingUrl) { msg.attachment_url = existingUrl; done++; onProgress?.(done, withAttachment.length); continue }
     const entry = zip.file(msg.attachment_filename)
     if (!entry) { done++; continue } // referenced in the transcript but missing from the zip — leave attachment_url null rather than fail the whole import
     const blob = await entry.async('blob')
@@ -217,9 +225,38 @@ export async function importWhatsAppZip(file, { target, channel, onProgress }) {
 
   const collectionName = target.type === 'lead' ? 'marketing_contacts' : 'customers'
   const parentId = target.type === 'lead' ? await findOrCreateLeadByPhone(target.phone) : target.customerId
+  const ref = doc(db, collectionName, parentId, 'whatsapp_threads', importId)
 
-  await uploadAttachments(zip, threadDoc, `${collectionName}/${parentId}/whatsapp/${importId}`, onProgress)
-  await setDoc(doc(db, collectionName, parentId, 'whatsapp_threads', importId), {
+  // Re-importing (e.g. a fresh export of the same ongoing chat, with newer
+  // messages appended) overwrites this whole doc — WhatsApp always exports
+  // the FULL history, not just what's new, so there's no way to append-only.
+  // Without this, every voice note transcribed via Deepgram would silently
+  // come back as needs_transcription:true with its transcript gone, since
+  // buildThreadDoc has no way to know a message already had one. Carry
+  // forward any existing transcript by matching on attachment_filename —
+  // stable across re-exports of the same chat (WhatsApp numbers attachments
+  // sequentially and never renumbers existing ones on a fresh export, only
+  // appends new ones).
+  const existingSnap = await getDoc(ref)
+  let existingUrlsByFilename = null
+  if (existingSnap.exists()) {
+    const transcriptsByFilename = new Map()
+    existingUrlsByFilename = new Map()
+    for (const m of existingSnap.data().messages || []) {
+      if (!m.attachment_filename) continue
+      if (m.transcript) transcriptsByFilename.set(m.attachment_filename, m.transcript)
+      if (m.attachment_url) existingUrlsByFilename.set(m.attachment_filename, m.attachment_url)
+    }
+    if (transcriptsByFilename.size) {
+      threadDoc.messages = threadDoc.messages.map(m => {
+        const priorTranscript = m.attachment_filename && transcriptsByFilename.get(m.attachment_filename)
+        return priorTranscript ? { ...m, transcript: priorTranscript, needs_transcription: false } : m
+      })
+    }
+  }
+
+  await uploadAttachments(zip, threadDoc, `${collectionName}/${parentId}/whatsapp/${importId}`, onProgress, existingUrlsByFilename)
+  await setDoc(ref, {
     ...threadDoc,
     imported_at: serverTimestamp(),
   })
