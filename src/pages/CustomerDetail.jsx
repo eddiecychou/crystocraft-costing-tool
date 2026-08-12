@@ -1105,7 +1105,7 @@ export default function CustomerDetail() {
                                 ) : (
                                   <span className="text-xs text-gray-400">📎 {m.attachment_filename} (file missing)</span>
                                 )}
-                                {m.needs_transcription && m.attachment_url && (
+                                {/\.opus$/i.test(m.attachment_filename || '') && m.attachment_url && (
                                   <button
                                     type="button"
                                     onClick={() => handleTranscribeMessage(t.id, i)}
@@ -1113,7 +1113,7 @@ export default function CustomerDetail() {
                                     className="text-xs text-brand-600 hover:text-brand-800 disabled:opacity-50 inline-flex items-center gap-1"
                                   >
                                     {msgBusy ? <Loader2 size={11} className="animate-spin" /> : null}
-                                    {msgBusy ? 'Transcribing…' : 'Transcribe'}
+                                    {msgBusy ? 'Transcribing…' : m.transcript ? 'Re-transcribe' : 'Transcribe'}
                                   </button>
                                 )}
                               </div>
