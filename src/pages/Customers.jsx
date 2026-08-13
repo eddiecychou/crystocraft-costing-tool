@@ -49,12 +49,16 @@ export default function Customers() {
     <div className="p-4 md:p-6">
       {loading && <LoadingBar />}
 
-      <div className="flex items-center justify-between mb-4">
+      {/* flex-col on mobile: three buttons + title in one row overflowed the
+          viewport on a narrow screen (2026-08-13 report) — stack instead,
+          buttons get their own row (wrapping, not scrolling off-screen)
+          below the title there. */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div>
           <h1 className="text-xl md:text-2xl font-bold text-gray-900">Customers</h1>
           <p className="text-sm text-gray-500 mt-0.5">{customers.length} clients</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Link to="/customers/whatsapp-import" className="btn-secondary text-sm">Import WhatsApp</Link>
           <Link to="/customers/tags" className="btn-secondary text-sm">Manage Tags</Link>
           <Link to="/customers/new" className="btn-primary text-sm">+ New</Link>
