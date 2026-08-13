@@ -12,7 +12,7 @@ import { orderStatusOf, orderUc } from '../shipping'
 const IN_PRODUCTION_ORDER_STATUSES = ['confirmed', 'packing', 'ready']
 import {
   AlertTriangle, ClipboardList, Factory, Trophy, Calendar, Check,
-  Store, ShoppingCart, Gift, Sparkles, Smartphone, X, RefreshCw, ChevronUp,
+  Store, ShoppingCart, Gift, Sparkles, Smartphone, X, RefreshCw, ChevronUp, ShoppingBag,
 } from 'lucide-react'
 
 function fmtDate(ts) {
@@ -302,7 +302,15 @@ export default function Dashboard() {
         />
       </div>
 
-      {/* Category filter pills */}
+      {/* Customer Type filter pills — Retail Customer sits alongside
+          Distributor/Small B2B/Gift-OEM/Crystal Fabric as a peer type
+          (owner, 2026-08-13: same visual row, not a separate toggle below),
+          but stays functionally independent under the hood — it's a tag,
+          not a value of crm_category, so it can combine with any of the
+          other four (a trade-bucket customer, e.g. shared ERP code C13,
+          can also buy retail sometimes; see domain/customer.js's
+          RETAIL_TAG comment). Clicking it toggles retailFilter, the others
+          set categoryFilter — both AND together in byCat()/byCatOrder(). */}
       <div className="flex flex-wrap gap-2 mb-4">
         {[
           { label: 'Distributor',   value: 'Distributor',   Icon: Store },
@@ -322,32 +330,24 @@ export default function Dashboard() {
             {Icon && <Icon size={13} className="inline align-[-2px] mr-1" />}{label}
           </button>
         ))}
-        {categoryFilter && (
+        <button
+          onClick={() => setRetailFilter(v => !v)}
+          className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+            retailFilter
+              ? 'bg-gray-800 border-gray-800 text-white'
+              : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
+          }`}
+        >
+          <ShoppingBag size={13} className="inline align-[-2px] mr-1" />{RETAIL_TAG}
+        </button>
+        {(categoryFilter || retailFilter) && (
           <button
-            onClick={() => setCategoryFilter(null)}
+            onClick={() => { setCategoryFilter(null); setRetailFilter(false) }}
             className="px-3 py-1 rounded-full text-xs font-medium border border-dashed border-gray-300 text-gray-400 hover:text-gray-600 transition-colors"
           >
             Clear filter
           </button>
         )}
-      </div>
-
-      {/* Retail toggle — most customers are trade/wholesale by default and
-          stay unlabeled; this isolates the tagged minority. Independent of
-          the Customer Type row above (both can be active at once). */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        <button
-          onClick={() => setRetailFilter(v => !v)}
-          className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-            retailFilter
-              ? 'bg-pink-600 border-pink-600 text-white'
-              : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
-          }`}
-        >
-          {RETAIL_TAG} only <span className={retailFilter ? 'text-white/70' : 'text-gray-400'}>
-            {customers.filter(c => c.tags?.includes(RETAIL_TAG)).length}
-          </span>
-        </button>
       </div>
 
       {/* Filtered panel — shown when a stat card is active */}

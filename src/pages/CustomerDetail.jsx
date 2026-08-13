@@ -611,7 +611,11 @@ export default function CustomerDetail() {
 
       {/* Header */}
       <div className="mb-4 mt-1">
-        <div className="flex items-start justify-between gap-3">
+        {/* flex-col on mobile: Edit/Merge/Delete were squeezed into a tiny
+            row alongside a long/wrapping (often multi-line CJK) company
+            name on a narrow screen — stack instead, buttons get their own
+            full-width row below the title there. */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
@@ -636,7 +640,7 @@ export default function CustomerDetail() {
               </div>
             )}
           </div>
-          <div className="flex gap-2 shrink-0">
+          <div className="flex gap-2 shrink-0 flex-wrap">
             <Link to={`/customers/${id}/edit`} onClick={remember} className="btn-secondary text-sm">Edit</Link>
             <button className="btn-secondary text-sm" onClick={() => setMerging(true)}>Merge…</button>
             <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>Delete</button>

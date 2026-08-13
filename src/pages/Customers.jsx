@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
-import { Store, ShoppingCart, Gift, Sparkles, Building2, Star, Smartphone } from 'lucide-react'
+import { Store, ShoppingCart, Gift, Sparkles, Building2, Star, Smartphone, ShoppingBag } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { useCustomers, CUSTOMER_COUNTRIES, CHANNELS, RETAIL_TAG } from '../domain/customer'
 
@@ -61,7 +61,14 @@ export default function Customers() {
         </div>
       </div>
 
-      {/* Category tabs */}
+      {/* Customer Type tabs — Retail Customer sits alongside Distributor/
+          Small B2B/Gift-OEM/Crystal Fabric as a peer type (owner,
+          2026-08-13: same row, not a separate toggle below), but stays
+          functionally independent under the hood — it's a tag, not a
+          crm_category value, so it can combine with any of the other four
+          (a trade-bucket customer, e.g. shared ERP code C13, can also buy
+          retail sometimes; see domain/customer.js's RETAIL_TAG comment).
+          Clicking it toggles retailOnly, the others set filterCategory. */}
       <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1">
         {CATEGORY_TABS.map(tab => {
           const count = tab.key ? customers.filter(c => c.crm_category === tab.key).length : customers.length
@@ -79,21 +86,15 @@ export default function Customers() {
             </button>
           )
         })}
-      </div>
-
-      {/* Retail toggle — most customers here are trade/wholesale by default
-          and stay unlabeled; this just isolates the tagged minority (see
-          RETAIL_TAG in domain/customer.js). Independent of Customer Type. */}
-      <div className="flex items-center gap-2 mb-4">
         <button
           onClick={() => setRetailOnly(v => !v)}
-          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap ${
+          className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap ${
             retailOnly
-              ? 'bg-pink-600 text-white border-pink-600'
+              ? 'bg-brand-600 text-white border-brand-600'
               : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
           }`}
         >
-          {RETAIL_TAG} only <span className={retailOnly ? 'text-white/70' : 'text-gray-400'}>
+          <ShoppingBag size={13} className="inline align-[-2px] mr-1" />{RETAIL_TAG} <span className={`ml-1 ${retailOnly ? 'text-white/70' : 'text-gray-400'}`}>
             {customers.filter(c => c.tags?.includes(RETAIL_TAG)).length}
           </span>
         </button>
