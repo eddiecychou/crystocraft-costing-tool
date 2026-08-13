@@ -335,6 +335,20 @@ export default function DailyDrafts() {
   const [chatInput, setChatInput] = useState({}) // draftId -> string
   const [chatBusy, setChatBusy] = useState(null)
 
+  // Bulk rewrite — owner's own request (2026-08-13): the same correction
+  // ("wrong sign-off", "too long", "wrong angle") often applies to several
+  // drafts at once, and doing it one chat at a time is slow. Reuses the
+  // SAME discuss-outreach-draft.js call the per-draft chat uses (one call
+  // per draft, sequentially — a real DeepSeek round trip each time, and
+  // avoids racing rate limits the same way the WhatsApp bulk-summary scan
+  // does), just fired once per pending draft with no prior history. Never
+  // touches sent/skipped drafts — only whatever's still in `drafts`.
+  const [bulkRewriteOpen, setBulkRewriteOpen] = useState(false)
+  const [bulkRewriteInput, setBulkRewriteInput] = useState('')
+  const [bulkRewriteBusy, setBulkRewriteBusy] = useState(false)
+  const [bulkRewriteProgress, setBulkRewriteProgress] = useState(null) // { done, total }
+  const [bulkRewriteError, setBulkRewriteError] = useState('')
+
   // Per-draft attachment editing — separate from the compose-phase default.
   // Each draft's photos/links can be added to or removed from independently.
   const [productImagesCache, setProductImagesCache] = useState({}) // "source:productId" -> images[]
@@ -742,6 +756,46 @@ export default function DailyDrafts() {
     }
   }
 
+  async function handleBulkRewrite() {
+    const instruction = bulkRewriteInput.trim()
+    if (!instruction || bulkRewriteBusy) return
+    setBulkRewriteBusy(true); setBulkRewriteError('')
+    const targets = drafts // snapshot — sent/skipped mid-run naturally drop out of `drafts` but this loop already captured its list
+    let failCount = 0
+    for (let i = 0; i < targets.length; i++) {
+      const d = targets[i]
+      setBulkRewriteProgress({ done: i, total: targets.length })
+      const fields = fieldsFor(d)
+      const history = chatHistory[d.id] || []
+      try {
+        const result = await discussDraft({
+          productContext: d.productName || d.topicLabel,
+          customerContext: d.customerContext,
+          draftSubject: fields.subject,
+          draftBody: fields.body,
+          history,
+          message: instruction,
+        })
+        if (result.subject) setField(d.id, 'subject', result.subject)
+        if (result.body) setField(d.id, 'body', result.body)
+        // Recorded on each draft's own chat thread too — so opening it
+        // afterward shows the bulk instruction was what changed it, not a
+        // silent edit with no explanation.
+        setChatHistory(prev => ({
+          ...prev,
+          [d.id]: [...history, { role: 'user', content: instruction }, { role: 'assistant', content: result.reply }],
+        }))
+      } catch {
+        failCount++
+      }
+    }
+    setBulkRewriteProgress({ done: targets.length, total: targets.length })
+    setBulkRewriteBusy(false)
+    setBulkRewriteInput('')
+    if (failCount) setBulkRewriteError(`${failCount} of ${targets.length} draft(s) could not be rewritten — the rest were updated.`)
+    setTimeout(() => setBulkRewriteProgress(null), 2000)
+  }
+
   // Pushes the owner's OWN message text onto the customer/contact's CRM
   // notes, verbatim — no AI involved in deciding what's worth keeping (see
   // discuss-outreach-draft.js's header comment on why this is a separate,
@@ -947,11 +1001,48 @@ export default function DailyDrafts() {
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-gray-900">Pending review ({drafts.length})</h2>
           {drafts.length > 0 && (
-            <button onClick={handleClearAllPending} className="text-xs text-red-600 hover:text-red-800 inline-flex items-center gap-1">
-              <Trash2 size={12} /> Clear all pending
-            </button>
+            <div className="flex items-center gap-3">
+              <button onClick={() => setBulkRewriteOpen(v => !v)} className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
+                <Sparkles size={12} /> Bulk rewrite
+              </button>
+              <button onClick={handleClearAllPending} className="text-xs text-red-600 hover:text-red-800 inline-flex items-center gap-1">
+                <Trash2 size={12} /> Clear all pending
+              </button>
+            </div>
           )}
         </div>
+
+        {bulkRewriteOpen && drafts.length > 0 && (
+          <div className="border border-ivory-dark rounded-lg p-3 bg-ivory-light space-y-2">
+            <p className="text-xs text-gray-500">
+              Applies to all {drafts.length} pending draft{drafts.length === 1 ? '' : 's'} — same instruction, sent
+              to each one individually (a real AI call per draft, so this takes a moment for a large batch).
+            </p>
+            <div className="flex gap-2">
+              <input
+                value={bulkRewriteInput}
+                onChange={e => setBulkRewriteInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && !bulkRewriteBusy && handleBulkRewrite()}
+                placeholder="e.g. sign off with 'Best regards, Eddie' instead"
+                className="input w-full text-sm" autoFocus
+                autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck="false"
+                name="bulk-rewrite-input"
+                data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"
+                data-lpignore="true" data-1p-ignore="true"
+                data-dashlane-ignore="true" data-bwignore="true" data-form-type="other"
+                data-ms-editor="false"
+              />
+              <button type="button" onClick={handleBulkRewrite} disabled={bulkRewriteBusy || !bulkRewriteInput.trim()} className="btn-secondary shrink-0">
+                {bulkRewriteBusy ? <Loader2 size={14} className="animate-spin" /> : 'Apply to all'}
+              </button>
+            </div>
+            {bulkRewriteProgress && (
+              <p className="text-xs text-gray-500">Rewrote {bulkRewriteProgress.done} of {bulkRewriteProgress.total}…</p>
+            )}
+            {bulkRewriteError && <p className="text-xs text-red-600">{bulkRewriteError}</p>}
+          </div>
+        )}
+
         {drafts.length === 0 && <div className="text-sm text-gray-400">No drafts waiting — generate some above.</div>}
         {drafts.map(d => {
           const fields = fieldsFor(d)
