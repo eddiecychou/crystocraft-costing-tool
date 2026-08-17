@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
-  collection, getDocs, getDoc, doc, updateDoc, setDoc, deleteDoc,
+  collection, getDocs, getDoc, doc, addDoc, updateDoc, setDoc, deleteDoc,
   writeBatch, serverTimestamp,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { saveCustomer, RETAIL_TAG } from './customer'
 import { countryFromPhone } from './phoneCountry'
+import { repointDraftsToCustomer } from './outreachDrafts'
 
 // Marketing contacts — the cleaned Mailchimp list, kept DELIBERATELY SEPARATE
 // from the `customers` collection. Some people are in both; they are not merged.
@@ -267,15 +268,74 @@ export async function deleteTagEverywhere(contacts, tag) {
 }
 
 // Record that a contact is now (or already was found to be) an app customer.
-// A pointer, not a merge — the marketing contact stays a separate record; see
-// the module header. is_customer flips to true because "linked to a real
-// customer" is the strongest possible signal of that.
+// A pointer, not a merge — the marketing contact record itself stays put
+// (never deleted); see the module header. is_customer flips to true because
+// "linked to a real customer" is the strongest possible signal of that.
+//
+// SU-08 audit (2026-08-18) found the lead's actual HISTORY — app_notes and
+// any imported WhatsApp threads — was left permanently stranded under the
+// old marketing_contacts/{id} once linked, invisible from the resulting
+// customer record with no cross-link at all. This now:
+//   1. carries app_notes over as one Interaction Log entry (not dropped),
+//   2. MOVES (copies then deletes) the whatsapp_threads subcollection onto
+//      the customer, so it's reachable where Eddie is actually looking, and
+//   3. repoints any outreach_drafts already sent to this contact so their
+//      engagement/reply history follows the person, not the old id.
+// Best-effort: a failure in the history migration doesn't block the link
+// itself completing (the pointer is the one thing that must not silently
+// fail), but IS surfaced to the caller so it isn't silently lost either.
 export async function linkContactToCustomer(id, customerId, companyName) {
+  let historyWarning = ''
+  try {
+    const contactSnap = await getDoc(doc(db, 'marketing_contacts', id))
+    const contact = contactSnap.exists() ? contactSnap.data() : null
+
+    if (contact?.app_notes) {
+      await addDoc(collection(db, 'customers', customerId, 'enquiries'), {
+        date: serverTimestamp(),
+        contact_id: null,
+        description: `Notes carried over from the Marketing Contact record (before this lead was linked to this customer):\n\n${contact.app_notes}`,
+        product_interest: [],
+        channel: '',
+        status: 'Open',
+        follow_up_date: null,
+        outcome_notes: '',
+        linked_quote_ids: [],
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      })
+    }
+
+    const threadsSnap = await getDocs(collection(db, 'marketing_contacts', id, 'whatsapp_threads'))
+    const threadDocs = threadsSnap.docs
+    for (let i = 0; i < threadDocs.length; i += 200) {
+      const batch = writeBatch(db)
+      threadDocs.slice(i, i + 200).forEach(t => {
+        batch.set(doc(db, 'customers', customerId, 'whatsapp_threads', t.id), t.data())
+        batch.delete(t.ref)
+      })
+      await batch.commit()
+    }
+
+    await repointDraftsToCustomer(id, customerId)
+  } catch (e) {
+    // Never let a history-migration failure block the link itself — the
+    // pointer below is the one write that absolutely must land.
+    historyWarning = e?.message || 'Could not fully migrate this lead\'s notes/WhatsApp history.'
+  }
+
   await updateDoc(doc(db, 'marketing_contacts', id), {
     possible_customer_match: { customer_id: customerId, company_name: str(companyName) },
     is_customer: true,
     updatedAt: serverTimestamp(),
   })
+
+  // Returned, not thrown — the link itself succeeded and existing callers
+  // (promoteContactsToCustomers' for-loop, DailyDrafts.jsx's bulk/single
+  // link actions) don't expect this call to fail; a throw here would abort
+  // an otherwise-successful bulk promote partway through. Callers that want
+  // to surface this can check the return value.
+  return { historyWarning: historyWarning || null }
 }
 
 // Clear a manually- or import-set link — for when it was matched wrong, or
@@ -318,8 +378,8 @@ export async function promoteContactsToCustomers(rows) {
       notes: 'Added from Marketing Contacts (Mailchimp import).',
     })
     if (!res.ok) throw new Error(`Could not create a customer for ${c.email}: ${res.result.errors?.[0]?.message || 'validation failed'}`)
-    await linkContactToCustomer(c.id, res.id, company)
-    created.push({ contactId: c.id, customerId: res.id, companyName: company })
+    const { historyWarning } = await linkContactToCustomer(c.id, res.id, company)
+    created.push({ contactId: c.id, customerId: res.id, companyName: company, historyWarning })
   }
   return { created, skipped }
 }

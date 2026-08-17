@@ -233,6 +233,9 @@ export function normalizeCustomer(raw) {
     email_bounced:       !!r.email_bounced,
     email_bounced_at:    r.email_bounced_at ?? null,
     email_bounce_reason: str(r.email_bounce_reason),
+    email_complained:       !!r.email_complained,
+    email_complained_at:    r.email_complained_at ?? null,
+    email_complain_reason:  str(r.email_complain_reason),
     createdAt:         r.createdAt ?? null,
     updatedAt:         r.updatedAt ?? null,
     // V8.1 email ingestion (Phase 2) — a DeepSeek-generated draft over

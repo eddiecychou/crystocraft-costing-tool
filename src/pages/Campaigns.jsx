@@ -213,7 +213,18 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
       const results = await sendCampaignBatch({
         subject: campaign.subject,
         bodyHtml: campaign.bodyHtml,
-        contacts: batch.map(c => ({ id: c.id, email: c.email, first_name: c.first_name, last_name: c.last_name })),
+        // customerId: only present when this contact is already linked to a
+        // real customers/ record (possible_customer_match — see
+        // domain/marketingContact.js) — lets send-campaign.js tag the send
+        // with BOTH mc_id and customer_id, so a bounce/complaint reaches
+        // resend-webhook.js's customer-side handling too, not just the
+        // marketing_contacts one (found during the SU-08 interaction-log
+        // audit, 2026-08-18: a campaign bounce against an already-linked
+        // customer never surfaced on their customer record at all before).
+        contacts: batch.map(c => ({
+          id: c.id, email: c.email, first_name: c.first_name, last_name: c.last_name,
+          customerId: c.possible_customer_match?.customer_id || null,
+        })),
       })
       await recordBatchResults(campaign.id, results)
       if (remaining - batch.length <= 0) await setCampaignStatus(campaign.id, 'completed')

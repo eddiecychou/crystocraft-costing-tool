@@ -669,11 +669,14 @@ export default function CustomerDetail() {
         </div>
       )}
 
-      {/* Bounced-email banner — set by resend-webhook.js on a hard bounce/
-          complaint against a Daily Draft send tagged with this customer's
-          id. Shown, not just silently flagged, so a dead/out-of-business
-          address is something Eddie actually sees rather than a record that
-          quietly stops getting outreach for no visible reason. */}
+      {/* Bounced/complained-email banner — set by resend-webhook.js on a hard
+          bounce or spam complaint against a Daily Draft send tagged with
+          this customer's id. Shown, not just silently flagged, so a dead/
+          out-of-business address (or a "stop emailing me") is something
+          Eddie actually sees rather than a record that quietly stops
+          getting outreach for no visible reason. Bounce and complaint are
+          separate signals (see resend-webhook.js) — both are shown if both
+          happened. */}
       {customer.email_bounced && (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           <AlertTriangle size={15} className="shrink-0" />
@@ -682,6 +685,16 @@ export default function CustomerDetail() {
             {customer.email_bounce_reason ? ` (${customer.email_bounce_reason})` : ''} — the address may be
             inactive or the company no longer reachable at it. Daily Drafts will stop suggesting this
             customer until this is resolved.
+          </span>
+        </div>
+      )}
+      {customer.email_complained && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <AlertTriangle size={15} className="shrink-0" />
+          <span>
+            <strong>{customer.contact_name || customer.company_name}</strong> marked a Daily Draft email as spam
+            {customer.email_complain_reason ? ` (${customer.email_complain_reason})` : ''} — Daily Drafts will
+            stop suggesting this customer until this is resolved.
           </span>
         </div>
       )}

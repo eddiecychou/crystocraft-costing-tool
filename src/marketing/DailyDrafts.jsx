@@ -69,11 +69,12 @@ async function uploadImage(file) {
 // already talking to manually — that's what the blockOutreachUntil action
 // on each draft card is for, not a status guess.
 function customerToEntity(c) {
-  // email_bounced (resend-webhook.js, on a hard bounce/complaint reported
-  // against this customer's tagged send) is exactly the "actually dead"
-  // exception the comment above describes — everything else about an
-  // inactive account still gets suggested, a confirmed-dead address doesn't.
-  if (c.email_bounced) return null
+  // email_bounced/email_complained (resend-webhook.js, on a hard bounce or
+  // spam complaint reported against this customer's tagged send) is exactly
+  // the "actually dead"/"stop emailing them" exception the comment above
+  // describes — everything else about an inactive account still gets
+  // suggested, a confirmed-dead address or a spam complaint doesn't.
+  if (c.email_bounced || c.email_complained) return null
   const contact = primaryContact(c.contacts)
   const email = contact?.email?.trim().toLowerCase()
   if (!email) return null
@@ -289,6 +290,11 @@ const ENGAGEMENT_BADGES = [
   { key: 'opened', label: 'Opened', Icon: Eye },
   { key: 'clicked', label: 'Clicked', Icon: MousePointerClick },
   { key: 'bounced', label: 'Bounced', Icon: AlertTriangle },
+  // 'complained' was written by resend-webhook.js from day one but never
+  // rendered anywhere in the app — a spam complaint silenced/flagged the
+  // record server-side with no visible trail (found during the SU-08
+  // interaction-log audit, 2026-08-18).
+  { key: 'complained', label: 'Complained', Icon: AlertTriangle },
 ]
 
 export default function DailyDrafts() {
@@ -390,7 +396,9 @@ export default function DailyDrafts() {
       if (lead.possible_customer_match) throw new Error('This lead is already linked to a customer.')
       const { created, skipped } = await promoteContactsToCustomers([lead])
       if (skipped.length || !created.length) throw new Error('Could not create a customer for this lead.')
-      setAddCustomerDone(prev => ({ ...prev, [d.id]: `Added as a new customer: ${created[0].companyName}` }))
+      const msg = `Added as a new customer: ${created[0].companyName}` +
+        (created[0].historyWarning ? ' (notes/WhatsApp history may not have fully carried over — check the Interaction Log)' : '')
+      setAddCustomerDone(prev => ({ ...prev, [d.id]: msg }))
       setAddCustomerOpenId(null)
       setPickerCustomers(await loadCustomers())
     } catch (e) {
@@ -418,8 +426,10 @@ export default function DailyDrafts() {
       }
       const res = await saveCustomer(addCustomerPickId, { ...customer, contacts: [...customer.contacts, newContact] })
       if (!res.ok) throw new Error(res.result.errors?.[0]?.message || 'Could not save that contact.')
-      await linkContactToCustomer(d.customerId, addCustomerPickId, customer.company_name)
-      setAddCustomerDone(prev => ({ ...prev, [d.id]: `Added as a contact on ${customer.company_name}` }))
+      const { historyWarning } = await linkContactToCustomer(d.customerId, addCustomerPickId, customer.company_name)
+      const msg = `Added as a contact on ${customer.company_name}` +
+        (historyWarning ? ' (notes/WhatsApp history may not have fully carried over — check the Interaction Log)' : '')
+      setAddCustomerDone(prev => ({ ...prev, [d.id]: msg }))
       setAddCustomerOpenId(null)
     } catch (e) {
       setAddCustomerError(e.message || 'Could not add this contact.')
@@ -1414,7 +1424,7 @@ export default function DailyDrafts() {
                     {ENGAGEMENT_BADGES.map(({ key, label, Icon }) => (
                       <span key={key} className={`inline-flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5 ${
                         d.engagement?.[key]
-                          ? (key === 'bounced' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700')
+                          ? ((key === 'bounced' || key === 'complained') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700')
                           : 'bg-gray-50 text-gray-300'
                       }`}>
                         <Icon size={11} /> {label}

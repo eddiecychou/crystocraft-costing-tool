@@ -59,6 +59,15 @@ export async function createDrafts(meta, drafts, { imageUrls, links } = {}) {
     const ref = await addDoc(COL(), stripUndefined({
       createdAt: serverTimestamp(),
       customerId: d.customerId,
+      // Separate from customerId above (which stays whatever it was at SEND
+      // time — the accurate historical record of who this specific draft
+      // targeted) — personId is the CURRENT correlation key for this
+      // person, repointed by repointDraftsToCustomer() below when a
+      // contact-sourced draft's person later converts to a real customer.
+      // Without this, a draft's engagement/reply history stayed permanently
+      // attached to the old marketing_contacts id even after conversion —
+      // found during the SU-08 interaction-log audit, 2026-08-18.
+      personId: d.customerId,
       customerEmail: d.customerEmail,
       customerName: d.customerName,
       customerContext: d.customerContext || '',
@@ -149,6 +158,31 @@ export async function listRecentDecisions(limitCount = 60) {
       return bt - at
     })
     .slice(0, limitCount)
+}
+
+// Called from domain/marketingContact.js's linkContactToCustomer() when a
+// marketing_contacts lead converts to (or links to) a real customers/
+// record — repoints every outreach_drafts doc's personId from the old
+// contact id to the new customer id, so engagement/reply history follows
+// the PERSON through conversion instead of staying stranded under an id
+// that's now just a linked, no-longer-primary record. customerId/source on
+// each draft are left untouched (accurate history of what that draft
+// actually targeted at send time); only personId (the correlation key) moves.
+// Only finds drafts created AFTER personId started being stamped (this
+// change) — a draft from before then has no personId field at all and
+// won't match this equality query. No retroactive backfill; acceptable
+// since old drafts' engagement history was already this same kind of
+// stranded before today.
+export async function repointDraftsToCustomer(oldPersonId, newPersonId) {
+  if (!oldPersonId || oldPersonId === newPersonId) return 0
+  const snap = await getDocs(query(COL(), where('personId', '==', oldPersonId)))
+  const refs = snap.docs.map(d => d.ref)
+  for (let i = 0; i < refs.length; i += 400) {
+    const batch = writeBatch(db)
+    refs.slice(i, i + 400).forEach(ref => batch.update(ref, { personId: newPersonId }))
+    await batch.commit()
+  }
+  return refs.length
 }
 
 // Bulk cleanup — deletes every pending_review draft outright (not marked

@@ -147,11 +147,12 @@ export default async function handler(req) {
   }
 
   const rawBody = await req.text()
+  const svixId = req.headers.get('svix-id')
   let ok
   try {
     ok = await verifySvix(
       WEBHOOK_SECRET,
-      req.headers.get('svix-id'),
+      svixId,
       req.headers.get('svix-timestamp'),
       req.headers.get('svix-signature'),
       rawBody,
@@ -219,11 +220,11 @@ export default async function handler(req) {
       const fields = { engagement: { [field]: true, [atField]: { __ts: nowIso } } }
       const masks = [`engagement.${field}`, `engagement.${atField}`]
         .map(p => `updateMask.fieldPaths=${encodeURIComponent(p)}`).join('&')
-      writes.push(fetch(`${base}?${masks}`, {
+      writes.push({ kind: 'flag', promise: fetch(`${base}?${masks}`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ fields: encodeFields(fields) }),
-      }))
+      }) })
     }
 
     // A hard bounce or spam complaint suppresses future sends to this
@@ -235,11 +236,11 @@ export default async function handler(req) {
       const base = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/marketing_contacts/${encodeURIComponent(mcId)}`
       const fields = { status: 'cleaned', emailable: false }
       const masks = ['status', 'emailable'].map(p => `updateMask.fieldPaths=${encodeURIComponent(p)}`).join('&')
-      writes.push(fetch(`${base}?${masks}`, {
+      writes.push({ kind: 'flag', promise: fetch(`${base}?${masks}`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ fields: encodeFields(fields) }),
-      }))
+      }) })
     }
 
     // A customer (a real account, not a marketing lead) doesn't get
@@ -255,27 +256,48 @@ export default async function handler(req) {
     // account off as out of business, etc.), same as every other CRM signal
     // in this app.
     if (customerId && (field === 'bounced' || field === 'complained')) {
+      // bounced and complained are tracked as SEPARATE flags (not one shared
+      // "email_bounced" for both, as this originally shipped) — a spam
+      // complaint isn't a dead address, it's a "stop emailing this person"
+      // signal, and conflating the two under one field/label would misname
+      // whichever one didn't happen. Both still stop DailyDrafts.jsx's
+      // customerToEntity from suggesting this customer (see its own comment)
+      // and both show a banner on CustomerDetail.jsx.
+      const isBounce = field === 'bounced'
       const custBase = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/customers/${encodeURIComponent(customerId)}`
-      const custFields = { email_bounced: true, email_bounced_at: { __ts: nowIso }, email_bounce_reason: eventReason }
-      const custMasks = ['email_bounced', 'email_bounced_at', 'email_bounce_reason']
+      const flagField = isBounce ? 'email_bounced' : 'email_complained'
+      const atField2 = isBounce ? 'email_bounced_at' : 'email_complained_at'
+      const reasonField = isBounce ? 'email_bounce_reason' : 'email_complain_reason'
+      const custFields = { [flagField]: true, [atField2]: { __ts: nowIso }, [reasonField]: eventReason }
+      const custMasks = [flagField, atField2, reasonField]
         .map(p => `updateMask.fieldPaths=${encodeURIComponent(p)}`).join('&')
-      writes.push(fetch(`${custBase}?${custMasks}`, {
+      writes.push({ kind: 'flag', promise: fetch(`${custBase}?${custMasks}`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ fields: encodeFields(custFields) }),
-      }))
+      }) })
 
       // Interaction Log entry (customers/{id}/enquiries — see
       // DailyDrafts.jsx's own logInteraction() for the same shape/posture;
       // this can't import that client-SDK helper from an edge function, so
       // it's a direct REST create here instead). channel/status/etc. match
       // the enquiry schema CustomerDetail.jsx/EnquiryForm.jsx already read.
-      const label = field === 'bounced' ? 'bounced' : 'was marked as spam'
+      //
+      // Deterministic doc id (not addDoc-style auto-id) + a
+      // currentDocument.exists=false precondition, keyed off this specific
+      // webhook delivery's svix-id — Resend/Svix redeliver on timeout/5xx,
+      // and this endpoint has no other dedup, so a retried delivery used to
+      // insert a second, near-identical "bounced" entry every time (found
+      // during the SU-08 interaction-log audit, 2026-08-18). A precondition
+      // failure (the entry already exists — this is a replay) is treated as
+      // success below, same as the existing 404 allowance.
+      const label = isBounce ? 'bounced' : 'was marked as spam'
       const description = `Automated: a Daily Draft email to this customer ${label}` + (eventReason ? ` (${eventReason})` : '') + '. The email address may be inactive or the company may no longer be reachable at it.'
-      writes.push(fetch(
-        `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/customers/${encodeURIComponent(customerId)}/enquiries`,
+      const dedupeId = `webhook_${String(svixId || 'noid').replace(/[^A-Za-z0-9_-]/g, '_')}`.slice(0, 200)
+      writes.push({ kind: 'log', promise: fetch(
+        `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/customers/${encodeURIComponent(customerId)}/enquiries/${dedupeId}?currentDocument.exists=false`,
         {
-          method: 'POST',
+          method: 'PATCH',
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
           body: JSON.stringify({
             fields: encodeFields({
@@ -293,16 +315,19 @@ export default async function handler(req) {
             }),
           }),
         },
-      ))
+      ) })
     }
 
-    const results = await Promise.all(writes)
-    // A 404 (the record since deleted) is fine, not an error — same posture
-    // as unsubscribe.js.
-    for (const r of results) {
-      if (!r.ok && r.status !== 404) {
-        return new Response(`Firestore write failed: ${(await r.text()).slice(0, 200)}`, { status: 502 })
-      }
+    const settled = await Promise.all(writes.map(async w => ({ kind: w.kind, r: await w.promise })))
+    for (const { kind, r } of settled) {
+      if (r.ok) continue
+      if (r.status === 404) continue // record since deleted — fine, same posture as unsubscribe.js
+      const text = await r.text()
+      // A failed currentDocument.exists=false precondition (this exact
+      // webhook delivery was already processed) is an expected, successful
+      // outcome for the dedup-keyed log write — not a real error.
+      if (kind === 'log' && /ALREADY_EXISTS|FAILED_PRECONDITION/i.test(text)) continue
+      return new Response(`Firestore write failed: ${text.slice(0, 200)}`, { status: 502 })
     }
     return new Response('ok', { status: 200 })
   } catch (e) {

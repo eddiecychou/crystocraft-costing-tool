@@ -584,8 +584,10 @@ export default function MarketingContacts({ onSendEmail }) {
         ? { ...c, is_customer: true, possible_customer_match: { customer_id: byId.get(c.id).customerId, company_name: byId.get(c.id).companyName } }
         : c))
       setSelected(new Set())
+      const warned = created.filter(r => r.historyWarning).length
       window.alert(`Added ${created.length} customer${created.length === 1 ? '' : 's'}.` +
-        (skipped.length ? ` ${skipped.length} skipped (already linked).` : ''))
+        (skipped.length ? ` ${skipped.length} skipped (already linked).` : '') +
+        (warned ? ` ${warned} linked but couldn't fully carry over notes/WhatsApp history — check the customer's Interaction Log.` : ''))
     } catch (e) {
       window.alert(e.message || 'Could not add customers.')
     } finally {
