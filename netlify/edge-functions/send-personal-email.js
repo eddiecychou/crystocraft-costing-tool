@@ -20,7 +20,13 @@
 //     resend-webhook.js). This is how a later delivered/opened/clicked
 //     event gets matched back to the right draft with a plain GET/PATCH by
 //     known id, no Firestore query needed. Resend tag values are restricted
-//     to [a-zA-Z0-9_-]+, which Firestore's auto-generated ids satisfy.
+//     to [a-zA-Z0-9_-]+ — draftId (a Firestore auto-id) already satisfies
+//     that, but recipientId does NOT when recipientKind is 'contact': a
+//     marketing_contacts doc id is the contact's own email address (see
+//     domain/marketingContact.js's idFromEmail), so it's run through
+//     lib/resendTags.js before being sent. Resend tags are a constrained
+//     tracking representation only — the real, unmodified ids stay in
+//     Firestore and the interaction log.
 // Sends BOTH text and html — html renders the images/links inline; text is
 // the plain-text fallback (with the links appended as bare URLs, since
 // images can't degrade into plain text).
@@ -39,6 +45,7 @@
 //     MAIL_ADMIN, same as there.
 //   VITE_FIREBASE_PROJECT_ID / FIREBASE_PROJECT_ID — for admin-token verification
 import { jwtVerify, createRemoteJWKSet } from 'https://esm.sh/jose@5.9.6'
+import { buildResendTags } from './lib/resendTags.js'
 
 const JWKS = createRemoteJWKSet(
   new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
@@ -132,10 +139,14 @@ export default async function handler(req) {
         html: buildHtml(text, imageUrls, links),
         ...(REPLY_TO ? { reply_to: REPLY_TO } : {}),
         ...(() => {
-          const tags = [
-            ...(draftId ? [{ name: 'draft_id', value: draftId }] : []),
-            ...(recipientId ? [{ name: recipientKind === 'contact' ? 'mc_id' : 'customer_id', value: recipientId }] : []),
-          ]
+          const tags = buildResendTags([
+            { name: 'draft_id', value: draftId, prefix: 'draft' },
+            {
+              name: recipientKind === 'contact' ? 'mc_id' : 'customer_id',
+              value: recipientId,
+              prefix: recipientKind === 'contact' ? 'mc' : 'customer',
+            },
+          ])
           return tags.length ? { tags } : {}
         })(),
       }),

@@ -27,6 +27,7 @@
 //   APP_URL                — this app's own origin, for the unsubscribe link
 //     (default https://portal.crystocraft.com — matches PORTAL_URL elsewhere)
 import { jwtVerify, createRemoteJWKSet } from 'https://esm.sh/jose@5.9.6'
+import { buildResendTags } from './lib/resendTags.js'
 
 const JWKS = createRemoteJWKSet(
   new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
@@ -140,8 +141,15 @@ export default async function handler(req) {
           // Correlation id for resend-webhook.js — without this a campaign
           // bounce/complaint had no reliable way back to the marketing_contact
           // that caused it (bug-fix pack C-04). Same idea as send-personal-
-          // email.js's draft_id tag.
-          tags: [{ name: 'mc_id', value: id }],
+          // email.js's draft_id tag. `id` is a marketing_contacts doc id,
+          // which is the contact's own email address (idFromEmail in
+          // domain/marketingContact.js) — Resend rejects a tag containing
+          // '@'/'.', so it goes through lib/resendTags.js first (found live
+          // 2026-08-18: every campaign send was failing with Resend's 422
+          // "Tags should only contain ASCII letters, numbers, underscores,
+          // or dashes"). The unmodified email/id is unaffected — this only
+          // touches what Resend sees in the tag.
+          tags: buildResendTags([{ name: 'mc_id', value: id, prefix: 'mc' }]),
         }),
       })
       if (!r.ok) return { id, ok: false, error: (await r.text()).slice(0, 200) }
