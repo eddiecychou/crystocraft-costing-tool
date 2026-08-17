@@ -58,8 +58,9 @@ import ImportImages from './pages/ImportImages'
 import CustomerAccounts from './pages/CustomerAccounts'
 import AccountEdit from './pages/AccountEdit'
 import Enquiries from './pages/Enquiries'
-import SalesReturns from './pages/SalesReturns'
-import SalesReturnForm from './pages/SalesReturnForm'
+import CreditNotes from './pages/CreditNotes'
+import CreditNoteForm from './pages/CreditNoteForm'
+import CreditNotePrint from './pages/CreditNotePrint'
 import Logistics from './pages/Logistics'
 import LogisticsVendorForm from './pages/LogisticsVendorForm'
 import Shipments from './pages/Shipments'
@@ -156,6 +157,7 @@ function AdminApp({ user }) {
       <Route path="/purchase-orders/:id/print" element={<PurchaseOrderPrint />} />
       <Route path="/shipments/:id/pi" element={<ProformaInvoicePrint />} />
       <Route path="/shipments/:id/invoice" element={<SalesInvoicePrint />} />
+      <Route path="/credit-notes/:id/print" element={<CreditNotePrint />} />
       {/* All other admin routes wrapped in Layout */}
       <Route path="/*" element={
             <Layout user={user}>
@@ -220,9 +222,13 @@ function AdminApp({ user }) {
                 <Route path="/bank-accounts" element={<BankAccounts />} />
                 <Route path="/shipping" element={<Shipping />} />
                 <Route path="/sales-invoices" element={<SalesInvoices />} />
-                <Route path="/sales-returns" element={<SalesReturns />} />
-                <Route path="/sales-returns/new" element={<SalesReturnForm />} />
-                <Route path="/sales-returns/:id" element={<SalesReturnForm />} />
+                <Route path="/credit-notes" element={<CreditNotes />} />
+                <Route path="/credit-notes/new" element={<CreditNoteForm />} />
+                <Route path="/credit-notes/:id" element={<CreditNoteForm />} />
+                {/* Legacy redirect — Phase B's Sales Return register was folded
+                    into Credit Notes for Phase C (Cindy, 2026-08-17: no return
+                    ever existed without a credit note or vice versa). */}
+                <Route path="/sales-returns" element={<Navigate to="/credit-notes" replace />} />
                 <Route path="/shipments/new" element={<ShipmentForm />} />
                 <Route path="/shipments/:id" element={<ShipmentForm />} />
                 <Route path="/logistics/new" element={<LogisticsVendorForm />} />

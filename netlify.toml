@@ -152,6 +152,10 @@
   function = "swatch-library"
   path = "/api/swatch-library"
 
+[[edge_functions]]
+  function = "credit-note"
+  path = "/api/credit-note"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

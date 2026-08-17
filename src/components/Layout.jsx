@@ -24,7 +24,7 @@ const nav = [
   { to: '/quotes',     label: 'Quotes',        short: 'Quotes',   Icon: ClipboardList, primary: true },
   { to: '/shipping',   label: 'Production',    short: 'Prod',     Icon: Truck },
   { to: '/sales-invoices', label: 'Sales Invoices', short: 'Invoices', Icon: Receipt },
-  { to: '/sales-returns', label: 'Sales Returns', short: 'Returns', Icon: RotateCcw },
+  { to: '/credit-notes', label: 'Credit Notes', short: 'Credits', Icon: RotateCcw },
   { to: '/customers',  label: 'Customers',     short: 'Customers',Icon: Building2 },
   { to: '/portal',     label: 'Portal',        short: 'Portal',   Icon: Users },
 

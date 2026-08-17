@@ -167,10 +167,18 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Sales Returns (Phase B of the Sales Return / Credit Note work) — the
-    // goods-return record, admin only. No customer visibility, same as
-    // purchase_orders: this is an internal accounting/operations record.
-    match /sales_returns/{srId} {
+    // Credit Notes (Sales Return / Credit Note Phase C) — one combined
+    // record: the goods-return details AND the accounting document (Cindy,
+    // 2026-08-17: a return never existed without a credit note or vice
+    // versa). This is the editable WORKING doc; the posted financial fact
+    // lives in Postgres app_credit_note, reachable only via the admin-gated
+    // /api/credit-note edge function. Admin only, no customer visibility —
+    // same posture as purchase_orders.
+    //
+    // Replaces the Phase B sales_returns rule; that collection was never
+    // used in production (confirmed with Cindy before removing it), so
+    // there is nothing to keep readable for a migration.
+    match /credit_notes/{cnId} {
       allow read, write: if isAdmin();
     }
 

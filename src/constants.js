@@ -61,26 +61,29 @@ export const PO_STATUSES = [
   { value: 'issued', label: 'Issued', badge: 'bg-emerald-100 text-emerald-700' },
 ]
 
-// ── Sales Return module (Phase B of the Sales Return / Credit Note work) ────
-export const SR_STATUSES = [
-  { value: 'draft',     label: 'Draft',     badge: 'bg-gray-100 text-gray-600' },
-  { value: 'approved',  label: 'Approved',  badge: 'bg-emerald-100 text-emerald-700' },
-  { value: 'cancelled', label: 'Cancelled', badge: 'bg-red-100 text-red-600' },
+// ── Credit Note module (Sales Return / Credit Note Phase C) ─────────────────
+// Simplified from Phase B's draft/approved/cancelled — Cindy, 2026-08-17:
+// "Any admin can approve/post/void a credit note", a flatter workflow with
+// no separate approval stage. 'draft' is Firestore-only (the working record,
+// no financial weight yet); 'posted' means the Postgres fact exists
+// (app_credit_note); 'void' flips that fact's status without deleting it.
+export const CN_STATUSES = [
+  { value: 'draft',  label: 'Draft',  badge: 'bg-gray-100 text-gray-600' },
+  { value: 'posted', label: 'Posted', badge: 'bg-emerald-100 text-emerald-700' },
+  { value: 'void',   label: 'Void',   badge: 'bg-red-100 text-red-600' },
 ]
 
-// What happens to the returned goods. `restock` is recorded only — it does
-// NOT post a receipt to the stock ledger yet, deliberately: Cindy hasn't
-// confirmed that an Amazon-style return is physically received before the app
-// treats it as stock back on hand, so this stays a decision on the record
-// until that's settled, not a ledger movement.
-export const SR_DISPOSITIONS = [
-  { value: 'restock',     label: 'Restock',             hint: 'Goods received back into stock — not yet posted to the ledger, record only' },
+// What happens to the returned goods. `restock` is recorded only — Cindy,
+// 2026-08-17: "Do not post restock to stock ledger. It is for record-only."
+// No code path may turn this into a stock movement.
+export const CN_DISPOSITIONS = [
+  { value: 'restock',     label: 'Restock',             hint: 'Goods received back into stock — record only, never posted to the ledger' },
   { value: 'damaged',     label: 'Damaged',              hint: 'Received but unsellable — no stock movement' },
   { value: 'quarantine',  label: 'Quarantine',           hint: 'Held pending inspection — no stock movement' },
   { value: 'no_movement', label: 'No physical movement', hint: 'Accounting-only, e.g. an Amazon adjustment — nothing was received' },
 ]
 
-export const SR_REASONS = [
+export const CN_REASONS = [
   { value: 'customer_request',       label: 'Customer request' },
   { value: 'damaged',                label: 'Damaged in transit / on arrival' },
   { value: 'marketplace_adjustment', label: 'Marketplace adjustment (Amazon, etc.)' },
