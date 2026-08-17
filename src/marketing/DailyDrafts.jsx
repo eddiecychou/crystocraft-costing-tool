@@ -6,11 +6,11 @@ import {
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import {
   Send, Loader2, SkipForward, Sparkles, Trash2, X, Link2, Upload,
-  MessageCircle, CheckCircle2, Eye, MousePointerClick, AlertTriangle, Bookmark, BellOff, Mail, FileText, Receipt, Smartphone,
+  MessageCircle, CheckCircle2, Eye, MousePointerClick, AlertTriangle, Bookmark, BellOff, Mail, FileText, Receipt, Smartphone, UserPlus, Check,
 } from 'lucide-react'
 import { db, storage, authedUser } from '../firebase'
-import { loadCustomers, primaryContact } from '../domain/customer'
-import { normalizeContact, markContactOutreach, blockContactOutreach } from '../domain/marketingContact'
+import { loadCustomers, primaryContact, getCustomer, saveCustomer } from '../domain/customer'
+import { normalizeContact, markContactOutreach, blockContactOutreach, promoteContactsToCustomers, linkContactToCustomer } from '../domain/marketingContact'
 import {
   listPendingDrafts, listDraftsForTopic, listSentDrafts, listRecentDecisions,
   createDrafts, markDraftSent, markDraftReplied, skipDraft, deleteAllPending,
@@ -18,6 +18,7 @@ import {
 import { generateDrafts, draftTopic, sendPersonalEmail, discussDraft } from '../outreachApi'
 import { isPublicVisible } from '../constants'
 import { loadBlogProducts, loadBlogImages } from '../productSource'
+import { CustomerPicker } from '../pages/CustomerAccounts'
 
 // Daily Drafts re-engagement engine — compose ANY topic (a product, "news
 // and update", "invite to the portal"), refine it with AI until it's right,
@@ -348,6 +349,79 @@ export default function DailyDrafts() {
   const [bulkRewriteBusy, setBulkRewriteBusy] = useState(false)
   const [bulkRewriteProgress, setBulkRewriteProgress] = useState(null) // { done, total }
   const [bulkRewriteError, setBulkRewriteError] = useState('')
+
+  // Add a lead to Customers — owner's own request (2026-08-13): reviewing a
+  // 'contact' (Lead) draft is often the moment worth acting on ("this is a
+  // real prospect, get them into the CRM properly") rather than waiting to
+  // do it separately from Marketing Contacts later. Two paths: promote the
+  // lead into a brand-new customers/ record (reuses promoteContactsToCustomers,
+  // same as Marketing Contacts' own bulk-promote action), or append them as
+  // an extra contact on an EXISTING customer (e.g. a second person at a
+  // company already in the CRM) — a plain customers/{id}.contacts[] write,
+  // same shape ContactsEditor (CustomerForm.jsx) produces. Either way,
+  // linkContactToCustomer marks the lead as matched, so it naturally drops
+  // out of future Daily Drafts batches (contactToEntity already excludes
+  // any contact with possible_customer_match set — see its own comment).
+  const [addCustomerOpenId, setAddCustomerOpenId] = useState(null)
+  const [addCustomerMode, setAddCustomerMode] = useState('new') // 'new' | 'existing'
+  const [addCustomerPickId, setAddCustomerPickId] = useState('')
+  const [addCustomerBusy, setAddCustomerBusy] = useState(false)
+  const [addCustomerError, setAddCustomerError] = useState('')
+  const [addCustomerDone, setAddCustomerDone] = useState({}) // draftId -> confirmation message
+  const [pickerCustomers, setPickerCustomers] = useState([])
+  useEffect(() => { loadCustomers().then(setPickerCustomers) }, [])
+
+  function openAddCustomer(d) {
+    setAddCustomerOpenId(addCustomerOpenId === d.id ? null : d.id)
+    setAddCustomerMode('new'); setAddCustomerPickId(''); setAddCustomerError('')
+  }
+
+  async function handleCreateNewCustomer(d) {
+    setAddCustomerBusy(true); setAddCustomerError('')
+    try {
+      const snap = await getDoc(doc(db, 'marketing_contacts', d.customerId))
+      if (!snap.exists()) throw new Error('This lead record no longer exists.')
+      const lead = normalizeContact(snap.id, snap.data())
+      if (lead.possible_customer_match) throw new Error('This lead is already linked to a customer.')
+      const { created, skipped } = await promoteContactsToCustomers([lead])
+      if (skipped.length || !created.length) throw new Error('Could not create a customer for this lead.')
+      setAddCustomerDone(prev => ({ ...prev, [d.id]: `Added as a new customer: ${created[0].companyName}` }))
+      setAddCustomerOpenId(null)
+      setPickerCustomers(await loadCustomers())
+    } catch (e) {
+      setAddCustomerError(e.message || 'Could not create the customer.')
+    } finally {
+      setAddCustomerBusy(false)
+    }
+  }
+
+  async function handleAddAsContact(d) {
+    if (!addCustomerPickId) { setAddCustomerError('Pick a customer first.'); return }
+    setAddCustomerBusy(true); setAddCustomerError('')
+    try {
+      const leadSnap = await getDoc(doc(db, 'marketing_contacts', d.customerId))
+      if (!leadSnap.exists()) throw new Error('This lead record no longer exists.')
+      const lead = normalizeContact(leadSnap.id, leadSnap.data())
+      if (lead.possible_customer_match) throw new Error('This lead is already linked to a customer.')
+      const customer = await getCustomer(addCustomerPickId)
+      if (!customer) throw new Error('That customer no longer exists.')
+      const newContact = {
+        name: [lead.first_name, lead.last_name].filter(Boolean).join(' ') || lead.company || lead.email,
+        email: lead.email,
+        phone: lead.phone,
+        is_primary: false,
+      }
+      const res = await saveCustomer(addCustomerPickId, { ...customer, contacts: [...customer.contacts, newContact] })
+      if (!res.ok) throw new Error(res.result.errors?.[0]?.message || 'Could not save that contact.')
+      await linkContactToCustomer(d.customerId, addCustomerPickId, customer.company_name)
+      setAddCustomerDone(prev => ({ ...prev, [d.id]: `Added as a contact on ${customer.company_name}` }))
+      setAddCustomerOpenId(null)
+    } catch (e) {
+      setAddCustomerError(e.message || 'Could not add this contact.')
+    } finally {
+      setAddCustomerBusy(false)
+    }
+  }
 
   // Per-draft attachment editing — separate from the compose-phase default.
   // Each draft's photos/links can be added to or removed from independently.
@@ -1050,6 +1124,7 @@ export default function DailyDrafts() {
           const isChatOpen = chatOpenId === d.id
           const isChatBusy = chatBusy === d.id
           const history = chatHistory[d.id] || []
+          const isAddCustomerOpen = addCustomerOpenId === d.id
           return (
             <div key={d.id} className="card p-4 space-y-3">
               <div className="flex items-start justify-between gap-4">
@@ -1175,11 +1250,64 @@ export default function DailyDrafts() {
                   className="btn-secondary shrink-0 inline-flex items-center gap-1.5">
                   <BellOff size={14} /> Already in contact
                 </button>
-                <button onClick={() => setChatOpenId(isChatOpen ? null : d.id)}
-                  className="text-xs text-gray-500 hover:text-brand-600 inline-flex items-center gap-1 ml-auto">
-                  <MessageCircle size={13} /> {isChatOpen ? 'Close' : 'Discuss with AI'}
-                </button>
+                <div className="ml-auto flex items-center gap-3">
+                  {d.source === 'contact' && !addCustomerDone[d.id] && (
+                    <button type="button" onClick={() => openAddCustomer(d)}
+                      className="text-xs text-gray-500 hover:text-brand-600 inline-flex items-center gap-1">
+                      <UserPlus size={13} /> {isAddCustomerOpen ? 'Close' : 'Add to Customers'}
+                    </button>
+                  )}
+                  {addCustomerDone[d.id] && (
+                    <span className="text-xs text-green-600 inline-flex items-center gap-1">
+                      <Check size={13} /> {addCustomerDone[d.id]}
+                    </span>
+                  )}
+                  <button onClick={() => setChatOpenId(isChatOpen ? null : d.id)}
+                    className="text-xs text-gray-500 hover:text-brand-600 inline-flex items-center gap-1">
+                    <MessageCircle size={13} /> {isChatOpen ? 'Close' : 'Discuss with AI'}
+                  </button>
+                </div>
               </div>
+
+              {isAddCustomerOpen && (
+                <div className="border border-ivory-dark rounded-lg p-3 bg-ivory-light space-y-2">
+                  <div className="flex gap-1.5">
+                    {[{ key: 'new', label: 'Create as new customer' }, { key: 'existing', label: 'Add as a contact on an existing customer' }].map(opt => (
+                      <button key={opt.key} type="button" onClick={() => { setAddCustomerMode(opt.key); setAddCustomerError('') }}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
+                          addCustomerMode === opt.key ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                        }`}>
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  {addCustomerMode === 'new' ? (
+                    <>
+                      <p className="text-xs text-gray-500">
+                        Creates a new customer record from {d.customerName}'s lead info (company/name/email/phone/country) and links this lead to it.
+                      </p>
+                      <button type="button" onClick={() => handleCreateNewCustomer(d)} disabled={addCustomerBusy} className="btn-primary text-xs px-3 py-1.5 inline-flex items-center gap-1.5">
+                        {addCustomerBusy ? <Loader2 size={12} className="animate-spin" /> : <UserPlus size={12} />}
+                        {addCustomerBusy ? 'Creating…' : 'Create customer'}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs text-gray-500">
+                        Appends {d.customerName} as an extra contact on an existing customer — for a second person at a company already in the CRM.
+                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <CustomerPicker customers={pickerCustomers} value={addCustomerPickId} onChange={setAddCustomerPickId} />
+                        <button type="button" onClick={() => handleAddAsContact(d)} disabled={addCustomerBusy || !addCustomerPickId} className="btn-primary text-xs px-3 py-1.5 inline-flex items-center gap-1.5">
+                          {addCustomerBusy ? <Loader2 size={12} className="animate-spin" /> : <UserPlus size={12} />}
+                          {addCustomerBusy ? 'Adding…' : 'Add contact'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                  {addCustomerError && <p className="text-xs text-red-600">{addCustomerError}</p>}
+                </div>
+              )}
 
               {isChatOpen && (
                 <div className="border border-ivory-dark rounded-lg p-3 bg-ivory-light space-y-2">
