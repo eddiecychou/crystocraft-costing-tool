@@ -94,12 +94,18 @@ service firebase.storage {
     // Daily Drafts (V8.0) — images uploaded directly in the Compose phase
     // (not from a product's existing gallery — see DailyDrafts.jsx), same
     // idiom as campaign_images (Campaigns.jsx's Unlayer editor uploads).
-    // NOTE while adding this: campaign_images/ itself has NO matching rule
-    // anywhere in this file — same "no rule = silent Storage reject" bug
-    // this file's own customer-assets/ comment already documents once.
-    // Not fixed here (out of scope for this feature), flagged to the owner
-    // separately.
     match /daily_draft_images/{allPaths=**} {
+      allow read, write: if isAuth();
+    }
+
+    // Marketing campaign images (Campaigns.jsx's Unlayer editor uploads,
+    // path built as campaign_images/{Date.now()}_{filename}). Was flagged in
+    // the comment above but never actually added — with no matching rule,
+    // Storage's default-deny silently rejected every campaign image upload
+    // (bug-fix pack C-03). Same posture as every other admin-only path in
+    // this file: real access control is app-level (only the Campaigns admin
+    // page ever writes here), this just needs to not block the object write.
+    match /campaign_images/{allPaths=**} {
       allow read, write: if isAuth();
     }
   }

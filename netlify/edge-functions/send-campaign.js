@@ -137,6 +137,11 @@ export default async function handler(req) {
           html: withUnsubscribeFooter(mergeTags(bodyHtml, c), unsubUrl),
           ...(REPLY_TO ? { reply_to: REPLY_TO } : {}),
           headers: { 'List-Unsubscribe': `<${unsubUrl}>` },
+          // Correlation id for resend-webhook.js — without this a campaign
+          // bounce/complaint had no reliable way back to the marketing_contact
+          // that caused it (bug-fix pack C-04). Same idea as send-personal-
+          // email.js's draft_id tag.
+          tags: [{ name: 'mc_id', value: id }],
         }),
       })
       if (!r.ok) return { id, ok: false, error: (await r.text()).slice(0, 200) }

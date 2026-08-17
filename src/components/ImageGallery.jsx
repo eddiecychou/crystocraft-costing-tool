@@ -10,7 +10,7 @@ import {
   SortableContext, rectSortingStrategy, useSortable, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Star, X, Download, Paperclip, FolderOpen, Sparkles, Check, AlertTriangle, Plus } from 'lucide-react'
+import { Star, X, Download, Paperclip, FolderOpen, Sparkles, Check, AlertTriangle, Plus, ChevronLeft, ChevronRight } from 'lucide-react'
 import { IMAGE_ORIENTATIONS, IMAGE_VISIBILITY, imageVisibility } from '../constants'
 import { enhanceProductImage } from '../enhanceImage'
 import ManualAdjust from './ManualAdjust'
@@ -282,6 +282,24 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
   const [recolorPrompt, setRecolorPrompt] = useState('')
   const [editTab, setEditTab]             = useState('ai')  // 'ai' | 'adjust'
 
+  // Lightbox prev/next (bug-fix pack D-02) — this only had a single-image
+  // view with no way to page through the rest of the gallery.
+  const lightboxIdx = lightbox ? images.findIndex(i => i.id === lightbox.id) : -1
+  function goLightbox(delta) {
+    if (lightboxIdx < 0 || images.length < 2) return
+    setLightbox(images[(lightboxIdx + delta + images.length) % images.length])
+  }
+  useEffect(() => {
+    if (!lightbox) return
+    function onKey(e) {
+      if (e.key === 'Escape') setLightbox(null)
+      else if (e.key === 'ArrowLeft') goLightbox(-1)
+      else if (e.key === 'ArrowRight') goLightbox(1)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightbox, images])
+
   // Preserve the page's scroll position across an image edit, so replacing one
   // image doesn't jump the product page back to the top — you can edit images
   // one-by-one. Captured when the editor opens, restored when it closes (after
@@ -490,7 +508,24 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
       {/* Lightbox */}
       {lightbox && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" onClick={() => setLightbox(null)}>
+          {images.length > 1 && (
+            <span className="absolute top-4 left-4 text-white/80 text-sm font-mono">{lightboxIdx + 1} / {images.length}</span>
+          )}
+          {images.length > 1 && (
+            <button type="button" onClick={e => { e.stopPropagation(); goLightbox(-1) }}
+                    className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 text-white bg-white/15 hover:bg-white/25 rounded-full p-2 sm:p-3"
+                    aria-label="Previous image">
+              <ChevronLeft size={22} />
+            </button>
+          )}
           <img src={lightbox.file_url} alt="" className="max-w-full max-h-full rounded-lg object-contain" onClick={e => e.stopPropagation()} />
+          {images.length > 1 && (
+            <button type="button" onClick={e => { e.stopPropagation(); goLightbox(1) }}
+                    className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 text-white bg-white/15 hover:bg-white/25 rounded-full p-2 sm:p-3"
+                    aria-label="Next image">
+              <ChevronRight size={22} />
+            </button>
+          )}
           <div className="absolute top-4 right-4 flex gap-2">
             <button
               type="button"

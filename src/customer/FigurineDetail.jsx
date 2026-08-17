@@ -18,6 +18,7 @@ import LoadingBar from '../components/LoadingBar'
 import VideoEmbed from '../components/VideoEmbed'
 import { useComponents, productAvailability } from '../criticalComponents'
 import { useProductDefaults } from '../useProductDefaults'
+import ImageLightbox from '../components/ImageLightbox'
 
 function docVariants(p) {
   if (Array.isArray(p.variants) && p.variants.length) return p.variants
@@ -36,6 +37,7 @@ export default function FigurineDetail({ profile }) {
   const [stockPcs, setStockPcs] = useState(1)
   const [orderMode, setOrderMode] = useState('stock')  // 'stock' | 'mto' — for MTO products with available parts
   const [showMoqInfo, setShowMoqInfo] = useState(false)  // expandable "how minimums work"
+  const [lightboxIndex, setLightboxIndex] = useState(null)
   const rates = useRates()
   const { colors: libColors } = useCrystalColors()
   const lookup = useMemo(() => colorMap(libColors), [libColors])
@@ -86,6 +88,14 @@ export default function FigurineDetail({ profile }) {
   const colorCodes = [...new Set(variants.flatMap(v => Array.isArray(v.crystal_colors) ? v.crystal_colors : []))]
 
   const selVariant = variants[finishIdx] || variants[0] || {}
+  // Carousel order (bug-fix pack D-02): whatever's actually shown in the hero
+  // box (the selected finish's own photo, when it has one) first, then the
+  // reference-photos gallery — skipping a duplicate when the hero IS gallery[0].
+  const heroUrl = selVariant.image || image
+  const carouselImages = [
+    ...(heroUrl && heroUrl !== gallery[0]?.url ? [{ url: heroUrl, caption: '' }] : []),
+    ...gallery.map(g => ({ url: g.url, caption: g.caption || '' })),
+  ]
   // Selected-finish SKU code carries the chosen brand prefix (e.g. D0002-001).
   const selBrand = selVariant.brand_code || fallbackBrand
   const code = [`${selBrand}${designNo}`, p.format_code].filter(Boolean).join('-')
@@ -188,8 +198,10 @@ export default function FigurineDetail({ profile }) {
       </Link>
       <div className="grid md:grid-cols-2 gap-6">
         <div className="card overflow-hidden bg-white aspect-square flex items-center justify-center relative">
-          {(selVariant.image || image) ? <img src={selVariant.image || image} alt={name} className="w-full h-full object-contain p-4" />
-            : <Gem size={56} className="text-gray-200" />}
+          {(selVariant.image || image) ? (
+            <img src={selVariant.image || image} alt={name} className="w-full h-full object-contain p-4 cursor-zoom-in"
+                 onClick={() => setLightboxIndex(0)} />
+          ) : <Gem size={56} className="text-gray-200" />}
           <FavHeart item={{ type: 'figurine', id: p.id, name, code: baseCode, image }} className="absolute top-3 right-3" />
         </div>
         <div>
@@ -396,13 +408,16 @@ export default function FigurineDetail({ profile }) {
         )
       })()}
 
-      {gallery.length > 0 && (
+      {gallery.length > 0 && (() => {
+        const galleryOffset = heroUrl && heroUrl !== gallery[0]?.url ? 1 : 0
+        return (
         <div className="mt-8">
           <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-3">Reference photos</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {gallery.map((g, i) => (
               <figure key={i} className="card overflow-hidden">
-                <div className="aspect-square bg-white flex items-center justify-center overflow-hidden">
+                <div className="aspect-square bg-white flex items-center justify-center overflow-hidden cursor-zoom-in"
+                     onClick={() => setLightboxIndex(galleryOffset + i)}>
                   <img src={g.url} alt={g.caption || name} className="w-full h-full object-contain p-2" />
                 </div>
                 {g.caption && (
@@ -414,6 +429,12 @@ export default function FigurineDetail({ profile }) {
             ))}
           </div>
         </div>
+        )
+      })()}
+
+      {lightboxIndex != null && (
+        <ImageLightbox images={carouselImages} index={lightboxIndex} onIndexChange={setLightboxIndex}
+                        onClose={() => setLightboxIndex(null)} altBase={name} />
       )}
     </div>
   )

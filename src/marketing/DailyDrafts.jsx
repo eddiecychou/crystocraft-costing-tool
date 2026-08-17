@@ -633,18 +633,41 @@ export default function DailyDrafts() {
       links: d.links || (d.blogLink ? [d.blogLink] : []),
     }
   }
+  // Deliberately does NOT call fieldsFor() here (bug-fix pack C-01) — fieldsFor
+  // reads the component's `edits` state via closure, which is frozen at
+  // whatever render created THIS specific setField instance. handleBulkRewrite
+  // holds onto one setField closure for its whole loop (many awaited network
+  // calls, no re-render in between from its own perspective), so every
+  // fieldsFor() call inside it was reading edits as of the render where "Apply
+  // to all" was clicked — not the true latest state. It happened to
+  // self-correct via prev[draftId] winning in the spread for keys already
+  // touched, but that's incidental, not guaranteed — the one thing genuinely
+  // safe to rely on inside a setState updater is `prev`, so the base now comes
+  // from prev[draftId] first and only falls back to the ORIGINAL Firestore
+  // draft fields (which don't change and need no closure) when this key has
+  // never been touched at all.
   function setField(draftId, key, value) {
-    setEdits(prev => ({
-      ...prev,
-      [draftId]: { ...fieldsFor(drafts.find(d => d.id === draftId) || {}), ...prev[draftId], [key]: value },
-    }))
+    setEdits(prev => {
+      if (prev[draftId]) return { ...prev, [draftId]: { ...prev[draftId], [key]: value } }
+      const d = drafts.find(x => x.id === draftId)
+      const base = d
+        ? { subject: d.draftSubject, body: d.draftBody, imageUrls: d.imageUrls || [], links: d.links || (d.blogLink ? [d.blogLink] : []) }
+        : {}
+      return { ...prev, [draftId]: { ...base, [key]: value } }
+    })
   }
 
   async function handleSend(d) {
     const { subject, body, imageUrls, links } = fieldsFor(d)
     setBusyId(d.id); setError('')
     try {
-      await sendPersonalEmail({ customerEmail: d.customerEmail, subject, body, draftId: d.id, imageUrls, links })
+      // recipientKind/recipientId: correlation for resend-webhook.js, so a
+      // bounce/complaint on this send can update the actual customer/contact
+      // record, not just this draft's own engagement flag (bug-fix pack C-04).
+      await sendPersonalEmail({
+        customerEmail: d.customerEmail, subject, body, draftId: d.id, imageUrls, links,
+        recipientKind: d.source === 'contact' ? 'contact' : 'customer', recipientId: d.customerId,
+      })
       const user = await authedUser()
       await markDraftSent(d.id, user?.uid)
       if (d.source === 'contact') {

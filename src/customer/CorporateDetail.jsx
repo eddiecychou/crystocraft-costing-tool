@@ -11,12 +11,14 @@ import VideoEmbed from '../components/VideoEmbed'
 import { isStorefrontVisible, normVideos, youtubeEmbed } from '../constants'
 import { engineTypeOf, engineAvailable, engineLabel } from '../customizerEngines'
 import { screenSensitiveImages } from '../sensitiveImages'
+import ImageLightbox from '../components/ImageLightbox'
 
 export default function CorporateDetail({ profile }) {
   const { id } = useParams()
   const [p, setP] = useState(undefined)
   const [images, setImages] = useState([])
   const [tiers, setTiers] = useState([])
+  const [lightboxIndex, setLightboxIndex] = useState(null)
   const rates = useRates()
   const cart = useCart()
   const cur = profile?.base_currency || 'USD'
@@ -72,6 +74,13 @@ export default function CorporateDetail({ profile }) {
   // Show all storefront-visible images except whichever one is the hero.
   const gallery = visibleImages.filter(im => im.file_url !== displayHero)
 
+  // Carousel order: hero first (if any), then the gallery — same order the
+  // page already displays them in, just also click-able (bug-fix pack D-02).
+  const carouselImages = [
+    ...(displayHero ? [{ url: displayHero, caption: '' }] : []),
+    ...gallery.map(im => ({ url: im.file_url, caption: im.caption || '' })),
+  ]
+
   const inCart = cart?.has({ type: 'corporate', id: p.id })
   const tierQtys = tiers.map(t => Number(t.quantity) || 0).filter(q => q > 0)
   const minQty = tierQtys.length ? Math.min(...tierQtys) : 0
@@ -83,8 +92,10 @@ export default function CorporateDetail({ profile }) {
       </Link>
       <div className="grid md:grid-cols-2 gap-6">
         <div className="card overflow-hidden bg-gray-100 aspect-square flex items-center justify-center relative">
-          {displayHero ? <img src={displayHero} alt={p.name} className="w-full h-full object-cover" />
-            : <Package size={56} className="text-gray-300" />}
+          {displayHero ? (
+            <img src={displayHero} alt={p.name} className="w-full h-full object-cover cursor-zoom-in"
+                 onClick={() => setLightboxIndex(0)} />
+          ) : <Package size={56} className="text-gray-300" />}
           <FavHeart item={{ type: 'corporate', id: p.id, name: p.name, code: '', image: displayHero || '' }} className="absolute top-3 right-3" />
         </div>
         <div>
@@ -151,9 +162,10 @@ export default function CorporateDetail({ profile }) {
         <div className="mt-10">
           <h2 className="text-lg text-ink mb-3">Gallery & inspiration</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-            {gallery.map(im => (
+            {gallery.map((im, i) => (
               <figure key={im.id} className="card overflow-hidden flex flex-col">
-                <div className="aspect-square bg-gray-100 overflow-hidden">
+                <div className="aspect-square bg-gray-100 overflow-hidden cursor-zoom-in"
+                     onClick={() => setLightboxIndex((displayHero ? 1 : 0) + i)}>
                   <img src={im.file_url} alt={im.caption || p.name} loading="lazy"
                     className="w-full h-full object-cover" />
                 </div>
@@ -164,6 +176,11 @@ export default function CorporateDetail({ profile }) {
             ))}
           </div>
         </div>
+      )}
+
+      {lightboxIndex != null && (
+        <ImageLightbox images={carouselImages} index={lightboxIndex} onIndexChange={setLightboxIndex}
+                        onClose={() => setLightboxIndex(null)} altBase={p.name} />
       )}
     </div>
   )

@@ -173,26 +173,59 @@ export default async function handler(req) {
   // function" on every single delivery, an uncaught exception (this line
   // sits before the handler's own try/catch) that surfaced to Resend/Netlify
   // as an opaque 500 with zero detail.
-  const draftId = payload?.data?.tags?.draft_id
-  if (!draftId) return new Response('ok', { status: 200 }) // not a Daily Drafts send (or untagged) — nothing to update
+  const tags = payload?.data?.tags || {}
+  const draftId = tags.draft_id
+  // mc_id: the marketing_contacts doc id, tagged by send-campaign.js on
+  // every recipient and by send-personal-email.js when the Daily Drafts
+  // source was a contact (bug-fix pack C-04) — without this, a campaign
+  // bounce had NO tag at all to key off (send-campaign.js sent no tags
+  // whatsoever) and was silently discarded below the old `if (!draftId)`
+  // guard; even a personal-send bounce only ever touched the draft's own
+  // engagement flag, never the contact record that actually bounced.
+  const mcId = tags.mc_id
+  if (!draftId && !mcId) return new Response('ok', { status: 200 }) // untagged send — nothing to correlate
 
   try {
     const token = await getAccessToken(CLIENT_EMAIL, PRIVATE_KEY)
     const nowIso = new Date().toISOString()
-    const base = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/outreach_drafts/${encodeURIComponent(draftId)}`
-    const atField = `${field}At`
-    const fields = { engagement: { [field]: true, [atField]: { __ts: nowIso } } }
-    const masks = [`engagement.${field}`, `engagement.${atField}`]
-      .map(p => `updateMask.fieldPaths=${encodeURIComponent(p)}`).join('&')
-    const r = await fetch(`${base}?${masks}`, {
-      method: 'PATCH',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ fields: encodeFields(fields) }),
-    })
-    // A 404 (draft since deleted, e.g. a test send that got cleared) is fine,
-    // not an error — same posture as unsubscribe.js.
-    if (!r.ok && r.status !== 404) {
-      return new Response(`Firestore write failed: ${(await r.text()).slice(0, 200)}`, { status: 502 })
+    const writes = []
+
+    if (draftId) {
+      const base = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/outreach_drafts/${encodeURIComponent(draftId)}`
+      const atField = `${field}At`
+      const fields = { engagement: { [field]: true, [atField]: { __ts: nowIso } } }
+      const masks = [`engagement.${field}`, `engagement.${atField}`]
+        .map(p => `updateMask.fieldPaths=${encodeURIComponent(p)}`).join('&')
+      writes.push(fetch(`${base}?${masks}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: encodeFields(fields) }),
+      }))
+    }
+
+    // A hard bounce or spam complaint suppresses future sends to this
+    // contact — same vocabulary MarketingContacts.jsx's own edit form uses
+    // (MC_STATUSES: subscribed/nonsubscribed/unsubscribed/cleaned; emailable
+    // is derived from status). Idempotent: setting the same status twice on
+    // a duplicate webhook delivery is a no-op, not a double-suppress.
+    if (mcId && (field === 'bounced' || field === 'complained')) {
+      const base = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/marketing_contacts/${encodeURIComponent(mcId)}`
+      const fields = { status: 'cleaned', emailable: false }
+      const masks = ['status', 'emailable'].map(p => `updateMask.fieldPaths=${encodeURIComponent(p)}`).join('&')
+      writes.push(fetch(`${base}?${masks}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: encodeFields(fields) }),
+      }))
+    }
+
+    const results = await Promise.all(writes)
+    // A 404 (the record since deleted) is fine, not an error — same posture
+    // as unsubscribe.js.
+    for (const r of results) {
+      if (!r.ok && r.status !== 404) {
+        return new Response(`Firestore write failed: ${(await r.text()).slice(0, 200)}`, { status: 502 })
+      }
     }
     return new Response('ok', { status: 200 })
   } catch (e) {

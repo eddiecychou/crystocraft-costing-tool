@@ -39,14 +39,14 @@ export async function draftTopic(topic) {
   return data
 }
 
-export async function sendPersonalEmail({ customerEmail, subject, body, draftId, imageUrls, links }) {
+export async function sendPersonalEmail({ customerEmail, subject, body, draftId, imageUrls, links, recipientKind, recipientId }) {
   const user = await authedUser()
   if (!user) throw new Error('Please sign in.')
   const token = await user.getIdToken()
   const res = await fetch('/api/send-personal-email', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ customerEmail, subject, body, draftId, imageUrls, links }),
+    body: JSON.stringify({ customerEmail, subject, body, draftId, imageUrls, links, recipientKind, recipientId }),
   })
   let data = {}
   try { data = await res.json() } catch { /* non-JSON error body */ }

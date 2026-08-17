@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { db, storage } from '../firebase'
+import { db, storage, authHeader } from '../firebase'
 import {
   RANGE_DESIGN_TYPES, RANGE_PRODUCT_TYPES, RANGE_FORMAT_CODES,
   RANGE_PLATINGS, RANGE_CRYSTAL_COLORS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS,
@@ -455,7 +455,7 @@ export default function RangeForm() {
     try {
       const res = await fetch('/api/generate-marketing-copy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({ product: aiProductPayload(), source: 'range', instructions: aiGuide.trim() }),
       })
       const data = await res.json()
@@ -475,7 +475,7 @@ export default function RangeForm() {
     try {
       const res = await fetch('/api/rewrite-section', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({
           section_type: 'marketing_description',
           body: form.marketing_description,

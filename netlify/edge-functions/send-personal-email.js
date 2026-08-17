@@ -112,6 +112,14 @@ export default async function handler(req) {
     ? body.links.filter(l => l?.url).map(l => ({ title: String(l.title || ''), url: String(l.url) }))
     : []
   const draftId = String(body?.draftId || '').trim()
+  // Recipient correlation for resend-webhook.js (bug-fix pack C-04) — draft_id
+  // alone only maps a bounce back to the outreach_drafts doc, never to the
+  // underlying customer/marketing_contact, so a bounced address stayed
+  // targetable by every future draft. recipientKind is 'customer' | 'contact'
+  // (DailyDrafts.jsx's own d.source vocabulary), recipientId is that record's
+  // Firestore doc id.
+  const recipientKind = body?.recipientKind === 'contact' ? 'contact' : 'customer'
+  const recipientId = String(body?.recipientId || '').trim()
   if (!customerEmail || !subject || !text) return json({ error: 'customerEmail, subject and body are required' }, 400)
 
   try {
@@ -123,7 +131,13 @@ export default async function handler(req) {
         text: buildTextFallback(text, links),
         html: buildHtml(text, imageUrls, links),
         ...(REPLY_TO ? { reply_to: REPLY_TO } : {}),
-        ...(draftId ? { tags: [{ name: 'draft_id', value: draftId }] } : {}),
+        ...(() => {
+          const tags = [
+            ...(draftId ? [{ name: 'draft_id', value: draftId }] : []),
+            ...(recipientId ? [{ name: recipientKind === 'contact' ? 'mc_id' : 'customer_id', value: recipientId }] : []),
+          ]
+          return tags.length ? { tags } : {}
+        })(),
       }),
     })
     if (!r.ok) return json({ error: (await r.text()).slice(0, 300) }, 502)
