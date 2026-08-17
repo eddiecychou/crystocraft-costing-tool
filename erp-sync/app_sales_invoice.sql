@@ -36,6 +36,71 @@ create table if not exists public.app_sales_invoice (
 create index if not exists app_sales_invoice_year_idx on public.app_sales_invoice (year);
 create index if not exists app_sales_invoice_uc_idx   on public.app_sales_invoice (uc_id);
 
+-- ── Phase A: invoice-field propagation & controlled adjustment ─────────────────
+-- Nullable, backward-compatible — existing rows render invoice_date = invoiced_at
+-- and accounting_total = total until someone edits them.
+--
+-- accounting_total / adjustment / adjustment_reason exist so a final-digit or
+-- fee correction never overwrites `total` (the line-derived fact, same
+-- immutability rule as pi_total on the Firestore order — see normOrder in
+-- shipping.js). `total` keeps meaning "what the lines say"; accounting_total is
+-- what finance actually records, and the gap between them must carry a reason.
+alter table public.app_sales_invoice
+  add column if not exists invoice_date       date,     -- editable accounting date; invoiced_at stays the allocation date
+  add column if not exists customer_po        text,
+  add column if not exists remarks            text,     -- mirrors the order's `notes` (printed as "Remarks" on the invoice)
+  add column if not exists accounting_total   numeric,  -- final finance amount; defaults to `total` when unset
+  add column if not exists adjustment         numeric,  -- accounting_total − total
+  add column if not exists adjustment_reason  text;
+
+-- ── Change audit ─────────────────────────────────────────────────────────────
+-- Same posture as bank_accounts_audit: append-only, SECURITY DEFINER trigger,
+-- service_role gets SELECT only. Scoped to the Phase A fields on purpose — this
+-- table is upserted on every order save (fire-and-forget from ucRegistry.js), so
+-- an unconditional trigger would log a row for every unrelated order edit. Only
+-- an actual change to a finance-relevant field is worth an audit row.
+create table if not exists public.app_sales_invoice_audit (
+  id          bigint generated always as identity primary key,
+  invoice_id  bigint,
+  action      text        not null,          -- insert | update | delete
+  changed_at  timestamptz not null default now(),
+  changed_by  text,
+  before      jsonb,
+  after       jsonb
+);
+
+create or replace function public.app_sales_invoice_audit_fn() returns trigger
+language plpgsql security definer set search_path = public, pg_temp as $$
+begin
+  if tg_op = 'UPDATE'
+     and new.invoice_date      is not distinct from old.invoice_date
+     and new.customer_po       is not distinct from old.customer_po
+     and new.remarks           is not distinct from old.remarks
+     and new.accounting_total  is not distinct from old.accounting_total
+     and new.adjustment        is not distinct from old.adjustment
+     and new.adjustment_reason is not distinct from old.adjustment_reason
+  then
+    return new;   -- routine upsert of unrelated fields (total, currency, …) — not audited here
+  end if;
+  insert into public.app_sales_invoice_audit (invoice_id, action, changed_by, before, after)
+  values (
+    coalesce(new.id, old.id),
+    lower(tg_op),
+    coalesce(new.updated_by, old.updated_by),
+    case when tg_op = 'INSERT' then null else to_jsonb(old) end,
+    case when tg_op = 'DELETE' then null else to_jsonb(new) end
+  );
+  return coalesce(new, old);
+end $$;
+
+drop trigger if exists trg_app_sales_invoice_audit on public.app_sales_invoice;
+create trigger trg_app_sales_invoice_audit after insert or update or delete on public.app_sales_invoice
+  for each row execute function public.app_sales_invoice_audit_fn();
+
+grant select on public.app_sales_invoice_audit to service_role;
+
+notify pgrst, 'reload schema';
+
 -- Allocate the next invoice number and its UC, atomically.
 --
 -- THE NUMBER IS DERIVED, NOT SEEDED. JES_SI_SEED_BY_YEAR in soNumber.js was a

@@ -272,9 +272,12 @@ export default function SalesInvoicePrint() {
         </div>
         <div className="si-box">
           <div className="si-kv"><span className="k">Invoice No.</span><span className="v big si-code">{order.erp_si_no || '—'}</span></div>
-          <div className="si-kv"><span className="k">Date</span><span className="v">{fmtDate(order.invoiced_at || order.order_date)}</span></div>
+          {/* invoice_date is the editable accounting date; invoiced_at (the
+              allocation timestamp) is the fallback — see normOrder. */}
+          <div className="si-kv"><span className="k">Date</span><span className="v">{fmtDate(order.invoice_date || order.invoiced_at || order.order_date)}</span></div>
           {order.erp_so_no && <div className="si-kv"><span className="k">{/^SO/i.test(order.erp_so_no) ? 'SO No.' : 'Doc No.'}</span><span className="v si-code">{order.erp_so_no}</span></div>}
           {orderUc(order) && <div className="si-kv"><span className="k">UC#</span><span className="v si-code">{orderUc(order)}</span></div>}
+          {order.customer_po && <div className="si-kv"><span className="k">Customer PO</span><span className="v">{order.customer_po}</span></div>}
           <div className="si-kv"><span className="k">Currency</span><span className="v">{cur}</span></div>
           {order.incoterm && <div className="si-kv"><span className="k">Incoterm</span><span className="v">{order.incoterm}</span></div>}
           {order.payment_terms && <div className="si-kv"><span className="k">Payment Terms</span><span className="v">{order.payment_terms}</span></div>}
@@ -346,11 +349,26 @@ export default function SalesInvoicePrint() {
               <tr><td className="k">Charges</td><td className="v">{money(chargesTotal, cur)}</td></tr>
             )}
             <tr className="grand"><td className="k">Total Due</td><td className="v">{money(total, cur)}</td></tr>
+            {/* Adjustment — the accounting correction, never a rewrite of the
+                calculated Total Due above (SR-05). Shown only when nonzero, so
+                the vast majority of invoices with no adjustment print exactly
+                as before. */}
+            {Math.abs(order.adjustment || 0) > 0.005 && (
+              <>
+                <tr><td className="k">Adjustment</td><td className="v">{order.adjustment > 0 ? '+ ' : '− '}{money(Math.abs(order.adjustment), cur)}</td></tr>
+                <tr className="grand"><td className="k">Amount Payable</td><td className="v">{money(order.accounting_total ?? total, cur)}</td></tr>
+              </>
+            )}
           </tbody>
         </table>
       </div>
+      {Math.abs(order.adjustment || 0) > 0.005 && order.adjustment_reason && (
+        <p style={{ fontSize: 9.5, color: '#9a3412', textAlign: 'right', marginTop: -4, marginBottom: 10 }}>
+          Adjustment reason: {order.adjustment_reason}
+        </p>
+      )}
 
-      <div className="si-words">{amountInWords(total, cur)}</div>
+      <div className="si-words">{amountInWords(order.accounting_total ?? total, cur)}</div>
 
       {bankBlock && (
         <div className="si-bank">

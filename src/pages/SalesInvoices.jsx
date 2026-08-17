@@ -156,10 +156,12 @@ export default function SalesInvoices() {
       // Falls back to erp_so_no for the rare JES-imported order where the SI
       // landed there instead — see invoicedAlready() above. Without this an
       // order that's genuinely invoiced would show a blank invoice number.
-      no: o.erp_si_no || o.erp_so_no, date: o.invoiced_at || o.order_date,
+      no: o.erp_si_no || o.erp_so_no, date: o.invoice_date || o.invoiced_at || o.order_date,
       so: o.erp_si_no ? o.erp_so_no : null, uc: o.uc_no, customer: o.customer_name,
       code: erpCodeByCustomerId[o.customer_id] || null,
       currency: o.currency, amount: o.total_amount ?? o.subtotal, status: null,
+      adjustment: o.adjustment || 0, accountingTotal: o.accounting_total,
+      customerPo: o.customer_po || '', remarks: o.notes || '', adjustmentReason: o.adjustment_reason || '',
     }))
     // The app's own invoices may also exist in the mirror once a sync runs;
     // showing both would double-count. The app row wins — it is the live one.
@@ -236,6 +238,11 @@ export default function SalesInvoices() {
     { label: 'Customer code', value: (r) => r.code, text: true },
     { label: 'Currency',    value: (r) => r.currency },
     { label: 'Amount',      value: (r) => r.amount },
+    { label: 'Accounting amount', value: (r) => r.accountingTotal ?? r.amount },
+    { label: 'Adjustment',  value: (r) => r.adjustment || 0 },
+    { label: 'Adjustment reason', value: (r) => r.adjustmentReason || '', text: true },
+    { label: 'Customer PO', value: (r) => r.customerPo || '', text: true },
+    { label: 'Remarks',     value: (r) => r.remarks || '', text: true },
     { label: 'Status',      value: (r) => r.status || '' },
     { label: 'Source',      value: (r) => (r.src === 'app' ? 'App' : 'JES') },
   ]
@@ -498,7 +505,18 @@ export default function SalesInvoices() {
                         {r.code && <span className="ml-1.5 text-xs font-mono font-normal text-gray-400">· {r.code}</span>}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-gray-500">{r.currency}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-800">{fmtValue(r.amount)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-800">
+                        {fmtValue(r.amount)}
+                        {/* Accounting adjustment on this invoice — an amber flag
+                            pointing to the accounting total, not a rewrite of the
+                            calculated amount shown here (SR-05). */}
+                        {Math.abs(r.adjustment || 0) > 0.005 && (
+                          <span className="ml-1.5 text-[10px] font-medium text-amber-600"
+                                title={`Accounting total ${fmtValue(r.accountingTotal)} (${r.adjustment > 0 ? '+' : ''}${fmtValue(r.adjustment)})`}>
+                            adj
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap text-right">
                         {isApp ? (
                           <Link to={`/shipments/${r.id}/invoice`} target="_blank" rel="noreferrer"

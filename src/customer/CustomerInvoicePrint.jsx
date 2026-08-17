@@ -52,7 +52,7 @@ export default function CustomerInvoicePrint({ profile }) {
           const ls = await getOrderLines(orderId)
           if (!alive) return
           setHeader({
-            no: o.erp_si_no || o.erp_so_no, uc: orderUc(o), date: o.invoiced_at || o.order_date,
+            no: o.erp_si_no || o.erp_so_no, uc: orderUc(o), date: o.invoice_date || o.invoiced_at || o.order_date,
             currency: o.currency || 'USD', customer_po: o.customer_po, status: null,
           })
           setLines(ls.filter(l => (parseFloat(l.qty_ordered) || 0) > 0 || (parseFloat(l.unit_price) || 0) !== 0)

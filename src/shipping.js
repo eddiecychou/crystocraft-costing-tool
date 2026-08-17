@@ -4,7 +4,7 @@ import {
   onSnapshot, query, orderBy, serverTimestamp, writeBatch,
 } from 'firebase/firestore'
 import { db } from './firebase'
-import { numOrNull, str, trimUpper, result, addWarning, addInfo, merge } from './domain/validation'
+import { numOrNull, str, trimUpper, result, addWarning, addInfo, addError, merge } from './domain/validation'
 import { buildProductIndex, matchProductCode } from './criticalComponents'
 
 // Shipping module — Phase 12.0. An `order` is the commercial anchor for a
@@ -154,6 +154,19 @@ export const normOrder = o => ({
   // are optional. Anything validating an invoice must check the UC, not the SO.
   erp_si_no: str(o.erp_si_no),
   invoiced_at: o.invoiced_at || null,
+  // The editable accounting date, separate from invoiced_at (the allocation
+  // timestamp — stamped once, by doAllocateSi, and never touched again).
+  // Printed invoice / financial reports use invoice_date, falling back to
+  // invoiced_at when unset (see SalesInvoicePrint.jsx).
+  invoice_date: o.invoice_date || null,
+  // What finance actually records, vs total_amount (line-derived, immutable —
+  // same rule as pi_total). Only meaningful once the order is invoiced.
+  // adjustment = accounting_total − total_amount; adjustment_reason is
+  // mandatory whenever the gap is nonzero (SR-05, enforced in ShipmentForm and
+  // again server-side in /api/uc).
+  accounting_total: numOrNull(o.accounting_total),
+  adjustment: numOrNull(o.adjustment),
+  adjustment_reason: str(o.adjustment_reason),
   // Why this order will never be invoiced in the app. Without it, a shipped
   // order with no SI can only ever be "outstanding" — so a cancelled order and
   // one the customer is sitting on look identical to one genuinely awaiting an
@@ -461,6 +474,18 @@ export function validateOrder(order, lines = null) {
   const r = result()
   if (!o.customer_id) addWarning(r, 'order.customer.unresolved', 'customer_id',
     'Order not linked to a customer')
+
+  // SR-05: accounting_total may differ from the calculated total (rounding,
+  // fees, FX), but never silently — a nonzero gap needs a stated reason.
+  // Checked against total_amount (the persisted, line-derived fact) rather
+  // than recomputing from lines, so this also catches drift in stored records
+  // via the Schema Audit page, not only at save time.
+  if (o.accounting_total != null && o.total_amount != null) {
+    const adj = Math.round((o.accounting_total - o.total_amount) * 100) / 100
+    if (Math.abs(adj) > 0.005 && !o.adjustment_reason)
+      addError(r, 'order.invoice.adjustment_reason_required', 'adjustment_reason',
+        'Accounting total differs from the calculated total — a reason is required')
+  }
 
   if (Array.isArray(lines) && lines.length) {
     const lineResults = lines.map(validateOrderLine)

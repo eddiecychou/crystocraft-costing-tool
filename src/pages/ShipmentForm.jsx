@@ -40,6 +40,10 @@ const blankHeader = {
   customer_id: '', contact_id: '', customer_name: '', erp_pi_no: '', erp_so_no: '', erp_si_no: '', uc_no: '', customer_po: '', order_date: '',
   est_ship_date: '',
   invoiced_at: '',
+  // Editable accounting date/amount for the invoice — see normOrder in
+  // shipping.js. Blank invoice_date falls back to invoiced_at at print time;
+  // blank accounting_total falls back to the computed total at save time.
+  invoice_date: '', accounting_total: '', adjustment_reason: '',
   currency: 'USD', incoterm: 'FOB', payment_terms: '', status: 'draft',
   destination: { country: '', city: '', address: '', port: '' }, notes: '',
   // pi_subtotal / pi_total hold what the imported PI stated, for the mismatch
@@ -197,6 +201,9 @@ export default function ShipmentForm() {
             erp_pi_no: o.erp_pi_no, erp_so_no: o.erp_so_no || '', erp_si_no: o.erp_si_no || '', uc_no: orderUc(o),
             customer_po: o.customer_po || '',
             invoiced_at: o.invoiced_at || '',
+            invoice_date: o.invoice_date || '',
+            accounting_total: o.accounting_total ?? '',
+            adjustment_reason: o.adjustment_reason || '',
             order_date: o.order_date || '',
             est_ship_date: o.est_ship_date || '',
             currency: o.currency, incoterm: o.incoterm, payment_terms: o.payment_terms || '', status: o.status,
@@ -596,12 +603,28 @@ export default function ShipmentForm() {
       // Same fallback as create — persist the line-computed total when no PI-
       // stated total was ever captured, so the order isn't left valueless.
       const computed = computeOrderTotals(header, lines)
+      // Accounting total defaults to the computed total when left blank — see
+      // the Accounting Total field above. Validated here against the LIVE
+      // computed total (header carries no persisted total_amount to check
+      // against — validateOrder's own check is for stored records, e.g. Schema
+      // Audit). Checked again server-side in /api/uc: this is not the only gate.
+      const accountingTotal = header.accounting_total !== '' ? parseFloat(header.accounting_total) : computed.total
+      const adjustment = Math.round((accountingTotal - computed.total) * 100) / 100
+      if (Math.abs(adjustment) > 0.005 && !header.adjustment_reason.trim()) {
+        setExtractError('Accounting total differs from the calculated total — an adjustment reason is required.')
+        setSaving(false)
+        return
+      }
       const write = Promise.all([
         updateOrder(id, {
           customer_id: header.customer_id, contact_id: header.contact_id || null, customer_name: header.customer_name,
           erp_pi_no: header.erp_pi_no, erp_so_no: header.erp_so_no, erp_si_no: header.erp_si_no,
           customer_po: header.customer_po,
           invoiced_at: header.invoiced_at || null, uc_no: header.uc_no,
+          invoice_date: header.invoice_date || null,
+          accounting_total: header.erp_si_no ? accountingTotal : null,
+          adjustment: header.erp_si_no && Math.abs(adjustment) > 0.005 ? adjustment : null,
+          adjustment_reason: header.erp_si_no ? header.adjustment_reason.trim() : '',
           order_date: header.order_date || null,
           est_ship_date: header.est_ship_date || null,
           currency: header.currency, incoterm: header.incoterm, payment_terms: header.payment_terms, status: header.status,
@@ -624,15 +647,21 @@ export default function ShipmentForm() {
       // successful save look failed. Drift that results is caught by the
       // reconciliation on the Sales Invoices page rather than hidden.
       if (header.erp_si_no) {
+        const total = computed.subtotal > 0 ? computed.total
+                    : (header.pi_total !== '' ? parseFloat(header.pi_total) : null)
         upsertInvoice({
           si_no: header.erp_si_no,
           uc_no: header.uc_no || null,
           order_id: id,
           customer: header.customer_name,
           currency: header.currency,
-          total: computed.subtotal > 0 ? computed.total
-               : (header.pi_total !== '' ? parseFloat(header.pi_total) : null),
+          total,
           invoiced_at: header.invoiced_at || null,
+          invoice_date: header.invoice_date || null,
+          customer_po: header.customer_po || '',
+          remarks: header.notes || '',
+          accounting_total: total != null ? accountingTotal : null,
+          adjustment_reason: header.adjustment_reason || '',
         })
       }
       navigate('/shipments')
@@ -829,6 +858,12 @@ export default function ShipmentForm() {
               <label className="label">Est. Ship Date</label>
               <input className="input" type="date" value={header.est_ship_date} onChange={setH('est_ship_date')} />
             </div>
+            {header.erp_si_no && (
+              <div>
+                <label className="label" title="The accounting date printed on the invoice and used in financial reports. Blank falls back to the date the invoice number was allocated.">Invoice Date</label>
+                <input className="input" type="date" value={header.invoice_date} onChange={setH('invoice_date')} placeholder={header.invoiced_at} />
+              </div>
+            )}
             <div>
               <label className="label">Currency</label>
               <select className="input" value={header.currency} onChange={setH('currency')}>{ORDER_CURRENCIES.map(c => <option key={c}>{c}</option>)}</select>
@@ -1078,10 +1113,56 @@ export default function ShipmentForm() {
                     )}
                   </div>
                 </div>
+
+                {/* Accounting total — what finance actually records against this
+                    invoice, kept separate from Total Amount above (which stays
+                    what the lines say — see normOrder). Only meaningful once the
+                    order carries an invoice number. A nonzero gap needs a reason
+                    (SR-05); enforced here and again server-side in /api/uc. */}
+                {header.erp_si_no && (() => {
+                  const accTotal = header.accounting_total !== '' ? parseFloat(header.accounting_total) : computedTotal
+                  const adj = Math.round((accTotal - computedTotal) * 100) / 100
+                  return (
+                    <div className="pt-2 mt-1 border-t border-gray-100 space-y-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-500" title="What finance records for this invoice. Blank uses the Total Amount above.">Accounting Total</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-400">{header.currency}</span>
+                          <input type="number" step="0.01" className="input py-0.5 text-xs w-24 text-right font-mono"
+                                 value={header.accounting_total} onChange={setH('accounting_total')}
+                                 placeholder={fmt(computedTotal)} />
+                        </div>
+                      </div>
+                      {Math.abs(adj) > 0.005 && (
+                        <>
+                          <div className="flex justify-between items-center text-xs">
+                            <span className="text-amber-600">Adjustment</span>
+                            <span className="font-mono text-amber-600">{adj > 0 ? '+' : ''}{header.currency} {fmt(adj)}</span>
+                          </div>
+                          <div>
+                            <input className="input py-1 text-xs" value={header.adjustment_reason}
+                                   onChange={setH('adjustment_reason')}
+                                   placeholder="Reason for the adjustment (required)" />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             </div>
           )
         })()}
+
+        {/* Remarks — prints on both the Proforma and the Sales Invoice, labelled
+            "Remarks" there (see order.notes in SalesInvoicePrint.jsx /
+            ProformaInvoicePrint.jsx). Free text: an exception, a name that was
+            dropped, or other accounting context (SR-06). */}
+        <div className="card p-4">
+          <label className="label">Remarks</label>
+          <textarea className="input" rows={2} value={header.notes} onChange={setH('notes')}
+                     placeholder="Prints on the Proforma and Sales Invoice — accounting context, exceptions, etc." />
+        </div>
 
         {/* Component stock — issue this order's figurine BOM to the ledger (V7.13a) */}
         {isEdit && <OrderStockIssue orderId={id} orderLabel={header.uc_no || header.erp_so_no || id} />}
