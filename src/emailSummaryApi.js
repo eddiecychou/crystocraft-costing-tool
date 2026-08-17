@@ -108,8 +108,8 @@ export function renderThreadsTextForYears(threads, years) {
   const chunks = []
   let total = 0
   for (const t of filtered) {
-    const block = threadBlock(t)
-    if (total + block.length > MAX_OUTPUT_CHARS) break
+    const block = threadBlock(t, MAX_OUTPUT_CHARS - total)
+    if (!block) break
     chunks.push(block)
     total += block.length
   }
@@ -177,8 +177,8 @@ function renderFacetThreads(matches, budget) {
   const recentChunks = []
   let recentTotal = 0
   for (const t of matches) { // most-recent-first, inherited from `threads`
-    const block = threadBlock(t)
-    if (recentTotal + block.length > recentShare) break
+    const block = threadBlock(t, recentShare - recentTotal)
+    if (!block) break
     recentChunks.push(block)
     recentTotal += block.length
     used.add(t)
@@ -188,8 +188,8 @@ function renderFacetThreads(matches, budget) {
   for (let i = matches.length - 1; i >= 0; i--) {
     const t = matches[i]
     if (used.has(t)) continue
-    const block = threadBlock(t)
-    if (oldestTotal + block.length > oldestShare) break
+    const block = threadBlock(t, oldestShare - oldestTotal)
+    if (!block) break
     oldestChunks.push(block)
     oldestTotal += block.length
     used.add(t)
@@ -241,12 +241,34 @@ export function buildKeywordFacets(threads, question) {
   return facets
 }
 
-function threadBlock(t) {
+// `maxChars` (default: no cap) trims to the thread's own MOST RECENT
+// messages when the full thread doesn't fit — found live 2026-08-13: a
+// single highly-relevant thread (16 messages, 63KB) exceeded an entire
+// per-facet budget half on its own, so the old all-or-nothing version
+// dropped it COMPLETELY (including its newest message) while smaller, less
+// relevant threads still fit and got sent instead. Returns null only if not
+// even the single newest message fits.
+function threadBlock(t, maxChars = Infinity) {
   const header = `\n=== Thread: ${t.subject || '(no subject)'} (${t.message_count || (t.messages || []).length} messages) ===`
-  const body = (t.messages || []).map(m =>
-    `--- ${m.date || ''} | From: ${m.from || ''} | To: ${m.to || ''} ---\n${(m.body_text || '').trim()}`
-  ).join('\n')
-  return `${header}\n${body}`
+  const msgs = t.messages || []
+  const renderMsg = m => `--- ${m.date || ''} | From: ${m.from || ''} | To: ${m.to || ''} ---\n${(m.body_text || '').trim()}`
+  const full = `${header}\n${msgs.map(renderMsg).join('\n')}`
+  if (full.length <= maxChars) return full
+
+  // Messages arrive oldest-first within a thread — walk backwards to keep
+  // the newest ones and drop from the start.
+  const kept = []
+  let total = header.length
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    const block = renderMsg(msgs[i])
+    if (total + block.length + 1 > maxChars) break
+    kept.unshift(block)
+    total += block.length + 1
+  }
+  if (!kept.length) return null
+  const omitted = msgs.length - kept.length
+  const note = omitted > 0 ? `\n(${omitted} earlier message(s) in this thread omitted for space — this thread has more history than shown here.)` : ''
+  return `${header}${note}\n${kept.join('\n')}`
 }
 
 // `threads` arrives most-recent-first (CustomerDetail.jsx's sort).
@@ -258,8 +280,8 @@ export function renderThreadsText(threads) {
   const recentChunks = []
   let recentTotal = 0
   for (const t of threads) {
-    const block = threadBlock(t)
-    if (recentTotal + block.length > recentBudget) break
+    const block = threadBlock(t, recentBudget - recentTotal)
+    if (!block) break
     recentChunks.push(block)
     recentTotal += block.length
     used.add(t)
@@ -270,8 +292,8 @@ export function renderThreadsText(threads) {
   for (let i = threads.length - 1; i >= 0; i--) {
     const t = threads[i]
     if (used.has(t)) continue
-    const block = threadBlock(t)
-    if (oldestTotal + block.length > oldestBudget) break
+    const block = threadBlock(t, oldestBudget - oldestTotal)
+    if (!block) break
     oldestChunks.push(block)
     oldestTotal += block.length
     used.add(t)
