@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   collection, doc, getDocs, setDoc, addDoc, deleteDoc,
-  onSnapshot, query, orderBy, serverTimestamp, writeBatch,
+  onSnapshot, query, orderBy, serverTimestamp, writeBatch, increment,
 } from 'firebase/firestore'
 import { db } from './firebase'
 
@@ -144,24 +144,31 @@ export function createInventoryClass({ collectionName, attrField, extraFields = 
       if (r.stock_qty != null) c.stock_qty = r.stock_qty
     }
 
+    // prevStock/seq: seq is the item's own movement counter (see
+    // stockLedger.js's postMovement) so this import continues the SAME
+    // per-item sequence instead of colliding with it (bug-fix pack B-03).
     const snap = await getDocs(COL())
     const existing = {}
     for (const d of snap.docs) {
       const code = norm(d.data().code)
       if (code && !(code in existing)) {
         const prev = d.data().stock_qty
-        existing[code] = { id: d.id, hasName: !!(d.data().name || '').trim(), prevStock: Number.isFinite(prev) ? prev : 0 }
+        const mseq = d.data().movement_seq
+        existing[code] = {
+          id: d.id, hasName: !!(d.data().name || '').trim(),
+          prevStock: Number.isFinite(prev) ? prev : 0,
+          seq: Number.isFinite(mseq) ? mseq : 0,
+        }
       }
     }
 
     const importDate = new Date().toISOString().slice(0, 10)
-    let seq = Date.now()
-    const stocktakeOp = (id, counted, prev) => ({
+    const stocktakeOp = (id, counted, prev, seq) => ({
       ref: doc(collection(db, collectionName, id, 'movements')),
       data: {
         type: 'stocktake', qty: counted - prev, counted, balance_after: counted,
         date: importDate, note: 'Stock-take (list import)', order_id: null,
-        seq: seq++, createdAt: serverTimestamp(),
+        seq, createdAt: serverTimestamp(),
       },
       merge: false,
     })
@@ -176,7 +183,18 @@ export function createInventoryClass({ collectionName, attrField, extraFields = 
         if (c.notes) data.notes = c.notes
         for (const f of extraFields) if (c[f.key] != null && c[f.key] !== '') data[f.key] = c[f.key]
         if (!ex.hasName && c.name) data.name = c.name
-        if (counted != null) { data.stock_qty = counted; data.ledger_seeded = true; ops.push(stocktakeOp(ex.id, counted, ex.prevStock)) }
+        if (counted != null) {
+          const seq = ex.seq + 1
+          // increment(), not an absolute overwrite — a plain `stock_qty:
+          // counted` silently discards any concurrent postMovement (order
+          // stock issue, PO receipt) landing between this function's read
+          // and the batch commit. increment() is a Firestore atomic field
+          // operation, so it composes correctly with a concurrent write.
+          data.stock_qty = increment(counted - ex.prevStock)
+          data.ledger_seeded = true
+          data.movement_seq = seq
+          ops.push(stocktakeOp(ex.id, counted, ex.prevStock, seq))
+        }
         ops.push({ ref: doc(db, collectionName, ex.id), data, merge: true })
         updated++
       } else {
@@ -186,9 +204,10 @@ export function createInventoryClass({ collectionName, attrField, extraFields = 
           code: c.code, name: c.name, [attrField]: c[attrField], size: c.size, notes: c.notes || '',
           ...extra,
           stock_qty: counted, ledger_seeded: counted != null,
+          movement_seq: counted != null ? 1 : 0,
           createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
         }, merge: false })
-        if (counted != null) ops.push(stocktakeOp(ref.id, counted, 0))
+        if (counted != null) ops.push(stocktakeOp(ref.id, counted, 0, 1))
         created++
       }
     }

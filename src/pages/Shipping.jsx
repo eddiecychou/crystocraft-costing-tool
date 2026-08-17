@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
-import { useOrders, orderStatusOf, orderUc, orderSi, orderSoDisplay, getOrder, getOrderLines, createOrderWithLines } from '../shipping'
+import { useOrders, orderStatusOf, orderUc, orderSi, orderSoDisplay, getOrder, getOrderLines, createOrderWithLinesAllocatingSo } from '../shipping'
 import { allocateOrderUc } from '../ucRegistry'
 import { useVendors, FREIGHT_MODES, modeLabel, strengthOf } from '../logistics'
 import { erpLookup } from '../erpApi'
@@ -141,8 +141,12 @@ function ShipmentsList() {
         subtotal: null, discount_pct: null, discount_amount: null, total_amount: null,
       }
       const newLines = lines.map((l, i) => ({ ...l, line_no: i + 1 }))
-      const { id: newId, commit } = createOrderWithLines(newOrderData, newLines)
-      await commit
+      // Allocated fresh here (bug-fix pack B-02) — a duplicate used to leave
+      // erp_so_no blank entirely rather than either copying the source's
+      // number (wrong — see the UC# comment above for the exact same failure
+      // mode) or getting its own, so it silently fell out of step with every
+      // other order-creation path, which already allocates on create.
+      const { id: newId } = await createOrderWithLinesAllocatingSo(newOrderData, newLines, { allocateSo: true })
       navigate(`/shipments/${newId}`)
     } catch (err) {
       setDupError(err.message || 'Could not duplicate this order.')

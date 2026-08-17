@@ -6,6 +6,7 @@ import { Check, FileText, Image as ImageIcon, X, Paperclip } from 'lucide-react'
 import { loadBlogProducts } from '../productSource'
 import ContactPicker from '../components/ContactPicker'
 import { CHANNELS, NO_API_CHANNELS } from '../domain/customer'
+import { quoteIsConfirmed } from '../quotes'
 
 const STATUSES  = ['Open', 'Quoted', 'Confirmed', 'Lost', 'On Hold']
 
@@ -420,7 +421,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
                     <span>
                       {q.createdAt?.toDate?.().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                       {q.quote_currency ? ` · ${q.quote_currency}` : ''}
-                      {' · '}<span className={`capitalize ${q.status === 'won' ? 'text-green-600' : q.status === 'lost' ? 'text-red-500' : 'text-gray-500'}`}>{q.status || 'draft'}</span>
+                      {' · '}<span className={`capitalize ${quoteIsConfirmed(q.status) ? 'text-green-600' : q.status === 'lost' ? 'text-red-500' : 'text-gray-500'}`}>{q.status || 'draft'}</span>
                     </span>
                   </label>
                 ))}

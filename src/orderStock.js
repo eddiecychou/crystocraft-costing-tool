@@ -92,6 +92,16 @@ export const metalOrderConfig = {
 // reservation: before V7.16 this warning vanished the moment you clicked
 // Reserve, so an order reserved with 3 of 5 components displayed exactly like
 // one reserved with 5 of 5. Stock silently drifted with no record of where.
+// Idempotency-key generation: one per order, bumped only by reserveForOrder
+// (bug-fix pack B-03). The four functions below all loop postMovement calls
+// and only mark the order doc done AFTER the loop — a failure partway through
+// used to mean a retry re-posted every already-succeeded line a second time.
+// Keying each movement on orderId + generation + line id makes a retry of
+// the SAME attempt dedupe cleanly (postMovement skips a movement doc that
+// already exists), while a genuinely NEW reservation after a release gets a
+// fresh generation and can never collide with the old, already-released one.
+const genField = order => `${order.reserved}_generation`
+
 export async function reserveForOrder(cfg, orderId, orderLabel, lines, gaps) {
   const { collectionPath, order } = cfg
   const idField = order.lineIdField
@@ -103,14 +113,17 @@ export async function reserveForOrder(cfg, orderId, orderLabel, lines, gaps) {
   const orderRef = doc(db, 'orders', orderId)
   const d = (await getDoc(orderRef)).data() || {}
   if (d[order.reserved] || d[order.committed]) throw new Error('Already reserved for this order.')
+  const gf = genField(order)
+  const generation = (Number.isFinite(d[gf]) ? d[gf] : 0) + 1
 
   for (const l of clean) {
     await postMovement(collectionPath, l[idField], {
       type: 'reserve', qty: l.qty, order_id: orderId,
       note: `Reserved for order ${orderLabel || orderId}`,
+      idempotencyKey: `reserve_${orderId}_g${generation}_${l[idField]}`,
     })
   }
-  const patch = { [order.reserved]: true, [order.reservedAt]: serverTimestamp(), [order.lines]: clean }
+  const patch = { [order.reserved]: true, [order.reservedAt]: serverTimestamp(), [order.lines]: clean, [gf]: generation }
   if (order.gaps) patch[order.gaps] = summariseGaps(gaps)
   await updateDoc(orderRef, patch)
   return clean
@@ -136,11 +149,13 @@ export async function produceForOrder(cfg, orderId, orderLabel) {
   if (d[order.committed]) throw new Error('Already produced-in for this order.')
 
   const lines = d[order.lines] || []
+  const generation = Number.isFinite(d[genField(order)]) ? d[genField(order)] : 0
   for (const l of lines) {
     if (!l[idField]) continue
     await postMovement(collectionPath, l[idField], {
       type: 'produce', qty: Math.abs(Number(l.qty) || 0), order_id: orderId,
       note: `Production-in — order ${orderLabel || orderId}`,
+      idempotencyKey: `produce_${orderId}_g${generation}_${l[idField]}`,
     })
   }
   await updateDoc(orderRef, { [order.committed]: true, [order.committedAt]: serverTimestamp() })
@@ -154,11 +169,13 @@ export async function releaseForOrder(cfg, orderId, orderLabel) {
   const orderRef = doc(db, 'orders', orderId)
   const d = (await getDoc(orderRef)).data() || {}
   const lines = d[order.lines] || []
+  const generation = Number.isFinite(d[genField(order)]) ? d[genField(order)] : 0
   for (const l of lines) {
     if (!l[idField]) continue
     await postMovement(collectionPath, l[idField], {
       type: 'release', qty: Math.abs(Number(l.qty) || 0), order_id: orderId,
       note: `Released reservation — order ${orderLabel || orderId}`,
+      idempotencyKey: `release_${orderId}_g${generation}_${l[idField]}`,
     })
   }
   const patch = {
@@ -177,11 +194,13 @@ export async function reverseProduceForOrder(cfg, orderId, orderLabel) {
   const orderRef = doc(db, 'orders', orderId)
   const d = (await getDoc(orderRef)).data() || {}
   const lines = (d[order.lines] && d[order.lines].length ? d[order.lines] : (order.legacyLines ? d[order.legacyLines] : null)) || []
+  const generation = Number.isFinite(d[genField(order)]) ? d[genField(order)] : 0
   for (const l of lines) {
     if (!l[idField]) continue
     await postMovement(collectionPath, l[idField], {
       type: 'adjustment', qty: Math.abs(Number(l.qty) || 0), order_id: orderId,
       note: `Reversed production-in — order ${orderLabel || orderId}`,
+      idempotencyKey: `reverse_produce_${orderId}_g${generation}_${l[idField]}`,
     })
   }
   const patch = {

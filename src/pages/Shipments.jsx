@@ -54,7 +54,13 @@ export default function Shipments() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-medium text-gray-900 text-sm">{o.customer_name || 'Unnamed customer'}</p>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${st.style}`}>{st.label}</span>
-                    {o.source === 'imported_pi' && orderUc(o) && <span className="text-xs text-gray-400">{orderUc(o)}</span>}
+                    {/* Not gated on source any more (bug-fix pack B-02): before that
+                        fix, virtually every order read as 'imported_pi' regardless of
+                        real origin, so this condition was effectively "always show the
+                        UC#". Now that manual/direct-invoice orders get their own real
+                        source value, keep the same visible behaviour rather than
+                        silently hiding the UC# on them. */}
+                    {orderUc(o) && <span className="text-xs text-gray-400">{orderUc(o)}</span>}
                     {needsReconcile && (
                       <span className="inline-flex items-center gap-1 text-xs text-amber-600">
                         <ClipboardCheck size={12} /> needs reconcile

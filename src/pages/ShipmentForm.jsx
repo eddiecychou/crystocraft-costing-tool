@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { storage } from '../firebase'
+import { storage, authHeader } from '../firebase'
 import {
   INCOTERMS, PAYMENT_TERMS, ORDER_CURRENCIES, ORDER_STATUSES, LINE_TYPES, lineTypeOf, isPackable,
-  getOrder, getOrderLines, createOrderWithLines, updateOrder, saveOrderLines, deleteOrder,
+  getOrder, getOrderLines, createOrderWithLinesAllocatingSo, updateOrder, saveOrderLines, deleteOrder,
   loadRangeProductsLite, autoMatchLines, matchRangeProduct, rematchLines, validateOrder, computeOrderTotals,
   orderUc,
 } from '../shipping'
@@ -378,7 +378,7 @@ export default function ShipmentForm() {
       if (file.type === 'application/pdf') { base64 = await toBase64(file); mimeType = 'application/pdf' }
       else { base64 = await toBase64(await preprocessForGemini(file)); mimeType = 'image/png' }
       const res = await fetch('/api/extract-pi', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({ image: base64, mimeType }),
       })
       if (!res.ok) throw new Error('Extraction failed')
@@ -502,9 +502,18 @@ export default function ShipmentForm() {
       // captured a stated total — otherwise the order silently has no value
       // even though a correct one is computable (and was shown on this page).
       const computed = computeOrderTotals(header, lines)
+      // Was hardcoded 'imported_pi' for every creation path (bug-fix pack
+      // B-02) — a manually-typed order or a Direct Invoice got the same
+      // source as a genuinely PI-parsed one, which matters because
+      // normOrder's pi_subtotal/pi_total fallback (see shipping.js) trusts
+      // 'imported_pi' orders to have a real stated-PI figure behind them.
+      // isDirect: the retail "Direct Invoice" flow (?direct=1). sf: a PI was
+      // actually uploaded and parsed this session (pendingFile, set only by
+      // the drag-drop importer). Neither: typed by hand.
+      const source = isDirect ? 'direct_invoice' : sf ? 'imported_pi' : 'manual'
       const orderData = {
         ...header,
-        source: 'imported_pi', source_file: sf,
+        source, source_file: sf,
         // Actual value = computed from the lines. PI figures kept only as the
         // stated reference for the mismatch check.
         subtotal:        computed.subtotal > 0 ? computed.subtotal : null,
@@ -522,8 +531,7 @@ export default function ShipmentForm() {
       // old JES ones may be edited but no new ones are added), so the JES
       // collision the manual button guarded against no longer applies. Only
       // when empty: an imported old JES PI already carries its SO and must keep
-      // it. Allocation failure aborts the create with a message rather than
-      // silently making an order with no SO — the exact state being fixed.
+      // it.
       //
       // NOT for a Direct Invoice. The business runs two invoicing paths (owner,
       // 2026-07-24):
@@ -534,17 +542,25 @@ export default function ShipmentForm() {
       // So a retail sale has no sales order by design, and minting one for it
       // would consume a number out of a gapless series for a document that does
       // not exist.
-      if (!isDirect && !orderData.erp_so_no) {
-        try {
-          orderData.erp_so_no = await allocateSoNo()
-        } catch (e) {
-          setExtractError(`Could not allocate an SO number: ${e.message || e}. Order not created.`)
-          return
-        }
+      //
+      // Allocation and the order write happen in ONE Firestore transaction
+      // (createOrderWithLinesAllocatingSo) — previously these were two
+      // separate steps, and a write failure AFTER a successful allocation
+      // burned a real, permanent gap in the gapless SO series with no order
+      // to explain it (bug-fix pack B-02). Not raced against a timeout like a
+      // normal save: a transaction needs a real round-trip to read the
+      // counter, so there is nothing to optimistically assume here.
+      let orderId
+      try {
+        const created = await createOrderWithLinesAllocatingSo(orderData, lines, {
+          allocateSo: !isDirect && !orderData.erp_so_no,
+        })
+        orderId = created.id
+        orderData.erp_so_no = created.so || orderData.erp_so_no
+      } catch (e) {
+        setExtractError(`Could not create the order: ${e.message || e}.`)
+        return
       }
-
-      const { id: orderId, commit } = createOrderWithLines(orderData, lines)
-      await raceWrite(commit)   // throws only on a fast rejection; otherwise proceeds
 
       // A Direct Invoice with no invoice number vanishes: the Sales Invoices
       // page lists orders that HAVE an SI, plus un-invoiced ones that are

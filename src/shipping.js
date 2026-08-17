@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import {
   collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc,
-  onSnapshot, query, orderBy, serverTimestamp, writeBatch,
+  onSnapshot, query, orderBy, serverTimestamp, writeBatch, runTransaction,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { numOrNull, str, trimUpper, result, addWarning, addInfo, addError, merge } from './domain/validation'
 import { buildProductIndex, matchProductCode } from './criticalComponents'
+import { JES_SEED_BY_YEAR, soYear, formatSoNo } from './soNumber'
 
 // Shipping module — Phase 12.0. An `order` is the commercial anchor for a
 // shipment, sourced from an in-app won quote (Path A) or an imported ERP
@@ -114,8 +115,17 @@ export const orderSoDisplay = o => (o && !looksLikeSi(o.erp_so_no) ? (o.erp_so_n
 const ORDERS = () => collection(db, 'orders')
 const LINES  = orderId => collection(db, 'orders', orderId, 'lines')
 
+// Every value a real creation path writes: 'imported_pi' (PI/PDF parsed via
+// Gemini vision), 'manual' (typed by hand, no source document), 'direct_invoice'
+// (the retail "Direct Invoice" flow), 'duplicated' (Shipping.jsx's Duplicate
+// order), 'in_app_quote' (reserved — quote-to-order conversion doesn't exist
+// yet; no code writes this today, kept for when it does). Anything else
+// (blank/unrecognised, e.g. a pre-2026-08-17 order — see bug-fix pack B-02)
+// falls back to 'imported_pi', which was every order's value before this list
+// existed, so old records keep reading exactly as they did.
+const ORDER_SOURCES = ['imported_pi', 'manual', 'direct_invoice', 'duplicated', 'in_app_quote']
 export const normOrder = o => ({
-  source: o.source === 'in_app_quote' ? 'in_app_quote' : o.source === 'duplicated' ? 'duplicated' : 'imported_pi',
+  source: ORDER_SOURCES.includes(o.source) ? o.source : 'imported_pi',
   client_quote_id: o.client_quote_id || null,
   // LEGACY — do not write to this, read it through orderUc() below.
   //
@@ -274,6 +284,43 @@ export function createOrderWithLines(orderData, lines) {
     batch.set(doc(LINES(orderRef.id)), n)
   })
   return { id: orderRef.id, commit: batch.commit() }
+}
+
+// Same as createOrderWithLines, but optionally allocates the order's SO
+// number INSIDE the same Firestore transaction, so the two either both land
+// or neither does.
+//
+// Before this (bug-fix pack B-02), ShipmentForm.jsx allocated the SO number
+// first (its own runTransaction against counters/so_<yy>, see soNumber.js)
+// and only THEN wrote the order in a separate batch. If that second write
+// failed — a network hiccup, a rules rejection, anything after the number
+// was already burned — the SO series got a real, permanent gap: the number
+// is gone and no order exists to explain why. Reads the SAME counter doc and
+// seed table soNumber.js's own allocateSoNo() uses, so the two paths can
+// never issue conflicting numbers.
+export async function createOrderWithLinesAllocatingSo(orderData, lines, { allocateSo } = {}) {
+  return runTransaction(db, async (tx) => {
+    let so = orderData.erp_so_no || ''
+    if (allocateSo && !so) {
+      const yy = soYear()
+      const seed = Number(JES_SEED_BY_YEAR[yy]) || 0
+      const counterRef = doc(db, 'counters', `so_${yy}`)
+      // Firestore transactions require every read before any write.
+      const snap = await tx.get(counterRef)
+      const last = snap.exists() ? (Number(snap.data().last) || 0) : seed
+      const next = last + 1
+      so = formatSoNo(yy, next)
+      tx.set(counterRef, { last: next, year: yy, kind: 'so', updated_at: new Date().toISOString() }, { merge: true })
+    }
+    const orderRef = doc(ORDERS())
+    tx.set(orderRef, { ...normOrder({ ...orderData, erp_so_no: so }), createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+    ;(lines || []).forEach((l, i) => {
+      const n = normLine(l)
+      if (n.line_no == null) n.line_no = i + 1
+      tx.set(doc(LINES(orderRef.id)), n)
+    })
+    return { id: orderRef.id, so }
+  })
 }
 
 export async function updateOrder(id, patch) {

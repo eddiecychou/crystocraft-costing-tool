@@ -59,13 +59,27 @@ export async function receivePo(poId, poNumber, lines) {
   const ref = doc(db, 'purchase_orders', poId)
   const snap = await getDoc(ref)
   if (snap.exists() && snap.data().stock_received) throw new Error('Stock already received for this PU.')
+  // Bumped by reversePoReceive below — part of the idempotency key, so a
+  // genuine SECOND receive (received, reversed, received again for real)
+  // gets fresh movement ids instead of colliding with the reversed ones.
+  const generation = Number.isFinite(snap.data()?.receive_generation) ? snap.data().receive_generation : 0
 
+  // Idempotency key per line, not just the up-front stock_received check
+  // above — that check only guards against a SECOND, separate call to
+  // receivePo. It does nothing for a single call that partially fails (line
+  // 3 of 5 throws): stock_received never gets set, so a retry of the exact
+  // same call re-loops from line 1 and would double-post lines 1-2 before
+  // reaching the point of failure again. Keyed on poId+generation+sku_id, so
+  // a retry of the SAME (not-yet-reversed) attempt re-posts every line at the
+  // SAME movement doc id — already-posted lines are deduped by postMovement,
+  // only the ones that never landed do anything (bug-fix pack B-03).
   for (const l of clean) {
     await postMovement(RECEIVE_CLASS_PATH[l.cls], l.sku_id, {
       type: 'receipt', qty: l.qty, note: `Received PU ${poNumber || poId}`,
+      idempotencyKey: `po_receive_${poId}_g${generation}_${l.sku_id}`,
     })
   }
-  await updateDoc(ref, { stock_received: true, stock_received_at: serverTimestamp(), received_lines: clean })
+  await updateDoc(ref, { stock_received: true, stock_received_at: serverTimestamp(), received_lines: clean, receive_generation: generation })
   return clean
 }
 
@@ -74,12 +88,17 @@ export async function receivePo(poId, poNumber, lines) {
 export async function reversePoReceive(poId, poNumber) {
   const ref = doc(db, 'purchase_orders', poId)
   const snap = await getDoc(ref)
-  const received = snap.exists() ? (snap.data().received_lines || []) : []
+  const data = snap.exists() ? snap.data() : {}
+  const received = data.received_lines || []
+  const generation = Number.isFinite(data.receive_generation) ? data.receive_generation : 0
   for (const l of received) {
     if (!l.sku_id || !RECEIVE_CLASS_PATH[l.cls]) continue
     await postMovement(RECEIVE_CLASS_PATH[l.cls], l.sku_id, {
       type: 'adjustment', qty: -Math.abs(Number(l.qty) || 0), note: `Reversed PU receipt ${poNumber || poId}`,
+      idempotencyKey: `po_receive_reverse_${poId}_g${generation}_${l.sku_id}`,
     })
   }
-  await updateDoc(ref, { stock_received: false, stock_received_at: null, received_lines: [] })
+  // Next receive gets a new generation, so its idempotency keys can never
+  // collide with this (now reversed) one.
+  await updateDoc(ref, { stock_received: false, stock_received_at: null, received_lines: [], receive_generation: generation + 1 })
 }

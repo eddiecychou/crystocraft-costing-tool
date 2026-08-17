@@ -97,6 +97,9 @@ const s = StyleSheet.create({
   goldClose: { borderTopWidth: 1.4, borderTopColor: C.gold, marginTop: 4, marginBottom: 12 },
   notes: { fontSize: 8, color: C.grayDark, marginBottom: 10 },
   notesLabel: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 7, color: C.grayMid, letterSpacing: 1.2 },
+  bank: { fontSize: 8, color: C.grayDark, marginBottom: 10 },
+  bankLabel: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 7, color: C.grayMid, letterSpacing: 1.2, marginBottom: 2 },
+  bankLine: { fontSize: 8, color: C.grayDark },
   terms: { fontSize: 7.5, color: C.grayMid, textAlign: 'center', marginBottom: 14 },
 
   // Signatures
@@ -241,6 +244,18 @@ export default function QuotePDF({ quote, items }) {
 
         {/* Closing */}
         <View style={s.goldClose} />
+
+        {/* Bank details — picked on the quote from the bank accounts register
+            (see QuoteDetail.jsx's bank_snapshot). The Excel export renders
+            this already; the PDF never did until now (bug-fix pack B-01). */}
+        {quote.bank_snapshot ? (
+          <View style={s.bank}>
+            <Text style={s.bankLabel}>PAYMENT DETAILS</Text>
+            {String(quote.bank_snapshot).split('\n').filter(Boolean).map((line, i) => (
+              <Text key={i} style={[s.bankLine, { fontFamily: contentFont(line) }]}>{line}</Text>
+            ))}
+          </View>
+        ) : null}
 
         {quote.notes ? (
           <Text style={s.notes}>

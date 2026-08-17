@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   collection, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, updateDoc,
-  onSnapshot, query, orderBy, serverTimestamp, writeBatch,
+  onSnapshot, query, orderBy, serverTimestamp, writeBatch, increment,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { numOrNull, trimUpper, result, addError, addWarning, addInfo, merge } from './domain/validation'
@@ -301,29 +301,44 @@ export async function importStockList(rows, rangeProducts) {
     if (r.product_item_code) c.used_by.add(r.product_item_code)
   }
 
-  // Existing components by code → { id, hasName, prevStock }. prevStock lets the
-  // import record a correct stock-take DELTA into the ledger (below).
+  // Existing components by code → { id, hasName, prevStock, seq }. prevStock lets
+  // the import record a correct stock-take DELTA into the ledger (below); seq is
+  // the component's own movement counter (see stockLedger.js's postMovement) so
+  // this import continues the SAME per-item sequence rather than colliding with
+  // it — see the movSeq comment below (bug-fix pack B-03).
   const snap = await getDocs(COL())
   const existingByCode = {}
   for (const d of snap.docs) {
     const code = norm(d.data().code)
     if (code && !(code in existingByCode)) {
       const prev = d.data().stock_qty
-      existingByCode[code] = { id: d.id, hasName: !!(d.data().name || '').trim(), prevStock: Number.isFinite(prev) ? prev : 0 }
+      const seq = d.data().movement_seq
+      existingByCode[code] = {
+        id: d.id, hasName: !!(d.data().name || '').trim(),
+        prevStock: Number.isFinite(prev) ? prev : 0,
+        seq: Number.isFinite(seq) ? seq : 0,
+      }
     }
   }
 
   // A bulk stock list is a stock-take: each row is an ABSOLUTE counted qty. Mirror
   // every set into the ledger as a stocktake movement so the cached stock_qty and
   // the append-only history never diverge (stockLedger.js owns stock_qty).
+  //
+  // seq used to be a single `Date.now()` counter SHARED across every row in the
+  // import. postMovement's own seq is now a PER-ITEM counter stored on the item
+  // doc (movement_seq) — a shared global counter here would produce seq values
+  // that collide with (or leave gaps against) whatever a future postMovement
+  // call computes for the same item. stocktakeOp now takes the item's own next
+  // seq explicitly, continuing that same per-item sequence, and the item update
+  // below writes movement_seq back so postMovement picks up from the right place.
   const importDate = new Date().toISOString().slice(0, 10)
-  let movSeq = Date.now()
-  const stocktakeOp = (componentId, counted, prev) => ({
+  const stocktakeOp = (componentId, counted, prev, seq) => ({
     ref: doc(collection(db, 'range_components', componentId, 'movements')),
     data: {
       type: 'stocktake', qty: counted - prev, counted, balance_after: counted,
       date: importDate, note: 'Stock-take (list import)', order_id: null,
-      seq: movSeq++, createdAt: serverTimestamp(),
+      seq, createdAt: serverTimestamp(),
     },
     merge: false,
   })
@@ -339,10 +354,27 @@ export async function importStockList(rows, rangeProducts) {
     const counted = Number.isFinite(c.stock_qty) ? c.stock_qty : null
     if (ex) {
       codeToId[code] = ex.id
-      const data = { plating_code: c.plating_code, stock_qty: c.stock_qty, used_by, updatedAt: serverTimestamp() }
+      // stock_qty as increment(delta), not an absolute overwrite: a plain
+      // `stock_qty: counted` silently discards any concurrent postMovement
+      // (an order stock issue, a PO receipt) that lands between this
+      // function's initial read and the batch commit — the ledger movement
+      // itself would still exist, but the cached balance would go stale.
+      // increment() is a Firestore atomic field operation, so it composes
+      // correctly with a concurrent write instead of racing it (bug-fix
+      // pack B-03). NOTE: this does not resolve the deeper question of what
+      // a stock-take even means if the physical count and a concurrent
+      // movement disagree about timing — only that this import can no
+      // longer silently erase the other write's effect on the number.
+      const data = { plating_code: c.plating_code, used_by, updatedAt: serverTimestamp() }
       if (c.lead_time_weeks != null) data.lead_time_weeks = c.lead_time_weeks
       if (!ex.hasName && c.name) data.name = c.name
-      if (counted != null) { data.ledger_seeded = true; ops.push(stocktakeOp(ex.id, counted, ex.prevStock)) }
+      if (counted != null) {
+        const seq = ex.seq + 1
+        data.stock_qty = increment(counted - ex.prevStock)
+        data.ledger_seeded = true
+        data.movement_seq = seq
+        ops.push(stocktakeOp(ex.id, counted, ex.prevStock, seq))
+      }
       ops.push({ ref: doc(db, 'range_components', ex.id), data, merge: true })
       updated++
     } else {
@@ -353,9 +385,10 @@ export async function importStockList(rows, rangeProducts) {
         lead_time_weeks: c.lead_time_weeks ?? null, used_by,
         category: '', supplierId: '', supplierName: '', notes: '', images: [],
         ledger_seeded: counted != null ? true : false,
+        movement_seq: counted != null ? 1 : 0,
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
       }, merge: false })
-      if (counted != null) ops.push(stocktakeOp(ref.id, counted, 0))
+      if (counted != null) ops.push(stocktakeOp(ref.id, counted, 0, 1))
       created++
     }
   }

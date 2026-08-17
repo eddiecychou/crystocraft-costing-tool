@@ -21,7 +21,14 @@ import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bank
 import { loadCustomerAssets, TYPE_LABEL, CATEGORIES, CATEGORY_LABEL } from '../customerAssets'
 import { Package, X, Check, Paperclip, FileText, Copy, Banknote, AlertCircle } from 'lucide-react'
 
-const STATUS_OPTIONS = ['draft', 'sent', 'won', 'lost']
+// 'confirmed' is the canonical success status (matches the "uploaded" quote
+// flow below, and Quotes.jsx's list filter). This form used to write 'won'
+// for the exact same state — two vocabularies for one status meant a quote
+// marked "won" here could never be found by filtering "Confirmed" on the
+// list page. Existing 'won' records are read as an alias wherever status is
+// filtered/counted (see quoteIsConfirmed() below) rather than migrated, so
+// nothing needs a backfill. Fixed 2026-08-17 (bug-fix pack B-01).
+const STATUS_OPTIONS = ['draft', 'sent', 'confirmed', 'lost']
 
 // Payment details for the quotation. Reads from the bank accounts register
 // rather than free text — the whole point is that nobody retypes an account
@@ -762,6 +769,7 @@ function ProductImagePicker({ productId, customerId, selectedUrl, onSelect, onCl
   const [tab, setTab] = useState('product')   // 'product' | 'brand'
   const [brandAssets, setBrandAssets] = useState([])
   const [brandLoading, setBrandLoading] = useState(false)
+  const [brandError, setBrandError] = useState('')
   // Which of the customer's asset categories to show. A quote line is itself
   // a product image, so Product Gallery is the natural default; Brand Assets
   // (the logo) stays a click away for a cover-page style use.
@@ -778,8 +786,27 @@ function ProductImagePicker({ productId, customerId, selectedUrl, onSelect, onCl
   // assets. Loaded once, the first time the Brand tab is opened.
   useEffect(() => {
     if (tab !== 'brand' || !customerId || brandAssets.length || brandLoading) return
-    setBrandLoading(true)
-    loadCustomerAssets(customerId).then(setBrandAssets).finally(() => setBrandLoading(false))
+    setBrandLoading(true); setBrandError('')
+    // loadCustomerAssets no longer swallows its own errors (bug-fix,
+    // 2026-08-17) — a real failure here used to look identical to "this
+    // customer has no brand images", which is exactly what was reported for
+    // a sensitive customer's OWN images. Surface it instead of guessing.
+    loadCustomerAssets(customerId).then(assets => {
+      setBrandAssets(assets)
+      // The default category (product_gallery) is often empty — a customer
+      // may only ever have uploaded their logo (brand_asset). That used to
+      // just show "no product gallery images for this customer" with no hint
+      // that a DIFFERENT category has real content, which is exactly what
+      // looked like "branded images are hidden" for a customer whose only
+      // assets are brand_asset (found live, 2026-08-17, via Sunlife — 5
+      // assets, all brand_asset/logo, 0 product_gallery). Switch to whichever
+      // category actually has something, rather than a hardcoded default.
+      if (!assets.some(a => a.category === 'product_gallery') && assets.some(a => a.category === 'brand_asset')) {
+        setBrandCategory('brand_asset')
+      }
+    })
+      .catch(e => setBrandError(e.message || 'Could not load this customer’s images.'))
+      .finally(() => setBrandLoading(false))
   }, [tab, customerId, brandAssets.length, brandLoading])
 
   async function handleUpload(e) {
@@ -845,6 +872,8 @@ function ProductImagePicker({ productId, customerId, selectedUrl, onSelect, onCl
             </div>
             {brandLoading ? (
               <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
+            ) : brandError ? (
+              <p className="text-sm text-red-500 text-center py-6">Could not load this customer's images — {brandError}</p>
             ) : brandAssets.filter(a => a.category === brandCategory).length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-6">No {CATEGORY_LABEL[brandCategory].toLowerCase()} for this customer yet. Add them on the Customer page.</p>
             ) : (

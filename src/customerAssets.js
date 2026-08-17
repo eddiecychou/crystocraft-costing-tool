@@ -110,8 +110,14 @@ const norm = d => {
 
 export async function loadCustomerAssets(customerId) {
   if (!customerId) return []
-  try { return (await getDocs(query(COL(customerId), orderBy('created_at', 'desc')))).docs.map(norm) }
-  catch { return [] }
+  // Deliberately NOT swallowed (was `catch { return [] }` — bug found
+  // 2026-08-17: an admin using this from a quote line's image picker saw a
+  // sensitive customer's OWN branded images as "no images yet", which is
+  // exactly what a genuine Firestore error here looks like once caught and
+  // hidden — indistinguishable from "this customer really has none." Letting
+  // it throw means the caller decides how to show the failure instead of it
+  // silently becoming a false empty state.
+  return (await getDocs(query(COL(customerId), orderBy('created_at', 'desc')))).docs.map(norm)
 }
 
 // Customer-facing loader (portal "My Brand Gallery", spec §5.4). The query MUST

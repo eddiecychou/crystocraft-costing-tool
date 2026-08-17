@@ -74,8 +74,17 @@ export default function OrderHistoryPage({ profile }) {
     return () => { alive = false }
   }, [])
 
+  // Draft is excluded BEFORE the merge, not after: mergeSalesInvoiceHistory's
+  // 'app' branch only checks invoicedAlready() (has an erp_si_no) — invoice
+  // allocation isn't gated on order status, so a draft order that already
+  // carries an SI number (allocated early, or reverted back to draft after)
+  // would otherwise pass straight through as "src === 'app'" and render as a
+  // confirmed invoice to the customer. Scoped to this portal page only —
+  // SalesInvoices.jsx / CustomerDetail.jsx are admin-only internal tracking
+  // and legitimately want to see it regardless of status (bug-fix pack B-04).
   const invoiceHistory = useMemo(
-    () => mergeSalesInvoiceHistory(orders, erpRows, null).filter(r => r.src === 'app' || r.status === 'CONFIRMED'),
+    () => mergeSalesInvoiceHistory(orders.filter(o => o.status !== 'draft'), erpRows, null)
+      .filter(r => r.src === 'app' || r.status === 'CONFIRMED'),
     [orders, erpRows],
   )
   const historyLoading = ordersLoading || erpLoading

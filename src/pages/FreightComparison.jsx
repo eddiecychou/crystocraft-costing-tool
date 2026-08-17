@@ -1,10 +1,11 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Plus, Trash2, ChevronDown, ChevronUp, Star } from 'lucide-react'
+import { Plus, Trash2, ChevronDown, ChevronUp, Star, CheckCircle2 } from 'lucide-react'
 import {
   FREIGHT_MODES, FREIGHT_INCOTERMS, QUOTE_SOURCES, modeLabel,
   loadVendors, loadOrderQuotes, saveFreightQuote, deleteFreightQuote,
 } from '../logistics'
 import { getPackingScenariosByOrder } from '../packing'
+import { useRates } from '../currency'
 
 const CURRENCIES = ['HKD', 'USD', 'EUR', 'RMB', 'CNY']
 
@@ -34,7 +35,7 @@ function blankQuote(orderId, scenario) {
 }
 
 // ── Add-quote inline form ─────────────────────────────────────────────────────
-function AddQuoteForm({ orderId, scenarios, vendors, onSaved, onCancel }) {
+function AddQuoteForm({ orderId, scenarios, vendors, rates, onSaved, onCancel }) {
   const selected = scenarios.find(s => s.selected) || scenarios[0] || null
   const [form, setForm] = useState(() => blankQuote(orderId, selected))
   const [saving, setSaving] = useState(false)
@@ -68,7 +69,11 @@ function AddQuoteForm({ orderId, scenarios, vendors, onSaved, onCancel }) {
     }
     setSaving(true)
     try {
-      await saveFreightQuote(null, form)
+      // rates: without this, quoted_total_hkd was never computed at all — every
+      // quote saved from this page had it stay null, so the comparison matrix
+      // (below) had nothing to compare across currencies with even after being
+      // fixed to prefer it (bug-fix pack B-05).
+      await saveFreightQuote(null, form, rates)
       onSaved()
     } catch (e) {
       // Without this a failed write was silent too — the form just sat there.
@@ -218,7 +223,18 @@ function ComparisonMatrix({ quotes, scenarios }) {
   const hasUnlinked = quotes.some(q => !q.scenario_id)
   const cols = [...scenarios, ...(hasUnlinked ? [{ id: null, label: 'Unlinked' }] : [])]
 
-  // Build lookup: vendorKey → scenarioId → cheapest quote
+  // "Cheapest" comparisons below all use quoted_total_hkd (normalised), never
+  // the raw quoted_total — quotes are legitimately in different currencies
+  // (RMB freight quote vs a USD one), so comparing the raw numbers picked
+  // whichever quote had the smaller NUMBER, not the smaller cost (bug-fix
+  // pack B-05: e.g. RMB 3,000 ≈ USD 420 landed as "more expensive" than a
+  // literal USD 500 quote under the old raw comparison). A quote with no
+  // quoted_total_hkd (saved before this fix, or in a currency missing from
+  // the rates table — see logistics.js's toHKD) is excluded from "cheapest"
+  // rather than silently treated as free or infinite.
+  const hkd = q => Number.isFinite(q?.quoted_total_hkd) ? q.quoted_total_hkd : null
+
+  // Build lookup: vendorKey → scenarioId → cheapest quote (by HKD total)
   const lookup = useMemo(() => {
     const map = {}
     for (const q of quotes) {
@@ -226,21 +242,20 @@ function ComparisonMatrix({ quotes, scenarios }) {
       const sk = q.scenario_id || null
       if (!map[vk]) map[vk] = {}
       const existing = map[vk][sk]
-      const qTotal = parseFloat(q.quoted_total) || Infinity
-      const eTotal = parseFloat(existing?.quoted_total) || Infinity
+      const qTotal = hkd(q) ?? Infinity
+      const eTotal = hkd(existing) ?? Infinity
       if (!existing || qTotal < eTotal) map[vk][sk] = q
     }
     return map
   }, [quotes])
 
-  // Find cheapest total per scenario column (for highlighting)
+  // Find cheapest HKD total per scenario column (for highlighting)
   const colMin = useMemo(() => {
     const out = {}
     for (const col of cols) {
       let min = Infinity
       for (const vk of vendorNames.map(n => n.toLowerCase())) {
-        const q = lookup[vk]?.[col.id]
-        const t = parseFloat(q?.quoted_total) || Infinity
+        const t = hkd(lookup[vk]?.[col.id]) ?? Infinity
         if (t < min) min = t
       }
       out[col.id] = min
@@ -274,8 +289,9 @@ function ComparisonMatrix({ quotes, scenarios }) {
                 <td className="py-2.5 pr-4 font-medium text-gray-700 whitespace-nowrap">{vendor}</td>
                 {cols.map(col => {
                   const q = lookup[vk]?.[col.id]
-                  const total = parseFloat(q?.quoted_total)
-                  const isBest = q && total === colMin[col.id] && total < Infinity
+                  const total = hkd(q)
+                  const isBest = q && total != null && total === colMin[col.id]
+                  const needsRate = q && total == null
                   return (
                     <td key={col.id ?? '__unlinked'} className="py-2.5 px-3">
                       {q ? (
@@ -284,6 +300,14 @@ function ComparisonMatrix({ quotes, scenarios }) {
                             {fmt(q.quoted_total, q.currency)}
                             {isBest && <span className="ml-1 text-[10px] text-green-600">★ cheapest</span>}
                           </div>
+                          {/* Normalised comparison value, shown alongside the
+                              original — the number this column is actually
+                              ranked by (bug-fix pack B-05). */}
+                          {q.currency !== 'HKD' && (
+                            total != null
+                              ? <div className="text-[10px] text-gray-400">≈ {fmt(total, 'HKD')}</div>
+                              : needsRate && <div className="text-[10px] text-amber-600">no HKD rate — excluded from ranking</div>
+                          )}
                           <div className="text-[10px] text-gray-400 mt-0.5 space-x-1.5">
                             <span>{modeLabel(q.mode)}</span>
                             {q.transit_days ? <span>· {q.transit_days}d</span> : null}
@@ -306,17 +330,22 @@ function ComparisonMatrix({ quotes, scenarios }) {
 }
 
 // ── Quote list ────────────────────────────────────────────────────────────────
-function QuoteRow({ quote, scenarios, onDelete }) {
+function QuoteRow({ quote, scenarios, onDelete, onToggleChosen }) {
   const [expanded, setExpanded] = useState(false)
   const sc = scenarios.find(s => s.id === quote.scenario_id)
   const total = parseFloat(quote.quoted_total)
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-3 bg-white">
+    <div className={`border rounded-lg overflow-hidden ${quote.is_chosen ? 'border-green-300' : 'border-gray-200'}`}>
+      <div className={`flex items-center gap-3 px-4 py-3 ${quote.is_chosen ? 'bg-green-50/50' : 'bg-white'}`}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium text-gray-800">{quote.vendor_name || '—'}</span>
+            {quote.is_chosen && (
+              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">
+                <CheckCircle2 size={10} /> Chosen
+              </span>
+            )}
             {sc && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">{sc.label}</span>}
             {!quote.scenario_id && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">Unlinked</span>}
             <span className="text-xs text-gray-500">{modeLabel(quote.mode)}</span>
@@ -326,11 +355,21 @@ function QuoteRow({ quote, scenarios, onDelete }) {
             <span className="text-sm font-semibold text-gray-900">
               {!isNaN(total) ? `${quote.currency} ${total.toLocaleString('en-US', { minimumFractionDigits: 0 })}` : '—'}
             </span>
+            {quote.currency !== 'HKD' && Number.isFinite(quote.quoted_total_hkd) && (
+              <span className="text-xs text-gray-400">≈ HKD {quote.quoted_total_hkd.toLocaleString('en-US', { minimumFractionDigits: 0 })}</span>
+            )}
             {quote.transit_days && <span className="text-xs text-gray-500">{quote.transit_days} days</span>}
             {quote.quote_date && <span className="text-xs text-gray-400">{quote.quote_date}</span>}
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          {/* is_chosen had a data field and no way to set it (bug-fix pack
+              B-05) — this is that missing control. */}
+          <button type="button" onClick={() => onToggleChosen(quote)}
+                  className={`text-xs px-2 py-1 rounded border ${quote.is_chosen ? 'border-green-300 text-green-700 hover:bg-green-50' : 'border-gray-200 text-gray-500 hover:border-brand-400'}`}
+                  title={quote.is_chosen ? 'Unmark as chosen' : 'Mark as the chosen freight quote'}>
+            {quote.is_chosen ? 'Chosen' : 'Choose'}
+          </button>
           <button type="button" onClick={() => setExpanded(e => !e)} className="text-gray-400 hover:text-gray-600 p-1">
             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
@@ -369,6 +408,7 @@ export default function FreightComparison({ orderId }) {
   const [vendors, setVendors]     = useState([])
   const [loading, setLoading]     = useState(true)
   const [showForm, setShowForm]   = useState(false)
+  const rates = useRates()
 
   async function load() {
     const [qs, ss, vs] = await Promise.all([
@@ -396,6 +436,18 @@ export default function FreightComparison({ orderId }) {
     setQuotes(qs)
   }
 
+  // "Chosen" is exclusive — one freight decision per order, not a multi-select.
+  // Picking a new one un-chooses whatever was chosen before.
+  async function handleToggleChosen(quote) {
+    const nextChosen = !quote.is_chosen
+    setQuotes(prev => prev.map(q => ({ ...q, is_chosen: q.id === quote.id ? nextChosen : false })))
+    await Promise.all([
+      saveFreightQuote(quote.id, { ...quote, is_chosen: nextChosen }, rates),
+      ...(nextChosen ? quotes.filter(q => q.id !== quote.id && q.is_chosen)
+        .map(q => saveFreightQuote(q.id, { ...q, is_chosen: false }, rates)) : []),
+    ])
+  }
+
   if (loading) return <div className="py-8 text-center text-sm text-gray-400">Loading freight quotes…</div>
 
   return (
@@ -416,7 +468,7 @@ export default function FreightComparison({ orderId }) {
         <div className="space-y-2">
           <h3 className="text-sm font-semibold text-gray-700">All quotes</h3>
           {quotes.map(q => (
-            <QuoteRow key={q.id} quote={q} scenarios={scenarios} onDelete={handleDelete} />
+            <QuoteRow key={q.id} quote={q} scenarios={scenarios} onDelete={handleDelete} onToggleChosen={handleToggleChosen} />
           ))}
         </div>
       )}
@@ -437,6 +489,7 @@ export default function FreightComparison({ orderId }) {
           orderId={orderId}
           scenarios={scenarios}
           vendors={vendors}
+          rates={rates}
           onSaved={handleSaved}
           onCancel={() => setShowForm(false)}
         />

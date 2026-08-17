@@ -5,6 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import UploadQuoteModal from '../components/UploadQuoteModal'
 import { Paperclip, ClipboardList } from 'lucide-react'
+import { quoteIsConfirmed } from '../quotes'
 
 const STATUS_STYLES = {
   draft:     'bg-gray-100 text-gray-600',
@@ -54,7 +55,9 @@ export default function Quotes() {
       q.client_name?.toLowerCase().includes(term) ||
       q.contact_name?.toLowerCase().includes(term) ||
       q.contact_email?.toLowerCase().includes(term)
+    // 'confirmed' also matches the legacy 'won' value — see quoteIsConfirmed().
     const matchStatus = !statusFilter || (q.status || 'draft') === statusFilter
+      || (statusFilter === 'confirmed' && quoteIsConfirmed(q.status))
     return matchSearch && matchStatus
   })
 

@@ -78,27 +78,62 @@ export function movementDelta(mov, currentBalance) {
 // transaction so concurrent edits can't corrupt the running balance.
 //
 // postMovement(colPath, id, opts)
-// opts: { type, qty?, counted?, date?, note?, order_id? }
+// opts: { type, qty?, counted?, date?, note?, order_id?, idempotencyKey? }
 // Returns the new balance.
+//
+// Two reliability fixes here (bug-fix pack B-03, 2026-08-17):
+//
+// 1. seq used to be `Date.now()` — two movements posted within the same
+//    millisecond (a real risk for a tight import loop, or two people acting
+//    at once) tied, and orderBy('seq') then fell back to Firestore's
+//    document-id ordering, which has no relationship to actual write order.
+//    seq is now a per-item counter (comp.movement_seq), incremented inside
+//    THIS transaction — Firestore transactions retry on conflicting reads,
+//    so two concurrent postMovement calls on the same item can never both
+//    claim the same seq the way two Date.now() calls could tie.
+//
+// 2. opts.idempotencyKey: when a caller can be retried after a partial
+//    failure (order stock issue, PO receipt, a batch import row), passing a
+//    stable key here makes the movement doc ID deterministic instead of
+//    random. A retry that lands after the original already committed finds
+//    the same doc already exists and returns the current balance WITHOUT
+//    posting a second movement — the exact double-post a naive retry used to
+//    produce. Callers that don't retry (the manual ledger panel) can omit it
+//    and keep getting a random id, unchanged from before.
 export async function postMovement(colPath, id, opts) {
   const compRef = doc(db, colPath, id)
   const type = VALID_TYPES.has(opts.type) ? opts.type : 'receipt'
+  const key = (opts.idempotencyKey || '').trim()
 
   return runTransaction(db, async tx => {
-    const snap = await tx.get(compRef)
+    // Firestore transactions require every read before any write — the
+    // idempotency check has to happen up front, alongside the balance read.
+    const movRef = key ? doc(MOVEMENTS(colPath, id), key) : doc(MOVEMENTS(colPath, id))
+    const [snap, existingMov] = await Promise.all([
+      tx.get(compRef),
+      key ? tx.get(movRef) : Promise.resolve(null),
+    ])
     if (!snap.exists()) throw new Error('Item not found')
     const comp = snap.data()
     const onHand = Number.isFinite(comp.stock_qty) ? comp.stock_qty : 0
     const reserved = Number.isFinite(comp.reserved_qty) ? comp.reserved_qty : 0
 
+    if (existingMov?.exists()) {
+      // Already posted — a retry of the same logical operation, not a new one.
+      return { onHand, reserved, deduped: true }
+    }
+
+    let seq = Number.isFinite(comp.movement_seq) ? comp.movement_seq : 0
+
     // Seed the opening on-hand balance once: any stock that existed before the
     // ledger becomes an explicit opening stock-take so the history is complete.
     if (!comp.ledger_seeded && onHand !== 0) {
       const openRef = doc(MOVEMENTS(colPath, id))
+      seq += 1
       tx.set(openRef, {
         type: 'stocktake', qty: onHand, counted: onHand, balance_after: onHand, reserved_after: reserved,
         date: today(), note: 'Opening balance (migrated from stock)',
-        seq: Date.now() - 1, createdAt: serverTimestamp(),
+        seq, createdAt: serverTimestamp(),
       })
     }
 
@@ -106,7 +141,7 @@ export async function postMovement(colPath, id, opts) {
     const balance_after = onHand + onHandDelta
     const reserved_after = reserved + reservedDelta
 
-    const movRef = doc(MOVEMENTS(colPath, id))
+    seq += 1
     tx.set(movRef, {
       type,
       qty: onHandDelta,
@@ -117,12 +152,11 @@ export async function postMovement(colPath, id, opts) {
       date: opts.date || today(),
       note: (opts.note || '').trim(),
       order_id: opts.order_id || null,
-      seq: Date.now(),
-      createdAt: serverTimestamp(),
+      seq, createdAt: serverTimestamp(),
     })
 
-    tx.update(compRef, { stock_qty: balance_after, reserved_qty: reserved_after, ledger_seeded: true, updatedAt: serverTimestamp() })
-    return { onHand: balance_after, reserved: reserved_after }
+    tx.update(compRef, { stock_qty: balance_after, reserved_qty: reserved_after, ledger_seeded: true, movement_seq: seq, updatedAt: serverTimestamp() })
+    return { onHand: balance_after, reserved: reserved_after, deduped: false }
   })
 }
 
