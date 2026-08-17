@@ -10,6 +10,13 @@
 // burn Gemini/WordPress credentials this app pays for. All nine are called
 // only from admin-only pages (verified by grepping every caller), so
 // requireAdmin() is the correct gate — not a customer-accessible one.
+//
+// Lives in lib/, not the edge-functions root — Netlify's bundler auto-scans
+// every top-level .js file in netlify/edge-functions/ and requires a
+// default-exported handler, regardless of whether netlify.toml lists it as
+// a routed function. Putting this at netlify/edge-functions/_auth.js broke
+// the ENTIRE deploy ("Default export ... must be a function") the first
+// time it shipped. A subdirectory is not auto-scanned.
 import { jwtVerify, createRemoteJWKSet } from 'https://esm.sh/jose@5.9.6'
 
 const JWKS = createRemoteJWKSet(

@@ -1,4 +1,4 @@
-import { requireAdmin } from './_auth.js'
+import { requireAdmin } from './lib/auth.js'
 
 export default async (request) => {
   const auth = await requireAdmin(request)
