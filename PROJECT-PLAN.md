@@ -43,6 +43,242 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
+## Current Status — V8.2 CLOSED as of 2026-08-13
+
+27 commits, one long continuous session, deployed and used live by the
+owner throughout — WhatsApp correspondence (Business and Personal both)
+went from "discussed, not built" in the old "Where V8.2 starts" stub
+below to fully ingested, transcribed, and feeding Daily Drafts by the
+end of it. Also closed: the customer-tag cleanup flagged at the start
+of the session, and a genuinely serious production incident found and
+fixed mid-cycle.
+
+### The numbers
+
+| | |
+|---|---:|
+| Commits | 27 |
+| New edge functions | `suggest-tag-merges.js`, `transcribe-whatsapp-audio.js`, `refresh-whatsapp-summary.js` |
+| New Firestore subcollections | `customers/{id}/whatsapp_threads`, `marketing_contacts/{id}/whatsapp_threads` |
+| New Firestore field | `customers/{id}.whatsapp_summary` (DeepSeek draft, generated on demand, feeds Daily Drafts) |
+| New local modules | `domain/whatsappImport.js`, `domain/phoneCountry.js`, `whatsappSummaryApi.js`, `tagApi.js` |
+| New pages | `TagManager.jsx`, `WhatsAppImport.jsx` |
+| Real production bugs found & fixed | 9 — see §3, §4, §5, §6 below |
+
+### 1. Tag cleanup + channel drift
+
+`CustomerForm.jsx`'s custom-tag pile had accumulated for years with no
+vocabulary control (`distributor`/`Distributor`/`jes active customer`
+as separate tags). New `TagManager.jsx`: every tag in use with counts,
+an AI merge-suggestion pass (DeepSeek proposes groups + a canonical
+spelling, admin reviews before anything's applied), manual
+rename/delete-everywhere for the rest. Live-verified against the real
+69-tag pile.
+
+Separately found: three hardcoded copies of the channel list
+(`CustomerForm.jsx`, `EnquiryForm.jsx`, `CustomerDetail.jsx`) had
+drifted apart — WeChat was missing from Log Interaction, and
+`EnquiryForm.jsx` used "WhatsApp" where the canonical list uses
+"WhatsApp Business". Unified to one source; the three channels with no
+API integration (WhatsApp Business, Personal WhatsApp, WeChat) now
+carry a "manual" label everywhere they're picked. A real, pre-existing
+interaction record using the old bare "WhatsApp" value would have
+silently gone blank on next save under the unified list — caught in
+verification, fixed by surfacing a legacy value as its own option
+instead of dropping it.
+
+### 2. Retail — a real design arc, not a straight line
+
+Started as "split customers into Retail and Wholesale" (a full second
+field, mirroring Customer Type). Built, live-verified, shipped. Then
+the owner's own correction arrived the same day: Wholesale wasn't a
+real distinction worth tracking — most customers are trade by default,
+only the retail minority needs marking, and forcing a Wholesale label
+onto everyone else was noise. Reverted to a single `Retail Customer`
+tag (not "Retail" — the existing Industry picklist already used that
+string for a different fact, a customer's own industry being retail).
+
+That tag then moved twice more: first the fixed Industry/Client
+Type/Order Profile/Geography picklist it briefly lived in got replaced
+entirely with free-typed autocomplete (Mailchimp-style — the picklist
+itself was "very difficult to choose", and Geography duplicated the
+Country field already on the form), with Retail Customer pulled out
+into its own CRM-section tile, styled like Customer Type but
+deliberately NOT mutually exclusive with it (a trade-bucket customer,
+e.g. shared ERP code C13, can also buy cash/retail sometimes). Then,
+after that shipped, the owner flagged that Dashboard/Customers still
+showed it as a separate pink "only" toggle below the Customer Type
+row — moved into the same row, same styling, relabeled from "Retail
+Customer only" to "Retail Customer", same non-exclusive filtering
+underneath.
+
+Auto-suggested (not auto-locked) from two real sources: Source =
+Website on a new customer, and a Marketing Contact promoted whose
+audience is retail/website — never for the C13-style cash/FPS/PayPal
+walk-in case, which is exactly why it had to stay a plain, manually
+removable tag rather than a locked classification.
+
+### 3. A real production incident: the self-heal race
+
+Mid-session, this assistant's own repeated sandbox sign-ins triggered
+a pre-existing bug in `App.jsx`'s "self-heal" effect (creates a
+pending-customer profile doc for a signed-in Auth user with no
+`users/{uid}` doc, so an orphaned account isn't invisible to admins) —
+it fired against the owner's real ADMIN account and silently
+overwrote it to `role:'customer', status:'pending'`. Root cause:
+`useProfile`'s live `onSnapshot` briefly reported the doc as missing
+(most likely a permission/auth-token-attachment race on a freshly
+authenticated session with no local cache), which was enough to
+trigger the effect and clobber a doc that genuinely existed the whole
+time. The owner fixed the live data by hand in Firestore; the code fix
+(shipped same day, alone, ahead of everything else in flight) never
+trusts the live subscription's "missing" signal for something this
+destructive again — waits 1.5s, then re-confirms directly against the
+server with `getDocFromServer`, and only writes if that fresh read
+ALSO says the doc doesn't exist. Confirmed stable for the rest of the
+session afterward.
+
+Worth remembering: this assistant's sandboxed browser and the owner's
+real Chrome are separate sessions, but they share the same production
+Firestore — a bug triggered in one is a bug against real data in both.
+
+### 4. WhatsApp import, end to end
+
+No API access to either WhatsApp Business or Personal WhatsApp (the
+old "Where V8.2 starts" stub below was right about that) — built
+entirely around the owner's manual "Export Chat" .zip files instead.
+`domain/whatsappImport.js` parses the real export format (confirmed
+against several real exports: D/M/YYYY H:MM:SS with 上午/下午 markers,
+multi-line continuations, `<附件：filename>` attachments, a stray
+Unicode LRM the parser now strips), uploads media to Storage, and
+writes one Firestore doc per conversation — customers/ for a real
+relationship, or `marketing_contacts/` as a "Save as Lead" for a
+number that messaged in but never converted (auto-detected from the
+contact showing up as a bare phone number rather than a saved name,
+itself found to need stripping iOS's invisible bidi-control characters
+before the phone-number regex would match).
+
+Real bugs found building this, not after:
+- **Duplicate contact ids** — a customer merged from a pre-`contacts[]`
+  legacy record twice ended up with two different real people both
+  carrying the literal id `"legacy"`; the Log Interaction "With" picker
+  could then only ever resolve to whichever one came first, no matter
+  which name was clicked. Fixed with a dedupe pass on every read/write/
+  merge path, self-healing already-affected customers on next load.
+- **Re-import safety** — re-importing an ongoing chat (WhatsApp always
+  exports the FULL history, never just what's new) originally
+  overwrote the whole thread doc, silently wiping any Deepgram
+  transcript already generated. Now carries transcripts and Storage
+  URLs forward by matching on attachment filename, and skips
+  re-uploading unchanged media.
+- A duplicate-import warning (message count + date, non-blocking) so
+  re-importing the same file isn't a silent surprise either way.
+
+### 5. Deepgram transcription — the language reality check
+
+The owner got a Deepgram account specifically for this (prior
+experience from another project). First real attempt, on genuine
+Cantonese audio, came back "no speech detected" — `nova-2 +
+detect_language=true` doesn't cover Cantonese at all. Confirmed against
+Deepgram's own docs and switched to explicit `nova-3 + language=zh-HK`
+— which then failed the opposite way on a genuinely English-speaking
+contact (Joe Feder). Checked Deepgram's docs again: Cantonese isn't in
+`detect_language`'s supported list AT ALL, even on nova-3 — there is no
+single setting, and no auto-detect, that serves both a Cantonese-heavy
+customer and a real English one. Landed on a per-message language
+picker (Cantonese/English/Mandarin) instead, and dropped the bulk
+"transcribe all" the owner had asked for a language toggle over —
+their own call: a thread can have hundreds of voice notes (one real
+customer had 326), and bulk-transcribing all of them in one guessed
+language would waste real cost on whichever ones guessed wrong. Also
+fixed: the Transcribe button used to disappear after one attempt even
+if the result was wrong (no way to retry) — now always offered,
+relabeled "Re-transcribe" once a transcript exists.
+
+### 6. Wiring WhatsApp into Daily Drafts
+
+Owner asked directly whether uploading everything meant Daily Drafts
+would use it — it didn't yet. Mirrors the `email_summary` pattern
+exactly (an on-demand DeepSeek summary cached on the customer doc,
+read cheaply by the fit-scoring/personalization prompts) rather than
+re-rendering raw threads on every batch run. A bulk "Generate WhatsApp
+Summaries" scan/generate action follows the same logic the owner
+pushed back on for tags earlier in the cycle: catches anyone whose
+message count has grown since their last summary, not just the ones
+with zero.
+
+Found while building the bulk pass: a single very long-running thread
+(548 messages, 10+ months) could alone exceed the render budget, and
+the whole-block-over-budget check dropped it entirely rather than
+shortening it — the summary request went out with nothing to
+summarize and failed with a misleading "nothing imported" error. Fixed
+to truncate within an oversized thread (keeping the most recent
+messages) instead of dropping it.
+
+### 7. Daily Drafts polish
+
+Three owner-driven refinements to the existing per-draft "discuss with
+AI" chat: it doesn't see or edit any draft but the one it's attached
+to, but a "can you send this to all the threads?" question got a
+"sure, I'll add it" reply that read like it had — now the model is
+told to say plainly it only touched the one email. A genuine bulk
+rewrite followed (same underlying call, looped sequentially over every
+pending draft with one shared instruction) for exactly that repeated-
+correction case. And reviewing a Lead draft now has an "Add to
+Customers" action right there — promote to a new customer, or add as
+an extra contact on an existing one — so a real prospect can be
+filed into the CRM properly without leaving the review screen.
+
+### 8. Also this cycle
+
+Two mobile-only layout bugs (the customer-detail header and the
+Customers-list header both squeezed/overflowed three action buttons
+alongside a long or CJK title on a narrow screen — both now stack
+instead of forcing one row) and getting Resend's click/open tracking
+domain actually configured (a dashboard-level setting, disabled by
+default, unrelated to any app code — the engagement badges on the
+Daily Drafts Sent list were stuck on Delivered-only until this was
+set up).
+
+---
+
+## Where V8.3 starts
+
+WhatsApp ingestion is real now, but only for what's already been
+manually exported — nothing here changes that constraint yet:
+
+- **Bulk export is still the owner's own manual step**, one zip per
+  conversation, no way around it without real API access to either
+  WhatsApp surface. If that ever changes (the WhatsApp Business
+  Platform migration mentioned in earlier sessions), the import
+  pipeline this cycle built would need a live-sync counterpart rather
+  than a one-off upload page.
+- **WhatsApp summaries only feed Daily Drafts once generated at least
+  once per customer** — the bulk scan (§6 above) closes most of that
+  gap, but it's still an admin action, not automatic. Worth watching
+  whether that's enough in practice or wants a "generate on import"
+  step.
+- **The self-heal fix (§3) is a mitigation, not a structural
+  guarantee** — it makes the specific race far less likely, not
+  provably impossible. Worth a periodic real check that
+  `eddie@uart.com.hk`'s `role` is still `admin` until more confidence
+  builds up, and worth considering whether the self-heal effect should
+  exist at all versus a passive "no profile — contact support" screen
+  that never writes anything.
+- **Voice-note transcription cost is real and untracked** — no
+  visibility yet into how much Deepgram usage this is actually
+  generating across customers; worth a look once there's been real
+  volume through it.
+- Everything still open from V8.1's own "Where V8.2 starts" entry
+  below that didn't get picked up this cycle remains open: real
+  retrieval for the email "Discover more" chat (still the cheap
+  facet-matching stand-in, not embeddings), the customer portal
+  homepage Featured Products admin flow (owner-confirmed working,
+  never click-tested by this assistant), and the Physical Design
+  Workbench's paused workstreams 3 and 5.
+
+---
+
 ## Current Status — V8.1 CLOSED as of 2026-08-12
 
 27 commits, one long continuous session, deployed and click-tested live
