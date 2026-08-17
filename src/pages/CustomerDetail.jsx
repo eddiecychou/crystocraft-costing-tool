@@ -323,6 +323,15 @@ export default function CustomerDetail() {
     })
   }, [id])
 
+  // When email-sync/sync.py (the weekly IMAP sync — see weekly_rescan.sh /
+  // launchd, runs on the sync Mac, not this app) last actually ran. One
+  // global doc, not per-customer — the sync covers every customer in one
+  // pass, so "last synced" means the same thing everywhere it's shown.
+  const [emailSyncStatus, setEmailSyncStatus] = useState(null)
+  useEffect(() => {
+    getDoc(doc(db, 'settings', 'email_sync_status')).then(s => setEmailSyncStatus(s.exists() ? s.data() : null)).catch(() => {})
+  }, [])
+
   // V8.2 WhatsApp ingestion — customers/{id}/whatsapp_threads, written by
   // WhatsAppImport.jsx from the owner's manual "Export Chat" .zip files (no
   // API access to either Business or Personal WhatsApp). Read-only here,
@@ -979,6 +988,12 @@ export default function CustomerDetail() {
             <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
               <Mail size={15} className="text-gray-400" /> Email Summary
               <span className="text-xs font-normal text-gray-400">({emailThreads.length} thread{emailThreads.length === 1 ? '' : 's'} ingested)</span>
+              {emailSyncStatus?.last_run_at && (
+                <span className="text-xs font-normal text-gray-400"
+                      title={`Mailbox last synced ${new Date(emailSyncStatus.last_run_at).toLocaleString('en-GB')} (${emailSyncStatus.new_messages ?? '?'} new message${emailSyncStatus.new_messages === 1 ? '' : 's'} that run)`}>
+                  · mailbox synced {new Date(emailSyncStatus.last_run_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+                </span>
+              )}
             </h2>
             <button onClick={handleRefreshEmailSummary} disabled={emailSummaryBusy}
               className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1.5">

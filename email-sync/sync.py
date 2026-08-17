@@ -134,6 +134,18 @@ def main():
     match_and_upsert(fs, customer_index, all_new_msgs, source='imap')
 
     save_state(state)
+
+    # Last-sync stamp, readable by the app (CustomerDetail.jsx's Email Summary
+    # card) — this Mac's own filesystem (state.json's mtime) isn't visible to
+    # the deployed web app, so the fact has to land in Firestore for the UI to
+    # show "last synced". Written even when 0 new messages arrived — that IS
+    # the fact ("checked, nothing new"), not an omission.
+    fs.set_fields('settings/email_sync_status', {
+        'last_run_at': datetime.now(timezone.utc).isoformat(),
+        'new_messages': len(all_new_msgs),
+        'run_type': 'rescan' if args.rescan else 'imap',
+    })
+
     print('\nDone. State saved to state.json (per-folder last UID).')
 
 
