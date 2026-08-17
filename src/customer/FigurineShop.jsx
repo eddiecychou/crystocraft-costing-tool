@@ -11,6 +11,7 @@ import CollectionBand from './CollectionBand'
 import { collectionProducts } from '../catalogueCollections'
 import FavHeart from './FavHeart'
 import LoadingBar from '../components/LoadingBar'
+import CardImageCarousel from '../components/CardImageCarousel'
 
 const FORMAT_LABEL = Object.fromEntries(RANGE_FORMAT_CODES.map(f => [f.code, f.label]))
 // Normalise a design number the same way designGroupKey does (strip leading zeros).
@@ -64,6 +65,14 @@ export default function FigurineShop({ profile }) {
     const prices = variants.map(v => v.ws_price_usd).filter(x => x != null)
     // First gallery image is the chosen hero; variant image is only a fallback.
     const image = galleryUrl(p.gallery?.[0]) || variants.find(v => v.image)?.image || ''
+    // Every gallery photo, for the card carousel (CardImageCarousel). Free —
+    // p.gallery is already on the product doc, unlike the corp catalogue's
+    // images subcollection, so this needs no extra reads. Falls back to the
+    // single variant image when a design has no gallery at all.
+    const images = (Array.isArray(p.gallery) ? p.gallery : [])
+      .map(g => ({ url: galleryUrl(g), caption: g?.caption || '' }))
+      .filter(g => g.url)
+    if (!images.length && image) images.push({ url: image, caption: '' })
     // Use variant brand_code (single-brand) or fallbackBrand (multi-brand) as prefix.
     // Never include body in the listing code — product codes are brand+design+format only.
     const brandPrefix = brands.length === 1 ? brands[0] : fallbackBrand
@@ -80,7 +89,7 @@ export default function FigurineShop({ profile }) {
       // Retired designs never reach this point (filtered out above).
       status: ['stock', 'concept'].includes(p.status) ? p.status : 'active',
       is_new: !!p.is_new,
-      size: p.size, image,
+      size: p.size, image, images,
       platings: [...new Set(variants.map(v => v.plating_name).filter(Boolean))],
       minNet: prices.length ? net(Math.min(...prices)) : null,
       maxNet: prices.length ? net(Math.max(...prices)) : null,
@@ -191,9 +200,8 @@ export default function FigurineShop({ profile }) {
               onClick={() => sessionStorage.setItem('fs-last-id', s.id)}
               className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow group">
               <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
-                {s.image
-                  ? <img src={s.image} alt={s.name} className="w-full h-full object-contain p-2" loading="lazy" />
-                  : <Gem size={30} strokeWidth={1.25} className="text-gray-300" />}
+                <CardImageCarousel images={s.images} alt={s.name} imgClassName="object-contain p-2"
+                  fallback={<Gem size={30} strokeWidth={1.25} className="text-gray-300" />} />
                 {RANGE_STATUS_CUSTOMER[s.status] && (
                   <span className={`absolute top-1.5 left-1.5 badge ${RANGE_STATUS_CUSTOMER[s.status].cls}`}
                         title={RANGE_STATUS_CUSTOMER[s.status].tip}>

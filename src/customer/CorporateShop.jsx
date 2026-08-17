@@ -11,6 +11,7 @@ import { collectionProducts } from '../catalogueCollections'
 import FavHeart from './FavHeart'
 import LoadingBar from '../components/LoadingBar'
 import { screenSensitiveImages } from '../sensitiveImages'
+import CardImageCarousel from '../components/CardImageCarousel'
 
 // Resolve the image a SENSITIVE viewer is actually allowed to see for one
 // product. Shared by every place in this file that renders a product image
@@ -27,15 +28,33 @@ import { screenSensitiveImages } from '../sensitiveImages'
 // list per-document, even though it correctly gates a direct single-doc
 // read. Two earlier attempts at this exact fix both still leaked in
 // production because they trusted the rule to have already done this.
-async function resolveSafeImage(productId, heroImage, profile) {
+// Returns EVERY storefront-visible image this viewer may see for one product,
+// hero first — the card carousel (CardImageCarousel) pages through the whole
+// list, and imageFor() below still takes [0] wherever a single image is all
+// that's needed (the "Shop by" band, the favourites payload).
+//
+// COST NOTE: this now runs for every viewer, not just sensitive ones — a
+// carousel needs the full list, and p.heroImage alone can't provide it. That
+// is one extra subcollection read per product on this page (~115 today) where
+// a non-sensitive viewer previously did zero. Deliberate tradeoff for the
+// swipe-through-photos-on-the-card feature; if the catalogue grows enough for
+// that to matter, the fix is a denormalised image-URL array on the product
+// doc, not dropping the screening.
+async function resolveSafeImages(productId, heroImage, profile) {
   try {
     const snap = await getDocs(query(collection(db, 'products', productId, 'images'), orderBy('sort_order')))
     const imgs = screenSensitiveImages(snap.docs.map(d => d.data()), profile)
-    if (heroImage && imgs.some(im => im.file_url === heroImage)) return heroImage
-    const fallback = imgs.find(im => im.file_url && isStorefrontVisible(im))
-    return fallback?.file_url || null
+      .filter(im => im.file_url && isStorefrontVisible(im))
+    const urls = imgs.map(im => ({ url: im.file_url, caption: im.caption || '' }))
+    // Hero first when it survived screening; otherwise the list stands on its
+    // own (a sensitive viewer whose hero was blocked sees the next allowed
+    // photo first, exactly as before).
+    const heroOk = heroImage && urls.some(u => u.url === heroImage)
+    return heroOk
+      ? [{ url: heroImage, caption: '' }, ...urls.filter(u => u.url !== heroImage)]
+      : urls
   } catch {
-    return null
+    return []
   }
 }
 
@@ -63,34 +82,34 @@ export default function CorporateShop({ profile }) {
     }, () => setLoading(false))
   }, [profile?.sensitive, profile?.customer_id])
 
-  // One shared resolution pass for every sensitive viewer's product list —
-  // both the card grid and the "Shop by" band read from this instead of
-  // each re-deriving (or, previously, one of them skipping the check
-  // entirely). Only runs for sensitive viewers; everyone else uses
-  // p.heroImage directly with no extra reads, same as before.
-  const [safeImageByProductId, setSafeImageByProductId] = useState({})
+  // One shared resolution pass for the whole product list — the card grid,
+  // the card carousel and the "Shop by" band all read from this instead of
+  // each re-deriving (or, previously, one of them skipping the sensitive
+  // check entirely). Runs for EVERY viewer now, not only sensitive ones —
+  // see resolveSafeImages's cost note.
+  const [safeImagesByProductId, setSafeImagesByProductId] = useState({})
   // Whether the resolution pass has finished for the CURRENT product list —
   // used to hold the grid back until we actually know which products have
   // no safe photo at all, rather than flashing a photo-less card and then
   // yanking it away a moment later.
   const [safeImagesReady, setSafeImagesReady] = useState(false)
   useEffect(() => {
-    if (!sensitive) { setSafeImageByProductId({}); setSafeImagesReady(true); return }
-    if (products.length === 0) { setSafeImageByProductId({}); setSafeImagesReady(false); return }
+    if (products.length === 0) { setSafeImagesByProductId({}); setSafeImagesReady(false); return }
     let alive = true
     setSafeImagesReady(false)
-    Promise.all(products.map(p => resolveSafeImage(p.id, p.heroImage, profile).then(img => [p.id, img])))
-      .then(entries => { if (alive) { setSafeImageByProductId(Object.fromEntries(entries)); setSafeImagesReady(true) } })
+    Promise.all(products.map(p => resolveSafeImages(p.id, p.heroImage, profile).then(imgs => [p.id, imgs])))
+      .then(entries => { if (alive) { setSafeImagesByProductId(Object.fromEntries(entries)); setSafeImagesReady(true) } })
     return () => { alive = false }
-  }, [sensitive, products])
+  }, [products, profile?.sensitive, profile?.customer_id])
 
-  const imageFor = p => (sensitive ? safeImageByProductId[p.id] : p.heroImage) || ''
+  const imagesFor = p => safeImagesByProductId[p.id] || []
+  const imageFor = p => imagesFor(p)[0]?.url || ''
 
   const categories = useMemo(() => [...new Set(products.map(p => p.category).filter(Boolean))].sort(), [products])
   // Light list the Shop-by band can render image tiles from.
   const bandItems = useMemo(() => products.map(p => ({
     id: p.id, category: p.category || '', is_new: !!p.is_new, image: imageFor(p), name: p.name || '',
-  })), [products, sensitive, safeImageByProductId])
+  })), [products, sensitive, safeImagesByProductId])
   const filtered = useMemo(() => {
     const base = coll ? collectionProducts(coll, products, 'corp_gift') : products
     return base.filter(p => {
@@ -105,24 +124,25 @@ export default function CorporateShop({ profile }) {
       // shelf entirely, rather than shown as an empty box — same call
       // already made for a genuinely-imageless product elsewhere in this
       // app, just now also covering "imageless because of screening."
-      if (sensitive && !safeImageByProductId[p.id]) return false
+      if (sensitive && !imageFor(p)) return false
       return true
     })
-  }, [products, coll, search, cat, sensitive, safeImageByProductId])
+  }, [products, coll, search, cat, sensitive, safeImagesByProductId])
 
   // After returning from a product detail, scroll the last-opened card back into
   // view so you can carry on browsing where you left off.
   useEffect(() => {
-    if (loading || (sensitive && !safeImagesReady)) return
+    if (loading || !safeImagesReady) return
     const lastId = sessionStorage.getItem('cs-last-id')
     if (!lastId) return
     const el = document.getElementById(`corp-card-${lastId}`)
     if (el) { el.scrollIntoView({ block: 'center' }); sessionStorage.removeItem('cs-last-id') }
-  }, [loading, filtered, sensitive, safeImagesReady])
+  }, [loading, filtered, safeImagesReady])
 
-  // Held back until the resolution pass finishes for a sensitive viewer, so
-  // the grid never flashes a would-be-hidden card before yanking it away.
-  const stillResolving = sensitive && !safeImagesReady
+  // Held back until the resolution pass finishes, so the grid never flashes a
+  // would-be-hidden card (sensitive viewer) or a hero-only card that then
+  // gains its carousel a moment later.
+  const stillResolving = !safeImagesReady
 
   return (
     <div>
@@ -157,7 +177,7 @@ export default function CorporateShop({ profile }) {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
           {filtered.map(p => (
             <CorpCard key={p.id} p={p} cur={cur} rates={rates} profile={profile}
-              displayImage={sensitive ? safeImageByProductId[p.id] : (p.heroImage || null)} />
+              images={imagesFor(p)} />
           ))}
         </div>
       )}
@@ -165,7 +185,8 @@ export default function CorporateShop({ profile }) {
   )
 }
 
-function CorpCard({ p, cur, rates, profile, displayImage }) {
+function CorpCard({ p, cur, rates, profile, images }) {
+  const displayImage = images[0]?.url || null
   const [fromPrice, setFromPrice] = useState(undefined) // undefined=loading, null=none
 
   useEffect(() => {
@@ -184,9 +205,8 @@ function CorpCard({ p, cur, rates, profile, displayImage }) {
       onClick={() => sessionStorage.setItem('cs-last-id', p.id)}
       className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">
       <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
-        {displayImage
-          ? <img src={displayImage} alt={p.name} className="w-full h-full object-cover" loading="lazy" />
-          : <Package size={32} strokeWidth={1.25} className="text-gray-300" />}
+        <CardImageCarousel images={images} alt={p.name}
+          fallback={<Package size={32} strokeWidth={1.25} className="text-gray-300" />} />
         {isNew(p) && (
           <span className="absolute top-1.5 left-1.5 badge bg-emerald-600 text-white" title="New arrival">New</span>
         )}

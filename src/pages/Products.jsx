@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { CATEGORIES, PRODUCT_STATUSES, productStatusOf } from '../constants'
 import LoadingBar from '../components/LoadingBar'
 import { Package } from 'lucide-react'
+import CardImageCarousel from '../components/CardImageCarousel'
 
 export default function Products() {
   const [products, setProducts] = useState([])
@@ -105,15 +106,32 @@ function ProductCard({ product: p }) {
       .then(snap => setTiers(snap.docs.map(d => d.data()).filter(t => t.price_hkd)))
   }, [p.id])
 
+  // Card carousel images (CardImageCarousel). No sensitive-viewer screening
+  // here, unlike the customer-facing CorporateShop — this page is admin-only
+  // and an admin sees every photo, branded or not. One extra read per card,
+  // alongside the pricing_tiers read this card already does.
+  const [images, setImages] = useState([])
+  useEffect(() => {
+    getDocs(query(collection(db, 'products', p.id, 'images'), orderBy('sort_order')))
+      .then(snap => {
+        const urls = snap.docs.map(d => d.data())
+          .filter(im => im.file_url)
+          .map(im => ({ url: im.file_url, caption: im.caption || '' }))
+        const heroOk = p.heroImage && urls.some(u => u.url === p.heroImage)
+        setImages(heroOk
+          ? [{ url: p.heroImage, caption: '' }, ...urls.filter(u => u.url !== p.heroImage)]
+          : (p.heroImage ? [{ url: p.heroImage, caption: '' }, ...urls] : urls))
+      })
+      .catch(() => setImages(p.heroImage ? [{ url: p.heroImage, caption: '' }] : []))
+  }, [p.id, p.heroImage])
+
   return (
     <Link to={`/products/${p.id}`} id={`product-card-${p.id}`}
       onClick={() => sessionStorage.setItem('products-last-id', p.id)}
       className={`card hover:shadow-md transition-shadow overflow-hidden flex flex-col ${isRetired ? 'opacity-50 grayscale' : ''}`}>
-      <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden">
-        {p.heroImage
-          ? <img src={p.heroImage} alt={p.name} className="w-full h-full object-cover" />
-          : <Package size={40} strokeWidth={1.25} className="text-gray-300" />
-        }
+      <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
+        <CardImageCarousel images={images} alt={p.name}
+          fallback={<Package size={40} strokeWidth={1.25} className="text-gray-300" />} />
       </div>
       <div className="p-4 flex flex-col gap-1 flex-1">
         <div className="flex items-start justify-between gap-2">

@@ -12,6 +12,7 @@ import { useCrystalColors, colorMap } from '../crystalColors'
 import { useComponents, buildableFromComponents } from '../criticalComponents'
 import ErpProductImport from '../components/ErpProductImport'
 import RangeCatalogueExport from '../components/RangeCatalogueExport'
+import CardImageCarousel from '../components/CardImageCarousel'
 
 const PLATING_DOT = Object.fromEntries(RANGE_PLATINGS.map(p => [p.name, p.dot]))
 const STATUS_META = Object.fromEntries(RANGE_STATUSES.map(s => [s.value, s]))
@@ -156,6 +157,13 @@ export default function Range() {
     // The first gallery image is the chosen hero (MAIN badge in the editor);
     // fall back to the first variant image only when no gallery image exists.
     const image = galleryUrl(p.gallery?.[0]) || variants.find(v => v.image)?.image || ''
+    // Every gallery photo, for the card carousel (CardImageCarousel) — free,
+    // p.gallery is already on the doc. Same derivation as FigurineShop's
+    // customer-facing card.
+    const images = (Array.isArray(p.gallery) ? p.gallery : [])
+      .map(g => ({ url: galleryUrl(g), caption: g?.caption || '' }))
+      .filter(g => g.url)
+    if (!images.length && image) images.push({ url: image, caption: '' })
     // Show the full SKU prefix in the code when the design has a single brand
     // (e.g. UA061-231, D0002-001). Multi-brand designs show the shared base
     // code + per-brand chips so the prefix letters aren't lost.
@@ -179,7 +187,7 @@ export default function Range() {
       size: p.size,
       active: p.active !== false,
       status: ['stock', 'concept', 'retired'].includes(p.status) ? p.status : 'active',
-      variants, platings, brands, image,
+      variants, platings, brands, image, images,
       skus: variants.map(v => v.sku).filter(Boolean),
       minPrice: prices.length ? Math.min(...prices) : null,
       maxPrice: prices.length ? Math.max(...prices) : null,
@@ -377,9 +385,8 @@ function ProductCard({ s, colorLookup = {} }) {
           onClick={() => sessionStorage.setItem('range-last-id', s.id)}
           className={`card overflow-hidden flex flex-col hover:shadow-md transition-shadow group ${isRetired ? 'opacity-50 grayscale' : ''}`}>
       <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
-        {s.image
-          ? <img src={s.image} alt={s.name} className="w-full h-full object-contain p-2" loading="lazy" />
-          : <Gem size={30} strokeWidth={1.25} className="text-gray-300" />}
+        <CardImageCarousel images={s.images} alt={s.name} imgClassName="object-contain p-2"
+          fallback={<Gem size={30} strokeWidth={1.25} className="text-gray-300" />} />
         <span className={`absolute top-1.5 left-1.5 badge ${STATUS_META[s.status]?.badge || ''}`}>
           {STATUS_META[s.status]?.label || s.status}
         </span>
