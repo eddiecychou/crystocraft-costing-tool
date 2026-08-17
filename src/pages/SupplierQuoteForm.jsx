@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, serverTimestamp, orderBy, query } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { db, storage } from '../firebase'
+import { db, storage, authHeader } from '../firebase'
 import { CURRENCIES } from '../constants'
 import { FolderOpen, Paperclip, FileText, X, Copy, ChevronUp, ChevronDown } from 'lucide-react'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -136,7 +136,7 @@ export default function SupplierQuoteForm() {
 
       const res = await fetch('/api/process-quote', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({ image: base64, mimeType }),
       })
 

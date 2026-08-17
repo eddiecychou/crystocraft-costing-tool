@@ -4,7 +4,7 @@ import {
   doc, getDoc, deleteDoc, updateDoc, collection, query, where, orderBy, getDocs,
   onSnapshot, deleteDoc as deleteDocument, serverTimestamp,
 } from 'firebase/firestore'
-import { db, storage } from '../firebase'
+import { db, storage, authHeader } from '../firebase'
 import { ref as storageRef, deleteObject } from 'firebase/storage'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
@@ -573,7 +573,7 @@ export default function CustomerDetail() {
     try {
       const res = await fetch('/api/compose-message', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({
           customer,
           product: composeProduct

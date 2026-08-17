@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore'
-import { db } from '../firebase'
+import { db, authHeader } from '../firebase'
 import { CATEGORIES, PRODUCT_STATUSES, productStatusOf, normVideos, MARKETING_DESC_MAXLEN } from '../constants'
 import { CUSTOMIZER_OPTIONS, engineTypeOf } from '../customizerEngines'
 import { Sparkles, RotateCcw } from 'lucide-react'
@@ -53,7 +53,7 @@ export default function ProductForm() {
     try {
       const res = await fetch('/api/generate-marketing-copy', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({ product: form, instructions: aiGuide.trim() }),
       })
       const data = await res.json()
@@ -73,7 +73,7 @@ export default function ProductForm() {
     try {
       const res = await fetch('/api/rewrite-section', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({
           section_type: 'marketing_description',
           body: form.marketing_description,

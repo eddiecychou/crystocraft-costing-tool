@@ -1,5 +1,10 @@
+import { requireAdmin } from './_auth.js'
+
 export default async function handler(req) {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
+
+  const auth = await requireAdmin(req)
+  if (!auth.ok) return auth.response
 
   const WP_BASE_URL     = Deno.env.get('WP_BASE_URL')
   const WP_USERNAME     = Deno.env.get('WP_USER')

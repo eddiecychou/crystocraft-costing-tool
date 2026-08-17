@@ -38,8 +38,14 @@ function extractImages(html) {
   return out
 }
 
+import { requireAdmin } from './_auth.js'
+
 export default async function handler(req) {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
+
+  const auth = await requireAdmin(req)
+  if (!auth.ok) return auth.response
+
   let body
   try { body = await req.json() } catch { return json({ error: 'Invalid JSON body' }, 400) }
   const urls = Array.isArray(body?.urls) ? body.urls : []

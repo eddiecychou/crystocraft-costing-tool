@@ -1,5 +1,10 @@
+import { requireAdmin } from './_auth.js'
+
 export default async function handler(req) {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
+
+  const auth = await requireAdmin(req)
+  if (!auth.ok) return auth.response
 
   const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')
   if (!GEMINI_API_KEY) return new Response('Missing API key', { status: 500 })

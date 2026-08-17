@@ -35,3 +35,14 @@ export async function authedUser() {
   await auth.authStateReady()
   return auth.currentUser
 }
+
+// Bearer-token header for a `fetch('/api/…')` call to an admin-gated edge
+// function (erp.js/uc.js/bank.js's own pattern, and now the credential-
+// holding functions gated by netlify/edge-functions/_auth.js — see bug-fix
+// pack A-04). Throws if signed out, same as ucApi()'s own check, so a
+// caller's try/catch surfaces "Please sign in" rather than a silent 401.
+export async function authHeader() {
+  const user = await authedUser()
+  if (!user) throw new Error('Please sign in.')
+  return { Authorization: `Bearer ${await user.getIdToken()}` }
+}

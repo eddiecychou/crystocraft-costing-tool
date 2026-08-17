@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, getDocs, query, orderBy, serverTimestamp } from 'firebase/firestore'
-import { db } from '../firebase'
+import { db, authHeader } from '../firebase'
 import { useComponents } from '../criticalComponents'
 import { CURRENCIES, PO_PAYMENT_TERMS, PO_UNITS } from '../constants'
 import { fmtMoney } from '../currency'
@@ -170,7 +170,7 @@ export default function PurchaseOrderForm() {
       const base64 = await toBase64(file)
       const mimeType = file.type === 'application/pdf' ? 'application/pdf' : (file.type || 'image/png')
       const res = await fetch('/api/extract-po', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({ image: base64, mimeType }),
       })
       if (!res.ok) throw new Error('Extraction failed')

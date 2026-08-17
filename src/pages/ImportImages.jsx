@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { collection, query, orderBy, getDocs, doc, updateDoc } from 'firebase/firestore'
-import { db } from '../firebase'
+import { db, authHeader } from '../firebase'
 import { buildRangeSku } from '../rangeSku'
 import { designNumber, brandLetter } from '../constants'
 import LoadingBar from '../components/LoadingBar'
@@ -39,7 +39,7 @@ function stripBrand(code) {
 async function scrapePages(urls) {
   const res = await fetch('/api/scrape-images', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
     body: JSON.stringify({ urls }),
   })
   const data = await res.json()

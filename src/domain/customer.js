@@ -232,6 +232,15 @@ export function normalizeCustomer(raw) {
     // CustomerDetail.jsx's "Refresh" action. Never set by anything else;
     // pass through as-is rather than reconstructing its shape here.
     email_summary:     r.email_summary ?? null,
+    // V8.2 — same idea, over customers/{id}/whatsapp_threads (see
+    // refresh-whatsapp-summary.js / whatsappSummaryApi.js). Was missing here
+    // entirely (bug-fix pack C-02): CustomerDetail.jsx's own post-generate
+    // setCustomer() call bypasses normalizeCustomer and showed it fine right
+    // after clicking Generate, which is exactly why this went unnoticed — any
+    // load that goes through THIS function (a page reload, or DailyDrafts.jsx
+    // reading it off useCustomers()/loadCustomers()) silently dropped it,
+    // so Daily Drafts never actually saw WhatsApp context.
+    whatsapp_summary:  r.whatsapp_summary ?? null,
   }
 }
 
@@ -311,25 +320,41 @@ export async function saveCustomer(id, input) {
   if (!v.ok) return { ok: false, id: id || null, result: v }
   const payload = { ...toCustomerDoc(input), updatedAt: serverTimestamp() }
   let savedId = id
+
+  // A few JES codes (A29, C13, O07 — confirmed 2026-08-07) are shared
+  // "bucket" codes used for many different Alibaba/website/walk-in customers,
+  // not unique per customer. Computed here (not trusted from the client) so
+  // it's honest wherever it's read — the order-history edge function refuses
+  // to return JES history when this is true, same guard CustomerDetail.jsx's
+  // admin view already applies.
+  //
+  // Computed on BOTH create and update — a customer created with an
+  // already-shared code used to get no erp_code_shared field at all (the
+  // create branch skipped this block entirely), so a portal account linked
+  // to it later (AccountEdit.jsx reads the customer's own erp_code_shared)
+  // inherited `false` and the order-history endpoint would hand it another
+  // customer's JES invoice history under the same bucket code. Fixed
+  // 2026-08-17 (bug-fix pack A-01).
+  const erp_code = payload.erp_code || ''
+  let erp_code_shared = false
+  if (erp_code) {
+    const shareSnap = await getDocs(query(collection(db, 'customers'), where('erp_code', '==', erp_code)))
+    erp_code_shared = shareSnap.size > (id ? 1 : 0)
+  }
+
   if (id) {
-    const erp_code = payload.erp_code || ''
-    // A few JES codes (A29, C13, O07 — confirmed 2026-08-07) are shared
-    // "bucket" codes used for many different Alibaba/website/walk-in
-    // customers, not unique per customer. Computed here (not trusted from
-    // the client) so it's honest wherever it's read — the order-history
-    // edge function refuses to return JES history when this is true, same
-    // guard CustomerDetail.jsx's admin view already applies.
-    let erp_code_shared = false
-    if (erp_code) {
-      const shareSnap = await getDocs(query(collection(db, 'customers'), where('erp_code', '==', erp_code)))
-      erp_code_shared = shareSnap.size > 1
-    }
     await updateDoc(doc(db, 'customers', id), { ...payload, erp_code_shared })
-    await mirrorToLinkedAccounts(id, { sensitive: payload.sensitive, erp_code, erp_code_shared })
+    savedId = id
   } else {
-    const ref = await addDoc(COL(), { ...payload, createdAt: serverTimestamp() })
+    const ref = await addDoc(COL(), { ...payload, erp_code_shared, createdAt: serverTimestamp() })
     savedId = ref.id
   }
+  // Mirrored on both paths, not just update — a create can already have
+  // linked accounts behind it (e.g. an import flow that creates the customer
+  // and links a portal login in the same operation), and mirroring is a
+  // harmless no-op when none exist yet.
+  await mirrorToLinkedAccounts(savedId, { sensitive: payload.sensitive, erp_code, erp_code_shared })
+
   return { ok: true, id: savedId, result: v }
 }
 

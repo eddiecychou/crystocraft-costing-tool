@@ -1,4 +1,9 @@
+import { requireAdmin } from './_auth.js'
+
 export default async (request) => {
+  const auth = await requireAdmin(request)
+  if (!auth.ok) return auth.response
+
   const { customer, product, channel, context: ctx } = await request.json()
 
   const channelInstructions = {

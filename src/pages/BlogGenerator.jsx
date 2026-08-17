@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { collection, getDocs, query, orderBy, doc, getDoc } from 'firebase/firestore'
-import { db } from '../firebase'
+import { db, authHeader } from '../firebase'
 import { isPublicVisible } from '../constants'
 import { loadBlogProducts, loadBlogImages, PRODUCT_SOURCES } from '../productSource'
 import { useParams, Link } from 'react-router-dom'
@@ -378,7 +378,7 @@ function WPPublishButton({ payload, disabled }) {
       setState('publishing')
       const res = await fetch('/api/publish-to-wordpress', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify(processedPayload),
       })
       // Edge function may return HTML on crash — guard against non-JSON
@@ -442,7 +442,7 @@ function RewritePanel({ sectionType, heading, body, context, onRewrite }) {
     try {
       const res = await fetch('/api/rewrite-section', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({ section_type: sectionType, heading, body, guidance, context }),
       })
       const data = await res.json()
@@ -579,7 +579,7 @@ function SpotlightTab({ preloadedProduct }) {
     try {
       const res = await fetch('/api/generate-blog', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({ type: 'spotlight', product: selectedProduct, industry }),
       })
       if (!res.ok) throw new Error('Generation failed')
@@ -849,7 +849,7 @@ function RoundupTab() {
     try {
       const res = await fetch('/api/generate-blog', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({ type: 'roundup', products: selected, industry, tone }),
       })
       if (!res.ok) throw new Error('Generation failed')

@@ -108,8 +108,21 @@ service cloud.firestore {
       }
     }
 
+    // The `settings` collection mixes storefront config with genuinely
+    // internal data — settings/pricing_groups holds each customer tier's
+    // markup PERCENTAGE and settings/crystal_unit_costs holds raw supplier
+    // unit costs; settings/components is the legacy admin-only cost tool.
+    // None of those are ever read from customer-facing code (verified
+    // 2026-08-17, bug-fix pack A-03) — only this allowlisted set is. A
+    // canShop() blanket read here used to hand any approved customer the
+    // company's markup formula and raw costs along with the catalogue config
+    // they actually need.
     match /settings/{docId} {
-      allow read: if canShop();
+      allow read: if isAdmin()
+        || (canShop() && docId in [
+          'catalogue_band', 'exchange_rates', 'format_moq',
+          'front_page', 'productDefaults', 'quote_branding', 'crystal_colors',
+        ]);
       allow write: if isAdmin();
     }
 

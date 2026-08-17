@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { collection, doc, getDoc, getDocs, orderBy, query } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { db, storage } from '../firebase'
+import { db, storage, authHeader } from '../firebase'
 import { CURRENCIES } from '../constants'
 import { getComponent, saveComponentQuote, deleteComponentQuote } from '../criticalComponents'
 import { FolderOpen, Paperclip, FileText, X } from 'lucide-react'
@@ -96,7 +96,7 @@ export default function RangeQuoteForm() {
       if (file.type === 'application/pdf') { base64 = await toBase64(file); mimeType = 'application/pdf' }
       else { base64 = await toBase64(await preprocessForGemini(file)); mimeType = 'image/png' }
       const res = await fetch('/api/process-quote', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
         body: JSON.stringify({ image: base64, mimeType }),
       })
       if (!res.ok) throw new Error('Extraction failed')
