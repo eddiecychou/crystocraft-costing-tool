@@ -12,6 +12,7 @@ import {
 import { useCustomers, customerName } from '../domain/customer'
 import { transcribeMessage, WHATSAPP_TRANSCRIBE_LANGUAGES } from '../domain/whatsappImport'
 import { CustomerPicker } from './CustomerAccounts'
+import WhatsAppAttachment from '../components/WhatsAppAttachment'
 
 function fmtIsoDate(iso) {
   if (!iso) return '—'
@@ -102,13 +103,7 @@ function WhatsAppThreads({ contactId, phone }) {
                         )}
                         {m.attachment_filename && (
                           <div className="flex items-center gap-2 flex-wrap">
-                            {m.attachment_url ? (
-                              <a href={m.attachment_url} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">
-                                📎 {m.attachment_filename}
-                              </a>
-                            ) : (
-                              <span className="text-gray-400">📎 {m.attachment_filename} (file missing)</span>
-                            )}
+                            <WhatsAppAttachment filename={m.attachment_filename} url={m.attachment_url} />
                             {/\.opus$/i.test(m.attachment_filename || '') && m.attachment_url && (
                               <>
                                 <select

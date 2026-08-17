@@ -18,6 +18,7 @@ import { transcribeMessage, WHATSAPP_TRANSCRIBE_LANGUAGES } from '../domain/what
 import { erpLookup } from '../erpApi'
 import { mergeSalesInvoiceHistory } from '../domain/salesInvoiceHistory'
 import ErpDocModal from '../components/ErpDocModal'
+import WhatsAppAttachment from '../components/WhatsAppAttachment'
 import { refreshEmailSummary, discussCustomerEmail, renderThreadsText, buildYearIndex, routeEmailQuestion, renderThreadsTextForYears, buildKeywordFacets, composeEmailAnswer } from '../emailSummaryApi'
 import { generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
 
@@ -1163,13 +1164,7 @@ export default function CustomerDetail() {
                             )}
                             {m.attachment_filename && (
                               <div className="flex items-center gap-2 flex-wrap">
-                                {m.attachment_url ? (
-                                  <a href={m.attachment_url} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline text-xs">
-                                    📎 {m.attachment_filename}
-                                  </a>
-                                ) : (
-                                  <span className="text-xs text-gray-400">📎 {m.attachment_filename} (file missing)</span>
-                                )}
+                                <WhatsAppAttachment filename={m.attachment_filename} url={m.attachment_url} className="text-xs" />
                                 {/\.opus$/i.test(m.attachment_filename || '') && m.attachment_url && (
                                   <>
                                     <select
