@@ -154,6 +154,13 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // Sales Returns (Phase B of the Sales Return / Credit Note work) — the
+    // goods-return record, admin only. No customer visibility, same as
+    // purchase_orders: this is an internal accounting/operations record.
+    match /sales_returns/{srId} {
+      allow read, write: if isAdmin();
+    }
+
     match /customers/{customerId} {
       allow read, write: if isAdmin();
       match /enquiries/{enquiryId} {

@@ -61,6 +61,32 @@ export const PO_STATUSES = [
   { value: 'issued', label: 'Issued', badge: 'bg-emerald-100 text-emerald-700' },
 ]
 
+// ── Sales Return module (Phase B of the Sales Return / Credit Note work) ────
+export const SR_STATUSES = [
+  { value: 'draft',     label: 'Draft',     badge: 'bg-gray-100 text-gray-600' },
+  { value: 'approved',  label: 'Approved',  badge: 'bg-emerald-100 text-emerald-700' },
+  { value: 'cancelled', label: 'Cancelled', badge: 'bg-red-100 text-red-600' },
+]
+
+// What happens to the returned goods. `restock` is recorded only — it does
+// NOT post a receipt to the stock ledger yet, deliberately: Cindy hasn't
+// confirmed that an Amazon-style return is physically received before the app
+// treats it as stock back on hand, so this stays a decision on the record
+// until that's settled, not a ledger movement.
+export const SR_DISPOSITIONS = [
+  { value: 'restock',     label: 'Restock',             hint: 'Goods received back into stock — not yet posted to the ledger, record only' },
+  { value: 'damaged',     label: 'Damaged',              hint: 'Received but unsellable — no stock movement' },
+  { value: 'quarantine',  label: 'Quarantine',           hint: 'Held pending inspection — no stock movement' },
+  { value: 'no_movement', label: 'No physical movement', hint: 'Accounting-only, e.g. an Amazon adjustment — nothing was received' },
+]
+
+export const SR_REASONS = [
+  { value: 'customer_request',       label: 'Customer request' },
+  { value: 'damaged',                label: 'Damaged in transit / on arrival' },
+  { value: 'marketplace_adjustment', label: 'Marketplace adjustment (Amazon, etc.)' },
+  { value: 'other',                  label: 'Other' },
+]
+
 // Spell a money amount into English words for the PO footer (e.g. "SAY HONG
 // KONG DOLLARS SIX THOUSAND SEVEN HUNDRED NINETY ONLY"). Cents rendered as
 // "AND xx CENTS". Whole-number ERP POs are the norm, but we handle decimals.

@@ -58,6 +58,8 @@ import ImportImages from './pages/ImportImages'
 import CustomerAccounts from './pages/CustomerAccounts'
 import AccountEdit from './pages/AccountEdit'
 import Enquiries from './pages/Enquiries'
+import SalesReturns from './pages/SalesReturns'
+import SalesReturnForm from './pages/SalesReturnForm'
 import Logistics from './pages/Logistics'
 import LogisticsVendorForm from './pages/LogisticsVendorForm'
 import Shipments from './pages/Shipments'
@@ -218,6 +220,9 @@ function AdminApp({ user }) {
                 <Route path="/bank-accounts" element={<BankAccounts />} />
                 <Route path="/shipping" element={<Shipping />} />
                 <Route path="/sales-invoices" element={<SalesInvoices />} />
+                <Route path="/sales-returns" element={<SalesReturns />} />
+                <Route path="/sales-returns/new" element={<SalesReturnForm />} />
+                <Route path="/sales-returns/:id" element={<SalesReturnForm />} />
                 <Route path="/shipments/new" element={<ShipmentForm />} />
                 <Route path="/shipments/:id" element={<ShipmentForm />} />
                 <Route path="/logistics/new" element={<LogisticsVendorForm />} />
