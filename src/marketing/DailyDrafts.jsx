@@ -69,6 +69,11 @@ async function uploadImage(file) {
 // already talking to manually — that's what the blockOutreachUntil action
 // on each draft card is for, not a status guess.
 function customerToEntity(c) {
+  // email_bounced (resend-webhook.js, on a hard bounce/complaint reported
+  // against this customer's tagged send) is exactly the "actually dead"
+  // exception the comment above describes — everything else about an
+  // inactive account still gets suggested, a confirmed-dead address doesn't.
+  if (c.email_bounced) return null
   const contact = primaryContact(c.contacts)
   const email = contact?.email?.trim().toLowerCase()
   if (!email) return null

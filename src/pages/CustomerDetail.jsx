@@ -669,6 +669,23 @@ export default function CustomerDetail() {
         </div>
       )}
 
+      {/* Bounced-email banner — set by resend-webhook.js on a hard bounce/
+          complaint against a Daily Draft send tagged with this customer's
+          id. Shown, not just silently flagged, so a dead/out-of-business
+          address is something Eddie actually sees rather than a record that
+          quietly stops getting outreach for no visible reason. */}
+      {customer.email_bounced && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+          <AlertTriangle size={15} className="shrink-0" />
+          <span>
+            An email to <strong>{customer.contact_name || customer.company_name}</strong> bounced
+            {customer.email_bounce_reason ? ` (${customer.email_bounce_reason})` : ''} — the address may be
+            inactive or the company no longer reachable at it. Daily Drafts will stop suggesting this
+            customer until this is resolved.
+          </span>
+        </div>
+      )}
+
       {/* Contacts — separate named people (owner, 2026-08-05), not one shared
           contact_name + unattributed emails. */}
       <div className="card p-5 mb-4">

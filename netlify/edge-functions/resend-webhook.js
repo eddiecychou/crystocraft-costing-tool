@@ -20,11 +20,16 @@
 // values (secret rotation) — any match is accepted. A timestamp more than 5
 // minutes old/future is rejected (replay protection).
 //
-// Matching: send-personal-email.js tags every send with
-// { name: 'draft_id', value: <outreach_drafts doc id> }, which Resend
-// echoes back in data.tags — so this is a plain GET/PATCH by known id, not
-// a Firestore query (this codebase's established "known doc id" pattern,
-// see subscribe.js/unsubscribe.js).
+// Matching: send-personal-email.js/send-campaign.js tag every send via
+// lib/resendTags.js's resendTag(), which base64url-encodes the real
+// Firestore doc id (prefixed, e.g. 'draft_aGVsbG8') — Resend only allows
+// [A-Za-z0-9_-] in a tag, and a marketing_contacts doc id is literally the
+// contact's own email address, so the raw id can't go through unencoded.
+// Resend echoes the tag back unmodified in data.tags; decodeResendTag()
+// here reverses the encoding to recover the real doc id. Still a plain
+// GET/PATCH by known id, not a Firestore query (this codebase's established
+// "known doc id" pattern, see subscribe.js/unsubscribe.js) — the encoding is
+// just what travels in between.
 //
 // Env (Netlify site vars, server-side only):
 //   RESEND_WEBHOOK_SECRET     — from Resend dashboard → Webhooks → this
@@ -42,6 +47,7 @@
 //     boundary, not a bug here), which is why the first attempt at setting
 //     these still 500'd after a fresh deploy.
 import { SignJWT, importPKCS8 } from 'https://esm.sh/jose@5.9.6'
+import { decodeResendTag } from './lib/resendTags.js'
 
 const EVENT_FIELD = {
   'email.delivered': 'delivered',
@@ -174,7 +180,7 @@ export default async function handler(req) {
   // sits before the handler's own try/catch) that surfaced to Resend/Netlify
   // as an opaque 500 with zero detail.
   const tags = payload?.data?.tags || {}
-  const draftId = tags.draft_id
+  const draftId = decodeResendTag(tags.draft_id, 'draft')
   // mc_id: the marketing_contacts doc id, tagged by send-campaign.js on
   // every recipient and by send-personal-email.js when the Daily Drafts
   // source was a contact (bug-fix pack C-04) — without this, a campaign
@@ -182,8 +188,25 @@ export default async function handler(req) {
   // whatsoever) and was silently discarded below the old `if (!draftId)`
   // guard; even a personal-send bounce only ever touched the draft's own
   // engagement flag, never the contact record that actually bounced.
-  const mcId = tags.mc_id
-  if (!draftId && !mcId) return new Response('ok', { status: 200 }) // untagged send — nothing to correlate
+  const mcId = decodeResendTag(tags.mc_id, 'mc')
+  // customer_id: same idea, for a Daily Draft personal send whose source was
+  // a real customers/ record rather than a marketing_contacts lead (found
+  // real 2026-08-18: a bounce on a customer's email — dead address, company
+  // gone out of business, etc. — had no handling at all here before; only
+  // the draft's own engagement flag was ever touched, never the customer
+  // record or its Interaction Log, so nothing surfaced it as something to
+  // check on).
+  const customerId = decodeResendTag(tags.customer_id, 'customer')
+  if (!draftId && !mcId && !customerId) return new Response('ok', { status: 200 }) // untagged send — nothing to correlate
+
+  // Best-effort human-readable bounce/complaint reason for the Interaction
+  // Log entry below — Resend's payload shape for this isn't consistently
+  // documented across event types, so take whatever's there rather than
+  // asserting a specific field exists.
+  const eventReason = payload?.data?.bounce?.message
+    || payload?.data?.bounce?.type
+    || payload?.data?.reason
+    || ''
 
   try {
     const token = await getAccessToken(CLIENT_EMAIL, PRIVATE_KEY)
@@ -217,6 +240,60 @@ export default async function handler(req) {
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ fields: encodeFields(fields) }),
       }))
+    }
+
+    // A customer (a real account, not a marketing lead) doesn't get
+    // suppressed the way a contact does — Daily Drafts deliberately still
+    // targets quiet/inactive customers (see DailyDrafts.jsx's
+    // customerToEntity comment: "Inactive ones are worth trying too unless
+    // their email is actually dead" — a hard bounce IS that "actually dead"
+    // signal). So this flags the record and logs it, rather than silently
+    // suppressing: email_bounced/email_bounced_at/email_bounce_reason are
+    // read by customerToEntity to stop suggesting this address, and by
+    // CustomerDetail.jsx to show a visible banner — the owner still decides
+    // what to do (new contact email on file, phone instead, write the
+    // account off as out of business, etc.), same as every other CRM signal
+    // in this app.
+    if (customerId && (field === 'bounced' || field === 'complained')) {
+      const custBase = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/customers/${encodeURIComponent(customerId)}`
+      const custFields = { email_bounced: true, email_bounced_at: { __ts: nowIso }, email_bounce_reason: eventReason }
+      const custMasks = ['email_bounced', 'email_bounced_at', 'email_bounce_reason']
+        .map(p => `updateMask.fieldPaths=${encodeURIComponent(p)}`).join('&')
+      writes.push(fetch(`${custBase}?${custMasks}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fields: encodeFields(custFields) }),
+      }))
+
+      // Interaction Log entry (customers/{id}/enquiries — see
+      // DailyDrafts.jsx's own logInteraction() for the same shape/posture;
+      // this can't import that client-SDK helper from an edge function, so
+      // it's a direct REST create here instead). channel/status/etc. match
+      // the enquiry schema CustomerDetail.jsx/EnquiryForm.jsx already read.
+      const label = field === 'bounced' ? 'bounced' : 'was marked as spam'
+      const description = `Automated: a Daily Draft email to this customer ${label}` + (eventReason ? ` (${eventReason})` : '') + '. The email address may be inactive or the company may no longer be reachable at it.'
+      writes.push(fetch(
+        `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/customers/${encodeURIComponent(customerId)}/enquiries`,
+        {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            fields: encodeFields({
+              date: { __ts: nowIso },
+              contact_id: null,
+              description,
+              product_interest: [],
+              channel: 'Email',
+              status: 'Open',
+              follow_up_date: null,
+              outcome_notes: '',
+              linked_quote_ids: [],
+              createdAt: { __ts: nowIso },
+              updatedAt: { __ts: nowIso },
+            }),
+          }),
+        },
+      ))
     }
 
     const results = await Promise.all(writes)

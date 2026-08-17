@@ -225,6 +225,14 @@ export function normalizeCustomer(raw) {
     // covers "temporarily pause" without a separate boolean.
     lastOutreachAt:      r.lastOutreachAt ?? null,
     blockOutreachUntil:  r.blockOutreachUntil ?? null,
+    // Set by resend-webhook.js on a hard bounce/complaint against a Daily
+    // Draft send tagged with this customer's id — read by DailyDrafts.jsx's
+    // customerToEntity (skip suggesting a confirmed-dead address) and shown
+    // as a banner on CustomerDetail.jsx, so it isn't a silent flag with no
+    // visible trail.
+    email_bounced:       !!r.email_bounced,
+    email_bounced_at:    r.email_bounced_at ?? null,
+    email_bounce_reason: str(r.email_bounce_reason),
     createdAt:         r.createdAt ?? null,
     updatedAt:         r.updatedAt ?? null,
     // V8.1 email ingestion (Phase 2) — a DeepSeek-generated draft over
