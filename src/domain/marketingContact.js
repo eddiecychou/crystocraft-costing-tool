@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   collection, getDocs, getDoc, doc, addDoc, updateDoc, setDoc, deleteDoc,
-  writeBatch, serverTimestamp,
+  writeBatch, serverTimestamp, arrayUnion, runTransaction,
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import { saveCustomer, RETAIL_TAG } from './customer'
@@ -269,32 +269,60 @@ export async function deleteTagEverywhere(contacts, tag) {
 
 // Record that a contact is now (or already was found to be) an app customer.
 // A pointer, not a merge — the marketing contact record itself stays put
-// (never deleted); see the module header. is_customer flips to true because
-// "linked to a real customer" is the strongest possible signal of that.
+// (never deleted, never mutated beyond the fields below); see the module
+// header. is_customer flips to true because "linked to a real customer" is
+// the strongest possible signal of that.
 //
-// SU-08 audit (2026-08-18) found the lead's actual HISTORY — app_notes and
-// any imported WhatsApp threads — was left permanently stranded under the
-// old marketing_contacts/{id} once linked, invisible from the resulting
-// customer record with no cross-link at all. This now:
-//   1. carries app_notes over as one Interaction Log entry (not dropped),
-//   2. MOVES (copies then deletes) the whatsapp_threads subcollection onto
-//      the customer, so it's reachable where Eddie is actually looking, and
-//   3. repoints any outreach_drafts already sent to this contact so their
-//      engagement/reply history follows the person, not the old id.
-// Best-effort: a failure in the history migration doesn't block the link
-// itself completing (the pointer is the one thing that must not silently
-// fail), but IS surfaced to the caller so it isn't silently lost either.
+// SU-08 Phase 2 (2026-08-19) — supersedes the Phase 1 version, which MOVED
+// (copied then deleted) the whatsapp_threads subcollection onto the
+// customer. Live-data check before this change found that move had never
+// actually executed against a real record (0 of 68 already-linked contacts
+// have any whatsapp_threads left under marketing_contacts/, and all 68 were
+// linked at Mailchimp import time, not via this function), so there was
+// nothing to reconcile — this is a straight replacement, not a migration of
+// already-moved data.
+//
+// Now uses REFERENCES instead of copying:
+//   1. app_notes is copied into ONE Interaction Log entry at a DETERMINISTIC
+//      doc id (idempotent — a retry can't create a second copy), but the
+//      live field on marketing_contacts/{id} is left untouched and stays
+//      reachable via linked_marketing_contact_ids below (so a note added to
+//      the lead AFTER conversion is still visible, not just a frozen
+//      snapshot from link-time).
+//   2. whatsapp_threads is NEVER copied or deleted — it stays permanently at
+//      marketing_contacts/{id}/whatsapp_threads (also where any FUTURE
+//      re-import for this same lead will keep landing, avoiding the
+//      fragmentation a move would cause). customers/{customerId}.
+//      linked_marketing_contact_ids (a new array field, arrayUnion — safe to
+//      repeat) is the explicit cross-reference CustomerDetail.jsx reads to
+//      merge those threads into its WhatsApp card, admin-only same as
+//      everywhere else (no new Firestore rule needed).
+//   3. outreach_drafts are repointed via repointDraftsToCustomer() —
+//      unchanged from Phase 1, already idempotent.
+//   4. marketing_contacts/{id}.linked_at is stamped once (first link only —
+//      a retry doesn't overwrite the true original link time) as the
+//      migration metadata this goal asked for.
+// Every step is safe to repeat — see each step's own comment for why.
+// Best-effort: a failure in the notes-migration step doesn't block the link
+// itself (the pointer + cross-reference are what must not silently fail),
+// but IS surfaced to the caller so it isn't silently lost either.
 export async function linkContactToCustomer(id, customerId, companyName) {
   let historyWarning = ''
   try {
-    const contactSnap = await getDoc(doc(db, 'marketing_contacts', id))
-    const contact = contactSnap.exists() ? contactSnap.data() : null
-
-    if (contact?.app_notes) {
-      await addDoc(collection(db, 'customers', customerId, 'enquiries'), {
+    // Deterministic id + transaction create-if-absent: a retry finds the
+    // doc already there and no-ops, instead of addDoc's auto-id creating a
+    // second copy every time this function is called again.
+    const notesRef = doc(db, 'customers', customerId, 'enquiries', `migrated_notes_${id}`)
+    await runTransaction(db, async (tx) => {
+      const existing = await tx.get(notesRef)
+      if (existing.exists()) return
+      const contactSnap = await tx.get(doc(db, 'marketing_contacts', id))
+      const notes = contactSnap.exists() ? str(contactSnap.data().app_notes) : ''
+      if (!notes) return
+      tx.set(notesRef, {
         date: serverTimestamp(),
         contact_id: null,
-        description: `Notes carried over from the Marketing Contact record (before this lead was linked to this customer):\n\n${contact.app_notes}`,
+        description: `Notes carried over from the Marketing Contact record at the time this lead was linked to this customer:\n\n${notes}`,
         product_interest: [],
         channel: '',
         status: 'Open',
@@ -304,29 +332,27 @@ export async function linkContactToCustomer(id, customerId, companyName) {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       })
-    }
-
-    const threadsSnap = await getDocs(collection(db, 'marketing_contacts', id, 'whatsapp_threads'))
-    const threadDocs = threadsSnap.docs
-    for (let i = 0; i < threadDocs.length; i += 200) {
-      const batch = writeBatch(db)
-      threadDocs.slice(i, i + 200).forEach(t => {
-        batch.set(doc(db, 'customers', customerId, 'whatsapp_threads', t.id), t.data())
-        batch.delete(t.ref)
-      })
-      await batch.commit()
-    }
+    })
 
     await repointDraftsToCustomer(id, customerId)
   } catch (e) {
-    // Never let a history-migration failure block the link itself — the
-    // pointer below is the one write that absolutely must land.
-    historyWarning = e?.message || 'Could not fully migrate this lead\'s notes/WhatsApp history.'
+    // Never let this block the link itself — the pointer/cross-reference
+    // below are what absolutely must land.
+    historyWarning = e?.message || 'Could not fully migrate this lead\'s notes history.'
   }
 
+  await updateDoc(doc(db, 'customers', customerId), {
+    linked_marketing_contact_ids: arrayUnion(id),
+  })
+
+  // linked_at is stamped only once — checked first so a retry doesn't
+  // overwrite the true original link time with "now".
+  const contactSnap = await getDoc(doc(db, 'marketing_contacts', id))
+  const alreadyLinkedAt = contactSnap.exists() && contactSnap.data().linked_at
   await updateDoc(doc(db, 'marketing_contacts', id), {
     possible_customer_match: { customer_id: customerId, company_name: str(companyName) },
     is_customer: true,
+    ...(alreadyLinkedAt ? {} : { linked_at: serverTimestamp() }),
     updatedAt: serverTimestamp(),
   })
 

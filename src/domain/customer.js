@@ -236,6 +236,14 @@ export function normalizeCustomer(raw) {
     email_complained:       !!r.email_complained,
     email_complained_at:    r.email_complained_at ?? null,
     email_complain_reason:  str(r.email_complain_reason),
+    // SU-08 Phase 2 (2026-08-19) — every marketing_contacts lead ever linked
+    // to this customer (domain/marketingContact.js's linkContactToCustomer,
+    // arrayUnion so a retry can't duplicate an entry). The explicit cross-
+    // reference back from customer -> lead(s); possible_customer_match on
+    // the contact doc is the forward direction. Read by CustomerDetail.jsx
+    // to merge in each linked contact's whatsapp_threads (never copied —
+    // referenced) — see its own WhatsApp card comment.
+    linked_marketing_contact_ids: cleanArray(r.linked_marketing_contact_ids),
     createdAt:         r.createdAt ?? null,
     updatedAt:         r.updatedAt ?? null,
     // V8.1 email ingestion (Phase 2) — a DeepSeek-generated draft over

@@ -351,6 +351,50 @@ export default function CustomerDetail() {
     })
   }, [id])
 
+  // SU-08 Phase 2 (2026-08-19) — every marketing_contacts lead in
+  // customer.linked_marketing_contact_ids (domain/marketingContact.js's
+  // linkContactToCustomer) may have its OWN whatsapp_threads subcollection,
+  // deliberately left in place at marketing_contacts/{contactId} rather than
+  // copied here (see that function's own comment — avoids fragmenting
+  // future re-imports, and there's nothing to duplicate). This subscribes
+  // to each linked contact's threads read-only and merges them into the
+  // same card below, tagged so they're visibly distinct from this
+  // customer's own imports. Admin-only, same rule as everywhere else in
+  // this app — a customer-portal login has no read access to
+  // marketing_contacts at all, so this can never leak between customers.
+  const linkedContactIds = customer?.linked_marketing_contact_ids || []
+  const [linkedWhatsappThreads, setLinkedWhatsappThreads] = useState({}) // contactId -> threads[]
+  useEffect(() => {
+    if (!linkedContactIds.length) { setLinkedWhatsappThreads({}); return }
+    const unsubs = linkedContactIds.map(contactId =>
+      onSnapshot(collection(db, 'marketing_contacts', contactId, 'whatsapp_threads'), snap => {
+        const threads = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        setLinkedWhatsappThreads(prev => ({ ...prev, [contactId]: threads }))
+      })
+    )
+    return () => unsubs.forEach(u => u())
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-subscribe only when the SET of linked ids actually changes, not on every unrelated customer re-render
+  }, [linkedContactIds.join(',')])
+
+  // Merged, deduped, sorted list the card below actually renders. Dedupe by
+  // thread doc id — if a thread doc id appears in both this customer's own
+  // collection AND a linked contact's (only possible from data written
+  // before Phase 2, e.g. Phase 1's now-removed copy-then-delete), the
+  // customer's own copy wins and the linked one is dropped rather than
+  // shown twice.
+  const mergedWhatsappThreads = useMemo(() => {
+    const seenIds = new Set(whatsappThreads.map(t => t.id))
+    const own = whatsappThreads.map(t => ({ ...t, _source: 'own' }))
+    const linked = linkedContactIds.flatMap(contactId =>
+      (linkedWhatsappThreads[contactId] || [])
+        .filter(t => !seenIds.has(t.id) && (seenIds.add(t.id), true))
+        .map(t => ({ ...t, _source: 'linked', _linkedContactId: contactId }))
+    )
+    const all = [...own, ...linked]
+    all.sort((a, b) => String(b.date_range?.[1] || '').localeCompare(String(a.date_range?.[1] || '')))
+    return all
+  }, [whatsappThreads, linkedWhatsappThreads, linkedContactIds])
+
   const whatsappTarget = { type: 'customer', customerId: id }
 
   // No bulk "transcribe all" — owner's own call, 2026-08-13: a thread can
@@ -1103,13 +1147,13 @@ export default function CustomerDetail() {
           customers/{id}.whatsapp_summary. Deepgram transcription for voice
           notes (owner's own account, 2026-08-12) so a voice-heavy chat isn't
           silently missing content from that summary. */}
-      {whatsappThreads.length > 0 && (
+      {mergedWhatsappThreads.length > 0 && (
         <div className="card mb-4">
           <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
               <Smartphone size={15} className="text-gray-400" /> WhatsApp
               <span className="text-xs font-normal text-gray-400">
-                ({whatsappThreads.length} chat{whatsappThreads.length === 1 ? '' : 's'} imported)
+                ({mergedWhatsappThreads.length} chat{mergedWhatsappThreads.length === 1 ? '' : 's'} imported)
               </span>
             </h2>
             <button onClick={handleRefreshWhatsappSummary} disabled={whatsappSummaryBusy}
@@ -1153,9 +1197,10 @@ export default function CustomerDetail() {
             <p className="px-5 pt-3 text-xs text-red-600">{transcribeError}</p>
           )}
           <div className="divide-y divide-gray-100">
-            {whatsappThreads.map(t => {
+            {mergedWhatsappThreads.map(t => {
               const voiceCount = (t.messages || []).filter(m => m.needs_transcription).length
               const expanded = whatsappExpanded === t.id
+              const isLinked = t._source === 'linked'
               return (
                 <div key={t.id} className="px-5 py-3">
                   <button
@@ -1164,7 +1209,14 @@ export default function CustomerDetail() {
                     className="w-full flex items-center justify-between text-left"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-800">{t.subject || t.id}</p>
+                      <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
+                        {t.subject || t.id}
+                        {isLinked && (
+                          <span className="text-[10px] font-normal uppercase tracking-wide rounded px-1 py-0.5 text-amber-600 bg-amber-50 shrink-0">
+                            via linked lead
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-gray-400 mt-0.5">
                         {t.channel} · {t.message_count} message{t.message_count === 1 ? '' : 's'}
                         {t.date_range?.length === 2 && ` · ${fmtIsoDate(t.date_range[0])} – ${fmtIsoDate(t.date_range[1])}`}
@@ -1179,6 +1231,11 @@ export default function CustomerDetail() {
                   </button>
                   {expanded && (
                     <div className="mt-3 max-h-80 overflow-y-auto space-y-2 border-t border-gray-100 pt-3">
+                      {isLinked && (
+                        <p className="text-[11px] text-gray-400 italic">
+                          Imported under the linked Marketing Contact record, not this customer — transcription isn't available from here. Open it from Marketing Contacts to transcribe.
+                        </p>
+                      )}
                       {(t.messages || []).map((m, i) => {
                         const msgBusy = transcribingKey === `${t.id}:${i}`
                         const langKey = `${t.id}:${i}`
@@ -1195,7 +1252,7 @@ export default function CustomerDetail() {
                             {m.attachment_filename && (
                               <div className="flex items-center gap-2 flex-wrap">
                                 <WhatsAppAttachment filename={m.attachment_filename} url={m.attachment_url} className="text-xs" />
-                                {/\.opus$/i.test(m.attachment_filename || '') && m.attachment_url && (
+                                {!isLinked && /\.opus$/i.test(m.attachment_filename || '') && m.attachment_url && (
                                   <>
                                     <select
                                       value={selectedLang}
