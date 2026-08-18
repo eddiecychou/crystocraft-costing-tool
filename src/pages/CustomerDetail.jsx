@@ -21,6 +21,7 @@ import ErpDocModal from '../components/ErpDocModal'
 import WhatsAppAttachment from '../components/WhatsAppAttachment'
 import { refreshEmailSummary, discussCustomerEmail, renderThreadsText, buildYearIndex, routeEmailQuestion, renderThreadsTextForYears, buildKeywordFacets, composeEmailAnswer } from '../emailSummaryApi'
 import { generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
+import { createInvitation } from '../portalInviteApi'
 
 const STATUS_STYLES = {
   draft: 'bg-gray-100 text-gray-600',
@@ -225,6 +226,10 @@ export default function CustomerDetail() {
   const navigate = useNavigate()
 
   const [customer, setCustomer]         = useState(null)
+  // SU-07A — "Invite to portal" per-contact busy/result state, keyed by
+  // email since a customer can have several contacts.
+  const [inviteBusy, setInviteBusy] = useState(null)
+  const [inviteResult, setInviteResult] = useState({})
   const [quotes, setQuotes]             = useState([])
   const [orders, setOrders]             = useState([])
   const [accounts, setAccounts]         = useState([])
@@ -435,6 +440,24 @@ export default function CustomerDetail() {
       setWhatsappSummaryError(e.message || 'Could not refresh the WhatsApp summary.')
     } finally {
       setWhatsappSummaryBusy(false)
+    }
+  }
+
+  async function handleInviteContact(contact) {
+    setInviteBusy(contact.email)
+    try {
+      const res = await createInvitation(id, contact.email, contact.name || '')
+      setInviteResult(prev => ({
+        ...prev,
+        [contact.email]: {
+          ok: true,
+          message: res.reused ? 'Already invited — see Portal → Invitations.' : 'Invitation sent.',
+        },
+      }))
+    } catch (e) {
+      setInviteResult(prev => ({ ...prev, [contact.email]: { ok: false, message: e.message || 'Could not send the invitation.' } }))
+    } finally {
+      setInviteBusy(null)
     }
   }
 
@@ -768,6 +791,29 @@ export default function CustomerDetail() {
                   {c.wechat && <span className="text-gray-600">WeChat: {c.wechat}</span>}
                 </div>
                 {c.address && <p className="mt-1 text-xs text-gray-500">{c.address}</p>}
+                {/* SU-07A — the natural moment to invite this specific
+                    contact: an admin looking at a real named person's email
+                    on a real customer record, same spot the SU-07A audit
+                    identified. */}
+                {c.email && (
+                  <div className="mt-2">
+                    {inviteResult[c.email] ? (
+                      <span className={`text-[11px] ${inviteResult[c.email].ok ? 'text-green-600' : 'text-red-600'}`}>
+                        {inviteResult[c.email].message}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleInviteContact(c)}
+                        disabled={inviteBusy === c.email}
+                        className="text-[11px] text-brand-600 hover:text-brand-800 disabled:opacity-50 inline-flex items-center gap-1"
+                      >
+                        {inviteBusy === c.email ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />}
+                        {inviteBusy === c.email ? 'Sending invite…' : 'Invite to portal'}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>

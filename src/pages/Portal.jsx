@@ -2,11 +2,13 @@ import { useState } from 'react'
 import CustomerAccounts from './CustomerAccounts'
 import PortalLogins from './PortalLogins'
 import Enquiries from './Enquiries'
+import PortalInvitations from './PortalInvitations'
 
 const TABS = [
-  { v: 'accounts',  label: 'Accounts' },
-  { v: 'logins',    label: 'Login activity' },
-  { v: 'enquiries', label: 'Enquiries' },
+  { v: 'accounts',    label: 'Accounts' },
+  { v: 'invitations', label: 'Invitations' },
+  { v: 'logins',      label: 'Login activity' },
+  { v: 'enquiries',   label: 'Enquiries' },
 ]
 
 export default function Portal() {
@@ -28,9 +30,10 @@ export default function Portal() {
         </div>
       </div>
 
-      {tab === 'accounts'  && <CustomerAccounts embedded />}
-      {tab === 'logins'    && <PortalLogins embedded />}
-      {tab === 'enquiries' && <Enquiries embedded />}
+      {tab === 'accounts'    && <CustomerAccounts embedded />}
+      {tab === 'invitations' && <PortalInvitations embedded />}
+      {tab === 'logins'      && <PortalLogins embedded />}
+      {tab === 'enquiries'   && <Enquiries embedded />}
     </div>
   )
 }

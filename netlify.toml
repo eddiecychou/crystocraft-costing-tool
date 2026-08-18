@@ -5,6 +5,17 @@
 [build.environment]
   NODE_VERSION = "20"
 
+# Regular Node Lambda functions — distinct from netlify/edge-functions/
+# (Deno). Only used where the Deno edge runtime genuinely can't do the job:
+# SU-07A's portal invitation flow needs firebase-admin (Node-only) to create
+# an Auth user without a password and generate real Firebase password-reset
+# action-code links — there is no Deno-compatible equivalent, and hand-
+# rolling the Identity Toolkit REST contract for a security-critical action-
+# code flow was judged too risky to get exactly right without live testing.
+# Every other server-side piece of this app stays a Deno edge function.
+[functions]
+  directory = "netlify/functions"
+
 [context.production]
   SECRETS_SCAN_OMIT_KEYS = "VITE_FIREBASE_API_KEY,VITE_FIREBASE_MESSAGING_SENDER_ID,VITE_FIREBASE_APP_ID"
 

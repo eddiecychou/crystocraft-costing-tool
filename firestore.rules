@@ -182,6 +182,20 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // SU-07A portal invitations — admin-only from the browser's perspective
+    // (the admin UI lists/manages them here). The claim/approve/resend/
+    // revoke logic itself never goes through this rule at all: it's server-
+    // side in netlify/functions/portal-invite.js via the Firebase ADMIN SDK,
+    // which bypasses security rules entirely (a trusted server context, same
+    // posture as the service-account writes in resend-webhook.js/subscribe.js
+    // elsewhere in this app) — this rule exists only to block a browser
+    // (customer or otherwise) from ever reading/writing this collection
+    // directly. An unauthenticated invitee's claim page never touches
+    // Firestore directly; it only calls the admin-SDK function.
+    match /portal_invitations/{invitationId} {
+      allow read, write: if isAdmin();
+    }
+
     match /customers/{customerId} {
       allow read, write: if isAdmin();
       match /enquiries/{enquiryId} {

@@ -8,6 +8,8 @@ import Layout from './components/Layout'
 import LoadingBar from './components/LoadingBar'
 import ErrorBoundary from './components/ErrorBoundary'
 import Login from './pages/Login'
+import InvitationClaim from './pages/InvitationClaim'
+import SetPassword from './pages/SetPassword'
 import Storefront from './customer/Storefront'
 import PendingScreen from './customer/PendingScreen'
 import Products from './pages/Products'
@@ -133,6 +135,11 @@ function AppRoutes({ user }) {
 
   return (
     <Routes>
+      {/* SU-07A — public, unauthenticated pages, reachable regardless of
+          sign-in state. Deliberately OUTSIDE the role-gated "/*" catch-all
+          below, same reasoning as /login itself. */}
+      <Route path="/invite/:id" element={<InvitationClaim />} />
+      <Route path="/portal/set-password" element={<SetPassword />} />
       <Route path="/login" element={
         !user ? <Login />
         : role === 'admin' ? <Navigate to="/dashboard" replace />
