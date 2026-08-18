@@ -37,13 +37,30 @@ const norm = data => ({
   created_by: data.created_by || '',
 })
 
+// asset_ids/product_refs items carry a per-item `caption` — the admin's own
+// note on why this particular image/product is in the section (owner,
+// post-launch: "so I can describe why the product fits the category"). Kept
+// on the reference itself, not the asset/product doc, same "reference, not
+// copy" reasoning as everything else here (spec §3.3) — the caption is about
+// THIS proposal's use of the item, not a property of the item itself.
+//
+// Both entry shapes are normalized to { id, caption } / { collection, id,
+// caption } — accepts the older plain-string / no-caption shape from before
+// this field existed, so nothing already saved needs a migration.
+const normAssetRef = a => (typeof a === 'string' ? { id: a, caption: '' } : { id: a?.id || '', caption: a?.caption || '' })
+const normProductRef = r => ({
+  collection: r?.collection === 'range_products' ? 'range_products' : 'products',
+  id: r?.id || '',
+  caption: r?.caption || '',
+})
+
 const normSection = s => ({
   heading: s?.heading || '',
   tagline: s?.tagline || '',
   briefing: s?.briefing || '',
-  asset_ids: Array.isArray(s?.asset_ids) ? s.asset_ids : [],
+  asset_ids: Array.isArray(s?.asset_ids) ? s.asset_ids.map(normAssetRef).filter(a => a.id) : [],
   product_refs: Array.isArray(s?.product_refs)
-    ? s.product_refs.filter(r => r && (r.collection === 'products' || r.collection === 'range_products') && r.id)
+    ? s.product_refs.map(normProductRef).filter(r => r.id && (r.collection === 'products' || r.collection === 'range_products'))
     : [],
 })
 
@@ -95,14 +112,17 @@ export function resolveProposalAsset(assetsById, assetId) {
   if (!assetId) return null
   return assetsById.get(assetId) || null
 }
-export function resolveProposalAssetIds(assetsById, assetIds) {
+// assetRefs: [{ id, caption }] — resolves each id and attaches its own
+// caption to the resolved asset object, dropping any that no longer resolve.
+export function resolveProposalAssetIds(assetsById, assetRefs) {
   const seen = new Set()
   const out = []
-  for (const id of (assetIds || [])) {
-    if (seen.has(id)) continue
+  for (const ref of (assetRefs || [])) {
+    const id = typeof ref === 'string' ? ref : ref?.id
+    if (!id || seen.has(id)) continue
     seen.add(id)
     const a = assetsById.get(id)
-    if (a) out.push(a)
+    if (a) out.push({ ...a, caption: (typeof ref === 'object' && ref?.caption) || '' })
   }
   return out
 }
@@ -111,7 +131,8 @@ export function resolveProposalAssetIds(assetsById, assetIds) {
 // visibility filter (CorporateShop.jsx / FigurineShop.jsx) and the sensitive-
 // viewer image screen (sensitiveImages.js) — a proposal must degrade exactly
 // like the shop does, never show a retired product or a hero branded for a
-// different customer. Dedupes by (collection, id).
+// different customer. Dedupes by (collection, id); each ref's own caption
+// travels onto the resolved product.
 export async function resolveProductRefs(refs, profile) {
   const seen = new Set()
   const unique = (refs || []).filter(r => {
@@ -128,7 +149,7 @@ export async function resolveProductRefs(refs, profile) {
       if (p.active === false || p.status === 'retired') return null
       const image = normGallery(p.gallery)[0]?.url || ''
       return {
-        collection: 'range_products', id: r.id,
+        collection: 'range_products', id: r.id, caption: r.caption || '',
         name: p.design_name || p.description || p.design_code || r.id,
         image, to: `/shop/figurine/${r.id}`,
       }
@@ -144,7 +165,7 @@ export async function resolveProductRefs(refs, profile) {
       const heroOk = image && imgs.some(im => im.file_url === image)
       image = heroOk ? image : (imgs[0]?.file_url || '')
     } catch { image = '' }
-    return { collection: 'products', id: r.id, name: p.name || r.id, image, to: `/shop/corporate/${r.id}` }
+    return { collection: 'products', id: r.id, caption: r.caption || '', name: p.name || r.id, image, to: `/shop/corporate/${r.id}` }
   }))
   return resolved.filter(Boolean)
 }

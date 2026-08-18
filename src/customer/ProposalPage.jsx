@@ -113,7 +113,12 @@ export default function ProposalPage({ profile }) {
                         <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
                           <img src={a.file_url} alt={a.title || ''} className="w-full h-full object-contain" />
                         </div>
-                        {a.title && <div className="p-2.5"><p className="text-xs text-ink truncate">{a.title}</p></div>}
+                        {(a.title || a.caption) && (
+                          <div className="p-2.5">
+                            {a.title && <p className="text-xs text-ink line-clamp-1">{a.title}</p>}
+                            {a.caption && <p className="text-[11px] text-ink-60 leading-snug line-clamp-3 mt-0.5">{a.caption}</p>}
+                          </div>
+                        )}
                       </>
                     )
                     return to ? (
@@ -128,7 +133,8 @@ export default function ProposalPage({ profile }) {
                         {prod.image && <img src={prod.image} alt={prod.name} className="w-full h-full object-contain" />}
                       </div>
                       <div className="p-2.5">
-                        <p className="text-xs text-ink truncate">{prod.name}</p>
+                        <p className="text-xs text-ink line-clamp-1">{prod.name}</p>
+                        {prod.caption && <p className="text-[11px] text-ink-60 leading-snug line-clamp-3 mt-0.5">{prod.caption}</p>}
                       </div>
                     </Link>
                   ))}

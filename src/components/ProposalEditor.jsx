@@ -80,13 +80,22 @@ function SortableSection({ section, index, assets, products, onChange, onRemove 
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
 
   const set = (k, v) => onChange({ ...section, [k]: v })
-  const toggleAsset = id => set('asset_ids', section.asset_ids.includes(id) ? section.asset_ids.filter(a => a !== id) : [...section.asset_ids, id])
-  const toggleProduct = p => set('product_refs',
-    section.product_refs.some(r => r.collection === p.collection && r.id === p.id)
-      ? section.product_refs.filter(r => !(r.collection === p.collection && r.id === p.id))
-      : [...section.product_refs, { collection: p.collection, id: p.id }])
+  const isAssetSelected = id => section.asset_ids.some(a => a.id === id)
+  const toggleAsset = id => set('asset_ids',
+    isAssetSelected(id) ? section.asset_ids.filter(a => a.id !== id) : [...section.asset_ids, { id, caption: '' }])
+  const setAssetCaption = (id, caption) => set('asset_ids', section.asset_ids.map(a => a.id === id ? { ...a, caption } : a))
 
+  const isProductSelected = p => section.product_refs.some(r => r.collection === p.collection && r.id === p.id)
+  const toggleProduct = p => set('product_refs',
+    isProductSelected(p)
+      ? section.product_refs.filter(r => !(r.collection === p.collection && r.id === p.id))
+      : [...section.product_refs, { collection: p.collection, id: p.id, caption: '' }])
+  const setProductCaption = (p, caption) => set('product_refs',
+    section.product_refs.map(r => (r.collection === p.collection && r.id === p.id) ? { ...r, caption } : r))
+
+  const assetById = id => assets.find(a => a.id === id) || null
   const productName = ref => products.find(p => p.collection === ref.collection && p.id === ref.id)?.name || ref.id
+  const productImage = ref => products.find(p => p.collection === ref.collection && p.id === ref.id)?.image || ''
 
   return (
     <div ref={setNodeRef} style={style} className="border border-gray-100 rounded-lg p-4 bg-white">
@@ -106,15 +115,28 @@ function SortableSection({ section, index, assets, products, onChange, onRemove 
 
       <div className="mb-3">
         <p className="label text-xs mb-1.5">Images ({section.asset_ids.length})</p>
-        <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5">
+        <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 mb-2">
           {assets.map(a => (
             <button key={a.id} type="button" onClick={() => toggleAsset(a.id)}
-                    className={`aspect-square rounded overflow-hidden border-2 transition-colors ${section.asset_ids.includes(a.id) ? 'border-brand-500' : 'border-transparent hover:border-gray-200'}`}>
+                    className={`aspect-square rounded overflow-hidden border-2 transition-colors ${isAssetSelected(a.id) ? 'border-brand-500' : 'border-transparent hover:border-gray-200'}`}>
               <AssetThumb asset={a} className="w-full h-full" />
             </button>
           ))}
           {assets.length === 0 && <p className="text-xs text-gray-400 col-span-full py-2">No assets on file for this customer yet.</p>}
         </div>
+        {section.asset_ids.length > 0 && (
+          <div className="space-y-1.5">
+            {section.asset_ids.map(ref => (
+              <div key={ref.id} className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded overflow-hidden shrink-0 border border-gray-100">
+                  <AssetThumb asset={assetById(ref.id)} className="w-full h-full" />
+                </div>
+                <input className="input text-xs flex-1" placeholder="Why this image fits (shown to the customer)"
+                       value={ref.caption} onChange={e => setAssetCaption(ref.id, e.target.value)} />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div>
@@ -125,12 +147,17 @@ function SortableSection({ section, index, assets, products, onChange, onRemove 
           </button>
         </div>
         {section.product_refs.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="space-y-1.5">
             {section.product_refs.map(r => (
-              <span key={`${r.collection}-${r.id}`} className="inline-flex items-center gap-1 text-xs bg-gray-100 text-gray-700 rounded-full pl-2 pr-1 py-0.5">
-                {productName(r)}
-                <button type="button" onClick={() => toggleProduct(r)} className="text-gray-400 hover:text-red-500"><X size={11} /></button>
-              </span>
+              <div key={`${r.collection}-${r.id}`} className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded bg-gray-100 shrink-0 overflow-hidden">
+                  {productImage(r) && <img src={productImage(r)} alt="" className="w-full h-full object-cover" />}
+                </div>
+                <p className="text-xs text-gray-700 w-28 shrink-0 truncate" title={productName(r)}>{productName(r)}</p>
+                <input className="input text-xs flex-1" placeholder="Why this product fits / a short intro (shown to the customer)"
+                       value={r.caption} onChange={e => setProductCaption(r, e.target.value)} />
+                <button type="button" onClick={() => toggleProduct(r)} className="text-gray-400 hover:text-red-500 shrink-0"><X size={13} /></button>
+              </div>
             ))}
           </div>
         )}
