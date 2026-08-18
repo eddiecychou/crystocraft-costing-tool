@@ -23,7 +23,6 @@ const emptyProposal = {
   tagline: '',
   briefing: '',
   sections: [],
-  cta_label: 'Make an enquiry',
 }
 
 const norm = data => ({
@@ -32,7 +31,6 @@ const norm = data => ({
   tagline: data.tagline || '',
   briefing: data.briefing || '',
   sections: Array.isArray(data.sections) ? data.sections.map(normSection) : [],
-  cta_label: data.cta_label || 'Make an enquiry',
   updated_at: data.updated_at || null,
   updated_by: data.updated_by || '',
   created_at: data.created_at || null,
@@ -68,7 +66,6 @@ export async function saveProposal(customerId, patch) {
   if ('tagline' in patch)       clean.tagline = String(patch.tagline || '')
   if ('briefing' in patch)      clean.briefing = String(patch.briefing || '')
   if ('sections' in patch)      clean.sections = Array.isArray(patch.sections) ? patch.sections.map(normSection) : []
-  if ('cta_label' in patch)     clean.cta_label = String(patch.cta_label || '') || 'Make an enquiry'
 
   await setDoc(ref, {
     ...(!existing.exists() ? { ...emptyProposal, created_at: serverTimestamp(), created_by: by } : {}),

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { useCart } from './store'
 import { loadCustomerVisibleAssets, loadBrandedProductImages } from '../customerAssets'
 import { loadProposal, resolveProposalAsset, resolveProposalAssetIds, resolveProductRefs } from '../customerProposal'
 import { isStorefrontVisible } from '../constants'
@@ -11,8 +10,13 @@ import { isStorefrontVisible } from '../constants'
 // a file_url/product name off the proposal doc itself (spec §3.3) — an id
 // that no longer resolves (asset downgraded, product retired) is dropped
 // silently rather than shown broken (spec §8).
+//
+// No standalone enquiry CTA (owner, post-launch feedback): a product card
+// here behaves exactly like the catalogue's own — it links to the product's
+// detail page, where "add to enquiry" already lives (CorporateDetail.jsx /
+// FigurineDetail.jsx). Adding a second, parallel enquiry entry point on this
+// page would just be a second way to do the same thing.
 export default function ProposalPage({ profile }) {
-  const cart = useCart()
   const customerId = profile?.customer_id || null
   const [state, setState] = useState({ loading: true, proposal: null, heroAsset: null, sections: [] })
 
@@ -39,7 +43,11 @@ export default function ProposalPage({ profile }) {
         const assetsById = new Map(visibleAssets.map(a => [a.id, a]))
         // Branded catalogue photos aren't in the assets store (they live on the
         // product doc — see customerAssets.js), but a section may still want to
-        // reference one by its synthetic id so it resolves the same way.
+        // reference one by its synthetic id so it resolves the same way. These
+        // carry product_id/product_name straight through (the `...img` spread),
+        // which is what lets an image card below link to its product — a plain
+        // uploaded Brand Gallery photo has no product behind it and stays
+        // unlinked.
         for (const img of brandedImages) assetsById.set(`branded:${img.id}`, { ...img, file_url: img.file_url, filename: img.caption || 'photo.jpg' })
 
         const heroAsset = resolveProposalAsset(assetsById, proposal.hero_asset_id)
@@ -57,15 +65,6 @@ export default function ProposalPage({ profile }) {
     })()
     return () => { alive = false }
   }, [customerId])
-
-  const enquire = () => {
-    cart?.add({
-      type: 'enquiry_note',
-      id: 'proposal',
-      name: `${profile?.company_name || 'Proposal'} discussion`,
-      note: 'Sun Life proposal discussion',
-    })
-  }
 
   const { loading, proposal, heroAsset, sections } = state
 
@@ -105,18 +104,24 @@ export default function ProposalPage({ profile }) {
               {s.tagline && <p className="text-sm font-medium text-brand-600 mb-2">{s.tagline}</p>}
               {s.briefing && <p className="text-sm text-ink-60 max-w-2xl mb-5 leading-relaxed">{s.briefing}</p>}
 
-              {s.images.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
-                  {s.images.map(a => (
-                    <div key={a.id} className="aspect-[4/3] bg-ivory-dark rounded-lg overflow-hidden">
-                      <img src={a.file_url} alt={a.title || ''} className="w-full h-full object-cover" />
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {s.products.length > 0 && (
+              {(s.images.length > 0 || s.products.length > 0) && (
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {s.images.map(a => {
+                    const to = a.product_id ? `/shop/corporate/${a.product_id}` : null
+                    const inner = (
+                      <>
+                        <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
+                          <img src={a.file_url} alt={a.title || ''} className="w-full h-full object-contain" />
+                        </div>
+                        {a.title && <div className="p-2.5"><p className="text-xs text-ink truncate">{a.title}</p></div>}
+                      </>
+                    )
+                    return to ? (
+                      <Link key={a.id} to={to} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">{inner}</Link>
+                    ) : (
+                      <div key={a.id} className="card overflow-hidden flex flex-col">{inner}</div>
+                    )
+                  })}
                   {s.products.map(prod => (
                     <Link key={`${prod.collection}-${prod.id}`} to={prod.to} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">
                       <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
@@ -133,13 +138,6 @@ export default function ProposalPage({ profile }) {
           ))}
         </div>
       )}
-
-      {/* CTA */}
-      <div className="border-t border-ivory-dark pt-8 pb-4 text-center">
-        <Link to="/shop/enquiry" onClick={enquire} className="btn-primary">
-          {proposal.cta_label || 'Make an enquiry'}
-        </Link>
-      </div>
     </div>
   )
 }

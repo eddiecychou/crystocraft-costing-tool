@@ -177,7 +177,7 @@ export default function ProposalEditor({ customerId }) {
     let alive = true
     loadProposal(customerId).then(p => {
       if (!alive) return
-      const base = p || { status: 'draft', hero_asset_id: null, tagline: '', briefing: '', sections: [], cta_label: 'Make an enquiry' }
+      const base = p || { status: 'draft', hero_asset_id: null, tagline: '', briefing: '', sections: [] }
       setProposal({ ...base, sections: base.sections.map(withKey) })
     })
     return () => { alive = false }
@@ -244,7 +244,6 @@ export default function ProposalEditor({ customerId }) {
         hero_asset_id: proposal.hero_asset_id,
         tagline: proposal.tagline,
         briefing: proposal.briefing,
-        cta_label: proposal.cta_label,
         sections: proposal.sections.map(({ _key, ...s }) => s),
       })
       setSavedAt(new Date())
@@ -305,7 +304,6 @@ export default function ProposalEditor({ customerId }) {
           </p>
           <input className="input text-sm" placeholder="Tagline" value={proposal.tagline} onChange={e => set('tagline', e.target.value)} />
           <textarea className="input text-sm min-h-[70px]" placeholder="Briefing — brand direction" value={proposal.briefing} onChange={e => set('briefing', e.target.value)} />
-          <input className="input text-sm" placeholder="Enquiry button label" value={proposal.cta_label} onChange={e => set('cta_label', e.target.value)} />
         </div>
       </div>
 
