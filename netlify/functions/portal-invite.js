@@ -404,6 +404,14 @@ async function claimInvitation(body) {
       customer_id: inv.customer_id, invitation_id: id,
       createdAt: Timestamp.now(),
     })
+  } else if (userSnap.data().role === 'admin') {
+    // Defensive — an admin's own account must never be touched by a
+    // customer-invitation claim, even though this never modifies role/
+    // status either way today. Refusing outright (rather than silently
+    // no-op'ing) avoids leaving a confusing invitation_id/claimed state
+    // attached to an admin account if this ever gets invoked against one
+    // by mistake (e.g. an admin listed as a contact on a customer record).
+    return json({ error: 'used' }, 410)
   } else if (!userSnap.data().invitation_id) {
     await userRef.update({ invitation_id: id })
   }
