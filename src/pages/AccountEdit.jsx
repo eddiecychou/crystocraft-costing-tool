@@ -129,13 +129,18 @@ export default function AccountEdit() {
   // a REAL generatePasswordResetLink email instead of the old one.
   async function handleApprove() {
     if (u.invitation_id) {
-      if (!customerId) {
+      // Fall back to the persisted customer_id too — covers picking a
+      // customer, clicking "Save changes" first, then Approve (customerId
+      // local state and u.customer_id should usually agree by then, but
+      // this avoids a false rejection if they don't for any reason).
+      const linkCustomerId = customerId || u.customer_id
+      if (!linkCustomerId) {
         setStatus('Error: link this account to a customer (above) before approving — an invitation-based account needs one to be approved.')
         return
       }
       setStatus('saving')
       try {
-        await approveInvitation(u.invitation_id, customerId)
+        await approveInvitation(u.invitation_id, linkCustomerId)
         navigate('/portal')
       } catch (e) {
         setStatus('Error: ' + (e?.message || 'could not approve'))
