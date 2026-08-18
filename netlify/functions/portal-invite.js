@@ -572,9 +572,24 @@ async function setupLinkForApprovedInvitation(ref, inv, adminUid) {
   const companyName = String(customerSnap.data()?.company_name || '')
   let setupUrl
   try {
-    setupUrl = await getAuth().generatePasswordResetLink(inv.contact_email, {
+    // generatePasswordResetLink() always returns a link through Firebase's
+    // OWN hosted action handler (<project>.firebaseapp.com/__/auth/action)
+    // — handleCodeInApp does NOT make it skip straight to our continueUrl
+    // with the code attached the way the docs imply (confirmed live,
+    // 2026-08-19: the owner watched it happen — Firebase's generic blue-
+    // button "Reset your password" page ran first, then its OWN "Continue"
+    // link went to our continueUrl with NO oobCode at all, since Firebase's
+    // page had already consumed it). Never send that raw link — extract
+    // just the oobCode and build our OWN clean, always-branded url instead.
+    // verifyPasswordResetCode/confirmPasswordReset (src/pages/
+    // SetPassword.jsx) only need the auth instance + this raw code; they
+    // don't need apiKey/mode from Firebase's URL shape.
+    const rawLink = await getAuth().generatePasswordResetLink(inv.contact_email, {
       url: `${PORTAL_URL}/portal/set-password`, handleCodeInApp: true,
     })
+    const oobCode = new URL(rawLink).searchParams.get('oobCode')
+    if (!oobCode) throw new Error('No oobCode in the generated link')
+    setupUrl = `${PORTAL_URL}/portal/set-password?oobCode=${encodeURIComponent(oobCode)}`
   } catch (e) {
     return json({ ok: false, error: `Could not generate a setup link: ${String(e?.message || e).slice(0, 200)}` }, 502)
   }
