@@ -81,12 +81,12 @@ export default function Login() {
   if (signedUp) {
     return (
       <Shell>
-        <h2 className="text-lg font-semibold text-ink mb-2">Request received</h2>
+        <h2 className="text-lg font-semibold text-ink mb-2">Your new account request is under review</h2>
         <p className="text-sm text-ink-70 mb-6">
-          Your request has been received. Crystocraft will review it and email you a secure password setup
-          link if approved.
+          Please check your email — we'll notify you there once it's approved, along with a secure link to
+          set your password and sign in. There's nothing else to do here in the meantime.
         </p>
-        <button onClick={() => switchMode('signin')} className="btn-primary w-full justify-center">
+        <button onClick={() => switchMode('signin')} className="text-xs text-gray-500 hover:text-brand-600 w-full text-center">
           Back to sign in
         </button>
       </Shell>
