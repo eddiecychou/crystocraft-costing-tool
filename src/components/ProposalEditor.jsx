@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
-import { useCustomerAssets, cannotRenderAsImage } from '../customerAssets'
+import { useCustomerAssets, loadBrandedProductImages, cannotRenderAsImage } from '../customerAssets'
 import { loadProposal, saveProposal, publishProposal, unpublishProposal } from '../customerProposal'
 import { normGallery } from '../constants'
 import {
@@ -147,7 +147,23 @@ let keySeq = 0
 const withKey = s => ({ ...s, _key: s._key || `s${++keySeq}` })
 
 export default function ProposalEditor({ customerId }) {
-  const { assets } = useCustomerAssets(customerId)   // admin sees all, incl. internal — fine, hero/section pick doesn't imply publish
+  const { assets: ownAssets } = useCustomerAssets(customerId)   // admin sees all, incl. internal — fine, hero/section pick doesn't imply publish
+  const [brandedAssets, setBrandedAssets] = useState([])
+  // Catalogue photos tagged "branded for" this customer (see customerAssets.js)
+  // are a SEPARATE source from the uploaded assets above, but pickable the
+  // same way — given a synthetic `branded:{imageId}` id so ProposalPage's
+  // resolver (customerProposal.js) can tell the two apart at render time.
+  useEffect(() => {
+    let alive = true
+    loadBrandedProductImages(customerId).then(imgs => {
+      if (alive) setBrandedAssets(imgs.map(img => ({
+        id: `branded:${img.id}`, file_url: img.file_url, filename: img.caption || img.product_name || 'photo.jpg',
+        title: img.caption || img.product_name || 'Product photo',
+      })))
+    })
+    return () => { alive = false }
+  }, [customerId])
+  const assets = useMemo(() => [...ownAssets, ...brandedAssets], [ownAssets, brandedAssets])
   const [products, setProducts] = useState([])
   const [proposal, setProposal] = useState(null)   // null = loading
   const [saving, setSaving] = useState(false)
