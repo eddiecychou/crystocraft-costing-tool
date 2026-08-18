@@ -56,10 +56,15 @@ const norm = data => ({
 // this field existed, so nothing already saved needs a migration.
 const clampCaption = c => String(c || '').slice(0, CAPTION_MAX_LEN)
 const normAssetRef = a => (typeof a === 'string' ? { id: a, caption: '' } : { id: a?.id || '', caption: clampCaption(a?.caption) })
+// image_id: optional — which specific photo to show for this product
+// (products.{id}.images/{imageId}), for when a product has more than one
+// Sun-Life-branded photo and the default pick isn't the one the admin wants.
+// null/absent = auto-pick (see resolveProductRefs below).
 const normProductRef = r => ({
   collection: r?.collection === 'range_products' ? 'range_products' : 'products',
   id: r?.id || '',
   caption: clampCaption(r?.caption),
+  image_id: r?.image_id || null,
 })
 
 const normSection = s => ({
@@ -135,12 +140,30 @@ export function resolveProposalAssetIds(assetsById, assetRefs) {
   return out
 }
 
+// A corporate product's storefront-safe image list, screened the same way
+// CorporateShop.jsx's resolveSafeImages is (sensitive-viewer screen +
+// isStorefrontVisible) — shared by resolveProductRefs below and by
+// ProposalEditor's per-product image picker, so "what the customer will
+// actually see" and "what the admin is choosing from" are the exact same set.
+export async function loadProductImageChoices(productId, profile) {
+  const imgSnap = await getDocs(query(collection(db, 'products', productId, 'images'), orderBy('sort_order')))
+  return screenSensitiveImages(imgSnap.docs.map(d => ({ id: d.id, ...d.data() })), profile)
+    .filter(im => im.file_url && isStorefrontVisible(im))
+}
+
 // Resolve product_refs against the live catalogue, mirroring each shop's own
 // visibility filter (CorporateShop.jsx / FigurineShop.jsx) and the sensitive-
 // viewer image screen (sensitiveImages.js) — a proposal must degrade exactly
 // like the shop does, never show a retired product or a hero branded for a
 // different customer. Dedupes by (collection, id); each ref's own caption
 // travels onto the resolved product.
+//
+// Image pick order for a 'products' ref (owner feedback, post-launch: the
+// generic heroImage was showing instead of this customer's own branded
+// photo): 1) ref.image_id if the admin picked one explicitly, 2) the first
+// image tagged branded_for_customer_id for THIS customer — the whole point
+// of a customer proposal is showing their own branded shot, not a generic
+// one — 3) heroImage if it survived screening, 4) the first visible photo.
 export async function resolveProductRefs(refs, profile) {
   const seen = new Set()
   const unique = (refs || []).filter(r => {
@@ -149,6 +172,7 @@ export async function resolveProductRefs(refs, profile) {
     seen.add(k)
     return true
   })
+  const customerId = profile?.customer_id || ''
   const resolved = await Promise.all(unique.map(async r => {
     if (r.collection === 'range_products') {
       const snap = await getDoc(doc(db, 'range_products', r.id))
@@ -166,12 +190,13 @@ export async function resolveProductRefs(refs, profile) {
     if (!snap.exists()) return null
     const p = snap.data()
     if (p.active === false || productStatusOf(p.status).value === 'retired') return null
-    let image = p.heroImage || ''
+    let image = ''
     try {
-      const imgSnap = await getDocs(query(collection(db, 'products', r.id, 'images'), orderBy('sort_order')))
-      const imgs = screenSensitiveImages(imgSnap.docs.map(d => d.data()), profile).filter(im => im.file_url && isStorefrontVisible(im))
-      const heroOk = image && imgs.some(im => im.file_url === image)
-      image = heroOk ? image : (imgs[0]?.file_url || '')
+      const imgs = await loadProductImageChoices(r.id, profile)
+      const picked = r.image_id && imgs.find(im => im.id === r.image_id)
+      const branded = customerId && imgs.find(im => im.branded_for_customer_id === customerId)
+      const heroOk = p.heroImage && imgs.some(im => im.file_url === p.heroImage)
+      image = picked?.file_url || branded?.file_url || (heroOk ? p.heroImage : (imgs[0]?.file_url || ''))
     } catch { image = '' }
     return { collection: 'products', id: r.id, caption: r.caption || '', name: p.name || r.id, image, to: `/shop/corporate/${r.id}` }
   }))

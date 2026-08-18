@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useCustomerAssets, loadBrandedProductImages, uploadCustomerAsset, updateCustomerAsset, cannotRenderAsImage, ASSET_UPLOAD_ACCEPT } from '../customerAssets'
-import { loadProposal, saveProposal, publishProposal, unpublishProposal, CAPTION_MAX_LEN } from '../customerProposal'
+import { loadProposal, saveProposal, publishProposal, unpublishProposal, loadProductImageChoices, CAPTION_MAX_LEN } from '../customerProposal'
 import { normGallery } from '../constants'
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -74,7 +74,40 @@ function ProductPickerModal({ products, selected, onToggle, onClose }) {
   )
 }
 
-function SortableSection({ section, index, assets, products, onChange, onRemove }) {
+// Which specific photo to show for a corporate product (owner feedback,
+// post-launch: the default was showing a generic shot instead of this
+// customer's own branded photo, and some products have more than one
+// branded photo to choose from). Only renders once there's an actual choice
+// to make — a product with 0 or 1 storefront-safe photo has nothing to pick.
+// Uses the SAME loader (loadProductImageChoices) resolveProductRefs uses at
+// render time, so what the admin sees here is exactly what's selectable.
+function ProductPhotoPicker({ productId, customerId, imageId, onPick }) {
+  const [choices, setChoices] = useState(null)   // null = loading
+  useEffect(() => {
+    let alive = true
+    loadProductImageChoices(productId, { customer_id: customerId }).then(imgs => { if (alive) setChoices(imgs) })
+    return () => { alive = false }
+  }, [productId, customerId])
+
+  if (!choices || choices.length < 2) return null
+  const brandedId = choices.find(im => im.branded_for_customer_id === customerId)?.id || null
+  const activeId = imageId || brandedId
+
+  return (
+    <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+      <span className="text-[10px] text-gray-400 mr-0.5">Photo:</span>
+      {choices.map(im => (
+        <button key={im.id} type="button" onClick={() => onPick(im.id)}
+                title={im.branded_for_customer_id === customerId ? 'This customer’s branded photo' : ''}
+                className={`w-7 h-7 rounded overflow-hidden border-2 shrink-0 ${activeId === im.id ? 'border-brand-500' : 'border-transparent hover:border-gray-200'}`}>
+          <img src={im.file_url} alt="" className="w-full h-full object-cover" />
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function SortableSection({ section, index, assets, products, customerId, onChange, onRemove }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section._key })
   const [pickingProducts, setPickingProducts] = useState(false)
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }
@@ -92,6 +125,8 @@ function SortableSection({ section, index, assets, products, onChange, onRemove 
       : [...section.product_refs, { collection: p.collection, id: p.id, caption: '' }])
   const setProductCaption = (p, caption) => set('product_refs',
     section.product_refs.map(r => (r.collection === p.collection && r.id === p.id) ? { ...r, caption } : r))
+  const setProductImage = (p, image_id) => set('product_refs',
+    section.product_refs.map(r => (r.collection === p.collection && r.id === p.id) ? { ...r, image_id } : r))
 
   const assetById = id => assets.find(a => a.id === id) || null
   const productName = ref => products.find(p => p.collection === ref.collection && p.id === ref.id)?.name || ref.id
@@ -163,6 +198,10 @@ function SortableSection({ section, index, assets, products, onChange, onRemove 
                             placeholder="Why this product fits / a short intro (shown to the customer)"
                             value={r.caption} onChange={e => setProductCaption(r, e.target.value)} />
                   <p className="text-[10px] text-gray-300 text-right mt-0.5">{r.caption.length}/{CAPTION_MAX_LEN}</p>
+                  {r.collection === 'products' && (
+                    <ProductPhotoPicker productId={r.id} customerId={customerId} imageId={r.image_id}
+                                        onPick={id => setProductImage(r, id)} />
+                  )}
                 </div>
                 <button type="button" onClick={() => toggleProduct(r)} className="text-gray-400 hover:text-red-500 shrink-0 mt-1.5"><X size={13} /></button>
               </div>
@@ -356,7 +395,7 @@ export default function ProposalEditor({ customerId }) {
           <SortableContext items={proposal.sections.map(s => s._key)} strategy={verticalListSortingStrategy}>
             <div className="space-y-3">
               {proposal.sections.map((s, i) => (
-                <SortableSection key={s._key} section={s} index={i} assets={assets} products={products}
+                <SortableSection key={s._key} section={s} index={i} assets={assets} products={products} customerId={customerId}
                                   onChange={next => updateSection(s._key, next)} onRemove={() => removeSection(s._key)} />
               ))}
             </div>
