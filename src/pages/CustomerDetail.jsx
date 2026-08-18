@@ -10,6 +10,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
 import CustomerBrandGallery from '../components/CustomerBrandGallery'
+import ProposalEditor from '../components/ProposalEditor'
 import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt, ChevronDown, ChevronUp, Database, Mail, MessageCircle, Loader2, RefreshCw, Smartphone, Mic } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
@@ -1049,6 +1050,9 @@ export default function CustomerDetail() {
 
       {/* Brand Gallery — customer logos / brand assets (admin-curated) */}
       <CustomerBrandGallery customerId={id} />
+
+      {/* Proposal — customer-facing hero/sections presentation (Sun-Life-Proposal-Build-Spec.md §6) */}
+      <ProposalEditor customerId={id} />
 
       {/* Portal Enquiries (from the storefront) */}
       <div className="card mb-4">

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
-import { Heart, ClipboardList, Receipt, Images, ArrowRight } from 'lucide-react'
+import { Heart, ClipboardList, Receipt, Images, Presentation, ArrowRight } from 'lucide-react'
 import { useFrontPageFeatured } from '../frontPageFeatured'
 import heroImage from '../assets/customer/hero-corporate.jpg'
 import pillarFigurine from '../assets/customer/pillar-figurine.jpg'
@@ -10,7 +10,7 @@ import pillarCorporate from '../assets/customer/pillar-corporate.jpg'
 import pillarCrystal from '../assets/customer/pillar-crystal.jpg'
 import { heroContent, pillarsSection, pillars, quickAccessSection, quickActions } from './homepageContent'
 
-const ICONS = { Heart, ClipboardList, Receipt, Images }
+const ICONS = { Heart, ClipboardList, Receipt, Images, Presentation }
 const PILLAR_IMAGE = { figurine: pillarFigurine, corporate: pillarCorporate, crystal: pillarCrystal }
 
 // Resolves each featured item's current name + detail-page link live, so a

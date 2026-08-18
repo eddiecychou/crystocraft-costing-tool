@@ -230,6 +230,21 @@ service cloud.firestore {
               && resource.data.visibility != 'internal_only');
         allow write: if isAdmin();
       }
+
+      // Proposal — customer-specific hero/tagline/sections presentation built
+      // on top of the assets above (Sun-Life-Proposal-Build-Spec.md §4).
+      // Single doc per customer (docId fixed to 'current'). Customer read is
+      // scoped to their own linked customer AND published only — a draft is
+      // admin-preview-only, same posture as assets' internal_only. Admin is
+      // the sole writer.
+      match /proposal/{docId} {
+        allow read: if isAdmin()
+          || (isApprovedCustomer()
+              && profile().get('customer_id', '') != ''
+              && profile().get('customer_id', '') == customerId
+              && resource.data.status == 'published');
+        allow write: if isAdmin();
+      }
     }
 
     // Marketing contacts — the cleaned Mailchimp list + WordPress signups.

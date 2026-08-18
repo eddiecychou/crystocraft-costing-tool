@@ -57,4 +57,5 @@ export const quickActions = [
   { key: 'enquiry', label: 'My Enquiry', to: '/shop/enquiry', iconKey: 'ClipboardList' },
   { key: 'orders', label: 'My Orders', to: '/shop/orders', iconKey: 'Receipt', requiresCustomer: true },
   { key: 'brand_gallery', label: 'My Brand Gallery', to: '/shop/brand-gallery', iconKey: 'Images', requiresCustomer: true },
+  { key: 'proposal', label: 'My Proposal', to: '/shop/proposal', iconKey: 'Presentation', requiresCustomer: true },
 ]
