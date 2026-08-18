@@ -1,7 +1,7 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
-import { useCustomerAssets, loadBrandedProductImages, cannotRenderAsImage } from '../customerAssets'
+import { useCustomerAssets, loadBrandedProductImages, uploadCustomerAsset, updateCustomerAsset, cannotRenderAsImage, ASSET_UPLOAD_ACCEPT } from '../customerAssets'
 import { loadProposal, saveProposal, publishProposal, unpublishProposal } from '../customerProposal'
 import { normGallery } from '../constants'
 import {
@@ -11,7 +11,7 @@ import {
   SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Trash2, Plus, X, Presentation, Search, ImageOff } from 'lucide-react'
+import { GripVertical, Trash2, Plus, X, Presentation, Search, ImageOff, Upload } from 'lucide-react'
 
 // Admin editor for the customer proposal doc (Sun-Life-Proposal-Build-Spec.md
 // §6). Writes go through src/customerProposal.js only — this component never
@@ -168,6 +168,8 @@ export default function ProposalEditor({ customerId }) {
   const [proposal, setProposal] = useState(null)   // null = loading
   const [saving, setSaving] = useState(false)
   const [savedAt, setSavedAt] = useState(null)
+  const [uploadingHero, setUploadingHero] = useState(false)
+  const heroFileRef = useRef(null)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
@@ -198,6 +200,29 @@ export default function ProposalEditor({ customerId }) {
   const heroAsset = useMemo(() => assets.find(a => a.id === proposal?.hero_asset_id) || null, [assets, proposal])
 
   function set(k, v) { setProposal(p => ({ ...p, [k]: v })) }
+
+  // Direct hero upload — separate from the Brand Gallery's own upload flow
+  // because that one deliberately defaults every upload to internal_only
+  // (an admin must open it up on purpose, spec posture). A hero uploaded
+  // HERE only exists to go into the customer-facing proposal, so it's
+  // opened to customer_private right after upload as the one deliberate
+  // step, rather than leaving the admin to remember it in Brand Gallery.
+  async function uploadHero(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingHero(true)
+    try {
+      const assetId = await uploadCustomerAsset(customerId, file, { category: 'product_gallery', type: 'photo', title: 'Proposal hero' })
+      await updateCustomerAsset(customerId, assetId, { visibility: 'customer_private' })
+      set('hero_asset_id', assetId)
+    } catch (err) {
+      alert(`Upload failed: ${err.message || err}`)
+    } finally {
+      setUploadingHero(false)
+      e.target.value = ''
+    }
+  }
+
   function addSection() { setProposal(p => ({ ...p, sections: [...p.sections, withKey({ heading: '', tagline: '', briefing: '', asset_ids: [], product_refs: [] })] })) }
   function updateSection(key, next) { setProposal(p => ({ ...p, sections: p.sections.map(s => s._key === key ? next : s) })) }
   function removeSection(key) { setProposal(p => ({ ...p, sections: p.sections.filter(s => s._key !== key) })) }
@@ -267,6 +292,17 @@ export default function ProposalEditor({ customerId }) {
             <option value="">No hero image</option>
             {assets.map(a => <option key={a.id} value={a.id}>{a.title || a.filename}</option>)}
           </select>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => heroFileRef.current?.click()} disabled={uploadingHero}
+                    className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1">
+              <Upload size={12} /> {uploadingHero ? 'Uploading…' : 'Upload new hero image'}
+            </button>
+            <input ref={heroFileRef} type="file" accept={ASSET_UPLOAD_ACCEPT} className="hidden" onChange={uploadHero} />
+          </div>
+          <p className="text-[11px] text-gray-400 -mt-1">
+            Recommended: a wide landscape photo, at least 2000×840px (roughly 2.4:1) — it fills the full-width banner and
+            crops from the sides on ultra-wide screens, so keep the main subject centred. JPG or PNG.
+          </p>
           <input className="input text-sm" placeholder="Tagline" value={proposal.tagline} onChange={e => set('tagline', e.target.value)} />
           <textarea className="input text-sm min-h-[70px]" placeholder="Briefing — brand direction" value={proposal.briefing} onChange={e => set('briefing', e.target.value)} />
           <input className="input text-sm" placeholder="Enquiry button label" value={proposal.cta_label} onChange={e => set('cta_label', e.target.value)} />

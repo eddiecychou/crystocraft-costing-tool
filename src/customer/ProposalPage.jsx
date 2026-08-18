@@ -21,30 +21,39 @@ export default function ProposalPage({ profile }) {
     if (!customerId) { setState({ loading: false, proposal: null, heroAsset: null, sections: [] }); return }
     setState(s => ({ ...s, loading: true }))
     ;(async () => {
-      const proposal = await loadProposal(customerId)
-      if (!proposal || proposal.status !== 'published') {
-        if (alive) setState({ loading: false, proposal: null, heroAsset: null, sections: [] })
-        return
-      }
-      const [visibleAssets, brandedImages] = await Promise.all([
-        loadCustomerVisibleAssets(customerId),
-        loadBrandedProductImages(customerId).then(imgs => imgs.filter(isStorefrontVisible)),
-      ])
-      const assetsById = new Map(visibleAssets.map(a => [a.id, a]))
-      // Branded catalogue photos aren't in the assets store (they live on the
-      // product doc — see customerAssets.js), but a section may still want to
-      // reference one by its synthetic id so it resolves the same way.
-      for (const img of brandedImages) assetsById.set(`branded:${img.id}`, { ...img, file_url: img.file_url, filename: img.caption || 'photo.jpg' })
+      try {
+        // A draft proposal, or one that doesn't exist yet, is denied by the
+        // Firestore rule (not a "not found" — a permission-denied error) —
+        // that's the expected, common case here (admin saved but hasn't
+        // published yet), so it's caught below and treated the same as "no
+        // proposal", not surfaced as a crash.
+        const proposal = await loadProposal(customerId)
+        if (!proposal || proposal.status !== 'published') {
+          if (alive) setState({ loading: false, proposal: null, heroAsset: null, sections: [] })
+          return
+        }
+        const [visibleAssets, brandedImages] = await Promise.all([
+          loadCustomerVisibleAssets(customerId),
+          loadBrandedProductImages(customerId).then(imgs => imgs.filter(isStorefrontVisible)),
+        ])
+        const assetsById = new Map(visibleAssets.map(a => [a.id, a]))
+        // Branded catalogue photos aren't in the assets store (they live on the
+        // product doc — see customerAssets.js), but a section may still want to
+        // reference one by its synthetic id so it resolves the same way.
+        for (const img of brandedImages) assetsById.set(`branded:${img.id}`, { ...img, file_url: img.file_url, filename: img.caption || 'photo.jpg' })
 
-      const heroAsset = resolveProposalAsset(assetsById, proposal.hero_asset_id)
-      const sections = await Promise.all(proposal.sections.map(async s => ({
-        heading: s.heading,
-        tagline: s.tagline,
-        briefing: s.briefing,
-        images: resolveProposalAssetIds(assetsById, s.asset_ids),
-        products: await resolveProductRefs(s.product_refs, profile),
-      })))
-      if (alive) setState({ loading: false, proposal, heroAsset, sections })
+        const heroAsset = resolveProposalAsset(assetsById, proposal.hero_asset_id)
+        const sections = await Promise.all(proposal.sections.map(async s => ({
+          heading: s.heading,
+          tagline: s.tagline,
+          briefing: s.briefing,
+          images: resolveProposalAssetIds(assetsById, s.asset_ids),
+          products: await resolveProductRefs(s.product_refs, profile),
+        })))
+        if (alive) setState({ loading: false, proposal, heroAsset, sections })
+      } catch {
+        if (alive) setState({ loading: false, proposal: null, heroAsset: null, sections: [] })
+      }
     })()
     return () => { alive = false }
   }, [customerId])
