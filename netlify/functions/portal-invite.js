@@ -113,7 +113,15 @@ function auditEntry(action, by) {
 
 async function sendResendEmail({ to, subject, html, text, tags }) {
   const API_KEY = process.env.RESEND_API_KEY
-  const FROM = process.env.MAIL_PERSONAL_FROM || process.env.MAIL_FROM
+  // MAIL_FROM (noreply@crystocraft.com), NOT MAIL_PERSONAL_FROM — this is a
+  // system/transactional email (invitation, setup link), same sender as
+  // every other automated portal email (send-email.js's account_approved/
+  // signup/enquiry). MAIL_PERSONAL_FROM is eddie@crystocraft.com, reserved
+  // for Daily Drafts' personal-note sends specifically (see send-personal-
+  // email.js) — using it here read as a real, individually-sent email from
+  // Eddie rather than an automated system notice, which is what confused
+  // the first live test (found live 2026-08-19).
+  const FROM = process.env.MAIL_FROM || 'Crystocraft <onboarding@resend.dev>'
   const REPLY_TO = process.env.MAIL_REPLY_TO || process.env.MAIL_ADMIN || ''
   if (!API_KEY || !FROM) return { ok: false, error: 'Email is not configured on the server.' }
   try {
@@ -139,34 +147,55 @@ async function sendResendEmail({ to, subject, html, text, tags }) {
   }
 }
 
+// Same branded shell/helpers as netlify/edge-functions/send-email.js
+// (account_approved/signup/enquiry templates) — duplicated rather than
+// imported since that file is a Deno edge function and this one is a Node
+// function with a different bundler; kept byte-identical on purpose so
+// every portal email reads as one consistent, trustworthy system,
+// whichever runtime sent it. Update both together if the branding changes.
+const BRAND = '#6E2433'
+const GOLD  = '#C6A664'
+
 function escHtml(s) {
   return String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
 }
 
+const emailShell = (heading, bodyHtml) => `
+<div style="margin:0;padding:24px;background:#F7EEE3;font-family:Helvetica,Arial,sans-serif;color:#222;">
+  <div style="max-width:520px;margin:0 auto;background:#fff;border:1px solid #E9E8E6;">
+    <div style="background:#1C1C1A;padding:18px 24px;">
+      <span style="color:#fff;font-size:18px;letter-spacing:3px;font-weight:bold;">CRYSTOCRAFT</span>
+      <span style="color:${GOLD};font-size:11px;letter-spacing:2px;display:block;margin-top:2px;">PRODUCT PORTAL</span>
+    </div>
+    <div style="padding:28px 24px;">
+      <h1 style="font-size:19px;color:#222;margin:0 0 16px;font-weight:normal;">${heading}</h1>
+      ${bodyHtml}
+    </div>
+    <div style="padding:16px 24px;border-top:1px solid #E9E8E6;color:#888;font-size:11px;">
+      Crystocraft — craftsmanship that catches the light, since 1958.
+    </div>
+  </div>
+</div>`
+
+const emailP = t => `<p style="font-size:14px;line-height:1.6;color:#444;margin:0 0 14px;">${t}</p>`
+const emailBtn = (href, label) =>
+  `<a href="${escHtml(href)}" style="display:inline-block;background:${BRAND};color:#fff;text-decoration:none;padding:11px 22px;font-size:13px;letter-spacing:1px;">${escHtml(label)}</a>`
+
 function invitationEmailHtml({ companyName, portalUrl }) {
-  return `<div style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#222;max-width:480px;">
-    <p>Hello,</p>
-    <p>Crystocraft is inviting you to set up an online account for <strong>${escHtml(companyName)}</strong> on our
-    customer portal — for browsing your catalogue, pricing, and order history in one place.</p>
-    <p>You do not need to create a password yet. Click below to confirm your details; our team will review and
-    approve the account, then send you a secure link to set your own password.</p>
-    <p style="margin:24px 0;"><a href="${escHtml(portalUrl)}"
-       style="background:#111;color:#fff;padding:10px 20px;text-decoration:none;border-radius:4px;">
-       View your invitation</a></p>
-    <p style="color:#888;font-size:12px;">If you weren't expecting this, or aren't sure why you received it,
-    please reply to this email and let us know — no account will be created unless you confirm it yourself.</p>
-  </div>`
+  return emailShell('You\'re invited to the Crystocraft portal', [
+    emailP(`Crystocraft is inviting you to set up an online account for <strong>${escHtml(companyName)}</strong> on our customer portal — for browsing your catalogue, pricing, and order history in one place.`),
+    emailP('You do not need to create a password yet. Click below to confirm your details; our team will review and approve the account, then send you a secure link to set your own password.'),
+    `<p style="margin:20px 0;">${emailBtn(portalUrl, 'View your invitation')}</p>`,
+    emailP('<span style="color:#888;font-size:12px;">If you weren\'t expecting this, or aren\'t sure why you received it, please reply to this email and let us know — no account will be created unless you confirm it yourself.</span>'),
+  ].join(''))
 }
 
 function setupEmailHtml({ companyName, setupUrl }) {
-  return `<div style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#222;max-width:480px;">
-    <p>Hello,</p>
-    <p>Your Crystocraft customer portal account for <strong>${escHtml(companyName)}</strong> has been approved.</p>
-    <p>Click below to set your password and sign in. This link is single-use and expires soon, for your security.</p>
-    <p style="margin:24px 0;"><a href="${escHtml(setupUrl)}"
-       style="background:#111;color:#fff;padding:10px 20px;text-decoration:none;border-radius:4px;">
-       Set your password</a></p>
-  </div>`
+  return emailShell('Your account is approved', [
+    emailP(`Your Crystocraft customer portal account for <strong>${escHtml(companyName)}</strong> has been approved.`),
+    emailP('Click below to set your password and sign in. This link is single-use and expires soon, for your security.'),
+    `<p style="margin:20px 0;">${emailBtn(setupUrl, 'Set your password')}</p>`,
+  ].join(''))
 }
 
 // ── actions ─────────────────────────────────────────────────────────────
