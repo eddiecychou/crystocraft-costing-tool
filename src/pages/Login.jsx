@@ -1,12 +1,9 @@
 import { useState } from 'react'
-import {
-  signInWithEmailAndPassword, sendPasswordResetEmail,
-  createUserWithEmailAndPassword, signOut,
-} from 'firebase/auth'
-import { doc, setDoc, updateDoc, serverTimestamp, increment } from 'firebase/firestore'
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
+import { doc, updateDoc, serverTimestamp, increment } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 import { CUSTOMER_CURRENCIES } from '../currency'
-import { notifyEmail } from '../notify'
+import { applyForAccount } from '../portalInviteApi'
 import logo from '../assets/logo.png'
 
 export default function Login() {
@@ -39,32 +36,29 @@ export default function Login() {
     }
   }
 
+  // SU-07A — "Create account" no longer collects a password up front (that
+  // felt "too early," per the owner). This now submits a self-application
+  // through the SAME portal_invitations lifecycle an admin-created
+  // invitation uses (netlify/functions/portal-invite.js's
+  // applyForAccount) — no Auth password exists until admin approval sends
+  // a secure setup link, exactly like the invitation flow. Deliberately
+  // does NOT sign the browser in (there's no password yet to sign in
+  // with) — the "Account created" screen below is purely informational.
   async function handleSignUp(e) {
     e.preventDefault()
     setError('')
-    if (password.length < 6) { setError('Password must be at least 6 characters.'); return }
     setLoading(true)
     try {
-      const cred = await createUserWithEmailAndPassword(auth, email, password)
-      await setDoc(doc(db, 'users', cred.user.uid), {
-        role: 'customer',
-        status: 'pending',
-        email,
-        company_name: company,
-        contact_name: contact,
-        base_currency: currency,
-        ws_discount_pct: 0,
-        createdAt: serverTimestamp(),
-      })
-      notifyEmail('signup', { company_name: company, contact_name: contact, email })
-      // Keep them signed in as a pending customer so they land on the
-      // "Awaiting approval" screen (PendingScreen) instead of flashing back to
-      // the login form. A pending account has no pricing access until approved.
+      await applyForAccount(company, contact, email, currency)
       setSignedUp(true)
     } catch (err) {
-      setError(err?.code === 'auth/email-already-in-use'
-        ? 'An account with this email already exists.'
-        : 'Could not create account. Check your details and try again.')
+      const code = err?.message
+      setError(
+        code === 'already_pending' ? 'You already have a request pending approval for this email.'
+        : code === 'already_registered' ? 'An account with this email already exists — try Sign in, or use "Forgot password?" if you need a new password.'
+        : code === 'invalid_email' ? 'Enter a valid email address.'
+        : 'Could not submit your request. Check your details and try again.'
+      )
     } finally {
       setLoading(false)
     }
@@ -87,10 +81,10 @@ export default function Login() {
   if (signedUp) {
     return (
       <Shell>
-        <h2 className="text-lg font-semibold text-ink mb-2">Account created</h2>
+        <h2 className="text-lg font-semibold text-ink mb-2">Request received</h2>
         <p className="text-sm text-ink-70 mb-6">
-          Thanks for registering. Your account is awaiting approval — we will review it and email you once
-          your pricing access is enabled.
+          Your request has been received. Crystocraft will review it and email you a secure password setup
+          link if approved.
         </p>
         <button onClick={() => switchMode('signin')} className="btn-primary w-full justify-center">
           Back to sign in
@@ -129,7 +123,6 @@ export default function Login() {
           <Field label="Company name" value={company} onChange={setCompany} autoComplete="organization" required />
           <Field label="Your name" value={contact} onChange={setContact} autoComplete="name" required />
           <Field label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" required />
-          <Field label="Password" type="password" value={password} onChange={setPassword} autoComplete="new-password" required />
           <div>
             <label className="label">Preferred currency</label>
             <select className="input" value={currency} onChange={e => setCurrency(e.target.value)}>
@@ -138,10 +131,10 @@ export default function Login() {
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button type="submit" className="btn-primary w-full justify-center" disabled={loading}>
-            {loading ? 'Creating…' : 'Create account'}
+            {loading ? 'Submitting…' : 'Request account'}
           </button>
           <p className="text-xs text-ink-50 text-center">
-            New accounts are reviewed before pricing access is enabled.
+            No password needed yet — we'll review your request and email you a secure link to set one once it's approved.
           </p>
         </form>
       )}

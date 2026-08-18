@@ -207,6 +207,11 @@ async function createInvitation(body, adminUid) {
   await ref.set({
     customer_id: customerId, contact_email: contactEmail, contact_name: contactName,
     marketing_contact_id: marketingContactId,
+    // 'admin' = an admin invited a known customer contact (this function);
+    // 'self' = the applicant submitted "Request account" themselves
+    // (applyForAccount below) — PortalInvitations.jsx shows a badge so the
+    // two are never confused, but both share every other field/lifecycle.
+    source: 'admin',
     status: 'pending',
     token_hash: hash,
     created_by: adminUid, created_at: now, expires_at: expiresAt,
@@ -233,6 +238,114 @@ async function createInvitation(body, adminUid) {
     return json({ ok: false, id: ref.id, error: `Invitation created, but the email failed to send: ${send.error}` }, 502)
   }
   return json({ ok: true, id: ref.id })
+}
+
+// PUBLIC — the "Create account" tab's replacement for immediate
+// createUserWithEmailAndPassword. Reuses the SAME portal_invitations
+// lifecycle and Auth-user-with-no-password guarantee as an admin-created
+// invitation, rather than a second, parallel approval system — the only
+// real difference is there's no separate "invited, awaiting claim" step:
+// the applicant IS the one submitting live in their own browser, so this
+// creates the record already at status:'claimed' (skipping 'pending'/the
+// token-claim round trip entirely — there's no email to prove ownership of
+// UNTIL the password-setup link, exactly matching the old direct-signup
+// flow's own security model, which also never verified email ownership
+// before creating an account).
+//
+// customer_id starts null — a self-submitted applicant has typed a
+// free-text company name, not picked a real customers/{id} record. An
+// admin must link one (approveInvitation's optional customerId param)
+// before approving; see PortalInvitations.jsx.
+async function applyForAccount(body) {
+  const email = normEmail(body?.email)
+  const companyName = String(body?.companyName || '').trim().slice(0, 200)
+  const contactName = String(body?.contactName || '').trim().slice(0, 200)
+  const currency = String(body?.currency || 'USD').trim().slice(0, 10)
+  if (!EMAIL_RE.test(email)) return json({ error: 'invalid_email' }, 400)
+  if (!companyName) return json({ error: 'Company name is required.' }, 400)
+
+  const db = getFirestore()
+
+  // Non-enumerating-ish gate: an email that ALREADY has a real Auth account
+  // (predates this feature, was invited, or already self-applied) never
+  // gets a second account created — same generic response shape whether
+  // approved or suspended, so a stranger probing emails learns only "some
+  // account state already exists here," never which one specifically.
+  // 'pending' gets its OWN distinct message, per spec — the applicant
+  // typed their own email, so telling them "you already applied" is useful,
+  // not a meaningful enumeration leak.
+  let existingAuthUser = null
+  try { existingAuthUser = await getAuth().getUserByEmail(email) } catch { /* no existing Auth account — fine */ }
+  if (existingAuthUser) {
+    const existingUserSnap = await db.collection('users').doc(existingAuthUser.uid).get()
+    const existingStatus = existingUserSnap.exists ? existingUserSnap.data().status : null
+    if (existingStatus === 'pending') return json({ error: 'already_pending' }, 409)
+    return json({ error: 'already_registered' }, 409)
+  }
+
+  // An admin may have already invited this exact email (status 'pending',
+  // token not yet claimed) — funnel this submission into THAT existing
+  // invitation rather than creating a second, parallel one. Ownership of
+  // the email still only gets verified later, at the password-setup-link
+  // step, same as every other path here.
+  const existingInv = await db.collection('portal_invitations')
+    .where('contact_email', '==', email)
+    .where('status', 'in', ['pending', 'claimed', 'approved'])
+    .limit(1)
+    .get()
+  if (!existingInv.empty) {
+    const d = existingInv.docs[0]
+    const inv = d.data()
+    if (inv.status !== 'pending') return json({ error: 'already_pending' }, 409)
+    // Claim the existing admin-created invitation on the applicant's
+    // behalf — no raw token to check here (nothing was emailed to click),
+    // which is fine: this is exactly as strong as the rest of this
+    // function's security model, not weaker than it.
+    const userRecord = await getAuth().createUser({ email, emailVerified: false, disabled: false })
+    await d.ref.update({
+      status: 'claimed', claimed_at: Timestamp.now(), claimed_uid: userRecord.uid,
+      audit_log: FieldValue.arrayUnion(auditEntry('claimed_via_self_apply', email)),
+    })
+    await db.collection('users').doc(userRecord.uid).set({
+      role: 'customer', status: 'pending', email,
+      company_name: companyName, contact_name: contactName || inv.contact_name || '',
+      base_currency: currency, ws_discount_pct: 0,
+      customer_id: inv.customer_id || null, invitation_id: d.id,
+      createdAt: Timestamp.now(),
+    })
+    return json({ ok: true, status: 'pending' })
+  }
+
+  // Genuinely new applicant — create the invitation record AND the
+  // no-password Auth account in one step (see header comment for why
+  // there's no separate claim round trip here).
+  const userRecord = await getAuth().createUser({ email, emailVerified: false, disabled: false })
+  const ref = db.collection('portal_invitations').doc()
+  await ref.set({
+    customer_id: null, contact_email: email, contact_name: contactName,
+    // The applicant's own free-text company name — shown to the admin so
+    // they know what to search for while linking a real customers/{id}
+    // record (see PortalInvitations.jsx). Not present on an admin-created
+    // invitation, where customer_id is already known from the start.
+    applicant_company_name: companyName,
+    marketing_contact_id: null,
+    source: 'self',
+    status: 'claimed',
+    token_hash: null, // nothing to verify later — this record was never emailed as a claim link
+    created_by: 'self', created_at: Timestamp.now(), expires_at: null,
+    claimed_at: Timestamp.now(), claimed_uid: userRecord.uid,
+    approved_at: null, rejected_at: null, revoked_at: null,
+    email_send_status: null, email_send_error: null, resend_count: 0, last_resent_at: null,
+    audit_log: [auditEntry('self_applied', email)],
+  })
+  await db.collection('users').doc(userRecord.uid).set({
+    role: 'customer', status: 'pending', email,
+    company_name: companyName, contact_name: contactName,
+    base_currency: currency, ws_discount_pct: 0,
+    customer_id: null, invitation_id: ref.id,
+    createdAt: Timestamp.now(),
+  })
+  return json({ ok: true, status: 'pending' })
 }
 
 async function resendInvitation(body, adminUid) {
@@ -453,6 +566,7 @@ async function setupLinkForApprovedInvitation(ref, inv, adminUid) {
 
 async function approveInvitation(body, adminUid) {
   const id = String(body?.invitationId || '').trim()
+  const suppliedCustomerId = body?.customerId ? String(body.customerId).trim() : null
   if (!id) return json({ error: 'invitationId is required' }, 400)
   const db = getFirestore()
   const ref = db.collection('portal_invitations').doc(id)
@@ -464,9 +578,27 @@ async function approveInvitation(body, adminUid) {
   }
   if (!inv.claimed_uid) return json({ error: 'This invitation has no linked account to approve.' }, 400)
 
-  await db.collection('users').doc(inv.claimed_uid).update({ status: 'approved' })
+  // A self-submitted application (source:'self') starts with no
+  // customer_id — the applicant typed a free-text company name, not a real
+  // customers/{id}. An admin must link (or correct) it before approval can
+  // proceed; this also doubles as the original SU-07A spec's "correct the
+  // customer/contact link before approval" for admin-created invitations.
+  const customerId = suppliedCustomerId || inv.customer_id
+  if (!customerId) {
+    return json({ error: 'Link this request to a customer record before approving.' }, 400)
+  }
+  const customerSnap = await db.collection('customers').doc(customerId).get()
+  if (!customerSnap.exists) return json({ error: 'That customer record no longer exists.' }, 404)
+
+  const userUpdate = { status: 'approved', customer_id: customerId }
+  if (suppliedCustomerId) {
+    // Keep the user's displayed company_name in sync with the now-linked
+    // canonical record, rather than whatever free text the applicant typed.
+    userUpdate.company_name = String(customerSnap.data()?.company_name || '')
+  }
+  await db.collection('users').doc(inv.claimed_uid).update(userUpdate)
   await ref.update({
-    status: 'approved', approved_at: Timestamp.now(),
+    status: 'approved', approved_at: Timestamp.now(), customer_id: customerId,
     audit_log: FieldValue.arrayUnion(auditEntry('approved', adminUid)),
   })
 
@@ -487,6 +619,7 @@ export default async function handler(req) {
   // other action requires an admin session.
   if (action === 'claim_invitation') return claimInvitation(body)
   if (action === 'get_invitation') return getInvitationPreview(body)
+  if (action === 'apply_for_account') return applyForAccount(body)
 
   const { uid, error } = await requireAdmin(req)
   if (error) return error

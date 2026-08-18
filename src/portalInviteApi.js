@@ -30,7 +30,12 @@ export const createInvitation = (customerId, contactEmail, contactName, marketin
 export const resendInvitation = invitationId => callAdmin('resend_invitation', { invitationId })
 export const revokeInvitation = invitationId => callAdmin('revoke_invitation', { invitationId })
 export const rejectInvitation = invitationId => callAdmin('reject_invitation', { invitationId })
-export const approveInvitation = invitationId => callAdmin('approve_invitation', { invitationId })
+// customerId is optional — required only when approving a self-submitted
+// application (source:'self') that has no customer link yet, or to correct
+// an admin-invitation's link before approving. See portal-invite.js's
+// approveInvitation.
+export const approveInvitation = (invitationId, customerId) =>
+  callAdmin('approve_invitation', { invitationId, customerId })
 
 // Public — no Firebase session; the raw claim token from the invitation
 // link IS the credential here.
@@ -39,3 +44,8 @@ export const claimInvitation = (invitationId, token, email, contactName) =>
 
 export const getInvitationPreview = (invitationId, token) =>
   call('get_invitation', { invitationId, token })
+
+// Public — the "Create account" tab's replacement for immediate
+// createUserWithEmailAndPassword. See portal-invite.js's applyForAccount.
+export const applyForAccount = (companyName, contactName, email, currency) =>
+  call('apply_for_account', { companyName, contactName, email, currency })
