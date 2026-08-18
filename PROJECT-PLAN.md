@@ -79,6 +79,232 @@ right fix is a manual admin action or a one-off script with a human
 double-checking the target uid first — not another automatic client-side
 self-heal.
 
+## Current Status — V8.3 CLOSED as of 2026-08-19
+
+One long continuous session — the biggest of the cycle so far. Two major
+builds (a full customer-portal invitation/approval/password-setup system,
+and a marketing-lead interaction-history audit + two-phase fix), a Credit
+Note feature closed out, a full bug-fix pack across security/financial/
+marketing/catalogue, a live production outage fixed same-day, and the
+second occurrence of the self-heal incident (§ above) — which this cycle
+finally closed for good by removing the mechanism entirely.
+
+### The numbers
+
+| | |
+|---|---:|
+| New pages | `CreditNotes.jsx`, `CreditNoteForm.jsx`, `CreditNotePrint.jsx`, `PortalInvitations.jsx`, `InvitationClaim.jsx`, `SetPassword.jsx` |
+| New Netlify function types | first-ever Node Lambda function (`netlify/functions/portal-invite.js`) alongside the existing Deno edge functions — needed for the Firebase Admin SDK |
+| New Firestore collections | `credit_notes`, `portal_invitations` |
+| New Postgres tables | `app_credit_note` (+ `cn_seq`, `allocate_credit_note`, `void_credit_note`) |
+| New npm dependency | `firebase-admin` (server-side only; `jose` pinned to `5.9.6` via `overrides` — v6 broke it, see §2) |
+| Real production incidents found & fixed | 6 — see §1–§6 below |
+
+### 1. SU-07A — customer portal invitation, approval, password-setup
+
+Replaced immediate-password self-registration with: invitation link (or
+self-submitted "Request account", no password field) → admin approval →
+secure Firebase password-setup email → customer sets their own password →
+signs in. Full design writeup and architecture rationale in the commit
+history (`netlify/functions/portal-invite.js`'s own header is the best
+single reference).
+
+Key decisions, for a fresh session to not re-litigate:
+- **One Node Lambda function, not a Deno edge function** — the only
+  exception to this app's "everything is `netlify/edge-functions/`"
+  pattern. Firebase Admin SDK (create an Auth user with no password,
+  generate real password-reset action-code links) needs Node APIs the
+  Deno edge runtime can't provide. Everything else about this feature
+  (Firestore writes, Resend emails) stays consistent with the rest of the
+  app's conventions.
+- **`portal_invitations/{id}`** is the one lifecycle for BOTH an
+  admin-created invitation and a self-submitted "Request account" —
+  distinguished only by `source: 'admin' | 'self'`. A self-submitted
+  request starts life already at `status:'claimed'` (no separate
+  claim-email round trip — the applicant is submitting live) with
+  `customer_id: null`; an admin must link a real `customers/{id}` before
+  approving (the same requirement doubles as "correct the customer link
+  before approval" for admin-created invitations too).
+- **Raw invitation-claim tokens are never stored** — only a SHA-256 hash
+  (`token_hash`). Password setup itself uses Firebase's own
+  `generatePasswordResetLink`/`verifyPasswordResetCode`/
+  `confirmPasswordReset` end to end, not a homegrown token.
+- **`AccountEdit.jsx`'s existing "Approve" button had to be made
+  invitation-aware** — it's the page admins actually use day to day
+  (richer than the new `PortalInvitations.jsx` tab: handles pricing,
+  customer linking, discount %). Approving an invitation-created account
+  through the OLD path (just flip status + send the old generic
+  "account_approved" email) left the customer with an account that
+  structurally cannot sign in — found live, `eddiecychou@icloud.com` hit
+  it directly. `handleApprove()` now checks `u.invitation_id` and routes
+  through the new secure flow when present; old-style accounts are
+  unaffected.
+- **Live incident: `generatePasswordResetLink`'s `handleCodeInApp` does
+  NOT make the link skip Firebase's own hosted action-handler page**,
+  contrary to what the docs imply — confirmed by the owner watching it
+  happen (URL bar showed `crystocraft-costing.firebaseapp.com/__/auth/
+  action` throughout; Firebase's own generic blue-button UI ran the
+  actual password reset, then its own "Continue" link went to our
+  `continueUrl` with the `oobCode` already consumed, producing "This link
+  is missing information" on our page). Fixed by never sending the raw
+  Firebase link — extract just the `oobCode` and build our own URL
+  directly against `portal.crystocraft.com/portal/set-password`.
+  `verifyPasswordResetCode`/`confirmPasswordReset` only need the auth
+  instance + that raw code, nothing else from Firebase's URL shape. This
+  is the pattern to reuse for ANY future Firebase Admin SDK action-code
+  link — never trust `handleCodeInApp` to skip the hosted handler.
+- **Email sender/branding**: the new templates originally used
+  `MAIL_PERSONAL_FROM` (`eddie@crystocraft.com`, Daily Drafts' personal-
+  note sender) and plain unstyled HTML — both wrong for a system email.
+  Fixed to `MAIL_FROM` (`noreply@crystocraft.com`) and the exact same
+  branded shell (`send-email.js`'s `shell()`/`p()`/`btn()` helpers,
+  duplicated byte-identical into the Node function since it can't share
+  Deno-runtime code).
+- Confirmed working end to end live, including the branding/redirect
+  fixes, via a real click-through by the owner (not just this assistant's
+  own synthetic-data tests).
+
+### 2. Live outage: `firebase-admin` + Netlify's Node bundler
+
+`firebase-admin@14`'s dependency tree pulls in `jwks-rsa`, which does a
+CommonJS `require('jose')` — but the resolved `jose@6.2.9` ships ESM-only
+(dropped its CJS build entirely), so EVERY invocation of
+`/api/portal-invite` 502'd with `ERR_REQUIRE_ESM` from the moment it first
+deployed. Invisible to this session's own pre-deploy smoke tests, which
+ran the function's ESM entry point directly via `import()` — never through
+Netlify's actual Lambda bundler, the one thing that turned the transitive
+`require()` chain into a hard crash. Fixed by pinning `jose` to `5.9.6`
+(still ships a `require` export condition; this app's own edge functions
+already use that exact version successfully elsewhere) via npm
+`overrides`. **Lesson for next time a Node function gets added: a
+synthetic in-process test is not proof it will survive Netlify's actual
+bundler — curl the live deployed endpoint before declaring victory.**
+
+### 3. SU-08 — marketing-lead interaction-history audit + two-phase fix
+
+A structured, read-only audit first (no code changes) found interaction
+history split across four incompatible shapes with no shared schema, and
+confirmed the user's own suspicion was right: viewing WhatsApp threads
+under Marketing Leads, or adding a lead to Customers, does NOT mean
+history survives conversion.
+
+**Phase 1** (5 fixes, approved individually): idempotent bounce/complaint
+Interaction Log writes (deterministic doc id + Firestore precondition —
+the previous version duplicated an entry on every webhook retry); a new
+`personId` field on `outreach_drafts` that follows a person through
+lead→customer conversion instead of staying pinned to the old id; a
+`complained` badge (was written by `resend-webhook.js` since day one but
+never rendered anywhere); campaign sends now tag `customer_id` too, not
+just `mc_id`, so a bounce against an already-linked customer reaches the
+customer-side handling.
+
+**Phase 2** (plan approved separately, live-data-checked before touching
+anything — confirmed the Phase 1 move-based approach had never actually
+run against a real record, so nothing needed reconciling): replaced
+copy-then-delete of a lead's `whatsapp_threads` with an explicit
+reference instead — `customers/{id}.linked_marketing_contact_ids` (array,
+`arrayUnion`), never touching the original `marketing_contacts/{id}/
+whatsapp_threads` at all (avoids fragmenting any future re-import for the
+same lead, which has no awareness of the link). `CustomerDetail.jsx`'s
+WhatsApp card merges in each linked contact's threads, deduped by thread
+id, labeled "via linked lead," read-only. `app_notes` migration is now a
+deterministic-id, transaction-guarded, retry-safe one-time copy; the live
+field stays reachable via the new reference too, not just a frozen
+snapshot. Tested via a synthetic throwaway lead/customer pair, run twice
+to prove idempotency, torn down after.
+
+### 4. Second self-heal incident — see the Incident section above
+
+Documented in full in its own permanent section right after "Working
+across two Macs" (kept separate from this cycle summary since it's a
+must-read-first warning, not just cycle history). Short version: the
+mitigation added after the FIRST occurrence (2026-08-12, closed in V8.2)
+was not sufficient; the self-heal effect was removed entirely rather than
+patched again.
+
+### 5. Credit Note feature — Phase C closed
+
+Finished the invoice/credit-note work: Postgres `cn_seq` (a single
+never-resetting sequence, seeded to start at exactly 600/26 per Cindy's
+instruction — unlike SI/SO/PU which reset yearly) + `app_credit_note` +
+`allocate_credit_note`/`void_credit_note`; the `/api/credit-note` edge
+function; `CreditNotes.jsx`/`CreditNoteForm.jsx`/`CreditNotePrint.jsx`
+(over-credit warnings are warn-only per Cindy — "do not block, just
+warn"); `firestore.rules`/nav/routes wired in; the old, never-used-in-
+production Phase B `SalesReturn*` files deleted outright (confirmed safe
+with the owner first).
+
+### 6. Bug-fix pack (Groups A–D) + a live deploy break
+
+A full pass across security/data-isolation, financial/inventory
+integrity, marketing workflow, and catalogue/UX — `erp_code_shared` on
+customer creation, the open `/api/download-image` proxy, over-broad
+`settings/` reads, unauthenticated credential-holding edge functions
+(A-group); quote status vocabulary + PDF totals, SO number allocation
+duplicate-orders, retryable stock imports, draft-orders-showing-as-
+confirmed in the portal, freight currency normalization (B-group); Daily
+Draft bulk-vs-individual rewrite, WhatsApp summary reload mapping,
+campaign image upload storage-rules mismatch, bounce events not
+connected to the interaction log (C-group, this is what led into the
+full SU-08 audit above); crystal mix persistence, the product image
+carousel (D-group). Also: a Sunlife-specific bug (their own Brand Gallery
+images were hidden from the quote line picker because it defaulted to a
+category empty for them specifically) and a "last synced" indicator for
+the weekly email sync the owner explicitly remembered asking about.
+
+Mid-pack, a real production outage: `netlify/edge-functions/_auth.js` had
+no default-exported handler (a shared helper file, not meant to be its
+own function) — Netlify's bundler auto-scans every top-level `.js` file
+in that directory regardless of routing config and requires each to
+export a valid handler, so this broke the ENTIRE deploy, blocking every
+other same-day fix from ever going live. Fixed by moving shared helpers
+into `netlify/edge-functions/lib/` (a subdirectory isn't auto-scanned) —
+this is now the established pattern (`lib/auth.js`, `lib/resendTags.js`).
+
+Also this section: a real Resend 422 ("Tags should only contain ASCII
+letters, numbers, underscores, or dashes") traced to `marketing_contacts`
+doc ids literally being the contact's own email address — fixed with a
+shared `lib/resendTags.js` normalizer (base64url-encodes the id so
+`resend-webhook.js` can still decode it back for correlation — the FIRST
+attempt normalized lossily and silently broke every delivered/opened/
+bounced webhook correlation for every send in between, caught and fixed
+same session). WhatsApp attachments (images/audio/video) now preview/play
+inline instead of showing as a bare download link, via a shared
+`WhatsAppAttachment.jsx` component.
+
+---
+
+## Where V8.4 starts
+
+- **The self-heal removal (§4) trades a rare inconvenience for safety on
+  purpose** — a genuinely orphaned Auth account (no matching
+  `users/{uid}` doc) now just sits on `PendingScreen` forever until a
+  human notices and creates the doc by hand. Worth watching whether this
+  actually happens in practice; if it does, the right fix is a passive
+  admin-visible flag, never another automatic write.
+- **SU-07A's `[TEST] Eddie Live-Test Account 2` customer record is still
+  live**, deliberately left in place (owner: "just leave it for now") —
+  it's the linked customer for the owner's own `eddiecychou@icloud.com`
+  test login. Safe to delete whenever that test account is retired.
+- **SU-08's Phase 2 explicitly did not build a merged interaction
+  timeline** — WhatsApp is the only place linked-lead content is merged
+  in; notes stay a one-time Interaction Log snapshot plus a raw
+  cross-reference, not a UI panel. If a real need for one shows up,
+  that's a new, separate piece of work.
+- **The `netlify/functions/` vs `netlify/edge-functions/` split is now
+  real, not hypothetical** — if another feature ever needs the Admin SDK
+  (or any other Node-only package), it goes in `netlify/functions/` and
+  MUST be curl-tested against the live deployed endpoint before being
+  trusted, per §2's lesson.
+- Google login/OAuth was explicitly deferred out of SU-07A — evaluate
+  separately once the password-based flow has been live a while.
+- Everything still open from earlier cycles' own "Where VX.X starts"
+  entries that didn't get picked up remains open: real retrieval for the
+  email "Discover more" chat (still facet-matching, not embeddings), and
+  the Physical Design Workbench's paused workstreams 3 and 5.
+
+---
+
 ## Current Status — V8.2 CLOSED as of 2026-08-13
 
 27 commits, one long continuous session, deployed and used live by the
