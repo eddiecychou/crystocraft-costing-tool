@@ -43,6 +43,42 @@ it has no memory of prior sessions, so start here):
    stray `<file> 2`/`<file> 3`-style duplicates nearby — that's iCloud
    contamination, safe to delete once you confirm the real file still works.
 
+## Incident: admin account silently demoted to pending — RESOLVED 2026-08-19
+
+`eddie@uart.com.hk` (the real admin account) was found flipped to
+`role:'customer', status:'pending'` on **two separate occasions** — once
+before 2026-08-12 (undocumented at the time) and again reported by the owner
+on 2026-08-19. Root cause: a "self-heal" `useEffect` in `src/App.jsx`
+(`AppRoutes`) that auto-created a `users/{uid}` doc whenever `useProfile`'s
+live `onSnapshot` reported the signed-in user's doc as missing — intended for
+a genuinely orphaned Auth account (e.g. created directly in the Firebase
+console), but the "missing" signal from `onSnapshot` is not trustworthy for
+something this destructive: a transient auth-token/cache race can make a
+real, long-lived doc briefly look absent to the live listener. A first fix
+(2026-08-12) added a delay + re-confirm-against-the-server check before
+writing — **this was not sufficient**; whatever condition caused the false
+"missing" signal survived the re-check closely enough to fire a second time
+against the same real admin account.
+
+**Fix (2026-08-19, explicit owner instruction — "don't ever do that
+again"):** the self-heal effect was removed entirely, not further patched.
+No code in this app now auto-writes a `users/{uid}` doc for an existing
+signed-in session under any circumstance. A genuinely orphaned Auth account
+(no matching Firestore doc) now just sits on `PendingScreen` indefinitely —
+rare enough (a console-created account, or a signup that failed after the
+Auth step but before the Firestore write) that it needs a human to notice
+and create the doc by hand, which is a far smaller cost than silently
+demoting a real account. See the git history around commit message "Remove
+users/ self-heal — caused a second silent admin demotion" for the exact
+diff.
+
+**For any future session:** never write to an existing `users/{uid}` doc
+based on a live `onSnapshot`/cache signal alone, especially not to
+`role`/`status`. If a similar "orphaned account" problem resurfaces, the
+right fix is a manual admin action or a one-off script with a human
+double-checking the target uid first — not another automatic client-side
+self-heal.
+
 ## Current Status — V8.2 CLOSED as of 2026-08-13
 
 27 commits, one long continuous session, deployed and used live by the

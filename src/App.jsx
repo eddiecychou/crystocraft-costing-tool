@@ -1,7 +1,4 @@
-import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { doc, setDoc, getDocFromServer, serverTimestamp } from 'firebase/firestore'
-import { db } from './firebase'
 import { useAuthState } from './hooks/useAuthState'
 import { useProfile, isAdmin, isApproved, isPending } from './hooks/useProfile'
 import Layout from './components/Layout'
@@ -87,43 +84,21 @@ export default function App() {
 function AppRoutes({ user }) {
   const { profile } = useProfile(user)
 
-  // Self-heal: a signed-in Auth user with no users doc (e.g. created directly
-  // in the Firebase console, or a signup that failed after the auth step) would
-  // otherwise be stuck on the pending screen AND invisible to admins, since no
-  // doc exists to show in the Pending tab. Create a pending-customer doc for
-  // them — the Firestore rules allow a user to self-create their own pending
-  // doc — so an admin can see and approve them.
-  //
-  // INCIDENT (2026-08-12): this fired against a real admin account and
-  // silently overwrote it to role:'customer', status:'pending' — useProfile's
-  // live onSnapshot briefly reported the doc as missing (most likely a
-  // permission/auth-token-attachment race right after sign-in, on a freshly
-  // authenticated session with no local cache), which was enough to trigger
-  // this effect and clobber a doc that genuinely existed the whole time.
-  // Fixed by never trusting the live subscription's "missing" signal for
-  // something this destructive — re-confirm directly against the server,
-  // after a short delay to let any auth-token race settle, and only write if
-  // that fresh, authoritative read ALSO says the doc doesn't exist.
-  useEffect(() => {
-    if (!(user && profile?.missing && !profile.error)) return
-    let cancelled = false
-    const timer = setTimeout(async () => {
-      const fresh = await getDocFromServer(doc(db, 'users', user.uid)).catch(() => null)
-      if (cancelled || !fresh || fresh.exists()) return // real doc exists after all (or the check itself failed) — never touch it
-      await setDoc(doc(db, 'users', user.uid), {
-        role: 'customer',
-        status: 'pending',
-        email: user.email || '',
-        company_name: '',
-        contact_name: user.displayName || '',
-        base_currency: 'USD',
-        ws_discount_pct: 0,
-        createdAt: serverTimestamp(),
-        self_healed: true,
-      }, { merge: true }).catch(() => {})
-    }, 1500)
-    return () => { cancelled = true; clearTimeout(timer) }
-  }, [user, profile])
+  // REMOVED (2026-08-19, owner's explicit instruction after this fired a
+  // SECOND time against the real admin account eddie@uart.com.hk, silently
+  // flipping it to role:'customer', status:'pending'): this used to
+  // "self-heal" a signed-in Auth user with no users/{uid} doc by writing a
+  // fresh pending-customer doc for them, guarded by a re-confirm-against-
+  // the-server delay added after the FIRST incident (2026-08-12) — that
+  // guard was not sufficient; whatever transient condition made
+  // useProfile's live onSnapshot briefly report "missing" for a real,
+  // long-lived admin account also survived a fresh server re-read closely
+  // enough to trigger a second incident. No automatic write is safe enough
+  // here — a genuinely orphaned Auth account (created directly in the
+  // Firebase console, or a signup that failed after the auth step but
+  // before the Firestore write) is now just left on PendingScreen with no
+  // doc, and needs a human to notice and create one by hand — see
+  // PROJECT-PLAN.md for the incident record.
 
   if (user === undefined) return <LoadingBar />
   if (user && profile === undefined) return <LoadingBar />

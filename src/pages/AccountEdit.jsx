@@ -7,6 +7,7 @@ import { CUSTOMER_CURRENCIES, useRates, fromUSD } from '../currency'
 import { CustomerPicker, TypeBadge } from './CustomerAccounts'
 import ContactPicker from '../components/ContactPicker'
 import { notifyEmail } from '../notify'
+import { approveInvitation } from '../portalInviteApi'
 import LoadingBar from '../components/LoadingBar'
 import { ArrowLeft } from 'lucide-react'
 
@@ -113,6 +114,36 @@ export default function AccountEdit() {
     } catch (e) {
       setStatus('Error: ' + (e?.message || 'could not save'))
     }
+  }
+
+  // SU-07A (2026-08-19 fix): an account created via the invitation/self-apply
+  // flow (u.invitation_id set) has NO password on its Auth record at all —
+  // approving it the OLD way (just flip status + send the old generic
+  // "account_approved" sign-in-link email) leaves the customer with an
+  // account they structurally cannot sign into, and no way to set a
+  // password. Found live: eddiecychou@icloud.com was approved through this
+  // exact button, got the old email, and "Sign in" just went back to the
+  // login form with nothing to enter. Now routes through the same secure
+  // portal-invite Node function PortalInvitations.jsx uses — requires a
+  // customer link first (same requirement that page enforces), then sends
+  // a REAL generatePasswordResetLink email instead of the old one.
+  async function handleApprove() {
+    if (u.invitation_id) {
+      if (!customerId) {
+        setStatus('Error: link this account to a customer (above) before approving — an invitation-based account needs one to be approved.')
+        return
+      }
+      setStatus('saving')
+      try {
+        await approveInvitation(u.invitation_id, customerId)
+        navigate('/portal')
+      } catch (e) {
+        setStatus('Error: ' + (e?.message || 'could not approve'))
+      }
+      return
+    }
+    notifyEmail('account_approved', { email: u.email, company_name: displayName, contact_name: u.contact_name })
+    apply({ status: 'approved' }, { back: true })
   }
 
   const saveForm = () => apply({
@@ -406,9 +437,8 @@ export default function AccountEdit() {
         <h2 className="text-sm font-semibold text-gray-700 mb-3">Account status</h2>
         <div className="flex flex-wrap items-center gap-3">
           {isPending && (
-            <button className="btn-primary text-sm"
-              onClick={() => { notifyEmail('account_approved', { email: u.email, company_name: displayName, contact_name: u.contact_name }); apply({ status: 'approved' }, { back: true }) }}>
-              Approve
+            <button className="btn-primary text-sm" onClick={handleApprove}>
+              {u.invitation_id ? 'Approve & send setup email' : 'Approve'}
             </button>
           )}
           {isApproved && (
