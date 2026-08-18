@@ -116,7 +116,7 @@ export default function ProposalPage({ profile }) {
                         {(a.title || a.caption) && (
                           <div className="p-2.5">
                             {a.title && <p className="text-xs text-ink line-clamp-1">{a.title}</p>}
-                            {a.caption && <p className="text-[11px] text-ink-60 leading-snug line-clamp-3 mt-0.5">{a.caption}</p>}
+                            {a.caption && <p className="text-[11px] text-ink-60 leading-snug line-clamp-6 mt-0.5">{a.caption}</p>}
                           </div>
                         )}
                       </>
@@ -134,7 +134,7 @@ export default function ProposalPage({ profile }) {
                       </div>
                       <div className="p-2.5">
                         <p className="text-xs text-ink line-clamp-1">{prod.name}</p>
-                        {prod.caption && <p className="text-[11px] text-ink-60 leading-snug line-clamp-3 mt-0.5">{prod.caption}</p>}
+                        {prod.caption && <p className="text-[11px] text-ink-60 leading-snug line-clamp-6 mt-0.5">{prod.caption}</p>}
                       </div>
                     </Link>
                   ))}

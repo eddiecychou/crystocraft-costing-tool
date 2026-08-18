@@ -17,6 +17,13 @@ import { screenSensitiveImages } from './sensitiveImages'
 const DOC_ID = 'current'
 const proposalRef = customerId => doc(db, 'customers', customerId, 'proposal', DOC_ID)
 
+// A caption is a short "why this fits" line under one card, not a product
+// description — capped so it reads as a caption on every screen size rather
+// than overflowing the card (ProposalEditor's input and ProposalPage's
+// line-clamp both assume this bound). Enforced here, the one place every
+// caption passes through on save, not just at the input widget.
+export const CAPTION_MAX_LEN = 200
+
 const emptyProposal = {
   status: 'draft',
   hero_asset_id: null,
@@ -47,11 +54,12 @@ const norm = data => ({
 // Both entry shapes are normalized to { id, caption } / { collection, id,
 // caption } — accepts the older plain-string / no-caption shape from before
 // this field existed, so nothing already saved needs a migration.
-const normAssetRef = a => (typeof a === 'string' ? { id: a, caption: '' } : { id: a?.id || '', caption: a?.caption || '' })
+const clampCaption = c => String(c || '').slice(0, CAPTION_MAX_LEN)
+const normAssetRef = a => (typeof a === 'string' ? { id: a, caption: '' } : { id: a?.id || '', caption: clampCaption(a?.caption) })
 const normProductRef = r => ({
   collection: r?.collection === 'range_products' ? 'range_products' : 'products',
   id: r?.id || '',
-  caption: r?.caption || '',
+  caption: clampCaption(r?.caption),
 })
 
 const normSection = s => ({

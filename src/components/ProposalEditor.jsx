@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { collection, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useCustomerAssets, loadBrandedProductImages, uploadCustomerAsset, updateCustomerAsset, cannotRenderAsImage, ASSET_UPLOAD_ACCEPT } from '../customerAssets'
-import { loadProposal, saveProposal, publishProposal, unpublishProposal } from '../customerProposal'
+import { loadProposal, saveProposal, publishProposal, unpublishProposal, CAPTION_MAX_LEN } from '../customerProposal'
 import { normGallery } from '../constants'
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -125,14 +125,18 @@ function SortableSection({ section, index, assets, products, onChange, onRemove 
           {assets.length === 0 && <p className="text-xs text-gray-400 col-span-full py-2">No assets on file for this customer yet.</p>}
         </div>
         {section.asset_ids.length > 0 && (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {section.asset_ids.map(ref => (
-              <div key={ref.id} className="flex items-center gap-2">
+              <div key={ref.id} className="flex items-start gap-2">
                 <div className="w-9 h-9 rounded overflow-hidden shrink-0 border border-gray-100">
                   <AssetThumb asset={assetById(ref.id)} className="w-full h-full" />
                 </div>
-                <input className="input text-xs flex-1" placeholder="Why this image fits (shown to the customer)"
-                       value={ref.caption} onChange={e => setAssetCaption(ref.id, e.target.value)} />
+                <div className="flex-1">
+                  <textarea className="input text-xs min-h-[44px] resize-y w-full" maxLength={CAPTION_MAX_LEN}
+                            placeholder="Why this image fits (shown to the customer)"
+                            value={ref.caption} onChange={e => setAssetCaption(ref.id, e.target.value)} />
+                  <p className="text-[10px] text-gray-300 text-right mt-0.5">{ref.caption.length}/{CAPTION_MAX_LEN}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -147,16 +151,20 @@ function SortableSection({ section, index, assets, products, onChange, onRemove 
           </button>
         </div>
         {section.product_refs.length > 0 && (
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             {section.product_refs.map(r => (
-              <div key={`${r.collection}-${r.id}`} className="flex items-center gap-2">
+              <div key={`${r.collection}-${r.id}`} className="flex items-start gap-2">
                 <div className="w-9 h-9 rounded bg-gray-100 shrink-0 overflow-hidden">
                   {productImage(r) && <img src={productImage(r)} alt="" className="w-full h-full object-cover" />}
                 </div>
-                <p className="text-xs text-gray-700 w-28 shrink-0 truncate" title={productName(r)}>{productName(r)}</p>
-                <input className="input text-xs flex-1" placeholder="Why this product fits / a short intro (shown to the customer)"
-                       value={r.caption} onChange={e => setProductCaption(r, e.target.value)} />
-                <button type="button" onClick={() => toggleProduct(r)} className="text-gray-400 hover:text-red-500 shrink-0"><X size={13} /></button>
+                <p className="text-xs text-gray-700 w-24 shrink-0 truncate mt-1.5" title={productName(r)}>{productName(r)}</p>
+                <div className="flex-1">
+                  <textarea className="input text-xs min-h-[44px] resize-y w-full" maxLength={CAPTION_MAX_LEN}
+                            placeholder="Why this product fits / a short intro (shown to the customer)"
+                            value={r.caption} onChange={e => setProductCaption(r, e.target.value)} />
+                  <p className="text-[10px] text-gray-300 text-right mt-0.5">{r.caption.length}/{CAPTION_MAX_LEN}</p>
+                </div>
+                <button type="button" onClick={() => toggleProduct(r)} className="text-gray-400 hover:text-red-500 shrink-0 mt-1.5"><X size={13} /></button>
               </div>
             ))}
           </div>
