@@ -286,6 +286,13 @@ async function createInvitation(body, adminUid) {
 // admin must link one (approveInvitation's optional customerId param)
 // before approving; see PortalInvitations.jsx.
 async function applyForAccount(body) {
+  // Honeypot — same convention as edge-functions/subscribe.js's `hp` field:
+  // a bot fills every field including the hidden one. Accept silently (a
+  // 200 so the bot sees success) but create nothing. This is the one public,
+  // unauthenticated action here that actually creates an Auth user + two
+  // Firestore writes per request, so it's the one worth this cheap guard.
+  if (String(body?.hp || '').trim()) return json({ ok: true, status: 'pending' })
+
   const email = normEmail(body?.email)
   const companyName = String(body?.companyName || '').trim().slice(0, 200)
   const contactName = String(body?.contactName || '').trim().slice(0, 200)
@@ -330,7 +337,13 @@ async function applyForAccount(body) {
     // behalf — no raw token to check here (nothing was emailed to click),
     // which is fine: this is exactly as strong as the rest of this
     // function's security model, not weaker than it.
-    const userRecord = await getAuth().createUser({ email, emailVerified: false, disabled: false })
+    // getUserByEmail (above) → createUser here is not atomic — two
+    // simultaneous submissions for the same email can both pass the check.
+    // The loser's createUser throws auth/email-already-exists; degrade to
+    // the same response the pre-check would have given rather than a raw 500.
+    let userRecord
+    try { userRecord = await getAuth().createUser({ email, emailVerified: false, disabled: false }) }
+    catch (e) { if (e?.code === 'auth/email-already-exists') return json({ error: 'already_pending' }, 409); throw e }
     await d.ref.update({
       status: 'claimed', claimed_at: Timestamp.now(), claimed_uid: userRecord.uid,
       audit_log: FieldValue.arrayUnion(auditEntry('claimed_via_self_apply', email)),
@@ -347,8 +360,11 @@ async function applyForAccount(body) {
 
   // Genuinely new applicant — create the invitation record AND the
   // no-password Auth account in one step (see header comment for why
-  // there's no separate claim round trip here).
-  const userRecord = await getAuth().createUser({ email, emailVerified: false, disabled: false })
+  // there's no separate claim round trip here). Same race guard as the
+  // existing-invitation branch above.
+  let userRecord
+  try { userRecord = await getAuth().createUser({ email, emailVerified: false, disabled: false }) }
+  catch (e) { if (e?.code === 'auth/email-already-exists') return json({ error: 'already_registered' }, 409); throw e }
   const ref = db.collection('portal_invitations').doc()
   await ref.set({
     customer_id: null, contact_email: email, contact_name: contactName,
@@ -556,6 +572,12 @@ async function claimInvitation(body) {
     return json({ error: 'used' }, 410)
   } else if (!userSnap.data().invitation_id) {
     await userRef.update({ invitation_id: id })
+  } else if (userSnap.data().invitation_id !== id) {
+    // This uid is already linked to a DIFFERENT invitation. Letting this one
+    // proceed would leave two invitations pointing at one user — this
+    // invitation's own claimed_uid says one thing, the user's invitation_id
+    // says another. Refuse rather than silently create that split reference.
+    return json({ error: 'already_pending' }, 409)
   }
 
   await ref.update({
@@ -634,11 +656,26 @@ async function approveInvitation(body, adminUid) {
   const customerSnap = await db.collection('customers').doc(customerId).get()
   if (!customerSnap.exists) return json({ error: 'That customer record no longer exists.' }, 404)
 
-  const userUpdate = { status: 'approved', customer_id: customerId }
+  // Mirror sensitive/erp_code/erp_code_shared onto the user doc — same fields
+  // domain/customer.js's mirrorToLinkedAccounts keeps in sync on every future
+  // customer edit, but THIS approval is the account's first write, so without
+  // it the account sits unscreened (sensitiveImages.js's client-side privacy
+  // check reads profile.sensitive — unset is a no-op) and order history reads
+  // empty (customer-order-history.js keys off users/{uid}.erp_code) until an
+  // admin happens to save the customer record again. Read straight off the
+  // customer doc rather than recomputing the erp_code_shared share-count query
+  // — saveCustomer already keeps that field current.
+  const custData = customerSnap.data() || {}
+  const userUpdate = {
+    status: 'approved', customer_id: customerId,
+    sensitive: !!custData.sensitive,
+    erp_code: custData.erp_code || '',
+    erp_code_shared: !!custData.erp_code_shared,
+  }
   if (suppliedCustomerId) {
     // Keep the user's displayed company_name in sync with the now-linked
     // canonical record, rather than whatever free text the applicant typed.
-    userUpdate.company_name = String(customerSnap.data()?.company_name || '')
+    userUpdate.company_name = String(custData.company_name || '')
   }
   await db.collection('users').doc(inv.claimed_uid).update(userUpdate)
   await ref.update({

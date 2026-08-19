@@ -142,15 +142,6 @@ export default function QuoteExport({ quote, items, onClose }) {
 
   async function exportExcel() {
     setLoading(true)
-    // Debug: log what fields are in the quote object
-    console.log('[QuoteExport] quote fields:', JSON.stringify({
-      client_name:     quote.client_name,
-      contact_name:    quote.contact_name,
-      contact_email:   quote.contact_email,
-      contact_phone:   quote.contact_phone,
-      contact_address: quote.contact_address,
-      quote_date:      quote.quote_date,
-    }))
     try {
       const wb = new ExcelJS.Workbook()
       const ws = wb.addWorksheet('Quotation')

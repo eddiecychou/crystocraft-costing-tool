@@ -47,5 +47,7 @@ export const getInvitationPreview = (invitationId, token) =>
 
 // Public — the "Create account" tab's replacement for immediate
 // createUserWithEmailAndPassword. See portal-invite.js's applyForAccount.
-export const applyForAccount = (companyName, contactName, email, currency) =>
-  call('apply_for_account', { companyName, contactName, email, currency })
+// hp: honeypot value from Login.jsx's hidden field — passed through untouched,
+// portal-invite.js is the one place that interprets it.
+export const applyForAccount = (companyName, contactName, email, currency, hp = '') =>
+  call('apply_for_account', { companyName, contactName, email, currency, hp })

@@ -13,6 +13,7 @@ export default function Login() {
   const [company, setCompany]   = useState('')
   const [contact, setContact]   = useState('')
   const [currency, setCurrency] = useState('USD')
+  const [hp, setHp]             = useState('') // honeypot — see applyForAccount
   const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(false)
   const [resetSent, setResetSent] = useState(false)
@@ -44,7 +45,7 @@ export default function Login() {
     setError('')
     setLoading(true)
     try {
-      await applyForAccount(company, contact, email, currency)
+      await applyForAccount(company, contact, email, currency, hp)
       setSignedUp(true)
     } catch (err) {
       const code = err?.message
@@ -124,6 +125,12 @@ export default function Login() {
               {CUSTOMER_CURRENCIES.map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
+          {/* Honeypot — off-screen, never shown to a real visitor; a bot that
+              fills every field submits into it, which applyForAccount reads
+              and silently no-ops on. */}
+          <input type="text" name="website" value={hp} onChange={e => setHp(e.target.value)}
+            tabIndex={-1} autoComplete="off" aria-hidden="true"
+            className="absolute opacity-0 pointer-events-none -z-10" style={{ left: '-9999px' }} />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button type="submit" className="btn-primary w-full justify-center" disabled={loading}>
             {loading ? 'Submitting…' : 'Request account'}
