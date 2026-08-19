@@ -206,6 +206,22 @@ function setupEmailHtml({ companyName, setupUrl }) {
   ].join(''))
 }
 
+// Google-authenticated accounts (applyForAccountGoogle) never had a
+// password to begin with — sending them setupEmailHtml's "set your
+// password" link would be actively wrong (found live, 2026-08-19: the
+// approved test account got a password-setup email despite having signed
+// up entirely via Google). No action needed at all really, since they can
+// already sign back in with the same Google account right now — this email
+// exists purely to give the same "you're approved" notification every other
+// approval path sends.
+function googleApprovedEmailHtml({ companyName, portalUrl }) {
+  return emailShell('Your account is approved', [
+    emailP(`Your Crystocraft customer portal account for <strong>${escHtml(companyName)}</strong> has been approved.`),
+    emailP('Sign in with the same Google account you used to sign up — no password needed.'),
+    `<p style="margin:20px 0;">${emailBtn(portalUrl, 'Sign in')}</p>`,
+  ].join(''))
+}
+
 // ── actions ─────────────────────────────────────────────────────────────
 
 async function createInvitation(body, adminUid) {
@@ -733,6 +749,30 @@ async function setupLinkForApprovedInvitation(ref, inv, adminUid) {
   return json({ ok: true })
 }
 
+// Companion to setupLinkForApprovedInvitation for accounts that signed up
+// via Google — no password-reset link to generate at all, just a
+// notification that approval happened, same posture as every other path.
+async function googleApprovedNotification(ref, inv, adminUid) {
+  const PORTAL_URL = process.env.PORTAL_URL || 'https://portal.crystocraft.com'
+  const db = getFirestore()
+  const companyName = inv.customer_id
+    ? String((await db.collection('customers').doc(inv.customer_id).get()).data()?.company_name || '')
+    : String(inv.applicant_company_name || '')
+  const send = await sendResendEmail({
+    to: inv.contact_email, subject: `Your Crystocraft portal account is approved`,
+    html: googleApprovedEmailHtml({ companyName, portalUrl: `${PORTAL_URL}/login` }),
+    text: `Your Crystocraft customer portal account for ${companyName} has been approved. Sign in with Google at ${PORTAL_URL}/login`,
+    tags: [{ name: 'invitation_id', value: ref.id, prefix: 'invite' }, { name: 'customer_id', value: inv.customer_id, prefix: 'customer' }],
+  })
+  await ref.update({
+    email_send_status: send.ok ? 'sent' : 'failed', email_send_error: send.ok ? null : send.error,
+    resend_count: FieldValue.increment(1), last_resent_at: Timestamp.now(),
+    audit_log: FieldValue.arrayUnion(auditEntry('google_approved_notification_sent', adminUid || 'system')),
+  })
+  if (!send.ok) return json({ ok: false, error: `Could not send the approval email: ${send.error}` }, 502)
+  return json({ ok: true })
+}
+
 async function approveInvitation(body, adminUid) {
   const id = String(body?.invitationId || '').trim()
   const suppliedCustomerId = body?.customerId ? String(body.customerId).trim() : null
@@ -807,7 +847,10 @@ async function approveInvitation(body, adminUid) {
   })
 
   const freshSnap = await ref.get()
-  return setupLinkForApprovedInvitation(ref, freshSnap.data(), adminUid)
+  const isGoogleAccount = claimedUserSnap.data()?.auth_provider === 'google.com'
+  return isGoogleAccount
+    ? googleApprovedNotification(ref, freshSnap.data(), adminUid)
+    : setupLinkForApprovedInvitation(ref, freshSnap.data(), adminUid)
 }
 
 // AccountEdit.jsx's "Delete account" — previously only deleted the
