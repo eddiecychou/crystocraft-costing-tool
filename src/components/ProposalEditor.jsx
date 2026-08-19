@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { collection, getDocs, doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
-import { useCustomerAssets, loadBrandedProductImages, uploadCustomerAsset, updateCustomerAsset, cannotRenderAsImage, ASSET_UPLOAD_ACCEPT } from '../customerAssets'
+import { useCustomerAssets, loadBrandedProductImages, uploadCustomerAsset, updateCustomerAsset, deleteCustomerAsset, cannotRenderAsImage, ASSET_UPLOAD_ACCEPT } from '../customerAssets'
 import { loadProposal, saveProposal, publishProposal, unpublishProposal, loadProductImageChoices, CAPTION_MAX_LEN } from '../customerProposal'
 import { normGallery } from '../constants'
 import {
@@ -485,6 +485,21 @@ export default function ProposalEditor({ customerId }) {
     }
   }
 
+  // Clears the hero picture — a branded catalogue photo (id prefixed
+  // "branded:") isn't a real asset doc, just unpick it; an asset actually
+  // uploaded through THIS editor (or Brand Gallery) can be deleted outright,
+  // since a hero photo that's not the hero of anything else has no other use.
+  async function removeHero() {
+    if (!heroAsset) return
+    const isCatalogPhoto = heroAsset.id.startsWith('branded:')
+    if (!isCatalogPhoto && !confirm(`Delete "${heroAsset.title || heroAsset.filename}" from this customer's assets? This can't be undone.`)) return
+    set('hero_asset_id', null)
+    if (!isCatalogPhoto) {
+      try { await deleteCustomerAsset(customerId, heroAsset) }
+      catch (err) { alert(`Couldn't delete the file: ${err.message || err}`) }
+    }
+  }
+
   function addSection() { setProposal(p => ({ ...p, sections: [...p.sections, withKey({ heading: '', tagline: '', briefing: '', asset_ids: [], product_refs: [] })] })) }
   function updateSection(key, next) { setProposal(p => ({ ...p, sections: p.sections.map(s => s._key === key ? next : s) })) }
   function removeSection(key) { setProposal(p => ({ ...p, sections: p.sections.filter(s => s._key !== key) })) }
@@ -572,7 +587,18 @@ export default function ProposalEditor({ customerId }) {
               <Upload size={12} /> {uploadingHero ? 'Uploading…' : 'Upload new hero image'}
             </button>
             <input ref={heroFileRef} type="file" accept={ASSET_UPLOAD_ACCEPT} className="hidden" onChange={uploadHero} />
+            {heroAsset && (
+              <button type="button" onClick={removeHero} title="Remove this hero image"
+                      className="text-xs text-red-500 hover:text-red-700 inline-flex items-center gap-1">
+                <Trash2 size={12} /> Remove
+              </button>
+            )}
           </div>
+          {heroAsset && (
+            <p className="text-[11px] text-gray-400 -mt-1">
+              Stored under <strong>Product Gallery</strong> in this customer's Brand Gallery (Customer Detail page) — not Brand Assets.
+            </p>
+          )}
           <p className="text-[11px] text-gray-400 -mt-1">
             Recommended: a wide landscape photo, at least 2000×840px (roughly 2.4:1) — it fills the full-width banner and
             crops from the sides on ultra-wide screens, so keep the main subject centred. JPG or PNG.
