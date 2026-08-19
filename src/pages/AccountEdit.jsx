@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { doc, getDoc, updateDoc, deleteDoc, serverTimestamp, collection, getDocs, query, where } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, serverTimestamp, collection, getDocs, query, where } from 'firebase/firestore'
 import { db, auth } from '../firebase'
 import { useCustomers, getCustomer, saveCustomer, CUSTOMER_COUNTRIES, CRM_CATEGORIES, CUSTOMER_SOURCES } from '../domain/customer'
 import { CUSTOMER_CURRENCIES, useRates, fromUSD } from '../currency'
 import { CustomerPicker, TypeBadge } from './CustomerAccounts'
 import ContactPicker from '../components/ContactPicker'
 import { notifyEmail } from '../notify'
-import { approveInvitation } from '../portalInviteApi'
+import { approveInvitation, deleteAccount } from '../portalInviteApi'
 import LoadingBar from '../components/LoadingBar'
 import { ArrowLeft } from 'lucide-react'
 
@@ -241,14 +241,21 @@ export default function AccountEdit() {
     // friction. canDelete already blocks deleting your OWN account; this adds
     // a typed confirmation on top, same pattern as "Make admin" above, for
     // the one case that guard doesn't cover: deleting SOMEONE ELSE'S admin login.
+    //
+    // Deletes the Firebase Auth user too, not just this Firestore doc — the
+    // old deleteDoc-only version left the sign-in credential behind forever
+    // (the client SDK has no way to reach Auth for another user at all),
+    // which meant re-registering the same email later kept hitting
+    // already_registered against a login that no longer had any doc or
+    // portal presence. See portal-invite.js's deleteAccount.
     if (isAdmin) {
-      const ans = prompt(`⚠️ Delete the ADMIN login for ${displayName}?\n\nThis removes their access to every cost, margin, supplier and customer in the tool. Their sign-in credential still exists (only removable from the Firebase console), but they lose all access here.\n\nType the account's email (${u.email}) to confirm.`)
+      const ans = prompt(`⚠️ Delete the ADMIN login for ${displayName}?\n\nThis removes their access to every cost, margin, supplier and customer in the tool, AND deletes their sign-in credential entirely — they would need a brand-new invitation to come back.\n\nType the account's email (${u.email}) to confirm.`)
       if ((ans || '').trim().toLowerCase() !== (u.email || '').trim().toLowerCase()) return
-    } else if (!confirm(`Delete the portal login for ${displayName}? This removes their portal access and settings. Note: their sign-in credential still exists (it can only be fully removed from the Firebase console), but they will have no access here.`)) {
+    } else if (!confirm(`Delete the portal login for ${displayName}? This removes their portal access and settings, AND deletes their sign-in credential entirely — the email becomes free to register again from scratch.`)) {
       return
     }
     setStatus('saving')
-    try { await deleteDoc(doc(db, 'users', id)); navigate('/portal') }
+    try { await deleteAccount(id); navigate('/portal') }
     catch (e) { setStatus('Error: ' + (e?.message || 'could not delete')) }
   }
 

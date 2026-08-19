@@ -106,8 +106,19 @@ export default function Login() {
     try {
       await applyForAccountGoogle(company, contact, currency)
       setSignedUp(true)
-    } catch {
-      setError('Could not submit your request. Check your details and try again.')
+    } catch (err) {
+      if (err?.message === 'already_registered') {
+        // This email already has an account under a DIFFERENT sign-in
+        // method — Firebase doesn't auto-link Google to an existing
+        // password account. Sign out of this stray new Google identity
+        // (same reasoning as cancelGoogleDetails) rather than leave it
+        // sitting there, and point back to the real way in.
+        await signOut(auth)
+        switchMode('signin')
+        setError('An account already exists for this email. Sign in with your password below, or use "Forgot password?" if you need a new one.')
+      } else {
+        setError('Could not submit your request. Check your details and try again.')
+      }
     } finally {
       setLoading(false)
     }

@@ -37,6 +37,13 @@ export const rejectInvitation = invitationId => callAdmin('reject_invitation', {
 export const approveInvitation = (invitationId, customerId) =>
   callAdmin('approve_invitation', { invitationId, customerId })
 
+// AccountEdit.jsx's "Delete account" — deletes BOTH the Firebase Auth user
+// and the users/{uid} Firestore doc (the old deleteDoc-only client path left
+// the Auth credential behind forever, causing a deleted-then-recreated
+// account to keep hitting already_registered). See portal-invite.js's
+// deleteAccount.
+export const deleteAccount = uid => callAdmin('delete_account', { uid })
+
 // Public — no Firebase session; the raw claim token from the invitation
 // link IS the credential here.
 export const claimInvitation = (invitationId, token, email, contactName) =>

@@ -428,6 +428,19 @@ async function applyForAccountGoogle(body, uid, email) {
     return json({ ok: true, status: status === 'approved' ? 'approved' : 'pending' })
   }
 
+  // Firebase Auth does NOT auto-link providers by email — a Google sign-in
+  // for an email that already has a password-based (or any other) account
+  // creates a SEPARATE uid with no relationship to the existing one. Caught
+  // live (2026-08-19): an admin testing this button with an email that
+  // already had an account ended up signed in as a brand-new, unrelated
+  // pending customer identity — confusing, not a privilege escalation (the
+  // original account was never touched), but exactly the kind of surprise
+  // this should refuse outright rather than silently create. No account
+  // linking exists yet (deferred — see the admin-invitation path's own
+  // linkWithPopup plan), so the correct move here is just to say so.
+  const existingByEmail = await db.collection('users').where('email', '==', email).limit(1).get()
+  if (!existingByEmail.empty) return json({ error: 'already_registered' }, 409)
+
   // An admin may have already invited this exact email — funnel into that
   // invitation exactly like applyForAccount does, just with the uid we
   // already have instead of minting a new Auth user for it.
@@ -772,6 +785,33 @@ async function approveInvitation(body, adminUid) {
   return setupLinkForApprovedInvitation(ref, freshSnap.data(), adminUid)
 }
 
+// AccountEdit.jsx's "Delete account" — previously only deleted the
+// Firestore users/{uid} doc via the client SDK (deleteDoc has no way to
+// reach Firebase Auth at all), leaving the sign-in credential behind
+// permanently ("only removable from the Firebase console", per the old
+// confirm-dialog copy). That gap is exactly what caused live confusion
+// 2026-08-19: a deleted-then-recreated test account with the same email
+// kept hitting already_registered because the orphaned Auth user was still
+// there. Deletes both, in the order that leaves nothing dangling if the
+// second step fails — Auth user first (idempotent-ish: a NOT-FOUND here is
+// fine, means it's already gone or never had one, e.g. an admin-created
+// doc-only record), then the Firestore doc.
+async function deleteAccount(body, adminUid) {
+  const targetUid = String(body?.uid || '').trim()
+  if (!targetUid) return json({ error: 'uid is required' }, 400)
+  if (targetUid === adminUid) return json({ error: 'You cannot delete your own account.' }, 400)
+
+  try {
+    await getAuth().deleteUser(targetUid)
+  } catch (e) {
+    if (e?.code !== 'auth/user-not-found') {
+      return json({ error: `Could not delete the sign-in credential: ${e?.message || e}` }, 500)
+    }
+  }
+  await getFirestore().collection('users').doc(targetUid).delete()
+  return json({ ok: true })
+}
+
 export default async function handler(req) {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
   initAdminApp()
@@ -803,6 +843,7 @@ export default async function handler(req) {
     case 'revoke_invitation': return revokeInvitation(body, uid)
     case 'reject_invitation': return rejectInvitation(body, uid)
     case 'approve_invitation': return approveInvitation(body, uid)
+    case 'delete_account': return deleteAccount(body, uid)
     default: return json({ error: 'Unknown action' }, 400)
   }
 }
