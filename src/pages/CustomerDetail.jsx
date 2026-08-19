@@ -14,7 +14,7 @@ import ProposalEditor from '../components/ProposalEditor'
 import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt, ChevronDown, ChevronUp, ChevronRight, Database, Mail, MessageCircle, Loader2, RefreshCw, Smartphone, Mic } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
-import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers, CHANNELS, NO_API_CHANNELS } from '../domain/customer'
+import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers, primaryContact, CHANNELS, NO_API_CHANNELS } from '../domain/customer'
 import { transcribeMessage, WHATSAPP_TRANSCRIBE_LANGUAGES } from '../domain/whatsappImport'
 import { erpLookup } from '../erpApi'
 import { mergeSalesInvoiceHistory } from '../domain/salesInvoiceHistory'
@@ -805,6 +805,39 @@ export default function CustomerDetail() {
           </span>
         </div>
       )}
+
+      {/* Quick Access — same chip pattern as SupplierDetail.jsx's Quick
+          Access row (owner, 2026-08-19: "surface WhatsApp Personal/Business
+          at the top like the supplier page"). Primary contact only — a
+          fast top-of-page path for the contact Eddie reaches out to by
+          default; every contact's own numbers (primary or not) still show
+          in the Contacts section below, unchanged. Hidden entirely when the
+          primary contact has no WhatsApp info at all. */}
+      {(() => {
+        const pc = primaryContact(customer.contacts)
+        if (!pc) return null
+        const chips = [
+          pc.whatsapp_personal && { label: 'WhatsApp Personal', number: pc.whatsapp_personal },
+          pc.whatsapp_business && { label: 'WhatsApp Business', number: pc.whatsapp_business },
+          // Only the neutral fallback when neither classified number is set
+          // — same Case 5 rule as everywhere else this pair was added.
+          !pc.whatsapp_personal && !pc.whatsapp_business && pc.whatsapp && { label: 'WhatsApp', number: pc.whatsapp },
+        ].filter(Boolean)
+        if (!chips.length) return null
+        return (
+          <div className="card p-4 mb-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2.5">Quick Access</p>
+            <div className="flex flex-wrap items-center gap-2">
+              {chips.map(chip => (
+                <a key={chip.label} href={`https://wa.me/${chip.number.replace(/\D/g, '')}`} target="_blank" rel="noreferrer"
+                   className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
+                  <Smartphone size={12} />{chip.label}
+                </a>
+              ))}
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Contacts — separate named people (owner, 2026-08-05), not one shared
           contact_name + unattributed emails. */}
