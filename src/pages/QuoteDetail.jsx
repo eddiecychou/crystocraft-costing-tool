@@ -566,6 +566,21 @@ function QuoteItem({ item, quoteCurrency, customerId, rates, heroImage, onTiersC
     const updated = tiers.map((t, i) => i === index ? { ...t, [field]: parsed } : t)
     if (field === 'price') {
       setLocalPrices(prev => prev.map((p, i) => i === index ? Number(value) : p))
+      onTiersChange(updated)
+      return
+    }
+    if (field === 'quantity') {
+      // Auto-sort by quantity on blur (owner request) — smallest order first,
+      // matching how a customer actually reads a tier table. Re-sorted only
+      // once the field is committed (onBlur), never mid-keystroke, so typing
+      // a new quantity doesn't yank the row out from under the cursor.
+      // localPrices is a parallel array indexed by POSITION, not tier id —
+      // it has to be carried through the same permutation or the live
+      // price/margin column would show the wrong tier's price after reorder.
+      const order = updated.map((t, i) => i).sort((a, b) => (updated[a].quantity || 0) - (updated[b].quantity || 0))
+      onTiersChange(order.map(i => updated[i]))
+      setLocalPrices(prev => order.map(i => prev[i]))
+      return
     }
     onTiersChange(updated)
   }
