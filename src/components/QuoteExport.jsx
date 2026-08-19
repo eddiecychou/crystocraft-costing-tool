@@ -61,6 +61,11 @@ export default function QuoteExport({ quote, items, onClose }) {
   const [loading, setLoading] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(false)
+  // Off by default — a customer still comparing prices across items/tiers
+  // finds one grand total confusing (it isn't what they'd actually order);
+  // a customer who already knows their selection wants to see it. Admin
+  // picks per export (owner feedback).
+  const [includeTotal, setIncludeTotal] = useState(false)
 
   // Build the quotation PDF as a blob (shared by download + preview).
   async function buildPdfBlob() {
@@ -81,7 +86,7 @@ export default function QuoteExport({ quote, items, onClose }) {
       import('@react-pdf/renderer'),
       import('./QuotePDF'),
     ])
-    return pdf(<QuotePDF quote={{ ...quote, _stampData: stampData }} items={withImages} />).toBlob()
+    return pdf(<QuotePDF quote={{ ...quote, _stampData: stampData }} items={withImages} includeTotal={includeTotal} />).toBlob()
   }
 
   // "QU260602-1 - Widdop Bingham - 2026-07-21" — the three things anyone
@@ -490,6 +495,13 @@ export default function QuoteExport({ quote, items, onClose }) {
             </div>
           ))}
         </div>
+
+        <label className="flex items-center gap-2 mb-4 text-xs text-gray-600 cursor-pointer select-none">
+          <input type="checkbox" checked={includeTotal} onChange={e => setIncludeTotal(e.target.checked)}
+            className="rounded border-gray-300" />
+          Include grand total on PDF
+          <span className="text-gray-400">— best for a customer who already knows what they're ordering</span>
+        </label>
 
         <div className="space-y-3">
           <button className="btn-secondary w-full justify-center" onClick={previewPDF} disabled={previewLoading || pdfLoading || loading}>

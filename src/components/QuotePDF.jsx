@@ -88,7 +88,7 @@ const s = StyleSheet.create({
   amountText: { fontSize: 9, color: C.black },
   itemRemark: { fontSize: 7.5, color: C.grayMid, marginTop: 3, lineHeight: 1.4 },
 
-  // Total
+  // Total — opt-in only (includeTotal prop), see QuotePDF's own comment.
   totalRow: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 8 },
   totalLabel: { fontFamily: 'Work Sans', fontWeight: 600, fontSize: 8.5, color: C.grayDark, letterSpacing: 0.8, marginRight: 12 },
   totalValue: { fontFamily: 'Work Sans', fontWeight: 600, fontSize: 12, color: C.black, width: W.amount, textAlign: 'right' },
@@ -124,16 +124,22 @@ function InfoLine({ label, children, strong }) {
   )
 }
 
-// First (primary) tier of an item + its line amount.
+// First (primary) tier of an item + its line amount — used only when the
+// grand total is included (see includeTotal below).
 const firstTier = item => (item.tiers?.length ? item.tiers : [{ quantity: item.quantity ?? '', price: item.price ?? item.price_hkd ?? '' }])[0]
 const tierAmount = t => (Number(t?.quantity) || 0) * (Number(t?.price ?? t?.price_hkd) || 0)
 
-export default function QuotePDF({ quote, items }) {
+// includeTotal: opt-in, off by default (QuoteExport.jsx's export dialog).
+// Off suits a customer still comparing options across items/tiers — a single
+// grand total summed across everything on the quote doesn't correspond to
+// what they'd actually order, so it read as confusing rather than useful
+// (owner feedback). On suits a customer who already knows what they're
+// ordering, where a total is exactly what they want to see.
+export default function QuotePDF({ quote, items, includeTotal = false }) {
   const cur = quote.quote_currency || 'HKD'
   const clientName  = quote.client_name || '—'
   const contactLine = [quote.contact_name, quote.contact_email].filter(Boolean).join('   ·   ') || '—'
-  // Grand total from each item's primary (first) tier.
-  const grandTotal = items.reduce((sum, item) => sum + tierAmount(firstTier(item)), 0)
+  const grandTotal = includeTotal ? items.reduce((sum, item) => sum + tierAmount(firstTier(item)), 0) : 0
 
   return (
     <Document
@@ -234,8 +240,8 @@ export default function QuotePDF({ quote, items }) {
           )
         })}
 
-        {/* Grand total */}
-        {grandTotal > 0 ? (
+        {/* Grand total — opt-in, see includeTotal comment above. */}
+        {includeTotal && grandTotal > 0 ? (
           <View style={s.totalRow}>
             <Text style={s.totalLabel}>{`TOTAL (${cur})`}</Text>
             <Text style={s.totalValue}>{fmtMoney(grandTotal)}</Text>
