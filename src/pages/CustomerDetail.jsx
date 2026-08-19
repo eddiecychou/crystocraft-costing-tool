@@ -11,7 +11,7 @@ import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
 import CustomerBrandGallery from '../components/CustomerBrandGallery'
 import ProposalEditor from '../components/ProposalEditor'
-import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt, ChevronDown, ChevronUp, Database, Mail, MessageCircle, Loader2, RefreshCw, Smartphone, Mic } from 'lucide-react'
+import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt, ChevronDown, ChevronUp, ChevronRight, Database, Mail, MessageCircle, Loader2, RefreshCw, Smartphone, Mic } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
 import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers, CHANNELS, NO_API_CHANNELS } from '../domain/customer'
@@ -218,6 +218,45 @@ function MergeCustomerModal({ customer, onClose, onMerged }) {
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// This page grew to a dozen-plus stacked sections over time (owner,
+// post-launch: "too many sections, make it easy to expand/collapse"). One
+// shared wrapper for all of them — title + optional right-side controls
+// (buttons/links that stay clickable even when collapsed, via
+// stopPropagation) in a clickable header row, body hidden when collapsed.
+// Open/closed state is per customer + section (sessionStorage, keyed by
+// `${customerId}:${sectionKey}`) so it survives a save/reload within the
+// same visit without polluting localStorage forever or leaking one
+// customer's layout preference onto another's page.
+function readCollapsed(key, defaultOpen) {
+  if (!key) return !defaultOpen
+  try {
+    const v = sessionStorage.getItem(`cd-collapse:${key}`)
+    return v === null ? !defaultOpen : v === '1'
+  } catch { return !defaultOpen }
+}
+function Collapsible({ storageKey, title, right, defaultOpen = true, children, className = 'card mb-4', bodyClassName = 'px-5 pb-5 -mt-1' }) {
+  const [collapsed, setCollapsed] = useState(() => readCollapsed(storageKey, defaultOpen))
+  function toggle() {
+    setCollapsed(c => {
+      const next = !c
+      if (storageKey) { try { sessionStorage.setItem(`cd-collapse:${storageKey}`, next ? '1' : '0') } catch {} }
+      return next
+    })
+  }
+  return (
+    <div className={className}>
+      <div className={`flex items-center justify-between gap-2 px-5 py-4 cursor-pointer select-none ${!collapsed ? 'border-b border-gray-100' : ''}`} onClick={toggle}>
+        <div className="flex items-center gap-1.5 min-w-0">
+          {collapsed ? <ChevronRight size={15} className="text-gray-400 shrink-0" /> : <ChevronDown size={15} className="text-gray-400 shrink-0" />}
+          <h2 className="text-sm font-semibold text-gray-700 truncate">{title}</h2>
+        </div>
+        {right && <div onClick={e => e.stopPropagation()} className="shrink-0 flex items-center gap-2">{right}</div>}
+      </div>
+      {!collapsed && <div className={bodyClassName}>{children}</div>}
     </div>
   )
 }
@@ -769,11 +808,8 @@ export default function CustomerDetail() {
 
       {/* Contacts — separate named people (owner, 2026-08-05), not one shared
           contact_name + unattributed emails. */}
-      <div className="card p-5 mb-4">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-700">Contacts ({(customer.contacts || []).length})</h2>
-          <Link to={`/customers/${id}/edit`} className="text-xs text-brand-600 hover:underline">Edit →</Link>
-        </div>
+      <Collapsible storageKey={`${id}:contacts`} title={`Contacts (${(customer.contacts || []).length})`}
+                   right={<Link to={`/customers/${id}/edit`} className="text-xs text-brand-600 hover:underline">Edit →</Link>}>
         {(customer.contacts || []).length === 0 ? (
           <p className="text-sm text-gray-400">No contacts on file yet.</p>
         ) : (
@@ -819,11 +855,10 @@ export default function CustomerDetail() {
             ))}
           </div>
         )}
-      </div>
+      </Collapsible>
 
       {/* Company details */}
-      <div className="card p-5 mb-4">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Company Details</h2>
+      <Collapsible storageKey={`${id}:company`} title="Company Details">
         <dl className="space-y-2">
           {customer.website && (
             <Row label="Website" value={
@@ -860,11 +895,10 @@ export default function CustomerDetail() {
             } />
           )}
         </dl>
-      </div>
+      </Collapsible>
 
       {/* Linked storefront accounts */}
-      <div className="card p-5 mb-4">
-        <h2 className="text-sm font-semibold text-gray-700 mb-1">Storefront Accounts ({accounts.length})</h2>
+      <Collapsible storageKey={`${id}:accounts`} title={`Storefront Accounts (${accounts.length})`}>
         <p className="text-xs text-gray-400 mb-3">Login accounts linked to this customer. Manage links on the Accounts page.</p>
         {accounts.length === 0 ? (
           <p className="text-sm text-gray-400">
@@ -888,22 +922,18 @@ export default function CustomerDetail() {
             ))}
           </div>
         )}
-      </div>
+      </Collapsible>
 
       {/* Notes */}
       {customer.notes && (
-        <div className="card p-5 mb-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-1">Notes</h2>
+        <Collapsible storageKey={`${id}:notes`} title="Notes">
           <p className="text-sm text-gray-600 whitespace-pre-wrap">{customer.notes}</p>
-        </div>
+        </Collapsible>
       )}
 
       {/* PI Orders */}
-      <div className="card mb-4">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">PI Orders ({orders.length})</h2>
-          <Link to={`/shipments/new?customer_id=${id}`} className="btn-primary text-xs py-1.5 px-3">+ New PI</Link>
-        </div>
+      <Collapsible storageKey={`${id}:pi-orders`} title={`PI Orders (${orders.length})`} bodyClassName=""
+                   right={<Link to={`/shipments/new?customer_id=${id}`} className="btn-primary text-xs py-1.5 px-3">+ New PI</Link>}>
         {orders.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-8">No PI orders for this customer.</p>
         ) : (
@@ -938,7 +968,7 @@ export default function CustomerDetail() {
             })}
           </div>
         )}
-      </div>
+      </Collapsible>
 
       {/* Sales Invoice History — merged app + JES, see domain/
           salesInvoiceHistory.js. Only invoices (what's actually been sold to
@@ -1018,11 +1048,8 @@ export default function CustomerDetail() {
       {erpDoc && <ErpDocModal of="sales_invoice" doc={erpDoc} onClose={() => setErpDoc(null)} />}
 
       {/* Quote history */}
-      <div className="card mb-4">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">Quotes ({quotes.length})</h2>
-          <Link to={`/quotes/new?customer_id=${id}`} onClick={remember} className="btn-primary text-xs py-1.5 px-3">+ New Quote</Link>
-        </div>
+      <Collapsible storageKey={`${id}:quotes`} title={`Quotes (${quotes.length})`} bodyClassName=""
+                   right={<Link to={`/quotes/new?customer_id=${id}`} onClick={remember} className="btn-primary text-xs py-1.5 px-3">+ New Quote</Link>}>
         {quotes.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-8">No quotes yet for this customer.</p>
         ) : (
@@ -1046,7 +1073,7 @@ export default function CustomerDetail() {
             ))}
           </div>
         )}
-      </div>
+      </Collapsible>
 
       {/* Brand Gallery — customer logos / brand assets (admin-curated) */}
       <CustomerBrandGallery customerId={id} />
@@ -1055,11 +1082,8 @@ export default function CustomerDetail() {
       <ProposalEditor customerId={id} />
 
       {/* Portal Enquiries (from the storefront) */}
-      <div className="card mb-4">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">Portal Enquiries ({portalEnquiries.length})</h2>
-          <Link to="/enquiries" onClick={remember} className="text-xs text-brand-600 hover:underline">Manage →</Link>
-        </div>
+      <Collapsible storageKey={`${id}:portal-enquiries`} title={`Portal Enquiries (${portalEnquiries.length})`} bodyClassName=""
+                   right={<Link to="/enquiries" onClick={remember} className="text-xs text-brand-600 hover:underline">Manage →</Link>}>
         {accounts.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-8">
             No storefront account linked, so portal enquiries can't be matched.{' '}
@@ -1101,32 +1125,30 @@ export default function CustomerDetail() {
             })}
           </div>
         )}
-      </div>
+      </Collapsible>
 
       {/* Email Summary (V8.1) — draft AI read of customers/{id}/email_threads,
           ingested by email-sync/sync.py outside this app. Hidden entirely
           when nothing's been ingested yet, rather than showing an empty
           card for the ~most customers not yet backfilled/matched. */}
       {emailThreads.length > 0 && (
-        <div className="card mb-4">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
-              <Mail size={15} className="text-gray-400" /> Email Summary
-              <span className="text-xs font-normal text-gray-400">({emailThreads.length} thread{emailThreads.length === 1 ? '' : 's'} ingested)</span>
-              {emailSyncStatus?.last_run_at && (
-                <span className="text-xs font-normal text-gray-400"
-                      title={`Mailbox last synced ${new Date(emailSyncStatus.last_run_at).toLocaleString('en-GB')} (${emailSyncStatus.new_messages ?? '?'} new message${emailSyncStatus.new_messages === 1 ? '' : 's'} that run)`}>
-                  · mailbox synced {new Date(emailSyncStatus.last_run_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-                </span>
-              )}
-            </h2>
-            <button onClick={handleRefreshEmailSummary} disabled={emailSummaryBusy}
+        <Collapsible storageKey={`${id}:email-summary`}
+          title={<span className="inline-flex items-center gap-1.5">
+            <Mail size={15} className="text-gray-400" /> Email Summary
+            <span className="text-xs font-normal text-gray-400">({emailThreads.length} thread{emailThreads.length === 1 ? '' : 's'} ingested)</span>
+            {emailSyncStatus?.last_run_at && (
+              <span className="text-xs font-normal text-gray-400"
+                    title={`Mailbox last synced ${new Date(emailSyncStatus.last_run_at).toLocaleString('en-GB')} (${emailSyncStatus.new_messages ?? '?'} new message${emailSyncStatus.new_messages === 1 ? '' : 's'} that run)`}>
+                · mailbox synced {new Date(emailSyncStatus.last_run_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+              </span>
+            )}
+          </span>}
+          right={<button onClick={handleRefreshEmailSummary} disabled={emailSummaryBusy}
               className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1.5">
               {emailSummaryBusy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
               {customer?.email_summary ? 'Refresh' : 'Generate'}
-            </button>
-          </div>
-          <div className="px-5 py-4 space-y-3">
+            </button>}
+          bodyClassName="px-5 py-4 space-y-3">
             {emailSummaryError && (
               <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 flex items-start gap-1.5">
                 <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {emailSummaryError}
@@ -1186,8 +1208,7 @@ export default function CustomerDetail() {
                 </div>
               )}
             </div>
-          </div>
-        </div>
+        </Collapsible>
       )}
 
       {/* WhatsApp threads (V8.2) — see customers/{id}/whatsapp_threads comment
@@ -1198,20 +1219,18 @@ export default function CustomerDetail() {
           notes (owner's own account, 2026-08-12) so a voice-heavy chat isn't
           silently missing content from that summary. */}
       {mergedWhatsappThreads.length > 0 && (
-        <div className="card mb-4">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
-              <Smartphone size={15} className="text-gray-400" /> WhatsApp
-              <span className="text-xs font-normal text-gray-400">
-                ({mergedWhatsappThreads.length} chat{mergedWhatsappThreads.length === 1 ? '' : 's'} imported)
-              </span>
-            </h2>
-            <button onClick={handleRefreshWhatsappSummary} disabled={whatsappSummaryBusy}
+        <Collapsible storageKey={`${id}:whatsapp`} bodyClassName=""
+          title={<span className="inline-flex items-center gap-1.5">
+            <Smartphone size={15} className="text-gray-400" /> WhatsApp
+            <span className="text-xs font-normal text-gray-400">
+              ({mergedWhatsappThreads.length} chat{mergedWhatsappThreads.length === 1 ? '' : 's'} imported)
+            </span>
+          </span>}
+          right={<button onClick={handleRefreshWhatsappSummary} disabled={whatsappSummaryBusy}
               className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1.5">
               {whatsappSummaryBusy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
               {customer?.whatsapp_summary ? 'Refresh' : 'Generate'}
-            </button>
-          </div>
+            </button>}>
           <div className="px-5 py-4 space-y-3 border-b border-gray-100">
             {whatsappSummaryError && (
               <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 flex items-start gap-1.5">
@@ -1334,21 +1353,17 @@ export default function CustomerDetail() {
               )
             })}
           </div>
-        </div>
+        </Collapsible>
       )}
 
       {/* Interaction Log */}
-      <div className="card mb-4">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">Interaction Log ({enquiries.length})</h2>
-          <button
+      <Collapsible storageKey={`${id}:interaction-log`} title={`Interaction Log (${enquiries.length})`} bodyClassName=""
+        right={<button
             onClick={() => { setEditingEnquiry(null); setEnquiryFormOpen(true) }}
             className="btn-primary text-xs py-1.5 px-3"
           >
             + Log Interaction
-          </button>
-        </div>
-
+          </button>}>
         {enquiries.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-8">No interactions logged yet.</p>
         ) : (
@@ -1471,15 +1486,13 @@ export default function CustomerDetail() {
             })()}
           </div>
         )}
-      </div>
+      </Collapsible>
 
       {/* Compose Message */}
-      <div className="card mb-4">
-        <div className="px-5 py-4 border-b border-gray-100">
-          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-gray-700"><Sparkle size={15} />Compose Message</h2>
-          <p className="text-xs text-gray-400 mt-0.5">AI-written message tailored to this customer</p>
-        </div>
-        <div className="p-5 space-y-4">
+      <Collapsible storageKey={`${id}:compose`} defaultOpen={false}
+        title={<span className="inline-flex items-center gap-1.5"><Sparkle size={15} />Compose Message</span>}
+        bodyClassName="px-5 pb-5 space-y-4">
+        <p className="text-xs text-gray-400 -mt-2 mb-1">AI-written message tailored to this customer</p>
 
           {/* Product picker */}
           <div>
@@ -1587,8 +1600,7 @@ export default function CustomerDetail() {
               />
             </div>
           )}
-        </div>
-      </div>
+      </Collapsible>
 
       {/* Enquiry form drawer */}
       {enquiryFormOpen && (

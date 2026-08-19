@@ -7,7 +7,7 @@ import {
   usableInMarketing,
 } from '../customerAssets'
 import { IMAGE_VISIBILITY, imageVisibility } from '../constants'
-import { ImagePlus, ShieldCheck, Lock, Globe, Megaphone, X, Trash2, ExternalLink, FileText, Download } from 'lucide-react'
+import { ImagePlus, ShieldCheck, Lock, Globe, Megaphone, X, Trash2, ExternalLink, FileText, Download, ChevronDown, ChevronRight } from 'lucide-react'
 
 const extOf = filename => (filename.match(/\.[^.]+$/)?.[0] || '').replace('.', '').toUpperCase()
 
@@ -60,6 +60,19 @@ export default function CustomerBrandGallery({ customerId }) {
   const [uploading, setUploading] = useState(false)
   const [editing, setEditing] = useState(null)   // asset open in the drawer
   const fileRef = useRef(null)
+  // Collapsible (owner, post-launch: Customer Detail had grown too many
+  // always-expanded sections) — per customer, survives a reload within the
+  // same visit via sessionStorage, doesn't leak across customers/sessions.
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return sessionStorage.getItem(`cd-collapse:${customerId}:brand-gallery`) === '1' } catch { return false }
+  })
+  function toggleCollapsed() {
+    setCollapsed(c => {
+      const next = !c
+      try { sessionStorage.setItem(`cd-collapse:${customerId}:brand-gallery`, next ? '1' : '0') } catch {}
+      return next
+    })
+  }
 
   // Catalogue photos tagged "branded for" this customer (ProductDetail.jsx) —
   // a SEPARATE source from the assets above. Shown inline in Product Gallery
@@ -125,13 +138,18 @@ export default function CustomerBrandGallery({ customerId }) {
   return (
     <div className="card p-5 mb-4">
       <div className="flex items-center justify-between gap-2 mb-1">
-        <h2 className="text-sm font-semibold text-gray-700">Brand Gallery ({assets.length})</h2>
+        <button type="button" onClick={toggleCollapsed} className="flex items-center gap-1.5 min-w-0 text-left">
+          {collapsed ? <ChevronRight size={15} className="text-gray-400 shrink-0" /> : <ChevronDown size={15} className="text-gray-400 shrink-0" />}
+          <h2 className="text-sm font-semibold text-gray-700 truncate">Brand Gallery ({assets.length})</h2>
+        </button>
         <button onClick={() => fileRef.current?.click()} disabled={uploading}
-                className="btn-primary text-xs py-1.5 px-3 inline-flex items-center gap-1">
+                className="btn-primary text-xs py-1.5 px-3 inline-flex items-center gap-1 shrink-0">
           <ImagePlus size={13} /> {uploading ? 'Uploading…' : `Add to ${CATEGORY_LABEL[category]}`}
         </button>
         <input ref={fileRef} type="file" accept={ASSET_UPLOAD_ACCEPT} multiple className="hidden" onChange={onFiles} />
       </div>
+      {!collapsed && (
+      <>
 
       <div className="flex gap-1 border-b border-gray-100 mb-3 mt-2">
         {CATEGORIES.map(c => (
@@ -267,6 +285,8 @@ export default function CustomerBrandGallery({ customerId }) {
             </div>
           ))}
         </div>
+      )}
+      </>
       )}
 
       {editing && (

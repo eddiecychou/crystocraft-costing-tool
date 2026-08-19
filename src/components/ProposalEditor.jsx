@@ -11,7 +11,7 @@ import {
   SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Trash2, Plus, X, Presentation, Search, ImageOff, Upload, Download, FileJson, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { GripVertical, Trash2, Plus, X, Presentation, Search, ImageOff, Upload, Download, FileJson, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react'
 
 // Admin editor for the customer proposal doc (Sun-Life-Proposal-Build-Spec.md
 // §6). Writes go through src/customerProposal.js only — this component never
@@ -384,6 +384,19 @@ export default function ProposalEditor({ customerId }) {
   const [savedAt, setSavedAt] = useState(null)
   const [uploadingHero, setUploadingHero] = useState(false)
   const heroFileRef = useRef(null)
+  // Collapsible (owner, post-launch: Customer Detail had grown too many
+  // always-expanded sections) — per customer, survives a reload within the
+  // same visit via sessionStorage.
+  const [collapsed, setCollapsed] = useState(() => {
+    try { return sessionStorage.getItem(`cd-collapse:${customerId}:proposal`) === '1' } catch { return false }
+  })
+  function toggleCollapsed() {
+    setCollapsed(c => {
+      const next = !c
+      try { sessionStorage.setItem(`cd-collapse:${customerId}:proposal`, next ? '1' : '0') } catch {}
+      return next
+    })
+  }
   const [exporting, setExporting] = useState(false)
   const [importing, setImporting] = useState(false)
 
@@ -540,24 +553,27 @@ export default function ProposalEditor({ customerId }) {
 
   return (
     <div className="card p-5 mb-4">
-      <div className="flex items-center justify-between gap-2 mb-1">
-        <h2 className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5">
-          <Presentation size={15} className="text-brand-500" /> Proposal
-        </h2>
-        <div className="flex items-center gap-2">
-          <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${proposal.status === 'published' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+      <div className="flex flex-col gap-3 mb-1">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <button type="button" onClick={toggleCollapsed} className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5 text-left">
+            {collapsed ? <ChevronRight size={15} className="text-gray-400 shrink-0" /> : <ChevronDown size={15} className="text-gray-400 shrink-0" />}
+            <Presentation size={15} className="text-brand-500" /> Proposal
+          </button>
+          <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${proposal.status === 'published' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
             {proposal.status === 'published' ? 'Published — customer can see this' : 'Draft — admin preview only'}
           </span>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap justify-end">
           <button onClick={exportForMapping} disabled={exporting} title="Download the current content + catalogue as JSON, for an AI mapper (e.g. Manus) to fill in"
-                  className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1">
+                  className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1 whitespace-nowrap">
             <Download size={12} /> {exporting ? 'Exporting…' : 'Export for AI mapping'}
           </button>
           <button onClick={() => setImporting(true)} title="Import a mapped JSON file back in, as a draft, after validating every reference"
-                  className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1">
+                  className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1 whitespace-nowrap">
             <FileJson size={12} /> Import mapped JSON
           </button>
-          <button onClick={save} disabled={saving} className="btn-secondary text-xs py-1.5 px-3">{saving ? 'Saving…' : 'Save draft'}</button>
-          <button onClick={togglePublish} disabled={saving} className="btn-primary text-xs py-1.5 px-3">
+          <button onClick={save} disabled={saving} className="btn-secondary text-xs py-1.5 px-3 whitespace-nowrap">{saving ? 'Saving…' : 'Save draft'}</button>
+          <button onClick={togglePublish} disabled={saving} className="btn-primary text-xs py-1.5 px-3 whitespace-nowrap">
             {proposal.status === 'published' ? 'Unpublish' : 'Publish'}
           </button>
         </div>
@@ -569,6 +585,7 @@ export default function ProposalEditor({ customerId }) {
                               onApplied={async () => { await reloadProposal(); setImporting(false); setSavedAt(new Date()) }} />
       )}
 
+      {!collapsed && <>
       <div className="grid sm:grid-cols-[140px_1fr] gap-3 my-4">
         <div>
           <p className="label text-xs mb-1.5">Hero image</p>
@@ -629,6 +646,7 @@ export default function ProposalEditor({ customerId }) {
           </SortableContext>
         </DndContext>
       )}
+      </>}
     </div>
   )
 }
