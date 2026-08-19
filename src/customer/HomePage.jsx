@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
-import { Heart, ClipboardList, Receipt, Images, ArrowRight, Sparkles } from 'lucide-react'
+import { Heart, ClipboardList, Receipt, Images, ArrowRight } from 'lucide-react'
 import { useFrontPageFeatured } from '../frontPageFeatured'
 import { loadBrandedProductImages } from '../customerAssets'
 import { loadProposal } from '../customerProposal'
 import { isStorefrontVisible } from '../constants'
+import ProposalInviteCard from './ProposalInviteCard'
 import heroImage from '../assets/customer/hero-corporate.jpg'
 import pillarFigurine from '../assets/customer/pillar-figurine.jpg'
 import pillarCorporate from '../assets/customer/pillar-corporate.jpg'
@@ -15,57 +16,35 @@ import { heroContent, pillarsSection, pillars, quickAccessSection, quickActions 
 
 const ICONS = { Heart, ClipboardList, Receipt, Images }
 
-// Brand Portal awareness banner — a priority ladder, not a checklist: show
-// the single most relevant invite for what this customer actually has,
-// rather than one tile buried in the quick-access grid indistinguishable
-// from "My Orders" (owner, post-launch feedback). Brand-asset-only
-// customers still get a way in via the quick-access tile itself — no need
-// for a banner there too, that's the quiet case by design.
-function useBrandPortalStatus(customerId) {
-  const [status, setStatus] = useState(null) // null = loading/unknown; { tier, tagline }
+// Which invite (if any) this customer should see on the homepage — a
+// priority ladder, not a checklist: a published proposal outranks branded
+// product photos existing, which outranks nothing extra (a brand-assets-
+// only customer still reaches the portal via the quick-access tile, no
+// banner needed for that quiet case — owner, post-launch feedback).
+function useProposalInviteStatus(customerId) {
+  const [status, setStatus] = useState(null) // 'proposal_ready' | 'collection_ready' | null
   useEffect(() => {
     let alive = true
     if (!customerId) { setStatus(null); return }
     ;(async () => {
-      let tier = null, tagline = ''
+      let next = null
       try {
         const proposal = await loadProposal(customerId)
-        if (proposal?.status === 'published') { tier = 'proposal'; tagline = proposal.tagline || '' }
-      } catch { /* draft/missing — not an error, just no proposal to show */ }
-      if (!tier) {
+        if (proposal?.status === 'published') next = 'proposal_ready'
+      } catch { /* draft/missing — not an error, just nothing to show */ }
+      if (!next) {
         try {
           const imgs = await loadBrandedProductImages(customerId)
-          if (imgs.filter(isStorefrontVisible).length > 0) tier = 'gallery'
-        } catch { /* ignore — banner just won't show */ }
+          if (imgs.filter(isStorefrontVisible).length > 0) next = 'collection_ready'
+        } catch { /* ignore — invite just won't show */ }
       }
-      if (alive) setStatus({ tier, tagline })
+      if (alive) setStatus(next)
     })()
     return () => { alive = false }
   }, [customerId])
   return status
 }
 
-function BrandPortalBanner({ profile, status }) {
-  if (!status?.tier) return null
-  const company = profile?.company_name || 'your company'
-  const copy = status.tier === 'proposal'
-    ? { icon: Sparkles, heading: `Your ${company} proposal is ready`, sub: status.tagline || 'Take a look at what we’ve put together for you.' }
-    : { icon: Images, heading: 'See your branded products', sub: 'Photos of your branded gifts are ready to view in the portal.' }
-  const Icon = copy.icon
-  return (
-    <Link to="/shop/brand-portal"
-      className="card group flex items-center gap-4 p-5 mb-8 hover:shadow-md transition-shadow border-brand-200 bg-brand-50/40">
-      <span className="w-11 h-11 rounded-full bg-white flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-        <Icon size={20} strokeWidth={1.5} className="text-brand-600" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-ink">{copy.heading}</p>
-        <p className="text-xs text-ink-60 truncate">{copy.sub}</p>
-      </div>
-      <ArrowRight size={16} className="text-brand-600 shrink-0 group-hover:translate-x-0.5 transition-transform" />
-    </Link>
-  )
-}
 const PILLAR_IMAGE = { figurine: pillarFigurine, corporate: pillarCorporate, crystal: pillarCrystal }
 
 // Resolves each featured item's current name + detail-page link live, so a
@@ -143,7 +122,7 @@ export default function HomePage({ profile }) {
   const visibleQuickActions = quickActions.filter(a => !a.requiresCustomer || profile?.customer_id)
   const featured = useFrontPageFeatured()
   const featuredMeta = useFeaturedProductsMeta(featured?.items)
-  const brandPortalStatus = useBrandPortalStatus(profile?.customer_id)
+  const inviteStatus = useProposalInviteStatus(profile?.customer_id)
 
   const scrollToPillars = () => document.getElementById('pillars')?.scrollIntoView({ behavior: 'smooth' })
 
@@ -175,7 +154,7 @@ export default function HomePage({ profile }) {
         </div>
       </section>
 
-      <BrandPortalBanner profile={profile} status={brandPortalStatus} />
+      {inviteStatus && <ProposalInviteCard status={inviteStatus} href="/shop/brand-portal" />}
 
       {/* Featured Products — hand-picked by an admin in Marketing → Front
           Page (src/pages/FrontPageConfig.jsx), each a specific product AND
