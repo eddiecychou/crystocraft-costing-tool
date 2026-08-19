@@ -14,7 +14,7 @@ import ProposalEditor from '../components/ProposalEditor'
 import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt, ChevronDown, ChevronUp, ChevronRight, Database, Mail, MessageCircle, Loader2, RefreshCw, Smartphone, Mic } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
-import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers, primaryContact, CHANNELS, NO_API_CHANNELS } from '../domain/customer'
+import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers, CHANNELS, NO_API_CHANNELS } from '../domain/customer'
 import { transcribeMessage, WHATSAPP_TRANSCRIBE_LANGUAGES } from '../domain/whatsappImport'
 import { erpLookup } from '../erpApi'
 import { mergeSalesInvoiceHistory } from '../domain/salesInvoiceHistory'
@@ -806,39 +806,6 @@ export default function CustomerDetail() {
         </div>
       )}
 
-      {/* Quick Access — same chip pattern as SupplierDetail.jsx's Quick
-          Access row (owner, 2026-08-19: "surface WhatsApp Personal/Business
-          at the top like the supplier page"). Primary contact only — a
-          fast top-of-page path for the contact Eddie reaches out to by
-          default; every contact's own numbers (primary or not) still show
-          in the Contacts section below, unchanged. Hidden entirely when the
-          primary contact has no WhatsApp info at all. */}
-      {(() => {
-        const pc = primaryContact(customer.contacts)
-        if (!pc) return null
-        const chips = [
-          pc.whatsapp_personal && { label: 'WhatsApp Personal', number: pc.whatsapp_personal },
-          pc.whatsapp_business && { label: 'WhatsApp Business', number: pc.whatsapp_business },
-          // Only the neutral fallback when neither classified number is set
-          // — same Case 5 rule as everywhere else this pair was added.
-          !pc.whatsapp_personal && !pc.whatsapp_business && pc.whatsapp && { label: 'WhatsApp', number: pc.whatsapp },
-        ].filter(Boolean)
-        if (!chips.length) return null
-        return (
-          <div className="card p-4 mb-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2.5">Quick Access</p>
-            <div className="flex flex-wrap items-center gap-2">
-              {chips.map(chip => (
-                <a key={chip.label} href={`https://wa.me/${chip.number.replace(/\D/g, '')}`} target="_blank" rel="noreferrer"
-                   className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
-                  <Smartphone size={12} />{chip.label}
-                </a>
-              ))}
-            </div>
-          </div>
-        )
-      })()}
-
       {/* Contacts — separate named people (owner, 2026-08-05), not one shared
           contact_name + unattributed emails. */}
       <Collapsible storageKey={`${id}:contacts`} title={`Contacts (${(customer.contacts || []).length})`}
@@ -857,6 +824,14 @@ export default function CustomerDetail() {
                 <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
                   {c.email && <a href={`mailto:${c.email}`} className="text-brand-600 hover:underline">{c.email}</a>}
                   {c.phone && <a href={`tel:${c.phone}`} className="text-brand-600 hover:underline">{c.phone}</a>}
+                  {/* whatsapp_personal/whatsapp_business are separate, optional
+                      fields (Draft Daily WhatsApp channel support) — shown
+                      alongside the older unclassified `whatsapp` when set,
+                      never replacing it (owner, 2026-08-19: group WhatsApp
+                      links with the contact they belong to, not a separate
+                      page-level box). */}
+                  {c.whatsapp_personal && <a href={`https://wa.me/${c.whatsapp_personal.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">WA Personal: {c.whatsapp_personal}</a>}
+                  {c.whatsapp_business && <a href={`https://wa.me/${c.whatsapp_business.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">WA Business: {c.whatsapp_business}</a>}
                   {c.whatsapp && <a href={`https://wa.me/${c.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">WA: {c.whatsapp}</a>}
                   {c.wechat && <span className="text-gray-600">WeChat: {c.wechat}</span>}
                 </div>
