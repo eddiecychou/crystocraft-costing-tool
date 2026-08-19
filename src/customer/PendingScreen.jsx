@@ -96,6 +96,14 @@ function GoogleDetailsStep() {
 export default function PendingScreen({ profile }) {
   const navigate = useNavigate()
   const isGoogleWithNoDoc = !profile && auth.currentUser?.providerData?.some(p => p.providerId === 'google.com')
+  // TEMPORARY diagnostic (remove once the 2026-08-19 Google-signup dead-end
+  // is confirmed fixed) — logs exactly what PendingScreen sees so a live
+  // repro shows real data instead of guesswork.
+  console.log('[PendingScreen debug]', {
+    profile, isGoogleWithNoDoc,
+    currentUserEmail: auth.currentUser?.email,
+    providerData: auth.currentUser?.providerData,
+  })
 
   if (isGoogleWithNoDoc) return <Shell><GoogleDetailsStep /></Shell>
 
