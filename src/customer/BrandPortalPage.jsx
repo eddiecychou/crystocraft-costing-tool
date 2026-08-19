@@ -124,6 +124,7 @@ export default function BrandPortalPage({ profile }) {
             <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/40 to-transparent" />
             <div className="absolute inset-0 flex items-end">
               <div className="max-w-6xl w-full mx-auto px-4 pb-10 md:pb-14">
+                <p className="eyebrow text-gold mb-2">Brand Proposal</p>
                 {proposal.proposal.tagline && <h1 className="text-2xl md:text-4xl text-white leading-tight mb-2 max-w-2xl">{proposal.proposal.tagline}</h1>}
                 {proposal.proposal.briefing && <p className="text-sm md:text-base text-white/85 leading-relaxed max-w-lg">{proposal.proposal.briefing}</p>}
               </div>
@@ -135,7 +136,7 @@ export default function BrandPortalPage({ profile }) {
               {proposal.sections.map((s, i) => (
                 <section key={i}>
                   {s.heading && <h2 className="text-xl md:text-2xl text-ink mb-1.5">{s.heading}</h2>}
-                  {s.tagline && <p className="text-sm font-medium text-brand-600 mb-2">{s.tagline}</p>}
+                  {s.tagline && <p className="text-sm font-medium text-bronze mb-2">{s.tagline}</p>}
                   {s.briefing && <p className="text-sm text-ink-60 max-w-2xl mb-5 leading-relaxed">{s.briefing}</p>}
 
                   {(s.images.length > 0 || s.products.length > 0) && (
@@ -197,7 +198,7 @@ export default function BrandPortalPage({ profile }) {
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {galleryProducts.map(img => (
-              <div key={img.product_id} className="bg-white rounded-xl border border-ivory-dark overflow-hidden flex flex-col">
+              <div key={img.product_id} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">
                 <Link to={`/shop/corporate/${img.product_id}`} className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
                   <img src={img.file_url} alt={img.caption || img.product_name} className="w-full h-full object-contain" />
                 </Link>
@@ -213,7 +214,7 @@ export default function BrandPortalPage({ profile }) {
               </div>
             ))}
             {galleryAssets.map(a => (
-              <div key={a.id} className="bg-white rounded-xl border border-ivory-dark overflow-hidden flex flex-col">
+              <div key={a.id} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">
                 <div className="aspect-square bg-gray-400 flex items-center justify-center overflow-hidden">
                   {cannotRenderAsImage(a.filename) ? (
                     <div className="flex flex-col items-center gap-1 text-white/80">
@@ -250,7 +251,7 @@ export default function BrandPortalPage({ profile }) {
           <p className="text-xs text-ink-40 mb-3">Access your approved logos, guidelines and brand materials.</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {brandAssets.map(a => (
-              <div key={a.id} className="bg-white rounded-xl border border-ivory-dark overflow-hidden flex flex-col">
+              <div key={a.id} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">
                 <div className="aspect-square bg-gray-400 flex items-center justify-center overflow-hidden">
                   {cannotRenderAsImage(a.filename) ? (
                     <div className="flex flex-col items-center gap-1 text-white/80">
