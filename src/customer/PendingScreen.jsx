@@ -95,15 +95,15 @@ function GoogleDetailsStep() {
 
 export default function PendingScreen({ profile }) {
   const navigate = useNavigate()
-  const isGoogleWithNoDoc = !profile && auth.currentUser?.providerData?.some(p => p.providerId === 'google.com')
-  // TEMPORARY diagnostic (remove once the 2026-08-19 Google-signup dead-end
-  // is confirmed fixed) — logs exactly what PendingScreen sees so a live
-  // repro shows real data instead of guesswork.
-  console.log('[PendingScreen debug]', {
-    profile, isGoogleWithNoDoc,
-    currentUserEmail: auth.currentUser?.email,
-    providerData: auth.currentUser?.providerData,
-  })
+  // useProfile.js never returns null for "no doc" — it's the sentinel
+  // { missing: true } (or { missing: true, error: true } on a read error),
+  // always a truthy object. Checking !profile here (2026-08-19's first
+  // attempt at this fix) was therefore always false once useProfile settled,
+  // which is why the diagnostic log showed isGoogleWithNoDoc flip from true
+  // to false the moment the real (missing) profile object arrived — the
+  // "one more thing" form was never actually reachable. profile?.missing is
+  // the correct check.
+  const isGoogleWithNoDoc = profile?.missing && auth.currentUser?.providerData?.some(p => p.providerId === 'google.com')
 
   if (isGoogleWithNoDoc) return <Shell><GoogleDetailsStep /></Shell>
 
