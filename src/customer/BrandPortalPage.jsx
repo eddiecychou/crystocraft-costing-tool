@@ -48,7 +48,6 @@ export default function BrandPortalPage({ profile }) {
       ])
       if (!alive) return
       setBrandAssets(visibleAssets.filter(a => a.category === 'brand_asset'))
-      setGalleryAssets(visibleAssets.filter(a => a.category === 'product_gallery'))
 
       // One card per PRODUCT, not per photo — first branded photo seen per
       // product_id stands in for that product.
@@ -60,8 +59,17 @@ export default function BrandPortalPage({ profile }) {
 
       let resolvedProposal = null
       let referencedProductIds = new Set()
+      // Same redundancy idea as referencedProductIds below, but for
+      // manually-uploaded assets: the proposal's hero image and any asset
+      // used inside a section are NOT leftover gallery items. Missing this
+      // showed the hero photo a second time, mislabeled as a "product"
+      // (found live, 2026-08-20 — Sun Life's own hero image appeared in
+      // "More products for your brand" captioned "Proposal hero").
+      let referencedAssetIds = new Set()
       try {
-        const p = await loadProposal(customerId)
+        // loadProposal throws (permission-denied) for a customer with no
+        // proposal doc at all — see hasBrandPortalContent's comment for why.
+        const p = await loadProposal(customerId).catch(() => null)
         if (p && p.status === 'published') {
           const assetsById = new Map(visibleAssets.map(a => [a.id, a]))
           for (const img of brandedImages) assetsById.set(`branded:${img.id}`, { ...img, filename: img.caption || 'photo.jpg' })
@@ -72,14 +80,21 @@ export default function BrandPortalPage({ profile }) {
             products: await resolveProductRefs(s.product_refs, profile),
           })))
           resolvedProposal = { proposal: p, heroAsset, sections }
-          for (const s of p.sections) for (const r of s.product_refs) {
-            if (r.collection === 'products') referencedProductIds.add(r.id)
+          if (p.hero_asset_id) referencedAssetIds.add(p.hero_asset_id)
+          for (const s of p.sections) {
+            for (const r of s.product_refs) {
+              if (r.collection === 'products') referencedProductIds.add(r.id)
+            }
+            for (const ref of s.asset_ids) referencedAssetIds.add(typeof ref === 'string' ? ref : ref?.id)
           }
         }
       } catch { /* draft or missing — treated as no proposal, same as ProposalPage did */ }
 
       if (!alive) return
       setProposal(resolvedProposal)
+      setGalleryAssets(
+        visibleAssets.filter(a => a.category === 'product_gallery' && !referencedAssetIds.has(a.id))
+      )
       // Redundancy rule (owner, post-launch): if the proposal already
       // features a product, showing it again here — uncaptioned, out of
       // context — is noise, not value. Only show what's left over. When

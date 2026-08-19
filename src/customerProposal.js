@@ -101,8 +101,18 @@ export async function loadProposal(customerId) {
 // acceptable edge case.
 export async function hasBrandPortalContent(customerId) {
   if (!customerId) return false
+  // loadProposal's bare getDoc() THROWS for a customer with no proposal doc
+  // at all — firestore.rules' customer-read clause dereferences
+  // resource.data.status against a null resource for a nonexistent doc,
+  // which Firestore denies as PERMISSION_DENIED (admin reads don't hit this,
+  // isAdmin() short-circuits before resource.data is ever touched).
+  // BrandPortalPage.jsx already wraps this in try/catch for exactly that
+  // reason; this didn't, and since CustomerLayout's caller has no .catch()
+  // either, the whole Promise.all silently rejected and the tab never
+  // showed at all for a customer with real brand content but no proposal —
+  // found live, 2026-08-20.
   const [proposal, assets, brandedImages] = await Promise.all([
-    loadProposal(customerId),
+    loadProposal(customerId).catch(() => null),
     loadCustomerVisibleAssets(customerId),
     loadBrandedProductImages(customerId).then(imgs => imgs.filter(isStorefrontVisible)),
   ])
