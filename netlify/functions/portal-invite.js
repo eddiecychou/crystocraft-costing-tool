@@ -688,8 +688,13 @@ async function claimInvitation(body) {
 async function setupLinkForApprovedInvitation(ref, inv, adminUid) {
   const PORTAL_URL = process.env.PORTAL_URL || 'https://portal.crystocraft.com'
   const db = getFirestore()
-  const customerSnap = await db.collection('customers').doc(inv.customer_id).get()
-  const companyName = String(customerSnap.data()?.company_name || '')
+  // No customer_id for an approved internal/test account (see approveInvitation's
+  // isInternal branch) — db.collection().doc(null) throws, and there's no
+  // real company name to show anyway; fall back to the applicant's own
+  // free-text name from the invitation itself.
+  const companyName = inv.customer_id
+    ? String((await db.collection('customers').doc(inv.customer_id).get()).data()?.company_name || '')
+    : String(inv.applicant_company_name || '')
   let setupUrl
   try {
     // generatePasswordResetLink() always returns a link through Firebase's
@@ -747,37 +752,57 @@ async function approveInvitation(body, adminUid) {
   // customers/{id}. An admin must link (or correct) it before approval can
   // proceed; this also doubles as the original SU-07A spec's "correct the
   // customer/contact link before approval" for admin-created invitations.
+  //
+  // Exception: account_type:'internal' (a staff/test login, set via
+  // AccountEdit.jsx's Account Category toggle) never needs a real customer
+  // record — there's no wholesale pricing/order-history to mirror for a
+  // test account, and requiring one was pure friction the toggle itself
+  // didn't advertise (found live, 2026-08-19). Read straight off the user
+  // doc rather than trusting a client-supplied flag — same "server verifies,
+  // never trusts the caller's claim" posture as everything else here.
+  const claimedUserRef = db.collection('users').doc(inv.claimed_uid)
+  const claimedUserSnap = await claimedUserRef.get()
+  const isInternal = claimedUserSnap.data()?.account_type === 'internal'
+
   const customerId = suppliedCustomerId || inv.customer_id
-  if (!customerId) {
+  if (!customerId && !isInternal) {
     return json({ error: 'Link this request to a customer record before approving.' }, 400)
   }
-  const customerSnap = await db.collection('customers').doc(customerId).get()
-  if (!customerSnap.exists) return json({ error: 'That customer record no longer exists.' }, 404)
 
-  // Mirror sensitive/erp_code/erp_code_shared onto the user doc — same fields
-  // domain/customer.js's mirrorToLinkedAccounts keeps in sync on every future
-  // customer edit, but THIS approval is the account's first write, so without
-  // it the account sits unscreened (sensitiveImages.js's client-side privacy
-  // check reads profile.sensitive — unset is a no-op) and order history reads
-  // empty (customer-order-history.js keys off users/{uid}.erp_code) until an
-  // admin happens to save the customer record again. Read straight off the
-  // customer doc rather than recomputing the erp_code_shared share-count query
-  // — saveCustomer already keeps that field current.
-  const custData = customerSnap.data() || {}
-  const userUpdate = {
-    status: 'approved', customer_id: customerId,
-    sensitive: !!custData.sensitive,
-    erp_code: custData.erp_code || '',
-    erp_code_shared: !!custData.erp_code_shared,
+  let userUpdate
+  if (customerId) {
+    const customerSnap = await db.collection('customers').doc(customerId).get()
+    if (!customerSnap.exists) return json({ error: 'That customer record no longer exists.' }, 404)
+
+    // Mirror sensitive/erp_code/erp_code_shared onto the user doc — same
+    // fields domain/customer.js's mirrorToLinkedAccounts keeps in sync on
+    // every future customer edit, but THIS approval is the account's first
+    // write, so without it the account sits unscreened (sensitiveImages.js's
+    // client-side privacy check reads profile.sensitive — unset is a no-op)
+    // and order history reads empty (customer-order-history.js keys off
+    // users/{uid}.erp_code) until an admin happens to save the customer
+    // record again. Read straight off the customer doc rather than
+    // recomputing the erp_code_shared share-count query — saveCustomer
+    // already keeps that field current.
+    const custData = customerSnap.data() || {}
+    userUpdate = {
+      status: 'approved', customer_id: customerId,
+      sensitive: !!custData.sensitive,
+      erp_code: custData.erp_code || '',
+      erp_code_shared: !!custData.erp_code_shared,
+    }
+    if (suppliedCustomerId) {
+      // Keep the user's displayed company_name in sync with the now-linked
+      // canonical record, rather than whatever free text the applicant typed.
+      userUpdate.company_name = String(custData.company_name || '')
+    }
+  } else {
+    // Internal, no customer linked — approve as-is, safe defaults.
+    userUpdate = { status: 'approved', customer_id: null, sensitive: false, erp_code: '', erp_code_shared: false }
   }
-  if (suppliedCustomerId) {
-    // Keep the user's displayed company_name in sync with the now-linked
-    // canonical record, rather than whatever free text the applicant typed.
-    userUpdate.company_name = String(custData.company_name || '')
-  }
-  await db.collection('users').doc(inv.claimed_uid).update(userUpdate)
+  await claimedUserRef.update(userUpdate)
   await ref.update({
-    status: 'approved', approved_at: Timestamp.now(), customer_id: customerId,
+    status: 'approved', approved_at: Timestamp.now(), customer_id: customerId || null,
     audit_log: FieldValue.arrayUnion(auditEntry('approved', adminUid)),
   })
 

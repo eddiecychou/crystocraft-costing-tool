@@ -134,7 +134,14 @@ export default function AccountEdit() {
       // local state and u.customer_id should usually agree by then, but
       // this avoids a false rejection if they don't for any reason).
       const linkCustomerId = customerId || u.customer_id
-      if (!linkCustomerId) {
+      // Internal (staff/test) accounts skip the customer-link requirement —
+      // approveInvitation's own server-side check reads account_type
+      // straight off the Firestore doc (never trusts a client claim), so
+      // persist the toggle first in case it was just flipped and not yet
+      // saved — otherwise the server would still see the old value and
+      // reject exactly like a real customer account would.
+      if (type === 'internal') await apply({ account_type: type })
+      if (!linkCustomerId && type !== 'internal') {
         setStatus('Error: link this account to a customer (above) before approving — an invitation-based account needs one to be approved.')
         return
       }
