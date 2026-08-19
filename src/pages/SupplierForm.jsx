@@ -68,7 +68,6 @@ export default function SupplierForm() {
     website_url: '', shop_1688_url: '', product_1688_url: '',
     taobao_shop_url: '', taobao_product_url: '',
     alibaba_shop_url: '', alibaba_product_url: '',
-    wechat_contact_label: '', wechat_open_url: '',
   })
   const [phones, setPhones] = useState([''])
   const [emails, setEmails] = useState([''])
@@ -93,7 +92,6 @@ export default function SupplierForm() {
           website_url: d.website_url || '', shop_1688_url: d.shop_1688_url || '', product_1688_url: d.product_1688_url || '',
           taobao_shop_url: d.taobao_shop_url || '', taobao_product_url: d.taobao_product_url || '',
           alibaba_shop_url: d.alibaba_shop_url || '', alibaba_product_url: d.alibaba_product_url || '',
-          wechat_contact_label: d.wechat_contact_label || '', wechat_open_url: d.wechat_open_url || '',
         }))
         setPhones(toArray(d.phones ?? d.phone))
         setEmails(toArray(d.emails ?? d.email))
@@ -110,7 +108,6 @@ export default function SupplierForm() {
     for (const { key, label } of LINK_FIELDS) {
       if (!isValidUrl(form[key])) errs[key] = `${label} must be a full http:// or https:// URL`
     }
-    if (!isValidUrl(form.wechat_open_url)) errs.wechat_open_url = 'WeChat open link must be a full http:// or https:// URL'
     setLinkErrors(errs)
     if (Object.keys(errs).length > 0) return
     setLoading(true)
@@ -234,25 +231,6 @@ export default function SupplierForm() {
                 {linkErrors[key] && <p className="text-xs text-red-600 mt-1">{linkErrors[key]}</p>}
               </div>
             ))}
-          </div>
-        </div>
-
-        <div className="border-t border-gray-100 pt-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">WeChat Quick Access</p>
-          <p className="text-xs text-gray-400 mb-3">
-            A direct open link only works if it's actually been tested — otherwise leave it blank and the supplier page
-            will offer a copy-to-clipboard fallback for the ID/label instead.
-          </p>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="label">WeChat Contact Label</label>
-              <input className="input" value={form.wechat_contact_label} onChange={set('wechat_contact_label')} placeholder="e.g. Wang San — crystal factory" />
-            </div>
-            <div>
-              <label className="label">WeChat Open Link <span className="text-gray-400 font-normal">(only if tested)</span></label>
-              <input className="input" type="url" value={form.wechat_open_url} onChange={set('wechat_open_url')} placeholder="https://…" />
-              {linkErrors.wechat_open_url && <p className="text-xs text-red-600 mt-1">{linkErrors.wechat_open_url}</p>}
-            </div>
           </div>
         </div>
 

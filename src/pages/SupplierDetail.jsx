@@ -6,11 +6,10 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import SupplierCatalogs from '../components/SupplierCatalogs'
 import SupplierAddQuoteModal from '../components/SupplierAddQuoteModal'
-import CopyButton from '../components/CopyButton'
 import { SUPPLIER_CATEGORIES, PO_PAYMENT_TERM_LABEL, PO_STATUSES } from '../constants'
 import { fmtMoney } from '../currency'
 import { poTotals } from '../purchaseOrders'
-import { AlertTriangle, Star, FileText, ExternalLink, MessageCircle, FolderOpen } from 'lucide-react'
+import { AlertTriangle, Star, FileText, ExternalLink, FolderOpen } from 'lucide-react'
 
 // Supplier Workstation Phase 1 — quick-access sourcing links. Order matters:
 // website first, then each marketplace's shop before its product/catalogue
@@ -236,14 +235,17 @@ export default function SupplierDetail() {
       </div>
 
       {/* Supplier Workstation Phase 1 — Quick Access. Compact single row of
-          chips; only renders a link/WeChat chip for a populated+valid value
-          (no dead buttons) — the "Catalogues & Files" chip always shows
-          since SupplierCatalogs below already handles the empty case on its
-          own ("no catalogs yet"). */}
+          chips; only renders a link chip for a populated+valid value (no
+          dead buttons) — the "Catalogues & Files" chip always shows since
+          SupplierCatalogs below already handles the empty case on its own
+          ("no catalogs yet"). WeChat quick-access was dropped (owner,
+          2026-08-19): personal WeChat has no reliable public deep-link
+          scheme, so a "direct open" button could never be more than a
+          maybe-broken guess, and the copy-ID fallback wasn't wanted either
+          — supplier.wechat_id still shows as plain info below, same as
+          before this feature existed. */}
       {(() => {
         const links = QUICK_LINKS.filter(l => isHttpUrl(supplier[l.key]))
-        const hasWechatOpen = isHttpUrl(supplier.wechat_open_url)
-        const hasWechatFallback = !hasWechatOpen && (supplier.wechat_contact_label || supplier.wechat_id)
         return (
           <div className="card p-4 mb-6">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2.5">Quick Access</p>
@@ -254,30 +256,11 @@ export default function SupplierDetail() {
                   <ExternalLink size={12} />{l.label}
                 </a>
               ))}
-              {hasWechatOpen && (
-                <a href={supplier.wechat_open_url} target="_blank" rel="noreferrer"
-                   className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
-                  <MessageCircle size={12} />Open WeChat
-                </a>
-              )}
               <a href="#catalogues"
                  className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
                 <FolderOpen size={12} />Catalogues &amp; Files
               </a>
             </div>
-            {/* WeChat fallback — no reliable direct link, so offer copy
-                instead of pretending a chat can be opened automatically. */}
-            {hasWechatFallback && (
-              <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 flex-wrap">
-                <MessageCircle size={13} className="text-gray-400 shrink-0" />
-                <span className="text-xs text-gray-600">
-                  {supplier.wechat_contact_label || 'WeChat contact'}
-                  {supplier.wechat_id && <span className="text-gray-400"> · {supplier.wechat_id}</span>}
-                </span>
-                {supplier.wechat_id && <CopyButton text={supplier.wechat_id} label="Copy WeChat ID" />}
-                {!supplier.wechat_id && supplier.wechat_contact_label && <CopyButton text={supplier.wechat_contact_label} label="Copy label" />}
-              </div>
-            )}
           </div>
         )
       })()}
