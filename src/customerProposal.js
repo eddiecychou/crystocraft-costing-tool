@@ -4,6 +4,7 @@ import {
 import { db, auth } from './firebase'
 import { normGallery, isStorefrontVisible, productStatusOf } from './constants'
 import { screenSensitiveImages } from './sensitiveImages'
+import { loadCustomerVisibleAssets } from './customerAssets'
 
 // Customer proposal data layer — see Sun-Life-Proposal-Build-Spec.md §3/§6.
 //
@@ -83,6 +84,26 @@ export async function loadProposal(customerId) {
   if (!customerId) return null
   const snap = await getDoc(proposalRef(customerId))
   return snap.exists() ? norm(snap.data()) : null
+}
+
+// Cheap existence check for the portal nav — does this customer have
+// anything the Brand Portal tab would actually show? Checks the same two
+// sources BrandPortalPage.jsx's own `total` count leads with (published
+// proposal, own uploaded assets) but deliberately SKIPS
+// loadBrandedProductImages (customerAssets.js) — that iterates every
+// product's images subcollection (N+1 queries across the whole catalogue),
+// too expensive to run on every portal page load just to decide nav
+// visibility. Known tradeoff: a customer whose ONLY brand content is a
+// branded product photo, with no proposal and no manually uploaded asset,
+// won't see the tab. Narrow edge case, worth revisiting only if it's
+// actually hit in practice.
+export async function hasBrandPortalContent(customerId) {
+  if (!customerId) return false
+  const [proposal, assets] = await Promise.all([
+    loadProposal(customerId),
+    loadCustomerVisibleAssets(customerId),
+  ])
+  return proposal?.status === 'published' || assets.length > 0
 }
 
 // Merge-write. Never touches status — publishProposal/unpublishProposal own

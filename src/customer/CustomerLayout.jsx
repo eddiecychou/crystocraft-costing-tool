@@ -1,14 +1,28 @@
+import { useState, useEffect } from 'react'
 import { NavLink, Link, useNavigate } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
 import { Home, Gem, Package, Heart, ClipboardList, Images, Receipt, Sparkles } from 'lucide-react'
 import { useCart, useFavourites } from './store'
+import { hasBrandPortalContent } from '../customerProposal'
 import logo from '../assets/logo.png'
 
 export default function CustomerLayout({ children, profile }) {
   const navigate = useNavigate()
   const cart = useCart()
   const fav = useFavourites()
+  const customerId = profile?.customer_id || null
+  // Hidden until proven otherwise — an empty Brand Portal tab is a dead
+  // end (owner request), not just an empty page, so default to NOT showing
+  // it rather than flashing it on then off once the check resolves.
+  const [hasBrandContent, setHasBrandContent] = useState(false)
+  useEffect(() => {
+    let alive = true
+    if (!customerId) { setHasBrandContent(false); return }
+    hasBrandPortalContent(customerId).then(v => { if (alive) setHasBrandContent(v) })
+    return () => { alive = false }
+  }, [customerId])
+
   async function handleSignOut() {
     await signOut(auth)
     navigate('/login')
@@ -17,14 +31,14 @@ export default function CustomerLayout({ children, profile }) {
     { to: '/shop', label: 'Home', Icon: Home, end: true },
     { to: '/shop/figurine', label: 'Figurine Gifts', Icon: Gem },
     { to: '/shop/corporate', label: 'Corporate Gifts', Icon: Package },
+    // Grouped right after Corporate Gifts (owner request) — related content,
+    // and only shown once we know the customer actually has something in it.
+    ...(customerId && hasBrandContent ? [{ to: '/shop/brand-portal', label: 'Brand Portal', Icon: Images }] : []),
     { to: '/shop/swatches', label: 'Swatch Library', Icon: Sparkles },
     { to: '/shop/favourites', label: 'Favourites', Icon: Heart, badge: fav?.count },
     { to: '/shop/enquiry', label: 'Enquiry', Icon: ClipboardList, badge: cart?.count },
-    // Only linked customers have order history / a brand gallery to show.
-    ...(profile?.customer_id ? [
-      { to: '/shop/orders', label: 'My Orders', Icon: Receipt },
-      { to: '/shop/brand-portal', label: 'Brand Portal', Icon: Images },
-    ] : []),
+    // Only linked customers have order history to show.
+    ...(customerId ? [{ to: '/shop/orders', label: 'My Orders', Icon: Receipt }] : []),
   ]
   return (
     <div className="min-h-screen flex flex-col bg-ivory">
