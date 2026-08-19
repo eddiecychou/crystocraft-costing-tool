@@ -79,6 +79,226 @@ right fix is a manual admin action or a one-off script with a human
 double-checking the target uid first — not another automatic client-side
 self-heal.
 
+**Postscript (V8.5):** this exact symptom — "my account shows Awaiting
+approval" — recurred twice more during V8.5, from two entirely DIFFERENT
+causes, neither a repeat of this incident. See V8.5 §5 below for both.
+The lesson generalises: the PendingScreen message is generic by design (any
+signed-in user with `role:'customer'`/`status` not `'approved'` sees it),
+so "same screen" does not mean "same bug" — check what's actually different
+about the account before assuming the mechanism.
+
+## Current Status — V8.5 CLOSED as of 2026-08-20
+
+One long, dense session across four mostly-unrelated efforts: a stack of
+smaller live-incident fixes to close out first, a from-scratch Google
+Sign-In build for the customer portal (including a genuinely fiddly custom-
+auth-domain DNS/OAuth-client setup, done live with the owner in the
+Firebase/Google Cloud consoles), a full Design System V2.5 rollout across
+the entire customer portal, and three follow-up live bugs found immediately
+after that rollout shipped. Every commit landed same-day; nothing carried
+over a session boundary.
+
+### The numbers
+
+| | |
+|---|---:|
+| Commits | 18 |
+| New components | `src/components/FacetDivider.jsx` |
+| New Firestore field | `users/{uid}.auth_provider` (`'google.com'`, set by Google self-signup — lets the approval flow skip the password-setup email) |
+| New Netlify function actions | `apply_for_account_google`, `delete_account` (both `netlify/functions/portal-invite.js`) |
+| New design tokens | shadow scale, `.btn-ghost/-outline/-outline-gold/-reversed`, `.tag/-active/-clickable`, `.mosaic-grid/-tile`, `.facet-divider` (`src/index.css`/`tailwind.config.js`) |
+| Real production incidents found & fixed | 8 — see §1–§7 below |
+
+### 1. Portal Logins — missing stamp on password-setup sign-in
+
+`SetPassword.jsx`'s sign-in (the very last step of the invitation/password-
+reset flow) never wrote the `last_login_at`/`login_count` stamp `Login.jsx`'s
+normal sign-in does — any customer whose most recent sign-in went through
+that path showed as "never signed in" on the Portal Logins roster even
+though they had. Fixed by extracting the stamp into a shared
+`src/authActivity.js` helper (`stampLogin`), called from both places.
+
+### 2. `storage.rules` — `isAuth()` → `isAdmin()` on every admin-only path
+
+Flagged as known-not-fixed since the Supplier Workstation build (V8.2):
+every Storage path used `isAuth()` (any signed-in user), meaning a signed-in
+CUSTOMER account could read AND write admin-only paths — supplier quotes,
+settings assets, campaign images, catalogues, everything except the two
+genuinely customer-owned paths (`customer_uploads/{uid}`, `renders/{uid}`,
+correctly left `isAuth()`/uid-owned). Added `isAdmin()`, mirroring
+`firestore.rules`' `users/{uid}.role=='admin'` check via Storage's
+cross-service Firestore reference (`firestore.get()`/`exists()`), applied to
+all 14 non-uid-owned paths. Required a one-time Firebase-console IAM grant
+(Cloud Firestore Viewer role for the Storage service account) before
+`isAdmin()` would actually evaluate rather than fail closed — done live with
+the owner. Confirmed safe for customer-facing image display: those pages
+consume pre-resolved Firestore-stored download-token URLs, which bypass
+Storage rules by design and never call the Storage SDK directly.
+
+### 3. SU-07A code-review fix pack (external DeepSeek review)
+
+An external review of the invitation/self-signup flow surfaced two real
+issues, both fixed same-day:
+- **`approveInvitation` never mirrored `sensitive`/`erp_code`/`erp_code_shared`**
+  onto the approved user's doc — every OTHER path that links an account to a
+  customer does this (`domain/customer.js`'s `mirrorToLinkedAccounts`), but
+  approval is the account's FIRST write, so without it a just-approved
+  account sat unscreened (privacy check no-ops on an unset `sensitive` flag)
+  and with empty order history until an admin happened to re-save the
+  customer record. Now reads all three straight off the already-fetched
+  customer doc.
+- **No abuse protection on `apply_for_account`** — added a honeypot (`hp`
+  field), matching the existing convention in `edge-functions/subscribe.js`.
+- Also fixed in the same pass: a race between `getUserByEmail` and
+  `createUser` in both `applyForAccount` and `claimInvitation` (two
+  simultaneous submissions for the same email could both pass the pre-check;
+  now catches `auth/email-already-exists` and degrades gracefully), and a
+  state-invariant gap where `claimInvitation` could leave two invitations
+  pointing at one user.
+
+### 4. Google Sign-In for the customer portal
+
+Customers reported the password-based signup/invitation flow felt spam-like
+— an unfamiliar site asking them to click a link and set a password.
+Self-serve signup only (admin-invitation linking is deferred, see "Where
+V8.6 starts"): "Sign in with Google" added alongside (not replacing)
+email/password on `Login.jsx`. A brand-new Google signup lands on a short
+"one more thing" company-name step, then submits into the exact same
+`portal_invitations`/admin-approval pipeline as today's email/password
+self-signup — no bypass of admin review. Server side: new
+`apply_for_account_google` action in `netlify/functions/portal-invite.js`,
+trusting only the caller's decoded Firebase ID token (never a client-
+supplied email), via a new `requireAuth` (any signed-in user, vs the
+existing `requireAdmin`).
+
+**Required a custom Firebase Auth domain** (`auth.crystocraft.com`, done
+live with the owner) so the Google consent popup shows a real domain instead
+of `<project>.firebaseapp.com` — needed a throwaway Firebase Hosting deploy
+just to unlock "Add custom domain" (this project had never used Hosting),
+a CNAME record (first attempt got double-suffixed by the DNS panel
+auto-appending the zone name — `auth.crystocraft.com.crystocraft.com` — the
+classic "type just the subdomain label, not the full FQDN" DNS-panel trap),
+and adding the redirect URI + JS origin to the Google Cloud OAuth client
+by hand (Firebase does not auto-sync this for a manually-added Hosting
+domain).
+
+### 5. Three real Google-signup bugs, found live in immediate succession
+
+- **Duplicate-identity confusion**: Firebase treats email/password and
+  Google as SEPARATE identities per email unless explicitly linked — testing
+  the new button with an email that already had a password account created
+  a second, unrelated pending signup and left the browser signed into THAT
+  one instead of the real account. This is what produced the "Awaiting
+  approval" scare on `eddie@uart.com.hk` — not a recurrence of the
+  self-heal incident above, a different mechanism entirely; the original
+  admin doc was never touched. Fixed with a server-side check
+  (`apply_for_account_google` refuses if the email already has an account
+  under a different uid) plus a clean `deleteAccount` action (the OLD
+  "Delete account" button only ever removed the Firestore doc — the Auth
+  credential survived forever, which is exactly what made a
+  deleted-then-recreated test account keep hitting `already_registered`).
+- **The real dead-end bug**: `App.jsx`'s top-level router watches Firebase
+  auth state globally, independent of `Login.jsx`'s own post-signin logic —
+  the instant the Google popup resolved, the router swapped `Login.jsx` out
+  for `PendingScreen` before `Login.jsx` ever got to show its "one more
+  thing" step, so nothing was ever submitted. Fixed by moving that step into
+  `PendingScreen.jsx` itself (where the router actually lands). First
+  attempt at this fix still didn't work — root cause, found via live
+  diagnostic logging: `useProfile.js` never returns `null` for "no doc," it
+  returns the sentinel `{ missing: true }` (always a truthy object), so a
+  `!profile` check was always false. `profile?.missing` was the actual fix.
+- **Wrong email content**: `approveInvitation` always sent the "set your
+  password" email regardless of how the account signed up — a Google
+  account has no password to set at all. Now checks the approved account's
+  `auth_provider` and sends a distinct "sign in with Google" notification
+  instead when it's `'google.com'`.
+- Separately: marking an account "Internal" (staff/test login) didn't
+  exempt it from the invitation-approval flow's "must link a customer
+  first" rule — the two were never wired together. `approveInvitation` now
+  reads `account_type` off the Firestore doc and skips the customer
+  requirement for internal accounts, approving with safe defaults
+  (`customer_id: null`, `sensitive: false`).
+
+### 6. Design System V2.5 applied to the customer portal
+
+Owner supplied a refreshed design system and asked for it applied to the
+customer-facing portal first — genuine evolution of what was already live
+(same fonts, core colors, 4px spacing scale), so the real work was
+composition patterns, not raw tokens. Full page-by-page audit done first
+(comparing the new system's reference templates against every current
+customer-portal page) before any code changed. Applied across Home, both
+catalogues (Corporate/Figurine Gifts), Brand Portal, Swatch Library, and
+both product detail pages:
+- New shadow scale (redefines Tailwind's own `shadow-*` utility names, so
+  every existing `hover:shadow-md` picked up the softer, near-flat scale
+  with no per-file edits), new button variants, a shared `.tag` pill class
+  replacing hand-rolled inline filter chips, and the `.mosaic-grid`/`.mosaic-tile`
+  hairline treatment (tiles touch edge-to-edge, replacing gapped cards)
+  applied to every product grid in the portal.
+- Eyebrow labels added above section/product headers — previously absent
+  everywhere; the single most consistent gap the audit found.
+- Two deliberate scope calls, confirmed with the owner before building:
+  hairline-mosaic grid adopted portal-wide (not catalogue-only), and Brand
+  Portal keeps its existing photographic hero rather than switching to the
+  template's solid-dark cover section.
+- Explicitly NOT ported: the proposal template's Materials/Investment-table/
+  Timeline/Signature sections (would need new Firestore fields + admin-editor
+  work, not a pure UI migration) and catalogue "Load more" pagination (a
+  data-loading behavior change, not a design-system update) — both flagged
+  as separate future asks, not forgotten.
+
+### 7. Three live bugs found immediately after the V2.5 rollout shipped
+
+- **Brand Portal tab missing for customers with no proposal**: the new
+  nav-visibility check (`hasBrandPortalContent`) called `loadProposal` bare.
+  For a customer with NO proposal doc at all, `firestore.rules`' customer-
+  read clause dereferences `resource.data.status` against a null resource,
+  which Firestore denies as `PERMISSION_DENIED` — `getDoc()` throws. Admin
+  reads never hit this (`isAdmin()` short-circuits first), which is why it
+  worked testing as admin but silently failed for a real customer — the
+  whole `Promise.all` rejected uncaught and the tab never showed at all, no
+  matter what brand content existed. `BrandPortalPage.jsx` already guarded
+  against this exact throw; the new nav check didn't. Also extended the
+  check to include branded product photos (previously skipped as "too
+  expensive" — reconsidered: `CustomerLayout` mounts once per portal
+  session, not once per page view, so this pays the same one-time cost
+  `BrandPortalPage.jsx` already pays on every visit).
+- **Proposal hero image showing as a fake "product"**: the leftover
+  "Product Gallery" section had no rule excluding the proposal's own hero
+  asset (or any asset already used inside a section) from the "not yet
+  featured" list — Sun Life's own hero photo appeared a second time,
+  mislabeled "Proposal hero / Product Photo · JPG". Same redundancy rule
+  that already applied to products now also applies to assets.
+- **Brand Assets rendered logo files as product photo tiles**: a
+  transparent-background logo cropped into a big opaque grey square read as
+  broken. Rewritten as a proper file list (small white thumbnail, filename,
+  type/extension, download icon) instead of an image gallery — a logo is a
+  downloadable asset, not a photo to browse.
+- Smaller, same pass: `.mosaic-grid`'s gap color was the darker warm-grey
+  hairline shade rather than the page's own beige — an incomplete last row
+  (fewer items than columns) left the empty trailing cell showing solid
+  grey instead of blending into the page.
+
+### Also this cycle
+
+- **Quote PDF grand total made opt-in** (checkbox, default off) — a quote's
+  items commonly carry several price tiers, and the customer picks a subset
+  rather than buying everything on the quote, so a single summed total
+  didn't correspond to what a "still comparing prices" customer would
+  actually order (owner feedback).
+- **Quote pricing tiers auto-sort by quantity on blur** — previously stayed
+  in whatever order they were typed.
+- **Auto-reload once on a stale-chunk dynamic import failure** — a tab left
+  open across a deploy still holds references to the OLD hashed chunk
+  filenames; any lazy import then 404s ("Failed to fetch dynamically
+  imported module"), surfaced live as a broken PDF export. Now listens for
+  Vite's own `vite:preloadError` and reloads once (session-guarded against a
+  reload loop on a genuine, persistent failure).
+- **SU-07A's `[TEST] Eddie Live-Test Account 2` deleted** — the test
+  customer record + linked login flagged since V8.3 as "safe to delete
+  whenever the test account is retired." Done via a one-off `firebase-admin`
+  script (not committed — pure data cleanup, no code change).
+
 ## Current Status — V8.4 CLOSED as of 2026-08-19
 
 One session, same day as V8.3's own close — two substantial, unrelated
@@ -266,18 +486,34 @@ locally, keeping their own header action buttons clickable either way.
 
 ---
 
-## Where V8.5 starts
+## Where V8.6 starts
 
+- **Admin-invitation path still doesn't support Google sign-in** — V8.5
+  built self-serve Google signup only (see V8.5 §4). An admin-created
+  invitation still ends in a "set your password" email even for a customer
+  who'd rather use Google, because that account already has a fixed uid
+  (created passwordless by the admin's approval step) that a plain Google
+  popup would NOT sign into — it needs account-linking (mint a custom token
+  for that exact uid server-side, sign in with it, then `linkWithPopup`),
+  not a fresh `signInWithPopup`. Real scope: a new server action plus
+  careful `SetPassword.jsx` changes. Deliberately deferred, not forgotten.
+- **Brand Portal proposal's Materials / Investment-table / Timeline /
+  Signature sections were not ported** from Design System V2.5's proposal
+  template (V8.5 §6) — the template assumes a cost/timeline-bearing sales
+  document; the current `customerProposal.js` schema has no fields for
+  line-item costs or a timeline. Needs new Firestore fields + an admin-
+  editor UI change before any UI work, not a pure design-system migration.
+  Only worth doing if the owner actually wants that content type.
+- **Catalogue "Load more" pagination** — both shop grids render the full
+  filtered list at once; the V2.5 template has a "Load more" pattern.
+  Flagged as a real (if additive, low-risk) UX behavior change, not
+  cosmetic — worth explicit confirmation before building.
 - **WeChat deep-linking stays a closed question app-wide** — don't
   reopen it (Supplier or anywhere else) without a genuinely tested,
   reliable link in hand. Enterprise WeChat (企业微信/WeChat Work) DOES
   have an official, documented link/API system, unlike personal WeChat —
   worth a proper look if any supplier/customer outreach actually runs
   through that product instead of personal WeChat.
-- **`storage.rules`' app-wide `isAuth()` (not `isAdmin()`) pattern** —
-  flagged during the Supplier Workstation build (§3 above), not fixed.
-  ~18 Storage paths share this posture; tightening it is a real, separate
-  security-hardening decision, not a side effect of any single feature.
 - **Sun Life's proposal is live with real, Manus-mapped content** across
   all 25 branded corporate products — worth checking back in on whether
   this whole Brand Portal + AI-mapping workflow is worth extending to a
@@ -285,15 +521,26 @@ locally, keeping their own header action buttons clickable either way.
   editor.
 - **Supplier Workstation Phase 2 (WeChat Supplier Conversation Archive)
   was explicitly declined by the owner** ("too complicated") — don't
-  revisit unless asked. The lighter, safer next step flagged during that
-  conversation was catalogue-browsing UX (grid/thumbnail view, tagging)
-  if that's ever wanted instead.
+  revisit unless asked. Catalogue-browsing UX (grid/thumbnail view,
+  tagging) was floated as the lighter alternative — explicitly skipped
+  again in V8.5 when it came up, still purely speculative, not confirmed
+  wanted.
 - Everything still open from V8.3's own "Where V8.4 starts" entry that
-  wasn't touched this cycle remains open — see that section immediately
-  below for the full list (self-heal removal tradeoff, SU-07A test
-  account, SU-08 Phase 2 scope, the `netlify/functions/` vs
-  `edge-functions/` split, deferred Google OAuth, email "Discover more"
-  retrieval, Physical Design Workbench workstreams 3/5).
+  wasn't touched this cycle remains open: self-heal removal tradeoff (a
+  genuinely orphaned Auth account still just sits stuck until a human
+  notices — watch whether this actually happens in practice), SU-08 Phase 2
+  merged interaction timeline, the `netlify/functions/` vs
+  `edge-functions/` split (process note — any future Admin-SDK/Node-only
+  feature goes in `functions/` and must be curl-tested against the live
+  deployed endpoint, per V8.3 §2's lesson), email "Discover more" chat
+  retrieval (still facet-matching, not real embeddings), Physical Design
+  Workbench workstreams 3/5 (paused mid-build). SU-07A's test account is
+  now deleted (V8.5) — no longer open.
+- **Design System V2.5 was applied to the customer portal only** (V8.5
+  §6) — the internal admin tool (`src/pages/*.jsx`) still uses the prior
+  `.card`/gapped-grid styling throughout. Intentionally scoped that way,
+  not forgotten — extending V2.5 to the admin side is a separate, larger
+  ask if it's ever wanted.
 
 ---
 
