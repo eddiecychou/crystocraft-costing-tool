@@ -139,7 +139,7 @@ export default function BrandPortalPage({ profile }) {
                   {s.briefing && <p className="text-sm text-ink-60 max-w-2xl mb-5 leading-relaxed">{s.briefing}</p>}
 
                   {(s.images.length > 0 || s.products.length > 0) && (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {s.images.map(a => {
                         const to = a.product_id ? `/shop/corporate/${a.product_id}` : null
                         const inner = (
@@ -181,11 +181,21 @@ export default function BrandPortalPage({ profile }) {
         </div>
       )}
 
-      {/* 2. Product Gallery — leftover branded products + manually uploaded ones */}
+      {/* 2. Product Gallery — leftover branded products + manually uploaded ones.
+          Heading/subtitle differ depending on whether a proposal exists, so
+          the customer understands WHY this is a separate, secondary section
+          rather than a repeat of the proposal (owner, post-launch). */}
       {hasGallery && (
         <div className="mb-10">
-          <h2 className="text-sm font-semibold text-ink-70 mb-3">Product Gallery</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <h2 className="text-xl md:text-2xl text-ink mb-1.5">
+            {hasProposal ? 'More products for your brand' : 'Your curated brand collection'}
+          </h2>
+          <p className="text-sm text-ink-60 mb-6 max-w-2xl">
+            {hasProposal
+              ? 'Browse other products prepared for your brand but not included in this proposal.'
+              : 'Products selected and prepared for your brand.'}
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {galleryProducts.map(img => (
               <div key={img.product_id} className="bg-white rounded-xl border border-ivory-dark overflow-hidden flex flex-col">
                 <Link to={`/shop/corporate/${img.product_id}`} className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
@@ -230,11 +240,15 @@ export default function BrandPortalPage({ profile }) {
         </div>
       )}
 
-      {/* 3. Brand Assets — logos / guidelines */}
+      {/* 3. Brand Assets — logos / guidelines. Deliberately the quietest
+          section (small label, not a full heading+subtitle like the two
+          above) — a resource area, not something competing for attention
+          with the proposal or product collection (owner, post-launch). */}
       {hasBrandAssets && (
         <div>
-          <h2 className="text-sm font-semibold text-ink-70 mb-3">Brand Assets</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <h2 className="text-sm font-semibold text-ink-70 mb-1">Brand Assets</h2>
+          <p className="text-xs text-ink-40 mb-3">Access your approved logos, guidelines and brand materials.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {brandAssets.map(a => (
               <div key={a.id} className="bg-white rounded-xl border border-ivory-dark overflow-hidden flex flex-col">
                 <div className="aspect-square bg-gray-400 flex items-center justify-center overflow-hidden">
