@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { collection, getDocs } from 'firebase/firestore'
+import { collection, getDocs, doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useCustomerAssets, loadBrandedProductImages, uploadCustomerAsset, updateCustomerAsset, cannotRenderAsImage, ASSET_UPLOAD_ACCEPT } from '../customerAssets'
 import { loadProposal, saveProposal, publishProposal, unpublishProposal, loadProductImageChoices, CAPTION_MAX_LEN } from '../customerProposal'
@@ -11,7 +11,7 @@ import {
   SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Trash2, Plus, X, Presentation, Search, ImageOff, Upload } from 'lucide-react'
+import { GripVertical, Trash2, Plus, X, Presentation, Search, ImageOff, Upload, Download, FileJson, AlertTriangle, CheckCircle2 } from 'lucide-react'
 
 // Admin editor for the customer proposal doc (Sun-Life-Proposal-Build-Spec.md
 // §6). Writes go through src/customerProposal.js only — this component never
@@ -217,6 +217,146 @@ function SortableSection({ section, index, assets, products, customerId, onChang
   )
 }
 
+// Self-serve AI-mapping round trip (owner, post-launch: repeatedly asking
+// Claude to write one-off scripts to export/validate/import Manus's output
+// was slow and depended on Claude being available). "Export" hands Manus
+// exactly the schema + content it needs; "Import" validates the result the
+// same way the manual scripts did — ids resolve, active/non-retired, no
+// duplicate refs — before ever touching Firestore, and always lands as a
+// draft so nothing goes live unreviewed.
+function ImportProposalModal({ customerId, currentStatus, onClose, onApplied }) {
+  const [stage, setStage] = useState('pick')   // 'pick' | 'checking' | 'preview' | 'applying'
+  const [parsed, setParsed] = useState(null)
+  const [problems, setProblems] = useState([])
+  const [fileError, setFileError] = useState('')
+  const fileRef = useRef(null)
+
+  async function onFile(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setFileError('')
+    setStage('checking')
+    try {
+      const text = await file.text()
+      const json = JSON.parse(text)
+      const sections = Array.isArray(json.sections) ? json.sections : []
+
+      const found = []
+      const seen = new Set()
+      for (const s of sections) {
+        for (const r of (s.product_refs || [])) {
+          const coll = r.collection === 'range_products' ? 'range_products' : 'products'
+          const k = `${coll}:${r.id}`
+          if (seen.has(k)) { found.push(`Duplicate reference: ${coll}/${r.id} (appears in more than one section)`); continue }
+          seen.add(k)
+          if ((r.caption || '').length > CAPTION_MAX_LEN) found.push(`${s.heading || '(untitled)'}: ${coll}/${r.id} caption is over ${CAPTION_MAX_LEN} characters — will be cut off`)
+          const snap = await getDoc(doc(db, coll, r.id))
+          if (!snap.exists()) { found.push(`${s.heading || '(untitled)'}: ${coll}/${r.id} does not exist`); continue }
+          const p = snap.data()
+          const retired = p.status === 'retired'
+          if (p.active === false || retired) found.push(`${s.heading || '(untitled)'}: ${coll}/${r.id} (${p.name || p.design_name || ''}) is inactive/retired — will be dropped when shown to the customer`)
+        }
+      }
+      setParsed(json)
+      setProblems(found)
+      setStage('preview')
+    } catch (err) {
+      setFileError(err.message?.includes('JSON') ? 'That file isn’t valid JSON.' : `Couldn't read the file: ${err.message || err}`)
+      setStage('pick')
+    } finally {
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  async function apply() {
+    setStage('applying')
+    try {
+      await saveProposal(customerId, {
+        hero_asset_id: parsed.hero_asset_id || null,
+        tagline: parsed.tagline || '',
+        briefing: parsed.briefing || '',
+        sections: parsed.sections || [],
+      })
+      // Never let an import silently go live — if this was already published,
+      // move it back to draft so the new content gets reviewed first, same
+      // posture as every manual import done before this tool existed.
+      if (currentStatus === 'published') await unpublishProposal(customerId)
+      onApplied()
+    } finally {
+      setStage('preview')
+    }
+  }
+
+  const sectionCount = parsed?.sections?.length || 0
+  const productRefCount = (parsed?.sections || []).reduce((n, s) => n + (s.product_refs?.length || 0), 0)
+  const assetRefCount = (parsed?.sections || []).reduce((n, s) => n + (s.asset_ids?.length || 0), 0)
+  const blocking = problems.filter(p => p.includes('does not exist') || p.startsWith('Duplicate'))
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={stage === 'applying' ? undefined : onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
+          <h3 className="text-sm font-semibold text-gray-800 inline-flex items-center gap-1.5"><FileJson size={15} /> Import mapped JSON</h3>
+          <button onClick={onClose} disabled={stage === 'applying'} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-5">
+          {stage === 'pick' && (
+            <div>
+              <p className="text-xs text-gray-500 mb-3">
+                Pick the JSON file from Manus (or anyone following the schema). Every product/figurine reference is checked
+                against the live catalogue before anything is saved — nothing is written yet.
+              </p>
+              <button type="button" onClick={() => fileRef.current?.click()} className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1">
+                <Upload size={12} /> Choose file…
+              </button>
+              <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={onFile} />
+              {fileError && <p className="text-xs text-red-600 mt-2">{fileError}</p>}
+            </div>
+          )}
+          {stage === 'checking' && <p className="text-sm text-gray-400 text-center py-8">Checking every reference against the catalogue…</p>}
+          {(stage === 'preview' || stage === 'applying') && parsed && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-4 text-xs text-gray-600">
+                <span>{sectionCount} section{sectionCount === 1 ? '' : 's'}</span>
+                <span>{productRefCount} product ref{productRefCount === 1 ? '' : 's'}</span>
+                <span>{assetRefCount} image ref{assetRefCount === 1 ? '' : 's'}</span>
+              </div>
+              {problems.length === 0 ? (
+                <p className="text-xs text-emerald-700 inline-flex items-center gap-1.5"><CheckCircle2 size={14} /> Every reference resolved cleanly.</p>
+              ) : (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                  <p className="text-xs text-amber-800 font-medium mb-1.5 inline-flex items-center gap-1.5"><AlertTriangle size={13} /> {problems.length} thing{problems.length === 1 ? '' : 's'} to check</p>
+                  <ul className="text-[11px] text-amber-700 space-y-1 list-disc list-inside">
+                    {problems.map((p, i) => <li key={i}>{p}</li>)}
+                  </ul>
+                </div>
+              )}
+              {blocking.length > 0 && (
+                <p className="text-[11px] text-red-600">Fix duplicates/missing references in the source file and re-import — those refs would be silently dropped otherwise.</p>
+              )}
+              <p className="text-[11px] text-gray-400">
+                {currentStatus === 'published'
+                  ? 'This proposal is currently published — importing will move it back to draft for review, not publish the new content automatically.'
+                  : 'Will be saved as a draft — nothing changes for the customer until you publish.'}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {(stage === 'preview' || stage === 'applying') && (
+          <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
+            <button onClick={onClose} disabled={stage === 'applying'} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+            <button onClick={apply} disabled={stage === 'applying' || blocking.length > 0} className="btn-primary text-xs py-1.5 px-3">
+              {stage === 'applying' ? 'Applying…' : 'Apply as draft'}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 let keySeq = 0
 const withKey = s => ({ ...s, _key: s._key || `s${++keySeq}` })
 
@@ -244,18 +384,18 @@ export default function ProposalEditor({ customerId }) {
   const [savedAt, setSavedAt] = useState(null)
   const [uploadingHero, setUploadingHero] = useState(false)
   const heroFileRef = useRef(null)
+  const [exporting, setExporting] = useState(false)
+  const [importing, setImporting] = useState(false)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
-  useEffect(() => {
-    let alive = true
-    loadProposal(customerId).then(p => {
-      if (!alive) return
+  function reloadProposal() {
+    return loadProposal(customerId).then(p => {
       const base = p || { status: 'draft', hero_asset_id: null, tagline: '', briefing: '', sections: [] }
       setProposal({ ...base, sections: base.sections.map(withKey) })
     })
-    return () => { alive = false }
-  }, [customerId])
+  }
+  useEffect(() => { reloadProposal() }, [customerId])
 
   useEffect(() => {
     Promise.all([getDocs(collection(db, 'range_products')), getDocs(collection(db, 'products'))]).then(([rangeSnap, corpSnap]) => {
@@ -274,6 +414,54 @@ export default function ProposalEditor({ customerId }) {
   const heroAsset = useMemo(() => assets.find(a => a.id === proposal?.hero_asset_id) || null, [assets, proposal])
 
   function set(k, v) { setProposal(p => ({ ...p, [k]: v })) }
+
+  // "Export for AI mapping" — everything an external mapper (Manus, or
+  // anyone else) needs to fill in sections against, in the shape
+  // customerProposal.js's normSection already expects back. One card per
+  // PRODUCT (branded photos grouped by product_id), same dedup as
+  // BrandPortalPage's own gallery — an external mapper shouldn't have to
+  // re-derive that grouping itself.
+  async function exportForMapping() {
+    setExporting(true)
+    try {
+      const raw = await loadBrandedProductImages(customerId)
+      const byProduct = new Map()
+      for (const img of raw) {
+        if (!byProduct.has(img.product_id)) byProduct.set(img.product_id, { product_id: img.product_id, product_name: img.product_name || '', images: [] })
+        byProduct.get(img.product_id).images.push({ id: img.id, file_url: img.file_url, caption: img.caption || '' })
+      }
+      await Promise.all([...byProduct.values()].map(async p => {
+        const snap = await getDoc(doc(db, 'products', p.product_id))
+        const d = snap.exists() ? snap.data() : {}
+        p.status = d.status || ''
+        p.active = d.active !== false
+      }))
+      const payload = {
+        schema_version: 1,
+        customer_id: customerId,
+        brand_gallery_assets: ownAssets.map(a => ({ id: a.id, category: a.category, type: a.type, title: a.title, filename: a.filename, file_url: a.file_url })),
+        branded_corporate_products: [...byProduct.values()],
+        current_proposal: {
+          status: proposal.status,
+          hero_asset_id: proposal.hero_asset_id,
+          tagline: proposal.tagline,
+          briefing: proposal.briefing,
+          sections: proposal.sections.map(({ _key, ...s }) => s),
+        },
+      }
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${customerId}-proposal-content.json`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   // Direct hero upload — separate from the Brand Gallery's own upload flow
   // because that one deliberately defaults every upload to internal_only
@@ -345,6 +533,14 @@ export default function ProposalEditor({ customerId }) {
           <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium ${proposal.status === 'published' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
             {proposal.status === 'published' ? 'Published — customer can see this' : 'Draft — admin preview only'}
           </span>
+          <button onClick={exportForMapping} disabled={exporting} title="Download the current content + catalogue as JSON, for an AI mapper (e.g. Manus) to fill in"
+                  className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1">
+            <Download size={12} /> {exporting ? 'Exporting…' : 'Export for AI mapping'}
+          </button>
+          <button onClick={() => setImporting(true)} title="Import a mapped JSON file back in, as a draft, after validating every reference"
+                  className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1">
+            <FileJson size={12} /> Import mapped JSON
+          </button>
           <button onClick={save} disabled={saving} className="btn-secondary text-xs py-1.5 px-3">{saving ? 'Saving…' : 'Save draft'}</button>
           <button onClick={togglePublish} disabled={saving} className="btn-primary text-xs py-1.5 px-3">
             {proposal.status === 'published' ? 'Unpublish' : 'Publish'}
@@ -352,6 +548,11 @@ export default function ProposalEditor({ customerId }) {
         </div>
       </div>
       {savedAt && <p className="text-[11px] text-gray-400 mb-2">Saved {savedAt.toLocaleTimeString()}</p>}
+      {importing && (
+        <ImportProposalModal customerId={customerId} currentStatus={proposal.status}
+                              onClose={() => setImporting(false)}
+                              onApplied={async () => { await reloadProposal(); setImporting(false); setSavedAt(new Date()) }} />
+      )}
 
       <div className="grid sm:grid-cols-[140px_1fr] gap-3 my-4">
         <div>
