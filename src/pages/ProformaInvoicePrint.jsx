@@ -309,6 +309,7 @@ export default function ProformaInvoicePrint() {
                 {docContact?.name && <div className="addr">Attn: {docContact.name}</div>}
                 {addr && <div className="addr">{addr}</div>}
                 {docContact?.email && <div className="addr">{docContact.email}</div>}
+                {docContact?.phone && <div className="addr">{docContact.phone}</div>}
               </>
             )
           })()}
