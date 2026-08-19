@@ -1,13 +1,16 @@
 import { useState } from 'react'
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
-import { auth } from '../firebase'
+import { signInWithEmailAndPassword, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth'
+import { doc, getDoc } from 'firebase/firestore'
+import { auth, db } from '../firebase'
 import { CUSTOMER_CURRENCIES } from '../currency'
-import { applyForAccount } from '../portalInviteApi'
+import { applyForAccount, applyForAccountGoogle } from '../portalInviteApi'
 import { stampLogin } from '../authActivity'
 import logo from '../assets/logo.png'
 
+const googleProvider = new GoogleAuthProvider()
+
 export default function Login() {
-  const [mode, setMode]         = useState('signin') // 'signin' | 'signup'
+  const [mode, setMode]         = useState('signin') // 'signin' | 'signup' | 'google-details'
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [company, setCompany]   = useState('')
@@ -16,6 +19,7 @@ export default function Login() {
   const [hp, setHp]             = useState('') // honeypot — see applyForAccount
   const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [resetSent, setResetSent] = useState(false)
   const [signedUp, setSignedUp]   = useState(false)
 
@@ -60,6 +64,66 @@ export default function Login() {
     }
   }
 
+  // "Sign in with Google" — same door for a returning account and a brand-
+  // new one, distinguished only by whether users/{uid} already exists.
+  // Returning: stamp the login same as email/password sign-in, done — App's
+  // own auth-state routing takes it from there. Brand-new: we don't yet
+  // have a company name (Google's own profile doesn't carry one), so land
+  // on a short "google-details" step to collect just that before creating
+  // the pending account via applyForAccountGoogle — same portal_invitations/
+  // approval pipeline as the email/password self-signup path, just fronted
+  // by Google instead of a typed email.
+  async function handleGoogleSignIn() {
+    setError(''); setGoogleLoading(true)
+    try {
+      const result = await signInWithPopup(auth, googleProvider)
+      const uid = result.user.uid
+      const userSnap = await getDoc(doc(db, 'users', uid))
+      if (userSnap.exists()) {
+        stampLogin(uid)
+        // Signed in — App's own routing takes over from here.
+      } else {
+        setEmail(result.user.email || '')
+        setContact(result.user.displayName || '')
+        setMode('google-details')
+      }
+    } catch (err) {
+      if (err?.code !== 'auth/popup-closed-by-user' && err?.code !== 'auth/cancelled-popup-request') {
+        setError('Could not sign in with Google. Please try again.')
+      }
+    } finally {
+      setGoogleLoading(false)
+    }
+  }
+
+  // Second step of a brand-new Google signup — just the company name Google
+  // itself can't supply. auth.currentUser is already the Google-authenticated
+  // session from handleGoogleSignIn; applyForAccountGoogle authenticates as
+  // that same user server-side (its own ID token), never a value typed here.
+  async function handleGoogleDetailsSubmit(e) {
+    e.preventDefault()
+    setError(''); setLoading(true)
+    try {
+      await applyForAccountGoogle(company, contact, currency)
+      setSignedUp(true)
+    } catch {
+      setError('Could not submit your request. Check your details and try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Abandoning the google-details step: the Google popup already created a
+  // live signed-in session with no users/{uid} doc behind it yet. Sign back
+  // out rather than leave that half-finished session sitting there — App.jsx
+  // has no self-heal for a doc-less signed-in user by design (see V8.3's
+  // self-heal removal), so a stray session here would otherwise just show a
+  // confusing blank/stuck state instead of cleanly returning to the login form.
+  function cancelGoogleDetails() {
+    signOut(auth)
+    switchMode('signup')
+  }
+
   async function handleReset() {
     if (!email) { setError('Enter your email address first.'); return }
     try {
@@ -79,12 +143,41 @@ export default function Login() {
       <Shell>
         <h2 className="text-lg font-semibold text-ink mb-2">Your new account request is under review</h2>
         <p className="text-sm text-ink-70 mb-6">
-          Please check your email — we'll notify you there once it's approved, along with a secure link to
-          set your password and sign in. There's nothing else to do here in the meantime.
+          {mode === 'google-details'
+            ? "We'll notify you by email once it's approved — no password to set, you'll just sign back in with Google. There's nothing else to do here in the meantime."
+            : "Please check your email — we'll notify you there once it's approved, along with a secure link to set your password and sign in. There's nothing else to do here in the meantime."}
         </p>
         <button onClick={() => switchMode('signin')} className="text-xs text-gray-500 hover:text-brand-600 w-full text-center">
           Back to sign in
         </button>
+      </Shell>
+    )
+  }
+
+  if (mode === 'google-details') {
+    return (
+      <Shell>
+        <h2 className="text-lg font-semibold text-ink mb-2">One more thing</h2>
+        <p className="text-sm text-ink-70 mb-6">
+          Signed in as <strong>{email}</strong> via Google. Just need your company name to submit your request.
+        </p>
+        <form onSubmit={handleGoogleDetailsSubmit} className="space-y-4">
+          <Field label="Company name" value={company} onChange={setCompany} autoComplete="organization" required />
+          <Field label="Your name" value={contact} onChange={setContact} autoComplete="name" />
+          <div>
+            <label className="label">Preferred currency</label>
+            <select className="input" value={currency} onChange={e => setCurrency(e.target.value)}>
+              {CUSTOMER_CURRENCIES.map(c => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <button type="submit" className="btn-primary w-full justify-center" disabled={loading}>
+            {loading ? 'Submitting…' : 'Request account'}
+          </button>
+          <button type="button" onClick={cancelGoogleDetails} className="text-xs text-gray-500 hover:text-brand-600 w-full text-center">
+            Cancel
+          </button>
+        </form>
       </Shell>
     )
   }
@@ -99,6 +192,17 @@ export default function Login() {
             {m === 'signin' ? 'Sign in' : 'Create account'}
           </button>
         ))}
+      </div>
+
+      <button type="button" onClick={handleGoogleSignIn} disabled={googleLoading}
+        className="w-full flex items-center justify-center gap-2.5 py-2 mb-4 text-sm font-medium text-ink-70 bg-white border border-ivory-dark rounded-md hover:bg-ivory transition-colors disabled:opacity-60">
+        <GoogleIcon />
+        {googleLoading ? 'Signing in…' : mode === 'signup' ? 'Sign up with Google' : 'Sign in with Google'}
+      </button>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex-1 h-px bg-ivory-dark" />
+        <span className="text-[11px] text-ink-40 uppercase tracking-wide">or</span>
+        <div className="flex-1 h-px bg-ivory-dark" />
       </div>
 
       {mode === 'signin' ? (
@@ -164,5 +268,18 @@ function Field({ label, type = 'text', value, onChange, ...rest }) {
       <label className="label">{label}</label>
       <input type={type} className="input" value={value} onChange={e => onChange(e.target.value)} {...rest} />
     </div>
+  )
+}
+
+// Standard Google "G" mark — the four-colour glyph is the recognizable part
+// of a "Sign in with Google" button, not a Crystocraft design-system icon.
+function GoogleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 18 18" aria-hidden="true">
+      <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.87 2.7-6.62Z"/>
+      <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.81.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.94v2.33A9 9 0 0 0 9 18Z"/>
+      <path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.66 9c0-.59.1-1.17.29-1.7V4.97H.94A9 9 0 0 0 0 9c0 1.45.35 2.83.94 4.03l3.01-2.33Z"/>
+      <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.46 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .94 4.97l3.01 2.33C4.66 5.17 6.65 3.58 9 3.58Z"/>
+    </svg>
   )
 }

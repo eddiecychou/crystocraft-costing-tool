@@ -51,3 +51,11 @@ export const getInvitationPreview = (invitationId, token) =>
 // portal-invite.js is the one place that interprets it.
 export const applyForAccount = (companyName, contactName, email, currency, hp = '') =>
   call('apply_for_account', { companyName, contactName, email, currency, hp })
+
+// Google-authenticated self-signup — Login.jsx calls this AFTER the visitor
+// has already completed Sign in with Google (so this goes through callAdmin,
+// not call() — the caller has a real Firebase session even though they
+// aren't an admin; requireAuth on the server accepts any signed-in user for
+// this one action). See portal-invite.js's applyForAccountGoogle.
+export const applyForAccountGoogle = (companyName, contactName, currency) =>
+  callAdmin('apply_for_account_google', { companyName, contactName, currency })

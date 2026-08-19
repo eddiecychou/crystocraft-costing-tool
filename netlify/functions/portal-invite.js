@@ -92,19 +92,27 @@ function tokensMatch(presentedRaw, storedHash) {
 
 const normEmail = e => String(e || '').trim().toLowerCase()
 
-async function requireAdmin(req) {
+// Verifies the caller's Firebase ID token, no role check — any signed-in
+// user. Returns { uid, email } from the DECODED TOKEN, never trusting a
+// client-supplied email for anything that writes data (see
+// applyForAccountGoogle below, the one caller so far).
+async function requireAuth(req) {
   const token = (req.headers.get('authorization') || '').match(/^Bearer (.+)$/i)?.[1]
   if (!token) return { error: json({ error: 'Not signed in' }, 401) }
-  let uid
   try {
     const decoded = await getAuth().verifyIdToken(token)
-    uid = decoded.uid
+    return { uid: decoded.uid, email: decoded.email || '' }
   } catch {
     return { error: json({ error: 'Invalid or expired session' }, 401) }
   }
+}
+
+async function requireAdmin(req) {
+  const { uid, email, error } = await requireAuth(req)
+  if (error) return { error }
   const userSnap = await getFirestore().collection('users').doc(uid).get()
   if (userSnap.data()?.role !== 'admin') return { error: json({ error: 'Admin access required' }, 403) }
-  return { uid }
+  return { uid, email }
 }
 
 function auditEntry(action, by) {
@@ -389,6 +397,83 @@ async function applyForAccount(body) {
     base_currency: currency, ws_discount_pct: 0,
     customer_id: null, invitation_id: ref.id,
     createdAt: Timestamp.now(),
+  })
+  return json({ ok: true, status: 'pending' })
+}
+
+// Google-authenticated counterpart to applyForAccount — the visitor already
+// has a live Firebase session (they just completed Sign in with Google on
+// Login.jsx), so there is no Auth account left to create and no email left
+// to verify: the DECODED ID TOKEN's email/uid (requireAuth, never a
+// client-supplied value) already proves both. Otherwise mirrors
+// applyForAccount's two branches exactly — same portal_invitations/users
+// shape, same admin-review queue, same approve/reject path. This is
+// deliberately NOT the place Google's account-linking design (custom token
+// + linkWithPopup) lives — that's for attaching Google to an EXISTING
+// admin-invited account (see "Where V8.5 starts"); this is a brand-new
+// self-serve applicant whose uid IS the Google-created uid from the start.
+async function applyForAccountGoogle(body, uid, email) {
+  const companyName = String(body?.companyName || '').trim().slice(0, 200)
+  const contactName = String(body?.contactName || '').trim().slice(0, 200)
+  const currency = String(body?.currency || 'USD').trim().slice(0, 10)
+  if (!companyName) return json({ error: 'Company name is required.' }, 400)
+
+  const db = getFirestore()
+
+  // Idempotent — a reload/double-submit after the first call already wrote
+  // this uid's doc; don't clobber it (could already be approved by then).
+  const existingUserSnap = await db.collection('users').doc(uid).get()
+  if (existingUserSnap.exists) {
+    const status = existingUserSnap.data()?.status
+    return json({ ok: true, status: status === 'approved' ? 'approved' : 'pending' })
+  }
+
+  // An admin may have already invited this exact email — funnel into that
+  // invitation exactly like applyForAccount does, just with the uid we
+  // already have instead of minting a new Auth user for it.
+  const existingInv = await db.collection('portal_invitations')
+    .where('contact_email', '==', email)
+    .where('status', 'in', ['pending', 'claimed', 'approved'])
+    .limit(1)
+    .get()
+  if (!existingInv.empty) {
+    const d = existingInv.docs[0]
+    const inv = d.data()
+    if (inv.status !== 'pending') return json({ error: 'already_pending' }, 409)
+    await d.ref.update({
+      status: 'claimed', claimed_at: Timestamp.now(), claimed_uid: uid,
+      audit_log: FieldValue.arrayUnion(auditEntry('claimed_via_self_apply_google', email)),
+    })
+    await db.collection('users').doc(uid).set({
+      role: 'customer', status: 'pending', email,
+      company_name: companyName, contact_name: contactName || inv.contact_name || '',
+      base_currency: currency, ws_discount_pct: 0,
+      customer_id: inv.customer_id || null, invitation_id: d.id,
+      auth_provider: 'google.com', createdAt: Timestamp.now(),
+    })
+    return json({ ok: true, status: 'pending' })
+  }
+
+  const ref = db.collection('portal_invitations').doc()
+  await ref.set({
+    customer_id: null, contact_email: email, contact_name: contactName,
+    applicant_company_name: companyName,
+    marketing_contact_id: null,
+    source: 'self',
+    status: 'claimed',
+    token_hash: null,
+    created_by: 'self', created_at: Timestamp.now(), expires_at: null,
+    claimed_at: Timestamp.now(), claimed_uid: uid,
+    approved_at: null, rejected_at: null, revoked_at: null,
+    email_send_status: null, email_send_error: null, resend_count: 0, last_resent_at: null,
+    audit_log: [auditEntry('self_applied_google', email)],
+  })
+  await db.collection('users').doc(uid).set({
+    role: 'customer', status: 'pending', email,
+    company_name: companyName, contact_name: contactName,
+    base_currency: currency, ws_discount_pct: 0,
+    customer_id: null, invitation_id: ref.id,
+    auth_provider: 'google.com', createdAt: Timestamp.now(),
   })
   return json({ ok: true, status: 'pending' })
 }
@@ -695,12 +780,19 @@ export default async function handler(req) {
   try { body = await req.json() } catch { return json({ error: 'Bad JSON' }, 400) }
   const action = String(body?.action || '')
 
-  // claim_invitation is the one PUBLIC action — an unauthenticated visitor
-  // presenting the raw claim token from their invitation email/link. Every
-  // other action requires an admin session.
+  // claim_invitation is the one fully PUBLIC action — an unauthenticated
+  // visitor presenting the raw claim token from their invitation email/link.
+  // apply_for_account_google requires a signed-in-but-not-yet-admin session
+  // (the visitor just completed Sign in with Google); every remaining
+  // action requires an admin session.
   if (action === 'claim_invitation') return claimInvitation(body)
   if (action === 'get_invitation') return getInvitationPreview(body)
   if (action === 'apply_for_account') return applyForAccount(body)
+  if (action === 'apply_for_account_google') {
+    const { uid, email, error } = await requireAuth(req)
+    if (error) return error
+    return applyForAccountGoogle(body, uid, email)
+  }
 
   const { uid, error } = await requireAdmin(req)
   if (error) return error
