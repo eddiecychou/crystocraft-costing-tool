@@ -59,6 +59,22 @@ export default {
         serif: ['Questrial', 'system-ui', '-apple-system', 'sans-serif'],
         label: ['Work Sans', 'system-ui', '-apple-system', 'sans-serif'],
       },
+      // V2.5 — "restraint over decoration": near-flat elevation, reserved for
+      // genuinely floating surfaces or a hover lift, never a resting card.
+      // Redefines Tailwind's own shadow-* utility names (not new ones) so
+      // every existing shadow-md/shadow-lg call site in the app picks up
+      // the softer scale automatically, no per-file edits needed.
+      boxShadow: {
+        xs: '0 1px 2px rgba(34,34,34,0.04)',
+        sm: '0 1px 3px rgba(34,34,34,0.05)',
+        md: '0 4px 14px rgba(34,34,34,0.07)',
+        lg: '0 10px 30px rgba(34,34,34,0.09)',
+        xl: '0 20px 50px rgba(34,34,34,0.11)',
+        '2xl': '0 36px 80px rgba(34,34,34,0.14)',
+        bronze: '0 4px 20px rgba(153,102,50,0.20)',
+        sapphire: '0 4px 20px rgba(28,79,100,0.20)',
+        burgundy: '0 4px 20px rgba(110,36,51,0.20)',
+      },
     },
   },
   plugins: [],

@@ -99,8 +99,8 @@ export default function CorporateDetail({ profile }) {
           <FavHeart item={{ type: 'corporate', id: p.id, name: p.name, code: '', image: displayHero || '' }} className="absolute top-3 right-3" />
         </div>
         <div>
+          {p.category && <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">{p.category}</p>}
           <h1 className="text-xl md:text-2xl text-ink">{p.name}</h1>
-          {p.category && <p className="text-sm text-ink-50 mt-1">{p.category}</p>}
           {p.marketing_description && <p className="text-sm text-ink-70 leading-relaxed mt-3">{p.marketing_description}</p>}
           {p.description && <p className="text-sm text-ink-60 mt-3">{p.description}</p>}
 
@@ -161,9 +161,9 @@ export default function CorporateDetail({ profile }) {
       {gallery.length > 0 && (
         <div className="mt-10">
           <h2 className="text-lg text-ink mb-3">Gallery & inspiration</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+          <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
             {gallery.map((im, i) => (
-              <figure key={im.id} className="card overflow-hidden flex flex-col">
+              <figure key={im.id} className="mosaic-tile flex flex-col">
                 <div className="aspect-square bg-gray-100 overflow-hidden cursor-zoom-in"
                      onClick={() => setLightboxIndex((displayHero ? 1 : 0) + i)}>
                   <img src={im.file_url} alt={im.caption || p.name} loading="lazy"

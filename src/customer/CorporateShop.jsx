@@ -148,7 +148,8 @@ export default function CorporateShop({ profile }) {
     <div>
       {(loading || stillResolving) && <LoadingBar />}
       <div className="mb-2">
-        <h1 className="text-xl md:text-2xl">Corporate Gifts</h1>
+        <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">Catalogue</p>
+        <h1 className="text-2xl md:text-3xl text-ink">Corporate Gifts</h1>
         <p className="text-sm text-ink-60 mt-0.5">{filtered.length} products · indicative prices in {cur}</p>
       </div>
       <div className="rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2 mb-5">
@@ -163,18 +164,22 @@ export default function CorporateShop({ profile }) {
           <button onClick={() => setColl(null)} className="text-sm text-ink-60 hover:text-ink shrink-0">Clear</button>
         </div>
       )}
-      <div className="flex flex-col sm:flex-row gap-2 mb-5">
-        <input type="text" placeholder="Search products…" className="input w-full sm:flex-1"
+      <div className="mb-5 space-y-2.5">
+        <input type="text" placeholder="Search products…" className="input w-full sm:max-w-xs"
           value={search} onChange={e => { setSearch(e.target.value); sessionStorage.setItem('cs-search', e.target.value) }} />
-        <select className="input sm:w-56" value={coll ? '' : cat} onChange={e => { setColl(null); setCat(e.target.value); sessionStorage.setItem('cs-cat', e.target.value) }}>
-          <option value="">All categories</option>
-          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button" onClick={() => { setColl(null); setCat(''); sessionStorage.setItem('cs-cat', '') }}
+            className={(coll ? false : cat === '') ? 'tag-active' : 'tag-clickable'}>All categories</button>
+          {categories.map(c => (
+            <button key={c} type="button" onClick={() => { setColl(null); setCat(c); sessionStorage.setItem('cs-cat', c) }}
+              className={(!coll && cat === c) ? 'tag-active' : 'tag-clickable'}>{c}</button>
+          ))}
+        </div>
       </div>
       {stillResolving ? null : filtered.length === 0 ? (
         <div className="text-center py-20 text-ink-60">No products match your search.</div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
           {filtered.map(p => (
             <CorpCard key={p.id} p={p} cur={cur} rates={rates} profile={profile}
               images={imagesFor(p)} />
@@ -203,12 +208,12 @@ function CorpCard({ p, cur, rates, profile, images }) {
   return (
     <Link id={`corp-card-${p.id}`} to={`/shop/corporate/${p.id}`}
       onClick={() => sessionStorage.setItem('cs-last-id', p.id)}
-      className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+      className="mosaic-tile flex flex-col hover:shadow-md transition-shadow">
       <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
         <CardImageCarousel images={images} alt={p.name}
           fallback={<Package size={32} strokeWidth={1.25} className="text-gray-300" />} />
         {isNew(p) && (
-          <span className="absolute top-1.5 left-1.5 badge bg-emerald-600 text-white" title="New arrival">New</span>
+          <span className="absolute top-1.5 left-1.5 badge-active" title="New arrival">New</span>
         )}
         <FavHeart item={{ type: 'corporate', id: p.id, name: p.name, code: '', image: displayImage || '' }}
           className="absolute top-1.5 right-1.5" />

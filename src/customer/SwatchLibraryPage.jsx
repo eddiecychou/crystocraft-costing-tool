@@ -134,7 +134,7 @@ function SwatchDetail({ name, entry, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+      <div className="card max-w-2xl w-full max-h-[85vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg text-ink flex items-center gap-2">
             <span className="w-4 h-4 rounded-full border border-ivory-dark shrink-0" style={{ background: entry.rgb ? `rgb(${entry.rgb.map(c => Math.round(c * 255)).join(',')})` : '#ccc' }} />
@@ -217,7 +217,8 @@ export default function SwatchLibraryPage({ profile }) {
   return (
     <div>
       <div className="mb-2">
-        <h1 className="text-xl md:text-2xl flex items-center gap-2"><Sparkles size={20} className="text-brand-500" /> Swatch Library</h1>
+        <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">Materials</p>
+        <h1 className="text-2xl md:text-3xl text-ink flex items-center gap-2"><Sparkles size={20} className="text-brand-500" /> Swatch Library</h1>
         <p className="text-sm text-ink-60 mt-0.5">
           Real photographed crystal swatches — browse colours and crystal types, then request a physical sample.
         </p>
@@ -234,12 +235,12 @@ export default function SwatchLibraryPage({ profile }) {
       {!registry && !error ? <LoadingBar /> : entries.length === 0 ? (
         <div className="text-center py-20 text-ink-60">No swatches match.</div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
           {entries.map(([name, entry]) => (
             <div key={name} role="button" tabIndex={0}
               onClick={() => setSelected([name, entry])}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected([name, entry]) } }}
-              className="card overflow-hidden flex flex-col text-left hover:shadow-md transition-shadow cursor-pointer">
+              className="mosaic-tile flex flex-col text-left hover:shadow-md transition-shadow cursor-pointer">
               <SwatchCardCarousel name={name} entry={entry} />
               <div className="p-2">
                 <p className="text-sm text-ink truncate">{name}</p>

@@ -64,6 +64,27 @@
   .btn-danger {
     @apply btn bg-red-800 text-white hover:bg-red-900 focus:ring-red-500;
   }
+  /* V2.5 — variants beyond primary/secondary/danger, first needed for the
+     customer-portal design-system pass (a hero CTA sitting on a photo needs
+     a treatment that reads on a dark background, which primary's solid
+     burgundy doesn't guarantee against every photo). */
+  .btn-ghost {
+    @apply btn bg-transparent text-ink hover:bg-ink/5 focus:ring-brand-500;
+  }
+  .btn-outline {
+    @apply btn bg-transparent border hover:bg-ink/5 focus:ring-brand-500;
+    color: #222222;
+    border-color: #222222;
+  }
+  .btn-outline-gold {
+    @apply btn bg-transparent border hover:bg-gold/10 focus:ring-gold;
+    color: #C6A664;
+    border-color: #C6A664;
+  }
+  /* For a dark/photo background — inverted from secondary, same hairline posture. */
+  .btn-reversed {
+    @apply btn bg-white text-ink hover:bg-white/90 focus:ring-white;
+  }
 
   /* ── Form elements — boxed, square, hairline border ──── */
   .input {
@@ -115,5 +136,62 @@
     font-weight: 500;
     color: #666666;
     letter-spacing: 0.18em;
+  }
+
+  /* ── Tag — pill filter chip, V2.5 customer-portal pattern ──
+     Distinct from .badge (square, status-only) — this is for CLICKABLE
+     filter/category chips, first used replacing hand-rolled inline pill
+     styling in the shop pages' category/status filters. */
+  .tag {
+    @apply inline-flex items-center gap-1 text-xs leading-none whitespace-nowrap rounded-full border px-3 py-1.5 transition-colors;
+    font-family: 'Work Sans', system-ui, sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    color: #666666;
+    background: transparent;
+    border-color: rgba(34, 34, 34, 0.20); /* border-mid */
+  }
+  .tag-clickable {
+    @apply tag cursor-pointer hover:bg-ink/10 hover:text-ink;
+  }
+  .tag-clickable:hover {
+    border-color: rgba(34, 34, 34, 0.20);
+  }
+  .tag-active {
+    @apply tag cursor-pointer bg-ink text-white;
+    border-color: #222222;
+  }
+
+  /* ── Facet divider — hairline with a restrained diamond glyph,
+     V2.5's preferred section separator (replaces a decorative rule). ── */
+  .facet-divider {
+    @apply flex items-center gap-3 my-2;
+  }
+  .facet-divider::before,
+  .facet-divider::after {
+    content: '';
+    @apply flex-1 h-px;
+    background: #E9E8E6; /* warm-grey hairline */
+  }
+  .facet-divider-glyph {
+    @apply shrink-0;
+    width: 6px;
+    height: 6px;
+    background: #C6A664; /* champagne/gold */
+    transform: rotate(45deg);
+  }
+
+  /* ── Hairline mosaic grid — V2.5 customer-portal product grid treatment.
+     Tiles touch edge-to-edge; the 1px gap shows the warm-grey background
+     through, reading as a hairline between tiles instead of individual
+     card borders + white-space gutters. Put .mosaic-grid on the grid
+     container (keep your own grid-cols/responsive classes alongside it)
+     and .mosaic-tile on each item instead of .card. ── */
+  .mosaic-grid {
+    @apply grid gap-px;
+    background-color: #E9E8E6; /* warm-grey — becomes the hairline */
+  }
+  .mosaic-tile {
+    @apply bg-white overflow-hidden;
   }
 }

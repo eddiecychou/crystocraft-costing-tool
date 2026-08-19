@@ -74,7 +74,7 @@ function FeaturedProductCard({ item, meta }) {
   if (!meta) return null // product deleted/renamed away since being featured — skip rather than show a broken link
   return (
     <Link to={meta.to}
-      className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
+      className="mosaic-tile flex flex-col hover:shadow-md transition-shadow group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
       <div className="aspect-square bg-ivory-dark overflow-hidden">
         <img src={item.image_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
       </div>
@@ -88,7 +88,7 @@ function FeaturedProductCard({ item, meta }) {
 function PillarCard({ pillar, spanFull }) {
   return (
     <Link to={pillar.to}
-      className={`card overflow-hidden flex flex-col hover:shadow-md transition-shadow group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${spanFull ? 'sm:col-span-2 lg:col-span-1' : ''}`}>
+      className={`mosaic-tile flex flex-col hover:shadow-md transition-shadow group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${spanFull ? 'sm:col-span-2 lg:col-span-1' : ''}`}>
       <div className="aspect-[4/3] bg-ivory-dark overflow-hidden">
         <img src={PILLAR_IMAGE[pillar.key]} alt="" loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -109,7 +109,7 @@ function QuickActionTile({ action }) {
   const Icon = ICONS[action.iconKey]
   return (
     <Link to={action.to}
-      className="card group flex flex-col items-center justify-center gap-3 py-6 px-3 text-center hover:shadow-lg hover:-translate-y-0.5 hover:border-brand-200 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
+      className="mosaic-tile group flex flex-col items-center justify-center gap-3 py-6 px-3 text-center hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
       <span className="w-11 h-11 rounded-full bg-brand-50 flex items-center justify-center group-hover:bg-brand-100 group-hover:scale-110 transition-all duration-200">
         <Icon size={20} strokeWidth={1.5} className="text-brand-600" />
       </span>
@@ -147,9 +147,9 @@ export default function HomePage({ profile }) {
             <p className="text-xs uppercase tracking-widest text-white/70 font-label mb-2">
               {profile?.company_name ? `Welcome back, ${profile.company_name}` : 'Welcome back'}
             </p>
-            <h1 className="text-3xl md:text-5xl text-white leading-tight mb-3 max-w-2xl">{heroContent.heading}</h1>
+            <h1 className="text-4xl md:text-6xl text-white leading-tight mb-3 max-w-2xl">{heroContent.heading}</h1>
             <p className="text-sm md:text-base text-white/85 leading-relaxed mb-6 max-w-md">{heroContent.supporting}</p>
-            <button onClick={scrollToPillars} className="btn-primary w-full sm:w-auto">{heroContent.primaryCta.label}</button>
+            <button onClick={scrollToPillars} className="btn-reversed w-full sm:w-auto">{heroContent.primaryCta.label}</button>
           </div>
         </div>
       </section>
@@ -163,9 +163,10 @@ export default function HomePage({ profile }) {
           fresh install isn't left with an empty section header. */}
       {featured?.items?.length > 0 && (
         <section className="py-8 md:py-10">
+          <p className="eyebrow tracking-[0.08em] text-bronze mb-2">Featured</p>
           <h2 className="text-xl md:text-2xl text-ink mb-1.5">Featured Products</h2>
           <p className="text-sm text-ink-60 mb-6 max-w-2xl">A closer look at some of our new arrivals and best sellers.</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+          <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
             {featured.items.map(it => <FeaturedProductCard key={it.id} item={it} meta={featuredMeta[it.id]} />)}
           </div>
         </section>
@@ -173,9 +174,10 @@ export default function HomePage({ profile }) {
 
       {/* Pillars */}
       <section id="pillars" className="py-8 md:py-10 scroll-mt-4">
+        <p className="eyebrow tracking-[0.08em] text-bronze mb-2">Collections</p>
         <h2 className="text-xl md:text-2xl text-ink mb-1.5">{pillarsSection.heading}</h2>
         <p className="text-sm text-ink-60 mb-6 max-w-2xl">{pillarsSection.supporting}</p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+        <div className="mosaic-grid sm:grid-cols-2 lg:grid-cols-3">
           {pillars.map((p, i) => (
             <PillarCard key={p.key} pillar={p} spanFull={i === pillars.length - 1} />
           ))}
@@ -185,7 +187,7 @@ export default function HomePage({ profile }) {
       {/* Quick access */}
       <section className="py-6 md:py-8 border-t border-ivory-dark">
         <h2 className="text-lg md:text-xl text-ink mb-4">{quickAccessSection.heading}</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="mosaic-grid grid-cols-2 lg:grid-cols-4">
           {visibleQuickActions.map(a => <QuickActionTile key={a.key} action={a} />)}
         </div>
       </section>

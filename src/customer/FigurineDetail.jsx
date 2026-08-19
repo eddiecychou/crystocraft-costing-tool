@@ -216,10 +216,10 @@ export default function FigurineDetail({ profile }) {
               </div>
             )
           })()}
+          {p.design_type && <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">{p.design_type}</p>}
           <h1 className="text-xl md:text-2xl text-ink">{name}</h1>
           <p className="text-sm text-ink-60 font-mono mt-1">{code}</p>
           {p.size && <p className="text-sm text-ink-60 mt-1">{p.size}</p>}
-          {p.design_type && <p className="text-xs text-ink-50 mt-1">{p.design_type}</p>}
           {p.marketing_description && (
             <p className="text-sm text-ink-70 leading-relaxed mt-3">{p.marketing_description}</p>
           )}
@@ -413,9 +413,9 @@ export default function FigurineDetail({ profile }) {
         return (
         <div className="mt-8">
           <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-3">Reference photos</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
             {gallery.map((g, i) => (
-              <figure key={i} className="card overflow-hidden">
+              <figure key={i} className="mosaic-tile">
                 <div className="aspect-square bg-white flex items-center justify-center overflow-hidden cursor-zoom-in"
                      onClick={() => setLightboxIndex(galleryOffset + i)}>
                   <img src={g.url} alt={g.caption || name} className="w-full h-full object-contain p-2" />

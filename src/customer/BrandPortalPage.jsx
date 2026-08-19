@@ -4,6 +4,7 @@ import { loadCustomerVisibleAssets, loadBrandedProductImages, cannotRenderAsImag
 import { loadProposal, resolveProposalAsset, resolveProposalAssetIds, resolveProductRefs } from '../customerProposal'
 import { isStorefrontVisible } from '../constants'
 import { Download, FileText } from 'lucide-react'
+import FacetDivider from '../components/FacetDivider'
 
 // "Brand Portal" — replaces the old separate "My Brand Gallery" / "My
 // Proposal" pages (owner, post-launch: two nav entries for the same
@@ -99,7 +100,7 @@ export default function BrandPortalPage({ profile }) {
 
   if (!customerId) {
     return (
-      <div className="bg-white rounded-xl border border-ivory-dark p-8 text-center text-sm text-ink-60">
+      <div className="card p-8 text-center text-sm text-ink-60">
         No brand content is linked to your account yet. Contact us and we'll set it up.
       </div>
     )
@@ -107,7 +108,7 @@ export default function BrandPortalPage({ profile }) {
 
   if (total === 0) {
     return (
-      <div className="bg-white rounded-xl border border-ivory-dark p-8 text-center text-sm text-ink-60">
+      <div className="card p-8 text-center text-sm text-ink-60">
         Nothing here yet — we haven't added any of your brand content to the portal.
       </div>
     )
@@ -132,50 +133,53 @@ export default function BrandPortalPage({ profile }) {
           </section>
 
           {proposal.sections.length > 0 && (
-            <div className="space-y-12 py-8 md:py-10">
+            <div className="py-8 md:py-10">
               {proposal.sections.map((s, i) => (
-                <section key={i}>
-                  {s.heading && <h2 className="text-xl md:text-2xl text-ink mb-1.5">{s.heading}</h2>}
-                  {s.tagline && <p className="text-sm font-medium text-bronze mb-2">{s.tagline}</p>}
-                  {s.briefing && <p className="text-sm text-ink-60 max-w-2xl mb-5 leading-relaxed">{s.briefing}</p>}
+                <div key={i}>
+                  {i > 0 && <FacetDivider />}
+                  <section className="py-6 first:pt-0">
+                    {s.heading && <h2 className="text-xl md:text-2xl text-ink mb-1.5">{s.heading}</h2>}
+                    {s.tagline && <p className="text-sm font-medium text-bronze mb-2">{s.tagline}</p>}
+                    {s.briefing && <p className="text-sm text-ink-60 max-w-2xl mb-5 leading-relaxed">{s.briefing}</p>}
 
-                  {(s.images.length > 0 || s.products.length > 0) && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {s.images.map(a => {
-                        const to = a.product_id ? `/shop/corporate/${a.product_id}` : null
-                        const inner = (
-                          <>
-                            <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
-                              <img src={a.file_url} alt={a.title || ''} className="w-full h-full object-contain" />
-                            </div>
-                            {(a.title || a.caption) && (
-                              <div className="p-2.5">
-                                {a.title && <p className="text-xs text-ink line-clamp-1 break-words">{a.title}</p>}
-                                {a.caption && <p className="text-[11px] text-ink-60 leading-snug line-clamp-6 mt-0.5 break-words">{a.caption}</p>}
+                    {(s.images.length > 0 || s.products.length > 0) && (
+                      <div className="mosaic-grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                        {s.images.map(a => {
+                          const to = a.product_id ? `/shop/corporate/${a.product_id}` : null
+                          const inner = (
+                            <>
+                              <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
+                                <img src={a.file_url} alt={a.title || ''} className="w-full h-full object-contain" />
                               </div>
-                            )}
-                          </>
-                        )
-                        return to ? (
-                          <Link key={a.id} to={to} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">{inner}</Link>
-                        ) : (
-                          <div key={a.id} className="card overflow-hidden flex flex-col">{inner}</div>
-                        )
-                      })}
-                      {s.products.map(prod => (
-                        <Link key={`${prod.collection}-${prod.id}`} to={prod.to} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">
-                          <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
-                            {prod.image && <img src={prod.image} alt={prod.name} className="w-full h-full object-contain" />}
-                          </div>
-                          <div className="p-2.5">
-                            <p className="text-xs text-ink line-clamp-1 break-words">{prod.name}</p>
-                            {prod.caption && <p className="text-[11px] text-ink-60 leading-snug line-clamp-6 mt-0.5 break-words">{prod.caption}</p>}
-                          </div>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
-                </section>
+                              {(a.title || a.caption) && (
+                                <div className="p-2.5">
+                                  {a.title && <p className="text-xs text-ink line-clamp-1 break-words">{a.title}</p>}
+                                  {a.caption && <p className="text-[11px] text-ink-60 leading-snug line-clamp-6 mt-0.5 break-words">{a.caption}</p>}
+                                </div>
+                              )}
+                            </>
+                          )
+                          return to ? (
+                            <Link key={a.id} to={to} className="mosaic-tile flex flex-col hover:shadow-md transition-shadow">{inner}</Link>
+                          ) : (
+                            <div key={a.id} className="mosaic-tile flex flex-col">{inner}</div>
+                          )
+                        })}
+                        {s.products.map(prod => (
+                          <Link key={`${prod.collection}-${prod.id}`} to={prod.to} className="mosaic-tile flex flex-col hover:shadow-md transition-shadow">
+                            <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
+                              {prod.image && <img src={prod.image} alt={prod.name} className="w-full h-full object-contain" />}
+                            </div>
+                            <div className="p-2.5">
+                              <p className="text-xs text-ink line-clamp-1 break-words">{prod.name}</p>
+                              {prod.caption && <p className="text-[11px] text-ink-60 leading-snug line-clamp-6 mt-0.5 break-words">{prod.caption}</p>}
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                </div>
               ))}
             </div>
           )}
@@ -188,7 +192,8 @@ export default function BrandPortalPage({ profile }) {
           rather than a repeat of the proposal (owner, post-launch). */}
       {hasGallery && (
         <div className="mb-10">
-          <h2 className="text-xl md:text-2xl text-ink mb-1.5">
+          {hasProposal && <FacetDivider />}
+          <h2 className="text-xl md:text-2xl text-ink mb-1.5 mt-6">
             {hasProposal ? 'More products for your brand' : 'Your curated brand collection'}
           </h2>
           <p className="text-sm text-ink-60 mb-6 max-w-2xl">
@@ -196,9 +201,9 @@ export default function BrandPortalPage({ profile }) {
               ? 'Browse other products prepared for your brand but not included in this proposal.'
               : 'Products selected and prepared for your brand.'}
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="mosaic-grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {galleryProducts.map(img => (
-              <div key={img.product_id} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+              <div key={img.product_id} className="mosaic-tile flex flex-col hover:shadow-md transition-shadow">
                 <Link to={`/shop/corporate/${img.product_id}`} className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
                   <img src={img.file_url} alt={img.caption || img.product_name} className="w-full h-full object-contain" />
                 </Link>
@@ -214,7 +219,7 @@ export default function BrandPortalPage({ profile }) {
               </div>
             ))}
             {galleryAssets.map(a => (
-              <div key={a.id} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+              <div key={a.id} className="mosaic-tile flex flex-col hover:shadow-md transition-shadow">
                 <div className="aspect-square bg-gray-400 flex items-center justify-center overflow-hidden">
                   {cannotRenderAsImage(a.filename) ? (
                     <div className="flex flex-col items-center gap-1 text-white/80">
@@ -247,11 +252,12 @@ export default function BrandPortalPage({ profile }) {
           with the proposal or product collection (owner, post-launch). */}
       {hasBrandAssets && (
         <div>
-          <h2 className="text-sm font-semibold text-ink-70 mb-1">Brand Assets</h2>
+          {(hasProposal || hasGallery) && <FacetDivider />}
+          <h2 className="text-sm font-semibold text-ink-70 mb-1 mt-6">Brand Assets</h2>
           <p className="text-xs text-ink-40 mb-3">Access your approved logos, guidelines and brand materials.</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="mosaic-grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {brandAssets.map(a => (
-              <div key={a.id} className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+              <div key={a.id} className="mosaic-tile flex flex-col hover:shadow-md transition-shadow">
                 <div className="aspect-square bg-gray-400 flex items-center justify-center overflow-hidden">
                   {cannotRenderAsImage(a.filename) ? (
                     <div className="flex flex-col items-center gap-1 text-white/80">

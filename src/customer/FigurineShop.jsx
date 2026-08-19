@@ -141,7 +141,8 @@ export default function FigurineShop({ profile }) {
     <div>
       {loading && <LoadingBar />}
       <div className="mb-4">
-        <h1 className="text-xl md:text-2xl">Figurine Gifts</h1>
+        <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">Catalogue</p>
+        <h1 className="text-2xl md:text-3xl text-ink">Figurine Gifts</h1>
         <p className="text-sm text-ink-60 mt-0.5">
           {filtered.length} designs · ex-factory prices in {cur}
         </p>
@@ -168,13 +169,17 @@ export default function FigurineShop({ profile }) {
           </button>
         </div>
       )}
-      <div className="flex flex-col sm:flex-row gap-2 mb-5">
-        <input type="text" placeholder="Search name or code…" className="input w-full sm:flex-1"
+      <div className="mb-5 space-y-2.5">
+        <input type="text" placeholder="Search name or code…" className="input w-full sm:max-w-xs"
           value={search} onChange={e => { setSearch(e.target.value); sessionStorage.setItem('fs-search', e.target.value) }} />
-        <select className="input sm:w-56" value={coll ? '' : cat} onChange={e => { setColl(null); setCat(e.target.value); sessionStorage.setItem('fs-cat', e.target.value) }}>
-          <option value="">All categories</option>
-          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button" onClick={() => { setColl(null); setCat(''); sessionStorage.setItem('fs-cat', '') }}
+            className={(coll ? false : cat === '') ? 'tag-active' : 'tag-clickable'}>All categories</button>
+          {categories.map(c => (
+            <button key={c} type="button" onClick={() => { setColl(null); setCat(c); sessionStorage.setItem('fs-cat', c) }}
+              className={(!coll && cat === c) ? 'tag-active' : 'tag-clickable'}>{c}</button>
+          ))}
+        </div>
       </div>
       {/* Lifecycle status filter — All / Made to Order / Retired Stock / Concept.
           Sold-out retired designs are filtered out of the list entirely. */}
@@ -183,10 +188,7 @@ export default function FigurineShop({ profile }) {
             offering a Retired chip here would always show zero results. */}
         {[{ value: '', label: 'All' }, ...RANGE_STATUSES.filter(s => s.value !== 'retired')].map(s => (
           <button key={s.value || 'all'} onClick={() => { setStatusFilter(s.value); sessionStorage.setItem('fs-status', s.value) }}
-            className={`px-3 py-1 rounded-full text-xs border transition-colors ${
-              statusFilter === s.value
-                ? 'bg-ink text-white border-ink'
-                : 'bg-white text-ink-70 border-ivory-dark hover:bg-ivory'}`}>
+            className={statusFilter === s.value ? 'tag-active' : 'tag-clickable'}>
             {s.label}
           </button>
         ))}
@@ -194,11 +196,11 @@ export default function FigurineShop({ profile }) {
       {filtered.length === 0 ? (
         <div className="text-center py-20 text-ink-60">No designs match your search.</div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
           {filtered.map(s => (
             <Link key={s.id} id={`fig-card-${s.id}`} to={`/shop/figurine/${s.id}`}
               onClick={() => sessionStorage.setItem('fs-last-id', s.id)}
-              className="card overflow-hidden flex flex-col hover:shadow-md transition-shadow group">
+              className="mosaic-tile flex flex-col hover:shadow-md transition-shadow group">
               <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
                 <CardImageCarousel images={s.images} alt={s.name} imgClassName="object-contain p-2"
                   fallback={<Gem size={30} strokeWidth={1.25} className="text-gray-300" />} />
@@ -209,7 +211,7 @@ export default function FigurineShop({ profile }) {
                   </span>
                 )}
                 {s.is_new && (
-                  <span className={`absolute left-1.5 badge bg-emerald-600 text-white ${RANGE_STATUS_CUSTOMER[s.status] ? 'top-8' : 'top-1.5'}`}
+                  <span className={`absolute left-1.5 badge-active ${RANGE_STATUS_CUSTOMER[s.status] ? 'top-8' : 'top-1.5'}`}
                         title="New arrival">New</span>
                 )}
                 <FavHeart item={{ type: 'figurine', id: s.id, name: s.name, code: s.code, image: s.image }}
