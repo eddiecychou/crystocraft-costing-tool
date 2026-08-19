@@ -6,10 +6,26 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import SupplierCatalogs from '../components/SupplierCatalogs'
 import SupplierAddQuoteModal from '../components/SupplierAddQuoteModal'
+import CopyButton from '../components/CopyButton'
 import { SUPPLIER_CATEGORIES, PO_PAYMENT_TERM_LABEL, PO_STATUSES } from '../constants'
 import { fmtMoney } from '../currency'
 import { poTotals } from '../purchaseOrders'
-import { AlertTriangle, Star, FileText } from 'lucide-react'
+import { AlertTriangle, Star, FileText, ExternalLink, MessageCircle, FolderOpen } from 'lucide-react'
+
+// Supplier Workstation Phase 1 — quick-access sourcing links. Order matters:
+// website first, then each marketplace's shop before its product/catalogue
+// page, matching the form's own grouping. Only a populated, http(s) value
+// ever renders a button — no dead links, no placeholder chips.
+const QUICK_LINKS = [
+  { key: 'website_url', label: 'Website' },
+  { key: 'shop_1688_url', label: '1688 Shop' },
+  { key: 'product_1688_url', label: '1688 Product' },
+  { key: 'taobao_shop_url', label: 'Taobao Shop' },
+  { key: 'taobao_product_url', label: 'Taobao Product' },
+  { key: 'alibaba_shop_url', label: 'Alibaba Shop' },
+  { key: 'alibaba_product_url', label: 'Alibaba Product' },
+]
+const isHttpUrl = v => typeof v === 'string' && /^https?:\/\/\S+$/i.test(v.trim())
 import useScrollMemory from '../hooks/useScrollMemory'
 
 const PO_STATUS_META = Object.fromEntries(PO_STATUSES.map(s => [s.value, s]))
@@ -219,6 +235,53 @@ export default function SupplierDetail() {
         </div>
       </div>
 
+      {/* Supplier Workstation Phase 1 — Quick Access. Compact single row of
+          chips; only renders a link/WeChat chip for a populated+valid value
+          (no dead buttons) — the "Catalogues & Files" chip always shows
+          since SupplierCatalogs below already handles the empty case on its
+          own ("no catalogs yet"). */}
+      {(() => {
+        const links = QUICK_LINKS.filter(l => isHttpUrl(supplier[l.key]))
+        const hasWechatOpen = isHttpUrl(supplier.wechat_open_url)
+        const hasWechatFallback = !hasWechatOpen && (supplier.wechat_contact_label || supplier.wechat_id)
+        return (
+          <div className="card p-4 mb-6">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2.5">Quick Access</p>
+            <div className="flex flex-wrap items-center gap-2">
+              {links.map(l => (
+                <a key={l.key} href={supplier[l.key]} target="_blank" rel="noreferrer"
+                   className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
+                  <ExternalLink size={12} />{l.label}
+                </a>
+              ))}
+              {hasWechatOpen && (
+                <a href={supplier.wechat_open_url} target="_blank" rel="noreferrer"
+                   className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
+                  <MessageCircle size={12} />Open WeChat
+                </a>
+              )}
+              <a href="#catalogues"
+                 className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
+                <FolderOpen size={12} />Catalogues &amp; Files
+              </a>
+            </div>
+            {/* WeChat fallback — no reliable direct link, so offer copy
+                instead of pretending a chat can be opened automatically. */}
+            {hasWechatFallback && (
+              <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 flex-wrap">
+                <MessageCircle size={13} className="text-gray-400 shrink-0" />
+                <span className="text-xs text-gray-600">
+                  {supplier.wechat_contact_label || 'WeChat contact'}
+                  {supplier.wechat_id && <span className="text-gray-400"> · {supplier.wechat_id}</span>}
+                </span>
+                {supplier.wechat_id && <CopyButton text={supplier.wechat_id} label="Copy WeChat ID" />}
+                {!supplier.wechat_id && supplier.wechat_contact_label && <CopyButton text={supplier.wechat_contact_label} label="Copy label" />}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
       <div className="card p-5 space-y-0">
         <InfoRow label="Contact Person" value={supplier.contact_person} />
         <InfoRow label="Country" value={supplier.country} />
@@ -414,7 +477,9 @@ export default function SupplierDetail() {
         </div>
       )}
 
-      <SupplierCatalogs supplierId={id} />
+      <div id="catalogues" className="scroll-mt-4">
+        <SupplierCatalogs supplierId={id} />
+      </div>
 
       {confirmDelete && (
         <ConfirmDialog

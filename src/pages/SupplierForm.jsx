@@ -4,6 +4,23 @@ import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp } from 'fir
 import { db } from '../firebase'
 import { SUPPLIER_CATEGORIES, CURRENCIES, PO_PAYMENT_TERMS } from '../constants'
 
+// Supplier Workstation Phase 1 — sourcing/quick-access links. Field names
+// use a leading word (shop_1688_url, not 1688_shop_url) because a JS/
+// Firestore field name can't start with a digit; "1688" is kept in the
+// middle so the platform is still obvious at a glance.
+const LINK_FIELDS = [
+  { key: 'website_url', label: 'Website' },
+  { key: 'shop_1688_url', label: '1688 Shop' },
+  { key: 'product_1688_url', label: '1688 Product / Catalogue' },
+  { key: 'taobao_shop_url', label: 'Taobao Shop' },
+  { key: 'taobao_product_url', label: 'Taobao Product / Catalogue' },
+  { key: 'alibaba_shop_url', label: 'Alibaba Shop / Supplier Page' },
+  { key: 'alibaba_product_url', label: 'Alibaba Product / Catalogue' },
+]
+// Deliberately permissive (any http(s) URL) — these are internal sourcing
+// links typed in by hand, not something worth over-validating.
+const isValidUrl = v => !v || /^https?:\/\/\S+$/i.test(v.trim())
+
 // Convert old string or existing array → clean array with at least one entry
 function toArray(val) {
   if (Array.isArray(val)) return val.length ? val : ['']
@@ -48,11 +65,16 @@ export default function SupplierForm() {
     name: '', name_cn: '', erp_code: '', category: '', country: 'China', city: '',
     address: '', wechat_id: '', whatsapp: '', contact_person: '', notes: '',
     default_currency: '', default_payment_terms: '',
+    website_url: '', shop_1688_url: '', product_1688_url: '',
+    taobao_shop_url: '', taobao_product_url: '',
+    alibaba_shop_url: '', alibaba_product_url: '',
+    wechat_contact_label: '', wechat_open_url: '',
   })
   const [phones, setPhones] = useState([''])
   const [emails, setEmails] = useState([''])
   const [loading, setLoading]   = useState(false)
   const [fetching, setFetching] = useState(isEdit)
+  const [linkErrors, setLinkErrors] = useState({})
 
   useEffect(() => {
     if (!isEdit) return
@@ -68,6 +90,10 @@ export default function SupplierForm() {
           whatsapp: d.whatsapp || '', contact_person: d.contact_person || '',
           notes: d.notes || '',
           default_currency: d.default_currency || '', default_payment_terms: d.default_payment_terms || '',
+          website_url: d.website_url || '', shop_1688_url: d.shop_1688_url || '', product_1688_url: d.product_1688_url || '',
+          taobao_shop_url: d.taobao_shop_url || '', taobao_product_url: d.taobao_product_url || '',
+          alibaba_shop_url: d.alibaba_shop_url || '', alibaba_product_url: d.alibaba_product_url || '',
+          wechat_contact_label: d.wechat_contact_label || '', wechat_open_url: d.wechat_open_url || '',
         }))
         setPhones(toArray(d.phones ?? d.phone))
         setEmails(toArray(d.emails ?? d.email))
@@ -80,6 +106,13 @@ export default function SupplierForm() {
 
   async function handleSubmit(e) {
     e.preventDefault()
+    const errs = {}
+    for (const { key, label } of LINK_FIELDS) {
+      if (!isValidUrl(form[key])) errs[key] = `${label} must be a full http:// or https:// URL`
+    }
+    if (!isValidUrl(form.wechat_open_url)) errs.wechat_open_url = 'WeChat open link must be a full http:// or https:// URL'
+    setLinkErrors(errs)
+    if (Object.keys(errs).length > 0) return
     setLoading(true)
     try {
       const payload = {
@@ -183,6 +216,43 @@ export default function SupplierForm() {
               <input className="input" value={form.whatsapp} onChange={set('whatsapp')} placeholder="+86 xxx xxxx xxxx" />
             </div>
             <MultiInput label="Email" values={emails} onChange={setEmails} type="email" placeholder="supplier@example.com" />
+          </div>
+        </div>
+
+        {/* Supplier Workstation Phase 1 — sourcing/quick-access links, shown
+            as buttons on the detail page. Internal-only (suppliers/{id} is
+            admin-gated in firestore.rules; nothing here is ever surfaced to
+            the Customer Portal). */}
+        <div className="border-t border-gray-100 pt-4">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Sourcing Links</p>
+          <p className="text-xs text-gray-400 mb-3">Internal only — quick-access buttons on the supplier page. Leave blank if unknown.</p>
+          <div className="grid grid-cols-2 gap-4">
+            {LINK_FIELDS.map(({ key, label }) => (
+              <div key={key}>
+                <label className="label">{label}</label>
+                <input className="input" type="url" value={form[key]} onChange={set(key)} placeholder="https://…" />
+                {linkErrors[key] && <p className="text-xs text-red-600 mt-1">{linkErrors[key]}</p>}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="border-t border-gray-100 pt-4">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">WeChat Quick Access</p>
+          <p className="text-xs text-gray-400 mb-3">
+            A direct open link only works if it's actually been tested — otherwise leave it blank and the supplier page
+            will offer a copy-to-clipboard fallback for the ID/label instead.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="label">WeChat Contact Label</label>
+              <input className="input" value={form.wechat_contact_label} onChange={set('wechat_contact_label')} placeholder="e.g. Wang San — crystal factory" />
+            </div>
+            <div>
+              <label className="label">WeChat Open Link <span className="text-gray-400 font-normal">(only if tested)</span></label>
+              <input className="input" type="url" value={form.wechat_open_url} onChange={set('wechat_open_url')} placeholder="https://…" />
+              {linkErrors.wechat_open_url && <p className="text-xs text-red-600 mt-1">{linkErrors.wechat_open_url}</p>}
+            </div>
           </div>
         </div>
 
