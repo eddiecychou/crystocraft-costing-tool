@@ -23,7 +23,7 @@ export default function CustomerLayout({ children, profile }) {
     // Only linked customers have order history / a brand gallery to show.
     ...(profile?.customer_id ? [
       { to: '/shop/orders', label: 'My Orders', Icon: Receipt },
-      { to: '/shop/brand-gallery', label: 'My Brand Gallery', Icon: Images },
+      { to: '/shop/brand-portal', label: 'Brand Portal', Icon: Images },
     ] : []),
   ]
   return (

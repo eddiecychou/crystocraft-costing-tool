@@ -8,8 +8,7 @@ import CorporateDetail from './CorporateDetail'
 import FavouritesPage from './FavouritesPage'
 import EnquiryPage from './EnquiryPage'
 import CustomizerPage from './CustomizerPage'
-import BrandGalleryPage from './BrandGalleryPage'
-import ProposalPage from './ProposalPage'
+import BrandPortalPage from './BrandPortalPage'
 import OrderHistoryPage from './OrderHistoryPage'
 import SwatchLibraryPage from './SwatchLibraryPage'
 import CustomerInvoicePrint from './CustomerInvoicePrint'
@@ -36,8 +35,10 @@ export default function Storefront({ profile }) {
                 <Route path="/shop/corporate/:id" element={<CorporateDetail profile={profile} />} />
                 <Route path="/shop/favourites" element={<FavouritesPage profile={profile} />} />
                 <Route path="/shop/enquiry" element={<EnquiryPage profile={profile} />} />
-                <Route path="/shop/brand-gallery" element={<BrandGalleryPage profile={profile} />} />
-                <Route path="/shop/proposal" element={<ProposalPage profile={profile} />} />
+                <Route path="/shop/brand-portal" element={<BrandPortalPage profile={profile} />} />
+                {/* Old separate pages — kept as redirects so any existing bookmark/link still lands somewhere */}
+                <Route path="/shop/brand-gallery" element={<Navigate to="/shop/brand-portal" replace />} />
+                <Route path="/shop/proposal" element={<Navigate to="/shop/brand-portal" replace />} />
                 <Route path="/shop/orders" element={<OrderHistoryPage profile={profile} />} />
                 <Route path="/shop/swatches" element={<SwatchLibraryPage profile={profile} />} />
                 <Route path="/customize/:productId" element={<CustomizerPage profile={profile} />} />
