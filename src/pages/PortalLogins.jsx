@@ -11,7 +11,9 @@ import { ChevronRight, Search } from 'lucide-react'
 // accounts one at a time.
 //
 // WHAT THIS IS, AND IS NOT. `users` docs carry `last_login_at` and
-// `login_count`, written by Login.jsx on each successful sign-in. That is a
+// `login_count`, stamped via authActivity.js's stampLogin() on each
+// successful sign-in — both Login.jsx's normal sign-in and SetPassword.jsx's
+// post-setup sign-in (new-account approval, password reset) call it. That is a
 // LAST-SEEN ROSTER, not an event log: only the most recent timestamp survives,
 // so this can say "Karina last signed in on 14 July, 23 times in total" but
 // never "she signed in on the 3rd, 9th and 14th". A true chronological log

@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth'
-import { doc, updateDoc, serverTimestamp, increment } from 'firebase/firestore'
-import { auth, db } from '../firebase'
+import { auth } from '../firebase'
 import { CUSTOMER_CURRENCIES } from '../currency'
 import { applyForAccount } from '../portalInviteApi'
+import { stampLogin } from '../authActivity'
 import logo from '../assets/logo.png'
 
 export default function Login() {
@@ -23,12 +23,7 @@ export default function Login() {
     setError(''); setLoading(true)
     try {
       const cred = await signInWithEmailAndPassword(auth, email, password)
-      // Best-effort activity stamp for admin follow-up. Self-update (leaves
-      // role/status/pricing untouched, so the rules allow it); never blocks login.
-      updateDoc(doc(db, 'users', cred.user.uid), {
-        last_login_at: serverTimestamp(),
-        login_count: increment(1),
-      }).catch(() => {})
+      stampLogin(cred.user.uid)
     } catch {
       setError('Invalid email or password.')
     } finally {
