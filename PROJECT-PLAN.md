@@ -79,6 +79,224 @@ right fix is a manual admin action or a one-off script with a human
 double-checking the target uid first — not another automatic client-side
 self-heal.
 
+## Current Status — V8.4 CLOSED as of 2026-08-19
+
+One session, same day as V8.3's own close — two substantial, unrelated
+builds (the Sun Life Brand Portal end to end, and a WhatsApp
+Personal/Business channel split for outreach) plus a real production bug
+found and fixed along the way. Everything in this entry is local-commit
+history that was pushed in batches at the owner's request (Netlify deploy
+minutes are limited) — check `git log` for the actual push boundaries if
+it matters which specific change was live when.
+
+### The numbers
+
+| | |
+|---|---:|
+| New pages/components | `src/customer/BrandPortalPage.jsx`, `src/customer/ProposalInviteCard.jsx`, `src/customerProposal.js`, `src/components/ProposalEditor.jsx` |
+| Deleted (superseded) | `src/customer/BrandGalleryPage.jsx`, `src/customer/ProposalPage.jsx` (merged into BrandPortalPage.jsx); `src/customer/proposalContent.js` (Phase 0 scaffold, removed once live data replaced it); `src/components/CopyButton.jsx` (built for WeChat, deleted when WeChat quick-access was pulled) |
+| New Firestore doc shape | `customers/{id}/proposal/current` — `hero_asset_id`, `tagline`, `briefing`, `sections[]` (each with `asset_ids: [{id, caption}]`, `product_refs: [{collection, id, caption, image_id?}]`) |
+| New Firestore rule | `customers/{id}/proposal/{docId}` — admin full access, customer read limited to their own linked customer + `published` only (deployed separately by the owner, not part of `git push`) |
+| New customer/supplier fields | `customers.contacts[].whatsapp_personal` / `.whatsapp_business`; `suppliers/{id}.website_url`, `.shop_1688_url`, `.product_1688_url`, `.taobao_shop_url`, `.taobao_product_url`, `.alibaba_shop_url`, `.alibaba_product_url` |
+| New enum value | `'WhatsApp'` added to `CHANNELS`/`NO_API_CHANNELS` (domain/customer.js) — the interaction-log channel for a contact's older, unclassified `whatsapp` field |
+| Real bugs found & fixed | 3 — see §3 below |
+
+### 1. Sun Life Brand Portal — proposal presentation, built spec-first
+
+Built from a full written spec (`Sun-Life-Proposal-Build-Spec.md`, reviewed
+before any code) in six phases: hard-coded layout proof → data model +
+`customerProposal.js` helpers → admin `ProposalEditor.jsx` → Firestore rule
+(deployed by the owner) → live data → real Sun Life content, mapped by an
+external AI tool (Manus) against an exported schema+content JSON.
+
+Key decisions, for a fresh session to not re-litigate:
+- **References, not copies** — `asset_ids`/`product_refs` point at existing
+  `customers/{id}/assets` docs and `products`/`range_products` docs by id;
+  the proposal doc never stores a `file_url` or product name directly. A
+  downgraded/deleted asset or a retired product just silently drops out of
+  the rendered page (spec §8) — no migration, no privacy break.
+- **Product image priority** (found live, `resolveProductRefs` in
+  `customerProposal.js`): a product card now prefers a photo tagged
+  `branded_for_customer_id` for THIS customer over the product's generic
+  `heroImage`. The old logic ignored branding entirely — verified against
+  real data that "MagSafe Power Bank" in Sun Life's own proposal was
+  showing a generic shot despite a Sun-Life-branded photo existing on the
+  same product. Editor also gained a per-product photo picker for when
+  more than one branded photo exists.
+- **Per-item captions** (`asset_ids`/`product_refs` entries carry their own
+  `caption`, capped at `CAPTION_MAX_LEN = 200`) — added after the owner
+  asked to explain why each item is in a section. Caught a real CSS bug
+  doing this: an unbroken test string (no spaces) overflowed its card
+  instead of wrapping — fixed with `break-words`, verified in an isolated
+  before/after Tailwind test page.
+- **"Brand Portal" merge** (`BrandPortalPage.jsx` replaces the separate old
+  "My Brand Gallery"/"My Proposal" pages) — always Proposal → Product
+  Gallery → Brand Assets, in that order. Product Gallery is
+  **leftover-only**: `all customer-branded products − products already in
+  the published proposal`, one card per PRODUCT not per photo (branded
+  photos deduped by `product_id`). No published proposal → gallery falls
+  back to showing everything, its original role. Section/gallery grids use
+  3 columns on desktop (not 4) — enough width for image+name+caption to
+  read as curated rather than cramped; homepage's own Featured Products
+  strip is unrelated and stays 4-column.
+- **Homepage invite, rebuilt once for design-system compliance**
+  (`ProposalInviteCard.jsx`) — first pass invented its own styling (icon
+  circle, tinted background); owner caught it immediately ("do not
+  hardcode Sun Life colours... reuse the Crystocraft design system").
+  Rebuilt using only what's already established in this app: `.card`'s
+  hairline border + flat corners, the Work Sans uppercase label treatment,
+  the text-plus-arrow CTA already used by `PillarCard`. Fully data-driven
+  by a `status` prop (`'proposal_ready' | 'collection_ready'`), zero
+  customer-specific content. Also fixed a missing top-margin bug (sat
+  flush against the hero image with no breathing room) after the owner
+  flagged it from a live screenshot.
+- **Self-serve AI-mapping round trip** — every earlier round of "get Manus
+  to map products" went through Claude writing one-off admin scripts for
+  export/validate/import. Moved into `ProposalEditor.jsx` itself: "Export
+  for AI mapping" downloads the schema+content JSON directly; "Import
+  mapped JSON" validates every reference against the live catalogue
+  (exists, active, non-retired, no duplicates, caption length) before
+  writing anything, and always lands as `draft` — if the proposal was
+  already published, importing moves it back to draft automatically so
+  nothing goes live unreviewed.
+- **Hero image can now be removed**, and the editor tells the admin where
+  it's actually stored (`Product Gallery`, not `Brand Assets` — a real
+  point of confusion the owner ran into).
+
+### 2. Draft Daily WhatsApp Personal/Business channel support
+
+Also built from a full written spec, audited first. `customers.contacts[]`
+gains two new optional fields (`whatsapp_personal`, `whatsapp_business`)
+alongside the existing single `whatsapp` — which stays the neutral/
+unclassified number, never silently relabeled as one or the other.
+`marketing_contacts` deliberately NOT touched: it only ever had a single
+scalar `phone` field (a phone-sourced lead's phone number IS its WhatsApp
+number already — see `findOrCreateLeadByPhone`), so there was no real
+distinction to add without inventing evidence that doesn't exist.
+
+- Each Draft Daily row shows 0/1/2 WhatsApp chips depending on what's
+  actually set — never guesses when both Personal and Business exist,
+  never shows a dead button when nothing's set. Reuses the existing
+  `wa.me/<number>` link pattern from `CustomerDetail.jsx` — no new
+  link-building logic.
+- New "Log WhatsApp outreach" action — manual and explicit only, mirrors
+  the existing Email `logInteraction` call exactly. Opening a `wa.me` link
+  never auto-logs anything; guarded against duplicate logs on repeat
+  clicks. Same customer-only limitation Email logging already has
+  (`marketing_contacts` has no Interaction Log to write to).
+- `whatsapp`/`whatsapp_personal`/`whatsapp_business` are snapshotted onto
+  the `outreach_drafts` doc at creation time (same posture as
+  `customerName`/`customerEmail` — not a live join); `generateDrafts` is a
+  server round-trip that only echoes back what the AI needed, so
+  `handleGenerate` re-attaches these fields from the original candidate by
+  id before persisting.
+- **Customer Detail surfacing, corrected once**: first pass added a
+  page-level "Quick Access" card (mirroring Supplier's own Quick Access
+  row) showing only the PRIMARY contact's numbers — the owner tried it
+  live and found it silently missing for a real customer whose primary
+  contact simply didn't have `whatsapp_personal`/`business` set, even
+  though a real number existed on the record. Reverted; WhatsApp
+  Personal/Business links now live inline in EACH contact's own row in
+  the Contacts section, right next to their existing email/phone/WhatsApp
+  — grouped with the person they belong to, works for every contact, not
+  just the primary one.
+
+### 3. Supplier Workstation Phase 1 — Quick Access, PDF catalogues, no WeChat
+
+Built from a full written spec. Adds `website_url` + one shop/product URL
+pair each for 1688/Taobao/Alibaba to `suppliers/{id}`, validated as real
+`http(s)` URLs on save (invalid values block save with an inline message,
+never silently saved). `SupplierDetail.jsx` gets a compact "Quick Access"
+chip row — one pill per populated+valid link, opens in a new tab, never a
+dead button for an empty field — plus a chip that jumps to the existing
+`SupplierCatalogs.jsx` upload/list component (already fully built; this
+was a discoverability fix, not new upload plumbing).
+
+**WeChat quick-access was built, then removed the same day.** The owner
+asked how to actually generate a working "WeChat open link" — honest
+answer: personal WeChat has no official, documented deep-link scheme for
+opening a specific chat (unlike WhatsApp's `wa.me/<number>`, which Meta
+officially supports). The few unofficial schemes people have found are
+undocumented and break across app updates. Given that, the copy-ID
+fallback wasn't wanted either once the owner heard the tradeoff, so the
+whole WeChat section — form fields, detail-page chips, the shared
+`CopyButton.jsx` component built for it — was removed rather than kept as
+a UI built around a link most suppliers will never realistically have.
+**Lesson for next time WeChat deep-linking comes up anywhere in this app:
+don't build it without confirming a real, tested link first — see this
+section and the identical reasoning that killed a customer-facing WeChat
+button idea during the Brand Portal work above.**
+
+**Known, not fixed**: `storage.rules`' `suppliers/{id}/{allPaths=**}`
+block is `isAuth()` (any signed-in user), not admin-gated — flagged, not
+silently left out. This is NOT supplier-specific; `isAuth()` is the
+systemic pattern across ~18 Storage paths in this app. Tightening only
+the suppliers path would be inconsistent; tightening all of them is a
+separate, larger, cross-cutting decision outside this task's scope.
+Firestore access (the actual document data) is correctly admin-only
+either way.
+
+### 4. Real bug: order contact override silently dropped on every read
+
+Reported as "I picked a different contact for this order but it didn't
+save, and the Proforma Invoice still shows the old one." The write path
+(`ShipmentForm.jsx`'s `handleSave`) was saving `contact_id` correctly the
+whole time — verified directly against the live order in question. The
+bug was on READ: `normOrder()` in `shipping.js` builds a hand-whitelisted
+object from the raw Firestore doc, and `contact_id` was never added to
+that whitelist — so `getOrder()` silently stripped it on every load,
+which reset the picker on reload (looked like the save didn't take) and
+made both `ProformaInvoicePrint.jsx`/`SalesInvoicePrint.jsx`'s own
+(already-correct) contact lookup always miss and fall back to the default
+contact. One-line fix: add `contact_id` to `normOrder`'s whitelist — all
+three symptoms shared this one read path. Also added the contact's phone
+number to the PI/SI "Bill To" block while investigating — it had never
+been printed at all, regardless of which contact was selected.
+
+### 5. Customer Detail: every section now collapsible
+
+The page had grown to a dozen-plus always-expanded cards. New shared
+`Collapsible` wrapper (defined locally in `CustomerDetail.jsx`) applied to
+every section except Sales Invoice History, which already had its own
+working expand/collapse (lazy-loads ERP data on open). Open/closed state
+persists per customer per section via `sessionStorage` for the session.
+`CustomerBrandGallery.jsx` and `ProposalEditor.jsx` (separate components,
+each rendering their own full card) got the same chevron-toggle treatment
+locally, keeping their own header action buttons clickable either way.
+
+---
+
+## Where V8.5 starts
+
+- **WeChat deep-linking stays a closed question app-wide** — don't
+  reopen it (Supplier or anywhere else) without a genuinely tested,
+  reliable link in hand. Enterprise WeChat (企业微信/WeChat Work) DOES
+  have an official, documented link/API system, unlike personal WeChat —
+  worth a proper look if any supplier/customer outreach actually runs
+  through that product instead of personal WeChat.
+- **`storage.rules`' app-wide `isAuth()` (not `isAdmin()`) pattern** —
+  flagged during the Supplier Workstation build (§3 above), not fixed.
+  ~18 Storage paths share this posture; tightening it is a real, separate
+  security-hardening decision, not a side effect of any single feature.
+- **Sun Life's proposal is live with real, Manus-mapped content** across
+  all 25 branded corporate products — worth checking back in on whether
+  this whole Brand Portal + AI-mapping workflow is worth extending to a
+  second real customer, now that the round trip is self-serve from the
+  editor.
+- **Supplier Workstation Phase 2 (WeChat Supplier Conversation Archive)
+  was explicitly declined by the owner** ("too complicated") — don't
+  revisit unless asked. The lighter, safer next step flagged during that
+  conversation was catalogue-browsing UX (grid/thumbnail view, tagging)
+  if that's ever wanted instead.
+- Everything still open from V8.3's own "Where V8.4 starts" entry that
+  wasn't touched this cycle remains open — see that section immediately
+  below for the full list (self-heal removal tradeoff, SU-07A test
+  account, SU-08 Phase 2 scope, the `netlify/functions/` vs
+  `edge-functions/` split, deferred Google OAuth, email "Discover more"
+  retrieval, Physical Design Workbench workstreams 3/5).
+
+---
+
 ## Current Status — V8.3 CLOSED as of 2026-08-19
 
 One long continuous session — the biggest of the cycle so far. Two major

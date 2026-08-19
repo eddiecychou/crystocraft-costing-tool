@@ -17,7 +17,7 @@ of record, one function at a time.
 
 | File | What it holds |
 |---|---|
-| `PROJECT-PLAN.md` | The running record. Newest cycle first. **"Where V7.23 starts" is the current entry point.** |
+| `PROJECT-PLAN.md` | The running record. Newest cycle first. **"Where V8.5 starts" is the current entry point.** |
 | `JES-RETIREMENT-PLAN.md` | The nine-step route to switching JES off, in plain language |
 | `V7.15_ERP_Inventory.md` | What the ERP actually contains — measured, not assumed |
 | `PBIS-IMPORT-FORMAT.md` | The JES→PBIS import contract — what an app-generated invoice must reproduce |
