@@ -249,36 +249,34 @@ export default function BrandPortalPage({ profile }) {
       {/* 3. Brand Assets — logos / guidelines. Deliberately the quietest
           section (small label, not a full heading+subtitle like the two
           above) — a resource area, not something competing for attention
-          with the proposal or product collection (owner, post-launch). */}
+          with the proposal or product collection (owner, post-launch).
+          Rendered as a FILE LIST, not product-style image tiles — a logo
+          is a downloadable asset, not a photo to browse. Cropping a
+          transparent-background logo into a big opaque square (found live,
+          2026-08-20: Manulife's white/black logo files stretched across a
+          solid grey tile) read as broken, not premium. */}
       {hasBrandAssets && (
         <div>
           {(hasProposal || hasGallery) && <FacetDivider />}
           <h2 className="text-sm font-semibold text-ink-70 mb-1 mt-6">Brand Assets</h2>
           <p className="text-xs text-ink-40 mb-3">Access your approved logos, guidelines and brand materials.</p>
-          <div className="mosaic-grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="card divide-y divide-ivory-dark">
             {brandAssets.map(a => (
-              <div key={a.id} className="mosaic-tile flex flex-col hover:shadow-md transition-shadow">
-                <div className="aspect-square bg-gray-400 flex items-center justify-center overflow-hidden">
+              <a key={a.id} href={downloadUrl(a.file_url, a.filename)}
+                 className="flex items-center gap-3 px-3 py-2.5 hover:bg-ivory/60 transition-colors">
+                <div className="w-11 h-11 shrink-0 rounded-sm border border-ivory-dark bg-white flex items-center justify-center overflow-hidden">
                   {cannotRenderAsImage(a.filename) ? (
-                    <div className="flex flex-col items-center gap-1 text-white/80">
-                      <FileText size={26} strokeWidth={1.5} />
-                      <span className="text-[10px] font-medium">{extOf(a.filename)}</span>
-                    </div>
+                    <FileText size={18} strokeWidth={1.5} className="text-ink-40" />
                   ) : (
-                    <img src={a.file_url} alt={a.title || a.filename} className="w-full h-full object-contain" />
+                    <img src={a.file_url} alt="" className="w-full h-full object-contain p-1" />
                   )}
                 </div>
-                <div className="p-2.5 flex items-center justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-xs text-ink truncate">{a.title || a.filename}</p>
-                    <p className="text-[10px] text-ink-40">{TYPE_LABEL[a.type]} · {extOf(a.filename)}</p>
-                  </div>
-                  <a href={downloadUrl(a.file_url, a.filename)}
-                     title="Download" className="shrink-0 text-ink-40 hover:text-brand-600">
-                    <Download size={15} />
-                  </a>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-ink truncate">{a.title || a.filename}</p>
+                  <p className="text-[11px] text-ink-40">{TYPE_LABEL[a.type]} · {extOf(a.filename)}</p>
                 </div>
-              </div>
+                <Download size={16} className="shrink-0 text-ink-40" />
+              </a>
             ))}
           </div>
         </div>

@@ -182,14 +182,19 @@
   }
 
   /* ── Hairline mosaic grid — V2.5 customer-portal product grid treatment.
-     Tiles touch edge-to-edge; the 1px gap shows the warm-grey background
+     Tiles touch edge-to-edge; the 1px gap shows the background colour
      through, reading as a hairline between tiles instead of individual
      card borders + white-space gutters. Put .mosaic-grid on the grid
      container (keep your own grid-cols/responsive classes alongside it)
-     and .mosaic-tile on each item instead of .card. ── */
+     and .mosaic-tile on each item instead of .card.
+     Background is the page's own beige, not the darker warm-grey hairline
+     colour — an incomplete last row (fewer items than columns) leaves an
+     EMPTY cell with no tile covering it, so the gap colour shows as a full
+     solid block there, not just a 1px line. Beige blends into the page;
+     the darker grey read as a stray broken box (found live, 2026-08-20). ── */
   .mosaic-grid {
     @apply grid gap-px;
-    background-color: #E9E8E6; /* warm-grey — becomes the hairline */
+    background-color: #F7EEE3; /* beige — matches body background */
   }
   .mosaic-tile {
     @apply bg-white overflow-hidden;

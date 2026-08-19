@@ -4,7 +4,7 @@ import {
 import { db, auth } from './firebase'
 import { normGallery, isStorefrontVisible, productStatusOf } from './constants'
 import { screenSensitiveImages } from './sensitiveImages'
-import { loadCustomerVisibleAssets } from './customerAssets'
+import { loadCustomerVisibleAssets, loadBrandedProductImages } from './customerAssets'
 
 // Customer proposal data layer — see Sun-Life-Proposal-Build-Spec.md §3/§6.
 //
@@ -86,24 +86,27 @@ export async function loadProposal(customerId) {
   return snap.exists() ? norm(snap.data()) : null
 }
 
-// Cheap existence check for the portal nav — does this customer have
-// anything the Brand Portal tab would actually show? Checks the same two
-// sources BrandPortalPage.jsx's own `total` count leads with (published
-// proposal, own uploaded assets) but deliberately SKIPS
-// loadBrandedProductImages (customerAssets.js) — that iterates every
-// product's images subcollection (N+1 queries across the whole catalogue),
-// too expensive to run on every portal page load just to decide nav
-// visibility. Known tradeoff: a customer whose ONLY brand content is a
-// branded product photo, with no proposal and no manually uploaded asset,
-// won't see the tab. Narrow edge case, worth revisiting only if it's
-// actually hit in practice.
+// Existence check for the portal nav — does this customer have anything
+// the Brand Portal tab would actually show? Checks all three sources
+// BrandPortalPage.jsx's own `total` count leads with: published proposal,
+// own uploaded assets, and branded product photos (loadBrandedProductImages,
+// customerAssets.js). That last one iterates every product's images
+// subcollection (N+1 queries) — real cost, but CustomerLayout mounts once
+// per portal session (React Router keeps a parent layout mounted across
+// nested route changes), not once per page view, so this pays the same
+// one-time cost BrandPortalPage.jsx itself already pays on every visit.
+// Previously skipped for being "too expensive" — found live (2026-08-20):
+// a customer with ONLY branded product photos (no proposal, no manually
+// uploaded asset) never saw the tab at all, which is a real bug, not an
+// acceptable edge case.
 export async function hasBrandPortalContent(customerId) {
   if (!customerId) return false
-  const [proposal, assets] = await Promise.all([
+  const [proposal, assets, brandedImages] = await Promise.all([
     loadProposal(customerId),
     loadCustomerVisibleAssets(customerId),
+    loadBrandedProductImages(customerId).then(imgs => imgs.filter(isStorefrontVisible)),
   ])
-  return proposal?.status === 'published' || assets.length > 0
+  return proposal?.status === 'published' || assets.length > 0 || brandedImages.length > 0
 }
 
 // Merge-write. Never touches status — publishProposal/unpublishProposal own
