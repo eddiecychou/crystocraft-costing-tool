@@ -94,6 +94,13 @@ export async function createDrafts(meta, drafts, { imageUrls, links } = {}) {
       draftBody: d.draftBody,
       imageUrls: imageUrls || [],
       links: links || [],
+      // Draft Daily WhatsApp channel support (2026-08-19) — snapshotted at
+      // creation time, same posture as customerName/customerEmail above.
+      // whatsapp is the older unclassified number; personal/business are
+      // only set when the admin actually knows which is which.
+      whatsapp: d.whatsapp || '',
+      whatsapp_personal: d.whatsapp_personal || '',
+      whatsapp_business: d.whatsapp_business || '',
       status: 'pending_review',
     }))
     created.push(ref.id)

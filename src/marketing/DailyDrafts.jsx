@@ -83,6 +83,15 @@ function customerToEntity(c) {
     crm_category: c.crm_category, crm_status: c.crm_status,
     notes: c.notes, erp_code: c.erp_code, country: c.country,
     lastOutreachAt: c.lastOutreachAt, blockOutreachUntil: c.blockOutreachUntil,
+    // Draft Daily WhatsApp channel support (2026-08-19) — snapshotted at
+    // draft-creation time, same posture as name/email above (not a live
+    // join). whatsapp is the older, unclassified single number (Case 5:
+    // shown as a neutral "WhatsApp" action, never relabeled); personal/
+    // business are separate opt-in fields the admin fills in only when
+    // actually known (CustomerForm.jsx's ContactsEditor).
+    whatsapp: contact?.whatsapp || '',
+    whatsapp_personal: contact?.whatsapp_personal || '',
+    whatsapp_business: contact?.whatsapp_business || '',
     // V8.1 email ingestion — a DeepSeek read of this customer's actual email
     // history (see refresh-email-summary.js), only present once an admin's
     // generated one from CustomerDetail.jsx. Only summary/recent_activity/
@@ -131,6 +140,13 @@ function contactToEntity(c) {
     crm_category: 'Marketing contact (trade lead, not yet a customer)', crm_status: 'Prospect',
     notes, erp_code: '', country: c.country,
     lastOutreachAt: c.lastOutreachAt, blockOutreachUntil: c.blockOutreachUntil,
+    // marketing_contacts has only one scalar phone field (no personal/
+    // business split — see domain/marketingContact.js) — a phone-sourced
+    // lead (findOrCreateLeadByPhone) IS a WhatsApp number, but with no
+    // account classification, so it's neutral/unclassified here too.
+    whatsapp: c.phone || '',
+    whatsapp_personal: '',
+    whatsapp_business: '',
   }
 }
 
@@ -379,6 +395,13 @@ export default function DailyDrafts() {
   const [addCustomerBusy, setAddCustomerBusy] = useState(false)
   const [addCustomerError, setAddCustomerError] = useState('')
   const [addCustomerDone, setAddCustomerDone] = useState({}) // draftId -> confirmation message
+  // Draft Daily WhatsApp channel support (2026-08-19) — opening a wa.me link
+  // is a manual action, never auto-logged; whatsappOpened just reveals the
+  // "Log WhatsApp outreach" button once Eddie has actually clicked one, and
+  // whatsappLogged prevents a repeat click from writing a duplicate
+  // interaction (mirrors addCustomerDone's confirmation-state pattern).
+  const [whatsappOpened, setWhatsappOpened] = useState({}) // draftId -> last channel opened ('personal'|'business'|'unknown')
+  const [whatsappLogged, setWhatsappLogged] = useState({}) // draftId -> true once logged
   const [pickerCustomers, setPickerCustomers] = useState([])
   useEffect(() => { loadCustomers().then(setPickerCustomers) }, [])
 
@@ -624,9 +647,18 @@ export default function DailyDrafts() {
         targetingNote.trim(),
       )
       if (!generated.length) { setError('DeepSeek returned no usable drafts — try again.'); return }
+      // generateDrafts is a server round-trip (generate-outreach-drafts.js) —
+      // it only echoes back what the AI needed, not every field `candidates`
+      // carried. Re-attach whatsapp/whatsapp_personal/whatsapp_business from
+      // the original candidate by id so createDrafts can snapshot them.
+      const candidatesById = new Map(candidates.map(c => [c.id, c]))
+      const withWhatsapp = generated.map(d => {
+        const cand = candidatesById.get(d.customerId)
+        return cand ? { ...d, whatsapp: cand.whatsapp, whatsapp_personal: cand.whatsapp_personal, whatsapp_business: cand.whatsapp_business } : d
+      })
       await createDrafts(
         { topicLabel, productId: linkedProduct?.id || null, productName: linkedProduct?.name || null, productSource: linkedProduct?.source || null },
-        generated,
+        withWhatsapp,
         { imageUrls: masterImageUrls, links: masterLinks },
       )
       resetCompose()
@@ -704,6 +736,39 @@ export default function DailyDrafts() {
       setError(e.message || 'Send failed.')
     } finally {
       setBusyId(null)
+    }
+  }
+
+  // Opens the given WhatsApp number in a new tab and marks which channel was
+  // opened (so "Log WhatsApp outreach" can appear with the right label) — it
+  // does NOT log anything itself. Opening a link is not evidence a message
+  // was actually sent; only Eddie's own explicit "Log" click is.
+  function handleWhatsappOpen(d, channel, number) {
+    window.open(`https://wa.me/${number.replace(/\D/g, '')}`, '_blank', 'noopener')
+    setWhatsappOpened(prev => ({ ...prev, [d.id]: channel }))
+  }
+
+  // Manual, explicit confirmation only — mirrors handleSend's Email logging
+  // exactly (same logInteraction call, same customers/{id}/enquiries target).
+  // Only customers/ has an Interaction Log; a marketing_contacts-sourced
+  // draft has nowhere to log to, same asymmetry handleSend already has for
+  // Email. Guarded by whatsappLogged so a repeat click can't create a
+  // duplicate entry.
+  async function handleLogWhatsapp(d) {
+    if (d.source !== 'customer' || whatsappLogged[d.id]) return
+    const channel = whatsappOpened[d.id] === 'personal' ? 'Personal WhatsApp'
+      : whatsappOpened[d.id] === 'business' ? 'WhatsApp Business'
+      : 'WhatsApp'
+    setWhatsappLogged(prev => ({ ...prev, [d.id]: true }))
+    try {
+      await logInteraction(d.customerId, {
+        description: `WhatsApp outreach opened via Daily Drafts (${d.topicLabel || d.productName || 'general'})`,
+        channel,
+        productInterest: d.topicLabel || d.productName,
+      })
+    } catch (e) {
+      setWhatsappLogged(prev => ({ ...prev, [d.id]: false })) // failed — let Eddie retry
+      setError(e.message || 'Could not log that outreach.')
     }
   }
 
@@ -1306,6 +1371,50 @@ export default function DailyDrafts() {
                   </button>
                 </div>
               </div>
+
+              {/* WhatsApp quick access (Draft Daily WhatsApp channel support,
+                  2026-08-19) — a manual open/copy action, never an auto-send.
+                  Both numbers known -> two labelled buttons, never guessed.
+                  Only one -> a single labelled button. Neither -> nothing
+                  (no dead button). Legacy unclassified whatsapp -> a neutral
+                  "WhatsApp" button, never relabeled Personal/Business without
+                  evidence. */}
+              {(() => {
+                const hasPersonal = !!d.whatsapp_personal
+                const hasBusiness = !!d.whatsapp_business
+                const hasNeutral = !hasPersonal && !hasBusiness && !!d.whatsapp
+                if (!hasPersonal && !hasBusiness && !hasNeutral) return null
+                const chip = (label, channel, number) => (
+                  <span key={channel} className="inline-flex items-center gap-1 rounded-full border border-gray-200 pl-1 pr-0.5 py-0.5">
+                    <button type="button" onClick={() => handleWhatsappOpen(d, channel, number)}
+                      className="text-xs text-gray-700 hover:text-brand-700 inline-flex items-center gap-1 px-1.5 py-0.5">
+                      <Smartphone size={12} />{label}
+                    </button>
+                    <button type="button" onClick={() => navigator.clipboard.writeText(number)}
+                      title={`Copy ${label} number`} className="text-gray-300 hover:text-brand-600 px-1 py-0.5 text-[10px]">
+                      Copy
+                    </button>
+                  </span>
+                )
+                return (
+                  <div className="flex items-center gap-2 flex-wrap -mt-1">
+                    {hasPersonal && chip('WhatsApp Personal', 'personal', d.whatsapp_personal)}
+                    {hasBusiness && chip('WhatsApp Business', 'business', d.whatsapp_business)}
+                    {hasNeutral && chip('WhatsApp', 'unknown', d.whatsapp)}
+                    {d.source === 'customer' && whatsappOpened[d.id] && !whatsappLogged[d.id] && (
+                      <button type="button" onClick={() => handleLogWhatsapp(d)}
+                        className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
+                        <Check size={12} /> Log WhatsApp outreach
+                      </button>
+                    )}
+                    {whatsappLogged[d.id] && (
+                      <span className="text-xs text-green-600 inline-flex items-center gap-1">
+                        <Check size={12} /> Logged
+                      </span>
+                    )}
+                  </div>
+                )
+              })()}
 
               {isAddCustomerOpen && (
                 <div className="border border-ivory-dark rounded-lg p-3 bg-ivory-light space-y-2">

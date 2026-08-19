@@ -6,7 +6,8 @@ import { Store, ShoppingCart, Gift, Sparkles, ShoppingBag, Check, Star, AlertCir
 import { saveCustomer, contactsOf, loadAllTagNames, CRM_STATUSES, CRM_CATEGORIES, CHANNELS, NO_API_CHANNELS, CUSTOMER_SOURCES, CUSTOMER_COUNTRIES, RETAIL_TAG } from '../domain/customer'
 
 const blankContact = (isPrimary = false) => ({
-  id: null, name: '', title: '', email: '', phone: '', whatsapp: '', wechat: '', address: '', is_primary: isPrimary,
+  id: null, name: '', title: '', email: '', phone: '',
+  whatsapp: '', whatsapp_personal: '', whatsapp_business: '', wechat: '', address: '', is_primary: isPrimary,
 })
 
 // Several real, separate people within one company (owner, 2026-08-05) — not
@@ -74,8 +75,16 @@ function ContactsEditor({ contacts, onChange }) {
             <input className="input" value={c.phone} onChange={e => update(i, 'phone', e.target.value)} placeholder="Phone" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <input className="input" value={c.whatsapp} onChange={e => update(i, 'whatsapp', e.target.value)} placeholder="WhatsApp (optional)" />
+            <input className="input" value={c.whatsapp} onChange={e => update(i, 'whatsapp', e.target.value)} placeholder="WhatsApp — unclassified (optional)" />
             <input className="input" value={c.wechat} onChange={e => update(i, 'wechat', e.target.value)} placeholder="WeChat ID (optional)" />
+          </div>
+          {/* Only fill these in when Personal vs Business is actually known —
+              Draft Daily shows a neutral "WhatsApp" action for the field
+              above, and only shows labelled Personal/Business actions once
+              one of these is set. Leaving both blank is fine and common. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input className="input" value={c.whatsapp_personal} onChange={e => update(i, 'whatsapp_personal', e.target.value)} placeholder="WhatsApp Personal (optional)" />
+            <input className="input" value={c.whatsapp_business} onChange={e => update(i, 'whatsapp_business', e.target.value)} placeholder="WhatsApp Business (optional)" />
           </div>
           <input className="input" value={c.address} onChange={e => update(i, 'address', e.target.value)}
                  placeholder="Address override — leave blank to use the company address" />
@@ -231,7 +240,7 @@ export default function CustomerForm() {
         sensitive: isSensitive,
         // Drop fully-blank cards (e.g. an unused "+ Add another contact" left
         // empty) — saveCustomer/toCustomerDoc re-normalizes whatever's left.
-        contacts: contacts.filter(c => c.name || c.email || c.phone || c.whatsapp || c.wechat),
+        contacts: contacts.filter(c => c.name || c.email || c.phone || c.whatsapp || c.whatsapp_personal || c.whatsapp_business || c.wechat),
       }
       const res = await saveCustomer(isEdit ? id : null, input)
       if (!res.ok) { setIssues(res.result); return }

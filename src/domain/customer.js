@@ -24,14 +24,21 @@ const COL = () => collection(db, 'customers')
 // Canonical enum vocabularies (single source — CustomerForm imports these too).
 export const CRM_STATUSES   = ['Active', 'Prospect', 'Dormant', 'Inactive']
 export const CRM_CATEGORIES = ['Distributor', 'Small B2B', 'Gift / OEM', 'Crystal Fabric']
-export const CHANNELS       = ['Email', 'WhatsApp Business', 'Alibaba', 'Personal WhatsApp', 'WeChat']
+export const CHANNELS       = ['Email', 'WhatsApp Business', 'Alibaba', 'Personal WhatsApp', 'WeChat', 'WhatsApp']
 // Channels with no API/integration behind them yet — every interaction on
 // these is manually typed in by an admin (no live sync, unlike Email). Used
 // to label channel pickers everywhere they appear so it's clear which
 // channels the app can't see into on its own. WhatsApp Business here means
 // the consumer WhatsApp Business *app*, not the Business Platform API — see
 // PROJECT-PLAN.md's "Where V8.2 starts" entry.
-export const NO_API_CHANNELS = ['WhatsApp Business', 'Personal WhatsApp', 'WeChat']
+//
+// Plain 'WhatsApp' (Draft Daily WhatsApp channel support, 2026-08-19) is
+// deliberately separate from 'Personal WhatsApp'/'WhatsApp Business' — it's
+// the log value for a contact's older, unclassified `whatsapp` field, where
+// there's no evidence which account it actually is. Never inferred as one
+// or the other; only used when the contact genuinely has no
+// whatsapp_personal/whatsapp_business set.
+export const NO_API_CHANNELS = ['WhatsApp Business', 'Personal WhatsApp', 'WeChat', 'WhatsApp']
 export const CUSTOMER_SOURCES = ['Alibaba', 'Website', 'Email Marketing', 'Referral', 'Trade Show', 'BNI', 'Direct']
 
 // Retail flag (V8.2, owner request) — NOT a Retail/Wholesale pair. Most
@@ -116,7 +123,14 @@ function normalizeContact(c) {
     title: str(c?.title),
     email: str(c?.email),
     phone: str(c?.phone),
+    // `whatsapp` stays the single, unclassified number exactly as before
+    // this pair existed — never silently reinterpreted as Personal or
+    // Business (Draft Daily WhatsApp channel support, owner 2026-08-19).
+    // whatsapp_personal/whatsapp_business are separate, optional — only
+    // set when the admin actually knows which is which.
     whatsapp: str(c?.whatsapp),
+    whatsapp_personal: str(c?.whatsapp_personal),
+    whatsapp_business: str(c?.whatsapp_business),
     wechat: str(c?.wechat),
     address: str(c?.address),
     is_primary: !!c?.is_primary,
