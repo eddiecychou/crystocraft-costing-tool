@@ -198,6 +198,16 @@ export const normOrder = o => ({
   // so legacy orders that hold it in erp_pi_no are not treated as having none.
   uc_no: str(o.uc_no),
   customer_id: o.customer_id || '',
+  // The specific customer contact this order's PI/invoice should address —
+  // an override on top of the customer's default (starred) contact, picked
+  // per-order via ContactPicker in ShipmentForm.jsx. Was missing from this
+  // whitelist entirely (found 2026-08-19): the write path (handleSave) saved
+  // it correctly, but every READ went through normOrder, which silently
+  // dropped any field not listed here — so the picker reset to blank on
+  // reload, and ProformaInvoicePrint.jsx/SalesInvoicePrint.jsx's
+  // `order.contact_id` lookup always missed and fell back to
+  // primaryContact(), regardless of what was actually selected and saved.
+  contact_id: o.contact_id || null,
   customer_name: str(o.customer_name),
   order_date: o.order_date || null,
   // The projected shipment date printed on the PI — a commitment to the
