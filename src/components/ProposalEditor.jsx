@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { collection, getDocs, doc, getDoc } from 'firebase/firestore'
+import { collection, getDocs, doc, getDoc, query, orderBy } from 'firebase/firestore'
 import { db } from '../firebase'
 import { useCustomerAssets, loadBrandedProductImages, uploadCustomerAsset, updateCustomerAsset, deleteCustomerAsset, cannotRenderAsImage, ASSET_UPLOAD_ACCEPT } from '../customerAssets'
 import { loadProposal, saveProposal, publishProposal, unpublishProposal, loadProductImageChoices, CAPTION_MAX_LEN } from '../customerProposal'
-import { normGallery } from '../constants'
+import { normGallery, productStatusOf } from '../constants'
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
 } from '@dnd-kit/core'
@@ -434,6 +434,21 @@ export default function ProposalEditor({ customerId }) {
   // PRODUCT (branded photos grouped by product_id), same dedup as
   // BrandPortalPage's own gallery — an external mapper shouldn't have to
   // re-derive that grouping itself.
+  //
+  // corporate_gift_catalogue (V8.6) — added ON TOP of the original
+  // branded_corporate_products/current_proposal shape, which stays exactly
+  // as it was so nothing that already consumes this export breaks. Covers
+  // the FULL products/ catalogue (every Corporate Gift product, not only
+  // ones already photographed/branded for this customer), each cross-
+  // referenced against the current proposal's product_refs and against the
+  // SAME branded_for_customer_id signal loadBrandedProductImages already
+  // uses — no new Firestore fields, no new schema, purely a read-side
+  // extension of data that's already there. Kept deliberately close to the
+  // real field names (marketing_description, pricing_tiers/price_hkd,
+  // qty_per_product) rather than the richer structured shape (dimensions,
+  // sustainability, unit_cost…) a generic catalogue export might imply —
+  // this app doesn't store any of that, and a schema full of permanent
+  // nulls would read as missing data rather than "doesn't exist here."
   async function exportForMapping() {
     setExporting(true)
     try {
@@ -449,8 +464,61 @@ export default function ProposalEditor({ customerId }) {
         p.status = d.status || ''
         p.active = d.active !== false
       }))
+      const brandedProductIds = new Set(byProduct.keys())
+
+      // product_refs already cited in the current proposal, for the
+      // included_in_current_proposal / proposal_section cross-reference.
+      const proposedRefs = new Map() // product_id -> section heading
+      for (const s of proposal.sections) {
+        for (const r of (s.product_refs || [])) {
+          if (r.collection === 'products' && r.id && !proposedRefs.has(r.id)) proposedRefs.set(r.id, s.heading || '')
+        }
+      }
+
+      const productsSnap = await getDocs(collection(db, 'products'))
+      const catalogueProducts = await Promise.all(productsSnap.docs.map(async d => {
+        const p = d.data()
+        const [imagesSnap, tiersSnap] = await Promise.all([
+          getDocs(query(collection(db, 'products', d.id, 'images'), orderBy('sort_order'))),
+          getDocs(query(collection(db, 'products', d.id, 'pricing_tiers'), orderBy('quantity'))),
+        ])
+        const images = imagesSnap.docs.map(im => ({
+          id: im.id, file_url: im.data().file_url || '', caption: im.data().caption || '',
+          type: im.data().type || '', visibility: im.data().visibility || 'internal_only',
+          branded_for_customer_id: im.data().branded_for_customer_id || null,
+        }))
+        const brandedImages = images.filter(im => im.branded_for_customer_id === customerId)
+        const isBranded = brandedProductIds.has(d.id) || brandedImages.length > 0
+        return {
+          product_id: d.id,
+          product_name: p.name || '',
+          category: p.category || '',
+          product_status: productStatusOf(p.status).value,
+          active: p.active !== false,
+          is_new: !!p.is_new,
+          description: p.description || '',
+          marketing_description: p.marketing_description || '',
+          assembly_notes: p.assembly_notes || '',
+          hero_image_url: p.heroImage || null,
+          images,
+          pricing_tiers: tiersSnap.docs.map(t => ({ quantity: t.data().quantity, price_hkd: t.data().price_hkd })),
+          customer_branding: {
+            customer_id: customerId,
+            is_branded_for_customer: isBranded,
+            branded_image_count: brandedImages.length,
+          },
+          mapping_status: isBranded ? 'already_branded' : 'not_yet_branded',
+          proposal_usage: {
+            included_in_current_proposal: proposedRefs.has(d.id),
+            proposal_section: proposedRefs.get(d.id) || null,
+          },
+        }
+      }))
+
+      const brandedCount = catalogueProducts.filter(p => p.mapping_status === 'already_branded').length
+
       const payload = {
-        schema_version: 1,
+        schema_version: 2,
         customer_id: customerId,
         brand_gallery_assets: ownAssets.map(a => ({ id: a.id, category: a.category, type: a.type, title: a.title, filename: a.filename, file_url: a.file_url })),
         branded_corporate_products: [...byProduct.values()],
@@ -460,6 +528,12 @@ export default function ProposalEditor({ customerId }) {
           tagline: proposal.tagline,
           briefing: proposal.briefing,
           sections: proposal.sections.map(({ _key, ...s }) => s),
+        },
+        corporate_gift_catalogue: {
+          total_count: catalogueProducts.length,
+          branded_for_customer_count: brandedCount,
+          not_branded_for_customer_count: catalogueProducts.length - brandedCount,
+          products: catalogueProducts,
         },
       }
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
