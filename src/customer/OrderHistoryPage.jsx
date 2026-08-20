@@ -132,7 +132,13 @@ export default function OrderHistoryPage({ profile }) {
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     {r.amount != null && <span className="text-sm text-ink-70 tabular-nums">{Number(r.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>}
-                    {r.status && <span className="badge bg-gray-100 text-gray-600">{r.status}</span>}
+                    {/* An app row's status is always null by design (domain/
+                        salesInvoiceHistory.js: "an app row's invoiced-ness IS
+                        its confirmation") — shown here as CONFIRMED rather
+                        than no badge at all, which read as "not confirmed"
+                        next to a JES row's real CONFIRMED pill (found live,
+                        2026-08-21). */}
+                    <span className="badge bg-gray-100 text-gray-600">{r.status || 'CONFIRMED'}</span>
                   </div>
                 </div>
               ))}

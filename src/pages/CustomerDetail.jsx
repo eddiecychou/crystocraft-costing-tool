@@ -1033,7 +1033,17 @@ export default function CustomerDetail() {
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
                         {r.amount != null && <span className="text-sm text-gray-700 tabular-nums">{Number(r.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>}
-                        {r.status && <span className="badge bg-gray-100 text-gray-600">{r.status}</span>}
+                        {/* An app row's status is always null by design
+                            (domain/salesInvoiceHistory.js: "an app row's
+                            invoiced-ness IS its confirmation") — shown as
+                            CONFIRMED here rather than no badge, which read as
+                            "not confirmed" next to a JES row's real status
+                            pill (found live, 2026-08-21). A JES row with no
+                            status still shows nothing — unlike the portal
+                            page, this list isn't pre-filtered to confirmed
+                            rows only, so a genuinely-unconfirmed JES row must
+                            not get an invented CONFIRMED label. */}
+                        {(r.status || isApp) && <span className="badge bg-gray-100 text-gray-600">{r.status || 'CONFIRMED'}</span>}
                         <span title={isApp ? 'Raised in the app' : 'From JES (read-only)'}
                               className="text-[10px] font-medium text-gray-400 inline-flex items-center gap-1 border border-gray-200 rounded-full px-1.5 py-0.5">
                           {isApp ? 'App' : <><Database size={9} /> JES</>}
