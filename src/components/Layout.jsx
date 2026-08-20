@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
@@ -57,6 +57,28 @@ export default function Layout({ children, user }) {
     await signOut(auth)
     navigate('/login')
   }
+
+  // Mobile cold-load bottom-nav gap fix (V8.6, reported live on mobile
+  // Chrome) — see index.css's .h-screen-dynamic comment for the full
+  // `dvh` staleness bug this works around. window.visualViewport.height
+  // (falling back to innerHeight) is the actual current visible height and
+  // doesn't have dvh's first-paint staleness issue, so it's a more
+  // trustworthy source to drive the shell's height from.
+  useEffect(() => {
+    const setAppVh = () => {
+      const h = window.visualViewport?.height || window.innerHeight
+      document.documentElement.style.setProperty('--app-vh', `${h * 0.01}px`)
+    }
+    setAppVh()
+    window.visualViewport?.addEventListener('resize', setAppVh)
+    window.addEventListener('resize', setAppVh)
+    window.addEventListener('orientationchange', setAppVh)
+    return () => {
+      window.visualViewport?.removeEventListener('resize', setAppVh)
+      window.removeEventListener('resize', setAppVh)
+      window.removeEventListener('orientationchange', setAppVh)
+    }
+  }, [])
 
   return (
     <div className="flex h-screen-dynamic bg-ivory">

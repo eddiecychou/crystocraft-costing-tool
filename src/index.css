@@ -40,10 +40,26 @@
      scrolling then sticks and rubber-bands near the bottom. `100dvh` tracks
      the actual viewport; the `100vh` line above it is the fallback for
      browsers that don't support dvh (an unsupported unit is simply ignored,
-     leaving the previous valid declaration in place). */
+     leaving the previous valid declaration in place).
+
+     V8.6: a cold load (tapping a bookmark straight in, as opposed to
+     navigating from an already-open tab) hits a real mobile-browser bug —
+     reported live on mobile Chrome, and the same class of issue is known
+     on mobile Safari too — where `100dvh`'s FIRST computed value can be
+     stale/too-tall before the browser's own toolbar state has settled, so
+     this shell renders taller than the actually-visible screen. The mobile
+     bottom tab bar (`fixed bottom-0` — see Layout.jsx) still glues
+     correctly to the true viewport, but everything inside this too-tall
+     shell reads as if there's dead space below the tab bar, because there
+     visually is: the shell's own bottom edge is below the fold. `--app-vh`
+     (Layout.jsx, via window.visualViewport, which doesn't have this
+     staleness bug) is a more reliable source of truth than dvh and
+     overrides it once JS has run; before that, this falls back to the same
+     100dvh/100vh chain. */
   .h-screen-dynamic {
     height: 100vh;
     height: 100dvh;
+    height: calc(var(--app-vh, 1vh) * 100);
   }
 
   /* ── Buttons — Work Sans, uppercase, square corners ──── */
