@@ -87,18 +87,36 @@ export default function CorporateShop({ profile }) {
   // each re-deriving (or, previously, one of them skipping the sensitive
   // check entirely). Runs for EVERY viewer now, not only sensitive ones —
   // see resolveSafeImages's cost note.
+  //
+  // Updated PER PRODUCT as each of the ~115 parallel reads resolves,
+  // instead of one setState after the whole Promise.all — a card can now
+  // render (and pop in its own photo) as soon as ITS read finishes, rather
+  // than every card waiting on the single slowest of 115 concurrent
+  // Firestore round trips. Customer-reported slow product-page loads (V8.6)
+  // traced to exactly that all-or-nothing gate.
   const [safeImagesByProductId, setSafeImagesByProductId] = useState({})
   // Whether the resolution pass has finished for the CURRENT product list —
-  // used to hold the grid back until we actually know which products have
-  // no safe photo at all, rather than flashing a photo-less card and then
-  // yanking it away a moment later.
+  // still needed to hold the GRID (not each card) back for a `sensitive`
+  // viewer specifically: screenSensitiveImages() is a no-op when
+  // !profile.sensitive (see sensitiveImages.js), so only a sensitive viewer
+  // can have a product that must be dropped from the shelf entirely once
+  // its only photo turns out to be blocked — that's the one case a flash-
+  // then-hide would be visible. Everyone else can see cards immediately.
   const [safeImagesReady, setSafeImagesReady] = useState(false)
   useEffect(() => {
     if (products.length === 0) { setSafeImagesByProductId({}); setSafeImagesReady(false); return }
     let alive = true
+    setSafeImagesByProductId({})
     setSafeImagesReady(false)
-    Promise.all(products.map(p => resolveSafeImages(p.id, p.heroImage, profile).then(imgs => [p.id, imgs])))
-      .then(entries => { if (alive) { setSafeImagesByProductId(Object.fromEntries(entries)); setSafeImagesReady(true) } })
+    let remaining = products.length
+    products.forEach(p => {
+      resolveSafeImages(p.id, p.heroImage, profile).then(imgs => {
+        if (!alive) return
+        setSafeImagesByProductId(prev => ({ ...prev, [p.id]: imgs }))
+        remaining -= 1
+        if (remaining === 0) setSafeImagesReady(true)
+      })
+    })
     return () => { alive = false }
   }, [products, profile?.sensitive, profile?.customer_id])
 
@@ -129,20 +147,22 @@ export default function CorporateShop({ profile }) {
     })
   }, [products, coll, search, cat, sensitive, safeImagesByProductId])
 
+  // Held back until the resolution pass finishes ONLY for a sensitive
+  // viewer — that's the one case where a product might need to disappear
+  // entirely once screening finishes (see safeImagesReady's comment above).
+  // Everyone else sees the grid immediately; cards gain their photos as
+  // each product's own read resolves instead of waiting on the slowest one.
+  const stillResolving = sensitive && !safeImagesReady
+
   // After returning from a product detail, scroll the last-opened card back into
   // view so you can carry on browsing where you left off.
   useEffect(() => {
-    if (loading || !safeImagesReady) return
+    if (loading || stillResolving) return
     const lastId = sessionStorage.getItem('cs-last-id')
     if (!lastId) return
     const el = document.getElementById(`corp-card-${lastId}`)
     if (el) { el.scrollIntoView({ block: 'center' }); sessionStorage.removeItem('cs-last-id') }
-  }, [loading, filtered, safeImagesReady])
-
-  // Held back until the resolution pass finishes, so the grid never flashes a
-  // would-be-hidden card (sensitive viewer) or a hero-only card that then
-  // gains its carousel a moment later.
-  const stillResolving = !safeImagesReady
+  }, [loading, filtered, stillResolving])
 
   return (
     <div>
