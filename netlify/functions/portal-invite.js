@@ -701,6 +701,68 @@ async function claimInvitation(body) {
   return json({ ok: true, status: 'pending' })
 }
 
+// PUBLIC (requires only a live Google-authenticated session, not admin) —
+// V8.6's answer to "Admin-invitation path still doesn't support Google
+// sign-in" (see PROJECT-PLAN.md's "Where V8.6 starts"). Offered on the
+// invite-claim landing page itself, BEFORE any password-based Auth account
+// exists for this invitation — createInvitation (the admin step) never
+// creates one, only claimInvitation does, at claim time. Landing here first
+// means there is no pre-existing "fixed uid" to reconcile: the customer's
+// own Google sign-in IS the account, from the start, so this never needs
+// the linkWithPopup/custom-token dance a later-stage retrofit would.
+// (A customer who already claimed via email/password and only wants Google
+// afterwards is a narrower, separate case this does not cover — deferred.)
+async function claimInvitationGoogle(body, uid, googleEmail) {
+  const id = String(body?.invitationId || '').trim()
+  const presentedToken = String(body?.token || '')
+  const contactName = String(body?.contactName || '').trim()
+  if (!id || !presentedToken) return json({ error: 'invalid' }, 400)
+
+  const db = getFirestore()
+  const ref = db.collection('portal_invitations').doc(id)
+  const snap = await ref.get()
+  if (!snap.exists) return json({ error: 'invalid' }, 404)
+  const inv = snap.data()
+
+  const blocked = await checkClaimable(ref, inv)
+  if (blocked) return json({ error: blocked.error }, blocked.status)
+  if (!tokensMatch(presentedToken, inv.token_hash)) return json({ error: 'invalid' }, 400)
+  // The invitation names a specific person's email — trust the DECODED
+  // token's email claim, never a client-supplied value, same posture as
+  // every other "never trust the caller's claim" spot in this file.
+  if (normEmail(googleEmail) !== normEmail(inv.contact_email)) return json({ error: 'email_mismatch' }, 400)
+
+  const customerCheck = await db.collection('customers').doc(inv.customer_id).get()
+  if (!customerCheck.exists) return json({ error: 'customer_missing' }, 410)
+
+  const userRef = db.collection('users').doc(uid)
+  const userSnap = await userRef.get()
+  if (userSnap.exists) {
+    const existing = userSnap.data()
+    // Same defensive checks as claimInvitation's own re-claim/admin-guard
+    // branches — this Google uid may already be linked to a DIFFERENT
+    // invitation/account (e.g. an admin, or an unrelated prior signup).
+    if (existing.role === 'admin') return json({ error: 'used' }, 410)
+    if (existing.invitation_id && existing.invitation_id !== id) return json({ error: 'already_pending' }, 409)
+    if (!existing.invitation_id) await userRef.update({ invitation_id: id, auth_provider: 'google.com' })
+  } else {
+    await userRef.set({
+      role: 'customer', status: 'pending', email: normEmail(googleEmail),
+      company_name: String(customerCheck.data()?.company_name || ''),
+      contact_name: contactName || inv.contact_name || '',
+      base_currency: 'USD', ws_discount_pct: 0,
+      customer_id: inv.customer_id, invitation_id: id,
+      auth_provider: 'google.com', createdAt: Timestamp.now(),
+    })
+  }
+
+  await ref.update({
+    status: 'claimed', claimed_at: Timestamp.now(), claimed_uid: uid,
+    audit_log: FieldValue.arrayUnion(auditEntry('claimed_via_google', googleEmail)),
+  })
+  return json({ ok: true, status: 'pending' })
+}
+
 async function setupLinkForApprovedInvitation(ref, inv, adminUid) {
   const PORTAL_URL = process.env.PORTAL_URL || 'https://portal.crystocraft.com'
   const db = getFirestore()
@@ -890,12 +952,17 @@ export default async function handler(req) {
 
   // claim_invitation is the one fully PUBLIC action — an unauthenticated
   // visitor presenting the raw claim token from their invitation email/link.
-  // apply_for_account_google requires a signed-in-but-not-yet-admin session
-  // (the visitor just completed Sign in with Google); every remaining
-  // action requires an admin session.
+  // apply_for_account_google / claim_invitation_google require a signed-in-
+  // but-not-yet-admin session (the visitor just completed Sign in with
+  // Google); every remaining action requires an admin session.
   if (action === 'claim_invitation') return claimInvitation(body)
   if (action === 'get_invitation') return getInvitationPreview(body)
   if (action === 'apply_for_account') return applyForAccount(body)
+  if (action === 'claim_invitation_google') {
+    const { uid, email, error } = await requireAuth(req)
+    if (error) return error
+    return claimInvitationGoogle(body, uid, email)
+  }
   if (action === 'apply_for_account_google') {
     const { uid, email, error } = await requireAuth(req)
     if (error) return error

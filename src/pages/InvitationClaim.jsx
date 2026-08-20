@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
-import { signOut } from 'firebase/auth'
+import { signOut, signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
 import { auth } from '../firebase'
 import logo from '../assets/logo.png'
-import { getInvitationPreview, claimInvitation } from '../portalInviteApi'
+import { getInvitationPreview, claimInvitation, claimInvitationGoogle } from '../portalInviteApi'
+
+const googleProvider = new GoogleAuthProvider()
 
 // SU-07A — the public, unauthenticated landing page for an invitation link
 // (/invite/:id?t=<rawToken>). Deliberately does NOT read Firestore directly
@@ -48,6 +50,10 @@ export default function InvitationClaim() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
   const [claimed, setClaimed] = useState(false)
+  const [claimedVia, setClaimedVia] = useState('form') // 'form' | 'google'
+
+  const [googleLoading, setGoogleLoading] = useState(false)
+  const [googleError, setGoogleError] = useState('')
 
   useEffect(() => {
     let cancelled = false
@@ -63,11 +69,42 @@ export default function InvitationClaim() {
     setSubmitError(''); setSubmitting(true)
     try {
       await claimInvitation(id, token, email.trim(), contactName.trim())
+      setClaimedVia('form')
       setClaimed(true)
     } catch (err) {
       setSubmitError(err.message || 'invalid')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  // "Continue with Google" — offered here, BEFORE any password-based account
+  // exists for this invitation, so there's no pre-existing uid to reconcile
+  // (see portal-invite.js's claimInvitationGoogle for why that matters).
+  // Verifies the signed-in Google email against the invitation up front and
+  // signs back out on any mismatch/rejection, same posture as Login.jsx's
+  // own Google-signup error handling — never leave a stray session sitting
+  // there attached to nothing.
+  async function handleGoogleClaim() {
+    setGoogleError(''); setGoogleLoading(true)
+    try {
+      const result = await signInWithPopup(auth, googleProvider)
+      const signedInEmail = (result.user.email || '').trim().toLowerCase()
+      const invitedEmail = (preview?.contactEmail || '').trim().toLowerCase()
+      if (invitedEmail && signedInEmail !== invitedEmail) {
+        await signOut(auth)
+        setGoogleError('email_mismatch')
+        return
+      }
+      await claimInvitationGoogle(id, token, result.user.displayName || '')
+      setClaimedVia('google')
+      setClaimed(true)
+    } catch (err) {
+      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') return
+      await signOut(auth).catch(() => {})
+      setGoogleError(err.message || 'invalid')
+    } finally {
+      setGoogleLoading(false)
     }
   }
 
@@ -97,8 +134,9 @@ export default function InvitationClaim() {
           Your details have been sent to Crystocraft for review. Your status is <strong>Pending approval</strong>.
         </p>
         <p className="text-sm text-ink-70">
-          Once approved, we'll email you a secure link to set your own password — you don't need to do
-          anything else right now.
+          {claimedVia === 'google'
+            ? "Once approved, you'll be notified by email — just sign back in with Google, no password needed."
+            : "Once approved, we'll email you a secure link to set your own password — you don't need to do anything else right now."}
         </p>
       </Shell>
     )
@@ -125,6 +163,25 @@ export default function InvitationClaim() {
           <button type="button" onClick={() => signOut(auth)} className="underline">Sign out</button> if that's confusing.
         </div>
       )}
+
+      <button type="button" onClick={handleGoogleClaim} disabled={googleLoading}
+        className="btn-secondary w-full justify-center mb-3">
+        {googleLoading ? 'Signing in…' : 'Continue with Google'}
+      </button>
+      {googleError && (
+        <p className="text-sm text-red-600 mb-3">
+          {googleError === 'email_mismatch'
+            ? 'That Google account\'s email doesn\'t match this invitation. Please use the email address the invitation was sent to.'
+            : (googleError === 'already_registered' || googleError === 'already_pending')
+              ? 'An account already exists for this email. Please use the "Confirm and continue" form below instead.'
+              : (STATE_MESSAGES[googleError] || 'Could not sign in with Google — please try again.')}
+        </p>
+      )}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="h-px bg-gray-100 flex-1" />
+        <span className="text-xs text-gray-400">or set a password instead</span>
+        <div className="h-px bg-gray-100 flex-1" />
+      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

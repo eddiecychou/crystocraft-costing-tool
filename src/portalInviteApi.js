@@ -52,6 +52,13 @@ export const claimInvitation = (invitationId, token, email, contactName) =>
 export const getInvitationPreview = (invitationId, token) =>
   call('get_invitation', { invitationId, token })
 
+// Google-authenticated claim — InvitationClaim.jsx calls this AFTER the
+// visitor has already completed Sign in with Google on that page, same
+// callAdmin (real session, not admin role) posture as applyForAccountGoogle.
+// See portal-invite.js's claimInvitationGoogle.
+export const claimInvitationGoogle = (invitationId, token, contactName) =>
+  callAdmin('claim_invitation_google', { invitationId, token, contactName })
+
 // Public — the "Create account" tab's replacement for immediate
 // createUserWithEmailAndPassword. See portal-invite.js's applyForAccount.
 // hp: honeypot value from Login.jsx's hidden field — passed through untouched,
