@@ -154,7 +154,7 @@ export default function AccountEdit() {
       }
       return
     }
-    notifyEmail('account_approved', { email: u.email, company_name: displayName, contact_name: u.contact_name })
+    notifyEmail('account_approved', { uid: id })
     apply({ status: 'approved' }, { back: true })
   }
 

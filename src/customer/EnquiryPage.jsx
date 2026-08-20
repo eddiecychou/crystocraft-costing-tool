@@ -85,7 +85,6 @@ export default function EnquiryPage({ profile }) {
       notifyEmail('enquiry', {
         company_name: profile?.company_name || '',
         contact_name: profile?.contact_name || '',
-        email: profile?.email || auth.currentUser?.email || '',
         currency: cur,
         estimated_total: total,
         items: items.map(i => ({ name: i.name || i.code || '', qty: Number(i.qty) || 1 })),
