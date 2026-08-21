@@ -104,11 +104,19 @@ export default function ProposalPrint({ profile }) {
            orphaned alone at a page's bottom, and only individual product
            tiles avoid being split mid-card. */
         .bp-section { margin-bottom: 26px; }
+        /* Confirmed live (2026-08-22, rendered the actual exported PDF at
+           pixel level): break-after:avoid alone on the heading did NOT stop
+           "VIP & HIGH NET WORTH" landing orphaned at a page's bottom edge
+           with its whole grid pushed to the next page. Standard CSS
+           Fragmentation practice is to pair BOTH sides of a boundary —
+           avoid-after on the heading AND avoid-before on the very next
+           block — which gives the print engine a much stronger, harder-to-
+           override signal to keep them together than either alone. */
         .bp-section-head { page-break-after: avoid; break-after: avoid; }
         .bp-section h2 { font-size: 15px; margin: 0 0 2px; }
         .bp-section .stagline { font-size: 10.5px; font-weight: 600; color: #b8935a; margin: 0 0 4px; }
         .bp-section .sbriefing { color: #666; max-width: 640px; margin: 0 0 12px; }
-        .bp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .bp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; page-break-before: avoid; break-before: avoid; }
         .bp-tile { border: 1px solid #eee; border-radius: 6px; overflow: hidden; page-break-inside: avoid; break-inside: avoid; }
         .bp-tile .ph { aspect-ratio: 1; background: #f7f4ee; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         .bp-tile img { width: 100%; height: 100%; object-fit: contain; }
@@ -125,9 +133,26 @@ export default function ProposalPrint({ profile }) {
            print pages (SalesInvoicePrint.jsx etc.) already live with —
            one footer block in normal flow, at the true end of the
            document, not per page. */
-        .bp-foot { margin-top: 26px; padding-top: 10px; border-top: 1px solid #eee;
-          text-align: center; font-size: 9px; color: #888; line-height: 1.6; page-break-inside: avoid; break-inside: avoid; }
+        /* Forced onto its own final page (owner, 2026-08-22: "okay to only
+           have the contact at the final page, but at the footer position,
+           not just in the middle of the page") rather than trying for a
+           true per-page repeating footer, which position:fixed already
+           proved unreliable for (see above). min-height: 100vh + flex
+           bottom-alignment is the standard print-CSS technique for pinning
+           content to a page's bottom edge; -4px guards against rounding
+           spilling this onto an unwanted extra page. Genuinely can't fully
+           verify this against the real export pipeline from this
+           environment (no live "Save as PDF" pass available) — best
+           effort, flagged as such. */
+        .bp-foot-page { page-break-before: always; break-before: page;
+          min-height: calc(100vh - 4px); display: flex; align-items: flex-end; }
+        .bp-foot { width: 100%; padding-top: 10px; border-top: 1px solid #eee;
+          text-align: center; font-size: 9px; color: #888; line-height: 1.6; }
         .bp-foot .nm { font-weight: 600; color: #555; }
+        /* Thin divider between sections (owner, 2026-08-22) — NOT on the
+           first section, which already reads as separated from the hero
+           by its own spacing. */
+        .bp-section-divider { border-top: 1px solid #eee; margin: 0 0 26px; }
       `}</style>
 
       <div className="print-btn-row">
@@ -146,6 +171,7 @@ export default function ProposalPrint({ profile }) {
 
       {proposal.sections.map((s, i) => (
         <div key={i} className="bp-section">
+          {i > 0 && <div className="bp-section-divider" />}
           <div className="bp-section-head">
             {s.heading && <h2>{s.heading}</h2>}
             {s.tagline && <p className="stagline">{s.tagline}</p>}
@@ -178,10 +204,12 @@ export default function ProposalPrint({ profile }) {
         </div>
       ))}
 
-      <div className="bp-foot">
-        <div className="nm">United Art Metals Factory Limited</div>
-        <div>11A Seabright Plaza, 9-23 Shell Road, Causeway Bay, Hong Kong</div>
-        <div>WhatsApp: +852 4608 3219 | Email: sales@uart.com.hk</div>
+      <div className="bp-foot-page">
+        <div className="bp-foot">
+          <div className="nm">United Art Metals Factory Limited</div>
+          <div>11A Seabright Plaza, 9-23 Shell Road, Causeway Bay, Hong Kong</div>
+          <div>WhatsApp: +852 4608 3219 | Email: sales@uart.com.hk</div>
+        </div>
       </div>
     </div>
   )
