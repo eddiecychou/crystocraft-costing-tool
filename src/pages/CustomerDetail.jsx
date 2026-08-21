@@ -765,6 +765,143 @@ export default function CustomerDetail() {
         </div>
       </div>
 
+      {/* Interaction Log — moved directly under the header (owner,
+          2026-08-21): "I usually first find the customer and log the
+          interaction from the customer page" — this used to sit near the
+          bottom of a long page, well below Contacts/Company details/Sales
+          History/Quotes/Brand Gallery/Email/WhatsApp, so + Log Interaction
+          needed a long scroll to reach on every visit. */}
+      <Collapsible storageKey={`${id}:interaction-log`} title={`Interaction Log (${enquiries.length})`} bodyClassName=""
+        right={<button
+            onClick={() => { setEditingEnquiry(null); setEnquiryFormOpen(true) }}
+            className="btn-primary text-xs py-1.5 px-3"
+          >
+            + Log Interaction
+          </button>}>
+        {enquiries.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-8">No interactions logged yet.</p>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {(() => {
+              const hasResolved = enquiries.some(e => RESOLVED_STATUSES.includes(e.status))
+              const hasActive   = enquiries.some(e => !RESOLVED_STATUSES.includes(e.status))
+              const showSections = hasResolved && hasActive
+              let printedResolvedHeader = false
+              return enquiries.map((enq, i) => {
+                const isResolved = RESOLVED_STATUSES.includes(enq.status)
+                const showHeader = showSections && ((i === 0 && !isResolved) || (isResolved && !printedResolvedHeader))
+                if (isResolved) printedResolvedHeader = true
+                return (
+              <div key={enq.id}>
+                {showHeader && (
+                  <div className="px-5 pt-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50">
+                    {isResolved ? 'History' : 'Active'}
+                  </div>
+                )}
+              <div className="px-5 py-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    {/* Date · Channel · Status */}
+                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                      <span className="text-xs text-gray-500">{fmtDate(enq.date)}</span>
+                      {enq.channel && <span className="text-xs text-gray-400">· {enq.channel}</span>}
+                      {enq.contact_id && (() => {
+                        const c = (customer.contacts || []).find(x => x.id === enq.contact_id)
+                        return c ? <span className="text-xs text-gray-400">· with {c.name || '(no name)'}</span> : null
+                      })()}
+                      {enq.status && (
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${ENQUIRY_STATUS_STYLES[enq.status] || 'bg-gray-100 text-gray-500'}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${ENQUIRY_STATUS_DOT[enq.status] || 'bg-gray-400'}`} />
+                          {enq.status}
+                        </span>
+                      )}
+                    </div>
+                    {/* Description */}
+                    <p className="text-sm text-gray-800">{enq.description}</p>
+                    {/* Products */}
+                    {enq.product_interest?.length > 0 && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        <span className="font-medium">Products:</span> {enq.product_interest.join(', ')}
+                      </p>
+                    )}
+                    {/* Follow-up + linked quotes */}
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
+                      {enq.follow_up_date && (
+                        <p className={`text-xs font-medium ${isOverdue(enq.follow_up_date) ? 'text-red-600' : 'text-gray-500'}`}>
+                          Follow-up: {fmtDate(enq.follow_up_date)}
+                          {isOverdue(enq.follow_up_date) && <AlertTriangle size={11} className="inline align-[-1px] ml-1" />}
+                        </p>
+                      )}
+                      {enq.linked_quote_ids?.length > 0 && (
+                        <p className="text-xs text-gray-500">
+                          Linked: {enq.linked_quote_ids.length} quote{enq.linked_quote_ids.length > 1 ? 's' : ''}
+                        </p>
+                      )}
+                    </div>
+                    {/* Outcome notes */}
+                    {enq.outcome_notes && (
+                      <p className="text-xs text-gray-500 mt-1 italic">{enq.outcome_notes}</p>
+                    )}
+                    {/* Quote attachments */}
+                    {(() => {
+                      const atts = enq.attachments?.length
+                        ? enq.attachments
+                        : enq.attachment_url
+                          ? [{ url: enq.attachment_url, name: enq.attachment_name || 'attachment', path: enq.attachment_path }]
+                          : []
+                      if (!atts.length) return null
+                      return (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {atts.map((att, i) => (
+                            <div key={i} className="relative group">
+                              <a href={att.url} target="_blank" rel="noreferrer"
+                                onClick={e => e.stopPropagation()}
+                                className="inline-flex items-center gap-1.5 text-xs text-brand-600 hover:underline"
+                              >
+                                {att.name?.match(/\.(jpg|jpeg|png|webp|gif)$/i)
+                                  ? <img src={att.url} alt="" className="h-10 w-14 object-cover rounded border border-gray-200" />
+                                  : <><FileText size={14} className="shrink-0" /><span className="truncate max-w-[140px]">{att.name || `Quote ${i + 1}`}</span></>
+                                }
+                              </a>
+                              <button
+                                type="button"
+                                onClick={e => { e.stopPropagation(); handleRemoveAttachment(enq, i) }}
+                                disabled={removingAtt === `${enq.id}-${i}`}
+                                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-xs leading-none flex items-center justify-center hover:bg-red-600"
+                              >
+                                {removingAtt === `${enq.id}-${i}` ? '…' : '×'}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )
+                    })()}
+                  </div>
+                  {/* Actions */}
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={() => { setEditingEnquiry(enq); setEnquiryFormOpen(true) }}
+                      className="text-xs text-brand-600 hover:underline"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => setConfirmDeleteEnquiry(enq.id)}
+                      className="text-xs text-red-500 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+              </div>
+                )
+              })
+            })()}
+          </div>
+        )}
+      </Collapsible>
+
       {/* Personal WA warning banner */}
       {(customer.is_personal_wa || customer.channels?.includes('Personal WhatsApp')) && (
         <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -1373,138 +1510,6 @@ export default function CustomerDetail() {
           </div>
         </Collapsible>
       )}
-
-      {/* Interaction Log */}
-      <Collapsible storageKey={`${id}:interaction-log`} title={`Interaction Log (${enquiries.length})`} bodyClassName=""
-        right={<button
-            onClick={() => { setEditingEnquiry(null); setEnquiryFormOpen(true) }}
-            className="btn-primary text-xs py-1.5 px-3"
-          >
-            + Log Interaction
-          </button>}>
-        {enquiries.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">No interactions logged yet.</p>
-        ) : (
-          <div className="divide-y divide-gray-100">
-            {(() => {
-              const hasResolved = enquiries.some(e => RESOLVED_STATUSES.includes(e.status))
-              const hasActive   = enquiries.some(e => !RESOLVED_STATUSES.includes(e.status))
-              const showSections = hasResolved && hasActive
-              let printedResolvedHeader = false
-              return enquiries.map((enq, i) => {
-                const isResolved = RESOLVED_STATUSES.includes(enq.status)
-                const showHeader = showSections && ((i === 0 && !isResolved) || (isResolved && !printedResolvedHeader))
-                if (isResolved) printedResolvedHeader = true
-                return (
-              <div key={enq.id}>
-                {showHeader && (
-                  <div className="px-5 pt-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50">
-                    {isResolved ? 'History' : 'Active'}
-                  </div>
-                )}
-              <div className="px-5 py-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    {/* Date · Channel · Status */}
-                    <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                      <span className="text-xs text-gray-500">{fmtDate(enq.date)}</span>
-                      {enq.channel && <span className="text-xs text-gray-400">· {enq.channel}</span>}
-                      {enq.contact_id && (() => {
-                        const c = (customer.contacts || []).find(x => x.id === enq.contact_id)
-                        return c ? <span className="text-xs text-gray-400">· with {c.name || '(no name)'}</span> : null
-                      })()}
-                      {enq.status && (
-                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${ENQUIRY_STATUS_STYLES[enq.status] || 'bg-gray-100 text-gray-500'}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${ENQUIRY_STATUS_DOT[enq.status] || 'bg-gray-400'}`} />
-                          {enq.status}
-                        </span>
-                      )}
-                    </div>
-                    {/* Description */}
-                    <p className="text-sm text-gray-800">{enq.description}</p>
-                    {/* Products */}
-                    {enq.product_interest?.length > 0 && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        <span className="font-medium">Products:</span> {enq.product_interest.join(', ')}
-                      </p>
-                    )}
-                    {/* Follow-up + linked quotes */}
-                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
-                      {enq.follow_up_date && (
-                        <p className={`text-xs font-medium ${isOverdue(enq.follow_up_date) ? 'text-red-600' : 'text-gray-500'}`}>
-                          Follow-up: {fmtDate(enq.follow_up_date)}
-                          {isOverdue(enq.follow_up_date) && <AlertTriangle size={11} className="inline align-[-1px] ml-1" />}
-                        </p>
-                      )}
-                      {enq.linked_quote_ids?.length > 0 && (
-                        <p className="text-xs text-gray-500">
-                          Linked: {enq.linked_quote_ids.length} quote{enq.linked_quote_ids.length > 1 ? 's' : ''}
-                        </p>
-                      )}
-                    </div>
-                    {/* Outcome notes */}
-                    {enq.outcome_notes && (
-                      <p className="text-xs text-gray-500 mt-1 italic">{enq.outcome_notes}</p>
-                    )}
-                    {/* Quote attachments */}
-                    {(() => {
-                      const atts = enq.attachments?.length
-                        ? enq.attachments
-                        : enq.attachment_url
-                          ? [{ url: enq.attachment_url, name: enq.attachment_name || 'attachment', path: enq.attachment_path }]
-                          : []
-                      if (!atts.length) return null
-                      return (
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {atts.map((att, i) => (
-                            <div key={i} className="relative group">
-                              <a href={att.url} target="_blank" rel="noreferrer"
-                                onClick={e => e.stopPropagation()}
-                                className="inline-flex items-center gap-1.5 text-xs text-brand-600 hover:underline"
-                              >
-                                {att.name?.match(/\.(jpg|jpeg|png|webp|gif)$/i)
-                                  ? <img src={att.url} alt="" className="h-10 w-14 object-cover rounded border border-gray-200" />
-                                  : <><FileText size={14} className="shrink-0" /><span className="truncate max-w-[140px]">{att.name || `Quote ${i + 1}`}</span></>
-                                }
-                              </a>
-                              <button
-                                type="button"
-                                onClick={e => { e.stopPropagation(); handleRemoveAttachment(enq, i) }}
-                                disabled={removingAtt === `${enq.id}-${i}`}
-                                className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-xs leading-none flex items-center justify-center hover:bg-red-600"
-                              >
-                                {removingAtt === `${enq.id}-${i}` ? '…' : '×'}
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )
-                    })()}
-                  </div>
-                  {/* Actions */}
-                  <div className="flex gap-2 shrink-0">
-                    <button
-                      onClick={() => { setEditingEnquiry(enq); setEnquiryFormOpen(true) }}
-                      className="text-xs text-brand-600 hover:underline"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => setConfirmDeleteEnquiry(enq.id)}
-                      className="text-xs text-red-500 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              </div>
-              </div>
-                )
-              })
-            })()}
-          </div>
-        )}
-      </Collapsible>
 
       {/* Compose Message */}
       <Collapsible storageKey={`${id}:compose`} defaultOpen={false}
