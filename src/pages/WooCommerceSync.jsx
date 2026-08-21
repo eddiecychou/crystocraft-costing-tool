@@ -1,8 +1,8 @@
 import { useState, Fragment } from 'react'
-import { listWooOrders, wooOrderMeta } from '../wooSyncApi'
+import { listWooOrders, wooOrderMeta, wooProbePayout } from '../wooSyncApi'
 import { downloadCsv, exportStem } from '../exportCsv'
 import LoadingBar from '../components/LoadingBar'
-import { RefreshCcw, AlertTriangle, ShoppingCart, Search } from 'lucide-react'
+import { RefreshCcw, AlertTriangle, ShoppingCart, Search, Compass } from 'lucide-react'
 
 // WooCommerce sync — Phase 1 (WooCommerce_B2C_Sync_Spec.md). Read-only: fetches
 // paid orders and their refunds for a date range and shows them for review.
@@ -69,6 +69,22 @@ export default function WooCommerceSync() {
     }
   }
 
+  // Payout DATE (distinct from _wcpay_net, the payout amount already wired in)
+  // isn't in per-order meta — a deposit typically bundles several orders, so
+  // WooCommerce Payments tracks it as its own object, not a per-order field.
+  // This tries the documented REST paths and shows exactly what each returns,
+  // rather than guessing at one. Diagnostic only — spec §12 Q2/Q3.
+  const [payoutProbe, setPayoutProbe] = useState(null) // 'loading' | results[] | { error }
+  async function probePayout() {
+    setPayoutProbe('loading')
+    try {
+      const orderId = result?.rows?.[0]?.id
+      setPayoutProbe(await wooProbePayout(orderId))
+    } catch (e) {
+      setPayoutProbe({ error: e.message || 'Probe failed.' })
+    }
+  }
+
   const ORDER_COLUMNS = [
     { label: 'Order no.',       value: (r) => r.number, text: true },
     { label: 'Status',          value: (r) => r.status },
@@ -127,7 +143,33 @@ export default function WooCommerceSync() {
               Export orders (CSV)
             </button>
           )}
+          {result?.rows?.length > 0 && (
+            <button type="button" onClick={probePayout} disabled={payoutProbe === 'loading'}
+              className="text-xs text-gray-500 hover:text-gray-700 inline-flex items-center gap-1 disabled:opacity-50"
+              title="Payout DATE isn't in per-order data — this checks whether WooCommerce Payments' deposits/transactions REST endpoints are reachable">
+              <Compass size={12} /> {payoutProbe === 'loading' ? 'Probing…' : 'Find payout date source'}
+            </button>
+          )}
         </div>
+
+        {payoutProbe && payoutProbe !== 'loading' && (
+          <div className="card p-4 mb-5 text-xs">
+            <p className="text-gray-500 mb-2 font-medium">Payout-date endpoint probe (spec §12 Q2/Q3) — diagnostic only, nothing is stored:</p>
+            {payoutProbe.error ? (
+              <p className="text-amber-700">{payoutProbe.error}</p>
+            ) : (
+              <div className="space-y-1">
+                {payoutProbe.map((r) => (
+                  <div key={r.path} className={`flex items-start gap-2 ${r.ok ? 'text-green-700' : 'text-gray-500'}`}>
+                    <span className="font-mono shrink-0">{r.ok ? '200' : (r.status ?? 'ERR')}</span>
+                    <span className="font-mono shrink-0">{r.path}</span>
+                    <span className="text-gray-400 truncate">{r.body}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {error && (
           <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 inline-flex items-start gap-2">

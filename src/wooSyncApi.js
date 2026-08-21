@@ -27,3 +27,10 @@ export const wooOrderRefunds = (orderId) => wooSync('order_refunds', { order_id:
 // Diagnostic: full meta_data for one order — used to check for a gateway fee
 // hiding in private post meta once fee_lines comes back empty. See spec §12 Q4.
 export const wooOrderMeta = (orderId) => wooSync('order_meta', { order_id: orderId })
+
+// Diagnostic: tries the documented WooCommerce Payments deposits/transactions
+// REST paths and reports what each actually returns — payout DATE isn't in
+// per-order meta (only the amount, _wcpay_net, is), so this checks whether
+// it's reachable via a separate endpoint before assuming it isn't. See spec
+// §12 Q2/Q3.
+export const wooProbePayout = (orderId) => wooSync('probe_payout', { order_id: orderId }).then(d => d.results || [])

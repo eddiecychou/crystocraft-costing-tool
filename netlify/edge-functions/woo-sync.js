@@ -17,6 +17,8 @@
 //
 // Request:  POST { op: 'list_orders', from, to }   -- from/to: 'YYYY-MM-DD'
 //           POST { op: 'order_refunds', order_id }
+//           POST { op: 'order_meta', order_id }
+//           POST { op: 'probe_payout', order_id? }   -- diagnostic, see below
 // Response: { rows: [...] }  (list_orders)  /  { rows: [...] }  (order_refunds)
 import { requireAdmin } from './lib/auth.js'
 
@@ -128,6 +130,10 @@ export default async function handler(req) {
     for (const [k, v] of Object.entries(params || {})) if (v != null && v !== '') url.searchParams.set(k, v)
     return fetch(url, { headers: wcAuthHeader })
   }
+  // Same auth, arbitrary wp-json path — for probing where payout/deposit date
+  // actually lives (see 'probe_payout' below). Not every REST namespace a
+  // plugin registers sits under wc/v3.
+  const wpJson = (path) => fetch(`${WC_BASE_URL.replace(/\/$/, '')}/wp-json/${path}`, { headers: wcAuthHeader })
 
   // ── list paid orders in a date range, with their refunds ───────────────────
   if (body.op === 'list_orders') {
@@ -204,6 +210,39 @@ export default async function handler(req) {
       transaction_id: o.transaction_id || null,
       meta: (o.meta_data || []).map(m => ({ key: m.key, value: m.value })),
     })
+  }
+
+  // ── diagnostic: where does payout/deposit date live? ────────────────────────
+  // Per-order meta (checked 2026-08-22) has _wcpay_net (payout AMOUNT) but no
+  // payout DATE — WooCommerce Payments tracks deposits as their own objects,
+  // not per-order fields, since one deposit typically bundles many orders'
+  // payouts together. Its deposits/transactions data may or may not be
+  // reachable via REST API keys (some WooCommerce Payments admin endpoints
+  // require a logged-in wp-admin session/nonce instead). This tries the
+  // documented candidates and reports what each one actually returns, rather
+  // than guessing — same reasoning as the order-meta inspector: empirical
+  // check beats assumption. Purely diagnostic; nothing here is wired into the
+  // order summary until one of these is confirmed working.
+  if (body.op === 'probe_payout') {
+    const orderId = body.order_id ? parseInt(body.order_id, 10) : null
+    const candidates = [
+      'wc/v3/payments/deposits',
+      'wc/v3/payments/transactions',
+      ...(orderId ? [`wc/v3/payments/transactions?order_id=${orderId}`] : []),
+      'wc-payments/v1/deposits',
+      'wc-payments/v1/transactions',
+    ]
+    const results = []
+    for (const path of candidates) {
+      try {
+        const r = await wpJson(path)
+        const text = await r.text()
+        results.push({ path, status: r.status, ok: r.ok, body: text.slice(0, 500) })
+      } catch (e) {
+        results.push({ path, status: null, ok: false, body: String(e?.message || e).slice(0, 300) })
+      }
+    }
+    return json({ results })
   }
 
   return json({ error: `Unknown op: ${body.op}` }, 400)
