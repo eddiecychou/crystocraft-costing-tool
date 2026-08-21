@@ -1,4 +1,4 @@
-import { useState, Fragment } from 'react'
+import { useState, useMemo, Fragment } from 'react'
 import { listWooOrders, wooOrderMeta, wooProbePayout } from '../wooSyncApi'
 import { downloadCsv, exportStem } from '../exportCsv'
 import LoadingBar from '../components/LoadingBar'
@@ -40,8 +40,9 @@ export default function WooCommerceSync() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState(null) // { rows, refunds, skipped_unpaid, total_fetched }
-  const [metaFor, setMetaFor] = useState(null)     // order_id currently expanded
+  const [metaFor, setMetaFor] = useState(null)     // order_id currently expanded (raw meta inspector)
   const [meta, setMeta] = useState(null)           // { order_id, payment_method, transaction_id, meta } or 'loading' or error string
+  const [detailsFor, setDetailsFor] = useState(null) // order_id currently expanded (line items / addresses) — no fetch, already in `result`
   // Keys worth eyeballing first — anything mentioning fee, stripe, paypal,
   // rate or net. Not a filter on what's shown, just what's sorted to the top.
   const FEE_LIKE = /fee|stripe|paypal|rate|net|payout|charge/i
@@ -85,6 +86,48 @@ export default function WooCommerceSync() {
     }
   }
 
+  // Item-level rollup across every fetched order — "which products sold, how
+  // many, for how much" over the date range. Grouped by (SKU || name) AND
+  // currency: orders come in GBP/HKD/USD/EUR (confirmed on real data), and
+  // summing money across currencies would silently produce a meaningless
+  // total — a currency change makes a new row rather than being folded in.
+  const itemReport = useMemo(() => {
+    if (!result?.rows?.length) return []
+    const byKey = new Map()
+    for (const o of result.rows) {
+      for (const l of o.line_items || []) {
+        const key = `${(l.sku || l.name).trim().toLowerCase()}__${o.currency}`
+        const row = byKey.get(key) || {
+          sku: l.sku || null, name: l.name, currency: o.currency,
+          qty: 0, subtotal: 0, discount: 0, tax: 0, total: 0, orders: new Set(),
+        }
+        row.qty += l.quantity
+        row.subtotal += l.subtotal
+        row.discount += l.discount
+        row.tax += l.tax
+        row.total += l.total
+        row.orders.add(o.id)
+        byKey.set(key, row)
+      }
+    }
+    return [...byKey.values()]
+      .map((r) => ({ ...r, orders: r.orders.size }))
+      .sort((a, b) => b.total - a.total)
+  }, [result])
+
+  const ITEM_COLUMNS = [
+    { label: 'SKU',        value: (r) => r.sku || '', text: true },
+    { label: 'Item',       value: (r) => r.name, text: true },
+    { label: 'Currency',   value: (r) => r.currency },
+    { label: 'Orders',     value: (r) => r.orders },
+    { label: 'Qty sold',   value: (r) => r.qty },
+    { label: 'Subtotal',   value: (r) => r.subtotal },
+    { label: 'Discount',   value: (r) => r.discount },
+    { label: 'Tax',        value: (r) => r.tax },
+    { label: 'Total',      value: (r) => r.total },
+  ]
+  const exportItems = () => downloadCsv(exportStem('woocommerce-items', { from, to }), ITEM_COLUMNS, itemReport)
+
   const ORDER_COLUMNS = [
     { label: 'Order no.',       value: (r) => r.number, text: true },
     { label: 'Status',          value: (r) => r.status },
@@ -103,6 +146,8 @@ export default function WooCommerceSync() {
     { label: 'Gateway fee',     value: (r) => r.gateway_fee ?? '' },
     { label: 'Fee source',      value: (r) => r.gateway_fee_source || 'not found', text: true },
     { label: 'Net payout',      value: (r) => r.net_payout ?? '' },
+    { label: 'Payout date (available_on)', value: (r) => r.payout_date || '' },
+    { label: 'Deposit ID',      value: (r) => r.deposit_id || '', text: true },
     { label: 'Refunded total',  value: (r) => r.refunded_total },
   ]
   const exportOrders = () => downloadCsv(exportStem('woocommerce-orders', { from, to }), ORDER_COLUMNS, result?.rows || [])
@@ -208,6 +253,7 @@ export default function WooCommerceSync() {
                       <th className="px-4 py-2.5 font-medium whitespace-nowrap">Payment</th>
                       <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Gateway fee</th>
                       <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Net payout</th>
+                      <th className="px-4 py-2.5 font-medium whitespace-nowrap">Payout date</th>
                       <th className="px-4 py-2.5 font-medium" />
                     </tr>
                   </thead>
@@ -238,17 +284,80 @@ export default function WooCommerceSync() {
                           <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600 text-xs">
                             {o.net_payout != null ? fmtMoney(o.net_payout) : '—'}
                           </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-600 text-xs" title={o.deposit_id ? `Deposit ${o.deposit_id}` : ''}>
+                            {fmtDate(o.payout_date)}
+                          </td>
                           <td className="px-4 py-3 whitespace-nowrap text-right">
+                            <button type="button" onClick={() => setDetailsFor(detailsFor === o.id ? null : o.id)}
+                              className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1 mr-3"
+                              title="Line items, addresses, customer note">
+                              {detailsFor === o.id ? 'Hide' : 'Details'}
+                            </button>
                             <button type="button" onClick={() => inspectMeta(o.id)}
-                              className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1"
+                              className="text-xs text-gray-500 hover:text-gray-700 inline-flex items-center gap-1"
                               title="Inspect this order's raw meta for a hidden fee field">
                               <Search size={12} /> {metaFor === o.id ? 'Hide' : 'Meta'}
                             </button>
                           </td>
                         </tr>
+                        {detailsFor === o.id && (
+                          <tr>
+                            <td colSpan={14} className="px-4 py-3 bg-gray-50 border-t border-gray-100">
+                              <div className="grid md:grid-cols-[1fr_auto] gap-4">
+                                <table className="w-full text-xs">
+                                  <thead>
+                                    <tr className="text-left text-gray-400">
+                                      <th className="pr-3 py-1 font-medium">Item</th>
+                                      <th className="pr-3 py-1 font-medium">SKU</th>
+                                      <th className="pr-3 py-1 font-medium text-right">Qty</th>
+                                      <th className="pr-3 py-1 font-medium text-right">Unit price</th>
+                                      <th className="pr-3 py-1 font-medium text-right">Discount</th>
+                                      <th className="pr-3 py-1 font-medium text-right">Tax</th>
+                                      <th className="pr-3 py-1 font-medium text-right">Line total</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-gray-100">
+                                    {o.line_items.map((l, i) => (
+                                      <tr key={i}>
+                                        <td className="pr-3 py-1.5 text-gray-800">{l.name}</td>
+                                        <td className="pr-3 py-1.5 font-mono text-gray-500">{l.sku || '—'}</td>
+                                        <td className="pr-3 py-1.5 text-right tabular-nums text-gray-600">{l.quantity}</td>
+                                        <td className="pr-3 py-1.5 text-right tabular-nums text-gray-600">{fmtMoney(l.unit_price)}</td>
+                                        <td className="pr-3 py-1.5 text-right tabular-nums text-gray-600">{l.discount ? fmtMoney(l.discount) : '—'}</td>
+                                        <td className="pr-3 py-1.5 text-right tabular-nums text-gray-600">{l.tax ? fmtMoney(l.tax) : '—'}</td>
+                                        <td className="pr-3 py-1.5 text-right tabular-nums text-gray-900 font-medium">{fmtMoney(l.total)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                                <div className="text-xs text-gray-600 min-w-[220px] space-y-2">
+                                  <div>
+                                    <p className="text-gray-400 font-medium mb-0.5">Billing</p>
+                                    <p>{o.customer_name || '—'}{o.customer_email && <> · {o.customer_email}</>}</p>
+                                    {o.billing_phone && <p>{o.billing_phone}</p>}
+                                    {o.billing_address && <p>{o.billing_address}</p>}
+                                  </div>
+                                  {(o.shipping_name || o.shipping_address) && (
+                                    <div>
+                                      <p className="text-gray-400 font-medium mb-0.5">Shipping</p>
+                                      {o.shipping_name && <p>{o.shipping_name}</p>}
+                                      {o.shipping_address && <p>{o.shipping_address}</p>}
+                                    </div>
+                                  )}
+                                  {o.customer_note && (
+                                    <div>
+                                      <p className="text-gray-400 font-medium mb-0.5">Customer note</p>
+                                      <p className="italic">{o.customer_note}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        )}
                         {metaFor === o.id && (
                           <tr key={`${o.id}-meta`}>
-                            <td colSpan={12} className="px-4 py-3 bg-gray-50 border-t border-gray-100">
+                            <td colSpan={14} className="px-4 py-3 bg-gray-50 border-t border-gray-100">
                               {meta === 'loading' && <span className="text-xs text-gray-400">Loading order meta…</span>}
                               {meta?.error && <span className="text-xs text-amber-700">{meta.error}</span>}
                               {meta && meta !== 'loading' && !meta.error && (
@@ -279,6 +388,53 @@ export default function WooCommerceSync() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {itemReport.length > 0 && (
+              <div className="mb-6">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <h2 className="text-sm font-medium text-gray-700">By item</h2>
+                  <button type="button" onClick={exportItems}
+                    className="text-xs text-brand-600 hover:text-brand-800 underline underline-offset-2">
+                    Export items (CSV)
+                  </button>
+                </div>
+                <div className="card overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                        <th className="px-4 py-2.5 font-medium">Item</th>
+                        <th className="px-4 py-2.5 font-medium whitespace-nowrap">SKU</th>
+                        <th className="px-4 py-2.5 font-medium whitespace-nowrap">Cur</th>
+                        <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Orders</th>
+                        <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Qty sold</th>
+                        <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Subtotal</th>
+                        <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Discount</th>
+                        <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Tax</th>
+                        <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {itemReport.map((r) => (
+                        <tr key={`${r.sku || r.name}-${r.currency}`} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-gray-900 min-w-0"><span className="truncate">{r.name}</span></td>
+                          <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-gray-500">{r.sku || '—'}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-500">{r.currency}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{r.orders}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{r.qty}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{fmtMoney(r.subtotal)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{r.discount ? fmtMoney(r.discount) : '—'}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{r.tax ? fmtMoney(r.tax) : '—'}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-900 font-medium">{fmtMoney(r.total)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Grouped by item and currency separately — orders come in more than one currency, so totals are never summed across them.
+                </p>
               </div>
             )}
 

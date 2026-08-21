@@ -47,7 +47,14 @@ const metaVal = (o, key) => (o.meta_data || []).find(m => m.key === key)?.value
 // 0 would wrongly claim "no fee charged") when neither source has anything,
 // which currently only happens for the couple of $0 authorization-only test
 // rows this account has processed.
-function gatewayFee(o) {
+// `txn`: the matching row from wc/v3/payments/transactions (see
+// fetchTransactionsByOrder below), when found — its fee/net are in minor
+// units (cents) and authoritative, since it's WooCommerce Payments' own
+// settlement record rather than a value copied into order meta. Preferred
+// over _wcpay_transaction_fee/_wcpay_net when present; both ultimately come
+// from the same underlying Stripe charge, so they should never disagree.
+function gatewayFee(o, txn) {
+  if (txn && Number.isFinite(txn.fees)) return { amount: txn.fees / 100, source: 'transactions_api' }
   const fromLines = (o.fee_lines || []).reduce((s, l) => s + (parseFloat(l.total) || 0), 0)
   if (fromLines) return { amount: fromLines, source: 'fee_lines' }
   const wcpay = parseFloat(metaVal(o, '_wcpay_transaction_fee'))
@@ -58,9 +65,10 @@ function gatewayFee(o) {
 // Trims a WooCommerce order object down to what Phase 1 needs to show Cindy
 // for review — full raw order kept under `raw` in case something in Phase 2+
 // design turns out to need a field not anticipated here.
-function summarizeOrder(o) {
-  const fee = gatewayFee(o)
-  const net = parseFloat(metaVal(o, '_wcpay_net'))
+function summarizeOrder(o, txn) {
+  const fee = gatewayFee(o, txn)
+  const netMeta = parseFloat(metaVal(o, '_wcpay_net'))
+  const net = txn && Number.isFinite(txn.net) ? txn.net / 100 : (Number.isFinite(netMeta) ? netMeta : null)
   return {
     id: o.id,
     number: o.number,                     // WooCommerce's own order number — spec §3.4
@@ -80,13 +88,43 @@ function summarizeOrder(o) {
     payment_method_title: o.payment_method_title,
     transaction_id: o.transaction_id || null,
     gateway_fee: fee.amount,               // spec §3.6/§8 — see gatewayFee() above
-    gateway_fee_source: fee.source,        // 'fee_lines' | 'wcpay_meta' | null — shown so a null reads as "not found", not "zero"
-    net_payout: Number.isFinite(net) ? net : null,
+    gateway_fee_source: fee.source,        // 'transactions_api' | 'fee_lines' | 'wcpay_meta' | null — shown so a null reads as "not found", not "zero"
+    net_payout: net,
+    // available_on from wc/v3/payments/transactions — when the settled funds
+    // become available to Crystocraft. Confirmed 2026-08-22: this is the
+    // only payout-adjacent date reachable via REST API keys (the actual
+    // deposits list 500s on a query bug in WooCommerce Payments itself — see
+    // probe_payout). It is "available", not necessarily "paid out" — those
+    // can differ if WooCommerce Payments batches multiple available dates
+    // into one deposit — but it is the closest automatable proxy for the
+    // spec's §7 "Balance payment date" and is what deposit_id ties back to.
+    payout_date: txn?.available_on ? String(txn.available_on).slice(0, 10) : null,
+    deposit_id: txn?.deposit_id || null,
     refunded_total: Math.abs(parseFloat(o.refund_total) || 0), // sign varies by version
-    line_items: (o.line_items || []).map(l => ({
-      name: l.name, sku: l.sku, quantity: l.quantity,
-      subtotal: parseFloat(l.subtotal) || 0, total: parseFloat(l.total) || 0,
-    })),
+    // Per-line detail for the drill-down — description/qty/price, plus each
+    // line's own tax and any per-line discount (subtotal minus total, before
+    // tax — how WooCommerce represents a coupon applied to that line).
+    line_items: (o.line_items || []).map(l => {
+      const subtotal = parseFloat(l.subtotal) || 0
+      const total = parseFloat(l.total) || 0
+      const qty = Number(l.quantity) || 0
+      return {
+        name: l.name, sku: l.sku || null, quantity: qty,
+        unit_price: qty ? +(total / qty).toFixed(2) : total,
+        subtotal, total,
+        discount: +(subtotal - total).toFixed(2),
+        tax: parseFloat(l.total_tax) || 0,
+      }
+    }),
+    // Billing/shipping and any note the customer left — the rest of what
+    // "drill down into the order" needs beyond the summary row.
+    billing_address: [o.billing?.address_1, o.billing?.address_2, o.billing?.city, o.billing?.state, o.billing?.postcode, o.billing?.country]
+      .filter(Boolean).join(', ') || null,
+    billing_phone: o.billing?.phone || null,
+    shipping_name: [o.shipping?.first_name, o.shipping?.last_name].filter(Boolean).join(' ') || null,
+    shipping_address: [o.shipping?.address_1, o.shipping?.address_2, o.shipping?.city, o.shipping?.state, o.shipping?.postcode, o.shipping?.country]
+      .filter(Boolean).join(', ') || null,
+    customer_note: o.customer_note || null,
     raw_meta_keys: (o.meta_data || []).map(m => m.key), // for eyeballing what a payout/fee field might be called on this install
   }
 }
@@ -159,6 +197,27 @@ export default async function handler(req) {
     const paid = orders.filter(isPaid)
     const notSynced = orders.length - paid.length
 
+    // wc/v3/payments/transactions — confirmed working 2026-08-22 (unlike
+    // wc/v3/payments/deposits, which 500s on a query-builder bug in
+    // WooCommerce Payments itself). Gives authoritative fee/net (in cents)
+    // AND available_on (settlement date) per charge — see gatewayFee() and
+    // summarizeOrder()'s payout_date. Its own order_id query param does NOT
+    // actually filter (confirmed by probe — two different order_id values
+    // returned the identical row), so this paginates the full transaction
+    // list and matches client-side by the order_id field the row itself
+    // carries, stopping once every paid order in this batch has been found
+    // or the page cap is hit.
+    const wantIds = new Set(paid.map(o => o.id))
+    const txnByOrder = new Map()
+    for (let page = 1; page <= 20 && txnByOrder.size < wantIds.size; page++) {
+      const r = await wc('payments/transactions', { per_page: 100, page })
+      if (!r.ok) break // best-effort — a broken transactions call must not fail the whole sync
+      const body = await r.json().catch(() => null)
+      const rows = body?.data || []
+      if (!rows.length) break
+      for (const t of rows) if (wantIds.has(t.order_id) && !txnByOrder.has(t.order_id)) txnByOrder.set(t.order_id, t)
+    }
+
     // Refunds per order that has any (refund_total present or status
     // refunded/partially-refunded) — one extra call per such order, capped
     // at 100 per sync so a large batch doesn't run away.
@@ -172,7 +231,7 @@ export default async function handler(req) {
     }
 
     return json({
-      rows: paid.map(summarizeOrder),
+      rows: paid.map(o => summarizeOrder(o, txnByOrder.get(o.id))),
       refunds,
       skipped_unpaid: notSynced,
       total_fetched: orders.length,
