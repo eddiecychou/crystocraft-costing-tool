@@ -266,91 +266,10 @@ export default function Dashboard() {
         </button>
       </div>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <StatCard
-          label="Follow-ups Due"
-          value={overdueList.length}
-          colour="red"
-          note="overdue"
-          active={activeFilter === 'overdue'}
-          onClick={() => toggleFilter('overdue')}
-        />
-        <StatCard
-          label="Pipeline"
-          value={pipelineList.length}
-          colour="amber"
-          note="open + quoted"
-          active={activeFilter === 'open'}
-          onClick={() => toggleFilter('open')}
-        />
-        <StatCard
-          label="In Production"
-          value={inProductionOrders.length}
-          colour="blue"
-          note="active orders"
-          active={activeFilter === 'quotes'}
-          onClick={() => toggleFilter('quotes')}
-        />
-        <StatCard
-          label="New Orders"
-          value={newOrdersList.length}
-          colour="green"
-          note="last 30 days"
-          active={activeFilter === 'won'}
-          onClick={() => toggleFilter('won')}
-        />
-      </div>
-
-      {/* Customer Type filter pills — Retail Customer sits alongside
-          Distributor/Small B2B/Gift-OEM/Crystal Fabric as a peer type
-          (owner, 2026-08-13: same visual row, not a separate toggle below),
-          but stays functionally independent under the hood — it's a tag,
-          not a value of crm_category, so it can combine with any of the
-          other four (a trade-bucket customer, e.g. shared ERP code C13,
-          can also buy retail sometimes; see domain/customer.js's
-          RETAIL_TAG comment). Clicking it toggles retailFilter, the others
-          set categoryFilter — both AND together in byCat()/byCatOrder(). */}
-      <div className="flex flex-wrap gap-2 mb-4">
-        {[
-          { label: 'Distributor',   value: 'Distributor',   Icon: Store },
-          { label: 'Small B2B',     value: 'Small B2B',     Icon: ShoppingCart },
-          { label: 'Gift / OEM',    value: 'Gift / OEM',    Icon: Gift },
-          { label: 'Crystal Fabric', value: 'Crystal Fabric', Icon: Sparkles },
-        ].map(({ label, value, Icon }) => (
-          <button
-            key={value}
-            onClick={() => setCategoryFilter(f => f === value ? null : value)}
-            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-              categoryFilter === value
-                ? 'bg-gray-800 border-gray-800 text-white'
-                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
-            }`}
-          >
-            {Icon && <Icon size={13} className="inline align-[-2px] mr-1" />}{label}
-          </button>
-        ))}
-        <button
-          onClick={() => setRetailFilter(v => !v)}
-          className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-            retailFilter
-              ? 'bg-gray-800 border-gray-800 text-white'
-              : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
-          }`}
-        >
-          <ShoppingBag size={13} className="inline align-[-2px] mr-1" />{RETAIL_TAG}
-        </button>
-        {(categoryFilter || retailFilter) && (
-          <button
-            onClick={() => { setCategoryFilter(null); setRetailFilter(false) }}
-            className="px-3 py-1 rounded-full text-xs font-medium border border-dashed border-gray-300 text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            Clear filter
-          </button>
-        )}
-      </div>
-
-      {/* Filtered panel — shown when a stat card is active */}
+      {/* Filtered panel — shown when a stat card is active. Moved above the
+          stat cards/filter pills (owner, 2026-08-21): this is used like a
+          quick to-do list, so the actionable Log/Done rows need to be the
+          first thing visible, not below a scroll on mobile. */}
       {activeFilter && (
         <div className="card mb-6 ring-2 ring-brand-200">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -538,6 +457,90 @@ export default function Dashboard() {
           )}
         </div>
       )}
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <StatCard
+          label="Follow-ups Due"
+          value={overdueList.length}
+          colour="red"
+          note="overdue"
+          active={activeFilter === 'overdue'}
+          onClick={() => toggleFilter('overdue')}
+        />
+        <StatCard
+          label="Pipeline"
+          value={pipelineList.length}
+          colour="amber"
+          note="open + quoted"
+          active={activeFilter === 'open'}
+          onClick={() => toggleFilter('open')}
+        />
+        <StatCard
+          label="In Production"
+          value={inProductionOrders.length}
+          colour="blue"
+          note="active orders"
+          active={activeFilter === 'quotes'}
+          onClick={() => toggleFilter('quotes')}
+        />
+        <StatCard
+          label="New Orders"
+          value={newOrdersList.length}
+          colour="green"
+          note="last 30 days"
+          active={activeFilter === 'won'}
+          onClick={() => toggleFilter('won')}
+        />
+      </div>
+
+      {/* Customer Type filter pills — Retail Customer sits alongside
+          Distributor/Small B2B/Gift-OEM/Crystal Fabric as a peer type
+          (owner, 2026-08-13: same visual row, not a separate toggle below),
+          but stays functionally independent under the hood — it's a tag,
+          not a value of crm_category, so it can combine with any of the
+          other four (a trade-bucket customer, e.g. shared ERP code C13,
+          can also buy retail sometimes; see domain/customer.js's
+          RETAIL_TAG comment). Clicking it toggles retailFilter, the others
+          set categoryFilter — both AND together in byCat()/byCatOrder(). */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {[
+          { label: 'Distributor',   value: 'Distributor',   Icon: Store },
+          { label: 'Small B2B',     value: 'Small B2B',     Icon: ShoppingCart },
+          { label: 'Gift / OEM',    value: 'Gift / OEM',    Icon: Gift },
+          { label: 'Crystal Fabric', value: 'Crystal Fabric', Icon: Sparkles },
+        ].map(({ label, value, Icon }) => (
+          <button
+            key={value}
+            onClick={() => setCategoryFilter(f => f === value ? null : value)}
+            className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+              categoryFilter === value
+                ? 'bg-gray-800 border-gray-800 text-white'
+                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
+            }`}
+          >
+            {Icon && <Icon size={13} className="inline align-[-2px] mr-1" />}{label}
+          </button>
+        ))}
+        <button
+          onClick={() => setRetailFilter(v => !v)}
+          className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+            retailFilter
+              ? 'bg-gray-800 border-gray-800 text-white'
+              : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
+          }`}
+        >
+          <ShoppingBag size={13} className="inline align-[-2px] mr-1" />{RETAIL_TAG}
+        </button>
+        {(categoryFilter || retailFilter) && (
+          <button
+            onClick={() => { setCategoryFilter(null); setRetailFilter(false) }}
+            className="px-3 py-1 rounded-full text-xs font-medium border border-dashed border-gray-300 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            Clear filter
+          </button>
+        )}
+      </div>
 
       {/* Log interaction drawer */}
       {logTarget && (
