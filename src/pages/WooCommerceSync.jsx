@@ -86,59 +86,82 @@ export default function WooCommerceSync() {
     }
   }
 
-  // Item-level rollup across every fetched order — "which products sold, how
-  // many, for how much" over the date range. Grouped by ITEM NAME (not SKU)
-  // AND currency: a product with several SKUs (size/colour variations, or a
-  // SKU tweak over time) should still roll up as one line — Cindy asked for
-  // "the item," not each variant separately. Currency stays its own axis:
-  // orders come in GBP/HKD/USD/EUR (confirmed on real data), and summing
-  // money across currencies would silently produce a meaningless total.
+  // Base product code from a SKU like "UC019-C13-RED-004": the first two
+  // dash-separated segments are the product ("UC019-C13"); anything after
+  // is colour/running-number and gets dropped for grouping purposes — the
+  // owner (2026-08-22): "the colors and the running number i don't need to
+  // know", grouping by full name had still split the same product across
+  // colour variants since WooCommerce gives each variant its own line-item
+  // name. Falls back to the item name (lowercased) when a SKU is missing.
+  function baseSku(sku) {
+    if (!sku) return null
+    const parts = sku.trim().split('-')
+    return parts.length >= 2 ? parts.slice(0, 2).join('-') : sku.trim()
+  }
+
+  // Item-level rollup across every fetched order — "how many of X sold,
+  // grouped by base product code." Qty and order count are summed across
+  // ALL currencies (a unit count is valid regardless of what currency it was
+  // paid in); money is kept broken out per currency inside `currencies`,
+  // since orders come in GBP/HKD/USD/EUR (confirmed on real data) and
+  // summing money across currencies would silently produce a meaningless
+  // total. Sorted by base code ascending — the owner wants a scannable,
+  // ordered list, not "biggest first."
   const itemReport = useMemo(() => {
     if (!result?.rows?.length) return []
-    const byKey = new Map()
+    const byBase = new Map()
     for (const o of result.rows) {
       for (const l of o.line_items || []) {
-        const key = `${l.name.trim().toLowerCase()}__${o.currency}`
-        const row = byKey.get(key) || {
-          skus: new Set(), name: l.name, currency: o.currency,
-          qty: 0, subtotal: 0, discount: 0, tax: 0, total: 0, orders: new Set(),
+        const base = baseSku(l.sku) || l.name.trim().toLowerCase()
+        const row = byBase.get(base) || {
+          base, names: new Map(), skus: new Set(), qty: 0, orders: new Set(), byCurrency: new Map(),
         }
+        row.names.set(l.name, (row.names.get(l.name) || 0) + l.quantity)
         if (l.sku) row.skus.add(l.sku)
         row.qty += l.quantity
-        row.subtotal += l.subtotal
-        row.discount += l.discount
-        row.tax += l.tax
-        row.total += l.total
         row.orders.add(o.id)
-        byKey.set(key, row)
+        const c = row.byCurrency.get(o.currency) || { qty: 0, subtotal: 0, discount: 0, tax: 0, total: 0 }
+        c.qty += l.quantity; c.subtotal += l.subtotal; c.discount += l.discount; c.tax += l.tax; c.total += l.total
+        row.byCurrency.set(o.currency, c)
+        byBase.set(base, row)
       }
     }
-    return [...byKey.values()]
-      // Single SKU shows as-is; several (variants) shows "3 SKUs" rather than
-      // picking one arbitrarily and misrepresenting the rest.
-      .map((r) => {
-        const skuList = [...r.skus]
-        return {
-          ...r, orders: r.orders.size,
-          sku: skuList.length === 1 ? skuList[0] : (skuList.length > 1 ? `${skuList.length} SKUs` : null),
-          skuList: skuList.join('; '), // full list, for CSV — the compact `sku` label is UI-only
-        }
-      })
-      .sort((a, b) => b.total - a.total)
+    return [...byBase.values()].map((r) => {
+      // Representative name: whichever variant name sold the most units —
+      // just a label, the base code is the real identity of the row.
+      const name = [...r.names.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || r.base
+      const skuList = [...r.skus]
+      const currencies = [...r.byCurrency.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([currency, v]) => ({ currency, ...v }))
+      return {
+        base: r.base, name, variants: r.names.size,
+        sku: skuList.length === 1 ? skuList[0] : (skuList.length > 1 ? `${skuList.length} SKUs` : null),
+        skuList: skuList.join('; '),
+        qty: r.qty, orders: r.orders.size, currencies,
+      }
+    }).sort((a, b) => a.base.localeCompare(b.base, undefined, { numeric: true }))
   }, [result])
 
+  // Flattened one-row-per-(base,currency) for the CSV — Excel can't hold a
+  // nested currency breakdown in one cell the way the UI's summary can.
+  const itemReportCsvRows = useMemo(
+    () => itemReport.flatMap((r) => r.currencies.map((c) => ({ ...r, ...c }))),
+    [itemReport],
+  )
   const ITEM_COLUMNS = [
-    { label: 'SKU(s)',     value: (r) => r.skuList || '', text: true },
+    { label: 'Base SKU',   value: (r) => r.base, text: true },
     { label: 'Item',       value: (r) => r.name, text: true },
+    { label: 'Variants',   value: (r) => r.variants },
+    { label: 'SKU(s)',     value: (r) => r.skuList || '', text: true },
     { label: 'Currency',   value: (r) => r.currency },
     { label: 'Orders',     value: (r) => r.orders },
-    { label: 'Qty sold',   value: (r) => r.qty },
+    { label: 'Qty sold (this currency)', value: (r) => r.qty },
     { label: 'Subtotal',   value: (r) => r.subtotal },
     { label: 'Discount',   value: (r) => r.discount },
     { label: 'Tax',        value: (r) => r.tax },
     { label: 'Total',      value: (r) => r.total },
   ]
-  const exportItems = () => downloadCsv(exportStem('woocommerce-items', { from, to }), ITEM_COLUMNS, itemReport)
+  const exportItems = () => downloadCsv(exportStem('woocommerce-items', { from, to }), ITEM_COLUMNS, itemReportCsvRows)
 
   const ORDER_COLUMNS = [
     { label: 'Order no.',       value: (r) => r.number, text: true },
@@ -416,36 +439,35 @@ export default function WooCommerceSync() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                        <th className="px-4 py-2.5 font-medium whitespace-nowrap">Base SKU</th>
                         <th className="px-4 py-2.5 font-medium">Item</th>
-                        <th className="px-4 py-2.5 font-medium whitespace-nowrap">SKU</th>
-                        <th className="px-4 py-2.5 font-medium whitespace-nowrap">Cur</th>
                         <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Orders</th>
                         <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Qty sold</th>
-                        <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Subtotal</th>
-                        <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Discount</th>
-                        <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Tax</th>
-                        <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Total</th>
+                        <th className="px-4 py-2.5 font-medium">Amount by currency</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {itemReport.map((r) => (
-                        <tr key={`${r.name}-${r.currency}`} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-gray-900 min-w-0"><span className="truncate">{r.name}</span></td>
-                          <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-gray-500" title={r.skuList || ''}>{r.sku || '—'}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-gray-500">{r.currency}</td>
+                        <tr key={r.base} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 whitespace-nowrap font-mono text-xs font-medium text-gray-900" title={r.skuList || ''}>{r.base}</td>
+                          <td className="px-4 py-3 text-gray-900 min-w-0">
+                            <span className="truncate">{r.name}</span>
+                            {r.variants > 1 && <span className="ml-1.5 text-[10px] text-gray-400">{r.variants} variants</span>}
+                          </td>
                           <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{r.orders}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{r.qty}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{fmtMoney(r.subtotal)}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{r.discount ? fmtMoney(r.discount) : '—'}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{r.tax ? fmtMoney(r.tax) : '—'}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-900 font-medium">{fmtMoney(r.total)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-900 font-medium">{r.qty}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-600 text-xs">
+                            {r.currencies.map((c) => `${c.currency} ${fmtMoney(c.total)}`).join(' · ')}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
                 <p className="text-[11px] text-gray-400 mt-1">
-                  Grouped by item and currency separately — orders come in more than one currency, so totals are never summed across them.
+                  Grouped by base product code (SKU up to the second "-", colour/running number dropped) — Qty sold is a unit count across
+                  all currencies; Amount stays broken out by currency since totals can't be summed across them. Export for the full
+                  subtotal/discount/tax detail per currency.
                 </p>
               </div>
             )}
