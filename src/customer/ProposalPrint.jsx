@@ -68,9 +68,29 @@ const PRINT_CSS = `
   /* Back to normal flow, NOT forced onto its own page (tried, reverted —
      produced an almost entirely blank page 8 with 3 lines of text at the
      bottom, confirmed live 2026-08-22 — worse than an imperfectly
-     positioned footer). Sits wherever the last section's content ends. */
-  .bp-foot { margin-top: 26px; padding-top: 10px; border-top: 1px solid #eee;
-    text-align: center; font-size: 9px; color: #888; line-height: 1.6; page-break-inside: avoid; break-inside: avoid; }
+     positioned footer). Sits wherever the last section's content ends.
+
+     UPDATE (owner, 2026-08-22, after seeing a real render): "it should sit
+     at the literal bottom of the page." A dedicated final page is
+     unavoidable for that — CSS can't reserve exactly "the remaining space"
+     without knowing which margin the reader picks in their print dialog
+     (Default vs a Custom value both changed the measured result live), so
+     any fixed-height reservation either overshoots into its own page or
+     doesn't reach the bottom. The problem last time wasn't the extra page
+     itself, it was that the page looked broken (90% blank, 3 lines of tiny
+     text). Made intentional instead: a real closing page — logo + a brief
+     thank-you message up top, contact details pinned to the bottom via
+     flex space-between — so it reads as a designed closing page, not an
+     error. */
+  .bp-foot-page { page-break-before: always; break-before: page;
+    min-height: calc(100vh - 4px); display: flex; flex-direction: column; justify-content: space-between; }
+  .bp-foot-page-top { padding-top: 8px; }
+  .bp-foot-page .bp-accent { margin-bottom: 20px; }
+  .bp-foot-page .bp-logo { margin-bottom: 32px; }
+  .bp-thanks { font-size: 18px; font-weight: 700; margin: 0 0 8px; }
+  .bp-thanks-sub { color: #666; max-width: 480px; }
+  .bp-foot { padding-top: 10px; border-top: 1px solid #eee;
+    text-align: center; font-size: 9px; color: #888; line-height: 1.6; }
   .bp-foot .nm { font-weight: 600; color: #555; }
   .bp-section-divider { border-top: 1px solid #eee; margin: 0 0 26px; }
 `
@@ -204,10 +224,18 @@ export default function ProposalPrint({ profile }) {
         )
       })}
 
-      <div className="bp-foot">
-        <div className="nm">United Art Metals Factory Limited</div>
-        <div>11A Seabright Plaza, 9-23 Shell Road, Causeway Bay, Hong Kong</div>
-        <div>WhatsApp: +852 4608 3219 | Email: sales@uart.com.hk</div>
+      <div className="bp-foot-page">
+        <div className="bp-foot-page-top">
+          <div className="bp-accent" />
+          <img className="bp-logo" src={logoUrl} alt="" width="617" height="108" />
+          <div className="bp-thanks">Thank you for considering Crystocraft.</div>
+          <p className="bp-thanks-sub">We look forward to bringing this proposal to life for your brand.</p>
+        </div>
+        <div className="bp-foot">
+          <div className="nm">United Art Metals Factory Limited</div>
+          <div>11A Seabright Plaza, 9-23 Shell Road, Causeway Bay, Hong Kong</div>
+          <div>WhatsApp: +852 4608 3219 | Email: sales@uart.com.hk</div>
+        </div>
       </div>
     </div>
   )
