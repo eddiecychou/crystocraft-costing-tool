@@ -573,6 +573,20 @@ export default function ProposalEditor({ customerId }) {
     try {
       const assetId = await uploadCustomerAsset(customerId, file, { category: 'product_gallery', type: 'photo', title: 'Proposal hero' })
       await updateCustomerAsset(customerId, assetId, { visibility: 'customer_private' })
+      // A hero being REPLACED by a fresh upload leaves the old one behind
+      // with no purpose — same "a hero photo that's not the hero of
+      // anything else has no other use" reasoning removeHero() below
+      // already applies, just triggered by an upload instead of a manual
+      // clear. Left unhandled, the old hero silently reappeared as ordinary
+      // leftover gallery content on the customer's own portal (found live,
+      // 2026-08-22 — Sun Life's retired hero, still titled "Proposal hero",
+      // showed up captioned as a regular product photo under "More
+      // products for your brand"). Only a real uploaded asset, never a
+      // `branded:` catalogue photo reference (nothing to delete there).
+      const oldHero = heroAsset
+      if (oldHero && oldHero.id !== assetId && !oldHero.id.startsWith('branded:')) {
+        try { await deleteCustomerAsset(customerId, oldHero) } catch { /* best-effort — the new hero is already live either way */ }
+      }
       set('hero_asset_id', assetId)
     } catch (err) {
       alert(`Upload failed: ${err.message || err}`)
