@@ -167,6 +167,10 @@
   function = "credit-note"
   path = "/api/credit-note"
 
+[[edge_functions]]
+  function = "woo-sync"
+  path = "/api/woo-sync"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

@@ -6,7 +6,7 @@ import logo from '../assets/logo.png'
 import { APP_NAME, APP_VERSION, versionLabel } from '../appInfo'
 import {
   LayoutDashboard, Package, Gem, ClipboardList, Puzzle,
-  Factory, Building2, Megaphone, Settings, MoreHorizontal, Users, Truck, FileText, Boxes, Database, Hash, Receipt, Sparkles, RotateCcw,
+  Factory, Building2, Megaphone, Settings, MoreHorizontal, Users, Truck, FileText, Boxes, Database, Hash, Receipt, Sparkles, RotateCcw, ShoppingCart,
 } from 'lucide-react'
 
 // Grouped so the list stays readable as it grows — it reached 16 destinations
@@ -38,6 +38,7 @@ const nav = [
   { to: '/marketing',  label: 'Marketing',     short: 'Marketing',Icon: Megaphone },
   { to: '/erp-lookup', label: 'ERP Lookup',    short: 'ERP',      Icon: Database },
   { to: '/uc-registry',label: 'UC Registry',   short: 'UC#',      Icon: Hash },
+  { to: '/woo-sync',   label: 'WooCommerce Sync', short: 'WooSync', Icon: ShoppingCart },
   { to: '/settings',   label: 'Settings',      short: 'Settings', Icon: Settings },
 ]
 

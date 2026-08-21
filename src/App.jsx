@@ -72,6 +72,7 @@ import PackingListPrint from './pages/PackingListPrint'
 import ProformaInvoicePrint from './pages/ProformaInvoicePrint'
 import SalesInvoicePrint from './pages/SalesInvoicePrint'
 import SalesInvoices from './pages/SalesInvoices'
+import WooCommerceSync from './pages/WooCommerceSync'
 
 export default function App() {
   const user = useAuthState()
@@ -226,6 +227,7 @@ function AdminApp({ user }) {
                 <Route path="/shipping" element={<Shipping />} />
                 <Route path="/sales-invoices" element={<SalesInvoices />} />
                 <Route path="/credit-notes" element={<CreditNotes />} />
+                <Route path="/woo-sync" element={<WooCommerceSync />} />
                 <Route path="/credit-notes/new" element={<CreditNoteForm />} />
                 <Route path="/credit-notes/:id" element={<CreditNoteForm />} />
                 {/* Legacy redirect — Phase B's Sales Return register was folded
