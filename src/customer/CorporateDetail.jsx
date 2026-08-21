@@ -150,7 +150,6 @@ export default function CorporateDetail({ profile }) {
         if (!videos.length) return null
         return (
           <div className="mt-10 max-w-2xl mx-auto">
-            <h2 className="text-lg text-ink mb-3 text-center">{videos.length > 1 ? 'Product videos' : 'Product video'}</h2>
             <div className="space-y-4">
               {videos.map((v, i) => <VideoEmbed key={i} url={v} title={`${p.name} video ${i + 1}`} />)}
             </div>

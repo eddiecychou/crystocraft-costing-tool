@@ -398,9 +398,6 @@ export default function FigurineDetail({ profile }) {
         if (!videos.length) return null
         return (
           <div className="mt-8 max-w-2xl mx-auto">
-            <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-3 text-center">
-              {videos.length > 1 ? 'Product videos' : 'Product video'}
-            </p>
             <div className="space-y-4">
               {videos.map((v, i) => <VideoEmbed key={i} url={v} title={`${name} video ${i + 1}`} />)}
             </div>
