@@ -111,6 +111,24 @@
   .input::placeholder {
     color: rgba(102, 102, 102, 0.55); /* mid-grey/55 */
   }
+  /* V8.6, reported live — mobile browsers (iOS Safari and Chrome, both
+     WebKit-based) auto-zoom the page in when a focused form field's
+     computed font-size is under 16px, to keep the text legible. .input's
+     text-sm is 14px, well under that threshold. The zoom often doesn't
+     reset cleanly on blur, leaving the page visibly misaligned/zoomed
+     afterward — same visible symptom as the earlier cold-load/navigation
+     zoom bug (see App.jsx's route-change reset), but a completely
+     different trigger that reset doesn't cover, since no navigation
+     happens between focusing and blurring a field. Scoped to mobile only
+     (matches Tailwind's default `md` breakpoint) so desktop's visual
+     density is unaffected; targets every native form element, not just
+     .input, in case something renders a bare <input>/<select>/<textarea>
+     without the shared class. */
+  @media (max-width: 767px) {
+    input, select, textarea {
+      font-size: 16px;
+    }
+  }
   .label {
     @apply block text-xs mb-1 uppercase;
     font-family: 'Work Sans', system-ui, sans-serif;
