@@ -238,7 +238,17 @@ function ImportProposalModal({ customerId, currentStatus, onClose, onApplied }) 
     setStage('checking')
     try {
       const text = await file.text()
-      const json = JSON.parse(text)
+      const raw = JSON.parse(text)
+      // exportForMapping() (this file's own "Export for AI mapping" button)
+      // nests the actual proposal content under current_proposal — the
+      // schema Manus is given to follow — but this parser was still reading
+      // top-level json.sections/hero_asset_id/tagline/briefing, which is
+      // NEVER populated by that export shape. Any correctly-exported file
+      // silently showed 0 sections/0 product refs and "resolved cleanly"
+      // (found live, 2026-08-21 — a real Sun Life v2 import with 46 mapped
+      // products showed 0 of everything). Unwrap current_proposal when
+      // present; fall back to the raw object for a flatter, older-style file.
+      const json = raw.current_proposal && typeof raw.current_proposal === 'object' ? raw.current_proposal : raw
       const sections = Array.isArray(json.sections) ? json.sections : []
 
       const found = []
