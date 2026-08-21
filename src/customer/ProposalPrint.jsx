@@ -70,13 +70,22 @@ export default function ProposalPrint({ profile }) {
            padding (the old source of top spacing) only exists once, at the
            very start/end of one long continuous flow — pages 2+ got only
            the bare @page margin, reading as "too little" compared to page 1
-           (found live, 2026-08-22). Bottom margin also reserves room for
-           the fixed footer below, so content never runs under it. */
-        @page { size: A4 portrait; margin: 2.3cm 1.8cm 2.6cm; }
+           (found live, 2026-08-22). A single uniform value on purpose —
+           the asymmetric top/bottom split existed only to reserve room for
+           a position:fixed running footer, which turned out to cause its
+           OWN regressions (near-zero margins + a paragraph cut off
+           mid-sentence, both reported live, 2026-08-22): Chrome's print
+           engine has known, inconsistent bugs when a fixed element is
+           combined with a reserved @page margin, miscalculating both the
+           margin box and page-break points near it. Reverted the footer to
+           normal flow (see .bp-foot below) rather than keep chasing that
+           combination blind. */
+        @page { size: A4 portrait; margin: 2.2cm; }
         @media print { body { margin: 0; } .print-btn-row { display: none !important; } }
         .bp-doc { font-family: 'Helvetica Neue', Arial, sans-serif; color: #1a1a1a; font-size: 10.5px; line-height: 1.5;
           background: #fff; padding: 0 clamp(16px, 5vw, 48px); max-width: 960px; margin: 0 auto; }
         .bp-doc * { box-sizing: border-box; }
+        .bp-doc p { orphans: 3; widows: 3; }
         .print-btn-row { text-align: center; margin-bottom: 18px; }
         .print-btn { display: inline-block; padding: 9px 26px; background: #1a1a1a; color: #fff;
           border: none; border-radius: 6px; cursor: pointer; font-size: 13px; letter-spacing: .02em; }
@@ -106,15 +115,18 @@ export default function ProposalPrint({ profile }) {
         .bp-tile .cap { padding: 6px 8px; }
         .bp-tile .cap .nm { font-size: 9.5px; margin: 0 0 2px; }
         .bp-tile .cap .ds { font-size: 8.5px; color: #777; line-height: 1.4; }
-        /* Fixed position repeats this on EVERY printed page in Chrome/
-           Firefox/Safari (a well-established CSS-print technique) — the
-           standard @page margin boxes (@bottom-center etc.) that would be
-           the "correct" CSS-Paged-Media way to do this have no support in
-           browser print/"Save as PDF", only in dedicated renderers like
-           WeasyPrint/Prince. @page's bottom margin above reserves the
-           space this needs so body content never runs underneath it. */
-        .bp-foot { position: fixed; bottom: 0; left: 0; right: 0; padding-top: 10px; border-top: 1px solid #eee;
-          text-align: center; font-size: 9px; color: #888; line-height: 1.6; background: #fff; }
+        /* NOT position: fixed (tried, reverted — see @page's comment above).
+           A true footer repeating on every printed page isn't reliably
+           achievable via plain CSS + window.print() across browsers — the
+           correct CSS Paged Media way (@page margin boxes) has no support
+           in browser print/"Save as PDF" at all, only in dedicated
+           renderers like WeasyPrint/Prince/paged.js, none of which this
+           app depends on. Same real limitation the rest of this app's
+           print pages (SalesInvoicePrint.jsx etc.) already live with —
+           one footer block in normal flow, at the true end of the
+           document, not per page. */
+        .bp-foot { margin-top: 26px; padding-top: 10px; border-top: 1px solid #eee;
+          text-align: center; font-size: 9px; color: #888; line-height: 1.6; page-break-inside: avoid; break-inside: avoid; }
         .bp-foot .nm { font-weight: 600; color: #555; }
       `}</style>
 
