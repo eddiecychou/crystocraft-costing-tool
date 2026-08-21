@@ -397,7 +397,7 @@ export default function FigurineDetail({ profile }) {
         const videos = normVideos(p.videos, p.video_url).filter(youtubeEmbed)
         if (!videos.length) return null
         return (
-          <div className="mt-8 max-w-2xl">
+          <div className="mt-8 max-w-2xl mx-auto">
             <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-3">
               {videos.length > 1 ? 'Product videos' : 'Product video'}
             </p>
