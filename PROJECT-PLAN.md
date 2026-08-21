@@ -87,6 +87,285 @@ signed-in user with `role:'customer'`/`status` not `'approved'` sees it),
 so "same screen" does not mean "same bug" — check what's actually different
 about the account before assuming the mechanism.
 
+## Current Status — V8.6 CLOSED as of 2026-08-22
+
+A long, varied session: a real security fix (open-relay-style vulnerability
+in the transactional email endpoint), a batch of live bug reports across
+mobile UI and the admin/portal CRM surfaces, and a from-scratch PDF export
+feature for the Brand Portal proposal that took many iterations to get
+right — the print-CSS gotchas from that are worth reading even outside
+this feature, since they'll bite the next print/PDF page too.
+
+### The numbers
+
+| | |
+|---|---:|
+| Commits | ~20 |
+| New files | `src/customer/ProposalPrint.jsx` |
+| New Netlify function action | `claim_invitation_google` (`netlify/functions/portal-invite.js`) |
+| Security fixes | 1 (send-email.js open relay) |
+| Live bugs found & fixed | 8 |
+
+### 1. send-email.js was a real open relay — no auth at all
+
+External review flagged it; confirmed live. The endpoint trusted a client-
+supplied `payload.email` as the send-to address with zero authentication —
+anyone could POST directly and make Crystocraft's Resend account mail an
+arbitrary recipient using the `enquiry`/`account_approved` templates.
+Fixed: every call now requires a verified Firebase ID token; the recipient
+is derived server-side (`enquiry` uses the token's own email claim,
+`account_approved` requires admin + a Firestore lookup by uid), never
+trusted from the request body. Dropped the dead `signup` event (no caller
+anywhere in `src/`). `src/notify.js` now attaches the caller's own ID
+token instead of firing an unauthenticated `fetch`.
+
+### 2. Admin-invitation Google sign-in — the V8.5 deferred item, resolved
+
+Turned out simpler than V8.5's note assumed: `createInvitation` (the admin
+step) never creates a Firebase Auth account — only `claimInvitation` does,
+at claim time. Offering Google sign-in right on the invite-claim landing
+page (before any password-based account exists) sidesteps the "fixed uid"
+problem entirely — no `linkWithPopup`/custom-token dance needed. New
+`claim_invitation_google` action mirrors `claimInvitation`'s token/email
+checks, verifies the Google email against the invitation via the decoded ID
+token, and sets `auth_provider: 'google.com'` — which `approveInvitation`
+already branched on to skip the password-setup email, so no changes needed
+there. (A customer who already claimed via email/password and only wants
+Google *afterwards* is a narrower case this doesn't cover — deferred.)
+
+### 3. Corporate Gift catalogue export extended to the full catalogue
+
+`exportForMapping()` (ProposalEditor.jsx's "Export for AI mapping" button)
+only ever included products already branded for the customer. Added a
+`corporate_gift_catalogue` block covering every product in the `products`
+collection, each cross-referenced against the current proposal and the
+same `branded_for_customer_id` signal `loadBrandedProductImages()` already
+uses for `mapping_status`. Purely additive read of existing data — no new
+Firestore fields, `branded_corporate_products`/`current_proposal` shape
+unchanged. `schema_version` bumped 1→2.
+
+### 4. Proposal JSON import silently did nothing — 0/0/0 on every import
+
+The importer read `json.sections` at the top level, but the exporter (same
+file) nests everything under `current_proposal.sections` — the schema
+Manus is given to follow. Any correctly-exported file showed "0 sections,
+0 product refs — resolved cleanly" (a false-positive success). Fixed by
+unwrapping `current_proposal` when present.
+
+### 5. CorporateShop.jsx blocked the whole grid on ~115 sequential image reads
+
+Customer-reported slow product-page loads. The shop held the ENTIRE grid
+back until every product's `images` subcollection had been read and
+screened, even though `screenSensitiveImages()` is a no-op for any
+non-sensitive viewer (the overwhelming majority) — see
+`sensitiveImages.js`. Now resolves per-product incrementally; only a
+`sensitive` viewer (who genuinely needs a photo-less product hidden, not
+flashed-then-removed) still waits for the full pass before the grid
+renders.
+
+### 6. Mobile bottom-nav gap on cold load (bookmark launch)
+
+Reported on mobile Chrome. `100dvh`'s first computed value can be stale/
+too-tall before the browser's own toolbar state settles on a cold load —
+the `fixed bottom-0` tab bar glued correctly to the true viewport, but the
+shell around it rendered taller than the visible screen. Fixed with a
+`window.visualViewport`-driven `--app-vh` CSS var (no first-paint
+staleness issue), set on mount/resize/orientationchange, preferred over
+`dvh` in `.h-screen-dynamic` once available.
+
+### 7. Mobile zoom-on-focus for every form field
+
+`.input` used `text-sm` (14px) — under the 16px threshold that makes iOS
+Safari/Android Chrome auto-zoom on focus, and the zoom often didn't reset
+on blur, leaving the page visibly misaligned afterward. Fixed at the root:
+a mobile-only media query (`max-width: 767px`) bumps every native
+`input`/`select`/`textarea` to 16px, so there's no reason for the browser
+to zoom in the first place. Desktop untouched.
+
+### 8. Product video embeds: black bars, left-alignment, and page layout
+
+Three compounding bugs on the same feature, found one at a time on real
+Shorts-style videos:
+- **Thumbnail black bars**: `hqdefault.jpg` is always a padded legacy
+  landscape frame — the bars are baked into the JPEG's pixels, not a CSS
+  artifact. Fixed by trying `maxresdefault.jpg` first (real per-video
+  dimensions), falling back to `sddefault`/`hqdefault` on a genuine 404.
+- **Aspect-ratio detection**: first tried YouTube's oEmbed endpoint, which
+  turned out unreliable specifically for Shorts (reported landscape-ish
+  dimensions for a visibly portrait video). Replaced with the `/shorts/`
+  URL as an instant signal plus the *loaded* `maxresdefault.jpg`'s own
+  `naturalWidth`/`naturalHeight` — only trusted when that specific size
+  succeeded, since the padded fallback sizes' dimensions are never a
+  reliable orientation signal.
+- **Real root cause of "video aligned left"**: turned out unrelated to the
+  video component at all — `FigurineDetail.jsx`/`CorporateDetail.jsx`'s
+  video section wrapper was capped `max-w-2xl` with no `mx-auto`, so on a
+  wide desktop window it sat flush left instead of centering. One-line fix
+  in the two page files, not `VideoEmbed.jsx`.
+
+### 9. Interaction Log moved to the top of the customer detail page
+
+Owner: "I usually first find the customer and log the interaction from the
+customer page — access needs to be quick." It sat near the bottom of a
+long page, below Contacts/Company details/Sales History/Quotes/Brand
+Gallery/Email/WhatsApp. Moved directly under the header — pure reorder,
+same `Collapsible`/`storageKey`. (A same-intent Dashboard reorder was
+tried first, reverted at the owner's correction — wrong page entirely.)
+
+### 10. Sales Invoice History showed no badge for app-raised invoices
+
+`domain/salesInvoiceHistory.js` sets `status: null` for app rows by design
+("an app row's invoiced-ness IS its confirmation") — but both the portal
+and admin pages only rendered a badge when `status` was truthy, so an
+app-raised invoice showed nothing next to a JES row's real `CONFIRMED`
+pill, reading as unconfirmed when it always was. Portal page now always
+shows `CONFIRMED` for a null status (its list is pre-filtered to confirmed
+rows only); the admin page only fills it in for app-sourced rows
+specifically, since its list isn't pre-filtered and a genuinely
+non-confirmed JES row (VOID) must not get an invented label.
+
+### 11. Brand Portal proposal PDF export — built from scratch, several real gotchas
+
+New `ProposalPrint.jsx`, a standalone print route
+(`/shop/proposal/print`, outside `CustomerLayout` — nav chrome must never
+bleed into "Save as PDF") resolving the exact same live data
+`BrandPortalPage.jsx` does. Took multiple iterations to get right; each
+gotcha below is a genuine trap for the next print/PDF page in this app,
+not proposal-specific:
+
+- **`page-break-inside: avoid` on a whole section is dangerous at scale.**
+  Applied to every section initially — a 17-product section forced onto
+  one page (or bumped whole to a fresh one) produced a 57-page PDF that
+  was mostly blank space. Only ever apply it to small, bounded units
+  (one product tile; a heading + its first grid row), never to
+  arbitrary-length content.
+- **`@page` margin is unreliable from a `<style>` tag rendered inside
+  `<body>`.** The component's print CSS was originally inline JSX
+  (`<style>{...}</style>` as a child of the page's root div) — physically
+  inside `<body>`. `@page` margin rendered as a measured, pixel-exact
+  **zero** on every page despite a correct, deployed value — not a wrong
+  number, the rule just wasn't being honored. Fixed by building the CSS as
+  a string and injecting it into `document.head` via a real DOM node in a
+  `useEffect`.
+- **`break-after`/`break-before: avoid` are soft hints, not hard
+  constraints** — Chrome's pagination engine overrides them when honoring
+  them would (in its judgement) leave too much blank space, which is
+  exactly what kept orphaning a section heading alone at a page's bottom
+  with its whole grid pushed to the next page. `page-break-inside: avoid`
+  is the hard constraint that actually works — used narrowly (heading +
+  first row only, not the whole section) to get both correctness and
+  avoid reintroducing the point above.
+- **The browser's own print-dialog "Margins" setting fully overrides page
+  CSS**, independent of whether the CSS is correct — confirmed by
+  exporting the same page with "Default" (correctly showed the real
+  `@page` value) vs a manual custom value (correctly showed that instead).
+  Not something any page-side code can control or detect.
+- **A forced last-page footer needs to look intentional.** First attempt
+  (`page-break-before: always` + bottom-flex-align) technically worked but
+  read as broken — 90% blank page with three lines of tiny text. A true
+  page-bottom-pinned footer requires its own page (CSS can't reserve
+  "just the remaining space" without knowing the reader's chosen margin),
+  so made that page a real closing page instead — logo, accent bar, a
+  thank-you line, contact details pinned to the bottom via
+  `flex-direction: column; justify-content: space-between`.
+
+**Process change, not just a feature note:** installed `poppler`
+(`brew install poppler`, gives `pdftoppm`/`pdfinfo`) and started using
+headless Chrome (`--headless --print-to-pdf`, no login required) to
+self-generate and pixel-measure test PDFs *before* pushing, instead of
+asking the owner to keep re-exporting and re-reporting. This is a
+standing capability now — use it by default for any print/PDF work,
+not just when explicitly reminded.
+
+### 12. Hero photo replaced-but-not-cleaned-up, twice
+
+Recurrence of a V8.5-era bug: `uploadHero()` repoints `hero_asset_id` at a
+freshly uploaded photo but never cleaned up whatever the *old*
+`hero_asset_id` pointed to — that asset just sits in
+`customers/{id}/assets` with `category: 'product_gallery'`, so it silently
+reappears as ordinary leftover gallery content, still titled "Proposal
+hero". Fixed by deleting the old hero asset automatically when replaced by
+a new upload (same "not the hero of anything else has no other use"
+reasoning `removeHero()` already applied when a hero is manually cleared).
+Scoped to the upload path only — the hero-picker dropdown lets an admin
+deliberately re-purpose an *existing* gallery asset as hero, where leaving
+the previous one as ordinary gallery content is likely intentional.
+**The already-orphaned asset from before this fix was not cleaned up** —
+no live Firestore access from this environment; needs manual deletion via
+Sun Life's Brand Gallery (Customer Detail page) if it's still there.
+
+## Where V8.7 starts
+
+- **The pre-V8.6 orphaned "Proposal hero" asset may still need manual
+  cleanup** — §12 above fixed the code path going forward but couldn't
+  touch existing stray data. Check Sun Life's Brand Gallery for an asset
+  titled "Proposal hero" under Product Gallery; delete it if still there.
+- **A customer who already claimed a portal invitation via email/password
+  and only wants Google sign-in afterwards** is not covered by §2's fix —
+  that only handles the first-time claim. A real retrofit needs the
+  `linkWithPopup`/custom-token approach the original V8.5 note described.
+  Deliberately deferred, not forgotten — likely low-frequency in practice.
+- **Brand Portal proposal PDF export is new and only tested against one
+  real proposal (Sun Life, 46 products/7 sections)** — worth a second
+  real export (a shorter proposal, one with very few products in a
+  section, one with no hero image) before assuming it's fully solid.
+- **The print-CSS gotchas in §11 apply to every print/PDF page in this
+  app**, not just the new one — `SalesInvoicePrint.jsx`,
+  `CustomerInvoicePrint.jsx`, `ProformaInvoicePrint.jsx`,
+  `PackingListPrint.jsx`, `CreditNotePrint.jsx`,
+  `PurchaseOrderPrint.jsx` were NOT audited against them this cycle (none
+  had a live complaint) — if a margin/pagination bug is ever reported on
+  one of those, check `<style>` placement (head vs body) and
+  break-avoid-vs-page-break-inside-avoid first, before assuming it's a
+  new class of bug.
+- **Brand Portal proposal's Materials / Investment-table / Timeline /
+  Signature sections were not ported** from Design System V2.5's proposal
+  template (V8.5 §6) — the template assumes a cost/timeline-bearing sales
+  document; the current `customerProposal.js` schema has no fields for
+  line-item costs or a timeline. Needs new Firestore fields + an admin-
+  editor UI change before any UI work, not a pure design-system migration.
+  Only worth doing if the owner actually wants that content type. Carried
+  from V8.6.
+- **Catalogue "Load more" pagination** — both shop grids render the full
+  filtered list at once; the V2.5 template has a "Load more" pattern.
+  Flagged as a real (if additive, low-risk) UX behavior change, not
+  cosmetic — worth explicit confirmation before building. Carried from
+  V8.6.
+- **WeChat deep-linking stays a closed question app-wide** — don't
+  reopen it (Supplier or anywhere else) without a genuinely tested,
+  reliable link in hand. Enterprise WeChat (企业微信/WeChat Work) DOES
+  have an official, documented link/API system, unlike personal WeChat —
+  worth a proper look if any supplier/customer outreach actually runs
+  through that product instead of personal WeChat. Carried from V8.6.
+- **Sun Life's proposal is live with real, Manus-mapped content** across
+  46 branded corporate products (7 sections), and now has a working PDF
+  export — worth checking back in on whether this whole Brand Portal +
+  AI-mapping + PDF-export workflow is worth extending to a second real
+  customer. Carried from V8.6.
+- **Supplier Workstation Phase 2 (WeChat Supplier Conversation Archive)
+  was explicitly declined by the owner** ("too complicated") — don't
+  revisit unless asked. Catalogue-browsing UX (grid/thumbnail view,
+  tagging) was floated as the lighter alternative — explicitly skipped
+  again in V8.5 when it came up, still purely speculative, not confirmed
+  wanted. Carried from V8.5/V8.6.
+- Everything still open from V8.3's own "Where V8.4 starts" entry that
+  wasn't touched across V8.4/V8.5/V8.6 remains open: self-heal removal
+  tradeoff (a genuinely orphaned Auth account still just sits stuck until
+  a human notices — watch whether this actually happens in practice),
+  SU-08 Phase 2 merged interaction timeline, the `netlify/functions/` vs
+  `edge-functions/` split (process note — any future Admin-SDK/Node-only
+  feature goes in `functions/` and must be curl-tested against the live
+  deployed endpoint, per V8.3 §2's lesson), email "Discover more" chat
+  retrieval (still facet-matching, not real embeddings), Physical Design
+  Workbench workstreams 3/5 (paused mid-build).
+- **Design System V2.5 was applied to the customer portal only** (V8.5
+  §6) — the internal admin tool (`src/pages/*.jsx`) still uses the prior
+  `.card`/gapped-grid styling throughout. Intentionally scoped that way,
+  not forgotten — extending V2.5 to the admin side is a separate, larger
+  ask if it's ever wanted. Carried from V8.5/V8.6.
+
+---
+
 ## Current Status — V8.5 CLOSED as of 2026-08-20
 
 One long, dense session across four mostly-unrelated efforts: a stack of
@@ -483,64 +762,6 @@ persists per customer per section via `sessionStorage` for the session.
 `CustomerBrandGallery.jsx` and `ProposalEditor.jsx` (separate components,
 each rendering their own full card) got the same chevron-toggle treatment
 locally, keeping their own header action buttons clickable either way.
-
----
-
-## Where V8.6 starts
-
-- **Admin-invitation path still doesn't support Google sign-in** — V8.5
-  built self-serve Google signup only (see V8.5 §4). An admin-created
-  invitation still ends in a "set your password" email even for a customer
-  who'd rather use Google, because that account already has a fixed uid
-  (created passwordless by the admin's approval step) that a plain Google
-  popup would NOT sign into — it needs account-linking (mint a custom token
-  for that exact uid server-side, sign in with it, then `linkWithPopup`),
-  not a fresh `signInWithPopup`. Real scope: a new server action plus
-  careful `SetPassword.jsx` changes. Deliberately deferred, not forgotten.
-- **Brand Portal proposal's Materials / Investment-table / Timeline /
-  Signature sections were not ported** from Design System V2.5's proposal
-  template (V8.5 §6) — the template assumes a cost/timeline-bearing sales
-  document; the current `customerProposal.js` schema has no fields for
-  line-item costs or a timeline. Needs new Firestore fields + an admin-
-  editor UI change before any UI work, not a pure design-system migration.
-  Only worth doing if the owner actually wants that content type.
-- **Catalogue "Load more" pagination** — both shop grids render the full
-  filtered list at once; the V2.5 template has a "Load more" pattern.
-  Flagged as a real (if additive, low-risk) UX behavior change, not
-  cosmetic — worth explicit confirmation before building.
-- **WeChat deep-linking stays a closed question app-wide** — don't
-  reopen it (Supplier or anywhere else) without a genuinely tested,
-  reliable link in hand. Enterprise WeChat (企业微信/WeChat Work) DOES
-  have an official, documented link/API system, unlike personal WeChat —
-  worth a proper look if any supplier/customer outreach actually runs
-  through that product instead of personal WeChat.
-- **Sun Life's proposal is live with real, Manus-mapped content** across
-  all 25 branded corporate products — worth checking back in on whether
-  this whole Brand Portal + AI-mapping workflow is worth extending to a
-  second real customer, now that the round trip is self-serve from the
-  editor.
-- **Supplier Workstation Phase 2 (WeChat Supplier Conversation Archive)
-  was explicitly declined by the owner** ("too complicated") — don't
-  revisit unless asked. Catalogue-browsing UX (grid/thumbnail view,
-  tagging) was floated as the lighter alternative — explicitly skipped
-  again in V8.5 when it came up, still purely speculative, not confirmed
-  wanted.
-- Everything still open from V8.3's own "Where V8.4 starts" entry that
-  wasn't touched this cycle remains open: self-heal removal tradeoff (a
-  genuinely orphaned Auth account still just sits stuck until a human
-  notices — watch whether this actually happens in practice), SU-08 Phase 2
-  merged interaction timeline, the `netlify/functions/` vs
-  `edge-functions/` split (process note — any future Admin-SDK/Node-only
-  feature goes in `functions/` and must be curl-tested against the live
-  deployed endpoint, per V8.3 §2's lesson), email "Discover more" chat
-  retrieval (still facet-matching, not real embeddings), Physical Design
-  Workbench workstreams 3/5 (paused mid-build). SU-07A's test account is
-  now deleted (V8.5) — no longer open.
-- **Design System V2.5 was applied to the customer portal only** (V8.5
-  §6) — the internal admin tool (`src/pages/*.jsx`) still uses the prior
-  `.card`/gapped-grid styling throughout. Intentionally scoped that way,
-  not forgotten — extending V2.5 to the admin side is a separate, larger
-  ask if it's ever wanted.
 
 ---
 
