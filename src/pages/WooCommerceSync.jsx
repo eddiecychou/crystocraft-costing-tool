@@ -87,20 +87,23 @@ export default function WooCommerceSync() {
   }
 
   // Item-level rollup across every fetched order — "which products sold, how
-  // many, for how much" over the date range. Grouped by (SKU || name) AND
-  // currency: orders come in GBP/HKD/USD/EUR (confirmed on real data), and
-  // summing money across currencies would silently produce a meaningless
-  // total — a currency change makes a new row rather than being folded in.
+  // many, for how much" over the date range. Grouped by ITEM NAME (not SKU)
+  // AND currency: a product with several SKUs (size/colour variations, or a
+  // SKU tweak over time) should still roll up as one line — Cindy asked for
+  // "the item," not each variant separately. Currency stays its own axis:
+  // orders come in GBP/HKD/USD/EUR (confirmed on real data), and summing
+  // money across currencies would silently produce a meaningless total.
   const itemReport = useMemo(() => {
     if (!result?.rows?.length) return []
     const byKey = new Map()
     for (const o of result.rows) {
       for (const l of o.line_items || []) {
-        const key = `${(l.sku || l.name).trim().toLowerCase()}__${o.currency}`
+        const key = `${l.name.trim().toLowerCase()}__${o.currency}`
         const row = byKey.get(key) || {
-          sku: l.sku || null, name: l.name, currency: o.currency,
+          skus: new Set(), name: l.name, currency: o.currency,
           qty: 0, subtotal: 0, discount: 0, tax: 0, total: 0, orders: new Set(),
         }
+        if (l.sku) row.skus.add(l.sku)
         row.qty += l.quantity
         row.subtotal += l.subtotal
         row.discount += l.discount
@@ -111,12 +114,21 @@ export default function WooCommerceSync() {
       }
     }
     return [...byKey.values()]
-      .map((r) => ({ ...r, orders: r.orders.size }))
+      // Single SKU shows as-is; several (variants) shows "3 SKUs" rather than
+      // picking one arbitrarily and misrepresenting the rest.
+      .map((r) => {
+        const skuList = [...r.skus]
+        return {
+          ...r, orders: r.orders.size,
+          sku: skuList.length === 1 ? skuList[0] : (skuList.length > 1 ? `${skuList.length} SKUs` : null),
+          skuList: skuList.join('; '), // full list, for CSV — the compact `sku` label is UI-only
+        }
+      })
       .sort((a, b) => b.total - a.total)
   }, [result])
 
   const ITEM_COLUMNS = [
-    { label: 'SKU',        value: (r) => r.sku || '', text: true },
+    { label: 'SKU(s)',     value: (r) => r.skuList || '', text: true },
     { label: 'Item',       value: (r) => r.name, text: true },
     { label: 'Currency',   value: (r) => r.currency },
     { label: 'Orders',     value: (r) => r.orders },
@@ -417,9 +429,9 @@ export default function WooCommerceSync() {
                     </thead>
                     <tbody className="divide-y divide-gray-50">
                       {itemReport.map((r) => (
-                        <tr key={`${r.sku || r.name}-${r.currency}`} className="hover:bg-gray-50">
+                        <tr key={`${r.name}-${r.currency}`} className="hover:bg-gray-50">
                           <td className="px-4 py-3 text-gray-900 min-w-0"><span className="truncate">{r.name}</span></td>
-                          <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-gray-500">{r.sku || '—'}</td>
+                          <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-gray-500" title={r.skuList || ''}>{r.sku || '—'}</td>
                           <td className="px-4 py-3 whitespace-nowrap text-gray-500">{r.currency}</td>
                           <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{r.orders}</td>
                           <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{r.qty}</td>
