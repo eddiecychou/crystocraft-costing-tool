@@ -18,6 +18,22 @@ import logoUrl from '../assets/logo.png'
 // injecting it into document.head via a real DOM node (below) sidesteps
 // that entirely, regardless of whether the JSX gets reused for other
 // customers/products later.
+const GRID_COLS = 3 // must match .bp-grid's grid-template-columns below
+
+function Tile({ t }) {
+  return (
+    <div className="bp-tile">
+      <div className="ph">{t.img && <img src={t.img} alt="" />}</div>
+      {(t.name || t.caption) && (
+        <div className="cap">
+          {t.name && <p className="nm">{t.name}</p>}
+          {t.caption && <p className="ds">{t.caption}</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const PRINT_CSS = `
   @page { size: A4 portrait; margin: 2.2cm; }
   @media print { body { margin: 0; } .print-btn-row { display: none !important; } }
@@ -36,11 +52,13 @@ const PRINT_CSS = `
   .bp-tagline { font-size: 19px; font-weight: 700; margin: 0 0 6px; }
   .bp-briefing { color: #555; max-width: 640px; }
   .bp-section { margin-bottom: 26px; }
+  .bp-section-head-group { page-break-inside: avoid; break-inside: avoid; }
   .bp-section-head { page-break-after: avoid; break-after: avoid; }
   .bp-section h2 { font-size: 15px; margin: 0 0 2px; }
   .bp-section .stagline { font-size: 10.5px; font-weight: 600; color: #b8935a; margin: 0 0 4px; }
   .bp-section .sbriefing { color: #666; max-width: 640px; margin: 0 0 12px; }
   .bp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; page-break-before: avoid; break-before: avoid; }
+  .bp-grid-cont { margin-top: 10px; }
   .bp-tile { border: 1px solid #eee; border-radius: 6px; overflow: hidden; page-break-inside: avoid; break-inside: avoid; }
   .bp-tile .ph { aspect-ratio: 1; background: #f7f4ee; display: flex; align-items: center; justify-content: center; overflow: hidden; }
   .bp-tile img { width: 100%; height: 100%; object-fit: contain; }
@@ -139,40 +157,52 @@ export default function ProposalPrint({ profile }) {
         {proposal.proposal.briefing && <div className="bp-briefing">{proposal.proposal.briefing}</div>}
       </div>
 
-      {proposal.sections.map((s, i) => (
-        <div key={i} className="bp-section">
-          {i > 0 && <div className="bp-section-divider" />}
-          <div className="bp-section-head">
-            {s.heading && <h2>{s.heading}</h2>}
-            {s.tagline && <p className="stagline">{s.tagline}</p>}
-            {s.briefing && <p className="sbriefing">{s.briefing}</p>}
-          </div>
-          {(s.images.length > 0 || s.products.length > 0) && (
-            <div className="bp-grid">
-              {s.images.map(a => (
-                <div key={a.id} className="bp-tile">
-                  <div className="ph"><img src={a.file_url} alt="" /></div>
-                  {(a.title || a.caption) && (
-                    <div className="cap">
-                      {a.title && <p className="nm">{a.title}</p>}
-                      {a.caption && <p className="ds">{a.caption}</p>}
-                    </div>
-                  )}
+      {proposal.sections.map((s, i) => {
+        // page-break-after/before: avoid are only SOFT hints — Chrome's
+        // pagination engine can and does override them when honoring them
+        // would leave what it judges as "too much" blank space (exactly
+        // this case: pushing an entire multi-row grid to the next page to
+        // keep it with its heading). Confirmed live, 2026-08-22: "VIP &
+        // HIGH NET WORTH" still orphaned alone at a page's bottom edge
+        // despite that pairing. page-break-inside: avoid, by contrast, is a
+        // HARD constraint browsers reliably honor — so heading + FIRST ROW
+        // only are now wrapped together as one bounded, non-splittable
+        // unit (GRID_COLS items, matching bp-grid's own column count); the
+        // remaining tiles flow freely afterward exactly as before. This
+        // guarantees the heading is never shown without at least some of
+        // its content, without reintroducing the original bug (forcing
+        // page-break-inside: avoid on an entire 17-product section, which
+        // is what produced 57 mostly-blank pages before break-after/before
+        // ever entered the picture).
+        const tiles = [
+          ...s.images.map(a => ({ key: a.id, img: a.file_url, name: a.title, caption: a.caption })),
+          ...s.products.map(p => ({ key: `${p.collection}-${p.id}`, img: p.image, name: p.name, caption: p.caption })),
+        ]
+        const firstRow = tiles.slice(0, GRID_COLS)
+        const rest = tiles.slice(GRID_COLS)
+        return (
+          <div key={i} className="bp-section">
+            {i > 0 && <div className="bp-section-divider" />}
+            <div className="bp-section-head-group">
+              <div className="bp-section-head">
+                {s.heading && <h2>{s.heading}</h2>}
+                {s.tagline && <p className="stagline">{s.tagline}</p>}
+                {s.briefing && <p className="sbriefing">{s.briefing}</p>}
+              </div>
+              {firstRow.length > 0 && (
+                <div className="bp-grid">
+                  {firstRow.map(t => <Tile key={t.key} t={t} />)}
                 </div>
-              ))}
-              {s.products.map(prod => (
-                <div key={`${prod.collection}-${prod.id}`} className="bp-tile">
-                  <div className="ph">{prod.image && <img src={prod.image} alt="" />}</div>
-                  <div className="cap">
-                    <p className="nm">{prod.name}</p>
-                    {prod.caption && <p className="ds">{prod.caption}</p>}
-                  </div>
-                </div>
-              ))}
+              )}
             </div>
-          )}
-        </div>
-      ))}
+            {rest.length > 0 && (
+              <div className="bp-grid bp-grid-cont">
+                {rest.map(t => <Tile key={t.key} t={t} />)}
+              </div>
+            )}
+          </div>
+        )
+      })}
 
       <div className="bp-foot">
         <div className="nm">United Art Metals Factory Limited</div>
