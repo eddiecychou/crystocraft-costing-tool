@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuthState } from './hooks/useAuthState'
 import { useProfile, isAdmin, isApproved, isPending } from './hooks/useProfile'
 import Layout from './components/Layout'
@@ -83,6 +84,26 @@ export default function App() {
 
 function AppRoutes({ user }) {
   const { profile } = useProfile(user)
+  const location = useLocation()
+
+  // Mobile SPA zoom-stuck fix (reported live, recurring — 2026-08-21) — a
+  // mobile browser (Chrome and Safari both do this) auto-zooms the WHOLE
+  // page out once, the first time any page briefly renders wider than the
+  // viewport. React Router's client-side navigation (pushState) never
+  // triggers the browser's own "fit to viewport" recompute the way a full
+  // page load does, so that zoom level then sticks across every later
+  // route — including ones that never overflowed themselves. Toggling the
+  // viewport meta's max-scale forces a recompute back to 1x on every route
+  // change, then restores it immediately after so pinch-zoom still works
+  // normally in between navigations.
+  useEffect(() => {
+    const viewport = document.querySelector('meta[name="viewport"]')
+    if (!viewport) return
+    const original = viewport.getAttribute('content') || ''
+    viewport.setAttribute('content', `${original}, maximum-scale=1.0`)
+    const id = requestAnimationFrame(() => viewport.setAttribute('content', original))
+    return () => cancelAnimationFrame(id)
+  }, [location.pathname])
 
   // REMOVED (2026-08-19, owner's explicit instruction after this fired a
   // SECOND time against the real admin account eddie@uart.com.hk, silently
