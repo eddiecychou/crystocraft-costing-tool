@@ -23,3 +23,7 @@ async function wooSync(op, extra) {
 export const listWooOrders = (from, to) => wooSync('list_orders', { from, to })
 
 export const wooOrderRefunds = (orderId) => wooSync('order_refunds', { order_id: orderId }).then(d => d.rows || [])
+
+// Diagnostic: full meta_data for one order — used to check for a gateway fee
+// hiding in private post meta once fee_lines comes back empty. See spec §12 Q4.
+export const wooOrderMeta = (orderId) => wooSync('order_meta', { order_id: orderId })

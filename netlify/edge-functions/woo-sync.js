@@ -165,6 +165,29 @@ export default async function handler(req) {
     return json({ rows: rows.map(rf => summarizeRefund(rf, orderId, null)) })
   }
 
+  // ── diagnostic: full meta_data for one order ────────────────────────────────
+  // Confirmed 2026-08-22 (Cindy's real orders): fee_lines is empty on every
+  // order — the gateway doesn't add a proper WC fee line. This op exists to
+  // check the other place a gateway plugin sometimes hides it: private post
+  // meta (e.g. `_stripe_fee`). WooCommerce's REST API normally strips
+  // underscore-prefixed meta from the standard order response, but the
+  // individual order endpoint can still expose keys a plugin explicitly
+  // registered via register_meta( show_in_rest: true ) — worth checking
+  // before concluding the fee genuinely isn't retrievable via the API at all.
+  if (body.op === 'order_meta') {
+    const orderId = parseInt(body.order_id, 10)
+    if (!orderId) return json({ error: 'Missing order_id' }, 400)
+    const r = await wc(`orders/${orderId}`, {})
+    if (!r.ok) return json({ error: 'WooCommerce order fetch failed', detail: (await r.text()).slice(0, 300) }, 502)
+    const o = await r.json()
+    return json({
+      order_id: orderId,
+      payment_method: o.payment_method,
+      transaction_id: o.transaction_id || null,
+      meta: (o.meta_data || []).map(m => ({ key: m.key, value: m.value })),
+    })
+  }
+
   return json({ error: `Unknown op: ${body.op}` }, 400)
 }
 

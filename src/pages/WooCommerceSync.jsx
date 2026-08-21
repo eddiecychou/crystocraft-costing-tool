@@ -1,8 +1,8 @@
-import { useState } from 'react'
-import { listWooOrders } from '../wooSyncApi'
+import { useState, Fragment } from 'react'
+import { listWooOrders, wooOrderMeta } from '../wooSyncApi'
 import { downloadCsv, exportStem } from '../exportCsv'
 import LoadingBar from '../components/LoadingBar'
-import { RefreshCcw, AlertTriangle, ShoppingCart } from 'lucide-react'
+import { RefreshCcw, AlertTriangle, ShoppingCart, Search } from 'lucide-react'
 
 // WooCommerce sync — Phase 1 (WooCommerce_B2C_Sync_Spec.md). Read-only: fetches
 // paid orders and their refunds for a date range and shows them for review.
@@ -40,6 +40,22 @@ export default function WooCommerceSync() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState(null) // { rows, refunds, skipped_unpaid, total_fetched }
+  const [metaFor, setMetaFor] = useState(null)     // order_id currently expanded
+  const [meta, setMeta] = useState(null)           // { order_id, payment_method, transaction_id, meta } or 'loading' or error string
+  // Keys worth eyeballing first — anything mentioning fee, stripe, paypal,
+  // rate or net. Not a filter on what's shown, just what's sorted to the top.
+  const FEE_LIKE = /fee|stripe|paypal|rate|net|payout|charge/i
+
+  async function inspectMeta(orderId) {
+    if (metaFor === orderId) { setMetaFor(null); return }
+    setMetaFor(orderId); setMeta('loading')
+    try {
+      const m = await wooOrderMeta(orderId)
+      setMeta(m)
+    } catch (e) {
+      setMeta({ error: e.message || 'Could not load order meta.' })
+    }
+  }
 
   async function fetchOrders() {
     setLoading(true); setError(''); setResult(null)
@@ -147,31 +163,70 @@ export default function WooCommerceSync() {
                       <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Total</th>
                       <th className="px-4 py-2.5 font-medium whitespace-nowrap">Payment</th>
                       <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Fee (best-effort)</th>
+                      <th className="px-4 py-2.5 font-medium" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {result.rows.map((o) => (
-                      <tr key={o.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 whitespace-nowrap font-mono text-xs font-medium text-gray-900">
-                          #{o.number}
-                          {o.refunded_total > 0 && <span className="ml-1.5 text-[10px] font-sans font-medium text-amber-600">refunded</span>}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-gray-600">{fmtDate(o.date_paid)}</td>
-                        <td className="px-4 py-3 text-gray-900 min-w-0">
-                          <span className="truncate">O07 Online Crystocraft - "{o.customer_name || 'Unnamed'}"</span>
-                          {o.is_guest && <span className="ml-1.5 text-[10px] text-gray-400">guest</span>}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-gray-500">{o.currency}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{fmtMoney(o.subtotal)}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{fmtMoney(o.discount_total)}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{fmtMoney(o.shipping_total)}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{fmtMoney(o.tax_total)}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-900 font-medium">{fmtMoney(o.total)}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-gray-500 text-xs">{o.payment_method_title || o.payment_method || '—'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-500 text-xs" title="Not a guaranteed WooCommerce field — see spec §12 Q4">
-                          {o.fee_lines_total ? fmtMoney(o.fee_lines_total) : '—'}
-                        </td>
-                      </tr>
+                      <Fragment key={o.id}>
+                        <tr className="hover:bg-gray-50">
+                          <td className="px-4 py-3 whitespace-nowrap font-mono text-xs font-medium text-gray-900">
+                            #{o.number}
+                            {o.refunded_total > 0 && <span className="ml-1.5 text-[10px] font-sans font-medium text-amber-600">refunded</span>}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-600">{fmtDate(o.date_paid)}</td>
+                          <td className="px-4 py-3 text-gray-900 min-w-0">
+                            <span className="truncate">O07 Online Crystocraft - "{o.customer_name || 'Unnamed'}"</span>
+                            {o.is_guest && <span className="ml-1.5 text-[10px] text-gray-400">guest</span>}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-500">{o.currency}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{fmtMoney(o.subtotal)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{fmtMoney(o.discount_total)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{fmtMoney(o.shipping_total)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{fmtMoney(o.tax_total)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-900 font-medium">{fmtMoney(o.total)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-gray-500 text-xs">{o.payment_method_title || o.payment_method || '—'}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-500 text-xs" title="Not a guaranteed WooCommerce field — see spec §12 Q4">
+                            {o.fee_lines_total ? fmtMoney(o.fee_lines_total) : '—'}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right">
+                            <button type="button" onClick={() => inspectMeta(o.id)}
+                              className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1"
+                              title="Inspect this order's raw meta for a hidden fee field">
+                              <Search size={12} /> {metaFor === o.id ? 'Hide' : 'Meta'}
+                            </button>
+                          </td>
+                        </tr>
+                        {metaFor === o.id && (
+                          <tr key={`${o.id}-meta`}>
+                            <td colSpan={11} className="px-4 py-3 bg-gray-50 border-t border-gray-100">
+                              {meta === 'loading' && <span className="text-xs text-gray-400">Loading order meta…</span>}
+                              {meta?.error && <span className="text-xs text-amber-700">{meta.error}</span>}
+                              {meta && meta !== 'loading' && !meta.error && (
+                                <div className="text-xs">
+                                  <p className="text-gray-500 mb-2">
+                                    payment_method: <span className="font-mono">{meta.payment_method || '—'}</span>
+                                    {' · '}transaction_id: <span className="font-mono">{meta.transaction_id || '—'}</span>
+                                    {' · '}{meta.meta.length} meta key{meta.meta.length === 1 ? '' : 's'}
+                                  </p>
+                                  {meta.meta.length === 0 ? (
+                                    <p className="text-gray-400">No meta keys returned by the API for this order (private/underscore-prefixed keys are commonly stripped server-side).</p>
+                                  ) : (
+                                    <div className="grid grid-cols-[minmax(0,220px)_1fr] gap-x-3 gap-y-1 max-h-64 overflow-y-auto">
+                                      {[...meta.meta].sort((a, b) => (FEE_LIKE.test(b.key) ? 1 : 0) - (FEE_LIKE.test(a.key) ? 1 : 0)).map((m, i) => (
+                                        <Fragment key={i}>
+                                          <span className={`font-mono truncate ${FEE_LIKE.test(m.key) ? 'text-amber-700 font-medium' : 'text-gray-600'}`}>{m.key}</span>
+                                          <span className="font-mono text-gray-800 truncate">{typeof m.value === 'object' ? JSON.stringify(m.value) : String(m.value)}</span>
+                                        </Fragment>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
