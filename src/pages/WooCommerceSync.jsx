@@ -84,7 +84,9 @@ export default function WooCommerceSync() {
     { label: 'Total',           value: (r) => r.total },
     { label: 'Payment method',  value: (r) => r.payment_method_title || r.payment_method || '' },
     { label: 'Transaction ID',  value: (r) => r.transaction_id || '', text: true },
-    { label: 'Fee lines total (best-effort)', value: (r) => r.fee_lines_total },
+    { label: 'Gateway fee',     value: (r) => r.gateway_fee ?? '' },
+    { label: 'Fee source',      value: (r) => r.gateway_fee_source || 'not found', text: true },
+    { label: 'Net payout',      value: (r) => r.net_payout ?? '' },
     { label: 'Refunded total',  value: (r) => r.refunded_total },
   ]
   const exportOrders = () => downloadCsv(exportStem('woocommerce-orders', { from, to }), ORDER_COLUMNS, result?.rows || [])
@@ -162,7 +164,8 @@ export default function WooCommerceSync() {
                       <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Tax</th>
                       <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Total</th>
                       <th className="px-4 py-2.5 font-medium whitespace-nowrap">Payment</th>
-                      <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Fee (best-effort)</th>
+                      <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Gateway fee</th>
+                      <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Net payout</th>
                       <th className="px-4 py-2.5 font-medium" />
                     </tr>
                   </thead>
@@ -186,8 +189,12 @@ export default function WooCommerceSync() {
                           <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{fmtMoney(o.tax_total)}</td>
                           <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-900 font-medium">{fmtMoney(o.total)}</td>
                           <td className="px-4 py-3 whitespace-nowrap text-gray-500 text-xs">{o.payment_method_title || o.payment_method || '—'}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-500 text-xs" title="Not a guaranteed WooCommerce field — see spec §12 Q4">
-                            {o.fee_lines_total ? fmtMoney(o.fee_lines_total) : '—'}
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600 text-xs"
+                              title={o.gateway_fee_source ? `Source: ${o.gateway_fee_source}` : 'Not found on this order — check Meta'}>
+                            {o.gateway_fee != null ? fmtMoney(o.gateway_fee) : '—'}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600 text-xs">
+                            {o.net_payout != null ? fmtMoney(o.net_payout) : '—'}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-right">
                             <button type="button" onClick={() => inspectMeta(o.id)}
@@ -199,7 +206,7 @@ export default function WooCommerceSync() {
                         </tr>
                         {metaFor === o.id && (
                           <tr key={`${o.id}-meta`}>
-                            <td colSpan={11} className="px-4 py-3 bg-gray-50 border-t border-gray-100">
+                            <td colSpan={12} className="px-4 py-3 bg-gray-50 border-t border-gray-100">
                               {meta === 'loading' && <span className="text-xs text-gray-400">Loading order meta…</span>}
                               {meta?.error && <span className="text-xs text-amber-700">{meta.error}</span>}
                               {meta && meta !== 'loading' && !meta.error && (

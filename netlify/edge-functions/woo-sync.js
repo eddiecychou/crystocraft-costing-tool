@@ -33,11 +33,32 @@ function isPaid(order) {
   return !!order.date_paid
 }
 
+const metaVal = (o, key) => (o.meta_data || []).find(m => m.key === key)?.value
+
+// Gateway fee, resolved 2026-08-22 against real orders (spec §12 Q4): this
+// store's gateway is WooCommerce Payments (`payment_method ===
+// 'woocommerce_payments'`), which never adds a proper `fee_lines` entry —
+// it writes the fee to private post meta instead: `_wcpay_transaction_fee`
+// and `_wcpay_net` (net payout amount, i.e. total − fee). Both were found via
+// the per-order meta inspector on this page. Falls back to `fee_lines` for
+// any other gateway that DOES use it properly; falls back to null (not 0 —
+// 0 would wrongly claim "no fee charged") when neither source has anything,
+// which currently only happens for the couple of $0 authorization-only test
+// rows this account has processed.
+function gatewayFee(o) {
+  const fromLines = (o.fee_lines || []).reduce((s, l) => s + (parseFloat(l.total) || 0), 0)
+  if (fromLines) return { amount: fromLines, source: 'fee_lines' }
+  const wcpay = parseFloat(metaVal(o, '_wcpay_transaction_fee'))
+  if (Number.isFinite(wcpay)) return { amount: wcpay, source: 'wcpay_meta' }
+  return { amount: null, source: null }
+}
+
 // Trims a WooCommerce order object down to what Phase 1 needs to show Cindy
 // for review — full raw order kept under `raw` in case something in Phase 2+
 // design turns out to need a field not anticipated here.
 function summarizeOrder(o) {
-  const fee = (o.fee_lines || []).reduce((s, l) => s + (parseFloat(l.total) || 0), 0)
+  const fee = gatewayFee(o)
+  const net = parseFloat(metaVal(o, '_wcpay_net'))
   return {
     id: o.id,
     number: o.number,                     // WooCommerce's own order number — spec §3.4
@@ -56,12 +77,9 @@ function summarizeOrder(o) {
     payment_method: o.payment_method,
     payment_method_title: o.payment_method_title,
     transaction_id: o.transaction_id || null,
-    // Gateway fee is NOT a guaranteed field on core WooCommerce orders — some
-    // gateway plugins add a fee_lines entry, others store it only in gateway-
-    // specific meta the REST API doesn't expose at all. `fee_lines_total` is
-    // best-effort; a 0 here is not proof no fee was charged (spec §12 Q4 —
-    // this is exactly the empirical check Phase 1 exists to make).
-    fee_lines_total: fee,
+    gateway_fee: fee.amount,               // spec §3.6/§8 — see gatewayFee() above
+    gateway_fee_source: fee.source,        // 'fee_lines' | 'wcpay_meta' | null — shown so a null reads as "not found", not "zero"
+    net_payout: Number.isFinite(net) ? net : null,
     refunded_total: Math.abs(parseFloat(o.refund_total) || 0), // sign varies by version
     line_items: (o.line_items || []).map(l => ({
       name: l.name, sku: l.sku, quantity: l.quantity,

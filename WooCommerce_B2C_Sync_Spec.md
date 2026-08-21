@@ -200,17 +200,38 @@ already exists, just needs new members.
 | 9 | How does UC Registry prevent duplicate UC# on re-sync? | It doesn't need to — `allocate_sales_invoice` issues SI+UC in one transaction; re-running the *Woo* sync must not call that allocator twice for the same order, which is the idempotency key gap in §2.3, not a UC Registry gap. |
 | 15 | What does "posted" map to in this app? | `status: 'issued'` on `app_sales_invoice`, `status: 'posted'` on `app_credit_note` (default) — both already exist. |
 
+**Resolved empirically, 2026-08-22** (Phase 1 live against real orders):
+
+- **§12 Q1 — auth**: REST API Consumer Key/Secret, confirmed working
+  (`WC_CONSUMER_KEY`/`WC_CONSUMER_SECRET`, Basic auth over HTTPS).
+- **§12 Q4 — gateway fee**: the store's gateway is **WooCommerce Payments**
+  (`payment_method === 'woocommerce_payments'`). It does **not** use
+  `fee_lines` (that came back empty on every order checked). The fee lives
+  in private post meta: `_wcpay_transaction_fee` (the fee amount) and
+  `_wcpay_net` (total − fee, the actual payout amount) — found via the
+  per-order meta inspector added to the WooCommerce Sync page. Both are
+  returned by the standard orders REST endpoint (no extra Stripe API call
+  needed — WooCommerce Payments already surfaces what Stripe's Balance
+  Transaction would have given us). `woo-sync.js`'s `gatewayFee()` now reads
+  this directly, with `fee_lines` kept as a fallback for the (currently
+  theoretical) case of a different gateway being enabled later, and `null`
+  — not `0` — when neither source has anything, so a genuinely missing fee
+  can never be misread as "no fee charged."
+- **§3.6/§8 "Fee details" implication**: this closes the manual-entry
+  question raised 2026-08-22 — the fee is fully automatable via
+  `_wcpay_transaction_fee`, no manual keying required. `remarks`/
+  `adjustment_reason` can be populated automatically with the resolved fee
+  and net payout rather than left for Cindy to type in each month.
+- **§12 Q2/Q3 — payout date/amount**: `_wcpay_net` answers "amount." Payout
+  *date* (settlement to the merchant's bank, distinct from `date_paid`) was
+  not found in the per-order meta checked so far — still open, likely lives
+  in WooCommerce Payments' own deposits/payouts data rather than on the
+  order at all. Needs a further check (WooCommerce Payments has its own
+  REST namespace for deposits) before §7's "Balance payment date" can be
+  wired up with confidence.
+
 Still genuinely open (need Cindy/WordPress-admin, not code):
 
-1. Which WooCommerce auth: REST API Consumer Key/Secret (recommended,
-   standard) vs something else — needs the WordPress admin to generate
-   keys under WooCommerce → Settings → Advanced → REST API.
-2/3/4. Whether payout date/amount and gateway transaction fee are available
-   from WooCommerce's own order/refund objects or only from the payment
-   gateway's own dashboard (Stripe/PayPal) — WooCommerce core exposes order
-   total, tax, and (for some gateways) a `_stripe_fee`-style meta field, but
-   this is genuinely gateway-dependent and must be checked against
-   Crystocraft's actual installed payment plugin before design finalizes.
 10. Guest checkout — handled the same way `creditNotes.js` already handles
     a customer with no CRM record: `customer_name` set directly, no
     `customer_id`, per §2.4 above.
