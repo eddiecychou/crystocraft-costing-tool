@@ -138,6 +138,10 @@ export default function BrandPortalPage({ profile }) {
             {proposal.heroAsset && <img src={proposal.heroAsset.file_url} alt="" className="absolute inset-0 w-full h-full object-cover" />}
             <div className="absolute inset-0 bg-ink/35" />
             <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/40 to-transparent" />
+            <a href="/shop/proposal/print" target="_blank" rel="noopener"
+               className="btn-reversed text-xs absolute top-4 right-4 z-10 inline-flex items-center gap-1.5">
+              <Download size={14} /> Download PDF
+            </a>
             <div className="absolute inset-0 flex items-end">
               <div className="max-w-6xl w-full mx-auto px-4 pb-10 md:pb-14">
                 <p className="eyebrow text-gold mb-2">Brand Proposal</p>

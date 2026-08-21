@@ -12,6 +12,7 @@ import BrandPortalPage from './BrandPortalPage'
 import OrderHistoryPage from './OrderHistoryPage'
 import SwatchLibraryPage from './SwatchLibraryPage'
 import CustomerInvoicePrint from './CustomerInvoicePrint'
+import ProposalPrint from './ProposalPrint'
 import { CartProvider, FavouritesProvider } from './store'
 import ErrorBoundary from '../components/ErrorBoundary'
 
@@ -24,6 +25,7 @@ export default function Storefront({ profile }) {
               print routes (SalesInvoicePrint etc.) sit outside Layout: the
               nav chrome must not print or bleed into the "Save as PDF". */}
           <Route path="/shop/invoice/:key" element={<CustomerInvoicePrint profile={profile} />} />
+          <Route path="/shop/proposal/print" element={<ProposalPrint profile={profile} />} />
           <Route path="/*" element={
             <CustomerLayout profile={profile}>
               <ErrorBoundary home="/shop">
