@@ -243,6 +243,9 @@ Still genuinely open (need Cindy/WordPress-admin, not code):
 
 ## 4. Phased plan
 
+**Status as of 2026-08-22: Phases 1–3 built and deployed.** Phases 4
+(refunds → Credit Notes) and 5 (Excel export) are not started.
+
 **Phase 1 — Connection + read-only staging (no writes to Finance yet)**
 - New edge function `netlify/edge-functions/woo-sync.js`, admin-gated via
   `requireAdmin()`, same shape as `erp.js`/`uc.js`.
@@ -254,19 +257,48 @@ Still genuinely open (need Cindy/WordPress-admin, not code):
   no Firestore writes, no invoice numbers burned. This phase alone answers
   §12 Q2/Q3/Q4 empirically instead of by guessing, against real data.
 
-**Phase 2 — Import into the order model, manual review**
-- "Select orders to include" → create `orders/{id}` docs per §2.4(a),
-  `channel: 'woocommerce'`, `woo_order_id` (idempotency key, §2.3),
-  customer name formatted per §3.2, currency preserved per §3.7.
+**Phase 2 — Import into the order model, manual review** (built —
+`src/wooImport.js`, "Import" button on the WooCommerce Sync page)
+- Per-order "Import" → creates `orders/{id}` at a **deterministic** doc ID
+  (`woo-<wooOrderId>`, not an arbitrary Firestore auto-ID) inside a
+  transaction — this turned out to be a stronger idempotency mechanism than
+  the originally-planned `woo_order_id` field check (§2.3): a re-import can
+  never race past a check-then-create, because the check and the create are
+  the same atomic operation. `channel: 'woocommerce'`, `woo_order_id`,
+  `woo_order_no`, customer name formatted per §3.2, currency preserved per
+  §3.7 (guarded against a currency outside the app's own list — `USD`
+  fallback, never a silent wrong-currency coercion).
 - These land in the *existing* "awaiting invoice" list on
-  `SalesInvoices.jsx` — no new invoicing UI.
-- New `line_type` values for shipping/tax/discount (§2.5).
+  `SalesInvoices.jsx` (`status: 'confirmed'`) — no new invoicing UI, as
+  planned.
+- **No new `line_type` values needed** — shipping/tax turned out to fit the
+  *existing* `non_product`/`chargesTotal` mechanism (`shipping.js`'s
+  `computeOrderTotals`, originally built for freight/insurance on a PI
+  import) exactly, as flat charge lines. Discount was never a line at all —
+  it's the order header's own `discount_amount` field, which every order
+  already has. §2.5's predicted schema work turned out unnecessary.
 
-**Phase 3 — Invoice + UC Registry wiring**
-- "Direct Invoice" flow already allocates SI + UC in one transaction; wire
-  the new `external_order_no` column (§2.1) through `upsert_invoice`.
-- Fee/exchange-rate detail goes into `remarks`/`adjustment_reason` per the
-  existing SR-05 mechanism (§3.6, §12 Q14) — a text convention, not new code.
+**Phase 3 — Invoice + UC Registry wiring** (built — `uc.js`, `ShipmentForm.jsx`,
+`SalesInvoices.jsx`)
+- Added `channel`/`external_order_no` columns to `app_sales_invoice` (SQL
+  applied directly to Supabase, not run through a migration tool) rather
+  than reusing `customer_po` as first considered in §2.1 — a dedicated
+  column reads clearer and avoids overloading a field with an established,
+  different meaning ("the customer's own PO number").
+- `upsert_invoice` (`uc.js`) now writes both; `ShipmentForm.jsx`'s save path
+  threads them through — this required adding `channel`/`woo_order_no` to
+  an explicit field whitelist in the order-load code (`setHeader({...})`),
+  the same whitelist-drop trap that silently dropped `contact_id` before it
+  was added there (see PROJECT-PLAN.md V8.x notes on that bug).
+- `SalesInvoices.jsx` shows a "Woo #57844" badge next to the SI number for
+  a WooCommerce-sourced invoice, and the CSV export gains `Channel`/
+  `WooCommerce order no.` columns.
+- Fee/exchange-rate detail goes into the order's `notes` (→ invoice
+  `remarks`) automatically at import time (Phase 2), not typed in later —
+  stronger than §3.6's original "text convention" plan, since §3 already
+  resolved the fee as fully automatable (`_wcpay_transaction_fee`/
+  `wc/v3/payments/transactions`), so there is nothing left for a human to
+  type.
 
 **Phase 4 — Refunds → Credit Notes**
 - Reuse `postCreditNote()` unchanged; set `channel: 'woocommerce'`,
