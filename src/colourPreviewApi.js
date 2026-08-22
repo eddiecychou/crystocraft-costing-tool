@@ -76,10 +76,15 @@ export async function generateColourPreview({
   }, { merge: true })
 
   try {
-    const data = await enhanceProductImage(sourceImageUrl, {
-      mode: 'recolor',
-      recolorInstructions: recolorInstructions({ sourceCrystalName, targetCrystalName, targetSwatchHex }),
-    })
+    // Gemini is occasionally flaky on the very first call for a given
+    // session/image (observed live, 2026-08-22) — enhanceProductImage
+    // already retries once on a platform *timeout*, but a clean 5xx error
+    // response doesn't match that check, so retry once more here too
+    // before giving up and marking the doc failed.
+    const recolor = { mode: 'recolor', recolorInstructions: recolorInstructions({ sourceCrystalName, targetCrystalName, targetSwatchHex }) }
+    let data
+    try { data = await enhanceProductImage(sourceImageUrl, recolor) }
+    catch { data = await enhanceProductImage(sourceImageUrl, recolor) }
     const blob = await (await fetch(`data:${data.mimeType || 'image/png'};base64,${data.image}`)).blob()
     const path = `range_products/${docId}/colour_previews/${id}.jpg`
     await uploadBytes(storageRef(storage, path), blob, { contentType: blob.type || 'image/png' })

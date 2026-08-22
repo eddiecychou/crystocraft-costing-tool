@@ -94,10 +94,18 @@ export default function FigurineDetail({ profile }) {
   const colorCodes = [...new Set(variants.flatMap(v => Array.isArray(v.crystal_colors) ? v.crystal_colors : []))]
 
   const selVariant = variants[finishIdx] || variants[0] || {}
+  // V8.8 Phase 2 §P2.3a — when the customer has picked a crystal colour AND
+  // this variant has a "usable" photo for that exact colour, show it instead
+  // of the plating's generic photo. Deliberately reads colour_images, never
+  // gallery[] (see Range_Colour_Preview_Spec.md §P2.1) — and deliberately
+  // gated by the SAME crystal_colors[] list finishColors/needsColor already
+  // use below, so removing a colour from that admin-curated list hides its
+  // photo here too, with no separate customer-visibility flag needed.
+  const colourImage = (color && selVariant.colour_images?.[color]) || null
   // Carousel order (bug-fix pack D-02): whatever's actually shown in the hero
   // box (the selected finish's own photo, when it has one) first, then the
   // reference-photos gallery — skipping a duplicate when the hero IS gallery[0].
-  const heroUrl = selVariant.image || image
+  const heroUrl = colourImage || selVariant.image || image
   const carouselImages = [
     ...(heroUrl && heroUrl !== gallery[0]?.url ? [{ url: heroUrl, caption: '' }] : []),
     ...gallery.map(g => ({ url: g.url, caption: g.caption || '' })),
@@ -183,7 +191,7 @@ export default function FigurineDetail({ profile }) {
       type: 'figurine', id: p.id, name, code,
       design_no: designNo || '',
       format_code: p.format_code || '',
-      image: selVariant.image || image,
+      image: colourImage || selVariant.image || image,
       finish: selVariant.plating_name || selVariant.plating_code || '',
       finish_sku: selVariant.sku || '',
       color: needsColor ? color : '',
@@ -204,8 +212,8 @@ export default function FigurineDetail({ profile }) {
       </Link>
       <div className="grid md:grid-cols-2 gap-6">
         <div className="card overflow-hidden bg-white aspect-square flex items-center justify-center relative">
-          {(selVariant.image || image) ? (
-            <img src={selVariant.image || image} alt={name} className="w-full h-full object-contain p-4 cursor-zoom-in"
+          {(colourImage || selVariant.image || image) ? (
+            <img src={colourImage || selVariant.image || image} alt={name} className="w-full h-full object-contain p-4 cursor-zoom-in"
                  onClick={() => setLightboxIndex(0)} />
           ) : <Gem size={56} className="text-gray-200" />}
           <FavHeart item={{ type: 'figurine', id: p.id, name, code: baseCode, image }} className="absolute top-3 right-3" />

@@ -4,7 +4,7 @@ import { db, auth } from '../firebase'
 import { useCrystalColors } from '../crystalColors'
 import { parseRangeVariantSuffix } from '../rangeSku'
 import { generateColourPreview, uploadColourPreview, promoteColourImage } from '../colourPreviewApi'
-import { Sparkles, Plus } from 'lucide-react'
+import { Sparkles, Plus, ZoomIn, X } from 'lucide-react'
 
 // The range-product half of the line-image picker (V8.8 Phase 2, §P2.3a) —
 // used from both LineImagePicker.jsx (Shipment/Proforma/Sales Invoice) and
@@ -23,6 +23,7 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
   const [target, setTarget] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [zoomUrl, setZoomUrl] = useState(null)
   const { colors: libColors } = useCrystalColors()
 
   useEffect(() => {
@@ -127,9 +128,14 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
                 const isMatch = parsed?.crystal_code === code
                 return (
                   <div key={code} onClick={() => onSelect(url)}
-                    className={`relative cursor-pointer rounded-lg overflow-hidden aspect-square border-2 transition-all ${isSelected ? 'border-brand-500 ring-2 ring-brand-200' : isMatch ? 'border-brand-300' : 'border-transparent hover:border-brand-300'}`}
+                    className={`group relative cursor-pointer rounded-lg overflow-hidden aspect-square border-2 transition-all ${isSelected ? 'border-brand-500 ring-2 ring-brand-200' : isMatch ? 'border-brand-300' : 'border-transparent hover:border-brand-300'}`}
                     title={code}>
                     <img src={url} alt="" className="w-full h-full object-cover" />
+                    <button type="button" onClick={e => { e.stopPropagation(); setZoomUrl(url) }}
+                      title="Enlarge"
+                      className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <ZoomIn size={12} />
+                    </button>
                     <span className="absolute bottom-0 inset-x-0 bg-black/50 text-white text-[10px] text-center py-0.5">{code}</span>
                   </div>
                 )
@@ -157,6 +163,16 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
             {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
           </div>
         </>
+      )}
+
+      {zoomUrl && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/80" onClick={() => setZoomUrl(null)}>
+          <img src={zoomUrl} alt="" className="max-w-full max-h-full rounded-lg object-contain" onClick={e => e.stopPropagation()} />
+          <button type="button" onClick={() => setZoomUrl(null)}
+            className="absolute top-4 right-4 text-white bg-white/15 hover:bg-white/25 rounded-lg p-2" aria-label="Close">
+            <X size={18} />
+          </button>
+        </div>
       )}
     </div>
   )
