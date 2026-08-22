@@ -3,7 +3,7 @@ import { doc, getDoc } from 'firebase/firestore'
 import { db, auth } from '../firebase'
 import { useCrystalColors } from '../crystalColors'
 import { parseRangeVariantSuffix } from '../rangeSku'
-import { generateColourPreview, uploadColourPreview, promoteColourImage } from '../colourPreviewApi'
+import { generateColourPreview, uploadColourPreview, promoteColourImage, markUsable } from '../colourPreviewApi'
 import { Sparkles, Plus, ZoomIn, X } from 'lucide-react'
 
 // The range-product half of the line-image picker (V8.8 Phase 2, §P2.3a) —
@@ -51,13 +51,19 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
     if (!variant?.image || !target || busy) return
     setBusy(true); setError('')
     try {
-      const { generatedImageUrl } = await generateColourPreview({
+      const { id, generatedImageUrl } = await generateColourPreview({
         docId: productId, variantIndex, sourceImageUrl: variant.image,
         sourcePlatingCode: variant.plating_code, sourceCrystalCode: variant.crystal_code,
         sourceCrystalName: variant.crystal_name,
         targetCrystalCode: target, targetCrystalName: targetInfo?.name || target,
         targetSwatchHex: targetInfo?.swatch, createdBy: auth.currentUser?.email || '',
       })
+      // Seeing the single result and choosing to use it right here on the
+      // invoice/PI/quote line IS the review — no separate approve step, and
+      // markUsable keeps the source range_colour_previews doc's own status
+      // in sync so it doesn't sit there looking like an unreviewed draft if
+      // someone later opens the product page (bug found 2026-08-23).
+      await markUsable({ id, docId: productId, variantIndex, targetCrystalCode: target, generatedImageUrl })
       await promoteColourImage(productId, variantIndex, target, generatedImageUrl)
       setProduct(p => {
         const variants = [...p.variants]
@@ -78,10 +84,11 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
     if (!file || !target || busy) return
     setBusy(true); setError('')
     try {
-      const { generatedImageUrl } = await uploadColourPreview({
+      const { id, generatedImageUrl } = await uploadColourPreview({
         docId: productId, variantIndex, sourcePlatingCode: variant?.plating_code,
         targetCrystalCode: target, file, createdBy: auth.currentUser?.email || '',
       })
+      await markUsable({ id, docId: productId, variantIndex, targetCrystalCode: target, generatedImageUrl })
       await promoteColourImage(productId, variantIndex, target, generatedImageUrl)
       setProduct(p => {
         const variants = [...p.variants]
@@ -167,7 +174,15 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
 
       {zoomUrl && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/80" onClick={() => setZoomUrl(null)}>
-          <img src={zoomUrl} alt="" className="max-w-full max-h-full rounded-lg object-contain" onClick={e => e.stopPropagation()} />
+          {/* These photos are often modest resolution (Gemini output, or a
+              quick phone upload) — max-w/max-h alone only ever shrinks an
+              image, never grows one, so a small source rendered that way
+              looked like barely more than the thumbnail (reported live,
+              2026-08-23). Force a real target size instead. */}
+          <img src={zoomUrl} alt=""
+               className="rounded-lg object-contain"
+               style={{ width: 'min(85vw, 720px)', height: 'min(85vh, 720px)' }}
+               onClick={e => e.stopPropagation()} />
           <button type="button" onClick={() => setZoomUrl(null)}
             className="absolute top-4 right-4 text-white bg-white/15 hover:bg-white/25 rounded-lg p-2" aria-label="Close">
             <X size={18} />

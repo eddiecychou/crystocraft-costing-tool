@@ -392,6 +392,112 @@ admin-only screens regardless); inline generation reuses
 `colourPreviewApi.js` and the `range_colour_previews` admin-only rule
 unchanged.
 
+## P2.3d Correction (2026-08-23) — Approve and "mark usable" collapsed into one step
+
+Built as two separate clicks (Approve, then a distinct Mark usable →),
+mirroring 'draft' → 'approved' → 'used' as three real states. Live use
+showed this was pure friction: there's no scenario where a preview is
+correctly "approved" but deliberately withheld from being usable — the two
+always happen together. `RangeForm.jsx`'s Approve button on a `draft`
+preview now calls `markUsable()` directly, skipping 'approved' as a
+resting state (the value still exists for any pre-existing doc stuck there
+before this fix, which keeps a legacy Mark usable → button until it's
+cleared). Same principle applies to the inline generate/upload flow in
+`RangeColourImagePicker` (§P2.3a) — seeing the one result and choosing to
+use it directly on the invoice/PI/quote line already **is** the review, so
+it also calls `markUsable()` immediately. That inline flow had a second,
+separate bug fixed at the same time: it was writing to
+`variant.colour_images` via `promoteColourImage()` without ever marking the
+source `range_colour_previews` doc `used`, so a photo generated from
+inside a PI looked like an untouched 'draft' if you later opened the
+product's own edit page — confusing, and inconsistent with the product-page
+path. Both call sites now go through the same `markUsable()`.
+
+## P2.3e Replacing a bad AI result (2026-08-23) — supersede, and a real bug it surfaced
+
+Asked directly: "if AI generate cannot do it right, I need to be able to
+upload an image to replace it." Since `deletePreview()` refuses to touch a
+`used` preview (§P2.3a note above), replacing one already worked
+mechanically — pick the same target colour again, Upload/Generate a new
+attempt, Approve it, and `markUsable()` overwrites `colour_images[code]`
+with the new URL. What didn't work: the *old* entry kept its "Usable"
+badge forever, showing two "Usable" thumbnails for one colour with no way
+to tell which one anything actually points at.
+
+`markUsable()` now demotes any other preview for the same
+(docId, variantIndex, targetCrystalCode) sitting at `reviewStatus: 'used'`
+to a new value, `'superseded'`, right after promoting the new one — a
+plain query on `range_colour_previews`, no composite Firestore index
+needed (pure equality filters, same shape as `useColourPreviews`'s
+existing query). A superseded doc's file is left alone — untouched, not
+deleted — so any invoice/PI/quote line or customer view that already
+picked it keeps working exactly as before (see §P2.0's "line_image is a
+snapshot at pick time, never a live reference" reasoning); superseded is
+purely about what gets *offered* going forward, and unlike `used`, it CAN
+be removed via `deletePreview()` once nothing needs it as history.
+
+Building this surfaced a real bug that would have undermined it:
+`generateColourPreview()`'s doc/Storage-object id is deterministic on
+purpose, keyed by (product, variant, plating, target colour) — clicking
+Generate again for a colour already marked usable would have silently
+overwritten that exact live-referenced file mid-flight, before any
+re-approval, rather than creating a fresh attempt to review. Fixed by
+checking the existing doc's `reviewStatus` first: only `used` or
+`superseded` docs force a fresh, timestamp-suffixed id; anything still
+mid-review (`draft`/`failed`/`rejected`) keeps reusing the same id exactly
+as before, so repeat clicks while iterating on a draft still don't pile up
+duplicates.
+
+## P2.3f Finding a "dedicated" variant on the customer portal (2026-08-23)
+
+Traced live: D0002-001-GGT and D0002-001-CAB were correctly marked usable
+and correctly stored on their own variant's `colour_images`, but never
+appeared for a customer. Cause was pre-existing, not new: this product
+carries a *second*, near-duplicate "Chrome" variant and a second "Gold"
+variant, each existing only to price one pricier colour on its own row —
+the pattern the Variations & Stock hint text already documents ("For a
+colour that costs more, add a separate variation with its own price").
+[FigurineDetail.jsx:262](src/customer/FigurineDetail.jsx#L262) rendered
+only `plating_name || plating_code` for every row, so the dedicated row
+looked identical to the general one — same label, distinguishable only by
+an unlabelled price difference a customer had no reason to click into.
+
+Fixed by naming the colour(s) whenever a variant is narrow enough
+(≤2 `crystal_colors`) to clearly be one of these dedicated rows, e.g.
+"Chrome — Crystal AB" instead of a second bare "Chrome". Applies to any
+product using this pattern, not just 0002-001 — the gap existed before
+this feature, colour previews just made it visible for the first time.
+
+## P2.3g The bigger bug P2.3f's investigation actually found (2026-08-23)
+
+Smoke-testing the P2.3f label fix against real data (fetched D0002-001's
+saved doc directly via the Firestore REST API, using the app's own ID
+token, rather than trusting the admin UI) turned up something worse: AB and
+GT showed "Usable" in `RangeForm.jsx`, but `variant.colour_images` on the
+**saved document** was empty for both. The product-page's `onPromote`
+callback ([RangeForm.jsx:1727](src/pages/RangeForm.jsx#L1727)) only ever
+called `patchVariant()` — a local `setForm` patch, the same optimistic-
+edit-gated-by-Save-Changes pattern every other image action on this page
+correctly uses. But unlike a gallery caption or a variant photo, approving
+a colour preview looks final and irreversible in the UI (badge flips to
+"Usable" immediately) — there is no visual cue telling the admin they still
+need to separately remember to scroll down and click **Save Changes** for
+it to actually persist. Whether Save Changes had been clicked was the
+entire difference between C1/PI (persisted) and AB/GT (silently not) —
+same button, same click, no error, no warning.
+
+Fixed by having `onMarkUsable()` call `promoteColourImage()` directly,
+same as the inline invoice/PI/quote picker already does — colour_images
+writes are now durable the moment "Approve → usable" is clicked, from
+either surface, matching what the UI already implies happened. The local
+`patchVariant()` call stays too, purely so the open form's own state stays
+visually in sync without needing a refetch.
+
+0002-001's already-broken AB/GT entries were repaired live via the same
+`promoteColourImage()` call, using the URLs already sitting in their
+(otherwise perfectly fine) `range_colour_previews` docs — nothing needed
+regenerating.
+
 ## P2.5 Acceptance tests
 
 1. A range invoice/PI/quote line with no matching `colour_images` entry

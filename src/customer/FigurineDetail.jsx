@@ -262,6 +262,19 @@ export default function FigurineDetail({ profile }) {
                         {v.plating_name || v.plating_code || '—'}
                         {multiBrand && (v.brand_name || BRAND_NAME[v.brand_code || fallbackBrand]) &&
                           <span className="text-ink-50"> · {v.brand_name || BRAND_NAME[v.brand_code || fallbackBrand]}</span>}
+                        {/* Two variants can share a plating name when one exists
+                            only to carry a pricier colour at its own price
+                            (RangeForm.jsx hint: "For a colour that costs more,
+                            add a separate variation with its own price") — with
+                            no other label, customers had no way to find that
+                            second, identically-named option (found live,
+                            2026-08-23, D0002-001's Chrome/AB and Gold/GT rows).
+                            Name the colour(s) whenever a variant is narrow
+                            enough that it's clearly one of these, not the
+                            general/everything row. */}
+                        {Array.isArray(v.crystal_colors) && v.crystal_colors.length > 0 && v.crystal_colors.length <= 2 && (
+                          <span className="text-ink-50"> — {v.crystal_colors.map(c => lookup[c]?.name || c).join(' / ')}</span>
+                        )}
                       </span>
                       {vStock != null && vStock > 0 && (
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${isLastStock ? (vStock < 50 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700') : 'bg-sky-100 text-sky-700'}`}>

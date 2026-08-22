@@ -24,7 +24,7 @@ const refUid = () => 'r' + Math.random().toString(36).slice(2, 10)
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
 import { useCrystalColors, colorMap, ensureColors } from '../crystalColors'
-import { generateColourPreview, useColourPreviews, setReviewStatus, deletePreview, uploadColourPreview, markUsable } from '../colourPreviewApi'
+import { generateColourPreview, useColourPreviews, setReviewStatus, deletePreview, uploadColourPreview, markUsable, promoteColourImage } from '../colourPreviewApi'
 import { buildRangeSku, rangePrice } from '../rangeSku'
 import { useComponents, resolveRef, productAvailability } from '../criticalComponents'
 import { useCrystals } from '../crystals'
@@ -112,6 +112,7 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote }) {
   const [target, setTarget] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [zoomUrl, setZoomUrl] = useState(null)
   const previews = useColourPreviews(docId, index)
   const image = variant.image
   const targetInfo = libColors.find(c => c.code === target)
@@ -160,6 +161,15 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote }) {
     setBusy(true); setError('')
     try {
       const url = await markUsable(p)
+      // Write straight to Firestore (bug fixed 2026-08-23) — onPromote below
+      // only patches the local form, same as every other image edit on this
+      // page, which is fine for fields that belong in the Save Changes
+      // review gate. colour_images doesn't: it silently did nothing durable
+      // if the admin approved a colour here and then navigated away without
+      // separately remembering to click Save Changes for the whole form —
+      // found live when AB/GT showed "Usable" in the UI but colour_images
+      // was empty in the actual saved document.
+      await promoteColourImage(docId, index, p.targetCrystalCode, url)
       onPromote(p.targetCrystalCode, url)
     } catch (err) {
       setError(err.message || 'Could not mark usable.')
@@ -173,8 +183,13 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote }) {
     approved: 'bg-green-50 text-green-700 border-green-300',
     rejected: 'bg-red-50 text-red-700 border-red-300',
     used: 'bg-blue-50 text-blue-700 border-blue-300',
+    superseded: 'bg-ink-50/10 text-ink-50 border-ivory-dark',
   }
-  const badgeLabel = { draft: 'Draft — not visible', used: 'Usable (invoice/quote/PI + portal)' }
+  const badgeLabel = {
+    draft: 'Draft — not visible',
+    used: 'Usable (invoice/quote/PI + portal)',
+    superseded: 'Superseded — replaced by a newer usable photo',
+  }
 
   return (
     <div className="border-t border-ivory-dark pt-2 mt-2">
@@ -212,7 +227,8 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote }) {
                 {p.status === 'generating' && <span className="text-[10px] text-ink-50">…</span>}
                 {p.status === 'failed' && <AlertTriangle size={16} className="text-red-500" />}
                 {p.status === 'success' && p.generatedImageUrl && (
-                  <img src={p.generatedImageUrl} alt="" className="w-full h-full object-contain p-1" />
+                  <img src={p.generatedImageUrl} alt="" onClick={() => setZoomUrl(p.generatedImageUrl)}
+                       className="w-full h-full object-contain p-1 cursor-zoom-in" title="Click to enlarge" />
                 )}
               </div>
               <p className="text-[10px] font-mono text-ink-70 mt-0.5 truncate" title={p.targetCrystalCode}>
@@ -227,15 +243,20 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote }) {
               <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 mt-0.5">
                 {p.status === 'success' && p.reviewStatus === 'draft' && (
                   <>
-                    <button type="button" onClick={() => setReviewStatus(p.id, 'approved')} className="text-[9px] text-green-700 hover:underline">Approve</button>
+                    <button type="button" onClick={() => onMarkUsable(p)} disabled={busy}
+                            className="text-[9px] text-green-700 hover:underline disabled:opacity-40">Approve → usable</button>
                     <button type="button" onClick={() => setReviewStatus(p.id, 'rejected')} className="text-[9px] text-red-600 hover:underline">Reject</button>
                   </>
                 )}
+                {/* Legacy: previews approved before this was one step still need this. */}
                 {p.status === 'success' && p.reviewStatus === 'approved' && (
                   <button type="button" onClick={() => onMarkUsable(p)} disabled={busy}
                           className="text-[9px] text-blue-700 hover:underline disabled:opacity-40">Mark usable →</button>
                 )}
-                {p.source === 'ai' && (
+                {/* p.source is undefined on previews generated before this
+                    field existed (first-ever test doc) — treat missing as
+                    legacy-AI rather than hiding Regenerate for them. */}
+                {p.source !== 'upload' && (
                   <button type="button" onClick={() => runGenerate(p.targetCrystalCode)} disabled={busy}
                           className="text-[9px] text-brand-600 hover:underline disabled:opacity-40">Regenerate</button>
                 )}
@@ -245,6 +266,17 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {zoomUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80" onClick={() => setZoomUrl(null)}>
+          <img src={zoomUrl} alt="" className="rounded-lg object-contain" style={{ width: 'min(85vw, 720px)', height: 'min(85vh, 720px)' }}
+               onClick={e => e.stopPropagation()} />
+          <button type="button" onClick={() => setZoomUrl(null)}
+                  className="absolute top-4 right-4 text-white bg-white/15 hover:bg-white/25 rounded-lg p-2" aria-label="Close">
+            <X size={18} />
+          </button>
         </div>
       )}
     </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from './firebase'
 import { enhanceProductImage } from './enhanceImage'
@@ -58,7 +58,18 @@ export async function generateColourPreview({
   sourceCrystalName, targetCrystalCode, targetCrystalName, targetSwatchHex, createdBy,
 }) {
   if (!sourceImageUrl) throw new Error('This variation has no image to generate from.')
-  const id = previewId({ docId, variantIndex, sourcePlatingCode, targetCrystalCode, sourceImageUrl })
+  let id = previewId({ docId, variantIndex, sourcePlatingCode, targetCrystalCode, sourceImageUrl })
+  // The id (and therefore the Storage path) is deterministic on purpose —
+  // repeat clicks while a draft is still being iterated on should reuse the
+  // same doc, not pile up duplicates. But once a doc has been promoted
+  // ('used') or demoted from that ('superseded'), colour_images may already
+  // point at this exact file: silently overwriting it here would change a
+  // live-referenced image out from under anything already using it, before
+  // any re-approval. Mint a fresh id instead once that's happened.
+  const prior = await getDoc(doc(db, COLLECTION, id))
+  if (prior.exists() && ['used', 'superseded'].includes(prior.data().reviewStatus)) {
+    id = `${id}__${Date.now().toString(36)}`
+  }
   const ref = doc(db, COLLECTION, id)
   await setDoc(ref, {
     docId, variantIndex, sourceImageUrl,
@@ -118,6 +129,22 @@ export async function setReviewStatus(id, reviewStatus) {
 // variant.colour_images reference pointing at the same file.
 export async function markUsable(preview) {
   await setReviewStatus(preview.id, 'used')
+  // Only one preview should ever look "usable" for a given (variant, colour)
+  // at a time — demote any other one so the list doesn't show two "usable"
+  // thumbnails when a replacement has been approved (V8.8, 2026-08-23). The
+  // demoted doc is untouched otherwise: its file stays put, so any invoice/
+  // PI/quote/portal view that already picked it keeps working — 'superseded'
+  // only changes what's offered going forward, and (unlike 'used') CAN be
+  // removed via deletePreview() once nothing needs it as history.
+  if (preview.docId != null && preview.variantIndex != null && preview.targetCrystalCode) {
+    const q = query(collection(db, COLLECTION),
+      where('docId', '==', preview.docId),
+      where('variantIndex', '==', preview.variantIndex),
+      where('targetCrystalCode', '==', preview.targetCrystalCode),
+      where('reviewStatus', '==', 'used'))
+    const snap = await getDocs(q)
+    await Promise.all(snap.docs.filter(d => d.id !== preview.id).map(d => setReviewStatus(d.id, 'superseded')))
+  }
   return preview.generatedImageUrl
 }
 
