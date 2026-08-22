@@ -742,6 +742,17 @@ export default function CustomerDetail() {
           )}
         </div>
               {customer.is_vip && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-semibold"><Star size={12} className="fill-current" />VIP</span>}
+              {/* WooCommerce linkage badge (2026-08-22) — reported as missing:
+                  the "Source" field was already shown further down as a plain
+                  text row, but nothing this prominent said "this is a
+                  WooCommerce-linked record" at a glance the way the Sales
+                  Invoices page's "Woo #57844" badge does. */}
+              {customer.source === 'WooCommerce' && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 text-xs font-semibold"
+                      title={customer.woo_customer_id ? `WooCommerce customer #${customer.woo_customer_id}` : 'Linked to WooCommerce'}>
+                  WooCommerce{customer.woo_customer_id ? ` #${customer.woo_customer_id}` : ''}
+                </span>
+              )}
               {customer.crm_status && (
                 <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${CRM_STATUS_STYLES[customer.crm_status] || 'bg-gray-100 text-gray-500'}`}>
                   {customer.crm_status}
@@ -1033,6 +1044,7 @@ export default function CustomerDetail() {
             ) : null
           })()}
           {customer.source && <Row label="Source" value={customer.source} />}
+          {customer.woo_customer_id && <Row label="WooCommerce customer ID" value={`#${customer.woo_customer_id}`} />}
           {customer.segment && <Row label="Segment" value={customer.segment} />}
           {customer.folder_path && (
             <Row label="Folder" value={
