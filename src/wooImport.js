@@ -17,8 +17,11 @@ import { createOrderWithLinesAtId, ORDER_CURRENCIES } from './shipping'
 // check-then-create can never produce a duplicate order for it.
 export const wooOrderDocId = (wooOrderId) => `woo-${wooOrderId}`
 
-// spec §3.2 — the exact display format Cindy asked for.
-const wooCustomerName = (name) => `O07 Online Crystocraft - "${name || 'Unnamed customer'}"`
+// spec §3.2 — the exact display format Cindy asked for. Exported so
+// wooRefundImport.js's Credit Note drafts use the identical format —
+// a refund's Credit Note should read as the same customer as the invoice
+// it's crediting, not a differently-formatted name for the same person.
+export const wooCustomerName = (name) => `O07 Online Crystocraft - "${name || 'Unnamed customer'}"`
 
 // A WooCommerce order can be in any of AED/CAD/EUR/GBP/HKD/MXN/RMB/USD (the
 // app's own ORDER_CURRENCIES, already measured against real sales orders) —

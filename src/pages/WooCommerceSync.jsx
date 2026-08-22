@@ -2,6 +2,7 @@ import { useState, useMemo, Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { listWooOrders, wooOrderMeta, wooProbePayout } from '../wooSyncApi'
 import { importWooOrder, checkImportedWooOrders } from '../wooImport'
+import { importWooRefund, checkImportedWooRefunds } from '../wooRefundImport'
 import { downloadCsv, exportStem } from '../exportCsv'
 import LoadingBar from '../components/LoadingBar'
 import { RefreshCcw, AlertTriangle, ShoppingCart, Search, Compass, Download, CheckCircle2 } from 'lucide-react'
@@ -11,7 +12,10 @@ import { RefreshCcw, AlertTriangle, ShoppingCart, Search, Compass, Download, Che
 // WooCommerce order into a real `orders/{id}` doc (wooImport.js), landing it
 // in the existing "awaiting invoice" list on SalesInvoices.jsx — same as any
 // other order. No invoice number or UC# is allocated here; that stays a
-// manual step from the Sales Invoices page (Phase 3).
+// manual step from the Sales Invoices page (Phase 3). Phase 4 does the same
+// for refunds: "Import" on a refund creates a DRAFT Credit Note
+// (wooRefundImport.js) for Cindy to review and post from the existing
+// Credit Notes page — never auto-posted.
 
 const fmtDate = (d) => {
   if (!d) return '—'
@@ -67,12 +71,38 @@ export default function WooCommerceSync() {
   const [importing, setImporting] = useState(null) // order id currently importing, or null
   const [importError, setImportError] = useState('')
 
+  // Same pattern, for refund → draft Credit Note imports (Phase 4). Kept as
+  // separate state from the order import above — a refund's id space and an
+  // order's id space are different WooCommerce entities, and conflating
+  // "importing" flags between the two tables would make one spin the other's
+  // button.
+  const [importedRefundIds, setImportedRefundIds] = useState(new Set())
+  // Live FX rates for the "By item" report's turnover-in-HKD conversion —
+  // see fetchOrders() below for when this gets populated and why it must
+  // never be used for anything accounting-facing.
+  const [fx, setFx] = useState(null) // null | 'loading' | { RMB,USD,EUR,GBP,HKD:1, updatedAt } | { error }
+  const [importingRefund, setImportingRefund] = useState(null)
+
   async function fetchOrders() {
-    setLoading(true); setError(''); setResult(null); setImportedIds(new Set())
+    setLoading(true); setError(''); setResult(null); setImportedIds(new Set()); setImportedRefundIds(new Set())
     try {
       const r = await listWooOrders(from, to)
       setResult(r)
       if (r.rows.length) checkImportedWooOrders(r.rows.map(o => o.id)).then(setImportedIds)
+      if (r.refunds.length) checkImportedWooRefunds(r.refunds.map(rf => rf.id)).then(setImportedRefundIds)
+      // Live rates for the "By item" report's turnover-in-HKD conversion
+      // (owner, 2026-08-22) — fetched once and cached; this is a REPORTING
+      // convenience only. It is explicitly NOT the accounting exchange rate:
+      // CLAUDE.md is emphatic that the books use Cindy's own audit-year
+      // table, never a computed/live rate, so this must never be read by
+      // anything that touches an actual invoice or the UC Registry — the
+      // disclaimer shown with it says so.
+      if (fx == null) {
+        setFx('loading')
+        fetch('/api/fx-rates').then((res) => res.json())
+          .then((d) => setFx(d.error ? { error: d.error } : { ...d, HKD: 1 }))
+          .catch((e) => setFx({ error: e.message || 'Could not load exchange rates.' }))
+      }
     } catch (e) {
       setError(e.message || 'Sync failed.')
     } finally {
@@ -89,6 +119,29 @@ export default function WooCommerceSync() {
       setImportError(`#${o.number}: ${e.message || 'Import failed.'}`)
     } finally {
       setImporting(null)
+    }
+  }
+
+  // The refund's own object doesn't carry the parent order's currency or
+  // customer name — mapWooRefundToDraft needs both, so the matching order
+  // from THIS SAME fetch is looked up by refund.order_id. If that order
+  // isn't in the current result (its payment date fell outside the fetched
+  // range even though the refund date is inside it), importing is refused
+  // rather than guessing a currency — see the disabled button's title below.
+  async function doImportRefund(rf) {
+    const order = result?.rows?.find((o) => o.id === rf.order_id)
+    if (!order) {
+      setImportError(`Refund on order #${rf.order_number}: matching order not in this date range — widen "From" to include its payment date.`)
+      return
+    }
+    setImportingRefund(rf.id); setImportError('')
+    try {
+      await importWooRefund(rf, order)
+      setImportedRefundIds((s) => new Set(s).add(rf.id))
+    } catch (e) {
+      setImportError(`Refund on order #${rf.order_number}: ${e.message || 'Import failed.'}`)
+    } finally {
+      setImportingRefund(null)
     }
   }
 
@@ -148,21 +201,42 @@ export default function WooCommerceSync() {
         byBase.set(base, row)
       }
     }
+    // fx: HKD-per-1-unit for RMB/USD/EUR/GBP, HKD:1 — see fetchOrders(). null
+    // while still loading/unavailable, in which case rowHkd stays null rather
+    // than silently treating an unconverted amount as zero.
+    const rate = (cur) => (fx && typeof fx === 'object' && typeof fx[cur] === 'number' ? fx[cur] : null)
     return [...byBase.values()].map((r) => {
       // Representative name: whichever variant name sold the most units —
       // just a label, the base code is the real identity of the row.
       const name = [...r.names.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || r.base
       const skuList = [...r.skus]
       const currencies = [...r.byCurrency.entries()].sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([currency, v]) => ({ currency, ...v }))
+        .map(([currency, v]) => ({ currency, ...v, hkd: rate(currency) != null ? v.total * rate(currency) : null }))
+      // Owner (2026-08-22): convert to one reporting currency (HKD) so
+      // turnover across a mixed-currency period is readable at a glance —
+      // this is DIFFERENT from the per-currency `Amount by currency` figures
+      // above, which stay exact/native. rowHkd is null (not a wrong number)
+      // when any one currency's rate is unavailable, per convertedIncomplete.
+      const rowHkd = currencies.every((c) => c.hkd != null) ? currencies.reduce((s, c) => s + c.hkd, 0) : null
       return {
         base: r.base, name, variants: r.names.size,
         sku: skuList.length === 1 ? skuList[0] : (skuList.length > 1 ? `${skuList.length} SKUs` : null),
         skuList: skuList.join('; '),
-        qty: r.qty, orders: r.orders.size, currencies,
+        qty: r.qty, orders: r.orders.size, currencies, rowHkd,
       }
     }).sort((a, b) => a.base.localeCompare(b.base, undefined, { numeric: true }))
-  }, [result])
+  }, [result, fx])
+
+  // Report-wide turnover in HKD and total units — the owner's actual ask
+  // ("what is the overall turnover... and units sold"). incomplete:true
+  // means at least one currency's rate wasn't available, so the total is
+  // shown as a lower bound rather than a possibly-wrong final figure.
+  const itemReportTotals = useMemo(() => {
+    const unitsTotal = itemReport.reduce((s, r) => s + r.qty, 0)
+    const rows = itemReport.filter((r) => r.rowHkd != null)
+    const turnoverHkd = rows.reduce((s, r) => s + r.rowHkd, 0)
+    return { unitsTotal, turnoverHkd, incomplete: rows.length < itemReport.length }
+  }, [itemReport])
 
   // Flattened one-row-per-(base,currency) for the CSV — Excel can't hold a
   // nested currency breakdown in one cell the way the UI's summary can.
@@ -182,6 +256,7 @@ export default function WooCommerceSync() {
     { label: 'Discount',   value: (r) => r.discount },
     { label: 'Tax',        value: (r) => r.tax },
     { label: 'Total',      value: (r) => r.total },
+    { label: 'Total (≈HKD, live market rate — reporting only, not the accounting rate)', value: (r) => r.hkd ?? '' },
   ]
   const exportItems = () => downloadCsv(exportStem('woocommerce-items', { from, to }), ITEM_COLUMNS, itemReportCsvRows)
 
@@ -332,7 +407,12 @@ export default function WooCommerceSync() {
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-gray-600">{fmtDate(o.date_paid)}</td>
                           <td className="px-4 py-3 text-gray-900 min-w-0">
-                            <span className="truncate">O07 Online Crystocraft - "{o.customer_name || 'Unnamed'}"</span>
+                            {/* Every row on this page is already a WooCommerce order, so
+                                repeating "O07 Online Crystocraft" per row is pure noise here
+                                (owner, 2026-08-22) — that exact format is still written onto
+                                the actual invoice at import time (wooImport.js's
+                                wooCustomerName, spec §3.2), unchanged. This is display-only. */}
+                            <span className="truncate">{o.customer_name || 'Unnamed'}</span>
                             {o.is_guest && <span className="ml-1.5 text-[10px] text-gray-400">guest</span>}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-gray-500">{o.currency}</td>
@@ -480,6 +560,21 @@ export default function WooCommerceSync() {
                     Export items (CSV)
                   </button>
                 </div>
+
+                <div className="rounded-lg border border-brand-100 bg-brand-50/40 px-4 py-2.5 mb-3 flex items-center gap-4 flex-wrap">
+                  <div>
+                    <span className="text-[11px] text-gray-500 block">Total units sold</span>
+                    <span className="text-lg font-medium text-gray-900 tabular-nums">{itemReportTotals.unitsTotal}</span>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-gray-500 block">Turnover, converted to HKD{itemReportTotals.incomplete ? ' (partial)' : ''}</span>
+                    <span className="text-lg font-medium text-gray-900 tabular-nums">
+                      {fx === 'loading' ? '…' : fx?.error ? '—' : `HKD ${fmtMoney(itemReportTotals.turnoverHkd)}`}
+                    </span>
+                  </div>
+                  {fx?.error && <span className="text-xs text-amber-700">Rates unavailable: {fx.error}</span>}
+                </div>
+
                 <div className="card overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -489,6 +584,7 @@ export default function WooCommerceSync() {
                         <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Orders</th>
                         <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Qty sold</th>
                         <th className="px-4 py-2.5 font-medium">Amount by currency</th>
+                        <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">≈ HKD</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -504,6 +600,9 @@ export default function WooCommerceSync() {
                           <td className="px-4 py-3 whitespace-nowrap text-gray-600 text-xs">
                             {r.currencies.map((c) => `${c.currency} ${fmtMoney(c.total)}`).join(' · ')}
                           </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600 text-xs">
+                            {r.rowHkd != null ? fmtMoney(r.rowHkd) : '—'}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -511,8 +610,10 @@ export default function WooCommerceSync() {
                 </div>
                 <p className="text-[11px] text-gray-400 mt-1">
                   Grouped by base product code (SKU up to the second "-", colour/running number dropped) — Qty sold is a unit count across
-                  all currencies; Amount stays broken out by currency since totals can't be summed across them. Export for the full
-                  subtotal/discount/tax detail per currency.
+                  all currencies; "Amount by currency" stays exact/native. "≈ HKD" and the turnover total above are converted using a
+                  <strong> live market rate</strong>{fx && fx !== 'loading' && !fx.error && ` (fetched ${fmtDate(fx.updatedAt)})`}, for
+                  reporting/analytics only — <strong>not</strong> the accounting exchange rate, which is Cindy's own audit-year table and
+                  must never be computed (see CLAUDE.md). Export for the full subtotal/discount/tax detail per currency.
                 </p>
               </div>
             )}
@@ -528,17 +629,39 @@ export default function WooCommerceSync() {
                         <th className="px-4 py-2.5 font-medium whitespace-nowrap">Refund date</th>
                         <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Amount</th>
                         <th className="px-4 py-2.5 font-medium">Reason</th>
+                        <th className="px-4 py-2.5 font-medium" />
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                      {result.refunds.map((r) => (
-                        <tr key={r.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-gray-900">#{r.order_number}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-gray-600">{fmtDate(r.date_created)}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-800">{fmtMoney(r.amount)}</td>
-                          <td className="px-4 py-3 text-gray-600 text-xs">{r.reason || '—'}</td>
-                        </tr>
-                      ))}
+                      {result.refunds.map((r) => {
+                        const hasOrder = result.rows.some((o) => o.id === r.order_id)
+                        return (
+                          <tr key={r.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-gray-900">#{r.order_number}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-gray-600">{fmtDate(r.date_created)}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-800">{fmtMoney(r.amount)}</td>
+                            <td className="px-4 py-3 text-gray-600 text-xs">{r.reason || '—'}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-right">
+                              {importedRefundIds.has(r.id) ? (
+                                <Link to={`/credit-notes/woo-refund-${r.id}`} target="_blank" rel="noreferrer"
+                                  className="text-xs text-green-700 hover:text-green-800 inline-flex items-center gap-1"
+                                  title="Open the draft Credit Note">
+                                  <CheckCircle2 size={12} /> Imported
+                                </Link>
+                              ) : (
+                                <button type="button" onClick={() => doImportRefund(r)}
+                                  disabled={importingRefund === r.id || !hasOrder}
+                                  className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1 disabled:opacity-50"
+                                  title={hasOrder
+                                    ? 'Create a draft Credit Note from this refund — review and post it from the Credit Notes page'
+                                    : 'The original order\'s payment date is outside the current range — widen "From" to include it'}>
+                                  <Download size={12} /> {importingRefund === r.id ? 'Importing…' : 'Import'}
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>

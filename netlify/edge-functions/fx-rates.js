@@ -15,6 +15,10 @@ export default async function handler(req, context) {
       RMB: r.CNY ? +(1 / r.CNY).toFixed(4) : null,
       USD: r.USD ? +(1 / r.USD).toFixed(4) : null,
       EUR: r.EUR ? +(1 / r.EUR).toFixed(4) : null,
+      // Added for the WooCommerce Sync "By item" report's turnover-in-HKD
+      // conversion (owner, 2026-08-22) — orders come in GBP, which nothing
+      // else in the app previously needed a live rate for.
+      GBP: r.GBP ? +(1 / r.GBP).toFixed(4) : null,
       updatedAt: data.time_last_update_utc || new Date().toUTCString(),
     }
 
