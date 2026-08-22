@@ -254,6 +254,15 @@ export const normOrder = o => ({
   channel: o.channel || null,
   woo_order_id: numOrNull(o.woo_order_id),
   woo_order_no: str(o.woo_order_no),
+  // Structured fee/payout figures for the Phase 5 accounting export
+  // (WooCommerce_B2C_Sync_Spec.md §8). Originally these only existed folded
+  // into a human-readable line in `notes` (for the printed invoice's
+  // Remarks) — that's fine to read, but useless to EXPORT as its own column,
+  // which is exactly what §8 needs. Both now co-exist: notes keeps the
+  // readable summary, these carry the same figures as real numbers/dates.
+  woo_fee: numOrNull(o.woo_fee),
+  woo_net_payout: numOrNull(o.woo_net_payout),
+  woo_payout_date: o.woo_payout_date || null,
 })
 
 export const normLine = l => {

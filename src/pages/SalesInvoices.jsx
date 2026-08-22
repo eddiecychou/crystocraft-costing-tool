@@ -163,6 +163,7 @@ export default function SalesInvoices() {
       adjustment: o.adjustment || 0, accountingTotal: o.accounting_total,
       customerPo: o.customer_po || '', remarks: o.notes || '', adjustmentReason: o.adjustment_reason || '',
       channel: o.channel || null, externalOrderNo: o.woo_order_no || '',
+      wooFee: o.woo_fee ?? null, wooNetPayout: o.woo_net_payout ?? null, wooPayoutDate: o.woo_payout_date || '',
     }))
     // The app's own invoices may also exist in the mirror once a sync runs;
     // showing both would double-count. The app row wins — it is the live one.
@@ -257,6 +258,41 @@ export default function SalesInvoices() {
     INVOICE_COLUMNS, exportable,
   )
 
+  // WooCommerce accounting export — Phase 5 (WooCommerce_B2C_Sync_Spec.md
+  // §8). A DIFFERENT column set from INVOICE_COLUMNS above: this is the
+  // specific list Cindy asked for, in her own naming, for the accountant —
+  // not the general invoice register. Only app rows can have a channel at
+  // all (a JES row was never imported through this pipeline), so this is
+  // exactly the WooCommerce-sourced, already-invoiced orders — no separate
+  // filter toggle needed, `merged` already carries `channel` per row.
+  //
+  // "Exchange rate" is left BLANK on purpose, not computed: CLAUDE.md is
+  // emphatic that the books use Cindy's own audit-year table, never a
+  // computed/live rate (unlike the WooCommerce Sync page's "By item" report,
+  // which is reporting-only and explicitly disclaimed as such) — so this
+  // column exists for her to fill in by hand, per spec §12 Q14's own
+  // "state it in Fee details" framing, not for the app to guess at.
+  const wooAccountingRows = useMemo(
+    () => merged.filter((r) => r.channel === 'woocommerce' && inDateRange(r.date, from, to)),
+    [merged, from, to],
+  )
+  const WOO_ACCOUNTING_COLUMNS = [
+    { label: 'Customer name',            value: (r) => r.customer, text: true },
+    { label: 'UC#',                      value: (r) => r.uc, text: true },
+    { label: 'WooCommerce order no.',    value: (r) => r.externalOrderNo || '', text: true },
+    { label: 'Invoice date',             value: (r) => r.date },
+    { label: 'Currency',                 value: (r) => r.currency },
+    { label: 'Order amount',             value: (r) => r.amount },
+    { label: 'Transaction fee',          value: (r) => r.wooFee ?? '' },
+    { label: 'Exchange rate',            value: () => '' },   // manual — see note above
+    { label: 'Payout amount',            value: (r) => r.wooNetPayout ?? '' },
+    { label: 'WooCommerce payout date',  value: (r) => r.wooPayoutDate || '' },
+  ]
+  const exportWooAccounting = () => downloadCsv(
+    exportStem('woocommerce-accounting', { from, to }),
+    WOO_ACCOUNTING_COLUMNS, wooAccountingRows,
+  )
+
   return (
     <div>
       <div className="px-4 md:px-6 pt-4 md:pt-6 pb-4 border-b border-ivory-dark">
@@ -326,6 +362,16 @@ export default function SalesInvoices() {
           count={exportable.length} total={merged.length} noun="invoices"
           onExport={exportInvoices} disabled={loading}
         />
+
+        {wooAccountingRows.length > 0 && (
+          <p className="text-xs text-gray-500 mb-4 -mt-2">
+            {wooAccountingRows.length} WooCommerce invoice{wooAccountingRows.length === 1 ? '' : 's'} in this date range —{' '}
+            <button type="button" onClick={exportWooAccounting}
+              className="text-brand-600 hover:text-brand-800 underline underline-offset-2">
+              export for accounting (CSV)
+            </button>
+          </p>
+        )}
 
         <input type="text" placeholder="Search by customer, invoice no, SO no, UC#…"
           className="input w-full mb-4" value={search} onChange={(e) => setSearch(e.target.value)} />

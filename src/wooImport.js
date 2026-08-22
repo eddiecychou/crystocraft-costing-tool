@@ -101,6 +101,11 @@ export function mapWooOrderToOrder(o) {
     subtotal: o.subtotal,
     discount_amount: o.discount_total || 0,
     total_amount: o.total,
+    // Structured, for the Phase 5 accounting export — see normOrder in
+    // shipping.js. `notes` above keeps the human-readable version.
+    woo_fee: o.gateway_fee,
+    woo_net_payout: o.net_payout,
+    woo_payout_date: o.payout_date || null,
   }
 
   return { header, lines: [...productLines, ...chargeLines] }

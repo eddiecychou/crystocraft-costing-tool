@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { doc, onSnapshot, getDoc, collection, query, orderBy } from 'firebase/firestore'
 import { useParams, Link } from 'react-router-dom'
 import { db, auth } from '../firebase'
-import { Package, ArrowLeft, Check, Plus, Sparkles } from 'lucide-react'
+import { Package, ArrowLeft, Check, Plus, Sparkles, Download } from 'lucide-react'
 import { useRates, convertFromHKD, fmtMoney } from '../currency'
 import FavHeart from './FavHeart'
 import { useCart } from './store'
@@ -12,6 +12,12 @@ import { isStorefrontVisible, normVideos, youtubeEmbed } from '../constants'
 import { engineTypeOf, engineAvailable, engineLabel } from '../customizerEngines'
 import { screenSensitiveImages } from '../sensitiveImages'
 import ImageLightbox from '../components/ImageLightbox'
+
+// Forces a real "Save As" instead of opening the image in-tab — same proxy
+// BrandPortalPage.jsx already uses for customer downloads (a plain
+// <a download> is silently ignored for a cross-origin Firebase Storage URL).
+const downloadUrl = (fileUrl, filename) =>
+  `/api/download-image?url=${encodeURIComponent(fileUrl)}&filename=${encodeURIComponent(filename || 'photo.jpg')}`
 
 export default function CorporateDetail({ profile }) {
   const { id } = useParams()
@@ -162,12 +168,23 @@ export default function CorporateDetail({ profile }) {
           <h2 className="text-lg text-ink mb-3">Gallery & inspiration</h2>
           <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
             {gallery.map((im, i) => (
-              <figure key={im.id} className="mosaic-tile flex flex-col">
+              <figure key={im.id} className="mosaic-tile flex flex-col relative group">
                 <div className="aspect-square bg-gray-100 overflow-hidden cursor-zoom-in"
                      onClick={() => setLightboxIndex((displayHero ? 1 : 0) + i)}>
                   <img src={im.file_url} alt={im.caption || p.name} loading="lazy"
                     className="w-full h-full object-cover" />
                 </div>
+                {/* Own click target, not the lightbox's — stopPropagation so
+                    tapping it doesn't also open the zoom view underneath.
+                    Visible on hover (desktop) and always-on for touch, since
+                    there's no hover state to reveal it on mobile. */}
+                <a href={downloadUrl(im.file_url, `${p.name}${im.caption ? ` - ${im.caption}` : ''}.jpg`)}
+                   onClick={(e) => e.stopPropagation()}
+                   title="Download this photo"
+                   className="absolute top-1.5 right-1.5 p-1.5 rounded-full bg-white/90 text-ink-60 shadow-sm
+                              opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:text-brand-600">
+                  <Download size={14} />
+                </a>
                 {im.caption && (
                   <figcaption className="text-xs text-ink-60 px-2.5 py-2">{im.caption}</figcaption>
                 )}
