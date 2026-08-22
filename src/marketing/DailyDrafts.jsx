@@ -1653,18 +1653,26 @@ export default function DailyDrafts() {
                         Microsoft Editor) rather than trusting any single one to be enough.
                         If a specific extension keeps winning the race regardless, the actual
                         fix is disabling it for this site — not something the app can force. */}
-                    <input value={chatInput[d.id] || ''}
+                    {/* Was a single-line <input> — a long message just scrolled
+                        horizontally instead of wrapping, so the tail of what
+                        you'd typed ended up visually hidden behind a browser
+                        extension's icon overlay at the right edge (reported
+                        2026-08-22). A wrapping textarea sidesteps that
+                        entirely — nothing to scroll behind. Enter still
+                        sends; Shift+Enter inserts a real line break. */}
+                    <textarea value={chatInput[d.id] || ''}
                       onChange={e => setChatInput(prev => ({ ...prev, [d.id]: e.target.value }))}
-                      onKeyDown={e => e.key === 'Enter' && !isChatBusy && handleChatSend(d)}
+                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (!isChatBusy) handleChatSend(d) } }}
                       placeholder="e.g. they prefer WhatsApp, not email — mention that instead"
-                      className="input w-full text-sm" autoFocus
+                      rows={2}
+                      className="input w-full text-sm resize-none" autoFocus
                       autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck="false"
                       name="daily-drafts-chat-input"
                       data-gramm="false" data-gramm_editor="false" data-enable-grammarly="false"
                       data-lpignore="true" data-1p-ignore="true"
                       data-dashlane-ignore="true" data-bwignore="true" data-form-type="other"
                       data-ms-editor="false" />
-                    <button type="button" onClick={() => handleChatSend(d)} disabled={isChatBusy} className="btn-secondary shrink-0">
+                    <button type="button" onClick={() => handleChatSend(d)} disabled={isChatBusy} className="btn-secondary shrink-0 self-end">
                       {isChatBusy ? <Loader2 size={14} className="animate-spin" /> : 'Send'}
                     </button>
                   </div>
