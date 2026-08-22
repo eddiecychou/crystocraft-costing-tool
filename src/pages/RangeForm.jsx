@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
-import { db, storage, authHeader } from '../firebase'
+import { db, storage, auth, authHeader } from '../firebase'
 import {
   RANGE_DESIGN_TYPES, RANGE_PRODUCT_TYPES, RANGE_FORMAT_CODES,
   RANGE_PLATINGS, RANGE_CRYSTAL_COLORS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS,
@@ -24,6 +24,7 @@ const refUid = () => 'r' + Math.random().toString(36).slice(2, 10)
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
 import { useCrystalColors, colorMap, ensureColors } from '../crystalColors'
+import { generateColourPreview, useColourPreviews, setReviewStatus } from '../colourPreviewApi'
 import { buildRangeSku, rangePrice } from '../rangeSku'
 import { useComponents, resolveRef, productAvailability } from '../criticalComponents'
 import { useCrystals } from '../crystals'
@@ -102,6 +103,89 @@ const blankForm = (prefill = {}) => {
   }
 }
 
+
+// V8.8 Phase 1 — one-SKU AI colour-preview experiment for a single variation.
+// A separate component (not inlined in the variants .map) so useColourPreviews
+// keeps a stable hook order across variant add/remove. See Range_Colour_Preview_Spec.md.
+function VariantColourPreview({ docId, index, variant, libColors }) {
+  const [target, setTarget] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const previews = useColourPreviews(docId, index)
+  const image = variant.image
+  const targetInfo = libColors.find(c => c.code === target)
+
+  async function onGenerate() {
+    if (!image || !target || busy) return
+    setBusy(true); setError('')
+    try {
+      await generateColourPreview({
+        docId, variantIndex: index, sourceImageUrl: image,
+        sourcePlatingCode: variant.plating_code, sourceCrystalCode: variant.crystal_code,
+        sourceCrystalName: variant.crystal_name,
+        targetCrystalCode: target, targetCrystalName: targetInfo?.name || target,
+        targetSwatchHex: targetInfo?.swatch, createdBy: auth.currentUser?.email || '',
+      })
+    } catch (err) {
+      setError(err.message || 'Generation failed.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const badge = { draft: 'bg-amber-50 text-amber-700 border-amber-300', approved: 'bg-green-50 text-green-700 border-green-300', rejected: 'bg-red-50 text-red-700 border-red-300' }
+
+  return (
+    <div className="border-t border-ivory-dark pt-2 mt-2">
+      <div className="flex items-center justify-between mb-1.5">
+        <label className="text-[11px] uppercase tracking-wide text-ink-50">Colour preview (AI experiment)</label>
+      </div>
+      {!image ? (
+        <p className="text-[11px] text-ink-50">Add an image to this variation first.</p>
+      ) : (
+        <div className="flex items-center gap-2">
+          <select className="input text-xs py-1 flex-1" value={target} onChange={e => setTarget(e.target.value)}>
+            <option value="">Target crystal colour…</option>
+            {libColors.map(c => <option key={c.code} value={c.code}>{c.name || c.code} ({c.code})</option>)}
+          </select>
+          <button type="button" onClick={onGenerate} disabled={!target || busy}
+                  className="btn-secondary text-xs py-1 px-2 shrink-0 disabled:opacity-40 inline-flex items-center gap-1">
+            <Sparkles size={12} /> {busy ? 'Generating…' : 'Generate Colour Preview'}
+          </button>
+        </div>
+      )}
+      {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
+      {previews.length > 0 && (
+        <div className="flex flex-wrap gap-2 mt-2">
+          {previews.map(p => (
+            <div key={p.id} className="w-20">
+              <div className="w-20 h-20 bg-white border border-ivory-dark flex items-center justify-center overflow-hidden">
+                {p.status === 'generating' && <span className="text-[10px] text-ink-50">…</span>}
+                {p.status === 'failed' && <AlertTriangle size={16} className="text-red-500" />}
+                {p.status === 'success' && p.generatedImageUrl && (
+                  <img src={p.generatedImageUrl} alt="" className="w-full h-full object-contain p-1" />
+                )}
+              </div>
+              <p className="text-[10px] font-mono text-ink-70 mt-0.5 truncate" title={p.targetCrystalCode}>{p.targetCrystalCode}</p>
+              <span className={`inline-block text-[9px] px-1.5 py-0.5 rounded-full border ${badge[p.reviewStatus] || badge.draft}`}>
+                {p.reviewStatus === 'draft' ? 'Draft — not visible' : p.reviewStatus}
+              </span>
+              {p.status === 'failed' && p.errorMessage && (
+                <p className="text-[9px] text-red-600 mt-0.5">{p.errorMessage}</p>
+              )}
+              {p.status === 'success' && p.reviewStatus === 'draft' && (
+                <div className="flex gap-1 mt-0.5">
+                  <button type="button" onClick={() => setReviewStatus(p.id, 'approved')} className="text-[9px] text-green-700 hover:underline">Approve</button>
+                  <button type="button" onClick={() => setReviewStatus(p.id, 'rejected')} className="text-[9px] text-red-600 hover:underline">Reject</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 const PLATING_NAME = Object.fromEntries(RANGE_PLATINGS.map(p => [p.code, p.name]))
 const platingKey = v => (v.plating_code || '').trim().toUpperCase()
@@ -1546,6 +1630,8 @@ export default function RangeForm() {
                           )
                         })()}
                       </div>
+
+                      <VariantColourPreview docId={docId} index={i} variant={v} libColors={libColors} />
                     </div>
                   </div>
                 </div>

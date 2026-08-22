@@ -19,4 +19,4 @@ if ! command -v npx >/dev/null 2>&1; then
   exit 1
 fi
 
-exec npx vite --port 5179
+exec npx vite --port "${PORT:-5179}"

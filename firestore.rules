@@ -108,6 +108,13 @@ service cloud.firestore {
       }
     }
 
+    // V8.8 Phase 1 colour-preview drafts — deliberately top-level, not a
+    // range_products/{id} subcollection, so the canShop() wildcard above
+    // never grants a customer read of an unreviewed draft.
+    match /range_colour_previews/{previewId} {
+      allow read, write: if isAdmin();
+    }
+
     // The `settings` collection mixes storefront config with genuinely
     // internal data — settings/pricing_groups holds each customer tier's
     // markup PERCENTAGE and settings/crystal_unit_costs holds raw supplier

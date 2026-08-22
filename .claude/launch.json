@@ -5,7 +5,8 @@
       "name": "crystocraft-costing",
       "runtimeExecutable": "/Users/eddie/Developer/costing-tool/.claude/start-dev.sh",
       "runtimeArgs": [],
-      "port": 5179
+      "port": 5179,
+      "autoPort": true
     }
   ]
 }
