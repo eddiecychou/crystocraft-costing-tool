@@ -1,6 +1,6 @@
 import { useState, useMemo, Fragment } from 'react'
 import { Link } from 'react-router-dom'
-import { listWooOrders, wooOrderMeta, wooProbePayout } from '../wooSyncApi'
+import { listWooOrders, searchWooOrders, wooOrderMeta, wooProbePayout } from '../wooSyncApi'
 import { importWooOrder, checkImportedWooOrders } from '../wooImport'
 import { importWooRefund, checkImportedWooRefunds } from '../wooRefundImport'
 import { downloadCsv, exportStem } from '../exportCsv'
@@ -82,6 +82,25 @@ export default function WooCommerceSync() {
   // never be used for anything accounting-facing.
   const [fx, setFx] = useState(null) // null | 'loading' | { RMB,USD,EUR,GBP,HKD:1, updatedAt } | { error }
   const [importingRefund, setImportingRefund] = useState(null)
+
+  // "Find a customer's order history" — checking whether an existing CRM
+  // customer record actually has WooCommerce orders behind it, before
+  // deciding to link the two (owner, 2026-08-22: checking Petar Chankov,
+  // confirming Anxo Domínguez Rama / Ryan Cheung). Independent of the
+  // date-range fetch above — this searches ALL of WooCommerce history by
+  // email/name, any status.
+  const [personQuery, setPersonQuery] = useState('')
+  const [personResults, setPersonResults] = useState(null) // null | 'loading' | rows[] | { error }
+  async function searchPerson() {
+    const q = personQuery.trim()
+    if (!q) return
+    setPersonResults('loading')
+    try {
+      setPersonResults(await searchWooOrders(q))
+    } catch (e) {
+      setPersonResults({ error: e.message || 'Search failed.' })
+    }
+  }
 
   async function fetchOrders() {
     setLoading(true); setError(''); setResult(null); setImportedIds(new Set()); setImportedRefundIds(new Set())
@@ -326,6 +345,53 @@ export default function WooCommerceSync() {
               title="Payout DATE isn't in per-order data — this checks whether WooCommerce Payments' deposits/transactions REST endpoints are reachable">
               <Compass size={12} /> {payoutProbe === 'loading' ? 'Probing…' : 'Find payout date source'}
             </button>
+          )}
+        </div>
+
+        <div className="card p-4 mb-5">
+          <p className="text-xs font-medium text-gray-500 mb-2">Find a customer's order history (any status, no date limit)</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input type="text" value={personQuery} onChange={(e) => setPersonQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && searchPerson()}
+              placeholder="Email or name…" className="input w-full sm:w-72 text-sm" />
+            <button type="button" onClick={searchPerson} disabled={personResults === 'loading' || !personQuery.trim()}
+              className="btn-secondary text-sm inline-flex items-center gap-1.5 disabled:opacity-50">
+              <Search size={14} /> {personResults === 'loading' ? 'Searching…' : 'Search'}
+            </button>
+          </div>
+          {personResults && personResults !== 'loading' && (
+            personResults.error ? (
+              <p className="text-xs text-amber-700 mt-2">{personResults.error}</p>
+            ) : personResults.length === 0 ? (
+              <p className="text-xs text-gray-400 mt-2">No WooCommerce orders found for "{personQuery}".</p>
+            ) : (
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-gray-400 border-b border-gray-100">
+                      <th className="py-1.5 pr-3 font-medium">Order</th>
+                      <th className="py-1.5 pr-3 font-medium">Status</th>
+                      <th className="py-1.5 pr-3 font-medium">Date paid</th>
+                      <th className="py-1.5 pr-3 font-medium">Customer</th>
+                      <th className="py-1.5 pr-3 font-medium">Email</th>
+                      <th className="py-1.5 pr-3 font-medium text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {personResults.map((o) => (
+                      <tr key={o.id}>
+                        <td className="py-1.5 pr-3 font-mono">#{o.number}</td>
+                        <td className="py-1.5 pr-3 text-gray-500">{o.status}</td>
+                        <td className="py-1.5 pr-3 text-gray-500">{fmtDate(o.date_paid)}</td>
+                        <td className="py-1.5 pr-3">{o.customer_name || '—'}</td>
+                        <td className="py-1.5 pr-3 text-gray-500">{o.customer_email || '—'}</td>
+                        <td className="py-1.5 pr-3 text-right tabular-nums">{o.currency} {fmtMoney(o.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )
           )}
         </div>
 

@@ -7,16 +7,16 @@ import FrontPageConfig from './FrontPageConfig'
 import DailyDrafts from '../marketing/DailyDrafts'
 
 const TABS = [
-  { v: 'catalogues', label: 'Catalogues' },
-  { v: 'frontpage',  label: 'Front Page' },
-  { v: 'blog',       label: 'Blog Writer' },
+  { v: 'drafts',     label: 'Daily Drafts' },
   { v: 'contacts',   label: 'Contacts' },
   { v: 'campaigns',  label: 'Campaigns' },
-  { v: 'drafts',     label: 'Daily Drafts' },
+  { v: 'frontpage',  label: 'Front Page' },
+  { v: 'blog',       label: 'Blog Writer' },
+  { v: 'catalogues', label: 'Catalogues' },
 ]
 
 export default function Marketing() {
-  const [tab, setTab] = useState('catalogues')
+  const [tab, setTab] = useState('drafts')
   // Contacts tab hands off a hand-picked contact list to the Campaigns tab
   // (owner: "click a few contacts and send a template email") — lifted here
   // since both are sibling tabs of the same page, not separate routes.

@@ -22,6 +22,11 @@ async function wooSync(op, extra) {
 // Returns { rows, refunds, skipped_unpaid, total_fetched }.
 export const listWooOrders = (from, to) => wooSync('list_orders', { from, to })
 
+// Full order history (any status, no date bound) for one person — email or
+// name — used to check whether an existing customer record actually has
+// WooCommerce orders behind it before linking the two records.
+export const searchWooOrders = (q) => wooSync('search_orders', { q }).then(d => d.rows || [])
+
 export const wooOrderRefunds = (orderId) => wooSync('order_refunds', { order_id: orderId }).then(d => d.rows || [])
 
 // Diagnostic: full meta_data for one order — used to check for a gateway fee

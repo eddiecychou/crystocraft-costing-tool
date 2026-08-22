@@ -16,6 +16,7 @@
 //   WC_CONSUMER_SECRET    same screen → secret (cs_…)
 //
 // Request:  POST { op: 'list_orders', from, to }   -- from/to: 'YYYY-MM-DD'
+//           POST { op: 'search_orders', q }         -- email/name, no date bound
 //           POST { op: 'order_refunds', order_id }
 //           POST { op: 'order_meta', order_id }
 //           POST { op: 'probe_payout', order_id? }   -- diagnostic, see below
@@ -236,6 +237,32 @@ export default async function handler(req) {
       skipped_unpaid: notSynced,
       total_fetched: orders.length,
     })
+  }
+
+  // ── search for a person's WooCommerce order history by email/name ──────────
+  // For checking whether an existing (non-WooCommerce-sourced) customer
+  // record actually has real orders behind it before linking the two —
+  // 2026-08-22, checking Petar Chankov / confirming Anxo Domínguez Rama and
+  // Ryan Cheung. Not date-bounded (list_orders is): identity lookups need the
+  // person's FULL order history, not one month's slice. Uses WooCommerce's
+  // own `search` param, which matches against billing name/email/order
+  // number — broader than an exact email match, but exact matches are
+  // trivial to eyeball in a small result set. Any status, not just paid —
+  // finding "did they ever order, even unpaid/cancelled" is the point here,
+  // unlike list_orders which deliberately only surfaces paid orders as
+  // invoicing candidates.
+  if (body.op === 'search_orders') {
+    const q = String(body.q || '').trim().slice(0, 200)
+    if (!q) return json({ error: 'Missing search query' }, 400)
+    const orders = []
+    for (let page = 1; page <= 5; page++) {
+      const r = await wc('orders', { search: q, per_page: 50, page, orderby: 'date', order: 'desc' })
+      if (!r.ok) return json({ error: 'WooCommerce search failed', detail: (await r.text()).slice(0, 300) }, 502)
+      const rows = await r.json()
+      orders.push(...rows)
+      if (rows.length < 50) break
+    }
+    return json({ rows: orders.map(o => summarizeOrder(o)) })
   }
 
   // ── refunds for one order, on demand ────────────────────────────────────────

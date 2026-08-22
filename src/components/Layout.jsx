@@ -27,6 +27,7 @@ const nav = [
   { to: '/credit-notes', label: 'Credit Notes', short: 'Credits', Icon: RotateCcw },
   { to: '/customers',  label: 'Customers',     short: 'Customers',Icon: Building2 },
   { to: '/portal',     label: 'Portal',        short: 'Portal',   Icon: Users },
+  { to: '/marketing',  label: 'Marketing',     short: 'Marketing',Icon: Megaphone },
 
   { group: 'Supply' },
   { to: '/components', label: 'Components',    short: 'Comps',    Icon: Puzzle },
@@ -35,7 +36,6 @@ const nav = [
   { to: '/inventory',  label: 'Inventory',     short: 'Stock',    Icon: Boxes },
 
   { group: 'System' },
-  { to: '/marketing',  label: 'Marketing',     short: 'Marketing',Icon: Megaphone },
   { to: '/erp-lookup', label: 'ERP Lookup',    short: 'ERP',      Icon: Database },
   { to: '/uc-registry',label: 'UC Registry',   short: 'UC#',      Icon: Hash },
   { to: '/woo-sync',   label: 'WooCommerce Sync', short: 'WooSync', Icon: ShoppingCart },
