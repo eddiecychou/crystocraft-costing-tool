@@ -967,9 +967,16 @@ export default function DailyDrafts() {
         history,
         message,
       })
+      const changed = !!(result.subject || result.body)
+      // Heuristic mismatch flag (2026-08-22 — a real observed failure): the
+      // system prompt now tells the model never to claim a change while
+      // returning null/null, but this catches it in the UI if it slips
+      // anyway, rather than the draft silently not moving with no signal why.
+      const claimsChange = /\b(updated?|added|changed|rewrote|revised|here'?s the (updated|new))\b/i.test(result.reply || '')
       setChatHistory(prev => ({
         ...prev,
-        [d.id]: [...history, { role: 'user', content: message }, { role: 'assistant', content: result.reply }],
+        [d.id]: [...history, { role: 'user', content: message },
+          { role: 'assistant', content: result.reply, applied: changed || !claimsChange }],
       }))
       setChatInput(prev => ({ ...prev, [d.id]: '' }))
       if (result.subject) setField(d.id, 'subject', result.subject)
@@ -1556,6 +1563,18 @@ export default function DailyDrafts() {
                               </button>
                             )}
                           </div>
+                          {/* h.applied === false means the AI's own reply text
+                              claimed a change while returning null for both
+                              subject and body — a real, observed failure mode
+                              (2026-08-22) where the model says "I've updated
+                              the email" but the draft above never moves. This
+                              makes that mismatch visible instead of silently
+                              confusing — say it again or reword the request. */}
+                          {h.role === 'assistant' && h.applied === false && (
+                            <p className="text-[11px] text-amber-700 ml-6 mt-0.5">
+                              ⚠ No actual change was applied to the draft above — try rephrasing the request.
+                            </p>
+                          )}
                         </div>
                       ))}
                     </div>
