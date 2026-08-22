@@ -87,6 +87,173 @@ signed-in user with `role:'customer'`/`status` not `'approved'` sees it),
 so "same screen" does not mean "same bug" — check what's actually different
 about the account before assuming the mechanism.
 
+## Current Status — V8.7 CLOSED as of 2026-08-22
+
+The WooCommerce B2C sync, start to finish — all five phases from the
+original spec built, deployed, and tested against real data in one cycle —
+plus a new "Retail Customer" segment inside the Customer domain that grew
+out of it, retail targeting added to Campaigns, and a long tail of live bug
+reports across Daily Drafts. The single biggest lesson: audit before
+building paid off repeatedly — nearly every phase turned out to need less
+new schema than planned because the existing order/invoice/credit-note
+model already fit, and two real bugs (WhatsApp silently never reaching
+Daily Drafts, customers having no working unsubscribe) were found only
+because each new feature was checked against real production data before
+being trusted.
+
+### The numbers
+
+| | |
+|---|---:|
+| Commits | ~25 |
+| New files | `WooCommerce_B2C_Sync_Spec.md`, `netlify/edge-functions/woo-sync.js`, `src/wooImport.js`, `src/wooRefundImport.js`, `src/wooCustomerSync.js`, `src/wooSyncApi.js`, `src/pages/WooCommerceSync.jsx` |
+| New Supabase tables/columns | `app_sales_invoice.channel`/`external_order_no` |
+| New Firestore fields (customers) | `customer_type`, `woo_customer_id`, `possible_b2b_match`, `unsubscribed`/`unsubscribed_at` |
+| Real bugs found & fixed | 3 (WhatsApp fields dropped before reaching Daily Drafts; AI chat claiming an edit it never applied; customers had no working unsubscribe) |
+| Retail customer records created | 240 (4 manually linked + 236 from the bulk scan) |
+| Marketing contacts tagged `woocommerce` | 220 (backfill, matched by email against WooCommerce-sourced customers) |
+
+### 1. WooCommerce B2C sync — all five phases, one cycle
+
+Built from `WooCommerce_B2C_Sync_Spec.md`'s own audit-first plan, in order:
+
+- **Phase 1 (read-only review)**: pulls paid B2C orders + refunds from
+  WooCommerce for a date range, "paid" determined from `date_paid` rather
+  than trusting `status` alone (a processing/completed split turned out not
+  to matter — `date_paid` is the one signal that's actually reliable).
+  Resolved two real unknowns empirically rather than guessing: the gateway
+  fee (`_wcpay_transaction_fee`, private post meta — `fee_lines` is always
+  empty on this store) and payout date (`wc/v3/payments/transactions`'
+  `available_on` field — the documented `wc/v3/payments/deposits` endpoint
+  500s on a query-builder bug in WooCommerce Payments itself, unrelated to
+  this app).
+- **Phase 2 (order import)**: "Import" turns a reviewed WooCommerce order
+  into a real `orders/{id}` doc at a **deterministic doc ID**
+  (`woo-<wooOrderId>`), landing it in the *existing* Sales Invoices
+  "awaiting invoice" list — no new invoicing UI. Turned out to need **no
+  new `line_type` values**: shipping/tax fit the existing `non_product`/
+  `chargesTotal` mechanism (originally built for PI freight/insurance
+  lines) exactly, and discount was already the order header's own field.
+- **Phase 3 (invoice/UC cross-reference)**: a WooCommerce-sourced invoice
+  now shows a "Woo #57844" badge next to its SI number, backed by new
+  `channel`/`external_order_no` columns on `app_sales_invoice` — kept
+  deliberately separate from `si_no` itself, which stays in the app's own
+  series (the JES/PBIS-shared numbering couldn't tolerate a WooCommerce
+  order number landing there directly).
+- **Phase 4 (refunds → Credit Notes)**: "Import" on a refund creates a
+  *draft* Credit Note (never auto-posted) for Cindy's existing review flow
+  — same posture as Phase 2's orders. Handles WooCommerce's negative
+  refund quantities/totals, which the existing line-cleaning logic would
+  otherwise silently drop.
+- **Phase 5 (accounting export)**: a dedicated CSV on Sales Invoices,
+  exactly the source doc's §8 column list. Exchange rate is left blank for
+  manual entry on purpose — CLAUDE.md is explicit that only Cindy's
+  audit-year table is used for the books, never a computed rate.
+
+A separate, clearly-labeled **reporting-only** currency conversion also
+shipped on the "By item" turnover report (live market rate, disclaimed as
+never for accounting use) — a distinct thing from the Phase 5 export, not
+to be confused with it.
+
+### 2. Retail Customer segment — new, grew out of the sync
+
+The owner: *"I want to add and sync all woocommerce customers to the
+customer app in retail customers since it is easiest to do remarketing."*
+Built as a clearly separated segment inside the existing `customers`
+collection, never inside Marketing Leads (`marketing_contacts`) by default:
+
+- `customer_type: 'retail'|'b2b'|null`, `source: 'WooCommerce'` (new source
+  value, read-only in `CustomerForm.jsx` once set), `woo_customer_id`
+  (WooCommerce's own numeric ID, previously computed into a boolean and
+  discarded — now actually stored) — all added to `customer.js`'s
+  read/write whitelist, which took two follow-up fixes after the first
+  pass silently dropped `possible_b2b_match` on every unrelated edit-and-
+  save (same whitelist-drop trap that hit `contact_id` in an earlier cycle).
+- **Never auto-merges** with an existing B2B customer on an email match —
+  only sets `possible_b2b_match` and surfaces a review banner (with a
+  "Dismiss, keep separate" action) on the customer's own page.
+- **Idempotent by design**: a manual "Link to CRM customer" action (with a
+  live WooCommerce order-history search, since the existing date-range
+  fetch couldn't answer "has this specific person ever ordered") for
+  already-known customers, plus a bulk "Scan order history" tool deriving
+  identity from **paid orders**, not WooCommerce's registered-accounts
+  endpoint — the owner explicitly didn't trust that list for spam/quality,
+  and a guest checkout has no account there at all. 236 retail customers
+  created this way, reviewed in a table (New / Possible B2B match /
+  Already linked) before anything was written.
+- **Cross-referenced against existing Marketing Leads** where a real
+  overlap exists — 220 of 233 WooCommerce-sourced customers turned out to
+  already be marketing_contacts leads, linked via the same
+  `linkContactToCustomer()` the rest of the app already uses for "a lead
+  converted to a customer" (never creating a new lead), then tagged
+  `woocommerce` to match the store's existing shopify/magento/alibaba/bni
+  channel-tag convention.
+- A live "WooCommerce Orders" card on `CustomerDetail.jsx` for any linked
+  customer — order count, total spent per currency, full order list, read
+  live from WooCommerce (not stored in Firestore).
+
+### 3. Campaigns — retail audience, and a real compliance gap closed
+
+The owner: *"campaigns will be more targeting B2C retail because i
+personally don't know the customers unlike the b2b"* — Daily Drafts stayed
+the personal-note tool for B2B, Campaigns gained a second, separate
+audience source (`customers` where `customer_type === 'retail'`), entirely
+parallel to the existing marketing_contacts path.
+
+Building this exposed a real gap: **customers had no working unsubscribe
+at all.** `/api/unsubscribe` only ever patched `marketing_contacts` — a
+retail customer clicking "unsubscribe" would see a confirmation page while
+nothing was actually suppressed, and they'd keep getting emailed. Fixed
+with a new `unsubscribed` field and a `col=customers` discriminator on the
+unsubscribe link, defaulting to the old behavior for every link already
+sent. Smoke-tested read-only against production data before deploy: 237
+retail customers, 236 pass the new eligibility filter correctly.
+
+### 4. Daily Drafts — audience split, one real wiring bug, several live fixes
+
+- **New hard Audience filter** (B2B customers / Retail customers only /
+  Everyone, default B2B) — applied before eligibility checks, not a hint
+  the AI could ignore.
+- **Real bug found and fixed**: `eligibleCandidates()` built its trimmed
+  candidate list without `whatsapp`/`whatsapp_personal`/`whatsapp_business`
+  at all — every draft's WhatsApp quick-access chips had been silently
+  empty for both customers and leads since that feature shipped, because a
+  "re-attach after generation" safety net further down was reading back
+  from this same already-gutted list.
+- **"Send test to myself"** — sends the exact draft to the admin's own
+  inbox first (Mailchimp had this; asked for explicitly), never touching
+  Firestore state or engagement tracking.
+- **AI chat bug found and fixed**: the "Discuss with AI" rewrite chat could
+  say "here's the updated draft" while returning `null` for both
+  subject/body — a genuine model-compliance failure, not a wiring bug (the
+  apply logic was already correct). Fixed with an explicit consistency
+  rule in the prompt, plus a visible ⚠ warning in the UI if it ever
+  recurs.
+- **Long-message input bug fixed**: the chat's message box was a
+  single-line `<input>` — a long message scrolled horizontally instead of
+  wrapping, hiding text behind a browser extension's icon overlay
+  regardless of which extension it was. Switched to a small wrapping
+  textarea.
+- Moved the "+ Link" (any URL, including a crystocraft.com blog post) up
+  next to "+ Link a product" so both are visible from the start, and fixed
+  a real overflow bug in the action-button row (Send/Skip/Already in
+  contact/Send test to myself no longer fit one line without wrapping,
+  especially on mobile).
+
+### 5. Customer portal — photo downloads
+
+A download button on every Reference Photos (Figurine) / Gallery
+(Corporate Gift) tile — "I want customers to be easy to download these
+photos for their catalogue use." Reuses the existing `/api/download-image`
+proxy the Brand Portal already relied on for the same "force Save As"
+problem with Firebase Storage URLs; no new backend code.
+
+### 6. Nav reorganization
+
+Marketing moved from System to Sales (after Portal); its internal tabs
+reordered to Daily Drafts, Contacts, Campaigns, Front Page, Blog Writer,
+Catalogues (Daily Drafts now the default landing tab).
+
 ## Current Status — V8.6 CLOSED as of 2026-08-22
 
 A long, varied session: a real security fix (open-relay-style vulnerability
@@ -294,8 +461,35 @@ the previous one as ordinary gallery content is likely intentional.
 no live Firestore access from this environment; needs manual deletion via
 Sun Life's Brand Gallery (Customer Detail page) if it's still there.
 
-## Where V8.7 starts
+## Where V8.8 starts
 
+- **WooCommerce registered accounts that never transacted are NOT synced**
+  — deliberate scope decision, not an oversight: the owner doesn't yet
+  trust that list for spam/quality ("I have no idea if the registered
+  accounts but never transacted are clean or not spam. I will have to
+  check see the quality before i decide to pull them in"). Revisit only if
+  asked; don't pull them in speculatively.
+- **UC Registry doesn't auto-fill Order no./Deposit/Balance payment
+  date/Remarks from a WooCommerce invoice** — `allocate_sales_invoice()`
+  only ever writes `year/customer/currency/status` into `uc_registry` for
+  *any* channel; Cindy fills the rest by hand today for wholesale too, so
+  this isn't a regression, just an unbuilt convenience. Worth doing if the
+  manual entry turns out to be a real friction point once the WooCommerce
+  volume is higher.
+- **Campaigns' retail audience has no sub-segmentation** — v1 is "every
+  eligible retail customer," full stop, no tag/country/spend filtering
+  within it. Revisit if a need for narrower retail targeting actually
+  shows up.
+- **Amazon (Shop 1)/(Shop 2) deliberately excluded** from the
+  `customer_type: 'retail'` backfill — they're marketplace channel/
+  invoicing accounts, not individual buyers. Revisit only if remarketing
+  to marketplace channels specifically is ever wanted.
+- **Phase 4/5 of the WooCommerce sync (refund→Credit Note import, the
+  accounting CSV export) are built but not yet exercised on a real
+  month-end batch** — worth a first live run against real data (same
+  "verify against reality before trusting it" discipline that caught the
+  fee/payout/WhatsApp issues this cycle) before assuming they're fully
+  solid.
 - **The pre-V8.6 orphaned "Proposal hero" asset may still need manual
   cleanup** — §12 above fixed the code path going forward but couldn't
   touch existing stray data. Check Sun Life's Brand Gallery for an asset

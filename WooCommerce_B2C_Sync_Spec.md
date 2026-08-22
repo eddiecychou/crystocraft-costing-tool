@@ -243,8 +243,13 @@ Still genuinely open (need Cindy/WordPress-admin, not code):
 
 ## 4. Phased plan
 
-**Status as of 2026-08-22: Phases 1–3 built and deployed.** Phases 4
-(refunds → Credit Notes) and 5 (Excel export) are not started.
+**Status as of 2026-08-22: all five phases built and deployed** (V8.7).
+Phase 4 (refunds → Credit Notes) and Phase 5 (accounting export) shipped
+alongside a new "Retail Customer" segment that grew out of this work —
+see PROJECT-PLAN.md's V8.7 close-out entry for the full picture, including
+the Campaigns/Daily Drafts targeting split and the compliance/wiring bugs
+found while building it. Not yet exercised on a real month-end batch —
+carried into "Where V8.8 starts."
 
 **Phase 1 — Connection + read-only staging (no writes to Finance yet)**
 - New edge function `netlify/edge-functions/woo-sync.js`, admin-gated via
