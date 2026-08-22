@@ -851,6 +851,22 @@ export default function RangeForm() {
     if (!form.design_no.trim()) { setError('Design no. (e.g. 0002) is required.'); return }
     if (!form.format_code.trim()) { setError('Product type code (e.g. 001) is required.'); return }
     setSaving(true); setError('')
+    // colour_images can be written directly to Firestore from OUTSIDE this
+    // form — by "Approve → usable" itself (promoteColourImage, since bug fix
+    // 2026-08-23) and by the inline invoice/PI/quote picker. This form's own
+    // local state was only a snapshot from page load, so saving straight
+    // from it could silently wipe out anything approved elsewhere in the
+    // meantime — confirmed live: a Save Changes here wiped EVERY colour on
+    // D0002-001, not just the ones just approved. Re-fetch colour_images
+    // fresh right before building the payload so Save Changes can never
+    // regress it, regardless of how stale the rest of this form's state is.
+    let serverColourImages = []
+    if (!isNew) {
+      try {
+        const snap = await getDoc(doc(db, 'range_products', docId))
+        serverColourImages = snap.exists() ? (snap.data().variants || []) : []
+      } catch { /* best effort — falls back to local state below */ }
+    }
     const designNo = form.design_no.trim()
     const format = form.format_code.trim()
     // Body/type = the optional 2nd prefix letter, taken from the variants' prefix.
@@ -898,7 +914,7 @@ export default function RangeForm() {
           .map(code => [code, intNum(form.plating_stock[code])])
           .filter(([, n]) => n != null)
       ),
-      variants: form.variants.map(v => ({
+      variants: form.variants.map((v, i) => ({
         brand_code: v.brand_code.trim(), brand_name: v.brand_name.trim(),
         plating_code: v.plating_code.trim(), plating_name: v.plating_name.trim(),
         crystal_code: v.crystal_code.trim(), crystal_name: v.crystal_name.trim(),
@@ -913,8 +929,10 @@ export default function RangeForm() {
         crystal_colors: [...new Set((v.crystal_colors || []).map(c => (c || '').trim().toUpperCase()).filter(Boolean))],
         // "Usable" colour photos — invoice/quote/PI + customer colour picker only,
         // deliberately never gallery[] (V8.8 Phase 2, see Range_Colour_Preview_Spec.md §P2.1).
+        // Sourced from the server fetch above, NOT local state — see comment
+        // at the top of handleSave for why.
         colour_images: Object.fromEntries(
-          Object.entries(v.colour_images || {}).filter(([code, url]) => code && url)
+          Object.entries(serverColourImages[i]?.colour_images || v.colour_images || {}).filter(([code, url]) => code && url)
         ),
       })),
       // Per-model crystal mixture recipes (shared across platings):

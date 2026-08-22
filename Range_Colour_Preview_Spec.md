@@ -498,6 +498,27 @@ visually in sync without needing a refetch.
 (otherwise perfectly fine) `range_colour_previews` docs — nothing needed
 regenerating.
 
+## P2.3h Save Changes was overwriting colour_images with stale state (2026-08-23)
+
+Direct fallout of P2.3g's fix: once `onMarkUsable()` started writing
+`colour_images` straight to Firestore, that field could change on the
+server while `RangeForm.jsx`'s own `form` state — loaded once via `getDoc`
+at page-open, never a live listener — had no idea. The very next Save
+Changes click (for any reason, unrelated to colour previews) rebuilt the
+entire `variants` array from that stale local state and overwrote the
+document with it, silently reverting every `colour_images` entry on the
+product, not just a recently-approved one. Confirmed live: a single Save
+wiped C1/PI/AB/GT all at once on D0002-001.
+
+Fixed in `handleSave()` — right before building the save payload, it now
+re-fetches the current document and takes each variant's `colour_images`
+from *that*, not from local state, matched by array index. Every other
+field in the form still saves from local state exactly as before; only
+this one field is now impossible for a stale form to regress, because nothing
+else writes to `range_products` from outside this form while it's open.
+0002-001 was repaired live a second time, same technique as P2.3g (URLs
+were still sitting untouched in their `range_colour_previews` docs).
+
 ## P2.5 Acceptance tests
 
 1. A range invoice/PI/quote line with no matching `colour_images` entry
