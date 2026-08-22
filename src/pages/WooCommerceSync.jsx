@@ -397,7 +397,14 @@ export default function WooCommerceSync() {
             ) : personResults.length === 0 ? (
               <p className="text-xs text-gray-400 mt-2">No WooCommerce orders found for "{personQuery}".</p>
             ) : (
-              <div className="mt-3 overflow-x-auto">
+              // No overflow-x-auto here (unlike the other tables on this page):
+              // CustomerPicker's dropdown below is `position: absolute`, and
+              // setting overflow-x to anything but visible forces overflow-y
+              // to clip too (CSS spec quirk) — the dropdown was being cut off
+              // invisibly, reported 2026-08-22 as "doesn't show customer
+              // names." This table is only 6 narrow columns, so losing
+              // horizontal scroll on tiny screens is an acceptable trade.
+              <div className="mt-3">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="text-left text-gray-400 border-b border-gray-100">
