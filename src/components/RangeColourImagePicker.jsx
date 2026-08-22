@@ -4,7 +4,22 @@ import { db, auth } from '../firebase'
 import { useCrystalColors } from '../crystalColors'
 import { parseRangeVariantSuffix } from '../rangeSku'
 import { generateColourPreview, uploadColourPreview, promoteColourImage, markUsable } from '../colourPreviewApi'
-import { Sparkles, Plus, ZoomIn, X } from 'lucide-react'
+import { Sparkles, Plus, ZoomIn, Download, X } from 'lucide-react'
+
+// Same download-through-proxy pattern as RangeForm.jsx's downloadRangeImage
+// — a plain <a download> is silently ignored for a cross-origin Storage URL.
+function downloadColourImage(url, baseName) {
+  if (!url) return
+  const safe = (baseName || 'image').replace(/[/\\?%*:|"<>]/g, '-').trim() || 'image'
+  const ext = (url.split('?')[0].match(/\.(jpe?g|png|webp|gif)$/i)?.[1] || 'jpg').toLowerCase()
+  const filename = `${safe}.${ext}`
+  const a = document.createElement('a')
+  a.href = `/api/download-image?url=${encodeURIComponent(url)}&filename=${encodeURIComponent(filename)}`
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+}
 
 // The range-product half of the line-image picker (V8.8 Phase 2, §P2.3a) —
 // used from both LineImagePicker.jsx (Shipment/Proforma/Sales Invoice) and
@@ -138,11 +153,18 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
                     className={`group relative cursor-pointer rounded-lg overflow-hidden aspect-square border-2 transition-all ${isSelected ? 'border-brand-500 ring-2 ring-brand-200' : isMatch ? 'border-brand-300' : 'border-transparent hover:border-brand-300'}`}
                     title={code}>
                     <img src={url} alt="" className="w-full h-full object-cover" />
-                    <button type="button" onClick={e => { e.stopPropagation(); setZoomUrl(url) }}
-                      title="Enlarge"
-                      className="absolute top-1 right-1 bg-black/50 hover:bg-black/70 text-white rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <ZoomIn size={12} />
-                    </button>
+                    <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button type="button" onClick={e => { e.stopPropagation(); setZoomUrl(url) }}
+                        title="Enlarge"
+                        className="bg-black/50 hover:bg-black/70 text-white rounded p-1">
+                        <ZoomIn size={12} />
+                      </button>
+                      <button type="button" onClick={e => { e.stopPropagation(); downloadColourImage(url, `${variant?.plating_code || ''}${code}-retouch`) }}
+                        title="Download to retouch, then Upload the corrected version for this colour"
+                        className="bg-black/50 hover:bg-black/70 text-white rounded p-1">
+                        <Download size={12} />
+                      </button>
+                    </div>
                     <span className="absolute bottom-0 inset-x-0 bg-black/50 text-white text-[10px] text-center py-0.5">{code}</span>
                   </div>
                 )

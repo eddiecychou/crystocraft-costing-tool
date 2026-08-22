@@ -260,6 +260,12 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote }) {
                   <button type="button" onClick={() => runGenerate(p.targetCrystalCode)} disabled={busy}
                           className="text-[9px] text-brand-600 hover:underline disabled:opacity-40">Regenerate</button>
                 )}
+                {p.status === 'success' && p.generatedImageUrl && (
+                  <button type="button"
+                          onClick={() => downloadRangeImage(p.generatedImageUrl, `${variant.plating_code || ''}${p.targetCrystalCode}-retouch`)}
+                          title="Download to retouch, then Upload the corrected version for this colour"
+                          className="text-[9px] text-ink-60 hover:underline">Download</button>
+                )}
                 {p.reviewStatus !== 'used' && (
                   <button type="button" onClick={() => onRemove(p)} className="text-[9px] text-ink-50 hover:text-red-600 hover:underline">Remove</button>
                 )}

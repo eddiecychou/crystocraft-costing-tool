@@ -519,6 +519,23 @@ else writes to `range_products` from outside this form while it's open.
 0002-001 was repaired live a second time, same technique as P2.3g (URLs
 were still sitting untouched in their `range_colour_previews` docs).
 
+## P2.3i Retouch loop (2026-08-23)
+
+Asked directly: Gemini sometimes gets a specific stone wrong in a way no
+amount of reprompting reliably fixes, and building real in-app spot/mask
+retouching (select one crystal, repaint just that region) would be a much
+bigger feature than this experiment justifies — `ManualAdjust.jsx`
+(already in this app, backing the "Enhance image" button) only does
+whole-image filters, not localized edits. **"Upload photo" was already the
+answer** for this — retouch externally, upload the result — the only real
+gap was getting the AI attempt *out* of the app in the first place, which
+meant a manual right-click-save workaround. Added a Download button next
+to every preview thumbnail, both on the product page and the invoice/PI/
+quote picker, reusing the same `/api/download-image` proxy the existing
+"Download image as SKU" button already uses (a plain `<a download>` is
+silently ignored for a cross-origin Storage URL). Closes the loop:
+Generate → Download → retouch externally → Upload → Approve.
+
 ## P2.5 Acceptance tests
 
 1. A range invoice/PI/quote line with no matching `colour_images` entry
