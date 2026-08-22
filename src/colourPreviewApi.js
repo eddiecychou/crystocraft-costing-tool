@@ -201,6 +201,38 @@ export async function uploadColourPreview({
   return { id, generatedImageUrl }
 }
 
+// For a real photo that's already sitting in the product's gallery[] — no
+// need to re-upload a duplicate file, just point a new draft at the
+// existing Storage URL directly. `deletePreview()` on one of these safely
+// no-ops on the Storage delete (storage/object-not-found, already caught)
+// since there's no colour_previews/ object for it to own.
+export async function pickGalleryColourPreview({
+  docId, variantIndex, sourcePlatingCode, targetCrystalCode, galleryUrl, createdBy,
+}) {
+  if (!galleryUrl) throw new Error('No gallery image selected.')
+  const id = [
+    docId, `v${variantIndex}`,
+    (sourcePlatingCode || 'X').trim().toUpperCase(),
+    (targetCrystalCode || 'X').trim().toUpperCase(),
+    'gallery', Date.now().toString(36),
+  ].join('__')
+  await setDoc(doc(db, COLLECTION, id), {
+    docId, variantIndex, sourceImageUrl: '',
+    sourcePlatingCode: (sourcePlatingCode || '').trim().toUpperCase(),
+    sourceCrystalCode: '',
+    targetCrystalCode: (targetCrystalCode || '').trim().toUpperCase(),
+    status: 'success',
+    reviewStatus: 'draft',
+    generatedImageUrl: galleryUrl,
+    errorMessage: '',
+    source: 'gallery',
+    createdBy: createdBy || '',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
+  return { id, generatedImageUrl: galleryUrl }
+}
+
 // Writes {crystalCode: url} into one variant's colour_images map on the
 // range_products doc itself. Firestore field paths can't index into array
 // elements (`variants.0.colour_images.PI` isn't addressable), so this is a

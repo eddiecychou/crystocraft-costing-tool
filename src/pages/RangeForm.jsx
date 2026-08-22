@@ -24,7 +24,7 @@ const refUid = () => 'r' + Math.random().toString(36).slice(2, 10)
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
 import { useCrystalColors, colorMap, ensureColors } from '../crystalColors'
-import { generateColourPreview, useColourPreviews, setReviewStatus, deletePreview, uploadColourPreview, markUsable, promoteColourImage } from '../colourPreviewApi'
+import { generateColourPreview, useColourPreviews, setReviewStatus, deletePreview, uploadColourPreview, pickGalleryColourPreview, markUsable, promoteColourImage } from '../colourPreviewApi'
 import { buildRangeSku, rangePrice } from '../rangeSku'
 import { useComponents, resolveRef, productAvailability } from '../criticalComponents'
 import { useCrystals } from '../crystals'
@@ -108,11 +108,12 @@ const blankForm = (prefill = {}) => {
 // V8.8 Phase 1 — one-SKU AI colour-preview experiment for a single variation.
 // A separate component (not inlined in the variants .map) so useColourPreviews
 // keeps a stable hook order across variant add/remove. See Range_Colour_Preview_Spec.md.
-function VariantColourPreview({ docId, index, variant, libColors, onPromote }) {
+function VariantColourPreview({ docId, index, variant, libColors, onPromote, onAddToGallery, galleryUrls, gallery }) {
   const [target, setTarget] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [zoomUrl, setZoomUrl] = useState(null)
+  const [galleryPickerOpen, setGalleryPickerOpen] = useState(false)
   const previews = useColourPreviews(docId, index)
   const image = variant.image
   const targetInfo = libColors.find(c => c.code === target)
@@ -152,8 +153,32 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote }) {
     }
   }
 
+  async function onPickGallery(code, url) {
+    setGalleryPickerOpen(false)
+    if (!code || !url || busy) return
+    setBusy(true); setError('')
+    try {
+      await pickGalleryColourPreview({
+        docId, variantIndex: index, sourcePlatingCode: variant.plating_code,
+        targetCrystalCode: code, galleryUrl: url, createdBy: auth.currentUser?.email || '',
+      })
+    } catch (err) {
+      setError(err.message || 'Could not use that gallery photo.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function onRemove(p) {
-    if (!confirm(`Remove this ${p.targetCrystalCode} preview? This can't be undone.`)) return
+    // A 'superseded' preview's file may still be referenced by line_image on
+    // an already-created invoice/PI/quote — that field is a frozen URL
+    // snapshot, not a live reference, so deleting the file here would leave
+    // a broken image on any document that already picked it. 'used' previews
+    // can't reach this point at all (deletePreview refuses them).
+    const msg = p.reviewStatus === 'superseded'
+      ? `Remove this ${p.targetCrystalCode} preview? This was replaced by a newer "Usable" photo, but if any existing invoice, PI, or quote already picked THIS one, its image will break there. This can't be undone.`
+      : `Remove this ${p.targetCrystalCode} preview? This can't be undone.`
+    if (!confirm(msg)) return
     try { await deletePreview(p) } catch (err) { setError(err.message || 'Remove failed.') }
   }
 
@@ -213,10 +238,33 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote }) {
             <input type="file" accept="image/*" className="hidden" disabled={!target || busy}
                    onChange={e => onUpload(e, target)} />
           </label>
+          <div className="relative">
+            <button type="button" onClick={() => setGalleryPickerOpen(o => !o)} disabled={!target || busy || !gallery?.length}
+                    className="btn-secondary text-xs py-1 px-2 shrink-0 disabled:opacity-40">
+              From gallery…
+            </button>
+            {galleryPickerOpen && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setGalleryPickerOpen(false)} />
+                <div className="absolute z-40 top-8 left-0 w-56 bg-white border border-ivory-dark rounded-lg shadow-lg p-2 space-y-1">
+                  <p className="text-[11px] text-ink-60 mb-1">Use an existing gallery photo</p>
+                  <div className="grid grid-cols-4 gap-1">
+                    {(gallery || []).map((g, gi) => g.url && (
+                      <button key={gi} type="button" onClick={() => onPickGallery(target, g.url)}
+                              className="relative aspect-square bg-white border border-ivory-dark rounded overflow-hidden hover:border-brand-400"
+                              title={g.caption || 'Use this image'}>
+                        <img src={g.url} alt="" className="w-full h-full object-contain p-0.5" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       )}
       <p className="text-[10px] text-ink-50 mt-1">
-        For a mixture recipe or a colour you already have a real photo of, use “Upload photo” instead of AI — skips generation entirely.
+        For a mixture recipe or a colour you already have a real photo of, use “Upload photo” or “From gallery” instead of AI — both skip generation entirely.
       </p>
       {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
       {previews.length > 0 && (
@@ -232,7 +280,7 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote }) {
                 )}
               </div>
               <p className="text-[10px] font-mono text-ink-70 mt-0.5 truncate" title={p.targetCrystalCode}>
-                {p.targetCrystalCode}{p.source === 'upload' ? ' ·  uploaded' : ''}
+                {p.targetCrystalCode}{p.source === 'upload' ? ' ·  uploaded' : p.source === 'gallery' ? ' · from gallery' : ''}
               </p>
               <span className={`inline-block text-[9px] px-1.5 py-0.5 rounded-full border ${badge[p.reviewStatus] || badge.draft}`}>
                 {badgeLabel[p.reviewStatus] || p.reviewStatus}
@@ -256,7 +304,7 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote }) {
                 {/* p.source is undefined on previews generated before this
                     field existed (first-ever test doc) — treat missing as
                     legacy-AI rather than hiding Regenerate for them. */}
-                {p.source !== 'upload' && (
+                {p.source !== 'upload' && p.source !== 'gallery' && (
                   <button type="button" onClick={() => runGenerate(p.targetCrystalCode)} disabled={busy}
                           className="text-[9px] text-brand-600 hover:underline disabled:opacity-40">Regenerate</button>
                 )}
@@ -265,6 +313,19 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote }) {
                           onClick={() => downloadRangeImage(p.generatedImageUrl, `${variant.plating_code || ''}${p.targetCrystalCode}-retouch`)}
                           title="Download to retouch, then Upload the corrected version for this colour"
                           className="text-[9px] text-ink-60 hover:underline">Download</button>
+                )}
+                {/* Gallery is the highest-quality-bar tier (§P2.1) — only ever
+                    offered from an already-usable photo, one deliberate click
+                    at a time, never automatic. Same optimistic local-state +
+                    Save Changes gate every other gallery edit on this page
+                    already uses — unlike colour_images, nothing else writes
+                    to gallery[] from outside this form, so that pattern is
+                    safe here (see §P2.3g/h for why it wasn't for colour_images). */}
+                {p.reviewStatus === 'used' && (
+                  galleryUrls?.includes(p.generatedImageUrl)
+                    ? <span className="text-[9px] text-ink-40">✓ In gallery</span>
+                    : <button type="button" onClick={() => onAddToGallery(p.targetCrystalCode, p.generatedImageUrl)}
+                              className="text-[9px] text-purple-700 hover:underline">Add to Gallery →</button>
                 )}
                 {p.reviewStatus !== 'used' && (
                   <button type="button" onClick={() => onRemove(p)} className="text-[9px] text-ink-50 hover:text-red-600 hover:underline">Remove</button>
@@ -1756,8 +1817,18 @@ export default function RangeForm() {
                         })()}
                       </div>
 
-                      <VariantColourPreview docId={docId} index={i} variant={v} libColors={libColors}
-                        onPromote={(code, url) => patchVariant(i, { colour_images: { ...(v.colour_images || {}), [code]: url } })} />
+                      <VariantColourPreview docId={docId} index={i} variant={v} libColors={libColors} gallery={form.gallery}
+                        onPromote={(code, url) => patchVariant(i, { colour_images: { ...(v.colour_images || {}), [code]: url } })}
+                        galleryUrls={form.gallery.map(g => g.url)}
+                        onAddToGallery={(code, url) => {
+                          const caption = buildRangeSku({
+                            brand_code: v.brand_code, design_no: form.design_no, format: form.format_code,
+                            plating_code: v.plating_code, crystal_code: code, running_no: v.running_no,
+                          })
+                          setForm(f => f.gallery.some(g => g.url === url)
+                            ? f
+                            : { ...f, gallery: [...f.gallery, { url, caption }] })
+                        }} />
                     </div>
                   </div>
                 </div>

@@ -536,6 +536,57 @@ quote picker, reusing the same `/api/download-image` proxy the existing
 silently ignored for a cross-origin Storage URL). Closes the loop:
 Generate → Download → retouch externally → Upload → Approve.
 
+## P2.3j Third source: pick from the existing gallery (2026-08-23)
+
+Asked directly: a colour photo should be addable three ways — AI generate,
+upload, or **pick a photo already sitting in the product's `gallery[]`** —
+useful when a real photo of that exact colour was already shot and
+uploaded there, with no reason to duplicate the file. Added
+`pickGalleryColourPreview()`: same shape as `uploadColourPreview()` but
+skips the Storage write entirely — the new draft's `generatedImageUrl`
+just points straight at the existing gallery URL (`source: 'gallery'`).
+`deletePreview()` on one of these safely no-ops on its Storage delete
+(`storage/object-not-found`, already caught) since it never owned a file
+under `colour_previews/` to begin with. Regenerate is hidden for this
+source too, same reasoning as `'upload'` — nothing to regenerate.
+
+Available from both surfaces: a "From gallery…" button next to Generate/
+Upload on the product page and in the invoice/PI/quote picker, opening a
+small popover of the product's (or, in the picker, the fetched product
+doc's) `gallery[]` thumbnails. Product-page picks land as a draft, same
+review gate as Generate/Upload there; picker picks auto-approve
+immediately, same as that surface already does for its other two sources
+— "picking it right here on this line IS the review."
+
+## P2.3k Also added — P2.3c, "Add to Gallery →" (2026-08-23)
+
+The third and last of the original three P2.3 slices, held for last per
+your own priority order. On any `used` (Usable) preview thumbnail on the
+product page: **"Add to Gallery →"**, only ever offered from an
+already-usable photo, one click, never automatic — exactly the gap
+`gallery[]` between "usable" and "gallery-grade" existed for (§P2.1). No
+Storage copy needed — same reasoning as `markUsable()` not copying: the
+file is already reachable via its token URL regardless of which Storage
+prefix it lives under, so this is a plain local `form.gallery` append
+(caption computed via the same `buildRangeSku()` call the crystal-colour
+chips already use), gated by Save Changes like every other gallery edit —
+safe here specifically because, unlike `colour_images`, nothing writes to
+`gallery[]` from outside this form (§P2.3h's regression doesn't apply).
+Once added, the thumbnail shows "✓ In gallery" instead of the button,
+de-duplicated by URL.
+
+## P2.3l Stronger warning on deleting a superseded photo (2026-08-23)
+
+`line_image` on an invoice/PI/quote line is a frozen URL snapshot at pick
+time (§P2.0), not a live reference — so deleting a `superseded` preview's
+file (the one case `deletePreview()` allows) can leave a broken image on
+any document that already picked it, with no batch way to detect or repair
+it after the fact (fixed manually, per document, by reselecting the
+current photo in the picker). `used` previews still can't be deleted at
+all. The Remove confirmation now says this explicitly for a `superseded`
+preview, rather than the same generic "can't be undone" wording every
+other Remove uses.
+
 ## P2.5 Acceptance tests
 
 1. A range invoice/PI/quote line with no matching `colour_images` entry

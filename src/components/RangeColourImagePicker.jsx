@@ -3,7 +3,7 @@ import { doc, getDoc } from 'firebase/firestore'
 import { db, auth } from '../firebase'
 import { useCrystalColors } from '../crystalColors'
 import { parseRangeVariantSuffix } from '../rangeSku'
-import { generateColourPreview, uploadColourPreview, promoteColourImage, markUsable } from '../colourPreviewApi'
+import { generateColourPreview, uploadColourPreview, pickGalleryColourPreview, promoteColourImage, markUsable } from '../colourPreviewApi'
 import { Sparkles, Plus, ZoomIn, Download, X } from 'lucide-react'
 
 // Same download-through-proxy pattern as RangeForm.jsx's downloadRangeImage
@@ -39,6 +39,7 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [zoomUrl, setZoomUrl] = useState(null)
+  const [galleryPickerOpen, setGalleryPickerOpen] = useState(false)
   const { colors: libColors } = useCrystalColors()
 
   useEffect(() => {
@@ -118,6 +119,30 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
     }
   }
 
+  async function onPickGallery(url) {
+    setGalleryPickerOpen(false)
+    if (!url || !target || busy) return
+    setBusy(true); setError('')
+    try {
+      const { id, generatedImageUrl } = await pickGalleryColourPreview({
+        docId: productId, variantIndex, sourcePlatingCode: variant?.plating_code,
+        targetCrystalCode: target, galleryUrl: url, createdBy: auth.currentUser?.email || '',
+      })
+      await markUsable({ id, docId: productId, variantIndex, targetCrystalCode: target, generatedImageUrl })
+      await promoteColourImage(productId, variantIndex, target, generatedImageUrl)
+      setProduct(p => {
+        const variants = [...p.variants]
+        variants[variantIndex] = { ...variants[variantIndex], colour_images: { ...(variants[variantIndex].colour_images || {}), [target]: generatedImageUrl } }
+        return { ...p, variants }
+      })
+      onSelect(generatedImageUrl)
+    } catch (err) {
+      setError(err.message || 'Could not use that gallery photo.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (loading) return <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
   if (!product) return <p className="text-sm text-gray-400 text-center py-8">Product not found.</p>
 
@@ -187,6 +212,29 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
                 <Plus size={12} /> Upload
                 <input type="file" accept="image/*" className="hidden" disabled={!target || busy} onChange={onUpload} />
               </label>
+              <div className="relative">
+                <button type="button" onClick={() => setGalleryPickerOpen(o => !o)} disabled={!target || busy || !product.gallery?.length}
+                  className="btn-secondary text-xs py-1 px-2 shrink-0 disabled:opacity-40">
+                  From gallery…
+                </button>
+                {galleryPickerOpen && (
+                  <>
+                    <div className="fixed inset-0 z-[70]" onClick={() => setGalleryPickerOpen(false)} />
+                    <div className="absolute z-[80] top-8 left-0 w-56 bg-white border border-gray-200 rounded-lg shadow-lg p-2 space-y-1">
+                      <p className="text-[11px] text-gray-500 mb-1">Use an existing gallery photo</p>
+                      <div className="grid grid-cols-4 gap-1">
+                        {(product.gallery || []).map((g, gi) => g.url && (
+                          <button key={gi} type="button" onClick={() => onPickGallery(g.url)}
+                            className="relative aspect-square bg-white border border-gray-200 rounded overflow-hidden hover:border-brand-400"
+                            title={g.caption || 'Use this image'}>
+                            <img src={g.url} alt="" className="w-full h-full object-contain p-0.5" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
             {!variant.image && <p className="text-[10px] text-amber-600 mt-1">This plating has no source photo, so AI generation isn't available — upload works regardless.</p>}
             {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
