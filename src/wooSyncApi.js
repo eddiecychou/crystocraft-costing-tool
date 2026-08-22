@@ -27,6 +27,17 @@ export const listWooOrders = (from, to) => wooSync('list_orders', { from, to })
 // WooCommerce orders behind it before linking the two records.
 export const searchWooOrders = (q) => wooSync('search_orders', { q }).then(d => d.rows || [])
 
+// Exact order history for one WooCommerce customer ID — used by
+// CustomerDetail.jsx's "WooCommerce order history" card once a customer is
+// linked (wooImport.js's linkCustomerToWoo captures the real ID).
+export const wooOrdersByCustomerId = (customerId) => wooSync('search_orders', { customer_id: customerId }).then(d => d.rows || [])
+
+// One page of all-time paid-order identities (id, email, name, total,
+// currency) — for the Retail Customer bulk scan. Caller loops pages itself
+// until has_more is false; see wooSync.js's orders_page op for why this is
+// client-paginated rather than looped server-side.
+export const wooOrdersPage = (page) => wooSync('orders_page', { page })
+
 export const wooOrderRefunds = (orderId) => wooSync('order_refunds', { order_id: orderId }).then(d => d.rows || [])
 
 // Diagnostic: full meta_data for one order — used to check for a gateway fee

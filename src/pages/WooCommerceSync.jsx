@@ -5,9 +5,10 @@ import { importWooOrder, checkImportedWooOrders, linkCustomerToWoo } from '../wo
 import { importWooRefund, checkImportedWooRefunds } from '../wooRefundImport'
 import { downloadCsv, exportStem } from '../exportCsv'
 import { loadCustomers } from '../domain/customer'
+import { scanWooCustomers, classifyWooCustomers, createWooRetailCustomers } from '../wooCustomerSync'
 import { CustomerPicker } from './CustomerAccounts'
 import LoadingBar from '../components/LoadingBar'
-import { RefreshCcw, AlertTriangle, ShoppingCart, Search, Compass, Download, CheckCircle2, Link2 } from 'lucide-react'
+import { RefreshCcw, AlertTriangle, ShoppingCart, Search, Compass, Download, CheckCircle2, Link2, Users } from 'lucide-react'
 
 // WooCommerce sync — Phase 1 (WooCommerce_B2C_Sync_Spec.md) is read-only
 // review. Phase 2 adds actual Firestore writes: "Import" turns a reviewed
@@ -131,6 +132,45 @@ export default function WooCommerceSync() {
       setLinkError(e.message || 'Link failed.')
     } finally {
       setLinkBusy(false)
+    }
+  }
+
+  // Retail Customer bulk sync (2026-08-22) — scan ALL-TIME paid order
+  // history, classify each unique buyer against the existing customer list,
+  // then let the owner review before anything is created. Never writes
+  // during the scan itself — createWooRetailCustomers is a separate,
+  // explicit confirm step.
+  const [customerScan, setCustomerScan] = useState(null) // null | { scanning, page, ordersScanned, uniqueCount } | rows[] | { error }
+  const [customerSyncBusy, setCustomerSyncBusy] = useState(false)
+  const [customerSyncDone, setCustomerSyncDone] = useState(null) // count created, once confirmed
+  const [customerSyncError, setCustomerSyncError] = useState('')
+  async function scanCustomers() {
+    setCustomerScan({ scanning: true, page: 0, ordersScanned: 0, uniqueCount: 0 })
+    setCustomerSyncDone(null)
+    try {
+      const [entries, existing] = await Promise.all([
+        scanWooCustomers((page, ordersScanned, uniqueCount) => setCustomerScan({ scanning: true, page, ordersScanned, uniqueCount })),
+        customers ?? loadCustomers(),
+      ])
+      if (customers == null) setCustomers(existing)
+      setCustomerScan(classifyWooCustomers(entries, existing).sort((a, b) => b.orderCount - a.orderCount))
+    } catch (e) {
+      setCustomerScan({ error: e.message || 'Scan failed.' })
+    }
+  }
+  async function confirmCustomerSync() {
+    if (!Array.isArray(customerScan)) return
+    setCustomerSyncBusy(true); setCustomerSyncError('')
+    try {
+      const n = await createWooRetailCustomers(customerScan)
+      setCustomerSyncDone(n)
+      // Re-classify in place so the review table immediately reflects the
+      // new 'linked' status — no need to re-scan WooCommerce to see it.
+      setCustomerScan(prev => prev.map(e => (e.status !== 'linked' ? { ...e, status: 'linked' } : e)))
+    } catch (e) {
+      setCustomerSyncError(e.message || 'Create failed.')
+    } finally {
+      setCustomerSyncBusy(false)
     }
   }
 
@@ -469,6 +509,93 @@ export default function WooCommerceSync() {
               </div>
             )
           )}
+        </div>
+
+        <div className="card p-4 mb-5">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-xs font-medium text-gray-500">Sync all WooCommerce customers who have transacted with us</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                Scans all-time PAID order history (not WooCommerce's registered-account list) and creates a Retail
+                Customer record for each unique buyer, keyed by their real WooCommerce identity — never merges with
+                an existing customer on email match, only flags it for your review.
+              </p>
+            </div>
+            <button type="button" onClick={scanCustomers} disabled={customerScan?.scanning}
+              className="btn-secondary text-sm inline-flex items-center gap-1.5 disabled:opacity-50 shrink-0">
+              <Users size={14} /> {customerScan?.scanning ? 'Scanning…' : 'Scan order history'}
+            </button>
+          </div>
+
+          {customerScan?.scanning && (
+            <p className="text-xs text-gray-500 mt-3">
+              Page {customerScan.page} · {customerScan.ordersScanned} paid orders scanned · {customerScan.uniqueCount} unique customers found so far…
+            </p>
+          )}
+          {customerScan?.error && <p className="text-xs text-amber-700 mt-3">{customerScan.error}</p>}
+
+          {Array.isArray(customerScan) && (() => {
+            const counts = { new: 0, possible_match: 0, linked: 0 }
+            for (const e of customerScan) counts[e.status] = (counts[e.status] || 0) + 1
+            return (
+              <div className="mt-4">
+                <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
+                  <p className="text-xs text-gray-500">
+                    {customerScan.length} unique buyers found — <span className="text-green-700 font-medium">{counts.new} new</span>,{' '}
+                    <span className="text-amber-700 font-medium">{counts.possible_match} possible B2B match</span>,{' '}
+                    <span className="text-gray-500">{counts.linked} already linked</span>
+                  </p>
+                  {(counts.new + counts.possible_match) > 0 && (
+                    <button type="button" onClick={confirmCustomerSync} disabled={customerSyncBusy}
+                      className="btn-primary text-xs py-1.5 px-3 disabled:opacity-50">
+                      {customerSyncBusy ? 'Creating…' : `Create ${counts.new + counts.possible_match} retail customer${counts.new + counts.possible_match === 1 ? '' : 's'}`}
+                    </button>
+                  )}
+                </div>
+                {customerSyncDone != null && (
+                  <p className="text-xs text-green-700 mb-2">
+                    <CheckCircle2 size={12} className="inline mr-1" /> {customerSyncDone} customer record{customerSyncDone === 1 ? '' : 's'} created.
+                    Any flagged as a possible B2B match still needs your review on that customer's page.
+                  </p>
+                )}
+                {customerSyncError && <p className="text-xs text-amber-700 mb-2">{customerSyncError}</p>}
+                <div className="overflow-x-auto max-h-96 overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="text-left text-gray-400 border-b border-gray-100 sticky top-0 bg-white">
+                        <th className="py-1.5 pr-3 font-medium">Name</th>
+                        <th className="py-1.5 pr-3 font-medium">Email</th>
+                        <th className="py-1.5 pr-3 font-medium text-right">Orders</th>
+                        <th className="py-1.5 pr-3 font-medium">Total spent</th>
+                        <th className="py-1.5 pr-3 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {customerScan.map((e) => (
+                        <tr key={e.key}>
+                          <td className="py-1.5 pr-3">{e.name || '—'}</td>
+                          <td className="py-1.5 pr-3 text-gray-500">{e.email || '—'}</td>
+                          <td className="py-1.5 pr-3 text-right tabular-nums">{e.orderCount}</td>
+                          <td className="py-1.5 pr-3 text-gray-500">
+                            {Object.entries(e.totalsByCurrency).map(([cur, sum]) => `${cur} ${fmtMoney(sum)}`).join(' · ')}
+                          </td>
+                          <td className="py-1.5 pr-3">
+                            {e.status === 'linked' && <span className="text-gray-400">Already linked</span>}
+                            {e.status === 'new' && <span className="text-green-700">New</span>}
+                            {e.status === 'possible_match' && (
+                              <span className="text-amber-700" title={`Possible match: ${e.possibleMatch?.company_name}`}>
+                                Possible match: {e.possibleMatch?.company_name}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          })()}
         </div>
 
         {payoutProbe && payoutProbe !== 'loading' && (

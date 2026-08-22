@@ -17,6 +17,8 @@
 //
 // Request:  POST { op: 'list_orders', from, to }   -- from/to: 'YYYY-MM-DD'
 //           POST { op: 'search_orders', q }         -- email/name, no date bound
+//           POST { op: 'search_orders', customer_id }  -- exact WC customer ID
+//           POST { op: 'orders_page', page }        -- lightweight, client-paginated, all-time
 //           POST { op: 'order_refunds', order_id }
 //           POST { op: 'order_meta', order_id }
 //           POST { op: 'probe_payout', order_id? }   -- diagnostic, see below
@@ -257,18 +259,62 @@ export default async function handler(req) {
   // finding "did they ever order, even unpaid/cancelled" is the point here,
   // unlike list_orders which deliberately only surfaces paid orders as
   // invoicing candidates.
+  // `customer_id` (WooCommerce's own numeric ID, exact match via WC's native
+  // `customer` filter) takes priority over `q` (fuzzy `search` text) when
+  // both are given — used by CustomerDetail.jsx's "WooCommerce order
+  // history" card, which knows the exact ID once a customer is linked
+  // (wooImport.js's linkCustomerToWoo) and wants their real order list, not
+  // a name/email guess.
   if (body.op === 'search_orders') {
+    const customerId = parseInt(body.customer_id, 10)
     const q = String(body.q || '').trim().slice(0, 200)
-    if (!q) return json({ error: 'Missing search query' }, 400)
+    if (!customerId && !q) return json({ error: 'Missing search query' }, 400)
+    const params = customerId
+      ? { customer: customerId, per_page: 50, orderby: 'date', order: 'desc' }
+      : { search: q, per_page: 50, orderby: 'date', order: 'desc' }
     const orders = []
     for (let page = 1; page <= 5; page++) {
-      const r = await wc('orders', { search: q, per_page: 50, page, orderby: 'date', order: 'desc' })
+      const r = await wc('orders', { ...params, page })
       if (!r.ok) return json({ error: 'WooCommerce search failed', detail: (await r.text()).slice(0, 300) }, 502)
       const rows = await r.json()
       orders.push(...rows)
       if (rows.length < 50) break
     }
     return json({ rows: orders.map(o => summarizeOrder(o)) })
+  }
+
+  // ── one page of all-time PAID order identities, for the Retail Customer bulk
+  // scan (WooCommerceSync.jsx's "Sync all WooCommerce customers", 2026-08-22)
+  // ─────────────────────────────────────────────────────────────────────────
+  // Deliberately CLIENT-paginated (the browser calls this once per page and
+  // keeps going until hasMore is false) rather than looping server-side like
+  // list_orders/search_orders do — an all-time scan across a store's full
+  // order history has no known upper bound, and a single edge-function
+  // invocation looping through it risks the platform's execution time limit.
+  // Client-side pagination has no such ceiling, just a longer visible scan
+  // with live progress in the UI.
+  //
+  // Deliberately lightweight — none of summarizeOrder()'s gateway-fee/
+  // wc/v3/payments/transactions matching, which is exactly the expensive
+  // part that would make looping through years of history impractical. This
+  // scan only needs identity + spend, not accounting detail.
+  if (body.op === 'orders_page') {
+    const page = Math.max(1, parseInt(body.page, 10) || 1)
+    const r = await wc('orders', { per_page: 100, page, orderby: 'date', order: 'asc' })
+    if (!r.ok) return json({ error: 'WooCommerce fetch failed', detail: (await r.text()).slice(0, 300) }, 502)
+    const rows = await r.json()
+    return json({
+      rows: rows.filter(isPaid).map(o => ({
+        order_id: o.id,
+        woo_customer_id: o.customer_id || null,
+        email: (o.billing?.email || '').trim().toLowerCase() || null,
+        name: [o.billing?.first_name, o.billing?.last_name].filter(Boolean).join(' ') || null,
+        date_paid: o.date_paid,
+        currency: o.currency,
+        total: parseFloat(o.total) || 0,
+      })),
+      has_more: rows.length === 100,
+    })
   }
 
   // ── refunds for one order, on demand ────────────────────────────────────────

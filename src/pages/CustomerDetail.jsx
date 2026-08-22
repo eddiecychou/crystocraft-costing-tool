@@ -11,7 +11,7 @@ import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
 import CustomerBrandGallery from '../components/CustomerBrandGallery'
 import ProposalEditor from '../components/ProposalEditor'
-import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt, ChevronDown, ChevronUp, ChevronRight, Database, Mail, MessageCircle, Loader2, RefreshCw, Smartphone, Mic } from 'lucide-react'
+import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt, ChevronDown, ChevronUp, ChevronRight, Database, Mail, MessageCircle, Loader2, RefreshCw, Smartphone, Mic, ShoppingCart } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
 import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers, CHANNELS, NO_API_CHANNELS } from '../domain/customer'
@@ -23,6 +23,7 @@ import WhatsAppAttachment from '../components/WhatsAppAttachment'
 import { refreshEmailSummary, discussCustomerEmail, renderThreadsText, buildYearIndex, routeEmailQuestion, renderThreadsTextForYears, buildKeywordFacets, composeEmailAnswer } from '../emailSummaryApi'
 import { generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
 import { createInvitation } from '../portalInviteApi'
+import { wooOrdersByCustomerId, searchWooOrders } from '../wooSyncApi'
 
 const STATUS_STYLES = {
   draft: 'bg-gray-100 text-gray-600',
@@ -295,6 +296,29 @@ export default function CustomerDetail() {
   const [confirmDeleteEnquiry, setConfirmDeleteEnquiry] = useState(null)
   const [merging, setMerging] = useState(false)
   const remember = useScrollMemory(`customer-${id}`, !loading)
+
+  // WooCommerce order history (2026-08-22) — for a customer linked via
+  // wooImport.js's linkCustomerToWoo. Fetched live from WooCommerce, not
+  // stored in Firestore — same read-only posture as the WooCommerce Sync
+  // page. null | 'loading' | rows[] | { error }
+  const [wooOrders, setWooOrders] = useState(null)
+  useEffect(() => {
+    if (!customer || customer.source !== 'WooCommerce') return
+    let alive = true
+    setWooOrders('loading')
+    // woo_customer_id is exact and preferred; a guest-checkout order has no
+    // real WooCommerce account behind it (id 0/absent), so guest-linked
+    // customers fall back to an email search — still their real history,
+    // just matched by email/name instead of an account ID that doesn't exist.
+    const fetch = customer.woo_customer_id
+      ? wooOrdersByCustomerId(customer.woo_customer_id)
+      : customer.contact_emails?.[0]
+        ? searchWooOrders(customer.contact_emails[0])
+        : Promise.resolve([])
+    fetch.then(rows => { if (alive) setWooOrders(rows) })
+        .catch(e => { if (alive) setWooOrders({ error: e.message || 'Could not load WooCommerce orders.' }) })
+    return () => { alive = false }
+  }, [customer?.id, customer?.source, customer?.woo_customer_id])
 
   // Enquiry form state
   const [enquiryFormOpen, setEnquiryFormOpen] = useState(false)
@@ -1012,6 +1036,59 @@ export default function CustomerDetail() {
           </div>
         )}
       </Collapsible>
+
+      {/* WooCommerce order history (2026-08-22) — read live from WooCommerce,
+          not stored in Firestore; only shown once a customer is actually
+          linked (source === 'WooCommerce'). "How many orders has this
+          customer made" was the direct ask that led to this. */}
+      {customer.source === 'WooCommerce' && (
+        <Collapsible storageKey={`${id}:woo-orders`}
+          title={`WooCommerce Orders${Array.isArray(wooOrders) ? ` (${wooOrders.length})` : ''}`}
+          right={<Link to="/woo-sync" className="text-xs text-brand-600 hover:underline inline-flex items-center gap-1"><ShoppingCart size={12} /> Open sync</Link>}>
+          {wooOrders === 'loading' && <p className="text-sm text-gray-400">Loading…</p>}
+          {wooOrders?.error && <p className="text-sm text-amber-700">{wooOrders.error}</p>}
+          {Array.isArray(wooOrders) && wooOrders.length === 0 && (
+            <p className="text-sm text-gray-400">No WooCommerce orders found.</p>
+          )}
+          {Array.isArray(wooOrders) && wooOrders.length > 0 && (() => {
+            // Total spent per currency, shown as a one-line summary above the
+            // table — never summed across currencies (same rule as the
+            // WooCommerce Sync page's "By item" report: orders can be in
+            // GBP/HKD/USD/EUR, and a cross-currency total is meaningless).
+            const byCurrency = new Map()
+            for (const o of wooOrders) byCurrency.set(o.currency, (byCurrency.get(o.currency) || 0) + (o.total || 0))
+            return (
+              <>
+                <p className="text-xs text-gray-500 mb-3">
+                  Total spent: {[...byCurrency.entries()].map(([cur, sum]) => fmtMoney(sum, cur)).join(' · ')}
+                </p>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                        <th className="pb-1.5 pr-3 font-medium">Order</th>
+                        <th className="pb-1.5 pr-3 font-medium">Status</th>
+                        <th className="pb-1.5 pr-3 font-medium">Date paid</th>
+                        <th className="pb-1.5 pr-3 font-medium text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {wooOrders.map(o => (
+                        <tr key={o.id}>
+                          <td className="py-1.5 pr-3 font-mono text-xs">#{o.number}</td>
+                          <td className="py-1.5 pr-3 text-xs text-gray-500">{o.status}</td>
+                          <td className="py-1.5 pr-3 text-xs text-gray-500">{fmtIsoDate(o.date_paid)}</td>
+                          <td className="py-1.5 pr-3 text-right text-xs tabular-nums">{fmtMoney(o.total, o.currency)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )
+          })()}
+        </Collapsible>
+      )}
 
       {/* Company details */}
       <Collapsible storageKey={`${id}:company`} title="Company Details">
