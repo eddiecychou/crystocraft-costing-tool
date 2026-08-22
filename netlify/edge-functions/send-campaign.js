@@ -127,10 +127,20 @@ export default async function handler(req) {
     const id = String(c.id || '').trim()
     const email = String(c.email || '').trim()
     const customerId = String(c.customerId || '').trim()
+    // Retail Customer Campaigns (2026-08-22): a recipient sourced from
+    // `customers` (customer_type: 'retail') rather than `marketing_contacts`
+    // — Campaigns.jsx sets this per-batch, never mixed within one batch.
+    // Changes which collection /api/unsubscribe patches (customers has no
+    // status/emailable — see customer.js's `unsubscribed` field) and which
+    // Resend tag carries the id (a customer send's `id` IS the customer's
+    // own doc id, not a marketing_contacts id — tagging it as `mc_id` would
+    // have resend-webhook.js patching a marketing_contacts doc that doesn't
+    // exist for this person).
+    const isCustomer = c.recipientKind === 'customer'
     if (!id || !email) return { id, ok: false, error: 'Missing id/email' }
     try {
       const t = await unsubToken(id, API_KEY)
-      const unsubUrl = `${APP_URL}/api/unsubscribe?id=${encodeURIComponent(id)}&t=${t}`
+      const unsubUrl = `${APP_URL}/api/unsubscribe?id=${encodeURIComponent(id)}&t=${t}${isCustomer ? '&col=customers' : ''}`
       const r = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { Authorization: `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
@@ -158,10 +168,12 @@ export default async function handler(req) {
           // (email_bounced flag + Interaction Log entry), only the
           // marketing_contacts one, even though that handling has existed
           // since the Daily Drafts personal-send path.
-          tags: buildResendTags([
-            { name: 'mc_id', value: id, prefix: 'mc' },
-            ...(customerId ? [{ name: 'customer_id', value: customerId, prefix: 'customer' }] : []),
-          ]),
+          tags: buildResendTags(isCustomer
+            ? [{ name: 'customer_id', value: id, prefix: 'customer' }]
+            : [
+                { name: 'mc_id', value: id, prefix: 'mc' },
+                ...(customerId ? [{ name: 'customer_id', value: customerId, prefix: 'customer' }] : []),
+              ]),
         }),
       })
       if (!r.ok) return { id, ok: false, error: (await r.text()).slice(0, 200) }

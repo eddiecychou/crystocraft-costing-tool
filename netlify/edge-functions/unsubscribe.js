@@ -3,9 +3,15 @@
 // this authenticates to Firestore as the service account rather than
 // verifying a Firebase session.
 //
-// GET /api/unsubscribe?id=<contact id>&t=<HMAC token>
+// GET /api/unsubscribe?id=<contact id>&t=<HMAC token>&col=contacts|customers
 //   -> a small confirmation HTML page (this is a link a human clicks from
 //      their mail client, not a JSON API caller)
+//
+// `col` (2026-08-22, Retail Customer Campaigns): send-campaign.js now also
+// sends to `customers/{id}` docs (customer_type: 'retail'), which have no
+// status/emailable field at all — the two collections need different field
+// writes on unsubscribe. Defaults to 'contacts' for every unsubscribe link
+// already sent before this existed (they have no col param at all).
 //
 // The token is HMAC-SHA256(id, RESEND_API_KEY) — see send-campaign.js, which
 // mints it. Reusing RESEND_API_KEY as the HMAC secret means no new env var
@@ -99,6 +105,7 @@ export default async function handler(req) {
   const url = new URL(req.url)
   const id = (url.searchParams.get('id') || '').trim()
   const t = (url.searchParams.get('t') || '').trim()
+  const col = url.searchParams.get('col') === 'customers' ? 'customers' : 'contacts'
   if (!id || !t) return html('Invalid link', 'This unsubscribe link is missing information.', 400)
 
   const RESEND_KEY = Deno.env.get('RESEND_API_KEY')
@@ -115,8 +122,13 @@ export default async function handler(req) {
   try {
     const token = await getAccessToken(CLIENT_EMAIL, PRIVATE_KEY)
     const nowIso = new Date().toISOString()
-    const base = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/marketing_contacts/${encodeURIComponent(id)}`
-    const fields = { status: 'unsubscribed', emailable: false, unsubscribed_at: { __ts: nowIso }, updatedAt: { __ts: nowIso } }
+    const base = `https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents/${col}/${encodeURIComponent(id)}`
+    // customers/{id} has no status/emailable concept (that's marketing_contacts-
+    // only) — `unsubscribed` is its own dedicated flag (customer.js), checked
+    // by eligibleRetailCustomers before any future campaign batch.
+    const fields = col === 'customers'
+      ? { unsubscribed: true, unsubscribed_at: { __ts: nowIso }, updatedAt: { __ts: nowIso } }
+      : { status: 'unsubscribed', emailable: false, unsubscribed_at: { __ts: nowIso }, updatedAt: { __ts: nowIso } }
     const masks = Object.keys(fields).map(k => `updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&')
     const patchR = await fetch(`${base}?${masks}`, {
       method: 'PATCH',
@@ -128,9 +140,12 @@ export default async function handler(req) {
     }
     // Awaited (not fire-and-forget) for the same reason as subscribe.js: an
     // edge function's isolate can be torn down right after the response is
-    // sent. `id` doubles as the email — it IS the lowercased email under this
-    // collection's id scheme (see idFromEmail in marketingContact.js).
-    await notifyAdmin(RESEND_KEY, `Marketing unsubscribe — ${id}`,
+    // sent. For a contacts unsubscribe, `id` doubles as the email — it IS
+    // the lowercased email under that collection's id scheme (see
+    // idFromEmail in marketingContact.js). A customers id has no such
+    // guarantee (it may be a WooCommerce-derived key or a plain Firestore
+    // auto-id), so this line is only a reliable email address for `col=contacts`.
+    await notifyAdmin(RESEND_KEY, `Marketing unsubscribe — ${col} ${id}`,
       `<p><b>Marketing unsubscribe</b></p><p>Email: ${notifyEsc(id)}</p>`)
     return html('You’re unsubscribed', 'You will no longer receive marketing emails from Crystocraft. If this was a mistake, contact us at sales@uart.com.hk.')
   } catch {

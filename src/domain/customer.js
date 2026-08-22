@@ -267,6 +267,15 @@ export function normalizeCustomer(raw) {
     email_complained:       !!r.email_complained,
     email_complained_at:    r.email_complained_at ?? null,
     email_complain_reason:  str(r.email_complain_reason),
+    // Retail Customer Campaigns (2026-08-22) — customers/{id} previously had
+    // NO one-click-unsubscribe equivalent to marketing_contacts'
+    // status/emailable (a real gap: unsubscribe.js only ever wrote to
+    // marketing_contacts, so a retail customer clicking "unsubscribe" would
+    // see a confirmation page but nothing was actually suppressed). Set only
+    // by /api/unsubscribe (col=customers) — never editable in CustomerForm,
+    // same posture as email_bounced/email_complained above.
+    unsubscribed:        !!r.unsubscribed,
+    unsubscribed_at:     r.unsubscribed_at ?? null,
     // SU-08 Phase 2 (2026-08-19) — every marketing_contacts lead ever linked
     // to this customer (domain/marketingContact.js's linkContactToCustomer,
     // arrayUnion so a retry can't duplicate an entry). The explicit cross-

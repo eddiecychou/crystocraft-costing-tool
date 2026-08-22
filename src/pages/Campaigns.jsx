@@ -4,9 +4,10 @@ import { Send, Loader2, CheckCircle2 } from 'lucide-react'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { storage } from '../firebase'
 import { useMarketingContacts, MC_AUDIENCES } from '../domain/marketingContact'
+import { loadCustomers } from '../domain/customer'
 import {
   listCampaigns, createCampaign, recordBatchResults, setCampaignStatus, eligibleContacts,
-  listTemplates, saveTemplate, updateTemplate, deleteTemplate, matchesSegment,
+  eligibleRetailCustomers, listTemplates, saveTemplate, updateTemplate, deleteTemplate, matchesSegment,
 } from '../domain/campaigns'
 import { sendCampaignBatch } from '../campaignApi'
 
@@ -45,6 +46,10 @@ function segmentFromValue(v, presetIds) {
 
 function segmentLabel(segment) {
   if (!segment) return '—'
+  // Retail Customer Campaigns (2026-08-22) — a separate audience source,
+  // never mixed with the marketing_contacts segments below. v1 has no
+  // sub-segmentation within it (see eligibleRetailCustomers's own comment).
+  if (segment.source === 'customers') return 'Retail customers (all)'
   if (segment.all) return 'All subscribed contacts'
   if (segment.tag) return `Tag — ${segment.tag}`
   if (segment.audience) return `Audience — ${segment.audience}`
@@ -62,11 +67,28 @@ function segmentLabel(segment) {
 
 export default function Campaigns({ presetContactIds, onConsumedPreset }) {
   const { contacts, loading: contactsLoading } = useMarketingContacts()
+  // Retail Customer Campaigns (2026-08-22) — loaded once, same pattern
+  // DailyDrafts.jsx already uses for the full customers list. Needed
+  // regardless of which audience source is currently selected in the "New
+  // campaign" form, because the campaigns LIST below must compute the
+  // correct "remaining" count for any already-created customer-sourced
+  // campaign too.
+  const [allCustomers, setAllCustomers] = useState([])
+  const [customersLoading, setCustomersLoading] = useState(true)
+  useEffect(() => { loadCustomers().then(setAllCustomers).finally(() => setCustomersLoading(false)) }, [])
+  const retailCustomers = useMemo(() => allCustomers.filter(c => c.customer_type === 'retail'), [allCustomers])
+
   const [campaigns, setCampaigns] = useState([])
   const [loading, setLoading] = useState(true)
   const [sendingId, setSendingId] = useState(null)
   const [error, setError] = useState('')
 
+  // 'contacts' (default — existing marketing_contacts targeting, unchanged)
+  // or 'customers' (retail customers — owner, 2026-08-22: "campaigns will be
+  // more targeting B2C retail because i personally don't know the customers
+  // unlike the b2b" — Daily Drafts is the personal-note tool for B2B, this
+  // bulk path is for retail).
+  const [audienceSource, setAudienceSource] = useState('contacts')
   const [segValue, setSegValue] = useState('all')
   const [name, setName] = useState('')
   const [subject, setSubject] = useState('')
@@ -102,11 +124,15 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
   }, [presetContactIds])
 
   const segOptions = useMemo(() => segmentOptions(contacts, localPresetIds?.length), [contacts, localPresetIds])
-  const segment = segmentFromValue(segValue, localPresetIds)
-  const previewCount = useMemo(
-    () => contacts.filter(c => c.status === 'subscribed' && c.emailable && matchesSegment(c, segment)).length,
-    [contacts, segValue, localPresetIds]
-  )
+  const segment = audienceSource === 'customers'
+    ? { source: 'customers', all: true }
+    : segmentFromValue(segValue, localPresetIds)
+  const previewCount = useMemo(() => {
+    if (audienceSource === 'customers') {
+      return retailCustomers.filter(c => !c.unsubscribed && !c.email_bounced && !c.email_complained && c.contact_emails?.[0]).length
+    }
+    return contacts.filter(c => c.status === 'subscribed' && c.emailable && matchesSegment(c, segment)).length
+  }, [contacts, segValue, localPresetIds, audienceSource, retailCustomers])
 
   function applyTemplate(id) {
     if (!id) return
@@ -206,25 +232,40 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
   }
 
   async function handleSendBatch(campaign) {
-    const { batch, remaining } = eligibleContacts(campaign, contacts, BATCH_SIZE)
+    const isCustomerCampaign = campaign.segment?.source === 'customers'
+    const { batch, remaining } = isCustomerCampaign
+      ? eligibleRetailCustomers(campaign, allCustomers, BATCH_SIZE)
+      : eligibleContacts(campaign, contacts, BATCH_SIZE)
     if (!batch.length) return
     setSendingId(campaign.id); setError('')
     try {
       const results = await sendCampaignBatch({
         subject: campaign.subject,
         bodyHtml: campaign.bodyHtml,
-        // customerId: only present when this contact is already linked to a
-        // real customers/ record (possible_customer_match — see
-        // domain/marketingContact.js) — lets send-campaign.js tag the send
-        // with BOTH mc_id and customer_id, so a bounce/complaint reaches
-        // resend-webhook.js's customer-side handling too, not just the
-        // marketing_contacts one (found during the SU-08 interaction-log
-        // audit, 2026-08-18: a campaign bounce against an already-linked
-        // customer never surfaced on their customer record at all before).
-        contacts: batch.map(c => ({
-          id: c.id, email: c.email, first_name: c.first_name, last_name: c.last_name,
-          customerId: c.possible_customer_match?.customer_id || null,
-        })),
+        contacts: isCustomerCampaign
+          // Retail customer recipient — `id` IS the customer's own doc id
+          // (see eligibleRetailCustomers/customer.js), not a marketing_contacts
+          // id. recipientKind tells send-campaign.js to patch customers/{id}
+          // on unsubscribe and tag the Resend send with customer_id, not
+          // mc_id (see that function's own comment).
+          ? batch.map(c => ({
+              id: c.id, email: c.contact_emails[0],
+              first_name: (c.contact_name || '').split(' ')[0] || '',
+              last_name: (c.contact_name || '').split(' ').slice(1).join(' '),
+              recipientKind: 'customer',
+            }))
+          // customerId: only present when this contact is already linked to a
+          // real customers/ record (possible_customer_match — see
+          // domain/marketingContact.js) — lets send-campaign.js tag the send
+          // with BOTH mc_id and customer_id, so a bounce/complaint reaches
+          // resend-webhook.js's customer-side handling too, not just the
+          // marketing_contacts one (found during the SU-08 interaction-log
+          // audit, 2026-08-18: a campaign bounce against an already-linked
+          // customer never surfaced on their customer record at all before).
+          : batch.map(c => ({
+              id: c.id, email: c.email, first_name: c.first_name, last_name: c.last_name,
+              customerId: c.possible_customer_match?.customer_id || null,
+            })),
       })
       await recordBatchResults(campaign.id, results)
       if (remaining - batch.length <= 0) await setCampaignStatus(campaign.id, 'completed')
@@ -236,7 +277,7 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
     }
   }
 
-  if (loading || contactsLoading) return <div className="p-6 text-sm text-gray-500">Loading…</div>
+  if (loading || contactsLoading || customersLoading) return <div className="p-6 text-sm text-gray-500">Loading…</div>
 
   return (
     <div className="p-4 md:p-6 max-w-5xl space-y-8">
@@ -257,12 +298,40 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Segment</label>
-          <select value={segValue} onChange={e => setSegValue(e.target.value)} className="input w-full md:w-96">
-            {segOptions.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
-          </select>
-          <div className="text-xs text-gray-500 mt-1">{previewCount.toLocaleString()} subscribed contact{previewCount === 1 ? '' : 's'} match this segment</div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Audience</label>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-1.5 text-sm text-gray-700">
+              <input type="radio" name="audienceSource" checked={audienceSource === 'contacts'}
+                onChange={() => setAudienceSource('contacts')} />
+              Marketing Contacts
+            </label>
+            <label className="flex items-center gap-1.5 text-sm text-gray-700">
+              <input type="radio" name="audienceSource" checked={audienceSource === 'customers'}
+                onChange={() => setAudienceSource('customers')} />
+              Retail Customers
+            </label>
+          </div>
         </div>
+
+        {audienceSource === 'contacts' ? (
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Segment</label>
+            <select value={segValue} onChange={e => setSegValue(e.target.value)} className="input w-full md:w-96">
+              {segOptions.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
+            </select>
+            <div className="text-xs text-gray-500 mt-1">{previewCount.toLocaleString()} subscribed contact{previewCount === 1 ? '' : 's'} match this segment</div>
+          </div>
+        ) : (
+          <div>
+            {/* No sub-segmentation yet — see eligibleRetailCustomers's own
+                comment for why v1 is "every retail customer," full stop. */}
+            <div className="text-sm text-gray-700">All retail customers</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {previewCount.toLocaleString()} retail customer{previewCount === 1 ? '' : 's'} eligible to receive email
+              (excludes anyone unsubscribed, bounced, or without an email on file)
+            </div>
+          </div>
+        )}
 
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Start from a template (optional)</label>
@@ -317,7 +386,9 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
         <h2 className="text-sm font-semibold text-gray-900">Campaigns</h2>
         {campaigns.length === 0 && <div className="text-sm text-gray-400">No campaigns yet.</div>}
         {campaigns.map(c => {
-          const { remaining } = eligibleContacts(c, contacts, BATCH_SIZE)
+          const { remaining } = c.segment?.source === 'customers'
+            ? eligibleRetailCustomers(c, allCustomers, BATCH_SIZE)
+            : eligibleContacts(c, contacts, BATCH_SIZE)
           const sentCount = Object.keys(c.sent || {}).length
           const failedCount = Object.keys(c.failed || {}).length
           const isSending = sendingId === c.id

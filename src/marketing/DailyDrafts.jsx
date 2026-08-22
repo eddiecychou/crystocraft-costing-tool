@@ -10,7 +10,7 @@ import {
   FlaskConical,
 } from 'lucide-react'
 import { db, storage, authedUser } from '../firebase'
-import { loadCustomers, primaryContact, getCustomer, saveCustomer } from '../domain/customer'
+import { loadCustomers, primaryContact, getCustomer, saveCustomer, CRM_CATEGORIES } from '../domain/customer'
 import { normalizeContact, markContactOutreach, blockContactOutreach, promoteContactsToCustomers, linkContactToCustomer } from '../domain/marketingContact'
 import {
   listPendingDrafts, listDraftsForTopic, listSentDrafts, listRecentDecisions,
@@ -81,6 +81,13 @@ function customerToEntity(c) {
   if (!email) return null
   return {
     source: 'customer', id: c.id, name: c.company_name, email,
+    // Retail Customer segment (2026-08-22) — lets the audience filter below
+    // separate WooCommerce retail buyers from B2B customers. Most EXISTING
+    // B2B customers have never had this set (null, not explicitly 'b2b') —
+    // the filter treats "b2b" as "not retail," never "customer_type==='b2b'
+    // exactly," so it doesn't suddenly exclude the entire pre-existing
+    // customer base the day this field appeared.
+    customer_type: c.customer_type || null,
     crm_category: c.crm_category, crm_status: c.crm_status,
     notes: c.notes, erp_code: c.erp_code, country: c.country,
     lastOutreachAt: c.lastOutreachAt, blockOutreachUntil: c.blockOutreachUntil,
@@ -354,6 +361,14 @@ export default function DailyDrafts() {
 
   // ── Target & Generate phase ────────────────────────────────────────────
   const [targetingNote, setTargetingNote] = useState('')
+  // Retail Customer segment (2026-08-22) — a hard pre-filter on the
+  // candidate pool, not just a hint in targetingNote (which the AI can
+  // ignore/misread). Defaults to 'b2b': Daily Drafts has always been a
+  // trade-outreach tool, and the bulk WooCommerce sync just added a lot of
+  // retail customers that would otherwise silently flood the candidate pool
+  // for a personal "Hi, I'm Eddie" style note that doesn't fit them at all.
+  const [audienceFilter, setAudienceFilter] = useState('b2b') // 'b2b' | 'retail' | 'all'
+  const [categoryFilter, setCategoryFilter] = useState([]) // crm_category[] — empty = all, only meaningful for 'b2b'
   const [includeAlreadyContacted, setIncludeAlreadyContacted] = useState(false)
   const [generating, setGenerating] = useState(false)
 
@@ -641,7 +656,22 @@ export default function DailyDrafts() {
         for (const customerId of alreadyContactedMap.keys()) excludedIds.add(customerId)
       }
 
-      const entities = [...customers.map(customerToEntity), ...contacts.map(contactToEntity)]
+      // Audience filter (2026-08-22) — a hard pre-filter, applied before
+      // eligibility/cooldown checks so it can never be second-guessed by the
+      // AI. contactToEntity() only ever returns 'trade' marketing_contacts
+      // leads (retail leads are already excluded upstream) — there is no
+      // such thing as a "retail contact" in this pool, so the retail
+      // audience is customer-sourced only.
+      let customerEntities = customers.map(customerToEntity)
+      if (audienceFilter === 'retail') {
+        customerEntities = customerEntities.filter(e => e && e.customer_type === 'retail')
+      } else if (audienceFilter === 'b2b') {
+        customerEntities = customerEntities.filter(e => e && e.customer_type !== 'retail')
+        if (categoryFilter.length) customerEntities = customerEntities.filter(e => categoryFilter.includes(e.crm_category))
+      }
+      const entities = audienceFilter === 'retail'
+        ? customerEntities
+        : [...customerEntities, ...contacts.map(contactToEntity)]
       let candidates = eligibleCandidates(entities, excludedIds, excludedEmails)
       if (includeAlreadyContacted) {
         candidates = candidates.map(c => {
@@ -1220,6 +1250,37 @@ export default function DailyDrafts() {
       {/* ── 2. Target & Generate ───────────────────────────────────────── */}
       <div className={`card p-5 space-y-4 ${!hasMaster ? 'opacity-50' : ''}`}>
         <h2 className="text-sm font-semibold text-gray-900">2. Who do you want to reach?</h2>
+        {/* Hard pre-filter, not a hint — see handleGenerate's own comment on
+            why this can't just be folded into the free-text Targeting note
+            below (the AI can ignore/misread free text; this can't be). */}
+        <div>
+          <label className="block text-xs font-medium text-gray-500 mb-1">Audience</label>
+          <div className="flex items-center gap-3 flex-wrap">
+            {[
+              { v: 'b2b', label: 'B2B customers' },
+              { v: 'retail', label: 'Retail customers only' },
+              { v: 'all', label: 'Everyone' },
+            ].map(opt => (
+              <label key={opt.v} className="flex items-center gap-1.5 text-sm text-gray-700">
+                <input type="radio" name="audienceFilter" value={opt.v} checked={audienceFilter === opt.v}
+                  disabled={!hasMaster} onChange={() => setAudienceFilter(opt.v)} />
+                {opt.label}
+              </label>
+            ))}
+          </div>
+          {audienceFilter === 'b2b' && (
+            <div className="flex items-center gap-3 flex-wrap mt-2">
+              {CRM_CATEGORIES.map(cat => (
+                <label key={cat} className="flex items-center gap-1.5 text-xs text-gray-600">
+                  <input type="checkbox" checked={categoryFilter.includes(cat)} disabled={!hasMaster}
+                    onChange={e => setCategoryFilter(prev => e.target.checked ? [...prev, cat] : prev.filter(c => c !== cat))} />
+                  {cat}
+                </label>
+              ))}
+              <span className="text-[11px] text-gray-400">{categoryFilter.length ? '' : '(none checked = all categories)'}</span>
+            </div>
+          )}
+        </div>
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Targeting (optional)</label>
           <input value={targetingNote} onChange={e => setTargetingNote(e.target.value)} disabled={!hasMaster}

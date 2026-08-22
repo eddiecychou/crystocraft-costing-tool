@@ -85,6 +85,36 @@ export function eligibleContacts(campaign, allContacts, batchSize = 80) {
   return { batch: pool.slice(0, batchSize), remaining: pool.length }
 }
 
+// Retail Customer campaigns (2026-08-22) — a SEPARATE audience source from
+// marketing_contacts, since the owner: "campaigns will be more targeting B2C
+// retail because i personally don't know the customers unlike the b2b."
+// A campaign targets ONE source or the other, never both — segment.source
+// discriminates (`undefined`/'contacts' = the existing marketing_contacts
+// path above, untouched; 'customers' = this one). v1 has no sub-segmentation
+// within retail customers (no tag/audience concept there yet) — the segment
+// IS "every retail customer," full stop.
+//
+// customer_type === 'retail' is the hard boundary — a B2B customer must never
+// be reachable through this path even if a segment object were mis-shaped to
+// claim `all: true`. Eligibility mirrors eligibleContacts' shape (matched
+// batch + remaining count) but the suppression fields are different:
+// customers have no status/emailable (that's a marketing_contacts-only
+// concept — see customer.js) — `unsubscribed` is the new, real one-click
+// suppression flag (wired through /api/unsubscribe with a `col=customers`
+// discriminator, see send-campaign.js), and email_bounced/email_complained
+// already existed for the bounce-tracking banner on CustomerDetail.jsx.
+export function eligibleRetailCustomers(campaign, allCustomers, batchSize = 80) {
+  const sent = campaign.sent || {}
+  const failed = campaign.failed || {}
+  const pool = allCustomers.filter(c =>
+    c.customer_type === 'retail' &&
+    !c.unsubscribed && !c.email_bounced && !c.email_complained &&
+    (c.contact_emails || [])[0] &&
+    !sent[c.id] && !failed[c.id]
+  )
+  return { batch: pool.slice(0, batchSize), remaining: pool.length }
+}
+
 // Reusable starting points for a new campaign, owner-authored from the
 // editor (not the hardcoded TEMPLATES in Campaigns.jsx, which are this
 // app's own built-in starters) — "where do I add a template?" (owner,
