@@ -239,3 +239,187 @@ existing `enhance-image.js` is reused unmodified. Rollback = revert the
 optionally bulk-delete the `range_colour_previews` collection and its
 Storage prefix. Nothing touches `variants[].image`, `gallery[]`, or any
 existing Storage path, so there is no migration to unwind.
+
+
+
+---
+
+# Phase 2 Spec — from approved preview to usable everywhere it's needed
+
+Written 2026-08-22, same cycle, revised after discussing where a promoted
+photo would actually surface (§P2.0). Supersedes the earlier "promote into
+`gallery[]`" draft below this line in git history — that design was wrong
+for one concrete reason found while tracing the render code: `gallery[]`
+feeds the storefront carousel directly, so anything appended to it is
+immediately customer-visible in the main gallery, which conflicts with the
+owner's requirement (§P2.3c) that the main gallery stay curated and not be
+diluted by early-tier photos.
+
+## P2.0 What already exists, and why it changes the plan
+
+Traced through the actual render code, 2026-08-22:
+
+- **Range/figurine invoice lines are currently *forbidden* from having an
+  image at all — deliberately.** [ShipmentForm.jsx:977-982](src/pages/ShipmentForm.jsx#L977):
+  *"Figurine lines are deliberately excluded (owner, 2026-08-01): a range
+  product's gallery shot won't reflect the specific plating × crystal-colour
+  combination ordered, so offering one would put a subtly wrong picture on
+  an invoice."* This is exactly the problem Phase 1 solves — a correctly
+  captioned, colour-matched photo removes the reason for the exclusion, but
+  only for the specific colours that actually have one.
+- **Product matching on invoice/PI/shipment lines stops at the product,
+  never the variant.** `matchRangeProduct()` → `matchProductCode()`
+  ([criticalComponents.js:255-266](src/criticalComponents.js#L255)) only
+  matches the first one or two SKU segments (`{design}-{format}`) against
+  `range_products` — the trailing `{plating}{colour}{running}` segment is
+  never parsed out. `matched_product_ref` therefore carries a product id
+  only, no plating/colour. **A new small parser is needed** to read the
+  variant's plating+colour off the line's own `item_code`, which is already
+  present on the line — nothing needs to change upstream, this is purely
+  additive.
+- **`LineImagePicker.jsx`** (used by Shipment/Proforma/Sales Invoice) and
+  **`ProductImagePicker`** in [QuoteDetail.jsx:780](src/pages/QuoteDetail.jsx#L780)
+  (used by quotes) **both only ever query `products/{id}/images`** — the
+  corp-gift collection. Neither has any path to `range_products` today.
+  Both need extending, not replacing — same picker UI, wider data source.
+- **`crystal_colors[]`** on each variant (§1 above, the chip picker at
+  [RangeForm.jsx:1464](src/pages/RangeForm.jsx#L1464)) is already exactly
+  the "colours we sell this plating in" list you curate by hand. Per your
+  answer to P2 point 2, that curation *is* the customer-visible-colour
+  review step — no new whitelist field is needed, just discipline in
+  keeping that list to only what's actually sold.
+
+## P2.1 The core design decision: a new field, not `gallery[]`
+
+Two different bars apply to a promoted photo, and they must not share
+storage:
+
+- **"Usable"** — good enough to attach to an invoice/quote/PI line (small,
+  thumbnail-sized, tolerant of imperfection per your point 1) or to show a
+  customer picking a colour on the product page (point 2, "depending on
+  quality"). Low ceremony to produce.
+- **"Gallery-grade"** — good enough for the main storefront carousel
+  (point 3, explicitly the highest bar, added deliberately later and one
+  photo at a time so it never dilutes the existing gallery).
+
+**New field on each variant: `variant.colour_images` — a map, `{ [crystalCode]: url }`.**
+Approving a colour preview (AI-generated or uploaded) writes into this map,
+keyed by `targetCrystalCode`. It is never read by `FigurineShop.jsx`'s
+listing carousel or `RangeCatalogueExport.jsx`'s catalogue hero — both of
+those only ever read `gallery[]`, so nothing here touches the storefront
+gallery surfaces at all. Promotion to `gallery[]` is a distinct, later,
+explicit action (§P2.4c) — not something Phase 2a/2b do automatically.
+
+## P2.2 Data model
+
+```
+range_products/{id}
+  variants: [{
+    ...existing fields (§1 above),
+    colour_images: { [crystalCode]: url },   // NEW — "usable", not gallery-grade
+  }]
+```
+
+`range_colour_previews/{previewId}` (§3a above) gains the same `'used'`
+`reviewStatus` value as before, set when a draft is promoted into
+`colour_images` — same audit-trail reasoning as the earlier draft of this
+section.
+
+Storage: promoted files move out of `colour_previews/` into the same flat
+`range_products/${docId}/` prefix real photos already use (via the
+existing `uploadFile()`, [RangeForm.jsx:663](src/pages/RangeForm.jsx#L663))
+— once "used" it's a real product photo indistinguishable from a camera
+shot, same reasoning as before, just landing in `colour_images` instead of
+`gallery[]`.
+
+## P2.3 Three build slices, in your priority order
+
+### P2.3a — Invoice / Quote / PI (highest priority, smallest lift)
+
+- Extend `LineImagePicker.jsx` and `QuoteDetail.jsx`'s `ProductImagePicker`:
+  when `matched_product_ref.collection === 'range_products'` (or the
+  quote's `product_id` resolves to one), read that product's variant's
+  `colour_images` map instead of (or alongside) the corp-gift `images`
+  subcollection.
+- New small parser reads the plating+colour suffix off the line's own
+  `item_code` (§P2.0) to know *which* colour_images entry to highlight as
+  the match — but the picker still shows the whole map and lets staff pick
+  manually, same as corp-gift today. A parse miss just means no
+  pre-highlighted match, never a blocked line.
+- **Image stays fully optional, exactly as it is for corp-gift lines today**
+  — this lifts the 2026-08-01 exclusion for range lines only where a
+  `colour_images` entry exists for that plating+colour; it does not force
+  anything and never blocks creating an invoice, PI, or quote.
+- **Inline generation** — an in-picker "Generate Colour Preview" (or
+  "Upload photo") action, reusing `colourPreviewApi.js` unchanged, so a
+  missing colour photo can be produced without leaving the invoice/PI/quote
+  screen. On success it both writes into `colour_images` (via the same
+  "approve → usable" step as §P2.2) and immediately becomes pickable —
+  staff doesn't have to close the picker and reopen it.
+
+### P2.3b — Customer portal colour-accurate hero
+
+- In `FigurineDetail.jsx`, when a customer selects a `crystal_colors` chip
+  for the current variant, look up `variant.colour_images[code]` and show
+  it as the hero if present, falling back to the existing
+  `selVariant.image || gallery[0]` behaviour otherwise. This is new
+  selection logic — nothing today matches a photo to a specific crystal
+  colour on the customer-facing page.
+- Deliberately gated by your existing `crystal_colors[]` curation (§P2.0) —
+  a colour with a `colour_images` entry still only appears as pickable to
+  a customer if it's also still ticked in that variant's `crystal_colors`
+  list. Removing an uncommon colour from that list (your review step) hides
+  it from customers regardless of whether a preview exists for it.
+
+### P2.3c — Main gallery ("Add to Gallery →", separate and later)
+
+- A distinct action, only ever available from an entry already sitting in
+  `colour_images` (i.e. already cleared the "usable" bar) — copies it into
+  `gallery[]` with the SKU caption convention already documented in the
+  Images section's hint text ([RangeForm.jsx:1240](src/pages/RangeForm.jsx#L1240)).
+  One photo, one deliberate click, never automatic — this is the piece
+  that keeps the main gallery from being diluted, per your explicit
+  instruction. Held for last, and likely needs its own quality bar/checklist
+  before you start using it, which isn't designed yet.
+
+## P2.4 Security
+
+No new attack surface in any slice: `colour_images` writes go through the
+same `updateDoc(range_products/{id})` path already gated
+`allow write: if isAdmin()`; the extended pickers only add a **read** path
+into `range_products` (already `allow read: if canShop()`, and pickers are
+admin-only screens regardless); inline generation reuses
+`colourPreviewApi.js` and the `range_colour_previews` admin-only rule
+unchanged.
+
+## P2.5 Acceptance tests
+
+1. A range invoice/PI/quote line with no matching `colour_images` entry
+   creates/saves exactly as it does today — no new required step, no
+   blocked save.
+2. A range line whose parsed plating+colour has a `colour_images` entry
+   shows it pre-highlighted in the picker; picking it sets `line_image`
+   exactly like a corp-gift selection does today.
+3. Generating a photo from inside the picker (AI or upload) lands it in
+   `colour_images` and makes it immediately pickable in the same session,
+   without navigating to the product's edit page.
+4. On `FigurineDetail.jsx`, selecting a crystal-colour chip that has a
+   `colour_images` entry AND is still in `crystal_colors[]` shows that
+   photo as the hero; removing the code from `crystal_colors[]` removes it
+   from the customer-facing picker even if the image still exists.
+5. Nothing in P2.3a/P2.3b ever writes to `gallery[]` — confirm the main
+   storefront carousel and catalogue PDF are unaffected until P2.3c's
+   explicit "Add to Gallery" is used.
+6. "Add to Gallery →" only offers entries already present in
+   `colour_images`; the resulting `gallery[]` entry behaves like any other
+   (reorder, set-as-main, caption, remove).
+
+## P2.6 Rollback plan
+
+Additive at every slice: P2.3a adds a data source branch to two existing
+pickers plus a small new SKU-suffix parser (no changes to existing
+matching behaviour); P2.3b adds a lookup in `FigurineDetail.jsx` with a
+same-as-before fallback; P2.3c adds one button. `colour_images` is a new
+optional field — omitting it entirely leaves every current behaviour
+exactly as it is today. Rollback per slice = revert that slice's diff;
+none of the three depend on the others being deployed.

@@ -11,6 +11,28 @@ export function buildRangeSku({ brand_code = '', design_no = '', format = '', pl
   return [head, format || '', suffix].filter(Boolean).join('-')
 }
 
+// Best-effort inverse of buildRangeSku's suffix: given a full SKU/item code
+// (already matched to a product, so the head+format are known-good), pulls
+// {plating_code, crystal_code, running_no} back out of the trailing segment.
+// Every crystal colour code in the live library (src/crystalColors.js) is
+// exactly 2 characters and plating is always 1 (RANGE_PLATINGS), so this is
+// a plain positional split, not fuzzy matching against a dictionary — cheap
+// and deterministic. Used only to PRE-HIGHLIGHT a match in an image picker
+// (V8.8 Phase 2, §P2.3a) — a parse miss must never block anything, so this
+// returns null rather than guessing when the shape looks wrong.
+export function parseRangeVariantSuffix(itemCode) {
+  const code = (itemCode || '').trim().toUpperCase()
+  const parts = code.split('-')
+  if (parts.length < 3) return null
+  const suffix = parts[2]
+  if (!suffix || suffix.length < 3) return null
+  return {
+    plating_code: suffix.slice(0, 1),
+    crystal_code: suffix.slice(1, 3),
+    running_no: suffix.slice(3),
+  }
+}
+
 // Price for a chosen plating-variant. Colour no longer affects price — a dearer
 // colour is modelled as its own variation (plating row) with a different price.
 // `color` is kept in the signature for call-site compatibility but is ignored.

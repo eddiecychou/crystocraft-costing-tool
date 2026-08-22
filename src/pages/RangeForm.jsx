@@ -24,7 +24,7 @@ const refUid = () => 'r' + Math.random().toString(36).slice(2, 10)
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
 import { useCrystalColors, colorMap, ensureColors } from '../crystalColors'
-import { generateColourPreview, useColourPreviews, setReviewStatus, deletePreview, uploadColourPreview } from '../colourPreviewApi'
+import { generateColourPreview, useColourPreviews, setReviewStatus, deletePreview, uploadColourPreview, markUsable } from '../colourPreviewApi'
 import { buildRangeSku, rangePrice } from '../rangeSku'
 import { useComponents, resolveRef, productAvailability } from '../criticalComponents'
 import { useCrystals } from '../crystals'
@@ -76,6 +76,7 @@ const emptyVariant = () => ({
   plating_code: '', plating_name: '', crystal_code: '', crystal_name: '', description: '',
   running_no: '', ws_price_usd: '', stock_finished: '', packaging: '', engraving: '', image: '',
   crystal_colors: [],   // selectable colour attribute, per variation (plating)
+  colour_images: {},    // { crystalCode: url } — "usable" tier, NOT gallery[] (V8.8 Phase 2)
 })
 
 // Auto description = brand + plating + crystal colour (falls back to raw codes)
@@ -107,7 +108,7 @@ const blankForm = (prefill = {}) => {
 // V8.8 Phase 1 — one-SKU AI colour-preview experiment for a single variation.
 // A separate component (not inlined in the variants .map) so useColourPreviews
 // keeps a stable hook order across variant add/remove. See Range_Colour_Preview_Spec.md.
-function VariantColourPreview({ docId, index, variant, libColors }) {
+function VariantColourPreview({ docId, index, variant, libColors, onPromote }) {
   const [target, setTarget] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -152,10 +153,28 @@ function VariantColourPreview({ docId, index, variant, libColors }) {
 
   async function onRemove(p) {
     if (!confirm(`Remove this ${p.targetCrystalCode} preview? This can't be undone.`)) return
-    try { await deletePreview(docId, p.id) } catch (err) { setError(err.message || 'Remove failed.') }
+    try { await deletePreview(p) } catch (err) { setError(err.message || 'Remove failed.') }
   }
 
-  const badge = { draft: 'bg-amber-50 text-amber-700 border-amber-300', approved: 'bg-green-50 text-green-700 border-green-300', rejected: 'bg-red-50 text-red-700 border-red-300' }
+  async function onMarkUsable(p) {
+    setBusy(true); setError('')
+    try {
+      const url = await markUsable(p)
+      onPromote(p.targetCrystalCode, url)
+    } catch (err) {
+      setError(err.message || 'Could not mark usable.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const badge = {
+    draft: 'bg-amber-50 text-amber-700 border-amber-300',
+    approved: 'bg-green-50 text-green-700 border-green-300',
+    rejected: 'bg-red-50 text-red-700 border-red-300',
+    used: 'bg-blue-50 text-blue-700 border-blue-300',
+  }
+  const badgeLabel = { draft: 'Draft — not visible', used: 'Usable (invoice/quote/PI + portal)' }
 
   return (
     <div className="border-t border-ivory-dark pt-2 mt-2">
@@ -200,7 +219,7 @@ function VariantColourPreview({ docId, index, variant, libColors }) {
                 {p.targetCrystalCode}{p.source === 'upload' ? ' ·  uploaded' : ''}
               </p>
               <span className={`inline-block text-[9px] px-1.5 py-0.5 rounded-full border ${badge[p.reviewStatus] || badge.draft}`}>
-                {p.reviewStatus === 'draft' ? 'Draft — not visible' : p.reviewStatus}
+                {badgeLabel[p.reviewStatus] || p.reviewStatus}
               </span>
               {p.status === 'failed' && p.errorMessage && (
                 <p className="text-[9px] text-red-600 mt-0.5">{p.errorMessage}</p>
@@ -212,11 +231,17 @@ function VariantColourPreview({ docId, index, variant, libColors }) {
                     <button type="button" onClick={() => setReviewStatus(p.id, 'rejected')} className="text-[9px] text-red-600 hover:underline">Reject</button>
                   </>
                 )}
+                {p.status === 'success' && p.reviewStatus === 'approved' && (
+                  <button type="button" onClick={() => onMarkUsable(p)} disabled={busy}
+                          className="text-[9px] text-blue-700 hover:underline disabled:opacity-40">Mark usable →</button>
+                )}
                 {p.source === 'ai' && (
                   <button type="button" onClick={() => runGenerate(p.targetCrystalCode)} disabled={busy}
                           className="text-[9px] text-brand-600 hover:underline disabled:opacity-40">Regenerate</button>
                 )}
-                <button type="button" onClick={() => onRemove(p)} className="text-[9px] text-ink-50 hover:text-red-600 hover:underline">Remove</button>
+                {p.reviewStatus !== 'used' && (
+                  <button type="button" onClick={() => onRemove(p)} className="text-[9px] text-ink-50 hover:text-red-600 hover:underline">Remove</button>
+                )}
               </div>
             </div>
           ))}
@@ -854,6 +879,11 @@ export default function RangeForm() {
         packaging: v.packaging.trim(), engraving: v.engraving.trim(), image: v.image.trim(),
         // Selectable crystal colours for this plating — not a SKU/stock dimension.
         crystal_colors: [...new Set((v.crystal_colors || []).map(c => (c || '').trim().toUpperCase()).filter(Boolean))],
+        // "Usable" colour photos — invoice/quote/PI + customer colour picker only,
+        // deliberately never gallery[] (V8.8 Phase 2, see Range_Colour_Preview_Spec.md §P2.1).
+        colour_images: Object.fromEntries(
+          Object.entries(v.colour_images || {}).filter(([code, url]) => code && url)
+        ),
       })),
       // Per-model crystal mixture recipes (shared across platings):
       // mixcode -> [crystal short-codes]. Drives the catalogue swatch table.
@@ -1670,7 +1700,8 @@ export default function RangeForm() {
                         })()}
                       </div>
 
-                      <VariantColourPreview docId={docId} index={i} variant={v} libColors={libColors} />
+                      <VariantColourPreview docId={docId} index={i} variant={v} libColors={libColors}
+                        onPromote={(code, url) => patchVariant(i, { colour_images: { ...(v.colour_images || {}), [code]: url } })} />
                     </div>
                   </div>
                 </div>

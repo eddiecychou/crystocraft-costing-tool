@@ -4,6 +4,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { db, storage } from '../firebase'
 import { resizeToJpeg } from '../imageResize'
 import { Check, Search } from 'lucide-react'
+import RangeColourImagePicker from './RangeColourImagePicker'
 
 // Picks the image that represents ONE order line on the Proforma / Sales
 // Invoice. Deliberately not the same thing as the Quote's ProductImagePicker:
@@ -18,7 +19,14 @@ import { Check, Search } from 'lucide-react'
 // Returns a plain URL to the caller, stored on the line as `line_image`. No
 // product reference is kept: the link is a one-off editorial choice ("show
 // this picture on this invoice"), not a claim that the line IS that product.
-export default function LineImagePicker({ selectedUrl, orderId, onSelect, onClear, onClose }) {
+export default function LineImagePicker({ selectedUrl, orderId, matchedProductRef, itemCode, onSelect, onClear, onClose }) {
+  // A figurine/range line — jump straight to that ONE product's usable
+  // colour photos (V8.8 Phase 2 §P2.3a). This used to be impossible: range
+  // lines had no image at all, deliberately, because there was no way to
+  // guarantee the photo matched the ordered plating × crystal colour. See
+  // Range_Colour_Preview_Spec.md §P2.0. Skips the generic browse-all-
+  // corp-gift-products flow below entirely.
+  const isRangeProduct = matchedProductRef?.collection === 'range_products'
   const [products, setProducts] = useState([])
   const [search, setSearch] = useState('')
   const [chosen, setChosen] = useState(null)      // product whose gallery is open
@@ -72,6 +80,29 @@ export default function LineImagePicker({ selectedUrl, orderId, onSelect, onClea
     || p.name?.toLowerCase().includes(search.toLowerCase())
     || p.category?.toLowerCase().includes(search.toLowerCase())
   )
+
+  if (isRangeProduct) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+            <h2 className="font-semibold text-gray-800 text-sm">Line image — {matchedProductRef.name || 'this product'}</h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+          </div>
+          <div className="overflow-y-auto flex-1 p-4">
+            <RangeColourImagePicker productId={matchedProductRef.id} itemCode={itemCode} selectedUrl={selectedUrl} onSelect={onSelect} />
+          </div>
+          {selectedUrl && (
+            <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-end">
+              <button type="button" onClick={onClear} className="text-xs text-gray-400 hover:text-red-500 py-1.5 px-2">
+                Remove image
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>

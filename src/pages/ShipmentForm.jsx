@@ -974,13 +974,18 @@ export default function ShipmentForm() {
                   <div key={i} className={`rounded-lg border p-3 ${l.line_type ? 'border-gray-200' : 'border-amber-200 bg-amber-50/40'}`}>
                     <div className="grid grid-cols-[auto_auto_1fr_auto] gap-3 items-start">
                       <div className="text-xs text-gray-400 pt-2 w-6">{l.line_no ?? i + 1}</div>
-                      {/* Line image — Corp Gift and Ad-hoc only. Figurine lines
-                          are deliberately excluded (owner, 2026-08-01): a range
-                          product's gallery shot won't reflect the specific
-                          plating × crystal-colour combination ordered, so
-                          offering one would put a subtly wrong picture on an
-                          invoice. Charge lines have nothing to show. */}
-                      {(l.line_type === 'corp_gift' || l.line_type === 'ad_hoc') ? (
+                      {/* Line image — Corp Gift, Ad-hoc, and Figurine (range).
+                          Figurine lines were excluded outright until V8.8
+                          Phase 2 (owner, 2026-08-01): a range product's
+                          gallery shot won't reflect the specific plating ×
+                          crystal-colour combination ordered, so offering one
+                          would put a subtly wrong picture on an invoice.
+                          LineImagePicker now sources figurine lines from
+                          variant.colour_images, a "usable" tier that's
+                          reviewed per colour before it's ever offered here —
+                          see Range_Colour_Preview_Spec.md §P2.0/§P2.3a.
+                          Charge lines still have nothing to show. */}
+                      {(l.line_type === 'corp_gift' || l.line_type === 'ad_hoc' || l.line_type === 'range') ? (
                         <button type="button" onClick={() => setImgPickerLine(i)}
                           title={l.line_image ? 'Change this line’s invoice image' : 'Add an image for the Proforma / Invoice'}
                           className="group relative w-14 h-14 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center shrink-0">
@@ -1039,6 +1044,8 @@ export default function ShipmentForm() {
             {imgPickerLine != null && (
               <LineImagePicker
                 orderId={id}
+                matchedProductRef={lines[imgPickerLine]?.matched_product_ref || null}
+                itemCode={lines[imgPickerLine]?.item_code || ''}
                 selectedUrl={lines[imgPickerLine]?.line_image || null}
                 onSelect={url => { setLine(imgPickerLine, { line_image: url }); setImgPickerLine(null) }}
                 onClear={() => { setLine(imgPickerLine, { line_image: null }); setImgPickerLine(null) }}

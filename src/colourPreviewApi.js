@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { doc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from './firebase'
 import { enhanceProductImage } from './enhanceImage'
@@ -85,6 +85,7 @@ export async function generateColourPreview({
     await uploadBytes(storageRef(storage, path), blob, { contentType: blob.type || 'image/png' })
     const generatedImageUrl = await getDownloadURL(storageRef(storage, path))
     await updateDoc(ref, { status: 'success', generatedImageUrl, updatedAt: serverTimestamp() })
+    return { id, generatedImageUrl }
   } catch (err) {
     await updateDoc(ref, { status: 'failed', errorMessage: err.message || 'Generation failed.', updatedAt: serverTimestamp() })
     throw err
@@ -95,16 +96,42 @@ export async function setReviewStatus(id, reviewStatus) {
   await updateDoc(doc(db, COLLECTION, id), { reviewStatus, updatedAt: serverTimestamp() })
 }
 
+// Promotes an approved (AI or uploaded) preview from the colour_previews/
+// Marks an approved preview 'used' and hands back its existing URL for the
+// caller to write into variant.colour_images (this module never touches
+// range_products itself, same boundary as generate/upload above).
+//
+// Does NOT copy the file to a new Storage path. An earlier version tried to
+// fetch() the download URL client-side and re-upload it — Firebase Storage
+// download URLs aren't CORS-enabled for cross-origin fetch (only for <img>
+// tags, which don't need it), so that threw in every browser, not just
+// locally. There's also no reason to copy: colour_images is deliberately
+// the lower "usable" tier (§P2.1), not the gallery-grade tier where "must
+// look like a real photo, not a draft artifact" mattered — the file can
+// keep living under colour_previews/. Because of this, deletePreview()
+// refuses to delete a 'used' preview: doing so would break the live
+// variant.colour_images reference pointing at the same file.
+export async function markUsable(preview) {
+  await setReviewStatus(preview.id, 'used')
+  return preview.generatedImageUrl
+}
+
 // Discards a preview outright — for a bad AI attempt or an upload the
 // reviewer no longer wants. Removes the Storage object too, not just the
-// Firestore doc, so rejected drafts don't linger in the bucket.
-export async function deletePreview(docId, id) {
+// Firestore doc, so rejected drafts don't linger in the bucket. Refuses on
+// a 'used' preview — markUsable() above points variant.colour_images at
+// this exact file rather than copying it, so deleting it here would break
+// that live reference.
+export async function deletePreview(preview) {
+  if (preview.reviewStatus === 'used') {
+    throw new Error("Can't remove — this photo is marked usable and may be referenced by a variant.")
+  }
   try {
-    await deleteObject(storageRef(storage, `range_products/${docId}/colour_previews/${id}.jpg`))
+    await deleteObject(storageRef(storage, `range_products/${preview.docId}/colour_previews/${preview.id}.jpg`))
   } catch (err) {
     if (err.code !== 'storage/object-not-found') throw err
   }
-  await deleteDoc(doc(db, COLLECTION, id))
+  await deleteDoc(doc(db, COLLECTION, preview.id))
 }
 
 // For a mixture/multi-colour crystal recipe (or any colour the team already
@@ -139,7 +166,27 @@ export async function uploadColourPreview({
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   })
-  return id
+  return { id, generatedImageUrl }
+}
+
+// Writes {crystalCode: url} into one variant's colour_images map on the
+// range_products doc itself. Firestore field paths can't index into array
+// elements (`variants.0.colour_images.PI` isn't addressable), so this is a
+// read-modify-write of the whole `variants` array — same pattern
+// RangeForm.jsx's own handleSave already uses for this doc. Used by the
+// inline "generate from within an invoice/quote/PI" flow (Phase 2 §P2.3a),
+// where there's no open form to optimistically patch like RangeForm has.
+export async function promoteColourImage(docId, variantIndex, crystalCode, url) {
+  const ref = doc(db, 'range_products', docId)
+  const snap = await getDoc(ref)
+  if (!snap.exists()) throw new Error('Product not found.')
+  const variants = [...(snap.data().variants || [])]
+  if (!variants[variantIndex]) throw new Error('Variation not found.')
+  variants[variantIndex] = {
+    ...variants[variantIndex],
+    colour_images: { ...(variants[variantIndex].colour_images || {}), [crystalCode]: url },
+  }
+  await updateDoc(ref, { variants })
 }
 
 // Live list of previews for one variant, newest first.
