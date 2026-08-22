@@ -87,6 +87,142 @@ signed-in user with `role:'customer'`/`status` not `'approved'` sees it),
 so "same screen" does not mean "same bug" — check what's actually different
 about the account before assuming the mechanism.
 
+## Current Status — V8.8 CLOSED as of 2026-08-23
+
+Range Variation Colour Preview — a working, live-tested AI/upload/gallery
+pipeline for generating and reviewing crystal-colour photos on figurine
+variants, phased deliberately from a single-SKU experiment out to invoice/
+PI/quote lines, the customer portal, and the main gallery. Full design
+history in `Range_Colour_Preview_Spec.md` (Phase 1 + Phase 2 §P2.0-P2.3l).
+The pattern for this whole cycle: build a slice, smoke-test it live against
+real Firestore data rather than trusting the UI, find a real bug, fix it,
+repeat — three of the bugs found this way were genuine data-loss risks, not
+cosmetic.
+
+### The numbers
+
+| | |
+|---|---:|
+| Commits | ~10 |
+| New files | `Range_Colour_Preview_Spec.md`, `src/colourPreviewApi.js`, `src/components/RangeColourImagePicker.jsx` |
+| New Firestore collection | `range_colour_previews` (admin-only, deliberately not a `range_products/{id}` subcollection — see below) |
+| New Firestore field | `range_products.variants[].colour_images: {crystalCode: url}` — the "usable" tier, deliberately separate from `gallery[]` |
+| Real bugs found & fixed | 5 (see §3) |
+
+### 1. Phase 1 — the experiment
+
+One SKU, one target crystal colour, "Generate Colour Preview" — Gemini
+image-edit (`gemini-2.5-flash-image`, reusing `enhance-image.js`'s existing
+`mode:'recolor'` path, no new AI plumbing) recolours only the crystal
+region, draft/review-gated before anything is used anywhere. Drafts live in
+a **top-level** `range_colour_previews` collection rather than nested under
+the product — `range_products/{id}/{allPaths=**}`'s Firestore rule grants
+`canShop()` customers read on every subcollection, which would have made
+unreviewed drafts customer-visible. Also shipped in the same pass: Approve/
+Reject/Regenerate/Remove, and a manual-upload path for mixture recipes and
+colours AI can't approximate.
+
+### 2. Phase 2 — from approved preview to used everywhere
+
+Three build slices, in the owner's stated priority order:
+
+- **§P2.3a Invoice/PI/quote lines**: lifted a 2026-08-01 owner exclusion
+  that had blocked figurine lines from ever having an invoice image at all
+  (no way then to guarantee the photo matched the ordered plating × colour
+  combination — colour_images is exactly that guarantee now). Fully
+  optional, never blocks creating a document. A new best-effort SKU-suffix
+  parser (`parseRangeVariantSuffix`) pre-highlights the matching colour;
+  a parse miss never blocks manual picking. Inline "Generate Colour
+  Preview"/"Upload"/"From gallery" so staff never have to leave the
+  invoice/PI/quote screen.
+- **§P2.3b Customer portal**: the finish/colour picker on `FigurineDetail`
+  now shows a `colour_images` photo instead of the plain plating photo
+  when the customer's selected colour has one — gated by the product's own
+  existing `crystal_colors[]` curation, no new whitelist field needed.
+- **§P2.3c Main gallery**: a separate, deliberate "Add to Gallery →" action
+  — `colour_images` ("usable," low ceremony) and `gallery[]`
+  ("gallery-grade," the storefront carousel) are kept as two different
+  tiers on purpose, so early/AI-rough photos never dilute the curated main
+  gallery. Held for last per the owner's own priority.
+- **Third source added mid-cycle**: "From gallery…" — reuses a photo
+  already sitting in the product's gallery instead of re-uploading a
+  duplicate file (`source: 'gallery'`, no Storage write at all).
+
+### 3. Five real bugs, found live rather than assumed away
+
+- **Firestore CORS wall**: an early `markUsable()` tried to `fetch()` a
+  Storage download URL client-side to copy it to a new path — download
+  URLs aren't CORS-enabled for `fetch` (only `<img>`). Fixed by not
+  copying at all — `colour_images` is the low-ceremony tier, the file can
+  keep living wherever it already is.
+- **Save Changes silently wiped every colour_images entry on a product** —
+  the most serious one. Once `colour_images` could be written directly to
+  Firestore from outside `RangeForm.jsx` (by Approve itself, and by the
+  invoice/PI/quote picker), the form's own local state — a one-time
+  snapshot from page load — could go stale relative to it. The next Save
+  Changes click, for *any* reason, rebuilt the whole `variants` array from
+  that stale snapshot and overwrote the live document. Confirmed live: one
+  Save wiped four colours on D0002-001 at once. Fixed by re-fetching
+  `colour_images` fresh from the server right before every save, so it can
+  never regress regardless of how stale the rest of the form is.
+- **Approve on the product page did nothing durable** — its own separate
+  bug, found by directly querying the saved document via the Firestore
+  REST API rather than trusting the UI's "Usable" badge: `onPromote` only
+  ever patched local form state, relying on a *separate*, unindicated
+  "remember to click Save Changes" step. Two real variants sat silently
+  broken until repaired live. Fixed by writing directly to Firestore the
+  moment Approve is clicked, matching what the UI already implied had
+  happened.
+- **Regenerating an already-"Usable" colour could silently corrupt it
+  mid-flight** — the AI draft's doc/Storage id is deterministic by design
+  (so repeat clicks on the same still-in-review draft don't pile up
+  duplicates), but that same determinism meant a second Generate click on
+  a colour already wired into `colour_images` would overwrite that exact
+  live file before any re-approval. Fixed: a fresh id is forced once a
+  preview has reached `used` or `superseded`.
+- **Customer-invisible "dedicated pricier-colour" variants** — pre-existing
+  pattern (a colour that costs more gets its own priced variant row),
+  newly consequential once colour photos gave customers a reason to find
+  that row: two variants can share an identical plating label with only an
+  unlabelled price difference between them. D0002-001's Chrome/Crystal AB
+  and Gold/Golden Teak photos were correctly wired but undiscoverable.
+  Fixed by naming the colour(s) in the finish list whenever a variant is
+  narrow enough to clearly be one of these ("Chrome — Crystal AB").
+
+### 4. Smaller fixes and polish, all found via live use
+
+- Enlarge was missing entirely on the product page, and only shrank
+  (never grew) a modest-resolution image in the invoice/PI/quote picker —
+  both now force a real target size.
+- A `Regenerate` button was hidden on the very first preview ever created,
+  which predates the `source` field distinguishing AI from upload.
+- Gemini flakiness on a first attempt (observed live) — `generateColourPreview`
+  now retries once on any failure, not just a detected timeout.
+- Approving a replacement for an already-usable colour left two "Usable"
+  thumbnails with no way to tell which was live — `markUsable()` now
+  auto-demotes the previous one to a new `superseded` status; its file is
+  left untouched so anything that already picked it keeps working.
+- A "Download" button on every preview thumbnail closes the retouch loop
+  for a stone Gemini can't get right: Generate → Download → retouch
+  externally → Upload → Approve, reusing the existing `/api/download-image`
+  proxy.
+- Deleting a `superseded` preview's file can break an already-created
+  invoice/PI/quote's `line_image` (a frozen URL snapshot, not a live
+  reference) — the Remove confirmation now says so explicitly for that
+  case; `used` previews still can't be deleted at all.
+
+### 5. gemini-2.5-flash-image retirement — fallback added proactively
+
+`gemini-2.5-flash-image` (backing both this feature and the pre-existing
+"Enhance image" button) is scheduled to shut down 2026-10-02
+(`ai.google.dev/gemini-api/docs/deprecations`, checked 2026-08-23).
+`enhance-image.js` now tries it first, unchanged, and falls back
+automatically to `gemini-3.1-flash-image` — the actual stable GA
+successor, not the `-preview` variant, which has its own separate
+2026-06-25 shutdown — on any failure, verified against a real Gemini call
+before shipping. Once 2.5 actually retires, every request starts serving
+from the fallback with no further deploy needed.
+
 ## Current Status — V8.7 CLOSED as of 2026-08-22
 
 The WooCommerce B2C sync, start to finish — all five phases from the
@@ -461,8 +597,27 @@ the previous one as ordinary gallery content is likely intentional.
 no live Firestore access from this environment; needs manual deletion via
 Sun Life's Brand Gallery (Customer Detail page) if it's still there.
 
-## Where V8.8 starts
+## Where V8.9 starts
 
+- **Colour preview: no batch/mass generation, mixture-code recipes, or
+  gallery-quality curation checklist** — all deliberately deferred from
+  V8.8's scope (see `Range_Colour_Preview_Spec.md` §6/§P2.1). Mixtures
+  currently only work via manual upload or picking an existing gallery
+  photo — nothing generates a composite of the actual crystal-recipe
+  codes.
+- **Quotes (`QuoteDetail.jsx`) don't support range/figurine products as
+  line items at all** — found while scoping colour-preview §P2.3a; only
+  corp-gift `products` items exist there today. Not touched — no existing
+  demand confirmed, don't build speculatively.
+- **The invoice/PI/quote "some lines have a photo, some don't" look was
+  raised and deliberately left as-is** — a per-document "include line
+  photos" toggle was proposed, owner said leave it for now. Revisit only
+  if asked.
+- **gemini-3.1-flash-image fallback verified against the raw Gemini API
+  directly, not yet through a real `/api/enhance-image` call on the
+  deployed edge function** — worth a first real trigger (e.g. force the
+  primary model to fail) once live, same "verify before trusting it"
+  discipline as everywhere else this cycle.
 - **WooCommerce registered accounts that never transacted are NOT synced**
   — deliberate scope decision, not an oversight: the owner doesn't yet
   trust that list for spam/quality ("I have no idea if the registered

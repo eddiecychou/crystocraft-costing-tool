@@ -8,7 +8,16 @@
 // image is base64. Faithfulness is enforced by the prompt; the caller always
 // shows a before/after and only replaces on explicit Keep.
 
-const IMAGE_MODEL = 'gemini-2.5-flash-image'   // image-output ("nano-banana")
+// gemini-2.5-flash-image (the original "nano-banana") is scheduled to shut
+// down 2026-10-02 (checked ai.google.dev/gemini-api/docs/deprecations,
+// 2026-08-23). Keeping it primary for now — it's what every existing prompt
+// here has actually been tuned against — but falling back automatically to
+// gemini-3.1-flash-image (the stable GA successor; NOT the "-preview"
+// variant, which has its own 2026-06-25 shutdown) on any failure. Once 2.5
+// actually goes away this starts serving every request from the fallback
+// with no further deploy needed. Same request/response contract on both —
+// this is the "flash image" family's shared interface, not model-specific.
+const IMAGE_MODELS = ['gemini-2.5-flash-image', 'gemini-3.1-flash-image']
 
 function bytesToBase64(bytes) {
   let binary = ''
@@ -99,36 +108,53 @@ export default async function handler(req) {
     generationConfig: { responseModalities: ['IMAGE'], temperature: 0.2 },
   }
 
-  let res
-  try {
-    res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${IMAGE_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
-    )
-  } catch (e) {
-    return json({ error: 'Gemini request failed: ' + (e?.message || 'unknown') }, 502)
+  let lastError = null
+  for (let i = 0; i < IMAGE_MODELS.length; i++) {
+    const model = IMAGE_MODELS[i]
+    const isLastModel = i === IMAGE_MODELS.length - 1
+
+    let res
+    try {
+      res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
+      )
+    } catch (e) {
+      lastError = 'Gemini request failed: ' + (e?.message || 'unknown')
+      console.error(`Gemini ${model} request failed:`, e)
+      if (isLastModel) return json({ error: lastError }, 502)
+      continue
+    }
+
+    if (!res.ok) {
+      const errText = await res.text()
+      console.error(`Gemini ${model} error ${res.status}:`, errText)
+      // 404 / model-not-found → this model isn't available on this key —
+      // exactly the retirement case, so fall through to the next one rather
+      // than failing outright.
+      if (!isLastModel) { lastError = errText; continue }
+      const hint = res.status === 404 || /not found|not supported|image/i.test(errText)
+        ? 'The image model may not be enabled on this API key.'
+        : ''
+      return json({ error: `Gemini image generation failed (${res.status}). ${hint}`.trim(), detail: errText.slice(0, 500) }, 502)
+    }
+
+    const data = await res.json()
+    const parts = data.candidates?.[0]?.content?.parts || []
+    const imgPart = parts.find(p => p.inline_data?.data || p.inlineData?.data)
+    const inline = imgPart?.inline_data || imgPart?.inlineData
+    if (!inline?.data) {
+      console.error(`Gemini ${model} returned no image part:`, JSON.stringify(data).slice(0, 800))
+      if (!isLastModel) { lastError = 'No image part returned'; continue }
+      return json({ error: 'No image returned by the model — try again or use the other mode.' }, 502)
+    }
+
+    if (model !== IMAGE_MODELS[0]) console.log(`enhance-image: served by fallback model ${model} after ${IMAGE_MODELS[0]} failed`)
+    return json({ image: inline.data, mimeType: inline.mime_type || inline.mimeType || 'image/png' })
   }
 
-  if (!res.ok) {
-    const errText = await res.text()
-    console.error(`Gemini ${IMAGE_MODEL} error ${res.status}:`, errText)
-    // 404 / model-not-found → key likely lacks image-model access.
-    const hint = res.status === 404 || /not found|not supported|image/i.test(errText)
-      ? 'The image model may not be enabled on this API key.'
-      : ''
-    return json({ error: `Gemini image generation failed (${res.status}). ${hint}`.trim(), detail: errText.slice(0, 500) }, 502)
-  }
-
-  const data = await res.json()
-  const parts = data.candidates?.[0]?.content?.parts || []
-  const imgPart = parts.find(p => p.inline_data?.data || p.inlineData?.data)
-  const inline = imgPart?.inline_data || imgPart?.inlineData
-  if (!inline?.data) {
-    console.error('Gemini returned no image part:', JSON.stringify(data).slice(0, 800))
-    return json({ error: 'No image returned by the model — try again or use the other mode.' }, 502)
-  }
-
-  return json({ image: inline.data, mimeType: inline.mime_type || inline.mimeType || 'image/png' })
+  // Unreachable (the loop always returns), but keeps this defensive.
+  return json({ error: lastError || 'Gemini image generation failed.' }, 502)
 }
 
 export const config = { path: '/api/enhance-image' }
