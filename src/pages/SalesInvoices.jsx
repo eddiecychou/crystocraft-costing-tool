@@ -162,6 +162,7 @@ export default function SalesInvoices() {
       currency: o.currency, amount: o.total_amount ?? o.subtotal, status: null,
       adjustment: o.adjustment || 0, accountingTotal: o.accounting_total,
       customerPo: o.customer_po || '', remarks: o.notes || '', adjustmentReason: o.adjustment_reason || '',
+      channel: o.channel || null, externalOrderNo: o.woo_order_no || '',
     }))
     // The app's own invoices may also exist in the mirror once a sync runs;
     // showing both would double-count. The app row wins — it is the live one.
@@ -213,6 +214,8 @@ export default function SalesInvoices() {
           customer: d.order.customer_name, currency: d.order.currency,
           total: d.order.total_amount ?? d.order.subtotal ?? null,
           invoiced_at: d.order.invoiced_at || null,
+          channel: d.order.channel || null,
+          external_order_no: d.order.woo_order_no || '',
         })
       }
       setLedger(await listAppInvoices(1000))
@@ -245,6 +248,8 @@ export default function SalesInvoices() {
     { label: 'Remarks',     value: (r) => r.remarks || '', text: true },
     { label: 'Status',      value: (r) => r.status || '' },
     { label: 'Source',      value: (r) => (r.src === 'app' ? 'App' : 'JES') },
+    { label: 'Channel',     value: (r) => r.channel || '', text: true },
+    { label: 'WooCommerce order no.', value: (r) => r.externalOrderNo || '', text: true },
   ]
 
   const exportInvoices = () => downloadCsv(
@@ -496,6 +501,12 @@ export default function SalesInvoices() {
                           onClick={open}>
                         {r.no || '—'}
                         {void_ && <span className="ml-1.5 text-[10px] font-sans font-medium text-red-600">VOID</span>}
+                        {r.channel === 'woocommerce' && (
+                          <span className="ml-1.5 text-[10px] font-sans font-medium text-teal-700 bg-teal-50 rounded px-1 py-0.5"
+                                title={`WooCommerce order #${r.externalOrderNo}`}>
+                            Woo #{r.externalOrderNo}
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-gray-600 cursor-pointer" onClick={open}>{fmtDate(r.date)}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-gray-500 font-mono text-xs">{r.so || '—'}</td>

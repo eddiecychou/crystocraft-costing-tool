@@ -1,15 +1,17 @@
 import { useState, useMemo, Fragment } from 'react'
+import { Link } from 'react-router-dom'
 import { listWooOrders, wooOrderMeta, wooProbePayout } from '../wooSyncApi'
+import { importWooOrder, checkImportedWooOrders } from '../wooImport'
 import { downloadCsv, exportStem } from '../exportCsv'
 import LoadingBar from '../components/LoadingBar'
-import { RefreshCcw, AlertTriangle, ShoppingCart, Search, Compass } from 'lucide-react'
+import { RefreshCcw, AlertTriangle, ShoppingCart, Search, Compass, Download, CheckCircle2 } from 'lucide-react'
 
-// WooCommerce sync — Phase 1 (WooCommerce_B2C_Sync_Spec.md). Read-only: fetches
-// paid orders and their refunds for a date range and shows them for review.
-// Nothing here writes to Firestore or Supabase — no invoice or UC# is issued
-// from this page. The point of Phase 1 is to see, on real data, what
-// WooCommerce actually reports for fees/payout/tax before designing the
-// invoice/credit-note import (spec §12 Q2-4).
+// WooCommerce sync — Phase 1 (WooCommerce_B2C_Sync_Spec.md) is read-only
+// review. Phase 2 adds actual Firestore writes: "Import" turns a reviewed
+// WooCommerce order into a real `orders/{id}` doc (wooImport.js), landing it
+// in the existing "awaiting invoice" list on SalesInvoices.jsx — same as any
+// other order. No invoice number or UC# is allocated here; that stays a
+// manual step from the Sales Invoices page (Phase 3).
 
 const fmtDate = (d) => {
   if (!d) return '—'
@@ -58,15 +60,35 @@ export default function WooCommerceSync() {
     }
   }
 
+  // Which WooCommerce order IDs are already imported (order doc exists) —
+  // rechecked whenever the result set changes so "Import" flips to
+  // "Imported" the moment it's known, without a page reload.
+  const [importedIds, setImportedIds] = useState(new Set())
+  const [importing, setImporting] = useState(null) // order id currently importing, or null
+  const [importError, setImportError] = useState('')
+
   async function fetchOrders() {
-    setLoading(true); setError(''); setResult(null)
+    setLoading(true); setError(''); setResult(null); setImportedIds(new Set())
     try {
       const r = await listWooOrders(from, to)
       setResult(r)
+      if (r.rows.length) checkImportedWooOrders(r.rows.map(o => o.id)).then(setImportedIds)
     } catch (e) {
       setError(e.message || 'Sync failed.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function doImport(o) {
+    setImporting(o.id); setImportError('')
+    try {
+      await importWooOrder(o)
+      setImportedIds((s) => new Set(s).add(o.id))
+    } catch (e) {
+      setImportError(`#${o.number}: ${e.message || 'Import failed.'}`)
+    } finally {
+      setImporting(null)
     }
   }
 
@@ -258,6 +280,13 @@ export default function WooCommerceSync() {
           </p>
         )}
 
+        {importError && (
+          <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4 inline-flex items-start gap-2">
+            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+            Import failed for {importError}
+          </p>
+        )}
+
         {result && (
           <>
             <p className="text-sm text-gray-500 mb-4">
@@ -289,6 +318,7 @@ export default function WooCommerceSync() {
                       <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Gateway fee</th>
                       <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Net payout</th>
                       <th className="px-4 py-2.5 font-medium whitespace-nowrap">Payout date</th>
+                      <th className="px-4 py-2.5 font-medium" />
                       <th className="px-4 py-2.5 font-medium" />
                     </tr>
                   </thead>
@@ -323,6 +353,21 @@ export default function WooCommerceSync() {
                             {fmtDate(o.payout_date)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-right">
+                            {importedIds.has(o.id) ? (
+                              <Link to={`/shipments/woo-${o.id}`} target="_blank" rel="noreferrer"
+                                className="text-xs text-green-700 hover:text-green-800 inline-flex items-center gap-1"
+                                title="Open the imported order">
+                                <CheckCircle2 size={12} /> Imported
+                              </Link>
+                            ) : (
+                              <button type="button" onClick={() => doImport(o)} disabled={importing === o.id}
+                                className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1 disabled:opacity-50"
+                                title="Create an order from this WooCommerce order — lands in Sales Invoices' awaiting-invoice list, no invoice/UC# allocated yet">
+                                <Download size={12} /> {importing === o.id ? 'Importing…' : 'Import'}
+                              </button>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right">
                             <button type="button" onClick={() => setDetailsFor(detailsFor === o.id ? null : o.id)}
                               className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1 mr-3"
                               title="Line items, addresses, customer note">
@@ -337,7 +382,7 @@ export default function WooCommerceSync() {
                         </tr>
                         {detailsFor === o.id && (
                           <tr>
-                            <td colSpan={14} className="px-4 py-3 bg-gray-50 border-t border-gray-100">
+                            <td colSpan={15} className="px-4 py-3 bg-gray-50 border-t border-gray-100">
                               <div className="grid md:grid-cols-[1fr_auto] gap-4">
                                 <table className="w-full text-xs">
                                   <thead>
@@ -392,7 +437,7 @@ export default function WooCommerceSync() {
                         )}
                         {metaFor === o.id && (
                           <tr key={`${o.id}-meta`}>
-                            <td colSpan={14} className="px-4 py-3 bg-gray-50 border-t border-gray-100">
+                            <td colSpan={15} className="px-4 py-3 bg-gray-50 border-t border-gray-100">
                               {meta === 'loading' && <span className="text-xs text-gray-400">Loading order meta…</span>}
                               {meta?.error && <span className="text-xs text-amber-700">{meta.error}</span>}
                               {meta && meta !== 'loading' && !meta.error && (

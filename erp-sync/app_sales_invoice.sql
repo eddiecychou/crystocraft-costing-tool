@@ -53,6 +53,23 @@ alter table public.app_sales_invoice
   add column if not exists adjustment         numeric,  -- accounting_total − total
   add column if not exists adjustment_reason  text;
 
+-- ── WooCommerce B2C sync (WooCommerce_B2C_Sync_Spec.md Phase 3) ────────────────
+-- Cindy needs "easy cross-reference" (spec §3.4) back to the WooCommerce order
+-- number — but si_no itself must stay in the app's own SI series (see
+-- soNumber.js: the app is the sole issuer of new SI numbers as of 2026-07-23,
+-- and allocate_sales_invoice below derives the next number from that series).
+-- Setting si_no directly to a WooCommerce order number would break that
+-- series and the /^SI\d{6,}$/ guard in uc.js's upsert_invoice op. So the
+-- WooCommerce order number lives in its own column instead, alongside which
+-- channel it came from — 'woocommerce' vs null (every pre-existing invoice,
+-- and every wholesale one raised from a sales order).
+alter table public.app_sales_invoice
+  add column if not exists channel            text,     -- 'woocommerce' | null
+  add column if not exists external_order_no  text;     -- e.g. WooCommerce order "57844" — for cross-reference only, never used as a key
+
+create index if not exists app_sales_invoice_external_order_idx
+  on public.app_sales_invoice (external_order_no) where external_order_no is not null;
+
 -- ── Change audit ─────────────────────────────────────────────────────────────
 -- Same posture as bank_accounts_audit: append-only, SECURITY DEFINER trigger,
 -- service_role gets SELECT only. Scoped to the Phase A fields on purpose — this

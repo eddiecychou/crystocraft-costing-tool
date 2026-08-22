@@ -215,6 +215,12 @@ export default function ShipmentForm() {
             // hold the PI value in subtotal/total_amount, so fall back to those.
             pi_subtotal: o.pi_subtotal ?? (o.source === 'imported_pi' ? o.subtotal : null) ?? '',
             pi_total:    o.pi_total    ?? (o.source === 'imported_pi' ? o.total_amount : null) ?? '',
+            // WooCommerce B2C sync (spec Phase 3) — carried through so the
+            // save path (handleSave) can pass it on to upsert_invoice.
+            // Missing from this whitelist would silently drop it on every
+            // load, same trap contact_id hit before it was added here.
+            channel: o.channel || null,
+            woo_order_no: o.woo_order_no || '',
           })
           setSourceFile(o.source_file || null)
           setLines(await getOrderLines(id))
@@ -678,6 +684,10 @@ export default function ShipmentForm() {
           remarks: header.notes || '',
           accounting_total: total != null ? accountingTotal : null,
           adjustment_reason: header.adjustment_reason || '',
+          // WooCommerce B2C sync (spec Phase 3) — cross-reference only; blank
+          // for every order that isn't WooCommerce-sourced, same as before.
+          channel: header.channel || null,
+          external_order_no: header.woo_order_no || '',
         })
       }
       navigate('/shipments')

@@ -119,11 +119,12 @@ const LINES  = orderId => collection(db, 'orders', orderId, 'lines')
 // Gemini vision), 'manual' (typed by hand, no source document), 'direct_invoice'
 // (the retail "Direct Invoice" flow), 'duplicated' (Shipping.jsx's Duplicate
 // order), 'in_app_quote' (reserved — quote-to-order conversion doesn't exist
-// yet; no code writes this today, kept for when it does). Anything else
+// yet; no code writes this today, kept for when it does), 'woocommerce' (the
+// B2C sync's importer — WooCommerce_B2C_Sync_Spec.md Phase 2). Anything else
 // (blank/unrecognised, e.g. a pre-2026-08-17 order — see bug-fix pack B-02)
 // falls back to 'imported_pi', which was every order's value before this list
 // existed, so old records keep reading exactly as they did.
-const ORDER_SOURCES = ['imported_pi', 'manual', 'direct_invoice', 'duplicated', 'in_app_quote']
+const ORDER_SOURCES = ['imported_pi', 'manual', 'direct_invoice', 'duplicated', 'in_app_quote', 'woocommerce']
 export const normOrder = o => ({
   source: ORDER_SOURCES.includes(o.source) ? o.source : 'imported_pi',
   client_quote_id: o.client_quote_id || null,
@@ -242,6 +243,17 @@ export const normOrder = o => ({
   total_amount:    numOrNull(o.total_amount),
   pi_subtotal:     numOrNull(o.pi_subtotal),
   pi_total:        numOrNull(o.pi_total),
+  // WooCommerce B2C sync (WooCommerce_B2C_Sync_Spec.md §2.1/§2.3). woo_order_id
+  // is also encoded into the doc's own Firestore ID (see wooImport.js's
+  // wooOrderDocId) so a re-import can never create a duplicate order even
+  // under a race — but it's kept here too since a doc ID isn't queryable as a
+  // field. woo_order_no is WooCommerce's OWN order number (e.g. "57844"),
+  // kept separate from erp_so_no/erp_si_no/uc_no — none of which this order
+  // has until it is actually invoiced — for the "easy cross-reference"
+  // spec §3.4 asked for.
+  channel: o.channel || null,
+  woo_order_id: numOrNull(o.woo_order_id),
+  woo_order_no: str(o.woo_order_no),
 })
 
 export const normLine = l => {
@@ -294,6 +306,32 @@ export function createOrderWithLines(orderData, lines) {
     batch.set(doc(LINES(orderRef.id)), n)
   })
   return { id: orderRef.id, commit: batch.commit() }
+}
+
+// Same as createOrderWithLines, but the order lands at a CALLER-CHOSEN doc
+// ID rather than an auto-generated one, and refuses to create a second order
+// there if one already exists. This is the actual idempotency mechanism for
+// the WooCommerce importer (WooCommerce_B2C_Sync_Spec.md §2.3/§2.4): the doc
+// ID is derived from the WooCommerce order id (wooOrderDocId in wooImport.js),
+// so re-running an import for an order already brought in is a no-op instead
+// of a duplicate order — the check-then-create happens inside one
+// transaction, so two overlapping imports of the same order cannot both pass
+// the check and both write (a plain getDoc-then-set has exactly that race).
+// Returns { id, created: bool } — created:false means it already existed and
+// nothing was written.
+export async function createOrderWithLinesAtId(id, orderData, lines) {
+  const orderRef = doc(db, 'orders', id)
+  return runTransaction(db, async (tx) => {
+    const existing = await tx.get(orderRef)
+    if (existing.exists()) return { id, created: false }
+    tx.set(orderRef, { ...normOrder(orderData), createdAt: serverTimestamp(), updatedAt: serverTimestamp() })
+    ;(lines || []).forEach((l, i) => {
+      const n = normLine(l)
+      if (n.line_no == null) n.line_no = i + 1
+      tx.set(doc(LINES(id)), n)
+    })
+    return { id, created: true }
+  })
 }
 
 // Same as createOrderWithLines, but optionally allocates the order's SO
