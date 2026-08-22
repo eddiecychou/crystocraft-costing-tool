@@ -187,6 +187,14 @@ function eligibleCandidates(entities, excludedIds, excludedEmails) {
     id: e.id, name: e.name, email: e.email, source: e.source,
     crm_category: e.crm_category, crm_status: e.crm_status, notes: e.notes, erp_code: e.erp_code,
     country: e.country, emailSummary: e.emailSummary || null,
+    // Carried through so handleGenerate's post-generation re-attach step
+    // (joins the AI's response back to `candidates` by id) has real values
+    // to read. Without these three, that join always re-attached `undefined`
+    // — found 2026-08-22: the WhatsApp quick-access chips in the review card
+    // never appeared for ANY draft, customer or lead, because this trimmed
+    // object was the only copy of the candidate the re-attach step could see,
+    // and it never carried whatsapp data in the first place.
+    whatsapp: e.whatsapp, whatsapp_personal: e.whatsapp_personal, whatsapp_business: e.whatsapp_business,
   }))
 }
 
@@ -1038,19 +1046,40 @@ export default function DailyDrafts() {
       <div className="card p-5 space-y-4">
         <h2 className="text-sm font-semibold text-gray-900">1. What do you want to say?</h2>
 
-        {!linkedProduct ? (
-          <button type="button" onClick={() => setLinkProductOpen(!linkProductOpen)}
-            className="text-xs text-gray-400 hover:text-brand-600">
-            + Link a product (optional, unlocks its photos)
-          </button>
-        ) : (
-          <div className="inline-flex items-center gap-1.5 text-sm bg-ivory-light rounded px-2 py-1">
-            <span className="truncate max-w-xs">{linkedProduct.name}</span>
-            <button type="button" onClick={() => setLinkedProduct(null)} className="text-gray-400 hover:text-red-600">
-              <X size={12} />
+        <div className="flex items-center gap-2 flex-wrap">
+          {!linkedProduct ? (
+            <button type="button" onClick={() => setLinkProductOpen(!linkProductOpen)}
+              className="text-xs text-gray-400 hover:text-brand-600">
+              + Link a product (optional, unlocks its photos)
             </button>
-          </div>
-        )}
+          ) : (
+            <div className="inline-flex items-center gap-1.5 text-sm bg-ivory-light rounded px-2 py-1">
+              <span className="truncate max-w-xs">{linkedProduct.name}</span>
+              <button type="button" onClick={() => setLinkedProduct(null)} className="text-gray-400 hover:text-red-600">
+                <X size={12} />
+              </button>
+            </div>
+          )}
+          {/* Any URL — crystocraft.com blog post included. Moved up here
+              (owner, 2026-08-22) from further down where it only appeared
+              after "Draft with AI" — the blog link is chosen at the same
+              time as the product link, not after drafting. WordPress search
+              was tried and retired in V8.1 (503s from the WP host made it
+              unreliable) — paste the URL in by hand instead, same posture
+              as send-personal-email.js's own `links` field. */}
+          {masterLinks.map(l => (
+            <span key={l.url} className="inline-flex items-center gap-1 text-xs text-gray-500 bg-ivory-light rounded px-2 py-1">
+              <Link2 size={11} /> {l.title}
+              <button type="button" onClick={() => removeMasterLink(l.url)} className="text-gray-400 hover:text-red-600">
+                <X size={11} />
+              </button>
+            </span>
+          ))}
+          <button type="button" onClick={() => setMasterLinkFormOpen(!masterLinkFormOpen)}
+            className="text-xs text-gray-400 hover:text-brand-600">
+            + Link a blog post or page (optional)
+          </button>
+        </div>
         {linkProductOpen && !linkedProduct && (
           <div>
             <input value={linkProductQuery} onChange={e => setLinkProductQuery(e.target.value)}
@@ -1069,6 +1098,22 @@ export default function DailyDrafts() {
                 </button>
               ))}
               {!filteredLinkProducts.length && <div className="px-3 py-1.5 text-sm text-gray-400">No matches.</div>}
+            </div>
+          </div>
+        )}
+        {masterLinkFormOpen && (
+          <div className="border border-ivory-dark rounded p-2 space-y-2 w-full md:w-96">
+            <input value={masterLinkUrl} onChange={e => setMasterLinkUrl(e.target.value)}
+              placeholder="https://www.crystocraft.com/blog/…" className="input w-full text-sm" />
+            <input value={masterLinkTitle} onChange={e => setMasterLinkTitle(e.target.value)}
+              placeholder="Link text (optional)" className="input w-full text-sm" />
+            <div className="flex gap-2">
+              <button type="button" onClick={applyMasterLink} disabled={!masterLinkUrl.trim()} className="btn-secondary text-xs py-1.5 px-3">
+                Attach link
+              </button>
+              <button type="button" onClick={() => setMasterLinkFormOpen(false)} className="text-xs text-gray-400 hover:text-brand-600">
+                Cancel
+              </button>
             </div>
           </div>
         )}
@@ -1142,18 +1187,6 @@ export default function DailyDrafts() {
                     onChange={e => { handleMasterUpload(e.target.files?.[0]); e.target.value = '' }} />
                 </label>
               )}
-              {masterLinks.map(l => (
-                <span key={l.url} className="inline-flex items-center gap-1 text-xs text-gray-500 bg-ivory-light rounded px-2 py-1">
-                  <Link2 size={11} /> {l.title}
-                  <button type="button" onClick={() => removeMasterLink(l.url)} className="text-gray-400 hover:text-red-600">
-                    <X size={11} />
-                  </button>
-                </span>
-              ))}
-              <button type="button" onClick={() => setMasterLinkFormOpen(!masterLinkFormOpen)}
-                className="text-xs text-gray-400 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5">
-                + Link
-              </button>
             </div>
 
             {linkedProduct && linkedProductImages.length > 0 && masterImageUrls.length < MAX_ATTACHED_IMAGES && (
@@ -1173,22 +1206,6 @@ export default function DailyDrafts() {
               </div>
             )}
 
-            {masterLinkFormOpen && (
-              <div className="border border-ivory-dark rounded p-2 space-y-2">
-                <input value={masterLinkUrl} onChange={e => setMasterLinkUrl(e.target.value)}
-                  placeholder="https://…" className="input w-full text-sm" />
-                <input value={masterLinkTitle} onChange={e => setMasterLinkTitle(e.target.value)}
-                  placeholder="Link text (optional)" className="input w-full text-sm" />
-                <div className="flex gap-2">
-                  <button type="button" onClick={applyMasterLink} disabled={!masterLinkUrl.trim()} className="btn-secondary text-xs py-1.5 px-3">
-                    Attach link
-                  </button>
-                  <button type="button" onClick={() => setMasterLinkFormOpen(false)} className="text-xs text-gray-400 hover:text-brand-600">
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
           </>
         )}
       </div>
@@ -1215,7 +1232,7 @@ export default function DailyDrafts() {
       </div>
 
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-y-2">
           <h2 className="text-sm font-semibold text-gray-900">Pending review ({drafts.length})</h2>
           {drafts.length > 0 && (
             <div className="flex items-center gap-3">
@@ -1380,7 +1397,13 @@ export default function DailyDrafts() {
                   </div>
                 </div>
               )}
-              <div className="flex items-center gap-2">
+              {/* flex-wrap: this row overflowed horizontally on both desktop
+                  and mobile once "Send test to myself" (V8.7) joined
+                  Send/Skip/Already in contact — four full-width buttons plus
+                  the trailing actions never fit one line below ~1400px, and
+                  a non-wrapping flex row just clips/scrolls instead of
+                  reflowing. gap-y-2 gives wrapped rows breathing room. */}
+              <div className="flex items-center gap-2 flex-wrap gap-y-2">
                 <button onClick={() => handleSend(d)} disabled={isBusy} className="btn-primary shrink-0 inline-flex items-center gap-1.5">
                   {isBusy ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                   {isBusy ? 'Sending…' : 'Send'}
@@ -1409,7 +1432,11 @@ export default function DailyDrafts() {
                     <CheckCircle2 size={13} /> Test sent — check your inbox
                   </span>
                 )}
-                <div className="ml-auto flex items-center gap-3">
+                {/* w-full on mobile: forces this group onto its own line
+                    instead of squeezing beside the action buttons above once
+                    wrapped — sm:w-auto/sm:ml-auto restores the "push right"
+                    layout once there's room (desktop). */}
+                <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-3 flex-wrap">
                   {d.source === 'contact' && !addCustomerDone[d.id] && (
                     <button type="button" onClick={() => openAddCustomer(d)}
                       className="text-xs text-gray-500 hover:text-brand-600 inline-flex items-center gap-1">
