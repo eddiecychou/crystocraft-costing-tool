@@ -1,11 +1,13 @@
 import { useState, useMemo, Fragment } from 'react'
 import { Link } from 'react-router-dom'
 import { listWooOrders, searchWooOrders, wooOrderMeta, wooProbePayout } from '../wooSyncApi'
-import { importWooOrder, checkImportedWooOrders } from '../wooImport'
+import { importWooOrder, checkImportedWooOrders, linkCustomerToWoo } from '../wooImport'
 import { importWooRefund, checkImportedWooRefunds } from '../wooRefundImport'
 import { downloadCsv, exportStem } from '../exportCsv'
+import { loadCustomers } from '../domain/customer'
+import { CustomerPicker } from './CustomerAccounts'
 import LoadingBar from '../components/LoadingBar'
-import { RefreshCcw, AlertTriangle, ShoppingCart, Search, Compass, Download, CheckCircle2 } from 'lucide-react'
+import { RefreshCcw, AlertTriangle, ShoppingCart, Search, Compass, Download, CheckCircle2, Link2 } from 'lucide-react'
 
 // WooCommerce sync — Phase 1 (WooCommerce_B2C_Sync_Spec.md) is read-only
 // review. Phase 2 adds actual Firestore writes: "Import" turns a reviewed
@@ -99,6 +101,36 @@ export default function WooCommerceSync() {
       setPersonResults(await searchWooOrders(q))
     } catch (e) {
       setPersonResults({ error: e.message || 'Search failed.' })
+    }
+  }
+
+  // Link an existing CRM customer to the WooCommerce identity found above —
+  // explicit, admin-picked, per-order. `customers` loads lazily (only once
+  // the picker is actually opened) since most visits to this page never need
+  // the full customer list. `linkedFor` is a per-order-id success marker,
+  // not persisted state — reflects what THIS session just did.
+  const [customers, setCustomers] = useState(null)
+  const [linkOpenFor, setLinkOpenFor] = useState(null) // order id
+  const [linkChoice, setLinkChoice] = useState('')
+  const [linkedFor, setLinkedFor] = useState({}) // order id -> customer_name
+  const [linkBusy, setLinkBusy] = useState(false)
+  const [linkError, setLinkError] = useState('')
+  async function openLinkPicker(orderId) {
+    if (customers == null) setCustomers(await loadCustomers())
+    setLinkOpenFor(orderId); setLinkChoice(''); setLinkError('')
+  }
+  async function confirmLink(order) {
+    if (!linkChoice) return
+    setLinkBusy(true); setLinkError('')
+    try {
+      await linkCustomerToWoo(linkChoice, order.woo_customer_id)
+      const c = customers.find(x => x.id === linkChoice)
+      setLinkedFor(prev => ({ ...prev, [order.id]: c?.company_name || 'Linked' }))
+      setLinkOpenFor(null)
+    } catch (e) {
+      setLinkError(e.message || 'Link failed.')
+    } finally {
+      setLinkBusy(false)
     }
   }
 
@@ -375,18 +407,55 @@ export default function WooCommerceSync() {
                       <th className="py-1.5 pr-3 font-medium">Customer</th>
                       <th className="py-1.5 pr-3 font-medium">Email</th>
                       <th className="py-1.5 pr-3 font-medium text-right">Total</th>
+                      <th className="py-1.5 pr-3 font-medium" />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
                     {personResults.map((o) => (
-                      <tr key={o.id}>
-                        <td className="py-1.5 pr-3 font-mono">#{o.number}</td>
-                        <td className="py-1.5 pr-3 text-gray-500">{o.status}</td>
-                        <td className="py-1.5 pr-3 text-gray-500">{fmtDate(o.date_paid)}</td>
-                        <td className="py-1.5 pr-3">{o.customer_name || '—'}</td>
-                        <td className="py-1.5 pr-3 text-gray-500">{o.customer_email || '—'}</td>
-                        <td className="py-1.5 pr-3 text-right tabular-nums">{o.currency} {fmtMoney(o.total)}</td>
-                      </tr>
+                      <Fragment key={o.id}>
+                        <tr>
+                          <td className="py-1.5 pr-3 font-mono">#{o.number}</td>
+                          <td className="py-1.5 pr-3 text-gray-500">{o.status}</td>
+                          <td className="py-1.5 pr-3 text-gray-500">{fmtDate(o.date_paid)}</td>
+                          <td className="py-1.5 pr-3">{o.customer_name || '—'}</td>
+                          <td className="py-1.5 pr-3 text-gray-500">{o.customer_email || '—'}</td>
+                          <td className="py-1.5 pr-3 text-right tabular-nums">{o.currency} {fmtMoney(o.total)}</td>
+                          <td className="py-1.5 pr-3 text-right whitespace-nowrap">
+                            {linkedFor[o.id] ? (
+                              <span className="text-green-700 inline-flex items-center gap-1">
+                                <CheckCircle2 size={12} /> Linked to {linkedFor[o.id]}
+                              </span>
+                            ) : (
+                              <button type="button" onClick={() => openLinkPicker(o.id)}
+                                className="text-brand-600 hover:text-brand-800 inline-flex items-center gap-1"
+                                title="Attach this WooCommerce identity to an existing CRM customer record">
+                                <Link2 size={12} /> Link to CRM customer
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                        {linkOpenFor === o.id && (
+                          <tr>
+                            <td colSpan={7} className="py-2 pr-3 bg-gray-50">
+                              {customers == null ? (
+                                <span className="text-gray-400">Loading customers…</span>
+                              ) : (
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <CustomerPicker customers={customers} value={linkChoice} onChange={setLinkChoice} />
+                                  <button type="button" onClick={() => confirmLink(o)} disabled={!linkChoice || linkBusy}
+                                    className="btn-secondary text-xs py-1 px-2.5 disabled:opacity-50">
+                                    {linkBusy ? 'Linking…' : 'Confirm link'}
+                                  </button>
+                                  <button type="button" onClick={() => setLinkOpenFor(null)} className="text-gray-400 hover:text-brand-600">
+                                    Cancel
+                                  </button>
+                                </div>
+                              )}
+                              {linkError && <p className="text-amber-700 mt-1">{linkError}</p>}
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

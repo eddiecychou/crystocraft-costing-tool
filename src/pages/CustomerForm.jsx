@@ -456,7 +456,14 @@ export default function CustomerForm() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">Source</label>
-              <select className="input" value={form.source} onChange={set('source')}>
+              {/* Retail Customer segment (2026-08-22): a WooCommerce-sourced
+                  customer's Source is set by the sync/link action, not typed
+                  in here — read-only so an admin edit elsewhere on this form
+                  can't accidentally blur which channel this record actually
+                  came from. */}
+              <select className="input" value={form.source} onChange={set('source')}
+                disabled={form.source === 'WooCommerce'}
+                title={form.source === 'WooCommerce' ? 'Set by the WooCommerce sync — not manually editable' : undefined}>
                 <option value="">— Select —</option>
                 {CUSTOMER_SOURCES.map(s => <option key={s}>{s}</option>)}
               </select>

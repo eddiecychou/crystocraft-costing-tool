@@ -7,7 +7,7 @@
 // read-only): it creates a draft/confirmed order. It does NOT allocate an
 // invoice number or a UC# — that stays a manual step Cindy takes from the
 // existing Sales Invoices page, same as any other order (Phase 3).
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from './firebase'
 import { createOrderWithLinesAtId, ORDER_CURRENCIES } from './shipping'
 
@@ -129,4 +129,22 @@ export async function checkImportedWooOrders(wooOrderIds) {
     if (snap.exists()) found.add(id)
   }))
   return found
+}
+
+// Retail Customer segment (2026-08-22) — links an EXISTING `customers/{id}`
+// record to its real WooCommerce identity, once an admin has confirmed via
+// "Find a customer's order history" (WooCommerceSync.jsx) that the order
+// actually belongs to that person. This is the explicit-review merge path
+// the design calls for — never automatic, never triggered by an email match
+// alone. Purely additive: only ever sets these three fields on a customer
+// doc that already exists; never creates a new customer, never touches
+// tags/crm_category/contacts/anything else. Idempotent — re-linking the same
+// pair just overwrites the same three fields with the same values.
+export async function linkCustomerToWoo(customerId, wooCustomerId) {
+  await updateDoc(doc(db, 'customers', customerId), {
+    source: 'WooCommerce',
+    customer_type: 'retail',
+    woo_customer_id: wooCustomerId || null,
+    updatedAt: serverTimestamp(),
+  })
 }

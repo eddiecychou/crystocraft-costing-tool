@@ -39,7 +39,11 @@ export const CHANNELS       = ['Email', 'WhatsApp Business', 'Alibaba', 'Persona
 // or the other; only used when the contact genuinely has no
 // whatsapp_personal/whatsapp_business set.
 export const NO_API_CHANNELS = ['WhatsApp Business', 'Personal WhatsApp', 'WeChat', 'WhatsApp']
-export const CUSTOMER_SOURCES = ['Alibaba', 'Website', 'Email Marketing', 'Referral', 'Trade Show', 'BNI', 'Direct']
+// 'WooCommerce' added 2026-08-22 for the Retail Customer segment — set only
+// by the WooCommerce sync/linking action (wooImport.js's linkCustomerToWoo),
+// never picked manually; CustomerForm.jsx should render Source as read-only
+// once it's 'WooCommerce'.
+export const CUSTOMER_SOURCES = ['Alibaba', 'Website', 'Email Marketing', 'Referral', 'Trade Show', 'BNI', 'Direct', 'WooCommerce']
 
 // Retail flag (V8.2, owner request) — NOT a Retail/Wholesale pair. Most
 // customers here are trade/wholesale by default and stay unlabeled; only
@@ -225,6 +229,14 @@ export function normalizeCustomer(raw) {
     // mirrorToLinkedAccounts's comment. Read-only elsewhere: never accept
     // this from a form, it's not something an admin sets directly.
     erp_code_shared:   !!r.erp_code_shared,
+    // Retail Customer segment (2026-08-22) — set only by wooImport.js's
+    // linkCustomerToWoo() (explicit admin action after confirming a real
+    // WooCommerce order) or the sync's own record creation. Not a CustomerForm
+    // field — same "computed, read-only elsewhere" posture as erp_code_shared
+    // above; round-trips through toCustomerDoc unchanged since nothing in the
+    // form ever offers to edit it.
+    customer_type:     r.customer_type === 'retail' || r.customer_type === 'b2b' ? r.customer_type : null,
+    woo_customer_id:   r.woo_customer_id ?? null,
     tags:              cleanArray(r.tags),
     is_vip:            !!r.is_vip,
     is_personal_wa:    !!r.is_personal_wa,
@@ -334,6 +346,11 @@ function toCustomerDoc(input) {
     is_personal_wa: !!i.is_personal_wa,
     is_vip:         !!i.is_vip,
     sensitive:      !!i.sensitive,                // was accepted from CustomerForm but never persisted — fixed 2026-08-05
+    // Retail Customer segment — see normalizeCustomer's comment. Carried
+    // through as given (never a form input), so an unrelated edit-and-save
+    // doesn't silently erase what the WooCommerce link/sync set.
+    customer_type:  i.customer_type === 'retail' || i.customer_type === 'b2b' ? i.customer_type : null,
+    woo_customer_id: i.woo_customer_id ?? null,
     contact_emails:    primary?.email ? [primary.email] : [],
     contact_phones:    primary?.phone ? [primary.phone] : [],
     contact_whatsapps: primary?.whatsapp ? [primary.whatsapp] : [],

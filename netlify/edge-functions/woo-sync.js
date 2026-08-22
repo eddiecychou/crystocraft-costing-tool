@@ -80,6 +80,12 @@ function summarizeOrder(o, txn) {
     customer_name: [o.billing?.first_name, o.billing?.last_name].filter(Boolean).join(' ') || null,
     customer_email: o.billing?.email || null,
     is_guest: !o.customer_id,             // spec §12 Q10
+    // The raw WooCommerce customer ID itself — previously computed into
+    // is_guest above and then discarded. Needed 2026-08-22 for the Retail
+    // Customer segment work: linking an existing CRM customer record to
+    // their real WooCommerce identity needs this, not just a yes/no guest
+    // flag. 0/absent for guest checkout, same value is_guest is derived from.
+    woo_customer_id: o.customer_id || null,
     subtotal: (o.line_items || []).reduce((s, l) => s + (parseFloat(l.subtotal) || 0), 0),
     discount_total: parseFloat(o.discount_total) || 0,
     shipping_total: parseFloat(o.shipping_total) || 0,
