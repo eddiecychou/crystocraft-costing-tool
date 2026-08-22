@@ -7,6 +7,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import {
   Send, Loader2, SkipForward, Sparkles, Trash2, X, Link2, Upload,
   MessageCircle, CheckCircle2, Eye, MousePointerClick, AlertTriangle, Bookmark, BellOff, Mail, FileText, Receipt, Smartphone, UserPlus, Check,
+  FlaskConical,
 } from 'lucide-react'
 import { db, storage, authedUser } from '../firebase'
 import { loadCustomers, primaryContact, getCustomer, saveCustomer } from '../domain/customer'
@@ -355,6 +356,10 @@ export default function DailyDrafts() {
   const [busyId, setBusyId] = useState(null)
   const [error, setError] = useState('')
   const [edits, setEdits] = useState({}) // draftId -> { subject, body, imageUrls, links }
+  // draftId of the test send that just completed — a brief inline confirmation
+  // ("Sent to you@..."), not persisted anywhere (a test send is deliberately
+  // invisible to Firestore/engagement tracking, see handleSendTest below).
+  const [testSentId, setTestSentId] = useState(null)
 
   // Per-draft "discuss with AI" chat — working scratch, not persisted to
   // Firestore (see discuss-outreach-draft.js's header comment).
@@ -734,6 +739,41 @@ export default function DailyDrafts() {
       reloadSent()
     } catch (e) {
       setError(e.message || 'Send failed.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  // "Send test to myself" (owner, 2026-08-22) — Mailchimp used to offer
+  // exactly this: see how the actual email renders before it goes to a real
+  // customer. Deliberately a THIN wrapper around the same send path handleSend
+  // uses, not a separate preview renderer — an inbox is the only place that
+  // actually proves subject line, image sizing, link formatting, and the
+  // reply-to address all look right, the way DailyDrafts.jsx's own on-screen
+  // edit form cannot.
+  //
+  // Three things keep this from being a real send in disguise:
+  //   1. Goes to the SIGNED-IN ADMIN's own address (their Firebase Auth
+  //      email), never the customer's — hardcoded here, not a field the
+  //      owner could fat-finger into actually emailing the customer twice.
+  //   2. No draftId/recipientKind/recipientId passed to sendPersonalEmail —
+  //      without a draftId, send-personal-email.js attaches no Resend tags,
+  //      so a test send can never surface as a false "delivered/opened" event
+  //      on the real draft via resend-webhook.js.
+  //   3. markDraftSent/lastOutreachAt/logInteraction are never called — the
+  //      draft stays exactly where it was, in pending_review, fully editable
+  //      and re-testable as many times as needed before the real Send.
+  async function handleSendTest(d) {
+    const { subject, body, imageUrls, links } = fieldsFor(d)
+    const user = await authedUser()
+    if (!user?.email) { setError('Could not determine your own sign-in email.'); return }
+    setBusyId(`test-${d.id}`); setError('')
+    try {
+      await sendPersonalEmail({ customerEmail: user.email, subject: `[TEST] ${subject}`, body, imageUrls, links })
+      setTestSentId(d.id)
+      setTimeout(() => setTestSentId(id => (id === d.id ? null : id)), 5000)
+    } catch (e) {
+      setError(e.message || 'Test send failed.')
     } finally {
       setBusyId(null)
     }
@@ -1353,6 +1393,22 @@ export default function DailyDrafts() {
                   className="btn-secondary shrink-0 inline-flex items-center gap-1.5">
                   <BellOff size={14} /> Already in contact
                 </button>
+                {(() => {
+                  const isTestBusy = busyId === `test-${d.id}`
+                  return (
+                    <button onClick={() => handleSendTest(d)} disabled={isBusy || isTestBusy}
+                      title="Send this exact email to your own inbox first — nothing here is sent to the customer or recorded"
+                      className="btn-secondary shrink-0 inline-flex items-center gap-1.5">
+                      {isTestBusy ? <Loader2 size={14} className="animate-spin" /> : <FlaskConical size={14} />}
+                      {isTestBusy ? 'Sending test…' : 'Send test to myself'}
+                    </button>
+                  )
+                })()}
+                {testSentId === d.id && (
+                  <span className="text-xs text-green-700 inline-flex items-center gap-1">
+                    <CheckCircle2 size={13} /> Test sent — check your inbox
+                  </span>
+                )}
                 <div className="ml-auto flex items-center gap-3">
                   {d.source === 'contact' && !addCustomerDone[d.id] && (
                     <button type="button" onClick={() => openAddCustomer(d)}
