@@ -24,7 +24,7 @@ const refUid = () => 'r' + Math.random().toString(36).slice(2, 10)
 const BRAND_NAME = Object.fromEntries(RANGE_CRYSTAL_BRANDS.map(b => [b.code, b.name]))
 import LoadingBar from '../components/LoadingBar'
 import { useCrystalColors, colorMap, ensureColors } from '../crystalColors'
-import { generateColourPreview, useColourPreviews, setReviewStatus } from '../colourPreviewApi'
+import { generateColourPreview, useColourPreviews, setReviewStatus, deletePreview, uploadColourPreview } from '../colourPreviewApi'
 import { buildRangeSku, rangePrice } from '../rangeSku'
 import { useComponents, resolveRef, productAvailability } from '../criticalComponents'
 import { useCrystals } from '../crystals'
@@ -115,16 +115,16 @@ function VariantColourPreview({ docId, index, variant, libColors }) {
   const image = variant.image
   const targetInfo = libColors.find(c => c.code === target)
 
-  async function onGenerate() {
-    if (!image || !target || busy) return
+  async function runGenerate(code) {
+    const info = libColors.find(c => c.code === code)
     setBusy(true); setError('')
     try {
       await generateColourPreview({
         docId, variantIndex: index, sourceImageUrl: image,
         sourcePlatingCode: variant.plating_code, sourceCrystalCode: variant.crystal_code,
         sourceCrystalName: variant.crystal_name,
-        targetCrystalCode: target, targetCrystalName: targetInfo?.name || target,
-        targetSwatchHex: targetInfo?.swatch, createdBy: auth.currentUser?.email || '',
+        targetCrystalCode: code, targetCrystalName: info?.name || code,
+        targetSwatchHex: info?.swatch, createdBy: auth.currentUser?.email || '',
       })
     } catch (err) {
       setError(err.message || 'Generation failed.')
@@ -133,27 +133,57 @@ function VariantColourPreview({ docId, index, variant, libColors }) {
     }
   }
 
+  async function onUpload(e, code) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file || !code || busy) return
+    setBusy(true); setError('')
+    try {
+      await uploadColourPreview({
+        docId, variantIndex: index, sourcePlatingCode: variant.plating_code,
+        targetCrystalCode: code, file, createdBy: auth.currentUser?.email || '',
+      })
+    } catch (err) {
+      setError(err.message || 'Upload failed.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function onRemove(p) {
+    if (!confirm(`Remove this ${p.targetCrystalCode} preview? This can't be undone.`)) return
+    try { await deletePreview(docId, p.id) } catch (err) { setError(err.message || 'Remove failed.') }
+  }
+
   const badge = { draft: 'bg-amber-50 text-amber-700 border-amber-300', approved: 'bg-green-50 text-green-700 border-green-300', rejected: 'bg-red-50 text-red-700 border-red-300' }
 
   return (
     <div className="border-t border-ivory-dark pt-2 mt-2">
       <div className="flex items-center justify-between mb-1.5">
-        <label className="text-[11px] uppercase tracking-wide text-ink-50">Colour preview (AI experiment)</label>
+        <label className="text-[11px] uppercase tracking-wide text-ink-50">Colour preview (experiment)</label>
       </div>
       {!image ? (
         <p className="text-[11px] text-ink-50">Add an image to this variation first.</p>
       ) : (
-        <div className="flex items-center gap-2">
-          <select className="input text-xs py-1 flex-1" value={target} onChange={e => setTarget(e.target.value)}>
+        <div className="flex items-center gap-2 flex-wrap">
+          <select className="input text-xs py-1 flex-1 min-w-[9rem]" value={target} onChange={e => setTarget(e.target.value)}>
             <option value="">Target crystal colour…</option>
             {libColors.map(c => <option key={c.code} value={c.code}>{c.name || c.code} ({c.code})</option>)}
           </select>
-          <button type="button" onClick={onGenerate} disabled={!target || busy}
+          <button type="button" onClick={() => runGenerate(target)} disabled={!target || busy}
                   className="btn-secondary text-xs py-1 px-2 shrink-0 disabled:opacity-40 inline-flex items-center gap-1">
-            <Sparkles size={12} /> {busy ? 'Generating…' : 'Generate Colour Preview'}
+            <Sparkles size={12} /> {busy ? 'Working…' : 'Generate (AI)'}
           </button>
+          <label className={`btn-secondary text-xs py-1 px-2 shrink-0 inline-flex items-center gap-1 cursor-pointer ${!target || busy ? 'opacity-40 pointer-events-none' : ''}`}>
+            <Plus size={12} /> Upload photo
+            <input type="file" accept="image/*" className="hidden" disabled={!target || busy}
+                   onChange={e => onUpload(e, target)} />
+          </label>
         </div>
       )}
+      <p className="text-[10px] text-ink-50 mt-1">
+        For a mixture recipe or a colour you already have a real photo of, use “Upload photo” instead of AI — skips generation entirely.
+      </p>
       {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
       {previews.length > 0 && (
         <div className="flex flex-wrap gap-2 mt-2">
@@ -166,19 +196,28 @@ function VariantColourPreview({ docId, index, variant, libColors }) {
                   <img src={p.generatedImageUrl} alt="" className="w-full h-full object-contain p-1" />
                 )}
               </div>
-              <p className="text-[10px] font-mono text-ink-70 mt-0.5 truncate" title={p.targetCrystalCode}>{p.targetCrystalCode}</p>
+              <p className="text-[10px] font-mono text-ink-70 mt-0.5 truncate" title={p.targetCrystalCode}>
+                {p.targetCrystalCode}{p.source === 'upload' ? ' ·  uploaded' : ''}
+              </p>
               <span className={`inline-block text-[9px] px-1.5 py-0.5 rounded-full border ${badge[p.reviewStatus] || badge.draft}`}>
                 {p.reviewStatus === 'draft' ? 'Draft — not visible' : p.reviewStatus}
               </span>
               {p.status === 'failed' && p.errorMessage && (
                 <p className="text-[9px] text-red-600 mt-0.5">{p.errorMessage}</p>
               )}
-              {p.status === 'success' && p.reviewStatus === 'draft' && (
-                <div className="flex gap-1 mt-0.5">
-                  <button type="button" onClick={() => setReviewStatus(p.id, 'approved')} className="text-[9px] text-green-700 hover:underline">Approve</button>
-                  <button type="button" onClick={() => setReviewStatus(p.id, 'rejected')} className="text-[9px] text-red-600 hover:underline">Reject</button>
-                </div>
-              )}
+              <div className="flex flex-wrap gap-x-1.5 gap-y-0.5 mt-0.5">
+                {p.status === 'success' && p.reviewStatus === 'draft' && (
+                  <>
+                    <button type="button" onClick={() => setReviewStatus(p.id, 'approved')} className="text-[9px] text-green-700 hover:underline">Approve</button>
+                    <button type="button" onClick={() => setReviewStatus(p.id, 'rejected')} className="text-[9px] text-red-600 hover:underline">Reject</button>
+                  </>
+                )}
+                {p.source === 'ai' && (
+                  <button type="button" onClick={() => runGenerate(p.targetCrystalCode)} disabled={busy}
+                          className="text-[9px] text-brand-600 hover:underline disabled:opacity-40">Regenerate</button>
+                )}
+                <button type="button" onClick={() => onRemove(p)} className="text-[9px] text-ink-50 hover:text-red-600 hover:underline">Remove</button>
+              </div>
             </div>
           ))}
         </div>

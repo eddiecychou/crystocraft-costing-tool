@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { doc, setDoc, updateDoc, onSnapshot, collection, query, where, serverTimestamp } from 'firebase/firestore'
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
+import { doc, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, serverTimestamp } from 'firebase/firestore'
+import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from './firebase'
 import { enhanceProductImage } from './enhanceImage'
 
@@ -69,6 +69,7 @@ export async function generateColourPreview({
     reviewStatus: 'draft',
     generatedImageUrl: '',
     errorMessage: '',
+    source: 'ai',
     createdBy: createdBy || '',
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
@@ -92,6 +93,53 @@ export async function generateColourPreview({
 
 export async function setReviewStatus(id, reviewStatus) {
   await updateDoc(doc(db, COLLECTION, id), { reviewStatus, updatedAt: serverTimestamp() })
+}
+
+// Discards a preview outright — for a bad AI attempt or an upload the
+// reviewer no longer wants. Removes the Storage object too, not just the
+// Firestore doc, so rejected drafts don't linger in the bucket.
+export async function deletePreview(docId, id) {
+  try {
+    await deleteObject(storageRef(storage, `range_products/${docId}/colour_previews/${id}.jpg`))
+  } catch (err) {
+    if (err.code !== 'storage/object-not-found') throw err
+  }
+  await deleteDoc(doc(db, COLLECTION, id))
+}
+
+// For a mixture/multi-colour crystal recipe (or any colour the team already
+// has a real photo of), skip Gemini entirely — upload the existing photo
+// straight in as a draft, same review gate as an AI attempt. Not
+// idempotent like generateColourPreview: each upload is a deliberate,
+// distinct action, so it always gets a fresh id.
+export async function uploadColourPreview({
+  docId, variantIndex, sourcePlatingCode, targetCrystalCode, file, createdBy,
+}) {
+  if (!file) throw new Error('No file selected.')
+  const id = [
+    docId, `v${variantIndex}`,
+    (sourcePlatingCode || 'X').trim().toUpperCase(),
+    (targetCrystalCode || 'X').trim().toUpperCase(),
+    'upload', Date.now().toString(36),
+  ].join('__')
+  const path = `range_products/${docId}/colour_previews/${id}.jpg`
+  await uploadBytes(storageRef(storage, path), file, { contentType: file.type || 'image/jpeg' })
+  const generatedImageUrl = await getDownloadURL(storageRef(storage, path))
+  await setDoc(doc(db, COLLECTION, id), {
+    docId, variantIndex, sourceImageUrl: '',
+    sourcePlatingCode: (sourcePlatingCode || '').trim().toUpperCase(),
+    sourceCrystalCode: '',
+    targetCrystalCode: (targetCrystalCode || '').trim().toUpperCase(),
+    status: 'success',
+    reviewStatus: 'draft',
+    generatedImageUrl,
+    errorMessage: '',
+    source: 'upload',
+    createdBy: createdBy || '',
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
+  return id
 }
 
 // Live list of previews for one variant, newest first.

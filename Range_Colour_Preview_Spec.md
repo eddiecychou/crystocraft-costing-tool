@@ -179,6 +179,30 @@ States map directly onto `status` / `reviewStatus` on the preview doc:
   `gallery[]`; `range_colour_previews` is admin-only in `firestore.rules`
   and is never read by the customer portal, Woo sync, or PBIS export paths.
 
+## 5a. Follow-up additions (2026-08-22, same cycle)
+
+Two gaps surfaced during live testing:
+
+- **No way to discard a bad result or a rejected draft.** Added `deletePreview()`
+  — removes both the Firestore doc and its Storage object, not just a status
+  flag. Available on every preview regardless of status. **Regenerate** is a
+  separate action (re-run `generateColourPreview` for that same
+  `targetCrystalCode`) rather than "delete then re-add the target in the
+  dropdown" — shown only on AI-sourced previews, since a manual upload has
+  nothing to regenerate.
+- **Mixture crystal recipes (and any colour the team already has a real
+  photo of) don't suit AI recolouring** — a mixture is a pattern of several
+  crystal codes, not a single hue a text-prompt edit can approximate.
+  Added `uploadColourPreview()`: skips Gemini entirely, uploads a file the
+  reviewer already has straight into the same draft/review pipeline
+  (`status: 'success'` immediately, `reviewStatus: 'draft'`,
+  `source: 'upload'` instead of `'ai'`). Same Storage prefix, same Firestore
+  collection, same Approve/Reject/Remove — the only difference from an AI
+  result is where the pixels came from. The target-colour dropdown already
+  lists mixture codes (`MX`, `M1`, `AX`, …) alongside single colours since
+  it's sourced from the same `useCrystalColors()` library used elsewhere on
+  the page, so no separate mixture-picker was needed.
+
 ## 6. Explicitly out of scope for Phase 1
 
 Batch generation, any queue, mass backfill across the range, automatic
