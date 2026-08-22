@@ -237,6 +237,11 @@ export function normalizeCustomer(raw) {
     // form ever offers to edit it.
     customer_type:     r.customer_type === 'retail' || r.customer_type === 'b2b' ? r.customer_type : null,
     woo_customer_id:   r.woo_customer_id ?? null,
+    // { customer_id, company_name } | null — set only by the bulk sync
+    // (wooCustomerSync.js) when a scanned WooCommerce buyer's email matches
+    // an EXISTING B2B customer. Never auto-merged; this is the flag for
+    // manual review — see CustomerDetail.jsx's banner.
+    possible_b2b_match: r.possible_b2b_match || null,
     tags:              cleanArray(r.tags),
     is_vip:            !!r.is_vip,
     is_personal_wa:    !!r.is_personal_wa,
@@ -351,6 +356,7 @@ function toCustomerDoc(input) {
     // doesn't silently erase what the WooCommerce link/sync set.
     customer_type:  i.customer_type === 'retail' || i.customer_type === 'b2b' ? i.customer_type : null,
     woo_customer_id: i.woo_customer_id ?? null,
+    possible_b2b_match: i.possible_b2b_match || null,
     contact_emails:    primary?.email ? [primary.email] : [],
     contact_phones:    primary?.phone ? [primary.phone] : [],
     contact_whatsapps: primary?.whatsapp ? [primary.whatsapp] : [],

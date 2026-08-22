@@ -525,6 +525,15 @@ export default function CustomerDetail() {
     }
   }
 
+  // Clears the possible-B2B-match flag once reviewed — this is acknowledgment
+  // that the two records are genuinely separate people, not a merge action.
+  // If they're actually the same person, that's a manual decision outside
+  // this button (no auto-merge exists anywhere in this feature by design).
+  async function handleDismissB2bMatch() {
+    await updateDoc(doc(db, 'customers', id), { possible_b2b_match: null, updatedAt: serverTimestamp() })
+    setCustomer(prev => (prev ? { ...prev, possible_b2b_match: null } : prev))
+  }
+
   async function handleRefreshEmailSummary() {
     setEmailSummaryBusy(true); setEmailSummaryError('')
     try {
@@ -975,6 +984,21 @@ export default function CustomerDetail() {
             {customer.email_complain_reason ? ` (${customer.email_complain_reason})` : ''} — Daily Drafts will
             stop suggesting this customer until this is resolved.
           </span>
+        </div>
+      )}
+      {customer.possible_b2b_match && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <span className="inline-flex items-center gap-2">
+            <AlertTriangle size={15} className="shrink-0" />
+            This WooCommerce-sourced customer's email also matches{' '}
+            <Link to={`/customers/${customer.possible_b2b_match.customer_id}`} className="underline font-medium">
+              {customer.possible_b2b_match.company_name}
+            </Link>{' '}— review before treating these as separate people. Never auto-merged.
+          </span>
+          <button type="button" onClick={handleDismissB2bMatch}
+            className="text-xs text-amber-700 hover:text-amber-900 underline underline-offset-2 shrink-0">
+            Dismiss (reviewed, keep separate)
+          </button>
         </div>
       )}
 

@@ -153,7 +153,8 @@ export default function WooCommerceSync() {
         customers ?? loadCustomers(),
       ])
       if (customers == null) setCustomers(existing)
-      setCustomerScan(classifyWooCustomers(entries, existing).sort((a, b) => b.orderCount - a.orderCount))
+      const classified = await classifyWooCustomers(entries, existing)
+      setCustomerScan(classified.sort((a, b) => b.orderCount - a.orderCount))
     } catch (e) {
       setCustomerScan({ error: e.message || 'Scan failed.' })
     }
@@ -568,6 +569,7 @@ export default function WooCommerceSync() {
                         <th className="py-1.5 pr-3 font-medium text-right">Orders</th>
                         <th className="py-1.5 pr-3 font-medium">Total spent</th>
                         <th className="py-1.5 pr-3 font-medium">Status</th>
+                        <th className="py-1.5 pr-3 font-medium">Marketing lead</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -587,6 +589,18 @@ export default function WooCommerceSync() {
                                 Possible match: {e.possibleMatch?.company_name}
                               </span>
                             )}
+                          </td>
+                          <td className="py-1.5 pr-3">
+                            {/* An EXISTING marketing_contacts lead sharing this
+                                email — never a new lead being created. Linked
+                                automatically on create via linkContactToCustomer,
+                                same mechanism the rest of the app already uses
+                                for "a lead converted to a customer." */}
+                            {e.matchedContact ? (
+                              <span className="text-teal-700" title="Already a marketing lead — will be linked on create">
+                                {e.matchedContact.first_name || e.matchedContact.company || e.email}
+                              </span>
+                            ) : '—'}
                           </td>
                         </tr>
                       ))}

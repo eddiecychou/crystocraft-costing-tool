@@ -11,9 +11,9 @@
 //     `possible_b2b_match` for review instead, same field shape as
 //     marketing_contacts.possible_customer_match elsewhere in this app.
 //   - NEVER touches marketing_contacts, never assumes marketing consent.
-import { doc, writeBatch, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, writeBatch, serverTimestamp } from 'firebase/firestore'
 import { db } from './firebase'
-import { idFromEmail } from './domain/marketingContact'
+import { idFromEmail, linkContactToCustomer } from './domain/marketingContact'
 import { wooOrdersPage } from './wooSyncApi'
 
 // Same "-cust-<id>" / "-guest-<email>" split as a real WooCommerce account
@@ -61,8 +61,14 @@ export async function scanWooCustomers(onProgress) {
 // no extra reads needed): 'linked' (a customer doc already exists at this
 // entry's deterministic ID — re-running the scan is a no-op for them),
 // 'possible_match' (a DIFFERENT, non-WooCommerce customer shares this email
-// — flag, never auto-merge), or 'new'.
-export function classifyWooCustomers(entries, existingCustomers) {
+// — flag, never auto-merge), or 'new'. ALSO checks whether the person
+// already exists as a marketing_contacts LEAD — a direct doc-ID lookup
+// (marketing_contacts is keyed by idFromEmail, same as saveContact/
+// linkContactToCustomer already assume), not a collection scan. This is
+// checking a match for an EXISTING lead, never creating a new one — the
+// "don't put WooCommerce buyers into Marketing Leads" rule is about not
+// authoring new lead records, not about ignoring one that's already there.
+export async function classifyWooCustomers(entries, existingCustomers) {
   const existingIds = new Set(existingCustomers.map(c => c.id))
   const emailIndex = new Map()
   for (const c of existingCustomers) {
@@ -71,13 +77,16 @@ export function classifyWooCustomers(entries, existingCustomers) {
       if (email) emailIndex.set(email.trim().toLowerCase(), c)
     }
   }
-  return entries.map(e => {
-    if (existingIds.has(e.key)) return { ...e, status: 'linked' }
+  return Promise.all(entries.map(async e => {
+    const contactSnap = e.email ? await getDoc(doc(db, 'marketing_contacts', idFromEmail(e.email))) : null
+    const matchedContact = contactSnap?.exists() ? { id: contactSnap.id, ...contactSnap.data() } : null
+
+    if (existingIds.has(e.key)) return { ...e, status: 'linked', matchedContact }
     const match = e.email ? emailIndex.get(e.email) : null
     return match
-      ? { ...e, status: 'possible_match', possibleMatch: { customer_id: match.id, company_name: match.company_name } }
-      : { ...e, status: 'new' }
-  })
+      ? { ...e, status: 'possible_match', possibleMatch: { customer_id: match.id, company_name: match.company_name }, matchedContact }
+      : { ...e, status: 'new', matchedContact }
+  }))
 }
 
 function buildRetailCustomerDoc(e) {
@@ -106,14 +115,29 @@ function buildRetailCustomerDoc(e) {
 // 'new' and 'possible_match' — a possible match still gets its own retail
 // record, just flagged for review; it is never merged into the matched
 // customer). `{ merge: true }` makes this safe to re-run.
+//
+// After each batch commits, any entry with a `matchedContact` (an EXISTING
+// marketing_contacts lead sharing this email, found by classifyWooCustomers)
+// gets linked via the same linkContactToCustomer() the rest of the app
+// already uses for "a lead converted to a customer" — stamps
+// is_customer/possible_customer_match on the lead and
+// linked_marketing_contact_ids on the new customer, so engagement/reply
+// history follows the person instead of staying stranded under the lead
+// record. linkContactToCustomer requires the customer doc to already exist
+// (it calls updateDoc, which throws on a missing doc), hence AFTER the
+// batch commit, not inside it.
 export async function createWooRetailCustomers(entries) {
   const targets = entries.filter(e => e.status !== 'linked')
   for (let i = 0; i < targets.length; i += 400) {
+    const chunk = targets.slice(i, i + 400)
     const batch = writeBatch(db)
-    for (const e of targets.slice(i, i + 400)) {
+    for (const e of chunk) {
       batch.set(doc(db, 'customers', e.key), buildRetailCustomerDoc(e), { merge: true })
     }
     await batch.commit()
+    await Promise.all(chunk
+      .filter(e => e.matchedContact)
+      .map(e => linkContactToCustomer(e.matchedContact.id, e.key, e.name || e.email).catch(() => {})))
   }
   return targets.length
 }
