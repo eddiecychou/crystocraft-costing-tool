@@ -521,6 +521,17 @@ function EditContactModal({ contact, customers, onClose, onSaved, onLinked, onDe
             Status drives emailability automatically (only “subscribed” is emailable). Changing the email moves the record.
           </p>
         </div>
+        {/* A save/delete failure previously only showed at the TOP of the
+            scrollable body above (line ~444) — invisible, and easy to read as
+            "Save does nothing," if the admin was scrolled down (very likely
+            now that WhatsApp/Interaction Log/AI-preferences pushed this
+            modal much taller). Duplicated here in the always-visible footer
+            so an error can never silently go unseen. */}
+        {error && (
+          <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border-t border-red-200 px-5 py-2">
+            <AlertCircle size={14} className="shrink-0" /> {error}
+          </div>
+        )}
         <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200">
           <button onClick={del} disabled={busy}
             className="text-sm text-red-600 hover:text-red-700 inline-flex items-center gap-1.5 disabled:opacity-50">

@@ -3,7 +3,8 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Store, ShoppingCart, Gift, Sparkles, ShoppingBag, Check, Star, AlertCircle, AlertTriangle, Plus, Trash2, ChevronUp, ChevronDown } from 'lucide-react'
-import { saveCustomer, contactsOf, loadAllTagNames, CRM_STATUSES, CRM_CATEGORIES, CHANNELS, NO_API_CHANNELS, CUSTOMER_SOURCES, CUSTOMER_COUNTRIES, RETAIL_TAG } from '../domain/customer'
+import { saveCustomer, contactsOf, loadAllTagNames, CRM_STATUSES, CRM_CATEGORIES, CHANNELS, NO_API_CHANNELS, CUSTOMER_SOURCES, CUSTOMER_COUNTRIES, RETAIL_TAG, updateCustomerAiSummary, AI_CONTEXT_SUMMARY_MAX_WORDS } from '../domain/customer'
+import { authedUser } from '../firebase'
 
 const blankContact = (isPrimary = false) => ({
   id: null, name: '', title: '', email: '', phone: '',
@@ -120,6 +121,7 @@ export default function CustomerForm() {
     country: 'Hong Kong',
     address: '',
     notes: '',
+    ai_context_summary: '',
     // CRM fields
     crm_category: '',
     source: '',
@@ -153,6 +155,7 @@ export default function CustomerForm() {
           country:         d.country || d.region || 'Hong Kong',
           address:         d.address         || '',
           notes:           d.notes           || '',
+          ai_context_summary: d.ai_context_summary || '',
           crm_category:    d.crm_category    || '',
           source:          d.source          || '',
           crm_status:      d.crm_status      || 'Prospect',
@@ -244,6 +247,15 @@ export default function CustomerForm() {
       }
       const res = await saveCustomer(isEdit ? id : null, input)
       if (!res.ok) { setIssues(res.result); return }
+      // Draft Memory Layer (V8.9) — separate write from saveCustomer's
+      // whitelisted patch (own 120-word validation, own updatedAt/By
+      // stamp), same pattern as MarketingContacts.jsx's EditContactModal.
+      // Skipped on a brand-new customer with nothing typed, so creating a
+      // customer never fires an extra write for an empty field.
+      if (form.ai_context_summary.trim() || isEdit) {
+        const user = await authedUser()
+        await updateCustomerAiSummary(res.id, form.ai_context_summary, user?.uid)
+      }
       navigate(`/customers/${res.id}`)
     } finally {
       setLoading(false)
@@ -507,6 +519,21 @@ export default function CustomerForm() {
         <div className="card p-5">
           <label className="label">Notes</label>
           <textarea className="input" rows={3} value={form.notes} onChange={set('notes')} placeholder="Preferences, key occasions, gifting history, special requirements…" />
+        </div>
+
+        {/* AI writing preferences (Draft Memory Layer, V8.9) */}
+        <div className="card p-5">
+          <label className="label">
+            AI writing preferences (Daily Drafts memory) — max {AI_CONTEXT_SUMMARY_MAX_WORDS} words
+          </label>
+          <textarea className="input" rows={2} value={form.ai_context_summary} onChange={set('ai_context_summary')}
+            placeholder="e.g. Prefers WhatsApp over email. Distributor, price-sensitive, replies slowly." />
+          <span className={`text-[11px] ${
+            form.ai_context_summary.trim().split(/\s+/).filter(Boolean).length > AI_CONTEXT_SUMMARY_MAX_WORDS ? 'text-red-600' : 'text-gray-400'
+          }`}>
+            {form.ai_context_summary.trim() ? form.ai_context_summary.trim().split(/\s+/).filter(Boolean).length : 0} / {AI_CONTEXT_SUMMARY_MAX_WORDS} words —
+            fed into every Daily Drafts email to this customer.
+          </span>
         </div>
 
         {issues && (issues.errors.length > 0 || issues.warnings.length > 0) && (

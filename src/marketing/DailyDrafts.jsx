@@ -97,6 +97,10 @@ function customerToEntity(c) {
     customer_type: c.customer_type || null,
     crm_category: c.crm_category, crm_status: c.crm_status,
     notes: c.notes, erp_code: c.erp_code, country: c.country,
+    // Draft Memory Layer (V8.9) — extended from marketing_contacts to
+    // customers too (see domain/customer.js's updateCustomerAiSummary),
+    // same field folded into buildCustomerContext() server-side.
+    aiContextSummary: c.ai_context_summary || '',
     lastOutreachAt: c.lastOutreachAt, blockOutreachUntil: c.blockOutreachUntil,
     // Draft Daily WhatsApp channel support (2026-08-19) — snapshotted at
     // draft-creation time, same posture as name/email above (not a live

@@ -259,6 +259,59 @@ their own inline Firestore calls) rather than migrated onto the new shared
 module — lower-risk to leave working code alone than to refactor it as a
 side effect of this feature.
 
+### WooCommerce as a marketing_contacts enrichment source — investigated, ruled out
+
+Owner asked whether WooCommerce order data could enrich `marketing_contacts`
+for the `retail` audience. Investigated (background agent) rather than
+assumed. Finding: **structurally close to disjoint by design, not an
+oversight** —
+
+- `wooCustomerSync.js` writes ONLY to `customers/` (explicit comment,
+  line 13: "NEVER touches marketing_contacts, never assumes marketing
+  consent"). No WooCommerce code has ever written to `marketing_contacts`.
+- It DOES cross-reference by email (`classifyWooCustomers`, doc-ID lookup
+  via `idFromEmail`) — but only to detect an existing lead worth *linking
+  and promoting out* of `marketing_contacts` via `linkContactToCustomer`.
+  Once linked, `possible_customer_match` makes `contactToEntity()` exclude
+  that contact from ever surfacing again — they're represented by their
+  `customers/` record from then on.
+- `marketing_contacts`' `retail`/`trade` audience tags are signup-channel
+  labels from Mailchimp/WordPress, not derived from WooCommerce purchase
+  behavior — and Daily Drafts' retail segment is already sourced
+  exclusively from `customers/` (`customer_type === 'retail'`), never from
+  `marketing_contacts`.
+- Net effect: any real email overlap between the two populations already
+  gets caught and converted into a `customers/` record by the existing
+  sync. What's left tagged `retail` in `marketing_contacts` is, by
+  construction, people WooCommerce has no order data for. **No untapped
+  dataset exists to backfill from — nothing built, nothing to build here.**
+
+Owner separately flagged Alibaba as another possible contact-enrichment
+source, but wants it deferred — a known technical import challenge there,
+not scoped for this cycle.
+
+### `ai_context_summary` extended to `customers/` (parity with marketing_contacts)
+
+The Draft Memory Layer's per-contact writing-preference field previously
+only existed on `marketing_contacts` (Phase 1 was scoped there
+deliberately — see the Phase 1 section above). Extended to real customers
+so personalization isn't lopsided toward leads:
+
+- `domain/customer.js` — `ai_context_summary`/`ai_context_updated_at` added
+  to `normalizeCustomer()`, plus `updateCustomerAiSummary()` (own 120-word
+  validation, own `updatedAt/By` stamp), exact mirror of
+  `marketingContact.js`'s version. Written separately from `saveCustomer`'s
+  whitelisted patch, same reasoning as the contact version.
+- `CustomerForm.jsx` — new "AI writing preferences" card next to Notes,
+  with a live word count; saved via a second call after `saveCustomer`
+  succeeds (using the new/existing customer's real id either way), skipped
+  entirely on a brand-new customer if the field was left blank (no empty
+  write on create).
+- `DailyDrafts.jsx`'s `customerToEntity()` now forwards `aiContextSummary`
+  the same way `contactToEntity()` already did — no edge-function changes
+  needed, since `generate-outreach-drafts.js`'s `buildCustomerContext()`/
+  `hasWritingContext()` were already written source-agnostic in Phase 1.
+
 ## Current Status — V8.8 CLOSED as of 2026-08-23
 
 Range Variation Colour Preview — a working, live-tested AI/upload/gallery

@@ -185,9 +185,22 @@ export async function findOrCreateLeadByPhone(phone) {
 // disagree (subscribed = emailable, anything else = suppressed). Editing the email
 // changes the doc id, so that case is a rename: write the new doc, delete the old,
 // refusing if the target email already belongs to another contact.
+//
+// Phone-only WhatsApp leads (findOrCreateLeadByPhone above — doc id is
+// idFromPhone(phone), no email field at all) previously could NEVER pass
+// this function's hard `EMAIL_RE.test(email)` requirement — Save always
+// threw "A valid email is required." for one of these, silently (the error
+// banner was easy to scroll past), which read as "Save does nothing" (owner
+// report, 2026-08-23). Fixed by only requiring/validating an email when one
+// is actually being set — a phone-only lead with a blank email field now
+// saves in place (no rename attempt, since there's no email to derive a new
+// id from), same as any other contact. At least one of email/phone must
+// still be present; that's the one case with no way to identify the record.
 export async function saveContact(currentId, data) {
   const email = str(data.email).trim().toLowerCase()
-  if (!EMAIL_RE.test(email)) throw new Error('A valid email is required.')
+  const phone = str(data.phone)
+  if (email && !EMAIL_RE.test(email)) throw new Error('That doesn\'t look like a valid email — leave it blank if this contact only has a phone number.')
+  if (!email && !phone) throw new Error('An email or phone number is required.')
   const status = MC_STATUSES.includes(data.status) ? data.status : 'subscribed'
   const patch = {
     first_name:   str(data.first_name),
@@ -195,14 +208,14 @@ export async function saveContact(currentId, data) {
     email,
     company:      str(data.company),
     country:      str(data.country),
-    phone:        str(data.phone),
+    phone,
     tags:         arr(data.tags),
     // A website signup can genuinely be either trade or retail (or both) —
     // it defaults to ['website'] at import/signup time but that's a source,
     // not a classification, so this needs to be editable per contact.
     audiences:    arr(data.audiences),
     status,
-    emailable:    status === 'subscribed',
+    emailable:    status === 'subscribed' && !!email,
     is_customer:  !!data.is_customer,
     // review_status deliberately not written here — the review UI was
     // dropped from the Contacts page (not useful in practice); the field
@@ -211,7 +224,11 @@ export async function saveContact(currentId, data) {
     app_notes:    str(data.app_notes),
     updatedAt:    serverTimestamp(),
   }
-  const newId = idFromEmail(email)
+  // No email (or unchanged email) — update in place, no rename. A blank
+  // email can't derive a doc id at all, so this is the ONLY safe path for a
+  // phone-only lead; idFromEmail('') would collide every phone-only contact
+  // onto the same doc id.
+  const newId = email ? idFromEmail(email) : currentId
   if (newId === currentId) {
     await updateDoc(doc(db, 'marketing_contacts', currentId), patch)
     return newId

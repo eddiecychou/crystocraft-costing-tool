@@ -300,7 +300,32 @@ export function normalizeCustomer(raw) {
     // reading it off useCustomers()/loadCustomers()) silently dropped it,
     // so Daily Drafts never actually saw WhatsApp context.
     whatsapp_summary:  r.whatsapp_summary ?? null,
+    // Draft Memory Layer (V8.9) — same field/posture as
+    // marketing_contacts.ai_context_summary (domain/marketingContact.js):
+    // a short, admin-edited relationship/writing-preference summary fed
+    // into Daily Drafts prompts, capped at AI_CONTEXT_SUMMARY_MAX_WORDS and
+    // written only via updateCustomerAiSummary() below, never through
+    // saveCustomer's whitelisted patch. Originally scoped to
+    // marketing_contacts only; extended here so real customers get the
+    // same personalization benefit, not just leads.
+    ai_context_summary: str(r.ai_context_summary),
+    ai_context_updated_at: r.ai_context_updated_at ?? null,
   }
+}
+
+export const AI_CONTEXT_SUMMARY_MAX_WORDS = 120
+
+export async function updateCustomerAiSummary(customerId, summary, updatedBy) {
+  const clean = String(summary || '').trim()
+  const wc = clean.split(/\s+/).filter(Boolean).length
+  if (wc > AI_CONTEXT_SUMMARY_MAX_WORDS) {
+    throw new Error(`Keep the AI writing-preference summary to ${AI_CONTEXT_SUMMARY_MAX_WORDS} words or fewer — this is ${wc}.`)
+  }
+  await updateDoc(doc(db, 'customers', customerId), {
+    ai_context_summary: clean,
+    ai_context_updated_at: serverTimestamp(),
+    ai_context_updated_by: updatedBy || null,
+  })
 }
 
 // Validate against the canonical contract. Returns the shared result format
