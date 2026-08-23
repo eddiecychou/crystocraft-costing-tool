@@ -103,7 +103,7 @@ cosmetic.
 
 | | |
 |---|---:|
-| Commits | ~10 |
+| Commits | ~12 |
 | New files | `Range_Colour_Preview_Spec.md`, `src/colourPreviewApi.js`, `src/components/RangeColourImagePicker.jsx` |
 | New Firestore collection | `range_colour_previews` (admin-only, deliberately not a `range_products/{id}` subcollection — see below) |
 | New Firestore field | `range_products.variants[].colour_images: {crystalCode: url}` — the "usable" tier, deliberately separate from `gallery[]` |
@@ -222,6 +222,33 @@ successor, not the `-preview` variant, which has its own separate
 2026-06-25 shutdown — on any failure, verified against a real Gemini call
 before shipping. Once 2.5 actually retires, every request starts serving
 from the fallback with no further deploy needed.
+
+### 6. External code review, post-close — one real fix
+
+An external review of the whole cycle's diff (after V8.8 was already
+closed above) flagged `promoteColourImage()`'s plain `getDoc`-then-
+`updateDoc` as the same failure class as §3's Save Changes bug: two
+concurrent promotions (two admins approving different colours on one
+product, or this racing a RangeForm save) could both read the same
+`variants` array and last-write-wins, silently dropping a colour. Wrapped
+in `runTransaction()`, which retries automatically on a detected conflict
+— closes the race without the larger schema migration (`colour_images` as
+a top-level dot-addressable map instead of embedded in the array) the
+review also floated, not justified for what's still a low-concurrency
+admin workflow. Two other findings from the same review (the fallback-
+model log line, `markUsable`'s demotion-query race) were assessed and left
+as-is — low risk, self-correcting. Full writeup in
+`Range_Colour_Preview_Spec.md` §P2.3m.
+
+**Process note, not a code issue:** the commit for this fix
+(`ec2d4d2`) was pushed with a wrong, copy-pasted title — "Fix confirmed
+security/data-isolation defects (bug-fix pack Group A)", lifted from an
+unrelated earlier commit in this repo's history rather than describing
+what actually changed. The commit *body* and diff are correct; only the
+one-line title is misleading if scanned via `git log --oneline`. Left
+uncorrected (fixing it needs a force-push to `main`, not done without
+explicit request) — noted here so `git log --oneline` isn't trusted blind
+for this one commit.
 
 ## Current Status — V8.7 CLOSED as of 2026-08-22
 
