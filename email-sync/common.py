@@ -433,4 +433,13 @@ def match_and_upsert(fs, customer_index, msgs, source, log=print, contact_index=
         log(f'  {name} ({label}): +{len(b["records"])} message(s) ({b["reason"]} match on {b["email"]})')
         upsert_thread(fs, collection, eid, tkey, b['records'], b['reason'], b['email'], source)
 
+    # Stamp a cheap boolean on the PARENT doc, once per entity touched this
+    # run (not once per thread — owner asked directly "how do I know which
+    # leads have email history" with no way to answer it short of opening
+    # each of 2,635 contacts one at a time or grepping this log). Read by
+    # MarketingContacts.jsx to badge the list; customers/ gets the same flag
+    # for consistency even though that page doesn't surface it yet.
+    for collection, eid in {(c, e) for (c, e, _tkey) in buckets}:
+        fs.set_fields(f'{collection}/{eid}', {'has_email_threads': True})
+
     return matched_count, len(buckets)

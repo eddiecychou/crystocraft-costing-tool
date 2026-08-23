@@ -93,6 +93,12 @@ export function normalizeContact(id, raw) {
     // as the customer version: { summary, recent_activity,
     // open_commitments[], thread_count, generated_at }.
     email_summary: r.email_summary || null,
+    // Stamped by email-sync/common.py's match_and_upsert on the first
+    // thread it ever writes for this contact — cheap, list-visible signal
+    // for "does this lead have email history at all", so MarketingContacts.jsx
+    // can badge it without a per-contact subcollection read (owner asked
+    // directly, 2026-08-24: "how do I know which leads have email history").
+    has_email_threads: !!r.has_email_threads,
   }
 }
 

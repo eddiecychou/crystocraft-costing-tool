@@ -3,7 +3,8 @@
 // Firestore reads (customers/{id}/email_threads) and the email_summary write
 // happen directly in CustomerDetail.jsx via the SDK, same split every other
 // AI feature in this app uses — these functions only talk to DeepSeek.
-import { authedUser } from './firebase'
+import { collection, getDocs } from 'firebase/firestore'
+import { authedUser, db } from './firebase'
 
 async function authedPost(path, body) {
   const user = await authedUser()
@@ -313,4 +314,42 @@ export function renderThreadsText(threads) {
     )
   }
   return parts.join('\n')
+}
+
+// Bulk "generate email summaries" scan for marketing_contacts (V8.9 —
+// owner asked directly, after email-sync matched 250 leads via the PST/mbox
+// backfill, "how do I know which leads have email history" then "please
+// build the bulk email summary generator"). Same shape as
+// whatsappSummaryApi.js's loadContactWhatsappSummaryCandidates — concurrency-
+// limited batches with a progress callback, not a plain sequential loop
+// (that looked hung for 2,635 sequential reads the first time this pattern
+// shipped, see PROJECT-PLAN.md's V8.9 fix). `has_email_threads` (stamped by
+// email-sync/common.py's match_and_upsert on every entity it touches) lets
+// this skip straight to only the contacts worth checking, rather than
+// probing all ~2,635 subcollections the way the WhatsApp version has to
+// (WhatsApp import has no equivalent flag yet).
+const EMAIL_SCAN_CONCURRENCY = 20
+
+export async function loadContactEmailSummaryCandidates(onProgress) {
+  const contactsSnap = await getDocs(collection(db, 'marketing_contacts'))
+  const flagged = contactsSnap.docs.filter(d => d.data().has_email_threads)
+  const results = []
+  let scanned = 0
+  for (let i = 0; i < flagged.length; i += EMAIL_SCAN_CONCURRENCY) {
+    const chunk = flagged.slice(i, i + EMAIL_SCAN_CONCURRENCY)
+    const chunkResults = await Promise.all(chunk.map(async c => {
+      const data = c.data()
+      const snap = await getDocs(collection(db, 'marketing_contacts', c.id, 'email_threads'))
+      if (snap.empty) return null
+      const threads = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      const existing = data.email_summary
+      const upToDate = existing && existing.thread_count === threads.length
+      const name = [data.first_name, data.last_name].filter(Boolean).join(' ') || data.company || data.email || c.id
+      return { contactId: c.id, name, threads, threadCount: threads.length, hasSummary: !!existing, upToDate }
+    }))
+    results.push(...chunkResults.filter(Boolean))
+    scanned += chunk.length
+    onProgress?.(scanned, flagged.length)
+  }
+  return results
 }

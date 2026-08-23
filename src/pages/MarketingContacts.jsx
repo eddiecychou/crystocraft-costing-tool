@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { collection, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import { Users, Mail, MailX, UserCheck, Link2, Tag, Tags, AlertCircle, AlertTriangle, Download, Trash2, X, Pencil, UserPlus, Smartphone, Mic, ChevronDown, ChevronUp, Loader2, RefreshCw } from 'lucide-react'
+import { Users, Mail, MailX, UserCheck, Link2, Tag, Tags, AlertCircle, AlertTriangle, Download, Trash2, X, Pencil, UserPlus, Smartphone, Mic, ChevronDown, ChevronUp, Loader2, RefreshCw, Sparkles, Check } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import {
   useMarketingContacts, saveContact, deleteContact, deleteContacts,
@@ -12,7 +12,7 @@ import {
 } from '../domain/marketingContact'
 import { authedUser } from '../firebase'
 import { generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
-import { refreshEmailSummary, renderThreadsText } from '../emailSummaryApi'
+import { refreshEmailSummary, renderThreadsText, loadContactEmailSummaryCandidates } from '../emailSummaryApi'
 import { useCustomers, customerName, CHANNELS } from '../domain/customer'
 import { addInteraction, listInteractions, deleteInteraction } from '../domain/interactionLog'
 import { transcribeMessage, WHATSAPP_TRANSCRIBE_LANGUAGES } from '../domain/whatsappImport'
@@ -652,6 +652,120 @@ function EditContactModal({ contact, customers, onClose, onSaved, onLinked, onDe
 // variants, near-duplicates like "personal network" vs "personal contact").
 // Editing one contact at a time can't fix that; this renames/merges or
 // removes a tag across every contact carrying it in one action.
+// Bulk "generate email summaries" for marketing_contacts (V8.9 — owner
+// asked directly after the email-sync PST/mbox backfill matched 250 leads:
+// doing this one contact at a time via EmailThreads' own button would be
+// impractical at that scale). Same shape as WhatsAppImport.jsx's
+// ContactSummaryScanSection — scan first (shows what needs generating),
+// then a single "Generate all" pass, one DeepSeek call per contact,
+// sequential (a real round trip each time, not worth racing rate limits
+// for a one-off admin action).
+function EmailSummaryScanModal({ onClose }) {
+  const [candidates, setCandidates] = useState(null)
+  const [scanning, setScanning] = useState(false)
+  const [scanProgress, setScanProgress] = useState(null)
+  const [generating, setGenerating] = useState(false)
+  const [progress, setProgress] = useState(null)
+  const [results, setResults] = useState({})
+
+  async function handleScan() {
+    setScanning(true); setScanProgress(null)
+    try {
+      setCandidates(await loadContactEmailSummaryCandidates((scanned, total) => setScanProgress({ scanned, total })))
+    } finally {
+      setScanning(false); setScanProgress(null)
+    }
+  }
+
+  const pending = (candidates || []).filter(c => !c.upToDate)
+
+  async function handleGenerateAll() {
+    setGenerating(true); setResults({})
+    for (let i = 0; i < pending.length; i++) {
+      setProgress({ done: i, total: pending.length })
+      const c = pending[i]
+      try {
+        const result = await refreshEmailSummary(renderThreadsText(c.threads))
+        const email_summary = { ...result, thread_count: c.threads.length, generated_at: serverTimestamp() }
+        await updateDoc(doc(db, 'marketing_contacts', c.contactId), { email_summary })
+        setResults(r => ({ ...r, [c.contactId]: 'done' }))
+      } catch (e) {
+        setResults(r => ({ ...r, [c.contactId]: e.message || 'Failed' }))
+      }
+    }
+    setProgress(null)
+    setGenerating(false)
+    setCandidates(await loadContactEmailSummaryCandidates())
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-xl my-8" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+          <h2 className="font-semibold text-gray-900 flex items-center gap-1.5"><Sparkles size={16} className="text-brand-600" /> Generate Email Summaries</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+        </div>
+        <div className="p-5 space-y-3 max-h-[70vh] overflow-auto">
+          <p className="text-xs text-gray-400">
+            Finds every marketing contact email-sync matched (has_email_threads) and (re)generates a summary for
+            anyone missing one or whose thread count has grown since. Only scans flagged contacts, not all ~2,600.
+          </p>
+          <button type="button" onClick={handleScan} disabled={scanning} className="btn-secondary text-xs px-3 py-1.5 inline-flex items-center gap-1.5">
+            {scanning ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+            {scanning
+              ? `Scanning${scanProgress ? ` (${scanProgress.scanned}/${scanProgress.total})` : '…'}`
+              : candidates ? 'Re-scan' : 'Scan marketing contacts'}
+          </button>
+
+          {candidates && (
+            <>
+              <p className="text-sm text-gray-600">
+                {candidates.length} contact{candidates.length === 1 ? '' : 's'} with email history —{' '}
+                <span className={pending.length ? 'text-amber-600 font-medium' : 'text-green-600'}>
+                  {pending.length ? `${pending.length} need${pending.length === 1 ? 's' : ''} generating` : 'all up to date'}
+                </span>
+              </p>
+
+              {pending.length > 0 && (
+                <button type="button" onClick={handleGenerateAll} disabled={generating} className="btn-primary text-sm inline-flex items-center gap-1.5">
+                  {generating ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                  {generating
+                    ? `Generating${progress ? ` (${progress.done + 1}/${progress.total})` : '…'}`
+                    : `Generate all (${pending.length})`}
+                </button>
+              )}
+
+              <div className="divide-y divide-gray-100 border-t border-gray-100">
+                {candidates.map(c => (
+                  <div key={c.contactId} className="flex items-center justify-between py-2 text-sm">
+                    <div className="min-w-0">
+                      <span className="text-gray-800">{c.name || c.contactId}</span>
+                      <span className="text-xs text-gray-400 ml-2">{c.threadCount} thread{c.threadCount === 1 ? '' : 's'}</span>
+                    </div>
+                    <span className="text-xs shrink-0 ml-2">
+                      {results[c.contactId] === 'done' ? (
+                        <span className="text-green-600 inline-flex items-center gap-1"><Check size={11} /> Generated</span>
+                      ) : results[c.contactId] ? (
+                        <span className="text-red-600">{results[c.contactId]}</span>
+                      ) : c.upToDate ? (
+                        <span className="text-gray-400">Up to date</span>
+                      ) : c.hasSummary ? (
+                        <span className="text-amber-600">Stale — new messages</span>
+                      ) : (
+                        <span className="text-amber-600">Not generated</span>
+                      )}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function TagManagerModal({ contacts, onClose, onApplied }) {
   const [q, setQ] = useState('')
   const [edits, setEdits] = useState({})
@@ -745,6 +859,7 @@ export default function MarketingContacts({ onSendEmail }) {
   const [selected, setSelected] = useState(() => new Set())
   const [editing, setEditing] = useState(null)
   const [managingTags, setManagingTags] = useState(false)
+  const [generatingEmailSummaries, setGeneratingEmailSummaries] = useState(false)
   const [promoting, setPromoting] = useState(false)
 
   const countries = useMemo(() => {
@@ -884,6 +999,9 @@ export default function MarketingContacts({ onSendEmail }) {
       {managingTags && (
         <TagManagerModal contacts={contacts} onClose={() => setManagingTags(false)} onApplied={applyTagChange} />
       )}
+      {generatingEmailSummaries && (
+        <EmailSummaryScanModal onClose={() => setGeneratingEmailSummaries(false)} />
+      )}
 
       <div className="flex items-start justify-between mb-4 gap-3">
         <div>
@@ -897,6 +1015,9 @@ export default function MarketingContacts({ onSendEmail }) {
         <div className="flex gap-2 shrink-0">
           <button onClick={() => setManagingTags(true)} className="btn-secondary text-sm flex items-center gap-1.5">
             <Tags size={15} /> Manage tags
+          </button>
+          <button onClick={() => setGeneratingEmailSummaries(true)} className="btn-secondary text-sm flex items-center gap-1.5">
+            <Sparkles size={15} /> Email summaries
           </button>
           <button onClick={() => exportCsv(filtered)} className="btn-secondary text-sm flex items-center gap-1.5">
             <Download size={15} /> Export view
@@ -1023,6 +1144,7 @@ export default function MarketingContacts({ onSendEmail }) {
                       {contactName(c)}
                     </button>
                     {c.is_customer && <UserCheck size={13} className="inline ml-1 align-[-2px] text-brand-600" title="Likely customer (bought / logged in)" />}
+                    {c.has_email_threads && <Mail size={13} className="inline ml-1 align-[-2px] text-gray-400" title="Has email history (email-sync matched this address)" />}
                   </td>
                   <td className="px-3 py-2">
                     {c.company || <span className="text-gray-300">—</span>}
