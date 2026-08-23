@@ -31,7 +31,7 @@ function fmtIsoDate(iso) {
 // Refresh runs the same DeepSeek call (refresh-email-summary.js via
 // emailSummaryApi.js), just written onto marketing_contacts/{id} instead of
 // customers/{id}. Hidden entirely when nothing's been ingested yet.
-function EmailThreads({ contactId, emailSummary }) {
+function EmailThreads({ contactId, emailSummary, onSummaryUpdated }) {
   const [threads, setThreads] = useState([])
   const [expanded, setExpanded] = useState(null)
   const [summary, setSummary] = useState(emailSummary || null)
@@ -51,8 +51,16 @@ function EmailThreads({ contactId, emailSummary }) {
     try {
       const result = await refreshEmailSummary(renderThreadsText(threads))
       const email_summary = { ...result, thread_count: threads.length, generated_at: serverTimestamp() }
-      await updateDoc(doc(db, 'marketing_contacts', contactId), { email_summary })
-      setSummary({ ...result, thread_count: threads.length, generated_at: new Date() })
+      await updateDoc(doc(db, 'marketing_contacts', contactId), { email_summary, has_email_threads: true })
+      const patched = { ...result, thread_count: threads.length, generated_at: new Date() }
+      setSummary(patched)
+      // Same stale-list bug the bulk generator had (fixed 2026-08-24) —
+      // MarketingContacts.jsx's `contacts` is loaded once, not live, so
+      // without this the write succeeds but looks like it "didn't save" the
+      // moment the modal is closed and reopened (owner report: "the email
+      // summary is not saving at all if i do that manually" — it WAS
+      // saving, just invisible on reopen).
+      onSummaryUpdated?.({ email_summary: patched })
     } catch (e) {
       setSummaryError(e.message || 'Could not refresh the email summary.')
     } finally {
@@ -130,7 +138,7 @@ function EmailThreads({ contactId, emailSummary }) {
 // see whatsappSummaryApi.js's generateAndSaveWhatsappSummary, now
 // parameterized by collection). Hidden entirely when nothing's been
 // imported for this contact.
-function WhatsAppThreads({ contactId, phone, whatsappSummary }) {
+function WhatsAppThreads({ contactId, phone, whatsappSummary, onSummaryUpdated }) {
   const [threads, setThreads] = useState([])
   const [expanded, setExpanded] = useState(null)
   const [transcribingKey, setTranscribingKey] = useState(null) // `${threadId}:${index}`
@@ -152,7 +160,11 @@ function WhatsAppThreads({ contactId, phone, whatsappSummary }) {
     setSummaryBusy(true); setSummaryError('')
     try {
       const next = await generateAndSaveWhatsappSummary('marketing_contacts', contactId, threads)
-      setSummary({ ...next, generated_at: new Date() })
+      const patched = { ...next, generated_at: new Date() }
+      setSummary(patched)
+      // Same stale-list fix as EmailThreads above — contacts is loaded
+      // once, not live.
+      onSummaryUpdated?.({ whatsapp_summary: patched })
     } catch (e) {
       setSummaryError(e.message || 'Could not refresh the WhatsApp summary.')
     } finally {
@@ -444,7 +456,7 @@ function exportCsv(rows) {
 
 // Edit one contact. Local form state seeded from the row; the imported Mailchimp
 // fields not shown here are preserved on save (the domain merges them).
-function EditContactModal({ contact, customers, onClose, onSaved, onLinked, onDeleted }) {
+function EditContactModal({ contact, customers, onClose, onSaved, onLinked, onDeleted, onPatched }) {
   const [f, setF] = useState({
     first_name: contact.first_name, last_name: contact.last_name, email: contact.email,
     company: contact.company, country: contact.country, phone: contact.phone,
@@ -598,8 +610,10 @@ function EditContactModal({ contact, customers, onClose, onSaved, onLinked, onDe
               {linkState === 'saved' && <span className="text-[11px] text-green-600">Saved ✓</span>}
             </div>
           </div>
-          <EmailThreads contactId={contact.id} emailSummary={contact.email_summary} />
-          <WhatsAppThreads contactId={contact.id} phone={contact.phone} whatsappSummary={contact.whatsapp_summary} />
+          <EmailThreads contactId={contact.id} emailSummary={contact.email_summary}
+            onSummaryUpdated={patch => onPatched(contact.id, patch)} />
+          <WhatsAppThreads contactId={contact.id} phone={contact.phone} whatsappSummary={contact.whatsapp_summary}
+            onSummaryUpdated={patch => onPatched(contact.id, patch)} />
           <InteractionLog contactId={contact.id} />
           <label className="block">
             <span className="text-xs text-gray-500">Notes</span>
@@ -1001,7 +1015,7 @@ export default function MarketingContacts({ onSendEmail }) {
 
       {editing && (
         <EditContactModal contact={editing} customers={customers} onClose={() => setEditing(null)}
-          onSaved={applySaved} onLinked={applyLinked} onDeleted={removeLocal} />
+          onSaved={applySaved} onLinked={applyLinked} onDeleted={removeLocal} onPatched={applyLinked} />
       )}
       {managingTags && (
         <TagManagerModal contacts={contacts} onClose={() => setManagingTags(false)} onApplied={applyTagChange} />
