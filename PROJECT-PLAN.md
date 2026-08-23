@@ -87,6 +87,178 @@ signed-in user with `role:'customer'`/`status` not `'approved'` sees it),
 so "same screen" does not mean "same bug" — check what's actually different
 about the account before assuming the mechanism.
 
+## V8.9 in progress — Draft Memory Layer for Daily Drafts
+
+**Problem:** confirmed writing preferences and corrections given during a
+Daily Drafts session (compose chat, per-draft rewrite chat, bulk rewrite)
+were never retained — no chat is persisted (deliberate, see
+`discuss-outreach-draft.js`'s header), so Eddie repeated the same guidance
+("they prefer WhatsApp not email", "never sign off as The Crystocraft Team")
+every session.
+
+**Design constraint, explicit:** no full conversation replay, no vector
+database. Three small, capped, human-curated scopes instead:
+
+1. **Global rules** (`draft_memory_rules` collection) — max 8 active, each
+   ≤40 words. Never written automatically: only via "Remember this rule" in
+   the chat UI (✨ icon on any of Eddie's own chat messages, both the
+   compose-phase master chat and per-draft rewrite chat) or a direct add in
+   the review panel. Either way lands as `status:'pending'` — **it does not
+   reach a prompt until a second, separate approval** in the new collapsible
+   "Draft memory — standing rules" panel at the top of `DailyDrafts.jsx`
+   (approve/dismiss pending; edit/disable/delete active). This two-step gate
+   was an explicit requirement, not a default — a rule silently steers every
+   future draft, so one click confirming it in a chat isn't enough on its
+   own.
+2. **Contact-specific context** — `marketing_contacts/{id}.ai_context_summary`
+   (≤120 words, validated on save), edited directly in
+   `MarketingContacts.jsx`'s EditContactModal, same posture as the existing
+   `app_notes` field but written via its own `updateContactAiSummary()`
+   (own word-cap validation, own `ai_context_updated_at/_by` stamp) rather
+   than through `saveContact`'s whitelisted patch. **Scoped to
+   `marketing_contacts` only in Phase 1** — `customers/` has no equivalent
+   field yet; a real customer's Daily Drafts personalization doesn't get
+   this input. Worth adding in Phase 2 if the trade-lead case proves out.
+3. **Current-draft conclusions** — `outreach_drafts/{id}.memory_conclusions`,
+   max 5 short strings, FIFO. A second, distinct chat-message action (a
+   dimmed bookmark icon, separate from "Remember this rule") saves a
+   correction for *this draft only* — feeds only that draft's own rewrite
+   chat, never leaves it.
+
+**Where the packet gets built:** `netlify/edge-functions/lib/draftMemory.js`
+exports `buildMemoryBlock({ globalRules, contactSummary, recentConclusions })`
+— pure formatting, no Firestore reads (these are Deno edge functions with no
+Admin SDK; the client already did the capped read). Folded into all three
+Daily Drafts prompts: `draft-outreach-topic.js` (global rules only — no
+contact chosen yet), `discuss-outreach-draft.js` (all three scopes),
+`generate-outreach-drafts.js` (global rules in both the fit-score and
+personalize prompts; per-candidate `aiContextSummary` folded into
+`buildCustomerContext()` directly, ranked above CRM notes same as
+email/WhatsApp history). **Hard ~250-word server-side cap independent of
+what the client sends** — verified by direct test: 20 oversized rules + a
+300-word summary + 20 conclusions truncates to 248 words, dropping oldest
+conclusions first, then the summary, then excess rules, keeping at least one
+rule. Small/normal inputs pass through untouched.
+
+**No new LLM calls added anywhere** — the packet only rides along on calls
+that already fire (Generate, Draft Again, an explicit rewrite turn). Opening
+a saved draft, switching tabs, or viewing Sent/history still touches zero
+edge functions, same as before this cycle.
+
+**Migration:** fully additive — `memory_conclusions: []` defaults on new
+drafts (`createDrafts()`), missing `ai_context_summary`/`draft_memory_rules`
+docs just mean an empty memory block, no backfill needed for the ~2.4k
+existing `marketing_contacts` docs or any existing `outreach_drafts`.
+`firestore.rules` gained one new admin-only match block
+(`draft_memory_rules/{ruleId}`), same posture as every other Daily Drafts
+collection.
+
+**Verified so far:** `vite build` clean, `node --check` on every touched
+edge function, `buildMemoryBlock()` truncation logic tested directly (see
+above). **Not yet verified against a live Netlify deploy** — no DeepSeek
+call was actually fired end-to-end from the browser this session; that's
+the next thing to confirm once pushed.
+
+**Deferred to Phase 2 (not built):** bulk-approve/reject in the rules panel;
+`customers/`-side `ai_context_summary` (see point 2 above); surfacing
+`memory_conclusions` anywhere in the UI besides feeding the prompt (no list
+view of a draft's own conclusions yet); no automated test suite added —
+Firestore-rules and truncation behavior were checked manually/by script,
+not committed as repeatable tests.
+
+### Interaction richness gap (marketing_contacts vs customers) — measured, then acted on
+
+Owner's observation confirmed with a live read-only Firestore check: 303/366
+customers have CRM notes vs 3/2,635 marketing_contacts; 0/2,635 contacts had
+any email/WhatsApp summary or Interaction Log entry, because both pipelines
+were hardcoded to `customers/` only (`email-sync/sync.py`'s matching index;
+`refresh-email-summary.js`/`refresh-whatsapp-summary.js`'s Firestore writes).
+Sharper problem: **124 of the last 135 sent Daily Drafts went to
+marketing_contacts leads, only 11 to customers** — the tool was drafting
+almost entirely to the group with the least context.
+
+A proposed quick fix (backfill `ai_context_summary` from the 702 contacts
+carrying `mailchimp_notes`) was abandoned after sampling real values —
+`mailchimp_notes` is stale Mailchimp import metadata (2006-2017 exhibition
+tags, `MEMBER_RATING`/`CONFIRM_TIME` system fields, in several cases literal
+`ClientID`/`ClientPW` pairs from Mailchimp's own reseller-portal era), not
+relationship data. Feeding it into the AI prompt as "known writing
+preferences" would have taught the model the wrong thing. **Nothing was
+backfilled from it.**
+
+Two things were built instead:
+
+1. **Deterministic fit-score deprioritization**, not a prompt instruction —
+   `generate-outreach-drafts.js`'s `hasWritingContext()` checks for a real
+   signal (`aiContextSummary`, an email/WhatsApp summary, or genuine CRM
+   notes on a customer) and applies a ×0.7 multiplier when none exists,
+   after the model returns its score (not asking the model to
+   self-penalize — cheaper and reliable in a way a prompt instruction
+   isn't). `fitReason` gets `"— no interaction data on file, scored
+   cautiously"` appended so it's visible in the review UI.
+2. **WhatsApp summaries extended to marketing_contacts** —
+   `refresh-whatsapp-summary.js` (the edge function) never touched
+   Firestore either way, so no server change was needed there.
+   `whatsappSummaryApi.js`'s `generateAndSaveWhatsappSummary()` gained a
+   `collectionName` parameter (existing `customers/` call site in
+   `CustomerDetail.jsx` updated to pass `'customers'` explicitly — the only
+   caller, so no compatibility shim needed); `MarketingContacts.jsx`'s
+   existing-but-read-only `WhatsAppThreads` card gained the same
+   Generate/Refresh button and summary display `CustomerDetail.jsx` has.
+   `contactToEntity()` (`DailyDrafts.jsx`) now forwards
+   `whatsappSummary` the same way `customerToEntity()` already did.
+
+### CRM Interaction Log extended to marketing_contacts (owner's own request)
+
+Owner asked directly to be able to "log findings" on a contact quickly, and
+to have Daily Drafts auto-log interactions the way it already does for
+customers. Investigated first (background agent): `customers/{id}/enquiries`
+had no dedicated domain module anywhere — every writer (`EnquiryForm.jsx`,
+`CustomerDetail.jsx`, `DailyDrafts.jsx`'s own file-private `logInteraction`)
+inline-called Firestore directly. `marketing_contacts` had no equivalent at
+all — a contact-sourced Daily Drafts send/reply/WhatsApp-log only ever
+appended to the flat `app_notes` string field, and the "Log WhatsApp
+outreach" button was a hard no-op for contacts (`d.source !== 'customer'`
+early return).
+
+Built:
+- **`domain/interactionLog.js`** (new) — `addInteraction`/`listInteractions`/
+  `deleteInteraction`, parameterized by collection name. A deliberate
+  SUBSET of `EnquiryForm.jsx`'s full schema (no attachments/
+  `linked_quote_ids`/status-pill workflow — those are quote-sales concepts
+  that don't fit a marketing lead); covers exactly what a quick manual log
+  and an automatic system entry both need.
+- **Same subcollection name (`enquiries`) reused for `marketing_contacts`**,
+  not a differently-named collection — deliberate, because
+  `checkAlreadyContacted()`'s `collectionGroup('enquiries')` query matches
+  by subcollection name across every parent at once. This means
+  marketing_contacts leads became visible to topic-deduplication with zero
+  query changes, closing the gap the 124-vs-11 send numbers above surfaced.
+  `firestore.rules` gained one nested `match /enquiries/{enquiryId}` block
+  under `marketing_contacts/{contactId}`; the existing top-level
+  `{path=**}/enquiries` wildcard rule already covered the collection-group
+  read with no change.
+- **`DailyDrafts.jsx`'s `logInteraction`** now dispatches to either
+  collection by `d.source`, and all three call sites
+  (`handleSend`/`handleLogWhatsapp`/`handleLogReply`) log for BOTH sources
+  — the customer-only guards (`if (d.source !== 'contact') else …` in
+  `handleSend`; `if (d.source !== 'customer') return` in
+  `handleLogWhatsapp`, including the button's own render condition) were
+  removed. `handleLogReply`'s contact branch switched from `appendNote`
+  (flat text) to the same structured `logInteraction` customers get, for
+  parity.
+- **`MarketingContacts.jsx`'s new `InteractionLog` component** — a
+  collapsible section in `EditContactModal` (channel select + one-line
+  description + Log button, entries listed newest-first, delete per entry)
+  for logging a finding by hand, same posture/placement as the
+  `WhatsAppThreads` card above it.
+
+**Not done:** no bulk view/report of Interaction Log entries across all
+contacts; `EnquiryForm.jsx`/`CustomerDetail.jsx` were left untouched (still
+their own inline Firestore calls) rather than migrated onto the new shared
+module — lower-risk to leave working code alone than to refactor it as a
+side effect of this feature.
+
 ## Current Status — V8.8 CLOSED as of 2026-08-23
 
 Range Variation Colour Preview — a working, live-tested AI/upload/gallery

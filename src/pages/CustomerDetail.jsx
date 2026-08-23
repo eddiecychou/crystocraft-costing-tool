@@ -496,7 +496,7 @@ export default function CustomerDetail() {
   async function handleRefreshWhatsappSummary() {
     setWhatsappSummaryBusy(true); setWhatsappSummaryError('')
     try {
-      const whatsapp_summary = await generateAndSaveWhatsappSummary(id, whatsappThreads)
+      const whatsapp_summary = await generateAndSaveWhatsappSummary('customers', id, whatsappThreads)
       // `customer` is a one-time fetch, not a live listener — same reason
       // Email Summary's handler patches it locally too (see above).
       setCustomer(prev => (prev ? { ...prev, whatsapp_summary: { ...whatsapp_summary, generated_at: new Date() } } : prev))

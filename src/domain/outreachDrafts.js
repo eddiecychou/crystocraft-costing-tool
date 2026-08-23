@@ -102,6 +102,11 @@ export async function createDrafts(meta, drafts, { imageUrls, links } = {}) {
       whatsapp_personal: d.whatsapp_personal || '',
       whatsapp_business: d.whatsapp_business || '',
       status: 'pending_review',
+      // Draft Memory Layer (V8.9) — short, latest-only rewrite conclusions
+      // for THIS draft (e.g. "wanted the portal link, not a product photo"),
+      // not the chat transcript. Appended only via appendMemoryConclusion()
+      // below, capped at MAX_MEMORY_CONCLUSIONS, oldest dropped first.
+      memory_conclusions: [],
     }))
     created.push(ref.id)
   }
@@ -115,6 +120,21 @@ export async function markDraftSent(draftId, reviewerUid) {
     reviewedAt: serverTimestamp(),
     reviewedBy: reviewerUid || '',
   })
+}
+
+export const MAX_MEMORY_CONCLUSIONS = 5
+
+// Appends ONE short conclusion from a confirmed rewrite turn (e.g. "wanted
+// the portal link, not a product photo") — never the raw chat, and never
+// automatic; only called when the owner explicitly confirms a memory update
+// in the chat panel. FIFO at MAX_MEMORY_CONCLUSIONS so this can't grow into
+// a transcript by accident.
+export async function appendMemoryConclusion(draftId, existingConclusions, conclusion) {
+  const clean = String(conclusion || '').trim()
+  if (!clean) return
+  const next = [...(existingConclusions || []), clean].slice(-MAX_MEMORY_CONCLUSIONS)
+  await updateDoc(doc(db, 'outreach_drafts', draftId), { memory_conclusions: next })
+  return next
 }
 
 export async function skipDraft(draftId, reviewerUid, skipReason) {

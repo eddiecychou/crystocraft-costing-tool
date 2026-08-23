@@ -73,7 +73,39 @@ export function normalizeContact(id, raw) {
     // admin-edit-form path).
     lastOutreachAt: r.lastOutreachAt ?? null,
     blockOutreachUntil: r.blockOutreachUntil ?? null,
+    // Draft Memory Layer (V8.9) — a short, admin-edited relationship summary
+    // ("prefers WhatsApp over email", "distributor, price-sensitive, replies
+    // slowly") fed into the Daily Drafts prompts alongside the global rules.
+    // Free text like app_notes, but capped and specifically about how to
+    // WRITE to this person — see updateContactAiSummary() below and
+    // netlify/edge-functions/lib/draftMemory.js.
+    ai_context_summary: str(r.ai_context_summary),
+    ai_context_updated_at: r.ai_context_updated_at ?? null,
+    // WhatsApp summary (V8.9 — extended from customers/, see
+    // whatsappSummaryApi.js's generateAndSaveWhatsappSummary). Generated
+    // on-demand from marketing_contacts/{id}/whatsapp_threads, same shape
+    // as the customer version: { summary, recent_activity,
+    // open_commitments[], thread_count, message_count, generated_at }.
+    whatsapp_summary: r.whatsapp_summary || null,
   }
+}
+
+export const AI_CONTEXT_SUMMARY_MAX_WORDS = 120
+
+// Direct write, no review step — unlike global rules (which steer every
+// draft and need approval), this only affects drafts to ONE contact, same
+// blast radius as editing app_notes.
+export async function updateContactAiSummary(contactId, summary, updatedBy) {
+  const clean = String(summary || '').trim()
+  const wc = clean.split(/\s+/).filter(Boolean).length
+  if (wc > AI_CONTEXT_SUMMARY_MAX_WORDS) {
+    throw new Error(`Keep the contact summary to ${AI_CONTEXT_SUMMARY_MAX_WORDS} words or fewer — this is ${wc}.`)
+  }
+  await updateDoc(doc(db, 'marketing_contacts', contactId), {
+    ai_context_summary: clean,
+    ai_context_updated_at: serverTimestamp(),
+    ai_context_updated_by: updatedBy || null,
+  })
 }
 
 const displayName = c =>

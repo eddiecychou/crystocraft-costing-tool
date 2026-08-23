@@ -267,6 +267,14 @@ service cloud.firestore {
       match /whatsapp_threads/{threadId} {
         allow read, write: if isAdmin();
       }
+      // CRM Interaction Log (V8.9) — same subcollection name/shape as
+      // customers/{id}/enquiries (see domain/interactionLog.js), so a
+      // marketing lead can get findings logged the same way a customer can,
+      // and so the existing `{path=**}/enquiries` collection-group rule
+      // below already covers reads here with no change needed.
+      match /enquiries/{enquiryId} {
+        allow read, write: if isAdmin();
+      }
     }
     // Marketing campaigns — batched Resend sends to marketing_contacts
     // segments. Admin-only, same posture as marketing_contacts. Unsubscribes
@@ -285,6 +293,15 @@ service cloud.firestore {
     // marketing collections; both the browser (create/skip) and the admin's
     // own token via the generate/send edge functions read and write here.
     match /outreach_drafts/{draftId} {
+      allow read, write: if isAdmin();
+    }
+    // Draft Memory Layer (V8.9) — small, admin-confirmed writing rules that
+    // feed the Daily Drafts prompts (draft-outreach-topic.js,
+    // discuss-outreach-draft.js, generate-outreach-drafts.js) so Eddie stops
+    // repeating the same corrections every session. Admin-only, same posture
+    // as the rest of Daily Drafts. status: 'pending' (awaiting review) |
+    // 'active' (in the prompt) | 'disabled'. See domain/draftMemoryRules.js.
+    match /draft_memory_rules/{ruleId} {
       allow read, write: if isAdmin();
     }
     // Daily Drafts topic de-duplication (V8.0) — before targeting anyone

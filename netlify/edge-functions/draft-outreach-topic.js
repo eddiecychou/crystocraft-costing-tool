@@ -16,6 +16,7 @@
 //   DEEPSEEK_API_KEY — required (shared with generate-outreach-drafts.js / discuss-outreach-draft.js)
 //   VITE_FIREBASE_PROJECT_ID / FIREBASE_PROJECT_ID — for admin-token verification
 import { jwtVerify, createRemoteJWKSet } from 'https://esm.sh/jose@5.9.6'
+import { buildMemoryBlock } from './lib/draftMemory.js'
 
 const JWKS = createRemoteJWKSet(
   new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
@@ -91,7 +92,15 @@ export default async function handler(req) {
   const topic = String(body?.topic || '').trim().slice(0, 500)
   if (!topic) return json({ error: 'topic is required' }, 400)
 
-  const result = await callDeepSeek(DEEPSEEK_API_KEY, { system: SYSTEM, user: `Topic: ${topic}` })
+  // Draft Memory Layer (V8.9) — Eddie's confirmed global writing rules, so
+  // the first draft is written to a standard instead of DeepSeek picking
+  // fresh style choices every time. No contact is known yet at this stage,
+  // so only globalRules applies here (see lib/draftMemory.js).
+  const globalRules = Array.isArray(body?.memory?.globalRules) ? body.memory.globalRules.slice(0, 8) : []
+  const memoryBlock = buildMemoryBlock({ globalRules })
+  const system = memoryBlock ? `${SYSTEM}\n\n${memoryBlock}` : SYSTEM
+
+  const result = await callDeepSeek(DEEPSEEK_API_KEY, { system, user: `Topic: ${topic}` })
   if (!result?.subject || !result?.body) return json({ error: 'DeepSeek did not return a usable draft — try again.' }, 502)
 
   return json({ subject: result.subject, body: result.body })

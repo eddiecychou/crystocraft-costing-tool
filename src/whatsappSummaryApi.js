@@ -97,7 +97,14 @@ const totalMessageCount = threads => threads.reduce((n, t) => n + (t.message_cou
 // truly up-to-date summary apart from one that predates new messages on an
 // already-known thread — thread_count alone wouldn't catch that, since
 // re-importing an updated export keeps the same thread doc.
-export async function generateAndSaveWhatsappSummary(customerId, threads) {
+//
+// `collectionName` (V8.9) — parameterized so MarketingContacts.jsx's
+// WhatsAppThreads card can generate the same kind of summary for a
+// marketing_contacts lead, writing marketing_contacts/{id}.whatsapp_summary
+// instead of customers/{id}.whatsapp_summary. The edge function itself
+// (refresh-whatsapp-summary.js) never touches Firestore either way — this
+// is purely which doc the browser writes the result onto.
+export async function generateAndSaveWhatsappSummary(collectionName, id, threads) {
   const result = await refreshWhatsappSummary(renderThreadsText(threads))
   const whatsapp_summary = {
     ...result,
@@ -105,7 +112,7 @@ export async function generateAndSaveWhatsappSummary(customerId, threads) {
     message_count: totalMessageCount(threads),
     generated_at: serverTimestamp(),
   }
-  await updateDoc(doc(db, 'customers', customerId), { whatsapp_summary })
+  await updateDoc(doc(db, collectionName, id), { whatsapp_summary })
   return whatsapp_summary
 }
 

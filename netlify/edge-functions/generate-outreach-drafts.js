@@ -71,6 +71,7 @@
 //     same ERP-mirror creds erp.js already uses, for the purchase-history pull
 //   VITE_FIREBASE_PROJECT_ID / FIREBASE_PROJECT_ID — for admin-token verification
 import { jwtVerify, createRemoteJWKSet } from 'https://esm.sh/jose@5.9.6'
+import { buildMemoryBlock } from './lib/draftMemory.js'
 
 const JWKS = createRemoteJWKSet(
   new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
@@ -120,14 +121,47 @@ async function callDeepSeek(apiKey, { system, user, temperature, maxTokens }) {
   return null
 }
 
-function fitScorePrompt(topicLabel, candidate, historicalHints, targetingNote) {
+// Fit-score deprioritization (V8.9) — the owner observed most sent drafts go
+// to marketing_contacts leads, which almost never carry real interaction
+// data (a live check found 3/2635 with any notes, 0/2635 with an email or
+// WhatsApp summary — those pipelines only ever write to customers/, see
+// email-sync/sync.py and refresh-email-summary.js). DeepSeek was scoring
+// these candidates with the same confidence as a customer with real
+// history, because nothing told it the difference. This is a DETERMINISTIC
+// penalty applied after the model returns a score, not a prompt instruction
+// asking the model to self-penalize — cheaper (no extra tokens/calls) and
+// reliable in a way "please score cautiously" isn't.
+//
+// aiContextSummary is deliberately NOT counted as "context" for a 'contact'
+// candidate unless it actually carries content — mailchimp_notes (Mailchimp
+// import metadata: exhibition-lead tags, MEMBER_RATING, even old
+// ClientID/ClientPW pairs from Mailchimp's own fields) was considered as a
+// backfill source and rejected after sampling real values — it's stale
+// system metadata, not a writing preference, and would have taught the
+// model the wrong thing rather than nothing at all.
+const CONTEXT_PENALTY = 0.7 // multiplier, not a hard cutoff — a topic can still fit well enough to outweigh it
+
+function hasWritingContext(candidate) {
+  if (candidate.aiContextSummary?.trim()) return true
+  if (candidate.emailSummary?.summary) return true
+  if (candidate.whatsappSummary?.summary) return true
+  // customers/ candidates carry real hand-typed CRM notes; contacts/ never
+  // do (contactToEntity() always synthesizes a boilerplate "Company: X.
+  // Country: Y" string here, which isn't genuine context — see its own
+  // comment in DailyDrafts.jsx).
+  if (candidate.source !== 'contact' && candidate.notes?.trim()) return true
+  return false
+}
+
+function fitScorePrompt(topicLabel, candidate, historicalHints, targetingNote, memoryBlock) {
   return {
     system: 'You are a B2B sales analyst for Crystocraft, a premium Hong Kong corporate gift manufacturer. ' +
       'Given a customer profile and a topic the owner wants to reach out about, judge how likely that specific ' +
       'customer is to engage with an email on this topic. Return ONLY a valid JSON object: ' +
       '{ "fitScore": number between 0 and 1, "fitReason": "one short sentence" }.' +
       (targetingNote ? `\n\nToday's targeting focus, set by the owner — this is a STRONG requirement, not a preference: "${targetingNote}". A candidate that clearly does not fit this focus should score near 0, even if they would otherwise be a good match for the topic.` : '') +
-      (historicalHints ? `\n\nKnown patterns from past outreach decisions (use as soft guidance, not a hard rule):\n${historicalHints}` : ''),
+      (historicalHints ? `\n\nKnown patterns from past outreach decisions (use as soft guidance, not a hard rule):\n${historicalHints}` : '') +
+      (memoryBlock ? `\n\n${memoryBlock}` : ''),
     user: `Topic: ${topicLabel}\n\n` +
       `Customer: ${candidate.name}\nCountry: ${candidate.country || 'unknown'}\nRelationship type: ${candidate.crm_category || 'unknown'}\nStatus: ${candidate.crm_status || 'unknown'}\n` +
       `CRM notes: ${(candidate.notes || 'none').slice(0, 500)}` +
@@ -146,7 +180,7 @@ function fitScorePrompt(topicLabel, candidate, historicalHints, targetingNote) {
 // not drafting from scratch — the master subject/body already went through
 // the Compose phase's own draft + refine loop (draft-outreach-topic.js,
 // discuss-outreach-draft.js) before anyone was targeted.
-function personalizePrompt(master, candidate, customerContext) {
+function personalizePrompt(master, candidate, customerContext, memoryBlock) {
   const reminderNote = candidate.previouslyContactedAt
     ? `\n\nIMPORTANT: this person was already told about this on ${candidate.previouslyContactedAt} (per the CRM record) — the owner chose to include them again anyway. Write this as a polite REMINDER or follow-up with clear next steps, not a repeat of the original pitch.`
     : ''
@@ -160,7 +194,8 @@ function personalizePrompt(master, candidate, customerContext) {
       '- Keep it under 4 sentences.\n' +
       '- Sound like a real person, not a marketing robot.\n' +
       '- Do NOT mention any other customer names.' +
-      reminderNote + '\n\n' +
+      reminderNote +
+      (memoryBlock ? `\n\n${memoryBlock}` : '') + '\n\n' +
       'Return ONLY a valid JSON object: { "subject": "string", "body": "string", "explanation": "one short sentence on what you personalized" }.',
     user: `Approved message:\nSubject: ${master.subject}\nBody: ${master.body}\n\n` +
       `Customer context:\n${customerContext}\n\nPersonalize this for ${candidate.name}.`,
@@ -195,6 +230,11 @@ function buildCustomerContext(candidate, invoices) {
   if (candidate.crm_category || candidate.crm_status) {
     parts.push(`Relationship: ${candidate.crm_category || 'unknown'} (${candidate.crm_status || 'unknown'})`)
   }
+  // Draft Memory Layer (V8.9) — the admin-edited relationship summary from
+  // marketing_contacts/customers (ai_context_summary), listed first: it's
+  // curated specifically for how to WRITE to this person, so it should
+  // outrank raw CRM notes the same way real correspondence already does.
+  if (candidate.aiContextSummary) parts.push(`Known writing preferences for this contact: ${candidate.aiContextSummary.slice(0, 800)}`)
   // Real correspondence outranks the hand-typed CRM notes field where the
   // two might disagree or the notes have gone stale — listed first for that
   // reason, not just because it's usually more specific.
@@ -236,6 +276,7 @@ function contextSources(candidate, invoices) {
   if (candidate.whatsappSummary?.summary) sources.push('whatsapp')
   if (candidate.notes) sources.push('notes')
   if (invoices.length) sources.push('invoices')
+  if (candidate.aiContextSummary) sources.push('memory')
   return sources
 }
 
@@ -271,13 +312,27 @@ export default async function handler(req) {
   if (!master?.subject || !master?.body) return json({ error: 'An approved master subject/body is required' }, 400)
   if (!candidates.length) return json({ error: 'No candidates supplied' }, 400)
 
+  // Draft Memory Layer (V8.9) — Eddie's confirmed global writing rules,
+  // folded into both the fit-scoring and personalization prompts below. No
+  // per-candidate contactSummary here — buildCustomerContext() already folds
+  // each candidate's own aiContextSummary in directly (see lib/draftMemory.js
+  // header on why this stays formatting-only, no Firestore reads).
+  const globalRulesBlock = buildMemoryBlock({
+    globalRules: Array.isArray(body?.memory?.globalRules) ? body.memory.globalRules.slice(0, 8) : [],
+  })
+
   // 1) Fit-score every candidate, chunked to stay polite to DeepSeek's rate limit.
   const scored = []
   for (let i = 0; i < candidates.length; i += SCORE_CHUNK) {
     const chunk = candidates.slice(i, i + SCORE_CHUNK)
     const results = await Promise.all(chunk.map(async (c) => {
-      const r = await callDeepSeek(DEEPSEEK_API_KEY, { ...fitScorePrompt(topicLabel || master.subject, c, historicalHints, targetingNote), temperature: 0.3, maxTokens: 200 })
-      return { candidate: c, fitScore: typeof r?.fitScore === 'number' ? r.fitScore : 0, fitReason: r?.fitReason || '' }
+      const r = await callDeepSeek(DEEPSEEK_API_KEY, { ...fitScorePrompt(topicLabel || master.subject, c, historicalHints, targetingNote, globalRulesBlock), temperature: 0.3, maxTokens: 200 })
+      const rawScore = typeof r?.fitScore === 'number' ? r.fitScore : 0
+      const contexted = hasWritingContext(c)
+      const fitScore = contexted ? rawScore : rawScore * CONTEXT_PENALTY
+      const baseReason = r?.fitReason || ''
+      const fitReason = contexted ? baseReason : `${baseReason}${baseReason ? ' — ' : ''}no interaction data on file, scored cautiously`
+      return { candidate: c, fitScore, fitReason }
     }))
     scored.push(...results)
   }
@@ -289,7 +344,7 @@ export default async function handler(req) {
   const drafts = await Promise.all(finalists.map(async ({ candidate, fitScore, fitReason }) => {
     const invoices = await recentInvoices(SUPABASE_URL, SUPABASE_KEY, candidate.erp_code)
     const customerContext = buildCustomerContext(candidate, invoices)
-    const draft = await callDeepSeek(DEEPSEEK_API_KEY, { ...personalizePrompt(master, candidate, customerContext), temperature: 0.8, maxTokens: 400 })
+    const draft = await callDeepSeek(DEEPSEEK_API_KEY, { ...personalizePrompt(master, candidate, customerContext, globalRulesBlock), temperature: 0.8, maxTokens: 400 })
     if (!draft?.subject || !draft?.body) return null
     return {
       customerId: candidate.id,

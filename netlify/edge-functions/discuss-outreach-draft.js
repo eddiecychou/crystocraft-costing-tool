@@ -25,6 +25,7 @@
 //   DEEPSEEK_API_KEY — required (shared with generate-outreach-drafts.js)
 //   VITE_FIREBASE_PROJECT_ID / FIREBASE_PROJECT_ID — for admin-token verification
 import { jwtVerify, createRemoteJWKSet } from 'https://esm.sh/jose@5.9.6'
+import { buildMemoryBlock } from './lib/draftMemory.js'
 
 const JWKS = createRemoteJWKSet(
   new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com')
@@ -115,8 +116,22 @@ export default async function handler(req) {
   const intro = `Current draft:\nSubject: ${draftSubject}\nBody: ${draftBody}\n\n` +
     `Product context: ${productContext || 'n/a'}\nCustomer context: ${customerContext || 'n/a'}`
 
+  // Draft Memory Layer (V8.9) — Eddie's confirmed global rules, this
+  // contact's short relationship summary, and the last few rewrite
+  // conclusions for THIS draft, so he stops re-explaining the same
+  // correction every rewrite session. Client already fetched/capped this
+  // from Firestore (domain/draftMemoryRules.js, domain/marketingContact.js,
+  // domain/outreachDrafts.js); buildMemoryBlock() is the server-side cap
+  // backstop. See lib/draftMemory.js.
+  const memoryBlock = buildMemoryBlock({
+    globalRules: Array.isArray(body?.memory?.globalRules) ? body.memory.globalRules.slice(0, 8) : [],
+    contactSummary: String(body?.memory?.contactSummary || ''),
+    recentConclusions: Array.isArray(body?.memory?.recentConclusions) ? body.memory.recentConclusions.slice(-5) : [],
+  })
+  const system = memoryBlock ? `${SYSTEM}\n\n${memoryBlock}` : SYSTEM
+
   const messages = [
-    { role: 'system', content: SYSTEM },
+    { role: 'system', content: system },
     { role: 'user', content: intro },
     ...history.map(h => ({ role: h.role === 'assistant' ? 'assistant' : 'user', content: String(h.content || '') })),
     { role: 'user', content: String(message).trim() },

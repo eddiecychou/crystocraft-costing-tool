@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
-  addDoc, collection, collectionGroup, doc, getDoc, getDocs, query, where,
-  serverTimestamp, Timestamp, updateDoc,
+  collection, collectionGroup, doc, getDoc, getDocs, query, where,
+  serverTimestamp, updateDoc,
 } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import {
   Send, Loader2, SkipForward, Sparkles, Trash2, X, Link2, Upload,
   MessageCircle, CheckCircle2, Eye, MousePointerClick, AlertTriangle, Bookmark, BellOff, Mail, FileText, Receipt, Smartphone, UserPlus, Check,
-  FlaskConical,
+  FlaskConical, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { db, storage, authedUser } from '../firebase'
 import { loadCustomers, primaryContact, getCustomer, saveCustomer, CRM_CATEGORIES } from '../domain/customer'
@@ -15,7 +15,14 @@ import { normalizeContact, markContactOutreach, blockContactOutreach, promoteCon
 import {
   listPendingDrafts, listDraftsForTopic, listSentDrafts, listRecentDecisions,
   createDrafts, markDraftSent, markDraftReplied, skipDraft, deleteAllPending,
+  appendMemoryConclusion,
 } from '../domain/outreachDrafts'
+import {
+  listDraftMemoryRules, createDraftMemoryRule, approveDraftMemoryRule,
+  rejectDraftMemoryRule, disableDraftMemoryRule, deleteDraftMemoryRule,
+  updateDraftMemoryRuleText, MAX_ACTIVE_RULES,
+} from '../domain/draftMemoryRules'
+import { addInteraction } from '../domain/interactionLog'
 import { generateDrafts, draftTopic, sendPersonalEmail, discussDraft } from '../outreachApi'
 import { isPublicVisible } from '../constants'
 import { loadBlogProducts, loadBlogImages } from '../productSource'
@@ -112,11 +119,9 @@ function customerToEntity(c) {
     // V8.2 WhatsApp ingestion — same shape/posture as emailSummary above,
     // generated on-demand from CustomerDetail.jsx's WhatsApp card (see
     // refresh-whatsapp-summary.js). Only present once an admin's generated
-    // one; marketing_contacts leads never reach this function at all
-    // (contactToEntity below is trade-only, and WhatsApp leads default to
-    // audience 'retail' — see domain/marketingContact.js's
-    // findOrCreateLeadByPhone), so this only ever needs wiring for
-    // customers.
+    // one. contactToEntity() below has its own equivalent as of V8.9 — see
+    // its comment for why email ingestion still doesn't (that pipeline's
+    // matching logic is customers-only, a bigger change than WhatsApp's).
     whatsappSummary: c.whatsapp_summary
       ? { summary: c.whatsapp_summary.summary, recent_activity: c.whatsapp_summary.recent_activity, open_commitments: c.whatsapp_summary.open_commitments }
       : null,
@@ -147,6 +152,21 @@ function contactToEntity(c) {
     source: 'contact', id: c.id, name, email,
     crm_category: 'Marketing contact (trade lead, not yet a customer)', crm_status: 'Prospect',
     notes, erp_code: '', country: c.country,
+    // Draft Memory Layer (V8.9) — admin-edited relationship summary (see
+    // MarketingContacts.jsx's EditContactModal), folded into
+    // buildCustomerContext() server-side so the AI actually knows what's
+    // already been confirmed about this contact instead of guessing fresh
+    // every generate. customers/ has no equivalent field yet — Phase 1 is
+    // scoped to marketing_contacts, per the original ask.
+    aiContextSummary: c.ai_context_summary || '',
+    // V8.9 — WhatsApp summaries now reach marketing_contacts too (see
+    // MarketingContacts.jsx's WhatsAppThreads "Generate/Refresh" and
+    // whatsappSummaryApi.js's generateAndSaveWhatsappSummary), same shape as
+    // customerToEntity's own whatsappSummary above. Only present once an
+    // admin's actually generated one for this contact.
+    whatsappSummary: c.whatsapp_summary
+      ? { summary: c.whatsapp_summary.summary, recent_activity: c.whatsapp_summary.recent_activity, open_commitments: c.whatsapp_summary.open_commitments }
+      : null,
     lastOutreachAt: c.lastOutreachAt, blockOutreachUntil: c.blockOutreachUntil,
     // marketing_contacts has only one scalar phone field (no personal/
     // business split — see domain/marketingContact.js) — a phone-sourced
@@ -242,38 +262,21 @@ function SourceBadge({ source }) {
   )
 }
 
-// Writes one entry to the customer's CRM Interaction Log
-// (customers/{id}/enquiries — see CustomerDetail.jsx/EnquiryForm.jsx, which
-// own the UI for this same subcollection; no dedicated domain module exists
-// for it anywhere in the app, everything writes to it inline like this).
-// Only customers HAVE this log — marketing_contacts don't (they're not a
-// full CRM record yet), so a contact-sourced draft logs to app_notes
-// instead (same appendNote path the "Save as note" chat action already
-// uses), not this function.
+// Writes one entry to the CRM Interaction Log (domain/interactionLog.js —
+// customers/{id}/enquiries, or as of V8.9 marketing_contacts/{id}/enquiries
+// too, same shape either way). This used to be customers-only, inlined here
+// (marketing_contacts logged to app_notes instead — a flat string, not a
+// structured log). The owner asked directly for auto-logged interactions on
+// contacts as well, so every call site below now logs to whichever
+// collection the draft's source actually is.
 //
-// `product_interest` tags what this was ABOUT (a topic label or product
-// name) — the enquiry schema already had this field, just never populated
-// by this feature until now. It's what checkAlreadyContacted() below
-// queries on, so every send/reply MUST carry it or de-duplication silently
-// stops working for future runs.
-//
-// `status: 'Open'` on every entry (not a dedicated "sent"/"replied" status —
-// the enquiry schema doesn't have one) mirrors how a human logging this by
-// hand would leave it for themselves to follow up on, not mark resolved.
-async function logInteraction(customerId, { description, channel, productInterest }) {
-  await addDoc(collection(db, 'customers', customerId, 'enquiries'), {
-    date: Timestamp.now(),
-    contact_id: null,
-    description,
-    product_interest: productInterest ? [productInterest] : [],
-    channel: channel || 'Email',
-    status: 'Open',
-    follow_up_date: null,
-    outcome_notes: '',
-    linked_quote_ids: [],
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
-  })
+// `productInterest` tags what this was ABOUT (a topic label or product
+// name) — it's what checkAlreadyContacted() below queries on, so every
+// send/reply MUST carry it or de-duplication silently stops working for
+// future runs. Same requirement now applies to contact-sourced drafts too,
+// which is also what makes them visible to that check for the first time.
+function logInteraction(source, id, { description, channel, productInterest }) {
+  return addInteraction(source === 'contact' ? 'marketing_contacts' : 'customers', id, { description, channel, productInterest })
 }
 
 async function appendNote(collectionName, id, field, text) {
@@ -288,13 +291,16 @@ async function appendNote(collectionName, id, field, text) {
 // Interaction Log (the actual complete history: manually logged entries,
 // entries from before this feature existed, everything — not just what this
 // app itself has sent) for a prior entry about this exact topicLabel, across
-// EVERY customer at once via a collection-group query rather than one query
-// per candidate. Requires firestore.rules' top-level `enquiries` wildcard
-// rule AND the collection-group field index enabled in the Firebase console
-// — if either isn't set up yet this throws, so the caller treats a failure
-// as "couldn't check, proceeding without this filter" rather than crashing
-// the whole generate.
-// Returns Map<customerId, dateString> (most recent contact date per person).
+// EVERY customer AND marketing_contacts lead at once via a single
+// collection-group query — as of V8.9, marketing_contacts/{id}/enquiries is
+// the same subcollection name, so this needed no code change to start
+// covering contacts too (it previously only ever matched customers/, since
+// contacts had nowhere to log an entry at all). Requires firestore.rules'
+// top-level `enquiries` wildcard rule AND the collection-group field index
+// enabled in the Firebase console — if either isn't set up yet this throws,
+// so the caller treats a failure as "couldn't check, proceeding without
+// this filter" rather than crashing the whole generate.
+// Returns Map<id, dateString> (most recent contact date per person, customer or contact id alike).
 async function checkAlreadyContacted(topicLabel) {
   const snap = await getDocs(query(collectionGroup(db, 'enquiries'), where('product_interest', 'array-contains', topicLabel)))
   const map = new Map()
@@ -433,6 +439,97 @@ export default function DailyDrafts() {
   const [pickerCustomers, setPickerCustomers] = useState([])
   useEffect(() => { loadCustomers().then(setPickerCustomers) }, [])
 
+  // Draft Memory Layer (V8.9) — global writing rules, loaded once (small,
+  // admin-curated list) and re-fetched after any approve/disable/delete so
+  // the panel and the next prompt call both see the current state. Only
+  // 'active' rules are ever sent to a prompt — see activeRuleTexts below.
+  const [memoryRules, setMemoryRules] = useState([])
+  const [memoryPanelOpen, setMemoryPanelOpen] = useState(false)
+  const [memoryRuleBusy, setMemoryRuleBusy] = useState(null)
+  const [newRuleText, setNewRuleText] = useState('')
+  const [editingRuleId, setEditingRuleId] = useState(null)
+  const [editingRuleText, setEditingRuleText] = useState('')
+  function reloadMemoryRules() {
+    listDraftMemoryRules().then(setMemoryRules).catch(() => {}) // never blocks the page
+  }
+  useEffect(() => { reloadMemoryRules() }, [])
+  const activeRuleTexts = useMemo(() => memoryRules.filter(r => r.status === 'active').map(r => r.text), [memoryRules])
+  const pendingRules = useMemo(() => memoryRules.filter(r => r.status === 'pending'), [memoryRules])
+  const activeRules = useMemo(() => memoryRules.filter(r => r.status === 'active'), [memoryRules])
+
+  // "Remember this rule" — the ONLY way a rule enters draft_memory_rules
+  // (see domain/draftMemoryRules.js). Always lands as 'pending': it does not
+  // steer any draft until approved in the review panel below, even though
+  // Eddie already confirmed it here — a second, deliberate step before
+  // something reshapes every future draft.
+  async function handleRememberRule(text) {
+    const clean = text.trim()
+    if (!clean) return
+    try {
+      const user = await authedUser()
+      await createDraftMemoryRule({ text: clean, source: 'confirmed', createdBy: user?.uid })
+      reloadMemoryRules()
+      setMemoryPanelOpen(true)
+    } catch (e) {
+      setError(e.message || 'Could not save that rule.')
+    }
+  }
+
+  async function handleApproveRule(id) {
+    setMemoryRuleBusy(id)
+    try {
+      const user = await authedUser()
+      await approveDraftMemoryRule(id, user?.uid)
+      reloadMemoryRules()
+    } catch (e) {
+      setError(e.message || 'Could not approve that rule.')
+    } finally {
+      setMemoryRuleBusy(null)
+    }
+  }
+  async function handleRejectRule(id) {
+    setMemoryRuleBusy(id)
+    try {
+      const user = await authedUser()
+      await rejectDraftMemoryRule(id, user?.uid)
+      reloadMemoryRules()
+    } finally {
+      setMemoryRuleBusy(null)
+    }
+  }
+  async function handleDisableRule(id) {
+    setMemoryRuleBusy(id)
+    try { await disableDraftMemoryRule(id); reloadMemoryRules() }
+    finally { setMemoryRuleBusy(null) }
+  }
+  async function handleDeleteRule(id) {
+    if (!window.confirm('Delete this rule permanently?')) return
+    setMemoryRuleBusy(id)
+    try { await deleteDraftMemoryRule(id); reloadMemoryRules() }
+    finally { setMemoryRuleBusy(null) }
+  }
+  async function handleSaveRuleEdit(id) {
+    try {
+      await updateDraftMemoryRuleText(id, editingRuleText)
+      setEditingRuleId(null)
+      reloadMemoryRules()
+    } catch (e) {
+      setError(e.message || 'Could not save that edit.')
+    }
+  }
+  async function handleAddRuleDirect() {
+    const clean = newRuleText.trim()
+    if (!clean) return
+    try {
+      const user = await authedUser()
+      await createDraftMemoryRule({ text: clean, source: 'admin', createdBy: user?.uid })
+      setNewRuleText('')
+      reloadMemoryRules()
+    } catch (e) {
+      setError(e.message || 'Could not save that rule.')
+    }
+  }
+
   function openAddCustomer(d) {
     setAddCustomerOpenId(addCustomerOpenId === d.id ? null : d.id)
     setAddCustomerMode('new'); setAddCustomerPickId(''); setAddCustomerError('')
@@ -556,7 +653,7 @@ export default function DailyDrafts() {
     if (!topic.trim()) return
     setDrafting(true); setError('')
     try {
-      const result = await draftTopic(topic.trim())
+      const result = await draftTopic(topic.trim(), { globalRules: activeRuleTexts })
       setMasterSubject(result.subject)
       setMasterBody(result.body)
       setMasterChatHistory([])
@@ -579,6 +676,7 @@ export default function DailyDrafts() {
         draftBody: masterBody,
         history: masterChatHistory,
         message,
+        memory: { globalRules: activeRuleTexts },
       })
       setMasterChatHistory(prev => [...prev, { role: 'user', content: message }, { role: 'assistant', content: result.reply }])
       setMasterChatInput('')
@@ -688,6 +786,7 @@ export default function DailyDrafts() {
         candidates,
         historicalHints,
         targetingNote.trim(),
+        { globalRules: activeRuleTexts },
       )
       if (!generated.length) { setError('DeepSeek returned no usable drafts — try again.'); return }
       // generateDrafts is a server round-trip (generate-outreach-drafts.js) —
@@ -764,15 +863,13 @@ export default function DailyDrafts() {
         await markContactOutreach(d.customerId)
       } else {
         await updateDoc(doc(db, 'customers', d.customerId), { lastOutreachAt: serverTimestamp() })
-        // Only customers/ has a CRM Interaction Log (customers/{id}/enquiries)
-        // — marketing_contacts isn't a full CRM record yet, nothing to log
-        // this against there.
-        await logInteraction(d.customerId, {
-          description: `Sent Daily Drafts outreach email — ${subject}\n\n${body}`,
-          channel: 'Email',
-          productInterest: d.topicLabel || d.productName,
-        })
       }
+      // Auto-logged for BOTH sources as of V8.9 — see logInteraction's comment.
+      await logInteraction(d.source, d.customerId, {
+        description: `Sent Daily Drafts outreach email — ${subject}\n\n${body}`,
+        channel: 'Email',
+        productInterest: d.topicLabel || d.productName,
+      })
       setDrafts(prev => prev.filter(x => x.id !== d.id))
       reloadSent()
     } catch (e) {
@@ -827,19 +924,17 @@ export default function DailyDrafts() {
   }
 
   // Manual, explicit confirmation only — mirrors handleSend's Email logging
-  // exactly (same logInteraction call, same customers/{id}/enquiries target).
-  // Only customers/ has an Interaction Log; a marketing_contacts-sourced
-  // draft has nowhere to log to, same asymmetry handleSend already has for
-  // Email. Guarded by whatsappLogged so a repeat click can't create a
+  // exactly (same logInteraction call, now to either collection as of
+  // V8.9). Guarded by whatsappLogged so a repeat click can't create a
   // duplicate entry.
   async function handleLogWhatsapp(d) {
-    if (d.source !== 'customer' || whatsappLogged[d.id]) return
+    if (whatsappLogged[d.id]) return
     const channel = whatsappOpened[d.id] === 'personal' ? 'Personal WhatsApp'
       : whatsappOpened[d.id] === 'business' ? 'WhatsApp Business'
       : 'WhatsApp'
     setWhatsappLogged(prev => ({ ...prev, [d.id]: true }))
     try {
-      await logInteraction(d.customerId, {
+      await logInteraction(d.source, d.customerId, {
         description: `WhatsApp outreach opened via Daily Drafts (${d.topicLabel || d.productName || 'general'})`,
         channel,
         productInterest: d.topicLabel || d.productName,
@@ -910,9 +1005,10 @@ export default function DailyDrafts() {
   // Alibaba, not this app's inbox — Resend's webhook only ever sees the
   // OUTBOUND send, never a reply on another channel). This logs the reply
   // both on the draft itself (a Daily-Drafts-local record) and — the part
-  // that actually matters — onto the customer's real CRM Interaction Log,
-  // the same one CustomerDetail.jsx's "+ Log Interaction" writes to, so it
-  // shows up there regardless of which channel it came in on.
+  // that actually matters — onto the real CRM Interaction Log (either
+  // collection as of V8.9), the same one CustomerDetail.jsx's "+ Log
+  // Interaction" writes to for customers, so it shows up there regardless
+  // of which channel it came in on.
   async function handleLogReply(d) {
     const channel = replyChannel[d.id] || REPLY_CHANNELS[0]
     const text = (replyText[d.id] || '').trim()
@@ -920,8 +1016,7 @@ export default function DailyDrafts() {
     try {
       await markDraftReplied(d.id, { channel, replyText: text })
       const description = `Replied via ${channel}${text ? `: ${text}` : ''}`
-      if (d.source === 'contact') await appendNote('marketing_contacts', d.customerId, 'app_notes', description)
-      else await logInteraction(d.customerId, { description, channel, productInterest: d.topicLabel || d.productName })
+      await logInteraction(d.source, d.customerId, { description, channel, productInterest: d.topicLabel || d.productName })
       setSentDrafts(prev => prev.map(x => x.id === d.id ? { ...x, repliedAt: new Date(), repliedChannel: channel, replyText: text } : x))
       setReplyFormOpenId(null)
       setReplyText(prev => ({ ...prev, [d.id]: '' }))
@@ -982,6 +1077,19 @@ export default function DailyDrafts() {
     }
   }
 
+  // Draft Memory Layer (V8.9) — live contact summary at send time, not just
+  // whatever was baked into customerContext when the draft was generated
+  // (which could be stale if the summary's been edited since). Only
+  // marketing_contacts has this field in Phase 1 — see contactToEntity's
+  // comment on why customers/ isn't wired up yet.
+  async function contactSummaryFor(d) {
+    if (d.source !== 'contact') return ''
+    try {
+      const snap = await getDoc(doc(db, 'marketing_contacts', d.customerId))
+      return snap.exists() ? (snap.data()?.ai_context_summary || '') : ''
+    } catch { return '' }
+  }
+
   async function handleChatSend(d) {
     const message = (chatInput[d.id] || '').trim()
     if (!message) return
@@ -989,6 +1097,7 @@ export default function DailyDrafts() {
     const fields = fieldsFor(d)
     setChatBusy(d.id); setError('')
     try {
+      const contactSummary = await contactSummaryFor(d)
       const result = await discussDraft({
         productContext: d.productName || d.topicLabel,
         customerContext: d.customerContext,
@@ -996,6 +1105,7 @@ export default function DailyDrafts() {
         draftBody: fields.body,
         history,
         message,
+        memory: { globalRules: activeRuleTexts, contactSummary, recentConclusions: d.memory_conclusions || [] },
       })
       const changed = !!(result.subject || result.body)
       // Heuristic mismatch flag (2026-08-22 — a real observed failure): the
@@ -1030,6 +1140,7 @@ export default function DailyDrafts() {
       const fields = fieldsFor(d)
       const history = chatHistory[d.id] || []
       try {
+        const contactSummary = await contactSummaryFor(d)
         const result = await discussDraft({
           productContext: d.productName || d.topicLabel,
           customerContext: d.customerContext,
@@ -1037,6 +1148,7 @@ export default function DailyDrafts() {
           draftBody: fields.body,
           history,
           message: instruction,
+          memory: { globalRules: activeRuleTexts, contactSummary, recentConclusions: d.memory_conclusions || [] },
         })
         if (result.subject) setField(d.id, 'subject', result.subject)
         if (result.body) setField(d.id, 'body', result.body)
@@ -1071,6 +1183,20 @@ export default function DailyDrafts() {
     }
   }
 
+  // Draft Memory Layer (V8.9) — "remember this for THIS draft only": a short
+  // conclusion fed back into this draft's own rewrite prompt (see
+  // handleChatSend's memory.recentConclusions), not every future draft the
+  // way handleRememberRule's global rules are. Updates local state too so
+  // the very next chat turn on this draft already has it, without a reload.
+  async function handleRememberConclusion(d, text) {
+    try {
+      const next = await appendMemoryConclusion(d.id, d.memory_conclusions, text)
+      setDrafts(prev => prev.map(x => x.id === d.id ? { ...x, memory_conclusions: next } : x))
+    } catch (e) {
+      setError(e.message || 'Could not save that for this draft.')
+    }
+  }
+
   if (loading) return <div className="p-6 text-sm text-gray-500">Loading…</div>
 
   const hasMaster = masterSubject.trim() && masterBody.trim()
@@ -1078,6 +1204,84 @@ export default function DailyDrafts() {
   return (
     <div className="p-4 md:p-6 max-w-4xl space-y-8">
       {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</div>}
+
+      {/* ── Draft Memory Layer (V8.9) — global writing rules review ──────
+          Nothing here reaches a prompt until approved (activeRuleTexts
+          filters to status:'active' only) — pending is just a holding pen
+          for what handleRememberRule() proposed. */}
+      <div className="card p-4 space-y-3">
+        <button type="button" onClick={() => setMemoryPanelOpen(!memoryPanelOpen)}
+          className="w-full flex items-center justify-between text-sm font-semibold text-gray-900">
+          <span className="inline-flex items-center gap-1.5">
+            <Sparkles size={14} className="text-purple-500" /> Draft memory — standing rules
+            {pendingRules.length > 0 && (
+              <span className="text-[11px] font-normal bg-amber-100 text-amber-700 rounded-full px-2 py-0.5">
+                {pendingRules.length} pending review
+              </span>
+            )}
+          </span>
+          {memoryPanelOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+        </button>
+        {memoryPanelOpen && (
+          <div className="space-y-4">
+            {pendingRules.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-medium text-gray-500">Pending — not used in any draft yet</p>
+                {pendingRules.map(r => (
+                  <div key={r.id} className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded px-2.5 py-1.5">
+                    <span className="min-w-0 flex-1">{r.text}</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button type="button" disabled={memoryRuleBusy === r.id} onClick={() => handleApproveRule(r.id)}
+                        className="text-xs text-green-700 hover:text-green-800 font-medium disabled:opacity-50">Approve</button>
+                      <button type="button" disabled={memoryRuleBusy === r.id} onClick={() => handleRejectRule(r.id)}
+                        className="text-xs text-gray-400 hover:text-red-600 disabled:opacity-50">Dismiss</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <p className="text-xs font-medium text-gray-500">
+                Active — used in every draft/rewrite ({activeRules.length}/{MAX_ACTIVE_RULES})
+              </p>
+              {activeRules.length === 0 && <p className="text-xs text-gray-400">None yet — approve a pending rule, or add one directly below.</p>}
+              {activeRules.map(r => (
+                <div key={r.id} className="flex items-start gap-2 text-sm bg-ivory-light rounded px-2.5 py-1.5">
+                  {editingRuleId === r.id ? (
+                    <>
+                      <input value={editingRuleText} onChange={e => setEditingRuleText(e.target.value)}
+                        className="input flex-1 text-sm py-1" autoFocus />
+                      <button type="button" onClick={() => handleSaveRuleEdit(r.id)} className="text-xs text-brand-600 font-medium shrink-0">Save</button>
+                      <button type="button" onClick={() => setEditingRuleId(null)} className="text-xs text-gray-400 shrink-0">Cancel</button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="min-w-0 flex-1">{r.text}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button type="button" onClick={() => { setEditingRuleId(r.id); setEditingRuleText(r.text) }}
+                          className="text-xs text-gray-400 hover:text-brand-600">Edit</button>
+                        <button type="button" disabled={memoryRuleBusy === r.id} onClick={() => handleDisableRule(r.id)}
+                          className="text-xs text-gray-400 hover:text-amber-600 disabled:opacity-50">Disable</button>
+                        <button type="button" disabled={memoryRuleBusy === r.id} onClick={() => handleDeleteRule(r.id)}
+                          className="text-xs text-gray-400 hover:text-red-600 disabled:opacity-50">Delete</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 pt-1 border-t border-ivory-dark">
+              <input value={newRuleText} onChange={e => setNewRuleText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleAddRuleDirect()}
+                placeholder="Add a rule directly, e.g. &quot;Always sign off as Eddie, never 'The Crystocraft Team'&quot;"
+                className="input flex-1 text-sm" />
+              <button type="button" onClick={handleAddRuleDirect} disabled={!newRuleText.trim()} className="btn-secondary text-xs px-3">
+                Add
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ── 1. Compose ─────────────────────────────────────────────────── */}
       <div className="card p-5 space-y-4">
@@ -1184,8 +1388,15 @@ export default function DailyDrafts() {
                   {masterChatHistory.length > 0 && (
                     <div className="space-y-2 max-h-56 overflow-y-auto">
                       {masterChatHistory.map((h, i) => (
-                        <div key={i} className={`text-sm ${h.role === 'assistant' ? 'text-gray-700' : 'text-gray-900'}`}>
-                          <span className="font-medium">{h.role === 'assistant' ? 'AI:' : 'You:'}</span> {h.content}
+                        <div key={i} className={`text-sm flex items-start gap-1.5 ${h.role === 'assistant' ? 'text-gray-700' : 'text-gray-900'}`}>
+                          <span className="min-w-0"><span className="font-medium">{h.role === 'assistant' ? 'AI:' : 'You:'}</span> {h.content}</span>
+                          {h.role === 'user' && (
+                            <button type="button" onClick={() => handleRememberRule(h.content)}
+                              title="Remember this as a standing rule for every future draft (goes to review first)"
+                              className="text-gray-400 hover:text-brand-600 shrink-0">
+                              <Bookmark size={12} />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -1387,6 +1598,11 @@ export default function DailyDrafts() {
                           <Receipt size={11} /> Recent orders
                         </span>
                       )}
+                      {d.contextSources.includes('memory') && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-gray-500" title="This draft used the contact's saved AI writing preferences">
+                          <Sparkles size={11} /> Memory
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1552,7 +1768,7 @@ export default function DailyDrafts() {
                     {hasPersonal && chip('WhatsApp Personal', 'personal', d.whatsapp_personal)}
                     {hasBusiness && chip('WhatsApp Business', 'business', d.whatsapp_business)}
                     {hasNeutral && chip('WhatsApp', 'unknown', d.whatsapp)}
-                    {d.source === 'customer' && whatsappOpened[d.id] && !whatsappLogged[d.id] && (
+                    {whatsappOpened[d.id] && !whatsappLogged[d.id] && (
                       <button type="button" onClick={() => handleLogWhatsapp(d)}
                         className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
                         <Check size={12} /> Log WhatsApp outreach
@@ -1617,11 +1833,23 @@ export default function DailyDrafts() {
                             <span className="font-medium shrink-0">{h.role === 'assistant' ? 'AI:' : 'You:'}</span>
                             <span className="min-w-0">{h.content}</span>
                             {h.role === 'user' && (
-                              <button type="button" onClick={() => handleSaveNote(d, h.content)}
-                                title="Save this as a note on the customer record"
-                                className="text-gray-400 hover:text-brand-600 shrink-0">
-                                <Bookmark size={12} />
-                              </button>
+                              <span className="flex items-center gap-1 shrink-0">
+                                <button type="button" onClick={() => handleSaveNote(d, h.content)}
+                                  title="Save this as a note on the customer record"
+                                  className="text-gray-400 hover:text-brand-600">
+                                  <Bookmark size={12} />
+                                </button>
+                                <button type="button" onClick={() => handleRememberConclusion(d, h.content)}
+                                  title="Remember for THIS draft only (feeds this draft's rewrite chat)"
+                                  className="text-gray-400 hover:text-blue-600">
+                                  <Bookmark size={12} className="fill-current" style={{ opacity: 0.3 }} />
+                                </button>
+                                <button type="button" onClick={() => handleRememberRule(h.content)}
+                                  title="Remember as a standing rule for every future draft (goes to review first)"
+                                  className="text-gray-400 hover:text-purple-600">
+                                  <Sparkles size={12} />
+                                </button>
+                              </span>
                             )}
                           </div>
                           {/* h.applied === false means the AI's own reply text

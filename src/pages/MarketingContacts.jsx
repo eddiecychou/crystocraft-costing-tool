@@ -1,15 +1,19 @@
 import { useMemo, useState, useEffect } from 'react'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
-import { Users, Mail, MailX, UserCheck, Link2, Tag, Tags, AlertCircle, Download, Trash2, X, Pencil, UserPlus, Smartphone, Mic, ChevronDown, ChevronUp, Loader2 } from 'lucide-react'
+import { Users, Mail, MailX, UserCheck, Link2, Tag, Tags, AlertCircle, AlertTriangle, Download, Trash2, X, Pencil, UserPlus, Smartphone, Mic, ChevronDown, ChevronUp, Loader2, RefreshCw } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
 import {
   useMarketingContacts, saveContact, deleteContact, deleteContacts,
   contactName, MC_CATEGORIES, MC_STATUSES, MC_AUDIENCES, isCategoryTag, sortTags,
   promoteContactsToCustomers, tagCounts, renameTagEverywhere, deleteTagEverywhere,
   linkContactToCustomer, unlinkContactFromCustomer,
+  updateContactAiSummary, AI_CONTEXT_SUMMARY_MAX_WORDS,
 } from '../domain/marketingContact'
-import { useCustomers, customerName } from '../domain/customer'
+import { authedUser } from '../firebase'
+import { generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
+import { useCustomers, customerName, CHANNELS } from '../domain/customer'
+import { addInteraction, listInteractions, deleteInteraction } from '../domain/interactionLog'
 import { transcribeMessage, WHATSAPP_TRANSCRIBE_LANGUAGES } from '../domain/whatsappImport'
 import { CustomerPicker } from './CustomerAccounts'
 import WhatsAppAttachment from '../components/WhatsAppAttachment'
@@ -21,15 +25,21 @@ function fmtIsoDate(iso) {
 
 // WhatsApp threads (V8.2) — marketing_contacts/{id}/whatsapp_threads, written
 // by the WhatsApp import page's "Save as Lead" path (whatsappImport.js) for
-// a chat that never became a real customer. Read-only here, same shape/
-// posture as CustomerDetail.jsx's own WhatsApp card. Hidden entirely when
-// nothing's been imported for this contact.
-function WhatsAppThreads({ contactId, phone }) {
+// a chat that never became a real customer. Same shape/posture as
+// CustomerDetail.jsx's own WhatsApp card, including its AI summary (V8.9 —
+// see whatsappSummaryApi.js's generateAndSaveWhatsappSummary, now
+// parameterized by collection). Hidden entirely when nothing's been
+// imported for this contact.
+function WhatsAppThreads({ contactId, phone, whatsappSummary }) {
   const [threads, setThreads] = useState([])
   const [expanded, setExpanded] = useState(null)
   const [transcribingKey, setTranscribingKey] = useState(null) // `${threadId}:${index}`
   const [transcribeError, setTranscribeError] = useState('')
   const [transcribeLang, setTranscribeLang] = useState({}) // `${threadId}:${index}` -> Deepgram language code, per-message since a thread can mix languages
+  const [summary, setSummary] = useState(whatsappSummary || null)
+  const [summaryBusy, setSummaryBusy] = useState(false)
+  const [summaryError, setSummaryError] = useState('')
+  useEffect(() => setSummary(whatsappSummary || null), [whatsappSummary])
   useEffect(() => {
     return onSnapshot(collection(db, 'marketing_contacts', contactId, 'whatsapp_threads'), snap => {
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
@@ -37,6 +47,18 @@ function WhatsAppThreads({ contactId, phone }) {
       setThreads(all)
     })
   }, [contactId])
+
+  async function handleRefreshSummary() {
+    setSummaryBusy(true); setSummaryError('')
+    try {
+      const next = await generateAndSaveWhatsappSummary('marketing_contacts', contactId, threads)
+      setSummary({ ...next, generated_at: new Date() })
+    } catch (e) {
+      setSummaryError(e.message || 'Could not refresh the WhatsApp summary.')
+    } finally {
+      setSummaryBusy(false)
+    }
+  }
 
   if (threads.length === 0) return null
 
@@ -59,10 +81,34 @@ function WhatsAppThreads({ contactId, phone }) {
 
   return (
     <div className="block border-t border-gray-100 pt-3">
-      <span className="text-xs text-gray-500 flex items-center gap-1.5 mb-1.5">
-        <Smartphone size={13} className="text-gray-400" /> WhatsApp
-        <span className="text-gray-400 font-normal">({threads.length} chat{threads.length === 1 ? '' : 's'} imported)</span>
-      </span>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs text-gray-500 flex items-center gap-1.5">
+          <Smartphone size={13} className="text-gray-400" /> WhatsApp
+          <span className="text-gray-400 font-normal">({threads.length} chat{threads.length === 1 ? '' : 's'} imported)</span>
+        </span>
+        <button type="button" onClick={handleRefreshSummary} disabled={summaryBusy}
+          className="text-xs text-gray-500 hover:text-brand-600 inline-flex items-center gap-1 disabled:opacity-50">
+          {summaryBusy ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+          {summary ? 'Refresh summary' : 'Generate summary'}
+        </button>
+      </div>
+      {summaryError && (
+        <div className="flex items-start gap-1.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1.5 mb-1.5">
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {summaryError}
+        </div>
+      )}
+      {summary && (
+        <div className="bg-ivory-light rounded-lg px-2.5 py-2 mb-1.5 space-y-1">
+          <p className="text-xs text-gray-700">{summary.summary}</p>
+          {summary.recent_activity && <p className="text-xs text-gray-600">{summary.recent_activity}</p>}
+          {summary.open_commitments?.length > 0 && (
+            <ul className="text-xs text-gray-600 list-disc list-inside">
+              {summary.open_commitments.map((c, i) => <li key={i}>{c}</li>)}
+            </ul>
+          )}
+          <p className="text-[10px] text-gray-400">A draft, not verified — used by Daily Drafts.</p>
+        </div>
+      )}
       {transcribeError && <p className="text-xs text-red-600 mb-1.5">{transcribeError}</p>}
       <div className="space-y-1.5">
         {threads.map(t => {
@@ -139,6 +185,104 @@ function WhatsAppThreads({ contactId, phone }) {
   )
 }
 
+function fmtIsoOrTimestamp(d) {
+  if (!d) return '—'
+  const dt = d.toDate ? d.toDate() : new Date(d)
+  return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+// CRM Interaction Log — quick "log a finding" (V8.9, owner's own request).
+// marketing_contacts/{id}/enquiries, same shape/collection-group as
+// customers/{id}/enquiries (see domain/interactionLog.js) — a manual entry
+// here shows up right alongside whatever Daily Drafts auto-logged (send/
+// reply/WhatsApp — see DailyDrafts.jsx's logInteraction), same list, same
+// place. Deliberately NOT the full EnquiryForm.jsx drawer (attachments,
+// linked quotes, status workflow) — those are quote-sales concepts that
+// don't fit a marketing lead, and "quickly" was the explicit ask.
+function InteractionLog({ contactId }) {
+  const [entries, setEntries] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState(false)
+  const [description, setDescription] = useState('')
+  const [channel, setChannel] = useState(CHANNELS[0])
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const reload = () => listInteractions('marketing_contacts', contactId).then(setEntries).finally(() => setLoading(false))
+  useEffect(() => { reload() }, [contactId])
+
+  async function handleAdd() {
+    if (!description.trim()) return
+    setBusy(true); setError('')
+    try {
+      await addInteraction('marketing_contacts', contactId, { description, channel })
+      setDescription('')
+      await reload()
+    } catch (e) {
+      setError(e.message || 'Could not log that.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function handleDelete(entryId) {
+    if (!window.confirm('Delete this log entry?')) return
+    try {
+      await deleteInteraction('marketing_contacts', contactId, entryId)
+      setEntries(prev => prev.filter(e => e.id !== entryId))
+    } catch (e) {
+      setError(e.message || 'Could not delete that.')
+    }
+  }
+
+  return (
+    <div className="block border-t border-gray-100 pt-3">
+      <button type="button" onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between text-xs text-gray-500 mb-1.5">
+        <span>Interaction Log {!loading && entries.length > 0 && <span className="text-gray-400 font-normal">({entries.length})</span>}</span>
+        {expanded ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
+      </button>
+      {expanded && (
+        <div className="space-y-2">
+          {error && <p className="text-xs text-red-600">{error}</p>}
+          <div className="flex gap-2">
+            <select value={channel} onChange={e => setChannel(e.target.value)}
+              className="input text-xs py-1 w-32 shrink-0">
+              {CHANNELS.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <input value={description} onChange={e => setDescription(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
+              placeholder="Log a finding — what happened, what you learned…"
+              className="input text-xs py-1 flex-1" />
+            <button type="button" onClick={handleAdd} disabled={busy || !description.trim()}
+              className="btn-primary text-xs px-2.5 py-1 shrink-0">
+              {busy ? '…' : 'Log'}
+            </button>
+          </div>
+          {loading ? (
+            <p className="text-xs text-gray-400">Loading…</p>
+          ) : entries.length === 0 ? (
+            <p className="text-xs text-gray-400">Nothing logged yet.</p>
+          ) : (
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {entries.map(e => (
+                <div key={e.id} className="flex items-start gap-2 text-xs bg-ivory-light rounded px-2 py-1.5">
+                  <div className="min-w-0 flex-1">
+                    <span className="text-gray-400">{fmtIsoOrTimestamp(e.date)} · {e.channel}</span>
+                    <p className="text-gray-700 whitespace-pre-wrap">{e.description}</p>
+                  </div>
+                  <button type="button" onClick={() => handleDelete(e.id)}
+                    className="text-gray-300 hover:text-red-600 shrink-0"><X size={12} /></button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 const STATUS_STYLE = {
   subscribed:    'bg-green-100 text-green-700',
   nonsubscribed: 'bg-gray-100 text-gray-500',
@@ -207,6 +351,7 @@ function EditContactModal({ contact, customers, onClose, onSaved, onLinked, onDe
     status: contact.status, audiences: contact.audiences,
     is_customer: contact.is_customer,
     tags: contact.tags.join(', '), app_notes: contact.app_notes,
+    ai_context_summary: contact.ai_context_summary || '',
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -262,6 +407,13 @@ function EditContactModal({ contact, customers, onClose, onSaved, onLinked, onDe
     try {
       const tags = [...new Set(f.tags.split(/[,|]/).map(t => t.trim().toLowerCase()).filter(Boolean))]
       const newId = await saveContact(contact.id, { ...f, tags })
+      // Draft Memory Layer (V8.9) — separate write from saveContact's
+      // whitelisted patch (own 120-word validation, own updatedAt/By
+      // stamp); only fired when the field actually changed.
+      if (f.ai_context_summary.trim() !== (contact.ai_context_summary || '').trim()) {
+        const user = await authedUser()
+        await updateContactAiSummary(newId, f.ai_context_summary, user?.uid)
+      }
       onSaved(contact.id, { ...contact, ...f, tags, id: newId, emailable: f.status === 'subscribed' })
     } catch (e) {
       setError(e.message || 'Could not save.'); setBusy(false)
@@ -346,10 +498,24 @@ function EditContactModal({ contact, customers, onClose, onSaved, onLinked, onDe
               {linkState === 'saved' && <span className="text-[11px] text-green-600">Saved ✓</span>}
             </div>
           </div>
-          <WhatsAppThreads contactId={contact.id} phone={contact.phone} />
+          <WhatsAppThreads contactId={contact.id} phone={contact.phone} whatsappSummary={contact.whatsapp_summary} />
+          <InteractionLog contactId={contact.id} />
           <label className="block">
             <span className="text-xs text-gray-500">Notes</span>
             <textarea className="input w-full mt-0.5" rows={2} value={f.app_notes} onChange={set('app_notes')} />
+          </label>
+          <label className="block">
+            <span className="text-xs text-gray-500">
+              AI writing preferences (Daily Drafts memory) — max {AI_CONTEXT_SUMMARY_MAX_WORDS} words
+            </span>
+            <textarea className="input w-full mt-0.5" rows={2} value={f.ai_context_summary} onChange={set('ai_context_summary')}
+              placeholder="e.g. Prefers WhatsApp over email. Distributor, price-sensitive, replies slowly." />
+            <span className={`text-[11px] ${
+              f.ai_context_summary.trim().split(/\s+/).filter(Boolean).length > AI_CONTEXT_SUMMARY_MAX_WORDS ? 'text-red-600' : 'text-gray-400'
+            }`}>
+              {f.ai_context_summary.trim() ? f.ai_context_summary.trim().split(/\s+/).filter(Boolean).length : 0} / {AI_CONTEXT_SUMMARY_MAX_WORDS} words —
+              fed into every Daily Drafts email to this contact.
+            </span>
           </label>
           <p className="text-[11px] text-gray-400">
             Status drives emailability automatically (only “subscribed” is emailable). Changing the email moves the record.
