@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Upload, Check, AlertCircle, Loader2, Mic, Plus, X, RefreshCw, Sparkles } from 'lucide-react'
 import { useCustomers, CHANNELS, CRM_CATEGORIES, CUSTOMER_COUNTRIES, saveCustomer } from '../domain/customer'
 import { previewWhatsAppZip, importWhatsAppZip, findExistingThread } from '../domain/whatsappImport'
-import { loadWhatsappSummaryCandidates, generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
+import { loadWhatsappSummaryCandidates, loadContactWhatsappSummaryCandidates, generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
 
 // V8.2 — bulk uploader for WhatsApp's own "Export Chat" .zip files (Business
 // and Personal both — no API access to either, see PROJECT-PLAN.md's "Where
@@ -299,7 +299,7 @@ function SummaryScanSection() {
       setProgress({ done: i, total: pending.length })
       const c = pending[i]
       try {
-        await generateAndSaveWhatsappSummary(c.customerId, c.threads)
+        await generateAndSaveWhatsappSummary('customers', c.customerId, c.threads)
         setResults(r => ({ ...r, [c.customerId]: 'done' }))
       } catch (e) {
         setResults(r => ({ ...r, [c.customerId]: e.message || 'Failed' }))
@@ -356,6 +356,109 @@ function SummaryScanSection() {
                     <span className="text-green-600 inline-flex items-center gap-1"><Check size={11} /> Generated</span>
                   ) : results[c.customerId] ? (
                     <span className="text-red-600">{results[c.customerId]}</span>
+                  ) : c.upToDate ? (
+                    <span className="text-gray-400">Up to date</span>
+                  ) : c.hasSummary ? (
+                    <span className="text-amber-600">Stale — new messages</span>
+                  ) : (
+                    <span className="text-amber-600">Not generated</span>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+// Same bulk scan/generate as SummaryScanSection above, over
+// marketing_contacts instead of customers (V8.9 — owner asked directly to
+// run this once for every marketing lead with imported WhatsApp; see
+// whatsappSummaryApi.js's loadContactWhatsappSummaryCandidates).
+function ContactSummaryScanSection() {
+  const [candidates, setCandidates] = useState(null)
+  const [scanning, setScanning] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [progress, setProgress] = useState(null)
+  const [results, setResults] = useState({})
+
+  async function handleScan() {
+    setScanning(true)
+    try {
+      setCandidates(await loadContactWhatsappSummaryCandidates())
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  const pending = (candidates || []).filter(c => !c.upToDate)
+
+  async function handleGenerateAll() {
+    setGenerating(true); setResults({})
+    for (let i = 0; i < pending.length; i++) {
+      setProgress({ done: i, total: pending.length })
+      const c = pending[i]
+      try {
+        await generateAndSaveWhatsappSummary('marketing_contacts', c.contactId, c.threads)
+        setResults(r => ({ ...r, [c.contactId]: 'done' }))
+      } catch (e) {
+        setResults(r => ({ ...r, [c.contactId]: e.message || 'Failed' }))
+      }
+    }
+    setProgress(null)
+    setGenerating(false)
+    setCandidates(await loadContactWhatsappSummaryCandidates())
+  }
+
+  return (
+    <div className="card p-5 mt-8">
+      <div className="flex items-center justify-between gap-3 mb-1">
+        <h2 className="text-sm font-semibold text-gray-700">Generate WhatsApp Summaries — Marketing Leads</h2>
+        <button type="button" onClick={handleScan} disabled={scanning} className="btn-secondary text-xs px-3 py-1.5 inline-flex items-center gap-1.5">
+          {scanning ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+          {candidates ? 'Re-scan' : 'Scan marketing contacts'}
+        </button>
+      </div>
+      <p className="text-xs text-gray-400 mb-3">
+        Same as the customer scan above, over marketing_contacts leads — finds everyone with imported WhatsApp chats
+        and (re)generates for anyone missing a summary or whose message count has grown since. Scans all ~2,600
+        contacts, so this can take a while even when few actually have anything imported.
+      </p>
+
+      {candidates && (
+        <>
+          <p className="text-sm text-gray-600 mb-2">
+            {candidates.length} contact{candidates.length === 1 ? '' : 's'} with imported WhatsApp —{' '}
+            <span className={pending.length ? 'text-amber-600 font-medium' : 'text-green-600'}>
+              {pending.length ? `${pending.length} need${pending.length === 1 ? 's' : ''} generating` : 'all up to date'}
+            </span>
+          </p>
+
+          {pending.length > 0 && (
+            <button type="button" onClick={handleGenerateAll} disabled={generating} className="btn-primary text-sm mb-3 inline-flex items-center gap-1.5">
+              {generating ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+              {generating
+                ? `Generating${progress ? ` (${progress.done + 1}/${progress.total})` : '…'}`
+                : `Generate all (${pending.length})`}
+            </button>
+          )}
+
+          <div className="divide-y divide-gray-100 border-t border-gray-100">
+            {candidates.map(c => (
+              <div key={c.contactId} className="flex items-center justify-between py-2 text-sm">
+                <div className="min-w-0">
+                  <span className="text-gray-800">{c.name || c.contactId}</span>
+                  <span className="text-xs text-gray-400 ml-2">
+                    {c.threadCount} chat{c.threadCount === 1 ? '' : 's'} · {c.messageCount} messages
+                  </span>
+                </div>
+                <span className="text-xs shrink-0 ml-2">
+                  {results[c.contactId] === 'done' ? (
+                    <span className="text-green-600 inline-flex items-center gap-1"><Check size={11} /> Generated</span>
+                  ) : results[c.contactId] ? (
+                    <span className="text-red-600">{results[c.contactId]}</span>
                   ) : c.upToDate ? (
                     <span className="text-gray-400">Up to date</span>
                   ) : c.hasSummary ? (
@@ -488,6 +591,7 @@ export default function WhatsAppImport() {
       )}
 
       <SummaryScanSection />
+      <ContactSummaryScanSection />
     </div>
   )
 }

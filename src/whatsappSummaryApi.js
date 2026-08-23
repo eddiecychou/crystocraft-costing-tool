@@ -145,3 +145,37 @@ export async function loadWhatsappSummaryCandidates() {
   }
   return results
 }
+
+// Same scan, over marketing_contacts (V8.9 — WhatsApp summaries extended to
+// leads, see MarketingContacts.jsx's per-contact Generate/Refresh button).
+// A raw collection read rather than useMarketingContacts()/normalizeContact
+// — this runs outside a component and only needs id/name/whatsapp_summary,
+// not the full canonical shape. 2,635 contacts means up to 2,635
+// whatsapp_threads subcollection reads; a real cost, but a deliberate
+// one-time admin scan, same posture as the customer version above — the
+// expensive part (an actual DeepSeek call) only runs for whoever's left
+// after this filters down to contacts with something imported.
+export async function loadContactWhatsappSummaryCandidates() {
+  const contactsSnap = await getDocs(collection(db, 'marketing_contacts'))
+  const results = []
+  for (const c of contactsSnap.docs) {
+    const data = c.data()
+    const snap = await getDocs(collection(db, 'marketing_contacts', c.id, 'whatsapp_threads'))
+    if (snap.empty) continue
+    const threads = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    const currentCount = totalMessageCount(threads)
+    const existing = data.whatsapp_summary
+    const upToDate = existing && existing.message_count === currentCount
+    const name = [data.first_name, data.last_name].filter(Boolean).join(' ') || data.company || data.email || data.phone || c.id
+    results.push({
+      contactId: c.id,
+      name,
+      threads,
+      threadCount: threads.length,
+      messageCount: currentCount,
+      hasSummary: !!existing,
+      upToDate,
+    })
+  }
+  return results
+}
