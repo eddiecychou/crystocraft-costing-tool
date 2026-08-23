@@ -23,7 +23,7 @@ import { crystalInventory } from '../crystals'
 import { packagingInventory } from '../packaging'
 import { metalOrderConfig } from '../orderStock'
 import { allocateSoNo, soYear } from '../soNumber'
-import { allocateInvoice, upsertInvoice } from '../ucRegistry'
+import { allocateInvoice, upsertInvoice, updateUcInvoice } from '../ucRegistry'
 import { orderStockStatus, stockStatusDetail, STOCK_STATUS_LABEL, STOCK_STATUS_STYLE } from '../orderStockStatus'
 import { doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -301,6 +301,38 @@ export default function ShipmentForm() {
       // action — the number is already burned in Postgres, so leaving it only in
       // local state (needing a manual Save) is how an invoice goes missing.
       if (id) await updateOrder(id, patch)
+
+      // V8.9 (Cindy's spec) — allocate_sales_invoice() only ever writes
+      // year/customer/currency/status into uc_registry (see PROJECT-PLAN.md's
+      // "UC Registry doesn't auto-fill..." note); order_no/deposit/balance/
+      // bal_pay_date/remarks/source are left blank for every channel, filled
+      // in by hand today. For a WooCommerce order specifically, all of that
+      // is already known — fill it automatically rather than making Cindy
+      // retype what the sync already captured. Scoped to channel ===
+      // 'woocommerce' only; wholesale/Alibaba/Amazon orders are untouched,
+      // still fully manual. Best-effort — a failure here must not undo the
+      // SI/UC allocation that already succeeded above.
+      if (header.channel === 'woocommerce' && res.uc_id) {
+        try {
+          await updateUcInvoice(res.uc_id, {
+            source: 'Online Shop',
+            customer_id: header.customer_id || null,
+            order_no: header.woo_order_no || '',
+            total: header.total_amount ?? null,
+            deposit: header.total_amount ?? null,   // paid in full at checkout — see PROJECT-PLAN.md
+            balance: 0,
+            bal_pay_date: header.woo_payout_date || null,
+            remarks: [
+              header.customer_po,
+              header.woo_fee != null
+                ? `Gateway fee: ${header.currency} ${Number(header.woo_fee).toFixed(2)} · Net payout: ${header.currency} ${Number(header.woo_net_payout ?? 0).toFixed(2)}`
+                : null,
+            ].filter(Boolean).join(' — '),
+          })
+        } catch (e) {
+          setSiError(`Invoice allocated, but the UC Registry details could not be auto-filled: ${e.message || e}. Fill them in manually on the UC Registry page.`)
+        }
+      }
     } catch (e) {
       setSiError(e.message || 'Could not allocate an invoice number.')
     } finally {

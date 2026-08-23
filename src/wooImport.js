@@ -23,6 +23,37 @@ export const wooOrderDocId = (wooOrderId) => `woo-${wooOrderId}`
 // it's crediting, not a differently-formatted name for the same person.
 export const wooCustomerName = (name) => `O07 Online Crystocraft - "${name || 'Unnamed customer'}"`
 
+// V8.9 — Cindy's WooCommerce→SI/UC spec: every synced order's SI/UC
+// "Customer link" now points at a REAL customer record (customers/{id}),
+// not just this formatted text label. One shared record for the whole
+// online-shop channel, created once (scripts/create-o07-customer.mjs, now
+// deleted) — deliberately NOT customer_type:'retail' (that's for real
+// individual buyers, see linkCustomerToWoo; O07 itself isn't a person and
+// must stay out of Daily Drafts' retail-audience outreach).
+const O07_CUSTOMER_ID = 'online-crystocraft-o07'
+
+// Three WooCommerce orders that already had a UC allocated by hand before
+// this feature existed (Cindy, 2026-08-24) — pre-filling header.uc_no for
+// these makes ShipmentForm.jsx's existing doAllocateSi() reuse that UC
+// (allocateInvoice's `uc_no` param) instead of minting a new one, same
+// mechanism "Duplicate order" avoids on purpose elsewhere. Every OTHER
+// WooCommerce order gets no uc_no here, so a fresh one is allocated as
+// normal.
+const KNOWN_UC_BY_WOO_ORDER_NO = { '57669': 'UC4958', '57670': 'UC4959', '57844': 'UC4960' }
+
+// Woo doesn't carry a real ship-out date (Cuiling arranges shipping
+// separately, not tracked in WooCommerce) — owner, 2026-08-24: not worth
+// making Cindy fill this by hand for every order, a B2C order typically
+// ships 1-3 days after payment, so default to +2 days as an editable
+// placeholder rather than leaving it blank.
+function estimatedShipDate(orderDate) {
+  if (!orderDate) return null
+  const d = new Date(`${orderDate}T00:00:00Z`)
+  if (Number.isNaN(d.getTime())) return null
+  d.setUTCDate(d.getUTCDate() + 2)
+  return d.toISOString().slice(0, 10)
+}
+
 // A WooCommerce order can be in any of AED/CAD/EUR/GBP/HKD/MXN/RMB/USD (the
 // app's own ORDER_CURRENCIES, already measured against real sales orders) —
 // if WooCommerce ever reports something outside that list, normOrder would
@@ -83,19 +114,35 @@ export function mapWooOrderToOrder(o) {
     o.customer_note ? `Customer note: ${o.customer_note}` : null,
   ].filter(Boolean).join('\n')
 
+  const orderDate = (o.date_paid || o.date_created || '').slice(0, 10)  // spec §3.3 — payment date, not order-created date
+
   const header = {
     source: 'woocommerce',
     channel: 'woocommerce',
     woo_order_id: o.id,
     woo_order_no: String(o.number),
-    customer_id: null,                       // guest / no CRM match — spec §12 Q10, deferred past Phase 2
+    // V8.9 (Cindy's spec) — Customer link = the real O07 record;
+    // Customer PO = the actual buyer's name (previously only baked into
+    // customer_name's display text, now its own field too).
+    customer_id: O07_CUSTOMER_ID,
     customer_name: wooCustomerName(o.customer_name),
-    order_date: (o.date_paid || o.date_created || '').slice(0, 10),  // spec §3.3 — payment date, not order-created date
+    customer_po: o.customer_name || '',
+    order_date: orderDate,
+    est_ship_date: estimatedShipDate(orderDate),
     currency: wooCurrencySupported(currency) ? currency : 'USD',
-    // 'confirmed' — the AWAITING set on SalesInvoices.jsx includes it, so the
-    // order lands directly in the existing "needs invoice" worklist. Not
-    // 'draft': a paid WooCommerce order is a real commitment, not a draft.
-    status: 'confirmed',
+    // V8.9 — 'draft', not 'confirmed': Cindy's spec has SI/UC generated
+    // explicitly ("when save changes in SI, generate new SI number..."),
+    // not silently the moment a sync runs. A draft stays out of
+    // SalesInvoices.jsx's AWAITING/invoiceable set until reviewed and
+    // moved forward, same posture wooRefundImport.js's Credit Note drafts
+    // already use.
+    status: 'draft',
+    // Pre-filled only for the 3 known already-has-a-UC orders — see
+    // KNOWN_UC_BY_WOO_ORDER_NO above. ShipmentForm.jsx's doAllocateSi()
+    // already passes header.uc_no through to allocateInvoice() to reuse an
+    // existing UC rather than mint a new one; every other order gets '' here
+    // (unchanged default) and allocates fresh, same as before.
+    uc_no: KNOWN_UC_BY_WOO_ORDER_NO[String(o.number)] || '',
     payment_terms: 'Paid online (WooCommerce)',
     notes,
     subtotal: o.subtotal,

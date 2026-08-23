@@ -361,6 +361,69 @@ Built:
   already-identified contacts get their threads immediately rather than
   waiting for the next scheduled Sunday run.
 
+### WooCommerce Sync → Sales Invoice / UC Registry (Cindy's spec)
+
+Cindy asked (relayed by the owner, 2026-08-24) for a specific field mapping
+from a synced WooCommerce order onto its Sales Invoice and UC Registry
+entry, plus an exception: 3 already-known orders (57669/57670/57844,
+already carrying UC4958/UC4959/UC4960) should get an SI draft only, no new
+UC minted.
+
+**One-time setup**: created `customers/online-crystocraft-o07` — the
+"Online Crystocraft" (O07) shared customer record Cindy's spec needs as the
+SI/UC "Customer link". Previously this was only ever a formatted TEXT label
+(`wooCustomerName()`, `"O07 Online Crystocraft - \"Jane Doe\""`), never a
+real linked record. Deliberately NOT `customer_type: 'retail'` — that flag
+is for real individual WooCommerce buyers (`linkCustomerToWoo`) and tagging
+O07 with it would wrongly pull "Online Crystocraft" itself into Daily
+Drafts' retail-audience outreach. Does not touch or replace the existing
+per-buyer retail customer records — two separate, coexisting mechanisms.
+
+**`wooImport.js`'s `mapWooOrderToOrder()`** — field changes:
+- `customer_id` now points at the real O07 record (was `null`).
+- New `customer_po` = the actual buyer's name (previously only baked into
+  `customer_name`'s display text).
+- New `est_ship_date` = order/paid date + 2 days — WooCommerce carries no
+  real ship-out date (Cuiling arranges shipping separately, not tracked in
+  Woo), and the owner explicitly didn't want Cindy manually filling this for
+  every order ("not so important... don't want to bother asking cindy"), so
+  a B2C-typical +2-day placeholder is used instead, editable like any other
+  field.
+- `status` changed from `'confirmed'` to **`'draft'`** — Cindy's spec
+  generates the SI/UC as an explicit step ("when save changes in SI,
+  generate new SI number..."), not silently the moment a sync runs. Same
+  posture `wooRefundImport.js`'s Credit Note drafts already use. Still
+  visible in the general order list; just excluded from
+  `SalesInvoices.jsx`'s AWAITING/invoiceable worklist until reviewed.
+- `uc_no` pre-filled ONLY for the 3 known exception orders
+  (`KNOWN_UC_BY_WOO_ORDER_NO`) — `ShipmentForm.jsx`'s existing
+  `doAllocateSi()` already passes `header.uc_no` through to
+  `allocateInvoice()` to reuse an existing UC rather than mint a new one
+  (the same mechanism "Duplicate order" deliberately avoids elsewhere), so
+  no new allocation-path code was needed for the exception, only the
+  pre-fill.
+
+**`ShipmentForm.jsx`'s `doAllocateSi()`** — after a successful allocation,
+if `header.channel === 'woocommerce'`, now also calls `updateUcInvoice()` to
+fill `source: 'Online Shop'`, `customer_id` (O07), `order_no`, `total`,
+`deposit` (= total — owner confirmed WooCommerce orders are always paid in
+full at checkout, no partial-payment case), `balance: 0`, `bal_pay_date` (=
+Woo payout date), and `remarks` (buyer name + fee/payout details). This is
+genuinely new capability, not a restored one — `allocate_sales_invoice()`
+has only ever written `year/customer/currency/status` into `uc_registry`
+for ANY channel (see the "Where V8.9 starts" note this cycle opened with);
+wholesale/Alibaba/Amazon orders remain exactly as manual as before. Scoped
+strictly to `channel === 'woocommerce'`; best-effort (a failure here
+surfaces an error but never undoes the SI/UC allocation that already
+succeeded).
+
+**Not done / deferred**: no bulk "generate SI for all pending WooCommerce
+drafts" action — each draft is reviewed and allocated one at a time via the
+existing Allocate button, matching how Cindy already works. No automated
+test coverage — verified by build + code reading of the existing
+`allocate_sales_invoice()`/`doAllocateSi()` mechanics, not a live SI/UC
+allocation (would burn a real number in production sequences to test).
+
 ## Current Status — V8.8 CLOSED as of 2026-08-23
 
 Range Variation Colour Preview — a working, live-tested AI/upload/gallery
