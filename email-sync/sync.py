@@ -37,7 +37,7 @@ import json
 import os
 from datetime import datetime, timedelta, timezone
 
-from common import Firestore, load_customer_index, load_env, match_and_upsert, sign_in
+from common import Firestore, load_customer_index, load_marketing_contact_index, load_env, match_and_upsert, sign_in
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BACKFILL_DAYS = 90
@@ -110,6 +110,13 @@ def main():
     print('Loading customer directory...')
     customer_index = load_customer_index(fs)
     print(f'  {len(customer_index)} customers with at least one contact email')
+    # V8.9 — marketing_contacts alongside customers (see common.py's
+    # load_marketing_contact_index/match_entity). A live check found 60
+    # marketing_contacts emails already sitting in this mailbox with no
+    # customer match at all — previously discarded by match_and_upsert
+    # rather than stored anywhere.
+    contact_index = load_marketing_contact_index(fs)
+    print(f'  {len(contact_index)} marketing_contacts (not already linked to a customer) with an email')
 
     state = load_state()
     print(f'\nConnecting to {env["IMAP_HOST"]}...')
@@ -130,8 +137,8 @@ def main():
     M.close()
     M.logout()
 
-    print(f'\n{len(all_new_msgs)} new message(s) total. Matching against customers...')
-    match_and_upsert(fs, customer_index, all_new_msgs, source='imap')
+    print(f'\n{len(all_new_msgs)} new message(s) total. Matching against customers and marketing_contacts...')
+    match_and_upsert(fs, customer_index, all_new_msgs, source='imap', contact_index=contact_index)
 
     save_state(state)
 

@@ -52,7 +52,7 @@ import time
 
 import pypff
 
-from common import Firestore, load_customer_index, load_env, match_and_upsert, sign_in
+from common import Firestore, load_customer_index, load_marketing_contact_index, load_env, match_and_upsert, sign_in
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ARCHIVE_DIR = os.path.expanduser('~/Outlook Archives')
@@ -167,7 +167,7 @@ def walk_pst_folder(folder, path=''):
         yield from walk_pst_folder(folder.get_sub_folder(i), here)
 
 
-def process_pst(which, fs, customer_index, state, log, rescan=False):
+def process_pst(which, fs, customer_index, state, log, rescan=False, contact_index=None):
     path = PST_FILES[which]
     if not os.path.exists(path):
         log(f'[skip] {path} not found')
@@ -222,7 +222,7 @@ def process_pst(which, fs, customer_index, state, log, rescan=False):
                 log(f'  [{folder_path}] read {i + 1}/{n}...')
 
         log(f'[{folder_path}] {len(msgs)} readable of {n} ({skipped} skipped) in {time.time()-t0:.0f}s — matching...')
-        match_and_upsert(fs, customer_index, msgs, source=f'pst:{which}', log=log)
+        match_and_upsert(fs, customer_index, msgs, source=f'pst:{which}', log=log, contact_index=contact_index)
 
         if source_id not in state['done']:
             state['done'].append(source_id)
@@ -231,7 +231,7 @@ def process_pst(which, fs, customer_index, state, log, rescan=False):
     pst.close()
 
 
-def process_mbox(fs, customer_index, state, log, rescan=False):
+def process_mbox(fs, customer_index, state, log, rescan=False, contact_index=None):
     mbox_dirs = sorted(glob.glob(os.path.join(ARCHIVE_DIR, '*.mbox')))
     for mbox_dir in mbox_dirs:
         mbox_file = os.path.join(mbox_dir, 'mbox')
@@ -251,7 +251,7 @@ def process_mbox(fs, customer_index, state, log, rescan=False):
                 log(f'  read {i + 1}/{n}...')
 
         log(f'{len(msgs)} messages — matching...')
-        match_and_upsert(fs, customer_index, msgs, source='mbox', log=log)
+        match_and_upsert(fs, customer_index, msgs, source='mbox', log=log, contact_index=contact_index)
 
         if source_id not in state['done']:
             state['done'].append(source_id)
@@ -284,16 +284,19 @@ def main():
 
     log('Loading customer directory...')
     customer_index = load_customer_index(fs)
-    log(f'  {len(customer_index)} customers with at least one contact email\n')
+    log(f'  {len(customer_index)} customers with at least one contact email')
+    # V8.9 — marketing_contacts alongside customers, same as sync.py.
+    contact_index = load_marketing_contact_index(fs)
+    log(f'  {len(contact_index)} marketing_contacts (not already linked to a customer) with an email\n')
 
     state = load_archive_state()
 
     if args.mbox or args.all:
-        process_mbox(fs, customer_index, state, log, rescan=args.rescan)
+        process_mbox(fs, customer_index, state, log, rescan=args.rescan, contact_index=contact_index)
     if args.pst or args.all:
         which_list = [args.pst] if args.pst else ['eddie', 'sales']
         for which in which_list:
-            process_pst(which, fs, customer_index, state, log, rescan=args.rescan)
+            process_pst(which, fs, customer_index, state, log, rescan=args.rescan, contact_index=contact_index)
 
     log('\nDone.')
 

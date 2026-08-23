@@ -312,6 +312,55 @@ so personalization isn't lopsided toward leads:
   needed, since `generate-outreach-drafts.js`'s `buildCustomerContext()`/
   `hasWritingContext()` were already written source-agnostic in Phase 1.
 
+### email-sync extended to marketing_contacts
+
+Real number checked first (live, read-only, against the actual mailbox and
+Firestore): 832 distinct external addresses in the mailbox, 116 exact-match
+a `marketing_contacts` email, 56 of those already linked to a customer
+(already covered) — **60 genuinely unmatched**, previously silently
+discarded (`match_and_upsert`'s `if not hit: continue` in
+`email-sync/common.py`). Modest but real — not the transformative fix
+WhatsApp/Interaction Log were for the whole 2,635-contact pool, worth doing
+for those 60 specifically.
+
+Built:
+- **`common.py`** — `load_marketing_contact_index()` (mirrors
+  `load_customer_index`, EXCLUDES any contact with `possible_customer_match`
+  set — that person's already matched via their linked customer record, see
+  `contactToEntity`'s identical exclusion reasoning). `match_customer()` →
+  `match_entity()`, now returns `(collection, entityId, reason, addr)` with
+  customer matches outranking contact matches at every tier (exact-customer
+  > exact-contact > domain-customer > domain-contact) — verified live: two
+  addresses that also happen to sit in a customer's `contacts[]` correctly
+  resolved to `customers`, not `marketing_contacts`, despite also having a
+  contact doc. `upsert_thread()`/`match_and_upsert()` generalized to take a
+  collection name; `contact_index` is an optional param so old call sites
+  keep working without immediate changes (none needed — both `sync.py` and
+  `archive_import.py` were updated to load and pass it).
+- **`firestore.rules`** — new `marketing_contacts/{contactId}/email_threads`
+  nested rule, same admin-only posture as the customer version; the
+  existing `email_threads` reads/writes only ever happen server-side via
+  Firebase Auth REST (email-sync itself) or the SDK (MarketingContacts.jsx),
+  same as customers/.
+- **`domain/marketingContact.js`** — `email_summary` added to
+  `normalizeContact()`. **`DailyDrafts.jsx`**'s `contactToEntity()` forwards
+  `emailSummary` the same way it already forwards `whatsappSummary`/
+  `aiContextSummary` — no edge-function changes needed, `buildCustomerContext()`/
+  `contextSources()`/`hasWritingContext()` were already source-agnostic.
+- **`MarketingContacts.jsx`**'s new `EmailThreads` component — same
+  Generate/Refresh pattern as its WhatsAppThreads sibling, reading
+  `marketing_contacts/{id}/email_threads` and writing
+  `marketing_contacts/{id}.email_summary`; `emailSummaryApi.js` needed NO
+  changes at all (`refreshEmailSummary`/`renderThreadsText` were already
+  collection-agnostic — the Firestore write always lived in the calling
+  page, not that file).
+- **Ran the actual backfill**, not just shipped the code: `weekly_rescan.sh`
+  (`sync.py --rescan` + `archive_import.py --rescan --all` — the exact same
+  operation the launchd cron already runs unattended weekly, documented
+  "safe to re-run") was run manually right after deploying, so the 60
+  already-identified contacts get their threads immediately rather than
+  waiting for the next scheduled Sunday run.
+
 ## Current Status — V8.8 CLOSED as of 2026-08-23
 
 Range Variation Colour Preview — a working, live-tested AI/upload/gallery

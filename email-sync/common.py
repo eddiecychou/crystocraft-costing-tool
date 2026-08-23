@@ -297,9 +297,44 @@ def load_customer_index(fs):
     return index
 
 
-def match_customer(participants, customer_index):
-    """Returns (customerId, match_reason, matched_email) or None. Exact
-    contact-email match wins over a same-domain fallback match."""
+# V8.9 — email-sync extended to marketing_contacts. A live check (2026-08-23)
+# found 116 mailbox addresses exact-matching a marketing_contacts email, 60
+# of them NOT already linked to a customer (i.e. genuinely invisible to
+# email-sync until now — messages to/from them were silently discarded by
+# match_and_upsert's `if not hit: continue`). Contacts already linked to a
+# customer (possible_customer_match set) are deliberately EXCLUDED from this
+# index — that person already gets matched via load_customer_index above
+# (same email, on their customer record), and including them here too would
+# just create a second, redundant email_threads copy under the contact doc
+# they've already "graduated" out of (see contactToEntity's own exclusion
+# for the same reasoning, DailyDrafts.jsx).
+def load_marketing_contact_index(fs):
+    """contactId -> {'emails': set(), 'domains': set(), 'name': str}"""
+    docs = fs.list_all('marketing_contacts')
+    index = {}
+    for doc in docs:
+        cid = doc['name'].rsplit('/', 1)[-1]
+        fields = from_fs_value({'mapValue': {'fields': doc.get('fields', {})}})
+        if fields.get('possible_customer_match'):
+            continue
+        e = (fields.get('email') or '').strip().lower()
+        if not e:
+            continue
+        d = e.split('@', 1)[1] if '@' in e else ''
+        domains = {d} if d and d not in FREEMAIL_DOMAINS else set()
+        name = ' '.join(x for x in [fields.get('first_name'), fields.get('last_name')] if x).strip() \
+            or fields.get('company') or e
+        index[cid] = {'emails': {e}, 'domains': domains, 'name': name}
+    return index
+
+
+def match_entity(participants, customer_index, contact_index=None):
+    """Returns (collection, entityId, match_reason, matched_email) or None.
+    Priority: exact customer match > exact contact match > customer domain
+    match > contact domain match — a customer record outranks a
+    marketing_contacts one at every tier, since it's the more authoritative/
+    complete record when both could plausibly apply."""
+    contact_index = contact_index or {}
     domain_hit = None
     for addr in participants:
         if '@' not in addr:
@@ -309,16 +344,27 @@ def match_customer(participants, customer_index):
             continue
         for cid, info in customer_index.items():
             if addr in info['emails']:
-                return cid, 'contact', addr
-            if domain_hit is None and domain in info['domains']:
-                domain_hit = (cid, 'domain', addr)
+                return 'customers', cid, 'contact', addr
+        for mcid, info in contact_index.items():
+            if addr in info['emails']:
+                return 'marketing_contacts', mcid, 'contact', addr
+        if domain_hit is None:
+            for cid, info in customer_index.items():
+                if domain in info['domains']:
+                    domain_hit = ('customers', cid, 'domain', addr)
+                    break
+        if domain_hit is None:
+            for mcid, info in contact_index.items():
+                if domain in info['domains']:
+                    domain_hit = ('marketing_contacts', mcid, 'domain', addr)
+                    break
     return domain_hit
 
 
 # ── upsert ────────────────────────────────────────────────────────────────
 
-def upsert_thread(fs, customer_id, tkey, new_records, match_reason, matched_email, source):
-    doc_path = f'customers/{customer_id}/email_threads/{tkey}'
+def upsert_thread(fs, collection, entity_id, tkey, new_records, match_reason, matched_email, source):
+    doc_path = f'{collection}/{entity_id}/email_threads/{tkey}'
     existing = fs.get(doc_path)
     if existing:
         existing_fields = from_fs_value({'mapValue': {'fields': existing.get('fields', {})}})
@@ -348,35 +394,43 @@ def upsert_thread(fs, customer_id, tkey, new_records, match_reason, matched_emai
     })
 
 
-def match_and_upsert(fs, customer_index, msgs, source, log=print):
+def match_and_upsert(fs, customer_index, msgs, source, log=print, contact_index=None):
     """Shared by sync.py and archive_import.py: group messages by
-    (customer, thread) so a thread touched by several messages in one run
-    only costs one Firestore GET+PATCH, then upsert each. `msgs` is a list
-    of real email.message.Message objects — IMAP/mbox produce these
+    (collection, entity, thread) so a thread touched by several messages in
+    one run only costs one Firestore GET+PATCH, then upsert each. `msgs` is
+    a list of real email.message.Message objects — IMAP/mbox produce these
     natively; archive_import.py builds an equivalent one for each PST
     message (headers parsed from pypff's transport_headers, body injected
     as the payload) specifically so thread_key()/msg_record() below need no
-    per-source special-casing. Returns (matched_count, threads_touched_count)."""
-    buckets = {}  # (customer_id, tkey) -> {'records': [...], 'reason':, 'email':}
+    per-source special-casing. Returns (matched_count, threads_touched_count).
+
+    `contact_index` (V8.9, optional) — marketing_contacts alongside
+    customers, see load_marketing_contact_index()/match_entity() above. A
+    caller that doesn't pass one keeps the original customers-only
+    behavior, so this stays backward compatible rather than a breaking
+    signature change."""
+    buckets = {}  # (collection, entity_id, tkey) -> {'records': [...], 'reason':, 'email':}
     matched_count = 0
     for msg in msgs:
         participants = set(addr_list(msg.get('From')) + addr_list(msg.get('To')) + addr_list(msg.get('Cc')))
-        hit = match_customer(participants, customer_index)
+        hit = match_entity(participants, customer_index, contact_index)
         if not hit:
             continue
-        cid, reason, addr = hit
+        collection, eid, reason, addr = hit
         matched_count += 1
         tkey = thread_key(msg)
-        key = (cid, tkey)
+        key = (collection, eid, tkey)
         if key not in buckets:
             buckets[key] = {'records': [], 'reason': reason, 'email': addr}
         buckets[key]['records'].append(msg_record(msg))
 
-    log(f'{matched_count} of {len(msgs)} messages matched a customer -> {len(buckets)} thread(s) touched\n')
+    log(f'{matched_count} of {len(msgs)} messages matched -> {len(buckets)} thread(s) touched\n')
 
-    for (cid, tkey), b in buckets.items():
-        name = customer_index.get(cid, {}).get('name', cid)
-        log(f'  {name}: +{len(b["records"])} message(s) ({b["reason"]} match on {b["email"]})')
-        upsert_thread(fs, cid, tkey, b['records'], b['reason'], b['email'], source)
+    index_by_collection = {'customers': customer_index, 'marketing_contacts': contact_index or {}}
+    for (collection, eid, tkey), b in buckets.items():
+        name = index_by_collection[collection].get(eid, {}).get('name', eid)
+        label = 'customer' if collection == 'customers' else 'lead'
+        log(f'  {name} ({label}): +{len(b["records"])} message(s) ({b["reason"]} match on {b["email"]})')
+        upsert_thread(fs, collection, eid, tkey, b['records'], b['reason'], b['email'], source)
 
     return matched_count, len(buckets)

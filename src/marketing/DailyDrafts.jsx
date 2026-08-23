@@ -171,6 +171,12 @@ function contactToEntity(c) {
     whatsappSummary: c.whatsapp_summary
       ? { summary: c.whatsapp_summary.summary, recent_activity: c.whatsapp_summary.recent_activity, open_commitments: c.whatsapp_summary.open_commitments }
       : null,
+    // Email ingestion (V8.9) — now reaches marketing_contacts too (see
+    // email-sync/common.py's load_marketing_contact_index), same shape as
+    // customerToEntity's own emailSummary above.
+    emailSummary: c.email_summary
+      ? { summary: c.email_summary.summary, recent_activity: c.email_summary.recent_activity, open_commitments: c.email_summary.open_commitments }
+      : null,
     lastOutreachAt: c.lastOutreachAt, blockOutreachUntil: c.blockOutreachUntil,
     // marketing_contacts has only one scalar phone field (no personal/
     // business split — see domain/marketingContact.js) — a phone-sourced

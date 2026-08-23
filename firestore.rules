@@ -267,6 +267,13 @@ service cloud.firestore {
       match /whatsapp_threads/{threadId} {
         allow read, write: if isAdmin();
       }
+      // Email ingestion (V8.9) — extended from customers/ (see
+      // email-sync/common.py's load_marketing_contact_index/match_entity).
+      // Same admin-only, never-customer-facing posture as
+      // customers/{id}/email_threads above.
+      match /email_threads/{threadId} {
+        allow read, write: if isAdmin();
+      }
       // CRM Interaction Log (V8.9) — same subcollection name/shape as
       // customers/{id}/enquiries (see domain/interactionLog.js), so a
       // marketing lead can get findings logged the same way a customer can,

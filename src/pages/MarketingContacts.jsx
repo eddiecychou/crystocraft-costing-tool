@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
-import { collection, onSnapshot } from 'firebase/firestore'
+import { collection, onSnapshot, doc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Users, Mail, MailX, UserCheck, Link2, Tag, Tags, AlertCircle, AlertTriangle, Download, Trash2, X, Pencil, UserPlus, Smartphone, Mic, ChevronDown, ChevronUp, Loader2, RefreshCw } from 'lucide-react'
 import LoadingBar from '../components/LoadingBar'
@@ -12,6 +12,7 @@ import {
 } from '../domain/marketingContact'
 import { authedUser } from '../firebase'
 import { generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
+import { refreshEmailSummary, renderThreadsText } from '../emailSummaryApi'
 import { useCustomers, customerName, CHANNELS } from '../domain/customer'
 import { addInteraction, listInteractions, deleteInteraction } from '../domain/interactionLog'
 import { transcribeMessage, WHATSAPP_TRANSCRIBE_LANGUAGES } from '../domain/whatsappImport'
@@ -21,6 +22,105 @@ import WhatsAppAttachment from '../components/WhatsAppAttachment'
 function fmtIsoDate(iso) {
   if (!iso) return '—'
   return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+// Email threads (V8.9) — marketing_contacts/{id}/email_threads, written by
+// email-sync (see email-sync/common.py's load_marketing_contact_index) for
+// a lead whose email showed up in the mailbox with no customer match. Same
+// shape/posture as CustomerDetail.jsx's Email Summary card — Generate/
+// Refresh runs the same DeepSeek call (refresh-email-summary.js via
+// emailSummaryApi.js), just written onto marketing_contacts/{id} instead of
+// customers/{id}. Hidden entirely when nothing's been ingested yet.
+function EmailThreads({ contactId, emailSummary }) {
+  const [threads, setThreads] = useState([])
+  const [expanded, setExpanded] = useState(null)
+  const [summary, setSummary] = useState(emailSummary || null)
+  const [summaryBusy, setSummaryBusy] = useState(false)
+  const [summaryError, setSummaryError] = useState('')
+  useEffect(() => setSummary(emailSummary || null), [emailSummary])
+  useEffect(() => {
+    return onSnapshot(collection(db, 'marketing_contacts', contactId, 'email_threads'), snap => {
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      all.sort((a, b) => String(b.date_range?.[1] || '').localeCompare(String(a.date_range?.[1] || '')))
+      setThreads(all)
+    })
+  }, [contactId])
+
+  async function handleRefreshSummary() {
+    setSummaryBusy(true); setSummaryError('')
+    try {
+      const result = await refreshEmailSummary(renderThreadsText(threads))
+      const email_summary = { ...result, thread_count: threads.length, generated_at: serverTimestamp() }
+      await updateDoc(doc(db, 'marketing_contacts', contactId), { email_summary })
+      setSummary({ ...result, thread_count: threads.length, generated_at: new Date() })
+    } catch (e) {
+      setSummaryError(e.message || 'Could not refresh the email summary.')
+    } finally {
+      setSummaryBusy(false)
+    }
+  }
+
+  if (threads.length === 0) return null
+
+  return (
+    <div className="block border-t border-gray-100 pt-3">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs text-gray-500 flex items-center gap-1.5">
+          <Mail size={13} className="text-gray-400" /> Email
+          <span className="text-gray-400 font-normal">({threads.length} thread{threads.length === 1 ? '' : 's'})</span>
+        </span>
+        <button type="button" onClick={handleRefreshSummary} disabled={summaryBusy}
+          className="text-xs text-gray-500 hover:text-brand-600 inline-flex items-center gap-1 disabled:opacity-50">
+          {summaryBusy ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+          {summary ? 'Refresh summary' : 'Generate summary'}
+        </button>
+      </div>
+      {summaryError && (
+        <div className="flex items-start gap-1.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1.5 mb-1.5">
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {summaryError}
+        </div>
+      )}
+      {summary && (
+        <div className="bg-ivory-light rounded-lg px-2.5 py-2 mb-1.5 space-y-1">
+          <p className="text-xs text-gray-700">{summary.summary}</p>
+          {summary.recent_activity && <p className="text-xs text-gray-600">{summary.recent_activity}</p>}
+          {summary.open_commitments?.length > 0 && (
+            <ul className="text-xs text-gray-600 list-disc list-inside">
+              {summary.open_commitments.map((c, i) => <li key={i}>{c}</li>)}
+            </ul>
+          )}
+          <p className="text-[10px] text-gray-400">A draft, not verified — used by Daily Drafts.</p>
+        </div>
+      )}
+      <div className="space-y-1.5">
+        {threads.map(t => {
+          const isOpen = expanded === t.id
+          return (
+            <div key={t.id} className="border border-gray-100 rounded-lg">
+              <button type="button" onClick={() => setExpanded(v => v === t.id ? null : t.id)}
+                className="w-full flex items-center justify-between text-left px-2.5 py-2">
+                <p className="text-xs text-gray-600 truncate">
+                  {t.subject || '(no subject)'} · {t.message_count} message{t.message_count === 1 ? '' : 's'}
+                  {t.date_range?.length === 2 && ` · ${fmtIsoDate(t.date_range[0])} – ${fmtIsoDate(t.date_range[1])}`}
+                </p>
+                {isOpen ? <ChevronUp size={14} className="text-gray-400 shrink-0" /> : <ChevronDown size={14} className="text-gray-400 shrink-0" />}
+              </button>
+              {isOpen && (
+                <div className="max-h-56 overflow-y-auto space-y-2 border-t border-gray-100 px-2.5 py-2">
+                  {(t.messages || []).map((m, i) => (
+                    <div key={i} className="text-xs">
+                      <span className="text-gray-400">{fmtIsoDate(m.date)} · {m.from}</span>
+                      {m.body_text && <p className="text-gray-700 whitespace-pre-wrap">{m.body_text.slice(0, 500)}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 // WhatsApp threads (V8.2) — marketing_contacts/{id}/whatsapp_threads, written
@@ -498,6 +598,7 @@ function EditContactModal({ contact, customers, onClose, onSaved, onLinked, onDe
               {linkState === 'saved' && <span className="text-[11px] text-green-600">Saved ✓</span>}
             </div>
           </div>
+          <EmailThreads contactId={contact.id} emailSummary={contact.email_summary} />
           <WhatsAppThreads contactId={contact.id} phone={contact.phone} whatsappSummary={contact.whatsapp_summary} />
           <InteractionLog contactId={contact.id} />
           <label className="block">

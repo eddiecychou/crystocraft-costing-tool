@@ -87,6 +87,12 @@ export function normalizeContact(id, raw) {
     // as the customer version: { summary, recent_activity,
     // open_commitments[], thread_count, message_count, generated_at }.
     whatsapp_summary: r.whatsapp_summary || null,
+    // Email ingestion (V8.9 — extended from customers/, see
+    // email-sync/common.py's load_marketing_contact_index and
+    // MarketingContacts.jsx's EmailThreads "Generate/Refresh"). Same shape
+    // as the customer version: { summary, recent_activity,
+    // open_commitments[], thread_count, generated_at }.
+    email_summary: r.email_summary || null,
   }
 }
 
