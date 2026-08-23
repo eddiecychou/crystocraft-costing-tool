@@ -660,7 +660,7 @@ function EditContactModal({ contact, customers, onClose, onSaved, onLinked, onDe
 // then a single "Generate all" pass, one DeepSeek call per contact,
 // sequential (a real round trip each time, not worth racing rate limits
 // for a one-off admin action).
-function EmailSummaryScanModal({ onClose }) {
+function EmailSummaryScanModal({ onClose, onGenerated }) {
   const [candidates, setCandidates] = useState(null)
   const [scanning, setScanning] = useState(false)
   const [scanProgress, setScanProgress] = useState(null)
@@ -688,6 +688,13 @@ function EmailSummaryScanModal({ onClose }) {
         const result = await refreshEmailSummary(renderThreadsText(c.threads))
         const email_summary = { ...result, thread_count: c.threads.length, generated_at: serverTimestamp() }
         await updateDoc(doc(db, 'marketing_contacts', c.contactId), { email_summary })
+        // `contacts` in the page below this modal is loaded ONCE, not a live
+        // listener (deliberate — see useMarketingContacts' own comment) —
+        // writing straight to Firestore here left it invisible until a full
+        // page reload (owner report, 2026-08-24: "the summary is not
+        // there"). onGenerated patches it into that in-memory list so it
+        // shows the moment you close this modal and open the contact.
+        onGenerated(c.contactId, { ...email_summary, generated_at: new Date() })
         setResults(r => ({ ...r, [c.contactId]: 'done' }))
       } catch (e) {
         setResults(r => ({ ...r, [c.contactId]: e.message || 'Failed' }))
@@ -1000,7 +1007,8 @@ export default function MarketingContacts({ onSendEmail }) {
         <TagManagerModal contacts={contacts} onClose={() => setManagingTags(false)} onApplied={applyTagChange} />
       )}
       {generatingEmailSummaries && (
-        <EmailSummaryScanModal onClose={() => setGeneratingEmailSummaries(false)} />
+        <EmailSummaryScanModal onClose={() => setGeneratingEmailSummaries(false)}
+          onGenerated={(contactId, email_summary) => setContacts(prev => prev.map(c => c.id === contactId ? { ...c, email_summary } : c))} />
       )}
 
       <div className="flex items-start justify-between mb-4 gap-3">
