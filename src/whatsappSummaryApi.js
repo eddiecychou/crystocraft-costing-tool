@@ -155,27 +155,46 @@ export async function loadWhatsappSummaryCandidates() {
 // one-time admin scan, same posture as the customer version above — the
 // expensive part (an actual DeepSeek call) only runs for whoever's left
 // after this filters down to contacts with something imported.
-export async function loadContactWhatsappSummaryCandidates() {
+// A plain sequential loop here (like loadWhatsappSummaryCandidates above)
+// meant one Firestore round-trip per contact, one at a time — fine for 366
+// customers, but ~2,635 marketing_contacts at that pace looked hung for
+// minutes with zero feedback (owner report, 2026-08-23: "running for long
+// time and no response at all" — there wasn't even a progress indicator to
+// show it was working). Fixed two ways: CONCURRENCY-limited parallel reads
+// (bounded so this doesn't fire 2,635 simultaneous requests at Firestore),
+// and an optional onProgress(scanned, total) callback so the UI has
+// something to show while this runs.
+const SCAN_CONCURRENCY = 20
+
+export async function loadContactWhatsappSummaryCandidates(onProgress) {
   const contactsSnap = await getDocs(collection(db, 'marketing_contacts'))
+  const docs = contactsSnap.docs
   const results = []
-  for (const c of contactsSnap.docs) {
-    const data = c.data()
-    const snap = await getDocs(collection(db, 'marketing_contacts', c.id, 'whatsapp_threads'))
-    if (snap.empty) continue
-    const threads = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-    const currentCount = totalMessageCount(threads)
-    const existing = data.whatsapp_summary
-    const upToDate = existing && existing.message_count === currentCount
-    const name = [data.first_name, data.last_name].filter(Boolean).join(' ') || data.company || data.email || data.phone || c.id
-    results.push({
-      contactId: c.id,
-      name,
-      threads,
-      threadCount: threads.length,
-      messageCount: currentCount,
-      hasSummary: !!existing,
-      upToDate,
-    })
+  let scanned = 0
+  for (let i = 0; i < docs.length; i += SCAN_CONCURRENCY) {
+    const chunk = docs.slice(i, i + SCAN_CONCURRENCY)
+    const chunkResults = await Promise.all(chunk.map(async c => {
+      const data = c.data()
+      const snap = await getDocs(collection(db, 'marketing_contacts', c.id, 'whatsapp_threads'))
+      if (snap.empty) return null
+      const threads = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      const currentCount = totalMessageCount(threads)
+      const existing = data.whatsapp_summary
+      const upToDate = existing && existing.message_count === currentCount
+      const name = [data.first_name, data.last_name].filter(Boolean).join(' ') || data.company || data.email || data.phone || c.id
+      return {
+        contactId: c.id,
+        name,
+        threads,
+        threadCount: threads.length,
+        messageCount: currentCount,
+        hasSummary: !!existing,
+        upToDate,
+      }
+    }))
+    results.push(...chunkResults.filter(Boolean))
+    scanned += chunk.length
+    onProgress?.(scanned, docs.length)
   }
   return results
 }

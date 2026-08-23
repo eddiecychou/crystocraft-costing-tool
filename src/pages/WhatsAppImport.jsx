@@ -380,16 +380,17 @@ function SummaryScanSection() {
 function ContactSummaryScanSection() {
   const [candidates, setCandidates] = useState(null)
   const [scanning, setScanning] = useState(false)
+  const [scanProgress, setScanProgress] = useState(null) // { scanned, total } — see loadContactWhatsappSummaryCandidates
   const [generating, setGenerating] = useState(false)
   const [progress, setProgress] = useState(null)
   const [results, setResults] = useState({})
 
   async function handleScan() {
-    setScanning(true)
+    setScanning(true); setScanProgress(null)
     try {
-      setCandidates(await loadContactWhatsappSummaryCandidates())
+      setCandidates(await loadContactWhatsappSummaryCandidates((scanned, total) => setScanProgress({ scanned, total })))
     } finally {
-      setScanning(false)
+      setScanning(false); setScanProgress(null)
     }
   }
 
@@ -418,7 +419,9 @@ function ContactSummaryScanSection() {
         <h2 className="text-sm font-semibold text-gray-700">Generate WhatsApp Summaries — Marketing Leads</h2>
         <button type="button" onClick={handleScan} disabled={scanning} className="btn-secondary text-xs px-3 py-1.5 inline-flex items-center gap-1.5">
           {scanning ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-          {candidates ? 'Re-scan' : 'Scan marketing contacts'}
+          {scanning
+            ? `Scanning${scanProgress ? ` (${scanProgress.scanned}/${scanProgress.total})` : '…'}`
+            : candidates ? 'Re-scan' : 'Scan marketing contacts'}
         </button>
       </div>
       <p className="text-xs text-gray-400 mb-3">
