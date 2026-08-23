@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, serverTimestamp } from 'firebase/firestore'
+import { doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, collection, query, where, serverTimestamp, runTransaction } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from './firebase'
 import { enhanceProductImage } from './enhanceImage'
@@ -240,17 +240,28 @@ export async function pickGalleryColourPreview({
 // RangeForm.jsx's own handleSave already uses for this doc. Used by the
 // inline "generate from within an invoice/quote/PI" flow (Phase 2 §P2.3a),
 // where there's no open form to optimistically patch like RangeForm has.
+// Transactional (code review, 2026-08-23) — a plain getDoc-then-updateDoc
+// here was the same failure class as the V8.8 Save Changes bug: two
+// concurrent promotions (two admins approving different colours on the
+// same product, or this overlapping a RangeForm save) could both read the
+// same variants array and last-write-wins, silently dropping one colour.
+// Firestore transactions retry automatically on a detected conflict, so
+// this closes that race without needing to restructure colour_images out
+// of the array (a bigger schema change, not justified for what's still a
+// low-concurrency admin workflow).
 export async function promoteColourImage(docId, variantIndex, crystalCode, url) {
   const ref = doc(db, 'range_products', docId)
-  const snap = await getDoc(ref)
-  if (!snap.exists()) throw new Error('Product not found.')
-  const variants = [...(snap.data().variants || [])]
-  if (!variants[variantIndex]) throw new Error('Variation not found.')
-  variants[variantIndex] = {
-    ...variants[variantIndex],
-    colour_images: { ...(variants[variantIndex].colour_images || {}), [crystalCode]: url },
-  }
-  await updateDoc(ref, { variants })
+  await runTransaction(db, async tx => {
+    const snap = await tx.get(ref)
+    if (!snap.exists()) throw new Error('Product not found.')
+    const variants = [...(snap.data().variants || [])]
+    if (!variants[variantIndex]) throw new Error('Variation not found.')
+    variants[variantIndex] = {
+      ...variants[variantIndex],
+      colour_images: { ...(variants[variantIndex].colour_images || {}), [crystalCode]: url },
+    }
+    tx.update(ref, { variants })
+  })
 }
 
 // Live list of previews for one variant, newest first.

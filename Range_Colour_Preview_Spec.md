@@ -587,6 +587,22 @@ all. The Remove confirmation now says this explicitly for a `superseded`
 preview, rather than the same generic "can't be undone" wording every
 other Remove uses.
 
+## P2.3m Code review (2026-08-23) — promoteColourImage made transactional
+
+External review correctly flagged `promoteColourImage()`'s plain
+`getDoc` → mutate → `updateDoc` as the same failure class as §P2.3h's
+Save Changes bug: two concurrent promotions (two admins approving
+different colours on one product, or this racing a RangeForm save) could
+both read the same `variants` array and last-write-wins, silently
+dropping a colour. Wrapped in `runTransaction()`, which retries
+automatically on a detected conflict. Deliberately not restructuring
+`colour_images` out of the array into a top-level dot-addressable map
+(the review's alternative suggestion) — real fragility, but this is still
+a low-concurrency admin workflow, and a schema migration wasn't justified
+just to fully close an already-narrow window. Two other findings (the
+fallback-model log line, `markUsable`'s demotion query) were assessed and
+left as-is — reviewed as low-risk/self-correcting, not fixed.
+
 ## P2.5 Acceptance tests
 
 1. A range invoice/PI/quote line with no matching `colour_images` entry
