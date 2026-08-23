@@ -464,6 +464,41 @@ export default function CustomerDetail() {
     return all
   }, [whatsappThreads, linkedWhatsappThreads, linkedContactIds])
 
+  // Email ingestion (V8.9) — same merge as mergedWhatsappThreads above, now
+  // that email-sync also matches marketing_contacts (see
+  // domain/marketingContact.js's linkContactToCustomer comment on why
+  // linked-contact subcollections are left in place, never copied). Real
+  // gap this closes: before this, a lead's email_threads accumulated while
+  // still a lead became invisible the moment they were linked to a customer
+  // — contactToEntity() stops surfacing a linked contact to Daily Drafts at
+  // all, and nothing here read marketing_contacts/{contactId}/email_threads,
+  // so that correspondence just silently stopped counting for anyone.
+  const [linkedEmailThreads, setLinkedEmailThreads] = useState({}) // contactId -> threads[]
+  useEffect(() => {
+    if (!linkedContactIds.length) { setLinkedEmailThreads({}); return }
+    const unsubs = linkedContactIds.map(contactId =>
+      onSnapshot(collection(db, 'marketing_contacts', contactId, 'email_threads'), snap => {
+        const threads = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        setLinkedEmailThreads(prev => ({ ...prev, [contactId]: threads }))
+      })
+    )
+    return () => unsubs.forEach(u => u())
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-subscribe only when the SET of linked ids actually changes, not on every unrelated customer re-render
+  }, [linkedContactIds.join(',')])
+
+  const mergedEmailThreads = useMemo(() => {
+    const seenIds = new Set(emailThreads.map(t => t.id))
+    const own = emailThreads.map(t => ({ ...t, _source: 'own' }))
+    const linked = linkedContactIds.flatMap(contactId =>
+      (linkedEmailThreads[contactId] || [])
+        .filter(t => !seenIds.has(t.id) && (seenIds.add(t.id), true))
+        .map(t => ({ ...t, _source: 'linked', _linkedContactId: contactId }))
+    )
+    const all = [...own, ...linked]
+    all.sort((a, b) => String(b.date_range?.[1] || '').localeCompare(String(a.date_range?.[1] || '')))
+    return all
+  }, [emailThreads, linkedEmailThreads, linkedContactIds])
+
   const whatsappTarget = { type: 'customer', customerId: id }
 
   // No bulk "transcribe all" — owner's own call, 2026-08-13: a thread can
@@ -537,14 +572,14 @@ export default function CustomerDetail() {
   async function handleRefreshEmailSummary() {
     setEmailSummaryBusy(true); setEmailSummaryError('')
     try {
-      const result = await refreshEmailSummary(renderThreadsText(emailThreads))
-      const email_summary = { ...result, thread_count: emailThreads.length, generated_at: serverTimestamp() }
+      const result = await refreshEmailSummary(renderThreadsText(mergedEmailThreads))
+      const email_summary = { ...result, thread_count: mergedEmailThreads.length, generated_at: serverTimestamp() }
       await updateDoc(doc(db, 'customers', id), { email_summary })
       // `customer` is a one-time fetch (see the load effect above), not a
       // live listener like emailThreads — without this the card would keep
       // showing "Not generated yet" until the page was reloaded, even
       // though the write above just succeeded.
-      setCustomer(prev => (prev ? { ...prev, email_summary: { ...result, thread_count: emailThreads.length, generated_at: new Date() } } : prev))
+      setCustomer(prev => (prev ? { ...prev, email_summary: { ...result, thread_count: mergedEmailThreads.length, generated_at: new Date() } } : prev))
     } catch (e) {
       setEmailSummaryError(e.message || 'Could not refresh the email summary.')
     } finally {
@@ -568,19 +603,19 @@ export default function CustomerDetail() {
       // which could still starve a facet once enough others were in play.
       // Falls back to the single general recent+oldest split only when no
       // facet (keyword or year) was found at all.
-      const facets = buildKeywordFacets(emailThreads, message)
+      const facets = buildKeywordFacets(mergedEmailThreads, message)
       try {
-        const yearIndex = buildYearIndex(emailThreads)
+        const yearIndex = buildYearIndex(mergedEmailThreads)
         const years = yearIndex ? await routeEmailQuestion(yearIndex, message) : []
         if (years.length) {
-          const text = renderThreadsTextForYears(emailThreads, years)
+          const text = renderThreadsTextForYears(mergedEmailThreads, years)
           if (text) facets.push({ label: `year ${years.join('/')}`, threadsText: text })
         }
       } catch { /* routing is a nice-to-have — proceed with whatever facets were found locally */ }
 
       let reply
       if (!facets.length) {
-        const result = await discussCustomerEmail(renderThreadsText(emailThreads), emailChatHistory, message)
+        const result = await discussCustomerEmail(renderThreadsText(mergedEmailThreads), emailChatHistory, message)
         reply = result.reply
       } else if (facets.length === 1) {
         const result = await discussCustomerEmail(facets[0].threadsText, emailChatHistory, message)
@@ -1396,14 +1431,16 @@ export default function CustomerDetail() {
       </Collapsible>
 
       {/* Email Summary (V8.1) — draft AI read of customers/{id}/email_threads,
-          ingested by email-sync/sync.py outside this app. Hidden entirely
-          when nothing's been ingested yet, rather than showing an empty
-          card for the ~most customers not yet backfilled/matched. */}
-      {emailThreads.length > 0 && (
+          ingested by email-sync/sync.py outside this app, PLUS (V8.9) any
+          linked marketing_contacts lead's own email_threads merged in — see
+          mergedEmailThreads above. Hidden entirely when nothing's been
+          ingested yet, rather than showing an empty card for the ~most
+          customers not yet backfilled/matched. */}
+      {mergedEmailThreads.length > 0 && (
         <Collapsible storageKey={`${id}:email-summary`}
           title={<span className="inline-flex items-center gap-1.5">
             <Mail size={15} className="text-gray-400" /> Email Summary
-            <span className="text-xs font-normal text-gray-400">({emailThreads.length} thread{emailThreads.length === 1 ? '' : 's'} ingested)</span>
+            <span className="text-xs font-normal text-gray-400">({mergedEmailThreads.length} thread{mergedEmailThreads.length === 1 ? '' : 's'} ingested)</span>
             {emailSyncStatus?.last_run_at && (
               <span className="text-xs font-normal text-gray-400"
                     title={`Mailbox last synced ${new Date(emailSyncStatus.last_run_at).toLocaleString('en-GB')} (${emailSyncStatus.new_messages ?? '?'} new message${emailSyncStatus.new_messages === 1 ? '' : 's'} that run)`}>
@@ -1442,7 +1479,7 @@ export default function CustomerDetail() {
                   </div>
                 )}
                 <p className="text-[11px] text-gray-400">
-                  Generated over {customer.email_summary.thread_count ?? emailThreads.length} thread{(customer.email_summary.thread_count ?? emailThreads.length) === 1 ? '' : 's'} — a draft, not verified. Refresh after new mail comes in.
+                  Generated over {customer.email_summary.thread_count ?? mergedEmailThreads.length} thread{(customer.email_summary.thread_count ?? mergedEmailThreads.length) === 1 ? '' : 's'} — a draft, not verified. Refresh after new mail comes in.
                 </p>
               </>
             )}
