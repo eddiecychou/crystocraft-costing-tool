@@ -87,7 +87,28 @@ signed-in user with `role:'customer'`/`status` not `'approved'` sees it),
 so "same screen" does not mean "same bug" — check what's actually different
 about the account before assuming the mechanism.
 
-## V8.9 in progress — Draft Memory Layer for Daily Drafts
+## Current Status — V8.9 CLOSED as of 2026-08-24
+
+Started as one feature (a memory layer so Daily Drafts stops needing the
+same correction every session) and grew into a full pass at
+`marketing_contacts`' biggest weakness — almost no interaction data —
+followed by a real accounting integration for Cindy. The throughline across
+all of it: build a slice, then go check the *actual* data/behavior rather
+than trust the plan, which is what surfaced most of the real bugs below
+before they became live complaints (and a few after, fixed the same day).
+
+### The numbers
+
+| | |
+|---|---:|
+| Commits | 11 |
+| New files | `src/domain/draftMemoryRules.js`, `src/domain/interactionLog.js`, `netlify/edge-functions/lib/draftMemory.js` |
+| New Firestore collections | `draft_memory_rules`; `marketing_contacts/{id}/enquiries` (shares the `enquiries` name with `customers/` on purpose — see §3); `marketing_contacts/{id}/email_threads` |
+| New customer/contact fields | `ai_context_summary` (both collections), `whatsapp_summary`/`email_summary`/`has_email_threads` (contacts), `memory_conclusions` (`outreach_drafts`) |
+| marketing_contacts leads matched to real email history | 250 (previously ~0 — see §6) |
+| Real bugs found & fixed | 7 (§8) |
+
+### 1. Draft Memory Layer for Daily Drafts
 
 **Problem:** confirmed writing preferences and corrections given during a
 Daily Drafts session (compose chat, per-draft rewrite chat, bulk rewrite)
@@ -166,7 +187,7 @@ view of a draft's own conclusions yet); no automated test suite added —
 Firestore-rules and truncation behavior were checked manually/by script,
 not committed as repeatable tests.
 
-### Interaction richness gap (marketing_contacts vs customers) — measured, then acted on
+### 2. Interaction richness gap in marketing_contacts — measured, then acted on
 
 Owner's observation confirmed with a live read-only Firestore check: 303/366
 customers have CRM notes vs 3/2,635 marketing_contacts; 0/2,635 contacts had
@@ -208,7 +229,7 @@ Two things were built instead:
    `contactToEntity()` (`DailyDrafts.jsx`) now forwards
    `whatsappSummary` the same way `customerToEntity()` already did.
 
-### CRM Interaction Log extended to marketing_contacts (owner's own request)
+### 3. CRM Interaction Log extended to marketing_contacts (owner's own request)
 
 Owner asked directly to be able to "log findings" on a contact quickly, and
 to have Daily Drafts auto-log interactions the way it already does for
@@ -259,7 +280,7 @@ their own inline Firestore calls) rather than migrated onto the new shared
 module — lower-risk to leave working code alone than to refactor it as a
 side effect of this feature.
 
-### WooCommerce as a marketing_contacts enrichment source — investigated, ruled out
+### 4. WooCommerce as a marketing_contacts enrichment source — investigated, ruled out
 
 Owner asked whether WooCommerce order data could enrich `marketing_contacts`
 for the `retail` audience. Investigated (background agent) rather than
@@ -290,7 +311,7 @@ Owner separately flagged Alibaba as another possible contact-enrichment
 source, but wants it deferred — a known technical import challenge there,
 not scoped for this cycle.
 
-### `ai_context_summary` extended to `customers/` (parity with marketing_contacts)
+### 5. `ai_context_summary` extended to `customers/` (parity with marketing_contacts)
 
 The Draft Memory Layer's per-contact writing-preference field previously
 only existed on `marketing_contacts` (Phase 1 was scoped there
@@ -312,7 +333,7 @@ so personalization isn't lopsided toward leads:
   needed, since `generate-outreach-drafts.js`'s `buildCustomerContext()`/
   `hasWritingContext()` were already written source-agnostic in Phase 1.
 
-### email-sync extended to marketing_contacts
+### 6. email-sync extended to marketing_contacts
 
 Real number checked first (live, read-only, against the actual mailbox and
 Firestore): 832 distinct external addresses in the mailbox, 116 exact-match
@@ -361,7 +382,7 @@ Built:
   already-identified contacts get their threads immediately rather than
   waiting for the next scheduled Sunday run.
 
-### WooCommerce Sync → Sales Invoice / UC Registry (Cindy's spec)
+### 7. WooCommerce Sync → Sales Invoice / UC Registry (Cindy's spec)
 
 Cindy asked (relayed by the owner, 2026-08-24) for a specific field mapping
 from a synced WooCommerce order onto its Sales Invoice and UC Registry
@@ -423,6 +444,82 @@ existing Allocate button, matching how Cindy already works. No automated
 test coverage — verified by build + code reading of the existing
 `allocate_sales_invoice()`/`doAllocateSi()` mechanics, not a live SI/UC
 allocation (would burn a real number in production sequences to test).
+
+### 8. Seven real bugs, found live rather than assumed away
+
+Same pattern as V8.8's close note — most caught by actually checking data/
+behavior after shipping, not by re-reading the diff:
+
+1. **Netlify deploy config never existed** — `firestore.rules` changes had
+   apparently always been applied by hand via the Firebase console; there
+   was no `firebase.json`/`.firebaserc` to let the CLI deploy them. Added a
+   minimal one so future rule changes don't need a manual console trip.
+2. **Phone-only WhatsApp leads could never be saved** — `saveContact()`
+   required a valid email unconditionally, but a phone-only lead
+   (`findOrCreateLeadByPhone`) has none by design. Every Save silently threw
+   "A valid email is required," and the error banner sat at the top of a
+   modal that had just gotten much taller (WhatsApp/Interaction Log/AI-
+   preferences sections all added this cycle) — easy to scroll straight
+   past, which read as "Save does nothing" (owner report). Fixed the
+   validation AND duplicated the error into the modal's always-visible
+   footer so a failure can't go unseen again.
+3. **The existing customer-side WhatsApp bulk scanner was broken** by this
+   cycle's own `generateAndSaveWhatsappSummary()` signature change (added a
+   leading `collectionName` param for the marketing_contacts extension) —
+   one call site (`WhatsAppImport.jsx`'s `SummaryScanSection`, the only
+   other caller besides the one already updated) was missed, which would
+   have thrown on every single customer the next time "Generate all" was
+   clicked.
+4. **The marketing_contacts WhatsApp scan looked hung** — one sequential
+   Firestore read per contact, ~2,635 of them, zero progress feedback.
+   Genuinely just slow, but indistinguishable from broken with nothing on
+   screen (owner: "running for long time and no response at all"). Fixed
+   with concurrency-20 batching and a live "Scanning (N/2635)" indicator.
+5. **A linked contact's email history went invisible on promotion** — found
+   by directly answering the owner's own question ("what happens if a lead
+   later gets added to a customer") rather than assuming: WhatsApp already
+   merges a linked contact's threads into the customer page
+   (`mergedWhatsappThreads`, from SU-08 in an earlier cycle); email had no
+   equivalent, so a lead's `email_threads` — especially now that email-sync
+   matches contacts too — would go silently invisible the moment they were
+   linked, both to Daily Drafts (which stops surfacing a linked contact
+   entirely) and to the customer's own Email Summary card. Added the same
+   merge for email.
+6. **Bulk-generated email summaries didn't show without a hard reload** —
+   `MarketingContacts.jsx`'s `contacts` list is loaded once, not a live
+   listener (deliberate). The bulk scanner wrote summaries straight to
+   Firestore with nothing patching that stale in-memory list, so a freshly
+   generated summary was real in the database but invisible until a full
+   page reload (owner: "the summary is not there").
+7. **The manual per-contact Generate button had the identical bug** — never
+   wired to patch the same list, just not yet reported because the
+   currently-open modal's own local state masked it (looked like it saved,
+   until you closed and reopened). Owner: "the email summary is not saving
+   at all if i do that manually" — it was; the fix was the same
+   list-patching callback as #6, just missing from a second call site.
+
+## Where V8.10 starts
+
+- **WooCommerce SI/UC flow (§7) hasn't been walked through live yet** — the
+  next real WooCommerce sync (or the 3 known exception orders,
+  57669/57670/57844) should be run through Allocate once with Cindy
+  watching, to confirm the UC Registry auto-fill lands the way her spec
+  describes before she starts relying on it day to day.
+- **Bulk approve/reject in the Draft Memory rules panel** — one at a time
+  only today; owner said revisit after test-running the review flow for a
+  while, not before.
+- **No automated tests added anywhere this cycle** — Firestore-rules
+  behavior, truncation logic, and the SI/UC mapping were all checked by
+  build + direct script/data verification, not committed as repeatable
+  tests. Consistent with how this repo already works, but a standing gap
+  worth naming each cycle rather than re-discovering.
+- **`customers/`-side WhatsApp/email bulk scanners exist; marketing_contacts
+  now has its own equivalents** — but the two pairs of scan logic
+  (`SummaryScanSection`/`ContactSummaryScanSection` in `WhatsAppImport.jsx`,
+  and the customer vs. contact halves of `whatsappSummaryApi.js`/
+  `emailSummaryApi.js`) are still hand-duplicated rather than one
+  parameterized implementation. Not urgent, but worth collapsing if a third
+  collection ever needs the same pattern.
 
 ## Current Status — V8.8 CLOSED as of 2026-08-23
 
