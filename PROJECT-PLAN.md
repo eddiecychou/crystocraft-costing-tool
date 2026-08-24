@@ -643,6 +643,54 @@ test coverage — verified by build + code reading of the existing
 `allocate_sales_invoice()`/`doAllocateSi()` mechanics, not a live SI/UC
 allocation (would burn a real number in production sequences to test).
 
+**Follow-up from Cindy (2026-08-24), same day**, two more asks:
+
+1. **"Keep linking customer to Online Crystocraft (O07) as it is, however,
+   change customer name in index of sales invoice & UC registry shown as
+   customer name in WooCommerce."** — `wooCustomerName()` (`wooImport.js`)
+   used to double as BOTH the real customer link (`customer_id`, unchanged
+   by this) AND the display text (`O07 Online Crystocraft - "Jane Doe"`)
+   shown in the SI index and UC Registry (both just render `order.
+   customer_name`/`uc_registry.customer` as-is — neither page re-derives
+   it). Simplified `wooCustomerName()` to return the plain WooCommerce
+   buyer name, nothing more — the O07 link already carries "this is an
+   online order" without needing to say so again in the name text. Shared
+   by `wooRefundImport.js`'s Credit Notes too (same function), so those
+   read the same way now.
+2. **"If the transaction currency is other than HK Dollar, in the remarks
+   put: gateway fee as transaction currency and fee (e.g. in 57670 it is
+   EUR10.35), net payout in HKD, payout date (as it is)."** Two real
+   problems here, not one:
+   - The existing fee note (both `wooImport.js`'s order `notes` and
+     `ShipmentForm.jsx`'s UC Registry `remarks`) showed net payout in the
+     TRANSACTION currency, not HKD — the figure that actually lands in the
+     bank is different once WooCommerce Payments converts at its own
+     settlement rate. Per CLAUDE.md's "never compute/take an exchange rate"
+     rule, this app must not invent that conversion itself. Instead,
+     `woo-sync.js`'s `summarizeOrder()` now reads `store_amount`/
+     `store_currency` off the same `wc/v3/payments/transactions` row
+     already used for fee/net (WooCommerce Payments' OWN settlement
+     conversion, not ours) as `net_payout_hkd`, threaded through
+     `wooImport.js` as `header.woo_net_payout_hkd`. When that field isn't
+     present (older WooCommerce Payments versions, or the API shape turns
+     out to differ from what's assumed here — unconfirmed against a live
+     probe as of this writing), the note reads "HKD amount — fill in
+     manually" rather than guessing. Both notes are plain text either way,
+     so Cindy can always overwrite a wrong or missing figure by hand — nothing
+     here is locked once written.
+   - The note is now gated on `currency !== 'HKD'` (previously
+     unconditional) — a plain-HKD order has nothing to reconcile, per
+     Cindy's own framing of the ask.
+   - **Bug found in the process**: `ShipmentForm.jsx`'s `isEdit` load path
+     (the `setHeader({...})` object built from a fetched order doc) never
+     included `woo_fee`/`woo_net_payout`/`woo_payout_date` in the first
+     place — the exact "missing from this whitelist silently drops it"
+     trap the code's own comment already warns about for `contact_id`.
+     `doAllocateSi()`'s round-2 fee-note auto-fill was therefore silently
+     producing a fee-less UC Registry remarks note for every WooCommerce
+     order opened by its normal edit URL, not just right after import.
+     Fixed alongside adding `woo_net_payout_hkd` to the same whitelist.
+
 ### 8. Seven real bugs, found live rather than assumed away
 
 Same pattern as V8.8's close note — most caught by actually checking data/

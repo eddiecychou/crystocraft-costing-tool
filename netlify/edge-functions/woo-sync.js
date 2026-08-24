@@ -72,6 +72,20 @@ function summarizeOrder(o, txn) {
   const fee = gatewayFee(o, txn)
   const netMeta = parseFloat(metaVal(o, '_wcpay_net'))
   const net = txn && Number.isFinite(txn.net) ? txn.net / 100 : (Number.isFinite(netMeta) ? netMeta : null)
+  // Cindy, 2026-08-24: for a non-HKD order the UC Registry/SI remarks need
+  // the NET PAYOUT IN HKD, not the transaction-currency figure `net` above
+  // — WooCommerce Payments settles into this store's HKD account using its
+  // OWN exchange rate at charge time (not one this app computes or copies
+  // from JES, per CLAUDE.md's "never compute" rule for FX). The
+  // wc/v3/payments/transactions row carries that settlement conversion as
+  // store_currency/store_amount alongside the customer-currency net/fees
+  // already used above — when this store's currency is HKD, store_amount
+  // IS the HKD net payout. Falls back to null (never a guessed figure) if
+  // the field isn't present, e.g. an older WooCommerce Payments version —
+  // wooImport.js's remarks note then asks Cindy to fill it in by hand.
+  const net_payout_hkd = txn && Number.isFinite(txn.store_amount) && String(txn.store_currency || '').toUpperCase() === 'HKD'
+    ? +(txn.store_amount / 100).toFixed(2)
+    : null
   return {
     id: o.id,
     number: o.number,                     // WooCommerce's own order number — spec §3.4
@@ -99,6 +113,7 @@ function summarizeOrder(o, txn) {
     gateway_fee: fee.amount,               // spec §3.6/§8 — see gatewayFee() above
     gateway_fee_source: fee.source,        // 'transactions_api' | 'fee_lines' | 'wcpay_meta' | null — shown so a null reads as "not found", not "zero"
     net_payout: net,
+    net_payout_hkd: net_payout_hkd,       // Cindy's spec — see net_payout_hkd's own comment above; null if not available from the transactions API
     // available_on from wc/v3/payments/transactions — when the settled funds
     // become available to Crystocraft. Confirmed 2026-08-22: this is the
     // only payout-adjacent date reachable via REST API keys (the actual

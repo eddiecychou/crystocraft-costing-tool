@@ -17,11 +17,14 @@ import { createOrderWithLinesAtId, ORDER_CURRENCIES } from './shipping'
 // check-then-create can never produce a duplicate order for it.
 export const wooOrderDocId = (wooOrderId) => `woo-${wooOrderId}`
 
-// spec §3.2 — the exact display format Cindy asked for. Exported so
-// wooRefundImport.js's Credit Note drafts use the identical format —
-// a refund's Credit Note should read as the same customer as the invoice
+// V8.10 — Cindy, 2026-08-24: keep the real O07 customer LINK as-is
+// (customer_id below), but show the actual WooCommerce buyer's name in the
+// Sales Invoice index and UC Registry, not the "O07 Online Crystocraft -
+// "name"" label the link itself used to double as. Exported so
+// wooRefundImport.js's Credit Note drafts use the identical format — a
+// refund's Credit Note should read as the same customer as the invoice
 // it's crediting, not a differently-formatted name for the same person.
-export const wooCustomerName = (name) => `O07 Online Crystocraft - "${name || 'Unnamed customer'}"`
+export const wooCustomerName = (name) => name || 'Unnamed customer'
 
 // V8.9 — Cindy's WooCommerce→SI/UC spec: every synced order's SI/UC
 // "Customer link" now points at a REAL customer record (customers/{id}),
@@ -105,8 +108,15 @@ export function mapWooOrderToOrder(o) {
   // 2026-08-22, see WooCommerce_B2C_Sync_Spec.md §3): folded into notes so
   // it travels with the order onto the printed invoice's Remarks field
   // (SalesInvoicePrint.jsx) without needing a new schema field.
-  const feeNote = o.gateway_fee != null
-    ? `Gateway fee: ${currency} ${o.gateway_fee.toFixed(2)} · Net payout: ${currency} ${(o.net_payout ?? '').toFixed?.(2) ?? o.net_payout}${o.payout_date ? ` · Payout ${o.payout_date}` : ''}`
+  //
+  // V8.10 — Cindy, 2026-08-24: only needed when the TRANSACTION currency
+  // isn't HKD (a plain-HKD order's fee/net is already obvious from the
+  // invoice total, nothing to reconcile) — and when it is, the net payout
+  // must read in HKD, not the transaction currency, since that's the
+  // figure that actually lands in the bank account. e.g. order 57670:
+  // "Gateway fee: EUR 10.35 · Net payout: HKD 1,234.56 · Payout 2026-08-20".
+  const feeNote = (o.gateway_fee != null && currency !== 'HKD')
+    ? `Gateway fee: ${currency} ${o.gateway_fee.toFixed(2)} · Net payout: ${o.net_payout_hkd != null ? `HKD ${o.net_payout_hkd.toFixed(2)}` : 'HKD amount — fill in manually'}${o.payout_date ? ` · Payout ${o.payout_date}` : ''}`
     : null
   const notes = [
     `WooCommerce order #${o.number}`,
@@ -152,6 +162,7 @@ export function mapWooOrderToOrder(o) {
     // shipping.js. `notes` above keeps the human-readable version.
     woo_fee: o.gateway_fee,
     woo_net_payout: o.net_payout,
+    woo_net_payout_hkd: o.net_payout_hkd ?? null,
     woo_payout_date: o.payout_date || null,
   }
 

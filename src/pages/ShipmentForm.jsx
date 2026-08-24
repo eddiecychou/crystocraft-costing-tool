@@ -221,6 +221,17 @@ export default function ShipmentForm() {
             // load, same trap contact_id hit before it was added here.
             channel: o.channel || null,
             woo_order_no: o.woo_order_no || '',
+            // V8.10 — these three were the SAME trap: doAllocateSi()'s UC
+            // Registry fee-note auto-fill (below) reads header.woo_fee /
+            // woo_net_payout / woo_payout_date, but none of them were ever
+            // added to this load whitelist, so it silently produced a
+            // fee-less remarks note for every WooCommerce order opened by ID
+            // (the normal path — not just right after import). Fixed here,
+            // not by chasing the symptom in doAllocateSi.
+            woo_fee: o.woo_fee ?? null,
+            woo_net_payout: o.woo_net_payout ?? null,
+            woo_net_payout_hkd: o.woo_net_payout_hkd ?? null,
+            woo_payout_date: o.woo_payout_date || null,
           })
           setSourceFile(o.source_file || null)
           setLines(await getOrderLines(id))
@@ -322,10 +333,17 @@ export default function ShipmentForm() {
             deposit: header.total_amount ?? null,   // paid in full at checkout — see PROJECT-PLAN.md
             balance: 0,
             bal_pay_date: header.woo_payout_date || null,
+            // V8.10 — Cindy, 2026-08-24: fee/payout detail only when the
+            // transaction currency isn't HKD, and the payout must read in
+            // HKD (the currency that actually lands in the bank), not the
+            // transaction currency — same rule and same fields as
+            // wooImport.js's order-notes feeNote, just re-derived here since
+            // the UC Registry remarks are built independently at allocation
+            // time.
             remarks: [
               header.customer_po,
-              header.woo_fee != null
-                ? `Gateway fee: ${header.currency} ${Number(header.woo_fee).toFixed(2)} · Net payout: ${header.currency} ${Number(header.woo_net_payout ?? 0).toFixed(2)}`
+              (header.woo_fee != null && header.currency !== 'HKD')
+                ? `Gateway fee: ${header.currency} ${Number(header.woo_fee).toFixed(2)} · Net payout: ${header.woo_net_payout_hkd != null ? `HKD ${Number(header.woo_net_payout_hkd).toFixed(2)}` : 'HKD amount — fill in manually'}${header.woo_payout_date ? ` · Payout ${header.woo_payout_date}` : ''}`
                 : null,
             ].filter(Boolean).join(' — '),
           })
