@@ -250,6 +250,41 @@ Re-verified with the same render-and-inspect QA loop as before (9-page
 synthetic document covering solo/duo/triple/7-item-split/premium) — zero
 "bigger than page" warnings this time, a first for this feature.
 
+### Third round of real feedback — bigger images, fixed title hierarchy
+
+Owner sent a third real generated PDF, this time the LIVE Sun Life
+proposal (20 pages) rather than a synthetic/test one:
+
+1. **"The product images need to be bigger, there are lots of empty space
+   for page 3, page 4, 5, 6.. and basically all the pages."** With the
+   MAX_PER_PAGE=3 cap from round 2, every card's width had been left at
+   its old (pre-cap) size — 190pt for `Triple`, 220pt for `FeatureDuo`,
+   260/340pt for `FeatureSolo` — which made sense when up to 8 cards
+   shared a row but left most of the 864pt usable page width and ~350pt
+   usable height empty once the cap forced a max of 3. Widths increased
+   (`Triple` 190→250, `FeatureDuo` 220→270, `FeatureSolo` 260→300 when
+   paired with a heading+tagline+briefing block, 340→380 on its own
+   dedicated premium feature page which has more vertical room to spend).
+2. **"the single item page has the product title same size and font as
+   the section title and the layout is strange. Need to standardize the
+   section / product title and description with proper spacing."** —
+   `featureName` (the product's own title on solo/duo pages) was 22pt
+   Questrial, one point off `sectionTitle`'s 24pt Questrial, so the two
+   read as the same heading repeated. `featureName` is now 16pt Work Sans
+   SemiBold — the same typeface/weight relationship `cardName` already
+   has to the grid tier — so a product title reads as a product name
+   under a section heading, not a second heading of equal weight.
+
+Widths were re-tuned against the render QA loop's own "Node of type VIEW
+can't wrap between pages and it's bigger than available page height"
+warning: an initial pass to 400/310pt overflowed the `wrap={false}` block
+on the solo (heading+tagline+briefing+image) and duo pages once the text
+block above ate into the ~350pt vertical budget — pulled back to
+300/270/380pt (the last only on the header-less dedicated premium page)
+until the warning cleared and the 7-page synthetic render (solo, duo,
+triple, and a premium+triple split) showed every image filling its page
+without clipping.
+
 ## Current Status — V8.9 CLOSED as of 2026-08-24
 
 Started as one feature (a memory layer so Daily Drafts stops needing the

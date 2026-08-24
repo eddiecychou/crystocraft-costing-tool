@@ -114,9 +114,9 @@ const s = StyleSheet.create({
   // frame" per the brief, not a coincidentally-similar one.
   cardImageWrap: { backgroundColor: DS_COLORS.beige, overflow: 'hidden', aspectRatio: 1 },
   cardImage: { width: '100%', height: '100%', objectFit: 'cover' },
-  cardBody: { paddingTop: 8, paddingHorizontal: 2 },
-  cardName: { fontSize: 10.5, color: DS_COLORS.nearBlack, marginBottom: 3 },
-  cardCaption: { fontFamily: 'Work Sans', fontSize: 8, color: DS_COLORS.midGrey, lineHeight: 1.35 },
+  cardBody: { paddingTop: 10, paddingHorizontal: 2 },
+  cardName: { fontSize: 12, color: DS_COLORS.nearBlack, marginBottom: 4 },
+  cardCaption: { fontFamily: 'Work Sans', fontSize: 9, color: DS_COLORS.midGrey, lineHeight: 1.4 },
   cardTag: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 6.5, letterSpacing: 0.6, textTransform: 'uppercase', paddingVertical: 3, paddingHorizontal: 7, alignSelf: 'flex-start', marginBottom: 6 },
 
   // ── Solo / duo feature layouts (1–2 products) — square images, same as
@@ -129,12 +129,19 @@ const s = StyleSheet.create({
   // flexbox does, and a flex:1 child with no unambiguous available
   // dimension collapses to zero rather than filling space. Every block
   // here gets an EXPLICIT size instead. ──
-  featureRow: { flexDirection: 'row', gap: 32, alignItems: 'center' },
+  featureRow: { flexDirection: 'row', gap: 36, alignItems: 'center', marginTop: 6 },
   featureImageWrap: { backgroundColor: DS_COLORS.beige, overflow: 'hidden', aspectRatio: 1 },
   featureImage: { width: '100%', height: '100%', objectFit: 'cover' },
   featureText: { justifyContent: 'center' },
-  featureName: { fontSize: 22, color: DS_COLORS.nearBlack, marginBottom: 8 },
-  featureCaption: { fontFamily: 'Work Sans', fontSize: 10.5, color: DS_COLORS.midGrey, lineHeight: 1.5, maxWidth: 300 },
+  // Deliberately smaller and a different typeface weight than sectionTitle
+  // (24pt Questrial) — owner, 2026-08-24, against the real Sun Life PDF:
+  // "the single item page has the product title same size and font as the
+  // section title and the layout is strange". This is a PRODUCT name sitting
+  // under a SECTION heading, not a second heading of equal weight, so it now
+  // reads at a clearly smaller size in Work Sans SemiBold rather than
+  // Questrial, matching the visual role cardName plays under the grid tiers.
+  featureName: { fontFamily: 'Work Sans', fontWeight: 600, fontSize: 16, color: DS_COLORS.nearBlack, marginBottom: 9 },
+  featureCaption: { fontFamily: 'Work Sans', fontSize: 11, color: DS_COLORS.midGrey, lineHeight: 1.55, maxWidth: 320 },
 })
 
 // ── Adaptive tiering — the whole point of this file. Never one fixed grid.
@@ -196,13 +203,19 @@ function ProductCard({ p, accent }) {
 // Square, not a wide rectangle — owner, 2026-08-24, against the real
 // generated PDF: "single item page product image is cropped and should be
 // square", same fix as the grid cards (cardImageWrap's own comment).
-function FeatureSolo({ p, accent, width = 260 }) {
+// Widths tuned against the real Sun Life PDF, 2026-08-24 — owner: "The
+// product images need to be bigger, there are lots of empty space for page
+// 3, page 4, 5, 6... and basically all the pages." The page is 864pt of
+// usable width (960 - 2×MARGIN) and up to ~350pt of usable height below a
+// section heading; the old widths (260/220/190) left most of that empty.
+// These are sized to actually use the page rather than float in it.
+function FeatureSolo({ p, accent, width = 300 }) {
   return (
     <View style={s.featureRow} wrap={false}>
       <View style={[s.featureImageWrap, s.cardBorder, { width }]}>
         {p.image ? <Image style={s.featureImage} src={p.image} /> : null}
       </View>
-      <View style={[s.featureText, { width: 320 }]}>
+      <View style={[s.featureText, { width: 380 }]}>
         {p.tag ? <Tag accent={accent}>{p.tag}</Tag> : null}
         <Text style={s.featureName}>{p.name}</Text>
         {p.caption ? <Text style={s.featureCaption}>{p.caption}</Text> : null}
@@ -215,11 +228,11 @@ function FeatureDuo({ products, accent }) {
   return (
     <View style={[s.featureRow, { justifyContent: 'center' }]} wrap={false}>
       {products.map(p => (
-        <View key={p.key} style={{ width: 220 }}>
+        <View key={p.key} style={{ width: 270 }}>
           <View style={[s.featureImageWrap, s.cardBorder]}>
             {p.image ? <Image style={s.featureImage} src={p.image} /> : null}
           </View>
-          <View style={{ marginTop: 12 }}>
+          <View style={{ marginTop: 14 }}>
             {p.tag ? <Tag accent={accent}>{p.tag}</Tag> : null}
             <Text style={s.featureName}>{p.name}</Text>
             {p.caption ? <Text style={s.featureCaption}>{p.caption}</Text> : null}
@@ -236,9 +249,9 @@ function FeatureDuo({ products, accent }) {
 // into more of these instead (see paginate() above).
 function Triple({ products, accent }) {
   return (
-    <View wrap={false} style={{ flexDirection: 'row', gap: 28, justifyContent: 'center' }}>
+    <View wrap={false} style={{ flexDirection: 'row', gap: 36, justifyContent: 'center', marginTop: 6 }}>
       {products.map(p => (
-        <View key={p.key} style={{ width: 190 }}>
+        <View key={p.key} style={{ width: 250 }}>
           <ProductCard p={p} accent={accent} />
         </View>
       ))}
@@ -285,7 +298,7 @@ function SectionPages({ section, accent }) {
             page while the content overflows to the next. */}
         <View wrap={false}>
           <Text style={s.sectionTitle}>{section.heading}</Text>
-          <FeatureSolo p={p} accent={accent} width={340} />
+          <FeatureSolo p={p} accent={accent} width={380} />
         </View>
         <Footer />
       </Page>,
