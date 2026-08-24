@@ -87,6 +87,12 @@ export function normalizeContact(id, raw) {
     // as the customer version: { summary, recent_activity,
     // open_commitments[], thread_count, message_count, generated_at }.
     whatsapp_summary: r.whatsapp_summary || null,
+    // Alibaba Messages (V8.10) — same idea/shape as whatsapp_summary above,
+    // over marketing_contacts/{id}/alibaba_threads (raw text pasted by hand
+    // off Alibaba.com, no export/API — see alibabaSummaryApi.js). Explicitly
+    // whitelisted here, same known trap as whatsapp_summary/email_summary: a
+    // field missing from this function silently vanishes on the next reload.
+    alibaba_summary: r.alibaba_summary || null,
     // Email ingestion (V8.9 — extended from customers/, see
     // email-sync/common.py's load_marketing_contact_index and
     // MarketingContacts.jsx's EmailThreads "Generate/Refresh"). Same shape

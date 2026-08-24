@@ -285,6 +285,74 @@ until the warning cleared and the 7-page synthetic render (solo, duo,
 triple, and a premium+triple split) showed every image filling its page
 without clipping.
 
+## Alibaba Messages — manual-paste enrichment, plus "what's new" watermarks (2026-08-24)
+
+Owner requirement, following on from the Alibaba API research (see below):
+Alibaba.com gives no export for its buyer-seller chat, so the only way to
+get that correspondence into the app is copy-pasting it by hand off the
+site. Built a new feature on the same summarize-and-store pattern
+WhatsApp/Email already use, but with a genuinely new front end since
+neither of those has a paste-a-blob-of-text entry point to copy —
+WhatsApp imports structured export files, Email syncs via IMAP.
+
+**New:** `customers/{id}/alibaba_threads` and `marketing_contacts/{id}/
+alibaba_threads` — one doc per pasted batch, additive (re-pasting never
+overwrites — the owner may paste again weeks later as new messages come
+in). `netlify/edge-functions/refresh-alibaba-summary.js` mirrors
+`refresh-whatsapp-summary.js`'s exact auth/DeepSeek-call structure with a
+new system prompt describing raw Alibaba.com B2B buyer-seller chat text
+(UI-chrome noise from copy-paste, mixed languages, product/pricing/MOQ
+negotiation context). `src/alibabaSummaryApi.js` mirrors
+`whatsappSummaryApi.js`'s collection-agnostic shape
+(`generateAndSaveAlibabaSummary(collectionName, id, threads)`). New
+"Alibaba Messages" card on `CustomerDetail.jsx` and a matching
+`AlibabaThreads` component on `MarketingContacts.jsx` — deliberately
+ALWAYS visible (unlike the WhatsApp/Email cards, which hide until
+something's already imported): pasting into this card IS how content
+gets in, there's no separate import page to populate it first.
+`alibaba_summary` added to both `domain/customer.js` and
+`domain/marketingContact.js`'s normalize whitelists (the exact
+"missing here silently vanishes on reload" trap `whatsapp_summary` hit
+before it was added — see those files' own comments), and forwarded into
+Daily Drafts' `customerToEntity`/`contactToEntity` alongside
+`whatsappSummary`/`emailSummary`. `firestore.rules` gained matching
+`alibaba_threads` admin-only blocks under both collections.
+
+**Also fixed, same request**: owner, 2026-08-24 — *"we need to log the
+time for importing whatsapp messages and alibaba messages so that next
+time we import we will not import the old contents, just the new
+ones."* Investigated WhatsApp's existing re-import behavior first
+(background agent): re-importing an export already fully OVERWRITES the
+thread doc by deterministic ID rather than duplicating, and an
+`imported_at` timestamp already exists on the thread doc and is shown on
+the WhatsApp Import page itself — but nowhere on the customer/contact's
+own page, where the owner would actually be looking before deciding what
+to re-export/re-paste. Added a "latest message {date}" watermark to the
+WhatsApp card's header on both `CustomerDetail.jsx` and
+`MarketingContacts.jsx` (derived from the already-tracked
+`date_range[1]`, no new field needed), and a "Last pasted: {date}"
+watermark above the Alibaba paste box in both places (from the newest
+`alibaba_threads` doc's `pasted_at`) — since Alibaba's own UI always
+shows the FULL conversation with no way to filter by date, this is the
+only way the owner can tell at a glance what's already captured before
+copying again.
+
+**Alibaba API registration — researched, not started.** Separately,
+looked into actually registering for Alibaba.com's Open Platform API
+(the proper, non-manual route) at the owner's request. Verified the real
+4-step registration flow by driving the actual (JS-rendered,
+un-fetchable-by-plain-HTTP-tool) docs site page by page: developer
+account + profile (GGS-team-reviewed) → application category approval
+(Commercial vs Individual Developer) → App Key/Secret → per-API-group
+permission requests, then a standard OAuth2 "code for token" flow to
+authorize access to the seller's own business data. Two separate admin
+approval gates before any API call works, no stated timelines. Notes
+written up in the owner's own research file
+(`~/Downloads/Alibaba API research notes.md`). Owner found this "bit
+complicated" and asked for the manual-paste path instead (this section)
+as the near-term way to get value out of the chat data — the API route
+remains available to revisit later, nothing here forecloses it.
+
 ## Current Status — V8.9 CLOSED as of 2026-08-24
 
 Started as one feature (a memory layer so Daily Drafts stops needing the

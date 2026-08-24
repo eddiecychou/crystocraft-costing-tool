@@ -129,6 +129,13 @@ function customerToEntity(c) {
     whatsappSummary: c.whatsapp_summary
       ? { summary: c.whatsapp_summary.summary, recent_activity: c.whatsapp_summary.recent_activity, open_commitments: c.whatsapp_summary.open_commitments }
       : null,
+    // Alibaba Messages (V8.10) — same shape/posture as whatsappSummary
+    // above, generated on-demand from CustomerDetail.jsx's Alibaba Messages
+    // card (see refresh-alibaba-summary.js / alibabaSummaryApi.js). Only
+    // present once an admin's generated one.
+    alibabaSummary: c.alibaba_summary
+      ? { summary: c.alibaba_summary.summary, recent_activity: c.alibaba_summary.recent_activity, open_commitments: c.alibaba_summary.open_commitments }
+      : null,
   }
 }
 
@@ -170,6 +177,12 @@ function contactToEntity(c) {
     // admin's actually generated one for this contact.
     whatsappSummary: c.whatsapp_summary
       ? { summary: c.whatsapp_summary.summary, recent_activity: c.whatsapp_summary.recent_activity, open_commitments: c.whatsapp_summary.open_commitments }
+      : null,
+    // Alibaba Messages (V8.10) — same shape as customerToEntity's own
+    // alibabaSummary above (see MarketingContacts.jsx's AlibabaThreads
+    // "Generate/Refresh" and alibabaSummaryApi.js's generateAndSaveAlibabaSummary).
+    alibabaSummary: c.alibaba_summary
+      ? { summary: c.alibaba_summary.summary, recent_activity: c.alibaba_summary.recent_activity, open_commitments: c.alibaba_summary.open_commitments }
       : null,
     // Email ingestion (V8.9) — now reaches marketing_contacts too (see
     // email-sync/common.py's load_marketing_contact_index), same shape as

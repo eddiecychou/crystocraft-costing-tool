@@ -11,7 +11,7 @@ import LoadingBar from '../components/LoadingBar'
 import EnquiryForm from './EnquiryForm'
 import CustomerBrandGallery from '../components/CustomerBrandGallery'
 import ProposalEditor from '../components/ProposalEditor'
-import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt, ChevronDown, ChevronUp, ChevronRight, Database, Mail, MessageCircle, Loader2, RefreshCw, Smartphone, Mic, ShoppingCart } from 'lucide-react'
+import { Star, AlertTriangle, FileText, Sparkle, Check, RotateCcw, Package, X, Receipt, ChevronDown, ChevronUp, ChevronRight, Database, Mail, MessageCircle, MessageSquare, Loader2, RefreshCw, Smartphone, Mic, ShoppingCart } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { loadBlogProducts } from '../productSource'
 import { normalizeCustomer, loadCustomers, previewCustomerMerge, mergeCustomers, CHANNELS, NO_API_CHANNELS } from '../domain/customer'
@@ -22,6 +22,7 @@ import ErpDocModal from '../components/ErpDocModal'
 import WhatsAppAttachment from '../components/WhatsAppAttachment'
 import { refreshEmailSummary, discussCustomerEmail, renderThreadsText, buildYearIndex, routeEmailQuestion, renderThreadsTextForYears, buildKeywordFacets, composeEmailAnswer } from '../emailSummaryApi'
 import { generateAndSaveWhatsappSummary } from '../whatsappSummaryApi'
+import { savePastedAlibabaThread, generateAndSaveAlibabaSummary } from '../alibabaSummaryApi'
 import { createInvitation } from '../portalInviteApi'
 import { wooOrdersByCustomerId, searchWooOrders } from '../wooSyncApi'
 
@@ -539,6 +540,59 @@ export default function CustomerDetail() {
       setWhatsappSummaryError(e.message || 'Could not refresh the WhatsApp summary.')
     } finally {
       setWhatsappSummaryBusy(false)
+    }
+  }
+
+  // Alibaba Messages (V8.10) — customers/{id}/alibaba_threads, one doc per
+  // pasted batch (no export/API exists for Alibaba.com's buyer-seller chat,
+  // so the owner copy-pastes it by hand — see alibabaSummaryApi.js). Same
+  // live-subscribe/summary posture as WhatsApp above, but always visible
+  // (not gated behind "something already imported") since pasting IS how
+  // content gets in here — there's no separate import page to populate it
+  // first.
+  const [alibabaThreads, setAlibabaThreads] = useState([])
+  const [alibabaExpanded, setAlibabaExpanded] = useState(null)
+  const [alibabaPasteText, setAlibabaPasteText] = useState('')
+  const [alibabaSaveBusy, setAlibabaSaveBusy] = useState(false)
+  const [alibabaSaveError, setAlibabaSaveError] = useState('')
+  const [alibabaSaved, setAlibabaSaved] = useState(false)
+  useEffect(() => {
+    return onSnapshot(collection(db, 'customers', id, 'alibaba_threads'), snap => {
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      all.sort((a, b) => {
+        const av = a.pasted_at?.toMillis ? a.pasted_at.toMillis() : new Date(a.pasted_at || 0).getTime()
+        const bv = b.pasted_at?.toMillis ? b.pasted_at.toMillis() : new Date(b.pasted_at || 0).getTime()
+        return bv - av
+      })
+      setAlibabaThreads(all)
+    })
+  }, [id])
+
+  async function handleSaveAlibabaPaste() {
+    setAlibabaSaveBusy(true); setAlibabaSaveError(''); setAlibabaSaved(false)
+    try {
+      await savePastedAlibabaThread('customers', id, alibabaPasteText)
+      setAlibabaPasteText('')
+      setAlibabaSaved(true)
+      setTimeout(() => setAlibabaSaved(false), 2500)
+    } catch (e) {
+      setAlibabaSaveError(e.message || 'Could not save that paste.')
+    } finally {
+      setAlibabaSaveBusy(false)
+    }
+  }
+
+  const [alibabaSummaryBusy, setAlibabaSummaryBusy] = useState(false)
+  const [alibabaSummaryError, setAlibabaSummaryError] = useState('')
+  async function handleRefreshAlibabaSummary() {
+    setAlibabaSummaryBusy(true); setAlibabaSummaryError('')
+    try {
+      const alibaba_summary = await generateAndSaveAlibabaSummary('customers', id, alibabaThreads)
+      setCustomer(prev => (prev ? { ...prev, alibaba_summary: { ...alibaba_summary, generated_at: new Date() } } : prev))
+    } catch (e) {
+      setAlibabaSummaryError(e.message || 'Could not refresh the Alibaba summary.')
+    } finally {
+      setAlibabaSummaryBusy(false)
     }
   }
 
@@ -1528,7 +1582,10 @@ export default function CustomerDetail() {
           title={<span className="inline-flex items-center gap-1.5">
             <Smartphone size={15} className="text-gray-400" /> WhatsApp
             <span className="text-xs font-normal text-gray-400">
-              ({mergedWhatsappThreads.length} chat{mergedWhatsappThreads.length === 1 ? '' : 's'} imported)
+              ({mergedWhatsappThreads.length} chat{mergedWhatsappThreads.length === 1 ? '' : 's'} imported
+              {mergedWhatsappThreads[0]?.date_range?.[1] && (
+                <> · latest message {new Date(mergedWhatsappThreads[0].date_range[1]).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</>
+              )})
             </span>
           </span>}
           right={<button onClick={handleRefreshWhatsappSummary} disabled={whatsappSummaryBusy}
@@ -1660,6 +1717,130 @@ export default function CustomerDetail() {
           </div>
         </Collapsible>
       )}
+
+      {/* Alibaba Messages (V8.10) — customers/{id}/alibaba_threads, see the
+          state/handlers comment above. Always shown, unlike WhatsApp/Email
+          above which hide until something's been imported — there's no
+          import page for Alibaba, pasting into this card IS how content
+          gets in. */}
+      <Collapsible storageKey={`${id}:alibaba`} bodyClassName=""
+        title={<span className="inline-flex items-center gap-1.5">
+          <MessageSquare size={15} className="text-gray-400" /> Alibaba Messages
+          {alibabaThreads.length > 0 && (
+            <span className="text-xs font-normal text-gray-400">
+              ({alibabaThreads.length} paste{alibabaThreads.length === 1 ? '' : 's'})
+            </span>
+          )}
+        </span>}
+        right={alibabaThreads.length > 0 && (
+          <button onClick={handleRefreshAlibabaSummary} disabled={alibabaSummaryBusy}
+            className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1.5">
+            {alibabaSummaryBusy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            {customer?.alibaba_summary ? 'Refresh' : 'Generate'}
+          </button>
+        )}>
+        <div className="px-5 py-4 space-y-3 border-b border-gray-100">
+          <div>
+            <label className="label">Paste Alibaba chat</label>
+            <p className="text-xs text-gray-400 mb-1.5">
+              Alibaba.com gives no export for buyer-seller chat — copy the conversation off the site and paste it here. Safe to paste again later as new messages come in; nothing is overwritten.
+            </p>
+            {alibabaThreads.length > 0 && (
+              <p className="text-xs font-medium text-gray-500 mb-1.5">
+                Last pasted: {(alibabaThreads[0].pasted_at?.toDate ? alibabaThreads[0].pasted_at.toDate() : new Date(alibabaThreads[0].pasted_at || Date.now())).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                {' — '}Alibaba shows the whole conversation every time, so only copy what's newer than this date next time.
+              </p>
+            )}
+            <textarea
+              className="input"
+              rows={5}
+              value={alibabaPasteText}
+              onChange={e => setAlibabaPasteText(e.target.value)}
+              placeholder="Paste the raw Alibaba.com chat text here…"
+            />
+            <div className="flex items-center gap-2 mt-1.5">
+              <button
+                type="button"
+                onClick={handleSaveAlibabaPaste}
+                disabled={alibabaSaveBusy || !alibabaPasteText.trim()}
+                className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1.5"
+              >
+                {alibabaSaveBusy ? <Loader2 size={13} className="animate-spin" /> : null}
+                {alibabaSaveBusy ? 'Saving…' : 'Save pasted messages'}
+              </button>
+              {alibabaSaved && (
+                <span className="text-xs text-green-600 inline-flex items-center gap-1"><Check size={13} /> Saved</span>
+              )}
+            </div>
+            {alibabaSaveError && (
+              <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 flex items-start gap-1.5 mt-1.5">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {alibabaSaveError}
+              </div>
+            )}
+          </div>
+
+          {alibabaSummaryError && (
+            <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 flex items-start gap-1.5">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {alibabaSummaryError}
+            </div>
+          )}
+          {alibabaThreads.length === 0 ? (
+            <p className="text-sm text-gray-400">Nothing pasted yet — paste the chat above to get started.</p>
+          ) : !customer?.alibaba_summary ? (
+            <p className="text-sm text-gray-400">Not generated yet — click {alibabaSummaryBusy ? '…' : 'Generate'} to have DeepSeek read the pasted messages.</p>
+          ) : (
+            <>
+              <p className="text-sm text-gray-700">{customer.alibaba_summary.summary}</p>
+              {customer.alibaba_summary.recent_activity && (
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Recent activity</h4>
+                  <p className="text-sm text-gray-600">{customer.alibaba_summary.recent_activity}</p>
+                </div>
+              )}
+              {customer.alibaba_summary.open_commitments?.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Open commitments</h4>
+                  <ul className="text-sm text-gray-600 list-disc list-inside space-y-0.5">
+                    {customer.alibaba_summary.open_commitments.map((c, i) => <li key={i}>{c}</li>)}
+                  </ul>
+                </div>
+              )}
+              <p className="text-[11px] text-gray-400">
+                Generated over {customer.alibaba_summary.paste_count ?? alibabaThreads.length} paste{(customer.alibaba_summary.paste_count ?? alibabaThreads.length) === 1 ? '' : 's'} — a draft, not verified. Refresh after new messages come in. Used by Daily Drafts.
+              </p>
+            </>
+          )}
+        </div>
+        {alibabaThreads.length > 0 && (
+          <div className="divide-y divide-gray-100">
+            {alibabaThreads.map(t => {
+              const expanded = alibabaExpanded === t.id
+              const d = t.pasted_at?.toDate ? t.pasted_at.toDate() : (t.pasted_at ? new Date(t.pasted_at) : null)
+              const dateLabel = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '(unknown date)'
+              return (
+                <div key={t.id} className="px-5 py-3">
+                  <button
+                    type="button"
+                    onClick={() => setAlibabaExpanded(v => v === t.id ? null : t.id)}
+                    className="w-full flex items-center justify-between text-left"
+                  >
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800">Pasted {dateLabel}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{(t.char_count || (t.raw_text || '').length).toLocaleString()} characters</p>
+                    </div>
+                    {expanded ? <ChevronUp size={16} className="text-gray-400 shrink-0" /> : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
+                  </button>
+                  {expanded && (
+                    <div className="mt-3 max-h-80 overflow-y-auto border-t border-gray-100 pt-3">
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{t.raw_text}</p>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </Collapsible>
 
       {/* Compose Message */}
       <Collapsible storageKey={`${id}:compose`} defaultOpen={false}

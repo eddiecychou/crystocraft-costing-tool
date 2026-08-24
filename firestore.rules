@@ -225,6 +225,15 @@ service cloud.firestore {
       match /whatsapp_threads/{threadId} {
         allow read, write: if isAdmin();
       }
+      // Alibaba Messages (V8.10) — raw text pasted by hand off Alibaba.com's
+      // buyer-seller chat interface (no export/API exists for it, unlike
+      // WhatsApp's manual .txt exports above or email's IMAP sync — see
+      // alibabaSummaryApi.js). Each doc is one pasted batch, additive/
+      // append-only. Same admin-only, never-customer-facing posture as
+      // whatsapp_threads/email_threads above — real correspondence content.
+      match /alibaba_threads/{threadId} {
+        allow read, write: if isAdmin();
+      }
       // Brand Gallery assets (V7.21) — customer logos / brand images.
       // The privacy guarantee (Customer_Brand_Gallery_Spec.md §6): admins have
       // full access; a logged-in customer may read ONLY their own linked
@@ -265,6 +274,11 @@ service cloud.firestore {
       // page's "Save as Lead" path. Same shape/posture as
       // customers/{id}/whatsapp_threads above.
       match /whatsapp_threads/{threadId} {
+        allow read, write: if isAdmin();
+      }
+      // Alibaba Messages (V8.10) — same shape/posture as
+      // customers/{id}/alibaba_threads above, extended to marketing leads.
+      match /alibaba_threads/{threadId} {
         allow read, write: if isAdmin();
       }
       // Email ingestion (V8.9) — extended from customers/ (see

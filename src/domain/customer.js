@@ -300,6 +300,13 @@ export function normalizeCustomer(raw) {
     // reading it off useCustomers()/loadCustomers()) silently dropped it,
     // so Daily Drafts never actually saw WhatsApp context.
     whatsapp_summary:  r.whatsapp_summary ?? null,
+    // Alibaba Messages (V8.10) — same idea as whatsapp_summary above, but
+    // over customers/{id}/alibaba_threads (raw text pasted by hand off
+    // Alibaba.com — no export/API exists, see alibabaSummaryApi.js). Added
+    // straight from the start this time, precisely BECAUSE whatsapp_summary
+    // above went missing here once already (see its own comment) — a field
+    // missing from this whitelist silently vanishes on the next reload.
+    alibaba_summary:   r.alibaba_summary ?? null,
     // Draft Memory Layer (V8.9) — same field/posture as
     // marketing_contacts.ai_context_summary (domain/marketingContact.js):
     // a short, admin-edited relationship/writing-preference summary fed
