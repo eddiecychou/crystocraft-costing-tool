@@ -1,4 +1,4 @@
-import { Document, Page, View, Text, Image, Font, StyleSheet } from '@react-pdf/renderer'
+import { Document, Page, View, Text, Image, Font, StyleSheet, Svg, Defs, LinearGradient, Stop, Rect } from '@react-pdf/renderer'
 import logoUrl from '../assets/logo.png'
 import QuestrialRegular from '../assets/fonts/Questrial-Regular.ttf'
 import WorkSansRegular  from '../assets/fonts/WorkSans-Regular.ttf'
@@ -67,14 +67,13 @@ const s = StyleSheet.create({
   // stacked over empty space (explicit brief requirement). ──
   coverPage: { padding: 0, fontFamily: 'Questrial' },
   coverImage: { position: 'absolute', top: 0, left: 0, width: PAGE[0], height: PAGE[1], objectFit: 'cover' },
-  // react-pdf has no CSS gradient support, so a dark-toward-the-bottom
-  // scrim (for text legibility over a photo) is approximated with several
-  // stacked bands of increasing opacity rather than one or two flat
-  // layers — two layers left a visible hard seam where they overlapped
-  // (caught in the render QA pass), four blends it smoothly enough that
-  // no single edge reads as a line.
-  coverScrimBase: { position: 'absolute', top: 0, left: 0, width: PAGE[0], height: PAGE[1], backgroundColor: DS_COLORS.inkBlack, opacity: 0.22 },
-  coverScrimBand: { position: 'absolute', left: 0, width: PAGE[0], backgroundColor: DS_COLORS.inkBlack },
+  // A real linear gradient (react-pdf supports SVG gradients, just not CSS
+  // ones) — a first attempt approximated this with stacked flat-opacity
+  // bands, which looked fine against a flat grey QA placeholder but showed
+  // visible horizontal stripes against a real photo (owner report,
+  // 2026-08-24, with the actual generated PDF attached). An SVG
+  // <LinearGradient> is the correct tool for this and has no seams.
+  coverScrimSvg: { position: 'absolute', top: 0, left: 0 },
   coverContent: { position: 'absolute', left: MARGIN, right: MARGIN, bottom: MARGIN, top: MARGIN, justifyContent: 'space-between' },
   coverLogo: { width: 140, height: Math.round(140 / 5.713) },
   coverEyebrow: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: DS_COLORS.champagne, marginBottom: 10 },
@@ -99,7 +98,14 @@ const s = StyleSheet.create({
   // ── Product card — image, name, ONE caption line, optional tag. No specs/
   // MOQ/supplier/lead time anywhere on these pages, per the brief. ──
   cardBorder: { borderWidth: 1, borderColor: DS_COLORS.warmGrey },
-  cardImageWrap: { backgroundColor: DS_COLORS.beige, overflow: 'hidden' },
+  // Square, always — owner report against the real generated PDF,
+  // 2026-08-24: a fixed pixel HEIGHT paired with a percentage WIDTH (the
+  // original approach) produced a different aspect ratio per tier and
+  // cropped real product photos oddly. aspectRatio:1 derives the height
+  // from whatever width the grid gives this card, so the frame is
+  // consistently square regardless of column count — a "consistent image
+  // frame" per the brief, not a coincidentally-similar one.
+  cardImageWrap: { backgroundColor: DS_COLORS.beige, overflow: 'hidden', aspectRatio: 1 },
   cardImage: { width: '100%', height: '100%', objectFit: 'cover' },
   cardBody: { paddingTop: 8, paddingHorizontal: 2 },
   cardName: { fontSize: 10.5, color: DS_COLORS.nearBlack, marginBottom: 3 },
@@ -145,7 +151,7 @@ function Tag({ children, accent }) {
   return <Text style={[s.cardTag, { color: accent, backgroundColor: accent + '14', borderWidth: 1, borderColor: accent + '33' }]}>{children}</Text>
 }
 
-function ProductCard({ p, accent, imgH = 150 }) {
+function ProductCard({ p, accent }) {
   // No flex:1 wrapper — see the style block's own comment above. This is
   // the exact bug RangeCataloguePDF.jsx's ProductCard comment already
   // warns about, reintroduced and caught live by rendering every tier
@@ -154,7 +160,7 @@ function ProductCard({ p, accent, imgH = 150 }) {
   // nothing and overlapped every row of text.
   return (
     <View>
-      <View style={[s.cardImageWrap, s.cardBorder, { height: imgH }]}>
+      <View style={[s.cardImageWrap, s.cardBorder]}>
         {p.image ? <Image style={s.cardImage} src={p.image} /> : null}
       </View>
       <View style={s.cardBody}>
@@ -217,10 +223,14 @@ function GridQuad({ products, accent }) {
   return (
     <View wrap={false}>
       {rows.map((row, i) => row.length > 0 && (
-        <View key={i} style={{ flexDirection: 'row', gap: 24, marginBottom: 20, justifyContent: row.length === 1 ? 'center' : 'flex-start' }}>
+        // Centred always, not just the short row — with a fixed card width
+        // (square frames, see cardImageWrap's own comment) two columns
+        // never fill the wide 16:9 body on their own, so left-aligning
+        // would read as accidentally off-centre rather than deliberate.
+        <View key={i} style={{ flexDirection: 'row', gap: 24, marginBottom: 20, justifyContent: 'center' }}>
           {row.map(p => (
-            <View key={p.key} style={{ width: row.length === 1 ? '46%' : '48%' }}>
-              <ProductCard p={p} accent={accent} imgH={190} />
+            <View key={p.key} style={{ width: 220 }}>
+              <ProductCard p={p} accent={accent} />
             </View>
           ))}
         </View>
@@ -243,16 +253,13 @@ function Grid8({ products, accent }) {
   return (
     <View wrap={false}>
       {chunkRows(products).map((row, i) => (
-        <View key={i} wrap={false} style={{ flexDirection: 'row', gap: 18, marginBottom: 16, justifyContent: row.length < PER_ROW ? 'center' : 'flex-start' }}>
+        // Fixed card width (square frames, see cardImageWrap), centred
+        // rather than stretched — a short final row (e.g. 6 items = 4+2)
+        // reads as deliberate, not an accidentally sparse leftover.
+        <View key={i} wrap={false} style={{ flexDirection: 'row', gap: 18, marginBottom: 16, justifyContent: 'center' }}>
           {row.map(p => (
-            <View key={p.key} style={{ width: row.length < PER_ROW ? `${100 / Math.max(row.length, 1) - 4}%` : '22.5%' }}>
-              {/* 100, not 130 — measured live: two rows at 130 (plus card
-                  body text) genuinely don't fit under the heading/briefing
-                  block within one page's safe area, which pushed the whole
-                  grid onto its own page and left the heading alone on a
-                  near-blank one (caught in the render QA pass). 100 keeps
-                  both rows comfortably inside the remaining height. */}
-              <ProductCard p={p} accent={accent} imgH={100} />
+            <View key={p.key} style={{ width: 165 }}>
+              <ProductCard p={p} accent={accent} />
             </View>
           ))}
         </View>
@@ -368,10 +375,18 @@ export default function BrandProposalPDF({ client, hero, tagline, briefing, sect
       {/* Cover — full-bleed hero + structured text block. */}
       <Page size={PAGE} style={s.coverPage}>
         {hero?.image ? <Image style={s.coverImage} src={hero.image} /> : <View style={[s.coverImage, { backgroundColor: DS_COLORS.inkBlack }]} />}
-        <View style={s.coverScrimBase} />
-        <View style={[s.coverScrimBand, { bottom: 0, height: 340, opacity: 0.14 }]} />
-        <View style={[s.coverScrimBand, { bottom: 0, height: 220, opacity: 0.16 }]} />
-        <View style={[s.coverScrimBand, { bottom: 0, height: 120, opacity: 0.18 }]} />
+        <Svg style={s.coverScrimSvg} width={PAGE[0]} height={PAGE[1]}>
+          <Defs>
+            {/* Top: barely darkened, just enough for the logo to read on a
+                bright sky. Bottom: dark enough for white text over any photo. */}
+            <LinearGradient id="coverScrim" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0" stopColor={DS_COLORS.inkBlack} stopOpacity={0.18} />
+              <Stop offset="0.55" stopColor={DS_COLORS.inkBlack} stopOpacity={0.28} />
+              <Stop offset="1" stopColor={DS_COLORS.inkBlack} stopOpacity={0.72} />
+            </LinearGradient>
+          </Defs>
+          <Rect x="0" y="0" width={PAGE[0]} height={PAGE[1]} fill="url(#coverScrim)" />
+        </Svg>
         <View style={s.coverContent}>
           <Image style={s.coverLogo} src={logoUrl} />
           <View>

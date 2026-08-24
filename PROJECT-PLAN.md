@@ -174,10 +174,42 @@ caption/name keyword heuristic); no appendix page for procurement details
 (brief marks this optional, "if required" — nothing in the current data
 model needs it yet); the old `ProposalPrint.jsx` portrait route was left
 in place, unlinked, rather than deleted (lower risk than removing a route
-outright); no live end-to-end test against a real published proposal in
-the browser (Firestore reads/Storage images/Netlify image-proxy — this
-session verified layout correctness with a self-generated Node PDF, not a
-real customer document).
+outright).
+
+### Two real bugs found against the ACTUAL generated PDF, not the synthetic QA one
+
+The synthetic QA pass above used a flat grey placeholder image and caught
+real layout bugs, but missed two more that only showed up against an
+actual real proposal (owner attached the real generated PDF, 2026-08-24 —
+United Art / Sun Life):
+
+1. **Visible horizontal stripes across the cover photo.** The QA-pass fix
+   for the scrim (stacked flat-opacity bands, since react-pdf has no CSS
+   gradient support) looked smooth against a flat grey rectangle but left
+   clearly visible seams against a real photo's actual tonal variation.
+   Fixed properly with a real SVG gradient (`<Svg><Defs><LinearGradient>`)
+   — react-pdf supports SVG gradients even though it doesn't support CSS
+   ones; the band approach was a worse tool for the job, not just an
+   under-tuned one.
+2. **"All the product photos are cropped and should be square"** (owner,
+   verbatim). Grid cards had a fixed pixel HEIGHT paired with a
+   percentage WIDTH, so the actual aspect ratio silently varied by tier
+   (wider for grid8, narrower for quad) and `objectFit: 'cover'` cropped
+   every real photo to whatever that mismatched shape happened to be —
+   invisible against a solid-colour placeholder, obvious against real
+   product photography. Fixed with `aspectRatio: 1` on the image frame
+   (derives height from width, always square) and fixed pixel WIDTHs
+   instead of percentages (220pt for quad, 165pt for grid8) — tuned by
+   re-running the same render-and-inspect QA loop, since a square frame
+   is taller than the old rectangle at the same width and the original
+   sizes no longer fit a page.
+
+Same lesson as the flex:1 bugs above, one level up: **a synthetic QA
+placeholder proves the LAYOUT MATH works, not that the visual result is
+right** — a flat grey rectangle can't reveal a gradient seam or an
+aspect-ratio mismatch the way real content does. Worth re-running the
+visual QA pass against a real document (not just synthetic data) before
+calling a PDF feature done in future cycles.
 
 ## Current Status — V8.9 CLOSED as of 2026-08-24
 
