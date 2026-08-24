@@ -1,4 +1,6 @@
 import { pdf } from '@react-pdf/renderer'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from './firebase'
 import { loadProposal, resolveProposalAsset, resolveProductRefs } from './customerProposal'
 import { loadCustomerVisibleAssets } from './customerAssets'
 import BrandProposalPDF from './components/BrandProposalPDF'
@@ -46,6 +48,18 @@ const isPremiumRef = (caption, name) => PREMIUM_WORDS.test(`${caption || ''} ${n
 export async function buildBrandProposalPdf(customerId, profile, { onProgress, allowDraft = false } = {}) {
   const p = await loadProposal(customerId)
   if (!p || (p.status !== 'published' && !allowDraft)) throw new Error('No published proposal to export.')
+
+  // The COVER/CLIENT NAME must be the actual customer this proposal is
+  // for — NOT the logged-in portal account's own name/company. Owner,
+  // 2026-08-24: "United Art is my testing account... I use my testing
+  // account to link to Sunlife" — a test/proxy login viewing someone
+  // else's proposal was showing ITS OWN name on the cover instead of the
+  // real client's, because this used to read `profile.name`
+  // (whoever's currently logged in) rather than the customer record the
+  // proposal actually belongs to. Always fetched fresh from `customers/
+  // {customerId}`, independent of who's viewing.
+  const customerSnap = await getDoc(doc(db, 'customers', customerId))
+  const customerCompanyName = customerSnap.exists() ? (customerSnap.data().company_name || '') : ''
 
   // assetsById only needs the hero — sections' own images[] (non-product
   // assets) aren't part of the adaptive PRODUCT grid the brief specifies,
@@ -102,7 +116,7 @@ export async function buildBrandProposalPdf(customerId, profile, { onProgress, a
 
   const blob = await pdf(
     <BrandProposalPDF
-      client={{ name: profile?.name || profile?.company_name || '', date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) }}
+      client={{ name: customerCompanyName, date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) }}
       hero={heroDataUrl ? { image: heroDataUrl } : null}
       tagline={p.tagline}
       briefing={p.briefing}
@@ -110,7 +124,7 @@ export async function buildBrandProposalPdf(customerId, profile, { onProgress, a
     />,
   ).toBlob()
 
-  const stem = ['Crystocraft Brand Proposal', profile?.name || profile?.company_name, new Date().toISOString().slice(0, 10)]
+  const stem = ['Crystocraft Brand Proposal', customerCompanyName, new Date().toISOString().slice(0, 10)]
     .filter(Boolean).join(' - ').replace(/[\\/:*?"<>|]/g, '-')
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')

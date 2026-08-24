@@ -211,6 +211,45 @@ aspect-ratio mismatch the way real content does. Worth re-running the
 visual QA pass against a real document (not just synthetic data) before
 calling a PDF feature done in future cycles.
 
+### Second round of real feedback — 4 more fixes, one design revision
+
+Owner sent a second real generated PDF (United Art → Sun Life test account)
+with four issues:
+
+1. **Cover showed "United Art" instead of "Sun Life"** — the real bug
+   behind this: `client.name` was read from `profile.name` (whoever is
+   CURRENTLY LOGGED IN to the portal), not from the customer the proposal
+   is actually for. Owner: "United Art is my testing account... I use my
+   testing account to link to Sun Life." Fixed by fetching
+   `customers/{customerId}.company_name` directly in
+   `brandProposalExport.jsx`, independent of the viewing session — the
+   proposal's identity should never depend on who happens to be logged in
+   to view/download it.
+2. **"Prepared for X" removed** from the section-page header text.
+3. **Logo moved to the footer, bottom-right** (next to the page number),
+   out of the header entirely — it was sitting directly above the section
+   title and reading as "tightly squeezed together" with it.
+4. **Section header removed entirely; spacing widened.** With the logo and
+   "Prepared for" gone, there was nothing left to justify a header bar at
+   all — removed it outright so the section title gets the page's own top
+   margin as real breathing room, and widened the title/tagline/briefing
+   margins (4/6/14pt → 8/10/26pt).
+
+Plus one real design revision, not just a bug: **"I think it is better to
+keep 1-3 max items in 1 page for this landscape... single item page
+product image is cropped and should be square."** The 2×2/4×2 multi-row
+grids (`GridQuad`/`Grid8`) were removed outright, not tuned — replaced
+with `MAX_PER_PAGE = 3` and a single `Triple` component for any 3-item
+row; `paginate()` now chunks at 3, not 8, so a 7-product section becomes
+three pages (3+3+1) rather than one dense grid. `FeatureSolo` (the
+1-product layout) also switched from a wide rectangle to
+`aspectRatio: 1` — the owner's square-image feedback applied to every
+tier, not just the grid cards from the first round.
+
+Re-verified with the same render-and-inspect QA loop as before (9-page
+synthetic document covering solo/duo/triple/7-item-split/premium) — zero
+"bigger than page" warnings this time, a first for this feature.
+
 ## Current Status — V8.9 CLOSED as of 2026-08-24
 
 Started as one feature (a memory layer so Daily Drafts stops needing the

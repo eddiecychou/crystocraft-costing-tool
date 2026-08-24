@@ -84,16 +84,23 @@ const s = StyleSheet.create({
   coverMetaValue: { fontSize: 11, color: DS_COLORS.white },
 
   // ── Section page chrome ──
-  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
-  headLogo: { width: 84, height: Math.round(84 / 5.713) },
-  headMeta: { fontFamily: 'Work Sans', fontSize: 7.5, color: DS_COLORS.midGrey, letterSpacing: 0.6 },
-  footer: { position: 'absolute', bottom: 20, left: MARGIN, right: MARGIN, flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 0.8, borderTopColor: DS_COLORS.warmGrey, paddingTop: 6 },
+  // No top header at all any more — owner, 2026-08-24: the logo sitting
+  // directly above the section title read as "tightly squeezed together",
+  // and "Prepared for X" (headMeta) was redundant with the cover. The logo
+  // now lives bottom-right in the footer instead, and the title gets the
+  // page's own top margin as real breathing room rather than sharing it
+  // with a header bar.
+  footer: { position: 'absolute', bottom: 20, left: MARGIN, right: MARGIN, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 0.8, borderTopColor: DS_COLORS.warmGrey, paddingTop: 8 },
   footText: { fontFamily: 'Work Sans', fontSize: 7, color: DS_COLORS.midGrey },
+  footRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  footLogo: { width: 52, height: Math.round(52 / 5.713) },
 
   sectionEyebrow: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 9, letterSpacing: 1.6, textTransform: 'uppercase', marginTop: 14, marginBottom: 4 },
-  sectionTitle: { fontSize: 22, color: DS_COLORS.nearBlack, marginBottom: 4 },
-  sectionTagline: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 10, color: DS_COLORS.midGrey, marginBottom: 6 },
-  sectionBriefing: { fontSize: 9.5, color: DS_COLORS.midGrey, lineHeight: 1.45, maxWidth: 640, marginBottom: 14 },
+  // More generous spacing throughout — owner, 2026-08-24: "texts desc with
+  // title are very squeezed and need some proper spacing".
+  sectionTitle: { fontSize: 24, color: DS_COLORS.nearBlack, marginBottom: 8 },
+  sectionTagline: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 11, color: DS_COLORS.midGrey, marginBottom: 10 },
+  sectionBriefing: { fontSize: 10, color: DS_COLORS.midGrey, lineHeight: 1.55, maxWidth: 640, marginBottom: 26 },
 
   // ── Product card — image, name, ONE caption line, optional tag. No specs/
   // MOQ/supplier/lead time anywhere on these pages, per the brief. ──
@@ -112,37 +119,44 @@ const s = StyleSheet.create({
   cardCaption: { fontFamily: 'Work Sans', fontSize: 8, color: DS_COLORS.midGrey, lineHeight: 1.35 },
   cardTag: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 6.5, letterSpacing: 0.6, textTransform: 'uppercase', paddingVertical: 3, paddingHorizontal: 7, alignSelf: 'flex-start', marginBottom: 6 },
 
-  // ── Solo / duo feature layouts (1–2 products) ──
-  // Deliberately NO flex:1 anywhere in this file for sizing (see
-  // ProductCard/FeatureSolo's own comments) — RangeCataloguePDF.jsx already
-  // documents why: react-pdf's yoga layout doesn't reliably compute a
-  // flex-grown block's height the way CSS flexbox does, and a flex:1 child
-  // with no unambiguous available dimension collapses to zero rather than
-  // filling space. Every block here gets an EXPLICIT height instead.
-  featureRow: { flexDirection: 'row', gap: 28 },
-  featureImageWrap: { backgroundColor: DS_COLORS.beige, overflow: 'hidden' },
+  // ── Solo / duo feature layouts (1–2 products) — square images, same as
+  // the grid cards (see cardImageWrap's own comment: owner reported EVERY
+  // product photo should be square, including the single-item feature
+  // page, not just grid cards). Deliberately NO flex:1 anywhere in this
+  // file for sizing (see ProductCard/FeatureSolo's own comments) —
+  // RangeCataloguePDF.jsx already documents why: react-pdf's yoga layout
+  // doesn't reliably compute a flex-grown block's height the way CSS
+  // flexbox does, and a flex:1 child with no unambiguous available
+  // dimension collapses to zero rather than filling space. Every block
+  // here gets an EXPLICIT size instead. ──
+  featureRow: { flexDirection: 'row', gap: 32, alignItems: 'center' },
+  featureImageWrap: { backgroundColor: DS_COLORS.beige, overflow: 'hidden', aspectRatio: 1 },
   featureImage: { width: '100%', height: '100%', objectFit: 'cover' },
   featureText: { justifyContent: 'center' },
   featureName: { fontSize: 22, color: DS_COLORS.nearBlack, marginBottom: 8 },
   featureCaption: { fontFamily: 'Work Sans', fontSize: 10.5, color: DS_COLORS.midGrey, lineHeight: 1.5, maxWidth: 300 },
 })
 
-// ── Adaptive tiering — the whole point of this file. Never one fixed grid. ──
+// ── Adaptive tiering — the whole point of this file. Never one fixed grid.
+// Capped at 3 items per page (owner, 2026-08-24, after seeing the 4/8-up
+// grids look "very strange" and cramped on a 16:9 page: "I think it is
+// better to keep 1-3 max items in 1 page for this landscape"). No more
+// 2x2/4x2 multi-row grids — every page is a single row of at most 3. ──
+const MAX_PER_PAGE = 3
 function tierFor(count) {
   if (count <= 1) return 'solo'
   if (count === 2) return 'duo'
-  if (count <= 4) return 'quad'
-  return 'grid8' // 5–8 handled directly; 9+ is chunked into grid8 pages by paginate() below
+  return 'triple' // 3, or the last chunk of a paginated group
 }
 
-// 9–12 (and beyond) split across pages rather than shrinking cards — chunk
-// into groups of up to 8, each rendered as its own grid8 page. A 9-item
-// section becomes two pages (8 + 1, the trailing single centred rather than
-// stretched — see Grid8's own handling of a short final row).
+// Anything beyond MAX_PER_PAGE splits across pages rather than shrinking
+// cards or stacking rows — a 7-item section becomes three pages (3+3+1),
+// the trailing single still getting its own full solo treatment rather
+// than a lonely small card.
 function paginate(products) {
-  if (products.length <= 8) return [products]
+  if (products.length <= MAX_PER_PAGE) return [products]
   const pages = []
-  for (let i = 0; i < products.length; i += 8) pages.push(products.slice(i, i + 8))
+  for (let i = 0; i < products.length; i += MAX_PER_PAGE) pages.push(products.slice(i, i + MAX_PER_PAGE))
   return pages
 }
 
@@ -173,20 +187,22 @@ function ProductCard({ p, accent }) {
 }
 
 // One product, full-scale — used for the 'solo' tier AND for any product
-// flagged premium/VIP/Signature (see isPremium below), which always gets
-// pulled out into its own dedicated feature layout regardless of how many
-// other products share its section. A high-value piece is never squeezed
-// into a standard grid cell.
-// `height` varies by call site: a solo product sharing a page with the
-// section heading/briefing gets less room (300) than one on its own
-// premium feature page with nothing else on it (420) — see SectionPages.
-function FeatureSolo({ p, accent, height = 300 }) {
+// flagged premium/VIP/Signature, which always gets pulled out into its own
+// dedicated feature layout regardless of how many other products share its
+// section. A high-value piece is never squeezed into a standard grid cell.
+// `width` varies by call site: a solo product sharing a page with the
+// section heading/briefing gets a smaller square (260) than one on its own
+// premium feature page with nothing else on it (340) — see SectionPages.
+// Square, not a wide rectangle — owner, 2026-08-24, against the real
+// generated PDF: "single item page product image is cropped and should be
+// square", same fix as the grid cards (cardImageWrap's own comment).
+function FeatureSolo({ p, accent, width = 260 }) {
   return (
     <View style={s.featureRow} wrap={false}>
-      <View style={[s.featureImageWrap, s.cardBorder, { width: '54%', height }]}>
+      <View style={[s.featureImageWrap, s.cardBorder, { width }]}>
         {p.image ? <Image style={s.featureImage} src={p.image} /> : null}
       </View>
-      <View style={[s.featureText, { width: '38%', height, justifyContent: 'center' }]}>
+      <View style={[s.featureText, { width: 320 }]}>
         {p.tag ? <Tag accent={accent}>{p.tag}</Tag> : null}
         <Text style={s.featureName}>{p.name}</Text>
         {p.caption ? <Text style={s.featureCaption}>{p.caption}</Text> : null}
@@ -197,10 +213,10 @@ function FeatureSolo({ p, accent, height = 300 }) {
 
 function FeatureDuo({ products, accent }) {
   return (
-    <View style={s.featureRow} wrap={false}>
+    <View style={[s.featureRow, { justifyContent: 'center' }]} wrap={false}>
       {products.map(p => (
-        <View key={p.key} style={{ width: '46%' }}>
-          <View style={[s.featureImageWrap, s.cardBorder, { height: 260 }]}>
+        <View key={p.key} style={{ width: 220 }}>
+          <View style={[s.featureImageWrap, s.cardBorder]}>
             {p.image ? <Image style={s.featureImage} src={p.image} /> : null}
           </View>
           <View style={{ marginTop: 12 }}>
@@ -214,81 +230,41 @@ function FeatureDuo({ products, accent }) {
   )
 }
 
-// 3–4 products: a balanced 2x2. A 3-item section centres its short final
-// row instead of stretching the third card wide or leaving a bare gap —
-// explicit brief requirement ("intentional editorial arrangement... rather
-// than a large accidental-looking gap").
-function GridQuad({ products, accent }) {
-  const rows = [products.slice(0, 2), products.slice(2, 4)]
+// 3 products (also the tail of any paginated group): one centred row,
+// square cards — the top tier of the "max 3 per page" cap, so this is as
+// dense as any page ever gets. Never a second row: 4+ always paginates
+// into more of these instead (see paginate() above).
+function Triple({ products, accent }) {
   return (
-    <View wrap={false}>
-      {rows.map((row, i) => row.length > 0 && (
-        // Centred always, not just the short row — with a fixed card width
-        // (square frames, see cardImageWrap's own comment) two columns
-        // never fill the wide 16:9 body on their own, so left-aligning
-        // would read as accidentally off-centre rather than deliberate.
-        <View key={i} style={{ flexDirection: 'row', gap: 24, marginBottom: 20, justifyContent: 'center' }}>
-          {row.map(p => (
-            <View key={p.key} style={{ width: 220 }}>
-              <ProductCard p={p} accent={accent} />
-            </View>
-          ))}
+    <View wrap={false} style={{ flexDirection: 'row', gap: 28, justifyContent: 'center' }}>
+      {products.map(p => (
+        <View key={p.key} style={{ width: 190 }}>
+          <ProductCard p={p} accent={accent} />
         </View>
       ))}
     </View>
   )
 }
 
-// 5–8 products: landscape 4-across x up-to-2-deep grid. Same "no flexWrap"
-// reasoning RangeCataloguePDF.jsx already documents — react-pdf doesn't
-// size a wrapped flex line by its tallest child, so rows are explicit and
-// each row is its own wrap={false} block.
-const PER_ROW = 4
-function chunkRows(list) {
-  const out = []
-  for (let i = 0; i < list.length; i += PER_ROW) out.push(list.slice(i, i + PER_ROW))
-  return out
-}
-function Grid8({ products, accent }) {
-  return (
-    <View wrap={false}>
-      {chunkRows(products).map((row, i) => (
-        // Fixed card width (square frames, see cardImageWrap), centred
-        // rather than stretched — a short final row (e.g. 6 items = 4+2)
-        // reads as deliberate, not an accidentally sparse leftover.
-        <View key={i} wrap={false} style={{ flexDirection: 'row', gap: 18, marginBottom: 16, justifyContent: 'center' }}>
-          {row.map(p => (
-            <View key={p.key} style={{ width: 165 }}>
-              <ProductCard p={p} accent={accent} />
-            </View>
-          ))}
-        </View>
-      ))}
-    </View>
-  )
-}
-
-function RunningHead({ clientName }) {
-  return (
-    <View style={s.head} fixed>
-      <Image style={s.headLogo} src={logoUrl} />
-      <Text style={s.headMeta}>{clientName ? `Prepared for ${clientName}` : ''}</Text>
-    </View>
-  )
-}
+// No top header any more (see the `footer` style's own comment) — every
+// section page starts straight into its title. The logo + page number live
+// in the footer instead, bottom-right, per owner's explicit placement ask.
 function Footer() {
   return (
     <View style={s.footer} fixed>
       <Text style={s.footText}>Crystocraft · United Art Metals Factory Ltd</Text>
-      <Text style={s.footText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+      <View style={s.footRight}>
+        <Image style={s.footLogo} src={logoUrl} />
+        <Text style={s.footText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
+      </View>
     </View>
   )
 }
 
-// One <Page> per chunk of a section's products — a section with 9–12+
-// products becomes multiple pages automatically via paginate() above; every
-// OTHER tier is exactly one page.
-function SectionPages({ section, accent, clientName, isFirstOfDocument }) {
+// One <Page> per chunk of a section's products — a section with more than
+// MAX_PER_PAGE products becomes multiple pages automatically via
+// paginate() above; every other tier is exactly one page.
+function SectionPages({ section, accent }) {
   const featured = section.products.filter(p => p.premium)
   const regular = section.products.filter(p => !p.premium)
   const chunks = paginate(regular)
@@ -302,18 +278,14 @@ function SectionPages({ section, accent, clientName, isFirstOfDocument }) {
   featured.forEach((p, i) => {
     pages.push(
       <Page key={`${section.key}-feature-${i}`} size={PAGE} style={s.page}>
-        <RunningHead clientName={clientName} />
         {/* Heading bound into the SAME wrap={false} block as the feature —
             the exact bug RangeCataloguePDF.jsx's own "bind heading into the
-            first row" comment already warns about, reproduced here: at
-            height 420 the block didn't fit under the title, so it overflowed
-            to its own page and stranded the title alone on a near-blank one
-            (caught in the render QA pass). Wrapping them together plus a
-            height that actually fits (360, not 420) fixes both the orphan
-            and the overflow. */}
+            first row" comment already warns about: if they can split
+            independently, the title can strand itself alone on a near-blank
+            page while the content overflows to the next. */}
         <View wrap={false}>
           <Text style={s.sectionTitle}>{section.heading}</Text>
-          <FeatureSolo p={p} accent={accent} height={360} />
+          <FeatureSolo p={p} accent={accent} width={340} />
         </View>
         <Footer />
       </Page>,
@@ -325,11 +297,10 @@ function SectionPages({ section, accent, clientName, isFirstOfDocument }) {
     const tier = tierFor(chunk.length)
     pages.push(
       <Page key={`${section.key}-${i}`} size={PAGE} style={s.page}>
-        <RunningHead clientName={clientName} />
         {/* Heading+tagline+briefing bound into the SAME wrap={false} unit
             as the first content block — same reasoning as the premium
             feature page above (and RangeCataloguePDF.jsx's own precedent):
-            without this, the heading and the grid could split across two
+            without this, the heading and the row could split across two
             pages independently, stranding the heading alone. */}
         <View wrap={false}>
           {i === 0 && (
@@ -339,10 +310,9 @@ function SectionPages({ section, accent, clientName, isFirstOfDocument }) {
               {section.briefing ? <Text style={s.sectionBriefing}>{section.briefing}</Text> : null}
             </>
           )}
-          {chunk.length === 1 && <FeatureSolo p={chunk[0]} accent={accent} />}
-          {chunk.length === 2 && <FeatureDuo products={chunk} accent={accent} />}
-          {(tier === 'quad') && <GridQuad products={chunk} accent={accent} />}
-          {tier === 'grid8' && <Grid8 products={chunk} accent={accent} />}
+          {tier === 'solo' && chunk.length === 1 && <FeatureSolo p={chunk[0]} accent={accent} />}
+          {tier === 'duo' && <FeatureDuo products={chunk} accent={accent} />}
+          {tier === 'triple' && <Triple products={chunk} accent={accent} />}
         </View>
         <Footer />
       </Page>,
@@ -411,7 +381,6 @@ export default function BrandProposalPDF({ client, hero, tagline, briefing, sect
           filler page. */}
       {briefing ? (
         <Page size={PAGE} style={s.page}>
-          <RunningHead clientName={clientName} />
           <View style={{ flex: 1, justifyContent: 'center', maxWidth: 620 }}>
             <Text style={s.sectionEyebrow}>The Brief</Text>
             <Text style={{ fontSize: 18, lineHeight: 1.6, color: DS_COLORS.nearBlack }}>{briefing}</Text>
@@ -421,7 +390,7 @@ export default function BrandProposalPDF({ client, hero, tagline, briefing, sect
       ) : null}
 
       {sections.filter(sec => sec.products.length > 0).flatMap(sec => (
-        SectionPages({ section: sec, accent, clientName })
+        SectionPages({ section: sec, accent })
       ))}
     </Document>
   )
