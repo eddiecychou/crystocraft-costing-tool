@@ -87,6 +87,98 @@ signed-in user with `role:'customer'`/`status` not `'approved'` sees it),
 so "same screen" does not mean "same bug" — check what's actually different
 about the account before assuming the mechanism.
 
+## V8.10 in progress — Landscape Brand Proposal PDF
+
+Owner's spec (2026-08-24, verbatim brief): a curated landscape (16:9) PDF
+sales proposal for clients, explicitly **not** a paginated screenshot of the
+customer portal's responsive grid — adaptive page templates by product
+count (1/2/3-4/5-8/9-12+), no placeholder cards, VIP/premium products get
+their own large feature treatment, cards show only image+name+one
+caption+optional tag (no specs/MOQ/supplier), everything inside a safe
+margin, and an explicit requirement to render and visually QA every page
+before calling it done.
+
+**Investigated first** (background agent) rather than guessed: found an
+untracked `Crystocraft Design System V2.5/` folder at the repo root
+(tokens/colours/typography/spacing CSS + component specs + a portrait
+proposal template reference — never wired into the app), the existing
+Sun-Life-Proposal-Build-Spec.md data model (`customers/{id}/proposal/current`,
+already live via `customerProposal.js`'s resolvers — hero/tagline/briefing/
+sections with resolved images+products, no new admin work needed), the
+current export (`ProposalPrint.jsx` — portrait A4, fixed 3-column CSS grid,
+`window.print()`, not adaptive, not landscape — the thing this replaces),
+and the two existing `@react-pdf/renderer` precedents (`QuotePDF.jsx`,
+`RangeCataloguePDF.jsx`) whose own hard-won comments about react-pdf's flex
+layout quirks turned out to be directly relevant (see below).
+
+**Built:**
+- `src/components/BrandProposalPDF.jsx` — pure presentation, 960×540pt
+  (16:9) pages. Colour/type/spacing tokens translated 1:1 from Design
+  System V2.5 (`DS_COLORS`), kept deliberately neutral — no customer-specific
+  colour hardcoded; `accentColor`/`division` are the one customer-specific
+  knob, passed in by the caller, per the brief's explicit instruction.
+  Adaptive tiers: solo (1) → large image+text feature; duo (2) → two-column
+  feature; quad (3–4) → balanced 2×2, short final row centred not stretched;
+  grid8 (5–8) → 4-across landscape grid; 9–12+ → chunked into multiple
+  grid8/duo pages rather than shrinking cards. Any product flagged
+  `premium` gets pulled out onto its own dedicated feature page ahead of
+  the regular grid, at a larger scale, regardless of section size.
+- `src/brandProposalExport.jsx` — the data-resolution half: loads the
+  proposal, resolves product refs (reusing `customerProposal.js` as-is),
+  inlines every image as a data URI via the download proxy (same
+  `imageToDataURL` split `RangeCatalogueExport.jsx` already established —
+  react-pdf can't reliably follow a Firebase Storage URL from inside
+  `pdf().toBlob()`), flags a product `premium` via a keyword heuristic
+  (`vip|hnw|signature|premium` in its caption/name — documented as a
+  heuristic, not a real schema field, since `product_refs` has no
+  dedicated boolean for this yet).
+- Wired into both `BrandPortalPage.jsx`'s customer-facing "Download PDF"
+  button (was a static link to the old print route, now builds this PDF
+  client-side with busy/error state) and `ProposalEditor.jsx`'s new
+  "Download PDF preview" button (works on a draft, `allowDraft:true`, so
+  it can be QA'd before publishing — the old print route required a
+  published proposal and a customer login to ever see it).
+
+**QA pass, as the brief explicitly required** — rendered real PDFs (Node +
+`@react-pdf/renderer`'s Node API, `pdftoppm` to PNG, visually inspected
+every page) against synthetic data covering every tier before calling this
+done, not just reading the diff. Found and fixed three real layout bugs
+this way, all the same root cause: **stray `flex: 1` used for "fill
+available space" sizing, which react-pdf's yoga layout does not compute
+the way CSS flexbox does** — `RangeCataloguePDF.jsx`'s own comments already
+warned about exactly this, and it was reintroduced anyway:
+1. `ProductCard`'s root had `flex: 1` inside a plain-width column — every
+   grid card's image collapsed to nothing and every row's captions
+   overlapped the row below it.
+2. `FeatureSolo`'s row had `flex: 1` trying to fill "remaining page height"
+   — instead of filling correctly, the block silently sized itself bigger
+   than any single page and split across three (image alone, then text
+   alone, on separate pages), stranding the section heading on an empty
+   first page.
+3. Headings not bound into the same `wrap={false}` unit as their first
+   content block let a heading and its grid/feature split across two pages
+   independently — same lesson `RangeCataloguePDF.jsx` already documents
+   ("the heading is bound INTO the same wrap={false} block as its first
+   row... minPresenceAhead does not hold here").
+
+Fix, applied uniformly: every sized block in this file uses an **explicit
+height**, never `flex: 1`; every section's heading+tagline+briefing+first
+content block is one `wrap={false}` unit. Also caught and fixed live: a
+hard visible seam in the cover's photo-darkening scrim (react-pdf has no
+CSS gradient — two flat opacity layers left a visible edge; four
+overlapping bands blend it smoothly), and the section heading rendering in
+a tiny uppercase "eyebrow" style instead of the actual title style.
+
+**Not done / deferred:** no admin UI field for `premium` (relies on the
+caption/name keyword heuristic); no appendix page for procurement details
+(brief marks this optional, "if required" — nothing in the current data
+model needs it yet); the old `ProposalPrint.jsx` portrait route was left
+in place, unlinked, rather than deleted (lower risk than removing a route
+outright); no live end-to-end test against a real published proposal in
+the browser (Firestore reads/Storage images/Netlify image-proxy — this
+session verified layout correctness with a self-generated Node PDF, not a
+real customer document).
+
 ## Current Status — V8.9 CLOSED as of 2026-08-24
 
 Started as one feature (a memory layer so Daily Drafts stops needing the

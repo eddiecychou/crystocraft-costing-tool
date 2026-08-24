@@ -1382,7 +1382,7 @@ export default function CustomerDetail() {
       <CustomerBrandGallery customerId={id} />
 
       {/* Proposal — customer-facing hero/sections presentation (Sun-Life-Proposal-Build-Spec.md §6) */}
-      <ProposalEditor customerId={id} />
+      <ProposalEditor customerId={id} customerName={customer?.company_name} />
 
       {/* Portal Enquiries (from the storefront) */}
       <Collapsible storageKey={`${id}:portal-enquiries`} title={`Portal Enquiries (${portalEnquiries.length})`} bodyClassName=""

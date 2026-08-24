@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom'
 import { loadCustomerVisibleAssets, loadBrandedProductImages, cannotRenderAsImage, TYPE_LABEL } from '../customerAssets'
 import { loadProposal, resolveProposalAsset, resolveProposalAssetIds, resolveProductRefs } from '../customerProposal'
 import { isStorefrontVisible } from '../constants'
-import { Download, FileText } from 'lucide-react'
+import { Download, FileText, Loader2 } from 'lucide-react'
 import FacetDivider from '../components/FacetDivider'
+import { buildBrandProposalPdf } from '../brandProposalExport'
 
 // "Brand Portal" — replaces the old separate "My Brand Gallery" / "My
 // Proposal" pages (owner, post-launch: two nav entries for the same
@@ -36,6 +37,23 @@ export default function BrandPortalPage({ profile }) {
   const [brandAssets, setBrandAssets] = useState([])    // category: brand_asset
   const [galleryProducts, setGalleryProducts] = useState([])  // deduped, leftover-filtered branded catalogue products
   const [galleryAssets, setGalleryAssets] = useState([])       // category: product_gallery (manually uploaded)
+  // V8.10 — landscape Brand Proposal PDF (brandProposalExport.js), replacing
+  // the old /shop/proposal/print portrait window.print() export. Built
+  // client-side on click (image inlining takes a few seconds for a section
+  // with several products), so this needs its own busy/error state rather
+  // than being a plain <a href>.
+  const [pdfBusy, setPdfBusy] = useState(false)
+  const [pdfError, setPdfError] = useState('')
+  async function handleDownloadPdf() {
+    setPdfBusy(true); setPdfError('')
+    try {
+      await buildBrandProposalPdf(customerId, profile)
+    } catch (e) {
+      setPdfError(e.message || 'Could not build the PDF.')
+    } finally {
+      setPdfBusy(false)
+    }
+  }
 
   useEffect(() => {
     let alive = true
@@ -138,10 +156,16 @@ export default function BrandPortalPage({ profile }) {
             {proposal.heroAsset && <img src={proposal.heroAsset.file_url} alt="" className="absolute inset-0 w-full h-full object-cover" />}
             <div className="absolute inset-0 bg-ink/35" />
             <div className="absolute inset-0 bg-gradient-to-t from-ink/90 via-ink/40 to-transparent" />
-            <a href="/shop/proposal/print" target="_blank" rel="noopener"
-               className="btn-reversed text-xs absolute top-4 right-4 z-10 inline-flex items-center gap-1.5">
-              <Download size={14} /> Download PDF
-            </a>
+            <button type="button" onClick={handleDownloadPdf} disabled={pdfBusy}
+               className="btn-reversed text-xs absolute top-4 right-4 z-10 inline-flex items-center gap-1.5 disabled:opacity-60">
+              {pdfBusy ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
+              {pdfBusy ? 'Building…' : 'Download PDF'}
+            </button>
+            {pdfError && (
+              <div className="absolute top-14 right-4 z-10 max-w-xs text-xs text-white bg-red-900/90 rounded px-3 py-2">
+                {pdfError}
+              </div>
+            )}
             <div className="absolute inset-0 flex items-end">
               <div className="max-w-6xl w-full mx-auto px-4 pb-10 md:pb-14">
                 <p className="eyebrow text-gold mb-2">Brand Proposal</p>

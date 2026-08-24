@@ -11,7 +11,8 @@ import {
   SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { GripVertical, Trash2, Plus, X, Presentation, Search, ImageOff, Upload, Download, FileJson, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react'
+import { GripVertical, Trash2, Plus, X, Presentation, Search, ImageOff, Upload, Download, FileJson, AlertTriangle, CheckCircle2, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
+import { buildBrandProposalPdf } from '../brandProposalExport'
 
 // Admin editor for the customer proposal doc (Sun-Life-Proposal-Build-Spec.md
 // §6). Writes go through src/customerProposal.js only — this component never
@@ -370,7 +371,7 @@ function ImportProposalModal({ customerId, currentStatus, onClose, onApplied }) 
 let keySeq = 0
 const withKey = s => ({ ...s, _key: s._key || `s${++keySeq}` })
 
-export default function ProposalEditor({ customerId }) {
+export default function ProposalEditor({ customerId, customerName }) {
   const { assets: ownAssets } = useCustomerAssets(customerId)   // admin sees all, incl. internal — fine, hero/section pick doesn't imply publish
   const [brandedAssets, setBrandedAssets] = useState([])
   // Catalogue photos tagged "branded for" this customer (see customerAssets.js)
@@ -409,6 +410,22 @@ export default function ProposalEditor({ customerId }) {
   }
   const [exporting, setExporting] = useState(false)
   const [importing, setImporting] = useState(false)
+  // V8.10 — landscape Brand Proposal PDF preview, straight from the editor,
+  // regardless of published/draft status (allowDraft:true) — so this can be
+  // QA'd here rather than needing to log in as the customer, matching the
+  // brief's "render every page and run a visual QA check before exporting".
+  const [pdfBusy, setPdfBusy] = useState(false)
+  const [pdfError, setPdfError] = useState('')
+  async function handleDownloadPdfPreview() {
+    setPdfBusy(true); setPdfError('')
+    try {
+      await buildBrandProposalPdf(customerId, { customer_id: customerId, name: customerName }, { allowDraft: true })
+    } catch (e) {
+      setPdfError(e.message || 'Could not build the PDF.')
+    } finally {
+      setPdfBusy(false)
+    }
+  }
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
@@ -662,10 +679,15 @@ export default function ProposalEditor({ customerId }) {
           </span>
         </div>
         <div className="flex items-center gap-2 flex-wrap justify-end">
+          <button onClick={handleDownloadPdfPreview} disabled={pdfBusy} title="Landscape client Brand Proposal PDF — works on a draft, for QA before publishing"
+                  className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1 whitespace-nowrap disabled:opacity-60">
+            {pdfBusy ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />} {pdfBusy ? 'Building…' : 'Download PDF preview'}
+          </button>
           <button onClick={exportForMapping} disabled={exporting} title="Download the current content + catalogue as JSON, for an AI mapper (e.g. Manus) to fill in"
                   className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1 whitespace-nowrap">
             <Download size={12} /> {exporting ? 'Exporting…' : 'Export for AI mapping'}
           </button>
+          {pdfError && <span className="text-[11px] text-red-600 whitespace-nowrap">{pdfError}</span>}
           <button onClick={() => setImporting(true)} title="Import a mapped JSON file back in, as a draft, after validating every reference"
                   className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1 whitespace-nowrap">
             <FileJson size={12} /> Import mapped JSON
