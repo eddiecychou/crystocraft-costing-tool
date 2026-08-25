@@ -12,8 +12,8 @@
 // the caller already has an admin-scoped read of the same collections.
 //
 // Truncation order when the ~250-word budget is exceeded: drop oldest
-// rewrite conclusions first, then excess global rules (keep the most
-// recently approved), then hard-slice the contact summary. Global rules are
+// rewrite conclusions first, then hard-slice the contact summary, then
+// excess global rules (keep the most recently approved). Global rules are
 // dropped last because they're the whole point of this feature — the thing
 // Eddie is tired of repeating.
 const MAX_TOTAL_WORDS = 250

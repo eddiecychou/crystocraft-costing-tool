@@ -1,9 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import { Store, ShoppingCart, Gift, Sparkles, Building2, Star, Smartphone, ShoppingBag } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 import { useCustomers, CUSTOMER_COUNTRIES, CHANNELS, RETAIL_TAG } from '../domain/customer'
+
+const VIEW_STATE_KEY = 'customers.viewState'
+const loadViewState = () => {
+  try { return JSON.parse(localStorage.getItem(VIEW_STATE_KEY)) || {} } catch { return {} }
+}
 
 const CRM_STATUS_STYLES = {
   Active:   'bg-green-100 text-green-700',
@@ -22,13 +27,20 @@ const CATEGORY_TABS = [
 
 export default function Customers() {
   const { customers, loading }          = useCustomers()
-  const [search, setSearch]             = useState('')
-  const [filterCountry, setFilterCountry] = useState('')
-  const [filterChannel, setFilterChannel]   = useState('')
-  const [filterStatus, setFilterStatus]     = useState('')
-  const [filterCategory, setFilterCategory] = useState('')
-  const [retailOnly, setRetailOnly]         = useState(false)
+  const initialView = loadViewState()
+  const [search, setSearch]             = useState(initialView.search || '')
+  const [filterCountry, setFilterCountry] = useState(initialView.filterCountry || '')
+  const [filterChannel, setFilterChannel]   = useState(initialView.filterChannel || '')
+  const [filterStatus, setFilterStatus]     = useState(initialView.filterStatus || '')
+  const [filterCategory, setFilterCategory] = useState(initialView.filterCategory || '')
+  const [retailOnly, setRetailOnly]         = useState(initialView.retailOnly || false)
   const remember = useScrollMemory('customers', !loading)
+
+  useEffect(() => {
+    localStorage.setItem(VIEW_STATE_KEY, JSON.stringify({
+      search, filterCountry, filterChannel, filterStatus, filterCategory, retailOnly,
+    }))
+  }, [search, filterCountry, filterChannel, filterStatus, filterCategory, retailOnly])
 
   const filtered = customers.filter(c => {
     const searchLower = search.toLowerCase()

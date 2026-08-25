@@ -116,6 +116,10 @@
   path = "/api/refresh-whatsapp-summary"
 
 [[edge_functions]]
+  function = "refresh-alibaba-summary"
+  path = "/api/refresh-alibaba-summary"
+
+[[edge_functions]]
   function = "discuss-customer-email"
   path = "/api/discuss-customer-email"
 

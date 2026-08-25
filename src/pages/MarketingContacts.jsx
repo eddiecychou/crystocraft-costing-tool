@@ -817,22 +817,34 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
   )
 }
 
+const VIEW_STATE_KEY = 'marketingContacts.viewState'
+const loadViewState = () => {
+  try { return JSON.parse(localStorage.getItem(VIEW_STATE_KEY)) || {} } catch { return {} }
+}
+
 export default function MarketingContacts({ onSendEmail }) {
   const { contacts, loading, setContacts } = useMarketingContacts()
-  const [search, setSearch] = useState('')
-  const [audience, setAudience] = useState('')
-  const [status, setStatus] = useState('subscribed')  // default to the emailable list
+  const initialView = loadViewState()
+  const [search, setSearch] = useState(initialView.search || '')
+  const [audience, setAudience] = useState(initialView.audience || '')
+  const [status, setStatus] = useState(initialView.status ?? 'subscribed')  // default to the emailable list
   // Whether the contact is actually linked to a real app Customer record
   // (possible_customer_match) — NOT the softer is_customer flag, which used
   // to drive a "Customer + prospect" filter the owner found too vague:
   // "I only need to know if this contact is in the app or not."
-  const [inApp, setInApp] = useState('')              // '', 'yes', 'no'
-  const [category, setCategory] = useState('')
-  const [country, setCountry] = useState('')
+  const [inApp, setInApp] = useState(initialView.inApp || '')              // '', 'yes', 'no'
+  const [category, setCategory] = useState(initialView.category || '')
+  const [country, setCountry] = useState(initialView.country || '')
   const [selected, setSelected] = useState(() => new Set())
   const [managingTags, setManagingTags] = useState(false)
   const [generatingEmailSummaries, setGeneratingEmailSummaries] = useState(false)
   const [promoting, setPromoting] = useState(false)
+
+  useEffect(() => {
+    localStorage.setItem(VIEW_STATE_KEY, JSON.stringify({
+      search, audience, status, inApp, category, country,
+    }))
+  }, [search, audience, status, inApp, category, country])
 
   const countries = useMemo(() => {
     const c = new Map()

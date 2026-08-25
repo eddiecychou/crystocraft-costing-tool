@@ -7,6 +7,11 @@ import { SUPPLIER_CATEGORIES } from '../constants'
 import { MapPin, Phone, MessageCircle } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 
+const VIEW_STATE_KEY = 'suppliers.viewState'
+const loadViewState = () => {
+  try { return JSON.parse(localStorage.getItem(VIEW_STATE_KEY)) || {} } catch { return {} }
+}
+
 const CAT_STYLES = {
   'Crystal / Glass':          'bg-blue-50 text-blue-700',
   'Metal Parts':              'bg-gray-100 text-gray-700',
@@ -21,9 +26,14 @@ const CAT_STYLES = {
 export default function Suppliers() {
   const [suppliers, setSuppliers] = useState([])
   const [loading, setLoading]     = useState(true)
-  const [search, setSearch]       = useState('')
-  const [catFilter, setCatFilter] = useState('')
+  const initialView = loadViewState()
+  const [search, setSearch]       = useState(initialView.search || '')
+  const [catFilter, setCatFilter] = useState(initialView.catFilter || '')
   const remember = useScrollMemory('suppliers', !loading)
+
+  useEffect(() => {
+    localStorage.setItem(VIEW_STATE_KEY, JSON.stringify({ search, catFilter }))
+  }, [search, catFilter])
 
   useEffect(() => {
     const q = query(collection(db, 'suppliers'), orderBy('name'))
