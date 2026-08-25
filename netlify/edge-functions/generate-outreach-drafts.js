@@ -24,7 +24,8 @@
 //        candidates: [{ id, name, email, crm_category, crm_status, notes,
 //                        erp_code, country, source?, previouslyContactedAt?,
 //                        emailSummary?: { summary, recent_activity, open_commitments },
-//                        whatsappSummary?: { summary, recent_activity, open_commitments } }],
+//                        whatsappSummary?: { summary, recent_activity, open_commitments },
+//                        alibabaSummary?: { summary, recent_activity, open_commitments } }],
 //        historicalHints?: string, targetingNote?: string }
 //   emailSummary — V8.1 email ingestion's DeepSeek-generated read of the
 //     customer's actual email history (customers/{id}.email_summary,
@@ -40,6 +41,12 @@
 //     and same customer-only scope (WhatsApp leads saved under
 //     marketing_contacts never reach this function; see
 //     DailyDrafts.jsx's customerToEntity comment).
+//   alibabaSummary — Alibaba Messages' own equivalent (customers/{id} and
+//     marketing_contacts/{id}.alibaba_summary, generated from the pasted
+//     alibaba_threads subcollection). Same posture as whatsappSummary — real
+//     correspondence, outranks notes — but available for BOTH customers and
+//     marketing_contacts, since Alibaba paste is not customer-only the way
+//     email/WhatsApp ingestion is.
 //   -> { drafts: [{ customerId, customerEmail, customerName, customerContext,
 //                    fitScore, fitReason, draftSubject, draftBody, source }] }
 //
@@ -145,6 +152,7 @@ function hasWritingContext(candidate) {
   if (candidate.aiContextSummary?.trim()) return true
   if (candidate.emailSummary?.summary) return true
   if (candidate.whatsappSummary?.summary) return true
+  if (candidate.alibabaSummary?.summary) return true
   // customers/ candidates carry real hand-typed CRM notes; contacts/ never
   // do (contactToEntity() always synthesizes a boilerplate "Company: X.
   // Country: Y" string here, which isn't genuine context — see its own
@@ -172,6 +180,10 @@ function fitScorePrompt(topicLabel, candidate, historicalHints, targetingNote, m
       (candidate.whatsappSummary?.summary
         ? `\nActual WhatsApp history: ${candidate.whatsappSummary.summary.slice(0, 400)}` +
           (candidate.whatsappSummary.recent_activity ? ` Recent activity: ${candidate.whatsappSummary.recent_activity.slice(0, 300)}` : '')
+        : '') +
+      (candidate.alibabaSummary?.summary
+        ? `\nActual Alibaba.com message history: ${candidate.alibabaSummary.summary.slice(0, 400)}` +
+          (candidate.alibabaSummary.recent_activity ? ` Recent activity: ${candidate.alibabaSummary.recent_activity.slice(0, 300)}` : '')
         : ''),
   }
 }
@@ -256,6 +268,15 @@ function buildCustomerContext(candidate, invoices) {
       parts.push(`Open commitments from WhatsApp: ${candidate.whatsappSummary.open_commitments.slice(0, 5).join('; ')}`)
     }
   }
+  if (candidate.alibabaSummary?.summary) {
+    parts.push(`Actual Alibaba.com message history: ${candidate.alibabaSummary.summary.slice(0, 600)}`)
+    if (candidate.alibabaSummary.recent_activity) {
+      parts.push(`Most recent Alibaba.com activity: ${candidate.alibabaSummary.recent_activity.slice(0, 400)}`)
+    }
+    if (candidate.alibabaSummary.open_commitments?.length) {
+      parts.push(`Open commitments from Alibaba.com: ${candidate.alibabaSummary.open_commitments.slice(0, 5).join('; ')}`)
+    }
+  }
   if (candidate.notes) parts.push(`CRM notes: ${candidate.notes.slice(0, 800)}`)
   if (invoices.length) {
     const lines = invoices.map(i => `- ${i.code} on ${i.order_date || '?'}: ${i.total ?? '?'}`).join('\n')
@@ -274,6 +295,7 @@ function contextSources(candidate, invoices) {
   const sources = []
   if (candidate.emailSummary?.summary) sources.push('email')
   if (candidate.whatsappSummary?.summary) sources.push('whatsapp')
+  if (candidate.alibabaSummary?.summary) sources.push('alibaba')
   if (candidate.notes) sources.push('notes')
   if (invoices.length) sources.push('invoices')
   if (candidate.aiContextSummary) sources.push('memory')
