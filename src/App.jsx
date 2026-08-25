@@ -36,6 +36,7 @@ import CustomerForm from './pages/CustomerForm'
 import TagManager from './pages/TagManager'
 import WhatsAppImport from './pages/WhatsAppImport'
 import CustomerDetail from './pages/CustomerDetail'
+import MarketingContactDetail from './pages/MarketingContactDetail'
 import Settings from './pages/Settings'
 import SchemaAudit from './pages/SchemaAudit'
 import BankDetailsAudit from './pages/BankDetailsAudit'
@@ -211,6 +212,7 @@ function AdminApp({ user }) {
                 <Route path="/customers/:id/edit" element={<CustomerForm />} />
                 <Route path="/catalogue-band" element={<CatalogueBand />} />
                 <Route path="/marketing" element={<Marketing />} />
+                <Route path="/marketing-contacts/:id" element={<MarketingContactDetail />} />
                 <Route path="/catalogues" element={<Catalogues />} />
                 <Route path="/catalogues/new" element={<CatalogueForm />} />
                 <Route path="/catalogues/:id" element={<CatalogueDetail />} />

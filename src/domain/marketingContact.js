@@ -48,6 +48,8 @@ export function normalizeContact(id, raw) {
     country:       str(r.country),
     domain:        str(r.domain),
     phone:         str(r.phone),
+    whatsapp:      str(r.whatsapp),
+    wechat:        str(r.wechat),
     website:       str(r.website),
     address:       str(r.address),
     tags:          arr(r.tags),
@@ -212,13 +214,17 @@ export async function findOrCreateLeadByPhone(phone) {
 // report, 2026-08-23). Fixed by only requiring/validating an email when one
 // is actually being set — a phone-only lead with a blank email field now
 // saves in place (no rename attempt, since there's no email to derive a new
-// id from), same as any other contact. At least one of email/phone must
-// still be present; that's the one case with no way to identify the record.
+// id from), same as any other contact. At least one of email/phone/whatsapp/
+// wechat must still be present — that's the owner's own bar for "a contact
+// worth keeping" (2026-08-25, prompted by Alibaba-sourced leads that often
+// carry none of the first two): any ONE of the four identifies the record.
 export async function saveContact(currentId, data) {
   const email = str(data.email).trim().toLowerCase()
   const phone = str(data.phone)
+  const whatsapp = str(data.whatsapp)
+  const wechat = str(data.wechat)
   if (email && !EMAIL_RE.test(email)) throw new Error('That doesn\'t look like a valid email — leave it blank if this contact only has a phone number.')
-  if (!email && !phone) throw new Error('An email or phone number is required.')
+  if (!email && !phone && !whatsapp && !wechat) throw new Error('An email, phone number, WhatsApp, or WeChat contact is required.')
   const status = MC_STATUSES.includes(data.status) ? data.status : 'subscribed'
   const patch = {
     first_name:   str(data.first_name),
@@ -227,6 +233,8 @@ export async function saveContact(currentId, data) {
     company:      str(data.company),
     country:      str(data.country),
     phone,
+    whatsapp,
+    wechat,
     tags:         arr(data.tags),
     // A website signup can genuinely be either trade or retail (or both) —
     // it defaults to ['website'] at import/signup time but that's a source,
