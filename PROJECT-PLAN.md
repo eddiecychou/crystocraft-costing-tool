@@ -87,7 +87,7 @@ signed-in user with `role:'customer'`/`status` not `'approved'` sees it),
 so "same screen" does not mean "same bug" — check what's actually different
 about the account before assuming the mechanism.
 
-## V8.10 in progress — Landscape Brand Proposal PDF
+## V8.10 — Landscape Brand Proposal PDF
 
 Owner's spec (2026-08-24, verbatim brief): a curated landscape (16:9) PDF
 sales proposal for clients, explicitly **not** a paginated screenshot of the
@@ -352,6 +352,246 @@ written up in the owner's own research file
 complicated" and asked for the manual-paste path instead (this section)
 as the near-term way to get value out of the chat data — the API route
 remains available to revisit later, nothing here forecloses it.
+
+## Alibaba inbox reconciliation — all 160 messages, 8 pages (2026-08-25)
+
+Owner ask, following directly from the Alibaba Messages paste feature above:
+go through the real Alibaba.com message center (160 inquiries, paginated
+20/page) by hand, match each buyer against `customers`/`marketing_contacts`,
+and either paste their conversation into the matching existing record or
+create a new `marketing_contacts` lead for them. Owner corrected the initial
+one-by-one approach early on: *"I think first you scrape messages in
+alibaba. then you save all the messages first... Then you do the matching to
+the portal customer and marketing contact. Instead of asking me one by
+one."* — the workflow settled into: scrape a full page → fuzzy-match by
+name/email against both collections → present a summary → get approval →
+batch-create and paste → next page.
+
+**Scraping technique**: `navigate()` to the full token-bearing thread URL
+always reports "navigation... denied or failed" — expected and safe to
+ignore, the SPA's hash router still updates underneath; the recipe is
+navigate → wait 2s → `get_page_text()`. Pagination via `data-page` link
+clicks (through `javascript_tool`, not the `computer` click tool, which
+didn't reliably land on this UI); bulk `href` extraction per page (one JS
+call for all 20 `maDetail.htm` links + tokens) rather than crawling row by
+row.
+
+**Result across all 8 pages**: ~140 new `marketing_contacts` leads created
+(tagged `alibaba`, `source: 'Alibaba.com'`), a handful of existing records
+matched and had their chat pasted in instead of duplicated, and a recurring
+set of scam threads identified and skipped — Alibaba's own "account
+cancelled/controlled" flag combined with a templated
+catalog-request-to-an-off-platform-email script, or outright identity
+impersonation ("Elon Musk" from Nigeria) — never created as contacts.
+Fuzzy name-matching had a real false-positive class (bare first-name
+substring matches, e.g. "Sho" inside "Montsho", "Andy Masson" vs "andy
+ma") — every fuzzy hit was cross-checked against `find-email` before being
+treated as real. Reconciliation scripts (`scripts/_alibaba_reconcile*.mjs`)
+were written fresh per page against `firebase-service-account.json` and
+always deleted after that page's work — never committed.
+
+Two buyers had genuine paid/pending Alibaba order history and were
+upgraded from `marketing_contacts` to full `customers` records (per the
+owner's standing rule: new customers from Alibaba get `crm_category:
+'Small B2B'` + the `alibaba` tag) — **Amirparsa Jalali** (completed order,
+$399.25) and **Williams Ekotson** (completed order, $304.32, Alibaba's own
+"Paid customers" buyer tag). Names in mixed/inconsistent case from
+Alibaba's raw display (`amirparsa jalali`, `emma james`, `yana yana`, …)
+were normalized to Title Case at creation and in a follow-up cleanup pass
+(20 more, plus 20 unrelated pre-existing Mailchimp contacts with the same
+casing bug, found via a full-collection scan and hand-reviewed to avoid
+"fixing" legitimate lowercase name particles like "da Cunha"/"van Dyk").
+
+**Bug found and fixed**: the two upgraded customers' Alibaba chat threads
+had been pasted into their OLD `marketing_contacts` doc during
+reconciliation, but never copied to the NEW `customers/{id}` doc on
+upgrade — so their Customer Detail page showed an empty Alibaba Messages
+card despite real data existing, one directory over. Fixed by copying the
+`alibaba_threads` subcollection + `alibaba_summary` field across for both
+(plus a third customer, Emmanuel Biyermann, added below).
+
+## Alibaba CRM real-spend survey — 5,000 of 8,443 records (2026-08-25)
+
+Separately from the message-center inbox, Alibaba's own CRM tool ("My
+Alibaba > Customers", `alicrm.alibaba.com`) turned out to hold a much
+larger, richer dataset — 8,443 total customer records vs. the 160-message
+inbox, most attributed to different lead sources (`Alibaba` generic
+storefront visits: 4,541; `name_card` business-card exchanges: 2,008;
+`inquiry`: 1,190; `tm` chat — roughly the inbox: 989; `rfq`: 625; `Ta`
+Trade Assurance real orders: 180). Found via
+`alicrm.alibaba.com/eggCrmQn/crm/customerQueryServiceI/queryCustomerList.
+json`, a real internal API pulled directly with `fetch()` from the browser
+console rather than clicking through 845 pages of UI — 100 records per
+call, batched ~8 pages per `javascript_tool` invocation to stay under its
+30s timeout.
+
+**Hard-capped at 5,000 results** — Alibaba's own search backend rejects any
+page request beyond that with `HSF_CRM_B_SEARCH_OVER_LIMIT`. Tried several
+plausible filter/sort parameter names (date-range, country, customer
+source, ascending sort) guessed from the UI's own `searchConditionServiceI`
+endpoint to get past it; none were recognized by the query endpoint —
+extra params were silently ignored rather than erroring, so each attempt
+had to be confirmed against the unchanged `total` count. Abandoned rather
+than reverse-engineering the exact undocumented request shape further —
+the remaining ~3,443 records are almost certainly the same source/country
+mix as the sampled 59%.
+
+**The real signal**: 62 records in the 5,000-record sample carry a real
+`annualProcurementOnline` dollar value — confirmed actual spend through
+Alibaba, not just conversation, sorted top to bottom from Terence Lam
+($9,861) down to $6.97. Owner flagged two as known middleman accounts for
+a different real buyer (Widdop Bingham) and excluded them, leaving 60.
+Reconciled the same way as the inbox pages: 44 already existed in the app
+(mostly from the earlier Mailchimp import) and were left alone; 14 were
+genuinely new and created as `marketing_contacts` with the real spend
+amount noted in `app_notes` (emails stay masked — Alibaba's own privacy
+protection, e.g. `a***o@gmail.com`, is server-side redaction that never
+sends the real address to the browser at all; no scraping technique
+defeats that). One more owner-directed accuracy pass followed: of the 60
+real-spend names, only **16 turned out to genuinely have no email on file
+anywhere in the app** once actually checked — the owner's own instinct
+("most of them I recognise, I think they already have email") was right;
+an initial list handed over unfiltered was corrected down from 60 to 16
+candidates worth an Alibaba "Request business card" ask, plus 3 not found
+in the app at all worth a manual name-format check.
+
+## Two real bugs found and fixed — DailyDrafts and Firestore rules (2026-08-25)
+
+1. **DailyDrafts never actually read the Alibaba summary it was building.**
+   `DailyDrafts.jsx` already packaged `alibabaSummary` onto every candidate
+   from `customers`/`marketing_contacts`' `alibaba_summary` field (client
+   side, correct), but `netlify/edge-functions/generate-outreach-drafts.js`
+   — the server-side draft generator — never once referenced it: Alibaba
+   message history was silently dropped before ever reaching DeepSeek.
+   Fixed by adding it everywhere `whatsappSummary` already appears:
+   `hasWritingContext()`'s context-penalty gating, the fit-score prompt,
+   `buildCustomerContext()`, and the `contextSources` list the review UI
+   shows as chips.
+2. **The `alibaba_threads` Firestore rules were committed but never
+   deployed.** Owner reported the pasted Alibaba threads showing empty on
+   every customer/contact, even ones confirmed to have real data written.
+   Root cause: the admin-only rules for `alibaba_threads` were added to
+   `firestore.rules` in the commit that built the feature, but Netlify only
+   deploys the app code — Firestore security rules need a separate
+   `firebase deploy --only firestore:rules`, which had never run. Every
+   read was silently permission-denied (the app's `onSnapshot` calls have
+   no error handler, so a denial just renders as "nothing here" rather
+   than an error) — this affected every customer and contact, not a subset.
+   Deployed directly via `npx firebase-tools deploy --only
+   firestore:rules --project crystocraft-costing`; confirmed fixed on
+   re-check.
+
+## Marketing Contacts: full detail page, replacing the edit modal (2026-08-25)
+
+Owner ask: the contact "second page" was a centered modal overlay
+(`EditContactModal`, blocking the list behind it); wanted it to work like
+Customers' own detail page instead — land on a real page, edit inline, hit
+Save. `EditContactModal`'s ~200 lines were extracted out of
+`MarketingContacts.jsx` into a new route `src/pages/
+MarketingContactDetail.jsx` (`/marketing-contacts/:id`, registered in
+`App.jsx` next to `/customers/:id`), field set and save/delete behavior
+carried over unchanged. `EmailThreads`/`WhatsAppThreads`/`AlibabaThreads`/
+`InteractionLog` — previously local to `MarketingContacts.jsx` — are now
+`export`ed so both the list and the new detail page use the same
+components rather than duplicating them. List rows' name/Edit links now
+`<Link>` to the new route instead of `setEditing(c)`.
+
+**Also widened, same conversation**: a marketing contact previously
+required email OR phone to save (`saveContact()`) — Alibaba-sourced leads
+routinely carry neither but do have a WhatsApp or WeChat identifier, and
+one such contact (Kathy Lopez, no email/phone captured from Alibaba at
+all) couldn't be re-saved through the new page at all. Added `whatsapp`/
+`wechat` as real fields on the schema (`domain/marketingContact.js`'s
+`normalizeContact`) and widened the validation to require ANY ONE of the
+four, not just the first two.
+
+**Follow-up audit**: a full-collection scan found 78 `marketing_contacts`
+records (all Alibaba-sourced, none from Mailchimp) with none of the four
+contact methods at all — genuinely unreachable except through Alibaba
+itself. Considered inviting them to self-register on the customer portal
+(`portal.crystocraft.com`) via a message sent through Alibaba, but found a
+real gap first: self-registered portal signups land unlinked
+(`customer_id: null`) and the existing admin approval UI
+(`PortalInvitations.jsx`) only offers linking to a `customers` record, never
+to a `marketing_contacts` one — so even a successful self-registration
+wouldn't automatically close the loop back to the CRM lead. Not built this
+cycle; flagged for the owner rather than half-solved.
+
+**Automation limits hit and not solved**: both sending a message through
+Alibaba's own compose box and clicking its "Request business card" button
+proved unreliable to drive by browser automation — the compose box is a
+legacy TinyMCE iframe whose real Send button sits underneath an overlapping
+toolbar (clicks land on the toolbar instead), and "Request business card"
+produced no network request or visible change from either a real click or
+a JS-dispatched one, with nothing informative in the console. No message
+was ever actually sent and no business card request ever actually fired —
+confirmed by re-checking the thread afterward, not assumed. Owner chose to
+send/request these manually rather than keep debugging the automation;
+delivered as reference lists (name + direct Alibaba thread link where
+findable) rather than as executed actions.
+
+## Current Status — V8.10 CLOSED as of 2026-08-25
+
+**Shipped this cycle**: the landscape Brand Proposal PDF (adaptive tiers,
+three rounds of real owner feedback, see above); the Alibaba Messages
+manual-paste feature (customers + marketing_contacts, DeepSeek summaries);
+WooCommerce SI/UC follow-ups for Cindy (plain buyer name, HKD net payout
+note); the full 160-message Alibaba inbox reconciliation (~140 new leads,
+2 upgraded to customers, scam pattern identified and skipped); a 5,000-
+record survey of Alibaba's separate CRM tool (62→60 real-spend leads
+reconciled, 16 confirmed genuinely contactless); two real bugs fixed
+(DailyDrafts never reading `alibabaSummary`; `alibaba_threads` Firestore
+rules committed but never deployed); Marketing Contacts converted from an
+edit-modal to a full detail page matching Customers' own pattern, with
+WhatsApp/WeChat added as valid contact-identifying fields.
+
+**Two things attempted and NOT shipped, worth being honest about**: sending
+a portal-invite message through Alibaba's compose box, and clicking
+Alibaba's "Request business card" button — both fought browser automation
+hard enough (a legacy TinyMCE iframe with a genuinely unreachable Send
+button; a Request button that fires nothing detectable) that continuing to
+debug them stopped being a good use of time. Owner chose to do these
+manually; delivered as reference lists instead of executed actions. Worth
+knowing before assuming any Alibaba message-center UI action can be
+scripted reliably in a future cycle — it may need a different technique
+entirely (a real trusted-input harness, or accepting it's manual-only).
+
+**No automated tests added this cycle** — consistent with prior cycles,
+worth naming again rather than re-discovering. Alibaba reconciliation
+scripts were one-off (`scripts/_alibaba_reconcile*.mjs`), written fresh per
+page/task and deleted immediately after — never committed, so nothing here
+is repeatable without rebuilding the script from this write-up.
+
+## Where V8.11 starts
+
+- **62 marketing_contacts still have no way to be reached** — the 78 found
+  contactless minus the 16 flagged for a "Request business card" follow-up
+  (58 firmly Alibaba-only, plus the 3 in the 16 that came back "not found in
+  app" and need a manual name-format check first). No plan yet beyond
+  "owner requests business cards / messages manually" — worth revisiting
+  once some of those responses come back, to build the marketing_contacts
+  linking gap noted below if the self-serve portal path turns out to be
+  worth it.
+- **Portal self-registration has no path back to marketing_contacts.**
+  `PortalInvitations.jsx`'s approval flow only links a self-registered
+  signup to a `customers/{id}` record — if the owner starts routing
+  contactless Alibaba leads through portal self-signup instead of manual
+  business-card requests, this gap becomes the actual blocker, not a
+  side note.
+- **The remaining ~3,443 Alibaba CRM records (beyond the 5,000-record
+  search cap) were never seen.** No filter/sort parameter guess got past
+  Alibaba's own `HSF_CRM_B_SEARCH_OVER_LIMIT` wall. Likely low marginal
+  value (same source/country mix expected) but unconfirmed.
+- **Alibaba message-center UI automation (compose box, Request business
+  card) does not work reliably** — see this cycle's close note above.
+  Don't re-attempt the same click-coordinate approach without a new idea;
+  it already failed twice.
+- **WooCommerce SI/UC flow (V8.9 §7) still hasn't been walked through
+  live** — carried forward unresolved from V8.9's own "Where V8.10 starts"
+  note; the next real WooCommerce sync should be run through Allocate once
+  with Cindy watching.
+- **No automated tests added anywhere this cycle**, same standing gap as
+  every prior cycle's close note.
 
 ## Current Status — V8.9 CLOSED as of 2026-08-24
 
