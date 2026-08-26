@@ -526,19 +526,34 @@ export default function QuoteDetail() {
           </div>
         )}
 
-        {tierTotals.length > 0 && (
-          <div className="mt-4 pt-3 border-t border-gray-100 space-y-1">
-            {tierTotals.map((t, i) => (
-              <div key={i} className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">
-                  Total at {t.qty ? `${t.qty} ${t.itemCount < items.length ? `(${t.itemCount}/${items.length} items)` : 'pcs each'}` : `tier ${i + 1}`}
-                </span>
-                <span className="font-semibold text-gray-900">
-                  {quoteCurrency} {t.total.toLocaleString('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
+        {items.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer select-none mb-2">
+              <input
+                type="checkbox"
+                checked={!!quote.show_total}
+                onChange={e => {
+                  updateDoc(doc(db, 'client_quotes', id), { show_total: e.target.checked })
+                  setQuote(q => ({ ...q, show_total: e.target.checked }))
+                }}
+                className="rounded border-gray-300"
+              />
+              Show total <span className="text-gray-400">— same switch as "Include total on PDF" in Export, so this page and the PDF always agree</span>
+            </label>
+            {quote.show_total && tierTotals.length > 0 && (
+              <div className="space-y-1">
+                {tierTotals.map((t, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">
+                      Total at {t.qty ? `${t.qty} ${t.itemCount < items.length ? `(${t.itemCount}/${items.length} items)` : 'pcs each'}` : `tier ${i + 1}`}
+                    </span>
+                    <span className="font-semibold text-gray-900">
+                      {quoteCurrency} {t.total.toLocaleString('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
-            <p className="text-[11px] text-gray-400 pt-1">For your reference only — not shown to the customer unless you tick "Include grand total on PDF" when exporting.</p>
+            )}
           </div>
         )}
       </div>
@@ -597,6 +612,7 @@ export default function QuoteDetail() {
           quote={quote}
           items={items.map(i => ({ ...i, hero_image: liveImages[i.product_id] ?? i.hero_image }))}
           onClose={() => setShowExport(false)}
+          onQuoteChange={patch => setQuote(q => ({ ...q, ...patch }))}
         />
       )}
 

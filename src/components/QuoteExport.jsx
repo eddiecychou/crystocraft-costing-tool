@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import ExcelJS from 'exceljs'
-import { doc, getDoc } from 'firebase/firestore'
+import { doc, getDoc, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Download, Eye } from 'lucide-react'
 import logoUrl from '../assets/logo.png'
@@ -57,15 +57,22 @@ const TOTAL_COLS = 6
 
 const baseFont = (opts = {}) => ({ name: 'Calibri Light', size: 9, color: { argb: B.BLACK }, ...opts })
 
-export default function QuoteExport({ quote, items, onClose }) {
+export default function QuoteExport({ quote, items, onClose, onQuoteChange }) {
   const [loading, setLoading] = useState(false)
   const [pdfLoading, setPdfLoading] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(false)
-  // Off by default — a customer still comparing prices across items/tiers
-  // finds one grand total confusing (it isn't what they'd actually order);
-  // a customer who already knows their selection wants to see it. Admin
-  // picks per export (owner feedback).
-  const [includeTotal, setIncludeTotal] = useState(false)
+  // Persisted on the quote itself (quote.show_total), not a local toggle —
+  // this checkbox and the "Show total" one on QuoteDetail.jsx's page are the
+  // SAME control now (owner, 2026-08-27: "should add and hide with the
+  // checkbox", singular — two separate toggles that could disagree was the
+  // actual complaint). Off by default still suits a customer comparing
+  // prices across items/tiers, who'd find one summed number confusing; a
+  // customer who already knows their selection wants to see it.
+  const includeTotal = !!quote.show_total
+  function setIncludeTotal(v) {
+    updateDoc(doc(db, 'client_quotes', quote.id), { show_total: v })
+    onQuoteChange?.({ show_total: v })
+  }
 
   // Build the quotation PDF as a blob (shared by download + preview).
   async function buildPdfBlob() {
@@ -499,7 +506,7 @@ export default function QuoteExport({ quote, items, onClose }) {
         <label className="flex items-center gap-2 mb-4 text-xs text-gray-600 cursor-pointer select-none">
           <input type="checkbox" checked={includeTotal} onChange={e => setIncludeTotal(e.target.checked)}
             className="rounded border-gray-300" />
-          Include grand total on PDF
+          Include total on PDF <span className="text-gray-400">(same "Show total" switch as the quote page)</span>
           <span className="text-gray-400">— best for a customer who already knows what they're ordering</span>
         </label>
 
