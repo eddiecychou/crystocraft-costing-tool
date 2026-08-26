@@ -58,6 +58,7 @@ customer, narrower than admin). *public* = no session check.
 
 - `customer-order-history.js` (`/api/customer-order-history`) — Lets a signed-in, approved portal customer see their OWN JES invoice history (order-level only, no costs/margins) — deliberately narrower than `/api/erp`. Auth: portal (self-read). Called from `src/customerOrderHistoryApi.js`, `src/customer/CustomerInvoicePrint.jsx`.
 - `swatch-library.js` (`/api/swatch-library`) — Proxies to the Fly.io render service's swatch-registry endpoints, computing the Fly-side admin session auth server-side. Auth: admin OR approved portal customer. Called from `src/swatchLibraryApi.js`, `src/pages/SwatchLibrary.jsx`, `src/customer/SwatchLibraryPage.jsx`.
+- `ga-portal-activity.js` (`/api/ga-portal-activity`) — Proxies the GA4 Data API (JWT-bearer service-account OAuth, signed with `jose`) for Portal → Login Activity's traffic panel: site-wide daily sessions/active users, plus a per-account `byUid` breakdown matched via the `app_uid` custom dimension (see `useAuthState.js`'s `gtag` calls and `LOCAL-TOOLS.md`'s GA4 section). Needs `GA_CLIENT_EMAIL`/`GA_PRIVATE_KEY`/`GA_PROPERTY_ID` env vars. Auth: admin. Called from `src/gaPortalActivityApi.js`, `src/pages/PortalLogins.jsx`.
 
 ## Customizer & Product Images
 

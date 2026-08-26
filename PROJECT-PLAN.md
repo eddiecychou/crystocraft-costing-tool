@@ -87,6 +87,226 @@ signed-in user with `role:'customer'`/`status` not `'approved'` sees it),
 so "same screen" does not mean "same bug" — check what's actually different
 about the account before assuming the mechanism.
 
+## V8.11 — Login Activity fixed, GA4 wired in, Quote/PI workflow gaps closed, PDF layout fixes
+
+A long single-session cycle (2026-08-26/27), most of it started from live bug
+reports and small workflow asks rather than a spec. Grouped by area below;
+see git log for exact commits.
+
+### Environment/tooling groundwork (the reason the rest of this cycle could
+### move fast)
+
+Four new repo-root docs, all linked from `CLAUDE.md`'s reading table, built
+because re-deriving this every session was the actual bottleneck:
+- **`LOCAL-TOOLS.md`** — what's already installed/logged-in on this Mac's
+  shell (Node, `firebase-tools`, `flyctl`, git via keychain, Netlify's
+  git-integration deploy model, and now GA4 read access — see below). Also
+  documents that `.claude/start-dev.sh` now runs `netlify-cli dev --offline`
+  instead of plain `vite` — the local dev server used to have NO route for
+  any `/api/*` edge function at all, which looked exactly like a real
+  WooCommerce bug ("WooCommerce sync failed (404)") before being traced to
+  this. Every edge function is testable locally now, not just Firestore-only
+  pages.
+- **`API-REFERENCE.md`** — all edge functions (`/api/*`), grouped by feature
+  area: route, purpose, auth posture, caller. Flagged two things worth a
+  deliberate look rather than silently fixing: three functions
+  (`customizer-render.js`, `customizer-palette.js`, `enhance-image.js`) with
+  no admin check at all, and two parallel `isAdmin()` implementations across
+  the codebase.
+- **`FIRESTORE-COLLECTIONS.md`** — every collection/subcollection, auth
+  posture, owning domain file, and a table of the pointer fields that
+  actually connect collections to each other
+  (`linked_marketing_contact_ids`, `possible_customer_match`,
+  `branded_for_customer_id`, `woo_customer_id`).
+- **`DOMAIN-MODULES.md`** — what each `src/domain/*.js` file owns and its
+  main exports, distinct from the `src/*Api.js` edge-function wrappers
+  already covered in `API-REFERENCE.md`.
+- **`TECH-DEBT.md`** — a running list for exactly the kind of thing noticed
+  in passing during this cycle: the two `isAdmin()` implementations, the
+  three unguarded edge functions, duplicated tag-bookkeeping between
+  `customer.js`/`marketingContact.js`, and the carried-over
+  `SummaryScanSection`/`ContactSummaryScanSection` duplication from V8.10's
+  own review.
+
+Also: a dedicated **QA admin login** (`claude-qa@crystocraft.com`, real
+Firebase account, `role: admin`) so Claude can sign in and click-test a
+change in the actual app before reporting it done, instead of always asking
+the owner to verify — this was an explicit ask ("you always say you can't
+see what's in the Operation Center"). Read-only-verification posture: used
+for navigating/clicking/screenshotting, never for real sends/syncs/deletes
+unless specifically asked to test that action. Every feature below marked
+"verified live" in this write-up went through this account.
+
+### Login Activity showed nothing for real, active customers
+
+Reported live: a customer was actively using the portal, Login Activity
+showed no sign of it. Root cause: `authActivity.js`'s `stampLogin()` was
+only ever called from `Login.jsx`/`SetPassword.jsx`'s own
+`signInWithEmailAndPassword` success handlers — i.e. only a **fresh**
+interactive sign-in. Firebase Auth's default persistence keeps a session
+alive indefinitely, so a customer who already has a live session (the
+common case — sign in once, never explicitly sign out) opens the portal and
+browses/orders without ever touching those code paths. Moved the stamp into
+`useAuthState.js`'s `onAuthStateChanged` listener instead, which fires for
+BOTH a fresh sign-in and a restored/persisted session — the one place that
+actually covers "is this customer using the portal right now." Removed the
+now-redundant explicit calls (which also fixed a latent double-count,
+since `onAuthStateChanged` already fires again right after a fresh
+sign-in). Verified live: reloading with an existing persisted session (no
+password re-entry) bumped `login_count` and refreshed `last_login_at` —
+exactly the case that was previously invisible.
+
+### GA4 wired in as a second data source, then merged per-account
+
+Off the back of the Login Activity fix, the owner asked to bring in Google
+Analytics for a cross-check. GA4 was already installed
+(`G-HRTV0QWTNG` in `index.html`, property `547709480`) but never queried
+from the app. Set up:
+- The existing Firebase service account
+  (`firebase-adminsdk-fbsvc@crystocraft-costing.iam.gserviceaccount.com`)
+  granted Viewer on the GA4 property, and the Google Analytics Data API
+  enabled on the `crystocraft-costing` Cloud project — see
+  `LOCAL-TOOLS.md`'s GA4 section for the exact query pattern and the "has
+  not been used... or is disabled" error that's actually just propagation
+  delay, not a real failure.
+- New edge function **`ga-portal-activity.js`** (admin-gated, JWT-bearer
+  service-account OAuth flow signed with `jose` — same dependency
+  `lib/auth.js` already uses) proxies the GA4 Data API, since the browser
+  can never call it directly. Client wrapper `src/gaPortalActivityApi.js`.
+- `PortalLogins.jsx` (the Login Activity tab) shows a "Site traffic (Google
+  Analytics)" panel: sessions/active users for the last 7/30 days, busiest
+  day — explicitly labelled as aggregate, every visitor to the whole site
+  (staff included), not matched to any account.
+- **Real per-account merge, not just a cross-check**: `useAuthState.js` now
+  also calls `gtag('set', {user_id})` AND `gtag('set', 'user_properties',
+  {app_uid})` with the signed-in Firebase uid on every auth transition
+  (cleared on sign-out). `user_id` is GA4's own reserved built-in field
+  (cross-device reporting) and — discovered live, from GA4's console
+  literally rejecting the registration attempt — **cannot** also be
+  registered as a custom dimension under that name; `app_uid` is the
+  non-reserved property that actually can be, and is what the Data API can
+  query. Registered as a User-scoped custom dimension in the GA4 console,
+  confirmed queryable within minutes. `ga-portal-activity.js` now returns a
+  `byUid` map alongside the site-wide trend, and `PortalLogins.jsx`'s roster
+  table has a new "GA sessions (30d)" column, looked up by each row's own
+  account id. Only covers sessions from 2026-08-27 onward — a "—" means
+  "predates tagging," not "inactive," and both panel captions say so
+  directly rather than implying more precision than the data has.
+
+### Quote workflow gaps
+
+- **"Convert to PI" button** on the Quote page (`QuoteDetail.jsx`) —
+  navigates to `/shipments/new?from_quote={id}`, which `ShipmentForm.jsx`
+  reads to prefill customer/currency/lines from the quote's items (each
+  defaulting to its lowest-quantity tier). Most quotes have no UC number
+  yet by design; the quote's free-text Ref No. only carries over into the
+  new order's `uc_no` when it actually matches a `UC<digits>` pattern, so a
+  blank or unrelated reference never masquerades as one.
+  `converted_order_id` is written back onto the quote once the order is
+  created, flipping the button to "View PI →" so a second order can't be
+  created from the same quote by accident.
+- **Custom (non-catalogue) line items on quotes** — a "+ Custom Item"
+  button drops a blank, auto-focused row directly into the item list (no
+  `window.prompt()` — that shipped first, then got replaced after the owner
+  flagged it as looking like a raw browser dialog next to the rest of the
+  page's styled UI). `is_custom: true`, `product_id: null`; the item's name
+  becomes an editable inline field. Also fixed the Convert-to-PI mapping so
+  a custom item correctly becomes an `ad_hoc` order line instead of falsely
+  claiming a catalogue match (`match_status: 'matched'` was hardcoded
+  regardless of whether `product_id` existed).
+  Adding an image to a custom item crashed the whole page
+  (`collection(db, 'products', null, 'images')` — Firestore throws on a
+  null path segment; `ProductImagePicker` now skips that query and routes
+  custom-item uploads to their own storage path instead). That path had no
+  matching Storage rule either — `storage.rules` had no `client_quotes/`
+  entry at all, which would have failed the upload with Storage's silent
+  default-deny even after the crash was fixed. **Also wired `storage.rules`
+  into `firebase.json`/CLI deploy** while fixing this — it was previously a
+  "reference copy" requiring a manual console paste (the file's own old
+  comment), the same gap that caused the `campaign_images` bug it already
+  documents. Verified via the Rules API that nothing manually added in the
+  console was lost before deploying.
+- **Quote totals** — the page had no total anywhere in the live editing
+  view; the only total was an opt-in "Include grand total on PDF" checkbox
+  buried in the export dialog, reset to unchecked every time the dialog
+  reopened. Added a totals summary under the item list (one line per
+  matching tier quantity across items, "for reference only") gated behind
+  a **single persisted "Show total" checkbox** (`quote.show_total`) shared
+  by both the quote page and the export dialog — checking either one
+  updates Firestore and the other picks it up immediately. Previously the
+  export checkbox was pure local state with no memory at all, which is
+  what "export doesn't have the total" actually was.
+
+### Order form (PI/Invoice) workflow gaps
+
+- **Manual UC# allocation** — SO/Doc No and Invoice No both already had an
+  "Allocate" link for getting a number without waiting for the automatic
+  path; UC# had none, so a Direct Invoice sitting un-invoiced had no way to
+  get a UC# at all. Wired up `allocateOrderUc` (same allocator
+  `Shipping.jsx`'s "Duplicate order" already uses — always mints fresh,
+  never reuses).
+- **"Hide Total Qty" checkbox** for the printed PI/Invoice — useful when a
+  summed quantity across mixed units doesn't mean anything. Hit the exact
+  "field the whole codebase keeps warning about" trap while building
+  this: `hide_total_qty` was added to the write paths but not to
+  `shipping.js`'s `normOrder()` read-side whitelist, so the checkbox saved
+  fine but the print pages kept showing Total Qty regardless — same class
+  of bug `contact_id`/`channel`/`woo_fee` hit before, documented in that
+  function's own comments.
+- **Revision numbering** — a "Revision" field + "+ New Rev" button, never
+  bumping automatically. Shows "PROFORMA INVOICE — REV 2" / "INVOICE — REV
+  2" on the printed documents once bumped, so a customer holding an older
+  PDF can tell it's been superseded.
+- **Header layout split into four labelled cards** (Customer / Document
+  References / Schedule & Terms / Destination) — was one long undivided
+  card, with Invoice No and Revision squeezed into the same 3-column grid
+  as SO/UC/Customer PO, which truncated the Revision placeholder and
+  wrapped "+ New Rev" onto two lines.
+- **Portal Accounts search box** — 37 accounts and growing had no way to
+  find one except scrolling; searches name/email/country across whichever
+  tab/filter is active.
+
+### PDF layout fixes (quote PDF, then checked against PI/Invoice)
+
+Three fixes to `QuotePDF.jsx` (`@react-pdf/renderer`), reported from a real
+printed quote:
+1. **Image/description gap** — the 70×70 product photo sat right against
+   the description text. Fixed with a dedicated spacer column, not padding
+   on the photo cell — react-pdf/Yoga sizes a fixed-width View as
+   border-box, so padding there would have shrunk the image instead.
+2. **Company info as a real page footer** — was plain flowing content
+   landing wherever the signature block happened to end up, only ever
+   appearing on the LAST page of a multi-page quote. Now a `fixed` View
+   pinned to the page bottom, printed on every page.
+3. **Page breaks no longer split a section that belongs together** —
+   payment details/remarks/terms/signatures wrapped in one
+   `wrap={false}` View, so react-pdf moves the whole block to the next
+   page instead of splitting it.
+
+Added `qa/render-quote.jsx` (same headless-render-and-rasterise pattern as
+`qa/render-catalogue.jsx`) and verified all three visually against a
+worst-case 7-item test quote before shipping.
+
+**Checked whether the same three applied to the PI/Invoice print pages**
+(`ProformaInvoicePrint.jsx`/`SalesInvoicePrint.jsx`) when asked directly
+afterward:
+1. Image/description gap — already fine; these use real `<table>` cells
+   with existing padding, unlike the quote PDF's bare flexbox Views.
+2/3. Page-break grouping — `.pi-totals`/`.pi-words`/`.pi-bank`/`.pi-sign`/
+   `.pi-foot` each already resisted splitting internally, but nothing
+   stopped a break landing BETWEEN them (signatures on one page, the
+   footer orphaned onto the next). Wrapped all five in one `.pi-closing`
+   (`.si-closing`) group.
+   **Deliberately did NOT** attempt a true `position: fixed` repeating
+   footer here like QuotePDF got — these are plain browser-printed HTML
+   pages (`window.print()`), a fundamentally different and less
+   controllable pipeline this exact file has already been burned by twice
+   (documented in its own comments: a card-style regression on iOS Share
+   Sheet print, twice). Grouping solves the reported symptom without
+   risking a new cross-browser bug on unproven ground — a true repeating
+   footer would need real testing across desktop Chrome/Safari/iOS Share
+   Sheet print before shipping, not a guess.
+
 ## V8.10 — Landscape Brand Proposal PDF
 
 Owner's spec (2026-08-24, verbatim brief): a curated landscape (16:9) PDF
@@ -562,8 +782,47 @@ scripts were one-off (`scripts/_alibaba_reconcile*.mjs`), written fresh per
 page/task and deleted immediately after — never committed, so nothing here
 is repeatable without rebuilding the script from this write-up.
 
-## Where V8.11 starts
+## Current Status — V8.11 CLOSED as of 2026-08-27
 
+**Shipped this cycle**: five new repo-root reference docs plus a QA admin
+login, built specifically so Claude could self-verify changes instead of
+always asking the owner to test (see above); the Login Activity fix
+(persisted sessions were never being stamped); GA4 wired in as both an
+aggregate cross-check and — after registering `app_uid` as a GA4 custom
+dimension — a real per-account merge; Quote workflow gaps closed (Convert
+to PI, custom line items, quote totals, unified "show total" toggle);
+order-form gaps closed (manual UC# allocation, hide-total-qty, revision
+numbering, header regrouped into four cards); Portal Accounts search; and
+three PDF layout fixes to the quote PDF (image/description gap, footer as
+a real repeating page element, page-break section grouping), checked
+against and partly applied to the PI/Invoice print pages too. See the full
+`## V8.11` entry above for detail on each.
+
+**Two things worth being honest about**: no automated tests added, same
+standing gap as every prior cycle. And the PI/Invoice pages deliberately
+did NOT get the same `position: fixed` repeating footer the quote PDF got
+— see that section above for why (a file already burned twice by
+cross-browser print inconsistencies is not where to risk an unverified
+guess).
+
+## Where V8.12 starts
+
+- **PI/Invoice repeating footer** — if a true footer-on-every-page is
+  wanted for these too (not just the section-grouping fix that shipped),
+  it needs real testing across desktop Chrome print, Safari print, and iOS
+  Share Sheet print before shipping — this file has regressed twice before
+  from exactly this kind of unverified cross-browser assumption.
+- **GA4 `app_uid` per-account data is brand new** — only covers sessions
+  from 2026-08-27 onward, so the "GA sessions (30d)" column on Login
+  Activity will look mostly empty for a few days. Worth a second look once
+  there's a real week of tagged traffic to confirm the numbers make sense
+  against the roster's own sign-in counts.
+- **Two `isAdmin()` implementations and three unguarded edge functions**
+  (`customizer-render.js`, `customizer-palette.js`, `enhance-image.js`) —
+  flagged in `TECH-DEBT.md` while building `API-REFERENCE.md`, not fixed;
+  the unguarded-function question in particular needs an owner decision
+  (deliberate for a public-facing feature, or an oversight), not a
+  unilateral code change.
 - **62 marketing_contacts still have no way to be reached** — the 78 found
   contactless minus the 16 flagged for a "Request business card" follow-up
   (58 firmly Alibaba-only, plus the 3 in the 16 that came back "not found in
@@ -583,11 +842,11 @@ is repeatable without rebuilding the script from this write-up.
   Alibaba's own `HSF_CRM_B_SEARCH_OVER_LIMIT` wall. Likely low marginal
   value (same source/country mix expected) but unconfirmed.
 - **Alibaba message-center UI automation (compose box, Request business
-  card) does not work reliably** — see this cycle's close note above.
+  card) does not work reliably** — carried forward from V8.10's close note.
   Don't re-attempt the same click-coordinate approach without a new idea;
   it already failed twice.
 - **WooCommerce SI/UC flow (V8.9 §7) still hasn't been walked through
-  live** — carried forward unresolved from V8.9's own "Where V8.10 starts"
+  live** — carried forward unresolved since V8.9's own "Where V8.10 starts"
   note; the next real WooCommerce sync should be run through Allocate once
   with Cindy watching.
 - **No automated tests added anywhere this cycle**, same standing gap as
