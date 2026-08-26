@@ -75,16 +75,18 @@ export default function PortalLogins({ embedded = false }) {
     setCustomers(snap.docs.map(d => ({ id: d.id, ...d.data() })))
   }), [])
 
-  // GA4 traffic (V8.11) — see ga-portal-activity.js's own comment for the
-  // real limitation: this is EVERY visitor to the site (staff included),
-  // not matched to a specific account, because nothing in this app ever
-  // calls gtag('set', {user_id}). It's a cross-check on the roster below —
-  // "does the trend roughly agree" — not a merge of the two.
+  // GA4 traffic (V8.11) — see ga-portal-activity.js's own comment. `rows` is
+  // site-wide daily traffic (everyone, staff included) — a cross-check on
+  // the roster's trend, not a merge. `byUid` IS a real per-account merge,
+  // keyed by Firebase uid (== each row's own doc id below) — only for
+  // sessions after useAuthState.js started tagging app_uid, so a quiet
+  // account here may just predate that, not actually be inactive.
   const [traffic, setTraffic] = useState(null)   // null = loading, [] = loaded empty
+  const [gaByUid, setGaByUid] = useState({})
   const [trafficError, setTrafficError] = useState('')
   useEffect(() => {
     fetchPortalTraffic()
-      .then(setTraffic)
+      .then(({ rows, byUid }) => { setTraffic(rows); setGaByUid(byUid) })
       .catch(e => { setTrafficError(e.message || 'Could not load GA4 traffic.'); setTraffic([]) })
   }, [])
 
@@ -204,8 +206,10 @@ export default function PortalLogins({ embedded = false }) {
               </div>
             </div>
             <p className="text-[11px] text-ink-40 mt-3 pt-2 border-t border-ivory-dark">
-              Every visitor to the whole site — staff included — not matched to a specific account below.
-              Use it to sanity-check the roster's trend, not as a per-customer count.
+              These totals are every visitor to the whole site — staff included, not matched to any account.
+              The "GA sessions (30d)" column in the table below IS matched per account, just only from
+              2026-08-27 onward — use these totals to sanity-check the overall trend, the column for a real
+              per-customer number.
             </p>
           </>
         )}
@@ -256,18 +260,20 @@ export default function PortalLogins({ embedded = false }) {
                 <th className="px-3 py-2 font-medium">Customer</th>
                 <th className="px-3 py-2 font-medium">Last sign-in</th>
                 <th className="px-3 py-2 font-medium text-right">Sign-ins</th>
+                <th className="px-3 py-2 font-medium text-right" title="Sessions GA4 actually matched to this account — only from 2026-08-27 onward, see the page's own note below.">GA sessions (30d)</th>
                 <th className="px-3 py-2 font-medium">Status</th>
                 <th className="px-3 py-2" />
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 && !loading && (
-                <tr><td colSpan={6} className="px-3 py-8 text-center text-ink-40">No accounts match.</td></tr>
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-ink-40">No accounts match.</td></tr>
               )}
               {rows.map(u => {
                 const cust = customersById.get(u.customer_id)
                 const d = daysSince(u.last_login_at)
                 const status = u.status === 'approved' ? 'approved' : u.status === 'suspended' ? 'suspended' : 'pending'
+                const ga = gaByUid[u.id]
                 return (
                   <tr key={u.id} className="border-b border-ivory last:border-0 hover:bg-ivory/40">
                     <td className="px-3 py-2.5">
@@ -286,6 +292,9 @@ export default function PortalLogins({ embedded = false }) {
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums text-ink-70">{u.login_count ?? 0}</td>
+                    <td className="px-3 py-2.5 text-right tabular-nums">
+                      {ga ? <span className="text-ink-70">{ga.sessions}</span> : <span className="text-ink-30">—</span>}
+                    </td>
                     <td className="px-3 py-2.5">
                       <span className={`text-[11px] px-1.5 py-0.5 rounded ${STATUS_STYLE[status]}`}>{status}</span>
                     </td>
@@ -303,8 +312,10 @@ export default function PortalLogins({ embedded = false }) {
       </div>
 
       <p className="text-[11px] text-ink-40 mt-2">
-        Counts come from each account's own record, updated on sign-in — so this is the last time someone
-        signed in, not a history of every visit.
+        "Sign-ins" comes from each account's own record, updated on sign-in — so this is the last time someone
+        signed in, not a history of every visit. "GA sessions" is a real per-account match from Google Analytics,
+        but only counts from 2026-08-27 onward (when session tagging shipped) — a "—" there can mean either no
+        recent GA activity or simply that it predates the tagging, not necessarily an inactive account.
       </p>
     </div>
   )

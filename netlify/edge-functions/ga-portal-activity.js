@@ -6,13 +6,13 @@
 // WHAT THIS IS, AND IS NOT (read PortalLogins.jsx's own comment too): GA4
 // tracks the whole site from one measurement tag in index.html, covering
 // EVERY visitor — staff on the Operation Center side and customers on the
-// portal side alike — with no link to a specific users/{uid} account. There
-// is no gtag('set', {user_id}) call anywhere in this app (checked before
-// building this), so a GA4 session cannot be matched to one row in
-// PortalLogins.jsx's roster. This is aggregate traffic for context
-// ("does GA's traffic trend roughly track what the roster shows"), not a
-// per-account merge — don't build a UI that implies otherwise without
-// adding that instrumentation first.
+// portal side alike. Per-account matching became possible 2026-08-27 once
+// useAuthState.js started calling gtag('set', 'user_properties', {app_uid})
+// and app_uid was registered as a User-scoped custom dimension in the GA4
+// console — this now also returns a byUid breakdown alongside the
+// site-wide daily trend. That breakdown only covers sessions from AFTER
+// that instrumentation shipped; anything before reads as "(not set)" and
+// is dropped here rather than shown as a phantom uid.
 //
 // Auth to Google: a JWT-bearer service-account flow (RS256-signed
 // assertion → OAuth token), using the SAME service account already granted
@@ -61,26 +61,55 @@ export default async function handler(req) {
     return json({ error: 'GA4 not configured (GA_CLIENT_EMAIL / GA_PRIVATE_KEY / GA_PROPERTY_ID)' }, 500)
   }
 
-  try {
-    const accessToken = await getAccessToken(clientEmail, privateKey)
+  const runReport = async (accessToken, body) => {
     const res = await fetch(`https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) throw new Error(`GA4 request failed: ${await res.text()}`)
+    return res.json()
+  }
+
+  try {
+    const accessToken = await getAccessToken(clientEmail, privateKey)
+
+    const [daily, byUidData] = await Promise.all([
+      runReport(accessToken, {
         dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
         dimensions: [{ name: 'date' }],
         metrics: [{ name: 'activeUsers' }, { name: 'sessions' }],
         orderBys: [{ dimension: { dimensionName: 'date' } }],
       }),
-    })
-    if (!res.ok) return json({ error: `GA4 request failed: ${await res.text()}` }, 502)
-    const data = await res.json()
-    const rows = (data.rows || []).map(r => ({
+      // Per-account breakdown — only meaningful for sessions carrying the
+      // app_uid custom dimension (see the top-of-file comment). "(not set)"
+      // rows are sessions from before that instrumentation shipped, or from
+      // a visitor who was never signed in — dropped, not a real account.
+      runReport(accessToken, {
+        dateRanges: [{ startDate: '30daysAgo', endDate: 'today' }],
+        dimensions: [{ name: 'customUser:app_uid' }],
+        metrics: [{ name: 'sessions' }, { name: 'activeUsers' }],
+        limit: 1000,
+      }).catch(() => null), // custom dimension may not have propagated yet — degrade quietly
+    ])
+
+    const rows = (daily.rows || []).map(r => ({
       date: r.dimensionValues[0].value, // YYYYMMDD
       activeUsers: Number(r.metricValues[0].value) || 0,
       sessions: Number(r.metricValues[1].value) || 0,
     }))
-    return json({ rows })
+
+    const byUid = {}
+    for (const r of byUidData?.rows || []) {
+      const uid = r.dimensionValues[0].value
+      if (!uid || uid === '(not set)') continue
+      byUid[uid] = {
+        sessions: Number(r.metricValues[0].value) || 0,
+        activeUsers: Number(r.metricValues[1].value) || 0,
+      }
+    }
+
+    return json({ rows, byUid })
   } catch (e) {
     return json({ error: e.message || 'GA4 lookup failed' }, 500)
   }
