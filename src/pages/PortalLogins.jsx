@@ -4,7 +4,8 @@ import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import LoadingBar from '../components/LoadingBar'
 import { accountTypeOf } from './CustomerAccounts'
-import { ChevronRight, Search } from 'lucide-react'
+import { fetchPortalTraffic } from '../gaPortalActivityApi'
+import { ChevronRight, Search, TrendingUp, AlertTriangle } from 'lucide-react'
 
 // Portal sign-in overview — every account's login state on one page, so the
 // question "who has actually been using the portal?" doesn't mean opening
@@ -74,6 +75,33 @@ export default function PortalLogins({ embedded = false }) {
     setCustomers(snap.docs.map(d => ({ id: d.id, ...d.data() })))
   }), [])
 
+  // GA4 traffic (V8.11) — see ga-portal-activity.js's own comment for the
+  // real limitation: this is EVERY visitor to the site (staff included),
+  // not matched to a specific account, because nothing in this app ever
+  // calls gtag('set', {user_id}). It's a cross-check on the roster below —
+  // "does the trend roughly agree" — not a merge of the two.
+  const [traffic, setTraffic] = useState(null)   // null = loading, [] = loaded empty
+  const [trafficError, setTrafficError] = useState('')
+  useEffect(() => {
+    fetchPortalTraffic()
+      .then(setTraffic)
+      .catch(e => { setTrafficError(e.message || 'Could not load GA4 traffic.'); setTraffic([]) })
+  }, [])
+
+  const trafficSummary = useMemo(() => {
+    if (!traffic?.length) return null
+    const last7 = traffic.slice(-7)
+    const sumSessions = arr => arr.reduce((s, r) => s + r.sessions, 0)
+    const sumUsers = arr => arr.reduce((s, r) => s + r.activeUsers, 0)
+    return {
+      sessions7d: sumSessions(last7),
+      users7d: sumUsers(last7),
+      sessions30d: sumSessions(traffic),
+      users30d: sumUsers(traffic),
+      peak: [...traffic].sort((a, b) => b.sessions - a.sessions)[0],
+    }
+  }, [traffic])
+
   const customersById = useMemo(() => new Map(customers.map(c => [c.id, c])), [customers])
 
   // Portal accounts only. Admins sign in through the same door but they are
@@ -137,6 +165,51 @@ export default function PortalLogins({ embedded = false }) {
       <p className="text-sm text-ink-60 mb-4">
         Sign-in status for every portal account, most recent first. Click through to the account to change access.
       </p>
+
+      {/* GA4 cross-check — not a merge, see the fetch effect's own comment. */}
+      <div className="card p-4 mb-4">
+        <div className="flex items-center gap-1.5 mb-2">
+          <TrendingUp size={14} className="text-ink-40" />
+          <h2 className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Site traffic (Google Analytics)</h2>
+        </div>
+        {trafficError ? (
+          <p className="text-sm text-red-600 flex items-center gap-1.5"><AlertTriangle size={14} />{trafficError}</p>
+        ) : traffic === null ? (
+          <p className="text-sm text-ink-40">Loading…</p>
+        ) : !trafficSummary ? (
+          <p className="text-sm text-ink-40">No GA4 data for the last 30 days.</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div>
+                <p className="text-lg font-semibold text-ink">{trafficSummary.sessions7d.toLocaleString()}</p>
+                <p className="text-xs text-ink-40">Sessions, last 7 days</p>
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-ink">{trafficSummary.users7d.toLocaleString()}</p>
+                <p className="text-xs text-ink-40">Active users, last 7 days</p>
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-ink">{trafficSummary.sessions30d.toLocaleString()}</p>
+                <p className="text-xs text-ink-40">Sessions, last 30 days</p>
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-ink">
+                  {trafficSummary.peak?.sessions.toLocaleString()}
+                  <span className="text-xs font-normal text-ink-40 ml-1">
+                    on {trafficSummary.peak && `${trafficSummary.peak.date.slice(4,6)}/${trafficSummary.peak.date.slice(6,8)}`}
+                  </span>
+                </p>
+                <p className="text-xs text-ink-40">Busiest day, last 30 days</p>
+              </div>
+            </div>
+            <p className="text-[11px] text-ink-40 mt-3 pt-2 border-t border-ivory-dark">
+              Every visitor to the whole site — staff included — not matched to a specific account below.
+              Use it to sanity-check the roster's trend, not as a per-customer count.
+            </p>
+          </>
+        )}
+      </div>
 
       {/* Summary. "Never" is the number worth watching — an approved account
           that has never signed in usually means the welcome email never landed. */}

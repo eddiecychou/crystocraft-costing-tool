@@ -175,6 +175,10 @@
   function = "woo-sync"
   path = "/api/woo-sync"
 
+[[edge_functions]]
+  function = "ga-portal-activity"
+  path = "/api/ga-portal-activity"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
