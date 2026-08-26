@@ -19,7 +19,7 @@ import LoadingBar from '../components/LoadingBar'
 import QuoteExport from '../components/QuoteExport'
 import { listBankAccounts, accountForCurrency, formatBankDetails } from '../bankAccounts'
 import { loadCustomerAssets, TYPE_LABEL, CATEGORIES, CATEGORY_LABEL } from '../customerAssets'
-import { Package, X, Check, Paperclip, FileText, Copy, Banknote, AlertCircle } from 'lucide-react'
+import { Package, X, Check, Paperclip, FileText, Copy, Banknote, AlertCircle, Receipt } from 'lucide-react'
 
 // 'confirmed' is the canonical success status (matches the "uploaded" quote
 // flow below, and Quotes.jsx's list filter). This form used to write 'won'
@@ -413,6 +413,22 @@ export default function QuoteDetail() {
           <button className="btn-secondary text-sm inline-flex items-center gap-1.5" onClick={handleDuplicate} disabled={duplicating}>
             {duplicating ? 'Copying…' : <><Copy size={14} />Duplicate</>}
           </button>
+          {/* Convert to PI (2026-08-26) — most quotes have no UC number yet
+              (it's the free-text Ref No. field above, only sometimes typed by
+              hand); ShipmentForm.jsx reads ?from_quote= and, if Ref No. looks
+              like one, carries it into the new order's uc_no field. Once
+              converted, converted_order_id (written by ShipmentForm on
+              create) replaces this with a link to the resulting PI instead of
+              letting a second one be created from the same quote by mistake. */}
+          {quote.converted_order_id ? (
+            <Link to={`/shipments/${quote.converted_order_id}`} className="btn-secondary text-sm inline-flex items-center gap-1.5">
+              <Receipt size={14} />View PI →
+            </Link>
+          ) : (
+            <Link to={`/shipments/new?from_quote=${id}`} className="btn-primary text-sm inline-flex items-center gap-1.5">
+              <Receipt size={14} />Convert to PI
+            </Link>
+          )}
           <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>Delete</button>
         </div>
       </div>

@@ -25,8 +25,15 @@ import { metalOrderConfig } from '../orderStock'
 import { allocateSoNo, soYear } from '../soNumber'
 import { allocateInvoice, upsertInvoice, updateUcInvoice } from '../ucRegistry'
 import { orderStockStatus, stockStatusDetail, STOCK_STATUS_LABEL, STOCK_STATUS_STYLE } from '../orderStockStatus'
-import { doc, onSnapshot } from 'firebase/firestore'
+import { doc, onSnapshot, getDoc, getDocs, collection, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
+
+// A quote's Ref No. field is free text ("e.g. UC4932/26") — only sometimes
+// an actual UC, never allocated through the registry (see ucRegistry.js).
+// Convert to PI carries it into uc_no ONLY when it actually looks like one,
+// so a quote's PO reference or a blank field doesn't masquerade as a UC and
+// short-circuit doAllocateSi's "already has one" check.
+const looksLikeUc = v => /^UC\s*\d/i.test(String(v || '').trim())
 
 // Every stock class an order consumes. Order matters only for display.
 const STOCK_CFGS = [metalOrderConfig, crystalInventory, packagingInventory]
@@ -135,6 +142,9 @@ export default function ShipmentForm() {
   // how the page presents itself — the record is the same shape, it just never
   // gets an SO number. See normOrder in shipping.js for why that is legitimate.
   const isDirect = searchParams.get('direct') === '1'
+  // Arrived from QuoteDetail.jsx's "Convert to PI" — see the prefill effect
+  // below and looksLikeUc above.
+  const fromQuoteId = searchParams.get('from_quote')
   // Arrived from "Raise invoice →" on the Sales Invoices page. The order form is
   // long and the invoice field is well down it, so landing here without being
   // shown where to go is the same discoverability problem that action fixes.
@@ -240,6 +250,54 @@ export default function ShipmentForm() {
     }
     Promise.all(loads).finally(() => setFetching(false))
   }, [id, isEdit])
+
+  // Convert to PI (2026-08-26) — prefill header + lines from a client_quotes
+  // doc instead of starting blank. Only for the built-from-products quote
+  // view (quote_type !== 'uploaded'), since an uploaded quote is just PDF
+  // attachments with no items/tiers to convert. Quantities default to each
+  // item's FIRST (lowest) tier — QuoteDetail.jsx's own "Min total" comment
+  // confirms tiers are already stored lowest-qty-first — and are fully
+  // editable here same as any other line, so this is a starting point for
+  // review, not a final commit.
+  const [fromQuoteError, setFromQuoteError] = useState('')
+  useEffect(() => {
+    if (!fromQuoteId || isEdit) return
+    let alive = true
+    ;(async () => {
+      const qSnap = await getDoc(doc(db, 'client_quotes', fromQuoteId))
+      if (!alive || !qSnap.exists()) { if (alive) setFromQuoteError('That quote could not be found.'); return }
+      const q = qSnap.data()
+      if (q.quote_type === 'uploaded') { setFromQuoteError('This quote has no product lines to convert — it\'s an uploaded document.'); return }
+      const itemSnap = await getDocs(collection(db, 'client_quotes', fromQuoteId, 'items'))
+      if (!alive) return
+      setHeader(h => ({
+        ...h,
+        customer_id: q.customer_id || h.customer_id,
+        customer_name: q.client_name || h.customer_name,
+        currency: q.quote_currency || h.currency,
+        uc_no: looksLikeUc(q.ref_no) ? q.ref_no.trim() : h.uc_no,
+        notes: q.quote_no ? `Converted from Quote ${q.quote_no}` : h.notes,
+      }))
+      const newLines = itemSnap.docs.map((d, i) => {
+        const it = d.data()
+        const tier = (it.tiers || [])[0] || { quantity: '', price: '' }
+        return {
+          line_no: i + 1,
+          item_code: '',
+          description: it.product_name || it.product_description || '',
+          qty_ordered: tier.quantity ?? '',
+          unit: it.product_unit || 'pcs',
+          unit_price: tier.price ?? '',
+          line_type: 'range', packable: true, match_status: 'matched',
+          matched_product_ref: it.product_id ? { collection: 'range_products', id: it.product_id, name: it.product_name } : null,
+          line_image: it.custom_image || it.hero_image || null,
+        }
+      })
+      setLines(newLines)
+      if (!newLines.length) setFromQuoteError('That quote has no product lines yet — add lines manually.')
+    })()
+    return () => { alive = false }
+  }, [fromQuoteId, isEdit])
 
   // Bring the invoice field into view when arriving via "Raise invoice →".
   // After `fetching` clears, so the field exists and the layout has settled.
@@ -653,6 +711,13 @@ export default function ShipmentForm() {
         }
       }
 
+      // Best-effort, after the order is safely committed — never let this
+      // block landing on the new order, and never let it retry into a second
+      // order if the order write itself already succeeded.
+      if (fromQuoteId) {
+        updateDoc(doc(db, 'client_quotes', fromQuoteId), { converted_order_id: orderId }).catch(() => {})
+      }
+
       navigate(`/shipments/${orderId}`)
     } catch (err) {
       setExtractError(err.message || 'Could not create order.')
@@ -835,10 +900,19 @@ export default function ShipmentForm() {
       {/* Order tab (or new shipment form) */}
       {(!isEdit || tab === 'order') && (
       <form onSubmit={isEdit ? handleSave : handleCreate} className="space-y-5">
+        {fromQuoteId && (
+          fromQuoteError ? (
+            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{fromQuoteError}</p>
+          ) : (
+            <p className="text-sm text-brand-700 bg-brand-50 border border-brand-200 rounded-lg px-3 py-2">
+              Prefilled from the quote — review quantities, prices and the UC# below before creating. Tiers default to the lowest quantity option.
+            </p>
+          )
+        )}
         {/* PI upload (import only). Hidden for a direct invoice — a retail sale
             has no proforma to import, so offering the dropzone would suggest a
             step that does not exist. */}
-        {!isEdit && !isDirect && (
+        {!isEdit && !isDirect && !fromQuoteId && (
           <div className="card p-4">
             <label
               className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer transition-colors
