@@ -43,6 +43,54 @@ The target name is `storage`, not `storage:rules` — that fails with
 Storage deploy target actually named that, unlike Firestore where
 `firestore:rules` is correct). Learned this the hard way; don't re-guess it.
 
+## Google Analytics 4 (read access)
+
+Set up 2026-08-27 so Claude can pull real portal usage data instead of
+guessing from app-level instrumentation alone (that session's actual
+trigger: diagnosing why Login Activity showed nothing for real logins).
+The Firebase service account (`firebase-adminsdk-fbsvc@crystocraft-
+costing.iam.gserviceaccount.com` — same one `firebase-service-account.json`
+already holds) is a Viewer on **GA4 property `547709480`** (the portal's
+site, measurement ID `G-HRTV0QWTNG` in `index.html`), and the "Google
+Analytics Data API" is enabled on the `crystocraft-costing` Cloud project.
+
+Query it with the same service account file, `analytics.readonly` scope,
+against the Data API's `runReport` endpoint:
+
+```js
+import { readFileSync } from 'fs'
+import { GoogleAuth } from 'google-auth-library'
+const sa = JSON.parse(readFileSync('/Users/eddie/Developer/costing-tool/firebase-service-account.json'))
+const auth = new GoogleAuth({ credentials: sa, scopes: ['https://www.googleapis.com/auth/analytics.readonly'] })
+const client = await auth.getClient()
+const res = await client.request({
+  url: 'https://analyticsdata.googleapis.com/v1beta/properties/547709480:runReport',
+  method: 'POST',
+  data: {
+    dateRanges: [{ startDate: '7daysAgo', endDate: 'today' }],
+    dimensions: [{ name: 'date' }],
+    metrics: [{ name: 'activeUsers' }, { name: 'sessions' }],
+  },
+})
+```
+
+Run it the same way as the other one-off admin scripts in this repo's
+history: copy into a `.mjs` file inside `~/Developer/costing-tool` (so
+`node_modules` resolves — `google-auth-library` is already a transitive
+dep via `firebase-admin`), run with `node`, then delete the script. Swap
+`dimensions`/`metrics` for whatever the question actually needs — see the
+[GA4 Data API reference](https://developers.google.com/analytics/devguides/reporting/data/v1/api-schema)
+for the full metric/dimension list (`activeUsers`, `sessions`, `screenPageViews`,
+`eventCount`, `newUsers`, etc., dimensioned by `date`, `pagePath`,
+`sessionSource`, `deviceCategory`, and more).
+
+If a query ever fails with "Google Analytics Data API has not been used in
+project... or it is disabled": it almost never means what it says once
+you've confirmed the API's toggle in the Cloud Console shows "Disable API"
+(i.e. already on) — that exact error came back for several minutes after
+the owner had already enabled it, until it simply propagated. Don't
+conclude it's broken from one retry.
+
 Logged in account can see two projects: `crystocraft-costing` (this app,
 default per `.firebaserc`) and `crystocraft-expenses` (separate project, not
 otherwise referenced from this repo — don't assume it's related unless the
