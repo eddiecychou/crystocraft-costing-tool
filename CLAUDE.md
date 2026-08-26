@@ -28,6 +28,7 @@ of record, one function at a time.
 | `LOCAL-TOOLS.md` | What's already installed/logged-in on this Mac's shell (Node, firebase-tools) — check before telling the user to install something or reaching for a scratch-fetch workaround |
 | `API-REFERENCE.md` | All 37 Netlify edge functions (`/api/*`), grouped by feature area — route, purpose, auth posture, caller. Check before adding a new one (to avoid duplicating an existing endpoint) and update it when adding one |
 | `FIRESTORE-COLLECTIONS.md` | Every Firestore collection/subcollection — purpose, auth posture, owning domain file, and the pointer fields that connect collections to each other. Check before adding a collection or tracing data across two of them |
+| `DOMAIN-MODULES.md` | What each `src/domain/*.js` file owns and its main exports — the business-logic layer, distinct from the `src/*Api.js` edge-function wrappers already covered in API-REFERENCE.md |
 
 ## Environment quirks that will otherwise waste your time
 
