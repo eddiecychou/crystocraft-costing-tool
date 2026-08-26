@@ -1002,7 +1002,7 @@ function ProductImagePicker({ productId, itemId, customerId, selectedUrl, onSele
           ) : loading ? (
             <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
           ) : images.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">No images uploaded for this product yet.</p>
+            <p className="text-sm text-gray-400 text-center py-6">{productId ? 'No images uploaded for this product yet.' : 'No image for this custom item yet.'}</p>
           ) : (
             <div className="grid grid-cols-3 gap-2 mb-3">
               {images.map(img => {
@@ -1045,7 +1045,9 @@ function ProductImagePicker({ productId, itemId, customerId, selectedUrl, onSele
               </button>
             )}
           </div>
-          <p className="text-xs text-gray-400">{tab === 'brand' ? 'Curated on the Customer page' : 'New uploads saved to product'}</p>
+          <p className="text-xs text-gray-400">
+            {tab === 'brand' ? 'Curated on the Customer page' : productId ? 'New uploads saved to product' : 'Saved to this line only — not shared with the catalogue'}
+          </p>
         </div>
       </div>
     </div>
