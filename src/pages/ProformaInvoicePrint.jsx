@@ -223,6 +223,13 @@ export default function ProformaInvoicePrint() {
         /* Keep the closing blocks whole; splitting a total or a bank block
            across pages is the same class of problem as splitting a line. */
         .pi-totals, .pi-words, .pi-bank, .pi-sign, .pi-foot { page-break-inside: avoid; break-inside: avoid; }
+        /* The rules above stop any ONE block splitting internally, but never
+           stopped a break landing BETWEEN them — e.g. signatures ending one
+           page and the company footer starting the next, orphaned apart from
+           what it's meant to close out (owner, 2026-08-27, from a real
+           printed quote hitting the same issue). .pi-closing wraps totals
+           through the footer as one further-avoid-split unit on top of that. */
+        .pi-closing { page-break-inside: avoid; break-inside: avoid; }
         /* One-off MISC lines carry multi-line descriptions; without this they
            collapse into one run-on line. */
         table.pi-lines td.desc { white-space: pre-wrap; }
@@ -380,58 +387,60 @@ export default function ProformaInvoicePrint() {
         </tbody>
       </table>
 
-      <div className="pi-totals">
-        <table>
-          <tbody>
-            {totalQty > 0 && !order.hide_total_qty && (
-              <tr><td className="k">Total Qty</td><td className="v">{totalQty.toLocaleString()}{qtyUnitLabel ? ` ${qtyUnitLabel}` : ''}</td></tr>
-            )}
-            <tr><td className="k">Subtotal</td><td className="v">{money(subtotal, cur)}</td></tr>
-            {discountAmount > 0 && (
-              <tr><td className="k">Discount{order.discount_pct ? ` (${order.discount_pct}%)` : ''}</td>
-                  <td className="v">− {money(discountAmount, cur)}</td></tr>
-            )}
-            {chargesTotal > 0 && (
-              <tr><td className="k">Charges</td><td className="v">{money(chargesTotal, cur)}</td></tr>
-            )}
-            <tr className="grand"><td className="k">Total</td><td className="v">{money(total, cur)}</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div className="pi-words">{amountInWords(total, cur)}</div>
-
-      {bankBlock && (
-        <div className="pi-bank">
-          <h4>Remittance</h4>
-          <pre>{bankBlock}</pre>
+      <div className="pi-closing">
+        <div className="pi-totals">
+          <table>
+            <tbody>
+              {totalQty > 0 && !order.hide_total_qty && (
+                <tr><td className="k">Total Qty</td><td className="v">{totalQty.toLocaleString()}{qtyUnitLabel ? ` ${qtyUnitLabel}` : ''}</td></tr>
+              )}
+              <tr><td className="k">Subtotal</td><td className="v">{money(subtotal, cur)}</td></tr>
+              {discountAmount > 0 && (
+                <tr><td className="k">Discount{order.discount_pct ? ` (${order.discount_pct}%)` : ''}</td>
+                    <td className="v">− {money(discountAmount, cur)}</td></tr>
+              )}
+              {chargesTotal > 0 && (
+                <tr><td className="k">Charges</td><td className="v">{money(chargesTotal, cur)}</td></tr>
+              )}
+              <tr className="grand"><td className="k">Total</td><td className="v">{money(total, cur)}</td></tr>
+            </tbody>
+          </table>
         </div>
-      )}
 
-      {order.notes && (
-        <div className="pi-notes">
-          <span className="lbl">Remarks</span>
-          {order.notes}
-        </div>
-      )}
+        <div className="pi-words">{amountInWords(total, cur)}</div>
 
-      <div className="pi-sign">
-        <div>
-          <div className="space">
-            {stampUrl && <img className="stamp" src={stampUrl} alt="" />}
+        {bankBlock && (
+          <div className="pi-bank">
+            <h4>Remittance</h4>
+            <pre>{bankBlock}</pre>
           </div>
-          <div className="line">ISSUED BY · {SELLER.name}</div>
-        </div>
-        <div>
-          <div className="space" />
-          <div className="line">CONFIRMED BY · {order.customer_name || '—'}</div>
-        </div>
-      </div>
+        )}
 
-      <div className="pi-foot">
-        <div className="nm">{SELLER.name}</div>
-        <div>{SELLER.address}</div>
-        <div>{SELLER.contact}</div>
+        {order.notes && (
+          <div className="pi-notes">
+            <span className="lbl">Remarks</span>
+            {order.notes}
+          </div>
+        )}
+
+        <div className="pi-sign">
+          <div>
+            <div className="space">
+              {stampUrl && <img className="stamp" src={stampUrl} alt="" />}
+            </div>
+            <div className="line">ISSUED BY · {SELLER.name}</div>
+          </div>
+          <div>
+            <div className="space" />
+            <div className="line">CONFIRMED BY · {order.customer_name || '—'}</div>
+          </div>
+        </div>
+
+        <div className="pi-foot">
+          <div className="nm">{SELLER.name}</div>
+          <div>{SELLER.address}</div>
+          <div>{SELLER.contact}</div>
+        </div>
       </div>
     </div>
   )

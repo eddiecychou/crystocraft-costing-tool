@@ -178,6 +178,12 @@ export default function SalesInvoicePrint() {
         /* Keep the closing blocks whole; splitting a total across pages is
            the same class of problem as splitting a line. */
         .si-totals, .si-words, .si-bank, .si-sign, .si-foot { page-break-inside: avoid; break-inside: avoid; }
+        /* Same fix as ProformaInvoicePrint.jsx's .pi-closing (see its own
+           comment) — the rules above stop any ONE block splitting
+           internally, but never stopped a break landing BETWEEN them, e.g.
+           signatures on one page and the company footer orphaned onto the
+           next. */
+        .si-closing { page-break-inside: avoid; break-inside: avoid; }
         /* One-off MISC lines carry multi-line descriptions; without this they
            collapse into one run-on line. */
         table.si-lines td.desc { white-space: pre-wrap; }
@@ -336,73 +342,75 @@ export default function SalesInvoicePrint() {
         </tbody>
       </table>
 
-      <div className="si-totals">
-        <table>
-          <tbody>
-            {totalQty > 0 && !order.hide_total_qty && (
-              <tr><td className="k">Total Qty</td><td className="v">{totalQty.toLocaleString()}{qtyUnitLabel ? ` ${qtyUnitLabel}` : ''}</td></tr>
-            )}
-            <tr><td className="k">Subtotal</td><td className="v">{money(subtotal, cur)}</td></tr>
-            {discountAmount > 0 && (
-              <tr><td className="k">Discount{order.discount_pct ? ` (${order.discount_pct}%)` : ''}</td>
-                  <td className="v">− {money(discountAmount, cur)}</td></tr>
-            )}
-            {chargesTotal > 0 && (
-              <tr><td className="k">Charges</td><td className="v">{money(chargesTotal, cur)}</td></tr>
-            )}
-            <tr className="grand"><td className="k">Total Due</td><td className="v">{money(total, cur)}</td></tr>
-            {/* Adjustment — the accounting correction, never a rewrite of the
-                calculated Total Due above (SR-05). Shown only when nonzero, so
-                the vast majority of invoices with no adjustment print exactly
-                as before. */}
-            {Math.abs(order.adjustment || 0) > 0.005 && (
-              <>
-                <tr><td className="k">Adjustment</td><td className="v">{order.adjustment > 0 ? '+ ' : '− '}{money(Math.abs(order.adjustment), cur)}</td></tr>
-                <tr className="grand"><td className="k">Amount Payable</td><td className="v">{money(order.accounting_total ?? total, cur)}</td></tr>
-              </>
-            )}
-          </tbody>
-        </table>
-      </div>
-      {Math.abs(order.adjustment || 0) > 0.005 && order.adjustment_reason && (
-        <p style={{ fontSize: 9.5, color: '#9a3412', textAlign: 'right', marginTop: -4, marginBottom: 10 }}>
-          Adjustment reason: {order.adjustment_reason}
-        </p>
-      )}
-
-      <div className="si-words">{amountInWords(order.accounting_total ?? total, cur)}</div>
-
-      {bankBlock && (
-        <div className="si-bank">
-          <h4>Remittance</h4>
-          <pre>{bankBlock}</pre>
+      <div className="si-closing">
+        <div className="si-totals">
+          <table>
+            <tbody>
+              {totalQty > 0 && !order.hide_total_qty && (
+                <tr><td className="k">Total Qty</td><td className="v">{totalQty.toLocaleString()}{qtyUnitLabel ? ` ${qtyUnitLabel}` : ''}</td></tr>
+              )}
+              <tr><td className="k">Subtotal</td><td className="v">{money(subtotal, cur)}</td></tr>
+              {discountAmount > 0 && (
+                <tr><td className="k">Discount{order.discount_pct ? ` (${order.discount_pct}%)` : ''}</td>
+                    <td className="v">− {money(discountAmount, cur)}</td></tr>
+              )}
+              {chargesTotal > 0 && (
+                <tr><td className="k">Charges</td><td className="v">{money(chargesTotal, cur)}</td></tr>
+              )}
+              <tr className="grand"><td className="k">Total Due</td><td className="v">{money(total, cur)}</td></tr>
+              {/* Adjustment — the accounting correction, never a rewrite of the
+                  calculated Total Due above (SR-05). Shown only when nonzero, so
+                  the vast majority of invoices with no adjustment print exactly
+                  as before. */}
+              {Math.abs(order.adjustment || 0) > 0.005 && (
+                <>
+                  <tr><td className="k">Adjustment</td><td className="v">{order.adjustment > 0 ? '+ ' : '− '}{money(Math.abs(order.adjustment), cur)}</td></tr>
+                  <tr className="grand"><td className="k">Amount Payable</td><td className="v">{money(order.accounting_total ?? total, cur)}</td></tr>
+                </>
+              )}
+            </tbody>
+          </table>
         </div>
-      )}
+        {Math.abs(order.adjustment || 0) > 0.005 && order.adjustment_reason && (
+          <p style={{ fontSize: 9.5, color: '#9a3412', textAlign: 'right', marginTop: -4, marginBottom: 10 }}>
+            Adjustment reason: {order.adjustment_reason}
+          </p>
+        )}
 
-      {order.notes && (
-        <div className="si-notes">
-          <span className="lbl">Remarks</span>
-          {order.notes}
-        </div>
-      )}
+        <div className="si-words">{amountInWords(order.accounting_total ?? total, cur)}</div>
 
-      <div className="si-sign">
-        <div>
-          <div className="space">
-            {stampUrl && <img className="stamp" src={stampUrl} alt="" />}
+        {bankBlock && (
+          <div className="si-bank">
+            <h4>Remittance</h4>
+            <pre>{bankBlock}</pre>
           </div>
-          <div className="line">ISSUED BY · {SELLER.name}</div>
-        </div>
-        <div>
-          <div className="space" />
-          <div className="line">RECEIVED BY · {order.customer_name || '—'}</div>
-        </div>
-      </div>
+        )}
 
-      <div className="si-foot">
-        <div className="nm">{SELLER.name}</div>
-        <div>{SELLER.address}</div>
-        <div>{SELLER.contact}</div>
+        {order.notes && (
+          <div className="si-notes">
+            <span className="lbl">Remarks</span>
+            {order.notes}
+          </div>
+        )}
+
+        <div className="si-sign">
+          <div>
+            <div className="space">
+              {stampUrl && <img className="stamp" src={stampUrl} alt="" />}
+            </div>
+            <div className="line">ISSUED BY · {SELLER.name}</div>
+          </div>
+          <div>
+            <div className="space" />
+            <div className="line">RECEIVED BY · {order.customer_name || '—'}</div>
+          </div>
+        </div>
+
+        <div className="si-foot">
+          <div className="nm">{SELLER.name}</div>
+          <div>{SELLER.address}</div>
+          <div>{SELLER.contact}</div>
+        </div>
       </div>
     </div>
   )
