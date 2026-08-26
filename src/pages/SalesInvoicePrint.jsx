@@ -245,7 +245,7 @@ export default function SalesInvoicePrint() {
       <div className="si-head">
         <div>
           <img className="si-logo" src={logoUrl} alt="" width="617" height="108" />
-          <div className="si-title">INVOICE</div>
+          <div className="si-title">INVOICE{order.pi_revision > 0 ? ` — REV ${order.pi_revision}` : ''}</div>
         </div>
         <div className="si-company">
           <div className="nm">{SELLER.name}</div>
@@ -279,6 +279,7 @@ export default function SalesInvoicePrint() {
           {order.erp_so_no && <div className="si-kv"><span className="k">{/^SO/i.test(order.erp_so_no) ? 'SO No.' : 'Doc No.'}</span><span className="v si-code">{order.erp_so_no}</span></div>}
           {orderUc(order) && <div className="si-kv"><span className="k">UC#</span><span className="v si-code">{orderUc(order)}</span></div>}
           {order.customer_po && <div className="si-kv"><span className="k">Customer PO</span><span className="v">{order.customer_po}</span></div>}
+          {order.pi_revision > 0 && <div className="si-kv"><span className="k">Revision</span><span className="v">Rev {order.pi_revision}</span></div>}
           <div className="si-kv"><span className="k">Currency</span><span className="v">{cur}</span></div>
           {order.incoterm && <div className="si-kv"><span className="k">Incoterm</span><span className="v">{order.incoterm}</span></div>}
           {order.payment_terms && <div className="si-kv"><span className="k">Payment Terms</span><span className="v">{order.payment_terms}</span></div>}

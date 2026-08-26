@@ -64,6 +64,9 @@ const blankHeader = {
   // now or reopened later — it's a fresh page load reading Firestore, not
   // something that can ride along as a transient prop.
   hide_total_qty: false,
+  // Printed revision number — see shipping.js's normOrder comment. Blank/0
+  // prints nothing ("Original"); bumped by hand, never automatically.
+  pi_revision: '',
 }
 
 // Firestore writes with persistentLocalCache resolve only when the SERVER acks —
@@ -228,6 +231,7 @@ export default function ShipmentForm() {
             discount_pct:    o.discount_pct    ?? '',
             discount_amount: o.discount_amount ?? '',
             hide_total_qty: !!o.hide_total_qty,
+            pi_revision: o.pi_revision ? String(o.pi_revision) : '',
             // Reference figures for the mismatch check. New orders carry their
             // own pi_* fields; older imported orders predate them and still
             // hold the PI value in subtotal/total_amount, so fall back to those.
@@ -644,6 +648,7 @@ export default function ShipmentForm() {
         pi_total:        header.pi_total    !== '' ? parseFloat(header.pi_total)    : null,
         discount_pct:    header.discount_pct    !== '' ? parseFloat(header.discount_pct)    : null,
         discount_amount: header.discount_amount !== '' ? parseFloat(header.discount_amount) : (computed.discountAmount > 0 ? computed.discountAmount : null),
+        pi_revision: header.pi_revision !== '' ? parseInt(header.pi_revision, 10) || null : null,
       }
       const v = validateOrder(orderData, lines)
       if (!v.ok) { setExtractError(v.errors.map(x => x.message).join(' · ')); return }
@@ -775,6 +780,7 @@ export default function ShipmentForm() {
           currency: header.currency, incoterm: header.incoterm, payment_terms: header.payment_terms, status: header.status,
           destination: header.destination, notes: header.notes,
           hide_total_qty: !!header.hide_total_qty,
+          pi_revision: header.pi_revision !== '' ? parseInt(header.pi_revision, 10) || null : null,
           // Actual value follows the lines; PI figures stay as the reference.
           subtotal:        computed.subtotal > 0 ? computed.subtotal : null,
           total_amount:    computed.subtotal > 0 ? computed.total : null,
@@ -1005,6 +1011,19 @@ export default function ShipmentForm() {
                 </label>
                 <input ref={invoiceFieldRef} className="input" value={header.erp_si_no} onChange={setH('erp_si_no')} placeholder="e.g. SI260094" />
                 {siError && <p className="text-xs text-red-600 mt-1">{siError}</p>}
+              </div>
+              <div>
+                <label className="label flex items-center justify-between gap-2">
+                  <span>Revision</span>
+                  <button type="button"
+                          onClick={() => setHeader(h => ({ ...h, pi_revision: String((parseInt(h.pi_revision, 10) || 0) + 1) }))}
+                          className="text-[11px] text-brand-600 hover:text-brand-800 font-normal normal-case"
+                          title="Bump the revision printed on the PI/Invoice — for when a customer needs to tell an updated version apart from one they've already seen. Never bumps automatically.">
+                    + New Rev
+                  </button>
+                </label>
+                <input className="input" type="number" min="0" value={header.pi_revision}
+                       onChange={setH('pi_revision')} placeholder="Original (no Rev shown)" />
               </div>
             </div>
           </div>

@@ -285,7 +285,7 @@ export default function ProformaInvoicePrint() {
       <div className="pi-head">
         <div>
           <img className="pi-logo" src={logoUrl} alt="" width="617" height="108" />
-          <div className="pi-title">PROFORMA INVOICE</div>
+          <div className="pi-title">PROFORMA INVOICE{order.pi_revision > 0 ? ` — REV ${order.pi_revision}` : ''}</div>
         </div>
         <div className="pi-company">
           <div className="nm">{SELLER.name}</div>
@@ -321,6 +321,7 @@ export default function ProformaInvoicePrint() {
           <div className="pi-kv"><span className="k">{/^SO/i.test(order.erp_so_no || '') ? 'SO No.' : 'Doc No.'}</span><span className="v pi-code">{order.erp_so_no || '—'}</span></div>
           {order.customer_po && <div className="pi-kv"><span className="k">Customer PO</span><span className="v">{order.customer_po}</span></div>}
           <div className="pi-kv"><span className="k">Date</span><span className="v">{fmtDate(order.order_date)}</span></div>
+          {order.pi_revision > 0 && <div className="pi-kv"><span className="k">Revision</span><span className="v">Rev {order.pi_revision}</span></div>}
           <div className="pi-kv"><span className="k">Currency</span><span className="v">{cur}</span></div>
           {order.incoterm && <div className="pi-kv"><span className="k">Incoterm</span><span className="v">{order.incoterm}</span></div>}
           {order.payment_terms && <div className="pi-kv"><span className="k">Payment Terms</span><span className="v">{order.payment_terms}</span></div>}

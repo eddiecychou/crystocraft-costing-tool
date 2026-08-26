@@ -269,6 +269,14 @@ export const normOrder = o => ({
   // or the form read back from Firestore MUST be listed here, or normOrder
   // silently drops it on every read regardless of what the write path saved.
   hide_total_qty: !!o.hide_total_qty,
+  // Revision number shown on the printed PI/Invoice (2026-08-26) — a
+  // customer who's seen an earlier version of the same document needs a
+  // clear "this one's newer" marker after a price/qty change, not just a
+  // silently updated PDF that looks identical to the last one they have.
+  // 0/null prints nothing ("Original"); bumped by hand via the + New Rev
+  // button in ShipmentForm.jsx, never automatically — not every edit is
+  // worth telling the customer about.
+  pi_revision: numOrNull(o.pi_revision),
 })
 
 export const normLine = l => {
