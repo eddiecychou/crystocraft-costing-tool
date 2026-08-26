@@ -232,19 +232,22 @@ export default function QuoteDetail() {
   // tooling_cost_hkd — QuoteItem already hides Cost/All-in cost/Margin
   // whenever unit_cost_hkd is falsy, same as a catalogue item with no
   // preferred supplier quote yet.
+  // Adds a blank row straight away — no browser prompt() dialog, which looks
+  // like a system error next to this page's own styled inputs. The name
+  // field renders with a placeholder and autoFocus (see QuoteItem below) so
+  // typing it is the very next thing that happens, same as "+ Add line"
+  // dropping a blank, fill-in-place row on the order form.
   async function handleAddCustomItem() {
-    const name = window.prompt('Item name (not in the catalogue):')
-    if (!name?.trim()) return
     await addDoc(collection(db, 'client_quotes', id, 'items'), {
       product_id: null,
-      product_name: name.trim(),
+      product_name: '',
       product_category: '',
       product_description: '',
       hero_image: null,
       product_unit: 'pcs',
       unit_cost_hkd: null,
       tooling_cost_hkd: null,
-      tiers: [{ quantity: 1, price: 0, currency: quote.quote_currency || 'HKD' }],
+      tiers: [{ quantity: '', price: '', currency: quote.quote_currency || 'HKD' }],
       is_custom: true,
       status: 'active',
       createdAt: serverTimestamp(),
@@ -696,6 +699,7 @@ function QuoteItem({ item, quoteCurrency, customerId, rates, heroImage, onTiersC
                 defaultValue={item.product_name}
                 key={`name-${item.id}-${item.product_name}`}
                 placeholder="Item name (not in the catalogue)"
+                autoFocus={!item.product_name}
                 onBlur={e => {
                   if (e.target.value.trim() && e.target.value !== item.product_name) onNameChange(e.target.value.trim())
                 }}
