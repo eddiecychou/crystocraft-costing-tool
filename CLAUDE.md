@@ -27,6 +27,7 @@ of record, one function at a time.
 | `Crystal_Fabric_Studio_Spec.md` | Swatch library + Physical Design Workbench build history (all closed under V7.21). Workbench paused mid-build: templates/canvas/zones/zone-rendering done, mode-unification and photo-compositing (workstreams 3/5) not started — see doc's own §5j. V7.22 fixed four real bugs in the render engine/admin tool itself (stone size, colour, caching, auth) without touching workstreams 3/5 — see `PROJECT-PLAN.md`'s V7.22 §2 and "Where V7.23 starts" |
 | `LOCAL-TOOLS.md` | What's already installed/logged-in on this Mac's shell (Node, firebase-tools) — check before telling the user to install something or reaching for a scratch-fetch workaround |
 | `API-REFERENCE.md` | All 37 Netlify edge functions (`/api/*`), grouped by feature area — route, purpose, auth posture, caller. Check before adding a new one (to avoid duplicating an existing endpoint) and update it when adding one |
+| `FIRESTORE-COLLECTIONS.md` | Every Firestore collection/subcollection — purpose, auth posture, owning domain file, and the pointer fields that connect collections to each other. Check before adding a collection or tracing data across two of them |
 
 ## Environment quirks that will otherwise waste your time
 
