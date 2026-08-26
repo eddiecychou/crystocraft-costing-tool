@@ -29,6 +29,20 @@ A successful deploy that changed nothing prints "latest version of
 firestore.rules already up to date, skipping upload" — that's not an error,
 it means the live rules already matched.
 
+**Storage rules deploy too now** (`storage.rules`, wired into `firebase.json`
+2026-08-27 — it used to be a manual-paste-into-console-only file, which
+caused at least one real bug: a missing rule silently rejecting an upload
+with no helpful error). Deploy both together:
+
+```bash
+npx firebase-tools deploy --only firestore:rules,storage --project crystocraft-costing
+```
+
+The target name is `storage`, not `storage:rules` — that fails with
+"Could not find rules for the following storage targets: rules" (there's no
+Storage deploy target actually named that, unlike Firestore where
+`firestore:rules` is correct). Learned this the hard way; don't re-guess it.
+
 Logged in account can see two projects: `crystocraft-costing` (this app,
 default per `.firebaserc`) and `crystocraft-expenses` (separate project, not
 otherwise referenced from this repo — don't assume it's related unless the
