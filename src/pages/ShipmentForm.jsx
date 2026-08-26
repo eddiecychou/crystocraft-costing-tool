@@ -293,6 +293,11 @@ export default function ShipmentForm() {
       const newLines = itemSnap.docs.map((d, i) => {
         const it = d.data()
         const tier = (it.tiers || [])[0] || { quantity: '', price: '' }
+        // A quote item added via QuoteDetail.jsx's "+ Custom Item" (is_custom,
+        // or legacy items with no product_id at all) isn't in the catalogue —
+        // carries over as an Ad-hoc line, same as this form's own manual
+        // Ad-hoc classification, rather than falsely claiming a catalogue match.
+        const isCatalogue = !it.is_custom && !!it.product_id
         return {
           line_no: i + 1,
           item_code: '',
@@ -300,8 +305,9 @@ export default function ShipmentForm() {
           qty_ordered: tier.quantity ?? '',
           unit: it.product_unit || 'pcs',
           unit_price: tier.price ?? '',
-          line_type: 'range', packable: true, match_status: 'matched',
-          matched_product_ref: it.product_id ? { collection: 'range_products', id: it.product_id, name: it.product_name } : null,
+          line_type: isCatalogue ? 'range' : 'ad_hoc', packable: true,
+          match_status: isCatalogue ? 'matched' : 'manual',
+          matched_product_ref: isCatalogue ? { collection: 'range_products', id: it.product_id, name: it.product_name } : null,
           line_image: it.custom_image || it.hero_image || null,
         }
       })

@@ -220,6 +220,38 @@ export default function QuoteDetail() {
     await updateDoc(doc(db, 'client_quotes', id, 'items', itemId), { item_remarks })
   }
 
+  async function handleProductNameChange(itemId, product_name) {
+    await updateDoc(doc(db, 'client_quotes', id, 'items', itemId), { product_name })
+  }
+
+  // Custom line item (2026-08-27) — same escape hatch ShipmentForm.jsx's
+  // "Ad-hoc" line type gives orders/invoices, for a quote item that isn't in
+  // the product catalogue. is_custom (not product_id being null — legacy
+  // items may already lack one) drives the editable-name input above and
+  // is the one flag downstream code should check. No unit_cost_hkd/
+  // tooling_cost_hkd — QuoteItem already hides Cost/All-in cost/Margin
+  // whenever unit_cost_hkd is falsy, same as a catalogue item with no
+  // preferred supplier quote yet.
+  async function handleAddCustomItem() {
+    const name = window.prompt('Item name (not in the catalogue):')
+    if (!name?.trim()) return
+    await addDoc(collection(db, 'client_quotes', id, 'items'), {
+      product_id: null,
+      product_name: name.trim(),
+      product_category: '',
+      product_description: '',
+      hero_image: null,
+      product_unit: 'pcs',
+      unit_cost_hkd: null,
+      tooling_cost_hkd: null,
+      tiers: [{ quantity: 1, price: 0, currency: quote.quote_currency || 'HKD' }],
+      is_custom: true,
+      status: 'active',
+      createdAt: serverTimestamp(),
+    })
+    await updateDoc(doc(db, 'client_quotes', id), { item_count: items.length + 1, updatedAt: serverTimestamp() })
+  }
+
   async function handleAddProducts(products) {
     const quoteCurrency = quote.quote_currency || 'HKD'
     const rates = { HKD: 1, RMB: quote.rmb_to_hkd, USD: quote.usd_to_hkd, EUR: quote.eur_to_hkd }
@@ -437,11 +469,14 @@ export default function QuoteDetail() {
       <div className="card p-5 mb-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-sm font-semibold text-gray-700">Products ({items.length})</h2>
-          <button className="btn-primary text-xs py-1.5 px-3" onClick={() => setShowProductPicker(true)}>+ Add Products</button>
+          <div className="flex items-center gap-2">
+            <button className="btn-secondary text-xs py-1.5 px-3" onClick={handleAddCustomItem}>+ Custom Item</button>
+            <button className="btn-primary text-xs py-1.5 px-3" onClick={() => setShowProductPicker(true)}>+ Add Products</button>
+          </div>
         </div>
 
         {items.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">No products yet — click "Add Products" to select from your catalogue.</p>
+          <p className="text-sm text-gray-400 text-center py-8">No products yet — click "Add Products" to select from your catalogue, or "Custom Item" for something that isn't in it.</p>
         ) : (
           <div className="space-y-3">
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -458,6 +493,7 @@ export default function QuoteDetail() {
                     onUnitChange={unit => handleUnitChange(item.id, unit)}
                     onImageChange={url => handleImageChange(item.id, url)}
                     onItemRemarksChange={r => handleItemRemarksChange(item.id, r)}
+                    onNameChange={name => handleProductNameChange(item.id, name)}
                     onRemove={() => handleRemoveItem(item.id)}
                   />
                 ))}
@@ -545,7 +581,7 @@ function marginColor(m) {
   return 'text-red-500'
 }
 
-function QuoteItem({ item, quoteCurrency, customerId, rates, heroImage, onTiersChange, onUnitChange, onImageChange, onItemRemarksChange, onRemove }) {
+function QuoteItem({ item, quoteCurrency, customerId, rates, heroImage, onTiersChange, onUnitChange, onImageChange, onItemRemarksChange, onNameChange, onRemove }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id })
   const currency = quoteCurrency || 'HKD'
   const baseTiers = (item.tiers || [{ quantity: item.quantity || 200, price: item.price_hkd || 0, currency }])
@@ -654,10 +690,22 @@ function QuoteItem({ item, quoteCurrency, customerId, rates, heroImage, onTiersC
       {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2 mb-2">
-          <div>
-            <p className="font-medium text-sm text-gray-900">{item.product_name}</p>
+          <div className="min-w-0 flex-1">
+            {item.is_custom ? (
+              <input
+                defaultValue={item.product_name}
+                key={`name-${item.id}-${item.product_name}`}
+                placeholder="Item name (not in the catalogue)"
+                onBlur={e => {
+                  if (e.target.value.trim() && e.target.value !== item.product_name) onNameChange(e.target.value.trim())
+                }}
+                className="font-medium text-sm text-gray-900 w-full border-b border-dashed border-gray-200 hover:border-brand-300 focus:border-brand-400 focus:outline-none bg-transparent"
+              />
+            ) : (
+              <p className="font-medium text-sm text-gray-900">{item.product_name}</p>
+            )}
             <p className="text-xs text-gray-500">
-              {item.product_category}
+              {item.is_custom ? <span className="text-amber-600">Custom item — not in catalogue</span> : item.product_category}
               {recurringCost != null && (
                 <span className="ml-2 text-gray-400">
                   · Cost: {currency} {recurringCost.toFixed(2)}
