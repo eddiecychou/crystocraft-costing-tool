@@ -23,6 +23,7 @@ import {
   updateDraftMemoryRuleText, MAX_ACTIVE_RULES,
 } from '../domain/draftMemoryRules'
 import { addInteraction } from '../domain/interactionLog'
+import { listTopicTemplates, saveTopicTemplate, updateTopicTemplate, deleteTopicTemplate } from '../domain/outreachTopicTemplates'
 import { generateDrafts, draftTopic, sendPersonalEmail, discussDraft } from '../outreachApi'
 import { isPublicVisible } from '../constants'
 import { loadBlogProducts, loadBlogImages } from '../productSource'
@@ -361,6 +362,9 @@ const ENGAGEMENT_BADGES = [
 export default function DailyDrafts() {
   // ── Compose phase ──────────────────────────────────────────────────────
   const [topic, setTopic] = useState('')
+  const [topicTemplates, setTopicTemplates] = useState([])
+  const [selectedTemplateId, setSelectedTemplateId] = useState('')
+  useEffect(() => { listTopicTemplates().then(setTopicTemplates).catch(() => {}) }, [])
   const [masterSubject, setMasterSubject] = useState('')
   const [masterBody, setMasterBody] = useState('')
   const [drafting, setDrafting] = useState(false)
@@ -669,6 +673,44 @@ export default function DailyDrafts() {
       setError(e.message || 'Upload failed.')
     } finally {
       setMasterUploading(false)
+    }
+  }
+
+  function handleSelectTopicTemplate(id) {
+    setSelectedTemplateId(id)
+    const t = topicTemplates.find(t => t.id === id)
+    if (t) setTopic(t.text)
+  }
+
+  async function handleSaveTopicTemplate() {
+    if (!topic.trim()) return
+    const existing = topicTemplates.find(t => t.id === selectedTemplateId)
+    const name = window.prompt('Save this topic as:', existing?.name || topic.trim().slice(0, 40))
+    if (!name?.trim()) return
+    try {
+      if (existing) {
+        await updateTopicTemplate(existing.id, { name: name.trim(), text: topic.trim() })
+        setTopicTemplates(prev => prev.map(t => t.id === existing.id ? { ...t, name: name.trim(), text: topic.trim() } : t))
+      } else {
+        const id = await saveTopicTemplate({ name: name.trim(), text: topic.trim() })
+        setTopicTemplates(prev => [{ id, name: name.trim(), text: topic.trim() }, ...prev])
+        setSelectedTemplateId(id)
+      }
+    } catch (e) {
+      setError(e.message || 'Could not save that template.')
+    }
+  }
+
+  async function handleDeleteTopicTemplate() {
+    const existing = topicTemplates.find(t => t.id === selectedTemplateId)
+    if (!existing) return
+    if (!window.confirm(`Delete the "${existing.name}" template? This cannot be undone.`)) return
+    try {
+      await deleteTopicTemplate(existing.id)
+      setTopicTemplates(prev => prev.filter(t => t.id !== existing.id))
+      setSelectedTemplateId('')
+    } catch (e) {
+      setError(e.message || 'Could not delete that template.')
     }
   }
 
@@ -1384,14 +1426,34 @@ export default function DailyDrafts() {
 
         <div>
           <label className="block text-xs font-medium text-gray-500 mb-1">Topic</label>
-          <textarea value={topic} onChange={e => setTopic(e.target.value)} rows={2}
+          {topicTemplates.length > 0 && (
+            <select value={selectedTemplateId} onChange={e => handleSelectTopicTemplate(e.target.value)}
+              className="input w-full text-sm mb-1.5">
+              <option value="">Saved topics…</option>
+              {topicTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          )}
+          <textarea value={topic} onChange={e => { setTopic(e.target.value); setSelectedTemplateId('') }} rows={2}
             placeholder={'e.g. "News and update on what we\'ve been up to" or "Invite long-time customers to try the new customer portal"'}
             className="input w-full text-sm" />
-          <button onClick={handleDraftTopic} disabled={drafting || !topic.trim()}
-            className="btn-primary mt-2 inline-flex items-center gap-1.5">
-            {drafting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-            {drafting ? 'Drafting…' : hasMaster ? 'Draft again' : 'Draft with AI'}
-          </button>
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            <button onClick={handleDraftTopic} disabled={drafting || !topic.trim()}
+              className="btn-primary inline-flex items-center gap-1.5">
+              {drafting ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+              {drafting ? 'Drafting…' : hasMaster ? 'Draft again' : 'Draft with AI'}
+            </button>
+            <button type="button" onClick={handleSaveTopicTemplate} disabled={!topic.trim()}
+              className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1.5">
+              <Bookmark size={13} />
+              {topicTemplates.some(t => t.id === selectedTemplateId) ? 'Update saved topic' : 'Save as reusable topic'}
+            </button>
+            {topicTemplates.some(t => t.id === selectedTemplateId) && (
+              <button type="button" onClick={handleDeleteTopicTemplate}
+                className="text-xs text-gray-400 hover:text-red-600">
+                Delete saved topic
+              </button>
+            )}
+          </div>
         </div>
 
         {hasMaster && (

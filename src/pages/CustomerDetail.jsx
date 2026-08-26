@@ -568,6 +568,44 @@ export default function CustomerDetail() {
     })
   }, [id])
 
+  // Same merge as mergedWhatsappThreads/mergedEmailThreads above — a
+  // marketing-contact lead's alibaba_threads (pasted before this customer
+  // record even existed) are left in place at marketing_contacts/{contactId}
+  // rather than copied on promotion (see linkContactToCustomer's comment),
+  // so this subscribes to each linked contact's threads and merges them in
+  // here. Real gap this closes: a lead's Alibaba conversation history was
+  // silently dropped the moment "Promote to Customer" ran, because nothing
+  // here read marketing_contacts/{contactId}/alibaba_threads at all.
+  const [linkedAlibabaThreads, setLinkedAlibabaThreads] = useState({}) // contactId -> threads[]
+  useEffect(() => {
+    if (!linkedContactIds.length) { setLinkedAlibabaThreads({}); return }
+    const unsubs = linkedContactIds.map(contactId =>
+      onSnapshot(collection(db, 'marketing_contacts', contactId, 'alibaba_threads'), snap => {
+        const threads = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        setLinkedAlibabaThreads(prev => ({ ...prev, [contactId]: threads }))
+      })
+    )
+    return () => unsubs.forEach(u => u())
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-subscribe only when the SET of linked ids actually changes, not on every unrelated customer re-render
+  }, [linkedContactIds.join(',')])
+
+  const mergedAlibabaThreads = useMemo(() => {
+    const seenIds = new Set(alibabaThreads.map(t => t.id))
+    const own = alibabaThreads.map(t => ({ ...t, _source: 'own' }))
+    const linked = linkedContactIds.flatMap(contactId =>
+      (linkedAlibabaThreads[contactId] || [])
+        .filter(t => !seenIds.has(t.id) && (seenIds.add(t.id), true))
+        .map(t => ({ ...t, _source: 'linked', _linkedContactId: contactId }))
+    )
+    const all = [...own, ...linked]
+    all.sort((a, b) => {
+      const av = a.pasted_at?.toMillis ? a.pasted_at.toMillis() : new Date(a.pasted_at || 0).getTime()
+      const bv = b.pasted_at?.toMillis ? b.pasted_at.toMillis() : new Date(b.pasted_at || 0).getTime()
+      return bv - av
+    })
+    return all
+  }, [alibabaThreads, linkedAlibabaThreads, linkedContactIds])
+
   async function handleSaveAlibabaPaste() {
     setAlibabaSaveBusy(true); setAlibabaSaveError(''); setAlibabaSaved(false)
     try {
@@ -587,7 +625,7 @@ export default function CustomerDetail() {
   async function handleRefreshAlibabaSummary() {
     setAlibabaSummaryBusy(true); setAlibabaSummaryError('')
     try {
-      const alibaba_summary = await generateAndSaveAlibabaSummary('customers', id, alibabaThreads)
+      const alibaba_summary = await generateAndSaveAlibabaSummary('customers', id, mergedAlibabaThreads)
       setCustomer(prev => (prev ? { ...prev, alibaba_summary: { ...alibaba_summary, generated_at: new Date() } } : prev))
     } catch (e) {
       setAlibabaSummaryError(e.message || 'Could not refresh the Alibaba summary.')
@@ -1726,13 +1764,13 @@ export default function CustomerDetail() {
       <Collapsible storageKey={`${id}:alibaba`} bodyClassName=""
         title={<span className="inline-flex items-center gap-1.5">
           <MessageSquare size={15} className="text-gray-400" /> Alibaba Messages
-          {alibabaThreads.length > 0 && (
+          {mergedAlibabaThreads.length > 0 && (
             <span className="text-xs font-normal text-gray-400">
-              ({alibabaThreads.length} paste{alibabaThreads.length === 1 ? '' : 's'})
+              ({mergedAlibabaThreads.length} paste{mergedAlibabaThreads.length === 1 ? '' : 's'})
             </span>
           )}
         </span>}
-        right={alibabaThreads.length > 0 && (
+        right={mergedAlibabaThreads.length > 0 && (
           <button onClick={handleRefreshAlibabaSummary} disabled={alibabaSummaryBusy}
             className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1.5">
             {alibabaSummaryBusy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
@@ -1784,7 +1822,7 @@ export default function CustomerDetail() {
               <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {alibabaSummaryError}
             </div>
           )}
-          {alibabaThreads.length === 0 ? (
+          {mergedAlibabaThreads.length === 0 ? (
             <p className="text-sm text-gray-400">Nothing pasted yet — paste the chat above to get started.</p>
           ) : !customer?.alibaba_summary ? (
             <p className="text-sm text-gray-400">Not generated yet — click {alibabaSummaryBusy ? '…' : 'Generate'} to have DeepSeek read the pasted messages.</p>
@@ -1806,15 +1844,16 @@ export default function CustomerDetail() {
                 </div>
               )}
               <p className="text-[11px] text-gray-400">
-                Generated over {customer.alibaba_summary.paste_count ?? alibabaThreads.length} paste{(customer.alibaba_summary.paste_count ?? alibabaThreads.length) === 1 ? '' : 's'} — a draft, not verified. Refresh after new messages come in. Used by Daily Drafts.
+                Generated over {customer.alibaba_summary.paste_count ?? mergedAlibabaThreads.length} paste{(customer.alibaba_summary.paste_count ?? mergedAlibabaThreads.length) === 1 ? '' : 's'} — a draft, not verified. Refresh after new messages come in. Used by Daily Drafts.
               </p>
             </>
           )}
         </div>
-        {alibabaThreads.length > 0 && (
+        {mergedAlibabaThreads.length > 0 && (
           <div className="divide-y divide-gray-100">
-            {alibabaThreads.map(t => {
+            {mergedAlibabaThreads.map(t => {
               const expanded = alibabaExpanded === t.id
+              const isLinked = t._source === 'linked'
               const d = t.pasted_at?.toDate ? t.pasted_at.toDate() : (t.pasted_at ? new Date(t.pasted_at) : null)
               const dateLabel = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '(unknown date)'
               return (
@@ -1825,7 +1864,14 @@ export default function CustomerDetail() {
                     className="w-full flex items-center justify-between text-left"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-800">Pasted {dateLabel}</p>
+                      <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
+                        Pasted {dateLabel}
+                        {isLinked && (
+                          <span className="text-[10px] font-normal uppercase tracking-wide rounded px-1 py-0.5 text-amber-600 bg-amber-50 shrink-0">
+                            via linked lead
+                          </span>
+                        )}
+                      </p>
                       <p className="text-xs text-gray-400 mt-0.5">{(t.char_count || (t.raw_text || '').length).toLocaleString()} characters</p>
                     </div>
                     {expanded ? <ChevronUp size={16} className="text-gray-400 shrink-0" /> : <ChevronDown size={16} className="text-gray-400 shrink-0" />}

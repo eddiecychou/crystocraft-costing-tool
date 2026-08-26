@@ -325,6 +325,12 @@ service cloud.firestore {
     match /draft_memory_rules/{ruleId} {
       allow read, write: if isAdmin();
     }
+    // Saved "what do you want to say?" topic templates for Daily Drafts
+    // (V8.11) — reusable topic text, same admin-only posture as everything
+    // else in Daily Drafts. See domain/outreachTopicTemplates.js.
+    match /outreach_topic_templates/{templateId} {
+      allow read, write: if isAdmin();
+    }
     // Daily Drafts topic de-duplication (V8.0) — before targeting anyone
     // about a topic, DailyDrafts.jsx checks whether they already have a
     // logged Interaction Log entry for it, via a collectionGroup('enquiries')
