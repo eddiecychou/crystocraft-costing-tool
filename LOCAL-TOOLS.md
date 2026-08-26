@@ -70,6 +70,60 @@ siteId `4a234708-a213-477f-91a5-97cdc939c1db`) via its GitHub integration — a
 matches CLAUDE.md's "pushing deploys via Netlify" convention; no separate
 Netlify action is normally needed.
 
+## The dev server serves edge functions now — don't mistake a 404 for a bug
+
+`.claude/start-dev.sh` runs `npx netlify-cli dev --offline` (not plain
+`vite`) so the Browser-tool preview actually serves `netlify/edge-functions/
+*.js` at `/api/*`, same as production. Before 2026-08-26 it ran plain `vite`,
+which has no route for `/api/*` at all — every edge function call 404'd, not
+just the one that happened to get noticed ("WooCommerce sync failed (404)"
+turned out to be this, not a WooCommerce or app bug).
+
+`--offline` is required: without it, `netlify dev` tries to pull the site's
+env vars from the Netlify account and fails outright since the CLI isn't
+logged in (see Netlify section below). `--offline` skips that and injects
+`.env.local` directly instead — confirmed working: `/api/fx-rates` (no
+secrets needed) returns real live rates; `/api/woo-sync` returns a real,
+meaningful "WooCommerce credentials not configured" error rather than a 404,
+because `WC_BASE_URL`/`WC_CONSUMER_KEY`/`WC_CONSUMER_SECRET` are presumably
+Netlify-dashboard-only secrets, not in `.env.local` — that's expected, not a
+bug, and doesn't mean the live site is broken.
+
+First boot is slower ("Setting up the Edge Functions environment... may take
+a couple of minutes") — give it real time before concluding a function is
+broken, don't retry immediately.
+
+If a genuinely new edge-function secret is needed for local testing, add it
+to `.env.local` the same way the existing ones are (never to `netlify.toml`
+or committed anywhere) — see `.env.local`'s existing entries for the pattern.
+
+## Logging into the app itself for real browser testing
+
+There's a dedicated QA admin account so Claude can click through changes in
+the actual app instead of only syntax-checking and asking the owner to test —
+"you always say you can't see what's in the Operation Center" (owner,
+2026-08-26). Credentials in `.env.local` (gitignored):
+
+```
+QA_ADMIN_EMAIL=claude-qa@crystocraft.com
+QA_ADMIN_PASSWORD=...
+```
+
+Its Firestore doc is `users/VnbkhRPUxnWStsrEVvGK5gHptrl2`, `role: admin`,
+labeled `"Claude QA — automated smoke-testing account, not a person"` so it's
+identifiable in any admin user list. Use it via the Browser tool
+(`preview_start` with the `crystocraft-costing` launch config, then fill the
+sign-in form and submit) to actually verify a change before reporting it
+done, not just esbuild-parse it.
+
+**This is a real admin login against the live Firebase project — there is no
+emulator, no fake data.** Use it for read-only verification: navigating,
+clicking, filtering, screenshotting, confirming something renders/saves
+correctly. Don't send real emails, trigger real WooCommerce/ERP syncs, or
+delete/edit real customer records with it unless the owner specifically asks
+to test that action. Say plainly what was actually clicked through in the
+browser versus what was only syntax-checked.
+
 ## Updating this file
 
 When a new tool gets set up in a session (installed, logged in, confirmed

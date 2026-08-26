@@ -19,4 +19,10 @@ if ! command -v npx >/dev/null 2>&1; then
   exit 1
 fi
 
-exec npx vite --port "${PORT:-5179}"
+# netlify-cli wraps Vite AND serves the real netlify/edge-functions/*.js at
+# /api/* — plain `vite` has no route for them at all, so every edge function
+# call 404'd here (discovered 2026-08-26 chasing a "WooCommerce sync failed
+# (404)" that turned out to be this, not a real bug). --offline skips the
+# Netlify-account env-var pull, which fails without a CLI login (see
+# LOCAL-TOOLS.md) — .env.local's vars are injected either way.
+exec npx netlify-cli dev --offline --port "${PORT:-5179}"
