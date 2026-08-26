@@ -25,6 +25,7 @@ of record, one function at a time.
 | `erp-sync/IMAGE-SYNC-PLAN.md` | Item images: prepared, needs the LAN |
 | `Corp_Gift_Customizer_Spec.md`, `Customizer_Build_Plan.md` | Customizer engine design — build history, superseded by current status below |
 | `Crystal_Fabric_Studio_Spec.md` | Swatch library + Physical Design Workbench build history (all closed under V7.21). Workbench paused mid-build: templates/canvas/zones/zone-rendering done, mode-unification and photo-compositing (workstreams 3/5) not started — see doc's own §5j. V7.22 fixed four real bugs in the render engine/admin tool itself (stone size, colour, caching, auth) without touching workstreams 3/5 — see `PROJECT-PLAN.md`'s V7.22 §2 and "Where V7.23 starts" |
+| `LOCAL-TOOLS.md` | What's already installed/logged-in on this Mac's shell (Node, firebase-tools) — check before telling the user to install something or reaching for a scratch-fetch workaround |
 
 ## Environment quirks that will otherwise waste your time
 
@@ -32,15 +33,20 @@ of record, one function at a time.
 found corrupting `.git`; the repo lives in `~/Developer/costing-tool` on both.
 `git pull` before starting, `git push` when done. See the top of `PROJECT-PLAN.md`.
 
-**This Mac has no permanent Node**, but one can be fetched into the scratch
-directory in about ten seconds, and `node_modules/` is already installed:
+**Check `LOCAL-TOOLS.md` before assuming Node/firebase-tools need installing**
+— this Mac has had a real Node on `PATH` since 2026-08-26 (confirmed there),
+and `npx firebase-tools` works logged-in already. Don't re-walk the user
+through installing them; if a *different* machine genuinely has neither and
+needs a throwaway Node, `node_modules/` is already installed here so a scratch
+fetch is enough to run things:
 
 ```
-curl -sL https://nodejs.org/dist/v24.18.0/node-v24.18.0-darwin-arm64.tar.gz | tar xz -C "$SCRATCH"
-export PATH="$SCRATCH/node-v24.18.0-darwin-arm64/bin:$PATH"
+mkdir -p ~/node-scratch
+curl -sL https://nodejs.org/dist/v24.18.0/node-v24.18.0-darwin-arm64.tar.gz | tar xz -C ~/node-scratch
+export PATH="$HOME/node-scratch/node-v24.18.0-darwin-arm64/bin:$PATH"
 ```
 
-Without it, changes are only syntax-checked with the native esbuild binary:
+Without Node at all, changes are only syntax-checked with the native esbuild binary:
 
 ```
 ESB=$(ls -d node_modules/@esbuild/*/bin/esbuild | head -1)
