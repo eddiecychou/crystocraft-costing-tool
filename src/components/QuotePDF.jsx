@@ -48,7 +48,11 @@ const fmtDate = d =>
 const W = { num: 16, photo: 72, product: 104, desc: 155, qty: 38, price: 68, amount: 78 }
 
 const s = StyleSheet.create({
-  page: { paddingTop: 36, paddingBottom: 44, paddingHorizontal: 32, fontFamily: 'Questrial', color: C.black, fontSize: 9 },
+  // paddingBottom raised from 44 (2026-08-27) — the fixed footer below
+  // needs ~40pt of its own clearance above the page edge; flowing content
+  // needs to stop well short of that or the last line on a page can run
+  // into the footer text.
+  page: { paddingTop: 36, paddingBottom: 66, paddingHorizontal: 32, fontFamily: 'Questrial', color: C.black, fontSize: 9 },
 
   // Header
   headerRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 10 },
@@ -74,6 +78,12 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 2, borderBottomWidth: 0.6, borderBottomColor: C.border },
   num: { width: W.num, fontSize: 8, color: C.grayMid, textAlign: 'center' },
   photoCell: { width: W.photo, alignItems: 'center', justifyContent: 'center' },
+  // Dedicated spacer, not padding on photoCell — react-pdf/Yoga sizes a
+  // fixed-`width` View as border-box, so padding there would shrink the
+  // 70x70 image itself instead of adding room after it. Fixes the image
+  // sitting right up against the product name/description with no visual
+  // gap (owner, 2026-08-27, from a real printed quote).
+  photoGap: { width: 10 },
   img: { width: 70, height: 70, objectFit: 'contain' },
   productCell: { width: W.product, paddingRight: 8 },
   productName: { fontSize: 9.5, color: C.black },
@@ -111,6 +121,15 @@ const s = StyleSheet.create({
   signRole: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 7, color: C.grayMid, letterSpacing: 1, marginBottom: 2 },
   signName: { fontSize: 8.5, color: C.grayDark },
 
+  // Real page footer — `fixed`, pinned to the bottom of EVERY page, not
+  // flowing after the signature block. Was plain content at the end of the
+  // page, which put it wherever the signatures happened to land instead of
+  // anchored at the bottom, and meant it only ever appeared on the LAST
+  // page of a multi-page quote rather than every page (owner, 2026-08-27).
+  footer: {
+    position: 'absolute', bottom: 20, left: 32, right: 32,
+    borderTopWidth: 0.6, borderTopColor: C.border, paddingTop: 6,
+  },
   footLine: { fontSize: 7.5, color: C.grayDark, textAlign: 'center', marginBottom: 2 },
   footStrong: { fontFamily: 'Work Sans', fontWeight: 600 },
 })
@@ -199,6 +218,7 @@ export default function QuotePDF({ quote, items, includeTotal = false }) {
         <View style={s.thead}>
           <Text style={[s.th, { width: W.num }]}> </Text>
           <Text style={[s.th, { width: W.photo }]}> </Text>
+          <Text style={[s.th, s.photoGap]}> </Text>
           <Text style={[s.th, { width: W.product }]}>PRODUCT</Text>
           <Text style={[s.th, { width: W.desc }]}>DESCRIPTION</Text>
           <Text style={[s.th, { width: W.qty, textAlign: 'center' }]}>QTY</Text>
@@ -214,6 +234,7 @@ export default function QuotePDF({ quote, items, includeTotal = false }) {
             <View key={i} style={[s.row, i % 2 === 1 ? { backgroundColor: C.rowAlt } : null]} wrap={false}>
               <Text style={s.num}>{i + 1}</Text>
               <View style={s.photoCell}>{img ? <Image src={img} style={s.img} /> : null}</View>
+              <View style={s.photoGap} />
               <View style={s.productCell}>
                 <Text style={[s.productName, { fontFamily: contentFont(item.product_name) }]}>{item.product_name || ''}</Text>
               </View>
@@ -248,55 +269,68 @@ export default function QuotePDF({ quote, items, includeTotal = false }) {
           </View>
         ) : null}
 
-        {/* Closing */}
-        <View style={s.goldClose} />
+        {/* Closing — bank details, remarks, terms and signatures kept as ONE
+            unbreakable block (wrap={false}) so a page break can never land
+            between, say, the payment details label and its own bank lines,
+            or between the terms line and the signature boxes (owner,
+            2026-08-27). If the whole block doesn't fit the remaining space
+            on the current page, react-pdf moves it to the next page
+            entirely rather than splitting it. */}
+        <View wrap={false}>
+          <View style={s.goldClose} />
 
-        {/* Bank details — picked on the quote from the bank accounts register
-            (see QuoteDetail.jsx's bank_snapshot). The Excel export renders
-            this already; the PDF never did until now (bug-fix pack B-01). */}
-        {quote.bank_snapshot ? (
-          <View style={s.bank}>
-            <Text style={s.bankLabel}>PAYMENT DETAILS</Text>
-            {String(quote.bank_snapshot).split('\n').filter(Boolean).map((line, i) => (
-              <Text key={i} style={[s.bankLine, { fontFamily: contentFont(line) }]}>{line}</Text>
-            ))}
-          </View>
-        ) : null}
+          {/* Bank details — picked on the quote from the bank accounts
+              register (see QuoteDetail.jsx's bank_snapshot). The Excel
+              export renders this already; the PDF never did until now
+              (bug-fix pack B-01). */}
+          {quote.bank_snapshot ? (
+            <View style={s.bank}>
+              <Text style={s.bankLabel}>PAYMENT DETAILS</Text>
+              {String(quote.bank_snapshot).split('\n').filter(Boolean).map((line, i) => (
+                <Text key={i} style={[s.bankLine, { fontFamily: contentFont(line) }]}>{line}</Text>
+              ))}
+            </View>
+          ) : null}
 
-        {quote.notes ? (
-          <Text style={s.notes}>
-            <Text style={s.notesLabel}>REMARKS  </Text>
-            <Text style={{ fontFamily: contentFont(quote.notes) }}>{quote.notes}</Text>
+          {quote.notes ? (
+            <Text style={s.notes}>
+              <Text style={s.notesLabel}>REMARKS  </Text>
+              <Text style={{ fontFamily: contentFont(quote.notes) }}>{quote.notes}</Text>
+            </Text>
+          ) : null}
+
+          <Text style={s.terms}>
+            {`All prices in ${cur}. For reference only — subject to final confirmation. MOQ and lead times may vary.`}
           </Text>
-        ) : null}
 
-        <Text style={s.terms}>
-          {`All prices in ${cur}. For reference only — subject to final confirmation. MOQ and lead times may vary.`}
-        </Text>
-
-        {/* Signatures */}
-        <View style={s.signRow} wrap={false}>
-          <View style={s.signBox}>
-            <View style={s.signSpace}>
-              {quote._stampData ? <Image src={quote._stampData} style={s.stampImg} /> : null}
+          {/* Signatures */}
+          <View style={s.signRow}>
+            <View style={s.signBox}>
+              <View style={s.signSpace}>
+                {quote._stampData ? <Image src={quote._stampData} style={s.stampImg} /> : null}
+              </View>
+              <View style={s.signLine}>
+                <Text style={s.signRole}>ISSUED BY</Text>
+                <Text style={s.signName}>United Art Metals Factory Limited</Text>
+              </View>
             </View>
-            <View style={s.signLine}>
-              <Text style={s.signRole}>ISSUED BY</Text>
-              <Text style={s.signName}>United Art Metals Factory Limited</Text>
-            </View>
-          </View>
-          <View style={s.signBox}>
-            <View style={s.signSpace} />
-            <View style={s.signLine}>
-              <Text style={s.signRole}>CONFIRMED BY</Text>
-              <Text style={[s.signName, { fontFamily: contentFont(clientName) }]}>{clientName}</Text>
+            <View style={s.signBox}>
+              <View style={s.signSpace} />
+              <View style={s.signLine}>
+                <Text style={s.signRole}>CONFIRMED BY</Text>
+                <Text style={[s.signName, { fontFamily: contentFont(clientName) }]}>{clientName}</Text>
+              </View>
             </View>
           </View>
         </View>
 
-        <Text style={[s.footLine, s.footStrong]}>United Art Metals Factory Limited</Text>
-        <Text style={s.footLine}>11A Seabright Plaza, 9-23 Shell Road, Causeway Bay, Hong Kong</Text>
-        <Text style={s.footLine}>WhatsApp: +852 4608 3219   |   Email: sales@uart.com.hk</Text>
+        {/* Company footer — fixed, printed at the bottom of EVERY page (see
+            the style's own comment), not flowing after the signatures. */}
+        <View style={s.footer} fixed>
+          <Text style={[s.footLine, s.footStrong]}>United Art Metals Factory Limited</Text>
+          <Text style={s.footLine}>11A Seabright Plaza, 9-23 Shell Road, Causeway Bay, Hong Kong</Text>
+          <Text style={s.footLine}>WhatsApp: +852 4608 3219   |   Email: sales@uart.com.hk</Text>
+        </View>
       </Page>
     </Document>
   )
