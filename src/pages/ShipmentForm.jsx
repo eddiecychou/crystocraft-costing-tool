@@ -23,7 +23,7 @@ import { crystalInventory } from '../crystals'
 import { packagingInventory } from '../packaging'
 import { metalOrderConfig } from '../orderStock'
 import { allocateSoNo, soYear } from '../soNumber'
-import { allocateInvoice, upsertInvoice, updateUcInvoice } from '../ucRegistry'
+import { allocateInvoice, upsertInvoice, updateUcInvoice, allocateOrderUc } from '../ucRegistry'
 import { orderStockStatus, stockStatusDetail, STOCK_STATUS_LABEL, STOCK_STATUS_STYLE } from '../orderStockStatus'
 import { doc, onSnapshot, getDoc, getDocs, collection, updateDoc } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -341,6 +341,25 @@ export default function ShipmentForm() {
       setSoError(e.message || 'Could not allocate an SO number.')
     } finally {
       setAllocatingSo(false)
+    }
+  }
+
+  // A fresh, standalone UC# — for a Direct Invoice or any other order that
+  // needs one before it's ready to actually be invoiced (doAllocateSi below
+  // allocates a UC too, but only bundled with an SI). Same allocator
+  // Shipping.jsx's "Duplicate" uses, never carrying over an existing UC —
+  // that's the exact repeatable slip it exists to prevent (see its comment).
+  const [allocatingUc, setAllocatingUc] = useState(false)
+  const [ucError, setUcError] = useState('')
+  async function doAllocateUc() {
+    setAllocatingUc(true); setUcError('')
+    try {
+      const uc = await allocateOrderUc({ customer_name: header.customer_name, currency: header.currency })
+      setHeader(h => ({ ...h, uc_no: uc.full }))
+    } catch (e) {
+      setUcError(e.message || 'Could not allocate a UC#.')
+    } finally {
+      setAllocatingUc(false)
     }
   }
 
@@ -1001,8 +1020,18 @@ export default function ShipmentForm() {
               {soError && <p className="text-xs text-red-600 mt-1">{soError}</p>}
             </div>
             <div>
-              <label className="label">UC#</label>
+              <label className="label flex items-center justify-between gap-2">
+                <span>UC#</span>
+                {!header.uc_no && (
+                  <button type="button" onClick={doAllocateUc} disabled={allocatingUc}
+                          className="text-[11px] text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case whitespace-nowrap shrink-0"
+                          title="Allocate a fresh UC# now, without waiting to raise an invoice. Never reuses an existing UC — a carried-over UC is exactly the slip this exists to prevent.">
+                    {allocatingUc ? 'Allocating…' : 'Allocate'}
+                  </button>
+                )}
+              </label>
               <input className="input" value={header.uc_no} onChange={setH('uc_no')} placeholder="e.g. UC4950/26" />
+              {ucError && <p className="text-xs text-red-600 mt-1">{ucError}</p>}
             </div>
             <div>
               <label className="label">Customer PO</label>
