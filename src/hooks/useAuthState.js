@@ -26,9 +26,21 @@ import { stampLogin } from '../authActivity'
 // inline snippet in index.html, unconditionally on every environment
 // (including local dev) — guarded here only in case that script is ever
 // blocked or removed.
+//
+// TWO separate GA4 calls, not one — `user_id` is a RESERVED field name
+// (GA4's own built-in cross-device User-ID feature) and cannot also be
+// registered as a custom dimension under that exact name — GA4's console
+// rejects it ("User property name is not allowed", hit live 2026-08-27
+// trying to register it). `app_uid` is a genuinely custom user property
+// with the same value, registered separately (Admin > Custom definitions >
+// Create custom dimension, scope User, parameter `app_uid`) — THAT is what
+// the Data API can actually query per account. Keep both: user_id still
+// benefits from GA's native User-ID reporting/deduplication, app_uid is
+// what makes ga-portal-activity.js's future per-account breakdown possible.
 function setGaUser(uid) {
   if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
     window.gtag('set', { user_id: uid || null })
+    window.gtag('set', 'user_properties', { app_uid: uid || null })
   }
 }
 
