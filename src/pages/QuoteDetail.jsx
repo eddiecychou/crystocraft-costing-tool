@@ -332,7 +332,27 @@ export default function QuoteDetail() {
   const quoteCurrency = quote.quote_currency || 'HKD'
   const quoteRates = { HKD: 1, RMB: quote.rmb_to_hkd || 1.09, USD: quote.usd_to_hkd || 7.78, EUR: quote.eur_to_hkd || 8.60 }
 
-  // Min total: first (lowest qty) tier of each item, in quote currency
+  // Totals, one per tier POSITION across all items (2026-08-27) — not
+  // customer-facing (that stays the opt-in "Include grand total on PDF"
+  // checkbox in QuoteExport.jsx, deliberately off by default: a customer
+  // still comparing tiers finds one summed number confusing, see that
+  // file's comment). This is for the admin editing the quote, who often
+  // DOES need to see "what would the whole order come to" while working —
+  // e.g. a single-quantity quote, or checking a customer's likely spend at
+  // each quantity break. Summed positionally (every item's tier N), which
+  // is exact when every item shares the same tier quantities (the normal
+  // case — tiers come from each product's own pricing_tiers) and still
+  // useful, just labelled by whichever item's quantity happened to be read
+  // for that position, when they don't line up.
+  const tierTotals = (() => {
+    const maxTiers = Math.max(0, ...items.map(it => (it.tiers || []).length))
+    return Array.from({ length: maxTiers }, (_, i) => {
+      const atThisTier = items.filter(it => it.tiers?.[i])
+      const total = atThisTier.reduce((sum, it) => sum + (Number(it.tiers[i].quantity) || 0) * (Number(it.tiers[i].price) || 0), 0)
+      const qty = atThisTier[0]?.tiers[i]?.quantity
+      return { qty, total, itemCount: atThisTier.length }
+    }).filter(t => t.total > 0)
+  })()
 
   return (
     <div className="p-4 md:p-6 max-w-4xl">
@@ -503,6 +523,22 @@ export default function QuoteDetail() {
               </SortableContext>
             </DndContext>
 
+          </div>
+        )}
+
+        {tierTotals.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-gray-100 space-y-1">
+            {tierTotals.map((t, i) => (
+              <div key={i} className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">
+                  Total at {t.qty ? `${t.qty} ${t.itemCount < items.length ? `(${t.itemCount}/${items.length} items)` : 'pcs each'}` : `tier ${i + 1}`}
+                </span>
+                <span className="font-semibold text-gray-900">
+                  {quoteCurrency} {t.total.toLocaleString('en-HK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            ))}
+            <p className="text-[11px] text-gray-400 pt-1">For your reference only — not shown to the customer unless you tick "Include grand total on PDF" when exporting.</p>
           </div>
         )}
       </div>
