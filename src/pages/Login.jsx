@@ -4,7 +4,6 @@ import { doc, getDoc } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 import { CUSTOMER_CURRENCIES } from '../currency'
 import { applyForAccount, applyForAccountGoogle } from '../portalInviteApi'
-import { stampLogin } from '../authActivity'
 import logo from '../assets/logo.png'
 
 const googleProvider = new GoogleAuthProvider()
@@ -27,8 +26,11 @@ export default function Login() {
     e.preventDefault()
     setError(''); setLoading(true)
     try {
-      const cred = await signInWithEmailAndPassword(auth, email, password)
-      stampLogin(cred.user.uid)
+      await signInWithEmailAndPassword(auth, email, password)
+      // Stamping login moved to useAuthState.js's onAuthStateChanged listener
+      // (2026-08-27) — it fires for a restored/persisted session too, not
+      // just a fresh interactive sign-in like this one, so it's the one
+      // place that actually covers "customer is using the portal."
     } catch {
       setError('Invalid email or password.')
     } finally {
@@ -80,8 +82,8 @@ export default function Login() {
       const uid = result.user.uid
       const userSnap = await getDoc(doc(db, 'users', uid))
       if (userSnap.exists()) {
-        stampLogin(uid)
-        // Signed in — App's own routing takes over from here.
+        // Signed in — App's own routing takes over from here. Login stamp
+        // happens in useAuthState.js's listener, see handleSignIn's comment.
       } else {
         setEmail(result.user.email || '')
         setContact(result.user.displayName || '')

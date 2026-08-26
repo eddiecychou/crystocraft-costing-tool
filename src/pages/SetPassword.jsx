@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { verifyPasswordResetCode, confirmPasswordReset, signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '../firebase'
-import { stampLogin } from '../authActivity'
 import logo from '../assets/logo.png'
 
 // SU-07A — where an approved invitation's setup email link lands
@@ -68,8 +67,9 @@ export default function SetPassword() {
       // own sign-up path — the customer just proved control of both the
       // email (via the code) and the new password, so this isn't a weaker
       // guarantee than a normal sign-in.
-      const cred = await signInWithEmailAndPassword(auth, email, password)
-      stampLogin(cred.user.uid)
+      // Login stamp happens in useAuthState.js's onAuthStateChanged
+      // listener, not here — see that file's comment.
+      await signInWithEmailAndPassword(auth, email, password)
       setDone(true)
       setTimeout(() => navigate('/'), 1200)
     } catch (err) {
