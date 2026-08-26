@@ -16,12 +16,29 @@ import { stampLogin } from '../authActivity'
 // here covers both cases from one place, and removes the double-count
 // those call sites would otherwise cause (onAuthStateChanged ALSO fires
 // right after a fresh sign-in).
+// Tags every GA4 hit with the signed-in Firebase uid (2026-08-27) — a
+// pseudonymous id, not PII, same posture GA4's own docs describe for
+// User-ID reporting. Without this, ga-portal-activity.js's traffic panel
+// could only ever show aggregate site-wide numbers with no way to tell
+// which visits belonged to which account (see that panel's own caption).
+// Cleared on sign-out so the next anonymous visitor in the same browser
+// doesn't inherit the previous user's id. window.gtag is defined by the
+// inline snippet in index.html, unconditionally on every environment
+// (including local dev) — guarded here only in case that script is ever
+// blocked or removed.
+function setGaUser(uid) {
+  if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+    window.gtag('set', { user_id: uid || null })
+  }
+}
+
 export function useAuthState() {
   const [user, setUser] = useState(undefined)
 
   useEffect(() => {
     return onAuthStateChanged(auth, u => {
       setUser(u)
+      setGaUser(u?.uid)
       if (u) stampLogin(u.uid)
     })
   }, [])
