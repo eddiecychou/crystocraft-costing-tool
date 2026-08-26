@@ -101,11 +101,22 @@ service firebase.storage {
     }
 
     // Shipping module — imported PI files (orders/imports/…) + freight quote
-    // attachments. NOTE: reference copy — paste into the Storage Rules tab.
+    // attachments.
     match /orders/{orderId}/{allPaths=**} {
       allow read, write: if isAdmin();
     }
     match /freight_quotes/{quoteId}/{allPaths=**} {
+      allow read, write: if isAdmin();
+    }
+
+    // Custom (non-catalogue) quote item images (V8.11, QuoteDetail.jsx's
+    // "+ Custom Item") — path built as
+    // client_quotes/custom_items/{itemId}/{Date.now()}.jpg. A custom item has
+    // no product doc to file its image under products/{productId}/images, so
+    // it gets its own path here — same idiom as campaign_images below, and
+    // the same bug that comment describes (a missing rule here silently
+    // rejects the upload with Storage's default-deny, not a helpful error).
+    match /client_quotes/{allPaths=**} {
       allow read, write: if isAdmin();
     }
 

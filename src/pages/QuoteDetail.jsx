@@ -682,6 +682,7 @@ function QuoteItem({ item, quoteCurrency, customerId, rates, heroImage, onTiersC
       {showImgPicker && (
         <ProductImagePicker
           productId={item.product_id}
+          itemId={item.id}
           customerId={customerId}
           selectedUrl={item.custom_image}
           onSelect={url => { onImageChange(url); setShowImgPicker(false) }}
@@ -845,7 +846,7 @@ async function resizeToJpeg(file, maxPx = 2400, quality = 0.93) {
   return canvas.convertToBlob({ type: 'image/jpeg', quality })
 }
 
-function ProductImagePicker({ productId, customerId, selectedUrl, onSelect, onClear, onClose }) {
+function ProductImagePicker({ productId, itemId, customerId, selectedUrl, onSelect, onClear, onClose }) {
   const [images, setImages] = useState([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -859,7 +860,14 @@ function ProductImagePicker({ productId, customerId, selectedUrl, onSelect, onCl
   const [brandCategory, setBrandCategory] = useState('product_gallery')
   const fileInputRef = useRef(null)
 
+  // A custom (non-catalogue) quote item has no product doc to read images
+  // from — collection(db, 'products', null, 'images') threw "Cannot read
+  // properties of null (reading 'indexOf')" from deep inside the Firestore
+  // SDK's path validation, surfacing as a page-crashing error boundary
+  // rather than a normal empty state. Skip the query entirely; custom items
+  // go straight to "no images yet, upload one" below.
   useEffect(() => {
+    if (!productId) { setImages([]); setLoading(false); return }
     getDocs(query(collection(db, 'products', productId, 'images'), orderBy('sort_order')))
       .then(snap => { setImages(snap.docs.map(d => ({ id: d.id, ...d.data() }))) })
       .finally(() => setLoading(false))
@@ -898,6 +906,18 @@ function ProductImagePicker({ productId, customerId, selectedUrl, onSelect, onCl
     setUploading(true)
     try {
       const resized = await resizeToJpeg(file)
+      // A custom item has no product doc to file this under — upload
+      // straight to its own quote-item path and select it immediately as
+      // that line's custom_image, rather than recording it in a
+      // products/{id}/images subcollection that doesn't exist for it.
+      if (!productId) {
+        const path = `client_quotes/custom_items/${itemId}/${Date.now()}.jpg`
+        const sRef = storageRef(storage, path)
+        await uploadBytes(sRef, resized, { contentType: 'image/jpeg' })
+        const url = await getDownloadURL(sRef)
+        onSelect(url)
+        return
+      }
       const path = `products/${productId}/images/${Date.now()}.jpg`
       const sRef = storageRef(storage, path)
       await uploadBytes(sRef, resized, { contentType: 'image/jpeg' })
