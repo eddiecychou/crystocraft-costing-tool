@@ -835,6 +835,11 @@ export default function MarketingContacts({ onSendEmail }) {
   const [inApp, setInApp] = useState(initialView.inApp || '')              // '', 'yes', 'no'
   const [category, setCategory] = useState(initialView.category || '')
   const [country, setCountry] = useState(initialView.country || '')
+  // Landing default is B2B (the 'trade' audience) — day-to-day work here is
+  // trade contacts; B2C ('retail'/'website' audiences) is mostly touched for
+  // seasonal campaigns and was cluttering the default list (owner,
+  // 2026-08-26, same request as the Customers page split).
+  const [group, setGroup] = useState(initialView.group || 'b2b')
   const [selected, setSelected] = useState(() => new Set())
   const [managingTags, setManagingTags] = useState(false)
   const [generatingEmailSummaries, setGeneratingEmailSummaries] = useState(false)
@@ -842,9 +847,9 @@ export default function MarketingContacts({ onSendEmail }) {
 
   useEffect(() => {
     localStorage.setItem(VIEW_STATE_KEY, JSON.stringify({
-      search, audience, status, inApp, category, country,
+      search, audience, status, inApp, category, country, group,
     }))
-  }, [search, audience, status, inApp, category, country])
+  }, [search, audience, status, inApp, category, country, group])
 
   const countries = useMemo(() => {
     const c = new Map()
@@ -862,6 +867,8 @@ export default function MarketingContacts({ onSendEmail }) {
     emailable: contacts.filter(c => c.emailable).length,
     suppressed: contacts.filter(c => c.status === 'unsubscribed' || c.status === 'cleaned').length,
     matched: contacts.filter(c => c.possible_customer_match).length,
+    b2b: contacts.filter(c => c.audiences.includes('trade')).length,
+    b2c: contacts.filter(c => c.audiences.includes('retail') || c.audiences.includes('website')).length,
   }), [contacts])
 
   const filtered = useMemo(() => {
@@ -871,8 +878,11 @@ export default function MarketingContacts({ onSendEmail }) {
         c.email.toLowerCase().includes(q) ||
         contactName(c).toLowerCase().includes(q) ||
         c.company.toLowerCase().includes(q) ||
+        c.phone.toLowerCase().includes(q) ||
         c.tags.some(t => t.includes(q))
       )) return false
+      if (group === 'b2b' && !c.audiences.includes('trade')) return false
+      if (group === 'b2c' && !c.audiences.includes('retail') && !c.audiences.includes('website')) return false
       if (audience && !c.audiences.includes(audience)) return false
       if (status && c.status !== status) return false
       if (inApp === 'yes' && !c.possible_customer_match) return false
@@ -881,7 +891,7 @@ export default function MarketingContacts({ onSendEmail }) {
       if (country && c.country !== country) return false
       return true
     })
-  }, [contacts, search, audience, status, inApp, category, country])
+  }, [contacts, search, audience, status, inApp, category, country, group])
 
   const shown = filtered.slice(0, DISPLAY_CAP)
   const allShownSelected = shown.length > 0 && shown.every(c => selected.has(c.id))
@@ -995,6 +1005,30 @@ export default function MarketingContacts({ onSendEmail }) {
         </div>
       </div>
 
+      {/* B2B/B2C group toggle — B2B (audience 'trade') is the default landing
+          view; B2C (audiences 'retail'/'website') is mostly touched for
+          seasonal campaigns. "All" is the escape hatch for a contact whose
+          group you're unsure of. */}
+      <div className="flex gap-1.5 mb-4">
+        {[
+          { key: 'b2b', label: 'B2B', count: stats.b2b },
+          { key: 'b2c', label: 'B2C', count: stats.b2c },
+          { key: 'all', label: 'All', count: stats.total },
+        ].map(g => (
+          <button
+            key={g.key}
+            onClick={() => { setGroup(g.key); setAudience('') }}
+            className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border transition-colors whitespace-nowrap ${
+              group === g.key
+                ? 'bg-brand-600 text-white border-brand-600'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            {g.label} <span className={`ml-1 ${group === g.key ? 'text-white/70' : 'text-gray-400'}`}>{g.count}</span>
+          </button>
+        ))}
+      </div>
+
       {/* Segment summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-5">
         <Stat Icon={Users}     label="Total contacts"          value={stats.total} />
@@ -1022,10 +1056,10 @@ export default function MarketingContacts({ onSendEmail }) {
             <option value="cleaned">Cleaned (bounced)</option>
           </select>
           <select className="input flex-1 min-w-[110px]" value={audience} onChange={e => setAudience(e.target.value)}>
-            <option value="">All audiences</option>
-            <option value="trade">Trade (B2B)</option>
-            <option value="retail">Retail (e-com)</option>
-            <option value="website">Website signup</option>
+            <option value="">{group === 'all' ? 'All audiences' : group === 'b2b' ? 'All B2B' : 'All B2C'}</option>
+            {group !== 'b2c' && <option value="trade">Trade (B2B)</option>}
+            {group !== 'b2b' && <option value="retail">Retail (e-com)</option>}
+            {group !== 'b2b' && <option value="website">Website signup</option>}
           </select>
           {/* Whether the contact is actually linked to a real app Customer
               record (possible_customer_match) — replaces the old "Customer +

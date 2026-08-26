@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
 import { Store, ShoppingCart, Gift, Sparkles, Building2, Star, Smartphone, ShoppingBag } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
-import { useCustomers, CUSTOMER_COUNTRIES, CHANNELS, RETAIL_TAG } from '../domain/customer'
+import { useCustomers, CUSTOMER_COUNTRIES, CHANNELS, RETAIL_TAG, CRM_CATEGORIES } from '../domain/customer'
 
 const VIEW_STATE_KEY = 'customers.viewState'
 const loadViewState = () => {
@@ -18,11 +18,23 @@ const CRM_STATUS_STYLES = {
 }
 
 const CATEGORY_TABS = [
-  { key: '',               label: 'All' },
+  { key: '',               label: 'All B2B' },
   { key: 'Distributor',   label: 'Distributor',   Icon: Store },
   { key: 'Small B2B',     label: 'Small B2B',     Icon: ShoppingCart },
   { key: 'Gift / OEM',    label: 'Gift / OEM',    Icon: Gift },
   { key: 'Crystal Fabric',label: 'Crystal Fabric',Icon: Sparkles },
+]
+
+// Landing on the page defaults to the B2B group — Distributor/Small B2B/
+// Gift-OEM/Crystal Fabric, the accounts worked day to day. Retail Customer
+// (a tag, not a crm_category — see RETAIL_TAG) is its own group, sitting off
+// to the side since it's mostly touched only for seasonal campaigns; "All"
+// is the escape hatch when the group split itself gets in the way (e.g.
+// searching for a specific person and unsure which group they're in).
+const GROUPS = [
+  { key: 'b2b',    label: 'B2B' },
+  { key: 'retail', label: RETAIL_TAG },
+  { key: 'all',    label: 'All' },
 ]
 
 export default function Customers() {
@@ -33,14 +45,14 @@ export default function Customers() {
   const [filterChannel, setFilterChannel]   = useState(initialView.filterChannel || '')
   const [filterStatus, setFilterStatus]     = useState(initialView.filterStatus || '')
   const [filterCategory, setFilterCategory] = useState(initialView.filterCategory || '')
-  const [retailOnly, setRetailOnly]         = useState(initialView.retailOnly || false)
+  const [group, setGroup]                   = useState(initialView.group || 'b2b')
   const remember = useScrollMemory('customers', !loading)
 
   useEffect(() => {
     localStorage.setItem(VIEW_STATE_KEY, JSON.stringify({
-      search, filterCountry, filterChannel, filterStatus, filterCategory, retailOnly,
+      search, filterCountry, filterChannel, filterStatus, filterCategory, group,
     }))
-  }, [search, filterCountry, filterChannel, filterStatus, filterCategory, retailOnly])
+  }, [search, filterCountry, filterChannel, filterStatus, filterCategory, group])
 
   const filtered = customers.filter(c => {
     const searchLower = search.toLowerCase()
@@ -48,13 +60,18 @@ export default function Customers() {
       c.company_name?.toLowerCase().includes(searchLower) ||
       c.contact_name?.toLowerCase().includes(searchLower) ||
       c.erp_code?.toLowerCase().includes(searchLower) ||
-      c.tags?.some(t => t.toLowerCase().includes(searchLower))
+      c.tags?.some(t => t.toLowerCase().includes(searchLower)) ||
+      c.contact_emails?.some(v => v.toLowerCase().includes(searchLower)) ||
+      c.contact_phones?.some(v => v.toLowerCase().includes(searchLower)) ||
+      c.contact_whatsapps?.some(v => v.toLowerCase().includes(searchLower))
     const matchCountry   = !filterCountry   || (c.country || c.region) === filterCountry
     const matchChannel   = !filterChannel   || c.channels?.includes(filterChannel) || c.primary_channel === filterChannel
     const matchStatus    = !filterStatus    || c.crm_status === filterStatus
-    const matchCategory  = !filterCategory  || c.crm_category === filterCategory
-    const matchRetail    = !retailOnly      || c.tags?.includes(RETAIL_TAG)
-    return matchSearch && matchCountry && matchChannel && matchStatus && matchCategory && matchRetail
+    const matchGroup     = group === 'all'    ? true
+                          : group === 'retail' ? c.tags?.includes(RETAIL_TAG)
+                          : CRM_CATEGORIES.includes(c.crm_category)
+    const matchCategory  = group !== 'b2b' || !filterCategory || c.crm_category === filterCategory
+    return matchSearch && matchCountry && matchChannel && matchStatus && matchGroup && matchCategory
   })
 
   return (
@@ -77,44 +94,57 @@ export default function Customers() {
         </div>
       </div>
 
-      {/* Customer Type tabs — Retail Customer sits alongside Distributor/
-          Small B2B/Gift-OEM/Crystal Fabric as a peer type (owner,
-          2026-08-13: same row, not a separate toggle below), but stays
-          functionally independent under the hood — it's a tag, not a
-          crm_category value, so it can combine with any of the other four
-          (a trade-bucket customer, e.g. shared ERP code C13, can also buy
-          retail sometimes; see domain/customer.js's RETAIL_TAG comment).
-          Clicking it toggles retailOnly, the others set filterCategory. */}
-      <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1">
-        {CATEGORY_TABS.map(tab => {
-          const count = tab.key ? customers.filter(c => c.crm_category === tab.key).length : customers.length
+      {/* Group toggle — B2B (Distributor/Small B2B/Gift-OEM/Crystal Fabric)
+          vs Retail Customer vs everyone. B2B is the default landing view
+          (owner, 2026-08-26: day-to-day work is B2B; Retail is mostly
+          touched for seasonal campaigns and was cluttering the default
+          list). Retail is a tag, not a crm_category, so it can in principle
+          overlap with a B2B account — the group split below is a view
+          filter, not a claim the two are mutually exclusive. */}
+      <div className="flex gap-1.5 mb-2">
+        {GROUPS.map(g => {
+          const count = g.key === 'all'    ? customers.length
+                      : g.key === 'retail' ? customers.filter(c => c.tags?.includes(RETAIL_TAG)).length
+                      : customers.filter(c => CRM_CATEGORIES.includes(c.crm_category)).length
           return (
             <button
-              key={tab.key}
-              onClick={() => setFilterCategory(tab.key)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap ${
-                filterCategory === tab.key
+              key={g.key}
+              onClick={() => setGroup(g.key)}
+              className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border transition-colors whitespace-nowrap ${
+                group === g.key
                   ? 'bg-brand-600 text-white border-brand-600'
                   : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
               }`}
             >
-              {tab.Icon && <tab.Icon size={13} className="inline align-[-2px] mr-1" />}{tab.label} <span className={`ml-1 ${filterCategory === tab.key ? 'text-white/70' : 'text-gray-400'}`}>{count}</span>
+              {g.key === 'retail' && <ShoppingBag size={13} className="inline align-[-2px] mr-1" />}
+              {g.label} <span className={`ml-1 ${group === g.key ? 'text-white/70' : 'text-gray-400'}`}>{count}</span>
             </button>
           )
         })}
-        <button
-          onClick={() => setRetailOnly(v => !v)}
-          className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap ${
-            retailOnly
-              ? 'bg-brand-600 text-white border-brand-600'
-              : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-          }`}
-        >
-          <ShoppingBag size={13} className="inline align-[-2px] mr-1" />{RETAIL_TAG} <span className={`ml-1 ${retailOnly ? 'text-white/70' : 'text-gray-400'}`}>
-            {customers.filter(c => c.tags?.includes(RETAIL_TAG)).length}
-          </span>
-        </button>
       </div>
+
+      {/* Category sub-tabs, only meaningful within the B2B group. */}
+      {group === 'b2b' && (
+        <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1">
+          {CATEGORY_TABS.map(tab => {
+            const count = tab.key ? customers.filter(c => c.crm_category === tab.key).length
+                                   : customers.filter(c => CRM_CATEGORIES.includes(c.crm_category)).length
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setFilterCategory(tab.key)}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap ${
+                  filterCategory === tab.key
+                    ? 'bg-gray-800 text-white border-gray-800'
+                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                }`}
+              >
+                {tab.Icon && <tab.Icon size={13} className="inline align-[-2px] mr-1" />}{tab.label} <span className={`ml-1 ${filterCategory === tab.key ? 'text-white/70' : 'text-gray-400'}`}>{count}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       {/* Filters */}
       <div className="space-y-2 mb-5">
