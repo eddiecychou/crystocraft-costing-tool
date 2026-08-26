@@ -57,6 +57,13 @@ const blankHeader = {
   // cross-check only. The order's real subtotal/total are computed from the
   // lines at save time, not carried in editable header state.
   pi_subtotal: '', pi_total: '', discount_pct: '', discount_amount: '',
+  // Print option (2026-08-26) — some customers' PIs/invoices shouldn't show a
+  // combined "Total Qty" line (e.g. mixed-unit orders where a single summed
+  // count is meaningless, or the customer just doesn't want it). Persisted on
+  // the order so it round-trips correctly whether the print page is opened
+  // now or reopened later — it's a fresh page load reading Firestore, not
+  // something that can ride along as a transient prop.
+  hide_total_qty: false,
 }
 
 // Firestore writes with persistentLocalCache resolve only when the SERVER acks —
@@ -220,6 +227,7 @@ export default function ShipmentForm() {
             destination: { ...blankHeader.destination, ...o.destination }, notes: o.notes,
             discount_pct:    o.discount_pct    ?? '',
             discount_amount: o.discount_amount ?? '',
+            hide_total_qty: !!o.hide_total_qty,
             // Reference figures for the mismatch check. New orders carry their
             // own pi_* fields; older imported orders predate them and still
             // hold the PI value in subtotal/total_amount, so fall back to those.
@@ -766,6 +774,7 @@ export default function ShipmentForm() {
           est_ship_date: header.est_ship_date || null,
           currency: header.currency, incoterm: header.incoterm, payment_terms: header.payment_terms, status: header.status,
           destination: header.destination, notes: header.notes,
+          hide_total_qty: !!header.hide_total_qty,
           // Actual value follows the lines; PI figures stay as the reference.
           subtotal:        computed.subtotal > 0 ? computed.subtotal : null,
           total_amount:    computed.subtotal > 0 ? computed.total : null,
@@ -1319,6 +1328,14 @@ export default function ShipmentForm() {
           <label className="label">Remarks</label>
           <textarea className="input" rows={2} value={header.notes} onChange={setH('notes')}
                      placeholder="Prints on the Proforma and Sales Invoice — accounting context, exceptions, etc." />
+          <label className="flex items-center gap-2 mt-3 text-sm text-gray-600">
+            <input
+              type="checkbox"
+              checked={!!header.hide_total_qty}
+              onChange={e => setHeader(h => ({ ...h, hide_total_qty: e.target.checked }))}
+            />
+            Hide "Total Qty" on the printed Proforma Invoice and Sales Invoice
+          </label>
         </div>
 
         {/* Component stock — issue this order's figurine BOM to the ledger (V7.13a) */}

@@ -263,6 +263,12 @@ export const normOrder = o => ({
   woo_fee: numOrNull(o.woo_fee),
   woo_net_payout: numOrNull(o.woo_net_payout),
   woo_payout_date: o.woo_payout_date || null,
+  // Print option: hide the combined "Total Qty" line on the printed PI/
+  // Sales Invoice (ProformaInvoicePrint.jsx/SalesInvoicePrint.jsx). Learned
+  // from the contact_id trap documented above — every field the print pages
+  // or the form read back from Firestore MUST be listed here, or normOrder
+  // silently drops it on every read regardless of what the write path saved.
+  hide_total_qty: !!o.hide_total_qty,
 })
 
 export const normLine = l => {

@@ -338,7 +338,7 @@ export default function SalesInvoicePrint() {
       <div className="si-totals">
         <table>
           <tbody>
-            {totalQty > 0 && (
+            {totalQty > 0 && !order.hide_total_qty && (
               <tr><td className="k">Total Qty</td><td className="v">{totalQty.toLocaleString()}{qtyUnitLabel ? ` ${qtyUnitLabel}` : ''}</td></tr>
             )}
             <tr><td className="k">Subtotal</td><td className="v">{money(subtotal, cur)}</td></tr>
