@@ -75,27 +75,10 @@ customer, narrower than admin). *public* = no session check.
 
 ---
 
-## Worth a look: three functions with no auth check
-
-`customizer-render.js`, `customizer-palette.js`, and `enhance-image.js` proxy
-third-party secrets (`RENDER_TOKEN`, `GEMINI_API_KEY`) but have no
-`isAdmin()`/`requireAdmin()` check in their source — every other AI/proxy
-function in this list does. This may be intentional (the customizer is a
-public-facing feature; costs are capped by the secret staying server-side
-either way) or may be an oversight worth deciding on deliberately. Flagged
-here rather than fixed silently, since changing auth posture on a
-public-facing feature is a product decision, not just a code cleanup.
-
-## Two implementations of the same admin check
-
-Most functions inline their own `isAdmin(uid, idToken, projectId)` (a
-Firestore REST check of `users/{uid}.role === 'admin'`). A newer set —
-`credit-note.js`, `compose-message.js`, `extract-pi.js`, `extract-po.js`,
-`generate-blog.js`, `generate-marketing-copy.js`, `process-quote.js`,
-`rewrite-section.js`, `scrape-images.js`, `woo-sync.js` — imports a shared
-`requireAdmin()` from `netlify/edge-functions/lib/auth.js` instead. Same
-effect, worth converging on the shared one over time rather than adding a
-38th inline copy.
+Two things noticed while compiling this list — an auth gap in three
+functions and a duplicated admin-check pattern — are recorded in
+`TECH-DEBT.md` rather than here, so they don't get lost in a reference doc
+that's mostly just a lookup table.
 
 ## Keeping this current
 

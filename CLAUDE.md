@@ -29,6 +29,7 @@ of record, one function at a time.
 | `API-REFERENCE.md` | All 37 Netlify edge functions (`/api/*`), grouped by feature area — route, purpose, auth posture, caller. Check before adding a new one (to avoid duplicating an existing endpoint) and update it when adding one |
 | `FIRESTORE-COLLECTIONS.md` | Every Firestore collection/subcollection — purpose, auth posture, owning domain file, and the pointer fields that connect collections to each other. Check before adding a collection or tracing data across two of them |
 | `DOMAIN-MODULES.md` | What each `src/domain/*.js` file owns and its main exports — the business-logic layer, distinct from the `src/*Api.js` edge-function wrappers already covered in API-REFERENCE.md |
+| `TECH-DEBT.md` | Known inconsistencies/gaps noticed in passing (unguarded edge functions, duplicate admin-check implementations, etc.) — check before "fixing" something that turns out to already be a known, deliberate tradeoff; add to it when you notice something new |
 
 ## Environment quirks that will otherwise waste your time
 
