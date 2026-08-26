@@ -15,6 +15,7 @@ export default function CustomerAccounts({ embedded = false }) {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState('approved')
   const [typeFilter, setTypeFilter] = useState('all') // all | customer | internal
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     return onSnapshot(collection(db, 'users'), snap => {
@@ -63,6 +64,20 @@ export default function CustomerAccounts({ embedded = false }) {
   const showTypeFilter = tab !== 'admins'
   if (showTypeFilter && typeFilter !== 'all') rows = rows.filter(u => accountTypeOf(u) === typeFilter)
 
+  // Search by name, email, or country — 37 customers and growing was already
+  // enough to make "find one account" a real scroll (owner, 2026-08-27).
+  const searchLower = search.trim().toLowerCase()
+  if (searchLower) {
+    rows = rows.filter(u => {
+      const linked = u.customer_id ? customersById.get(u.customer_id) : null
+      const name = linked?.company_name || u.company_name || ''
+      const country = linked?.country || linked?.region || u.country || ''
+      return name.toLowerCase().includes(searchLower) ||
+        (u.email || '').toLowerCase().includes(searchLower) ||
+        country.toLowerCase().includes(searchLower)
+    })
+  }
+
   return (
     <div className="p-4 md:p-6">
       {loading && <LoadingBar />}
@@ -81,6 +96,14 @@ export default function CustomerAccounts({ embedded = false }) {
         </div>
       </div>
 
+      <input
+        type="text"
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        placeholder="Search name, email, or country…"
+        className="input w-full mb-4"
+      />
+
       {showTypeFilter && (
         <div className="flex items-center gap-2 mb-4 text-xs">
           <span className="uppercase tracking-wide text-ink-40">Show</span>
@@ -95,7 +118,7 @@ export default function CustomerAccounts({ embedded = false }) {
       )}
 
       {rows.length === 0 ? (
-        <div className="text-center py-16 text-ink-60">Nothing here.</div>
+        <div className="text-center py-16 text-ink-60">{searchLower ? 'No accounts match your search.' : 'Nothing here.'}</div>
       ) : (
         <div className="space-y-2">
           {rows.map(u => <Row key={u.id} u={u} linked={u.customer_id ? customersById.get(u.customer_id) : null} dup={isDup(u)} />)}
