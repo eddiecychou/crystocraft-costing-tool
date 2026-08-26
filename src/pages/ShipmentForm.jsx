@@ -951,82 +951,102 @@ export default function ShipmentForm() {
           </div>
         )}
 
-        {/* Header */}
-        <div className="card p-4 md:p-6 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Header — split into four grouped cards (2026-08-26; was one long
+            undivided card) so each group of fields reads as its own
+            question: who is this for, what documents reference it, when/on
+            what terms, and where is it going. Also fixes the Invoice
+            No/Revision pair fighting SO/UC/Customer PO for space in a single
+            3-column grid, which was truncating the Revision placeholder and
+            wrapping "+ New Rev" onto two lines. */}
+        <div className="card p-4 md:p-6 space-y-3">
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Customer</h2>
+          <div>
+            <label className="label">Customer</label>
+            <select className="input" value={customers.find(c => c.id === header.customer_id) ? header.customer_id : ''} onChange={onCustomer}>
+              <option value="">— select customer —</option>
+              {customers.map(c => <option key={c.id} value={c.id}>{c.erp_code ? `[${c.erp_code}] ` : ''}{c.company_name}</option>)}
+            </select>
+            {!header.customer_id && header.customer_name && (
+              <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                <p className="text-xs text-amber-600">From PI: "{header.customer_name}" — not linked to any customer.</p>
+                <button type="button" onClick={addNewCustomer} disabled={addingCustomer}
+                        className="text-xs font-medium text-brand-600 hover:text-brand-700 hover:underline disabled:opacity-50">
+                  {addingCustomer ? 'Adding…' : '+ Add as new customer'}
+                </button>
+              </div>
+            )}
+            {header.customer_id && (
+              <ContactPicker customerId={header.customer_id} value={header.contact_id}
+                             onChange={cid => setHeader(h => ({ ...h, contact_id: cid || '' }))}
+                             label="Addressed to" className="mt-2" />
+            )}
+          </div>
+        </div>
+
+        <div className="card p-4 md:p-6 space-y-3">
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Document References</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div>
-              <label className="label">Customer</label>
-              <select className="input" value={customers.find(c => c.id === header.customer_id) ? header.customer_id : ''} onChange={onCustomer}>
-                <option value="">— select customer —</option>
-                {customers.map(c => <option key={c.id} value={c.id}>{c.erp_code ? `[${c.erp_code}] ` : ''}{c.company_name}</option>)}
-              </select>
-              {!header.customer_id && header.customer_name && (
-                <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                  <p className="text-xs text-amber-600">From PI: "{header.customer_name}" — not linked to any customer.</p>
-                  <button type="button" onClick={addNewCustomer} disabled={addingCustomer}
-                          className="text-xs font-medium text-brand-600 hover:text-brand-700 hover:underline disabled:opacity-50">
-                    {addingCustomer ? 'Adding…' : '+ Add as new customer'}
+              <label className="label flex items-center justify-between gap-2">
+                <span>SO / Doc No</span>
+                {!header.erp_so_no && (
+                  <button type="button" onClick={doAllocateSo} disabled={allocatingSo}
+                          className="text-[11px] text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case whitespace-nowrap shrink-0"
+                          title="Allocate the next SO number. New orders get one automatically on create; this is for an older order that has none.">
+                    {allocatingSo ? 'Allocating…' : 'Allocate'}
                   </button>
-                </div>
-              )}
-              {header.customer_id && (
-                <ContactPicker customerId={header.customer_id} value={header.contact_id}
-                               onChange={cid => setHeader(h => ({ ...h, contact_id: cid || '' }))}
-                               label="Addressed to" className="mt-2" />
-              )}
+                )}
+              </label>
+              <input className="input" value={header.erp_so_no} onChange={setH('erp_so_no')} placeholder="e.g. SO260017" />
+              {soError && <p className="text-xs text-red-600 mt-1">{soError}</p>}
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              <div>
-                <label className="label flex items-center justify-between gap-2">
-                  <span>SO / Doc No</span>
-                  {!header.erp_so_no && (
-                    <button type="button" onClick={doAllocateSo} disabled={allocatingSo}
-                            className="text-[11px] text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case"
-                            title="Allocate the next SO number. New orders get one automatically on create; this is for an older order that has none.">
-                      {allocatingSo ? 'Allocating…' : 'Allocate'}
-                    </button>
-                  )}
-                </label>
-                <input className="input" value={header.erp_so_no} onChange={setH('erp_so_no')} placeholder="e.g. SO260017" />
-                {soError && <p className="text-xs text-red-600 mt-1">{soError}</p>}
-              </div>
-              <div>
-                <label className="label">UC#</label>
-                <input className="input" value={header.uc_no} onChange={setH('uc_no')} placeholder="e.g. UC4950/26" />
-              </div>
-              <div>
-                <label className="label">Customer PO</label>
-                <input className="input" value={header.customer_po} onChange={setH('customer_po')} placeholder="e.g. 56909" />
-              </div>
-              <div>
-                <label className="label flex items-center justify-between gap-2">
-                  <span>Invoice No</span>
-                  {!header.erp_si_no && (
-                    <button type="button" onClick={doAllocateSi} disabled={allocatingSi}
-                            className="text-[11px] text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case"
-                            title="Issue the invoice: allocate the next SI number (and a UC if none), and stamp today as the invoice date. Deliberately manual — an order is invoiced when you invoice it, not when it is created.">
-                      {allocatingSi ? 'Allocating…' : 'Allocate'}
-                    </button>
-                  )}
-                </label>
-                <input ref={invoiceFieldRef} className="input" value={header.erp_si_no} onChange={setH('erp_si_no')} placeholder="e.g. SI260094" />
-                {siError && <p className="text-xs text-red-600 mt-1">{siError}</p>}
-              </div>
-              <div>
-                <label className="label flex items-center justify-between gap-2">
-                  <span>Revision</span>
-                  <button type="button"
-                          onClick={() => setHeader(h => ({ ...h, pi_revision: String((parseInt(h.pi_revision, 10) || 0) + 1) }))}
-                          className="text-[11px] text-brand-600 hover:text-brand-800 font-normal normal-case"
-                          title="Bump the revision printed on the PI/Invoice — for when a customer needs to tell an updated version apart from one they've already seen. Never bumps automatically.">
-                    + New Rev
-                  </button>
-                </label>
-                <input className="input" type="number" min="0" value={header.pi_revision}
-                       onChange={setH('pi_revision')} placeholder="Original (no Rev shown)" />
-              </div>
+            <div>
+              <label className="label">UC#</label>
+              <input className="input" value={header.uc_no} onChange={setH('uc_no')} placeholder="e.g. UC4950/26" />
+            </div>
+            <div>
+              <label className="label">Customer PO</label>
+              <input className="input" value={header.customer_po} onChange={setH('customer_po')} placeholder="e.g. 56909" />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-4 sm:max-w-md">
+            <div>
+              <label className="label flex items-center justify-between gap-2">
+                <span>Invoice No</span>
+                {!header.erp_si_no && (
+                  <button type="button" onClick={doAllocateSi} disabled={allocatingSi}
+                          className="text-[11px] text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case whitespace-nowrap shrink-0"
+                          title="Issue the invoice: allocate the next SI number (and a UC if none), and stamp today as the invoice date. Deliberately manual — an order is invoiced when you invoice it, not when it is created.">
+                    {allocatingSi ? 'Allocating…' : 'Allocate'}
+                  </button>
+                )}
+              </label>
+              <input ref={invoiceFieldRef} className="input" value={header.erp_si_no} onChange={setH('erp_si_no')} placeholder="e.g. SI260094" />
+              {siError && <p className="text-xs text-red-600 mt-1">{siError}</p>}
+            </div>
+            <div>
+              <label className="label flex items-center justify-between gap-2">
+                <span>Revision</span>
+                <button type="button"
+                        onClick={() => setHeader(h => ({ ...h, pi_revision: String((parseInt(h.pi_revision, 10) || 0) + 1) }))}
+                        className="text-[11px] text-brand-600 hover:text-brand-800 font-normal normal-case whitespace-nowrap shrink-0"
+                        title="Bump the revision printed on the PI/Invoice — for when a customer needs to tell an updated version apart from one they've already seen. Never bumps automatically.">
+                  + New Rev
+                </button>
+              </label>
+              <input className="input" type="number" min="0" value={header.pi_revision}
+                     onChange={setH('pi_revision')} placeholder="Original" />
+            </div>
+          </div>
+          {sourceFile && (
+            <a href={sourceFile.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs text-brand-600 hover:underline">
+              <FileText size={13} /> {sourceFile.name || 'View source PI'}
+            </a>
+          )}
+        </div>
+
+        <div className="card p-4 md:p-6 space-y-3">
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Schedule &amp; Terms</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <label className="label">Order Date</label>
@@ -1074,16 +1094,15 @@ export default function ShipmentForm() {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="card p-4 md:p-6 space-y-3">
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Destination</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div><label className="label">Dest. Country</label><input className="input" value={header.destination.country} onChange={setDest('country')} placeholder="Germany" /></div>
             <div><label className="label">Dest. City</label><input className="input" value={header.destination.city} onChange={setDest('city')} placeholder="Hamburg" /></div>
             <div><label className="label">Port (optional)</label><input className="input" value={header.destination.port} onChange={setDest('port')} placeholder="Hamburg" /></div>
           </div>
-          {sourceFile && (
-            <a href={sourceFile.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs text-brand-600 hover:underline">
-              <FileText size={13} /> {sourceFile.name || 'View source PI'}
-            </a>
-          )}
         </div>
 
         {/* Reconciliation. Rendered unconditionally: "+ Add line" lives inside
