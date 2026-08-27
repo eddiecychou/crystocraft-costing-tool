@@ -222,14 +222,16 @@ export default function ProformaInvoicePrint() {
         table.pi-lines tfoot { display: table-footer-group; }
         /* Keep the closing blocks whole; splitting a total or a bank block
            across pages is the same class of problem as splitting a line. */
-        .pi-totals, .pi-words, .pi-bank, .pi-sign, .pi-foot { page-break-inside: avoid; break-inside: avoid; }
-        /* The rules above stop any ONE block splitting internally, but never
-           stopped a break landing BETWEEN them — e.g. signatures ending one
-           page and the company footer starting the next, orphaned apart from
-           what it's meant to close out (owner, 2026-08-27, from a real
-           printed quote hitting the same issue). .pi-closing wraps totals
-           through the footer as one further-avoid-split unit on top of that. */
-        .pi-closing { page-break-inside: avoid; break-inside: avoid; }
+        .pi-totals, .pi-words, .pi-bank, .pi-sign { page-break-inside: avoid; break-inside: avoid; }
+        /* Keep the signature block and whatever precedes it directly (bank,
+           remarks) from being torn apart, without dragging the whole closing
+           run to the next page as one unit — an earlier .pi-closing wrapper
+           did that and left a short invoice's page 1 half empty with
+           everything from Subtotal down shoved onto page 2 (owner,
+           2026-08-27). The footer is no longer part of this: it is a fixed
+           running footer (see @media print below), so a break landing
+           "before the footer" is no longer possible. */
+        .pi-bank, .pi-notes, .pi-sign { break-inside: avoid; }
         /* One-off MISC lines carry multi-line descriptions; without this they
            collapse into one run-on line. */
         table.pi-lines td.desc { white-space: pre-wrap; }
@@ -265,6 +267,17 @@ export default function ProformaInvoicePrint() {
         .pi-sign .line { border-top: 1px solid #999; padding-top: 5px; font-size: 9px; color: #777; }
         .pi-foot { margin-top: 26px; padding-top: 10px; border-top: 1px solid #eee; text-align: center; font-size: 9px; color: #888; line-height: 1.6; }
         .pi-foot .nm { font-weight: 600; color: #555; }
+        /* Company footer pinned to the bottom of EVERY printed page rather
+           than flowing after the signatures — which landed it mid-page on a
+           short invoice and only on the last page of a multi-page one.
+           .pi-doc reserves clearance with padding-bottom so the last flowing
+           line can't collide with it. Screen keeps the plain in-flow footer.
+           Matches the fixed footer QuotePDF got on 2026-08-27. */
+        @media print {
+          .pi-foot { position: fixed; left: 0; right: 0; bottom: 0; margin: 0;
+            padding-top: 8px; background: #fff; }
+          .pi-doc { padding-bottom: 68px; }
+        }
       `}</style>
 
       <button className="print-btn" onClick={() => window.print()}>Print / Save as PDF</button>
@@ -387,8 +400,7 @@ export default function ProformaInvoicePrint() {
         </tbody>
       </table>
 
-      <div className="pi-closing">
-        <div className="pi-totals">
+      <div className="pi-totals">
           <table>
             <tbody>
               {totalQty > 0 && !order.hide_total_qty && (
@@ -436,11 +448,10 @@ export default function ProformaInvoicePrint() {
           </div>
         </div>
 
-        <div className="pi-foot">
-          <div className="nm">{SELLER.name}</div>
-          <div>{SELLER.address}</div>
-          <div>{SELLER.contact}</div>
-        </div>
+      <div className="pi-foot">
+        <div className="nm">{SELLER.name}</div>
+        <div>{SELLER.address}</div>
+        <div>{SELLER.contact}</div>
       </div>
     </div>
   )
