@@ -3,6 +3,9 @@ import { useNavigate, useParams, Link } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { SUPPLIER_CATEGORIES, CURRENCIES, PO_PAYMENT_TERMS } from '../constants'
+import {
+  supplierContactsOf, cleanSupplierContacts, flatFieldsFromContacts, genContactId,
+} from '../domain/supplierContacts'
 
 // Supplier Workstation Phase 1 — sourcing/quick-access links. Field names
 // use a leading word (shop_1688_url, not 1688_shop_url) because a JS/
@@ -56,6 +59,59 @@ function MultiInput({ label, values, onChange, type = 'text', placeholder }) {
   )
 }
 
+// Multiple named people per supplier. A row per contact; "primary" is a single
+// choice across the active rows (its name/wechat/whatsapp also mirror to the
+// legacy flat fields on save), "active" un-checked greys out a departed rep
+// without losing history.
+function ContactRows({ contacts, onChange }) {
+  const set = (i, field, val) => onChange(contacts.map((c, j) => (j === i ? { ...c, [field]: val } : c)))
+  const setPrimary = i => onChange(contacts.map((c, j) => ({ ...c, is_primary: j === i })))
+  const addRow = () => onChange([
+    ...contacts,
+    { id: genContactId(), name: '', title: '', phone: '', wechat: '', whatsapp: '', email: '',
+      is_primary: contacts.filter(c => c.active !== false).length === 0, active: true },
+  ])
+  const removeRow = i => onChange(contacts.filter((_, j) => j !== i))
+
+  return (
+    <div className="space-y-3">
+      {contacts.length === 0 && (
+        <p className="text-xs text-gray-400">No contacts yet — add the supplier's sales rep(s).</p>
+      )}
+      {contacts.map((c, i) => {
+        const inactive = c.active === false
+        return (
+          <div key={c.id || i} className={`rounded-lg border p-3 space-y-2 ${inactive ? 'border-gray-200 bg-gray-50 opacity-70' : 'border-gray-200'}`}>
+            <div className="grid grid-cols-2 gap-2">
+              <input className="input" value={c.name} onChange={e => set(i, 'name', e.target.value)} placeholder="Name e.g. 王小姐, David Lee" />
+              <input className="input" value={c.title} onChange={e => set(i, 'title', e.target.value)} placeholder="Title / role (optional)" />
+              <input className="input" value={c.phone} onChange={e => set(i, 'phone', e.target.value)} placeholder="Phone" />
+              <input className="input" value={c.wechat} onChange={e => set(i, 'wechat', e.target.value)} placeholder="WeChat ID" />
+              <input className="input" value={c.whatsapp} onChange={e => set(i, 'whatsapp', e.target.value)} placeholder="WhatsApp" />
+              <input className="input" type="email" value={c.email} onChange={e => set(i, 'email', e.target.value)} placeholder="Email" />
+            </div>
+            <div className="flex items-center gap-4 text-xs">
+              <label className={`inline-flex items-center gap-1.5 ${inactive ? 'text-gray-400' : 'text-gray-600'}`}>
+                <input type="radio" name="supplier-primary-contact" disabled={inactive}
+                       checked={!!c.is_primary && !inactive} onChange={() => setPrimary(i)} />
+                Primary
+              </label>
+              <label className="inline-flex items-center gap-1.5 text-gray-600">
+                <input type="checkbox" checked={!inactive}
+                       onChange={e => set(i, 'active', e.target.checked)} />
+                Active (still at this supplier)
+              </label>
+              <button type="button" onClick={() => removeRow(i)}
+                      className="ml-auto text-gray-400 hover:text-red-500">Remove</button>
+            </div>
+          </div>
+        )
+      })}
+      <button type="button" onClick={addRow} className="text-xs text-brand-600 hover:text-brand-800">+ Add contact</button>
+    </div>
+  )
+}
+
 export default function SupplierForm() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -71,6 +127,7 @@ export default function SupplierForm() {
   })
   const [phones, setPhones] = useState([''])
   const [emails, setEmails] = useState([''])
+  const [contacts, setContacts] = useState([])
   const [loading, setLoading]   = useState(false)
   const [fetching, setFetching] = useState(isEdit)
   const [linkErrors, setLinkErrors] = useState({})
@@ -95,6 +152,9 @@ export default function SupplierForm() {
         }))
         setPhones(toArray(d.phones ?? d.phone))
         setEmails(toArray(d.emails ?? d.email))
+        // Folds legacy contact_person/wechat_id/whatsapp into one primary
+        // contact when the supplier has no contacts[] yet.
+        setContacts(supplierContactsOf(d))
       }
       setFetching(false)
     })
@@ -112,6 +172,7 @@ export default function SupplierForm() {
     if (Object.keys(errs).length > 0) return
     setLoading(true)
     try {
+      const cleanContacts = cleanSupplierContacts(contacts)
       const payload = {
         ...form,
         phones: phones.filter(Boolean),
@@ -119,6 +180,10 @@ export default function SupplierForm() {
         // Keep legacy single-value fields for backward compat display
         phone: phones.filter(Boolean)[0] || '',
         email: emails.filter(Boolean)[0] || '',
+        contacts: cleanContacts,
+        // Mirror the primary active contact into the flat fields every existing
+        // reader still uses (PO form, supplier list, quote picker, ERP import).
+        ...flatFieldsFromContacts(cleanContacts),
         updatedAt: serverTimestamp(),
       }
       if (isEdit) {
@@ -179,11 +244,6 @@ export default function SupplierForm() {
           </div>
         </div>
 
-        <div>
-          <label className="label">Contact Person</label>
-          <input className="input" value={form.contact_person} onChange={set('contact_person')} placeholder="e.g. 王總, David Lee" />
-        </div>
-
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="label">Country</label>
@@ -201,17 +261,16 @@ export default function SupplierForm() {
         </div>
 
         <div className="border-t border-gray-100 pt-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-4">Contact Details</p>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">People</p>
+          <p className="text-xs text-gray-400 mb-3">One row per sales rep / contact. Mark who's <strong>Primary</strong> (used on purchase orders); un-tick <strong>Active</strong> when someone leaves — the row is kept greyed for history.</p>
+          <ContactRows contacts={contacts} onChange={setContacts} />
+        </div>
+
+        <div className="border-t border-gray-100 pt-4">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Office lines</p>
+          <p className="text-xs text-gray-400 mb-3">General supplier phone / email — reception or shared inbox, not tied to one person.</p>
           <div className="grid grid-cols-2 gap-4">
             <MultiInput label="Phone" values={phones} onChange={setPhones} placeholder="+86 xxx xxxx xxxx" />
-            <div>
-              <label className="label">WeChat ID</label>
-              <input className="input" value={form.wechat_id} onChange={set('wechat_id')} placeholder="WeChat ID" />
-            </div>
-            <div>
-              <label className="label">WhatsApp</label>
-              <input className="input" value={form.whatsapp} onChange={set('whatsapp')} placeholder="+86 xxx xxxx xxxx" />
-            </div>
             <MultiInput label="Email" values={emails} onChange={setEmails} type="email" placeholder="supplier@example.com" />
           </div>
         </div>

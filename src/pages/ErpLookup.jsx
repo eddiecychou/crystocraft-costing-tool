@@ -35,10 +35,19 @@ async function importErpSuppliers(erpRows) {
     const companyName = r.name || r.short_name || code
     const emails = [r.email, r.email2].filter(Boolean)
     const phones = [r.phone, r.phone2, r.mobile].filter(Boolean)
+    // If JES carries a contact name, seed contacts[] with one primary person
+    // (the supplier form's own shape) rather than only the legacy flat field.
+    const contacts = r.contact
+      ? [{
+          id: `sc_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`,
+          name: String(r.contact), title: '', phone: '', wechat: '', whatsapp: '',
+          email: '', is_primary: true, active: true,
+        }]
+      : []
     const ref = await addDoc(collection(db, 'suppliers'), {
       name: companyName, name_cn: '', erp_code: code, category: '',
       country: r.country || '', city: r.city || '', address: r.address || '',
-      wechat_id: '', whatsapp: '', contact_person: r.contact || '',
+      wechat_id: '', whatsapp: '', contact_person: r.contact || '', contacts,
       notes: ['Imported from JES ERP (code ' + code + ').', r.remarks].filter(Boolean).join(' '),
       default_currency: CURRENCIES.includes(r.currency) ? r.currency : '',
       default_payment_terms: '',

@@ -26,6 +26,13 @@ const QUICK_LINKS = [
 ]
 const isHttpUrl = v => typeof v === 'string' && /^https?:\/\/\S+$/i.test(v.trim())
 import useScrollMemory from '../hooks/useScrollMemory'
+import {
+  supplierContactsOf, activeSupplierContacts, inactiveSupplierContacts,
+} from '../domain/supplierContacts'
+
+// WeChat's own search only matches the bare local number, so drop a leading
+// +86 / 86 China country code and separators (owner). Other country codes stay.
+const wechatSearchPhone = p => (p || '').trim().replace(/^\+?86[\s-]*/, '').replace(/[\s-]/g, '')
 
 const PO_STATUS_META = Object.fromEntries(PO_STATUSES.map(s => [s.value, s]))
 // Lists longer than this get a search box + "show all" collapse instead of a
@@ -90,6 +97,7 @@ export default function SupplierDetail() {
   // search IS reliable, so the WeChat quick-access copies the supplier's phone
   // (paste into WeChat → Add Contacts).
   const [wechatCopied, setWechatCopied] = useState(false)
+  const [copiedContactId, setCopiedContactId] = useState(null)
   const remember = useScrollMemory(`supplier-${id}`, !loading)
 
   useEffect(() => {
@@ -245,28 +253,29 @@ export default function SupplierDetail() {
           dead buttons) — the "Catalogues & Files" chip always shows since
           SupplierCatalogs below already handles the empty case on its own
           ("no catalogs yet").
-          WeChat: a copy-the-phone chip, not a link. Personal WeChat has no
-          reliable per-contact deep link — weixin://dl/profile/<id> was
-          re-tested 2026-08-28 and only ever opens the app to nowhere — and
-          a stored wxid_… id isn't searchable in the app either. A phone
-          number IS, so the chip copies the supplier's first phone for
-          pasting into WeChat → Add Contacts. Only shows when a phone is on
-          file. */}
+          WeChat: a copy-to-clipboard chip, not a link. Personal WeChat has
+          no reliable per-contact deep link — weixin://dl/profile/<id> was
+          re-tested 2026-08-28 and only ever opens the app to nowhere.
+          Phone-number search IS reliable, so the chip copies the supplier's
+          phone (office line, else the primary contact's) with the +86/86
+          China country code stripped, for pasting into WeChat → Add
+          Contacts. If there's no phone but a WeChat ID is on file it copies
+          that instead. Hidden only when there's neither. */}
       {(() => {
         const links = QUICK_LINKS.filter(l => isHttpUrl(supplier[l.key]))
-        // WeChat's own search wants the bare local number, so drop a leading
-        // +86 / 86 China country code and strip spaces/dashes (owner). Other
-        // country codes are left alone.
-        const wechatPhone = (toArray(supplier.phones ?? supplier.phone)[0] || '')
-          .trim()
-          .replace(/^\+?86[\s-]*/, '')
-          .replace(/[\s-]/g, '')
+        const primaryC = supplierContactsOf(supplier).find(c => c.is_primary && c.active)
+        const wechatPhone = wechatSearchPhone(
+          toArray(supplier.phones ?? supplier.phone)[0] || primaryC?.phone || '',
+        )
+        const fallbackWechatId = (supplier.wechat_id || primaryC?.wechat || '').trim()
+        const copyValue = wechatPhone || fallbackWechatId
+        const copyIsPhone = !!wechatPhone
         const copyWechat = async () => {
           try {
-            await navigator.clipboard.writeText(wechatPhone)
+            await navigator.clipboard.writeText(copyValue)
             setWechatCopied(true)
             setTimeout(() => setWechatCopied(false), 1500)
-          } catch { /* clipboard blocked — the phone is still visible in the info row below */ }
+          } catch { /* clipboard blocked — value is still visible in the Contacts card */ }
         }
         return (
           <div className="card p-4 mb-6">
@@ -278,12 +287,12 @@ export default function SupplierDetail() {
                   <ExternalLink size={12} />{l.label}
                 </a>
               ))}
-              {wechatPhone && (
+              {copyValue && (
                 <button type="button" onClick={copyWechat}
-                   title={`Copy phone "${wechatPhone}" — paste into WeChat → Add Contacts`}
+                   title={`Copy ${copyIsPhone ? `phone "${copyValue}"` : `WeChat ID "${copyValue}"`} — paste into WeChat → Add Contacts`}
                    className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
                   {wechatCopied ? <Check size={12} /> : <MessageCircle size={12} />}
-                  {wechatCopied ? 'Phone copied' : 'Copy phone for WeChat'}
+                  {wechatCopied ? 'Copied' : (copyIsPhone ? 'Copy phone for WeChat' : 'Copy WeChat ID')}
                 </button>
               )}
               <a href="#catalogues"
@@ -295,16 +304,66 @@ export default function SupplierDetail() {
         )
       })()}
 
+      {(() => {
+        const all = supplierContactsOf(supplier)
+        if (all.length === 0) return null
+        const active = activeSupplierContacts(all)
+        const gone = inactiveSupplierContacts(all)
+        const contactWechatValue = c => wechatSearchPhone(c.phone) || (c.wechat || '').trim()
+        const copyForWechat = async (c) => {
+          const val = contactWechatValue(c)
+          if (!val) return
+          try {
+            await navigator.clipboard.writeText(val)
+            setCopiedContactId(c.id)
+            setTimeout(() => setCopiedContactId(x => (x === c.id ? null : x)), 1500)
+          } catch { /* clipboard blocked — value is still shown on the row */ }
+        }
+        const Card = (c, dim) => (
+          <div key={c.id} className={`py-3 border-b border-gray-50 last:border-0 ${dim ? 'opacity-60' : ''}`}>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-medium text-gray-900">{c.name || '—'}</span>
+              {c.title && <span className="text-xs text-gray-500">{c.title}</span>}
+              {c.is_primary && !dim && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 uppercase tracking-wide">Primary</span>}
+              {dim && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 uppercase tracking-wide">Left</span>}
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">
+              {c.phone && <a href={`tel:${c.phone}`} className="text-brand-600 hover:underline">{c.phone}</a>}
+              {c.wechat && <span>WeChat: {c.wechat}</span>}
+              {c.whatsapp && <span>WhatsApp: {c.whatsapp}</span>}
+              {c.email && <a href={`mailto:${c.email}`} className="text-brand-600 hover:underline">{c.email}</a>}
+              {contactWechatValue(c) && (
+                <button type="button" onClick={() => copyForWechat(c)}
+                  title={`Copy ${wechatSearchPhone(c.phone) ? `phone "${wechatSearchPhone(c.phone)}"` : `WeChat ID "${c.wechat}"`} — paste into WeChat → Add Contacts`}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-gray-200 text-gray-600 hover:border-brand-400 hover:text-brand-700 transition-colors">
+                  {copiedContactId === c.id ? <Check size={11} /> : <MessageCircle size={11} />}
+                  {copiedContactId === c.id ? 'Copied' : (wechatSearchPhone(c.phone) ? 'Copy phone for WeChat' : 'Copy WeChat ID')}
+                </button>
+              )}
+            </div>
+          </div>
+        )
+        return (
+          <div className="card p-5 mb-6">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Contacts</p>
+            {active.map(c => Card(c, false))}
+            {gone.length > 0 && (
+              <details className="mt-2">
+                <summary className="text-xs text-gray-400 cursor-pointer">Former contacts ({gone.length})</summary>
+                {gone.map(c => Card(c, true))}
+              </details>
+            )}
+          </div>
+        )
+      })()}
+
       <div className="card p-5 space-y-0">
-        <InfoRow label="Contact Person" value={supplier.contact_person} />
         <InfoRow label="Country" value={supplier.country} />
         <InfoRow label="City / Region" value={supplier.city} />
         <InfoRow label="Address" value={supplier.address} />
-        <MultiRow label="Phone" values={supplier.phones ?? supplier.phone}
+        <MultiRow label="Office phone" values={supplier.phones ?? supplier.phone}
           render={v => <a href={`tel:${v}`} className="text-brand-600 hover:underline">{v}</a>} />
-        <InfoRow label="WeChat ID" value={supplier.wechat_id} />
-        <InfoRow label="WhatsApp" value={supplier.whatsapp} />
-        <MultiRow label="Email" values={supplier.emails ?? supplier.email}
+        <MultiRow label="Office email" values={supplier.emails ?? supplier.email}
           render={v => <a href={`mailto:${v}`} className="text-brand-600 hover:underline">{v}</a>} />
         <InfoRow label="Default Currency" value={supplier.default_currency} />
         <InfoRow label="Payment Terms" value={PO_PAYMENT_TERM_LABEL[supplier.default_payment_terms] || supplier.default_payment_terms} />
