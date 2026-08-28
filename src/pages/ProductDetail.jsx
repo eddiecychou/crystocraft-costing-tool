@@ -8,9 +8,15 @@ import ImageGallery from '../components/ImageGallery'
 import { IMAGE_TYPES, productStatusOf } from '../constants'
 import { Star, X } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
+import { useRole } from '../access'
 
 export default function ProductDetail() {
   const { id } = useParams()
+  // Branded-for image tagging and pricing are admin concerns. A production
+  // login reaches this page (it manages the catalogue) but must not read the
+  // customers collection (Phase 2 rules deny it) — so the fetch and the
+  // branded-for picker are admin-only, and the page works for both roles.
+  const isAdmin = useRole() === 'admin'
   const navigate = useNavigate()
   const [product, setProduct]       = useState(null)
   const [components, setComponents] = useState([])
@@ -44,12 +50,15 @@ export default function ProductDetail() {
     return onSnapshot(q, snap => setImages(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
   }, [id])
 
-  // Lightweight customer list for "branded for" image tagging — id + name only.
+  // Lightweight customer list for "branded for" image tagging — id + name
+  // only. Admin-only: the customers collection is owner-gated, and a
+  // production login would just hit permission-denied here.
   useEffect(() => {
+    if (!isAdmin) return
     getDocs(query(collection(db, 'customers'), orderBy('company_name')))
       .then(snap => setCustomers(snap.docs.map(d => ({ id: d.id, company_name: d.data().company_name || '' }))))
       .catch(() => setCustomers([]))
-  }, [])
+  }, [isAdmin])
 
   // heroImage is a plain cached URL on the product doc — unlike the gallery
   // (loaded live from products/{id}/images, which the Firestore rule already
@@ -259,14 +268,17 @@ export default function ProductDetail() {
             )}
           </div>
 
-          {/* Pricing Tiers placeholder */}
-          <div className="card p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-gray-700">Pricing Tiers</h2>
-              <Link to={`/products/${id}/pricing`} onClick={remember} className="btn-secondary text-xs py-1 px-3">Manage Pricing</Link>
+          {/* Pricing Tiers placeholder — admin only; pricing is margin data
+              and the /products/:id/pricing route is admin-gated. */}
+          {isAdmin && (
+            <div className="card p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-semibold text-gray-700">Pricing Tiers</h2>
+                <Link to={`/products/${id}/pricing`} onClick={remember} className="btn-secondary text-xs py-1 px-3">Manage Pricing</Link>
+              </div>
+              <p className="text-sm text-gray-400 text-center py-2">Set up components and suppliers first, then add pricing tiers.</p>
             </div>
-            <p className="text-sm text-gray-400 text-center py-2">Set up components and suppliers first, then add pricing tiers.</p>
-          </div>
+          )}
         </div>
 
         {/* Right: images */}

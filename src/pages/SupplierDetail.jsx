@@ -26,6 +26,7 @@ const QUICK_LINKS = [
 ]
 const isHttpUrl = v => typeof v === 'string' && /^https?:\/\/\S+$/i.test(v.trim())
 import useScrollMemory from '../hooks/useScrollMemory'
+import { useRole } from '../access'
 
 const PO_STATUS_META = Object.fromEntries(PO_STATUSES.map(s => [s.value, s]))
 // Lists longer than this get a search box + "show all" collapse instead of a
@@ -70,6 +71,11 @@ function MultiRow({ label, values, render }) {
 export default function SupplierDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  // Purchase orders are owner-only (procurement/finance), and the POs module
+  // is hidden from production. A production login still opens supplier pages
+  // (sourcing/quotes are supply-side), so the PO section — fetch, list and
+  // "New PO" — is admin-only rather than letting it hit permission-denied.
+  const isAdmin = useRole() === 'admin'
   const [supplier, setSupplier]         = useState(null)
   const [loading, setLoading]           = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -94,6 +100,7 @@ export default function SupplierDetail() {
   }, [id])
 
   useEffect(() => {
+    if (!isAdmin) { setPos([]); setPosLoading(false); return }
     setPosLoading(true)
     getDocs(query(collection(db, 'purchase_orders'), where('supplier_id', '==', id)))
       .then(snap => {
@@ -103,7 +110,7 @@ export default function SupplierDetail() {
       })
       .catch(() => setPos([]))
       .finally(() => setPosLoading(false))
-  }, [id])
+  }, [id, isAdmin])
 
   async function loadQuotes() {
     setQuotesLoading(true)
@@ -286,7 +293,9 @@ export default function SupplierDetail() {
         )}
       </div>
 
-      {/* Purchase Orders */}
+      {/* Purchase Orders — admin only (procurement/finance; the POs module is
+          hidden from production). */}
+      {isAdmin && (
       <div className="card mb-6">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
           <h2 className="text-sm font-semibold text-gray-700">
@@ -322,6 +331,7 @@ export default function SupplierDetail() {
           </div>
         )}
       </div>
+      )}
 
       {/* Supplier Quotes */}
       <div className="card mb-6">

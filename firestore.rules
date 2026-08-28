@@ -14,6 +14,19 @@ service cloud.firestore {
     function isAdmin() {
       return hasProfile() && profile().role == 'admin';
     }
+    // V8.12 RBAC — factory-floor staff. May read/write the supply side
+    // (catalogue, components, suppliers, inventory) but NEVER customers,
+    // finance, quotes, proposals or marketing. isStaff() is the union of the
+    // internal logins (admin + production); use it on a collection the
+    // production role is allowed to touch, and keep isAdmin() on everything
+    // that must stay owner-only. See src/access.js for the matching app-side
+    // capability map — the two must agree.
+    function isProduction() {
+      return hasProfile() && profile().role == 'production';
+    }
+    function isStaff() {
+      return isAdmin() || isProduction();
+    }
     function isApprovedCustomer() {
       return hasProfile() && profile().role == 'customer' && profile().status == 'approved';
     }
@@ -63,20 +76,27 @@ service cloud.firestore {
     }
 
     match /products/{productId} {
-      allow read: if canShop();
-      allow write: if isAdmin();
+      // Production staff manage the catalogue, so read+write is isStaff();
+      // approved customers still read via canShop(). PRICING stays owner-only
+      // below (pricing_tiers / customer_prices) — margins are sales data, and
+      // the app gates the pricing page away from production to match.
+      allow read: if canShop() || isProduction();
+      allow write: if isStaff();
       // Storefront product photos. Screened per-viewer against
       // branded_for_customer_id + the viewer's own "sensitive" flag — see
       // viewerIsSensitive() above. A blank/unset branded_for is generic and
-      // always visible; nothing changes for the existing catalogue.
+      // always visible; nothing changes for the existing catalogue. Staff
+      // (admin + production) see every image unscreened.
       match /images/{imageId} {
-        allow read: if isAdmin()
+        allow read: if isStaff()
           || (isApprovedCustomer()
               && (resource.data.get('branded_for_customer_id', '') == ''
                   || resource.data.get('branded_for_customer_id', '') == profile().get('customer_id', '')
                   || !viewerIsSensitive()));
-        allow write: if isAdmin();
+        allow write: if isStaff();
       }
+      // Pricing is margin data — owner-only, unchanged. Production never
+      // reaches these (the /products/:id/pricing route is admin-gated).
       match /pricing_tiers/{tierId} {
         allow read: if canShop();
         allow write: if isAdmin();
@@ -85,25 +105,30 @@ service cloud.firestore {
         allow read: if request.auth.uid == priceUid || isAdmin();
         allow write: if isAdmin();
       }
+      // Product bill-of-materials components + their supplier quotes — supply
+      // data, opened to staff so production can build and cost a product's BOM.
       match /components/{componentId} {
-        allow read, write: if isAdmin();
+        allow read, write: if isStaff();
         match /images/{imageId} {
-          allow read, write: if isAdmin();
+          allow read, write: if isStaff();
         }
         match /supplier_quotes/{quoteId} {
-          allow read, write: if isAdmin();
+          allow read, write: if isStaff();
           match /attachments/{attachmentId} {
-            allow read, write: if isAdmin();
+            allow read, write: if isStaff();
           }
         }
       }
     }
 
     match /range_products/{rangeId} {
-      allow read: if canShop();
+      // Figurine catalogue. Not surfaced to production in the UI, but its
+      // stock-list import matches component codes against range products, so
+      // production needs READ; writes stay owner-only.
+      allow read: if canShop() || isProduction();
       allow write: if isAdmin();
       match /{allPaths=**} {
-        allow read: if canShop();
+        allow read: if canShop() || isProduction();
         allow write: if isAdmin();
       }
     }
@@ -129,8 +154,20 @@ service cloud.firestore {
         || (canShop() && docId in [
           'catalogue_band', 'exchange_rates', 'format_moq',
           'front_page', 'productDefaults', 'quote_branding', 'crystal_colors',
+        ])
+        // Production supply-config: the docs behind the Components hub's
+        // Format MOQs / Crystal Costs / Categories / Crystal Colours tabs.
+        // Deliberately does NOT include pricing_groups or crystal_unit_costs's
+        // sales-facing siblings — crystal_unit_costs IS here because it's the
+        // factory's own raw crystal price list, supply-side, not customer
+        // markup (that's pricing_groups, which stays owner-only).
+        || (isProduction() && docId in [
+          'format_moq', 'crystal_unit_costs', 'component_categories', 'crystal_colors',
         ]);
-      allow write: if isAdmin();
+      allow write: if isAdmin()
+        || (isProduction() && docId in [
+          'format_moq', 'crystal_unit_costs', 'component_categories', 'crystal_colors',
+        ]);
     }
 
     match /favourites/{uid} {
@@ -156,10 +193,13 @@ service cloud.firestore {
       allow update, delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
     }
 
+    // Suppliers — supply-side, opened to staff. Their purchase orders stay
+    // owner-only (see purchase_orders below); SupplierDetail's PO section is
+    // admin-gated in the app to match.
     match /suppliers/{supplierId} {
-      allow read, write: if isAdmin();
+      allow read, write: if isStaff();
       match /catalogs/{catalogId} {
-        allow read, write: if isAdmin();
+        allow read, write: if isStaff();
       }
     }
     match /client_quotes/{quoteId} {
@@ -343,8 +383,10 @@ service cloud.firestore {
     match /{path=**}/enquiries/{enquiryId} {
       allow read: if isAdmin();
     }
+    // Supply-side quote history (collection-group query, e.g. SupplierDetail).
+    // Opened to staff — same posture as the nested supplier_quotes rules.
     match /{path=**}/supplier_quotes/{quoteId} {
-      allow read, write: if isAdmin();
+      allow read, write: if isStaff();
     }
     match /catalogues/{catalogueId} {
       allow read, write: if isAdmin();
@@ -352,23 +394,24 @@ service cloud.firestore {
         allow read, write: if isAdmin();
       }
     }
+    // Critical components master (metal parts) — supply-side, opened to staff.
     match /range_components/{componentId} {
-      allow read, write: if isAdmin();
+      allow read, write: if isStaff();
       match /supplier_quotes/{quoteId} {
-        allow read, write: if isAdmin();
+        allow read, write: if isStaff();
       }
       // Stock ledger (V7.13a) — append-only movement history behind on-hand.
       match /movements/{movementId} {
-        allow read, write: if isAdmin();
+        allow read, write: if isStaff();
       }
     }
 
-    // Crystal inventory (V7.13a) — per-colour SKUs, admin only, with the same
-    // append-only stock ledger.
+    // Crystal inventory (V7.13a) — per-colour SKUs, opened to staff, with the
+    // same append-only stock ledger.
     match /crystals/{crystalId} {
-      allow read, write: if isAdmin();
+      allow read, write: if isStaff();
       match /movements/{movementId} {
-        allow read, write: if isAdmin();
+        allow read, write: if isStaff();
       }
     }
 
@@ -383,20 +426,22 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Packaging inventory (V7.13a) — gift boxes / cartons / inserts, admin only.
+    // Packaging inventory (V7.13a) — gift boxes / cartons / inserts, opened
+    // to staff.
     match /packaging/{packagingId} {
-      allow read, write: if isAdmin();
+      allow read, write: if isStaff();
       match /movements/{movementId} {
-        allow read, write: if isAdmin();
+        allow read, write: if isStaff();
       }
     }
 
     // B2C finished-goods stock (V7.21) — trading stock, unconnected to
-    // production; same shape as crystals/packaging, admin only.
+    // production; same shape as crystals/packaging, opened to staff (it's an
+    // inventory class on the Inventory + Components screens).
     match /b2c_stock/{b2cId} {
-      allow read, write: if isAdmin();
+      allow read, write: if isStaff();
       match /movements/{movementId} {
-        allow read, write: if isAdmin();
+        allow read, write: if isStaff();
       }
     }
 

@@ -205,7 +205,7 @@ function AdminApp({ user, role }) {
                 <Route path="/products/new" element={<ProductForm />} />
                 <Route path="/products/:id" element={<ProductDetail />} />
                 <Route path="/products/:id/edit" element={<ProductForm />} />
-                <Route path="/products/:id/pricing" element={<PricingTiers />} />
+                <Route path="/products/:id/pricing" element={<Gate module="pricing"><PricingTiers /></Gate>} />
                 <Route path="/products/:productId/components/new" element={<ComponentForm />} />
                 <Route path="/products/:productId/components/:componentId" element={<ComponentDetail />} />
                 <Route path="/products/:productId/components/:componentId/edit" element={<ComponentForm />} />
