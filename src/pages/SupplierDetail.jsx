@@ -9,7 +9,7 @@ import SupplierAddQuoteModal from '../components/SupplierAddQuoteModal'
 import { SUPPLIER_CATEGORIES, PO_PAYMENT_TERM_LABEL, PO_STATUSES } from '../constants'
 import { fmtMoney } from '../currency'
 import { poTotals } from '../purchaseOrders'
-import { AlertTriangle, Star, FileText, ExternalLink, FolderOpen } from 'lucide-react'
+import { AlertTriangle, Star, FileText, ExternalLink, FolderOpen, MessageCircle, Check } from 'lucide-react'
 
 // Supplier Workstation Phase 1 — quick-access sourcing links. Order matters:
 // website first, then each marketplace's shop before its product/catalogue
@@ -84,6 +84,10 @@ export default function SupplierDetail() {
   const [showAllRangeQuotes, setShowAllRangeQuotes] = useState(false)
   const [pos, setPos]             = useState([])
   const [posLoading, setPosLoading] = useState(true)
+  // WeChat has no reliable per-contact deep link (owner re-tested 2026-08-28,
+  // weixin:// only ever opens the app), so the "quick access" for it is a
+  // copy-the-ID button — one click, then paste into WeChat's search.
+  const [wechatCopied, setWechatCopied] = useState(false)
   const remember = useScrollMemory(`supplier-${id}`, !loading)
 
   useEffect(() => {
@@ -238,14 +242,23 @@ export default function SupplierDetail() {
           chips; only renders a link chip for a populated+valid value (no
           dead buttons) — the "Catalogues & Files" chip always shows since
           SupplierCatalogs below already handles the empty case on its own
-          ("no catalogs yet"). WeChat quick-access was dropped (owner,
-          2026-08-19): personal WeChat has no reliable public deep-link
-          scheme, so a "direct open" button could never be more than a
-          maybe-broken guess, and the copy-ID fallback wasn't wanted either
-          — supplier.wechat_id still shows as plain info below, same as
-          before this feature existed. */}
+          ("no catalogs yet").
+          WeChat: a copy-the-ID chip, not a link. Personal WeChat has no
+          reliable per-contact deep link — weixin://dl/profile/<id> was
+          re-tested 2026-08-28 and only ever opens the app to nowhere — so
+          the chip copies supplier.wechat_id to the clipboard for pasting
+          into WeChat's own search. Only shows when an ID is on file;
+          wechat_id also still appears as a plain info row below. */}
       {(() => {
         const links = QUICK_LINKS.filter(l => isHttpUrl(supplier[l.key]))
+        const wechatId = (supplier.wechat_id || '').trim()
+        const copyWechat = async () => {
+          try {
+            await navigator.clipboard.writeText(wechatId)
+            setWechatCopied(true)
+            setTimeout(() => setWechatCopied(false), 1500)
+          } catch { /* clipboard blocked — the ID is still visible in the info row below */ }
+        }
         return (
           <div className="card p-4 mb-6">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2.5">Quick Access</p>
@@ -256,6 +269,14 @@ export default function SupplierDetail() {
                   <ExternalLink size={12} />{l.label}
                 </a>
               ))}
+              {wechatId && (
+                <button type="button" onClick={copyWechat}
+                   title={`Copy WeChat ID "${wechatId}" — paste into WeChat search`}
+                   className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
+                  {wechatCopied ? <Check size={12} /> : <MessageCircle size={12} />}
+                  {wechatCopied ? 'WeChat ID copied' : 'Copy WeChat ID'}
+                </button>
+              )}
               <a href="#catalogues"
                  className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
                 <FolderOpen size={12} />Catalogues &amp; Files
