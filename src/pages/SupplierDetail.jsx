@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { doc, getDoc, deleteDoc, collection, collectionGroup, query, where, orderBy, onSnapshot, getDocs, writeBatch } from 'firebase/firestore'
 import { db } from '../firebase'
@@ -94,6 +94,7 @@ export default function SupplierDetail() {
   const [pos, setPos]             = useState([])
   const [posLoading, setPosLoading] = useState(true)
   const [photos, setPhotos]      = useState([])
+  const videosRef = useRef(null)
   // WeChat has no reliable per-contact deep link (owner re-tested 2026-08-28,
   // weixin:// only ever opens the app), so "quick access" for it is
   // copy-to-clipboard. Two independent chips — one copies the WeChat ID, one
@@ -557,7 +558,7 @@ export default function SupplierDetail() {
           <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Photos &amp; Videos</h2>
           {photos.length > 0 && <span className="text-xs text-gray-400">{photos.length} photo{photos.length === 1 ? '' : 's'}</span>}
         </div>
-        <p className="text-xs text-gray-400 mb-3">Exhibition / booth shots and clips. Drop multiple photos at once; drag to reorder; add a caption under each; use <span className="inline-flex items-center gap-0.5"><Sparkles size={11} /> Clean background</span> on a photo the same way as product images.</p>
+        <p className="text-xs text-gray-400 mb-3">Exhibition / booth shots and clips. Drag a whole batch straight from Photos / Finder onto the box below — images and videos are sorted automatically. Drag photos to reorder; caption each; use <span className="inline-flex items-center gap-0.5"><Sparkles size={11} /> Clean background</span> on a photo the same way as product images.</p>
         <ImageGallery
           images={photos}
           firestorePath={`suppliers/${id}/images`}
@@ -565,8 +566,10 @@ export default function SupplierDetail() {
           captionable
           enhanceable
           downloadPrefix={supplier?.name}
+          extraAccept="video/*"
+          onExtraFiles={files => videosRef.current?.ingest(files)}
         />
-        <SupplierVideos supplierId={id} />
+        <SupplierVideos ref={videosRef} supplierId={id} />
       </div>
 
       <div id="catalogues" className="scroll-mt-4">

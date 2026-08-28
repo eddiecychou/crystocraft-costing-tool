@@ -270,7 +270,12 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
   )
 }
 
-export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, captionable, showVisibility, brandedForCustomers, onHeroChange, downloadPrefix, enhanceable }) {
+// `onExtraFiles` (+ `extraAccept`, e.g. 'video/*'): when a drop or file-pick
+// includes non-image files, the images are uploaded here as usual and the rest
+// are handed to onExtraFiles(files) so a page can route them elsewhere (the
+// supplier gallery drops photos AND videos onto one zone). Both props optional
+// — every existing caller is unaffected.
+export default function ImageGallery({ images, firestorePath, storagePath, typeOptions, captionable, showVisibility, brandedForCustomers, onHeroChange, downloadPrefix, enhanceable, onExtraFiles, extraAccept }) {
   const fileIdRef = useRef(0)
   const [uploading, setUploading]         = useState(false)
   const [lightbox, setLightbox]           = useState(null)
@@ -412,16 +417,22 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
     }
   }
 
+  function routeFiles(all) {
+    const imgs = all.filter(f => f.type.startsWith('image/'))
+    const rest = all.filter(f => !f.type.startsWith('image/'))
+    if (imgs.length) uploadFiles(imgs)
+    if (rest.length && onExtraFiles) onExtraFiles(rest)
+  }
+
   function handleFiles(e) {
-    uploadFiles(Array.from(e.target.files))
+    routeFiles(Array.from(e.target.files))
     e.target.value = ''
   }
 
   function handleDrop(e) {
     e.preventDefault()
     setDragOver(false)
-    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'))
-    uploadFiles(files)
+    routeFiles(Array.from(e.dataTransfer.files))
   }
 
   async function handleDelete(image) {
@@ -470,9 +481,11 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
       >
         <span className="text-gray-500">{dragOver ? <FolderOpen size={20} /> : <Paperclip size={20} />}</span>
         <span className="text-sm text-gray-600">
-          {uploading ? 'Uploading…' : dragOver ? 'Drop to upload' : 'Upload images or drag & drop'}
+          {uploading ? 'Uploading…' : dragOver ? 'Drop to upload'
+            : onExtraFiles ? 'Upload photos or videos, or drag & drop' : 'Upload images or drag & drop'}
         </span>
-        <input type="file" accept="image/*" multiple className="hidden" onChange={handleFiles} disabled={uploading} />
+        <input type="file" accept={onExtraFiles && extraAccept ? `image/*,${extraAccept}` : 'image/*'}
+               multiple className="hidden" onChange={handleFiles} disabled={uploading} />
       </label>
 
       {/* Sortable grid */}

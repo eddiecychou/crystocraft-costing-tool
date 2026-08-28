@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { collection, addDoc, deleteDoc, doc, updateDoc, onSnapshot, orderBy, query, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from '../firebase'
@@ -17,7 +17,10 @@ function fmtBytes(b) {
   return `${(b / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export default function SupplierVideos({ supplierId }) {
+// forwardRef so SupplierDetail's single Photos-&-Videos drop zone (which is
+// ImageGallery's, via its onExtraFiles hook) can hand video files straight to
+// this component's ingest().
+const SupplierVideos = forwardRef(function SupplierVideos({ supplierId }, ref) {
   const idRef = useRef(0)
   const [videos, setVideos] = useState([])
   const [uploads, setUploads] = useState([])
@@ -32,9 +35,14 @@ export default function SupplierVideos({ supplierId }) {
     )
   }, [supplierId])
 
+  useImperativeHandle(ref, () => ({ ingest }))
+
   function handleFiles(e) {
-    const files = Array.from(e.target.files)
+    ingest(Array.from(e.target.files))
     e.target.value = ''
+  }
+
+  function ingest(files) {
     setErr('')
     for (const file of files) {
       if (!file.type.startsWith('video/')) { setErr(`"${file.name}" is not a video.`); continue }
@@ -76,11 +84,14 @@ export default function SupplierVideos({ supplierId }) {
         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
           <VideoIcon size={13} /> Videos {videos.length > 0 && <span className="text-gray-400 font-normal">{videos.length}</span>}
         </p>
+        {/* Photos AND videos share the one drop zone above (ImageGallery's,
+            routed here via onExtraFiles) — this is just a manual fallback. */}
         <label className="text-xs text-brand-600 hover:text-brand-800 cursor-pointer">
           + Add video
           <input type="file" accept="video/*" multiple className="hidden" onChange={handleFiles} />
         </label>
       </div>
+
       {err && <p className="text-xs text-red-500 mb-2">{err}</p>}
 
       {uploads.map(u => (
@@ -125,4 +136,6 @@ export default function SupplierVideos({ supplierId }) {
       )}
     </div>
   )
-}
+})
+
+export default SupplierVideos
