@@ -74,6 +74,7 @@ await ok('prod read product image',      assertSucceeds(getDoc(doc(prod, 'produc
 await ok('prod read suppliers',          assertSucceeds(getDoc(doc(prod, 'suppliers/s1'))))
 await ok('prod write suppliers',         assertSucceeds(setDoc(doc(prod, 'suppliers/s2'), { name: 'X' })))
 await ok('prod read range_components',   assertSucceeds(getDoc(doc(prod, 'range_components/rc1'))))
+await ok('prod write supplier photo',    assertSucceeds(setDoc(doc(prod, 'suppliers/s1/images/img1'), { file_url: 'x', sort_order: 0 })))
 await ok('prod write range_components',  assertSucceeds(setDoc(doc(prod, 'range_components/rc2'), { code: 'RC2' })))
 await ok('prod read crystals',           assertSucceeds(getDoc(doc(prod, 'crystals/x1'))))
 await ok('prod read packaging',          assertSucceeds(getDoc(doc(prod, 'packaging/pk1'))))

@@ -44,7 +44,7 @@ the boundary. See `PROJECT-PLAN.md` V8.12 §2.
 
 Mixed since V8.12 — supply-side is *staff*, the sales/finance docs stay *admin*.
 
-- `suppliers/{id}` (+ `catalogs/{catalogId}`) — Auth: **staff** (V8.12). Owned by `Suppliers.jsx`, `SupplierDetail.jsx`.
+- `suppliers/{id}` (+ `catalogs/{catalogId}`, `images/{imageId}` — exhibition/booth photo gallery, same shape as `products/{id}/images` minus visibility screening). Auth: **staff** (V8.12). Owned by `Suppliers.jsx`, `SupplierDetail.jsx`.
 - `purchase_orders/{id}` — supplier POs. Auth: **staff** (V8.12 — procurement cost data, not sales). Owned by `PurchaseOrderForm.jsx`, `PurchaseOrders.jsx`.
 - `client_quotes/{id}` (+ `items/{itemId}`) — Auth: **admin** (hard wall). Owned by `src/domain/customer.js` + `QuoteDetail.jsx`, `RangeQuoteForm.jsx`.
 - `credit_notes/{id}` — combined sales-return + credit-note working doc — the *posted* financial fact lives in Supabase (`credit-note.js`/`app_credit_note`, see API-REFERENCE.md), not here. Auth: **admin** (hard wall). Owned by `CreditNoteForm.jsx`, `CreditNotes.jsx`.

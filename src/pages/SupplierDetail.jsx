@@ -1,15 +1,16 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { doc, getDoc, deleteDoc, collection, collectionGroup, query, where, getDocs, writeBatch } from 'firebase/firestore'
+import { doc, getDoc, deleteDoc, collection, collectionGroup, query, where, orderBy, onSnapshot, getDocs, writeBatch } from 'firebase/firestore'
 import { db } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import SupplierCatalogs from '../components/SupplierCatalogs'
+import ImageGallery from '../components/ImageGallery'
 import SupplierAddQuoteModal from '../components/SupplierAddQuoteModal'
 import { SUPPLIER_CATEGORIES, PO_PAYMENT_TERM_LABEL, PO_STATUSES } from '../constants'
 import { fmtMoney } from '../currency'
 import { poTotals } from '../purchaseOrders'
-import { AlertTriangle, Star, FileText, ExternalLink, FolderOpen, MessageCircle, Check } from 'lucide-react'
+import { AlertTriangle, Star, FileText, ExternalLink, FolderOpen, MessageCircle, Check, Sparkles } from 'lucide-react'
 
 // Supplier Workstation Phase 1 — quick-access sourcing links. Order matters:
 // website first, then each marketplace's shop before its product/catalogue
@@ -91,6 +92,7 @@ export default function SupplierDetail() {
   const [showAllRangeQuotes, setShowAllRangeQuotes] = useState(false)
   const [pos, setPos]             = useState([])
   const [posLoading, setPosLoading] = useState(true)
+  const [photos, setPhotos]      = useState([])
   // WeChat has no reliable per-contact deep link (owner re-tested 2026-08-28,
   // weixin:// only ever opens the app), so "quick access" for it is
   // copy-to-clipboard. Two independent chips — one copies the WeChat ID, one
@@ -113,6 +115,17 @@ export default function SupplierDetail() {
       if (snap.exists()) setSupplier({ id: snap.id, ...snap.data() })
       setLoading(false)
     })
+  }, [id])
+
+  // Supplier photo gallery — exhibition/booth shots. Live like the product
+  // gallery so an upload appears without a reload. sort_order drives the
+  // drag-to-reorder in ImageGallery.
+  useEffect(() => {
+    const q = query(collection(db, 'suppliers', id, 'images'), orderBy('sort_order'))
+    return onSnapshot(q,
+      snap => setPhotos(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
+      () => setPhotos([]),
+    )
   }, [id])
 
   useEffect(() => {
@@ -554,6 +567,22 @@ export default function SupplierDetail() {
           )}
         </div>
       )}
+
+      <div className="card p-5 mb-6">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Photos</h2>
+          {photos.length > 0 && <span className="text-xs text-gray-400">{photos.length}</span>}
+        </div>
+        <p className="text-xs text-gray-400 mb-3">Exhibition / booth shots and other reference images. Drop multiple at once; drag to reorder; add a caption under each; use <span className="inline-flex items-center gap-0.5"><Sparkles size={11} /> Clean background</span> on a photo the same way as product images.</p>
+        <ImageGallery
+          images={photos}
+          firestorePath={`suppliers/${id}/images`}
+          storagePath={`suppliers/${id}/images`}
+          captionable
+          enhanceable
+          downloadPrefix={supplier?.name}
+        />
+      </div>
 
       <div id="catalogues" className="scroll-mt-4">
         <SupplierCatalogs supplierId={id} />
