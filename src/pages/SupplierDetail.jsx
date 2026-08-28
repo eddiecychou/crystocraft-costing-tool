@@ -85,8 +85,10 @@ export default function SupplierDetail() {
   const [pos, setPos]             = useState([])
   const [posLoading, setPosLoading] = useState(true)
   // WeChat has no reliable per-contact deep link (owner re-tested 2026-08-28,
-  // weixin:// only ever opens the app), so the "quick access" for it is a
-  // copy-the-ID button — one click, then paste into WeChat's search.
+  // weixin:// only ever opens the app). The stored wechat_id is also often an
+  // internal wxid_… value that WeChat's own search can't resolve. Phone-number
+  // search IS reliable, so the WeChat quick-access copies the supplier's phone
+  // (paste into WeChat → Add Contacts).
   const [wechatCopied, setWechatCopied] = useState(false)
   const remember = useScrollMemory(`supplier-${id}`, !loading)
 
@@ -243,21 +245,28 @@ export default function SupplierDetail() {
           dead buttons) — the "Catalogues & Files" chip always shows since
           SupplierCatalogs below already handles the empty case on its own
           ("no catalogs yet").
-          WeChat: a copy-the-ID chip, not a link. Personal WeChat has no
+          WeChat: a copy-the-phone chip, not a link. Personal WeChat has no
           reliable per-contact deep link — weixin://dl/profile/<id> was
-          re-tested 2026-08-28 and only ever opens the app to nowhere — so
-          the chip copies supplier.wechat_id to the clipboard for pasting
-          into WeChat's own search. Only shows when an ID is on file;
-          wechat_id also still appears as a plain info row below. */}
+          re-tested 2026-08-28 and only ever opens the app to nowhere — and
+          a stored wxid_… id isn't searchable in the app either. A phone
+          number IS, so the chip copies the supplier's first phone for
+          pasting into WeChat → Add Contacts. Only shows when a phone is on
+          file. */}
       {(() => {
         const links = QUICK_LINKS.filter(l => isHttpUrl(supplier[l.key]))
-        const wechatId = (supplier.wechat_id || '').trim()
+        // WeChat's own search wants the bare local number, so drop a leading
+        // +86 / 86 China country code and strip spaces/dashes (owner). Other
+        // country codes are left alone.
+        const wechatPhone = (toArray(supplier.phones ?? supplier.phone)[0] || '')
+          .trim()
+          .replace(/^\+?86[\s-]*/, '')
+          .replace(/[\s-]/g, '')
         const copyWechat = async () => {
           try {
-            await navigator.clipboard.writeText(wechatId)
+            await navigator.clipboard.writeText(wechatPhone)
             setWechatCopied(true)
             setTimeout(() => setWechatCopied(false), 1500)
-          } catch { /* clipboard blocked — the ID is still visible in the info row below */ }
+          } catch { /* clipboard blocked — the phone is still visible in the info row below */ }
         }
         return (
           <div className="card p-4 mb-6">
@@ -269,12 +278,12 @@ export default function SupplierDetail() {
                   <ExternalLink size={12} />{l.label}
                 </a>
               ))}
-              {wechatId && (
+              {wechatPhone && (
                 <button type="button" onClick={copyWechat}
-                   title={`Copy WeChat ID "${wechatId}" — paste into WeChat search`}
+                   title={`Copy phone "${wechatPhone}" — paste into WeChat → Add Contacts`}
                    className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
                   {wechatCopied ? <Check size={12} /> : <MessageCircle size={12} />}
-                  {wechatCopied ? 'WeChat ID copied' : 'Copy WeChat ID'}
+                  {wechatCopied ? 'Phone copied' : 'Copy phone for WeChat'}
                 </button>
               )}
               <a href="#catalogues"
