@@ -87,6 +87,305 @@ signed-in user with `role:'customer'`/`status` not `'approved'` sees it),
 so "same screen" does not mean "same bug" — check what's actually different
 about the account before assuming the mechanism.
 
+## V8.12 — Role-Based Access Control (the `production` role) + PI print fix — UNDER REVIEW as of 2026-08-28
+
+Two unrelated threads in one session (2026-08-28):
+
+1. A follow-up **PI print bug** — the section-grouping fix that shipped in
+   V8.11 made a *short* proforma worse, not better — plus the repeating
+   footer V8.11 had explicitly deferred.
+2. The cycle's real work: **Role-Based Access Control**. A new internal
+   staff role, `production` (factory floor), that sees only the supply side
+   of the Operation Center and never customers, finance, quotes, proposals
+   or marketing. Built Phase 1 (UI/routes) → Phase 2 (Firestore rules) as
+   planned, then grew by three incremental owner requests once a real
+   factory-staff account was waiting (ERP Lookup, the Figurine catalogue,
+   Purchase Orders).
+
+**Status: pushed and live, but NOT yet closed** — the owner is running a
+separate code review (DeepSeek) on this version before sign-off. The one
+thing no automated check could cover — a live signed-in `production`
+session click-tested through every screen — was done by the owner after
+the final push and reported working; everything before that was verified
+headlessly (see §2.8).
+
+### The numbers
+
+| | |
+|---|---:|
+| Commits | 6 (`7e5be5a` … `c2b56c6`) |
+| Files changed | 14 · +658 / −163 |
+| New files | `src/access.js`, `src/pages/ProductionDashboard.jsx`, `qa/rbac-rules.test.mjs` |
+| New role | `production` (roles are now `admin` \| `production` \| `customer`) |
+| New Firestore rules helpers | `isProduction()`, `isStaff()` (= admin OR production) |
+| Rules-test assertions | 35, all green against the Firestore emulator |
+| New `settings` docs readable by a non-admin | `exchange_rates` (production, read-only) + the four Components-hub config docs |
+
+---
+
+### 1. PI print — page break + repeating footer (`7e5be5a`)
+
+`ProformaInvoicePrint.jsx`, from a real 2-line proforma (SO260041 / Allie
+Corporate Consulting):
+
+- **The `.pi-closing` wrapper added in V8.11 (`7ed41ac`) backfired.**
+  `page-break-inside: avoid` on the *entire* Subtotal→footer run meant that
+  when the whole closing block didn't fit the space left on page 1, the
+  browser moved **all of it** — subtotal, amount-in-words, remittance,
+  signatures — to page 2, leaving page 1 half empty. Dropped the wrapper.
+  Each closing block keeps its own `break-inside: avoid` (nothing splits
+  mid-block), but they flow independently again, so a short PI is one page.
+- **Repeating footer — the thing V8.11 deliberately did NOT attempt.**
+  V8.11's close note argued a true `position: fixed` footer on this
+  `window.print()` pipeline needed cross-browser testing first, because
+  this file had regressed twice before on unverified print-CSS
+  assumptions. This cycle it shipped anyway, but **verified**, not
+  guessed: `.pi-foot` is `position: fixed; bottom: 0` scoped inside
+  `@media print` only (screen view keeps the plain in-flow footer), with
+  `.pi-doc { padding-bottom: 68px }` so the last flowing line can't collide
+  with it. Matches the fixed footer `QuotePDF.jsx` got in V8.11.
+- **Verification:** a scratch adaptation of `qa/pi-pagination.mjs` renders
+  the real extracted print CSS headlessly through Chrome. A 2-line PI now
+  prints as one page with the footer pinned to the bottom; a 40-line PI
+  paginates to 3 pages with the footer at the bottom of every page and no
+  row running into it. Not exercised: Safari print / iOS Share Sheet print
+  (the two paths this file was burned on before) — the `@media print` scope
+  and the on-screen fallback are the hedge, but a reviewer should know
+  those two remain untested here.
+
+---
+
+### 2. RBAC — the `production` role
+
+#### 2.1 Design — one capability map, `src/access.js` (new)
+
+`canAccess(role, moduleKey)` is the **single source of truth**. It drives
+BOTH the sidebar filter (`Layout.jsx`) and the route guards (`App.jsx`'s
+`<Gate module>`), so a hidden menu item can never point at a still-live
+URL. A `moduleKey` is an abstract capability, not a route — several routes
+share one (`/products`, `/products/:id`, `/products/:id/edit` are all
+`products`).
+
+```
+admin       → canAccess returns true for everything
+production  → true only for keys in PRODUCTION_MODULES
+anyone else → false  (closed default — the safe direction)
+```
+
+`AccessContext` (React context, default `'admin'`) provides the role near
+the top of the tree so descendants gate themselves without prop-drilling.
+Default `'admin'` means a provider-less render fails *open* for staff
+tooling rather than white-screening — deliberately, because **the Firestore
+rules are the real boundary regardless** (§2.4).
+
+Role helpers `isProduction` / `isStaff` live in `hooks/useProfile.js`
+alongside the existing `isAdmin` / `isApproved` / `isPending`.
+
+#### 2.2 Phase 1 — UI isolation & route protection (`a254542`)
+
+Navigation + route guards only. **Explicitly not a security boundary** at
+this commit — the Firestore rules still gated every internal collection on
+`isAdmin()`, so a `production` login literally couldn't read the
+collections it was meant to until Phase 2. Committed but push held for
+review, per the owner.
+
+- **`App.jsx`** — `production` now resolves as a *staff* role (it was
+  falling through to `PendingScreen`); routed into the Operation Center
+  app; every route wrapped in `AccessContext` + a `<Gate module>` that
+  redirects unauthorised direct-URL hits to `/dashboard`. `/dashboard`
+  itself resolves per role.
+- **`pages/ProductionDashboard.jsx` (new)** — the real `Dashboard` is all
+  sales data (customers / quotes / orders / enquiries) that Phase 2 rules
+  refuse a `production` login, so production gets its own landing page:
+  inventory counts + reorder alerts, reading only production-readable
+  collections.
+- **`Layout.jsx`** — each nav entry tagged with a `module` key; sidebar
+  (desktop + mobile "More" sheet) filtered by role, dropping a group
+  heading when the role can see none of its items.
+- **`AccountEdit.jsx`** — admin can assign / revoke `production` ("Make
+  production staff" on an approved customer; promote/revoke on a production
+  account). Staff-account delete-confirm generalised from admin-only.
+- **`CustomerAccounts.jsx`** — the "Admins" tab became "Staff" and now
+  includes `production` logins, so a factory account isn't invisible.
+- **`appInfo.js`** — `APP_VERSION` → `V8.12` (bump at cycle start per
+  convention).
+
+#### 2.3 Phase 2 — Firestore rules, the real boundary (`3ca1be3`)
+
+`firestore.rules` gains `isProduction()` and `isStaff()` (= `isAdmin() ||
+isProduction()`).
+
+**Opened to `isStaff()`** (read + write unless noted): `products` (+ its
+`images` / BOM `components` / `supplier_quotes`; `products` *read* also
+still allows approved customers via `canShop()`), `suppliers` (+
+`catalogs`), `range_components` (+ `supplier_quotes` / `movements`),
+`crystals`, `packaging`, `b2c_stock`, and the `{path=**}/supplier_quotes`
+collection-group rule.
+
+**`settings`** — the allowlist gains a production-only branch for exactly
+the docs behind the Components-hub tabs: `format_moq`, `crystal_unit_costs`
+(the factory's own raw crystal price list — supply-side, not customer
+markup), `component_categories`, `crystal_colors` — plus `exchange_rates`
+read-only (added in §2.6 for figurine costing). **`pricing_groups` — the
+customer-tier markup table — stays owner-only.**
+
+**Hard walls, unchanged (`isAdmin()` only):** `customers` (+ every
+subcollection: brand-gallery assets, proposal, email/WhatsApp/Alibaba
+threads, enquiries), `client_quotes`, `orders`, `credit_notes`, all
+`marketing_*` / `outreach_*` / `draft_memory_rules` /
+`outreach_topic_templates`, `uc_invoices`, and product `pricing_tiers` /
+`customer_prices`. `purchase_orders` was here at this commit; moved in
+§2.6.
+
+**Self-escalation:** the existing `users/{uid}` self-update rule already
+freezes `role` (a user may update their own doc only if
+`request.resource.data.role == resource.data.role`), so a `production`
+login cannot promote itself. No change needed; covered by a test.
+
+**App-code guards** — two production-reachable *pages* read owner-only
+collections, so they carry client guards to avoid a wall of
+permission-denied errors in the console:
+
+- **`ProductDetail.jsx`** — the `customers` fetch (only used for the
+  "branded-for" image-tag picker, an admin concern) and the Pricing Tiers
+  card are now `isAdmin`-only; `/products/:id/pricing` gated to a new
+  admin-only `pricing` module key.
+- **`SupplierDetail.jsx`** — the Purchase Orders fetch + section + "New PO"
+  were made admin-only here… then un-done in §2.6 when POs were granted to
+  production. Net effect in the shipped code: no guard (the page is
+  staff-only anyway). A reviewer diffing `3ca1be3` alone will see the
+  guard; `c2b56c6` removes it.
+
+**Verification:** `qa/rbac-rules.test.mjs` (new) — 27 assertions at this
+commit, run with `firebase-tools emulators:exec` against a real Firestore
+emulator. Production allowed on every supply collection; denied on
+customers / quotes / orders / purchase_orders / credit_notes / marketing /
+pricing_groups / pricing_tiers; blocked from self-escalating; admin
+access unchanged.
+
+#### 2.4 Two-layer model — why both
+
+Phase 1 (UI) is convenience and defence-in-depth, **not** a boundary: a
+`<Gate>` redirect and a filtered sidebar stop an honest misclick, not a
+crafted request. Phase 2 (rules, + the `/api/erp` edge function in §2.5)
+is the enforcement. Everything in §2.5–2.6 that says "hidden in the UI"
+also says "and refused server-side" — that pairing is the design, not
+belt-and-braces excess.
+
+#### 2.5 Grant: ERP Lookup, Items/Inventory only (`64d2b12`)
+
+Factory staff asked to look up JES item/stock data. The ERP mirror also
+holds customers, invoices and sales orders — exactly what `production` must
+not see — so ERP Lookup opens to production with a hard scope of **Items +
+Inventory tabs only**, enforced on both sides:
+
+- **`ErpLookup.jsx`** — for a `production` role, the entity-tab list is
+  filtered to `PRODUCTION_ERP_ENTITIES` (`item`, `stock`); default tab is
+  Items; the customers / suppliers / invoices / sales-orders / purchases
+  tabs are not rendered. The on-mount `loadCustomers()` call (a
+  customer-import helper) is skipped for production.
+- **`netlify/edge-functions/erp.js` — THE boundary.** The blanket
+  admin-only gate becomes role-aware: `getRole()` replaces `isAdmin()`.
+  Admin hits every entity; `production` is restricted to
+  `PRODUCTION_ENTITIES` (`item`, `stock`, `warehouse`, `item_type`, `bom`,
+  `alternatives`, `codes`, `sync_status`, `item_images`) and gets a 403 for
+  any `customer` / `supplier` / `sales_invoice` / `sales_order` /
+  `purchase` / `lines` request — so a hand-crafted POST can't reach the
+  hidden data. Anyone not admin/production is still refused outright.
+- `/api/uc` and `/api/bank` stay admin-only (UC Registry is not a
+  production module). No Firestore rules change (a user reads their own
+  `users/{uid}` doc as before).
+
+#### 2.6 Grants: Figurine catalogue (full) + Purchase Orders
+
+**Figurine Gifts (`54ee9b8`)** — Crystocraft's own crystal-figurine line,
+which the factory makes. **Owner's explicit call: full access including
+wholesale prices and the markup/costing page** — production edits
+figurines like admin. This is a different decision from Corp Gifts, where
+the pricing card is hidden from production; it's recorded as a deliberate
+acceptance of price exposure to factory staff, not an oversight.
+- `access.js`: `figurine` added to `PRODUCTION_MODULES` (all `/range`
+  routes already gated `module="figurine"`).
+- `firestore.rules`: `range_products` read+write → `isStaff` (was
+  read-`isProduction`, write-admin) because the costing page writes back
+  there. `settings` read gains `exchange_rates` for production (read-only —
+  figurine costing converts HKD→USD). `RangeCosting.jsx` imports only the
+  `DEFAULT_MARKUP` constant from `pricing.js`, never the function that
+  reads `settings/pricing_groups`, so that doc stays sealed.
+
+**Purchase Orders (`c2b56c6`)** — reverses the Phase-2 decision to keep
+POs owner-only. POs are supplier/procurement cost data, not customer or
+sales data, so `production` gets the full module.
+- `access.js`: `purchase_orders` added to `PRODUCTION_MODULES`.
+- `firestore.rules`: `purchase_orders` read+write → `isStaff`. The
+  `counters` rule is **scoped** — production may write only the PO counter
+  `pu_<yy>` (needed to number a new PO); `so_<yy>` (sales order) and
+  `uc_<yy>` (UC registry) counters stay owner-only, matching those
+  admin-only modules: `allow write: if isAdmin() || (isProduction() &&
+  name.matches('pu_[0-9]+'))`.
+- `SupplierDetail.jsx`: the §2.3 admin-only guard on the PO section
+  removed (page is staff-only regardless).
+
+#### 2.7 Final access map (as shipped)
+
+**`production` sees:** Dashboard (its own), Corp Gifts, Figurine Gifts
+(full, incl. prices + costing), Components, Suppliers, Purchase Orders,
+Inventory, ERP Lookup (Items + Inventory tabs only).
+
+**`production` is walled off from:** Customers, Quotes, Sales Invoices,
+Credit Notes, Portal, Marketing, Settings, UC Registry, WooCommerce Sync,
+product Pricing Tiers, `settings/pricing_groups`, and every `customers/*`
+subcollection.
+
+#### 2.8 Testing
+
+`qa/rbac-rules.test.mjs` — **35 assertions** at the final commit, green
+against the Firestore emulator. Covers every production-allowed collection
+(read + write where applicable), every hard-wall denial, the counter
+scoping (`pu_` allowed, `so_`/`uc_` denied), self-escalation denial, and
+admin-unchanged. Deliberately **not** a project dependency (same posture
+as `qa/eslint.no-undef.mjs`); the header documents the run recipe.
+Prerequisite: a real JRE — this Mac's `/usr/bin/java` is the macOS stub, so
+a Temurin JRE was fetched to a scratch dir to run the emulator. Also run
+each commit: per-file esbuild parse, `qa/eslint.no-undef.mjs` on changed
+files, and a full `main.jsx` bundle to confirm every import resolves.
+
+**Not covered by any automated check:** the live click-test of a real
+signed-in `production` account — the QA credential on this machine is a
+placeholder (`claude-qa@crystocraft.com` with an unset password), so I
+cannot sign in as anyone. The owner created a production account after the
+final push and reported it "working well" through the UI.
+
+#### 2.9 Deploy model — a real gotcha
+
+**Firestore rules do NOT deploy via Netlify.** `git push` deploys the app
+only; rules ship separately with `npx firebase-tools deploy --only
+firestore:rules`. For a rules change that gates *existing* pages, the order
+is **rules first, then push the app**, or a production login hits
+permission-denied in the gap. Both were done together for each of the
+rules-touching commits this cycle (`3ca1be3`, `54ee9b8`, `c2b56c6`);
+`64d2b12` was app-only (no rules change).
+
+---
+
+### Review notes for V8.12
+
+- **The live production click-test is the owner's, not automated** (§2.8) —
+  a reviewer wanting independent confirmation would need to flip a spare
+  approved account to `production` and walk the screens.
+- **`SupplierDetail.jsx` PO guard appears then disappears** across
+  `3ca1be3` → `c2b56c6` (§2.3, §2.6) — review the *net* diff, not the
+  intermediate.
+- **Figurine price exposure to `production` is intentional** (§2.6), decided
+  by the owner mid-session, and is the one place production sees sell-side
+  pricing.
+- **PI repeating footer is verified on Chrome only** (§1); Safari / iOS
+  Share Sheet print unverified, mitigated by `@media print` scoping.
+- Standing gaps unchanged: no unit/integration tests in the app itself
+  (only the emulator rules test + parse/lint/bundle gates); the two
+  `isAdmin()` implementations and three unguarded customizer edge functions
+  from V8.11's `TECH-DEBT.md` are untouched.
+
 ## V8.11 — Login Activity fixed, GA4 wired in, Quote/PI workflow gaps closed, PDF layout fixes
 
 A long single-session cycle (2026-08-26/27), most of it started from live bug
@@ -807,11 +1106,12 @@ guess).
 
 ## Where V8.12 starts
 
-- **PI/Invoice repeating footer** — if a true footer-on-every-page is
-  wanted for these too (not just the section-grouping fix that shipped),
-  it needs real testing across desktop Chrome print, Safari print, and iOS
-  Share Sheet print before shipping — this file has regressed twice before
-  from exactly this kind of unverified cross-browser assumption.
+- **PI/Invoice repeating footer** — DONE for the PI (`ProformaInvoicePrint.jsx`,
+  V8.12 §1): `position: fixed` footer scoped to `@media print`, verified
+  headless on Chrome. **`SalesInvoicePrint.jsx` was NOT touched** — it still
+  has only the V8.11 `.si-closing` section-grouping fix. If the same
+  repeating footer is wanted there, copy the PI approach, but Safari print
+  and iOS Share Sheet print remain untested on either file.
 - **GA4 `app_uid` per-account data is brand new** — only covers sessions
   from 2026-08-27 onward, so the "GA sessions (30d)" column on Login
   Activity will look mostly empty for a few days. Worth a second look once

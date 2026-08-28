@@ -33,8 +33,31 @@ Firestore REST check of `users/{uid}.role === 'admin'`). A newer set —
 effect, two implementations. Worth converging on the shared one over time
 rather than adding a 38th inline copy next time a new function needs auth.
 
+V8.12 added a *third* shape: `erp.js` now has `getRole()` (returns the
+role string, not a bool) because it needs to distinguish `production` from
+`admin`, not just gate on admin. If more functions ever need role-aware
+(not admin-only) auth, `lib/auth.js` should grow a `requireRole()` /
+`getRole()` rather than each one re-inlining the Firestore REST read.
+
 **Where:** compare any inline `isAdmin()` block against
-`netlify/edge-functions/lib/auth.js`.
+`netlify/edge-functions/lib/auth.js`; `erp.js`'s `getRole()`.
+
+## RBAC (`production` role) — client capability map vs server rules can drift
+
+V8.12's `production` role is enforced in three places that must agree:
+`src/access.js` (`PRODUCTION_MODULES` — nav + routes), `firestore.rules`
+(`isStaff()` / `isProduction()` — the real boundary), and
+`netlify/edge-functions/erp.js` (`PRODUCTION_ENTITIES`). There is no single
+source; `qa/rbac-rules.test.mjs` covers the rules layer only. Adding a
+module to `access.js` without the matching rule opens a menu that
+permission-denies; the reverse grants data with no way to reach it. Keep
+the three in sync by hand, and re-run the emulator test on any rules
+change. See `PROJECT-PLAN.md` V8.12 §2 and the `rbac-production-role`
+memory.
+
+**Where:** `src/access.js`, `firestore.rules` (search `isStaff`),
+`netlify/edge-functions/erp.js` (`PRODUCTION_ENTITIES`),
+`qa/rbac-rules.test.mjs`.
 
 ## Tag bookkeeping is duplicated, not shared
 

@@ -48,7 +48,7 @@ customer, narrower than admin). *public* = no session check.
 
 ## ERP & Finance
 
-- `erp.js` (`/api/erp`) — Proxies curated JES ERP views (Supabase, service-role key) for the read-only legacy archive. Auth: admin. Called from `src/erpApi.js`, `src/customerOrderHistoryApi.js`, `src/pages/CustomerDetail.jsx`.
+- `erp.js` (`/api/erp`) — Proxies curated JES ERP views (Supabase, service-role key) for the read-only legacy archive. Auth: **admin for every entity; `production` (V8.12) for the item/stock family only** — `getRole()` gates each request against `PRODUCTION_ENTITIES` (`item`, `stock`, `warehouse`, `item_type`, `bom`, `alternatives`, `codes`, `sync_status`, `item_images`) and 403s a production caller for any `customer`/`supplier`/`sales_invoice`/`sales_order`/`purchase`/`lines` request. Called from `src/erpApi.js`, `src/customerOrderHistoryApi.js`, `src/pages/CustomerDetail.jsx`.
 - `uc.js` (`/api/uc`) — Read/write + atomic allocation for the UC# invoice registry (Supabase `uc_registry`). Auth: admin. Called from `src/ucRegistry.js`, `src/pages/ShipmentForm.jsx`, `src/shipping.js`.
 - `bank.js` (`/api/bank`) — Read/write for Crystocraft's own receiving bank accounts (Supabase `bank_accounts`). Auth: admin. Called from `src/bankAccounts.js`, `src/customer/CustomerInvoicePrint.jsx`.
 - `fx-rates.js` (`/api/fx-rates`) — Proxies exchangerate-api.com for CNY/USD/EUR/GBP vs HKD. **Never use these for the books** — see CLAUDE.md's exchange-rate warning; this is for UI convenience only. Auth: public. Called from `src/pages/WooCommerceSync.jsx`, `src/pages/Settings.jsx`.
