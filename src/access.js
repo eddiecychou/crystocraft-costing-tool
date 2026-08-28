@@ -28,6 +28,9 @@ const PRODUCTION_MODULES = new Set([
   // factory makes. Full access incl. its wholesale prices and the markup/
   // costing page (owner's call, V8.12): production edits figurines like admin.
   'figurine',
+  // Purchase Orders — supplier procurement. Added to production on the owner's
+  // request (V8.12); it's supply-side cost data, not customer/sales data.
+  'purchase_orders',
   // ERP Lookup, restricted to the Items + Inventory tabs — the page hides the
   // customer/invoice/sales-order tabs for production and the /api/erp edge
   // function rejects a production caller for any non-item entity. Added

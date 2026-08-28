@@ -212,9 +212,10 @@ service cloud.firestore {
       }
     }
 
-    // Supplier purchase orders — internal procurement records, admin only.
+    // Supplier purchase orders — procurement records. Opened to staff (owner,
+    // V8.12): supply-side cost data the factory needs, not customer/sales data.
     match /purchase_orders/{poId} {
-      allow read, write: if isAdmin();
+      allow read, write: if isStaff();
     }
 
     // Credit Notes (Sales Return / Credit Note Phase C) — one combined
@@ -488,9 +489,12 @@ service cloud.firestore {
     match /uc_invoices/{id} {
       allow read, write: if isAdmin();
     }
-    // Atomic UC# allocation counter (counters/uc).
+    // Atomic allocation counters (counters/uc_<yy>, so_<yy>, pu_<yy>).
+    // Production may touch ONLY the purchase-order counter (pu_*), which it
+    // needs to number a new PO; the UC and sales-order counters stay
+    // owner-only, matching those admin-only modules.
     match /counters/{name} {
-      allow read, write: if isAdmin();
+      allow read, write: if isAdmin() || (isProduction() && name.matches('pu_[0-9]+'));
     }
   }
 }
