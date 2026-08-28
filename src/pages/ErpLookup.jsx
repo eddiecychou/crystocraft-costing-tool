@@ -9,6 +9,15 @@ import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore
 import { db } from '../firebase'
 import { loadCustomers, importErpCustomers } from '../domain/customer'
 import { CURRENCIES } from '../constants'
+import { useRole } from '../access'
+
+// ERP entities a production login may see — items and stock only. The JES
+// mirror also holds customers, invoices and sales orders, which production
+// must never reach; those tabs are hidden here AND the /api/erp edge function
+// rejects a production caller for any other entity, so the tab list is UI
+// convenience, not the security boundary. Keep this in sync with erp.js's
+// own PRODUCTION_ENTITIES set.
+const PRODUCTION_ERP_ENTITIES = ['item', 'stock']
 
 // Import ERP supplier records as app Suppliers (mirrors importErpCustomers).
 // Suppliers have no domain module yet — SupplierForm.jsx writes this same
@@ -488,7 +497,14 @@ function fmtSyncTime(v) {
 }
 
 export default function ErpLookup() {
-  const [entity, setEntity] = useState('customer')
+  const isProduction = useRole() === 'production'
+  // Production sees only Items + Inventory; everyone else (admin) sees the
+  // full entity set. Object key order is preserved, so the visible tabs stay
+  // in their normal order.
+  const entityKeys = isProduction
+    ? Object.keys(ENTITIES).filter(k => PRODUCTION_ERP_ENTITIES.includes(k))
+    : Object.keys(ENTITIES)
+  const [entity, setEntity] = useState(isProduction ? 'item' : 'customer')
   const [q, setQ] = useState('')
   const [activeOnly, setActiveOnly] = useState(true)
   const [limit, setLimit] = useState(50)
@@ -593,7 +609,10 @@ export default function ErpLookup() {
 
   // Same idea for customers: which JES customer codes are already linked to an
   // app Customer, so an ERP row can be marked "in app" and excluded from import.
+  // Skipped for production — the customers collection is owner-only (they'd
+  // just hit permission-denied) and they never see the customer-import tab.
   useEffect(() => {
+    if (isProduction) return
     let alive = true
     loadCustomers()
       .then(list => { if (alive) setExistingErpCodes(new Set(list.map(c => String(c.erp_code || '').toUpperCase()).filter(Boolean))) })
@@ -784,7 +803,8 @@ export default function ErpLookup() {
 
       {/* Entity toggle */}
       <div className="flex md:inline-flex overflow-x-auto rounded-lg border border-gray-200 bg-white p-1 mb-4 -mx-4 px-4 md:mx-0 md:px-1 scrollbar-none">
-        {Object.entries(ENTITIES).map(([key, e]) => {
+        {entityKeys.map((key) => {
+          const e = ENTITIES[key]
           const on = entity === key
           return (
             <button

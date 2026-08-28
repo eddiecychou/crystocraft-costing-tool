@@ -72,17 +72,35 @@ const LINES = {
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
-// The ERP archive holds costs, margins, and supplier pricing — trade secrets.
-// So the whole endpoint is admin-only. "admin" = the app's Firestore
-// users/{uid}.role === 'admin' (same rule the app UI uses). We read the caller's
-// own profile doc with their token — Firestore rules allow a user to read it.
-async function isAdmin(uid, idToken, projectId) {
+// The ERP archive holds costs, margins, supplier pricing AND the customer /
+// invoice / sales-order history — most of it trade-secret, some of it the very
+// customer/financial data the V8.12 `production` role must never see. So the
+// caller's role is read from their Firestore users/{uid} doc (with their own
+// token — rules allow a user to read it) and enforced below:
+//   admin       → every entity.
+//   production  → ONLY the item/stock family in PRODUCTION_ENTITIES; any other
+//                 entity (customer, supplier, sales_invoice, sales_order,
+//                 purchase, lines) is refused. This is the real boundary — the
+//                 ErpLookup UI hiding those tabs is convenience, not security.
+//   anyone else → refused.
+async function getRole(uid, idToken, projectId) {
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`
   const r = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } })
-  if (!r.ok) return false
+  if (!r.ok) return null
   const doc = await r.json()
-  return doc?.fields?.role?.stringValue === 'admin'
+  return doc?.fields?.role?.stringValue || null
 }
+
+// Items + stock, plus the item-only helpers (BOM explosion, code utilities,
+// sync freshness, item photos, and the warehouse/item_type pickers the stock
+// filters need). Deliberately excludes customer, supplier, sales_invoice,
+// sales_order, purchase and the 'lines' detail action. Keep in sync with
+// ErpLookup.jsx's PRODUCTION_ERP_ENTITIES (a subset — the UI only surfaces
+// item + stock as tabs; the rest here are background calls those tabs make).
+const PRODUCTION_ENTITIES = new Set([
+  'item', 'stock', 'warehouse', 'item_type',
+  'bom', 'alternatives', 'codes', 'sync_status', 'item_images',
+])
 
 export default async function handler(req) {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
@@ -113,14 +131,25 @@ export default async function handler(req) {
     return json({ error: 'Invalid or expired session' }, 401)
   }
 
-  // 1b) Admin-only: the ERP archive exposes costs/margins/supplier pricing.
-  if (!(await isAdmin(uid, token, PROJECT_ID))) {
+  // 1b) Resolve the caller's role. Admin and production may proceed; the
+  //     per-entity restriction for production is applied after we parse the
+  //     request (2·5, once payload.entity is known).
+  const role = await getRole(uid, token, PROJECT_ID)
+  if (role !== 'admin' && role !== 'production') {
     return json({ error: 'Admin access required' }, 403)
   }
 
   // 2) Parse the request.
   let payload
   try { payload = await req.json() } catch { return json({ error: 'Bad JSON' }, 400) }
+
+  // 2·5) Production staff: items/stock only. This is the enforcement point —
+  //      it runs before every dispatch branch below, so a hand-crafted POST
+  //      for entity:'customer' or entity:'lines' is refused just the same as
+  //      the hidden UI tab. Admin skips the check.
+  if (role === 'production' && !PRODUCTION_ENTITIES.has(payload?.entity)) {
+    return json({ error: 'This ERP data is restricted to administrators' }, 403)
+  }
 
   // 2a) BOM explosion: { entity: 'bom', code } → recursive explode_bom() RPC.
   if (payload?.entity === 'bom') {

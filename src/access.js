@@ -24,6 +24,11 @@ import { createContext, useContext } from 'react'
 // deliberately NOT here — flip them in by adding the key if that changes.
 const PRODUCTION_MODULES = new Set([
   'dashboard', 'products', 'components', 'suppliers', 'inventory',
+  // ERP Lookup, restricted to the Items + Inventory tabs — the page hides the
+  // customer/invoice/sales-order tabs for production and the /api/erp edge
+  // function rejects a production caller for any non-item entity. Added
+  // V8.12 on the owner's request so factory staff can look up JES item/stock.
+  'erp',
 ])
 
 // Is `moduleKey` visible to `role`? Admin sees all; production sees only its
