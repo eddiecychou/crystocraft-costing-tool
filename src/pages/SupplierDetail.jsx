@@ -5,6 +5,7 @@ import { db } from '../firebase'
 import ConfirmDialog from '../components/ConfirmDialog'
 import LoadingBar from '../components/LoadingBar'
 import SupplierCatalogs from '../components/SupplierCatalogs'
+import SupplierVideos from '../components/SupplierVideos'
 import ImageGallery from '../components/ImageGallery'
 import SupplierAddQuoteModal from '../components/SupplierAddQuoteModal'
 import { SUPPLIER_CATEGORIES, PO_PAYMENT_TERM_LABEL, PO_STATUSES } from '../constants'
@@ -327,11 +328,9 @@ export default function SupplierDetail() {
         if (all.length === 0) return null
         const active = activeSupplierContacts(all)
         const gone = inactiveSupplierContacts(all)
-        const chipCls = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-gray-200 text-gray-600 hover:border-brand-400 hover:text-brand-700 transition-colors'
-        const Card = (c, dim) => {
-          const phoneForWc = wechatSearchPhone(c.phone)
-          const wc = (c.wechat || '').trim()
-          return (
+        // No per-contact copy chips here — they'd just duplicate the Quick
+        // Access ones (owner). Values show as plain text / tel: / mailto:.
+        const Card = (c, dim) => (
           <div key={c.id} className={`py-3 border-b border-gray-50 last:border-0 ${dim ? 'opacity-60' : ''}`}>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-medium text-gray-900">{c.name || '—'}</span>
@@ -344,24 +343,9 @@ export default function SupplierDetail() {
               {c.wechat && <span>WeChat: {c.wechat}</span>}
               {c.whatsapp && <span>WhatsApp: {c.whatsapp}</span>}
               {c.email && <a href={`mailto:${c.email}`} className="text-brand-600 hover:underline">{c.email}</a>}
-              {wc && (
-                <button type="button" onClick={() => copyToClip(`${c.id}-wc`, wc)}
-                  title={`Copy WeChat ID "${wc}"`} className={chipCls}>
-                  {copied === `${c.id}-wc` ? <Check size={11} /> : <MessageCircle size={11} />}
-                  {copied === `${c.id}-wc` ? 'Copied' : 'Copy WeChat ID'}
-                </button>
-              )}
-              {phoneForWc && (
-                <button type="button" onClick={() => copyToClip(`${c.id}-ph`, phoneForWc)}
-                  title={`Copy phone "${phoneForWc}" — paste into WeChat → Add Contacts`} className={chipCls}>
-                  {copied === `${c.id}-ph` ? <Check size={11} /> : <MessageCircle size={11} />}
-                  {copied === `${c.id}-ph` ? 'Copied' : 'Copy phone for WeChat'}
-                </button>
-              )}
             </div>
           </div>
-          )
-        }
+        )
         return (
           <div className="card p-5 mb-6">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Contacts</p>
@@ -570,10 +554,10 @@ export default function SupplierDetail() {
 
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Photos</h2>
-          {photos.length > 0 && <span className="text-xs text-gray-400">{photos.length}</span>}
+          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Photos &amp; Videos</h2>
+          {photos.length > 0 && <span className="text-xs text-gray-400">{photos.length} photo{photos.length === 1 ? '' : 's'}</span>}
         </div>
-        <p className="text-xs text-gray-400 mb-3">Exhibition / booth shots and other reference images. Drop multiple at once; drag to reorder; add a caption under each; use <span className="inline-flex items-center gap-0.5"><Sparkles size={11} /> Clean background</span> on a photo the same way as product images.</p>
+        <p className="text-xs text-gray-400 mb-3">Exhibition / booth shots and clips. Drop multiple photos at once; drag to reorder; add a caption under each; use <span className="inline-flex items-center gap-0.5"><Sparkles size={11} /> Clean background</span> on a photo the same way as product images.</p>
         <ImageGallery
           images={photos}
           firestorePath={`suppliers/${id}/images`}
@@ -582,6 +566,7 @@ export default function SupplierDetail() {
           enhanceable
           downloadPrefix={supplier?.name}
         />
+        <SupplierVideos supplierId={id} />
       </div>
 
       <div id="catalogues" className="scroll-mt-4">

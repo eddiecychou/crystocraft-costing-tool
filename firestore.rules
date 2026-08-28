@@ -204,12 +204,15 @@ service cloud.firestore {
       match /catalogs/{catalogId} {
         allow read, write: if isStaff();
       }
-      // Supplier photo gallery (exhibition/booth shots etc.) — same shape as
-      // products/{id}/images, no visibility/branded-for screening (internal
-      // scrapbook, never customer-facing). Storage objects live under
-      // suppliers/{id}/images/… which storage.rules already covers via the
-      // suppliers/{id}/** isStaff rule.
+      // Supplier photo + video gallery (exhibition/booth shots and clips) —
+      // internal scrapbook, no visibility/branded-for screening, never
+      // customer-facing. Storage objects live under suppliers/{id}/images/…
+      // and suppliers/{id}/videos/… which storage.rules already covers via
+      // the suppliers/{id}/** isStaff rule.
       match /images/{imageId} {
+        allow read, write: if isStaff();
+      }
+      match /videos/{videoId} {
         allow read, write: if isStaff();
       }
     }
