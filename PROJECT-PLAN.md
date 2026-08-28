@@ -102,12 +102,12 @@ Two unrelated threads in one session (2026-08-28):
    factory-staff account was waiting (ERP Lookup, the Figurine catalogue,
    Purchase Orders).
 
-**Status: pushed and live, but NOT yet closed** — the owner is running a
-separate code review (DeepSeek) on this version before sign-off. The one
-thing no automated check could cover — a live signed-in `production`
-session click-tested through every screen — was done by the owner after
-the final push and reported working; everything before that was verified
-headlessly (see §2.8).
+**Status: pushed and live; DeepSeek review done, one fix applied
+(`storage.rules`, see §2.10), findings 2/3/5 are owner decisions left
+as-is.** The one thing no automated check could cover — a live signed-in
+`production` session click-tested through every screen — was done by the
+owner after the final push and reported working; everything else was
+verified headlessly (see §2.8).
 
 ### The numbers
 
@@ -339,10 +339,12 @@ subcollection.
 
 #### 2.8 Testing
 
-`qa/rbac-rules.test.mjs` — **35 assertions** at the final commit, green
-against the Firestore emulator. Covers every production-allowed collection
-(read + write where applicable), every hard-wall denial, the counter
-scoping (`pu_` allowed, `so_`/`uc_` denied), self-escalation denial, and
+`qa/rbac-rules.test.mjs` — **44 assertions** (35 Firestore + 9 Storage,
+the latter added after the DeepSeek review — see §2.10), green against the
+Firestore + Storage emulators. Covers every production-allowed collection
+(read + write where applicable), file uploads to every supply-side Storage
+path, every hard-wall denial (Firestore and Storage), the counter scoping
+(`pu_` allowed, `so_`/`uc_` denied), self-escalation denial, and
 admin-unchanged. Deliberately **not** a project dependency (same posture
 as `qa/eslint.no-undef.mjs`); the header documents the run recipe.
 Prerequisite: a real JRE — this Mac's `/usr/bin/java` is the macOS stub, so
@@ -358,13 +360,14 @@ final push and reported it "working well" through the UI.
 
 #### 2.9 Deploy model — a real gotcha
 
-**Firestore rules do NOT deploy via Netlify.** `git push` deploys the app
-only; rules ship separately with `npx firebase-tools deploy --only
-firestore:rules`. For a rules change that gates *existing* pages, the order
+**Firestore AND Storage rules do NOT deploy via Netlify.** `git push`
+deploys the app only; rules ship separately —
+`npx firebase-tools deploy --only firestore:rules` and
+`--only storage`. For a rules change that gates *existing* pages, the order
 is **rules first, then push the app**, or a production login hits
-permission-denied in the gap. Both were done together for each of the
-rules-touching commits this cycle (`3ca1be3`, `54ee9b8`, `c2b56c6`);
-`64d2b12` was app-only (no rules change).
+permission-denied in the gap. Done together for each rules-touching commit
+this cycle (`3ca1be3`, `54ee9b8`, `c2b56c6`, and the §2.10 `storage.rules`
+fix); `64d2b12` was app-only.
 
 ---
 
@@ -385,6 +388,69 @@ rules-touching commits this cycle (`3ca1be3`, `54ee9b8`, `c2b56c6`);
   (only the emulator rules test + parse/lint/bundle gates); the two
   `isAdmin()` implementations and three unguarded customizer edge functions
   from V8.11's `TECH-DEBT.md` are untouched.
+
+#### 2.10 DeepSeek code review — findings & responses (2026-08-28)
+
+The owner ran an external review of the V8.12 diff. Outcome:
+
+- **Finding 1 (🟠) — `storage.rules` not extended to `production`. FIXED
+  (`<this commit>`).** Real incomplete rollout: Firestore writes opened for
+  `production` on the supply-side collections, but `storage.rules` still
+  required `role == 'admin'` on every path, so a production user could edit
+  a product / figurine / component / supplier *record* but every file
+  attach (gallery image, supplier catalog, BOM-quote attachment) was
+  denied. Added an `isStaff()` helper to `storage.rules` (mirrors
+  `firestore.rules`, `role in ['admin','production']`) and applied it to
+  exactly the paths whose Firestore records are `isStaff()`:
+  `products/**` (covers product images + BOM-component images + BOM-quote
+  attachments), `components/**`, `supplier_quotes/**`, `suppliers/**`,
+  `range_products/**`, `range_components/**`. Every admin-only object
+  domain (`customers`, `customer-assets`, `marketing_contacts`,
+  `catalogues`, `settings` branding, `orders`, `freight_quotes`,
+  `client_quotes`, `daily_draft_images`, `campaign_images`) and the
+  uid-owned `customer_uploads/**` / `renders/**` are unchanged. Verified:
+  9 new Storage assertions in `qa/rbac-rules.test.mjs` (prod can upload to
+  each supply path; denied `customers/`, `settings/`, `client_quotes/`;
+  customer denied `products/`) — 44/44 green against the Storage emulator.
+  **Deploy note:** `storage.rules` also does not ship via Netlify —
+  `npx firebase-tools deploy --only storage` (see §2.9).
+- **Finding 2 (🟡) — `erp_item.srp` + BOM unit costs visible to
+  `production`. OWNER DECISION, deferred.** `PRODUCTION_ENTITIES` allows
+  `item` and `bom`; the `erp_item` matview carries `srp` (suggested retail)
+  and `explode_bom()` carries unit costs. SRP is a sales/margin number, not
+  a supply fact — but the owner already accepted full sell-side pricing
+  exposure for the Figurine module (§2.6), so item SRP is consistent with
+  that. Left as-is pending an explicit "yes, hide SRP for production" — if
+  wanted, the fix is a production-only `select` list in `erp.js` that drops
+  `srp` / cost columns, not an entity block.
+- **Finding 3 (🟡) — `range_colour_previews` still admin-only while
+  `production` can write `range_products`. Accepted (over-restriction).**
+  Production can edit `variants[].colour_images` by hand but can't run the
+  colour-preview generation tool (its drafts are admin-only). Not a leak;
+  the mismatch with "edits figurines like admin" is real but minor. Left
+  admin-only — the preview tool also calls an admin-gated render endpoint,
+  so opening just the Firestore side wouldn't make it work anyway.
+- **Finding 4 (🟡) — the sync surface is 4–5 sites, not 3. `TECH-DEBT.md`
+  UPDATED.** `erp.js`'s own comment adds `ErpLookup.jsx`'s
+  `PRODUCTION_ERP_ENTITIES` as another partial copy of the allowlist; the
+  tech-debt entry now lists `access.js`, `firestore.rules`, `storage.rules`,
+  `erp.js`, and `ErpLookup.jsx`.
+- **Finding 5 (🟡) — `AccessContext` defaults to `'admin'` ("fails open").
+  Kept, by design.** A provider-less render would show full nav to a
+  production user and rely on per-request permission-denied. This is
+  deliberate (documented in `access.js`): the default only matters if the
+  provider is missing, which doesn't happen in the app, and defaulting to
+  a hide-everything value would white-screen a real bug instead of
+  degrading. The Firestore/Storage rules are the boundary regardless. A
+  reviewer who disagrees would change the default to `null` and have
+  `canAccess` treat unknown roles as deny (it already does) — a one-line
+  change if the owner wants it.
+
+**Also confirmed correct by the review (kept as-is):** the Firestore rules
+are precisely scoped to supply-side; `pricing_tiers` / `customer_prices` /
+`pricing_groups` correctly stay admin-only; `erp.js` enforces the entity
+restriction before any dispatch branch; the `<Gate>` map is single-source
+for UI; self-escalation is blocked and asserted.
 
 ## V8.11 — Login Activity fixed, GA4 wired in, Quote/PI workflow gaps closed, PDF layout fixes
 

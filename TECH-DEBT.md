@@ -44,19 +44,30 @@ role string, not a bool) because it needs to distinguish `production` from
 
 ## RBAC (`production` role) — client capability map vs server rules can drift
 
-V8.12's `production` role is enforced in three places that must agree:
-`src/access.js` (`PRODUCTION_MODULES` — nav + routes), `firestore.rules`
-(`isStaff()` / `isProduction()` — the real boundary), and
-`netlify/edge-functions/erp.js` (`PRODUCTION_ENTITIES`). There is no single
-source; `qa/rbac-rules.test.mjs` covers the rules layer only. Adding a
-module to `access.js` without the matching rule opens a menu that
-permission-denies; the reverse grants data with no way to reach it. Keep
-the three in sync by hand, and re-run the emulator test on any rules
-change. See `PROJECT-PLAN.md` V8.12 §2 and the `rbac-production-role`
-memory.
+V8.12's `production` role is enforced in **four** places that must agree,
+with no single source:
+1. `src/access.js` (`PRODUCTION_MODULES`) — nav + route gates.
+2. `firestore.rules` (`isStaff()` / `isProduction()`) — the real boundary
+   for Firestore.
+3. `storage.rules` (`isStaff()`) — the boundary for object uploads; must
+   track (2) path-for-path or a production user can edit a record but not
+   attach its files (found in the V8.12 DeepSeek review — storage.rules had
+   no `isStaff()` at first).
+4. `netlify/edge-functions/erp.js` (`PRODUCTION_ENTITIES`) — the ERP proxy;
+   its own header comment adds that `ErpLookup.jsx`'s
+   `PRODUCTION_ERP_ENTITIES` is a **fifth** partial copy (UI tab list, a
+   subset of the server set).
 
-**Where:** `src/access.js`, `firestore.rules` (search `isStaff`),
-`netlify/edge-functions/erp.js` (`PRODUCTION_ENTITIES`),
+`qa/rbac-rules.test.mjs` covers the Firestore layer only — not storage, not
+the edge function, not the UI map. Adding a module to `access.js` without
+the matching rule opens a menu that permission-denies; the reverse grants
+data with no way to reach it. Keep them in sync by hand and re-run the
+emulator test on any `firestore.rules` change. See `PROJECT-PLAN.md` V8.12
+§2 and the `rbac-production-role` memory.
+
+**Where:** `src/access.js`, `firestore.rules` + `storage.rules` (search
+`isStaff`), `netlify/edge-functions/erp.js` (`PRODUCTION_ENTITIES`),
+`src/pages/ErpLookup.jsx` (`PRODUCTION_ERP_ENTITIES`),
 `qa/rbac-rules.test.mjs`.
 
 ## Tag bookkeeping is duplicated, not shared

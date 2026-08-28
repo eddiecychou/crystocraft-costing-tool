@@ -25,24 +25,44 @@ service firebase.storage {
         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Product images
+    // Mirrors firestore.rules' isStaff() = admin OR the V8.12 `production`
+    // role. Used on exactly the object paths whose Firestore records were
+    // opened to isStaff() — supply-side catalogue/component/supplier assets.
+    // Without this, a production user could edit a product/figurine/component/
+    // supplier record but every file attach (gallery image, supplier catalog,
+    // quote attachment) would be denied by Storage's default-deny. The
+    // customer-facing customer_uploads/{uid} + renders/{uid} paths and every
+    // admin-only domain path (customers, marketing, catalogues, settings
+    // branding, orders, client_quotes) stay as they were.
+    function isStaff() {
+      return isAuth() &&
+        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'production'];
+    }
+
+    // Product images + BOM-component images + BOM-component quote attachments
+    // (all built under products/{id}/… — see SupplierQuoteForm.jsx). Firestore:
+    // products + products/{id}/components + …/supplier_quotes are isStaff.
     match /products/{productId}/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isStaff();
     }
 
-    // Component images
+    // Component images (legacy top-level path; current code writes component
+    // images under products/{id}/… above). isStaff for parity with the
+    // Firestore products/{id}/components grant.
     match /components/{componentId}/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isStaff();
     }
 
-    // Supplier quote attachments
+    // Supplier quote attachments (legacy top-level path; parity with the
+    // {path=**}/supplier_quotes collection-group rule, now isStaff).
     match /supplier_quotes/{quoteId}/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isStaff();
     }
 
-    // Supplier catalogs
+    // Supplier catalogs — Firestore suppliers is isStaff.
     match /suppliers/{supplierId}/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isStaff();
     }
 
     // Catalogue cover images
@@ -73,14 +93,15 @@ service firebase.storage {
       allow read, write: if isAdmin();
     }
 
-    // Figurine Gifts (Crystocraft Range) images
+    // Figurine Gifts (Crystocraft Range) images — Firestore range_products is
+    // isStaff (production has full figurine access incl. costing).
     match /range_products/{rangeId}/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isStaff();
     }
 
-    // Critical Components library images
+    // Critical Components library images — Firestore range_components is isStaff.
     match /range_components/{componentId}/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isStaff();
     }
 
     // App-wide settings assets — quote stamp/signature, etc.

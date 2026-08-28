@@ -1,16 +1,17 @@
-// Phase 2 RBAC rules test — proves the production role can read/write the
-// supply side and is denied everything sensitive, and that admin is unchanged.
-// Runs against the Firestore emulator. Needs a real JRE on PATH (the macOS
-// /usr/bin/java stub is not enough) and the two test deps installed in a
-// scratch dir, then:
+// RBAC rules test — proves the production role can read/write the supply
+// side (Firestore) and attach files to it (Storage), is denied everything
+// sensitive, and that admin is unchanged. Covers both firestore.rules and
+// storage.rules. Needs a real JRE on PATH (the macOS /usr/bin/java stub is
+// not enough) and the test deps in a scratch dir, then:
 //
 //   npm i @firebase/rules-unit-testing firebase   # in a scratch dir
 //   export FIRESTORE_EMULATOR_HOST=localhost:8080
-//   npx firebase-tools emulators:exec --only firestore \
+//   export FIREBASE_STORAGE_EMULATOR_HOST=localhost:9199
+//   npx firebase-tools emulators:exec --only firestore,storage \
 //     --project crystocraft-rbac-test "node qa/rbac-rules.test.mjs"
 //
-// (run from a dir whose firebase.json points its firestore.rules at this
-// repo's file, or copy the rules alongside). Deliberately not a project
+// (run from a dir whose firebase.json points firestore.rules / storage.rules
+// at this repo's files, or copy them alongside). Deliberately not a project
 // dependency — same posture as qa/eslint.no-undef.mjs.
 import { readFileSync } from 'node:fs'
 import {
@@ -19,6 +20,7 @@ import {
 import {
   doc, getDoc, setDoc, collection, getDocs, query, where,
 } from 'firebase/firestore'
+import { ref as storageRef, uploadString, getBytes } from 'firebase/storage'
 
 const PROJECT = 'crystocraft-rbac-test'
 let pass = 0, fail = 0
@@ -28,6 +30,7 @@ const ok = (label, p) => p.then(() => { pass++; console.log('ok   ' + label) })
 const env = await initializeTestEnvironment({
   projectId: PROJECT,
   firestore: { rules: readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8') },
+  storage: { rules: readFileSync(new URL('../storage.rules', import.meta.url), 'utf8') },
 })
 
 // Seed the three role docs + a customers doc + a product with a generic image,
@@ -105,6 +108,21 @@ await ok('prod DENIED self role escalation', assertFails(setDoc(doc(prod, 'users
 await ok('admin read customers',         assertSucceeds(getDoc(doc(admin, 'customers/c1'))))
 await ok('admin read purchase_orders',   assertSucceeds(getDoc(doc(admin, 'purchase_orders/po1'))))
 await ok('admin read settings/pricing_groups', assertSucceeds(getDoc(doc(admin, 'settings/pricing_groups'))))
+
+// ---- Storage rules (V8.12 DeepSeek finding 1) ------------------------
+// Production must be able to attach files to the supply-side records it can
+// edit; still denied the admin-only object domains.
+const prodStore  = env.authenticatedContext('prod1').storage()
+const custStore  = env.authenticatedContext('cust1').storage()
+await ok('prod upload products/ image',        assertSucceeds(uploadString(storageRef(prodStore, 'products/p1/images/x.txt'), 'x')))
+await ok('prod upload range_products/ image',  assertSucceeds(uploadString(storageRef(prodStore, 'range_products/rp1/x.txt'), 'x')))
+await ok('prod upload range_components/ image', assertSucceeds(uploadString(storageRef(prodStore, 'range_components/rc1/x.txt'), 'x')))
+await ok('prod upload suppliers/ catalog',     assertSucceeds(uploadString(storageRef(prodStore, 'suppliers/s1/catalogs/x.txt'), 'x')))
+await ok('prod upload component quote attach',  assertSucceeds(uploadString(storageRef(prodStore, 'products/p1/components/c1/quotes/x.txt'), 'x')))
+await ok('prod DENIED customers/ upload',       assertFails(uploadString(storageRef(prodStore, 'customers/c1/x.txt'), 'x')))
+await ok('prod DENIED settings/ branding upload', assertFails(uploadString(storageRef(prodStore, 'settings/stamp.txt'), 'x')))
+await ok('prod DENIED client_quotes/ upload',   assertFails(uploadString(storageRef(prodStore, 'client_quotes/custom_items/i1/x.txt'), 'x')))
+await ok('customer DENIED products/ upload',    assertFails(uploadString(storageRef(custStore, 'products/p1/images/x.txt'), 'x')))
 
 await env.cleanup()
 console.log(`\n${fail === 0 ? 'ALL PASS' : fail + ' FAILED'}  (${pass} passed)`)
