@@ -48,18 +48,20 @@ export default function CustomerAccounts({ embedded = false }) {
   const pending   = users.filter(u => u.role === 'customer' && u.status !== 'approved' && u.status !== 'suspended')
   const approved  = users.filter(u => u.role === 'customer' && u.status === 'approved')
   const suspended = users.filter(u => u.role === 'customer' && u.status === 'suspended')
-  const admins    = users.filter(u => u.role === 'admin')
+  // Internal staff — admins AND production logins (V8.12 RBAC). Without
+  // production here, a factory login would appear in no tab at all.
+  const staff     = users.filter(u => u.role === 'admin' || u.role === 'production')
 
   const tabs = [
     { v: 'pending',   label: 'Pending',   Icon: Clock,       n: pending.length },
     { v: 'approved',  label: 'Customers', Icon: UserCheck,   n: approved.length },
     { v: 'suspended', label: 'Suspended', Icon: Ban,         n: suspended.length },
-    { v: 'admins',    label: 'Admins',    Icon: ShieldCheck, n: admins.length },
+    { v: 'admins',    label: 'Staff',     Icon: ShieldCheck, n: staff.length },
   ]
   let rows = tab === 'pending' ? pending
     : tab === 'approved' ? approved
     : tab === 'suspended' ? suspended
-    : admins
+    : staff
 
   const showTypeFilter = tab !== 'admins'
   if (showTypeFilter && typeFilter !== 'all') rows = rows.filter(u => accountTypeOf(u) === typeFilter)

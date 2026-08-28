@@ -93,6 +93,8 @@ export default function AccountEdit() {
 
   const isSelf   = auth.currentUser?.uid === id
   const isAdmin  = u.role === 'admin'
+  const isProduction = u.role === 'production'
+  const isStaff  = isAdmin || isProduction   // internal login, not a customer
   const isPending   = u.role === 'customer' && u.status !== 'approved' && u.status !== 'suspended'
   const isApproved  = u.role === 'customer' && u.status === 'approved'
   const isSuspended = u.role === 'customer' && u.status === 'suspended'
@@ -255,8 +257,8 @@ export default function AccountEdit() {
     // which meant re-registering the same email later kept hitting
     // already_registered against a login that no longer had any doc or
     // portal presence. See portal-invite.js's deleteAccount.
-    if (isAdmin) {
-      const ans = prompt(`⚠️ Delete the ADMIN login for ${displayName}?\n\nThis removes their access to every cost, margin, supplier and customer in the tool, AND deletes their sign-in credential entirely — they would need a brand-new invitation to come back.\n\nType the account's email (${u.email}) to confirm.`)
+    if (isStaff) {
+      const ans = prompt(`⚠️ Delete the STAFF login for ${displayName}?\n\nThis removes their access to the operation center, AND deletes their sign-in credential entirely — they would need a brand-new invitation to come back.\n\nType the account's email (${u.email}) to confirm.`)
       if ((ans || '').trim().toLowerCase() !== (u.email || '').trim().toLowerCase()) return
     } else if (!confirm(`Delete the portal login for ${displayName}? This removes their portal access and settings, AND deletes their sign-in credential entirely — the email becomes free to register again from scratch.`)) {
       return
@@ -267,6 +269,7 @@ export default function AccountEdit() {
   }
 
   const roleStatusLabel = isAdmin ? 'Admin'
+    : isProduction ? 'Production staff'
     : isApproved ? 'Approved customer'
     : isSuspended ? 'Suspended'
     : 'Pending approval'
@@ -281,7 +284,7 @@ export default function AccountEdit() {
       <div className="card p-5 mb-5">
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <h1 className="text-xl">{displayName}</h1>
-          {!isAdmin && <TypeBadge type={type} />}
+          {!isStaff && <TypeBadge type={type} />}
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 uppercase tracking-wide">{roleStatusLabel}</span>
         </div>
         <p className="text-sm text-ink-70 break-all">{u.email || '—'}</p>
@@ -466,6 +469,15 @@ export default function AccountEdit() {
                 onClick={() => { if (confirm('Suspend this customer? They lose pricing access and move to the Suspended tab. You can restore them anytime.')) apply({ status: 'suspended' }, { back: true }) }}>
                 Suspend
               </button>
+              {/* Factory-floor staff (V8.12 RBAC). A production login sees
+                  only Products / Components / Suppliers / Inventory and the
+                  supply-side dashboard — never customers, quotes, finance or
+                  marketing. Lighter confirm than admin: it grants no sensitive
+                  access, so a plain confirm() is enough. */}
+              <button className="btn-secondary text-sm"
+                onClick={() => { if (confirm(`Make ${displayName} PRODUCTION STAFF?\n\nThey get a factory login: Products, Components, Suppliers and Inventory only. They will NOT see customers, quotes, invoices, credit notes or marketing.`)) apply({ role: 'production' }, { back: true }) }}>
+                Make production staff
+              </button>
               <button className="text-sm text-red-600 border border-red-200 rounded px-2.5 py-1 hover:bg-red-50"
                 onClick={() => {
                   const ans = prompt(`⚠️ Make ${displayName} a FULL ADMIN?\n\nAn admin can see EVERYTHING in the costing tool — costs, margins, suppliers, every customer, and all your trade secrets. Only do this for your own staff.\n\nType  MAKE ADMIN  to confirm.`)
@@ -481,13 +493,30 @@ export default function AccountEdit() {
               Restore
             </button>
           )}
+          {/* Production staff role management — promote to admin, or revoke
+              back to a normal customer account. */}
+          {isProduction && !isSelf && (
+            <>
+              <button className="btn-secondary text-sm"
+                onClick={() => {
+                  const ans = prompt(`⚠️ Make ${displayName} a FULL ADMIN?\n\nAn admin can see EVERYTHING — costs, margins, every customer, all trade secrets. Only do this for trusted staff.\n\nType  MAKE ADMIN  to confirm.`)
+                  if ((ans || '').trim().toUpperCase() === 'MAKE ADMIN') apply({ role: 'admin' }, { back: true })
+                }}>
+                Promote to admin
+              </button>
+              <button className="text-sm text-red-600 border border-red-200 rounded px-2.5 py-1 hover:bg-red-50"
+                onClick={() => { if (confirm('Revoke production access? They revert to a normal (approved) customer login — Storefront only, no operation-center access.')) apply({ role: 'customer', status: 'approved' }, { back: true }) }}>
+                Revoke — back to normal account
+              </button>
+            </>
+          )}
           {isAdmin && !isSelf && (
             <button className="btn-secondary text-sm"
               onClick={() => { if (confirm('Remove admin access? They revert to a normal (approved) customer — they keep shopping/pricing access but can no longer see any costing data.')) apply({ role: 'customer', status: 'approved' }, { back: true }) }}>
               Revoke admin — back to normal account
             </button>
           )}
-          {isAdmin && isSelf && <span className="text-sm text-ink-50">This is your own admin account.</span>}
+          {isStaff && isSelf && <span className="text-sm text-ink-50">This is your own {isAdmin ? 'admin' : 'staff'} account.</span>}
 
           {canDelete && (
             <button className="text-sm text-ink-60 hover:text-red-600 sm:ml-auto" onClick={del}>Delete account</button>

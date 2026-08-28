@@ -4,6 +4,7 @@ import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
 import logo from '../assets/logo.png'
 import { APP_NAME, APP_VERSION, versionLabel } from '../appInfo'
+import { canAccess, useRole } from '../access'
 import {
   LayoutDashboard, Package, Gem, ClipboardList, Puzzle,
   Factory, Building2, Megaphone, Settings, MoreHorizontal, Users, Truck, FileText, Boxes, Database, Hash, Receipt, Sparkles, RotateCcw, ShoppingCart,
@@ -12,43 +13,69 @@ import {
 // Grouped so the list stays readable as it grows — it reached 16 destinations
 // and the flat version was hard to scan. Order within each group follows the
 // real workflow rather than the alphabet: quote → order/produce → invoice.
+//
+// `module` tags each destination with an access.js capability key. The list
+// is filtered by the signed-in role (see useVisibleNav below) so a production
+// login sees only its five modules; nothing here decides access on its own —
+// access.js is the single source of truth, shared with the route guards.
 const nav = [
-  { to: '/dashboard',  label: 'Dashboard',     short: 'Home',     Icon: LayoutDashboard, primary: true },
+  { to: '/dashboard',  label: 'Dashboard',     short: 'Home',     Icon: LayoutDashboard, primary: true, module: 'dashboard' },
 
   { group: 'Catalogue' },
-  { to: '/products',   label: 'Corp Gifts',    short: 'Corp',     Icon: Package, primary: true },
-  { to: '/range',      label: 'Figurine Gifts',short: 'Figurine', Icon: Gem, primary: true },
-  { to: '/swatch-library', label: 'Swatch Library', short: 'Swatches', Icon: Sparkles },
+  { to: '/products',   label: 'Corp Gifts',    short: 'Corp',     Icon: Package, primary: true, module: 'products' },
+  { to: '/range',      label: 'Figurine Gifts',short: 'Figurine', Icon: Gem, primary: true, module: 'figurine' },
+  { to: '/swatch-library', label: 'Swatch Library', short: 'Swatches', Icon: Sparkles, module: 'swatch' },
 
   { group: 'Sales' },
-  { to: '/quotes',     label: 'Quotes',        short: 'Quotes',   Icon: ClipboardList, primary: true },
-  { to: '/shipping',   label: 'Production',    short: 'Prod',     Icon: Truck },
-  { to: '/sales-invoices', label: 'Sales Invoices', short: 'Invoices', Icon: Receipt },
-  { to: '/credit-notes', label: 'Credit Notes', short: 'Credits', Icon: RotateCcw },
-  { to: '/customers',  label: 'Customers',     short: 'Customers',Icon: Building2 },
-  { to: '/portal',     label: 'Portal',        short: 'Portal',   Icon: Users },
-  { to: '/marketing',  label: 'Marketing',     short: 'Marketing',Icon: Megaphone },
+  { to: '/quotes',     label: 'Quotes',        short: 'Quotes',   Icon: ClipboardList, primary: true, module: 'quotes' },
+  { to: '/shipping',   label: 'Production',    short: 'Prod',     Icon: Truck, module: 'shipping' },
+  { to: '/sales-invoices', label: 'Sales Invoices', short: 'Invoices', Icon: Receipt, module: 'invoices' },
+  { to: '/credit-notes', label: 'Credit Notes', short: 'Credits', Icon: RotateCcw, module: 'credit_notes' },
+  { to: '/customers',  label: 'Customers',     short: 'Customers',Icon: Building2, module: 'customers' },
+  { to: '/portal',     label: 'Portal',        short: 'Portal',   Icon: Users, module: 'portal' },
+  { to: '/marketing',  label: 'Marketing',     short: 'Marketing',Icon: Megaphone, module: 'marketing' },
 
   { group: 'Supply' },
-  { to: '/components', label: 'Components',    short: 'Comps',    Icon: Puzzle },
-  { to: '/suppliers',  label: 'Suppliers',     short: 'Suppliers',Icon: Factory },
-  { to: '/purchase-orders', label: 'Purchase Orders', short: 'POs', Icon: FileText },
-  { to: '/inventory',  label: 'Inventory',     short: 'Stock',    Icon: Boxes },
+  { to: '/components', label: 'Components',    short: 'Comps',    Icon: Puzzle, module: 'components' },
+  { to: '/suppliers',  label: 'Suppliers',     short: 'Suppliers',Icon: Factory, module: 'suppliers' },
+  { to: '/purchase-orders', label: 'Purchase Orders', short: 'POs', Icon: FileText, module: 'purchase_orders' },
+  { to: '/inventory',  label: 'Inventory',     short: 'Stock',    Icon: Boxes, module: 'inventory' },
 
   { group: 'System' },
-  { to: '/erp-lookup', label: 'ERP Lookup',    short: 'ERP',      Icon: Database },
-  { to: '/uc-registry',label: 'UC Registry',   short: 'UC#',      Icon: Hash },
-  { to: '/woo-sync',   label: 'WooCommerce Sync', short: 'WooSync', Icon: ShoppingCart },
-  { to: '/settings',   label: 'Settings',      short: 'Settings', Icon: Settings },
+  { to: '/erp-lookup', label: 'ERP Lookup',    short: 'ERP',      Icon: Database, module: 'erp' },
+  { to: '/uc-registry',label: 'UC Registry',   short: 'UC#',      Icon: Hash, module: 'uc' },
+  { to: '/woo-sync',   label: 'WooCommerce Sync', short: 'WooSync', Icon: ShoppingCart, module: 'woo' },
+  { to: '/settings',   label: 'Settings',      short: 'Settings', Icon: Settings, module: 'settings' },
 ]
 
-// Group headings are layout only — every consumer that wants destinations
-// filters them out first.
-const navItems = nav.filter(n => n.to)
-const mainNav  = navItems.filter(n => n.primary)
-const moreNav  = navItems.filter(n => !n.primary)
+// The role-filtered nav for the signed-in user. A group heading is dropped
+// when the role can see none of the destinations that follow it, so a
+// production login never gets a bare "Sales" header over an empty section.
+function useVisibleNav() {
+  const role = useRole()
+  const out = []
+  for (let i = 0; i < nav.length; i++) {
+    const item = nav[i]
+    if (item.group) {
+      // Look ahead: keep the heading only if at least one following
+      // destination (before the next heading) is visible to this role.
+      let keep = false
+      for (let j = i + 1; j < nav.length && !nav[j].group; j++) {
+        if (canAccess(role, nav[j].module)) { keep = true; break }
+      }
+      if (keep) out.push(item)
+    } else if (canAccess(role, item.module)) {
+      out.push(item)
+    }
+  }
+  return out
+}
 
 export default function Layout({ children, user }) {
+  const visibleNav = useVisibleNav()
+  const navItems = visibleNav.filter(n => n.to)
+  const mainNav  = navItems.filter(n => n.primary)
+  const moreNav  = navItems.filter(n => !n.primary)
   const navigate  = useNavigate()
   const location  = useLocation()
   const [moreOpen, setMoreOpen] = useState(false)
@@ -97,7 +124,7 @@ export default function Layout({ children, user }) {
             the bottom of the viewport and simply unreachable — not scrollable,
             gone. */}
         <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-0.5">
-          {nav.map((item, i) => (
+          {visibleNav.map((item, i) => (
             item.group ? (
               <p key={`g-${item.group}`}
                  className={`px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-ivory/25 ${i === 0 ? 'pb-1' : 'pt-4 pb-1'}`}>

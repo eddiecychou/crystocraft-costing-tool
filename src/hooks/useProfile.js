@@ -24,6 +24,11 @@ export function useProfile(user) {
   return { profile, loading: profile === undefined }
 }
 
-export const isAdmin    = p => !!p && p.role === 'admin'
-export const isApproved = p => !!p && p.role === 'customer' && p.status === 'approved'
-export const isPending  = p => !!p && p.role === 'customer' && p.status !== 'approved'
+export const isAdmin      = p => !!p && p.role === 'admin'
+export const isProduction = p => !!p && p.role === 'production'
+// Any internal STAFF login (not a customer) — the set that lands in the
+// operation-center app rather than the Storefront. Grows if more staff roles
+// are added; keep it the single test for "is this one of our people".
+export const isStaff      = p => isAdmin(p) || isProduction(p)
+export const isApproved   = p => !!p && p.role === 'customer' && p.status === 'approved'
+export const isPending    = p => !!p && p.role === 'customer' && p.status !== 'approved'
