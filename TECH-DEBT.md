@@ -70,6 +70,32 @@ emulator test on any `firestore.rules` change. See `PROJECT-PLAN.md` V8.12
 `src/pages/ErpLookup.jsx` (`PRODUCTION_ERP_ENTITIES`),
 `qa/rbac-rules.test.mjs`.
 
+## Corp-gift quote lines are labelled as figurine products on Convert-to-PI
+
+`ShipmentForm.jsx:310` writes `matched_product_ref: { collection:
+'range_products', id: it.product_id, … }` and `line_type: 'range'` for **any**
+catalogue quote item. But `QuoteDetail.jsx`'s product picker adds **corp
+gifts** — `it.product_id` is a `products/` id (`QuoteDetail.jsx:268` reads
+`products/{id}/pricing_tiers`). So a corp-gift quote converted to a PI claims a
+match against a `range_products` id that doesn't exist.
+
+Consequences: `packing.js:132` (`rangeProducts.find(...)`) returns `undefined`,
+so `pcs_per_carton` / carton dims / weights are all missing and the carton plan
+silently falls back to **1 carton, no dimensions, no weight**. `mrp.js:55–61`
+is guarded so it degrades safely, but the line is invisible to material
+planning. Meanwhile `ShipmentForm.jsx:1227` still renders a green ✓ "matched"
+badge — the UI asserts a match that isn't real, which is the part most likely
+to mislead someone.
+
+Found during the V8.12 product-variants audit (see
+`PRODUCT-VARIANTS-PLAN.md` §4.11), not fixed there because it is unrelated to
+that feature and deserves its own decision: either set `collection: 'products'`
+for corp items and teach the consumers, or leave corp lines
+`ad_hoc`/unmatched — which is what they effectively are for packing and MRP.
+
+**Where:** `src/pages/ShipmentForm.jsx:310`, `src/packing.js:132`,
+`src/mrp.js:55`.
+
 ## Tag bookkeeping is duplicated, not shared
 
 `customer.js` and `marketingContact.js` each have their own

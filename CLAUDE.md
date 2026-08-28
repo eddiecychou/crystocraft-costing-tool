@@ -30,6 +30,7 @@ of record, one function at a time.
 | `FIRESTORE-COLLECTIONS.md` | Every Firestore collection/subcollection — purpose, auth posture, owning domain file, and the pointer fields that connect collections to each other. Check before adding a collection or tracing data across two of them |
 | `DOMAIN-MODULES.md` | What each `src/domain/*.js` file owns and its main exports — the business-logic layer, distinct from the `src/*Api.js` edge-function wrappers already covered in API-REFERENCE.md |
 | `TECH-DEBT.md` | Known inconsistencies/gaps noticed in passing (unguarded edge functions, duplicate admin-check implementations, etc.) — check before "fixing" something that turns out to already be a known, deliberate tradeoff; add to it when you notice something new |
+| `PRODUCT-VARIANTS-PLAN.md` | **SHELVED 2026-08-28, never built** — size/colour variations on a corp-gift product, dropped as too complicated for the value. Kept for its §4 audit: why a typed per-variant price would break both the quote margin column and per-customer pricing, five other landmines, and one live pre-existing bug (also in `TECH-DEBT.md`). Read it before anyone revisits variations, or touches corp pricing/quote-line cost snapshots |
 
 ## Environment quirks that will otherwise waste your time
 
