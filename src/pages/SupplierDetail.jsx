@@ -92,12 +92,20 @@ export default function SupplierDetail() {
   const [pos, setPos]             = useState([])
   const [posLoading, setPosLoading] = useState(true)
   // WeChat has no reliable per-contact deep link (owner re-tested 2026-08-28,
-  // weixin:// only ever opens the app). The stored wechat_id is also often an
-  // internal wxid_… value that WeChat's own search can't resolve. Phone-number
-  // search IS reliable, so the WeChat quick-access copies the supplier's phone
-  // (paste into WeChat → Add Contacts).
-  const [wechatCopied, setWechatCopied] = useState(false)
-  const [copiedContactId, setCopiedContactId] = useState(null)
+  // weixin:// only ever opens the app), so "quick access" for it is
+  // copy-to-clipboard. Two independent chips — one copies the WeChat ID, one
+  // copies the phone (+86/86 stripped) for WeChat → Add Contacts — rather than
+  // one chip that guesses which to use. `copied` holds the key of whichever
+  // chip was last clicked, so only that one shows its "Copied" state.
+  const [copied, setCopied] = useState(null)
+  const copyToClip = async (key, value) => {
+    if (!value) return
+    try {
+      await navigator.clipboard.writeText(value)
+      setCopied(key)
+      setTimeout(() => setCopied(k => (k === key ? null : k)), 1500)
+    } catch { /* clipboard blocked — value is still shown on the page */ }
+  }
   const remember = useScrollMemory(`supplier-${id}`, !loading)
 
   useEffect(() => {
@@ -253,30 +261,19 @@ export default function SupplierDetail() {
           dead buttons) — the "Catalogues & Files" chip always shows since
           SupplierCatalogs below already handles the empty case on its own
           ("no catalogs yet").
-          WeChat: a copy-to-clipboard chip, not a link. Personal WeChat has
-          no reliable per-contact deep link — weixin://dl/profile/<id> was
-          re-tested 2026-08-28 and only ever opens the app to nowhere.
-          Phone-number search IS reliable, so the chip copies the supplier's
-          phone (office line, else the primary contact's) with the +86/86
-          China country code stripped, for pasting into WeChat → Add
-          Contacts. If there's no phone but a WeChat ID is on file it copies
-          that instead. Hidden only when there's neither. */}
+          WeChat: two copy-to-clipboard chips, not a link — personal WeChat
+          has no reliable per-contact deep link (weixin://dl/profile/<id>
+          re-tested 2026-08-28, only ever opens the app to nowhere). One
+          chip copies the WeChat ID, the other copies the phone with the
+          +86/86 China country code stripped, for WeChat → Add Contacts.
+          Each shows only when its own value is on file. */}
       {(() => {
         const links = QUICK_LINKS.filter(l => isHttpUrl(supplier[l.key]))
         const primaryC = supplierContactsOf(supplier).find(c => c.is_primary && c.active)
         const wechatPhone = wechatSearchPhone(
           toArray(supplier.phones ?? supplier.phone)[0] || primaryC?.phone || '',
         )
-        const fallbackWechatId = (supplier.wechat_id || primaryC?.wechat || '').trim()
-        const copyValue = wechatPhone || fallbackWechatId
-        const copyIsPhone = !!wechatPhone
-        const copyWechat = async () => {
-          try {
-            await navigator.clipboard.writeText(copyValue)
-            setWechatCopied(true)
-            setTimeout(() => setWechatCopied(false), 1500)
-          } catch { /* clipboard blocked — value is still visible in the Contacts card */ }
-        }
+        const wechatId = (supplier.wechat_id || primaryC?.wechat || '').trim()
         return (
           <div className="card p-4 mb-6">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2.5">Quick Access</p>
@@ -287,12 +284,20 @@ export default function SupplierDetail() {
                   <ExternalLink size={12} />{l.label}
                 </a>
               ))}
-              {copyValue && (
-                <button type="button" onClick={copyWechat}
-                   title={`Copy ${copyIsPhone ? `phone "${copyValue}"` : `WeChat ID "${copyValue}"`} — paste into WeChat → Add Contacts`}
+              {wechatId && (
+                <button type="button" onClick={() => copyToClip('qa-wechat', wechatId)}
+                   title={`Copy WeChat ID "${wechatId}"`}
                    className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
-                  {wechatCopied ? <Check size={12} /> : <MessageCircle size={12} />}
-                  {wechatCopied ? 'Copied' : (copyIsPhone ? 'Copy phone for WeChat' : 'Copy WeChat ID')}
+                  {copied === 'qa-wechat' ? <Check size={12} /> : <MessageCircle size={12} />}
+                  {copied === 'qa-wechat' ? 'Copied' : 'Copy WeChat ID'}
+                </button>
+              )}
+              {wechatPhone && (
+                <button type="button" onClick={() => copyToClip('qa-phone', wechatPhone)}
+                   title={`Copy phone "${wechatPhone}" — paste into WeChat → Add Contacts`}
+                   className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
+                  {copied === 'qa-phone' ? <Check size={12} /> : <MessageCircle size={12} />}
+                  {copied === 'qa-phone' ? 'Copied' : 'Copy phone for WeChat'}
                 </button>
               )}
               <a href="#catalogues"
@@ -309,17 +314,11 @@ export default function SupplierDetail() {
         if (all.length === 0) return null
         const active = activeSupplierContacts(all)
         const gone = inactiveSupplierContacts(all)
-        const contactWechatValue = c => wechatSearchPhone(c.phone) || (c.wechat || '').trim()
-        const copyForWechat = async (c) => {
-          const val = contactWechatValue(c)
-          if (!val) return
-          try {
-            await navigator.clipboard.writeText(val)
-            setCopiedContactId(c.id)
-            setTimeout(() => setCopiedContactId(x => (x === c.id ? null : x)), 1500)
-          } catch { /* clipboard blocked — value is still shown on the row */ }
-        }
-        const Card = (c, dim) => (
+        const chipCls = 'inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-gray-200 text-gray-600 hover:border-brand-400 hover:text-brand-700 transition-colors'
+        const Card = (c, dim) => {
+          const phoneForWc = wechatSearchPhone(c.phone)
+          const wc = (c.wechat || '').trim()
+          return (
           <div key={c.id} className={`py-3 border-b border-gray-50 last:border-0 ${dim ? 'opacity-60' : ''}`}>
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-medium text-gray-900">{c.name || '—'}</span>
@@ -332,17 +331,24 @@ export default function SupplierDetail() {
               {c.wechat && <span>WeChat: {c.wechat}</span>}
               {c.whatsapp && <span>WhatsApp: {c.whatsapp}</span>}
               {c.email && <a href={`mailto:${c.email}`} className="text-brand-600 hover:underline">{c.email}</a>}
-              {contactWechatValue(c) && (
-                <button type="button" onClick={() => copyForWechat(c)}
-                  title={`Copy ${wechatSearchPhone(c.phone) ? `phone "${wechatSearchPhone(c.phone)}"` : `WeChat ID "${c.wechat}"`} — paste into WeChat → Add Contacts`}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-gray-200 text-gray-600 hover:border-brand-400 hover:text-brand-700 transition-colors">
-                  {copiedContactId === c.id ? <Check size={11} /> : <MessageCircle size={11} />}
-                  {copiedContactId === c.id ? 'Copied' : (wechatSearchPhone(c.phone) ? 'Copy phone for WeChat' : 'Copy WeChat ID')}
+              {wc && (
+                <button type="button" onClick={() => copyToClip(`${c.id}-wc`, wc)}
+                  title={`Copy WeChat ID "${wc}"`} className={chipCls}>
+                  {copied === `${c.id}-wc` ? <Check size={11} /> : <MessageCircle size={11} />}
+                  {copied === `${c.id}-wc` ? 'Copied' : 'Copy WeChat ID'}
+                </button>
+              )}
+              {phoneForWc && (
+                <button type="button" onClick={() => copyToClip(`${c.id}-ph`, phoneForWc)}
+                  title={`Copy phone "${phoneForWc}" — paste into WeChat → Add Contacts`} className={chipCls}>
+                  {copied === `${c.id}-ph` ? <Check size={11} /> : <MessageCircle size={11} />}
+                  {copied === `${c.id}-ph` ? 'Copied' : 'Copy phone for WeChat'}
                 </button>
               )}
             </div>
           </div>
-        )
+          )
+        }
         return (
           <div className="card p-5 mb-6">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Contacts</p>
