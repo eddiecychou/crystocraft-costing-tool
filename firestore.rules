@@ -122,14 +122,15 @@ service cloud.firestore {
     }
 
     match /range_products/{rangeId} {
-      // Figurine catalogue. Not surfaced to production in the UI, but its
-      // stock-list import matches component codes against range products, so
-      // production needs READ; writes stay owner-only.
+      // Figurine catalogue — Crystocraft's own product line. Opened to staff
+      // read+write (owner, V8.12): production manages figurines, incl. their
+      // costing which writes back here. Approved customers still read via
+      // canShop() for the storefront.
       allow read: if canShop() || isProduction();
-      allow write: if isAdmin();
+      allow write: if isStaff();
       match /{allPaths=**} {
         allow read: if canShop() || isProduction();
-        allow write: if isAdmin();
+        allow write: if isStaff();
       }
     }
 
@@ -156,13 +157,15 @@ service cloud.firestore {
           'front_page', 'productDefaults', 'quote_branding', 'crystal_colors',
         ])
         // Production supply-config: the docs behind the Components hub's
-        // Format MOQs / Crystal Costs / Categories / Crystal Colours tabs.
-        // Deliberately does NOT include pricing_groups or crystal_unit_costs's
-        // sales-facing siblings — crystal_unit_costs IS here because it's the
-        // factory's own raw crystal price list, supply-side, not customer
-        // markup (that's pricing_groups, which stays owner-only).
+        // Format MOQs / Crystal Costs / Categories / Crystal Colours tabs,
+        // plus exchange_rates (read-only) which the figurine costing page
+        // needs to convert HKD→USD. Deliberately does NOT include
+        // pricing_groups — that's the customer-tier markup table, owner-only.
+        // crystal_unit_costs IS here: it's the factory's own raw crystal
+        // price list, supply-side, not customer markup.
         || (isProduction() && docId in [
           'format_moq', 'crystal_unit_costs', 'component_categories', 'crystal_colors',
+          'exchange_rates',
         ]);
       allow write: if isAdmin()
         || (isProduction() && docId in [

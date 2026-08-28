@@ -24,6 +24,10 @@ import { createContext, useContext } from 'react'
 // deliberately NOT here — flip them in by adding the key if that changes.
 const PRODUCTION_MODULES = new Set([
   'dashboard', 'products', 'components', 'suppliers', 'inventory',
+  // Figurine Gifts — Crystocraft's own crystal-figurine catalogue, which the
+  // factory makes. Full access incl. its wholesale prices and the markup/
+  // costing page (owner's call, V8.12): production edits figurines like admin.
+  'figurine',
   // ERP Lookup, restricted to the Items + Inventory tabs — the page hides the
   // customer/invoice/sales-order tabs for production and the /api/erp edge
   // function rejects a production caller for any non-item entity. Added

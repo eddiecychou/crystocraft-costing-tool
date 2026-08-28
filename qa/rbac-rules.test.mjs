@@ -39,6 +39,8 @@ await env.withSecurityRulesDisabled(async ctx => {
   await setDoc(doc(d, 'users/cust1'),       { role: 'customer', status: 'approved', customer_id: 'c1' })
   await setDoc(doc(d, 'customers/c1'),      { company_name: 'ACME', sensitive: false })
   await setDoc(doc(d, 'products/p1'),       { name: 'Widget' })
+  await setDoc(doc(d, 'range_products/rp1'), { name: 'Crystal Bear' })
+  await setDoc(doc(d, 'settings/exchange_rates'), { USD: 7.78 })
   await setDoc(doc(d, 'products/p1/images/i1'), { branded_for_customer_id: '' })
   await setDoc(doc(d, 'suppliers/s1'),      { name: 'Foundry' })
   await setDoc(doc(d, 'range_components/rc1'), { code: 'RC1' })
@@ -74,6 +76,9 @@ await ok('prod read settings/format_moq',           assertSucceeds(getDoc(doc(pr
 await ok('prod write settings/format_moq',          assertSucceeds(setDoc(doc(prod, 'settings/format_moq'), { formats: [1] })))
 await ok('prod read settings/crystal_unit_costs',   assertSucceeds(getDoc(doc(prod, 'settings/crystal_unit_costs'))))
 await ok('prod read settings/component_categories', assertSucceeds(getDoc(doc(prod, 'settings/component_categories'))))
+await ok('prod read range_products (figurine)',  assertSucceeds(getDoc(doc(prod, 'range_products/rp1'))))
+await ok('prod write range_products (figurine)', assertSucceeds(setDoc(doc(prod, 'range_products/rp2'), { name: 'New' })))
+await ok('prod read settings/exchange_rates',    assertSucceeds(getDoc(doc(prod, 'settings/exchange_rates'))))
 
 // ---- production DENIED (sensitive) ------------------------------------
 await ok('prod DENIED customers',        assertFails(getDoc(doc(prod, 'customers/c1'))))
@@ -84,6 +89,7 @@ await ok('prod DENIED credit_notes',     assertFails(getDoc(doc(prod, 'credit_no
 await ok('prod DENIED marketing_contacts', assertFails(getDoc(doc(prod, 'marketing_contacts/m1'))))
 await ok('prod DENIED settings/pricing_groups (read)',  assertFails(getDoc(doc(prod, 'settings/pricing_groups'))))
 await ok('prod DENIED settings/pricing_groups (write)', assertFails(setDoc(doc(prod, 'settings/pricing_groups'), { groups: [1] })))
+await ok('prod DENIED settings/exchange_rates (write)', assertFails(setDoc(doc(prod, 'settings/exchange_rates'), { USD: 9 })))
 await ok('prod DENIED write pricing_tiers', assertFails(setDoc(doc(prod, 'products/p1/pricing_tiers/t1'), { price: 1 })))
 // A production login must never be able to self-escalate its own role.
 await ok('prod DENIED self role escalation', assertFails(setDoc(doc(prod, 'users/prod1'), { role: 'admin' })))
