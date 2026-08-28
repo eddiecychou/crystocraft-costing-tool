@@ -45,11 +45,17 @@ const SupplierVideos = forwardRef(function SupplierVideos({ supplierId }, ref) {
   function ingest(files) {
     setErr('')
     for (const file of files) {
-      if (!file.type.startsWith('video/')) { setErr(`"${file.name}" is not a video.`); continue }
+      // MIME first, then the extension — a drag can arrive with a blank type.
+      const looksVideo = file.type.startsWith('video/') ||
+        /\.(mov|mp4|m4v|webm|avi|mkv|mpe?g|hevc|3gp)$/i.test(file.name || '')
+      if (!looksVideo) {
+        setErr(`"${file.name}" isn't a video file. Dragging a clip straight out of the macOS Photos app hands over a still frame instead — export it, or drag it from Finder.`)
+        continue
+      }
       if (file.size > MAX_MB * 1024 * 1024) { setErr(`"${file.name}" is ${fmtBytes(file.size)} — over the ${MAX_MB} MB limit.`); continue }
       const uid = ++idRef.current
       const path = `suppliers/${supplierId}/videos/${Date.now()}_${uid}_${file.name}`
-      const task = uploadBytesResumable(storageRef(storage, path), file, { contentType: file.type })
+      const task = uploadBytesResumable(storageRef(storage, path), file, { contentType: file.type || 'video/mp4' })
       setUploads(prev => [...prev, { uid, name: file.name, progress: 0 }])
       task.on('state_changed',
         s => setUploads(prev => prev.map(u => (u.uid === uid ? { ...u, progress: Math.round(s.bytesTransferred / s.totalBytes * 100) } : u))),

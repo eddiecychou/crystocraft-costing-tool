@@ -558,7 +558,7 @@ export default function SupplierDetail() {
           <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Photos &amp; Videos</h2>
           {photos.length > 0 && <span className="text-xs text-gray-400">{photos.length} photo{photos.length === 1 ? '' : 's'}</span>}
         </div>
-        <p className="text-xs text-gray-400 mb-3">Exhibition / booth shots and clips. Drag a whole batch straight from Photos / Finder onto the box below — images and videos are sorted automatically. Drag photos to reorder; caption each; use <span className="inline-flex items-center gap-0.5"><Sparkles size={11} /> Clean background</span> on a photo the same way as product images.</p>
+        <p className="text-xs text-gray-400 mb-3">Exhibition / booth shots and clips. Drag a whole batch onto the box below — images and videos are sorted automatically. Drag photos to reorder; caption each; use <span className="inline-flex items-center gap-0.5"><Sparkles size={11} /> Clean background</span> on a photo the same way as product images.<br /><span className="text-amber-600">Videos: drag from <strong>Finder</strong>, not the Photos app — Photos hands the browser a still frame instead of the movie.</span></p>
         <ImageGallery
           images={photos}
           firestorePath={`suppliers/${id}/images`}

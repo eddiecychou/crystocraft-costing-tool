@@ -417,9 +417,14 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
     }
   }
 
+  // Route by MIME, falling back to the file extension — a drag straight out of
+  // macOS Photos can arrive with a blank or misleading `type`.
   function routeFiles(all) {
-    const imgs = all.filter(f => f.type.startsWith('image/'))
-    const rest = all.filter(f => !f.type.startsWith('image/'))
+    const isImage = f =>
+      f.type.startsWith('image/') ||
+      (!f.type && /\.(jpe?g|png|gif|webp|heic|heif|avif|bmp|tiff?)$/i.test(f.name || ''))
+    const imgs = all.filter(isImage)
+    const rest = all.filter(f => !isImage(f))
     if (imgs.length) uploadFiles(imgs)
     if (rest.length && onExtraFiles) onExtraFiles(rest)
   }
