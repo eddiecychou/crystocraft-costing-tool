@@ -6,6 +6,17 @@ import { Download, Eye } from 'lucide-react'
 import logoUrl from '../assets/logo.png'
 import { pdfFileTitle } from '../pdfFilename'
 
+// A failed lazy import (import('./QuotePDF') etc.) after a deploy 404s with
+// this message. main.jsx's vite:preloadError handler normally reloads the tab
+// before it gets here; this only shows if that reload was just suppressed as a
+// loop-guard, in which case "reload and retry" is the honest advice.
+const isStaleChunkError = err =>
+  /dynamically imported module|Importing a module script failed|Failed to fetch/i.test(err?.message || '')
+const exportErrorMessage = (err, what) =>
+  isStaleChunkError(err)
+    ? `${what} failed — the app was updated in another tab. Reload this page and try again.`
+    : `${what} failed: ${err.message}`
+
 // Fetch a product image and return a data: URL so react-pdf can embed it without
 // hitting CORS. Tries the Netlify proxy first (handles Firebase Storage), then a
 // direct fetch (local dev). Returns null on failure so the row simply has no image.
@@ -117,7 +128,7 @@ export default function QuoteExport({ quote, items, onClose, onQuoteChange }) {
       URL.revokeObjectURL(url)
     } catch (err) {
       console.error('[QuoteExport] PDF error:', err)
-      alert(`PDF generation failed: ${err.message}`)
+      alert(exportErrorMessage(err, 'PDF generation'))
     } finally {
       setPdfLoading(false)
     }
@@ -146,7 +157,7 @@ export default function QuoteExport({ quote, items, onClose, onQuoteChange }) {
     } catch (err) {
       console.error('[QuoteExport] Preview error:', err)
       if (tab) tab.close()
-      alert(`Preview failed: ${err.message}`)
+      alert(exportErrorMessage(err, 'Preview'))
     } finally {
       setPreviewLoading(false)
     }

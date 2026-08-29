@@ -8,13 +8,19 @@ import './index.css'
 // deploy still holds references to the OLD hashes, so any lazy/dynamic
 // import (PDF export, Excel export, any code-split route) 404s with
 // "Failed to fetch dynamically imported module". Vite fires vite:preloadError
-// for exactly this case; reload once to pick up the current build. Guarded
-// by sessionStorage so a genuine, persistent failure (offline, real 404)
-// shows the actual error instead of reload-looping forever.
+// for exactly this case; reload to pick up the current build.
+//
+// Guard is TIME-WINDOWED, not once-per-session: a genuine reload loop
+// (offline, a real 404) re-fires within a second or two of the reload, so we
+// suppress only that rapid repeat and show the real error. A second, third,
+// … deploy later in the same long session is minutes/hours away, so it still
+// self-heals — the old "once per session, forever" guard meant the 2nd stale
+// chunk in a session showed a dead error dialog (owner hit this 2026-08-29).
 window.addEventListener('vite:preloadError', () => {
-  const key = 'vite-preload-reloaded'
-  if (sessionStorage.getItem(key)) return // already tried once this session — don't loop
-  sessionStorage.setItem(key, '1')
+  const KEY = 'vite-preload-reload-at'
+  const last = Number(sessionStorage.getItem(KEY) || 0)
+  if (Date.now() - last < 15000) return // just reloaded — real failure, let it surface
+  sessionStorage.setItem(KEY, String(Date.now()))
   window.location.reload()
 })
 
