@@ -27,6 +27,12 @@ const QUICK_LINKS = [
   { key: 'alibaba_product_url', label: 'Alibaba Product' },
 ]
 const isHttpUrl = v => typeof v === 'string' && /^https?:\/\/\S+$/i.test(v.trim())
+
+// Chip label for a free-form extra link: its own label, else a tidy hostname.
+const linkLabel = l => {
+  if (l.label?.trim()) return l.label.trim()
+  try { return new URL(l.url).hostname.replace(/^www\./, '') } catch { return 'Link' }
+}
 import useScrollMemory from '../hooks/useScrollMemory'
 import {
   supplierContactsOf, activeSupplierContacts, inactiveSupplierContacts,
@@ -284,6 +290,8 @@ export default function SupplierDetail() {
           Each shows only when its own value is on file. */}
       {(() => {
         const links = QUICK_LINKS.filter(l => isHttpUrl(supplier[l.key]))
+        const extraLinks = (Array.isArray(supplier.extra_links) ? supplier.extra_links : [])
+          .filter(l => isHttpUrl(l?.url))
         const primaryC = supplierContactsOf(supplier).find(c => c.is_primary && c.active)
         const wechatPhone = wechatSearchPhone(
           toArray(supplier.phones ?? supplier.phone)[0] || primaryC?.phone || '',
@@ -297,6 +305,12 @@ export default function SupplierDetail() {
                 <a key={l.key} href={supplier[l.key]} target="_blank" rel="noreferrer"
                    className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
                   <ExternalLink size={12} />{l.label}
+                </a>
+              ))}
+              {extraLinks.map(l => (
+                <a key={l.id || l.url} href={l.url} target="_blank" rel="noreferrer"
+                   className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
+                  <ExternalLink size={12} />{linkLabel(l)}
                 </a>
               ))}
               {wechatId && (

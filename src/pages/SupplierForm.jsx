@@ -24,6 +24,36 @@ const LINK_FIELDS = [
 // links typed in by hand, not something worth over-validating.
 const isValidUrl = v => !v || /^https?:\/\/\S+$/i.test(v.trim())
 
+const genLinkId = () => `lk_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`
+
+// Free-form extra sourcing links beyond the seven named platform fields — a
+// supplier often has several 1688/Taobao product pages, a WeChat mini-shop, a
+// Google Drive of catalogues, etc. Stored as supplier.extra_links[] =
+// [{ id, label, url }]; rendered as extra chips on the detail page.
+function ExtraLinkRows({ links, onChange, errors }) {
+  const set = (i, field, val) => onChange(links.map((l, j) => (j === i ? { ...l, [field]: val } : l)))
+  const add = () => onChange([...links, { id: genLinkId(), label: '', url: '' }])
+  const remove = i => onChange(links.filter((_, j) => j !== i))
+  return (
+    <div className="space-y-2 mt-3">
+      {links.map((l, i) => (
+        <div key={l.id || i}>
+          <div className="flex gap-2">
+            <input className="input w-40 shrink-0" value={l.label} onChange={e => set(i, 'label', e.target.value)}
+                   placeholder="Label e.g. 1688 store 2" />
+            <input className="input flex-1" type="url" value={l.url} onChange={e => set(i, 'url', e.target.value)}
+                   placeholder="https://…" />
+            <button type="button" onClick={() => remove(i)}
+                    className="text-gray-400 hover:text-red-500 px-1 text-lg leading-none shrink-0">×</button>
+          </div>
+          {errors?.[l.id] && <p className="text-xs text-red-600 mt-1">{errors[l.id]}</p>}
+        </div>
+      ))}
+      <button type="button" onClick={add} className="text-xs text-brand-600 hover:text-brand-800">+ Add link</button>
+    </div>
+  )
+}
+
 // Convert old string or existing array → clean array with at least one entry
 function toArray(val) {
   if (Array.isArray(val)) return val.length ? val : ['']
@@ -128,6 +158,7 @@ export default function SupplierForm() {
   const [phones, setPhones] = useState([''])
   const [emails, setEmails] = useState([''])
   const [contacts, setContacts] = useState([])
+  const [extraLinks, setExtraLinks] = useState([])
   const [loading, setLoading]   = useState(false)
   const [fetching, setFetching] = useState(isEdit)
   const [linkErrors, setLinkErrors] = useState({})
@@ -155,6 +186,9 @@ export default function SupplierForm() {
         // Folds legacy contact_person/wechat_id/whatsapp into one primary
         // contact when the supplier has no contacts[] yet.
         setContacts(supplierContactsOf(d))
+        setExtraLinks((Array.isArray(d.extra_links) ? d.extra_links : []).map(l => ({
+          id: l.id || genLinkId(), label: l.label || '', url: l.url || '',
+        })))
       }
       setFetching(false)
     })
@@ -167,6 +201,9 @@ export default function SupplierForm() {
     const errs = {}
     for (const { key, label } of LINK_FIELDS) {
       if (!isValidUrl(form[key])) errs[key] = `${label} must be a full http:// or https:// URL`
+    }
+    for (const l of extraLinks) {
+      if (l.url && !isValidUrl(l.url)) errs[l.id] = 'Must be a full http:// or https:// URL'
     }
     setLinkErrors(errs)
     if (Object.keys(errs).length > 0) return
@@ -181,6 +218,9 @@ export default function SupplierForm() {
         phone: phones.filter(Boolean)[0] || '',
         email: emails.filter(Boolean)[0] || '',
         contacts: cleanContacts,
+        extra_links: extraLinks
+          .map(l => ({ id: l.id, label: (l.label || '').trim(), url: (l.url || '').trim() }))
+          .filter(l => l.url),
         // Mirror the primary active contact into the flat fields every existing
         // reader still uses (PO form, supplier list, quote picker, ERP import).
         ...flatFieldsFromContacts(cleanContacts),
@@ -291,6 +331,8 @@ export default function SupplierForm() {
               </div>
             ))}
           </div>
+          <p className="text-xs text-gray-400 mt-4 mb-1">More links — extra 1688 / Taobao pages, a catalogue folder, a WeChat shop, anything else. One chip each on the supplier page.</p>
+          <ExtraLinkRows links={extraLinks} onChange={setExtraLinks} errors={linkErrors} />
         </div>
 
         <div className="border-t border-gray-100 pt-4">
