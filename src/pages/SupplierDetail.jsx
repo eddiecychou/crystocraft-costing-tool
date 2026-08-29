@@ -114,12 +114,12 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
   }, [])
 
   useEffect(() => {
-    if (!survivorId) { setPreview(null); return }
+    if (!survivorId || survivorId === supplier.id) { setPreview(null); return }
     let alive = true
     setError(''); setPreviewing(true)
     previewSupplierMerge(supplier.id, survivorId)
       .then(p => { if (alive) setPreview(p) })
-      .catch(e => { if (alive) setError(e.message || 'Could not load a preview.') })
+      .catch(e => { if (alive) { setPreview(null); setError(e.message || 'Could not load a preview.') } })
       .finally(() => { if (alive) setPreviewing(false) })
     return () => { alive = false }
   }, [survivorId, supplier.id])
@@ -164,7 +164,11 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
                 <button key={s.id} type="button"
                   onClick={() => { setSurvivorId(s.id); setSearch(s.name) }}
                   className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0">
-                  {s.name} {s.erp_code && <span className="text-gray-400">— {s.erp_code}</span>}
+                  {s.name}
+                  <span className="text-gray-400">
+                    {[s.erp_code, s.city || s.country].filter(Boolean).join(' · ') && ` — ${[s.erp_code, s.city || s.country].filter(Boolean).join(' · ')}`}
+                    {' · '}<span className="font-mono text-[10px]">{s.id.slice(0, 6)}</span>
+                  </span>
                 </button>
               ))}
             </div>
@@ -202,7 +206,7 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
         </div>
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200">
           <button onClick={onClose} disabled={busy} className="btn-secondary text-sm">Cancel</button>
-          <button onClick={confirm} disabled={busy || !preview} className="btn-danger text-sm">
+          <button onClick={confirm} disabled={busy || !preview || !!error} className="btn-danger text-sm">
             {busy ? 'Merging…' : 'Merge & Delete'}
           </button>
         </div>
@@ -412,7 +416,17 @@ export default function SupplierDetail() {
         <MergeSupplierModal
           supplier={supplier}
           onClose={() => setShowMerge(false)}
-          onMerged={survivorId => navigate(`/suppliers/${survivorId}`)}
+          onMerged={survivorId => {
+            // Close FIRST. /suppliers/:id reuses this same SupplierDetail
+            // instance (React Router keeps one element per route), so
+            // navigating alone leaves the modal mounted — it then re-runs its
+            // own preview effect once `supplier` re-fetches as the survivor,
+            // i.e. previewSupplierMerge(survivor, survivor) → "Cannot merge a
+            // supplier into itself", even though the merge already succeeded.
+            // Same fix as MergeCustomerModal's caller.
+            setShowMerge(false)
+            navigate(`/suppliers/${survivorId}`)
+          }}
         />
       )}
 
