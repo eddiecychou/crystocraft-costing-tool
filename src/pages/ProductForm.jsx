@@ -79,11 +79,15 @@ export default function ProductForm() {
           body: form.marketing_description,
           guidance: rewriteGuide,
           context: `Product: ${form.name}\nCategory: ${form.category}\nSpec: ${form.description}`,
+          max_chars: MARKETING_DESC_MAXLEN,
         }),
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-      setForm(f => ({ ...f, marketing_description: data.body }))
+      // Slice as a safety net — same as handleGenerateCopy. The textarea's
+      // maxLength only limits typing, not a programmatic set, so an AI
+      // response over budget would otherwise show e.g. "392/300".
+      setForm(f => ({ ...f, marketing_description: (data.body || '').slice(0, MARKETING_DESC_MAXLEN) }))
       setRewriteOpen(false); setRewriteGuide('')
     } catch (err) {
       setRewriteError(err.message || 'Rewrite failed — please try again.')

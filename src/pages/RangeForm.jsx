@@ -728,11 +728,14 @@ export default function RangeForm() {
           body: form.marketing_description,
           guidance: rewriteGuide,
           context: `Crystocraft range design: ${form.design_name || form.description}\nType: ${form.design_type || form.product_type}\nSpec: ${form.description}`,
+          max_chars: MARKETING_DESC_MAXLEN,
         }),
       })
       const data = await res.json()
       if (data.error) throw new Error(data.error)
-      setForm(f => ({ ...f, marketing_description: data.body }))
+      // Slice as a safety net — same as handleGenerateCopy. The textarea's
+      // maxLength only limits typing, not a programmatic set.
+      setForm(f => ({ ...f, marketing_description: (data.body || '').slice(0, MARKETING_DESC_MAXLEN) }))
       setRewriteOpen(false); setRewriteGuide('')
     } catch (err) {
       setRewriteError(err.message || 'Rewrite failed — please try again.')
