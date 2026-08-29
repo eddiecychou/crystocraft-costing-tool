@@ -11,7 +11,8 @@ import SupplierAddQuoteModal from '../components/SupplierAddQuoteModal'
 import { SUPPLIER_CATEGORIES, PO_PAYMENT_TERM_LABEL, PO_STATUSES } from '../constants'
 import { fmtMoney } from '../currency'
 import { poTotals } from '../purchaseOrders'
-import { AlertTriangle, Star, FileText, ExternalLink, FolderOpen, MessageCircle, Check, Sparkles } from 'lucide-react'
+import { AlertTriangle, Star, FileText, ExternalLink, FolderOpen, MessageCircle, Check, Sparkles, X } from 'lucide-react'
+import { previewSupplierMerge, mergeSuppliers } from '../domain/supplierMerge'
 
 // Supplier Workstation Phase 1 — quick-access sourcing links. Order matters:
 // website first, then each marketplace's shop before its product/catalogue
@@ -82,12 +83,141 @@ function MultiRow({ label, values, render }) {
   )
 }
 
+const MERGE_FIELD_LABELS = {
+  name_cn: 'Chinese name', erp_code: 'ERP code', category: 'category', country: 'country',
+  city: 'city', address: 'address', wechat_id: 'WeChat ID', whatsapp: 'WhatsApp',
+  contact_person: 'contact person', notes: 'notes', default_currency: 'default currency',
+  default_payment_terms: 'payment terms', phones: 'phone(s)', emails: 'email(s)',
+  extra_links: 'links', contacts: 'contact(s)',
+  website_url: 'website', shop_1688_url: '1688 shop', product_1688_url: '1688 product',
+  taobao_shop_url: 'Taobao shop', taobao_product_url: 'Taobao product',
+  alibaba_shop_url: 'Alibaba shop', alibaba_product_url: 'Alibaba product',
+}
+
+// Merges `supplier` INTO another supplier you pick — the one you pick survives,
+// this record's blanks-only fields fill it in, and this record is deleted once
+// its POs, BOM supplier-quotes and component pointers have moved. See
+// domain/supplierMerge.js for the full repoint checklist.
+function MergeSupplierModal({ supplier, onClose, onMerged }) {
+  const [suppliers, setSuppliers] = useState([])
+  const [search, setSearch] = useState('')
+  const [survivorId, setSurvivorId] = useState('')
+  const [preview, setPreview] = useState(null)
+  const [previewing, setPreviewing] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    getDocs(query(collection(db, 'suppliers'), orderBy('name')))
+      .then(snap => setSuppliers(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
+      .catch(() => setSuppliers([]))
+  }, [])
+
+  useEffect(() => {
+    if (!survivorId) { setPreview(null); return }
+    let alive = true
+    setError(''); setPreviewing(true)
+    previewSupplierMerge(supplier.id, survivorId)
+      .then(p => { if (alive) setPreview(p) })
+      .catch(e => { if (alive) setError(e.message || 'Could not load a preview.') })
+      .finally(() => { if (alive) setPreviewing(false) })
+    return () => { alive = false }
+  }, [survivorId, supplier.id])
+
+  const results = search
+    ? suppliers.filter(s => s.id !== supplier.id && (s.name || '').toLowerCase().includes(search.toLowerCase())).slice(0, 20)
+    : []
+
+  async function confirm() {
+    setBusy(true); setError('')
+    try {
+      await mergeSuppliers(supplier.id, survivorId)
+      onMerged(survivorId)
+    } catch (e) {
+      setError(e.message || 'Merge failed.'); setBusy(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+          <h2 className="font-semibold text-gray-900">Merge “{supplier.name}” into…</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+        </div>
+        <div className="p-5 space-y-3">
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <AlertTriangle size={16} /> {error}
+            </div>
+          )}
+          <label className="block">
+            <span className="text-xs text-gray-500">The surviving supplier — search by name</span>
+            <input className="input w-full mt-0.5" placeholder="Search suppliers…" value={search}
+              onChange={e => { setSearch(e.target.value); setSurvivorId('') }} autoFocus />
+          </label>
+          {search && !survivorId && (
+            <div className="border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
+              {results.length === 0 ? (
+                <p className="text-xs text-gray-400 px-3 py-2">No match.</p>
+              ) : results.map(s => (
+                <button key={s.id} type="button"
+                  onClick={() => { setSurvivorId(s.id); setSearch(s.name) }}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                  {s.name} {s.erp_code && <span className="text-gray-400">— {s.erp_code}</span>}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {previewing && <p className="text-xs text-gray-400">Checking what would move…</p>}
+
+          {preview && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900 space-y-1.5">
+              <p>
+                <strong>{preview.poCount}</strong> purchase order{preview.poCount === 1 ? '' : 's'},{' '}
+                <strong>{preview.corpQuoteCount + preview.rangeQuoteCount}</strong> BOM supplier quote{preview.corpQuoteCount + preview.rangeQuoteCount === 1 ? '' : 's'}
+                {preview.componentPointerCount > 0 && <> and <strong>{preview.componentPointerCount}</strong> component link{preview.componentPointerCount === 1 ? '' : 's'}</>}
+                {' '}will move to <strong>{preview.survivor.name}</strong>.
+              </p>
+              {(preview.catalogsCount > 0 || preview.imagesCount > 0 || preview.videosCount > 0) && (
+                <p>
+                  {[
+                    preview.catalogsCount > 0 && `${preview.catalogsCount} catalogue file${preview.catalogsCount === 1 ? '' : 's'}`,
+                    preview.imagesCount > 0 && `${preview.imagesCount} photo${preview.imagesCount === 1 ? '' : 's'}`,
+                    preview.videosCount > 0 && `${preview.videosCount} video${preview.videosCount === 1 ? '' : 's'}`,
+                  ].filter(Boolean).join(', ')} will also move.
+                </p>
+              )}
+              <p className="text-xs text-amber-800">
+                {Object.keys(preview.fieldsToFill).length > 0
+                  ? <>{preview.survivor.name} will gain: {Object.keys(preview.fieldsToFill).map(f => MERGE_FIELD_LABELS[f] || f).join(', ')} — nothing it already has is overwritten.</>
+                  : <>No fields to fill in — the surviving supplier already has everything this one does.</>}
+              </p>
+              <p className="text-xs text-amber-700 font-medium">
+                “{supplier.name}” will be deleted once merged. This cannot be undone.
+              </p>
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200">
+          <button onClick={onClose} disabled={busy} className="btn-secondary text-sm">Cancel</button>
+          <button onClick={confirm} disabled={busy || !preview} className="btn-danger text-sm">
+            {busy ? 'Merging…' : 'Merge & Delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function SupplierDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [supplier, setSupplier]         = useState(null)
   const [loading, setLoading]           = useState(true)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [showMerge, setShowMerge] = useState(false)
   const [quotes, setQuotes]             = useState([])
   const [rangeQuotes, setRangeQuotes]   = useState([])
   const [quotesLoading, setQuotesLoading] = useState(true)
@@ -273,9 +403,18 @@ export default function SupplierDetail() {
         </div>
         <div className="flex gap-2">
           <Link to={`/suppliers/${id}/edit`} onClick={remember} className="btn-secondary">Edit</Link>
+          <button className="btn-secondary" onClick={() => setShowMerge(true)}>Merge</button>
           <button className="btn-danger" onClick={() => setConfirmDelete(true)}>Delete</button>
         </div>
       </div>
+
+      {showMerge && (
+        <MergeSupplierModal
+          supplier={supplier}
+          onClose={() => setShowMerge(false)}
+          onMerged={survivorId => navigate(`/suppliers/${survivorId}`)}
+        />
+      )}
 
       {/* Supplier Workstation Phase 1 — Quick Access. Compact single row of
           chips; only renders a link chip for a populated+valid value (no

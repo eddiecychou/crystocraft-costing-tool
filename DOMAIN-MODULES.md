@@ -103,6 +103,35 @@ Used wherever a WhatsApp/phone-only lead needs a country without asking.
 code)` — folds live ERP rows onto an order list for the "has this shipped
 and been invoiced" view.
 
+## `supplierContacts.js` — multiple named people per supplier (V8.12)
+
+`suppliers/{id}` has no full domain module; this is the one shared piece.
+`supplierContactsOf(supplier)` — the supplier's `contacts[]`, synthesising one
+primary contact from the legacy flat `contact_person`/`wechat_id`/`whatsapp`
+when the array doesn't exist yet. `normalizeSupplierContact`,
+`primarySupplierContact`, `activeSupplierContacts` / `inactiveSupplierContacts`,
+`cleanSupplierContacts` (drop-blanks + exactly-one-primary), `genContactId`,
+and `flatFieldsFromContacts(list)` — the denormalised `contact_person` /
+`wechat_id` / `whatsapp` mirror written back on every save so the PO form,
+supplier list, quote picker and ERP import keep working unchanged.
+
+## `supplierMerge.js` — combine two duplicate suppliers (V8.12)
+
+`previewSupplierMerge(dupId, survId)` (read-only counts for the modal) and
+`mergeSuppliers(dupId, survId)`. Repoints everything that references a supplier
+id: `purchase_orders.supplier_id` (+ refreshes the denormalised
+`supplier_name`/`_name_cn`/`_erp_code`/`_address` PO snapshot from the
+survivor), the `{path=**}/supplier_quotes` collection-group's `supplier_id`
+(both the corp-gift `products/…/components/…` tree and the figurine
+`range_components/…` tree) + its `supplier_name`, and
+`range_components.supplierId` + the denormalised `preferred_supplier_name`.
+Moves the `suppliers/{id}/{catalogs,images,videos}` subcollections wholesale
+(Storage blobs keep their token URLs, same trade-off as the customer Brand
+Gallery merge), fills the survivor's blank fields / unions `phones`/`emails`/
+`extra_links` / merges `contacts` (regenerating any `id:'legacy'` so two
+fold-ins can't collide), then deletes the duplicate. UI: `MergeSupplierModal`
+in `SupplierDetail.jsx`, "Merge" button beside Edit/Delete.
+
 ## `validation.js` — the shared validation-result shape
 
 Not domain-specific — a small toolkit every `validate*` function in the
