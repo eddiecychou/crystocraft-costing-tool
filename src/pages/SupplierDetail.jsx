@@ -85,7 +85,7 @@ function MultiRow({ label, values, render }) {
 
 const MERGE_FIELD_LABELS = {
   name_cn: 'Chinese name', erp_code: 'ERP code', category: 'category', country: 'country',
-  city: 'city', address: 'address', wechat_id: 'WeChat ID', whatsapp: 'WhatsApp',
+  province: 'province/region', city: 'city', address: 'address', wechat_id: 'WeChat ID', whatsapp: 'WhatsApp',
   contact_person: 'contact person', notes: 'notes', default_currency: 'default currency',
   default_payment_terms: 'payment terms', phones: 'phone(s)', emails: 'email(s)',
   extra_links: 'links', contacts: 'contact(s)',
@@ -530,7 +530,8 @@ export default function SupplierDetail() {
 
       <div className="card p-5 space-y-0">
         <InfoRow label="Country" value={supplier.country} />
-        <InfoRow label="City / Region" value={supplier.city} />
+        <InfoRow label="Province / Region" value={supplier.province} />
+        <InfoRow label="City" value={supplier.city} />
         <InfoRow label="Address" value={supplier.address} />
         <MultiRow label="Office phone" values={supplier.phones ?? supplier.phone}
           render={v => <a href={`tel:${v}`} className="text-brand-600 hover:underline">{v}</a>} />

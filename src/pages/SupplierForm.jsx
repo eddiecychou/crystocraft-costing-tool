@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import { SUPPLIER_CATEGORIES, CURRENCIES, PO_PAYMENT_TERMS } from '../constants'
+import { SUPPLIER_CATEGORIES, SUPPLIER_PROVINCES, CURRENCIES, PO_PAYMENT_TERMS } from '../constants'
 import {
   supplierContactsOf, cleanSupplierContacts, flatFieldsFromContacts, genContactId,
 } from '../domain/supplierContacts'
@@ -148,7 +148,7 @@ export default function SupplierForm() {
   const isEdit = Boolean(id)
 
   const [form, setForm] = useState({
-    name: '', name_cn: '', erp_code: '', category: '', country: 'China', city: '',
+    name: '', name_cn: '', erp_code: '', category: '', country: 'China', province: '', city: '',
     address: '', wechat_id: '', whatsapp: '', contact_person: '', notes: '',
     default_currency: '', default_payment_terms: '',
     website_url: '', shop_1688_url: '', product_1688_url: '',
@@ -172,7 +172,7 @@ export default function SupplierForm() {
           name: d.name || '', name_cn: d.name_cn || '',
           erp_code: d.erp_code || '',
           category: d.category || '',
-          country: d.country || 'China', city: d.city || '',
+          country: d.country || 'China', province: d.province || '', city: d.city || '',
           address: d.address || '', wechat_id: d.wechat_id || '',
           whatsapp: d.whatsapp || '', contact_person: d.contact_person || '',
           notes: d.notes || '',
@@ -284,14 +284,21 @@ export default function SupplierForm() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div>
             <label className="label">Country</label>
             <input className="input" value={form.country} onChange={set('country')} placeholder="China" />
           </div>
           <div>
-            <label className="label">City / Region</label>
-            <input className="input" value={form.city} onChange={set('city')} placeholder="e.g. 浦江, Guangzhou" />
+            <label className="label">Province / Region</label>
+            <select className="input" value={form.province} onChange={set('province')}>
+              <option value="">—</option>
+              {SUPPLIER_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">City</label>
+            <input className="input" value={form.city} onChange={set('city')} placeholder="e.g. 深圳, Guangzhou" />
           </div>
         </div>
 

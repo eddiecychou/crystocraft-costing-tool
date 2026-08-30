@@ -11,6 +11,24 @@ export const SUPPLIER_CATEGORIES = [
   { value: 'Others',                 Icon: Tag },
 ]
 
+// Supplier province / region — for grouping suppliers when planning a
+// factory-visit trip ("who's in Guangdong?"). The big manufacturing provinces
+// are listed first, then the rest of mainland China's province-level divisions,
+// then a catch-all for suppliers outside China. Labels are 中文 + pinyin since
+// the team types Chinese place names elsewhere on the form.
+export const SUPPLIER_PROVINCES = [
+  '广东 Guangdong', '浙江 Zhejiang', '江苏 Jiangsu', '福建 Fujian',
+  '上海 Shanghai', '山东 Shandong', '河北 Hebei', '广西 Guangxi',
+  '安徽 Anhui', '湖南 Hunan', '湖北 Hubei', '河南 Henan', '江西 Jiangxi',
+  '四川 Sichuan', '重庆 Chongqing', '辽宁 Liaoning', '天津 Tianjin',
+  '北京 Beijing', '山西 Shanxi', '陕西 Shaanxi', '云南 Yunnan',
+  '贵州 Guizhou', '吉林 Jilin', '黑龙江 Heilongjiang', '甘肃 Gansu',
+  '海南 Hainan', '内蒙古 Inner Mongolia', '新疆 Xinjiang', '宁夏 Ningxia',
+  '青海 Qinghai', '西藏 Tibet',
+  '香港 Hong Kong', '澳门 Macau', '台湾 Taiwan',
+  'Outside China',
+]
+
 export const PRODUCT_STATUSES = [
   { value: 'concept',  label: 'Concept' },
   { value: 'sampled',  label: 'Sampled' },

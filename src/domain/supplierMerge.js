@@ -40,7 +40,7 @@ const CHUNK = 400
 // Blank-only fill: the survivor keeps everything it has; these come across from
 // the duplicate only where the survivor's own value is empty.
 const MERGE_SCALAR_FIELDS = [
-  'name_cn', 'erp_code', 'category', 'country', 'city', 'address',
+  'name_cn', 'erp_code', 'category', 'country', 'province', 'city', 'address',
   'wechat_id', 'whatsapp', 'contact_person', 'notes',
   'default_currency', 'default_payment_terms',
   'website_url', 'shop_1688_url', 'product_1688_url',

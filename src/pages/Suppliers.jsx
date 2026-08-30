@@ -3,7 +3,7 @@ import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Link } from 'react-router-dom'
 import LoadingBar from '../components/LoadingBar'
-import { SUPPLIER_CATEGORIES } from '../constants'
+import { SUPPLIER_CATEGORIES, SUPPLIER_PROVINCES } from '../constants'
 import { MapPin, Phone, MessageCircle } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
 
@@ -29,11 +29,12 @@ export default function Suppliers() {
   const initialView = loadViewState()
   const [search, setSearch]       = useState(initialView.search || '')
   const [catFilter, setCatFilter] = useState(initialView.catFilter || '')
+  const [provFilter, setProvFilter] = useState(initialView.provFilter || '')
   const remember = useScrollMemory('suppliers', !loading)
 
   useEffect(() => {
-    localStorage.setItem(VIEW_STATE_KEY, JSON.stringify({ search, catFilter }))
-  }, [search, catFilter])
+    localStorage.setItem(VIEW_STATE_KEY, JSON.stringify({ search, catFilter, provFilter }))
+  }, [search, catFilter, provFilter])
 
   useEffect(() => {
     const q = query(collection(db, 'suppliers'), orderBy('name'))
@@ -46,8 +47,14 @@ export default function Suppliers() {
   const filtered = suppliers.filter(s => {
     const matchSearch = !search || s.name?.toLowerCase().includes(search.toLowerCase()) || s.name_cn?.toLowerCase().includes(search.toLowerCase()) || s.erp_code?.toLowerCase().includes(search.toLowerCase())
     const matchCat = !catFilter || s.category === catFilter
-    return matchSearch && matchCat
+    const matchProv = !provFilter || (provFilter === '(none)' ? !s.province : s.province === provFilter)
+    return matchSearch && matchCat && matchProv
   })
+
+  // Only offer provinces that some supplier actually uses, plus "(none)" if any
+  // supplier has no province set — so a trip planner sees a short real list.
+  const provinceOptions = SUPPLIER_PROVINCES.filter(p => suppliers.some(s => s.province === p))
+  const someUnset = suppliers.some(s => !s.province)
 
   return (
     <div className="p-4 md:p-6">
@@ -60,14 +67,25 @@ export default function Suppliers() {
         <Link to="/suppliers/new" className="btn-primary text-sm whitespace-nowrap">+ New Supplier</Link>
       </div>
 
-      {/* Search */}
-      <input
-        type="text"
-        placeholder="Search by name…"
-        className="input w-full mb-3"
-        value={search}
-        onChange={e => setSearch(e.target.value)}
-      />
+      {/* Search + province */}
+      <div className="flex gap-2 mb-3">
+        <input
+          type="text"
+          placeholder="Search by name…"
+          className="input flex-1"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        {(provinceOptions.length > 0 || someUnset) && (
+          <select className="input w-48 shrink-0" value={provFilter} onChange={e => setProvFilter(e.target.value)}>
+            <option value="">All provinces</option>
+            {provinceOptions.map(p => (
+              <option key={p} value={p}>{p} ({suppliers.filter(s => s.province === p).length})</option>
+            ))}
+            {someUnset && <option value="(none)">— no province set ({suppliers.filter(s => !s.province).length})</option>}
+          </select>
+        )}
+      </div>
 
       {/* Category filter pills */}
       <div className="flex gap-2 flex-wrap mb-4">
@@ -118,8 +136,13 @@ export default function Suppliers() {
                   </div>
                   {s.name_cn && <p className="text-xs text-gray-500 mt-0.5">{s.name_cn}</p>}
                   <div className="flex gap-3 mt-1 text-xs text-gray-400 flex-wrap">
-                    {s.city  && <span className="inline-flex items-center gap-1"><MapPin size={12} />{s.city}{s.country && s.country !== 'China' ? `, ${s.country}` : ''}</span>}
-                    {!s.city && s.country && <span className="inline-flex items-center gap-1"><MapPin size={12} />{s.country}</span>}
+                    {(() => {
+                      const prov = (s.province || '').split(' ')[0]  // 中文 head only, compact
+                      const loc = [prov, s.city].filter(Boolean).join(' · ')
+                        || (s.country && s.country !== 'China' ? s.country : '')
+                        || s.country
+                      return loc ? <span className="inline-flex items-center gap-1"><MapPin size={12} />{loc}{s.country && s.country !== 'China' && !loc.includes(s.country) ? `, ${s.country}` : ''}</span> : null
+                    })()}
                     {(s.phones?.[0] || s.phone) && <span className="inline-flex items-center gap-1"><Phone size={12} />{s.phones?.[0] || s.phone}</span>}
                     {s.wechat_id && <span className="inline-flex items-center gap-1"><MessageCircle size={12} />{s.wechat_id}</span>}
                   </div>
