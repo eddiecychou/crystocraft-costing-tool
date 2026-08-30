@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore'
+import { collection, query, orderBy, onSnapshot, doc, writeBatch, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Link } from 'react-router-dom'
+import { guessProvince } from '../supplierProvince'
 import LoadingBar from '../components/LoadingBar'
 import { SUPPLIER_CATEGORIES, SUPPLIER_PROVINCES } from '../constants'
 import { MapPin, Phone, MessageCircle } from 'lucide-react'
@@ -30,6 +31,7 @@ export default function Suppliers() {
   const [search, setSearch]       = useState(initialView.search || '')
   const [catFilter, setCatFilter] = useState(initialView.catFilter || '')
   const [provFilter, setProvFilter] = useState(initialView.provFilter || '')
+  const [showBackfill, setShowBackfill] = useState(false)
   const remember = useScrollMemory('suppliers', !loading)
 
   useEffect(() => {
@@ -86,6 +88,19 @@ export default function Suppliers() {
           </select>
         )}
       </div>
+
+      {someUnset && (
+        <button onClick={() => setShowBackfill(true)}
+          className="text-xs text-brand-600 hover:text-brand-800 mb-3">
+          Backfill province from city for {suppliers.filter(s => !s.province).length} supplier{suppliers.filter(s => !s.province).length === 1 ? '' : 's'} →
+        </button>
+      )}
+      {showBackfill && (
+        <BackfillProvincesModal
+          suppliers={suppliers.filter(s => !s.province)}
+          onClose={() => setShowBackfill(false)}
+        />
+      )}
 
       {/* Category filter pills */}
       <div className="flex gap-2 flex-wrap mb-4">
@@ -153,6 +168,86 @@ export default function Suppliers() {
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+// One-time: guess each province-less supplier's province from its city /
+// address / Chinese name, show the mapping for review, write the approved
+// rows. Every row is an editable dropdown pre-set to the guess (or "— skip —");
+// nothing is written until "Apply".
+function BackfillProvincesModal({ suppliers, onClose }) {
+  const [rows, setRows] = useState(() =>
+    suppliers.map(s => ({ id: s.id, name: s.name, city: s.city || '', country: s.country || '', choice: guessProvince(s) })))
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(null)
+
+  const toApply = rows.filter(r => r.choice)
+  const setChoice = (id, choice) => setRows(rs => rs.map(r => (r.id === id ? { ...r, choice } : r)))
+
+  async function apply() {
+    setBusy(true)
+    try {
+      for (let i = 0; i < toApply.length; i += 400) {
+        const batch = writeBatch(db)
+        for (const r of toApply.slice(i, i + 400)) {
+          batch.update(doc(db, 'suppliers', r.id), { province: r.choice, updatedAt: serverTimestamp() })
+        }
+        await batch.commit()
+      }
+      setDone(toApply.length)
+    } catch (e) {
+      setDone(`Error: ${e.message}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+          <h2 className="font-semibold text-gray-900">Backfill Province / Region</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 text-lg leading-none">×</button>
+        </div>
+        <div className="p-5">
+          {done != null ? (
+            <p className={`text-sm ${String(done).startsWith('Error') ? 'text-red-600' : 'text-green-700'}`}>
+              {String(done).startsWith('Error') ? done : `Set the province on ${done} supplier${done === 1 ? '' : 's'}.`}
+            </p>
+          ) : (
+            <>
+              <p className="text-xs text-gray-500 mb-3">
+                Guessed from each supplier's city / address. Adjust any row, set to <strong>— skip —</strong> to leave it
+                blank, then Apply. Nothing is written until you do.
+              </p>
+              <div className="border border-gray-200 rounded-lg max-h-[52vh] overflow-y-auto divide-y divide-gray-100">
+                {rows.map(r => (
+                  <div key={r.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-gray-900 truncate">{r.name}</p>
+                      <p className="text-xs text-gray-400 truncate">{[r.city, r.country].filter(Boolean).join(' · ') || 'no city on file'}</p>
+                    </div>
+                    <select className="input w-52 shrink-0 text-xs" value={r.choice}
+                            onChange={e => setChoice(r.id, e.target.value)}>
+                      <option value="">— skip —</option>
+                      {SUPPLIER_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+        <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200">
+          <button onClick={onClose} disabled={busy} className="btn-secondary text-sm">{done != null ? 'Close' : 'Cancel'}</button>
+          {done == null && (
+            <button onClick={apply} disabled={busy || toApply.length === 0} className="btn-primary text-sm">
+              {busy ? 'Applying…' : `Apply to ${toApply.length}`}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
