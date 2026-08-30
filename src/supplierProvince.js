@@ -2,7 +2,7 @@
 // city / address / Chinese name, for the one-time backfill on the Suppliers
 // page. Heuristic on purpose — the backfill UI shows every guess for a human
 // to confirm or override before anything is written.
-import { SUPPLIER_PROVINCES } from './constants'
+import { SUPPLIER_PROVINCES, isChinaCountry } from './constants'
 
 // city / prefecture / well-known manufacturing town  ->  province label.
 // Keys are lower-cased; matched as a substring of the supplier's city+address
@@ -98,12 +98,16 @@ const CITY_TO_PROVINCE = {
   'taiwan': '台湾 Taiwan', '台湾': '台湾 Taiwan', 'taipei': '台湾 Taiwan', '台北': '台湾 Taiwan',
 }
 
-// Non-China country names -> "Outside China".
-const NON_CHINA = /vietnam|india|thailand|indonesia|malaysia|korea|japan|turkey|pakistan|bangladesh|italy|germany|usa|united states|u\.s|america|cambodia|philippines|myanmar/i
+// Titlecase a bare country name for consistency ("vietnam" -> "Vietnam").
+const titleCase = s => s.replace(/\b\w/g, c => c.toUpperCase())
 
-// Returns a SUPPLIER_PROVINCES value, or '' if nothing matched confidently.
+// Returns the region value to store: a SUPPLIER_PROVINCES entry for a China
+// supplier, the COUNTRY name for one elsewhere, or '' if nothing is confident.
 export function guessProvince(supplier) {
-  const hay = [supplier.city, supplier.province, supplier.address, supplier.name_cn, supplier.name, supplier.country]
+  // A non-China country wins outright — its province is that country's name.
+  if (!isChinaCountry(supplier.country)) return titleCase(supplier.country.trim())
+
+  const hay = [supplier.city, supplier.province, supplier.address, supplier.name_cn, supplier.name]
     .filter(Boolean).join(' ').toLowerCase()
   if (!hay.trim()) return ''
 
@@ -117,9 +121,5 @@ export function guessProvince(supplier) {
   for (const key of Object.keys(CITY_TO_PROVINCE).sort((a, b) => b.length - a.length)) {
     if (hay.includes(key)) return CITY_TO_PROVINCE[key]
   }
-  // 3) explicitly a non-China country
-  const country = (supplier.country || '').toLowerCase()
-  if ((country && country !== 'china' && country !== '中国') || NON_CHINA.test(hay)) return 'Outside China'
-
   return ''
 }

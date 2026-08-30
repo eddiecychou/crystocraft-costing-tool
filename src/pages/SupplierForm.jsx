@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { collection, doc, addDoc, updateDoc, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../firebase'
-import { SUPPLIER_CATEGORIES, SUPPLIER_PROVINCES, CURRENCIES, PO_PAYMENT_TERMS } from '../constants'
+import { SUPPLIER_CATEGORIES, SUPPLIER_PROVINCES, isChinaCountry, CURRENCIES, PO_PAYMENT_TERMS } from '../constants'
 import {
   supplierContactsOf, cleanSupplierContacts, flatFieldsFromContacts, genContactId,
 } from '../domain/supplierContacts'
@@ -291,10 +291,15 @@ export default function SupplierForm() {
           </div>
           <div>
             <label className="label">Province / Region</label>
-            <select className="input" value={form.province} onChange={set('province')}>
-              <option value="">—</option>
-              {SUPPLIER_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
+            {isChinaCountry(form.country) ? (
+              <select className="input" value={form.province} onChange={set('province')}>
+                <option value="">—</option>
+                {SUPPLIER_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            ) : (
+              <input className="input" value={form.province} onChange={set('province')}
+                     placeholder={form.country || 'e.g. Vietnam'} />
+            )}
           </div>
           <div>
             <label className="label">City</label>

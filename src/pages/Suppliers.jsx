@@ -53,9 +53,14 @@ export default function Suppliers() {
     return matchSearch && matchCat && matchProv
   })
 
-  // Only offer provinces that some supplier actually uses, plus "(none)" if any
-  // supplier has no province set — so a trip planner sees a short real list.
-  const provinceOptions = SUPPLIER_PROVINCES.filter(p => suppliers.some(s => s.province === p))
+  // Region filter options: every distinct province/country value some supplier
+  // actually has, China provinces first (in SUPPLIER_PROVINCES order), then any
+  // non-China country values alphabetically.
+  const usedRegions = [...new Set(suppliers.map(s => s.province).filter(Boolean))]
+  const provinceOptions = [
+    ...SUPPLIER_PROVINCES.filter(p => usedRegions.includes(p)),
+    ...usedRegions.filter(r => !SUPPLIER_PROVINCES.includes(r)).sort(),
+  ]
   const someUnset = suppliers.some(s => !s.province)
 
   return (
@@ -231,6 +236,10 @@ function BackfillProvincesModal({ suppliers, onClose }) {
                     <select className="input w-52 shrink-0 text-xs" value={r.choice}
                             onChange={e => setChoice(r.id, e.target.value)}>
                       <option value="">— skip —</option>
+                      {/* a non-China guess (a country name) isn't in the list */}
+                      {r.choice && !SUPPLIER_PROVINCES.includes(r.choice) && (
+                        <option value={r.choice}>{r.choice}</option>
+                      )}
                       {SUPPLIER_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
                   </div>

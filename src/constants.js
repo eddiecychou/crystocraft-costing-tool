@@ -11,11 +11,14 @@ export const SUPPLIER_CATEGORIES = [
   { value: 'Others',                 Icon: Tag },
 ]
 
-// Supplier province / region — for grouping suppliers when planning a
-// factory-visit trip ("who's in Guangdong?"). The big manufacturing provinces
-// are listed first, then the rest of mainland China's province-level divisions,
-// then a catch-all for suppliers outside China. Labels are 中文 + pinyin since
-// the team types Chinese place names elsewhere on the form.
+// Supplier province / region — the grouping key for planning a factory-visit
+// trip ("who's in Guangdong?"). For a China supplier it's one of these
+// provinces (大 manufacturing ones first, then the rest of mainland China,
+// then HK/Macau/Taiwan). For a supplier in another country the field just
+// holds that COUNTRY name instead — the SupplierForm swaps the dropdown for a
+// text box when Country isn't China, and the Suppliers-list filter groups on
+// whatever value is there. Labels are 中文 + pinyin (the team types Chinese
+// place names elsewhere on the form).
 export const SUPPLIER_PROVINCES = [
   '广东 Guangdong', '浙江 Zhejiang', '江苏 Jiangsu', '福建 Fujian',
   '上海 Shanghai', '山东 Shandong', '河北 Hebei', '广西 Guangxi',
@@ -26,8 +29,14 @@ export const SUPPLIER_PROVINCES = [
   '海南 Hainan', '内蒙古 Inner Mongolia', '新疆 Xinjiang', '宁夏 Ningxia',
   '青海 Qinghai', '西藏 Tibet',
   '香港 Hong Kong', '澳门 Macau', '台湾 Taiwan',
-  'Outside China',
 ]
+
+// True when a Country value means mainland China (blank counts as China — it's
+// the form default and the vast majority of suppliers).
+export const isChinaCountry = c => {
+  const v = (c || '').trim().toLowerCase()
+  return v === '' || v === 'china' || v === '中国' || v === "people's republic of china" || v === 'prc' || v === 'cn'
+}
 
 export const PRODUCT_STATUSES = [
   { value: 'concept',  label: 'Concept' },
