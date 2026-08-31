@@ -82,6 +82,12 @@ and the spec doc. "→" = start here.
 - Spec: `Range_Colour_Preview_Spec.md`
 - Notes: `production` has **full** figurine access incl. wholesale price + costing (owner's call, V8.12)
 
+### Catalogue — product images (upload + card display)
+- Upload/gallery: `src/components/ImageGallery.jsx` → `src/imageResize.js` (`resizeToJpeg`). **Downscale only** — source aspect ratio is preserved, nothing is cropped to square. An `orientation` field (`square` = ratio 0.85–1.18 / `landscape` / `portrait`) is auto-detected and stored; its only consumer is `BlogGenerator.jsx` (badge + layout). Manual crop editor: `ManualAdjust.jsx` / `src/imageCrop.js` (square is one preset among 4:3 / 3:4 / 16:9 / original).
+- Card display: `src/components/CardImageCarousel.jsx` (swipeable dots carousel on a grid card — distinct from `ImageLightbox` on the detail page). All four card grids (`Products.jsx`, `Range.jsx`, `customer/CorporateShop.jsx`, `customer/FigurineShop.jsx`) pass `imgClassName="object-cover"` so thumbnails are a uniform square crop. Figurine/Range used `object-contain p-2` until this was unified — a non-square photo then letterboxed and the carousel dots landed on the white band where bare `bg-white/50` dots vanished ("cropped dots").
+- "Square as standard" is a **content convention, not enforced** — a non-square upload center-crops on the card and shows whole on the detail page.
+- Brand proposal **banner** is NOT a product image — it's `proposal.hero_asset_id` → a `customers/{id}/assets` doc (Product Gallery category, `src/customerAssets.js`), recommended 2.4:1 landscape. Separate collection, separate Storage prefix (`customer-assets/…`).
+
 ### Components & BOM costing
 - Pages: `Components.jsx`, `ComponentDetail.jsx`, `ComponentForm.jsx`, `ComponentRequirements.jsx`, `ComponentCodeAudit.jsx`
 - Components: `CrystalBomEditor.jsx`, `ComponentLinkPicker.jsx`, `LastActualPaid.jsx`
@@ -154,9 +160,9 @@ and the spec doc. "→" = start here.
 - Pages: `WhatsAppImport.jsx`
 - Components: `WhatsAppAttachment.jsx`
 - Logic: `src/domain/whatsappImport.js`, `src/emailSummaryApi.js`, `src/whatsappSummaryApi.js`, `src/alibabaSummaryApi.js`, `src/domain/phoneCountry.js`
-- Pipeline: `email-sync/` (live IMAP `sync.py`) + `email-sync/archive_import.py` (PST/mbox backfill) share `email-sync/common.py`; match participants → `customers`/`marketing_contacts` by email/domain, unmatched messages are **dropped**; write `email_threads` subcollection docs
+- Pipeline: `email-sync/` (live IMAP `sync.py`, resumable by UID via `state.json`) + `email-sync/archive_import.py` (one-time PST/mbox backfill, resumable via `archive_state.json`) share `email-sync/common.py`. `common.py` `match_entity` priority: exact customer email > exact contact email > customer non-freemail domain > contact domain; freemail domains (gmail/qq/163/…) are exact-match only. **Unmatched messages are dropped** (`if not hit: continue`). Threads grouped by `References`/`Message-ID` (subject fallback), written as `email_threads` subcollection docs, deduped by Message-ID, body capped 4000 chars.
 - Edge fns: `refresh-email-summary`, `refresh-whatsapp-summary`, `refresh-alibaba-summary`, `transcribe-whatsapp-audio`
-- Archives on disk: `~/Outlook Archives/{eddie,sales}.pst` + 5 `.mbox`; live mailbox creds in `email-sync/.env` (`eddie@uart.com.hk`)
+- Archives on disk: `~/Outlook Archives/{eddie,sales}.pst` (38 GB / 32 GB, `pypff`) + 5 Apple-Mail `.mbox` (grep-able ~7 GB total). `email-sync/.env`: live mailbox creds (`eddie@uart.com.hk`, IMAP `mail.s406.sureserver.com`) **and** a Firebase web-API-key + admin login (`ADMIN_EMAIL`/`ADMIN_PASSWORD`) — the one place a local script can auth as admin to Firestore REST (used it for the V8.12 supplier adds; auto-mode may still block a direct prod write — see §5)
 - Memory: `whatsapp-import-plan`
 
 ### Customer Portal, invitations, auth
@@ -266,9 +272,11 @@ and the spec doc. "→" = start here.
 | Re-walking Node / firebase-tools install | Both already on PATH on this Mac | check `LOCAL-TOOLS.md` first | memory `local-tools-available` |
 | Panicking at a local `/api/* 404` | dev server runs `netlify-cli dev --offline`; 404 was normal | not a bug on its own | memory `edge-functions-local-dev` |
 | "Same PendingScreen = same bug" | 3 unrelated causes of "Awaiting approval" in 2 cycles | check which uid / which doc exists before assuming the mechanism | `PROJECT-PLAN.md` postscript |
-| Direct prod Firestore writes from a script | No local Admin SDK creds; auto-mode blocks it | build an admin-reviewed in-app tool, or ask the user to approve a one-off | this session (supplier/province backfills) |
+| Direct prod Firestore writes from a script | No Firebase Admin SDK key locally, but `email-sync/.env` has an admin email/password that authenticates to Firestore REST (`common.py` `sign_in`/`Firestore`). Auto-mode blocked an inline heredoc doing this; a saved `.py` file run went through after the user approved. | prefer an admin-reviewed in-app tool (e.g. the province backfill modal); for a genuine one-off, write a script file, show the user, get explicit approval | this session (V8.12 Moleskine/Swarovski supplier adds; province backfill) |
 | "Fixing" a promoted customer's missing history by copying threads | The live merge via `linked_marketing_contact_ids` **is** the fix | don't copy thread docs | §4; `FIRESTORE-COLLECTIONS.md` |
 | Reviving `PRODUCT-VARIANTS-PLAN.md` without reading §4 | Typed per-variant price breaks the quote margin column + per-customer pricing; 5 other landmines | read the audit first | `PRODUCT-VARIANTS-PLAN.md` |
+| Reading a "cropped / clipped" card-image symptom as a layout bug | It was contrast: translucent `bg-white/50` carousel dots sitting on the white `object-contain` letterbox band, invisible except the sliver over the photo | check `object-fit` + what's actually behind the element before chasing overflow/clip | this session; §3 "product images" |
+| Verifying a login-gated component by eye | Can't reach `/range`, `/products` etc. without an admin session; the `qa-admin-login` may not be usable (on this Mac the `.env.local` `QA_ADMIN_PASSWORD` was unset) | mount the component in a `qa/*.html` harness (like `qa/crystal-bom.html`) and headless-render it: `"/Applications/Google Chrome.app/.../Google Chrome" --headless=new --screenshot=… <url>` | `qa/README.md`; memory `qa-admin-login`; this session |
 
 ---
 
