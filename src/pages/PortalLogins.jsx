@@ -3,7 +3,6 @@ import { collection, onSnapshot } from 'firebase/firestore'
 import { Link } from 'react-router-dom'
 import { db } from '../firebase'
 import LoadingBar from '../components/LoadingBar'
-import { accountTypeOf } from './CustomerAccounts'
 import { fetchPortalTraffic } from '../gaPortalActivityApi'
 import { ChevronRight, Search, TrendingUp, AlertTriangle } from 'lucide-react'
 
@@ -58,13 +57,13 @@ const STATUS_STYLE = {
   pending:   'bg-amber-50 text-amber-700',
 }
 
-// Three groups on this page: real portal customers, internal test logins
-// (account_type === 'internal'), and STAFF (admin / production roles). Staff
-// sign in through the same portal door and DO carry GA4 app_uid sessions, so
-// they're worth showing when asked — but the headline "customer" stats never
-// count them.
+// Two groups on this page: real portal customers, and everyone else who
+// signs in through the same door — staff (admin / production roles) and
+// internal test logins (account_type === 'internal'), lumped together as
+// "internal". Staff DO carry GA4 app_uid sessions, so they show under the
+// Internal / All filters; the headline "customer" stats never count them.
 const roleGroupOf = u =>
-  (u?.role === 'admin' || u?.role === 'production') ? 'staff' : accountTypeOf(u)
+  (u?.role === 'admin' || u?.role === 'production' || u?.account_type === 'internal') ? 'internal' : 'customer'
 
 export default function PortalLogins({ embedded = false }) {
   const [users, setUsers] = useState([])
@@ -269,8 +268,7 @@ export default function PortalLogins({ embedded = false }) {
         </div>
         <div className="flex gap-1.5">
           {chip('customer', 'Customers', null, typeFilter, setTypeFilter)}
-          {chip('staff', 'Staff', null, typeFilter, setTypeFilter)}
-          {chip('internal', 'Internal', null, typeFilter, setTypeFilter)}
+          {chip('internal', 'Staff & internal', null, typeFilter, setTypeFilter)}
           {chip('all', 'All', null, typeFilter, setTypeFilter)}
         </div>
         <div className="flex gap-1.5 md:ml-2">
@@ -310,10 +308,9 @@ export default function PortalLogins({ embedded = false }) {
                       <div className="text-ink">{u.name || u.email || u.id}</div>
                       {u.name && u.email && <div className="text-[11px] text-ink-50">{u.email}</div>}
                       {roleGroupOf(u) === 'internal' && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 uppercase tracking-wide">Internal</span>
-                      )}
-                      {roleGroupOf(u) === 'staff' && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 uppercase tracking-wide">{u.role}</span>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 uppercase tracking-wide">
+                          {u.role === 'admin' || u.role === 'production' ? u.role : 'internal'}
+                        </span>
                       )}
                     </td>
                     <td className="px-3 py-2.5 text-ink-70">
