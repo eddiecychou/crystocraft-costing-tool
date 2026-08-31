@@ -1,6 +1,9 @@
 # Crystocraft Operation Center — orientation
 
 Read this first in a new conversation. It is the map, not the content.
+Then read `INDEX.md` — the feature-area router: for any bug or task it names
+the exact pages / domain modules / edge functions / collections involved, and
+§5 lists the mistakes already made here so they aren't repeated.
 
 ## What this is
 
@@ -17,6 +20,7 @@ of record, one function at a time.
 
 | File | What it holds |
 |---|---|
+| `INDEX.md` | **Master router.** Feature-area index (pages ↔ logic ↔ edge fns ↔ collections ↔ spec), cross-cutting systems, the list of mistakes already made, and the verify/deploy playbook. Start here to locate anything. |
 | `PROJECT-PLAN.md` | The running record. Newest cycle first. **"Where V8.12 starts" is the current entry point.** |
 | `JES-RETIREMENT-PLAN.md` | The nine-step route to switching JES off, in plain language |
 | `V7.15_ERP_Inventory.md` | What the ERP actually contains — measured, not assumed |
