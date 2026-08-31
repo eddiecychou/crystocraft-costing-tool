@@ -58,6 +58,14 @@ const STATUS_STYLE = {
   pending:   'bg-amber-50 text-amber-700',
 }
 
+// Three groups on this page: real portal customers, internal test logins
+// (account_type === 'internal'), and STAFF (admin / production roles). Staff
+// sign in through the same portal door and DO carry GA4 app_uid sessions, so
+// they're worth showing when asked — but the headline "customer" stats never
+// count them.
+const roleGroupOf = u =>
+  (u?.role === 'admin' || u?.role === 'production') ? 'staff' : accountTypeOf(u)
+
 export default function PortalLogins({ embedded = false }) {
   const [users, setUsers] = useState([])
   const [customers, setCustomers] = useState([])
@@ -83,12 +91,20 @@ export default function PortalLogins({ embedded = false }) {
   // account here may just predate that, not actually be inactive.
   const [traffic, setTraffic] = useState(null)   // null = loading, [] = loaded empty
   const [gaByUid, setGaByUid] = useState({})
+  const [gaUnmatched, setGaUnmatched] = useState(0)
   const [trafficError, setTrafficError] = useState('')
   useEffect(() => {
     fetchPortalTraffic()
-      .then(({ rows, byUid }) => { setTraffic(rows); setGaByUid(byUid) })
+      .then(({ rows, byUid, unmatched }) => { setTraffic(rows); setGaByUid(byUid); setGaUnmatched(unmatched) })
       .catch(e => { setTrafficError(e.message || 'Could not load GA4 traffic.'); setTraffic([]) })
   }, [])
+
+  // How much of GA4's per-account matching has actually landed — shown under
+  // the panel so a table full of "—" reads as "no traffic yet", not "broken".
+  const gaMatched = useMemo(() => {
+    const uids = Object.keys(gaByUid)
+    return { accounts: uids.length, sessions: uids.reduce((s, k) => s + (gaByUid[k].sessions || 0), 0) }
+  }, [gaByUid])
 
   const trafficSummary = useMemo(() => {
     if (!traffic?.length) return null
@@ -106,13 +122,15 @@ export default function PortalLogins({ embedded = false }) {
 
   const customersById = useMemo(() => new Map(customers.map(c => [c.id, c])), [customers])
 
-  // Portal accounts only. Admins sign in through the same door but they are
-  // not what "customer login status" is asking about.
-  const accounts = useMemo(() => users.filter(u => u.role === 'customer'), [users])
+  // Every account that reaches the portal — customers, internal test logins,
+  // and staff. The default "Customers" chip keeps the view focused on real
+  // customers; "Staff" / "All" surface the admin & production logins, which
+  // are the ones that actually carry GA4 sessions right now.
+  const accounts = users
 
   const rows = useMemo(() => {
     let list = accounts
-    if (typeFilter !== 'all') list = list.filter(u => accountTypeOf(u) === typeFilter)
+    if (typeFilter !== 'all') list = list.filter(u => roleGroupOf(u) === typeFilter)
     if (seenFilter !== 'all') {
       list = list.filter(u => {
         const d = daysSince(u.last_login_at)
@@ -137,10 +155,10 @@ export default function PortalLogins({ embedded = false }) {
     })
   }, [accounts, typeFilter, seenFilter, q, customersById])
 
-  // Counted over real customer accounts only, so internal test logins don't
-  // flatter the numbers.
+  // Counted over real customer accounts only, so internal test logins and
+  // staff don't flatter the numbers.
   const stats = useMemo(() => {
-    const real = accounts.filter(u => accountTypeOf(u) === 'customer')
+    const real = accounts.filter(u => roleGroupOf(u) === 'customer')
     const d = real.map(u => daysSince(u.last_login_at))
     return {
       total:  real.length,
@@ -207,9 +225,20 @@ export default function PortalLogins({ embedded = false }) {
             </div>
             <p className="text-[11px] text-ink-40 mt-3 pt-2 border-t border-ivory-dark">
               These totals are every visitor to the whole site — staff included, not matched to any account.
-              The "GA sessions (30d)" column in the table below IS matched per account, just only from
-              2026-08-27 onward — use these totals to sanity-check the overall trend, the column for a real
-              per-customer number.
+              The "GA sessions (30d)" column in the table below IS matched per account, via a Firebase-uid
+              tag added 2026-08-27 — use these totals to sanity-check the overall trend, the column for a
+              real per-account number.
+              {(gaMatched.sessions > 0 || gaUnmatched > 0) && (
+                <>
+                  {' '}So far <strong className="text-ink-60">{gaMatched.sessions.toLocaleString()}</strong>{' '}
+                  session{gaMatched.sessions === 1 ? '' : 's'} across{' '}
+                  <strong className="text-ink-60">{gaMatched.accounts}</strong>{' '}
+                  account{gaMatched.accounts === 1 ? '' : 's'} matched;{' '}
+                  <strong className="text-ink-60">{gaUnmatched.toLocaleString()}</strong>{' '}
+                  not yet attributed (signed-out visits, or from before the tag shipped) — a blank column is
+                  "no traffic yet", not an error.
+                </>
+              )}
             </p>
           </>
         )}
@@ -240,6 +269,7 @@ export default function PortalLogins({ embedded = false }) {
         </div>
         <div className="flex gap-1.5">
           {chip('customer', 'Customers', null, typeFilter, setTypeFilter)}
+          {chip('staff', 'Staff', null, typeFilter, setTypeFilter)}
           {chip('internal', 'Internal', null, typeFilter, setTypeFilter)}
           {chip('all', 'All', null, typeFilter, setTypeFilter)}
         </div>
@@ -279,8 +309,11 @@ export default function PortalLogins({ embedded = false }) {
                     <td className="px-3 py-2.5">
                       <div className="text-ink">{u.name || u.email || u.id}</div>
                       {u.name && u.email && <div className="text-[11px] text-ink-50">{u.email}</div>}
-                      {accountTypeOf(u) === 'internal' && (
+                      {roleGroupOf(u) === 'internal' && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 uppercase tracking-wide">Internal</span>
+                      )}
+                      {roleGroupOf(u) === 'staff' && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 uppercase tracking-wide">{u.role}</span>
                       )}
                     </td>
                     <td className="px-3 py-2.5 text-ink-70">

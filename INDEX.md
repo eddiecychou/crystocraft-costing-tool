@@ -172,6 +172,7 @@ and the spec doc. "→" = start here.
 - Collections: `users/{uid}`, `portal_invitations/{id}` (browser read-only; write path is the Admin SDK function), `favourites/{uid}`
 - Memory: `su07a-portal-invite-architecture`, `self-heal-incident`, `useprofile-missing-sentinel`
 - **Never** auto-write an existing `users/{uid}` doc from a live `onSnapshot` "missing" signal — caused two real admin demotions (§5)
+- **GA4 per-account traffic** (`PortalLogins.jsx` "Login activity" tab): `useAuthState.js` tags every GA4 hit with `gtag('set','user_properties',{app_uid: uid})`; `ga-portal-activity.js` queries `customUser:app_uid` (User-scoped custom dimension `app_uid`, registered in GA4 console, property `547709480`). The `byUid` query is wrapped in `.catch(()=>null)` so a bad dimension name fails silently. Diagnose by querying GA4 directly — `firebase-service-account.json` (present locally) is a Viewer on the property; recipe in `LOCAL-TOOLS.md` §GA4. The tag also fires for staff (admin/production), so in the first days after 2026-08-27 the only rows with data were staff — `PortalLogins` now has a "Staff" filter + an "N matched / X unattributed" line so blanks read as "no traffic yet".
 
 ### RBAC / access control
 - Files that MUST agree (no single source): `src/access.js` (`PRODUCTION_MODULES`), `firestore.rules` (`isStaff`/`isProduction`), `storage.rules` (`isStaff`), `netlify/edge-functions/erp.js` (`PRODUCTION_ENTITIES`), `src/pages/ErpLookup.jsx` (`PRODUCTION_ERP_ENTITIES`)
@@ -272,7 +273,7 @@ and the spec doc. "→" = start here.
 | Re-walking Node / firebase-tools install | Both already on PATH on this Mac | check `LOCAL-TOOLS.md` first | memory `local-tools-available` |
 | Panicking at a local `/api/* 404` | dev server runs `netlify-cli dev --offline`; 404 was normal | not a bug on its own | memory `edge-functions-local-dev` |
 | "Same PendingScreen = same bug" | 3 unrelated causes of "Awaiting approval" in 2 cycles | check which uid / which doc exists before assuming the mechanism | `PROJECT-PLAN.md` postscript |
-| Direct prod Firestore writes from a script | No Firebase Admin SDK key locally, but `email-sync/.env` has an admin email/password that authenticates to Firestore REST (`common.py` `sign_in`/`Firestore`). Auto-mode blocked an inline heredoc doing this; a saved `.py` file run went through after the user approved. | prefer an admin-reviewed in-app tool (e.g. the province backfill modal); for a genuine one-off, write a script file, show the user, get explicit approval | this session (V8.12 Moleskine/Swarovski supplier adds; province backfill) |
+| Direct prod Firestore writes from a script | Two local paths exist: `firebase-service-account.json` (full Admin SDK key, `firebase-admin` modular import) and `email-sync/.env`'s admin email/password (Firestore REST via `common.py`). Auto-mode blocked an inline heredoc write; a saved `.py` file run went through after the user approved. Reads for diagnosis are fine. | prefer an admin-reviewed in-app tool (e.g. the province backfill modal); for a genuine one-off write, write a script file, show the user, get explicit approval | this session (V8.12 supplier adds; GA4 diagnosis) |
 | "Fixing" a promoted customer's missing history by copying threads | The live merge via `linked_marketing_contact_ids` **is** the fix | don't copy thread docs | §4; `FIRESTORE-COLLECTIONS.md` |
 | Reviving `PRODUCT-VARIANTS-PLAN.md` without reading §4 | Typed per-variant price breaks the quote margin column + per-customer pricing; 5 other landmines | read the audit first | `PRODUCT-VARIANTS-PLAN.md` |
 | Reading a "cropped / clipped" card-image symptom as a layout bug | It was contrast: translucent `bg-white/50` carousel dots sitting on the white `object-contain` letterbox band, invisible except the sliver over the photo | check `object-fit` + what's actually behind the element before chasing overflow/clip | this session; §3 "product images" |
@@ -309,7 +310,8 @@ and the spec doc. "→" = start here.
 - Python: `erp-sync/.venv` (psycopg2 / python-tds — ERP mirror), `render-service/.venv` (numpy / PIL — customizer).
 - Supabase: reachable anywhere (`erp-sync/.env` `SUPABASE_DB_URL`). SQL Server: LAN-only, office Mac.
 - QA login for click-testing the live app: `claude-qa@crystocraft.com` (`.env.local`) — **read-only**, memory `qa-admin-login`.
-- Secrets: `erp-sync/.env`, `.env.local`, `email-sync/.env` — all gitignored. No Firebase Admin service-account key locally (it's only in Netlify env).
+- Secrets: `erp-sync/.env`, `.env.local`, `email-sync/.env`, `firebase-service-account.json` — all gitignored.
+- `firebase-service-account.json` (repo root) **is a full Firebase Admin key** (`firebase-adminsdk-fbsvc@crystocraft-costing`) — usable locally with `firebase-admin` (modular import: `firebase-admin/app` + `firebase-admin/firestore`) for read-only diagnostics, and it is the Viewer credential for GA4 property `547709480` (see `LOCAL-TOOLS.md` §GA4). `google-auth-library` / `firebase-admin` are already in `node_modules`. The Netlify runtime uses its own `FIREBASE_CLIENT_EMAIL`/`FIREBASE_PRIVATE_KEY` env vars — same account, different delivery.
 - Two Macs, git is the sync. `~/Developer/costing-tool` on both.
 
 ---

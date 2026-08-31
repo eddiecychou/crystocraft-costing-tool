@@ -99,17 +99,24 @@ export default async function handler(req) {
       sessions: Number(r.metricValues[1].value) || 0,
     }))
 
+    // `unmatched` = sessions GA4 could not tie to an account: a signed-out
+    // visitor, or a visit from before useAuthState.js started tagging
+    // app_uid (2026-08-27). Surfaced so the Login Activity panel can say
+    // "N matched, X still anonymous" rather than leaving every blank column
+    // looking like a failure.
     const byUid = {}
+    let unmatched = 0
     for (const r of byUidData?.rows || []) {
       const uid = r.dimensionValues[0].value
-      if (!uid || uid === '(not set)') continue
+      const sessions = Number(r.metricValues[0].value) || 0
+      if (!uid || uid === '(not set)') { unmatched += sessions; continue }
       byUid[uid] = {
-        sessions: Number(r.metricValues[0].value) || 0,
+        sessions,
         activeUsers: Number(r.metricValues[1].value) || 0,
       }
     }
 
-    return json({ rows, byUid })
+    return json({ rows, byUid, unmatched })
   } catch (e) {
     return json({ error: e.message || 'GA4 lookup failed' }, 500)
   }
