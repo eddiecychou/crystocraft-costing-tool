@@ -202,7 +202,7 @@ export default function FigurineShop({ profile }) {
               onClick={() => sessionStorage.setItem('fs-last-id', s.id)}
               className="mosaic-tile flex flex-col hover:shadow-md transition-shadow group">
               <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
-                <CardImageCarousel images={s.images} alt={s.name} imgClassName="object-contain p-2"
+                <CardImageCarousel images={s.images} alt={s.name} imgClassName="object-cover"
                   fallback={<Gem size={30} strokeWidth={1.25} className="text-gray-300" />} />
                 {RANGE_STATUS_CUSTOMER[s.status] && (
                   <span className={`absolute top-1.5 left-1.5 badge ${RANGE_STATUS_CUSTOMER[s.status].cls}`}

@@ -385,7 +385,7 @@ function ProductCard({ s, colorLookup = {} }) {
           onClick={() => sessionStorage.setItem('range-last-id', s.id)}
           className={`card overflow-hidden flex flex-col hover:shadow-md transition-shadow group ${isRetired ? 'opacity-50 grayscale' : ''}`}>
       <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
-        <CardImageCarousel images={s.images} alt={s.name} imgClassName="object-contain p-2"
+        <CardImageCarousel images={s.images} alt={s.name} imgClassName="object-cover"
           fallback={<Gem size={30} strokeWidth={1.25} className="text-gray-300" />} />
         <span className={`absolute top-1.5 left-1.5 badge ${STATUS_META[s.status]?.badge || ''}`}>
           {STATUS_META[s.status]?.label || s.status}
