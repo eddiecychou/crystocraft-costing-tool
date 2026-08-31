@@ -192,7 +192,10 @@ function AdminApp({ user, role }) {
                 <Route path="/products" element={<Products />} />
                 <Route path="/range" element={<Gate module="figurine"><Range /></Gate>} />
                 <Route path="/range/import-images" element={<Gate module="figurine"><ImportImages /></Gate>} />
-                <Route path="/range/:id/costing" element={<Gate module="figurine"><RangeCosting /></Gate>} />
+                {/* Figurine costing is cost-derived (crystal unit costs + BOM)
+                    — supply-side. Sales browses/quotes figurines but not their
+                    costing; admin + production only. */}
+                <Route path="/range/:id/costing" element={role === 'sales' ? <Navigate to="/range" replace /> : <Gate module="figurine"><RangeCosting /></Gate>} />
                 <Route path="/range/:id" element={<Gate module="figurine"><RangeForm /></Gate>} />
                 <Route path="/components" element={<ComponentsLib />} />
                 <Route path="/inventory" element={<InventoryStatus />} />
@@ -260,7 +263,11 @@ function AdminApp({ user, role }) {
                 <Route path="/logistics/new" element={<Gate module="shipping"><LogisticsVendorForm /></Gate>} />
                 <Route path="/logistics/:id" element={<Gate module="shipping"><LogisticsVendorForm /></Gate>} />
                 <Route path="/portal" element={<Gate module="portal"><Portal /></Gate>} />
-                <Route path="/portal/accounts/:id" element={<Gate module="portal"><AccountEdit /></Gate>} />
+                {/* Account detail edits users/{uid} (role/status/pricing) — an
+                    admin-only tool. Sales has the Portal module for the
+                    read-only Login-activity view, but must not reach AccountEdit
+                    (its writes are all rules-denied). Gate to admin. */}
+                <Route path="/portal/accounts/:id" element={role === 'admin' ? <AccountEdit /> : <Navigate to="/dashboard" replace />} />
                 {/* Legacy redirects */}
                 <Route path="/shipments" element={<Navigate to="/shipping" replace />} />
                 <Route path="/logistics" element={<Navigate to="/shipping" replace />} />

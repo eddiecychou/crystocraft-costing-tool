@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom'
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, serverTimestamp } from 'firebase/firestore'
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage'
 import { db, storage, auth, authHeader } from '../firebase'
+import { useRole } from '../access'
 import {
   RANGE_DESIGN_TYPES, RANGE_PRODUCT_TYPES, RANGE_FORMAT_CODES,
   RANGE_PLATINGS, RANGE_CRYSTAL_COLORS, RANGE_STATUSES, RANGE_CRYSTAL_BRANDS,
@@ -445,6 +446,7 @@ function variantsFromDoc(d, fallbackBrand) {
 export default function RangeForm() {
   const { id: routeId } = useParams()
   const isNew = routeId === 'new'
+  const role = useRole()   // sales edits figurine catalogue but not its costing
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -1051,7 +1053,7 @@ export default function RangeForm() {
           <h1 className="text-xl md:text-2xl">{isNew ? 'New Product' : 'Edit Product'}</h1>
         </div>
         <div className="flex items-center gap-2">
-          {!isNew && <Link to={`/range/${routeId}/costing`} className="btn-secondary text-sm">Costing</Link>}
+          {!isNew && role !== 'sales' && <Link to={`/range/${routeId}/costing`} className="btn-secondary text-sm">Costing</Link>}
           <Link to="/range" className="btn-secondary text-sm">← Back</Link>
         </div>
       </div>

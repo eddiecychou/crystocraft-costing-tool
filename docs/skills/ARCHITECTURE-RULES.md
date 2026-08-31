@@ -62,7 +62,7 @@ boundary — `firestore.rules` + `storage.rules` are.**
 | `admin` | Everything | — |
 | `production` (V8.12, factory floor) | Supply side: dashboard, products, components, suppliers, inventory, **figurine (incl. wholesale price + costing)**, purchase_orders, ERP Lookup (items/stock only) | customers, quotes, invoices, credit_notes, portal, marketing, settings, UC registry, woo, corp-gift `pricing` |
 | `customer` | Storefront/portal only; own orders + published proposal | all admin/staff data |
-| `sales` (V8.13, front office) | Customer-facing everything: customers + all CRM/message ingestion, quotes, marketing, printed catalogues, catalogue **+ pricing (view AND edit)**, fulfilment (shipping/orders), finance (invoices/credit notes), and read-only Portal login visibility | components, suppliers, purchase_orders, inventory (supply); `settings` write, ERP Lookup, UC Registry page, WooCommerce; `settings/pricing_groups` (markup formula); **writing `users` roles/status and approving invitations** (hard line — no escalation) |
+| `sales` (V8.13, front office) | Customer-facing everything: customers + all CRM/message ingestion, quotes, marketing, printed catalogues, catalogue **edit** (product/figurine customer-facing fields + images), **pricing VIEW** (reads tier/customer prices to quote), fulfilment (shipping/orders), finance (invoices/credit notes), read-only Portal **Login-activity** | components/BOM, suppliers, purchase_orders, inventory (supply); the cost-derived **pricing-tier editor** + figurine **costing** (need supplier costs); `settings` write, ERP Lookup, UC Registry page, WooCommerce; `settings/pricing_groups`; Portal account/invitation management; **writing `users` roles/status** (hard line — no escalation) |
 
 **MUST — the 5-place sync.** The `production` role is enforced in five files that
 have no single source and MUST agree; changing one without the others either
@@ -91,8 +91,9 @@ fulfilment, finance). Enforced across the same multi-file contract as
 `production`, plus the edge-function layer:
 
 1. `src/access.js` — `SALES_MODULES` (nav + route gates). Modules: dashboard,
-   customers, quotes, marketing, catalogues, products, figurine, pricing,
-   shipping, invoices, credit_notes, portal.
+   customers, quotes, marketing, catalogues, products, figurine, shipping,
+   invoices, credit_notes, portal. **Not** `pricing` (the tier editor is
+   cost-derived — see the note at the end of this section).
 2. `firestore.rules` — `isSales()` / `isFrontOffice()` (= admin OR sales). Opens
    customers(+all subcollections), client_quotes, marketing_*, catalogues,
    products/range read+write, pricing_tiers/customer_prices read+write, orders,
@@ -113,8 +114,34 @@ fulfilment, finance). Enforced across the same multi-file contract as
 **HARD LINE (verified in the emulator test): sales can READ the accounts list
 but the `users` update/delete rules and `portal_invitations` write stay
 admin-only** — sales can never change a role, approve a login, or self-escalate.
-`pricing_groups` (markup formula) stays admin-only. Role assignment: "Make sales
-staff" in `AccountEdit.jsx`.
+Role assignment: "Make sales staff" in `AccountEdit.jsx`.
+
+**The pricing/costing boundary (important — a real architectural coupling).**
+Corp-gift pricing tiers and figurine costing are **derived from component costs
++ supplier quotes + the `pricing_groups` markup formula** — the very data sales
+must not see. So they cannot be handed to sales without exposing supplier costs.
+Resolution: sales gets pricing **VIEW** (`pricing_tiers`/`customer_prices` are
+readable, so quotes show real numbers) but **not** the editors — `pricing_tiers`
+/`customer_prices` writes and `pricing_groups` stay admin-only, the `pricing`
+module and the `/range/:id/costing` route are withheld, and the BOM/Duplicate/
+Costing controls are hidden from sales in `ProductDetail.jsx`/`RangeForm.jsx`.
+Sales sets a customer's price in the **quote flow** (`client_quotes`), not the
+cost-derived master editor. When revisiting sales+pricing, keep this coupling in
+mind — you cannot open the tier editor to sales without also opening costs.
+
+**Portal for sales is Login-activity only.** The `portal` module is granted for
+the read-only GA login view; the Accounts/Invitations/Enquiries tabs
+(`Portal.jsx`) and the `AccountEdit` route (`App.jsx`) are gated to admin,
+because every mutation there (users writes, invitation approval) is rules-denied
+to sales anyway.
+
+**Edge-function auth for sales** (front office): `lib/auth.js` `requireFrontOffice`
+on the CRM/marketing/quote/blog functions; the inline-`isAdmin` CRM functions
+broadened to `['admin','sales']`; `erp.js` `SALES_ENTITIES` = customer +
+sales_invoice/sales_order + the item/catalogue family (NOT supplier/purchase);
+`bank.js` opens `list`/`audit` (read) to sales so quotes/PIs/invoices show the
+receiving-bank details, writes stay admin. Admin-only holdouts: extract-po,
+woo-sync, send-email, bank writes.
 
 ## 3. Rules deploy SEPARATELY from Netlify
 

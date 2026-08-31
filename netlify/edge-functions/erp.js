@@ -102,14 +102,17 @@ const PRODUCTION_ENTITIES = new Set([
   'bom', 'alternatives', 'codes', 'sync_status', 'item_images',
 ])
 
-// V8.13 — the sales/front-office mirror image: the CUSTOMER side of the ERP,
-// for Sales Invoices' SI-matching and a customer's JES order history. Never
-// the supply side (supplier / purchase / item costs) — that's the wall
-// production sits behind from the other direction. The `lines` entity is
-// allowed but further constrained to sales_invoice/sales_order below (never
-// purchase lines).
+// V8.13 — the sales/front-office ERP surface: the customer side (customer /
+// sales_invoice / sales_order, for SI-matching and JES order history) PLUS the
+// item/catalogue family production also gets (so figurine ERP-import and any
+// item/stock lookup work — sales edits the catalogue). The ONLY entities
+// withheld are `supplier` and `purchase` — supplier contacts/terms and what we
+// PAY suppliers, the supply-cost wall. The `lines` entity is further
+// constrained to sales_invoice/sales_order below (never purchase lines).
 const SALES_ENTITIES = new Set([
   'customer', 'sales_invoice', 'sales_order', 'lines',
+  'item', 'stock', 'warehouse', 'item_type',
+  'bom', 'alternatives', 'codes', 'sync_status', 'item_images',
 ])
 
 export default async function handler(req) {

@@ -57,7 +57,14 @@ const PRODUCTION_MODULES = new Set([
 const SALES_MODULES = new Set([
   'dashboard',
   'customers', 'quotes', 'marketing', 'catalogues',
-  'products', 'figurine', 'pricing',
+  'products', 'figurine',
+  // NOTE: the `pricing` module (the /products/:id/pricing tier editor) is
+  // deliberately NOT here. Corp-gift tier prices are derived from component
+  // COSTS + supplier quotes + the pricing_groups markup formula — all of which
+  // sales must not see. Sales READS the resulting prices (pricing_tiers /
+  // customer_prices, opened in firestore.rules) to build quotes, but the
+  // cost-derived tier editor stays admin. Figurine COSTING is gated the same
+  // way (the /range/:id/costing route is admin+production only).
   'shipping', 'invoices', 'credit_notes',
   'portal', // view-only — mutations stay admin (see firestore.rules users/{uid})
 ])

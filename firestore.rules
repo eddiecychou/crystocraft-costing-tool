@@ -115,15 +115,18 @@ service cloud.firestore {
                   || !viewerIsSensitive()));
         allow write: if isStaff() || isSales();
       }
-      // Pricing is margin data — admin AND sales (they quote with it), never
-      // production. The markup FORMULA (settings/pricing_groups) stays admin.
+      // Pricing is margin data. Sales READS it (to quote); only admin WRITES
+      // (the tier editor is cost-derived). Production never reads it at all.
       match /pricing_tiers/{tierId} {
+        // Sales READS tier prices to build quotes; the tier editor is
+        // cost-derived (components + supplier quotes + pricing_groups) so its
+        // WRITE stays admin-only. Production still never reads pricing.
         allow read: if canShop() || isSales();
-        allow write: if isFrontOffice();
+        allow write: if isAdmin();
       }
       match /customer_prices/{priceUid} {
         allow read: if request.auth.uid == priceUid || isFrontOffice();
-        allow write: if isFrontOffice();
+        allow write: if isAdmin();
       }
       // Product bill-of-materials components + their supplier quotes — supply
       // data, opened to staff so production can build and cost a product's BOM.

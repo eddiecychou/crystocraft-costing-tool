@@ -12,14 +12,14 @@ import { useRole } from '../access'
 
 export default function ProductDetail() {
   const { id } = useParams()
-  // Branded-for image tagging and pricing are customer/sales concerns —
-  // available to admin AND sales (V8.13), who both read customers and see
-  // pricing. A PRODUCTION login reaches this page (it manages the catalogue)
-  // but must not read the customers collection (rules deny it) and must not
-  // see pricing — so those are gated to admin-or-sales and the page works for
-  // all three roles.
   const role = useRole()
+  // Branded-for image tagging reads the customers collection — admin AND sales
+  // (V8.13) may, production may not (rules deny it). The name `isAdmin` is kept
+  // for the existing customers-fetch guard below; it means "may read customers".
   const isAdmin = role === 'admin' || role === 'sales'
+  // The Pricing Tiers editor is cost-derived (components + supplier quotes +
+  // markup formula) — admin only. Sales sees prices when quoting, not here.
+  const canManagePricing = role === 'admin'
   const navigate = useNavigate()
   const [product, setProduct]       = useState(null)
   const [components, setComponents] = useState([])
@@ -43,10 +43,16 @@ export default function ProductDetail() {
     })
   }, [id])
 
+  // BOM/components are supply-side (admin + production only in firestore.rules).
+  // Sales edits the catalogue's customer-facing fields + pricing but not the
+  // bill of materials — so don't subscribe (the read would permission-deny)
+  // and the Components card + Duplicate are hidden below.
+  const isSupplySide = role === 'admin' || role === 'production'
   useEffect(() => {
+    if (!isSupplySide) return
     const q = query(collection(db, 'products', id, 'components'), orderBy('sort_order'))
     return onSnapshot(q, snap => setComponents(snap.docs.map(d => ({ id: d.id, ...d.data() }))))
-  }, [id])
+  }, [id, isSupplySide])
 
   useEffect(() => {
     const q = query(collection(db, 'products', id, 'images'), orderBy('sort_order'))
@@ -210,9 +216,13 @@ export default function ProductDetail() {
           </div>
           <div className="flex gap-2 shrink-0">
             <Link to={`/products/${id}/edit`} onClick={remember} className="btn-secondary text-sm">Edit</Link>
-            <button className="btn-secondary text-sm" onClick={handleDuplicate} disabled={duplicating}>
-              {duplicating ? 'Copying…' : '⧉ Duplicate'}
-            </button>
+            {/* Duplicate copies the BOM/components too — supply-side, so it's
+                hidden from sales (who can't read/write components). */}
+            {isSupplySide && (
+              <button className="btn-secondary text-sm" onClick={handleDuplicate} disabled={duplicating}>
+                {duplicating ? 'Copying…' : '⧉ Duplicate'}
+              </button>
+            )}
             <button className="btn-danger text-sm" onClick={() => setConfirmDelete(true)}>Delete</button>
           </div>
         </div>
@@ -235,7 +245,10 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* Components / BOM */}
+          {/* Components / BOM — supply-side (admin + production). Hidden from
+              sales, whose catalogue access is the customer-facing fields +
+              pricing, not the bill of materials. */}
+          {isSupplySide && (
           <div className="card p-4">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-semibold text-gray-700">Bill of Materials</h2>
@@ -270,10 +283,11 @@ export default function ProductDetail() {
               </div>
             )}
           </div>
+          )}
 
           {/* Pricing Tiers placeholder — admin only; pricing is margin data
               and the /products/:id/pricing route is admin-gated. */}
-          {isAdmin && (
+          {canManagePricing && (
             <div className="card p-4">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-semibold text-gray-700">Pricing Tiers</h2>
