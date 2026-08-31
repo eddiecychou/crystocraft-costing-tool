@@ -58,7 +58,8 @@ async function isAdmin(uid, idToken, projectId) {
   const r = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } })
   if (!r.ok) return false
   const doc = await r.json()
-  return doc?.fields?.role?.stringValue === 'admin'
+  // V8.13: front-office — admin OR sales (see lib/auth.js requireFrontOffice)
+  return ['admin', 'sales'].includes(doc?.fields?.role?.stringValue)
 }
 
 const escHtml = s => String(s ?? '').replace(/[&<>"]/g, c => (
@@ -107,7 +108,7 @@ export default async function handler(req) {
     })
     uid = payload.sub
   } catch { return json({ error: 'Invalid or expired session' }, 401) }
-  if (!(await isAdmin(uid, token, PROJECT_ID))) return json({ error: 'Admin access required' }, 403)
+  if (!(await isAdmin(uid, token, PROJECT_ID))) return json({ error: 'Access denied' }, 403)
 
   let body
   try { body = await req.json() } catch { return json({ error: 'Bad JSON' }, 400) }

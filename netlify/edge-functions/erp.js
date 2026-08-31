@@ -102,6 +102,16 @@ const PRODUCTION_ENTITIES = new Set([
   'bom', 'alternatives', 'codes', 'sync_status', 'item_images',
 ])
 
+// V8.13 — the sales/front-office mirror image: the CUSTOMER side of the ERP,
+// for Sales Invoices' SI-matching and a customer's JES order history. Never
+// the supply side (supplier / purchase / item costs) — that's the wall
+// production sits behind from the other direction. The `lines` entity is
+// allowed but further constrained to sales_invoice/sales_order below (never
+// purchase lines).
+const SALES_ENTITIES = new Set([
+  'customer', 'sales_invoice', 'sales_order', 'lines',
+])
+
 export default async function handler(req) {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
 
@@ -135,8 +145,8 @@ export default async function handler(req) {
   //     per-entity restriction for production is applied after we parse the
   //     request (2·5, once payload.entity is known).
   const role = await getRole(uid, token, PROJECT_ID)
-  if (role !== 'admin' && role !== 'production') {
-    return json({ error: 'Admin access required' }, 403)
+  if (role !== 'admin' && role !== 'production' && role !== 'sales') {
+    return json({ error: 'Access denied' }, 403)
   }
 
   // 2) Parse the request.
@@ -149,6 +159,17 @@ export default async function handler(req) {
   //      the hidden UI tab. Admin skips the check.
   if (role === 'production' && !PRODUCTION_ENTITIES.has(payload?.entity)) {
     return json({ error: 'This ERP data is restricted to administrators' }, 403)
+  }
+  // Sales staff: the customer side only. Same enforcement point as production
+  // above. The `lines` entity is additionally constrained to sales documents
+  // (never purchase lines, which carry supplier cost).
+  if (role === 'sales') {
+    if (!SALES_ENTITIES.has(payload?.entity)) {
+      return json({ error: 'This ERP data is restricted to administrators' }, 403)
+    }
+    if (payload?.entity === 'lines' && !['sales_invoice', 'sales_order'].includes(payload?.of)) {
+      return json({ error: 'This ERP data is restricted to administrators' }, 403)
+    }
   }
 
   // 2a) BOM explosion: { entity: 'bom', code } → recursive explode_bom() RPC.

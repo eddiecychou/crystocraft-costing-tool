@@ -12,11 +12,14 @@ import { useRole } from '../access'
 
 export default function ProductDetail() {
   const { id } = useParams()
-  // Branded-for image tagging and pricing are admin concerns. A production
-  // login reaches this page (it manages the catalogue) but must not read the
-  // customers collection (Phase 2 rules deny it) — so the fetch and the
-  // branded-for picker are admin-only, and the page works for both roles.
-  const isAdmin = useRole() === 'admin'
+  // Branded-for image tagging and pricing are customer/sales concerns —
+  // available to admin AND sales (V8.13), who both read customers and see
+  // pricing. A PRODUCTION login reaches this page (it manages the catalogue)
+  // but must not read the customers collection (rules deny it) and must not
+  // see pricing — so those are gated to admin-or-sales and the page works for
+  // all three roles.
+  const role = useRole()
+  const isAdmin = role === 'admin' || role === 'sales'
   const navigate = useNavigate()
   const [product, setProduct]       = useState(null)
   const [components, setComponents] = useState([])

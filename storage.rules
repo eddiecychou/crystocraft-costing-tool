@@ -40,11 +40,23 @@ service firebase.storage {
         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'production'];
     }
 
+    // Mirrors firestore.rules' isFrontOffice() = admin OR the V8.13 `sales`
+    // role. Used on the customer-facing object paths whose Firestore records
+    // were opened to isFrontOffice() — customer/marketing/quote/order/finance
+    // assets and the catalogue images sales may edit. Supply-side paths
+    // (components/suppliers/range_components/supplier_quotes) stay isStaff, and
+    // settings/** stays isAdmin.
+    function isFrontOffice() {
+      return isAuth() &&
+        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'sales'];
+    }
+
     // Product images + BOM-component images + BOM-component quote attachments
     // (all built under products/{id}/… — see SupplierQuoteForm.jsx). Firestore:
     // products + products/{id}/components + …/supplier_quotes are isStaff.
     match /products/{productId}/{allPaths=**} {
-      allow read, write: if isStaff();
+      allow read, write: if isStaff() || isFrontOffice();
     }
 
     // Component images (legacy top-level path; current code writes component
@@ -67,19 +79,19 @@ service firebase.storage {
 
     // Catalogue cover images
     match /catalogues/{catalogueId}/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isFrontOffice();
     }
 
     // Customer enquiry attachments
     match /customers/{customerId}/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isFrontOffice();
     }
 
     // WhatsApp "weak lead" attachments (V8.2) — marketing_contacts/{id}/whatsapp/…,
     // same idea as customers/{customerId}/whatsapp/… above but for a chat that
     // was saved as a lead rather than matched to a real customer.
     match /marketing_contacts/{contactId}/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isFrontOffice();
     }
 
     // Customer Brand Gallery (V7.21) — uploaded to customer-assets/{customerId}/…
@@ -90,13 +102,13 @@ service firebase.storage {
     // (firestore.rules, admin-write / owner-read); this just needs to not block
     // the object write, same posture as the other admin-curated paths above.
     match /customer-assets/{customerId}/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isFrontOffice();
     }
 
     // Figurine Gifts (Crystocraft Range) images — Firestore range_products is
     // isStaff (production has full figurine access incl. costing).
     match /range_products/{rangeId}/{allPaths=**} {
-      allow read, write: if isStaff();
+      allow read, write: if isStaff() || isFrontOffice();
     }
 
     // Critical Components library images — Firestore range_components is isStaff.
@@ -124,10 +136,10 @@ service firebase.storage {
     // Shipping module — imported PI files (orders/imports/…) + freight quote
     // attachments.
     match /orders/{orderId}/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isFrontOffice();
     }
     match /freight_quotes/{quoteId}/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isFrontOffice();
     }
 
     // Custom (non-catalogue) quote item images (V8.11, QuoteDetail.jsx's
@@ -138,14 +150,14 @@ service firebase.storage {
     // the same bug that comment describes (a missing rule here silently
     // rejects the upload with Storage's default-deny, not a helpful error).
     match /client_quotes/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isFrontOffice();
     }
 
     // Daily Drafts (V8.0) — images uploaded directly in the Compose phase
     // (not from a product's existing gallery — see DailyDrafts.jsx), same
     // idiom as campaign_images (Campaigns.jsx's Unlayer editor uploads).
     match /daily_draft_images/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isFrontOffice();
     }
 
     // Marketing campaign images (Campaigns.jsx's Unlayer editor uploads,
@@ -156,7 +168,7 @@ service firebase.storage {
     // this file: real access control is app-level (only the Campaigns admin
     // page ever writes here), this just needs to not block the object write.
     match /campaign_images/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isFrontOffice();
     }
   }
 }

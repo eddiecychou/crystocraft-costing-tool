@@ -1,7 +1,7 @@
-import { requireAdmin } from './lib/auth.js'
+import { requireFrontOffice } from './lib/auth.js'
 
 export default async (request) => {
-  const auth = await requireAdmin(request)
+  const auth = await requireFrontOffice(request)
   if (!auth.ok) return auth.response
 
   const { customer, product, channel, context: ctx } = await request.json()

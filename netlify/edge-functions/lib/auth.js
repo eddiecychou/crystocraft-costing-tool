@@ -26,18 +26,23 @@ const JWKS = createRemoteJWKSet(
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
-async function isAdmin(uid, idToken, projectId) {
+// Returns the caller's users/{uid}.role string, or '' if the doc/field is
+// missing. (Was a boolean isAdmin(); generalized so requireRole can gate on
+// the V8.13 `sales` front-office role too — same shape erp.js already uses.)
+async function getUserRole(uid, idToken, projectId) {
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`
   const r = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } })
-  if (!r.ok) return false
+  if (!r.ok) return ''
   const doc = await r.json()
-  return doc?.fields?.role?.stringValue === 'admin'
+  return doc?.fields?.role?.stringValue || ''
 }
 
-// Verifies the caller is a signed-in, approved admin of this app. Returns
-// { ok: true, uid, email } on success, or { ok: false, response } — return
-// `response` directly from the handler when ok is false.
-export async function requireAdmin(req) {
+// Verifies the caller is a signed-in user whose role is in `allowedRoles`.
+// Returns { ok: true, uid, email, role } on success, or { ok: false, response }
+// — return `response` directly from the handler when ok is false. This is the
+// shared gate for both admin-only functions (requireAdmin) and the V8.13
+// front-office functions that also accept `sales` (requireFrontOffice).
+export async function requireRole(req, allowedRoles) {
   const PROJECT_ID = Deno.env.get('VITE_FIREBASE_PROJECT_ID') || Deno.env.get('FIREBASE_PROJECT_ID')
   if (!PROJECT_ID) return { ok: false, response: json({ error: 'Server not configured' }, 500) }
 
@@ -54,8 +59,21 @@ export async function requireAdmin(req) {
     return { ok: false, response: json({ error: 'Invalid or expired session' }, 401) }
   }
 
-  if (!(await isAdmin(uid, token, PROJECT_ID))) {
-    return { ok: false, response: json({ error: 'Admin access required' }, 403) }
+  const role = await getUserRole(uid, token, PROJECT_ID)
+  if (!allowedRoles.includes(role)) {
+    return { ok: false, response: json({ error: 'Access denied' }, 403) }
   }
-  return { ok: true, uid, email }
+  return { ok: true, uid, email, role }
+}
+
+// Admin-only gate (unchanged contract).
+export function requireAdmin(req) {
+  return requireRole(req, ['admin'])
+}
+
+// Front-office gate — admin OR the V8.13 `sales` role. Use on CRM / marketing /
+// quote / customer-email functions sales is allowed to drive; keep requireAdmin
+// on supply-side / finance-posting / system functions.
+export function requireFrontOffice(req) {
+  return requireRole(req, ['admin', 'sales'])
 }

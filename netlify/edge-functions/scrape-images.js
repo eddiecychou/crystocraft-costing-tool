@@ -38,12 +38,12 @@ function extractImages(html) {
   return out
 }
 
-import { requireAdmin } from './lib/auth.js'
+import { requireFrontOffice } from './lib/auth.js'
 
 export default async function handler(req) {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
-  const auth = await requireAdmin(req)
+  const auth = await requireFrontOffice(req)
   if (!auth.ok) return auth.response
 
   let body

@@ -38,12 +38,37 @@ const PRODUCTION_MODULES = new Set([
   'erp',
 ])
 
-// Is `moduleKey` visible to `role`? Admin sees all; production sees only its
-// allow-set; anyone else (unknown role) sees nothing here — a closed default,
-// which is the safe direction for an access check.
+// V8.13 — the `sales` role: the customer-facing FRONT OFFICE, the mirror image
+// of `production`'s supply/back office. Owner's call (2026-08-31, all four
+// scope toggles): full CRM (customers + email/WhatsApp/Alibaba ingestion),
+// quoting, marketing/Daily Drafts, catalogue + pricing (view AND edit, unlike
+// production which is walled off from pricing), printed catalogues, plus
+// fulfilment (Production/shipping) and finance (invoices, credit notes) and
+// read-only Portal login visibility.
+//
+// HARD SAFETY LINE, enforced in firestore.rules NOT here: sales may READ the
+// accounts list but may NEVER write users/{uid} role/status, nor create/approve
+// portal invitations (that path is the admin-SDK function). So the Portal
+// module is view-only for sales — no privilege escalation.
+//
+// Deliberately EXCLUDED (supply side + system internals, admin/production only):
+// components, suppliers, purchase_orders, inventory, erp (ERP Lookup page),
+// uc (UC Registry page), woo (WooCommerce Sync), settings.
+const SALES_MODULES = new Set([
+  'dashboard',
+  'customers', 'quotes', 'marketing', 'catalogues',
+  'products', 'figurine', 'pricing',
+  'shipping', 'invoices', 'credit_notes',
+  'portal', // view-only — mutations stay admin (see firestore.rules users/{uid})
+])
+
+// Is `moduleKey` visible to `role`? Admin sees all; production and sales each
+// see only their allow-set; anyone else (unknown role) sees nothing — a closed
+// default, the safe direction for an access check.
 export function canAccess(role, moduleKey) {
   if (role === 'admin') return true
   if (role === 'production') return PRODUCTION_MODULES.has(moduleKey)
+  if (role === 'sales') return SALES_MODULES.has(moduleKey)
   return false
 }
 

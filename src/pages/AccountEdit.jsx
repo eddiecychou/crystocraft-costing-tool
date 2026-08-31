@@ -94,7 +94,8 @@ export default function AccountEdit() {
   const isSelf   = auth.currentUser?.uid === id
   const isAdmin  = u.role === 'admin'
   const isProduction = u.role === 'production'
-  const isStaff  = isAdmin || isProduction   // internal login, not a customer
+  const isSales  = u.role === 'sales'
+  const isStaff  = isAdmin || isProduction || isSales   // internal login, not a customer
   const isPending   = u.role === 'customer' && u.status !== 'approved' && u.status !== 'suspended'
   const isApproved  = u.role === 'customer' && u.status === 'approved'
   const isSuspended = u.role === 'customer' && u.status === 'suspended'
@@ -270,6 +271,7 @@ export default function AccountEdit() {
 
   const roleStatusLabel = isAdmin ? 'Admin'
     : isProduction ? 'Production staff'
+    : isSales ? 'Sales staff'
     : isApproved ? 'Approved customer'
     : isSuspended ? 'Suspended'
     : 'Pending approval'
@@ -478,6 +480,18 @@ export default function AccountEdit() {
                 onClick={() => { if (confirm(`Make ${displayName} PRODUCTION STAFF?\n\nThey get a factory login: Products, Components, Suppliers and Inventory only. They will NOT see customers, quotes, invoices, credit notes or marketing.`)) apply({ role: 'production' }, { back: true }) }}>
                 Make production staff
               </button>
+              {/* Sales / front-office staff (V8.13 RBAC). A sales login sees
+                  customers, CRM & message ingestion, quotes, marketing,
+                  catalogue + pricing, printed catalogues, fulfilment and
+                  finance — the customer-facing side. It does NOT see the
+                  supply side (components, suppliers, purchase orders,
+                  inventory) or system internals (ERP, settings, Woo), and it
+                  can NEVER change account roles. Sales sees prices, so a
+                  slightly firmer confirm than production. */}
+              <button className="btn-secondary text-sm"
+                onClick={() => { if (confirm(`Make ${displayName} SALES STAFF?\n\nThey get a front-office login: customers & CRM, message history, quotes (incl. prices), marketing, catalogues, fulfilment and invoices/credit notes.\n\nThey will NOT see components, suppliers, purchase orders, inventory, the ERP, or settings — and they can NEVER change account roles or approve logins.`)) apply({ role: 'sales' }, { back: true }) }}>
+                Make sales staff
+              </button>
               <button className="text-sm text-red-600 border border-red-200 rounded px-2.5 py-1 hover:bg-red-50"
                 onClick={() => {
                   const ans = prompt(`⚠️ Make ${displayName} a FULL ADMIN?\n\nAn admin can see EVERYTHING in the costing tool — costs, margins, suppliers, every customer, and all your trade secrets. Only do this for your own staff.\n\nType  MAKE ADMIN  to confirm.`)
@@ -493,9 +507,9 @@ export default function AccountEdit() {
               Restore
             </button>
           )}
-          {/* Production staff role management — promote to admin, or revoke
-              back to a normal customer account. */}
-          {isProduction && !isSelf && (
+          {/* Staff (production/sales) role management — promote to admin, or
+              revoke back to a normal customer account. Same shape for both. */}
+          {(isProduction || isSales) && !isSelf && (
             <>
               <button className="btn-secondary text-sm"
                 onClick={() => {
@@ -504,8 +518,17 @@ export default function AccountEdit() {
                 }}>
                 Promote to admin
               </button>
+              {isSales
+                ? <button className="btn-secondary text-sm"
+                    onClick={() => { if (confirm(`Switch ${displayName} to PRODUCTION STAFF?\n\nThey lose the customer-facing side and get the factory login instead: Products, Components, Suppliers, Inventory.`)) apply({ role: 'production' }, { back: true }) }}>
+                    Switch to production staff
+                  </button>
+                : <button className="btn-secondary text-sm"
+                    onClick={() => { if (confirm(`Switch ${displayName} to SALES STAFF?\n\nThey lose the supply side and get the front-office login instead: customers, CRM, quotes, marketing, catalogue/pricing, fulfilment, invoices.`)) apply({ role: 'sales' }, { back: true }) }}>
+                    Switch to sales staff
+                  </button>}
               <button className="text-sm text-red-600 border border-red-200 rounded px-2.5 py-1 hover:bg-red-50"
-                onClick={() => { if (confirm('Revoke production access? They revert to a normal (approved) customer login — Storefront only, no operation-center access.')) apply({ role: 'customer', status: 'approved' }, { back: true }) }}>
+                onClick={() => { if (confirm('Revoke staff access? They revert to a normal (approved) customer login — Storefront only, no operation-center access.')) apply({ role: 'customer', status: 'approved' }, { back: true }) }}>
                 Revoke — back to normal account
               </button>
             </>

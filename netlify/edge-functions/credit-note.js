@@ -12,7 +12,7 @@
 //   POST { op: 'post_credit_note', ... }  -> allocates cn_no, inserts the fact
 //   POST { op: 'void_credit_note', id }   -> flips status to 'void'
 //   POST { op: 'list_credit_notes', si_no?, order_id?, limit? }
-import { requireAdmin } from './lib/auth.js'
+import { requireFrontOffice } from './lib/auth.js'
 
 const json = (b, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } })
@@ -24,7 +24,7 @@ export default async function handler(req) {
   const KEY = Deno.env.get('SUPABASE_SECRET_KEY') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   if (!SUPABASE_URL || !KEY) return json({ error: 'Server not configured' }, 500)
 
-  const auth = await requireAdmin(req)
+  const auth = await requireFrontOffice(req)
   if (!auth.ok) return auth.response
   const email = auth.email
 

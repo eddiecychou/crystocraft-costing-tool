@@ -39,6 +39,7 @@ await env.withSecurityRulesDisabled(async ctx => {
   const d = ctx.firestore()
   await setDoc(doc(d, 'users/admin1'),      { role: 'admin' })
   await setDoc(doc(d, 'users/prod1'),       { role: 'production' })
+  await setDoc(doc(d, 'users/sales1'),      { role: 'sales' })
   await setDoc(doc(d, 'users/cust1'),       { role: 'customer', status: 'approved', customer_id: 'c1' })
   await setDoc(doc(d, 'customers/c1'),      { company_name: 'ACME', sensitive: false })
   await setDoc(doc(d, 'products/p1'),       { name: 'Widget' })
@@ -62,10 +63,16 @@ await env.withSecurityRulesDisabled(async ctx => {
   await setDoc(doc(d, 'settings/crystal_unit_costs'), { items: [] })
   await setDoc(doc(d, 'settings/component_categories'), { list: [] })
   await setDoc(doc(d, 'settings/pricing_groups'),    { groups: [] })
+  await setDoc(doc(d, 'settings/quote_branding'),    { stamp: '' })
+  await setDoc(doc(d, 'products/p1/pricing_tiers/t0'), { price: 1 })
+  await setDoc(doc(d, 'uc_invoices/ui1'),   { uc_no: 'UC1' })
+  await setDoc(doc(d, 'catalogues/cat1'),   { title: 'C' })
+  await setDoc(doc(d, 'portal_invitations/inv1'), { email: 'x@y.z' })
 })
 
 const admin = env.authenticatedContext('admin1').firestore()
 const prod  = env.authenticatedContext('prod1').firestore()
+const sales = env.authenticatedContext('sales1').firestore()
 
 // ---- production ALLOWED (supply side) ---------------------------------
 await ok('prod read products',           assertSucceeds(getDoc(doc(prod, 'products/p1'))))
@@ -106,6 +113,44 @@ await ok('prod DENIED write pricing_tiers', assertFails(setDoc(doc(prod, 'produc
 // A production login must never be able to self-escalate its own role.
 await ok('prod DENIED self role escalation', assertFails(setDoc(doc(prod, 'users/prod1'), { role: 'admin' })))
 
+// ---- sales ALLOWED (front office) -------------------------------------
+await ok('sales read customers',          assertSucceeds(getDoc(doc(sales, 'customers/c1'))))
+await ok('sales write customers',         assertSucceeds(setDoc(doc(sales, 'customers/c2'), { company_name: 'B' })))
+await ok('sales write customer email_thread', assertSucceeds(setDoc(doc(sales, 'customers/c1/email_threads/e1'), { subject: 'hi' })))
+await ok('sales write customer whatsapp_thread', assertSucceeds(setDoc(doc(sales, 'customers/c1/whatsapp_threads/w1'), { text: 'hi' })))
+await ok('sales write client_quotes',     assertSucceeds(setDoc(doc(sales, 'client_quotes/q2'), { customer_name: 'B' })))
+await ok('sales read client_quotes',      assertSucceeds(getDoc(doc(sales, 'client_quotes/q1'))))
+await ok('sales write marketing_contacts',assertSucceeds(setDoc(doc(sales, 'marketing_contacts/m2'), { email: 'a@b.c' })))
+await ok('sales write outreach_draft',    assertSucceeds(setDoc(doc(sales, 'outreach_drafts/od1'), { subject: 'x' })))
+await ok('sales read+write catalogue',    assertSucceeds(setDoc(doc(sales, 'catalogues/cat2'), { title: 'D' })))
+await ok('sales read product',            assertSucceeds(getDoc(doc(sales, 'products/p1'))))
+await ok('sales write product (edit catalogue)', assertSucceeds(setDoc(doc(sales, 'products/p3'), { name: 'S' })))
+await ok('sales read pricing_tiers',      assertSucceeds(getDoc(doc(sales, 'products/p1/pricing_tiers/t0'))))
+await ok('sales write pricing_tiers',     assertSucceeds(setDoc(doc(sales, 'products/p1/pricing_tiers/t1'), { price: 2 })))
+await ok('sales read range_products',     assertSucceeds(getDoc(doc(sales, 'range_products/rp1'))))
+await ok('sales write orders (fulfilment)', assertSucceeds(setDoc(doc(sales, 'orders/o2'), { customer_id: 'c1' })))
+await ok('sales write credit_notes (finance)', assertSucceeds(setDoc(doc(sales, 'credit_notes/cn2'), { amount: 2 })))
+await ok('sales write uc_invoices',       assertSucceeds(setDoc(doc(sales, 'uc_invoices/ui2'), { uc_no: 'UC2' })))
+await ok('sales write counters/so_',      assertSucceeds(setDoc(doc(sales, 'counters/so_26'), { seq: 3 })))
+await ok('sales write counters/uc_',      assertSucceeds(setDoc(doc(sales, 'counters/uc_26'), { seq: 3 })))
+await ok('sales read settings/quote_branding', assertSucceeds(getDoc(doc(sales, 'settings/quote_branding'))))
+await ok('sales read settings/exchange_rates', assertSucceeds(getDoc(doc(sales, 'settings/exchange_rates'))))
+await ok('sales read users (accounts list)', assertSucceeds(getDoc(doc(sales, 'users/prod1'))))
+await ok('sales read portal_invitations', assertSucceeds(getDoc(doc(sales, 'portal_invitations/inv1'))))
+
+// ---- sales DENIED (supply + system + escalation) ----------------------
+await ok('sales DENIED suppliers',        assertFails(getDoc(doc(sales, 'suppliers/s1'))))
+await ok('sales DENIED purchase_orders',  assertFails(getDoc(doc(sales, 'purchase_orders/po1'))))
+await ok('sales DENIED range_components', assertFails(getDoc(doc(sales, 'range_components/rc1'))))
+await ok('sales DENIED crystals',         assertFails(getDoc(doc(sales, 'crystals/x1'))))
+await ok('sales DENIED product components', assertFails(getDoc(doc(sales, 'products/p1/components/c1'))))
+await ok('sales DENIED settings/pricing_groups (read)',  assertFails(getDoc(doc(sales, 'settings/pricing_groups'))))
+await ok('sales DENIED settings/quote_branding (write)', assertFails(setDoc(doc(sales, 'settings/quote_branding'), { stamp: 'x' })))
+await ok('sales DENIED counters/pu_',     assertFails(setDoc(doc(sales, 'counters/pu_26'), { seq: 9 })))
+await ok('sales DENIED write users role (approve/change)', assertFails(setDoc(doc(sales, 'users/cust1'), { role: 'admin', status: 'approved', customer_id: 'c1' })))
+await ok('sales DENIED self role escalation', assertFails(setDoc(doc(sales, 'users/sales1'), { role: 'admin' })))
+await ok('sales DENIED portal_invitations write', assertFails(setDoc(doc(sales, 'portal_invitations/inv2'), { email: 'a@b.c' })))
+
 // ---- admin UNCHANGED --------------------------------------------------
 await ok('admin read customers',         assertSucceeds(getDoc(doc(admin, 'customers/c1'))))
 await ok('admin read purchase_orders',   assertSucceeds(getDoc(doc(admin, 'purchase_orders/po1'))))
@@ -125,6 +170,17 @@ await ok('prod DENIED customers/ upload',       assertFails(uploadString(storage
 await ok('prod DENIED settings/ branding upload', assertFails(uploadString(storageRef(prodStore, 'settings/stamp.txt'), 'x')))
 await ok('prod DENIED client_quotes/ upload',   assertFails(uploadString(storageRef(prodStore, 'client_quotes/custom_items/i1/x.txt'), 'x')))
 await ok('customer DENIED products/ upload',    assertFails(uploadString(storageRef(custStore, 'products/p1/images/x.txt'), 'x')))
+
+// Sales (V8.13) attaches files to the customer-facing records it edits; still
+// denied the supply-side + settings object domains.
+const salesStore = env.authenticatedContext('sales1').storage()
+await ok('sales upload customer-assets/ (brand gallery)', assertSucceeds(uploadString(storageRef(salesStore, 'customer-assets/c1/x.txt'), 'x')))
+await ok('sales upload customers/ enquiry attach', assertSucceeds(uploadString(storageRef(salesStore, 'customers/c1/x.txt'), 'x')))
+await ok('sales upload client_quotes/ custom image', assertSucceeds(uploadString(storageRef(salesStore, 'client_quotes/custom_items/i1/x.txt'), 'x')))
+await ok('sales upload daily_draft_images/',   assertSucceeds(uploadString(storageRef(salesStore, 'daily_draft_images/x.txt'), 'x')))
+await ok('sales upload products/ image (edit catalogue)', assertSucceeds(uploadString(storageRef(salesStore, 'products/p1/images/y.txt'), 'x')))
+await ok('sales DENIED suppliers/ upload',     assertFails(uploadString(storageRef(salesStore, 'suppliers/s1/catalogs/x.txt'), 'x')))
+await ok('sales DENIED settings/ branding upload', assertFails(uploadString(storageRef(salesStore, 'settings/stamp.txt'), 'x')))
 
 await env.cleanup()
 console.log(`\n${fail === 0 ? 'ALL PASS' : fail + ' FAILED'}  (${pass} passed)`)

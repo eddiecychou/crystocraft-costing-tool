@@ -48,9 +48,9 @@ export default function CustomerAccounts({ embedded = false }) {
   const pending   = users.filter(u => u.role === 'customer' && u.status !== 'approved' && u.status !== 'suspended')
   const approved  = users.filter(u => u.role === 'customer' && u.status === 'approved')
   const suspended = users.filter(u => u.role === 'customer' && u.status === 'suspended')
-  // Internal staff — admins AND production logins (V8.12 RBAC). Without
-  // production here, a factory login would appear in no tab at all.
-  const staff     = users.filter(u => u.role === 'admin' || u.role === 'production')
+  // Internal staff — admins, production (V8.12) AND sales (V8.13) logins.
+  // Without these here, a staff login would appear in no tab at all.
+  const staff     = users.filter(u => u.role === 'admin' || u.role === 'production' || u.role === 'sales')
 
   const tabs = [
     { v: 'pending',   label: 'Pending',   Icon: Clock,       n: pending.length },

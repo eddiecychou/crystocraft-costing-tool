@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuthState } from './hooks/useAuthState'
-import { useProfile, isAdmin, isProduction, isApproved, isPending } from './hooks/useProfile'
+import { useProfile, isAdmin, isProduction, isSales, isApproved, isPending } from './hooks/useProfile'
 import { AccessContext, useCan } from './access'
 import Layout from './components/Layout'
 import LoadingBar from './components/LoadingBar'
@@ -131,6 +131,7 @@ function AppRoutes({ user }) {
   const role = !user ? null
     : isAdmin(profile) ? 'admin'
     : isProduction(profile) ? 'production'
+    : isSales(profile) ? 'sales'
     : isApproved(profile) ? 'customer'
     : 'pending'
 
@@ -143,7 +144,7 @@ function AppRoutes({ user }) {
       <Route path="/portal/set-password" element={<SetPassword />} />
       <Route path="/login" element={
         !user ? <Login />
-        : role === 'admin' || role === 'production' ? <Navigate to="/dashboard" replace />
+        : role === 'admin' || role === 'production' || role === 'sales' ? <Navigate to="/dashboard" replace />
         : role === 'customer' ? <Navigate to="/shop" replace />
         : <PendingScreen profile={profile} />
       } />
