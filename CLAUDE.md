@@ -1,9 +1,13 @@
 # Crystocraft Operation Center — orientation
 
 Read this first in a new conversation. It is the map, not the content.
-Then read `INDEX.md` — the feature-area router: for any bug or task it names
-the exact pages / domain modules / edge functions / collections involved, and
-§5 lists the mistakes already made here so they aren't repeated.
+Then read the **skill system** at `docs/skills/` — start with
+`docs/skills/SKILL.md` (the master index + feature-area router: for any bug or
+task it names the exact pages / domain modules / edge functions / collections
+involved), then the topic files: `ARCHITECTURE-RULES.md` (hard boundaries, RBAC,
+data lifecycles, verify/deploy), `MARKETING-WORKFLOW.md`, `SOURCING-HUB.md`, and
+`LESSONS-LEARNED.md` (every past failure + its permanent fix). The old
+`INDEX.md` is now a pointer into that system.
 
 ## What this is
 
@@ -20,7 +24,12 @@ of record, one function at a time.
 
 | File | What it holds |
 |---|---|
-| `INDEX.md` | **Master router.** Feature-area index (pages ↔ logic ↔ edge fns ↔ collections ↔ spec), cross-cutting systems, the list of mistakes already made, and the verify/deploy playbook. Start here to locate anything. |
+| `docs/skills/SKILL.md` | **Master router + skill index.** Feature-area index (pages ↔ logic ↔ edge fns ↔ collections ↔ spec), stack, session-start. Start here to locate anything. |
+| `docs/skills/ARCHITECTURE-RULES.md` | Hard boundaries: data isolation, RBAC (incl. the Planned `sales` role), data lifecycles, snapshots, verify/deploy playbook |
+| `docs/skills/MARKETING-WORKFLOW.md` | Daily Drafts, campaigns, blog→WordPress/SEO, the "Artgen" image-retouch family + Product-Truth rule |
+| `docs/skills/SOURCING-HUB.md` | Suppliers, sourcing links, per-channel comms capture (email/WhatsApp/Alibaba/WeChat) |
+| `docs/skills/LESSONS-LEARNED.md` | Every significant failure + its verified permanent fix (Symptom / Root cause / Fix) |
+| `INDEX.md` | Pointer into `docs/skills/` (kept so old links resolve) |
 | `PROJECT-PLAN.md` | The running record. Newest cycle first. **"Where V8.12 starts" is the current entry point.** |
 | `JES-RETIREMENT-PLAN.md` | The nine-step route to switching JES off, in plain language |
 | `V7.15_ERP_Inventory.md` | What the ERP actually contains — measured, not assumed |
