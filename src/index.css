@@ -74,7 +74,7 @@
 
   /* ── Buttons — Work Sans, uppercase, square corners ──── */
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2 rounded-none text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed uppercase;
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2 rounded-none text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 active:brightness-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:active:brightness-100 uppercase;
     font-family: 'Work Sans', system-ui, sans-serif;
     font-weight: 500;
     letter-spacing: 0.1em;
@@ -120,6 +120,23 @@
   }
   .input::placeholder {
     color: rgba(102, 102, 102, 0.55); /* mid-grey/55 */
+  }
+  /* V3 — the states callers used to hand-roll. `:disabled` for native
+     controls; `[aria-invalid="true"]` for the error state (set that attr +
+     an error message near the field). No success style — a green field is
+     noise; absence of error IS the pass. */
+  .input:disabled,
+  .input[disabled] {
+    background-color: #F7EEE3; /* beige */
+    color: #666666;
+    cursor: not-allowed;
+  }
+  .input[aria-invalid="true"] {
+    border-color: #b91c1c; /* red-700 */
+  }
+  .input[aria-invalid="true"]:focus {
+    --tw-ring-color: #b91c1c;
+    border-color: #b91c1c;
   }
   /* V8.6, reported live — mobile browsers (iOS Safari and Chrome, both
      WebKit-based) auto-zoom the page in when a focused form field's
@@ -180,6 +197,18 @@
     font-weight: 500;
     color: #666666;
     letter-spacing: 0.18em;
+  }
+
+  /* ── Display heading — opt-in, for large page/hero titles (text-3xl+).
+     The base h1–h3 rule sets `letter-spacing: 0.04em`, right for small
+     caps; at display size that reads slightly loose. This tightens it
+     (still POSITIVE — the external draft's "negative tracking on large
+     headings" is wrong for an uppercase system, caps need air) and pulls
+     the leading in. Add alongside `text-3xl`/`text-4xl`, not a replacement
+     for the tag styling. ── */
+  .display {
+    letter-spacing: 0.015em;
+    line-height: 1.05;
   }
 
   /* ── Tag — pill filter chip, V2.5 customer-portal pattern ──

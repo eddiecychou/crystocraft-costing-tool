@@ -53,8 +53,13 @@ equivalent — keep, but only for status.
   `text-[8..12px]` values (V3, 2026-09-02). Storefront page titles =
   `text-xl md:text-2xl`.
 - **Letter-spacing conventions:** `.label` 0.14em · `.eyebrow` 0.18em ·
-  `.badge` 0.08em · `.btn` 0.1em · `.tag` 0.04em · headings 0.04em.
-  Everything caps-set is Work Sans + wide tracking; body Questrial is untracked.
+  `.badge` 0.08em · `.btn` 0.1em · `.tag` 0.04em · headings 0.04em ·
+  **`.display` 0.015em** (V3 opt-in, for `text-3xl`+ page/hero titles — the
+  base 0.04em reads loose at display size; still positive, since caps need
+  air). Everything caps-set is Work Sans + wide tracking; body Questrial is
+  untracked. **Negative heading tracking is rejected** — the external
+  VISUAL-REFINEMENT draft assumes sentence-case display type; ours is
+  uppercase.
 
 ### 1.3 Spacing
 
@@ -111,7 +116,8 @@ text-sm uppercase`, Work Sans 500, `letter-spacing 0.1em`, `transition-colors`,
 | `.btn-outline-gold` | transparent, `#C6A664` text + border | `bg-gold/10` | `gold` | opacity-40 | 0 |
 | `.btn-reversed` | `bg-white text-ink` (for photos/dark) | `bg-white/90` | `white` | opacity-40 | ~2 |
 
-- **No `:active` state on any button** (only `transition-colors` on hover).
+- **`:active`** (V3) — `.btn` base has `active:brightness-95` (a subtle press
+  darken, uniform across every variant); disabled buttons opt out.
 - `.btn-ghost` / `.btn-outline` / `.btn-outline-gold` have **zero call sites** —
   added for a storefront pass, never adopted. V3: adopt or drop.
 - **One primary per view** (UI-POLISH §4.2).
@@ -122,8 +128,10 @@ text-sm uppercase`, Work Sans 500, `letter-spacing 0.1em`, `transition-colors`,
 border `rgba(34,34,34,0.20)`, `focus:ring-1 focus:ring-ink focus:border-ink`,
 `shadow-none`, `transition-colors`. Placeholder `rgba(102,102,102,0.55)`.
 Mobile: every native `input/select/textarea` forced to `font-size:16px` <768px
-(iOS zoom fix). **No `:disabled`, no error/invalid, no success state defined** —
-callers hand-roll error text below the field.
+(iOS zoom fix). **States (V3):** `:disabled` / `[disabled]` → beige bg,
+`ink-60` text, not-allowed cursor. `[aria-invalid="true"]` → red-700 border
+(and focus ring). No success style — absence of an error is the pass.
+Callers still put the error *message* near the field themselves.
 
 ### 2.3 `.label`
 
@@ -204,7 +212,7 @@ Measured against the two real backgrounds:
 | `brand-600` `#6e2433` | 9.3 | 10.7 | ✅ AA |
 | `brand-500` `#8b3347` | 6.9 | 7.9 | ✅ AA |
 | `sapphire` `#1C4F64` | 7.8 | 8.9 | ✅ AA |
-| `bronze` `#996632` | **4.25** | 4.9 | ⚠️ **fails AA on beige for text <18px** — large/bold only. Affects `.eyebrow text-bronze` (small caps). |
+| `bronze` `#8A5B2C` (V3, was `#996632`) | 5.1 | 5.8 | ✅ AA — darkened so the `.eyebrow text-bronze` kicker (×12) passes on beige. |
 | `gold` `#C6A664` | 2.0 | 2.3 | ❌ never text — fill only |
 | `platinum` `#C9CBCC` | 1.4 | 1.6 | ❌ decorative icons only |
 | `text-ink-50` (≈`#7A7A7A`, **not a real token**) | 3.7 | 4.3 | ⚠️ would fail AA if it were generated — see §4.2 |
@@ -264,9 +272,9 @@ remain.
    that = `platinum` (decorative icons only) or a `beige`/`ivory` tint.
 2. `ink-95` and `graphite` have ~0 call sites — dead tokens, drop or document.
 3. `.btn-ghost` / `.btn-outline` / `.btn-outline-gold` — 0 call sites. Adopt
-   (for the storefront's photo-CTA cases) or remove.
-4. No `:active` on buttons, no `:disabled` / error / success on `.input` — the
-   state matrix has holes every call site currently hand-fills.
+   (for the storefront's photo-CTA cases) or remove. *(Still open.)*
+4. ~~No `:active` on buttons, no `:disabled` / error on `.input`.~~ **RESOLVED
+   V3** — `.btn` `active:brightness-95`; `.input:disabled` + `[aria-invalid]`.
 
 ---
 
@@ -277,12 +285,12 @@ None of these are "apply now" — they're the deltas a V3 would deliberately cho
 | Area | V2.5 today | V3 candidate | Source |
 |---|---|---|---|
 | ~~**ink ramp**~~ | ~~`DEFAULT/95/80/60`, dead `30/40/50/70`~~ | **DONE** — hybrid: added `ink-70`, codemodded the rest to `ink-60` (§4.2) | this audit |
-| **Display heading tracking** | all headings `letter-spacing: 0.04em` (positive) | negative tracking (`-0.01–0.02em`) on `≥ text-3xl` display sizes; keep 0.04em for small caps | VISUAL-REFINEMENT §1 |
-| **`.eyebrow` colour** | `#666` (and `text-bronze` at call sites — fails AA small) | drop `text-bronze` on small eyebrows, or darken bronze to ~`#7A4F26` (bronze.dark, ~5.6:1) | §3 |
+| ~~**Display heading tracking**~~ | ~~all headings `0.04em`~~ | **DONE** — negative tracking rejected (uppercase); added opt-in `.display` at `0.015em` + `line-height 1.05` for `text-3xl`+ | VISUAL-REFINEMENT §1 |
+| ~~**`.eyebrow` / bronze contrast**~~ | ~~`text-bronze` #996632 fails AA small~~ | **DONE** — darkened `bronze` DEFAULT → `#8A5B2C` (5.1:1); fixes all 12 sites | §3 |
 | **Section rhythm** | storefront `py-12 md:py-16` | larger band (`py-20`/`py-24`) for landing-style pages only | VISUAL-REFINEMENT §3 |
 | **Portal nav material** | flat opaque `bg-ink` (top strip + bottom bar) | `backdrop-blur` glass nav | VISUAL-REFINEMENT §4 |
-| **Button `:active`** | none | a `:active` darken/press on all `.btn*` | DESIGN-SYSTEM-AUDIT §2 |
-| **`.input` states** | resting + focus only | defined `:disabled`, `[aria-invalid]`, success | DESIGN-SYSTEM-AUDIT §2 |
+| ~~**Button `:active`**~~ | ~~none~~ | **DONE** — `.btn` base `active:brightness-95` | DESIGN-SYSTEM-AUDIT §2 |
+| ~~**`.input` states**~~ | ~~resting + focus only~~ | **DONE** — `:disabled` (beige/ink-60) + `[aria-invalid="true"]` (red border). No success style. | DESIGN-SYSTEM-AUDIT §2 |
 | **OpsCenter refactor** | colour + radius + `text-[Npx]` + stray hover-shadows DONE (§4.1); resting `shadow-lg/xl` confirmed legit. Only `font-bold`/`font-semibold` on ~194 headings left | that's an owner call, not a codemod | §4.1 |
 | **Bundle naming** | `design-system/V2.5` vs `/2026-V2` | normalise (`v2.5` / `v2-2026` / `v3`) | housekeeping |
 
@@ -295,3 +303,4 @@ None of these are "apply now" — they're the deltas a V3 would deliberately cho
 | 2026-09-02 | V3 — **OpsCenter colour refactor**: ~2640 `gray-*` sites across 97 files codemodded to the warm token palette per the §4.1a map (0 `gray-*` left in `src/`). Verified: full bundle + `qa/eslint.no-undef` + tailwind build (no orphan classes). **NOT visually verified** — OpsCenter pages are login-gated with no harness; the colour deltas are principled (warmer, equal-or-better contrast) but the owner should eyeball post-deploy. |
 | 2026-09-02 | V3 — **OpsCenter radius refactor**: ~576 `rounded`/`rounded-md/lg/xl/2xl` → `rounded-none` across 96 files (form controls → `rounded-sm`); `rounded-full` + 6 directional corners kept. Then **`text-[Npx]` refactor**: added the `text-2xs` (11px) tier; ~350 `text-[8..12px]` sites across 69 files mapped onto the scale. Bundle + lint clean; not visually verified (login-gated). |
 | 2026-09-02 | V3 — **OpsCenter shadow check**: resting `shadow-lg/xl/2xl` (~52) confirmed all on modals/dropdowns (legit per the flat posture); 5 stray `.card hover:shadow-md` lifts → `hover:bg-ivory`. `hover:scale`/`translate` already gone. OpsCenter mechanical refactor complete bar the `font-bold`/`font-semibold`-on-headings owner call. |
+| 2026-09-02 | V3 — **component-layer hardening**: `bronze` DEFAULT `#996632`→`#8A5B2C` (the `.eyebrow text-bronze` kicker clears AA on beige now, ×12); `.btn` gains `active:brightness-95`; `.input` gains `:disabled` (beige / `ink-60`) and `[aria-invalid="true"]` (red-700 border) states; new opt-in `.display` class (`0.015em` tracking + `1.05` leading) for `text-3xl`+ titles — the external "negative heading tracking" idea rejected (uppercase system). Storefront-verified (bronze eyebrow); bundle + lint clean. |

@@ -33,9 +33,11 @@ export default {
         },
         beige:       '#F7EEE3',
         'warm-grey': '#E9E8E6', // backgrounds, dividers, hairlines
-        // Bronze — Gifts accent (available for highlights)
+        // Bronze — Gifts accent. DEFAULT darkened V3 (#996632 → #8A5B2C) so
+        // small `text-bronze` (the `.eyebrow` kicker, ×12) clears WCAG AA on
+        // beige (was 4.25:1, now 5.1:1). `light` is fill-only.
         bronze: {
-          DEFAULT: '#996632',
+          DEFAULT: '#8A5B2C',
           light:   '#B3824A',
           dark:    '#7A4F26',
         },
@@ -79,7 +81,7 @@ export default {
         lg: '0 10px 30px rgba(34,34,34,0.09)',
         xl: '0 20px 50px rgba(34,34,34,0.11)',
         '2xl': '0 36px 80px rgba(34,34,34,0.14)',
-        bronze: '0 4px 20px rgba(153,102,50,0.20)',
+        bronze: '0 4px 20px rgba(138,91,44,0.20)',
         sapphire: '0 4px 20px rgba(28,79,100,0.20)',
         burgundy: '0 4px 20px rgba(110,36,51,0.20)',
       },
