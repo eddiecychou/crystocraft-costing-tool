@@ -196,9 +196,9 @@ export default function ImportImages() {
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-medium">
                     {row.product.design_name || row.product.design_code || row.product.id}
-                    <span className="ml-2 text-xs font-mono text-ink-50">{row.product.design_code}</span>
+                    <span className="ml-2 text-xs font-mono text-ink-60">{row.product.design_code}</span>
                   </p>
-                  <span className="text-xs text-ink-50">{row.existingCount} already · +{row.images.length} new</span>
+                  <span className="text-xs text-ink-60">{row.existingCount} already · +{row.images.length} new</span>
                 </div>
                 <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-6 gap-2">
                   {row.images.map(img => {

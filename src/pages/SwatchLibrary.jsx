@@ -96,7 +96,7 @@ function TagEditor({ label, values, onChange, placeholder }) {
   }
   return (
     <div>
-      <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-1.5">{label}</p>
+      <p className="text-xs font-label uppercase tracking-wide text-ink-60 mb-1.5">{label}</p>
       <div className="flex flex-wrap gap-1.5 mb-2">
         {values.map((v, i) => (
           <span key={i} className="badge bg-brand-50 text-brand-700 inline-flex items-center gap-1">
@@ -106,7 +106,7 @@ function TagEditor({ label, values, onChange, placeholder }) {
             </button>
           </span>
         ))}
-        {values.length === 0 && <span className="text-xs text-ink-40 italic">None yet</span>}
+        {values.length === 0 && <span className="text-xs text-ink-60 italic">None yet</span>}
       </div>
       <div className="flex gap-1.5">
         <input value={draft} onChange={e => setDraft(e.target.value)}
@@ -138,18 +138,18 @@ function SwatchDetail({ name, entry, onClose }) {
             <span className="w-4 h-4 rounded-full border border-ivory-dark shrink-0" style={{ background: entry.rgb ? `rgb(${entry.rgb.map(c => Math.round(c * 255)).join(',')})` : '#ccc' }} />
             {name}
           </h2>
-          <button onClick={onClose} className="text-ink-40 hover:text-ink"><X size={18} /></button>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink"><X size={18} /></button>
         </div>
 
         {Object.entries(entry.slots || {}).map(([style, backfilms]) => (
           Object.keys(backfilms).length > 0 && (
             <div key={style} className="mb-4">
-              <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-2">{STYLE_LABEL[style] || style}</p>
+              <p className="text-xs font-label uppercase tracking-wide text-ink-60 mb-2">{STYLE_LABEL[style] || style}</p>
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                 {Object.entries(backfilms).map(([bf, slot]) => (
                   <div key={bf}>
                     <SwatchThumb filename={slot.file} alt={`${name} ${style} on ${bf}`} />
-                    <p className="text-[11px] text-ink-50 mt-1 text-center truncate">{bf}</p>
+                    <p className="text-[11px] text-ink-60 mt-1 text-center truncate">{bf}</p>
                   </div>
                 ))}
               </div>
@@ -162,9 +162,9 @@ function SwatchDetail({ name, entry, onClose }) {
             <TagEditor label="Legacy Swarovski references" values={notes.legacy_swarovski_refs}
               onChange={v => persist({ ...notes, legacy_swarovski_refs: v })}
               placeholder="e.g. 2058 Xilion Rose — press Enter" />
-            {saving && <p className="text-[11px] text-ink-40">Saving…</p>}
+            {saving && <p className="text-[11px] text-ink-60">Saving…</p>}
           </div>
-        ) : <p className="text-sm text-ink-40 py-4">Loading notes…</p>}
+        ) : <p className="text-sm text-ink-60 py-4">Loading notes…</p>}
       </div>
     </div>
   )
@@ -201,7 +201,7 @@ export default function SwatchLibrary() {
       {error && <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 mb-4">{error}</div>}
 
       <div className="relative mb-5">
-        <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-30" />
+        <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-60" />
         <input type="text" placeholder="Search colour name…" className="input w-full pl-8"
           value={search} onChange={e => setSearch(e.target.value)} />
       </div>
@@ -221,7 +221,7 @@ export default function SwatchLibrary() {
                 <SwatchCardCarousel name={name} entry={entry} />
                 <div className="p-2">
                   <p className="text-sm text-ink truncate">{name}</p>
-                  <p className="text-[11px] text-ink-50">
+                  <p className="text-[11px] text-ink-60">
                     {Object.entries(entry.slots || {}).filter(([, bf]) => Object.keys(bf).length).map(([s]) => STYLE_LABEL[s] || s).join(' · ') || 'No photos'}
                   </p>
                 </div>

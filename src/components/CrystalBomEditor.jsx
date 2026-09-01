@@ -81,8 +81,8 @@ export default function CrystalBomEditor({ bom, onChange, crystals = [], mixCode
 
       {/* ---- positions ---- */}
       <div className="flex items-baseline justify-between">
-        <label className="text-[11px] uppercase tracking-wide text-ink-50">Stones per unit</label>
-        <span className="text-[11px] text-ink-50 tabular-nums">{total} total</span>
+        <label className="text-[11px] uppercase tracking-wide text-ink-60">Stones per unit</label>
+        <span className="text-[11px] text-ink-60 tabular-nums">{total} total</span>
       </div>
 
       <datalist id="crystal-shapes">
@@ -91,7 +91,7 @@ export default function CrystalBomEditor({ bom, onChange, crystals = [], mixCode
 
       <div className="mt-2 space-y-2">
         {positions.length === 0 && (
-          <p className="text-xs text-ink-50">No positions yet — add one below.</p>
+          <p className="text-xs text-ink-60">No positions yet — add one below.</p>
         )}
         {positions.map((p, i) => (
           <div key={i} className="flex items-center gap-2 text-xs">
@@ -103,7 +103,7 @@ export default function CrystalBomEditor({ bom, onChange, crystals = [], mixCode
                    title="Stone size as the ERP writes it — 14, 18, 26, SS29" />
             <input type="number" min="0" step="1" className="input text-xs py-1 w-20 shrink-0 tabular-nums"
                    value={p.qty} onChange={e => setPosition(i, 'qty', Number(e.target.value) || 0)} />
-            <span className="text-ink-50">per unit</span>
+            <span className="text-ink-60">per unit</span>
             <button type="button" onClick={() => removePosition(i)}
                     className="ml-auto text-red-400 hover:text-red-600" title="Remove position">
               <X size={14} />
@@ -112,31 +112,31 @@ export default function CrystalBomEditor({ bom, onChange, crystals = [], mixCode
         ))}
       </div>
       <button type="button" onClick={addPosition}
-              className="mt-2 inline-flex items-center gap-1 text-[11px] text-ink-50 hover:text-brand-600">
+              className="mt-2 inline-flex items-center gap-1 text-[11px] text-ink-60 hover:text-brand-600">
         <Plus size={12} />Add position
       </button>
 
       {/* ---- mixes ---- */}
       <div className="mt-5 pt-4 border-t border-ivory-dark">
-        <label className="text-[11px] uppercase tracking-wide text-ink-50">Mix recipes</label>
-        <p className="text-[11px] text-ink-50 mt-0.5 mb-2">
+        <label className="text-[11px] uppercase tracking-wide text-ink-60">Mix recipes</label>
+        <p className="text-[11px] text-ink-60 mt-0.5 mb-2">
           Only for mix codes (MX, M1, AX, GX…). Each line is a real crystal code and how
           many of it go into one unit.
         </p>
 
         <div className="space-y-3">
           {Object.keys(mixes).length === 0 && (
-            <p className="text-xs text-ink-50">No mix recipes. Add one below if this model is sold in a mix.</p>
+            <p className="text-xs text-ink-60">No mix recipes. Add one below if this model is sold in a mix.</p>
           )}
           {Object.entries(mixes).map(([code, lines]) => {
             const sum = mixTotal(code)
             const mismatch = total > 0 && sum !== total
             return (
-              <div key={code} className="border border-ink-10 rounded-lg p-3">
+              <div key={code} className="border border-warm-grey rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm font-semibold text-ink-80">{code}</span>
-                    <span className={`text-[11px] tabular-nums ${mismatch ? 'text-amber-600' : 'text-ink-50'}`}>
+                    <span className={`text-[11px] tabular-nums ${mismatch ? 'text-amber-600' : 'text-ink-60'}`}>
                       {sum} of {total} stones
                     </span>
                     {mismatch && (
@@ -151,7 +151,7 @@ export default function CrystalBomEditor({ bom, onChange, crystals = [], mixCode
 
                 <div className="space-y-1.5">
                   {lines.length === 0 && (
-                    <p className="text-[11px] text-ink-50">Empty — nobody has ordered this mix yet. Add the crystals it uses.</p>
+                    <p className="text-[11px] text-ink-60">Empty — nobody has ordered this mix yet. Add the crystals it uses.</p>
                   )}
                   {lines.map((l, i) => {
                     const known = byCode.get(String(l.code || '').toUpperCase())
@@ -175,7 +175,7 @@ export default function CrystalBomEditor({ bom, onChange, crystals = [], mixCode
                               : ''}
                         </span>
                         {parsed?.shape && (
-                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-50 shrink-0">
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 shrink-0">
                             {parsed.shape || `#${parsed.pattern}`} {parsed.size}
                           </span>
                         )}
@@ -186,7 +186,7 @@ export default function CrystalBomEditor({ bom, onChange, crystals = [], mixCode
                   })}
                 </div>
                 <button type="button" onClick={() => addMixLine(code)}
-                        className="mt-2 inline-flex items-center gap-1 text-[11px] text-ink-50 hover:text-brand-600">
+                        className="mt-2 inline-flex items-center gap-1 text-[11px] text-ink-60 hover:text-brand-600">
                   <Plus size={12} />Add crystal
                 </button>
               </div>
@@ -196,10 +196,10 @@ export default function CrystalBomEditor({ bom, onChange, crystals = [], mixCode
 
         {addable.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1.5 items-center">
-            <span className="text-[11px] uppercase tracking-wide text-ink-40 mr-1">Add recipe:</span>
+            <span className="text-[11px] uppercase tracking-wide text-ink-60 mr-1">Add recipe:</span>
             {addable.map(mc => (
               <button type="button" key={mc} onClick={() => addMix(mc)}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] border border-ink-10 text-ink-50 hover:border-brand-300 hover:text-brand-600">
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] border border-warm-grey text-ink-60 hover:border-brand-300 hover:text-brand-600">
                 <Plus size={11} /><span className="font-mono">{mc}</span>
               </button>
             ))}

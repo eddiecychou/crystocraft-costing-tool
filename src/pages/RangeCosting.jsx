@@ -58,7 +58,7 @@ function BomCoverage({ prefixes, result, loading, error, onCheck }) {
       {error && <p className="text-xs text-amber-600">{error}</p>}
 
       {!result && !loading && !error && (
-        <p className="text-xs text-ink-50">
+        <p className="text-xs text-ink-60">
           Compare this costing against what the ERP says is physically in{' '}
           <span className="font-mono">{prefixes.join(', ')}</span> — across every plating and
           colour the ERP stocks.
@@ -67,7 +67,7 @@ function BomCoverage({ prefixes, result, loading, error, onCheck }) {
 
       {result && (
         <div className="text-xs space-y-2">
-          <p className="text-ink-50">
+          <p className="text-ink-60">
             Merged from <strong>{result.variants.length}</strong> ERP variant
             {result.variants.length === 1 ? '' : 's'} (
             <span className="font-mono">{suffixes(result.variants)}</span>):{' '}
@@ -113,7 +113,7 @@ function BomCoverage({ prefixes, result, loading, error, onCheck }) {
           )}
 
           {result.crystals.length > 0 && result.crystalMismatch !== 'none' && (
-            <details className="text-ink-50">
+            <details className="text-ink-60">
               <summary className="cursor-pointer">
                 {result.crystals.length} stone code{result.crystals.length === 1 ? '' : 's'} in the
                 ERP BOM · this costing has {result.crystalLineCount} crystal line
@@ -129,7 +129,7 @@ function BomCoverage({ prefixes, result, loading, error, onCheck }) {
           )}
 
           {result.packaging.length > 0 && (
-            <details className="text-ink-50">
+            <details className="text-ink-60">
               <summary className="cursor-pointer">
                 {result.packaging.length} packaging part
                 {result.packaging.length === 1 ? '' : 's'} in the ERP BOM (not costed per product)
@@ -357,7 +357,7 @@ export default function RangeCosting() {
       <div className="card p-5 mb-5">
         <h2 className="text-sm font-semibold text-gray-700 mb-3">Critical component costs <span className="font-normal text-ink-60">(at qty 1)</span></h2>
         {refs.length === 0 ? (
-          <p className="text-sm text-ink-50">No critical components on this product. Add them in the <Link to={`/range/${id}`} className="text-brand-600 hover:underline">product editor</Link>, then set each part's cost under <Link to="/components" className="text-brand-600 hover:underline">Components</Link>.</p>
+          <p className="text-sm text-ink-60">No critical components on this product. Add them in the <Link to={`/range/${id}`} className="text-brand-600 hover:underline">product editor</Link>, then set each part's cost under <Link to="/components" className="text-brand-600 hover:underline">Components</Link>.</p>
         ) : (
           <div className="divide-y divide-gray-100">
             {refs.map((r, i) => {
@@ -394,14 +394,14 @@ export default function RangeCosting() {
                 {platings.map(p => (
                   <div key={p.code} className="py-2.5 flex items-center justify-between border-t border-gray-200">
                     <p className="text-sm font-semibold text-gray-700">
-                      {p.name} <span className="font-mono text-ink-40">{p.code}</span> component subtotal
+                      {p.name} <span className="font-mono text-ink-60">{p.code}</span> component subtotal
                     </p>
                     <p className="text-sm font-bold text-gray-900">
                       HKD {componentsCostHKD(draft, lib, rates, 1, { plating_code: p.code }).toFixed(2)}
                     </p>
                   </div>
                 ))}
-                <p className="pt-2 text-[11px] text-ink-50">
+                <p className="pt-2 text-[11px] text-ink-60">
                   Plating-specific parts count only toward their own variant — one piece never uses both.
                   Shared (blank-plating) parts are included in every variant.
                 </p>
@@ -424,7 +424,7 @@ export default function RangeCosting() {
         </div>
         <p className="text-xs text-ink-60 mb-3">Assembly / labour, gift box, packaging — anything shared across every variant.</p>
         {state.extra_lines.length === 0 ? (
-          <p className="text-xs text-ink-50">No extra lines yet.</p>
+          <p className="text-xs text-ink-60">No extra lines yet.</p>
         ) : (
           <div className="space-y-2">
             {state.extra_lines.map((l, i) => (
@@ -445,11 +445,11 @@ export default function RangeCosting() {
       {/* Plating adder */}
       <div className="card p-5 mb-5">
         <h2 className="text-sm font-semibold text-gray-700 mb-3">Plating adder</h2>
-        {platings.length === 0 ? <p className="text-xs text-ink-50">No platings on this product.</p> : (
+        {platings.length === 0 ? <p className="text-xs text-ink-60">No platings on this product.</p> : (
           <div className="space-y-2">
             {platings.map(p => (
               <div key={p.code} className="flex items-center gap-2">
-                <span className="text-xs text-ink-70 w-24 truncate" title={p.name}>{p.name} <span className="text-ink-40 font-mono">{p.code}</span></span>
+                <span className="text-xs text-ink-70 w-24 truncate" title={p.name}>{p.name} <span className="text-ink-60 font-mono">{p.code}</span></span>
                 <input className="input py-1.5 text-sm w-24" inputMode="decimal"
                        value={state.plating_costs[p.code]?.cost ?? ''} onChange={setAdder('plating_costs', p.code, 'cost')} placeholder="0.00" />
                 <select className="input py-1.5 text-sm w-20" value={state.plating_costs[p.code]?.currency || 'RMB'} onChange={setAdder('plating_costs', p.code, 'currency')}>
@@ -478,7 +478,7 @@ export default function RangeCosting() {
         </p>
         <datalist id="crystal-size-options">{crystalSizes.map(s => <option key={s} value={s} />)}</datalist>
         {state.crystal_bom.length === 0 ? (
-          <p className="text-xs text-ink-50">No crystal stones on this design yet.</p>
+          <p className="text-xs text-ink-60">No crystal stones on this design yet.</p>
         ) : (
           <div className="space-y-2">
             {state.crystal_bom.map((l, i) => {
@@ -538,7 +538,7 @@ export default function RangeCosting() {
             <label className="label">Markup</label>
             <input className="input w-28" inputMode="decimal" value={state.markup}
                    onChange={e => setState(s => ({ ...s, markup: e.target.value.replace(/[^\d.]/g, '') }))} placeholder={DEFAULT_MARKUP.toFixed(2)} />
-            <p className="text-[10px] text-ink-50 mt-0.5">Blank = default {DEFAULT_MARKUP.toFixed(2)}×</p>
+            <p className="text-[10px] text-ink-60 mt-0.5">Blank = default {DEFAULT_MARKUP.toFixed(2)}×</p>
           </div>
           <div className="flex-1" />
           <button type="button" onClick={addTier} className="text-xs text-brand-600 hover:underline">+ Add quantity tier</button>
@@ -547,16 +547,16 @@ export default function RangeCosting() {
           <div className="space-y-2 mb-2">
             {state.tiers.map((t, i) => (
               <div key={i} className="flex items-center gap-2">
-                <span className="text-xs text-ink-50 w-10">Qty</span>
+                <span className="text-xs text-ink-60 w-10">Qty</span>
                 <input className="input py-1.5 text-sm w-28" inputMode="numeric" value={t.quantity} onChange={setTier(i, 'quantity')} placeholder="e.g. 200" />
-                <span className="text-xs text-ink-50">Lead (days)</span>
+                <span className="text-xs text-ink-60">Lead (days)</span>
                 <input className="input py-1.5 text-sm w-24" inputMode="numeric" value={t.lead_time_days} onChange={setTier(i, 'lead_time_days')} placeholder="—" />
                 <button type="button" onClick={() => removeTier(i)} className="text-red-300 hover:text-red-500 ml-auto" title="Remove"><X size={14} /></button>
               </div>
             ))}
           </div>
         )}
-        <p className="text-xs text-ink-50">Tiers set the order-quantity breakpoints (used with component volume tiers). No tiers = a single unit price.</p>
+        <p className="text-xs text-ink-60">Tiers set the order-quantity breakpoints (used with component volume tiers). No tiers = a single unit price.</p>
       </div>
 
       {/* Per-variant cost + sell table */}
@@ -601,7 +601,7 @@ export default function RangeCosting() {
                 )
               })}
               {variants.length === 0 && (
-                <tr><td colSpan={qtyCols.length + 1} className="py-4 text-center text-ink-50 text-sm">This product has no variants.</td></tr>
+                <tr><td colSpan={qtyCols.length + 1} className="py-4 text-center text-ink-60 text-sm">This product has no variants.</td></tr>
               )}
             </tbody>
           </table>

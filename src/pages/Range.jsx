@@ -426,7 +426,7 @@ function ProductCard({ s, colorLookup = {} }) {
             {crystalCodes.slice(0, 12).map(code => (
               <Swatch key={code} code={code} mixes={s.mixes} lookup={colorLookup} />
             ))}
-            {crystalCodes.length > 12 && <span className="text-[10px] text-ink-50">+{crystalCodes.length - 12}</span>}
+            {crystalCodes.length > 12 && <span className="text-[10px] text-ink-60">+{crystalCodes.length - 12}</span>}
           </div>
         )}
         <div className="mt-auto pt-1.5 flex items-center justify-between gap-2 flex-wrap">

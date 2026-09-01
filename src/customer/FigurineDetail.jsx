@@ -225,7 +225,7 @@ export default function FigurineDetail({ profile }) {
             return (
               <div className="mb-2">
                 <span className={`badge ${st.cls}`}>{st.label}</span>
-                <p className="text-xs text-ink-50 mt-1">
+                <p className="text-xs text-ink-60 mt-1">
                   {avail?.customerPromise || avail?.promise || st.tip}
                 </p>
               </div>
@@ -256,13 +256,13 @@ export default function FigurineDetail({ profile }) {
                   <button key={i} type="button" onClick={() => pickFinish(i)}
                     className={`w-full flex items-center justify-between gap-3 px-3 py-2 text-sm text-left transition-colors ${sel ? 'bg-brand-50' : 'hover:bg-ivory'}`}>
                     <span className="flex items-center gap-2 min-w-0">
-                      <span className={`w-3.5 h-3.5 rounded-full border shrink-0 ${sel ? 'border-brand-500 bg-brand-500' : 'border-ink-30'}`}>
+                      <span className={`w-3.5 h-3.5 rounded-full border shrink-0 ${sel ? 'border-brand-500 bg-brand-500' : 'border-ink-60'}`}>
                         {sel && <Check size={12} className="text-white" strokeWidth={3} />}
                       </span>
                       <span className="text-ink truncate">
                         {v.plating_name || v.plating_code || '—'}
                         {multiBrand && (v.brand_name || BRAND_NAME[v.brand_code || fallbackBrand]) &&
-                          <span className="text-ink-50"> · {v.brand_name || BRAND_NAME[v.brand_code || fallbackBrand]}</span>}
+                          <span className="text-ink-60"> · {v.brand_name || BRAND_NAME[v.brand_code || fallbackBrand]}</span>}
                         {/* Two variants can share a plating name when one exists
                             only to carry a pricier colour at its own price
                             (RangeForm.jsx hint: "For a colour that costs more,
@@ -274,7 +274,7 @@ export default function FigurineDetail({ profile }) {
                             enough that it's clearly one of these, not the
                             general/everything row. */}
                         {Array.isArray(v.crystal_colors) && v.crystal_colors.length > 0 && v.crystal_colors.length <= 2 && (
-                          <span className="text-ink-50"> — {v.crystal_colors.map(c => lookup[c]?.name || c).join(' / ')}</span>
+                          <span className="text-ink-60"> — {v.crystal_colors.map(c => lookup[c]?.name || c).join(' / ')}</span>
                         )}
                       </span>
                       {vStock != null && vStock > 0 && (
@@ -304,7 +304,7 @@ export default function FigurineDetail({ profile }) {
                 ))}
               </div>
               {colorValid && mixes[color] && Array.isArray(mixes[color]) && mixes[color].length > 0 && (
-                <p className="text-xs text-ink-50 mt-1.5">
+                <p className="text-xs text-ink-60 mt-1.5">
                   Mix: {mixes[color].map(c => lookup[c]?.name || c).join(' + ')}
                 </p>
               )}
@@ -329,8 +329,8 @@ export default function FigurineDetail({ profile }) {
               )}
               <p className="label mb-1.5">
                 {effectiveMode === 'stock'
-                  ? <>Quantity <span className="normal-case text-ink-40">· pcs{isLastStock ? ` (max ${maxPcs})` : (isConcept || isRetired) ? ' · optional' : ''}</span></>
-                  : <>Quantity {ppc > 0 && <span className="normal-case text-ink-40">· {ppc} pcs/carton</span>}</>}
+                  ? <>Quantity <span className="normal-case text-ink-60">· pcs{isLastStock ? ` (max ${maxPcs})` : (isConcept || isRetired) ? ' · optional' : ''}</span></>
+                  : <>Quantity {ppc > 0 && <span className="normal-case text-ink-60">· {ppc} pcs/carton</span>}</>}
               </p>
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="inline-flex items-center border border-ivory-dark rounded-none overflow-hidden">
@@ -383,19 +383,19 @@ export default function FigurineDetail({ profile }) {
               {effectiveMode === 'mto' && (moq > 0 || fmtMoq > 0) && (
                 <div className="text-xs mt-1.5">
                   {/* Concise headline — the numbers customers scan for */}
-                  <p className={belowMoq || belowFormatMoq ? 'text-amber-700' : 'text-ink-50'}>
+                  <p className={belowMoq || belowFormatMoq ? 'text-amber-700' : 'text-ink-60'}>
                     Made to order
                     {moq > 0 && <> · min <span className="font-medium">{moq.toLocaleString()}</span>/design</>}
                     {fmtMoq > 0 && <> · {fmtLabel} min <span className="font-medium">{fmtMoq.toLocaleString()}</span> (shared)</>}
                     {(belowMoq || belowFormatMoq) && <span> — below minimum</span>}
                     <button type="button" onClick={() => setShowMoqInfo(v => !v)}
-                      className="ml-1.5 underline text-ink-40 hover:text-ink-60">
+                      className="ml-1.5 underline text-ink-60 hover:text-ink-60">
                       {showMoqInfo ? 'less' : 'how minimums work'}
                     </button>
                   </p>
                   {/* The nuance, tucked away */}
                   {showMoqInfo && (
-                    <ul className="mt-1 space-y-0.5 text-ink-50 list-disc list-inside">
+                    <ul className="mt-1 space-y-0.5 text-ink-60 list-disc list-inside">
                       {moq > 0 && <li>Minimum {moq.toLocaleString()} pcs per design. Below this we confirm feasibility on your quotation.</li>}
                       {fmtMoq > 0 && <li>{fmtLabel} base needs {fmtMoq.toLocaleString()} pcs total — combine with other {fmtLabel.toLowerCase()} designs to reach it.</li>}
                     </ul>
@@ -411,8 +411,8 @@ export default function FigurineDetail({ profile }) {
               className={`btn-primary ${(inCart || !canAdd) ? 'opacity-60 pointer-events-none' : ''}`}>
               {inCart ? <><Check size={16} /> In enquiry</> : <><Plus size={16} /> Add to enquiry</>}
             </button>
-            {!inCart && needsColor && !colorValid && <span className="text-xs text-ink-50">Select a crystal colour</span>}
-            {inCart && <span className="text-xs text-ink-50">Adjust quantity in your enquiry list</span>}
+            {!inCart && needsColor && !colorValid && <span className="text-xs text-ink-60">Select a crystal colour</span>}
+            {inCart && <span className="text-xs text-ink-60">Adjust quantity in your enquiry list</span>}
           </div>
 
           <p className="text-xs text-ink-60 mt-5">
@@ -519,7 +519,7 @@ function Swatch({ code, mixes, lookup, selected, onClick }) {
 function NotFound() {
   return (
     <div className="text-center py-16">
-      <p className="eyebrow text-ink-40 mb-1.5">Unavailable</p>
+      <p className="eyebrow text-ink-60 mb-1.5">Unavailable</p>
       <p className="text-sm text-ink-60">This product is no longer available.</p>
       <Link to="/shop/figurine" className="text-brand-600 text-sm mt-3 inline-block">Back to catalogue</Link>
     </div>

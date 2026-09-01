@@ -19,7 +19,7 @@
 | Token | Values | What it is FOR | Notes |
 |---|---|---|---|
 | `brand-*` | 50 `#f5f0f1` · 100 `#f0e3e6` · 200 `#e2c2c9` · 300 `#cc94a0` · 400 `#a8556a` · **500 `#8b3347`** · **600 `#6e2433`** · 700 `#5b1c29` · 800 `#501829` · 900 `#380f1a` | The single accent — burgundy / garnet (Bespoke division). `600` = primary actions, active states, links. `500` = focus ring, hover text. `50/100` = tint backgrounds. | The **only** accent used for interaction. |
-| `ink` | **DEFAULT `#222`** · 95 `#2E2E2C` · 80 `#4A4A47` · **60 `#666`** | Text + dark surfaces. `DEFAULT` = headings / primary text / dark nav. `80` = strong secondary. `60` = body copy / mid-grey. | **Ramp is incomplete — see §4.2.** `95` has 0 call sites. `30/40/50/70` are used in code but **generate no CSS**. |
+| `ink` | **DEFAULT `#222`** · 95 `#2E2E2C` · 80 `#4A4A47` · **70 `#585853`** · **60 `#666`** | Text + dark surfaces. `DEFAULT` = headings / primary text / dark nav. `80` = strong secondary. `70` = mid secondary (added V3, AA 6.2:1 on beige). `60` = body copy / **lightest AA-safe grey — the floor**. | **Ramp resolved (V3, 2026-09-02).** `70` added; dead `text-ink-30/40/50` codemodded to `-60`, `text-ink-90` → `text-ink`, dead `border-ink-10/30` → `border-warm-grey`/`border-ink-60`. `ink-95` + `graphite` remain defined but unused. |
 | `ivory` / `beige` | ivory.DEFAULT = beige = `#F7EEE3` · ivory.dark `#EFE6D8` · ivory.mid `#F2EAE0` | Warm app background. `ivory.dark` = subtle inset / thumbnail wells / hover tint on white. | `beige` and `ivory.DEFAULT` are the same value — two names, back-compat. |
 | `warm-grey` | `#E9E8E6` | Hairline borders, dividers, `.card` border. **The** line colour. | ~7% off beige → the intended "soft edge". |
 | `bronze` | DEFAULT `#996632` · light `#B3824A` · dark `#7A4F26` | Gifts-division accent. Eyebrow kickers on some storefront pages, feature accent rules. | `#996632` on beige = **4.25:1 — fails AA for small text** (§3). |
@@ -228,15 +228,15 @@ drift.
 
 ### 4.2 Structural gaps in the token layer
 
-1. **The `ink` ramp is `DEFAULT/95/80/60` but the code wants `30/40/50/70`.**
-   `text-ink-40` / `text-ink-50` / `text-ink-30` / `text-ink-70` appear in
-   hundreds of JSX files and **generate no CSS** — those elements silently
-   inherit their parent's colour (usually `#222`), so the intended
-   "progressively lighter secondary text" is not happening consistently.
-   V3 must decide: **(a)** fill the ramp (`ink-40`, `ink-50`, …) with real
-   values — then §3 says `ink-50` fails AA and `ink-40` fails badly, so they'd
-   be large-text-only; or **(b)** codemod the dead classes to `ink-60`
-   (the lightest AA-safe grey) and delete the rest.
+1. **~~The `ink` ramp is `DEFAULT/95/80/60` but the code wants `30/40/50/70`.~~
+   RESOLVED (V3, 2026-09-02) — hybrid.** `text-ink-30/40/50/70/90` and
+   `border-ink-10/30` were used in ~360 JSX sites and generated **no CSS**,
+   so those elements silently inherited near-black. Fix: added `ink-70`
+   (`#585853`, AA 6.2:1); codemodded `text-ink-30/40/50` → `text-ink-60`
+   (the AA-safe floor), `text-ink-90` → `text-ink`, `border-ink-10` →
+   `border-warm-grey`, `border-ink-30` → `border-warm-grey` / `border-ink-60`.
+   **Rule now: `ink-60` is the lightest grey allowed for text.** Lighter than
+   that = `platinum` (decorative icons only) or a `beige`/`ivory` tint.
 2. `ink-95` and `graphite` have ~0 call sites — dead tokens, drop or document.
 3. `.btn-ghost` / `.btn-outline` / `.btn-outline-gold` — 0 call sites. Adopt
    (for the storefront's photo-CTA cases) or remove.
@@ -251,7 +251,7 @@ None of these are "apply now" — they're the deltas a V3 would deliberately cho
 
 | Area | V2.5 today | V3 candidate | Source |
 |---|---|---|---|
-| **ink ramp** | `DEFAULT/95/80/60`, dead `30/40/50/70` | fill or codemod (§4.2) — **blocking; pick one first** | this audit |
+| ~~**ink ramp**~~ | ~~`DEFAULT/95/80/60`, dead `30/40/50/70`~~ | **DONE** — hybrid: added `ink-70`, codemodded the rest to `ink-60` (§4.2) | this audit |
 | **Display heading tracking** | all headings `letter-spacing: 0.04em` (positive) | negative tracking (`-0.01–0.02em`) on `≥ text-3xl` display sizes; keep 0.04em for small caps | VISUAL-REFINEMENT §1 |
 | **`.eyebrow` colour** | `#666` (and `text-bronze` at call sites — fails AA small) | drop `text-bronze` on small eyebrows, or darken bronze to ~`#7A4F26` (bronze.dark, ~5.6:1) | §3 |
 | **Section rhythm** | storefront `py-12 md:py-16` | larger band (`py-20`/`py-24`) for landing-style pages only | VISUAL-REFINEMENT §3 |
@@ -266,3 +266,4 @@ None of these are "apply now" — they're the deltas a V3 would deliberately cho
 | Date | Change |
 |---|---|
 | 2026-09-02 | Created — the written V2.5 spec extracted from `tailwind.config.js` + `src/index.css`: token layer (§1), component inventory + partial state matrix (§2), measured WCAG contrast (§3), the OpsCenter drift baseline and the dead-`ink-*`-ramp finding (§4), and the V3 open-decision list (§5). Foundation for any V2.5→V3 work. |
+| 2026-09-02 | V3 first change — **ink ramp resolved** (hybrid): added `ink-70` `#585853` (AA 6.2:1 on beige); codemodded ~360 dead `text-ink-30/40/50/90` + `border-ink-10/30` sites to real AA-safe tokens (`ink-60` is now the lightest grey allowed for text). All `ink-*` classes in `src/` now resolve. |

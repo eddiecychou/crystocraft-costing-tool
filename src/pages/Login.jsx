@@ -214,7 +214,7 @@ export default function Login() {
       </button>
       <div className="flex items-center gap-3 mb-4">
         <div className="flex-1 h-px bg-ivory-dark" />
-        <span className="text-[11px] text-ink-40 uppercase tracking-wide">or</span>
+        <span className="text-[11px] text-ink-60 uppercase tracking-wide">or</span>
         <div className="flex-1 h-px bg-ivory-dark" />
       </div>
 
@@ -252,7 +252,7 @@ export default function Login() {
           <button type="submit" className="btn-primary w-full justify-center" disabled={loading}>
             {loading ? 'Submitting…' : 'Request account'}
           </button>
-          <p className="text-xs text-ink-50 text-center">
+          <p className="text-xs text-ink-60 text-center">
             No password needed yet — we'll review your request and email you a secure link to set one once it's approved.
           </p>
         </form>

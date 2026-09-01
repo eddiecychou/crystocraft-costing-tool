@@ -21,8 +21,9 @@ export default {
         ink: {
           DEFAULT: '#222222',  // near-black — primary text, headings, dark sections
           95:      '#2E2E2C',
-          80:      '#4A4A47',
-          60:      '#666666',  // mid-grey — body copy
+          80:      '#4A4A47',  // strong secondary
+          70:      '#585853',  // mid secondary — AA on beige (6.2:1). Added V3.
+          60:      '#666666',  // mid-grey — body copy / lightest AA-safe grey
         },
         // "ivory" token kept for back-compat; now maps to V2 Beige warm bg
         ivory: {

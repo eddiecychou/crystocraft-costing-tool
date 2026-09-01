@@ -104,7 +104,7 @@ export default function InventoryStatus() {
       <h1 className="text-xl font-semibold mb-1 inline-flex items-center gap-2"><Boxes size={20} className="text-brand-500" /> Inventory Status</h1>
       <p className="text-sm text-ink-60 mb-4">
         On-hand, reserved and available across metal components, crystals, packaging and B2C finished goods.
-        <span className="text-ink-50"> Available = On-hand − Reserved.</span> Set a reorder point on hot items to flag them before they run out.
+        <span className="text-ink-60"> Available = On-hand − Reserved.</span> Set a reorder point on hot items to flag them before they run out.
       </p>
 
       <div className="flex flex-wrap items-center gap-2 mb-3">
@@ -122,7 +122,7 @@ export default function InventoryStatus() {
         </button>
       </div>
 
-      <p className="text-xs text-ink-50 mb-2">
+      <p className="text-xs text-ink-60 mb-2">
         {loading ? 'Loading…' : (
           <>
             {filtered.length} SKU{filtered.length === 1 ? '' : 's'} · {totals.onHand.toLocaleString()} on hand · <span className="text-amber-600">{totals.reserved.toLocaleString()} reserved</span> · <span className="text-green-700">{(totals.onHand - totals.reserved).toLocaleString()} available</span>
@@ -138,7 +138,7 @@ export default function InventoryStatus() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-[10px] uppercase tracking-wide text-ink-40 border-b border-ivory-dark">
+                <tr className="text-[10px] uppercase tracking-wide text-ink-60 border-b border-ivory-dark">
                   <Th k="cls" label="Class" />
                   <Th k="code" label="Code" />
                   <Th k="name" label="Name" />
@@ -153,7 +153,7 @@ export default function InventoryStatus() {
                   <tr key={r.key} className={needsReorder(r) ? 'bg-red-50/40' : 'hover:bg-ivory/40'}>
                     <td className="px-3 py-2"><span className={`text-[10px] px-1.5 py-0.5 rounded-full ${BADGE[r.cls]}`}>{r.cls}</span></td>
                     <td className="px-3 py-2"><Link to={linkFor(r)} className="font-mono text-xs text-brand-600 hover:underline">{r.code}</Link></td>
-                    <td className="px-3 py-2 text-xs text-ink-60 truncate max-w-[220px]">{r.name || '—'}{r.attr ? <span className="text-ink-40"> · {r.attr}</span> : ''}</td>
+                    <td className="px-3 py-2 text-xs text-ink-60 truncate max-w-[220px]">{r.name || '—'}{r.attr ? <span className="text-ink-60"> · {r.attr}</span> : ''}</td>
                     <td className="px-3 py-2 text-right font-mono tabular-nums text-ink-80">{fmt(r.onHand)}</td>
                     <td className="px-3 py-2 text-right font-mono tabular-nums text-amber-700">{r.reserved ? fmt(r.reserved) : '—'}</td>
                     <td className={`px-3 py-2 text-right font-mono tabular-nums font-semibold ${needsReorder(r) ? 'text-red-600' : 'text-green-700'}`}>

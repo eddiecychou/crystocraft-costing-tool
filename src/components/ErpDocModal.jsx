@@ -67,7 +67,7 @@ export default function ErpDocModal({ of, doc, onClose }) {
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg font-semibold text-gray-900 font-mono">{code}</h2>
-              <span className="text-[10px] font-medium text-ink-40 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
+              <span className="text-[10px] font-medium text-ink-60 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
                 <Database size={10} /> JES · read-only
               </span>
               {(doc.status || '').trim().toUpperCase() === 'VOID' && (

@@ -114,7 +114,7 @@ export default function EnquiryPage({ profile }) {
     return (
       <div className="text-center py-16">
         <ClipboardList size={30} className="mx-auto text-platinum mb-3" />
-        <p className="eyebrow text-ink-40 mb-1.5">Nothing here yet</p>
+        <p className="eyebrow text-ink-60 mb-1.5">Nothing here yet</p>
         <p className="text-sm text-ink-60">Your enquiry list is empty — add products from the catalogue to request a quotation.</p>
         <Link to="/shop/figurine" className="text-brand-600 text-sm mt-3 inline-block">Browse the catalogue</Link>
       </div>
@@ -123,7 +123,7 @@ export default function EnquiryPage({ profile }) {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="text-xl md:text-2xl mb-1">Enquiry <span className="text-ink-50 text-base">({items.length})</span></h1>
+      <h1 className="text-xl md:text-2xl mb-1">Enquiry <span className="text-ink-60 text-base">({items.length})</span></h1>
       <p className="text-sm text-ink-60 mb-5">Review your selection, add quantities and notes, then send us a request for quotation.</p>
 
       <div className="card divide-y divide-ivory-dark mb-5">
@@ -154,7 +154,7 @@ export default function EnquiryPage({ profile }) {
                   <p className="text-sm text-ink truncate">{i.name}</p>
                   {concept && <span className="badge bg-purple-100 text-purple-700 shrink-0">Concept</span>}
                 </div>
-                {i.code && <p className="text-xs text-ink-50 font-mono">{i.code}</p>}
+                {i.code && <p className="text-xs text-ink-60 font-mono">{i.code}</p>}
                 {concept && (
                   <p className="text-xs text-purple-600 mt-0.5">
                     Under development — not yet in production. Let us know your estimated interest below.
@@ -172,7 +172,7 @@ export default function EnquiryPage({ profile }) {
                   className="input py-2 text-xs mt-1 w-full" />
               </div>
               <div className="flex flex-col items-end gap-1 shrink-0">
-                <span className="text-xs text-ink-50">
+                <span className="text-xs text-ink-60">
                   {unitPrice(i) != null ? `${fmtMoney(unitPrice(i), cur)} ea` : 'On enquiry'}
                 </span>
                 {ppc > 0 ? (
@@ -186,22 +186,22 @@ export default function EnquiryPage({ profile }) {
                       <button type="button" onClick={() => setCartons(cartons + 1)}
                         className="min-h-[40px] min-w-[40px] flex items-center justify-center hover:bg-ivory text-ink-70" aria-label="More cartons"><Plus size={12} /></button>
                     </div>
-                    <span className="text-xs text-ink-50">{cartons} ctn · {qtyPcs.toLocaleString()} pcs</span>
+                    <span className="text-xs text-ink-60">{cartons} ctn · {qtyPcs.toLocaleString()} pcs</span>
                   </div>
                 ) : (
-                  <label className="text-xs text-ink-50">{concept ? 'Estimated qty' : 'Qty (pcs)'}
+                  <label className="text-xs text-ink-60">{concept ? 'Estimated qty' : 'Qty (pcs)'}
                     <input type="number" min="1" value={qtyPcs}
                       onChange={e => setPcs(Number(e.target.value))}
                       className="input py-2 w-20 ml-1 inline-block" />
                   </label>
                 )}
                 <span className="text-sm text-ink font-medium">
-                  {concept ? <span className="text-ink-40 font-normal text-xs">Not in total</span>
+                  {concept ? <span className="text-ink-60 font-normal text-xs">Not in total</span>
                     : lineTotal(i) != null ? fmtMoney(lineTotal(i), cur) : '—'}
                 </span>
                 {belowMoq && <Link to={`/shop/figurine?design=${designNumberOf(i)}`} title={`Design total ${designTotal.toLocaleString()} of ${moq.toLocaleString()} min — add more of this design to reach it`} className="text-xs text-amber-700 hover:text-amber-900 underline decoration-dotted text-right">Design {designTotal.toLocaleString()}/{moq.toLocaleString()} · add more</Link>}
                 {belowFormatMoq && <Link to={`/shop/figurine?format=${fmtCode}`} title={`${fmtLabel} total ${formatTotal.toLocaleString()} of ${fmtMoq.toLocaleString()} min — combine ${fmtLabel} designs to reach it`} className="text-xs text-amber-700 hover:text-amber-900 underline decoration-dotted text-right">{fmtLabel} {formatTotal.toLocaleString()}/{fmtMoq.toLocaleString()} · add more</Link>}
-                <button onClick={() => cart.remove(i.key)} className="text-ink-40 hover:text-red-500" aria-label="Remove">
+                <button onClick={() => cart.remove(i.key)} className="text-ink-60 hover:text-red-500" aria-label="Remove">
                   <Trash2 size={15} />
                 </button>
               </div>
@@ -212,10 +212,10 @@ export default function EnquiryPage({ profile }) {
 
       <div className="card p-4 mb-5">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-ink-70">Estimated total <span className="text-ink-40">({cur})</span></span>
+          <span className="text-sm text-ink-70">Estimated total <span className="text-ink-60">({cur})</span></span>
           <span className="text-lg font-medium text-ink">{fmtMoney(total, cur)}</span>
         </div>
-        <p className="text-xs text-ink-40 mt-2">
+        <p className="text-xs text-ink-60 mt-2">
           Ex-factory prices — freight not included.{' '}
           {hasIndicative && 'Made-to-order corporate items are quoted separately and not included in this total. '}
           {hasConcept && 'Concept items are not yet in production and are excluded from this total — they register your estimated interest only. '}
@@ -233,9 +233,9 @@ export default function EnquiryPage({ profile }) {
         <button onClick={submit} disabled={sending} className="btn-primary">
           {sending ? 'Sending…' : 'Send enquiry'}
         </button>
-        <button onClick={() => cart.clear()} className="text-sm text-ink-50 hover:text-ink">Clear list</button>
+        <button onClick={() => cart.clear()} className="text-sm text-ink-60 hover:text-ink">Clear list</button>
       </div>
-      <p className="text-xs text-ink-40 mt-3">
+      <p className="text-xs text-ink-60 mt-3">
         This sends a request for quotation to Crystocraft using your account details
         ({profile?.company_name || profile?.email}). No payment is taken.
       </p>

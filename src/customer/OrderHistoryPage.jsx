@@ -98,19 +98,19 @@ export default function OrderHistoryPage({ profile }) {
         <button type="button" onClick={() => setInvoicesOpen(v => !v)}
                 className="w-full flex items-center justify-between mb-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
           <h2 className="eyebrow text-bronze">Sales Invoice History</h2>
-          {invoicesOpen ? <ChevronUp size={16} className="text-ink-40" /> : <ChevronDown size={16} className="text-ink-40" />}
+          {invoicesOpen ? <ChevronUp size={16} className="text-ink-60" /> : <ChevronDown size={16} className="text-ink-60" />}
         </button>
         {invoicesOpen && (
           historyLoading ? (
             <p className="text-sm text-ink-60 py-6 text-center">Loading…</p>
           ) : erpShared && invoiceHistory.length === 0 ? (
             <div className="card p-6 text-center">
-              <p className="eyebrow text-ink-40 mb-1.5">Not linked to this account</p>
+              <p className="eyebrow text-ink-60 mb-1.5">Not linked to this account</p>
               <p className="text-sm text-ink-60">Your invoice history isn't linked to an individual account yet — contact us if you'd like a copy of a past invoice.</p>
             </div>
           ) : invoiceHistory.length === 0 ? (
             <div className="card p-6 text-center">
-              <p className="eyebrow text-ink-40 mb-1.5">Nothing yet</p>
+              <p className="eyebrow text-ink-60 mb-1.5">Nothing yet</p>
               <p className="text-sm text-ink-60">No invoices on file yet.</p>
             </div>
           ) : (
@@ -123,14 +123,14 @@ export default function OrderHistoryPage({ profile }) {
                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openInvoice() } }}
                      className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-ivory transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <Receipt size={14} className="text-ink-30 shrink-0" />
+                    <Receipt size={14} className="text-ink-60 shrink-0" />
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-ink truncate">
                         {r.no || '—'}
                         {/* r.uc (JES siref / app uc_no) already reads "UC4920/26" — no extra label prefix, or it doubles up. */}
-                        {r.uc && <span className="ml-1.5 text-xs font-mono text-ink-40">{r.uc}</span>}
+                        {r.uc && <span className="ml-1.5 text-xs font-mono text-ink-60">{r.uc}</span>}
                       </p>
-                      <p className="text-xs text-ink-50 mt-0.5">{fmtDate(r.date)}{r.currency ? ` · ${r.currency}` : ''}</p>
+                      <p className="text-xs text-ink-60 mt-0.5">{fmtDate(r.date)}{r.currency ? ` · ${r.currency}` : ''}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">

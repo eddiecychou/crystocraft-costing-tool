@@ -214,7 +214,7 @@ export default function Layout({ children, user }) {
             <div className="md:hidden fixed bottom-[calc(4rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 bg-white border-t border-ivory-dark shadow-2xl rounded-t-xl overflow-hidden">
               <div className="flex flex-col items-center pt-2 pb-1">
                 <span className="w-9 h-1 rounded-full bg-ivory-dark mb-2" />
-                <p className="text-xs font-medium text-ink-50 uppercase tracking-[0.12em] font-label">All sections</p>
+                <p className="text-xs font-medium text-ink-60 uppercase tracking-[0.12em] font-label">All sections</p>
               </div>
               <div className="grid grid-cols-4 gap-1 p-3 pt-2">
                 {navItems.map(({ to, short, Icon }) => (

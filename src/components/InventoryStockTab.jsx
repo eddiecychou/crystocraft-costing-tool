@@ -69,7 +69,7 @@ export default function InventoryStockTab({ inv }) {
 
       {adding && <AddRow inv={inv} onDone={() => setAdding(false)} />}
 
-      <p className="text-xs text-ink-50 mb-2">
+      <p className="text-xs text-ink-60 mb-2">
         {loading ? 'Loading…' : (
           <>
             {filtered.length} of {items.length} item{items.length === 1 ? '' : 's'} · {totals.onHand.toLocaleString()} on hand
@@ -89,18 +89,18 @@ export default function InventoryStockTab({ inv }) {
             <div key={c.id}>
               <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 py-2.5 hover:bg-ivory/50 transition-colors">
                 <button onClick={() => setExpanded(e => e === c.id ? null : c.id)} className="flex items-center gap-3 min-w-0 flex-1 text-left">
-                  {expanded === c.id ? <ChevronDown size={15} className="text-ink-40 shrink-0" /> : <ChevronRight size={15} className="text-ink-40 shrink-0" />}
+                  {expanded === c.id ? <ChevronDown size={15} className="text-ink-60 shrink-0" /> : <ChevronRight size={15} className="text-ink-60 shrink-0" />}
                   <Icon size={16} className="text-brand-400 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm text-ink-90 truncate">{c.code}</span>
+                      <span className="font-mono text-sm text-ink truncate">{c.code}</span>
                       {c[inv.attrField] && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 shrink-0">{c[inv.attrField]}</span>}
                       {c.size && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 shrink-0">{c.size}</span>}
                     </div>
                     <p className="text-xs text-ink-60 truncate">
                       {c.name || '—'}
                       {inv.retailField && Number.isFinite(Number(c[inv.retailField])) && c[inv.retailField] !== '' && c[inv.retailField] != null &&
-                        <span className="text-ink-40"> · ¥{Number(c[inv.retailField]).toLocaleString()}</span>}
+                        <span className="text-ink-60"> · ¥{Number(c[inv.retailField]).toLocaleString()}</span>}
                       {(() => {
                         const onHand = Number(c.stock_qty) || 0
                         const reserved = Number(c.reserved_qty) || 0
@@ -176,7 +176,7 @@ function EditRow({ inv, item }) {
   return (
     <div className="pt-3 pb-2">
       <div className="flex items-baseline justify-between mb-1.5">
-        <label className="text-[11px] uppercase tracking-wide text-ink-50">Details</label>
+        <label className="text-[11px] uppercase tracking-wide text-ink-60">Details</label>
         {/* Shown on a successful write, not on `!dirty`. `dirty` compares
             against the subscribed item, which only refreshes when the snapshot
             comes back — so gating on it left the user with no feedback at all

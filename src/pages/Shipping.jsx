@@ -309,7 +309,7 @@ function JesOrderRow({ r, onOpen }) {
       </td>
       <td className="px-2 py-3 whitespace-nowrap text-right">
         <span title="Historical order from JES — read-only archive"
-              className="text-[10px] font-medium text-ink-40 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
+              className="text-[10px] font-medium text-ink-60 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
           <Database size={10} /> JES
         </span>
       </td>

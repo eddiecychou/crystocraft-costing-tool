@@ -379,7 +379,7 @@ export default function SchemaAudit() {
       </div>
       <p className="text-sm text-ink-60 mb-4">
         Read-only check of every main collection against the canonical data shapes. Nothing is changed.
-        {ranAt && <span className="text-ink-40"> · last run {ranAt.toLocaleTimeString()}</span>}
+        {ranAt && <span className="text-ink-60"> · last run {ranAt.toLocaleTimeString()}</span>}
       </p>
 
       <div className="flex flex-wrap gap-2 mb-5">
@@ -401,7 +401,7 @@ export default function SchemaAudit() {
               className={`px-3 py-2 text-sm font-medium -mb-px border-b-2 shrink-0 transition-colors ${
                 active === c ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-80'}`}>
               {c}
-              {catCounts[c] > 0 && <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${active === c ? 'bg-brand-50 text-brand-700' : 'bg-ivory text-ink-50'}`}>{catCounts[c]}</span>}
+              {catCounts[c] > 0 && <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${active === c ? 'bg-brand-50 text-brand-700' : 'bg-ivory text-ink-60'}`}>{catCounts[c]}</span>}
             </button>
           ))}
         </div>
@@ -416,14 +416,14 @@ export default function SchemaAudit() {
               <div className="flex items-center justify-between gap-3">
                 <button onClick={() => hasIssues && toggle(g.name)} className={`flex items-center gap-2 text-left min-w-0 ${hasIssues ? '' : 'cursor-default'}`}>
                   {hasIssues
-                    ? (open ? <ChevronDown size={15} className="text-ink-40 shrink-0" /> : <ChevronRight size={15} className="text-ink-40 shrink-0" />)
+                    ? (open ? <ChevronDown size={15} className="text-ink-60 shrink-0" /> : <ChevronRight size={15} className="text-ink-60 shrink-0" />)
                     : <span className="w-[15px] shrink-0" />}
-                  <h2 className="text-sm font-semibold text-gray-700 truncate">{g.name} <span className="font-normal text-ink-40">· {g.total} records</span></h2>
+                  <h2 className="text-sm font-semibold text-gray-700 truncate">{g.name} <span className="font-normal text-ink-60">· {g.total} records</span></h2>
                 </button>
                 <div className="flex items-center gap-3 shrink-0">
                   {hasIssues ? (
                     <>
-                      <span className="text-xs text-ink-50">{g.issues.length} issue{g.issues.length > 1 ? 's' : ''}</span>
+                      <span className="text-xs text-ink-60">{g.issues.length} issue{g.issues.length > 1 ? 's' : ''}</span>
                       {g.issues.some(it => it.clearLead) && (
                         <button onClick={() => clearAllLeads(g)} disabled={clearingLead}
                           className="text-xs text-amber-700 hover:underline inline-flex items-center gap-1 disabled:opacity-50"
@@ -442,7 +442,7 @@ export default function SchemaAudit() {
               </div>
               {open && hasIssues && (
                 <>
-                  <p className="text-[11px] text-ink-40 mt-2 mb-1">
+                  <p className="text-[11px] text-ink-60 mt-2 mb-1">
                     {g.hint}
                     {g.hintLink && <> · <Link to={g.hintLink.to} className="text-brand-600 hover:underline">{g.hintLink.label}</Link></>}
                   </p>
@@ -464,7 +464,7 @@ export default function SchemaAudit() {
                           </div>
                         )
                     ))}
-                    {g.issues.length > 100 && <p className="text-xs text-ink-40 pt-2">…and {g.issues.length - 100} more — use Copy for the full list.</p>}
+                    {g.issues.length > 100 && <p className="text-xs text-ink-60 pt-2">…and {g.issues.length - 100} more — use Copy for the full list.</p>}
                   </div>
                 </>
               )}
@@ -537,7 +537,7 @@ function NotInRangeRow({ it }) {
               </option>
             ))}
           </select>
-          <Link to={`/shipments/${sel.id}`} className="text-xs text-ink-50 hover:underline">view PI</Link>
+          <Link to={`/shipments/${sel.id}`} className="text-xs text-ink-60 hover:underline">view PI</Link>
           <Link to={`/range/new?${params.toString()}`} className="text-xs text-brand-600 hover:underline font-medium">
             Add to Range from this PI →
           </Link>

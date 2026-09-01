@@ -11,7 +11,7 @@ export default function FavHeart({ item, className = '' }) {
       onClick={e => { e.preventDefault(); e.stopPropagation(); fav?.toggle(item) }}
       aria-label={active ? 'Remove from favourites' : 'Add to favourites'}
       className={`inline-flex items-center justify-center rounded-full p-1.5 bg-white/90 shadow-sm hover:bg-white transition-colors ${className}`}>
-      <Heart size={16} className={active ? 'text-red-500 fill-red-500' : 'text-ink-50'} />
+      <Heart size={16} className={active ? 'text-red-500 fill-red-500' : 'text-ink-60'} />
     </button>
   )
 }

@@ -220,13 +220,13 @@ function ProductDefaults() {
             <label className="label">Assembly lead time <span className="text-ink-60 font-normal">(weeks)</span></label>
             <input className="input" type="number" min="1" value={leadTime}
                    onChange={e => setLeadTime(e.target.value)} placeholder="3" />
-            <p className="text-[11px] text-ink-50 mt-1">Weeks to assemble when components are on hand</p>
+            <p className="text-[11px] text-ink-60 mt-1">Weeks to assemble when components are on hand</p>
           </div>
           <div>
             <label className="label">MOQ <span className="text-ink-60 font-normal">(pcs)</span></label>
             <input className="input" type="number" min="1" value={moq}
                    onChange={e => setMoq(e.target.value)} placeholder="100" />
-            <p className="text-[11px] text-ink-50 mt-1">Minimum order quantity for made-to-order</p>
+            <p className="text-[11px] text-ink-60 mt-1">Minimum order quantity for made-to-order</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -280,7 +280,7 @@ function QuoteBrandingPanel() {
     setStampUrl('')
   }
 
-  if (stampUrl === null) return <div className="p-4 md:p-6 text-sm text-ink-50">Loading…</div>
+  if (stampUrl === null) return <div className="p-4 md:p-6 text-sm text-ink-60">Loading…</div>
 
   return (
     <div className="p-4 md:p-6 max-w-lg">
@@ -295,7 +295,7 @@ function QuoteBrandingPanel() {
           <img src={stampUrl} alt="Quote stamp" className="max-h-24 max-w-xs object-contain" />
         </div>
       ) : (
-        <p className="text-sm text-ink-50 mb-4">No stamp uploaded yet — quote PDFs will show a blank signature line.</p>
+        <p className="text-sm text-ink-60 mb-4">No stamp uploaded yet — quote PDFs will show a blank signature line.</p>
       )}
 
       <div className="flex items-center gap-3">

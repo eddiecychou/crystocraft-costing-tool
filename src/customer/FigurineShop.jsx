@@ -206,7 +206,7 @@ export default function FigurineShop({ profile }) {
       </div>
       {filtered.length === 0 ? (
         <div className="text-center py-16">
-          <p className="eyebrow text-ink-40 mb-1.5">No matches</p>
+          <p className="eyebrow text-ink-60 mb-1.5">No matches</p>
           <p className="text-sm text-ink-60">No designs match your search or filters.</p>
         </div>
       ) : (
@@ -239,7 +239,7 @@ export default function FigurineShop({ profile }) {
                   <span className="font-mono">{s.code}</span>{s.size ? ` · ${s.size}` : ''}
                 </p>
                 {s.platings.length > 0 && (
-                  <p className="text-xs text-ink-50 truncate">{s.platings.join(' · ')}</p>
+                  <p className="text-xs text-ink-60 truncate">{s.platings.join(' · ')}</p>
                 )}
                 <div className="mt-auto pt-1.5">
                   <span className="text-base text-ink font-medium">{priceLabel(s)}</span>

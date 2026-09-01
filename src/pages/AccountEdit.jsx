@@ -290,9 +290,9 @@ export default function AccountEdit() {
           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 uppercase tracking-wide">{roleStatusLabel}</span>
         </div>
         <p className="text-sm text-ink-70 break-all">{u.email || '—'}</p>
-        {u.contact_name && <p className="text-sm text-ink-50">{u.contact_name}</p>}
-        {linked?.country && <p className="text-sm text-ink-50">{linked.country}</p>}
-        <p className="text-[11px] text-ink-40 mt-1 font-mono break-all" title="Account (users doc) ID — matches the User UID in Firebase Console → Authentication for a real login. An orphaned/hand-made duplicate won't match any Auth user.">ID: {u.id}</p>
+        {u.contact_name && <p className="text-sm text-ink-60">{u.contact_name}</p>}
+        {linked?.country && <p className="text-sm text-ink-60">{linked.country}</p>}
+        <p className="text-[11px] text-ink-60 mt-1 font-mono break-all" title="Account (users doc) ID — matches the User UID in Firebase Console → Authentication for a real login. An orphaned/hand-made duplicate won't match any Auth user.">ID: {u.id}</p>
       </div>
 
       {/* Activity */}
@@ -303,9 +303,9 @@ export default function AccountEdit() {
           <Stat label="Last sign-in" value={fmtDate(u.last_login_at)} />
           <Stat label="Sign-ins" value={u.login_count ?? 0} />
         </div>
-        <p className="text-[10px] uppercase tracking-wide text-ink-40 mb-2">Enquiries ({enquiries.length})</p>
+        <p className="text-[10px] uppercase tracking-wide text-ink-60 mb-2">Enquiries ({enquiries.length})</p>
         {enquiries.length === 0 ? (
-          <p className="text-sm text-ink-50">{isAdmin ? 'No enquiries.' : 'No enquiries yet — a good candidate to follow up with.'}</p>
+          <p className="text-sm text-ink-60">{isAdmin ? 'No enquiries.' : 'No enquiries yet — a good candidate to follow up with.'}</p>
         ) : (
           <div className="divide-y divide-gray-100">
             {enquiries.slice(0, 8).map(e => (
@@ -314,12 +314,12 @@ export default function AccountEdit() {
                   {fmtDate(e.createdAt)} · {e.items?.length || 0} item{(e.items?.length || 0) === 1 ? '' : 's'}
                 </span>
                 <span className="flex items-center gap-2 shrink-0">
-                  {e.estimated_total != null && <span className="text-ink-90">{e.currency || ''} {Number(e.estimated_total).toLocaleString()}</span>}
+                  {e.estimated_total != null && <span className="text-ink">{e.currency || ''} {Number(e.estimated_total).toLocaleString()}</span>}
                   {e.status && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 uppercase tracking-wide">{e.status}</span>}
                 </span>
               </div>
             ))}
-            {enquiries.length > 8 && <p className="text-xs text-ink-40 pt-2">…and {enquiries.length - 8} more.</p>}
+            {enquiries.length > 8 && <p className="text-xs text-ink-60 pt-2">…and {enquiries.length - 8} more.</p>}
           </div>
         )}
       </div>
@@ -348,19 +348,19 @@ export default function AccountEdit() {
           <div className="mt-3 p-3 rounded-lg bg-ivory-light border border-ivory-dark space-y-2.5">
             <div className="grid grid-cols-3 gap-2">
               <label className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase tracking-wide text-ink-40">Country</span>
+                <span className="text-[10px] uppercase tracking-wide text-ink-60">Country</span>
                 <select className="input text-xs" value={newCountry} onChange={e => setNewCountry(e.target.value)}>
                   {CUSTOMER_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase tracking-wide text-ink-40">Customer type</span>
+                <span className="text-[10px] uppercase tracking-wide text-ink-60">Customer type</span>
                 <select className="input text-xs" value={newType} onChange={e => setNewType(e.target.value)}>
                   {CRM_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase tracking-wide text-ink-40">Source</span>
+                <span className="text-[10px] uppercase tracking-wide text-ink-60">Source</span>
                 <select className="input text-xs" value={newSource} onChange={e => setNewSource(e.target.value)}>
                   {CUSTOMER_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -372,7 +372,7 @@ export default function AccountEdit() {
                 {creatingCustomer ? 'Creating…' : 'Create customer'}
               </button>
               <button type="button" onClick={() => setShowCreatePanel(false)} disabled={creatingCustomer}
-                      className="text-xs text-ink-50 hover:text-ink">
+                      className="text-xs text-ink-60 hover:text-ink">
                 Cancel
               </button>
             </div>
@@ -539,7 +539,7 @@ export default function AccountEdit() {
               Revoke admin — back to normal account
             </button>
           )}
-          {isStaff && isSelf && <span className="text-sm text-ink-50">This is your own {isAdmin ? 'admin' : 'staff'} account.</span>}
+          {isStaff && isSelf && <span className="text-sm text-ink-60">This is your own {isAdmin ? 'admin' : 'staff'} account.</span>}
 
           {canDelete && (
             <button className="text-sm text-ink-60 hover:text-red-600 sm:ml-auto" onClick={del}>Delete account</button>
@@ -553,8 +553,8 @@ export default function AccountEdit() {
 function Stat({ label, value }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wide text-ink-40">{label}</p>
-      <p className="text-sm text-ink-90 mt-0.5">{value}</p>
+      <p className="text-[10px] uppercase tracking-wide text-ink-60">{label}</p>
+      <p className="text-sm text-ink mt-0.5">{value}</p>
     </div>
   )
 }

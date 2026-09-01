@@ -78,7 +78,7 @@ export default function FrontPageConfig({ embedded = false }) {
       <p className="text-sm text-ink-60 mb-1">
         Hand-picked products shown in the "Featured Products" section on the customer portal homepage (/shop) — pick which product, and which one of its own photos, to show.
       </p>
-      {status === 'saving' && <p className="text-xs text-ink-40 mb-4">Saving…</p>}
+      {status === 'saving' && <p className="text-xs text-ink-60 mb-4">Saving…</p>}
       {status === 'saved' && <p className="text-xs text-emerald-600 mb-4">Saved.</p>}
       {status && typeof status === 'string' && status.startsWith('Error') && <p className="text-xs text-red-600 mb-4">{status}</p>}
       {!status && <div className="mb-4" />}
@@ -93,22 +93,22 @@ export default function FrontPageConfig({ embedded = false }) {
               </div>
               <div className="p-3">
                 <p className="text-sm text-ink truncate" title={meta?.name}>{meta?.name || '(product not found)'}</p>
-                <p className="text-[11px] text-ink-50 uppercase tracking-wide mb-2">{it.product_type === 'range' ? 'Figurine' : 'Corporate'}</p>
+                <p className="text-[11px] text-ink-60 uppercase tracking-wide mb-2">{it.product_type === 'range' ? 'Figurine' : 'Corporate'}</p>
                 <div className="flex items-center gap-1.5">
                   <button type="button" onClick={() => move(i, -1)} disabled={i === 0}
-                    className="p-1 rounded border border-ivory-dark text-ink-50 hover:text-ink disabled:opacity-30" title="Move earlier">
+                    className="p-1 rounded border border-ivory-dark text-ink-60 hover:text-ink disabled:opacity-30" title="Move earlier">
                     <ChevronUp size={13} />
                   </button>
                   <button type="button" onClick={() => move(i, 1)} disabled={i === items.length - 1}
-                    className="p-1 rounded border border-ivory-dark text-ink-50 hover:text-ink disabled:opacity-30" title="Move later">
+                    className="p-1 rounded border border-ivory-dark text-ink-60 hover:text-ink disabled:opacity-30" title="Move later">
                     <ChevronDown size={13} />
                   </button>
                   <button type="button" onClick={() => setPickerFor(it.id)}
-                    className="p-1 rounded border border-ivory-dark text-ink-50 hover:text-ink" title="Change product/photo">
+                    className="p-1 rounded border border-ivory-dark text-ink-60 hover:text-ink" title="Change product/photo">
                     <ImageIcon size={13} />
                   </button>
                   <button type="button" onClick={() => setConfirmRemove(it.id)}
-                    className="p-1 rounded border border-ivory-dark text-ink-50 hover:text-red-600 ml-auto" title="Remove">
+                    className="p-1 rounded border border-ivory-dark text-ink-60 hover:text-red-600 ml-auto" title="Remove">
                     <Trash2 size={13} />
                   </button>
                 </div>
@@ -117,14 +117,14 @@ export default function FrontPageConfig({ embedded = false }) {
           )
         })}
         <button type="button" onClick={() => setPickerFor('new')}
-          className="card border-dashed flex flex-col items-center justify-center gap-2 py-10 text-ink-40 hover:text-brand-600 hover:border-brand-300 transition-colors">
+          className="card border-dashed flex flex-col items-center justify-center gap-2 py-10 text-ink-60 hover:text-brand-600 hover:border-brand-300 transition-colors">
           <Plus size={22} />
           <span className="text-sm">Add product</span>
         </button>
       </div>
 
       {items.length === 0 && (
-        <p className="text-sm text-ink-50">No featured products yet — click "Add product" to pick your first one.</p>
+        <p className="text-sm text-ink-60">No featured products yet — click "Add product" to pick your first one.</p>
       )}
 
       {pickerFor && (

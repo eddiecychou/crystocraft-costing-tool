@@ -316,7 +316,7 @@ export default function PurchaseOrders() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-[10px] uppercase tracking-wide text-ink-40 border-b border-ivory-dark">
+                <tr className="text-[10px] uppercase tracking-wide text-ink-60 border-b border-ivory-dark">
                   <Th sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} k="pu" label="PU No." />
                   <Th sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} k="supplier" label="Supplier" />
                   <Th sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} k="supplier_code" label="Supplier code" />
@@ -397,7 +397,7 @@ function JesPoRow({ r, onOpen }) {
           <Database size={14} className="text-gray-300 shrink-0" />
           <span className="font-mono text-sm font-medium text-gray-900">{(r.code || '').trim()}</span>
           <span title="Historical purchase order from JES — read-only archive"
-                className="text-[10px] font-medium text-ink-40 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
+                className="text-[10px] font-medium text-ink-60 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
             <Database size={10} /> JES
           </span>
         </span>

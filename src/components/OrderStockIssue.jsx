@@ -116,7 +116,7 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
     <div className="card p-4">
       <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between gap-2 text-left">
         <span className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-          {open ? <ChevronDown size={15} className="text-ink-40" /> : <ChevronRight size={15} className="text-ink-40" />}
+          {open ? <ChevronDown size={15} className="text-ink-60" /> : <ChevronRight size={15} className="text-ink-60" />}
           Component stock
         </span>
         <StageChip stage={state.stage} dateStr={dateStr} gapCount={state.gaps.count} />
@@ -136,7 +136,7 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
           )}
           {state.stage === 'committed' ? (
             <>
-              <p className="text-xs text-ink-50 mb-2">{state.lines.length} component(s) consumed (production-in) for this order.</p>
+              <p className="text-xs text-ink-60 mb-2">{state.lines.length} component(s) consumed (production-in) for this order.</p>
               <LinesTable lines={state.lines} />
               <button type="button" onClick={doReverse} disabled={busy}
                 className="mt-3 inline-flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-800 disabled:opacity-50">
@@ -145,7 +145,7 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
             </>
           ) : state.stage === 'reserved' ? (
             <>
-              <p className="text-xs text-ink-50 mb-2">{state.lines.length} component(s) reserved — on the line, not yet consumed.</p>
+              <p className="text-xs text-ink-60 mb-2">{state.lines.length} component(s) reserved — on the line, not yet consumed.</p>
               <LinesTable lines={state.lines} />
               <div className="mt-3 flex items-center gap-3 flex-wrap">
                 <button type="button" onClick={doProduce} disabled={busy} className="inline-flex items-center gap-1.5 btn-primary text-sm">
@@ -158,11 +158,11 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
               </div>
             </>
           ) : loading ? (
-            <p className="text-sm text-ink-40 py-3 text-center">Computing requirements…</p>
+            <p className="text-sm text-ink-60 py-3 text-center">Computing requirements…</p>
           ) : preview ? (
             <>
               {preview.items.length === 0 ? (
-                <p className="text-sm text-ink-50 py-2">No metal-component BOM to reserve on this order.</p>
+                <p className="text-sm text-ink-60 py-2">No metal-component BOM to reserve on this order.</p>
               ) : (
                 <>
                   <PreviewTable items={preview.items} />
@@ -224,7 +224,7 @@ function PreviewTable({ items }) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-[10px] uppercase tracking-wide text-ink-40 text-left border-b border-ivory-dark">
+          <tr className="text-[10px] uppercase tracking-wide text-ink-60 text-left border-b border-ivory-dark">
             <th className="py-1.5 pr-2 font-medium">Component</th>
             <th className="py-1.5 pr-2 font-medium text-right">Need</th>
             <th className="py-1.5 pr-2 font-medium text-right">In stock</th>
@@ -234,7 +234,7 @@ function PreviewTable({ items }) {
         <tbody className="divide-y divide-gray-50">
           {items.map(it => (
             <tr key={it.component_id}>
-              <td className="py-1.5 pr-2"><span className="font-mono text-xs">{it.code}</span>{it.name ? <span className="text-ink-50"> · {it.name}</span> : ''}</td>
+              <td className="py-1.5 pr-2"><span className="font-mono text-xs">{it.code}</span>{it.name ? <span className="text-ink-60"> · {it.name}</span> : ''}</td>
               <td className="py-1.5 pr-2 text-right font-mono tabular-nums text-amber-700">{fmt(it.required)}</td>
               <td className="py-1.5 pr-2 text-right font-mono tabular-nums text-ink-60">{fmt(it.inStock)}</td>
               <td className={`py-1.5 text-right font-mono tabular-nums ${it.after < 0 ? 'text-red-600 font-semibold' : 'text-green-700'}`}>{fmt(it.after)}</td>

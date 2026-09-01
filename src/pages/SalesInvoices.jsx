@@ -305,7 +305,7 @@ export default function SalesInvoices() {
             <Receipt size={15} /> Direct Invoice
           </Link>
         </div>
-        <p className="text-sm text-ink-50 mt-1">
+        <p className="text-sm text-ink-60 mt-1">
           Two paths: a <strong>wholesale</strong> invoice is raised from its sales order once the goods are
           ready to ship — open the order below and allocate its number. A <strong>retail</strong> sale
           (Amazon, web, small Alibaba) skips the sales order and is invoiced directly.
@@ -582,7 +582,7 @@ export default function SalesInvoices() {
                           </Link>
                         ) : (
                           <span title="Historical invoice from JES — read-only archive"
-                                className="text-[10px] font-medium text-ink-40 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
+                                className="text-[10px] font-medium text-ink-60 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
                             <Database size={10} /> JES
                           </span>
                         )}

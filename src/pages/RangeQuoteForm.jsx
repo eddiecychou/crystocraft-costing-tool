@@ -147,7 +147,7 @@ export default function RangeQuoteForm() {
   return (
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
-        <div className="text-sm text-ink-50 mb-1">
+        <div className="text-sm text-ink-60 mb-1">
           <Link to="/components" className="hover:text-brand-600">Components</Link>
           {' / '}
           <Link to={`/components/critical/${componentId}`} className="hover:text-brand-600">{component?.code || component?.name || 'Component'}</Link>

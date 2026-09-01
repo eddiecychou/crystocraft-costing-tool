@@ -201,7 +201,7 @@ export default function CorporateShop({ profile }) {
       </div>
       {stillResolving ? null : filtered.length === 0 ? (
         <div className="text-center py-16">
-          <p className="eyebrow text-ink-40 mb-1.5">No matches</p>
+          <p className="eyebrow text-ink-60 mb-1.5">No matches</p>
           <p className="text-sm text-ink-60">No products match your search or filters.</p>
         </div>
       ) : (
@@ -247,12 +247,12 @@ function CorpCard({ p, cur, rates, profile, images }) {
       </div>
       <div className="p-3 flex flex-col gap-1 flex-1">
         <h3 className="text-sm leading-tight text-ink line-clamp-2" title={p.name}>{p.name}</h3>
-        <p className="text-xs text-ink-50">{p.category}</p>
+        <p className="text-xs text-ink-60">{p.category}</p>
         {p.description && <p className="text-xs text-ink-60 line-clamp-2">{p.description}</p>}
         <div className="mt-auto pt-1.5">
-          {fromPrice === undefined ? <span className="text-xs text-ink-40">…</span>
-            : fromPrice == null ? <span className="text-xs text-ink-40 italic">Enquire for pricing</span>
-            : <span className="text-sm text-ink"><span className="text-xs text-ink-50">from </span>{fmtMoney(fromPrice, cur)}</span>}
+          {fromPrice === undefined ? <span className="text-xs text-ink-60">…</span>
+            : fromPrice == null ? <span className="text-xs text-ink-60 italic">Enquire for pricing</span>
+            : <span className="text-sm text-ink"><span className="text-xs text-ink-60">from </span>{fmtMoney(fromPrice, cur)}</span>}
         </div>
       </div>
     </Link>

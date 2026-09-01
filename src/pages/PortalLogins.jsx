@@ -188,41 +188,41 @@ export default function PortalLogins({ embedded = false }) {
       {/* GA4 cross-check — not a merge, see the fetch effect's own comment. */}
       <div className="card p-4 mb-4">
         <div className="flex items-center gap-1.5 mb-2">
-          <TrendingUp size={14} className="text-ink-40" />
+          <TrendingUp size={14} className="text-ink-60" />
           <h2 className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Site traffic (Google Analytics)</h2>
         </div>
         {trafficError ? (
           <p className="text-sm text-red-600 flex items-center gap-1.5"><AlertTriangle size={14} />{trafficError}</p>
         ) : traffic === null ? (
-          <p className="text-sm text-ink-40">Loading…</p>
+          <p className="text-sm text-ink-60">Loading…</p>
         ) : !trafficSummary ? (
-          <p className="text-sm text-ink-40">No GA4 data for the last 30 days.</p>
+          <p className="text-sm text-ink-60">No GA4 data for the last 30 days.</p>
         ) : (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div>
                 <p className="text-lg font-semibold text-ink">{trafficSummary.sessions7d.toLocaleString()}</p>
-                <p className="text-xs text-ink-40">Sessions, last 7 days</p>
+                <p className="text-xs text-ink-60">Sessions, last 7 days</p>
               </div>
               <div>
                 <p className="text-lg font-semibold text-ink">{trafficSummary.users7d.toLocaleString()}</p>
-                <p className="text-xs text-ink-40">Active users, last 7 days</p>
+                <p className="text-xs text-ink-60">Active users, last 7 days</p>
               </div>
               <div>
                 <p className="text-lg font-semibold text-ink">{trafficSummary.sessions30d.toLocaleString()}</p>
-                <p className="text-xs text-ink-40">Sessions, last 30 days</p>
+                <p className="text-xs text-ink-60">Sessions, last 30 days</p>
               </div>
               <div>
                 <p className="text-lg font-semibold text-ink">
                   {trafficSummary.peak?.sessions.toLocaleString()}
-                  <span className="text-xs font-normal text-ink-40 ml-1">
+                  <span className="text-xs font-normal text-ink-60 ml-1">
                     on {trafficSummary.peak && `${trafficSummary.peak.date.slice(4,6)}/${trafficSummary.peak.date.slice(6,8)}`}
                   </span>
                 </p>
-                <p className="text-xs text-ink-40">Busiest day, last 30 days</p>
+                <p className="text-xs text-ink-60">Busiest day, last 30 days</p>
               </div>
             </div>
-            <p className="text-[11px] text-ink-40 mt-3 pt-2 border-t border-ivory-dark">
+            <p className="text-[11px] text-ink-60 mt-3 pt-2 border-t border-ivory-dark">
               These totals are every visitor to the whole site — staff included, not matched to any account.
               The "GA sessions (30d)" column in the table below IS matched per account, via a Firebase-uid
               tag added 2026-08-27 — use these totals to sanity-check the overall trend, the column for a
@@ -251,18 +251,18 @@ export default function PortalLogins({ embedded = false }) {
           ['Signed in this week', stats.week, 'text-emerald-700'],
           ['This month', stats.month, 'text-emerald-700'],
           ['Quiet 30 days+', stats.quiet, 'text-amber-700'],
-          ['Never signed in', stats.never, stats.never ? 'text-red-600' : 'text-ink-40'],
+          ['Never signed in', stats.never, stats.never ? 'text-red-600' : 'text-ink-60'],
         ].map(([label, n, cls]) => (
           <div key={label} className="min-w-[92px]">
             <div className={`text-lg font-semibold ${cls}`}>{n}</div>
-            <div className="text-[11px] text-ink-50 uppercase tracking-wide">{label}</div>
+            <div className="text-[11px] text-ink-60 uppercase tracking-wide">{label}</div>
           </div>
         ))}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 mb-3">
         <div className="relative">
-          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-40" />
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-60" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search email, name, customer…"
             className="pl-8 pr-3 py-1.5 text-sm border border-ivory-dark rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-brand-400/40" />
         </div>
@@ -283,7 +283,7 @@ export default function PortalLogins({ embedded = false }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[640px]">
             <thead>
-              <tr className="text-left text-ink-50 border-b border-ivory-dark bg-ivory/50">
+              <tr className="text-left text-ink-60 border-b border-ivory-dark bg-ivory/50">
                 <th className="px-3 py-2 font-medium">Account</th>
                 <th className="px-3 py-2 font-medium">Customer</th>
                 <th className="px-3 py-2 font-medium">Last sign-in</th>
@@ -295,7 +295,7 @@ export default function PortalLogins({ embedded = false }) {
             </thead>
             <tbody>
               {rows.length === 0 && !loading && (
-                <tr><td colSpan={7} className="px-3 py-8 text-center text-ink-40">No accounts match.</td></tr>
+                <tr><td colSpan={7} className="px-3 py-8 text-center text-ink-60">No accounts match.</td></tr>
               )}
               {rows.map(u => {
                 const cust = customersById.get(u.customer_id)
@@ -306,7 +306,7 @@ export default function PortalLogins({ embedded = false }) {
                   <tr key={u.id} className="border-b border-ivory last:border-0 hover:bg-ivory/40">
                     <td className="px-3 py-2.5">
                       <div className="text-ink">{u.name || u.email || u.id}</div>
-                      {u.name && u.email && <div className="text-[11px] text-ink-50">{u.email}</div>}
+                      {u.name && u.email && <div className="text-[11px] text-ink-60">{u.email}</div>}
                       {roleGroupOf(u) === 'internal' && (
                         <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 uppercase tracking-wide">
                           {u.role === 'admin' || u.role === 'production' ? u.role : 'internal'}
@@ -314,7 +314,7 @@ export default function PortalLogins({ embedded = false }) {
                       )}
                     </td>
                     <td className="px-3 py-2.5 text-ink-70">
-                      {cust?.company_name || <span className="text-ink-30">— not linked</span>}
+                      {cust?.company_name || <span className="text-ink-60">— not linked</span>}
                     </td>
                     <td className="px-3 py-2.5" title={fmtExact(u.last_login_at)}>
                       <span className={d === null ? 'text-red-600' : d > 30 ? 'text-amber-700' : 'text-ink-70'}>
@@ -323,13 +323,13 @@ export default function PortalLogins({ embedded = false }) {
                     </td>
                     <td className="px-3 py-2.5 text-right tabular-nums text-ink-70">{u.login_count ?? 0}</td>
                     <td className="px-3 py-2.5 text-right tabular-nums">
-                      {ga ? <span className="text-ink-70">{ga.sessions}</span> : <span className="text-ink-30">—</span>}
+                      {ga ? <span className="text-ink-70">{ga.sessions}</span> : <span className="text-ink-60">—</span>}
                     </td>
                     <td className="px-3 py-2.5">
                       <span className={`text-[11px] px-1.5 py-0.5 rounded ${STATUS_STYLE[status]}`}>{status}</span>
                     </td>
                     <td className="px-3 py-2.5 text-right">
-                      <Link to={`/portal/accounts/${u.id}`} className="text-ink-40 hover:text-brand-600 inline-flex">
+                      <Link to={`/portal/accounts/${u.id}`} className="text-ink-60 hover:text-brand-600 inline-flex">
                         <ChevronRight size={16} />
                       </Link>
                     </td>
@@ -341,7 +341,7 @@ export default function PortalLogins({ embedded = false }) {
         </div>
       </div>
 
-      <p className="text-[11px] text-ink-40 mt-2">
+      <p className="text-[11px] text-ink-60 mt-2">
         "Sign-ins" comes from each account's own record, updated on sign-in — so this is the last time someone
         signed in, not a history of every visit. "GA sessions" is a real per-account match from Google Analytics,
         but only counts from 2026-08-27 onward (when session tagging shipped) — a "—" there can mean either no

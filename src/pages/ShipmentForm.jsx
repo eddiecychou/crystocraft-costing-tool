@@ -1167,7 +1167,7 @@ export default function ShipmentForm() {
             )}
 
             {lines.length === 0 && (
-              <p className="text-sm text-ink-50 py-3 text-center">
+              <p className="text-sm text-ink-60 py-3 text-center">
                 No lines yet — <button type="button" onClick={addBlankLine} className="text-brand-600 hover:underline">add one</button>
                 {!isEdit && !isDirect && <> , or drop a PI above to import them.</>}
               </p>

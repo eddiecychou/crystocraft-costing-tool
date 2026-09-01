@@ -107,7 +107,7 @@ export default function CreditNotes() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-[10px] uppercase tracking-wide text-ink-40 border-b border-ivory-dark">
+                <tr className="text-[10px] uppercase tracking-wide text-ink-60 border-b border-ivory-dark">
                   <th className="px-3 py-2 font-medium text-left">CN No.</th>
                   <th className="px-3 py-2 font-medium text-left">Customer</th>
                   <th className="px-3 py-2 font-medium text-left">Original SI / UC</th>

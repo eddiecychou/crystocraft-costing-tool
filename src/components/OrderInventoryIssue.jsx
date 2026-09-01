@@ -70,28 +70,28 @@ export default function OrderInventoryIssue({ orderId, orderLabel, inv }) {
     <div className="card p-4">
       <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between gap-2 text-left">
         <span className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-          {open ? <ChevronDown size={15} className="text-ink-40" /> : <ChevronRight size={15} className="text-ink-40" />}
+          {open ? <ChevronDown size={15} className="text-ink-60" /> : <ChevronRight size={15} className="text-ink-60" />}
           <Icon size={14} className="text-brand-400" /> {inv.cardTitle} stock
         </span>
         {state.stage === 'committed'
           ? <span className="inline-flex items-center gap-1 text-xs text-green-700"><CheckCircle2 size={13} /> Produced-in{dateStr ? ` · ${dateStr}` : ''}</span>
           : state.stage === 'reserved'
             ? <span className="inline-flex items-center gap-1 text-xs text-amber-600"><Lock size={12} /> Reserved{dateStr ? ` · ${dateStr}` : ''}</span>
-            : <span className="text-xs text-ink-40">not used on this order</span>}
+            : <span className="text-xs text-ink-60">not used on this order</span>}
       </button>
 
       {open && (
         <div className="mt-3">
           {state.stage !== 'open' ? (
             <>
-              <p className="text-xs text-ink-50 mb-2">
+              <p className="text-xs text-ink-60 mb-2">
                 {state.lines.length} line(s) {state.stage === 'committed' ? 'consumed (production-in)' : 'reserved — on the line, not yet consumed'}.
               </p>
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-gray-50">
                   {state.lines.map((l, i) => (
                     <tr key={l[idField] || i}>
-                      <td className="py-1.5 pr-2"><span className="font-mono text-xs">{l.code || byId[l[idField]]?.code || l[idField]}</span>{byId[l[idField]]?.[inv.attrField] ? <span className="text-ink-50"> · {byId[l[idField]][inv.attrField]}</span> : ''}</td>
+                      <td className="py-1.5 pr-2"><span className="font-mono text-xs">{l.code || byId[l[idField]]?.code || l[idField]}</span>{byId[l[idField]]?.[inv.attrField] ? <span className="text-ink-60"> · {byId[l[idField]][inv.attrField]}</span> : ''}</td>
                       <td className="py-1.5 text-right font-mono tabular-nums text-ink-70">{fmt(l.qty)}</td>
                     </tr>
                   ))}
@@ -114,7 +114,7 @@ export default function OrderInventoryIssue({ orderId, orderLabel, inv }) {
               )}
             </>
           ) : items.length === 0 ? (
-            <p className="text-sm text-ink-50 py-2">Nothing in stock yet — add it in Components first.</p>
+            <p className="text-sm text-ink-60 py-2">Nothing in stock yet — add it in Components first.</p>
           ) : (
             <>
               <div className="space-y-2">
@@ -131,7 +131,7 @@ export default function OrderInventoryIssue({ orderId, orderLabel, inv }) {
                       <div className="flex gap-2 items-center">
                         <input className="input text-sm w-24 text-right tabular-nums" inputMode="numeric" value={r.qty}
                                onChange={e => setRow(r._uid, { qty: e.target.value.replace(/[^\d]/g, '') })} placeholder="Qty" />
-                        <span className="text-[11px] text-ink-50 w-28 shrink-0">
+                        <span className="text-[11px] text-ink-60 w-28 shrink-0">
                           {avail != null ? <>avail {fmt(avail)}{after != null ? <> → <span className={after < 0 ? 'text-red-600 font-semibold' : ''}>{fmt(after)}</span></> : ''}</> : ''}
                         </span>
                         <button type="button" onClick={() => removeRow(r._uid)} className="text-gray-300 hover:text-red-500 shrink-0"><Trash2 size={15} /></button>

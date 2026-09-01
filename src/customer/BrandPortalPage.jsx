@@ -135,7 +135,7 @@ export default function BrandPortalPage({ profile }) {
   if (!customerId) {
     return (
       <div className="text-center py-16">
-        <p className="eyebrow text-ink-40 mb-1.5">Nothing linked yet</p>
+        <p className="eyebrow text-ink-60 mb-1.5">Nothing linked yet</p>
         <p className="text-sm text-ink-60">No brand content is linked to your account yet. Contact us and we'll set it up.</p>
       </div>
     )
@@ -144,7 +144,7 @@ export default function BrandPortalPage({ profile }) {
   if (total === 0) {
     return (
       <div className="text-center py-16">
-        <p className="eyebrow text-ink-40 mb-1.5">Coming soon</p>
+        <p className="eyebrow text-ink-60 mb-1.5">Coming soon</p>
         <p className="text-sm text-ink-60">We haven't added any of your brand content to the portal yet.</p>
       </div>
     )
@@ -261,7 +261,7 @@ export default function BrandPortalPage({ profile }) {
                     <p className="text-xs text-ink truncate">{img.caption || img.product_name || 'Product photo'}</p>
                   </Link>
                   <a href={downloadUrl(img.file_url, `${img.product_name || 'product'}.jpg`)}
-                     title="Download" className="shrink-0 text-ink-40 hover:text-brand-600">
+                     title="Download" className="shrink-0 text-ink-60 hover:text-brand-600">
                     <Download size={15} />
                   </a>
                 </div>
@@ -271,7 +271,7 @@ export default function BrandPortalPage({ profile }) {
               <div key={a.id} className="mosaic-tile flex flex-col">
                 <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
                   {cannotRenderAsImage(a.filename) ? (
-                    <div className="flex flex-col items-center gap-1 text-ink-40">
+                    <div className="flex flex-col items-center gap-1 text-ink-60">
                       <FileText size={26} strokeWidth={1.5} />
                       <span className="text-xs font-medium">{extOf(a.filename)}</span>
                     </div>
@@ -282,10 +282,10 @@ export default function BrandPortalPage({ profile }) {
                 <div className="p-2.5 flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-xs text-ink truncate">{a.title || a.filename}</p>
-                    <p className="text-xs text-ink-40">{TYPE_LABEL[a.type]} · {extOf(a.filename)}</p>
+                    <p className="text-xs text-ink-60">{TYPE_LABEL[a.type]} · {extOf(a.filename)}</p>
                   </div>
                   <a href={downloadUrl(a.file_url, a.filename)}
-                     title="Download" className="shrink-0 text-ink-40 hover:text-brand-600">
+                     title="Download" className="shrink-0 text-ink-60 hover:text-brand-600">
                     <Download size={15} />
                   </a>
                 </div>
@@ -315,16 +315,16 @@ export default function BrandPortalPage({ profile }) {
                  className="flex items-center gap-3 px-3 py-2.5 hover:bg-ivory/60 transition-colors">
                 <div className="w-11 h-11 shrink-0 rounded-none border border-ivory-dark bg-white flex items-center justify-center overflow-hidden">
                   {cannotRenderAsImage(a.filename) ? (
-                    <FileText size={18} strokeWidth={1.5} className="text-ink-40" />
+                    <FileText size={18} strokeWidth={1.5} className="text-ink-60" />
                   ) : (
                     <img src={a.file_url} alt="" className="w-full h-full object-contain p-1" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-ink truncate">{a.title || a.filename}</p>
-                  <p className="text-xs text-ink-40">{TYPE_LABEL[a.type]} · {extOf(a.filename)}</p>
+                  <p className="text-xs text-ink-60">{TYPE_LABEL[a.type]} · {extOf(a.filename)}</p>
                 </div>
-                <Download size={16} className="shrink-0 text-ink-40" />
+                <Download size={16} className="shrink-0 text-ink-60" />
               </a>
             ))}
           </div>

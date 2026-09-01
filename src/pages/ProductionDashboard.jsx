@@ -32,10 +32,10 @@ function lowStock(arr) {
 }
 
 function StatCard({ Icon, label, value, tone = 'ink' }) {
-  const toneCls = tone === 'warn' ? 'text-amber-600' : 'text-ink-90'
+  const toneCls = tone === 'warn' ? 'text-amber-600' : 'text-ink'
   return (
     <div className="card p-5">
-      <div className="flex items-center gap-2 text-ink-50 mb-2">
+      <div className="flex items-center gap-2 text-ink-60 mb-2">
         <Icon size={16} strokeWidth={1.75} />
         <span className="text-[11px] uppercase tracking-wide">{label}</span>
       </div>
@@ -85,7 +85,7 @@ export default function ProductionDashboard() {
           <Link to="/inventory" className="text-xs text-brand-600 hover:underline">Open Inventory →</Link>
         </div>
         {low.length === 0 ? (
-          <p className="text-sm text-ink-50">Nothing below its reorder point.</p>
+          <p className="text-sm text-ink-60">Nothing below its reorder point.</p>
         ) : (
           <div className="divide-y divide-gray-100">
             {low.slice(0, 12).map((r, i) => (
@@ -99,7 +99,7 @@ export default function ProductionDashboard() {
                 </span>
               </div>
             ))}
-            {low.length > 12 && <p className="text-xs text-ink-40 pt-2">…and {low.length - 12} more.</p>}
+            {low.length > 12 && <p className="text-xs text-ink-60 pt-2">…and {low.length - 12} more.</p>}
           </div>
         )}
       </div>

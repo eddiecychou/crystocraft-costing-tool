@@ -170,7 +170,7 @@ export default function BulkVideoEditor() {
                 <tr key={item.key} onClick={() => toggleOne(item.key)}
                     className={`cursor-pointer transition-colors ${checked ? 'bg-brand-50' : 'hover:bg-ivory'}`}>
                   <td className="px-3 py-2.5">
-                    <span className={checked ? 'text-brand-600' : 'text-ink-40'}>
+                    <span className={checked ? 'text-brand-600' : 'text-ink-60'}>
                       {checked ? <CheckSquare size={16} /> : <Square size={16} />}
                     </span>
                   </td>
@@ -181,14 +181,14 @@ export default function BulkVideoEditor() {
                   </td>
                   <td className="px-3 py-2.5 font-mono text-xs text-ink-70 whitespace-nowrap">{item.code || '—'}</td>
                   <td className="px-3 py-2.5 text-ink">{item.name}</td>
-                  <td className="px-3 py-2.5 hidden md:table-cell text-ink-50 text-xs">
+                  <td className="px-3 py-2.5 hidden md:table-cell text-ink-60 text-xs">
                     {item.videos.length ? `${item.videos.length} video${item.videos.length > 1 ? 's' : ''}` : '—'}
                   </td>
                 </tr>
               )
             })}
             {filtered.length === 0 && (
-              <tr><td colSpan={5} className="text-center py-12 text-ink-40 text-sm">No products match your filters.</td></tr>
+              <tr><td colSpan={5} className="text-center py-12 text-ink-60 text-sm">No products match your filters.</td></tr>
             )}
           </tbody>
         </table>

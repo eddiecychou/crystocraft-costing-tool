@@ -88,7 +88,7 @@ export default function CatalogueBand() {
             {[3, 4, 5, 6, 8].map(n => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
-        <p className="text-xs text-ink-50 basis-full">Tiles fill whole rows — fewer than one full row of active tiles hides the band.</p>
+        <p className="text-xs text-ink-60 basis-full">Tiles fill whole rows — fewer than one full row of active tiles hides the band.</p>
       </div>
 
       {/* Collections list */}
@@ -98,7 +98,7 @@ export default function CatalogueBand() {
       </div>
 
       {rows.length === 0 ? (
-        <div className="card p-6 text-center text-sm text-ink-50">No collections yet for this catalogue.</div>
+        <div className="card p-6 text-center text-sm text-ink-60">No collections yet for this catalogue.</div>
       ) : (
         <div className="space-y-2">
           {rows.map((c, i) => {
@@ -106,23 +106,23 @@ export default function CatalogueBand() {
             return (
               <div key={c.id} className={`card p-3 flex items-center gap-3 ${c.active === false ? 'opacity-60' : ''}`}>
                 <div className="flex flex-col">
-                  <button onClick={() => move(i, -1)} disabled={i === 0} className="text-ink-40 hover:text-ink disabled:opacity-30"><ChevronUp size={15} /></button>
-                  <button onClick={() => move(i, 1)} disabled={i === rows.length - 1} className="text-ink-40 hover:text-ink disabled:opacity-30"><ChevronDown size={15} /></button>
+                  <button onClick={() => move(i, -1)} disabled={i === 0} className="text-ink-60 hover:text-ink disabled:opacity-30"><ChevronUp size={15} /></button>
+                  <button onClick={() => move(i, 1)} disabled={i === rows.length - 1} className="text-ink-60 hover:text-ink disabled:opacity-30"><ChevronDown size={15} /></button>
                 </div>
                 <div className="w-10 h-10 rounded shrink-0 flex items-center justify-center text-[10px] font-medium" style={{ background: ac.tile, color: ac.ink }}>
                   {c.image_mode === 'custom' && c.custom_url ? <img src={c.custom_url} alt="" className="w-full h-full object-cover rounded" /> : 'Aa'}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm text-ink-90 truncate">{c.title || <span className="text-ink-40 italic">Untitled</span>}</p>
-                  <p className="text-xs text-ink-50 truncate">
+                  <p className="text-sm text-ink truncate">{c.title || <span className="text-ink-60 italic">Untitled</span>}</p>
+                  <p className="text-xs text-ink-60 truncate">
                     {c.type === 'filter' && `Filter · ${c.filter_value || '(none)'}`}
                     {c.type === 'manual' && `Manual · ${c.product_ids.length} product${c.product_ids.length === 1 ? '' : 's'}`}
                     {c.type === 'smart' && `Smart · ${c.smart_rule}`}
                     {c.active === false && ' · hidden'}
                   </p>
                 </div>
-                <button onClick={() => setEditing(c)} className="text-ink-50 hover:text-brand-600 p-1"><Pencil size={15} /></button>
-                <button onClick={() => setConfirmDel(c)} className="text-ink-40 hover:text-red-500 p-1"><Trash2 size={15} /></button>
+                <button onClick={() => setEditing(c)} className="text-ink-60 hover:text-brand-600 p-1"><Pencil size={15} /></button>
+                <button onClick={() => setConfirmDel(c)} className="text-ink-60 hover:text-red-500 p-1"><Trash2 size={15} /></button>
               </div>
             )
           })}
@@ -185,8 +185,8 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[88vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-ivory-dark">
-          <h2 className="font-semibold text-ink-90">{f.id ? 'Edit collection' : 'New collection'}</h2>
-          <button onClick={onClose} className="text-ink-40 hover:text-ink"><X size={18} /></button>
+          <h2 className="font-semibold text-ink">{f.id ? 'Edit collection' : 'New collection'}</h2>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink"><X size={18} /></button>
         </div>
 
         <div className="p-5 space-y-4 overflow-y-auto">
@@ -212,7 +212,7 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
                 <option value="">— select —</option>
                 {filterValues.map(v => <option key={v} value={v}>{v}</option>)}
               </select>
-              <p className="text-xs text-ink-50 mt-1">Clicking the tile filters the grid to this category.</p>
+              <p className="text-xs text-ink-60 mt-1">Clicking the tile filters the grid to this category.</p>
             </div>
           )}
 
@@ -227,14 +227,14 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
                     <button key={p.id} type="button"
                             onClick={() => set('product_ids', on ? f.product_ids.filter(x => x !== p.id) : [...(f.product_ids || []), p.id])}
                             className={`w-full flex items-center gap-2 px-2 py-1.5 text-left hover:bg-ivory ${on ? 'bg-brand-50' : ''}`}>
-                      <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] ${on ? 'bg-brand-600 border-brand-600 text-white' : 'border-ink-30'}`}>{on ? '✓' : ''}</span>
+                      <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] ${on ? 'bg-brand-600 border-brand-600 text-white' : 'border-warm-grey'}`}>{on ? '✓' : ''}</span>
                       {p.image ? <img src={p.image} alt="" className="w-7 h-7 object-contain rounded bg-white border border-ivory" /> : <span className="w-7 h-7 rounded bg-ivory" />}
                       <span className="text-sm text-ink-80 truncate flex-1">{p.name}</span>
-                      <span className="text-[10px] text-ink-40">{p.cat}</span>
+                      <span className="text-[10px] text-ink-60">{p.cat}</span>
                     </button>
                   )
                 })}
-                {matches.length === 0 && <p className="text-xs text-ink-40 text-center py-4">No products found.</p>}
+                {matches.length === 0 && <p className="text-xs text-ink-60 text-center py-4">No products found.</p>}
               </div>
             </div>
           )}
@@ -245,7 +245,7 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
               <select className="input" value={f.smart_rule} onChange={e => set('smart_rule', e.target.value)}>
                 {SMART_RULES.map(r => <option key={r.key} value={r.key}>{r.label}</option>)}
               </select>
-              <p className="text-xs text-ink-50 mt-1">Auto-updates from the products tagged “New arrival”.</p>
+              <p className="text-xs text-ink-60 mt-1">Auto-updates from the products tagged “New arrival”.</p>
             </div>
           )}
 
@@ -277,7 +277,7 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
               )}
               {f.image_mode === 'custom' && f.custom_url && <img src={f.custom_url} alt="" className="w-10 h-10 object-cover rounded border border-ivory-dark" />}
             </div>
-            <p className="text-xs text-ink-50 mt-1">Custom uses your full-bleed image with the title overlaid (best look — keep a consistent style across tiles). Templated falls back to a representative product photo on the accent colour.</p>
+            <p className="text-xs text-ink-60 mt-1">Custom uses your full-bleed image with the title overlaid (best look — keep a consistent style across tiles). Templated falls back to a representative product photo on the accent colour.</p>
           </div>
 
           {f.image_mode === 'custom' && (

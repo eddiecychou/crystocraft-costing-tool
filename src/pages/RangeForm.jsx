@@ -209,7 +209,7 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote, onA
     approved: 'bg-green-50 text-green-700 border-green-300',
     rejected: 'bg-red-50 text-red-700 border-red-300',
     used: 'bg-blue-50 text-blue-700 border-blue-300',
-    superseded: 'bg-ink-50/10 text-ink-50 border-ivory-dark',
+    superseded: 'bg-ink-60/10 text-ink-60 border-ivory-dark',
   }
   const badgeLabel = {
     draft: 'Draft — not visible',
@@ -220,10 +220,10 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote, onA
   return (
     <div className="border-t border-ivory-dark pt-2 mt-2">
       <div className="flex items-center justify-between mb-1.5">
-        <label className="text-[11px] uppercase tracking-wide text-ink-50">Colour preview (experiment)</label>
+        <label className="text-[11px] uppercase tracking-wide text-ink-60">Colour preview (experiment)</label>
       </div>
       {!image ? (
-        <p className="text-[11px] text-ink-50">Add an image to this variation first.</p>
+        <p className="text-[11px] text-ink-60">Add an image to this variation first.</p>
       ) : (
         <div className="flex items-center gap-2 flex-wrap">
           <select className="input text-xs py-1 flex-1 min-w-[9rem]" value={target} onChange={e => setTarget(e.target.value)}>
@@ -264,7 +264,7 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote, onA
           </div>
         </div>
       )}
-      <p className="text-[10px] text-ink-50 mt-1">
+      <p className="text-[10px] text-ink-60 mt-1">
         For a mixture recipe or a colour you already have a real photo of, use “Upload photo” or “From gallery” instead of AI — both skip generation entirely.
       </p>
       {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
@@ -273,7 +273,7 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote, onA
           {previews.map(p => (
             <div key={p.id} className="w-20">
               <div className="w-20 h-20 bg-white border border-ivory-dark flex items-center justify-center overflow-hidden">
-                {p.status === 'generating' && <span className="text-[10px] text-ink-50">…</span>}
+                {p.status === 'generating' && <span className="text-[10px] text-ink-60">…</span>}
                 {p.status === 'failed' && <AlertTriangle size={16} className="text-red-500" />}
                 {p.status === 'success' && p.generatedImageUrl && (
                   <img src={p.generatedImageUrl} alt="" onClick={() => setZoomUrl(p.generatedImageUrl)}
@@ -324,12 +324,12 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote, onA
                     safe here (see §P2.3g/h for why it wasn't for colour_images). */}
                 {p.reviewStatus === 'used' && (
                   galleryUrls?.includes(p.generatedImageUrl)
-                    ? <span className="text-[9px] text-ink-40">✓ In gallery</span>
+                    ? <span className="text-[9px] text-ink-60">✓ In gallery</span>
                     : <button type="button" onClick={() => onAddToGallery(p.targetCrystalCode, p.generatedImageUrl)}
                               className="text-[9px] text-purple-700 hover:underline">Add to Gallery →</button>
                 )}
                 {p.reviewStatus !== 'used' && (
-                  <button type="button" onClick={() => onRemove(p)} className="text-[9px] text-ink-50 hover:text-red-600 hover:underline">Remove</button>
+                  <button type="button" onClick={() => onRemove(p)} className="text-[9px] text-ink-60 hover:text-red-600 hover:underline">Remove</button>
                 )}
               </div>
             </div>
@@ -1069,7 +1069,7 @@ export default function RangeForm() {
               <input className="input font-mono" value={form.design_no} inputMode="numeric" maxLength={4}
                      onChange={e => setForm(f => ({ ...f, design_no: e.target.value.replace(/\D/g, '').slice(0, 4) }))}
                      placeholder="0002" required />
-              <p className="text-[10px] text-ink-50 mt-0.5">3 or 4 digits (3 = 2-letter prefix allowed)</p>
+              <p className="text-[10px] text-ink-60 mt-0.5">3 or 4 digits (3 = 2-letter prefix allowed)</p>
             </div>
             <div>
               <label className="label">Product Type</label>
@@ -1121,7 +1121,7 @@ export default function RangeForm() {
           <label className="flex items-center gap-2 cursor-pointer select-none w-fit">
             <input type="checkbox" className="w-4 h-4 accent-emerald-600" checked={!!form.is_new}
                    onChange={e => setForm(f => ({ ...f, is_new: e.target.checked }))} />
-            <span className="text-sm text-ink-80">New arrival <span className="text-ink-50 font-normal">— shows a green “New” badge in the shop and floats this product to the top. Untick when it's no longer new.</span></span>
+            <span className="text-sm text-ink-80">New arrival <span className="text-ink-60 font-normal">— shows a green “New” badge in the shop and floats this product to the top. Untick when it's no longer new.</span></span>
           </label>
 
           <div>
@@ -1135,7 +1135,7 @@ export default function RangeForm() {
               <label className="label mb-0">Marketing Description</label>
               <div className="flex items-center gap-2">
                 <button type="button" onClick={() => setGuideOpen(o => !o)}
-                  className="text-xs text-ink-50 hover:text-brand-600 transition-colors">
+                  className="text-xs text-ink-60 hover:text-brand-600 transition-colors">
                   {guideOpen ? 'Hide instructions' : '+ Instructions'}
                 </button>
                 <button type="button" onClick={handleGenerateCopy} disabled={!aiName || aiLoading}
@@ -1149,7 +1149,7 @@ export default function RangeForm() {
                 <textarea className="input text-sm" rows={2}
                   placeholder="Optional: tell the AI what to emphasise — e.g. highlight the Bohemia crystal, target collectors, keep it under 60 words…"
                   value={aiGuide} onChange={e => setAiGuide(e.target.value)} />
-                <p className="text-xs text-ink-50 mt-1">
+                <p className="text-xs text-ink-60 mt-1">
                   {(form.gallery?.[0]?.url || form.variants?.find(v => v.image)?.image)
                     ? 'A product image will be sent to the AI so it can describe what it sees.'
                     : 'No image yet — add a gallery or variant image so the AI can also see the design.'}
@@ -1159,12 +1159,12 @@ export default function RangeForm() {
             <textarea className="input min-h-[96px]" value={form.marketing_description} onChange={set('marketing_description')}
               maxLength={MARKETING_DESC_MAXLEN}
               placeholder="Customer-facing sell-copy for catalogues and the storefront… or click AI Write to generate" />
-            <p className="text-[11px] text-ink-40 mt-0.5 text-right">{(form.marketing_description || '').length}/{MARKETING_DESC_MAXLEN}</p>
+            <p className="text-[11px] text-ink-60 mt-0.5 text-right">{(form.marketing_description || '').length}/{MARKETING_DESC_MAXLEN}</p>
             {aiError && <p className="text-xs text-red-500 mt-1">{aiError}</p>}
-            {!aiName && <p className="text-xs text-ink-50 mt-1">Enter a description (product name) first to enable AI writing</p>}
+            {!aiName && <p className="text-xs text-ink-60 mt-1">Enter a description (product name) first to enable AI writing</p>}
             {form.marketing_description && !rewriteOpen && (
               <button type="button" onClick={() => setRewriteOpen(true)}
-                className="text-xs text-ink-50 hover:text-brand-600 transition-colors mt-1 flex items-center gap-1">
+                className="text-xs text-ink-60 hover:text-brand-600 transition-colors mt-1 flex items-center gap-1">
                 <RotateCcw size={13} />Rewrite with guidance
               </button>
             )}
@@ -1245,7 +1245,7 @@ export default function RangeForm() {
             </p>
           ) : (
             <>
-              <label className="text-[11px] uppercase tracking-wide text-ink-50">Add critical components</label>
+              <label className="text-[11px] uppercase tracking-wide text-ink-60">Add critical components</label>
               <div className="flex gap-2 mt-1.5">
                 <input className="input text-sm flex-1 min-w-0" placeholder="Search code, name, supplier…"
                        value={compSearch} onChange={e => setCompSearch(e.target.value)} />
@@ -1258,7 +1258,7 @@ export default function RangeForm() {
               {(compSearch.trim() || compCat) && (
                 <div className="mt-1.5 border border-ivory-dark rounded-md max-h-60 overflow-auto divide-y divide-ivory-dark">
                   {compResults.length === 0 ? (
-                    <p className="text-xs text-ink-50 px-3 py-2.5">No matching components.</p>
+                    <p className="text-xs text-ink-60 px-3 py-2.5">No matching components.</p>
                   ) : compResults.map(c => {
                     const on = (form.critical_components || []).some(r => sameRef(r, c))
                     return (
@@ -1269,18 +1269,18 @@ export default function RangeForm() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-xs text-ink-90 truncate">{c.code}</span>
+                            <span className="font-mono text-xs text-ink truncate">{c.code}</span>
                             {c.category && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 shrink-0">{c.category}</span>}
                           </div>
                           <p className="text-[11px] text-ink-60 truncate">{c.name || '—'}</p>
                         </div>
-                        <span className="text-[11px] text-ink-50 shrink-0 tabular-nums">{c.stock_qty ?? 0} pcs · {c.lead_time_weeks ?? '?'}wk</span>
-                        <span className={`shrink-0 ${on ? 'text-brand-600' : 'text-ink-30'}`}>{on ? <Check size={14} /> : '+'}</span>
+                        <span className="text-[11px] text-ink-60 shrink-0 tabular-nums">{c.stock_qty ?? 0} pcs · {c.lead_time_weeks ?? '?'}wk</span>
+                        <span className={`shrink-0 ${on ? 'text-brand-600' : 'text-ink-60'}`}>{on ? <Check size={14} /> : '+'}</span>
                       </button>
                     )
                   })}
                   {compResults.length === 50 && (
-                    <p className="text-[11px] text-ink-50 px-3 py-2">Showing first 50 — refine your search.</p>
+                    <p className="text-[11px] text-ink-60 px-3 py-2">Showing first 50 — refine your search.</p>
                   )}
                 </div>
               )}
@@ -1288,7 +1288,7 @@ export default function RangeForm() {
               {/* Selected components — qty per unit + live stock / lead */}
               {(form.critical_components || []).length > 0 && (
                 <div className="mt-3 border-t border-ivory-dark pt-3 space-y-2">
-                  <label className="text-[11px] uppercase tracking-wide text-ink-50">
+                  <label className="text-[11px] uppercase tracking-wide text-ink-60">
                     Selected ({(form.critical_components || []).length})
                   </label>
                   {(form.critical_components || []).map(r => {
@@ -1328,12 +1328,12 @@ export default function RangeForm() {
                           ))}
                         </select>
                         <label className="flex items-center gap-1 shrink-0">
-                          <span className="text-ink-50">×</span>
+                          <span className="text-ink-60">×</span>
                           <input className="input text-xs w-12 text-right tabular-nums py-1" inputMode="numeric"
                                  value={r.qty_per_unit} onChange={e => setComponentQty(key, e.target.value)} placeholder="1" />
-                          <span className="text-ink-50">/unit</span>
+                          <span className="text-ink-60">/unit</span>
                         </label>
-                        <span className="w-20 shrink-0 text-right text-ink-50 tabular-nums">
+                        <span className="w-20 shrink-0 text-right text-ink-60 tabular-nums">
                           {c ? `${c.stock_qty ?? 0} pcs · ${c.lead_time_weeks ?? '?'}wk` : '—'}
                         </span>
                         <button type="button" onClick={() => cloneComponentRef(r)}
@@ -1359,10 +1359,10 @@ export default function RangeForm() {
           </div>
 
           <div className="mt-3 rounded-md bg-ivory/60 border border-ivory-dark p-3">
-            <p className="text-[10px] uppercase tracking-wide text-ink-50 mb-1">What the customer sees</p>
+            <p className="text-[10px] uppercase tracking-wide text-ink-60 mb-1">What the customer sees</p>
             <p className="text-sm text-ink-80">{availability.promise}</p>
             {availability.buildable != null && (
-              <p className="text-[11px] text-ink-50 mt-1">
+              <p className="text-[11px] text-ink-60 mt-1">
                 {availability.byPlating && Object.keys(availability.byPlating).length ? (
                   <>
                     Buildable:{' '}
@@ -1399,7 +1399,7 @@ export default function RangeForm() {
               {form.gallery.map((g, i) => (
                 <div key={i} className="flex items-center gap-3 border border-ivory-dark rounded p-2 bg-white">
                   <div className="relative w-14 h-14 shrink-0 bg-white border border-ivory-dark rounded overflow-hidden flex items-center justify-center">
-                    {g.url ? <img src={g.url} alt="" onClick={() => setLightbox(g)} className="w-full h-full object-contain p-0.5 cursor-zoom-in" title="Click to enlarge" /> : <span className="text-[10px] text-ink-40">no image</span>}
+                    {g.url ? <img src={g.url} alt="" onClick={() => setLightbox(g)} className="w-full h-full object-contain p-0.5 cursor-zoom-in" title="Click to enlarge" /> : <span className="text-[10px] text-ink-60">no image</span>}
                     {i === 0 && (
                       <span className="absolute top-0 left-0 bg-brand-600 text-white text-[9px] font-medium px-1 leading-tight rounded-br" title="Main image shown on the product card">MAIN</span>
                     )}
@@ -1412,25 +1412,25 @@ export default function RangeForm() {
                   <div className="flex items-center gap-0.5 shrink-0">
                     {i !== 0 && (
                       <button type="button" onClick={() => setGalleryMain(i)}
-                              className="text-ink-40 hover:text-brand-600 px-1" title="Set as main (card) image">★</button>
+                              className="text-ink-60 hover:text-brand-600 px-1" title="Set as main (card) image">★</button>
                     )}
                     {g.url && (
                       <button type="button"
                               onClick={() => { setEditTab('ai'); setEnh({ i, before: g.url, after: null, mode: null, busy: false, error: '', colorWarning: false }) }}
-                              className="text-ink-40 hover:text-brand-600 px-1" title="Enhance image — describe colours, then pick Clean or Enhance (AI, review before replacing)">
+                              className="text-ink-60 hover:text-brand-600 px-1" title="Enhance image — describe colours, then pick Clean or Enhance (AI, review before replacing)">
                         <Sparkles size={14} />
                       </button>
                     )}
                     {g.url && (
                       <button type="button" onClick={() => downloadRangeImage(g.url, g.caption || form.design_name)}
-                              className="text-ink-40 hover:text-brand-600 px-1" title={`Download image as ${g.caption || 'image'}`}>
+                              className="text-ink-60 hover:text-brand-600 px-1" title={`Download image as ${g.caption || 'image'}`}>
                         <Download size={14} />
                       </button>
                     )}
                     <button type="button" onClick={() => moveGallery(i, -1)} disabled={i === 0}
-                            className="text-ink-40 hover:text-ink-70 disabled:opacity-30 px-1" title="Move up">↑</button>
+                            className="text-ink-60 hover:text-ink-70 disabled:opacity-30 px-1" title="Move up">↑</button>
                     <button type="button" onClick={() => moveGallery(i, 1)} disabled={i === form.gallery.length - 1}
-                            className="text-ink-40 hover:text-ink-70 disabled:opacity-30 px-1" title="Move down">↓</button>
+                            className="text-ink-60 hover:text-ink-70 disabled:opacity-30 px-1" title="Move down">↓</button>
                     <button type="button" onClick={() => removeGallery(i)}
                             className="text-red-400 hover:text-red-600 px-1 leading-none" title="Remove image">×</button>
                   </div>
@@ -1439,7 +1439,7 @@ export default function RangeForm() {
             </div>
           )}
 
-          <label className="border border-dashed border-ivory-dark rounded flex items-center justify-center gap-2 cursor-pointer text-ink-50 hover:border-brand-400 hover:text-brand-600 transition-colors py-3"
+          <label className="border border-dashed border-ivory-dark rounded flex items-center justify-center gap-2 cursor-pointer text-ink-60 hover:border-brand-400 hover:text-brand-600 transition-colors py-3"
                  title="Click to upload images">
             <span className="text-xl leading-none">＋</span>
             <span className="text-xs">{uploading === 'gallery' ? 'Uploading…' : 'Upload images'}</span>
@@ -1460,7 +1460,7 @@ export default function RangeForm() {
               <div className="bg-white rounded-xl max-w-3xl w-full p-5" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5"><Sparkles size={15} /> Edit image — review before replacing</h3>
-                  <button type="button" onClick={() => !enh.busy && setEnh(null)} className="text-ink-40 hover:text-ink"><X size={16} /></button>
+                  <button type="button" onClick={() => !enh.busy && setEnh(null)} className="text-ink-60 hover:text-ink"><X size={16} /></button>
                 </div>
 
                 {/* Tabs: AI enhance vs manual adjust */}
@@ -1477,7 +1477,7 @@ export default function RangeForm() {
                       className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
                         editTab === t.key
                           ? 'border-brand-600 text-brand-700'
-                          : 'border-transparent text-ink-40 hover:text-ink-60'
+                          : 'border-transparent text-ink-60 hover:text-ink-60'
                       }`}
                     >
                       {t.label}
@@ -1495,23 +1495,23 @@ export default function RangeForm() {
                 <>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-[11px] uppercase tracking-wide text-ink-50 mb-1">Original</p>
+                    <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Original</p>
                     <div className="aspect-square bg-gray-100 border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
                       <img src={enh.before} alt="" className="w-full h-full object-contain" />
                     </div>
                   </div>
                   <div>
-                    <p className="text-[11px] uppercase tracking-wide text-ink-50 mb-1">Enhanced {enh.after && `· ${enh.mode}`}</p>
+                    <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Enhanced {enh.after && `· ${enh.mode}`}</p>
                     <div className="aspect-square bg-gray-100 border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
-                      {enh.busy ? <span className="text-xs text-ink-50">Working… (AI, ~10–20s)</span>
+                      {enh.busy ? <span className="text-xs text-ink-60">Working… (AI, ~10–20s)</span>
                         : enh.after ? <img src={enh.after} alt="" className="w-full h-full object-contain" />
-                        : <span className="text-xs text-ink-40">Describe colours below, then pick Clean or Enhance</span>}
+                        : <span className="text-xs text-ink-60">Describe colours below, then pick Clean or Enhance</span>}
                     </div>
                   </div>
                 </div>
                 <div className="mt-3">
-                  <label className="text-[11px] font-medium text-ink-50 uppercase tracking-wide">
-                    Describe product colours <span className="normal-case font-normal text-ink-40">(optional — helps AI preserve them)</span>
+                  <label className="text-[11px] font-medium text-ink-60 uppercase tracking-wide">
+                    Describe product colours <span className="normal-case font-normal text-ink-60">(optional — helps AI preserve them)</span>
                   </label>
                   <input
                     className="input mt-1 text-sm"
@@ -1527,7 +1527,7 @@ export default function RangeForm() {
                     className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink-60 hover:bg-gray-50"
                     onClick={() => setRecolorOpen(o => !o)}>
                     <span className="flex items-center gap-1.5"><Sparkles size={12} /> Change colours</span>
-                    <span className="text-ink-40">{recolorOpen ? '▲' : '▼'}</span>
+                    <span className="text-ink-60">{recolorOpen ? '▲' : '▼'}</span>
                   </button>
                   {recolorOpen && (
                     <div className="px-3 pb-3 pt-2 bg-gray-50 space-y-2">
@@ -1544,7 +1544,7 @@ export default function RangeForm() {
                         className="btn-primary text-xs py-1.5 disabled:opacity-40">
                         {enh.busy ? 'Working…' : 'Apply recolor'}
                       </button>
-                      <p className="text-[10px] text-ink-40 leading-snug">AI changes only what you describe — shape, background, and unmentioned colours stay the same. Always review before keeping.</p>
+                      <p className="text-[10px] text-ink-60 leading-snug">AI changes only what you describe — shape, background, and unmentioned colours stay the same. Always review before keeping.</p>
                     </div>
                   )}
                 </div>
@@ -1581,7 +1581,7 @@ export default function RangeForm() {
                             className="btn-secondary text-sm">Enhance (lighting + colour)</button>
                   </>}
                   <div className="flex-1" />
-                  <button type="button" disabled={enh.busy} onClick={() => setEnh(null)} className="text-sm text-ink-50 hover:text-ink px-2">Discard</button>
+                  <button type="button" disabled={enh.busy} onClick={() => setEnh(null)} className="text-sm text-ink-60 hover:text-ink px-2">Discard</button>
                   <button type="button" disabled={enh.busy || !enh.after} onClick={saveEnhancedAsNew} className="btn-secondary text-sm inline-flex items-center gap-1">
                     <Plus size={14} /> {enh.busy ? 'Saving…' : 'Save as new'}
                   </button>
@@ -1589,7 +1589,7 @@ export default function RangeForm() {
                     <Check size={14} /> {enh.busy ? 'Saving…' : 'Replace original'}
                   </button>
                 </div>
-                <p className="text-[11px] text-ink-40 mt-2">
+                <p className="text-[11px] text-ink-60 mt-2">
                   {editTab === 'ai'
                     ? "AI re-renders the image — check the shape, plating colour and stone colours match the real product before keeping. The original isn't changed until you Keep."
                     : "Adjustments are applied exactly as shown. The original isn't changed until you Keep."}
@@ -1635,7 +1635,7 @@ export default function RangeForm() {
                                 className="w-16 h-16 bg-white border border-ivory-dark flex items-center justify-center overflow-hidden cursor-pointer hover:border-brand-400 transition-colors"
                                 title="Choose an image">
                           {uploading === `variant-${i}`
-                            ? <span className="text-[10px] text-ink-50">…</span>
+                            ? <span className="text-[10px] text-ink-60">…</span>
                             : v.image
                               ? <img src={v.image} alt="" className="w-full h-full object-contain p-1" />
                               : <Gem size={20} className="text-gray-300" />}
@@ -1665,7 +1665,7 @@ export default function RangeForm() {
                                   </div>
                                 </>
                               ) : (
-                                <p className="text-[11px] text-ink-50">No images yet — upload one below or in the Images section.</p>
+                                <p className="text-[11px] text-ink-60">No images yet — upload one below or in the Images section.</p>
                               )}
                               <div className="flex items-center gap-2 pt-1 border-t border-ivory-dark">
                                 <label className="text-xs text-brand-600 hover:text-brand-700 cursor-pointer inline-flex items-center gap-1">
@@ -1748,7 +1748,7 @@ export default function RangeForm() {
                       {/* Crystal colours for this plating — selectable attribute, not a SKU/stock dimension */}
                       <div className="border-t border-ivory-dark pt-2 mt-1">
                         <div className="flex items-center justify-between mb-1.5">
-                          <label className="text-[11px] uppercase tracking-wide text-ink-50">Crystal colours</label>
+                          <label className="text-[11px] uppercase tracking-wide text-ink-60">Crystal colours</label>
                           <Link to="/components" className="text-[11px] text-brand-600 hover:underline">Manage library →</Link>
                         </div>
                         {libColors.length === 0 ? (
@@ -1771,7 +1771,7 @@ export default function RangeForm() {
                                 <button type="button" onClick={() => setVariantColors(i, libColors.map(c => c.code))}
                                   className="text-brand-600 hover:underline">Select all</button>
                                 <button type="button" onClick={() => setVariantColors(i, [])}
-                                  className="text-ink-50 hover:underline" disabled={sel.length === 0}>Clear</button>
+                                  className="text-ink-60 hover:underline" disabled={sel.length === 0}>Clear</button>
                                 {form.variants.length > 1 && (
                                   <button type="button" onClick={() => applyColorsToAll(i)}
                                     className="text-brand-600 hover:underline ml-auto" title="Apply this variation's colours to every variation">
@@ -1785,7 +1785,7 @@ export default function RangeForm() {
                               {/* All colours as rapid toggle chips */}
                               <div className="flex flex-wrap gap-1.5">
                                 {shown.length === 0 ? (
-                                  <p className="text-[11px] text-ink-50">No matching colours.</p>
+                                  <p className="text-[11px] text-ink-60">No matching colours.</p>
                                 ) : shown.map(c => {
                                   const on = sel.includes(c.code)
                                   return (
@@ -1820,11 +1820,11 @@ export default function RangeForm() {
                                     const price = rangePrice(v, colorLookup[code])
                                     return (
                                       <span key={code} className="text-[11px] font-mono text-ink-70">
-                                        {exSku}{price ? <span className="text-ink-50"> ${price.toFixed(2)}</span> : null}
+                                        {exSku}{price ? <span className="text-ink-60"> ${price.toFixed(2)}</span> : null}
                                       </span>
                                     )
                                   })}
-                                  {sel.length > 8 && <span className="text-[11px] text-ink-50">+{sel.length - 8} more</span>}
+                                  {sel.length > 8 && <span className="text-[11px] text-ink-60">+{sel.length - 8} more</span>}
                                 </div>
                               )}
                             </>

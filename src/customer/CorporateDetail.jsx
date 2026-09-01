@@ -59,7 +59,7 @@ export default function CorporateDetail({ profile }) {
   if (p === undefined) return <LoadingBar />
   if (p === null) return (
     <div className="text-center py-16">
-      <p className="eyebrow text-ink-40 mb-1.5">Unavailable</p>
+      <p className="eyebrow text-ink-60 mb-1.5">Unavailable</p>
       <p className="text-sm text-ink-60">This product is no longer available.</p>
       <Link to="/shop/corporate" className="text-brand-600 text-sm mt-3 inline-block">Back to catalogue</Link>
     </div>
@@ -128,7 +128,7 @@ export default function CorporateDetail({ profile }) {
               className={`btn-primary ${inCart ? 'opacity-60 pointer-events-none' : ''}`}>
               {inCart ? <><Check size={16} /> In enquiry</> : <><Plus size={16} /> Add to enquiry</>}
             </button>
-            {inCart && <span className="ml-3 text-xs text-ink-50">Adjust quantity in your enquiry list</span>}
+            {inCart && <span className="ml-3 text-xs text-ink-60">Adjust quantity in your enquiry list</span>}
           </div>
 
           {engineAvailable(engineTypeOf(p)) && (
@@ -137,7 +137,7 @@ export default function CorporateDetail({ profile }) {
                 className="btn-secondary inline-flex items-center gap-1.5 border-brand-300 text-brand-700">
                 <Sparkles size={16} /> Customise &amp; Preview with your logo
               </Link>
-              <p className="text-xs text-ink-50 mt-1.5">See your own logo before you enquire · {engineLabel(engineTypeOf(p))}</p>
+              <p className="text-xs text-ink-60 mt-1.5">See your own logo before you enquire · {engineLabel(engineTypeOf(p))}</p>
             </div>
           )}
 

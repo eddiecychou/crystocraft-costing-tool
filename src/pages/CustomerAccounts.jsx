@@ -108,7 +108,7 @@ export default function CustomerAccounts({ embedded = false }) {
 
       {showTypeFilter && (
         <div className="flex items-center gap-2 mb-4 text-xs">
-          <span className="uppercase tracking-wide text-ink-40">Show</span>
+          <span className="uppercase tracking-wide text-ink-60">Show</span>
           {[['all', 'All'], ['customer', 'Customers'], ['internal', 'Internal']].map(([v, label]) => (
             <button key={v} onClick={() => setTypeFilter(v)}
               className={`px-2.5 py-1 rounded-full border transition-colors ${
@@ -148,9 +148,9 @@ function Row({ u, linked, dup }) {
           {!linked && <span className="text-[10px] uppercase tracking-wide text-amber-600">Not linked</span>}
         </div>
         <p className="text-xs text-ink-70 break-all">{u.email || '—'}</p>
-        <p className="text-xs text-ink-50">{country || <span className="text-ink-30">No country</span>}</p>
+        <p className="text-xs text-ink-60">{country || <span className="text-ink-60">No country</span>}</p>
       </div>
-      <ChevronRight size={18} className="text-ink-30 shrink-0" />
+      <ChevronRight size={18} className="text-ink-60 shrink-0" />
     </Link>
   )
 }
@@ -185,11 +185,11 @@ export function CustomerPicker({ customers, value, onChange }) {
   if (selected) {
     return (
       <div className="inline-flex items-center gap-1 text-sm">
-        <Building2 size={14} className="text-ink-40" />
+        <Building2 size={14} className="text-ink-60" />
         <Link to={`/customers/${selected.id}`} className="text-brand-600 hover:underline truncate max-w-[220px]">
           {selected.company_name}
         </Link>
-        <button onClick={() => onChange('')} className="text-ink-30 hover:text-red-500" title="Unlink"><X size={13} /></button>
+        <button onClick={() => onChange('')} className="text-ink-60 hover:text-red-500" title="Unlink"><X size={13} /></button>
       </div>
     )
   }
@@ -207,7 +207,7 @@ export function CustomerPicker({ customers, value, onChange }) {
           />
           <div className="absolute z-20 mt-1 w-72 max-h-56 overflow-auto bg-white border border-ivory-dark rounded-lg shadow-lg">
             {matches.length === 0 ? (
-              <p className="text-xs text-ink-40 px-3 py-2">No customers found.</p>
+              <p className="text-xs text-ink-60 px-3 py-2">No customers found.</p>
             ) : matches.map(c => (
               <button key={c.id}
                 onClick={() => { onChange(c.id); setOpen(false); setSearch('') }}
@@ -218,7 +218,7 @@ export function CustomerPicker({ customers, value, onChange }) {
           </div>
         </div>
       ) : (
-        <button onClick={() => setOpen(true)} className="text-sm text-ink-40 hover:text-brand-600 inline-flex items-center gap-1">
+        <button onClick={() => setOpen(true)} className="text-sm text-ink-60 hover:text-brand-600 inline-flex items-center gap-1">
           <Building2 size={14} /> Link to customer
         </button>
       )}

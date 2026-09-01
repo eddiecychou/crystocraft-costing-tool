@@ -24,7 +24,7 @@ export default function VideoUrlsEditor({ videos, onChange, label = 'Product Vid
               />
               {(list.length > 1 || v) && (
                 <button type="button" onClick={() => remove(i)} aria-label="Remove video"
-                  className="shrink-0 p-2 text-ink-50 hover:text-red-500 transition-colors">
+                  className="shrink-0 p-2 text-ink-60 hover:text-red-500 transition-colors">
                   <X size={16} />
                 </button>
               )}

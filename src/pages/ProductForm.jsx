@@ -149,13 +149,13 @@ export default function ProductForm() {
         <label className="flex items-center gap-2 cursor-pointer select-none w-fit">
           <input type="checkbox" className="w-4 h-4 accent-emerald-600" checked={!!form.is_new}
                  onChange={e => setForm(f => ({ ...f, is_new: e.target.checked }))} />
-          <span className="text-sm text-ink-80">New arrival <span className="text-ink-50 font-normal">— shows a green “New” badge in the shop and floats this product to the top. Untick when it's no longer new.</span></span>
+          <span className="text-sm text-ink-80">New arrival <span className="text-ink-60 font-normal">— shows a green “New” badge in the shop and floats this product to the top. Untick when it's no longer new.</span></span>
         </label>
 
         <label className="flex items-center gap-2 cursor-pointer select-none w-fit">
           <input type="checkbox" className="w-4 h-4 accent-emerald-600" checked={form.active !== false}
                  onChange={e => setForm(f => ({ ...f, active: e.target.checked }))} />
-          <span className="text-sm text-ink-80">Visible in catalogue <span className="text-ink-50 font-normal">— untick to hide this product from catalogues and the shop without deleting it.</span></span>
+          <span className="text-sm text-ink-80">Visible in catalogue <span className="text-ink-60 font-normal">— untick to hide this product from catalogues and the shop without deleting it.</span></span>
         </label>
 
         <div>

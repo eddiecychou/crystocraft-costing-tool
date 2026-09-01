@@ -140,7 +140,7 @@ function SwatchDetail({ name, entry, onClose }) {
             <span className="w-4 h-4 rounded-full border border-ivory-dark shrink-0" style={{ background: entry.rgb ? `rgb(${entry.rgb.map(c => Math.round(c * 255)).join(',')})` : '#ccc' }} />
             {name}
           </h2>
-          <button onClick={onClose} className="text-ink-40 hover:text-ink"><X size={18} /></button>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink"><X size={18} /></button>
         </div>
 
         {styles.map(([style, backfilms]) => (
@@ -150,7 +150,7 @@ function SwatchDetail({ name, entry, onClose }) {
               {Object.entries(backfilms).map(([bf, slot]) => (
                 <div key={bf}>
                   <SwatchThumb filename={slot.file} alt={`${name} ${style} on ${bf}`} />
-                  <p className="text-xs text-ink-50 mt-1 text-center truncate">{bf}</p>
+                  <p className="text-xs text-ink-60 mt-1 text-center truncate">{bf}</p>
                 </div>
               ))}
             </div>
@@ -227,14 +227,14 @@ export default function SwatchLibraryPage({ profile }) {
       {error && <div className="rounded-none bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 mb-4">{error}</div>}
 
       <div className="relative mb-5">
-        <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-30" />
+        <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-60" />
         <input type="text" placeholder="Search colour name…" className="input w-full pl-8"
           value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
       {!registry && !error ? <LoadingBar /> : entries.length === 0 ? (
         <div className="text-center py-16">
-          <p className="eyebrow text-ink-40 mb-1.5">No matches</p>
+          <p className="eyebrow text-ink-60 mb-1.5">No matches</p>
           <p className="text-sm text-ink-60">No swatches match your search.</p>
         </div>
       ) : (
@@ -247,7 +247,7 @@ export default function SwatchLibraryPage({ profile }) {
               <SwatchCardCarousel name={name} entry={entry} />
               <div className="p-2">
                 <p className="text-sm text-ink truncate">{name}</p>
-                <p className="text-xs text-ink-50">
+                <p className="text-xs text-ink-60">
                   {Object.entries(entry.slots || {}).filter(([, bf]) => Object.keys(bf).length).map(([s]) => STYLE_LABEL[s] || s).join(' · ')}
                 </p>
               </div>

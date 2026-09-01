@@ -382,7 +382,7 @@ export default function WooCommerceSync() {
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-xl md:text-2xl">WooCommerce Sync</h1>
         </div>
-        <p className="text-sm text-ink-50 mt-1">
+        <p className="text-sm text-ink-60 mt-1">
           Phase 1 — read-only. Pulls paid B2C orders and refunds from WooCommerce for review. Nothing here creates a
           Sales Invoice, Credit Note or UC#; see <code>WooCommerce_B2C_Sync_Spec.md</code> for the full plan.
         </p>

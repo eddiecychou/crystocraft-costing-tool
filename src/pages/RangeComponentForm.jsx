@@ -143,7 +143,7 @@ export default function RangeComponentForm() {
               <label className="label">Stock on hand <span className="text-ink-60 font-normal">(raw parts)</span></label>
               <div className="input bg-ivory/40 text-ink-70 tabular-nums flex items-center justify-between">
                 <span>{form.stock_qty === '' ? '0' : Number(form.stock_qty).toLocaleString()}</span>
-                <span className="text-[10px] text-ink-40">{isNew ? 'set below after saving' : 'managed in ledger ↓'}</span>
+                <span className="text-[10px] text-ink-60">{isNew ? 'set below after saving' : 'managed in ledger ↓'}</span>
               </div>
             </div>
             <div>
@@ -171,15 +171,15 @@ export default function RangeComponentForm() {
           {!isNew && <LastActualPaid componentId={routeId} />}
 
           {isNew ? (
-            <p className="text-sm text-ink-50">Save the component first, then add supplier quotes with images.</p>
+            <p className="text-sm text-ink-60">Save the component first, then add supplier quotes with images.</p>
           ) : quotes.length === 0 ? (
-            <p className="text-sm text-ink-50">No quotes yet — <Link to={`/components/critical/${routeId}/quotes/new${backQ}`} className="text-brand-600 hover:underline">add the first supplier quote</Link>.</p>
+            <p className="text-sm text-ink-60">No quotes yet — <Link to={`/components/critical/${routeId}/quotes/new${backQ}`} className="text-brand-600 hover:underline">add the first supplier quote</Link>.</p>
           ) : (
             <div className="divide-y divide-ivory-dark">
               {quotes.map(q => (
                 <div key={q.id} className="py-2.5 flex items-center gap-3">
                   <button type="button" onClick={() => preferQuote(q.id)} title={q.is_preferred ? 'Preferred' : 'Mark preferred'}
-                          className={q.is_preferred ? 'text-amber-500' : 'text-ink-30 hover:text-amber-400'}>
+                          className={q.is_preferred ? 'text-amber-500' : 'text-ink-60 hover:text-amber-400'}>
                     <Star size={16} fill={q.is_preferred ? 'currentColor' : 'none'} />
                   </button>
                   <div className="min-w-0 flex-1">
@@ -187,7 +187,7 @@ export default function RangeComponentForm() {
                       {q.supplier_name || 'Unnamed supplier'}
                       {q.is_preferred && <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-600">preferred</span>}
                     </p>
-                    <p className="text-xs text-ink-50">
+                    <p className="text-xs text-ink-60">
                       {q.unit_cost != null ? `${q.unit_cost} ${q.unit_cost_currency}` : 'no price'}
                       {q.moq ? ` · MOQ ${Number(q.moq).toLocaleString()}` : ''}
                       {q.volume_tiers?.length ? ` · ${q.volume_tiers.length} tier${q.volume_tiers.length > 1 ? 's' : ''}` : ''}
@@ -217,7 +217,7 @@ export default function RangeComponentForm() {
                         title="Remove image">×</button>
               </div>
             ))}
-            <label className="aspect-square border border-dashed border-ivory-dark rounded flex flex-col items-center justify-center cursor-pointer text-ink-50 hover:border-brand-400 hover:text-brand-600 transition-colors"
+            <label className="aspect-square border border-dashed border-ivory-dark rounded flex flex-col items-center justify-center cursor-pointer text-ink-60 hover:border-brand-400 hover:text-brand-600 transition-colors"
                    title="Click to upload images">
               <span className="text-2xl leading-none">＋</span>
               <span className="text-[10px] mt-0.5">{uploading ? 'Uploading…' : 'Upload'}</span>

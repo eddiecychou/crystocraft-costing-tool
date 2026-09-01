@@ -72,7 +72,7 @@ function ComponentCategories() {
     finally { setSaving(false) }
   }
 
-  if (loading && list === null) return <p className="text-sm text-ink-50">Loading…</p>
+  if (loading && list === null) return <p className="text-sm text-ink-60">Loading…</p>
 
   return (
     <div className="max-w-lg">
@@ -84,8 +84,8 @@ function ComponentCategories() {
         {rows.map((c, i) => (
           <div key={i} className="flex items-center gap-2">
             <input className="input text-sm flex-1" value={c} onChange={e => update(i, e.target.value)} placeholder="Category name" />
-            <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="text-ink-40 hover:text-ink disabled:opacity-30" title="Move up"><ArrowUp size={15} /></button>
-            <button type="button" onClick={() => move(i, 1)} disabled={i === rows.length - 1} className="text-ink-40 hover:text-ink disabled:opacity-30" title="Move down"><ArrowDown size={15} /></button>
+            <button type="button" onClick={() => move(i, -1)} disabled={i === 0} className="text-ink-60 hover:text-ink disabled:opacity-30" title="Move up"><ArrowUp size={15} /></button>
+            <button type="button" onClick={() => move(i, 1)} disabled={i === rows.length - 1} className="text-ink-60 hover:text-ink disabled:opacity-30" title="Move down"><ArrowDown size={15} /></button>
             <button type="button" onClick={() => remove(i)} className="text-red-300 hover:text-red-500" title="Remove"><X size={15} /></button>
           </div>
         ))}
@@ -125,7 +125,7 @@ function CrystalCosts() {
     finally { setSaving(false) }
   }
 
-  if (loading && rows === null) return <p className="text-sm text-ink-50">Loading…</p>
+  if (loading && rows === null) return <p className="text-sm text-ink-60">Loading…</p>
 
   // Grouped by size purely for readability — still one flat list underneath.
   const bySize = new Map()
@@ -140,7 +140,7 @@ function CrystalCosts() {
       <div className="space-y-4">
         {[...bySize.entries()].map(([size, idxs]) => (
           <div key={size}>
-            <p className="text-xs font-semibold text-ink-50 uppercase tracking-wide mb-1.5">{size}</p>
+            <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1.5">{size}</p>
             <div className="space-y-2">
               {idxs.map(i => {
                 const r = list[i]
@@ -216,7 +216,7 @@ function CriticalComponents() {
         <Link to="/components/critical/new" className="btn-primary text-sm">+ New</Link>
       </div>
 
-      <p className="text-xs text-ink-50 mb-2">
+      <p className="text-xs text-ink-60 mb-2">
         {loading ? 'Loading…' : (
           <>
             {filtered.length} of {components.length} component{components.length === 1 ? '' : 's'} · {totals.onHand.toLocaleString()} on hand
@@ -240,13 +240,13 @@ function CriticalComponents() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm text-ink-90 truncate">{c.code}</span>
+                    <span className="font-mono text-sm text-ink truncate">{c.code}</span>
                     {c.plating_code && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 shrink-0">{c.plating_code}</span>}
                     {c.category && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 shrink-0">{c.category}</span>}
                   </div>
                   <p className="text-xs text-ink-60 truncate">
                     {c.name || '—'}{c.supplierName ? ` · ${c.supplierName}` : ''}
-                    {c.used_by?.length > 0 && <span className="text-ink-40"> · used by {c.used_by.slice(0, 2).join(', ')}{c.used_by.length > 2 ? ` +${c.used_by.length - 2}` : ''}</span>}
+                    {c.used_by?.length > 0 && <span className="text-ink-60"> · used by {c.used_by.slice(0, 2).join(', ')}{c.used_by.length > 2 ? ` +${c.used_by.length - 2}` : ''}</span>}
                     {(() => {
                       const onHand = Number(c.stock_qty) || 0
                       const reserved = Number(c.reserved_qty) || 0
@@ -357,12 +357,12 @@ function StockListImportModal({ components, onClose }) {
         <textarea className="input min-h-[160px] font-mono text-xs" value={text}
                   onChange={e => setText(e.target.value)}
                   placeholder={'D0001-001-C | Chrome (C) | FM-KB(1)-ORNT(C) | 蝴蝶 | 44 | 6'} />
-        <p className="text-xs text-ink-50 mt-1">
+        <p className="text-xs text-ink-60 mt-1">
           {rows.length} row{rows.length === 1 ? '' : 's'} · {diff.unique} unique component{diff.unique === 1 ? '' : 's'}
           {diff.unique > 0 && <> — <span className="text-green-600">{diff.created} new</span>, <span className="text-blue-600">{diff.updated} update</span></>}
         </p>
         {diff.unique > 0 && (
-          <p className="text-xs text-ink-50">
+          <p className="text-xs text-ink-60">
             {rangeProducts == null ? 'Loading products…'
               : <>Products: <span className="text-green-600">{diff.matched} matched</span>{diff.unmatched > 0 && <>, <span className="text-amber-600">{diff.unmatched} unmatched</span> (skipped)</>}</>}
           </p>
@@ -428,18 +428,18 @@ function CrystalColours() {
         <h2 className="text-sm font-semibold text-ink-80">Crystal Colour Library</h2>
         <button onClick={addRow} className="btn-secondary text-xs py-1.5 px-3">+ Add colour</button>
       </div>
-      <p className="text-xs text-ink-50 mb-4">
+      <p className="text-xs text-ink-60 mb-4">
         Selectable colour attribute on Figurine products. Colours don't create separate SKUs, stock,
         or price changes. For a colour that costs more, add a separate variation with its own price.
       </p>
 
       {loading ? (
-        <p className="text-xs text-ink-50">Loading…</p>
+        <p className="text-xs text-ink-60">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="text-xs text-ink-50">No colours yet — add one.</p>
+        <p className="text-xs text-ink-60">No colours yet — add one.</p>
       ) : (
         <div className="space-y-2">
-          <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-wide text-ink-40 px-1">
+          <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-wide text-ink-60 px-1">
             <span className="w-16 shrink-0">Code</span>
             <span className="flex-1">Name</span>
             <span className="w-14 shrink-0">Swatch</span>
@@ -453,19 +453,19 @@ function CrystalColours() {
               <input className="input text-xs flex-1 min-w-0" value={r.name}
                      placeholder="Sapphire" onChange={e => update(i, 'name', e.target.value)} />
               <div className="w-14 shrink-0 flex items-center gap-1">
-                <input type="color" className="h-7 w-7 rounded cursor-pointer border border-ink-10 bg-white p-0.5"
+                <input type="color" className="h-7 w-7 rounded cursor-pointer border border-warm-grey bg-white p-0.5"
                        value={r.swatch || '#cccccc'} title={r.swatch || 'No colour set'}
                        onChange={e => update(i, 'swatch', e.target.value)} />
                 {r.swatch && (
                   <button type="button" onClick={() => update(i, 'swatch', '')}
-                          className="text-ink-30 hover:text-ink-60 leading-none" title="Clear swatch"><X size={12} /></button>
+                          className="text-ink-60 hover:text-ink-60 leading-none" title="Clear swatch"><X size={12} /></button>
                 )}
               </div>
               <div className="flex items-center gap-0.5 w-16 shrink-0 justify-end">
                 <button type="button" onClick={() => move(i, -1)} disabled={i === 0}
-                        className="text-ink-40 hover:text-ink-70 disabled:opacity-30 px-1" title="Move up"><ArrowUp size={14} /></button>
+                        className="text-ink-60 hover:text-ink-70 disabled:opacity-30 px-1" title="Move up"><ArrowUp size={14} /></button>
                 <button type="button" onClick={() => move(i, 1)} disabled={i === rows.length - 1}
-                        className="text-ink-40 hover:text-ink-70 disabled:opacity-30 px-1" title="Move down"><ArrowDown size={14} /></button>
+                        className="text-ink-60 hover:text-ink-70 disabled:opacity-30 px-1" title="Move down"><ArrowDown size={14} /></button>
                 <button type="button" onClick={() => removeRow(i)}
                         className="text-red-400 hover:text-red-600 px-1 leading-none" title="Remove"><X size={15} /></button>
               </div>
@@ -563,19 +563,19 @@ function FormatMoqs() {
         <h2 className="text-sm font-semibold text-ink-80">Format Minimum Order Quantities</h2>
         <button onClick={addRow} className="btn-secondary text-xs py-1.5 px-3">+ Add format</button>
       </div>
-      <p className="text-xs text-ink-50 mb-4">
+      <p className="text-xs text-ink-60 mb-4">
         Minimum run for each format base component (music box, freestand, bible…). On a customer
         enquiry these pool across every design sharing the format, so the customer is told to combine
         designs to reach the minimum. Leave the MOQ blank for no format minimum.
       </p>
 
       {loading ? (
-        <p className="text-xs text-ink-50">Loading…</p>
+        <p className="text-xs text-ink-60">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="text-xs text-ink-50">No formats yet — add one.</p>
+        <p className="text-xs text-ink-60">No formats yet — add one.</p>
       ) : (
         <div className="space-y-2">
-          <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-wide text-ink-40 px-1">
+          <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-wide text-ink-60 px-1">
             <span className="w-20 shrink-0">Code</span>
             <span className="flex-1">Name</span>
             <span className="w-28 shrink-0">MOQ (pcs)</span>
@@ -593,7 +593,7 @@ function FormatMoqs() {
                        className="input pr-9 text-right tabular-nums"
                        value={r.moq}
                        onChange={e => update(i, 'moq', e.target.value.replace(/[^\d]/g, ''))} />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-40 pointer-events-none">pcs</span>
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-60 pointer-events-none">pcs</span>
               </div>
               <button type="button" onClick={() => removeRow(i)}
                       className="text-red-400 hover:text-red-600 px-1 leading-none shrink-0" title="Remove"><X size={15} /></button>
@@ -681,7 +681,7 @@ function PricingGroups() {
         <h2 className="text-sm font-semibold text-ink-80">Customer Pricing Groups</h2>
         <button onClick={addRow} className="btn-secondary text-xs py-1.5 px-3">+ Add group</button>
       </div>
-      <p className="text-xs text-ink-50 mb-4">
+      <p className="text-xs text-ink-60 mb-4">
         Pricing strategies for corporate gifts. The markup multiplies the product's all-in cost to set
         the customer's price (e.g. 2.0× = cost doubled). Assign each customer a group in Customer
         Accounts; a per-customer override can beat the group. After changing markups, open a product's
@@ -689,12 +689,12 @@ function PricingGroups() {
       </p>
 
       {loading ? (
-        <p className="text-xs text-ink-50">Loading…</p>
+        <p className="text-xs text-ink-60">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="text-xs text-ink-50">No groups yet — add one (e.g. Standard 2.0×, Preferred 1.7×, VIP 1.5×).</p>
+        <p className="text-xs text-ink-60">No groups yet — add one (e.g. Standard 2.0×, Preferred 1.7×, VIP 1.5×).</p>
       ) : (
         <div className="space-y-2">
-          <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-wide text-ink-40 px-1">
+          <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-wide text-ink-60 px-1">
             <span className="flex-1">Group name</span>
             <span className="w-28 shrink-0">Markup (×)</span>
             <span className="w-6 shrink-0" />
@@ -708,7 +708,7 @@ function PricingGroups() {
                        className="input pr-7 text-right tabular-nums"
                        value={r.markup} placeholder="2.0"
                        onChange={e => update(i, 'markup', e.target.value)} />
-                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-40 pointer-events-none">×</span>
+                <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-ink-60 pointer-events-none">×</span>
               </div>
               <button type="button" onClick={() => removeRow(i)}
                       className="text-red-400 hover:text-red-600 px-1 leading-none shrink-0" title="Remove"><X size={15} /></button>

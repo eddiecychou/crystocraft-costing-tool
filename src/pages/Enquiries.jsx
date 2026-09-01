@@ -104,7 +104,7 @@ function Card({ r, set, onEdit, onDelete }) {
             </a>
             {r.base_currency ? ` · ${r.base_currency}` : ''}
           </p>
-          {when && <p className="text-[11px] text-ink-40 mt-0.5">{when}</p>}
+          {when && <p className="text-[11px] text-ink-60 mt-0.5">{when}</p>}
         </div>
         <span className={`badge ${st?.cls || ''}`}>{st?.label || r.status}</span>
       </div>
@@ -121,7 +121,7 @@ function Card({ r, set, onEdit, onDelete }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-ink truncate">{i.name}</p>
-                <p className="text-[11px] text-ink-50">
+                <p className="text-[11px] text-ink-60">
                   {i.code ? `${i.code} · ` : ''}{i.type}
                   {i.finish ? ` · ${i.finish}` : ''}
                   {(i.color_name || i.color) ? ` · ${i.color_name || i.color}` : ''}
@@ -131,13 +131,13 @@ function Card({ r, set, onEdit, onDelete }) {
               <div className="text-right shrink-0">
                 <p className="text-sm text-ink-70">
                   {Number(i.qty || 1).toLocaleString()} pcs
-                  {Number(i.pcs_per_carton) > 0 && Number(i.cartons) > 0 && <span className="text-ink-40"> · {i.cartons} ctn</span>}
+                  {Number(i.pcs_per_carton) > 0 && Number(i.cartons) > 0 && <span className="text-ink-60"> · {i.cartons} ctn</span>}
                 </p>
                 {Number(i.moq) > 0 && Number(i.qty || 1) < Number(i.moq) &&
                   <p className="text-[10px] text-amber-700">below MOQ {Number(i.moq).toLocaleString()}</p>}
                 {i.line_total != null
                   ? <p className="text-sm text-ink font-medium">{fmtMoney(i.line_total, cur)}</p>
-                  : <p className="text-[11px] text-ink-40 italic">On enquiry</p>}
+                  : <p className="text-[11px] text-ink-60 italic">On enquiry</p>}
               </div>
             </div>
           )
@@ -156,19 +156,19 @@ function Card({ r, set, onEdit, onDelete }) {
           <button onClick={() => set(r.id, 'handled')} className="btn-secondary text-sm">Mark handled</button>
         )}
         {(r.status || 'new') !== 'archived' && (
-          <button onClick={() => set(r.id, 'archived')} className="text-xs text-ink-50 hover:text-ink">Archive</button>
+          <button onClick={() => set(r.id, 'archived')} className="text-xs text-ink-60 hover:text-ink">Archive</button>
         )}
         {(r.status || 'new') !== 'new' && (
-          <button onClick={() => set(r.id, 'new')} className="text-xs text-ink-50 hover:text-ink">Reopen</button>
+          <button onClick={() => set(r.id, 'new')} className="text-xs text-ink-60 hover:text-ink">Reopen</button>
         )}
         <span className="flex-1" />
-        <button onClick={handleExport} disabled={exporting} className="text-xs text-ink-50 hover:text-brand-600 inline-flex items-center gap-1 disabled:opacity-50">
+        <button onClick={handleExport} disabled={exporting} className="text-xs text-ink-60 hover:text-brand-600 inline-flex items-center gap-1 disabled:opacity-50">
           <Download size={13} /> {exporting ? 'Exporting…' : 'Export Excel'}
         </button>
-        <button onClick={onEdit} className="text-xs text-ink-50 hover:text-brand-600 inline-flex items-center gap-1">
+        <button onClick={onEdit} className="text-xs text-ink-60 hover:text-brand-600 inline-flex items-center gap-1">
           <Pencil size={13} /> Edit
         </button>
-        <button onClick={onDelete} className="text-xs text-ink-50 hover:text-red-600 inline-flex items-center gap-1">
+        <button onClick={onDelete} className="text-xs text-ink-60 hover:text-red-600 inline-flex items-center gap-1">
           <Trash2 size={13} /> Delete
         </button>
       </div>
@@ -233,7 +233,7 @@ function EditModal({ r, onClose }) {
       <div className="bg-white rounded-lg shadow-lg w-full max-w-xl max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-ivory-dark sticky top-0 bg-white">
           <h2 className="text-base font-semibold">Edit enquiry</h2>
-          <button onClick={onClose} className="text-ink-40 hover:text-ink"><X size={18} /></button>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink"><X size={18} /></button>
         </div>
 
         <div className="p-5 space-y-4">
@@ -243,12 +243,12 @@ function EditModal({ r, onClose }) {
           </div>
 
           <div className="space-y-2">
-            {items.length === 0 && <p className="text-sm text-ink-50">No items left.</p>}
+            {items.length === 0 && <p className="text-sm text-ink-60">No items left.</p>}
             {items.map((i, idx) => (
               <div key={idx} className="flex items-center gap-3 border border-ivory-dark rounded p-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-ink truncate">{i.name}</p>
-                  <p className="text-[11px] text-ink-50">
+                  <p className="text-[11px] text-ink-60">
                     {i.code ? `${i.code} · ` : ''}{i.type}
                     {i.finish ? ` · ${i.finish}` : ''}
                     {(i.color_name || i.color) ? ` · ${i.color_name || i.color}` : ''}
@@ -256,11 +256,11 @@ function EditModal({ r, onClose }) {
                 </div>
                 <input type="number" min="0" className="input py-1 w-24 text-right" value={i.qty}
                   onChange={e => setQty(idx, e.target.value)} />
-                <span className="text-xs text-ink-40 w-8">pcs</span>
+                <span className="text-xs text-ink-60 w-8">pcs</span>
                 <div className="w-24 text-right text-sm text-ink">
                   {priced[idx].line_total != null ? fmtMoney(priced[idx].line_total, cur) : '—'}
                 </div>
-                <button onClick={() => removeItem(idx)} className="text-ink-40 hover:text-red-600"><Trash2 size={15} /></button>
+                <button onClick={() => removeItem(idx)} className="text-ink-60 hover:text-red-600"><Trash2 size={15} /></button>
               </div>
             ))}
           </div>

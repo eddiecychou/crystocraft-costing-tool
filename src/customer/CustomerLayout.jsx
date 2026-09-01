@@ -94,7 +94,7 @@ export default function CustomerLayout({ children, profile }) {
       </header>
 
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6 pb-24 md:pb-6">{children}</main>
-      <footer className="text-center text-xs text-ink-40 pt-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6">
+      <footer className="text-center text-xs text-ink-60 pt-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6">
         Ex-factory prices shown in {profile?.base_currency} — freight not included. Corporate gift prices are indicative — made to order.
       </footer>
 
@@ -132,7 +132,7 @@ export default function CustomerLayout({ children, profile }) {
           <div className="md:hidden fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom))] left-0 right-0 z-40 bg-white border-t border-ivory-dark shadow-2xl rounded-t-xl overflow-hidden">
             <div className="flex flex-col items-center pt-2 pb-1">
               <span className="w-9 h-1 rounded-full bg-ivory-dark mb-2" />
-              <p className="text-xs font-label uppercase tracking-[0.14em] text-ink-50">More</p>
+              <p className="text-xs font-label uppercase tracking-[0.14em] text-ink-60">More</p>
             </div>
             <div className="grid grid-cols-3 gap-1 p-3 pt-2">
               {moreNav.map(({ to, label, Icon, badge, end }) => (
