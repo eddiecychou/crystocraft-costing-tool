@@ -182,7 +182,7 @@ export default function CustomerBrandGallery({ customerId }) {
                 const vis = imageVisibility(img)
                 const visMeta = IMAGE_VISIBILITY.find(v => v.value === vis)
                 return (
-                  <div key={img.id} className="group rounded-none border border-warm-grey overflow-hidden hover:border-brand-300 hover:shadow-sm transition-all">
+                  <div key={img.id} className="group rounded-none border border-warm-grey overflow-hidden hover:border-brand-300 transition-colors">
                     <Link to={`/products/${img.product_id}`} className="block">
                       <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
                         <img src={img.file_url} alt={img.caption || img.product_name} className="w-full h-full object-contain" />
@@ -250,7 +250,7 @@ export default function CustomerBrandGallery({ customerId }) {
                 {list.map(a => {
                   const vb = VIS_BADGE[a.visibility] || VIS_BADGE.internal_only
                   return (
-                    <div key={a.id} className="group text-left rounded-none border border-warm-grey overflow-hidden hover:border-brand-300 hover:shadow-sm transition-all">
+                    <div key={a.id} className="group text-left rounded-none border border-warm-grey overflow-hidden hover:border-brand-300 transition-colors">
                       <button type="button" onClick={() => setEditing(a)} className="block w-full text-left">
                         <div className="aspect-square bg-ivory-dark flex items-center justify-center overflow-hidden">
                           <AssetThumb asset={a} className="w-full h-full object-contain" />

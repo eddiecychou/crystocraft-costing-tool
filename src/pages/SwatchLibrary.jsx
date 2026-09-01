@@ -217,7 +217,7 @@ export default function SwatchLibrary() {
               <div key={name} role="button" tabIndex={0}
                 onClick={() => setSelected([name, entry])}
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected([name, entry]) } }}
-                className="card overflow-hidden flex flex-col text-left hover:shadow-md transition-shadow cursor-pointer">
+                className="card overflow-hidden flex flex-col text-left hover:bg-ivory transition-colors cursor-pointer">
                 <SwatchCardCarousel name={name} entry={entry} />
                 <div className="p-2">
                   <p className="text-sm text-ink truncate">{name}</p>

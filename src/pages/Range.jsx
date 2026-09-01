@@ -383,7 +383,7 @@ function ProductCard({ s, colorLookup = {} }) {
   return (
     <Link to={`/range/${s.id}`} id={`range-card-${s.id}`}
           onClick={() => sessionStorage.setItem('range-last-id', s.id)}
-          className={`card overflow-hidden flex flex-col hover:shadow-md transition-shadow group ${isRetired ? 'opacity-50 grayscale' : ''}`}>
+          className={`card overflow-hidden flex flex-col hover:bg-ivory transition-colors group ${isRetired ? 'opacity-50 grayscale' : ''}`}>
       <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
         <CardImageCarousel images={s.images} alt={s.name} imgClassName="object-cover"
           fallback={<Gem size={30} strokeWidth={1.25} className="text-platinum" />} />

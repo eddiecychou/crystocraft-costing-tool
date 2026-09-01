@@ -32,7 +32,7 @@ export default function ProposalInviteCard({ status, href }) {
   if (!content) return null
   return (
     <Link to={href}
-      className="card group flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-6 px-6 py-6 hover:shadow-md transition-shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
+      className="card group flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-6 px-6 py-6 hover:bg-ivory transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
       <div>
         <p className="text-xs uppercase tracking-widest text-ink font-label font-medium mb-1.5">{content.eyebrow}</p>
         <p className="text-sm text-ink-60">{content.subtitle}</p>

@@ -227,9 +227,10 @@ remain.
 | `gray-*` (any prefix) | **~2640** | **0** ✅ | RESOLVED — codemodded to tokens (§4.1a). |
 | `rounded-md/lg/xl/2xl` + bare `rounded` | ~570 | **0** ✅ | RESOLVED — `→ rounded-none` (form controls `→ rounded-sm`). `rounded-full` (dots/pills) + 6 deliberate directional corners kept. |
 | `text-[Npx]` arbitrary | ~350 | **0** ✅ | RESOLVED — added `text-2xs` (11px) tier; `text-[8..11px]` → `text-2xs`, `text-[12px]` → `text-xs`. |
-| `shadow-md/lg/xl/2xl` | ~58 | ~58 | still open — resting shadows against the flat posture. |
-| `hover:scale / hover:-translate-y` | ~16 | ~16 | still open — transforms on interactives (UI-POLISH §3). |
-| `font-bold` on headings | — | ~open | headings are weight 400; `font-bold` is drift. Not yet swept. |
+| `shadow-lg/xl/2xl` (resting) | ~52 | ~52 ✅ | **NOT drift** — every one is on a modal panel or a dropdown/popover, exactly what the system reserves shadow for. Left as-is. |
+| `hover:shadow-md` on `.card` | ~5 | **0** ✅ | was a hover-lift shadow on list cards (UI-POLISH §4.6 says no) → `hover:bg-ivory transition-colors`. 3 kept: Dashboard KPI card (selection lift) + `CollectionBand` image tiles (customer-side straggler). |
+| `hover:scale / hover:-translate-y` | ~16 | **0** ✅ | none exist any more (cleared in the storefront sweep). |
+| `font-bold` / `font-semibold` on ~194 `<h1–4>` | — | open | **owner decision, not cleanup** — the base rule sets headings to weight 400 ("wordmark echo"), but `font-semibold` headings genuinely aid scanning in the dense OpsCenter. Not codemodded. |
 | `amber/emerald/purple/sky-*` | ~450 | ~450 | mostly legitimate status colour; audit for non-status use. |
 
 ### 4.1a The `gray-*` → token map (canonical — reuse for any future stragglers)
@@ -282,7 +283,7 @@ None of these are "apply now" — they're the deltas a V3 would deliberately cho
 | **Portal nav material** | flat opaque `bg-ink` (top strip + bottom bar) | `backdrop-blur` glass nav | VISUAL-REFINEMENT §4 |
 | **Button `:active`** | none | a `:active` darken/press on all `.btn*` | DESIGN-SYSTEM-AUDIT §2 |
 | **`.input` states** | resting + focus only | defined `:disabled`, `[aria-invalid]`, success | DESIGN-SYSTEM-AUDIT §2 |
-| **OpsCenter refactor** | colour + radius + `text-[Npx]` DONE (§4.1). `font-bold`/`font-semibold` on ~194 headings and ~58 resting `shadow-*` still open | weight + shadow pass next | §4.1 |
+| **OpsCenter refactor** | colour + radius + `text-[Npx]` + stray hover-shadows DONE (§4.1); resting `shadow-lg/xl` confirmed legit. Only `font-bold`/`font-semibold` on ~194 headings left | that's an owner call, not a codemod | §4.1 |
 | **Bundle naming** | `design-system/V2.5` vs `/2026-V2` | normalise (`v2.5` / `v2-2026` / `v3`) | housekeeping |
 
 ## Change Log
@@ -293,3 +294,4 @@ None of these are "apply now" — they're the deltas a V3 would deliberately cho
 | 2026-09-02 | V3 first change — **ink ramp resolved** (hybrid): added `ink-70` `#585853` (AA 6.2:1 on beige); codemodded ~360 dead `text-ink-30/40/50/90` + `border-ink-10/30` sites to real AA-safe tokens (`ink-60` is now the lightest grey allowed for text). All `ink-*` classes in `src/` now resolve. |
 | 2026-09-02 | V3 — **OpsCenter colour refactor**: ~2640 `gray-*` sites across 97 files codemodded to the warm token palette per the §4.1a map (0 `gray-*` left in `src/`). Verified: full bundle + `qa/eslint.no-undef` + tailwind build (no orphan classes). **NOT visually verified** — OpsCenter pages are login-gated with no harness; the colour deltas are principled (warmer, equal-or-better contrast) but the owner should eyeball post-deploy. |
 | 2026-09-02 | V3 — **OpsCenter radius refactor**: ~576 `rounded`/`rounded-md/lg/xl/2xl` → `rounded-none` across 96 files (form controls → `rounded-sm`); `rounded-full` + 6 directional corners kept. Then **`text-[Npx]` refactor**: added the `text-2xs` (11px) tier; ~350 `text-[8..12px]` sites across 69 files mapped onto the scale. Bundle + lint clean; not visually verified (login-gated). |
+| 2026-09-02 | V3 — **OpsCenter shadow check**: resting `shadow-lg/xl/2xl` (~52) confirmed all on modals/dropdowns (legit per the flat posture); 5 stray `.card hover:shadow-md` lifts → `hover:bg-ivory`. `hover:scale`/`translate` already gone. OpsCenter mechanical refactor complete bar the `font-bold`/`font-semibold`-on-headings owner call. |

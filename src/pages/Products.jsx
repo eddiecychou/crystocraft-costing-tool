@@ -128,7 +128,7 @@ function ProductCard({ product: p }) {
   return (
     <Link to={`/products/${p.id}`} id={`product-card-${p.id}`}
       onClick={() => sessionStorage.setItem('products-last-id', p.id)}
-      className={`card hover:shadow-md transition-shadow overflow-hidden flex flex-col ${isRetired ? 'opacity-50 grayscale' : ''}`}>
+      className={`card hover:bg-ivory transition-colors overflow-hidden flex flex-col ${isRetired ? 'opacity-50 grayscale' : ''}`}>
       <div className="aspect-square bg-ivory-dark flex items-center justify-center overflow-hidden relative">
         <CardImageCarousel images={images} alt={p.name}
           fallback={<Package size={40} strokeWidth={1.25} className="text-platinum" />} />
