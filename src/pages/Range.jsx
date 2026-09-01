@@ -300,7 +300,7 @@ export default function Range() {
 
       {/* Lifecycle filter. 'Retired Stock' and 'Retired — Sold Out' are the
           same state either side of the stock running out. */}
-      <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden mt-3">
+      <div className="inline-flex rounded-none border border-ivory-dark overflow-hidden mt-3">
         {[
           { v: 'all', label: 'All' },
           ...RANGE_STATUSES.map(s => ({ v: s.value, label: s.label })),
@@ -392,7 +392,7 @@ function ProductCard({ s, colorLookup = {} }) {
         </span>
         {!s.active && <span className="absolute top-7 left-1.5 badge bg-warm-grey text-ink-70">Hidden</span>}
         {(s.skuCount > 1 || s.colorCount > 0) && (
-          <span className="absolute bottom-1.5 left-1.5 text-[10px] bg-ink/70 text-white px-1.5 py-0.5 rounded">
+          <span className="absolute bottom-1.5 left-1.5 text-[10px] bg-ink/70 text-white px-1.5 py-0.5 rounded-none">
             {s.skuCount > 1 ? `${s.skuCount} platings` : ''}
             {s.skuCount > 1 && s.colorCount > 0 ? ' · ' : ''}
             {s.colorCount > 0 ? `${s.colorCount} colours` : ''}
@@ -416,7 +416,7 @@ function ProductCard({ s, colorLookup = {} }) {
         <div className="flex items-center gap-1 flex-wrap">
           <p className="text-[11px] text-ink-60 font-mono">{s.code}</p>
           {s.multiBrand && s.brands.map(b => (
-            <span key={b} className="text-[9px] uppercase tracking-wide bg-ivory text-ink-60 border border-ivory-dark rounded px-1 leading-tight"
+            <span key={b} className="text-[9px] uppercase tracking-wide bg-ivory text-ink-60 border border-ivory-dark rounded-none px-1 leading-tight"
                   title={`Also available in ${BRAND_NAME[b] || b}`}>{b}</span>
           ))}
         </div>

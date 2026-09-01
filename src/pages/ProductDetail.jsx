@@ -266,13 +266,13 @@ export default function ProductDetail() {
                     key={c.id}
                     to={`/products/${id}/components/${c.id}`}
                     onClick={remember}
-                    className="flex items-center justify-between p-3 rounded-lg border border-warm-grey hover:border-brand-200 hover:bg-brand-50 transition-colors"
+                    className="flex items-center justify-between p-3 rounded-none border border-warm-grey hover:border-brand-200 hover:bg-brand-50 transition-colors"
                   >
                     <div>
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-medium text-ink">{c.name}</p>
                         {(Number(c.qty_per_product) || 1) > 1 && (
-                          <span className="text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">×{c.qty_per_product}</span>
+                          <span className="text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded-none">×{c.qty_per_product}</span>
                         )}
                       </div>
                       {c.spec && <p className="text-xs text-ink-60 mt-0.5 line-clamp-1">{c.spec}</p>}
@@ -307,12 +307,12 @@ export default function ProductDetail() {
             </h2>
             <p className="text-xs text-ink-60 mb-3 leading-relaxed">
               <span className="font-medium text-ink-70">Visibility</span> controls where each image may appear:
-              <span className="inline-block mx-1 px-1.5 py-0.5 rounded bg-warm-grey text-ink-70 text-[10px] font-medium">Internal</span> admin only,
-              <span className="inline-block mx-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium">Storefront</span> shown to logged-in customers,
-              <span className="inline-block mx-1 px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-medium">Public</span> also allowed in blog posts.
+              <span className="inline-block mx-1 px-1.5 py-0.5 rounded-none bg-warm-grey text-ink-70 text-[10px] font-medium">Internal</span> admin only,
+              <span className="inline-block mx-1 px-1.5 py-0.5 rounded-none bg-amber-100 text-amber-700 text-[10px] font-medium">Storefront</span> shown to logged-in customers,
+              <span className="inline-block mx-1 px-1.5 py-0.5 rounded-none bg-green-100 text-green-700 text-[10px] font-medium">Public</span> also allowed in blog posts.
               New uploads start <span className="font-medium">Internal</span> — set client-logo images carefully before sharing.
               If a storefront photo shows a specific client's branding, tag it
-              <span className="inline-block mx-1 px-1.5 py-0.5 rounded bg-red-50 text-red-700 text-[10px] font-medium">Branded for</span>
+              <span className="inline-block mx-1 px-1.5 py-0.5 rounded-none bg-red-50 text-red-700 text-[10px] font-medium">Branded for</span>
               that customer — anyone flagged "sensitive" (Customers → edit) will never see it, automatically.
             </p>
             <ImageGallery
@@ -380,7 +380,7 @@ function ComponentPicker({ allComponents, currentProductId, search, onSearchChan
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
           <h2 className="font-semibold text-ink">Copy Existing Component</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>

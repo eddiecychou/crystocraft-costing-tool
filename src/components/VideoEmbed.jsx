@@ -79,7 +79,7 @@ export default function VideoEmbed({ url, title = 'Product video', className = '
   return (
     <div className={className}>
       <div
-        className="relative overflow-hidden rounded-lg bg-black"
+        className="relative overflow-hidden rounded-none bg-black"
         style={{
           paddingBottom: `${ratio * 100}%`,
           width: isPortrait ? `min(100%, ${MAX_PORTRAIT_WIDTH}px)` : '100%',
@@ -110,7 +110,7 @@ export default function VideoEmbed({ url, title = 'Product video', className = '
               className="absolute inset-0 w-full h-full object-cover"
             />
             <span className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/30 transition-colors">
-              <span className="flex items-center justify-center w-16 h-11 rounded-xl bg-red-600 group-hover:bg-red-700 transition-colors shadow-lg">
+              <span className="flex items-center justify-center w-16 h-11 rounded-none bg-red-600 group-hover:bg-red-700 transition-colors shadow-lg">
                 <svg viewBox="0 0 24 24" width="26" height="26" fill="white" aria-hidden="true">
                   <path d="M8 5v14l11-7z" />
                 </svg>

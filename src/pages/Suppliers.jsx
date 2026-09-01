@@ -210,7 +210,7 @@ function BackfillProvincesModal({ suppliers, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-2xl my-8" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <h2 className="font-semibold text-ink">Backfill Province / Region</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1 text-lg leading-none">×</button>
@@ -226,7 +226,7 @@ function BackfillProvincesModal({ suppliers, onClose }) {
                 Guessed from each supplier's city / address. Adjust any row, set to <strong>— skip —</strong> to leave it
                 blank, then Apply. Nothing is written until you do.
               </p>
-              <div className="border border-warm-grey rounded-lg max-h-[52vh] overflow-y-auto divide-y divide-warm-grey">
+              <div className="border border-warm-grey rounded-none max-h-[52vh] overflow-y-auto divide-y divide-warm-grey">
                 {rows.map(r => (
                   <div key={r.id} className="flex items-center gap-3 px-3 py-2 text-sm">
                     <div className="min-w-0 flex-1">

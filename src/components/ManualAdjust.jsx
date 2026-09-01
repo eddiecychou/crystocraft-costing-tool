@@ -166,7 +166,7 @@ export default function ManualAdjust({ src, onResult, disabled }) {
   if (cropMode) {
     return (
       <div>
-        <div className="relative w-full h-72 bg-ink rounded overflow-hidden">
+        <div className="relative w-full h-72 bg-ink rounded-none overflow-hidden">
           <Cropper
             image={baseSrc}
             crop={crop} zoom={zoom} rotation={rotation} aspect={aspect}
@@ -189,9 +189,9 @@ export default function ManualAdjust({ src, onResult, disabled }) {
         {/* Rotate + straighten */}
         <div className="mt-3 flex items-center gap-3">
           <button type="button" onClick={() => setQuarter(q => (q + 270) % 360)} title="Rotate left"
-            className="p-1.5 rounded border border-warm-grey text-ink-60 hover:border-warm-grey"><RotateCcw size={15} /></button>
+            className="p-1.5 rounded-none border border-warm-grey text-ink-60 hover:border-warm-grey"><RotateCcw size={15} /></button>
           <button type="button" onClick={() => setQuarter(q => (q + 90) % 360)} title="Rotate right"
-            className="p-1.5 rounded border border-warm-grey text-ink-60 hover:border-warm-grey"><RotateCw size={15} /></button>
+            className="p-1.5 rounded-none border border-warm-grey text-ink-60 hover:border-warm-grey"><RotateCw size={15} /></button>
           <label className="text-xs font-medium text-ink-60 shrink-0 ml-1">Straighten</label>
           <input type="range" min={-45} max={45} value={straighten}
             onChange={e => setStraighten(Number(e.target.value))} className="flex-1 accent-brand-600" />
@@ -217,13 +217,13 @@ export default function ManualAdjust({ src, onResult, disabled }) {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Original</p>
-          <div className="aspect-square bg-ivory-dark border border-warm-grey rounded flex items-center justify-center overflow-hidden">
+          <div className="aspect-square bg-ivory-dark border border-warm-grey rounded-none flex items-center justify-center overflow-hidden">
             <img src={src} alt="" className="w-full h-full object-contain" />
           </div>
         </div>
         <div>
           <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Adjusted{base && ' · cropped'}</p>
-          <div className="aspect-square bg-ivory-dark border border-warm-grey rounded flex items-center justify-center overflow-hidden">
+          <div className="aspect-square bg-ivory-dark border border-warm-grey rounded-none flex items-center justify-center overflow-hidden">
             {error ? <span className="text-xs text-red-500 px-3 text-center">{error}</span>
               : !img ? <span className="text-xs text-ink-60">Loading…</span>
               : <canvas ref={canvasRef} className="w-full h-full object-contain" />}

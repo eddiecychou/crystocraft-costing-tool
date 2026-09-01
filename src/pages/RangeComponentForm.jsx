@@ -195,7 +195,7 @@ export default function RangeComponentForm() {
                     </p>
                   </div>
                   {q.attachments?.length > 0 && (q.attachments[0].file_type === 'image'
-                    ? <img src={q.attachments[0].file_url} alt="" className="w-9 h-9 object-cover rounded border border-ivory-dark shrink-0" />
+                    ? <img src={q.attachments[0].file_url} alt="" className="w-9 h-9 object-cover rounded-none border border-ivory-dark shrink-0" />
                     : <FileText size={16} className="text-red-400 shrink-0" />)}
                   <Link to={`/components/critical/${routeId}/quotes/${q.id}${backQ}`} className="text-xs text-brand-600 hover:underline shrink-0">Edit</Link>
                 </div>
@@ -210,14 +210,14 @@ export default function RangeComponentForm() {
           <p className="text-xs text-ink-60 mb-3">Click a tile to upload. Hover an image and tap × to remove.</p>
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
             {form.images.map(url => (
-              <div key={url} className="relative aspect-square bg-white border border-ivory-dark overflow-hidden rounded">
+              <div key={url} className="relative aspect-square bg-white border border-ivory-dark overflow-hidden rounded-none">
                 <img src={url} alt="" className="w-full h-full object-contain p-1" />
                 <button type="button" onClick={() => removeImage(url)}
                         className="absolute -top-1.5 -right-1.5 bg-white border border-ivory-dark text-red-600 rounded-full w-5 h-5 text-xs leading-none shadow-sm hover:bg-red-50"
                         title="Remove image">×</button>
               </div>
             ))}
-            <label className="aspect-square border border-dashed border-ivory-dark rounded flex flex-col items-center justify-center cursor-pointer text-ink-60 hover:border-brand-400 hover:text-brand-600 transition-colors"
+            <label className="aspect-square border border-dashed border-ivory-dark rounded-none flex flex-col items-center justify-center cursor-pointer text-ink-60 hover:border-brand-400 hover:text-brand-600 transition-colors"
                    title="Click to upload images">
               <span className="text-2xl leading-none">＋</span>
               <span className="text-[10px] mt-0.5">{uploading ? 'Uploading…' : 'Upload'}</span>

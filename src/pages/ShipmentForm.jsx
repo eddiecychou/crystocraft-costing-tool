@@ -93,7 +93,7 @@ function ErpCrossCheck({ check, onUse }) {
   const clean = !diff.differing.length && !diff.onlyParsed.length && !diff.onlyErp.length
 
   return (
-    <div className={`mt-3 rounded-lg border px-3 py-2.5 text-xs ${
+    <div className={`mt-3 rounded-none border px-3 py-2.5 text-xs ${
       clean ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'
     }`}>
       <div className="flex items-center gap-1.5 font-semibold mb-1">
@@ -135,7 +135,7 @@ function ErpCrossCheck({ check, onUse }) {
         <p className="mt-2 text-green-800 font-medium">Using the ERP's lines.</p>
       ) : (
         <button type="button" onClick={onUse}
-                className="mt-2 px-2.5 py-1 rounded border border-current text-xs font-medium hover:bg-white/60">
+                className="mt-2 px-2.5 py-1 rounded-none border border-current text-xs font-medium hover:bg-white/60">
           Use the ERP's lines{clean ? '' : ' (recommended)'}
         </button>
       )}
@@ -942,9 +942,9 @@ export default function ShipmentForm() {
       <form onSubmit={isEdit ? handleSave : handleCreate} className="space-y-5">
         {fromQuoteId && (
           fromQuoteError ? (
-            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{fromQuoteError}</p>
+            <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2">{fromQuoteError}</p>
           ) : (
-            <p className="text-sm text-brand-700 bg-brand-50 border border-brand-200 rounded-lg px-3 py-2">
+            <p className="text-sm text-brand-700 bg-brand-50 border border-brand-200 rounded-none px-3 py-2">
               Prefilled from the quote — review quantities, prices and the UC# below before creating. Tiers default to the lowest quantity option.
             </p>
           )
@@ -955,7 +955,7 @@ export default function ShipmentForm() {
         {!isEdit && !isDirect && !fromQuoteId && (
           <div className="card p-4">
             <label
-              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer transition-colors
+              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-none p-6 cursor-pointer transition-colors
                 ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
               onDragOver={e => { e.preventDefault(); setDragOver(true) }}
               onDragLeave={() => setDragOver(false)} onDrop={handleDrop}>
@@ -970,7 +970,7 @@ export default function ShipmentForm() {
                 <FileText size={14} className="text-red-400" /> {pendingFile.name}
               </div>
             )}
-            {extracting && <div className="mt-2 h-1 bg-brand-100 rounded overflow-hidden"><div className="h-full bg-brand-500 animate-pulse w-full" /></div>}
+            {extracting && <div className="mt-2 h-1 bg-brand-100 rounded-none overflow-hidden"><div className="h-full bg-brand-500 animate-pulse w-full" /></div>}
             {extractError && <p className="text-xs text-amber-600 mt-2">{extractError}</p>}
             <ErpCrossCheck check={erpCheck} onUse={useErpLines} />
           </div>
@@ -1160,7 +1160,7 @@ export default function ShipmentForm() {
             </div>
 
             {unclassified > 0 && (
-              <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+              <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2 mb-3">
                 <AlertTriangle size={14} />
                 {unclassified} line{unclassified > 1 ? 's' : ''} still need a type. Classify every line before packing.
               </div>
@@ -1177,7 +1177,7 @@ export default function ShipmentForm() {
               {lines.map((l, i) => {
                 const t = l.line_type ? lineTypeOf(l.line_type) : null
                 return (
-                  <div key={i} className={`rounded-lg border p-3 ${l.line_type ? 'border-warm-grey' : 'border-amber-200 bg-amber-50/40'}`}>
+                  <div key={i} className={`rounded-none border p-3 ${l.line_type ? 'border-warm-grey' : 'border-amber-200 bg-amber-50/40'}`}>
                     <div className="grid grid-cols-[auto_auto_1fr_auto] gap-3 items-start">
                       <div className="text-xs text-ink-60 pt-2 w-6">{l.line_no ?? i + 1}</div>
                       {/* Line image — Corp Gift, Ad-hoc, and Figurine (range).
@@ -1194,12 +1194,12 @@ export default function ShipmentForm() {
                       {(l.line_type === 'corp_gift' || l.line_type === 'ad_hoc' || l.line_type === 'range') ? (
                         <button type="button" onClick={() => setImgPickerLine(i)}
                           title={l.line_image ? 'Change this line’s invoice image' : 'Add an image for the Proforma / Invoice'}
-                          className="group relative w-14 h-14 rounded-lg bg-ivory-dark border border-warm-grey overflow-hidden flex items-center justify-center shrink-0">
+                          className="group relative w-14 h-14 rounded-none bg-ivory-dark border border-warm-grey overflow-hidden flex items-center justify-center shrink-0">
                           {l.line_image
                             ? <img src={l.line_image} alt="" className="w-full h-full object-cover" />
                             : <ImageIcon size={16} strokeWidth={1.5} className="text-platinum" />}
                           <span className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                            <span className="bg-white/90 text-[9px] px-1 py-0.5 rounded text-ink-80">
+                            <span className="bg-white/90 text-[9px] px-1 py-0.5 rounded-none text-ink-80">
                               {l.line_image ? 'change' : 'add'}
                             </span>
                           </span>

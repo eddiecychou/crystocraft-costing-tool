@@ -252,7 +252,7 @@ export default function PurchaseOrders() {
                 const erpAmount = Number(e.amount) || 0
                 const mismatch = Math.abs(appTotal - erpAmount) > 0.01
                 return (
-                  <div key={po.id} className="flex items-center justify-between gap-3 text-xs bg-white rounded px-2.5 py-1.5 border border-amber-100">
+                  <div key={po.id} className="flex items-center justify-between gap-3 text-xs bg-white rounded-none px-2.5 py-1.5 border border-amber-100">
                     <div className="min-w-0">
                       <span className="font-mono font-medium text-ink">{po.pu_number}</span>
                       <span className="text-ink-60 ml-2 truncate">{po.supplier_name}</span>

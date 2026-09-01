@@ -111,7 +111,7 @@ function ContactRows({ contacts, onChange }) {
       {contacts.map((c, i) => {
         const inactive = c.active === false
         return (
-          <div key={c.id || i} className={`rounded-lg border p-3 space-y-2 ${inactive ? 'border-warm-grey bg-ivory opacity-70' : 'border-warm-grey'}`}>
+          <div key={c.id || i} className={`rounded-none border p-3 space-y-2 ${inactive ? 'border-warm-grey bg-ivory opacity-70' : 'border-warm-grey'}`}>
             <div className="grid grid-cols-2 gap-2">
               <input className="input" value={c.name} onChange={e => set(i, 'name', e.target.value)} placeholder="Name e.g. 王小姐, David Lee" />
               <input className="input" value={c.title} onChange={e => set(i, 'title', e.target.value)} placeholder="Title / role (optional)" />

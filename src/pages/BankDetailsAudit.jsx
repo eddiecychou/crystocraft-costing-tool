@@ -207,7 +207,7 @@ export default function BankDetailsAudit() {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
+        <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2 mb-4">
           <AlertTriangle size={16} /> {error}
         </div>
       )}
@@ -221,7 +221,7 @@ export default function BankDetailsAudit() {
 
       {/* Definitely wrong: IBAN mod-97 failed. Not a heuristic. */}
       {!loading && badChecksums.length > 0 && (
-        <div className="rounded-lg border bg-red-50 border-red-200 px-4 py-3 mb-4">
+        <div className="rounded-none border bg-red-50 border-red-200 px-4 py-3 mb-4">
           <div className="flex items-center gap-2 text-red-900 font-semibold text-sm mb-2">
             <AlertTriangle size={16} />
             {badChecksums.length} IBAN{badChecksums.length === 1 ? '' : 's'} fail the checksum — these are wrong
@@ -239,7 +239,7 @@ export default function BankDetailsAudit() {
 
       {/* Suspected typos first — this is the question being asked. */}
       {!loading && (
-        <div className={`rounded-lg border px-4 py-3 mb-6 ${
+        <div className={`rounded-none border px-4 py-3 mb-6 ${
           flagged.length ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'
         }`}>
           {flagged.length ? (
@@ -273,7 +273,7 @@ export default function BankDetailsAudit() {
 
       {/* Every distinct token */}
       <h2 className="text-sm font-semibold text-ink-80 mb-2">All values found</h2>
-      <div className="bg-white border border-warm-grey rounded-lg overflow-hidden mb-6">
+      <div className="bg-white border border-warm-grey rounded-none overflow-hidden mb-6">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -316,7 +316,7 @@ export default function BankDetailsAudit() {
       <h2 className="text-sm font-semibold text-ink-80 mb-2 flex items-center gap-1.5">
         <Search size={14} /> Bank-related lines, most common first
       </h2>
-      <div className="bg-white border border-warm-grey rounded-lg divide-y divide-warm-grey">
+      <div className="bg-white border border-warm-grey rounded-none divide-y divide-warm-grey">
         {blocks.slice(0, 60).map((b, i) => (
           <div key={i} className="px-3 py-2 text-sm flex gap-3">
             <span className="text-ink-60 tabular-nums text-xs w-10 shrink-0">{b.hits.length}×</span>

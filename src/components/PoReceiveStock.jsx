@@ -140,7 +140,7 @@ export default function PoReceiveStock({ po }) {
                 </>
               )}
               {preview.unmatched?.length > 0 && (
-                <div className="mt-3 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <div className="mt-3 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2">
                   <AlertTriangle size={14} className="mt-0.5 shrink-0" />
                   <div>{preview.unmatched.length} line(s) not in inventory — won’t be received: {preview.unmatched.map(u => u.code).join(', ')}. Add them as an SKU first.</div>
                 </div>

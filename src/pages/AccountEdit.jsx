@@ -345,7 +345,7 @@ export default function AccountEdit() {
           )}
         </div>
         {!customerId && showCreatePanel && (
-          <div className="mt-3 p-3 rounded-lg bg-ivory-light border border-ivory-dark space-y-2.5">
+          <div className="mt-3 p-3 rounded-none bg-ivory-light border border-ivory-dark space-y-2.5">
             <div className="grid grid-cols-3 gap-2">
               <label className="flex flex-col gap-1">
                 <span className="text-[10px] uppercase tracking-wide text-ink-60">Country</span>
@@ -397,7 +397,7 @@ export default function AccountEdit() {
         <div className="card p-5 mb-5">
           <h2 className="text-sm font-semibold text-ink-80 mb-1">Account category</h2>
           <p className="text-xs text-ink-60 mb-3">Mark internal test / checking logins so they can be told apart from real customers.</p>
-          <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden">
+          <div className="inline-flex rounded-none border border-ivory-dark overflow-hidden">
             {[['customer', 'Customer'], ['internal', 'Internal']].map(([v, label]) => (
               <button key={v} onClick={() => setType(v)}
                 className={`px-4 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark transition-colors ${
@@ -492,7 +492,7 @@ export default function AccountEdit() {
                 onClick={() => { if (confirm(`Make ${displayName} SALES STAFF?\n\nThey get a front-office login: customers & CRM, message history, quotes (incl. prices), marketing, catalogues, fulfilment and invoices/credit notes.\n\nThey will NOT see components, suppliers, purchase orders, inventory, the ERP, or settings — and they can NEVER change account roles or approve logins.`)) apply({ role: 'sales' }, { back: true }) }}>
                 Make sales staff
               </button>
-              <button className="text-sm text-red-600 border border-red-200 rounded px-2.5 py-1 hover:bg-red-50"
+              <button className="text-sm text-red-600 border border-red-200 rounded-none px-2.5 py-1 hover:bg-red-50"
                 onClick={() => {
                   const ans = prompt(`⚠️ Make ${displayName} a FULL ADMIN?\n\nAn admin can see EVERYTHING in the costing tool — costs, margins, suppliers, every customer, and all your trade secrets. Only do this for your own staff.\n\nType  MAKE ADMIN  to confirm.`)
                   if ((ans || '').trim().toUpperCase() === 'MAKE ADMIN') apply({ role: 'admin' }, { back: true })
@@ -527,7 +527,7 @@ export default function AccountEdit() {
                     onClick={() => { if (confirm(`Switch ${displayName} to SALES STAFF?\n\nThey lose the supply side and get the front-office login instead: customers, CRM, quotes, marketing, catalogue/pricing, fulfilment, invoices.`)) apply({ role: 'sales' }, { back: true }) }}>
                     Switch to sales staff
                   </button>}
-              <button className="text-sm text-red-600 border border-red-200 rounded px-2.5 py-1 hover:bg-red-50"
+              <button className="text-sm text-red-600 border border-red-200 rounded-none px-2.5 py-1 hover:bg-red-50"
                 onClick={() => { if (confirm('Revoke staff access? They revert to a normal (approved) customer login — Storefront only, no operation-center access.')) apply({ role: 'customer', status: 'approved' }, { back: true }) }}>
                 Revoke — back to normal account
               </button>

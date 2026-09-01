@@ -68,7 +68,7 @@ export default function StockLedger({ componentId, currentStock = 0, currentRese
       </div>
 
       {/* Add movement (manual on-hand ops; reserve/production-in come from orders) */}
-      <form onSubmit={submit} className="rounded-lg border border-ivory-dark p-3 mb-4 space-y-2">
+      <form onSubmit={submit} className="rounded-none border border-ivory-dark p-3 mb-4 space-y-2">
         <div className="flex flex-wrap gap-1.5">
           {MOVEMENT_TYPES.map(t => (
             <button key={t.value} type="button" onClick={() => setType(t.value)}

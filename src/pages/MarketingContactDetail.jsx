@@ -51,7 +51,7 @@ export default function MarketingContactDetail() {
         <Link to="/marketing" className="text-sm text-brand-600 hover:underline inline-flex items-center gap-1 mb-4">
           <ArrowLeft size={14} /> Back to Marketing Contacts
         </Link>
-        <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+        <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2">
           <AlertCircle size={16} /> {loadError || 'Contact not found.'}
         </div>
       </div>
@@ -174,7 +174,7 @@ function ContactDetailForm({ contact, customers, onPatched, onDeleted }) {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">
+        <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2 mb-3">
           <AlertCircle size={16} /> {error}
         </div>
       )}
@@ -207,7 +207,7 @@ function ContactDetailForm({ contact, customers, onPatched, onDeleted }) {
             {MC_AUDIENCES.map(a => (
               <label key={a} className="flex items-center gap-1.5 text-sm text-ink-80">
                 <input type="checkbox" checked={f.audiences.includes(a)} onChange={() => toggleAudience(a)}
-                       className="rounded border-warm-grey text-brand-600 focus:ring-brand-500" />
+                       className="rounded-none border-warm-grey text-brand-600 focus:ring-brand-500" />
                 {a}
               </label>
             ))}
@@ -220,7 +220,7 @@ function ContactDetailForm({ contact, customers, onPatched, onDeleted }) {
         </label>
         <label className="flex items-center gap-2 text-sm text-ink-70">
           <input type="checkbox" checked={f.is_customer} onChange={set('is_customer')}
-                 className="rounded border-warm-grey text-brand-600 focus:ring-brand-500" />
+                 className="rounded-none border-warm-grey text-brand-600 focus:ring-brand-500" />
           Likely customer
         </label>
         <div className="block border-t border-warm-grey pt-3">

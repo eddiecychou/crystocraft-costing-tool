@@ -109,13 +109,13 @@ export default function ComponentCodeAudit() {
       </div>
 
       {error && (
-        <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
+        <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2 mb-4">
           <AlertTriangle size={16} className="mt-0.5 shrink-0" /> {error}
         </div>
       )}
 
       {!loading && !error && (
-        <div className={`rounded-lg border px-4 py-3 mb-5 text-sm ${
+        <div className={`rounded-none border px-4 py-3 mb-5 text-sm ${
           missing.length || unused.length ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'
         }`}>
           {missing.length || unused.length ? (
@@ -139,7 +139,7 @@ export default function ComponentCodeAudit() {
       {missing.length > 0 && (
         <>
           <h2 className="text-sm font-semibold text-ink-80 mb-2">Not found in the ERP</h2>
-          <div className="bg-white border border-warm-grey rounded-lg divide-y divide-warm-grey mb-6">
+          <div className="bg-white border border-warm-grey rounded-none divide-y divide-warm-grey mb-6">
             {missing.map(r => (
               <div key={r.id} className="px-3 py-2.5">
                 <div className="flex items-start justify-between gap-3">
@@ -183,7 +183,7 @@ export default function ComponentCodeAudit() {
             The code is real, so it isn't a typo — but nothing is built from it. Usually this
             means the part was superseded and the BOMs moved to a different code.
           </p>
-          <div className="bg-white border border-warm-grey rounded-lg divide-y divide-warm-grey mb-6">
+          <div className="bg-white border border-warm-grey rounded-none divide-y divide-warm-grey mb-6">
             {unused.map(r => (
               <div key={r.id} className="px-3 py-2.5">
                 <div className="flex items-start justify-between gap-3">
@@ -220,7 +220,7 @@ export default function ComponentCodeAudit() {
           <summary className="cursor-pointer text-ink-70">
             {ok.length} code{ok.length === 1 ? '' : 's'} exist and are used by current BOMs
           </summary>
-          <div className="mt-2 bg-white border border-warm-grey rounded-lg divide-y divide-warm-grey">
+          <div className="mt-2 bg-white border border-warm-grey rounded-none divide-y divide-warm-grey">
             {ok.map(r => (
               <div key={r.id} className="px-3 py-1.5 flex justify-between gap-3">
                 <span className="font-mono text-xs">{r.code}</span>

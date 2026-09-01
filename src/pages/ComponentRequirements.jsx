@@ -147,7 +147,7 @@ export default function ComponentRequirements() {
               const st = orderStatusOf(o.status)
               return (
                 <label key={o.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-ivory cursor-pointer">
-                  <input type="checkbox" className="w-4 h-4 rounded border-warm-grey text-brand-600" checked={selected.has(o.id)} onChange={() => toggle(o.id)} />
+                  <input type="checkbox" className="w-4 h-4 rounded-sm border-warm-grey text-brand-600" checked={selected.has(o.id)} onChange={() => toggle(o.id)} />
                   <span className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium text-ink truncate">{o.customer_name || 'Unnamed'}</span>
                     {orderUc(o) && <span className="text-xs text-ink-60">{orderUc(o)}</span>}
@@ -179,7 +179,7 @@ export default function ComponentRequirements() {
             </p>
             <div className="flex items-center gap-3">
               <label className="text-xs text-ink-60 inline-flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" checked={onlyShort} onChange={e => setOnlyShort(e.target.checked)} className="w-3.5 h-3.5 rounded border-warm-grey text-brand-600" />
+                <input type="checkbox" checked={onlyShort} onChange={e => setOnlyShort(e.target.checked)} className="w-3.5 h-3.5 rounded-sm border-warm-grey text-brand-600" />
                 Shortages only
               </label>
               <button onClick={exportCsv} disabled={shownRows.length === 0} className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1 disabled:opacity-40">
@@ -233,7 +233,7 @@ export default function ComponentRequirements() {
               per stone rather than per part. Only shown once a product in the
               selection actually carries a crystal BOM. */}
           {crystalAll.length > 0 && (
-            <div className="bg-white rounded-lg border border-warm-grey mb-3">
+            <div className="bg-white rounded-none border border-warm-grey mb-3">
               <div className="px-4 py-2.5 border-b border-warm-grey flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-ink-80 inline-flex items-center gap-1.5">
                   <Gem size={14} className="text-brand-500" />
@@ -282,7 +282,7 @@ export default function ComponentRequirements() {
           {/* Not in product range — figurine codes we couldn't match. Flagged
               loudly so they aren't silently left out of the order plan. */}
           {result.unmatched.length > 0 && (
-            <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 mb-3">
+            <div className="rounded-none border border-red-300 bg-red-50 px-4 py-3 mb-3">
               <p className="text-xs font-semibold text-red-700 inline-flex items-center gap-1.5 mb-1.5">
                 <AlertTriangle size={13} /> {result.unmatched.length} item{result.unmatched.length === 1 ? '' : 's'} not in the product range — components can’t be computed
               </p>
@@ -302,7 +302,7 @@ export default function ComponentRequirements() {
 
           {/* Warnings — things that couldn't be exploded cleanly */}
           {result.warnings.length > 0 && (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 mb-3">
+            <div className="rounded-none border border-amber-300 bg-amber-50 px-4 py-3 mb-3">
               <p className="text-xs font-semibold text-amber-800 inline-flex items-center gap-1.5 mb-1.5"><AlertTriangle size={13} /> {result.warnings.length} line{result.warnings.length === 1 ? '' : 's'} need attention</p>
               <ul className="space-y-0.5">
                 {result.warnings.map((w, i) => (

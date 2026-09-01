@@ -283,7 +283,7 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
     <div className="p-4 md:p-6 max-w-5xl space-y-8">
       <div className="card p-5 space-y-4">
         <h2 className="text-sm font-semibold text-ink">New campaign</h2>
-        {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</div>}
+        {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-none px-3 py-2">{error}</div>}
 
         <div className="grid md:grid-cols-2 gap-4">
           <div>
@@ -355,7 +355,7 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
           {templates.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap mt-1.5">
               {templates.map(t => (
-                <span key={t.id} className="inline-flex items-center gap-1 text-[11px] text-ink-60 bg-ivory rounded px-1.5 py-0.5">
+                <span key={t.id} className="inline-flex items-center gap-1 text-[11px] text-ink-60 bg-ivory rounded-none px-1.5 py-0.5">
                   {t.name}
                   <button type="button" onClick={() => handleDeleteTemplate(t.id, t.name)}
                           className="text-platinum hover:text-red-500" title={`Delete "${t.name}"`}>×</button>
@@ -372,7 +372,7 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
               Unsubscribe link + List-Unsubscribe header are added
               server-side (send-campaign.js) regardless of what's built here,
               so compliance doesn't depend on the sender remembering it. */}
-          <div className="border border-ivory-dark rounded overflow-hidden" style={{ height: 600 }}>
+          <div className="border border-ivory-dark rounded-none overflow-hidden" style={{ height: 600 }}>
             <EmailEditor ref={editorRef} onReady={handleEditorReady} minHeight="600px" />
           </div>
         </div>

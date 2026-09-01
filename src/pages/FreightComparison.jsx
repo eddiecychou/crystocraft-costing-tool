@@ -85,7 +85,7 @@ function AddQuoteForm({ orderId, scenarios, vendors, rates, onSaved, onCancel })
   }
 
   return (
-    <div className="border border-brand-200 rounded-xl bg-brand-50/30 p-5 space-y-4">
+    <div className="border border-brand-200 rounded-none bg-brand-50/30 p-5 space-y-4">
       <h3 className="text-sm font-semibold text-ink">Add freight quote</h3>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -295,7 +295,7 @@ function ComparisonMatrix({ quotes, scenarios }) {
                   return (
                     <td key={col.id ?? '__unlinked'} className="py-2.5 px-3">
                       {q ? (
-                        <div className={`rounded-lg px-3 py-2 ${isBest ? 'bg-green-50 border border-green-200' : 'bg-ivory'}`}>
+                        <div className={`rounded-none px-3 py-2 ${isBest ? 'bg-green-50 border border-green-200' : 'bg-ivory'}`}>
                           <div className={`font-semibold ${isBest ? 'text-green-700' : 'text-ink'}`}>
                             {fmt(q.quoted_total, q.currency)}
                             {isBest && <span className="ml-1 text-[10px] text-green-600">★ cheapest</span>}
@@ -336,18 +336,18 @@ function QuoteRow({ quote, scenarios, onDelete, onToggleChosen }) {
   const total = parseFloat(quote.quoted_total)
 
   return (
-    <div className={`border rounded-lg overflow-hidden ${quote.is_chosen ? 'border-green-300' : 'border-warm-grey'}`}>
+    <div className={`border rounded-none overflow-hidden ${quote.is_chosen ? 'border-green-300' : 'border-warm-grey'}`}>
       <div className={`flex items-center gap-3 px-4 py-3 ${quote.is_chosen ? 'bg-green-50/50' : 'bg-white'}`}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium text-ink">{quote.vendor_name || '—'}</span>
             {quote.is_chosen && (
-              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">
+              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-none bg-green-100 text-green-700 font-medium">
                 <CheckCircle2 size={10} /> Chosen
               </span>
             )}
-            {sc && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">{sc.label}</span>}
-            {!quote.scenario_id && <span className="text-[10px] px-1.5 py-0.5 rounded bg-ivory-dark text-ink-60">Unlinked</span>}
+            {sc && <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-blue-50 text-blue-600 border border-blue-100">{sc.label}</span>}
+            {!quote.scenario_id && <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-ivory-dark text-ink-60">Unlinked</span>}
             <span className="text-xs text-ink-60">{modeLabel(quote.mode)}</span>
             <span className="text-xs text-ink-60">{quote.incoterm}</span>
           </div>
@@ -366,7 +366,7 @@ function QuoteRow({ quote, scenarios, onDelete, onToggleChosen }) {
           {/* is_chosen had a data field and no way to set it (bug-fix pack
               B-05) — this is that missing control. */}
           <button type="button" onClick={() => onToggleChosen(quote)}
-                  className={`text-xs px-2 py-1 rounded border ${quote.is_chosen ? 'border-green-300 text-green-700 hover:bg-green-50' : 'border-warm-grey text-ink-60 hover:border-brand-400'}`}
+                  className={`text-xs px-2 py-1 rounded-none border ${quote.is_chosen ? 'border-green-300 text-green-700 hover:bg-green-50' : 'border-warm-grey text-ink-60 hover:border-brand-400'}`}
                   title={quote.is_chosen ? 'Unmark as chosen' : 'Mark as the chosen freight quote'}>
             {quote.is_chosen ? 'Chosen' : 'Choose'}
           </button>
@@ -475,7 +475,7 @@ export default function FreightComparison({ orderId }) {
 
       {/* Empty state */}
       {quotes.length === 0 && !showForm && (
-        <div className="rounded-lg border border-dashed border-warm-grey p-10 text-center">
+        <div className="rounded-none border border-dashed border-warm-grey p-10 text-center">
           <p className="text-ink-60 text-sm mb-1">No freight quotes yet.</p>
           <p className="text-xs text-ink-60 mb-5">
             Add quotes from multiple vendors to compare costs across packing scenarios.

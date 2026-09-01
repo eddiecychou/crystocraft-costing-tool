@@ -40,7 +40,7 @@ function ContactsEditor({ contacts, onChange }) {
   return (
     <div className="space-y-3">
       {contacts.map((c, i) => (
-        <div key={i} className="rounded-lg border border-warm-grey p-3 space-y-2">
+        <div key={i} className="rounded-none border border-warm-grey p-3 space-y-2">
           <div className="flex items-center justify-between">
             <label className="flex items-center gap-1.5 text-xs text-ink-70 cursor-pointer select-none">
               <input type="radio" name="primary-contact" checked={c.is_primary} onChange={() => setPrimary(i)}
@@ -299,7 +299,7 @@ export default function CustomerForm() {
               onChange={e => setCountrySearch(e.target.value)}
             />
             {countryOpen && (
-              <div className="absolute z-20 left-0 right-0 mt-1 border border-warm-grey rounded-lg bg-white shadow-lg max-h-52 overflow-y-auto">
+              <div className="absolute z-20 left-0 right-0 mt-1 border border-warm-grey rounded-none bg-white shadow-lg max-h-52 overflow-y-auto">
                 {CUSTOMER_COUNTRIES.filter(c => c.toLowerCase().includes(countrySearch.toLowerCase())).map(c => (
                   <button
                     key={c}
@@ -359,7 +359,7 @@ export default function CustomerForm() {
                 .slice(0, 8)
               if (!matches.length) return null
               return (
-                <div className="absolute z-20 left-0 right-0 mt-1 border border-warm-grey rounded-lg bg-white shadow-lg max-h-52 overflow-y-auto">
+                <div className="absolute z-20 left-0 right-0 mt-1 border border-warm-grey rounded-none bg-white shadow-lg max-h-52 overflow-y-auto">
                   {matches.map(t => (
                     <button
                       key={t}
@@ -406,7 +406,7 @@ export default function CustomerForm() {
                   key={cat}
                   type="button"
                   onClick={() => setForm(f => ({ ...f, crm_category: cat }))}
-                  className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors text-left ${
+                  className={`px-3 py-2.5 rounded-none border text-sm font-medium transition-colors text-left ${
                     form.crm_category === cat
                       ? 'border-brand-500 bg-brand-50 text-brand-700'
                       : 'border-warm-grey text-ink-70 hover:border-warm-grey hover:bg-ivory'
@@ -418,7 +418,7 @@ export default function CustomerForm() {
               <button
                 type="button"
                 onClick={toggleRetail}
-                className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors text-left ${
+                className={`px-3 py-2.5 rounded-none border text-sm font-medium transition-colors text-left ${
                   isRetail
                     ? 'border-pink-500 bg-pink-50 text-pink-700'
                     : 'border-warm-grey text-ink-70 hover:border-warm-grey hover:bg-ivory'
@@ -486,7 +486,7 @@ export default function CustomerForm() {
             <label className="flex items-center gap-2.5 text-sm text-ink-80 cursor-pointer select-none">
               <input
                 type="checkbox"
-                className="w-4 h-4 rounded border-warm-grey text-brand-600"
+                className="w-4 h-4 rounded-none border-warm-grey text-brand-600"
                 checked={isPersonalWa}
                 onChange={e => setIsPersonalWa(e.target.checked)}
               />
@@ -495,7 +495,7 @@ export default function CustomerForm() {
             <label className="flex items-center gap-2.5 text-sm text-ink-80 cursor-pointer select-none">
               <input
                 type="checkbox"
-                className="w-4 h-4 rounded border-warm-grey text-brand-600"
+                className="w-4 h-4 rounded-none border-warm-grey text-brand-600"
                 checked={isVip}
                 onChange={e => setIsVip(e.target.checked)}
               />
@@ -504,7 +504,7 @@ export default function CustomerForm() {
             <label className="flex items-center gap-2.5 text-sm text-ink-80 cursor-pointer select-none">
               <input
                 type="checkbox"
-                className="w-4 h-4 rounded border-warm-grey text-brand-600"
+                className="w-4 h-4 rounded-none border-warm-grey text-brand-600"
                 checked={isSensitive}
                 onChange={e => setIsSensitive(e.target.checked)}
               />

@@ -157,7 +157,7 @@ export default function InvitationClaim() {
       </p>
 
       {alreadySignedIn && (
-        <div className="mb-4 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-sm px-3 py-2">
+        <div className="mb-4 rounded-none bg-amber-50 border border-amber-200 text-amber-800 text-sm px-3 py-2">
           You're currently signed in as <strong>{alreadySignedIn.email}</strong>. This invitation is for a
           different account and won't affect your current sign-in.{' '}
           <button type="button" onClick={() => signOut(auth)} className="underline">Sign out</button> if that's confusing.

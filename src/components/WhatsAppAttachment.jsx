@@ -17,7 +17,7 @@ export default function WhatsAppAttachment({ filename, url, className = '' }) {
   if (IMAGE_RE.test(filename)) {
     return (
       <a href={url} target="_blank" rel="noreferrer" className={`block ${className}`}>
-        <img src={url} alt={filename} className="max-h-40 max-w-[200px] rounded border border-warm-grey object-cover" />
+        <img src={url} alt={filename} className="max-h-40 max-w-[200px] rounded-none border border-warm-grey object-cover" />
       </a>
     )
   }
@@ -30,7 +30,7 @@ export default function WhatsAppAttachment({ filename, url, className = '' }) {
   if (VIDEO_RE.test(filename)) {
     return (
       // eslint-disable-next-line jsx-a11y/media-has-caption
-      <video controls preload="none" src={url} className={`max-h-48 max-w-[240px] rounded border border-warm-grey ${className}`} />
+      <video controls preload="none" src={url} className={`max-h-48 max-w-[240px] rounded-none border border-warm-grey ${className}`} />
     )
   }
   return (

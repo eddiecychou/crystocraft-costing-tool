@@ -251,7 +251,7 @@ function ImportModal({ inv, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl max-w-lg w-full p-5 max-h-[85vh] overflow-y-auto">
+      <div className="bg-white rounded-none max-w-lg w-full p-5 max-h-[85vh] overflow-y-auto">
         <h3 className="text-base font-semibold mb-1">Import stock</h3>
         <p className="text-xs text-ink-60 mb-3">
           {inv.parsePaste

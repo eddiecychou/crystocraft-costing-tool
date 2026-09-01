@@ -131,10 +131,10 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
     <div ref={setNodeRef} style={style} className="group relative flex flex-col gap-1">
       <div className="relative">
         {img.is_hero && (
-          <div className="absolute top-1 left-1 z-10 bg-yellow-400 px-1 py-0.5 rounded text-white leading-none"><Star size={11} className="fill-current" /></div>
+          <div className="absolute top-1 left-1 z-10 bg-yellow-400 px-1 py-0.5 rounded-none text-white leading-none"><Star size={11} className="fill-current" /></div>
         )}
         {showVisibility && (
-          <div className={`absolute z-10 bottom-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-medium leading-none ${visMeta?.cls || 'bg-warm-grey text-ink-70'}`}>
+          <div className={`absolute z-10 bottom-1 left-1 px-1.5 py-0.5 rounded-none text-[10px] font-medium leading-none ${visMeta?.cls || 'bg-warm-grey text-ink-70'}`}>
             {visMeta?.short || vis}
           </div>
         )}
@@ -142,7 +142,7 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
         <div
           {...attributes}
           {...listeners}
-          className="absolute top-1 right-1 z-10 bg-white/80 rounded p-0.5 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute top-1 right-1 z-10 bg-white/80 rounded-none p-0.5 cursor-grab active:cursor-grabbing opacity-0 group-hover:opacity-100 transition-opacity"
           onClick={e => e.stopPropagation()}
           title="Drag to reorder"
         >
@@ -159,13 +159,13 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
         <img
           src={img.file_url}
           alt={img.caption || img.file_name}
-          className="w-full aspect-square object-cover rounded-lg cursor-pointer"
+          className="w-full aspect-square object-cover rounded-none cursor-pointer"
           onClick={() => onLightbox(img)}
         />
 
         {/* Darken + click-to-zoom layer */}
         <div
-          className="absolute inset-0 rounded-lg transition-all pointer-events-none group-hover:pointer-events-auto group-hover:bg-black/30 cursor-pointer"
+          className="absolute inset-0 rounded-none transition-all pointer-events-none group-hover:pointer-events-auto group-hover:bg-black/30 cursor-pointer"
           onClick={() => onLightbox(img)}
         />
 
@@ -176,7 +176,7 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
             <button
               type="button"
               onClick={e => { e.stopPropagation(); onHeroChange(img) }}
-              className="bg-white/90 text-xs p-1 rounded text-yellow-600 hover:bg-white shadow-sm"
+              className="bg-white/90 text-xs p-1 rounded-none text-yellow-600 hover:bg-white shadow-sm"
               title="Set as hero image"
             ><Star size={13} /></button>
           )}
@@ -184,20 +184,20 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
             <button
               type="button"
               onClick={e => { e.stopPropagation(); onEnhance(img) }}
-              className="bg-white/90 text-xs p-1 rounded text-brand-600 hover:bg-white shadow-sm"
+              className="bg-white/90 text-xs p-1 rounded-none text-brand-600 hover:bg-white shadow-sm"
               title="Enhance image — white background + lighting (AI, review before replacing)"
             ><Sparkles size={13} /></button>
           )}
           <button
             type="button"
             onClick={e => { e.stopPropagation(); downloadImage(img, makeDownloadName(downloadPrefix, idx)) }}
-            className="bg-white/90 text-xs p-1 rounded text-blue-600 hover:bg-white shadow-sm"
+            className="bg-white/90 text-xs p-1 rounded-none text-blue-600 hover:bg-white shadow-sm"
             title="Download image"
           ><Download size={13} /></button>
           <button
             type="button"
             onClick={e => { e.stopPropagation(); onDelete(img) }}
-            className="bg-white/90 text-xs p-1 rounded text-red-600 hover:bg-white shadow-sm"
+            className="bg-white/90 text-xs p-1 rounded-none text-red-600 hover:bg-white shadow-sm"
             title="Delete image"
           ><X size={13} /></button>
         </div>
@@ -205,7 +205,7 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
 
       {typeOptions && (
         <select
-          className="text-xs border border-warm-grey rounded px-1.5 py-1 text-ink-70 bg-white w-full"
+          className="text-xs border border-warm-grey rounded-none px-1.5 py-1 text-ink-70 bg-white w-full"
           value={img.type || typeOptions[0].value}
           onChange={e => handleTypeChange(e.target.value)}
         >
@@ -219,12 +219,12 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
           onChange={e => setCaption(e.target.value)}
           onBlur={saveCaption}
           placeholder="Caption (optional)"
-          className="text-xs border border-warm-grey rounded px-1.5 py-1 text-ink-70 bg-white w-full"
+          className="text-xs border border-warm-grey rounded-none px-1.5 py-1 text-ink-70 bg-white w-full"
         />
       )}
       {showVisibility && (
         <select
-          className={`text-xs border rounded px-1.5 py-1 w-full font-medium ${visMeta?.cls || 'bg-white text-ink-70 border-warm-grey'}`}
+          className={`text-xs border rounded-none px-1.5 py-1 w-full font-medium ${visMeta?.cls || 'bg-white text-ink-70 border-warm-grey'}`}
           value={vis}
           onChange={e => handleVisibilityChange(e.target.value)}
           title="Where this image is allowed to appear"
@@ -234,7 +234,7 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
       )}
       {brandedForCustomers && (
         <select
-          className={`text-xs border rounded px-1.5 py-1 w-full ${img.branded_for_customer_id ? 'bg-red-50 text-red-700 border-red-200 font-medium' : 'bg-white text-ink-60 border-warm-grey'}`}
+          className={`text-xs border rounded-none px-1.5 py-1 w-full ${img.branded_for_customer_id ? 'bg-red-50 text-red-700 border-red-200 font-medium' : 'bg-white text-ink-60 border-warm-grey'}`}
           value={img.branded_for_customer_id || ''}
           onChange={e => handleBrandedForChange(e.target.value)}
           title="Whose branding appears in this photo — a customer flagged 'sensitive' never sees another client's tagged photo"
@@ -255,7 +255,7 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
             key={o.value}
             type="button"
             onClick={() => handleOrientationChange(o.value)}
-            className={`flex-1 text-xs py-0.5 rounded font-medium transition-colors ${
+            className={`flex-1 text-xs py-0.5 rounded-none font-medium transition-colors ${
               (img.orientation || 'square') === o.value
                 ? ORIENTATION_STYLES[o.value]
                 : 'bg-ivory-dark text-ink-60 hover:bg-warm-grey'
@@ -476,7 +476,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
     <div>
       {/* Upload */}
       <label
-        className={`flex items-center justify-center gap-2 border-2 border-dashed rounded-lg p-4 cursor-pointer transition-colors
+        className={`flex items-center justify-center gap-2 border-2 border-dashed rounded-none p-4 cursor-pointer transition-colors
           ${uploading   ? 'border-brand-300 bg-brand-50 cursor-wait' :
             dragOver    ? 'border-brand-400 bg-brand-50 scale-[1.01]' :
                           'border-warm-grey hover:border-brand-300 hover:bg-brand-50'}`}
@@ -536,7 +536,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
               <ChevronLeft size={22} />
             </button>
           )}
-          <img src={lightbox.file_url} alt="" className="max-w-full max-h-full rounded-lg object-contain" onClick={e => e.stopPropagation()} />
+          <img src={lightbox.file_url} alt="" className="max-w-full max-h-full rounded-none object-contain" onClick={e => e.stopPropagation()} />
           {images.length > 1 && (
             <button type="button" onClick={e => { e.stopPropagation(); goLightbox(1) }}
                     className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 text-white bg-white/15 hover:bg-white/25 rounded-full p-2 sm:p-3"
@@ -548,16 +548,16 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
             <button
               type="button"
               onClick={e => { e.stopPropagation(); downloadImage(lightbox, makeDownloadName(downloadPrefix, images.findIndex(i => i.id === lightbox.id))) }}
-              className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm"
+              className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-none text-sm"
             ><span className="inline-flex items-center gap-1"><Download size={14} />Download</span></button>
-            <button className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm inline-flex items-center" onClick={() => setLightbox(null)}><X size={16} /></button>
+            <button className="text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-none text-sm inline-flex items-center" onClick={() => setLightbox(null)}><X size={16} /></button>
           </div>
         </div>
       )}
 
       {enh && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={() => !enh.busy && closeEditor()}>
-          <div className="bg-white rounded-xl max-w-3xl w-full p-5" onClick={e => e.stopPropagation()}>
+          <div className="bg-white rounded-none max-w-3xl w-full p-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-ink-80 inline-flex items-center gap-1.5"><Sparkles size={15} /> Edit image — review before replacing</h3>
               <button type="button" onClick={() => !enh.busy && closeEditor()} className="text-ink-60 hover:text-ink-80"><X size={16} /></button>
@@ -596,13 +596,13 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Original</p>
-                <div className="aspect-square bg-ivory-dark border border-warm-grey rounded flex items-center justify-center overflow-hidden">
+                <div className="aspect-square bg-ivory-dark border border-warm-grey rounded-none flex items-center justify-center overflow-hidden">
                   <img src={enh.before} alt="" className="w-full h-full object-contain" />
                 </div>
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Enhanced {enh.after && `· ${enh.mode}`}</p>
-                <div className="aspect-square bg-ivory-dark border border-warm-grey rounded flex items-center justify-center overflow-hidden">
+                <div className="aspect-square bg-ivory-dark border border-warm-grey rounded-none flex items-center justify-center overflow-hidden">
                   {enh.busy ? <span className="text-xs text-ink-60">Working… (AI, ~10–20s)</span>
                     : enh.after ? <img src={enh.after} alt="" className="w-full h-full object-contain" />
                     : <span className="text-xs text-ink-60">Describe colours below, then pick Clean or Enhance</span>}
@@ -623,7 +623,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
               />
             </div>
             {/* Recolor panel */}
-            <div className="mt-3 border border-warm-grey rounded-lg overflow-hidden">
+            <div className="mt-3 border border-warm-grey rounded-none overflow-hidden">
               <button type="button"
                 className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink-60 hover:bg-ivory"
                 onClick={() => setRecolorOpen(o => !o)}>
@@ -651,7 +651,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
             </div>
             {enh.error && <p className="text-xs text-red-500 mt-2">{enh.error}</p>}
             {enh.colorWarning && (
-              <div className="flex items-start gap-2 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5">
+              <div className="flex items-start gap-2 mt-3 rounded-none border border-amber-300 bg-amber-50 px-3 py-2.5">
                 <AlertTriangle size={14} className="text-amber-600 mt-0.5 shrink-0" />
                 <p className="text-xs text-amber-800 leading-snug">
                   <span className="font-semibold">Possible colour change detected.</span>{' '}
@@ -663,7 +663,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
               </div>
             )}
             {enh.reframed && (
-              <div className="flex items-start gap-2 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5">
+              <div className="flex items-start gap-2 mt-3 rounded-none border border-amber-300 bg-amber-50 px-3 py-2.5">
                 <AlertTriangle size={14} className="text-amber-600 mt-0.5 shrink-0" />
                 <p className="text-xs text-amber-800 leading-snug">
                   <span className="font-semibold">The AI reframed the shot.</span>{' '}

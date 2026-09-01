@@ -77,7 +77,7 @@ function BomCoverage({ prefixes, result, loading, error, onCheck }) {
           </p>
 
           {result.uncosted.length > 0 && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+            <div className="rounded-none border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
               <p className="font-medium mb-1">In the ERP BOM, no matching costed component:</p>
               <PartList items={result.uncosted} />
               {/* The two code sets have drifted (FM-K(21)-C in the ERP vs
@@ -103,7 +103,7 @@ function BomCoverage({ prefixes, result, loading, error, onCheck }) {
           )}
 
           {result.crystalMismatch === 'none' && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
+            <div className="rounded-none border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
               <p className="font-medium mb-1">
                 The ERP BOM has {result.crystals.length} stone code
                 {result.crystals.length === 1 ? '' : 's'} but this costing has no crystal BOM.
@@ -376,8 +376,8 @@ export default function RangeCosting() {
                           {c.name || r.code}
                         </Link>
                       ) : (c?.name || r.code)}
-                      {plat && <span className="ml-1.5 text-xs font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">{plat}</span>}
-                      {qty > 1 && <span className="ml-1.5 text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">×{qty}</span>}</p>
+                      {plat && <span className="ml-1.5 text-xs font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-none">{plat}</span>}
+                      {qty > 1 && <span className="ml-1.5 text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded-none">×{qty}</span>}</p>
                     {unit != null ? (
                       <p className="text-xs text-ink-60">{c.code} · {unit} {c.unit_cost_currency}{qty > 1 ? ` × ${qty}` : ''}
                         {c.volume_tiers?.length > 0 && <span className="ml-1.5 text-brand-500">· {c.volume_tiers.length} volume tier{c.volume_tiers.length > 1 ? 's' : ''}</span>}</p>

@@ -96,19 +96,19 @@ export default function FrontPageConfig({ embedded = false }) {
                 <p className="text-[11px] text-ink-60 uppercase tracking-wide mb-2">{it.product_type === 'range' ? 'Figurine' : 'Corporate'}</p>
                 <div className="flex items-center gap-1.5">
                   <button type="button" onClick={() => move(i, -1)} disabled={i === 0}
-                    className="p-1 rounded border border-ivory-dark text-ink-60 hover:text-ink disabled:opacity-30" title="Move earlier">
+                    className="p-1 rounded-none border border-ivory-dark text-ink-60 hover:text-ink disabled:opacity-30" title="Move earlier">
                     <ChevronUp size={13} />
                   </button>
                   <button type="button" onClick={() => move(i, 1)} disabled={i === items.length - 1}
-                    className="p-1 rounded border border-ivory-dark text-ink-60 hover:text-ink disabled:opacity-30" title="Move later">
+                    className="p-1 rounded-none border border-ivory-dark text-ink-60 hover:text-ink disabled:opacity-30" title="Move later">
                     <ChevronDown size={13} />
                   </button>
                   <button type="button" onClick={() => setPickerFor(it.id)}
-                    className="p-1 rounded border border-ivory-dark text-ink-60 hover:text-ink" title="Change product/photo">
+                    className="p-1 rounded-none border border-ivory-dark text-ink-60 hover:text-ink" title="Change product/photo">
                     <ImageIcon size={13} />
                   </button>
                   <button type="button" onClick={() => setConfirmRemove(it.id)}
-                    className="p-1 rounded border border-ivory-dark text-ink-60 hover:text-red-600 ml-auto" title="Remove">
+                    className="p-1 rounded-none border border-ivory-dark text-ink-60 hover:text-red-600 ml-auto" title="Remove">
                     <Trash2 size={13} />
                   </button>
                 </div>

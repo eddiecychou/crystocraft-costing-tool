@@ -82,12 +82,12 @@ export function EmailThreads({ contactId, emailSummary, onSummaryUpdated }) {
         </button>
       </div>
       {summaryError && (
-        <div className="flex items-start gap-1.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1.5 mb-1.5">
+        <div className="flex items-start gap-1.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded-none px-2 py-1.5 mb-1.5">
           <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {summaryError}
         </div>
       )}
       {summary && (
-        <div className="bg-ivory-light rounded-lg px-2.5 py-2 mb-1.5 space-y-1">
+        <div className="bg-ivory-light rounded-none px-2.5 py-2 mb-1.5 space-y-1">
           <p className="text-xs text-ink-80">{summary.summary}</p>
           {summary.recent_activity && <p className="text-xs text-ink-70">{summary.recent_activity}</p>}
           {summary.open_commitments?.length > 0 && (
@@ -102,7 +102,7 @@ export function EmailThreads({ contactId, emailSummary, onSummaryUpdated }) {
         {threads.map(t => {
           const isOpen = expanded === t.id
           return (
-            <div key={t.id} className="border border-warm-grey rounded-lg">
+            <div key={t.id} className="border border-warm-grey rounded-none">
               <button type="button" onClick={() => setExpanded(v => v === t.id ? null : t.id)}
                 className="w-full flex items-center justify-between text-left px-2.5 py-2">
                 <p className="text-xs text-ink-70 truncate">
@@ -208,12 +208,12 @@ export function WhatsAppThreads({ contactId, phone, whatsappSummary, onSummaryUp
         </button>
       </div>
       {summaryError && (
-        <div className="flex items-start gap-1.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1.5 mb-1.5">
+        <div className="flex items-start gap-1.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded-none px-2 py-1.5 mb-1.5">
           <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {summaryError}
         </div>
       )}
       {summary && (
-        <div className="bg-ivory-light rounded-lg px-2.5 py-2 mb-1.5 space-y-1">
+        <div className="bg-ivory-light rounded-none px-2.5 py-2 mb-1.5 space-y-1">
           <p className="text-xs text-ink-80">{summary.summary}</p>
           {summary.recent_activity && <p className="text-xs text-ink-70">{summary.recent_activity}</p>}
           {summary.open_commitments?.length > 0 && (
@@ -230,7 +230,7 @@ export function WhatsAppThreads({ contactId, phone, whatsappSummary, onSummaryUp
           const voiceCount = (t.messages || []).filter(m => m.needs_transcription).length
           const isOpen = expanded === t.id
           return (
-            <div key={t.id} className="border border-warm-grey rounded-lg">
+            <div key={t.id} className="border border-warm-grey rounded-none">
               <button
                 type="button"
                 onClick={() => setExpanded(v => v === t.id ? null : t.id)}
@@ -271,7 +271,7 @@ export function WhatsAppThreads({ contactId, phone, whatsappSummary, onSummaryUp
                                   value={selectedLang}
                                   onChange={e => setTranscribeLang(prev => ({ ...prev, [langKey]: e.target.value }))}
                                   disabled={!!transcribingKey}
-                                  className="border border-warm-grey rounded px-1 py-0.5 text-ink-70"
+                                  className="border border-warm-grey rounded-none px-1 py-0.5 text-ink-70"
                                 >
                                   {WHATSAPP_TRANSCRIBE_LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                                 </select>
@@ -403,19 +403,19 @@ export function AlibabaThreads({ contactId, alibabaSummary, onSummaryUpdated }) 
           {saved && <span className="text-xs text-green-600 inline-flex items-center gap-1"><Check size={11} /> Saved</span>}
         </div>
         {saveError && (
-          <div className="flex items-start gap-1.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1.5 mt-1">
+          <div className="flex items-start gap-1.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded-none px-2 py-1.5 mt-1">
             <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {saveError}
           </div>
         )}
       </div>
 
       {summaryError && (
-        <div className="flex items-start gap-1.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded px-2 py-1.5 mb-1.5">
+        <div className="flex items-start gap-1.5 text-xs text-red-700 bg-red-50 border border-red-200 rounded-none px-2 py-1.5 mb-1.5">
           <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {summaryError}
         </div>
       )}
       {summary && (
-        <div className="bg-ivory-light rounded-lg px-2.5 py-2 mb-1.5 space-y-1">
+        <div className="bg-ivory-light rounded-none px-2.5 py-2 mb-1.5 space-y-1">
           <p className="text-xs text-ink-80">{summary.summary}</p>
           {summary.recent_activity && <p className="text-xs text-ink-70">{summary.recent_activity}</p>}
           {summary.open_commitments?.length > 0 && (
@@ -433,7 +433,7 @@ export function AlibabaThreads({ contactId, alibabaSummary, onSummaryUpdated }) 
             const d = t.pasted_at?.toDate ? t.pasted_at.toDate() : (t.pasted_at ? new Date(t.pasted_at) : null)
             const dateLabel = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '(unknown date)'
             return (
-              <div key={t.id} className="border border-warm-grey rounded-lg">
+              <div key={t.id} className="border border-warm-grey rounded-none">
                 <button
                   type="button"
                   onClick={() => setExpanded(v => v === t.id ? null : t.id)}
@@ -539,7 +539,7 @@ export function InteractionLog({ contactId }) {
           ) : (
             <div className="space-y-1 max-h-48 overflow-y-auto">
               {entries.map(e => (
-                <div key={e.id} className="flex items-start gap-2 text-xs bg-ivory-light rounded px-2 py-1.5">
+                <div key={e.id} className="flex items-start gap-2 text-xs bg-ivory-light rounded-none px-2 py-1.5">
                   <div className="min-w-0 flex-1">
                     <span className="text-ink-60">{fmtIsoOrTimestamp(e.date)} · {e.channel}</span>
                     <p className="text-ink-80 whitespace-pre-wrap">{e.description}</p>
@@ -674,7 +674,7 @@ function EmailSummaryScanModal({ onClose, onGenerated }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-xl my-8" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-xl my-8" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <h2 className="font-semibold text-ink flex items-center gap-1.5"><Sparkles size={16} className="text-brand-600" /> Generate Email Summaries</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
@@ -777,7 +777,7 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-xl my-8" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-xl my-8" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <h2 className="font-semibold text-ink">Manage tags</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
@@ -788,7 +788,7 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
         <div className="p-5 space-y-2 max-h-[65vh] overflow-auto">
           {shown.map(([tag, count]) => (
             <div key={tag} className="flex items-center gap-2">
-              <span className={`shrink-0 w-8 text-center text-[10px] rounded px-1 py-0.5 ${isCategoryTag(tag) ? 'text-teal-700 bg-teal-100 font-medium' : 'text-ink-70 bg-ivory-dark'}`}>
+              <span className={`shrink-0 w-8 text-center text-[10px] rounded-none px-1 py-0.5 ${isCategoryTag(tag) ? 'text-teal-700 bg-teal-100 font-medium' : 'text-ink-70 bg-ivory-dark'}`}>
                 {count}
               </span>
               <input
@@ -1098,17 +1098,17 @@ export default function MarketingContacts({ onSendEmail }) {
             <span className="text-xs text-ink-60">{selected.size} selected</span>
             <button onClick={() => setSelected(new Set())} className="text-xs text-ink-60 hover:text-ink-80">Clear</button>
             <button onClick={bulkPromote} disabled={promoting}
-              className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 border border-brand-200 rounded-md px-2 py-1 disabled:opacity-50">
+              className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 border border-brand-200 rounded-none px-2 py-1 disabled:opacity-50">
               <UserPlus size={13} /> {promoting ? 'Adding…' : 'Add to Customers'}
             </button>
             {onSendEmail && (
               <button onClick={() => onSendEmail([...selected])}
-                className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 border border-brand-200 rounded-md px-2 py-1">
+                className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 border border-brand-200 rounded-none px-2 py-1">
                 <Mail size={13} /> Send email
               </button>
             )}
             <button onClick={bulkDelete}
-              className="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 border border-red-200 rounded-md px-2 py-1">
+              className="inline-flex items-center gap-1 text-xs font-medium text-red-600 hover:text-red-700 border border-red-200 rounded-none px-2 py-1">
               <Trash2 size={13} /> Delete selected
             </button>
           </div>
@@ -1116,14 +1116,14 @@ export default function MarketingContacts({ onSendEmail }) {
       </div>
 
       {/* Results */}
-      <div className="bg-white border border-warm-grey rounded-lg overflow-hidden">
+      <div className="bg-white border border-warm-grey rounded-none overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-ink-60 border-b border-warm-grey bg-ivory">
                 <th className="px-3 py-2 w-8">
                   <input type="checkbox" checked={allShownSelected} onChange={toggleAllShown}
-                         className="rounded border-warm-grey text-brand-600 focus:ring-brand-500"
+                         className="rounded-none border-warm-grey text-brand-600 focus:ring-brand-500"
                          title="Select all shown" />
                 </th>
                 <th className="px-3 py-2 font-medium">Name</th>
@@ -1141,7 +1141,7 @@ export default function MarketingContacts({ onSendEmail }) {
                 <tr key={c.id} className={`border-b border-warm-grey last:border-0 hover:bg-ivory align-top ${selected.has(c.id) ? 'bg-brand-50/40' : ''}`}>
                   <td className="px-3 py-2">
                     <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleSel(c.id)}
-                           className="rounded border-warm-grey text-brand-600 focus:ring-brand-500" />
+                           className="rounded-none border-warm-grey text-brand-600 focus:ring-brand-500" />
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
                     <Link to={`/marketing-contacts/${c.id}`} className="text-brand-600 hover:underline font-medium text-left">
@@ -1153,7 +1153,7 @@ export default function MarketingContacts({ onSendEmail }) {
                   <td className="px-3 py-2">
                     {c.company || <span className="text-platinum">—</span>}
                     {c.possible_customer_match && (
-                      <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-brand-600 bg-brand-50 rounded px-1 py-0.5"
+                      <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-brand-600 bg-brand-50 rounded-none px-1 py-0.5"
                             title={`Already an app customer: ${c.possible_customer_match.company_name}`}>
                         <Link2 size={10} /> in app
                       </span>
@@ -1167,14 +1167,14 @@ export default function MarketingContacts({ onSendEmail }) {
                   <td className="px-3 py-2">
                     <div className="flex gap-1">
                       {c.audiences.map(a => (
-                        <span key={a} className={`inline-block px-1.5 py-0.5 rounded text-[10px] ${AUD_STYLE[a] || 'bg-ivory-dark text-ink-60'}`}>{a}</span>
+                        <span key={a} className={`inline-block px-1.5 py-0.5 rounded-none text-[10px] ${AUD_STYLE[a] || 'bg-ivory-dark text-ink-60'}`}>{a}</span>
                       ))}
                     </div>
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-1 max-w-[260px]">
                       {sortTags(c.tags).slice(0, 5).map(t => (
-                        <span key={t} className={`inline-flex items-center gap-0.5 text-[10px] rounded px-1 py-0.5 ${
+                        <span key={t} className={`inline-flex items-center gap-0.5 text-[10px] rounded-none px-1 py-0.5 ${
                           isCategoryTag(t) ? 'text-teal-700 bg-teal-100 font-medium' : 'text-ink-70 bg-ivory-dark'
                         }`}>
                           <Tag size={9} />{t}
@@ -1184,7 +1184,7 @@ export default function MarketingContacts({ onSendEmail }) {
                     </div>
                   </td>
                   <td className="px-3 py-2">
-                    <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${STATUS_STYLE[c.status] || 'bg-ivory-dark text-ink-60'}`}>{c.status}</span>
+                    <span className={`inline-block px-1.5 py-0.5 rounded-none text-xs ${STATUS_STYLE[c.status] || 'bg-ivory-dark text-ink-60'}`}>{c.status}</span>
                   </td>
                   <td className="px-3 py-2 text-right">
                     <Link to={`/marketing-contacts/${c.id}`} title="Edit contact"

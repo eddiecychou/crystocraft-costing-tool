@@ -103,7 +103,7 @@ const SupplierVideos = forwardRef(function SupplierVideos({ supplierId }, ref) {
       {uploads.map(u => (
         <div key={u.uid} className="text-xs text-ink-60 mb-1">
           Uploading {u.name}… {u.progress}%
-          <div className="h-1 bg-ivory-dark rounded mt-0.5"><div className="h-1 bg-brand-500 rounded" style={{ width: `${u.progress}%` }} /></div>
+          <div className="h-1 bg-ivory-dark rounded-none mt-0.5"><div className="h-1 bg-brand-500 rounded-none" style={{ width: `${u.progress}%` }} /></div>
         </div>
       ))}
 
@@ -112,7 +112,7 @@ const SupplierVideos = forwardRef(function SupplierVideos({ supplierId }, ref) {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {videos.map(v => (
-            <div key={v.id} className="rounded-lg border border-warm-grey overflow-hidden">
+            <div key={v.id} className="rounded-none border border-warm-grey overflow-hidden">
               <div className="relative bg-black">
                 <video src={v.file_url} controls preload="metadata" className="w-full max-h-64 bg-black" />
                 <button type="button" onClick={() => setConfirmDelete(v)}

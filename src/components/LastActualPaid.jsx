@@ -49,7 +49,7 @@ export default function LastActualPaid({ componentId }) {
   const latest = rows[0]
 
   return (
-    <div className="rounded-md border border-amber-200 bg-amber-50/60 px-3 py-2 mb-3">
+    <div className="rounded-none border border-amber-200 bg-amber-50/60 px-3 py-2 mb-3">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <Receipt size={14} className="text-amber-600 shrink-0" />

@@ -393,7 +393,7 @@ export default function CreditNoteForm() {
             )}
 
             {overCredit.length > 0 && (
-              <div className="mt-3 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <div className="mt-3 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-none px-3 py-2">
                 {overCredit.length} line{overCredit.length === 1 ? '' : 's'} would credit more than the original invoice — check before posting.
               </div>
             )}

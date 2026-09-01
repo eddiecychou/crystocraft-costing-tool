@@ -117,11 +117,11 @@ export default function SupplierCatalogs({ supplierId }) {
 
       {/* In-progress uploads */}
       {uploads.map(u => (
-        <div key={u.uid} className="flex items-center gap-3 p-3 bg-brand-50 rounded-lg mb-2">
+        <div key={u.uid} className="flex items-center gap-3 p-3 bg-brand-50 rounded-none mb-2">
           <span className="text-ink-60"><FileTypeIcon type={u.type} name={u.name} size={20} /></span>
           <div className="flex-1 min-w-0">
             <p className="text-xs text-ink-80 truncate">{u.name}</p>
-            <div className="mt-1 h-1 bg-brand-200 rounded overflow-hidden">
+            <div className="mt-1 h-1 bg-brand-200 rounded-none overflow-hidden">
               <div className="h-full bg-brand-600 transition-all" style={{ width: `${u.progress}%` }} />
             </div>
           </div>
@@ -135,13 +135,13 @@ export default function SupplierCatalogs({ supplierId }) {
       ) : (
         <div className="space-y-2">
           {catalogs.map(c => (
-            <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg border border-warm-grey hover:border-warm-grey hover:bg-ivory transition-colors group">
+            <div key={c.id} className="flex items-center gap-3 p-3 rounded-none border border-warm-grey hover:border-warm-grey hover:bg-ivory transition-colors group">
               {/* Thumbnail or icon */}
               {isImage(c.file_type) ? (
                 <img
                   src={c.file_url}
                   alt={c.file_name}
-                  className="w-10 h-10 object-cover rounded cursor-pointer shrink-0"
+                  className="w-10 h-10 object-cover rounded-none cursor-pointer shrink-0"
                   onClick={() => setLightbox(c)}
                 />
               ) : (
@@ -160,14 +160,14 @@ export default function SupplierCatalogs({ supplierId }) {
                   href={c.file_url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-xs text-brand-600 hover:text-brand-800 px-2 py-1 rounded hover:bg-brand-50"
+                  className="text-xs text-brand-600 hover:text-brand-800 px-2 py-1 rounded-none hover:bg-brand-50"
                 >
                   Open
                 </a>
                 <button
                   type="button"
                   onClick={() => setConfirmDelete(c)}
-                  className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50"
+                  className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded-none hover:bg-red-50"
                 >
                   Delete
                 </button>
@@ -180,7 +180,7 @@ export default function SupplierCatalogs({ supplierId }) {
       {/* Image lightbox */}
       {lightbox && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" onClick={() => setLightbox(null)}>
-          <img src={lightbox.file_url} alt={lightbox.file_name} className="max-w-full max-h-full rounded-lg object-contain" onClick={e => e.stopPropagation()} />
+          <img src={lightbox.file_url} alt={lightbox.file_name} className="max-w-full max-h-full rounded-none object-contain" onClick={e => e.stopPropagation()} />
           <button className="absolute top-4 right-4 text-white" onClick={() => setLightbox(null)}><X size={24} /></button>
         </div>
       )}

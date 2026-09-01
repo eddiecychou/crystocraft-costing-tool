@@ -117,7 +117,7 @@ export default function CatalogueForm() {
           <div>
             <label className="label">Background Image</label>
             {form.cover_image ? (
-              <div className="relative rounded-lg overflow-hidden" style={{ height: 140 }}>
+              <div className="relative rounded-none overflow-hidden" style={{ height: 140 }}>
                 <img src={form.cover_image} alt="" className="w-full h-full object-cover" />
                 <div
                   className="absolute inset-0"
@@ -132,14 +132,14 @@ export default function CatalogueForm() {
                 <button
                   type="button"
                   onClick={() => fileRef.current.click()}
-                  className="absolute top-2 right-2 bg-white/90 text-xs px-2 py-1 rounded text-ink-80 hover:bg-white"
+                  className="absolute top-2 right-2 bg-white/90 text-xs px-2 py-1 rounded-none text-ink-80 hover:bg-white"
                 >
                   Change
                 </button>
                 <button
                   type="button"
                   onClick={() => setVal('cover_image', '')}
-                  className="absolute top-2 left-2 bg-white/90 text-xs px-2 py-1 rounded text-red-500 hover:bg-white"
+                  className="absolute top-2 left-2 bg-white/90 text-xs px-2 py-1 rounded-none text-red-500 hover:bg-white"
                 >
                   Remove
                 </button>
@@ -149,7 +149,7 @@ export default function CatalogueForm() {
                 type="button"
                 onClick={() => fileRef.current.click()}
                 disabled={uploading}
-                className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-warm-grey rounded-lg p-6 hover:border-brand-300 hover:bg-brand-50 transition-colors text-ink-60 text-sm"
+                className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-warm-grey rounded-none p-6 hover:border-brand-300 hover:bg-brand-50 transition-colors text-ink-60 text-sm"
               >
                 {uploading ? 'Uploading…' : <span className="inline-flex items-center gap-1.5"><Camera size={15} />Click to upload cover image</span>}
               </button>
@@ -165,7 +165,7 @@ export default function CatalogueForm() {
                   key={color}
                   type="button"
                   onClick={() => setVal('overlay_color', color)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm capitalize transition-all ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-none border-2 text-sm capitalize transition-all ${
                     form.overlay_color === color
                       ? 'border-brand-400 bg-brand-50 text-brand-700 font-medium'
                       : 'border-warm-grey text-ink-60 hover:border-warm-grey'

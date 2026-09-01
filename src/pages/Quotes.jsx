@@ -110,7 +110,7 @@ export default function Quotes() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="font-semibold text-ink text-sm truncate">{q.client_name}</p>
                   {q.quote_type === 'uploaded' && (
-                    <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-medium shrink-0"><Paperclip size={11} />Uploaded</span>
+                    <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-none bg-amber-50 text-amber-600 font-medium shrink-0"><Paperclip size={11} />Uploaded</span>
                   )}
                 </div>
                 {q.contact_name && <p className="text-xs text-ink-60 mt-0.5">{q.contact_name}</p>}

@@ -456,14 +456,14 @@ export default function Dashboard() {
                         <div className="flex flex-col gap-1.5 shrink-0">
                           <button
                             onClick={e => handleLog(enq, e)}
-                            className="px-2.5 py-1 rounded-lg border border-brand-200 bg-brand-50 text-brand-700 text-xs font-medium hover:bg-brand-100 transition-colors"
+                            className="px-2.5 py-1 rounded-none border border-brand-200 bg-brand-50 text-brand-700 text-xs font-medium hover:bg-brand-100 transition-colors"
                           >
                             + Log
                           </button>
                           <button
                             onClick={e => handleDone(enq, e)}
                             disabled={dismissing === enq.id}
-                            className="px-2.5 py-1 rounded-lg border border-warm-grey bg-white text-ink-60 text-xs font-medium hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
+                            className="px-2.5 py-1 rounded-none border border-warm-grey bg-white text-ink-60 text-xs font-medium hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
                           >
                             {dismissing === enq.id ? '…' : <span className="inline-flex items-center gap-1"><Check size={12} />Done</span>}
                           </button>
@@ -518,14 +518,14 @@ export default function Dashboard() {
                       <div className="flex flex-col gap-1.5 shrink-0">
                         <button
                           onClick={e => handleLog(enq, e)}
-                          className="px-2.5 py-1 rounded-lg border border-brand-200 bg-brand-50 text-brand-700 text-xs font-medium hover:bg-brand-100 transition-colors"
+                          className="px-2.5 py-1 rounded-none border border-brand-200 bg-brand-50 text-brand-700 text-xs font-medium hover:bg-brand-100 transition-colors"
                         >
                           + Log
                         </button>
                         <button
                           onClick={e => handleDone(enq, e)}
                           disabled={dismissing === enq.id}
-                          className="px-2.5 py-1 rounded-lg border border-warm-grey bg-white text-ink-60 text-xs font-medium hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
+                          className="px-2.5 py-1 rounded-none border border-warm-grey bg-white text-ink-60 text-xs font-medium hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
                         >
                           {dismissing === enq.id ? '…' : <span className="inline-flex items-center gap-1"><Check size={12} />Done</span>}
                         </button>
@@ -589,7 +589,7 @@ function StatCard({ label, value, colour, note, active, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`${c.bg} border-2 ${active ? c.activeBorder : c.border} rounded-xl p-4 text-left w-full transition-all hover:shadow-sm ${active ? 'shadow-sm' : ''}`}
+      className={`${c.bg} border-2 ${active ? c.activeBorder : c.border} rounded-none p-4 text-left w-full transition-all hover:shadow-sm ${active ? 'shadow-sm' : ''}`}
     >
       <p className={`text-3xl font-bold ${c.num}`}>{value}</p>
       <p className={`text-xs font-semibold mt-1 leading-tight ${c.label}`}>{label}</p>

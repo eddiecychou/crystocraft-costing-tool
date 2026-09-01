@@ -172,7 +172,7 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
                 </>
               )}
               {(preview.missing?.length > 0 || preview.unmatched?.length > 0) && (
-                <div className="mt-3 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <div className="mt-3 flex items-start gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2">
                   <AlertTriangle size={14} className="mt-0.5 shrink-0" />
                   <div>
                     {preview.missing?.length > 0 && <p>{preview.missing.length} BOM part(s) not in the component ledger — won’t be reserved: {preview.missing.map(m => m.code).join(', ')}.</p>}
@@ -208,7 +208,7 @@ function StageChip({ stage, dateStr, gapCount }) {
 function GapNotice({ gaps }) {
   if (!gaps?.count) return null
   return (
-    <div className="mb-3 flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+    <div className="mb-3 flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-none px-3 py-2">
       <AlertTriangle size={14} className="mt-0.5 shrink-0" />
       <div>
         <p className="font-medium">{gaps.count} line(s) were never reserved — this order's consumption is incomplete.</p>

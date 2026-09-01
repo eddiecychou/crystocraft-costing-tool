@@ -87,7 +87,7 @@ export default function CustomerAccounts({ embedded = false }) {
       <p className="text-sm text-ink-60 mb-4">Approve sign-ups and manage portal logins. Click an account to edit its currency, pricing and category.</p>
 
       <div className="overflow-x-auto overflow-y-hidden mb-4">
-        <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden">
+        <div className="inline-flex rounded-none border border-ivory-dark overflow-hidden">
           {tabs.map(t => (
             <button key={t.v} onClick={() => setTab(t.v)}
               className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0
@@ -205,7 +205,7 @@ export function CustomerPicker({ customers, value, onChange }) {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-          <div className="absolute z-20 mt-1 w-72 max-h-56 overflow-auto bg-white border border-ivory-dark rounded-lg shadow-lg">
+          <div className="absolute z-20 mt-1 w-72 max-h-56 overflow-auto bg-white border border-ivory-dark rounded-none shadow-lg">
             {matches.length === 0 ? (
               <p className="text-xs text-ink-60 px-3 py-2">No customers found.</p>
             ) : matches.map(c => (

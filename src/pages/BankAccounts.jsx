@@ -50,7 +50,7 @@ function AccountForm({ initial, onSave, onCancel, saving }) {
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
   return (
-    <div className="border border-teal-200 rounded-xl bg-teal-50/30 p-5 space-y-4 mb-6">
+    <div className="border border-teal-200 rounded-none bg-teal-50/30 p-5 space-y-4 mb-6">
       <h3 className="text-sm font-semibold text-ink">
         {initial.id ? 'Edit account' : 'Add bank account'}
       </h3>
@@ -66,7 +66,7 @@ function AccountForm({ initial, onSave, onCancel, saving }) {
               value={form[k] || ''}
               onChange={(e) => set(k, e.target.value)}
               placeholder={placeholder}
-              className="w-full px-3 py-2 text-sm border border-warm-grey rounded-lg
+              className="w-full px-3 py-2 text-sm border border-warm-grey rounded-none
                          focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
             />
             {hint && <p className="text-xs text-ink-60 mt-1 leading-snug">{hint}</p>}
@@ -76,12 +76,12 @@ function AccountForm({ initial, onSave, onCancel, saving }) {
       <div className="flex flex-wrap items-center gap-4">
         <label className="flex items-center gap-2 text-sm text-ink-70 select-none">
           <input type="checkbox" checked={!!form.is_default} onChange={(e) => set('is_default', e.target.checked)}
-                 className="rounded border-warm-grey text-teal-600 focus:ring-teal-500" />
+                 className="rounded-none border-warm-grey text-teal-600 focus:ring-teal-500" />
           Default for this currency
         </label>
         <label className="flex items-center gap-2 text-sm text-ink-70 select-none">
           <input type="checkbox" checked={!!form.active} onChange={(e) => set('active', e.target.checked)}
-                 className="rounded border-warm-grey text-teal-600 focus:ring-teal-500" />
+                 className="rounded-none border-warm-grey text-teal-600 focus:ring-teal-500" />
           Active
         </label>
       </div>
@@ -91,10 +91,10 @@ function AccountForm({ initial, onSave, onCancel, saving }) {
       </p>
       <div className="flex gap-2">
         <button onClick={() => onSave(form)} disabled={saving}
-                className="px-4 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50">
+                className="px-4 py-2 text-sm rounded-none bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50">
           {saving ? 'Saving…' : 'Save'}
         </button>
-        <button onClick={onCancel} className="px-4 py-2 text-sm rounded-lg border border-warm-grey hover:bg-ivory">
+        <button onClick={onCancel} className="px-4 py-2 text-sm rounded-none border border-warm-grey hover:bg-ivory">
           Cancel
         </button>
       </div>
@@ -105,7 +105,7 @@ function AccountForm({ initial, onSave, onCancel, saving }) {
 function AuditModal({ account, rows, loading, onClose }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-2xl my-8" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
           <h2 className="font-semibold text-ink">
             Change history — {account.currency} {account.label || account.bank_name}
@@ -202,14 +202,14 @@ export default function BankAccounts() {
         </div>
         {!editing && (
           <button onClick={() => setEditing({ ...BLANK })}
-                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg bg-teal-600 text-white hover:bg-teal-700">
+                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 text-sm rounded-none bg-teal-600 text-white hover:bg-teal-700">
             <Plus size={15} /> Add account
           </button>
         )}
       </div>
 
       {error && (
-        <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
+        <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2 mb-4">
           <AlertCircle size={16} className="mt-0.5 shrink-0" /> {error}
         </div>
       )}
@@ -220,18 +220,18 @@ export default function BankAccounts() {
 
       <div className="space-y-3">
         {rows.map((a) => (
-          <div key={a.id} className={`bg-white border rounded-lg px-4 py-3 ${a.active ? 'border-warm-grey' : 'border-warm-grey opacity-60'}`}>
+          <div key={a.id} className={`bg-white border rounded-none px-4 py-3 ${a.active ? 'border-warm-grey' : 'border-warm-grey opacity-60'}`}>
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-ink">{a.currency}</span>
                   {a.label && <span className="text-sm text-ink-60">{a.label}</span>}
                   {a.is_default && (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs bg-teal-100 text-teal-700">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-none text-xs bg-teal-100 text-teal-700">
                       <Star size={11} /> Default
                     </span>
                   )}
-                  {!a.active && <span className="px-1.5 py-0.5 rounded text-xs bg-ivory-dark text-ink-60">Inactive</span>}
+                  {!a.active && <span className="px-1.5 py-0.5 rounded-none text-xs bg-ivory-dark text-ink-60">Inactive</span>}
                 </div>
                 <div className="text-sm text-ink-80 mt-1">{a.bank_name}</div>
                 <div className="text-xs text-ink-60 font-mono mt-0.5 break-words">
@@ -249,7 +249,7 @@ export default function BankAccounts() {
           </div>
         ))}
         {!loading && !rows.length && !editing && (
-          <div className="bg-white border border-dashed border-warm-grey rounded-lg px-4 py-10 text-center text-ink-60 text-sm">
+          <div className="bg-white border border-dashed border-warm-grey rounded-none px-4 py-10 text-center text-ink-60 text-sm">
             No accounts yet. Add your HKD, USD, EUR and GBP receiving accounts.
           </div>
         )}

@@ -197,7 +197,7 @@ export default function Login() {
 
   return (
     <Shell>
-      <div className="flex rounded-md overflow-hidden border border-ivory-dark mb-6">
+      <div className="flex rounded-none overflow-hidden border border-ivory-dark mb-6">
         {['signin', 'signup'].map(m => (
           <button key={m} onClick={() => switchMode(m)}
             className={`flex-1 py-2 text-sm font-medium transition-colors ${
@@ -208,7 +208,7 @@ export default function Login() {
       </div>
 
       <button type="button" onClick={handleGoogleSignIn} disabled={googleLoading}
-        className="w-full flex items-center justify-center gap-2.5 py-2 mb-4 text-sm font-medium text-ink-70 bg-white border border-ivory-dark rounded-md hover:bg-ivory transition-colors disabled:opacity-60">
+        className="w-full flex items-center justify-center gap-2.5 py-2 mb-4 text-sm font-medium text-ink-70 bg-white border border-ivory-dark rounded-none hover:bg-ivory transition-colors disabled:opacity-60">
         <GoogleIcon />
         {googleLoading ? 'Signing in…' : mode === 'signup' ? 'Sign up with Google' : 'Sign in with Google'}
       </button>

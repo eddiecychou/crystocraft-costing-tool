@@ -152,14 +152,14 @@ function MergeCustomerModal({ customer, onClose, onMerged }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <h2 className="font-semibold text-ink">Merge “{customer.company_name}” into…</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-3">
           {error && (
-            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2">
               <AlertTriangle size={16} /> {error}
             </div>
           )}
@@ -169,7 +169,7 @@ function MergeCustomerModal({ customer, onClose, onMerged }) {
               onChange={e => { setSearch(e.target.value); setSurvivorId('') }} autoFocus />
           </label>
           {search && !survivorId && (
-            <div className="border border-warm-grey rounded-lg max-h-48 overflow-y-auto">
+            <div className="border border-warm-grey rounded-none max-h-48 overflow-y-auto">
               {results.length === 0 ? (
                 <p className="text-xs text-ink-60 px-3 py-2">No match.</p>
               ) : results.map(c => (
@@ -185,7 +185,7 @@ function MergeCustomerModal({ customer, onClose, onMerged }) {
           {previewing && <p className="text-xs text-ink-60">Checking what would move…</p>}
 
           {preview && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900 space-y-1.5">
+            <div className="rounded-none border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900 space-y-1.5">
               <p>
                 <strong>{preview.ordersCount}</strong> order{preview.ordersCount === 1 ? '' : 's'},{' '}
                 <strong>{preview.quotesCount}</strong> quote{preview.quotesCount === 1 ? '' : 's'}, and{' '}
@@ -898,7 +898,7 @@ export default function CustomerDetail() {
               <div className="flex items-center gap-2 flex-wrap">
           <h1 className="text-xl md:text-2xl font-bold text-ink">{customer.company_name}</h1>
           {customer.erp_code && (
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-ivory-dark text-ink-60 border border-warm-grey">{customer.erp_code}</span>
+            <span className="text-xs font-mono px-2 py-0.5 rounded-none bg-ivory-dark text-ink-60 border border-warm-grey">{customer.erp_code}</span>
           )}
         </div>
               {customer.is_vip && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-semibold"><Star size={12} className="fill-current" />VIP</span>}
@@ -1030,7 +1030,7 @@ export default function CustomerDetail() {
                                 className="inline-flex items-center gap-1.5 text-xs text-brand-600 hover:underline"
                               >
                                 {att.name?.match(/\.(jpg|jpeg|png|webp|gif)$/i)
-                                  ? <img src={att.url} alt="" className="h-10 w-14 object-cover rounded border border-warm-grey" />
+                                  ? <img src={att.url} alt="" className="h-10 w-14 object-cover rounded-none border border-warm-grey" />
                                   : <><FileText size={14} className="shrink-0" /><span className="truncate max-w-[140px]">{att.name || `Quote ${i + 1}`}</span></>
                                 }
                               </a>
@@ -1075,7 +1075,7 @@ export default function CustomerDetail() {
 
       {/* Personal WA warning banner */}
       {(customer.is_personal_wa || customer.channels?.includes('Personal WhatsApp')) && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="mb-4 flex items-center gap-2 rounded-none border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <AlertTriangle size={15} className="shrink-0" />
           <span>
             <strong>{customer.contact_name || customer.company_name}</strong> communicates via
@@ -1093,7 +1093,7 @@ export default function CustomerDetail() {
           separate signals (see resend-webhook.js) — both are shown if both
           happened. */}
       {customer.email_bounced && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div className="mb-4 flex items-center gap-2 rounded-none border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           <AlertTriangle size={15} className="shrink-0" />
           <span>
             An email to <strong>{customer.contact_name || customer.company_name}</strong> bounced
@@ -1104,7 +1104,7 @@ export default function CustomerDetail() {
         </div>
       )}
       {customer.email_complained && (
-        <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div className="mb-4 flex items-center gap-2 rounded-none border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
           <AlertTriangle size={15} className="shrink-0" />
           <span>
             <strong>{customer.contact_name || customer.company_name}</strong> marked a Daily Draft email as spam
@@ -1114,7 +1114,7 @@ export default function CustomerDetail() {
         </div>
       )}
       {customer.possible_b2b_match && (
-        <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-none border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <span className="inline-flex items-center gap-2">
             <AlertTriangle size={15} className="shrink-0" />
             This WooCommerce-sourced customer's email also matches{' '}
@@ -1138,7 +1138,7 @@ export default function CustomerDetail() {
         ) : (
           <div className="space-y-3">
             {customer.contacts.map(c => (
-              <div key={c.id} className="rounded-lg border border-warm-grey p-3">
+              <div key={c.id} className="rounded-none border border-warm-grey p-3">
                 <div className="flex items-center gap-1.5">
                   <span className="text-sm font-medium text-ink">{c.name || '(no name)'}</span>
                   {c.title && <span className="text-xs text-ink-60">· {c.title}</span>}
@@ -1276,7 +1276,7 @@ export default function CustomerDetail() {
           {customer.segment && <Row label="Segment" value={customer.segment} />}
           {customer.folder_path && (
             <Row label="Folder" value={
-              <span className="font-mono text-xs text-ink-70 bg-ivory-dark px-2 py-0.5 rounded">{customer.folder_path}</span>
+              <span className="font-mono text-xs text-ink-70 bg-ivory-dark px-2 py-0.5 rounded-none">{customer.folder_path}</span>
             } />
           )}
         </dl>
@@ -1547,7 +1547,7 @@ export default function CustomerDetail() {
             </button>}
           bodyClassName="px-5 py-4 space-y-3">
             {emailSummaryError && (
-              <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 flex items-start gap-1.5">
+              <div className="rounded-none bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 flex items-start gap-1.5">
                 <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {emailSummaryError}
               </div>
             )}
@@ -1582,7 +1582,7 @@ export default function CustomerDetail() {
                 <MessageCircle size={13} /> {emailChatOpen ? 'Close' : 'Discover more about this customer'}
               </button>
               {emailChatOpen && (
-                <div className="mt-2 border border-ivory-dark rounded-lg p-3 bg-ivory-light space-y-2">
+                <div className="mt-2 border border-ivory-dark rounded-none p-3 bg-ivory-light space-y-2">
                   {emailChatHistory.length > 0 && (
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {emailChatHistory.map((h, i) => (
@@ -1633,7 +1633,7 @@ export default function CustomerDetail() {
             </button>}>
           <div className="px-5 py-4 space-y-3 border-b border-warm-grey">
             {whatsappSummaryError && (
-              <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 flex items-start gap-1.5">
+              <div className="rounded-none bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 flex items-start gap-1.5">
                 <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {whatsappSummaryError}
               </div>
             )}
@@ -1681,7 +1681,7 @@ export default function CustomerDetail() {
                       <p className="text-sm font-medium text-ink flex items-center gap-1.5">
                         {t.subject || t.id}
                         {isLinked && (
-                          <span className="text-[10px] font-normal uppercase tracking-wide rounded px-1 py-0.5 text-amber-600 bg-amber-50 shrink-0">
+                          <span className="text-[10px] font-normal uppercase tracking-wide rounded-none px-1 py-0.5 text-amber-600 bg-amber-50 shrink-0">
                             via linked lead
                           </span>
                         )}
@@ -1727,7 +1727,7 @@ export default function CustomerDetail() {
                                       value={selectedLang}
                                       onChange={e => setTranscribeLang(prev => ({ ...prev, [langKey]: e.target.value }))}
                                       disabled={!!transcribingKey}
-                                      className="text-xs border border-warm-grey rounded px-1 py-0.5 text-ink-70"
+                                      className="text-xs border border-warm-grey rounded-none px-1 py-0.5 text-ink-70"
                                     >
                                       {WHATSAPP_TRANSCRIBE_LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                                     </select>
@@ -1811,14 +1811,14 @@ export default function CustomerDetail() {
               )}
             </div>
             {alibabaSaveError && (
-              <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 flex items-start gap-1.5 mt-1.5">
+              <div className="rounded-none bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 flex items-start gap-1.5 mt-1.5">
                 <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {alibabaSaveError}
               </div>
             )}
           </div>
 
           {alibabaSummaryError && (
-            <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 flex items-start gap-1.5">
+            <div className="rounded-none bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 flex items-start gap-1.5">
               <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {alibabaSummaryError}
             </div>
           )}
@@ -1867,7 +1867,7 @@ export default function CustomerDetail() {
                       <p className="text-sm font-medium text-ink flex items-center gap-1.5">
                         Pasted {dateLabel}
                         {isLinked && (
-                          <span className="text-[10px] font-normal uppercase tracking-wide rounded px-1 py-0.5 text-amber-600 bg-amber-50 shrink-0">
+                          <span className="text-[10px] font-normal uppercase tracking-wide rounded-none px-1 py-0.5 text-amber-600 bg-amber-50 shrink-0">
                             via linked lead
                           </span>
                         )}
@@ -1898,7 +1898,7 @@ export default function CustomerDetail() {
           <div>
             <label className="label">Product <span className="text-ink-60 font-normal">(optional)</span></label>
             {composeProduct ? (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-200 bg-brand-50">
+              <div className="flex items-center gap-2 px-3 py-2 rounded-none border border-brand-200 bg-brand-50">
                 <span className="text-sm font-medium text-brand-700 flex-1">{composeProduct.name}</span>
                 {composeProduct.category && <span className="text-xs text-brand-500">{composeProduct.category}</span>}
                 <button type="button" onClick={() => { setComposeProduct(null); setComposeProductSearch('') }} className="text-brand-400 hover:text-brand-700 text-lg leading-none">×</button>
@@ -1915,7 +1915,7 @@ export default function CustomerDetail() {
                   onBlur={() => setTimeout(() => setComposeProductOpen(false), 150)}
                 />
                 {composeProductOpen && composeProductSearch && (
-                  <div className="absolute z-10 w-full bg-white border border-warm-grey rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                  <div className="absolute z-10 w-full bg-white border border-warm-grey rounded-none shadow-lg mt-1 max-h-48 overflow-y-auto">
                     {allProducts.filter(p => p.name.toLowerCase().includes(composeProductSearch.toLowerCase())).length === 0 ? (
                       <p className="text-xs text-ink-60 px-3 py-2">No products found</p>
                     ) : allProducts

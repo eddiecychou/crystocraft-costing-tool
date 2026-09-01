@@ -323,7 +323,7 @@ export default function PurchaseOrderForm() {
         {!isEdit && (
           <div className="card p-4">
             <label
-              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer transition-colors
+              className={`flex flex-col items-center justify-center border-2 border-dashed rounded-none p-6 cursor-pointer transition-colors
                 ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
               onDragOver={e => { e.preventDefault(); setDragOver(true) }}
               onDragLeave={() => setDragOver(false)} onDrop={handleDrop}>
@@ -338,7 +338,7 @@ export default function PurchaseOrderForm() {
                 <FileText size={14} className="text-red-400" /> {pendingFile.name}
               </div>
             )}
-            {extracting && <div className="mt-2 h-1 bg-brand-100 rounded overflow-hidden"><div className="h-full bg-brand-500 animate-pulse w-full" /></div>}
+            {extracting && <div className="mt-2 h-1 bg-brand-100 rounded-none overflow-hidden"><div className="h-full bg-brand-500 animate-pulse w-full" /></div>}
             {extractError && <p className="text-xs text-amber-600 mt-2">{extractError}</p>}
           </div>
         )}

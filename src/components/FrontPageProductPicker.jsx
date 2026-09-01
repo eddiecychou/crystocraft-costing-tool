@@ -86,7 +86,7 @@ export default function FrontPageProductPicker({ onSelect, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
           <h2 className="font-semibold text-ink text-sm">
             {chosen ? `Choose a photo — ${chosen.name}` : 'Pick a product to feature'}
@@ -102,7 +102,7 @@ export default function FrontPageProductPicker({ onSelect, onClose }) {
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search figurine or corporate gift products…"
-                className="w-full pl-8 pr-3 py-1.5 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                className="w-full pl-8 pr-3 py-1.5 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-brand-500/30"
               />
             </div>
           </div>
@@ -119,7 +119,7 @@ export default function FrontPageProductPicker({ onSelect, onClose }) {
               <div className="grid grid-cols-3 gap-2">
                 {images.map(img => (
                   <div key={img.id} onClick={() => onSelect({ product_type: chosen.type, product_id: chosen.id, image_url: img.url })}
-                    className="relative cursor-pointer rounded-lg overflow-hidden aspect-square border-2 border-transparent hover:border-brand-300 transition-all">
+                    className="relative cursor-pointer rounded-none overflow-hidden aspect-square border-2 border-transparent hover:border-brand-300 transition-all">
                     <img src={img.url} alt="" className="w-full h-full object-cover" />
                   </div>
                 ))}
@@ -133,15 +133,15 @@ export default function FrontPageProductPicker({ onSelect, onClose }) {
             <div className="space-y-1">
               {filtered.map(p => (
                 <button key={`${p.type}-${p.id}`} type="button" onClick={() => openProduct(p)}
-                  className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-ivory text-left">
-                  <div className="w-10 h-10 rounded bg-ivory-dark shrink-0 overflow-hidden">
+                  className="w-full flex items-center gap-3 p-2 rounded-none hover:bg-ivory text-left">
+                  <div className="w-10 h-10 rounded-none bg-ivory-dark shrink-0 overflow-hidden">
                     {p.image && <img src={p.image} alt="" className="w-full h-full object-cover" />}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-ink truncate">{p.name}</p>
                     <p className="text-xs text-ink-60 truncate">{p.cat}</p>
                   </div>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wide shrink-0 ${p.type === 'range' ? 'bg-brand-50 text-brand-700' : 'bg-sapphire/10 text-sapphire'}`}>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-none uppercase tracking-wide shrink-0 ${p.type === 'range' ? 'bg-brand-50 text-brand-700' : 'bg-sapphire/10 text-sapphire'}`}>
                     {p.type === 'range' ? 'Figurine' : 'Corporate'}
                   </span>
                 </button>

@@ -71,7 +71,7 @@ export default function ComponentDetail() {
           <p className="text-sm text-ink-60 mt-0.5">
             Unit: {component.unit}
             {(Number(component.qty_per_product) || 1) > 1 && (
-              <span className="ml-2 text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
+              <span className="ml-2 text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded-none">
                 ×{component.qty_per_product} per product
               </span>
             )}
@@ -166,7 +166,7 @@ function QuoteCard({ quote: q, productId, componentId, onNavigate, onDeleted }) 
 
   return (
     <>
-      <div className="relative group flex items-start justify-between p-4 rounded-lg border border-warm-grey hover:border-brand-200 hover:bg-brand-50 transition-colors">
+      <div className="relative group flex items-start justify-between p-4 rounded-none border border-warm-grey hover:border-brand-200 hover:bg-brand-50 transition-colors">
         <Link
           to={`/products/${productId}/components/${componentId}/quotes/${q.id}`}
           onClick={onNavigate}

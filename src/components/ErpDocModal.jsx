@@ -61,7 +61,7 @@ export default function ErpDocModal({ of, doc, onClose }) {
     <div className="fixed inset-0 z-50 flex items-start justify-center p-4 md:p-8 overflow-y-auto"
          onClick={onClose}>
       <div className="fixed inset-0 bg-black/40" />
-      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl my-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="relative bg-white rounded-none shadow-2xl w-full max-w-4xl my-auto" onClick={(e) => e.stopPropagation()}>
 
         <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-ivory-dark">
           <div className="min-w-0">

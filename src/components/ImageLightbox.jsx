@@ -34,7 +34,7 @@ export default function ImageLightbox({ images, index, onIndexChange, onClose, a
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-black/85" onClick={onClose}>
       <button type="button" onClick={onClose}
-              className="absolute top-4 right-4 text-white bg-white/15 hover:bg-white/25 rounded-lg p-2"
+              className="absolute top-4 right-4 text-white bg-white/15 hover:bg-white/25 rounded-none p-2"
               aria-label="Close">
         <X size={18} />
       </button>
@@ -52,7 +52,7 @@ export default function ImageLightbox({ images, index, onIndexChange, onClose, a
       )}
 
       <img src={current.url} alt={current.caption || altBase || ''}
-           className="max-w-full max-h-[75vh] rounded-lg object-contain" onClick={e => e.stopPropagation()} />
+           className="max-w-full max-h-[75vh] rounded-none object-contain" onClick={e => e.stopPropagation()} />
 
       {current.caption && (
         <p className="text-white/80 text-sm mt-3 max-w-lg text-center px-4" onClick={e => e.stopPropagation()}>
@@ -73,7 +73,7 @@ export default function ImageLightbox({ images, index, onIndexChange, onClose, a
         <div className="mt-4 flex gap-1.5 overflow-x-auto max-w-full px-2 pb-1" onClick={e => e.stopPropagation()}>
           {images.map((im, i) => (
             <button key={i} type="button" onClick={() => onIndexChange(i)}
-                    className={`shrink-0 w-12 h-12 rounded-md overflow-hidden border-2 transition-colors ${
+                    className={`shrink-0 w-12 h-12 rounded-none overflow-hidden border-2 transition-colors ${
                       i === index ? 'border-white' : 'border-transparent opacity-60 hover:opacity-90'}`}>
               <img src={im.url} alt="" className="w-full h-full object-cover" />
             </button>

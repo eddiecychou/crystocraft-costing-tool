@@ -182,7 +182,7 @@ export default function CustomerBrandGallery({ customerId }) {
                 const vis = imageVisibility(img)
                 const visMeta = IMAGE_VISIBILITY.find(v => v.value === vis)
                 return (
-                  <div key={img.id} className="group rounded-lg border border-warm-grey overflow-hidden hover:border-brand-300 hover:shadow-sm transition-all">
+                  <div key={img.id} className="group rounded-none border border-warm-grey overflow-hidden hover:border-brand-300 hover:shadow-sm transition-all">
                     <Link to={`/products/${img.product_id}`} className="block">
                       <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
                         <img src={img.file_url} alt={img.caption || img.product_name} className="w-full h-full object-contain" />
@@ -250,7 +250,7 @@ export default function CustomerBrandGallery({ customerId }) {
                 {list.map(a => {
                   const vb = VIS_BADGE[a.visibility] || VIS_BADGE.internal_only
                   return (
-                    <div key={a.id} className="group text-left rounded-lg border border-warm-grey overflow-hidden hover:border-brand-300 hover:shadow-sm transition-all">
+                    <div key={a.id} className="group text-left rounded-none border border-warm-grey overflow-hidden hover:border-brand-300 hover:shadow-sm transition-all">
                       <button type="button" onClick={() => setEditing(a)} className="block w-full text-left">
                         <div className="aspect-square bg-ivory-dark flex items-center justify-center overflow-hidden">
                           <AssetThumb asset={a} className="w-full h-full object-contain" />
@@ -340,7 +340,7 @@ function AssetDrawer({ customerId, asset, onClose }) {
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-4">
-          <div className="rounded-lg bg-ivory-dark border border-warm-grey aspect-video flex items-center justify-center overflow-hidden">
+          <div className="rounded-none bg-ivory-dark border border-warm-grey aspect-video flex items-center justify-center overflow-hidden">
             <AssetThumb asset={asset} className="max-w-full max-h-full object-contain" />
           </div>
           <p className="text-[11px] text-ink-60 break-all">
@@ -381,7 +381,7 @@ function AssetDrawer({ customerId, asset, onClose }) {
             <input type="checkbox" disabled={!marketingAllowed}
                    checked={marketingAllowed && f.can_use_in_marketing}
                    onChange={e => setF(x => ({ ...x, can_use_in_marketing: e.target.checked }))}
-                   className="w-4 h-4 rounded border-warm-grey text-brand-600" />
+                   className="w-4 h-4 rounded-none border-warm-grey text-brand-600" />
             Marketing consent — may appear in blog / case studies
           </label>
           {!marketingAllowed && <p className="text-[11px] text-ink-60 -mt-2">Only available on a Public reference asset.</p>}
@@ -395,7 +395,7 @@ function AssetDrawer({ customerId, asset, onClose }) {
             {confirmDel ? (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-red-600">Delete permanently?</span>
-                <button onClick={del} disabled={saving} className="text-xs text-white bg-red-500 hover:bg-red-600 rounded px-2 py-1">Yes, delete</button>
+                <button onClick={del} disabled={saving} className="text-xs text-white bg-red-500 hover:bg-red-600 rounded-none px-2 py-1">Yes, delete</button>
                 <button onClick={() => setConfirmDel(false)} className="text-xs text-ink-60">Cancel</button>
               </div>
             ) : (

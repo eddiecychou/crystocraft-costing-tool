@@ -223,7 +223,7 @@ export default function Layout({ children, user }) {
                     to={to}
                     onClick={() => setMoreOpen(false)}
                     className={({ isActive }) =>
-                      `flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-lg text-center transition-colors ${
+                      `flex flex-col items-center justify-center gap-1.5 py-3 px-1 rounded-none text-center transition-colors ${
                         isActive ? 'bg-brand-50 text-brand-600' : 'text-ink-70 hover:bg-ivory active:bg-ivory'
                       }`
                     }

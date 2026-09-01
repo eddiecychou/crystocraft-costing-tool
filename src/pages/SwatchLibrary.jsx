@@ -20,7 +20,7 @@ function SwatchThumb({ filename, alt }) {
     return () => { alive = false; if (objUrl) URL.revokeObjectURL(objUrl) }
   }, [filename])
   return (
-    <div className="aspect-square bg-ivory-dark rounded-md overflow-hidden flex items-center justify-center">
+    <div className="aspect-square bg-ivory-dark rounded-none overflow-hidden flex items-center justify-center">
       {url ? <img src={url} alt={alt} className="w-full h-full object-cover" /> : <Gem size={20} className="text-platinum" />}
     </div>
   )
@@ -132,7 +132,7 @@ function SwatchDetail({ name, entry, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[85vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none max-w-2xl w-full max-h-[85vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg text-ink flex items-center gap-2">
             <span className="w-4 h-4 rounded-full border border-ivory-dark shrink-0" style={{ background: entry.rgb ? `rgb(${entry.rgb.map(c => Math.round(c * 255)).join(',')})` : '#ccc' }} />
@@ -198,7 +198,7 @@ export default function SwatchLibrary() {
         </p>
       </div>
 
-      {error && <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 mb-4">{error}</div>}
+      {error && <div className="rounded-none bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 mb-4">{error}</div>}
 
       <div className="relative mb-5">
         <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-60" />

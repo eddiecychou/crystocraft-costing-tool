@@ -210,7 +210,7 @@ export default function PricingTiers() {
                     <div className="min-w-0">
                       <p className="text-sm text-ink">
                         {c.name}
-                        {qty > 1 && <span className="ml-1.5 text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">×{c.qty_per_product}</span>}
+                        {qty > 1 && <span className="ml-1.5 text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded-none">×{c.qty_per_product}</span>}
                       </p>
                       {q ? (
                         <p className="text-xs text-ink-60">
@@ -256,7 +256,7 @@ export default function PricingTiers() {
       </div>
 
       {missingPreferred && (
-        <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 mb-4 text-sm text-orange-700">
+        <div className="bg-orange-50 border border-orange-200 rounded-none px-4 py-3 mb-4 text-sm text-orange-700">
           <AlertTriangle size={13} className="inline align-[-2px] mr-1" />Some components have no preferred supplier — cost totals and prices below are incomplete.
         </div>
       )}
@@ -333,7 +333,7 @@ export default function PricingTiers() {
         <div className="card p-5 mb-6">
           <h2 className="text-sm font-semibold text-ink-80 mb-1">Customer Price Preview (HKD)</h2>
           <p className="text-xs text-ink-60 mb-4">
-            All-in cost × each group's markup, rounded up. Customers with a per-customer override are priced at their own markup on publish.
+            All-in cost × each group's markup, rounded-none up. Customers with a per-customer override are priced at their own markup on publish.
           </p>
           <div className="overflow-x-auto -mx-5 px-5">
             <table className="text-sm border-separate border-spacing-0" style={{ minWidth: '420px' }}>

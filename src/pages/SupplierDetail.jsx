@@ -140,14 +140,14 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <h2 className="font-semibold text-ink">Merge “{supplier.name}” into…</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-3">
           {error && (
-            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2">
               <AlertTriangle size={16} /> {error}
             </div>
           )}
@@ -157,7 +157,7 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
               onChange={e => { setSearch(e.target.value); setSurvivorId('') }} autoFocus />
           </label>
           {search && !survivorId && (
-            <div className="border border-warm-grey rounded-lg max-h-48 overflow-y-auto">
+            <div className="border border-warm-grey rounded-none max-h-48 overflow-y-auto">
               {results.length === 0 ? (
                 <p className="text-xs text-ink-60 px-3 py-2">No match.</p>
               ) : results.map(s => (
@@ -177,7 +177,7 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
           {previewing && <p className="text-xs text-ink-60">Checking what would move…</p>}
 
           {preview && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900 space-y-1.5">
+            <div className="rounded-none border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900 space-y-1.5">
               <p>
                 <strong>{preview.poCount}</strong> purchase order{preview.poCount === 1 ? '' : 's'},{' '}
                 <strong>{preview.corpQuoteCount + preview.rangeQuoteCount}</strong> BOM supplier quote{preview.corpQuoteCount + preview.rangeQuoteCount === 1 ? '' : 's'}
@@ -392,7 +392,7 @@ export default function SupplierDetail() {
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-2xl font-bold text-ink">{supplier.name}</h1>
             {supplier.erp_code && (
-              <span className="text-xs font-mono px-2 py-0.5 rounded bg-ivory-dark text-ink-60 border border-warm-grey">{supplier.erp_code}</span>
+              <span className="text-xs font-mono px-2 py-0.5 rounded-none bg-ivory-dark text-ink-60 border border-warm-grey">{supplier.erp_code}</span>
             )}
           </div>
           {supplier.name_cn && <p className="text-ink-60 text-sm mt-0.5">{supplier.name_cn}</p>}

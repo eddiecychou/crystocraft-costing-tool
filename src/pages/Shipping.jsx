@@ -182,7 +182,7 @@ function ShipmentsList() {
       <input type="text" placeholder="Search by customer, PI no, SO no, destination…"
         className="input w-full mb-4" value={search} onChange={e => setSearch(e.target.value)} />
       {erp.error && (
-        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2 mb-3">
           JES history unavailable — {erp.error}
         </p>
       )}
@@ -267,7 +267,7 @@ function ShipmentsList() {
                     <td className="px-2 py-3 whitespace-nowrap text-right" onClick={e => e.stopPropagation()}>
                       <button type="button" onClick={() => handleDuplicate(o)} disabled={duplicatingId === o.id}
                               title="Duplicate this order — allocates a fresh UC#"
-                              className="p-1.5 rounded-lg text-ink-60 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-50 transition-colors">
+                              className="p-1.5 rounded-none text-ink-60 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-50 transition-colors">
                         <Copy size={14} className={duplicatingId === o.id ? 'animate-pulse' : ''} />
                       </button>
                     </td>

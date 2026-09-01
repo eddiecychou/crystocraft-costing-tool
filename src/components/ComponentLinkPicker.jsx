@@ -49,7 +49,7 @@ export default function ComponentLinkPicker({ onPick, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-md shadow-lg w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-lg w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <h2 className="text-base font-semibold">Link to a component</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70"><X size={18} /></button>
@@ -74,7 +74,7 @@ export default function ComponentLinkPicker({ onPick, onClose }) {
             : corpFiltered.length === 0 ? <p className="text-sm text-ink-60 text-center py-8">No matching components.</p>
             : corpFiltered.map(c => (
               <button key={`${c.product_id}:${c.component_id}`} onClick={() => onPick({ type: 'corp', product_id: c.product_id, component_id: c.component_id, label: c.component_name })}
-                      className="w-full text-left flex items-start gap-2 px-3 py-2 rounded hover:bg-ivory">
+                      className="w-full text-left flex items-start gap-2 px-3 py-2 rounded-none hover:bg-ivory">
                 <Package size={15} className="text-platinum shrink-0 mt-0.5" />
                 <span className="min-w-0">
                   <span className="block text-sm text-ink truncate">{c.component_name}</span>
@@ -86,7 +86,7 @@ export default function ComponentLinkPicker({ onPick, onClose }) {
             rangeFiltered.length === 0 ? <p className="text-sm text-ink-60 text-center py-8">No matching components.</p>
             : rangeFiltered.slice(0, 300).map(c => (
               <button key={c.id} onClick={() => onPick({ type: 'range', component_id: c.id, label: c.code || c.name })}
-                      className="w-full text-left flex items-start gap-2 px-3 py-2 rounded hover:bg-ivory">
+                      className="w-full text-left flex items-start gap-2 px-3 py-2 rounded-none hover:bg-ivory">
                 <Puzzle size={15} className="text-platinum shrink-0 mt-0.5" />
                 <span className="min-w-0">
                   <span className="block text-sm font-mono text-ink truncate">{c.code}</span>

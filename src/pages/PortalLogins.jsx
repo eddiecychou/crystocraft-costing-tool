@@ -264,7 +264,7 @@ export default function PortalLogins({ embedded = false }) {
         <div className="relative">
           <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-60" />
           <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search email, name, customer…"
-            className="pl-8 pr-3 py-1.5 text-sm border border-ivory-dark rounded-lg w-64 focus:outline-none focus:ring-2 focus:ring-brand-400/40" />
+            className="pl-8 pr-3 py-1.5 text-sm border border-ivory-dark rounded-none w-64 focus:outline-none focus:ring-2 focus:ring-brand-400/40" />
         </div>
         <div className="flex gap-1.5">
           {chip('customer', 'Customers', null, typeFilter, setTypeFilter)}
@@ -279,7 +279,7 @@ export default function PortalLogins({ embedded = false }) {
         </div>
       </div>
 
-      <div className="border border-ivory-dark rounded-lg overflow-hidden bg-white">
+      <div className="border border-ivory-dark rounded-none overflow-hidden bg-white">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[640px]">
             <thead>
@@ -308,7 +308,7 @@ export default function PortalLogins({ embedded = false }) {
                       <div className="text-ink">{u.name || u.email || u.id}</div>
                       {u.name && u.email && <div className="text-[11px] text-ink-60">{u.email}</div>}
                       {roleGroupOf(u) === 'internal' && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-ivory-dark text-ink-60 uppercase tracking-wide">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-ivory-dark text-ink-60 uppercase tracking-wide">
                           {u.role === 'admin' || u.role === 'production' ? u.role : 'internal'}
                         </span>
                       )}
@@ -326,7 +326,7 @@ export default function PortalLogins({ embedded = false }) {
                       {ga ? <span className="text-ink-70">{ga.sessions}</span> : <span className="text-ink-60">—</span>}
                     </td>
                     <td className="px-3 py-2.5">
-                      <span className={`text-[11px] px-1.5 py-0.5 rounded ${STATUS_STYLE[status]}`}>{status}</span>
+                      <span className={`text-[11px] px-1.5 py-0.5 rounded-none ${STATUS_STYLE[status]}`}>{status}</span>
                     </td>
                     <td className="px-3 py-2.5 text-right">
                       <Link to={`/portal/accounts/${u.id}`} className="text-ink-60 hover:text-brand-600 inline-flex">

@@ -128,7 +128,7 @@ export default function BulkCategoryEditor() {
       </div>
 
       {/* Sticky action bar — combobox inputs accept free text for renaming */}
-      <div className="sticky top-0 z-20 bg-white border border-ivory-dark rounded-lg px-4 py-3 mb-4 flex flex-wrap items-center gap-3 shadow-sm">
+      <div className="sticky top-0 z-20 bg-white border border-ivory-dark rounded-none px-4 py-3 mb-4 flex flex-wrap items-center gap-3 shadow-sm">
         <span className="text-sm font-medium text-ink-80 min-w-[90px]">
           {nSelected > 0 ? `${nSelected} selected` : `${filtered.length} rows`}
         </span>

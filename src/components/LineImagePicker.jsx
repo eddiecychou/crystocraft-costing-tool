@@ -84,7 +84,7 @@ export default function LineImagePicker({ selectedUrl, orderId, matchedProductRe
   if (isRangeProduct) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-        <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+        <div className="bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
           <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
             <h2 className="font-semibold text-ink text-sm">Line image — {matchedProductRef.name || 'this product'}</h2>
             <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>
@@ -106,7 +106,7 @@ export default function LineImagePicker({ selectedUrl, orderId, matchedProductRe
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
           <h2 className="font-semibold text-ink text-sm">
             {chosen ? `Choose image — ${chosen.name}` : 'Line image'}
@@ -122,7 +122,7 @@ export default function LineImagePicker({ selectedUrl, orderId, matchedProductRe
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search corp gift products…"
-                className="w-full pl-8 pr-3 py-1.5 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                className="w-full pl-8 pr-3 py-1.5 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-brand-500/30"
               />
             </div>
           </div>
@@ -138,7 +138,7 @@ export default function LineImagePicker({ selectedUrl, orderId, matchedProductRe
                   const isSelected = img.file_url === selectedUrl
                   return (
                     <div key={img.id} onClick={() => onSelect(img.file_url)}
-                      className={`relative cursor-pointer rounded-lg overflow-hidden aspect-square border-2 transition-all ${isSelected ? 'border-brand-500 ring-2 ring-brand-200' : 'border-transparent hover:border-brand-300'}`}>
+                      className={`relative cursor-pointer rounded-none overflow-hidden aspect-square border-2 transition-all ${isSelected ? 'border-brand-500 ring-2 ring-brand-200' : 'border-transparent hover:border-brand-300'}`}>
                       <img src={img.file_url} alt="" className="w-full h-full object-cover" />
                       {isSelected && (
                         <div className="absolute inset-0 bg-brand-500/20 flex items-center justify-center">
@@ -160,8 +160,8 @@ export default function LineImagePicker({ selectedUrl, orderId, matchedProductRe
             <div className="space-y-1">
               {filtered.map(p => (
                 <button key={p.id} type="button" onClick={() => openProduct(p)}
-                  className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-ivory text-left">
-                  <div className="w-10 h-10 rounded bg-ivory-dark shrink-0 overflow-hidden">
+                  className="w-full flex items-center gap-3 p-2 rounded-none hover:bg-ivory text-left">
+                  <div className="w-10 h-10 rounded-none bg-ivory-dark shrink-0 overflow-hidden">
                     {p.heroImage && <img src={p.heroImage} alt="" className="w-full h-full object-cover" />}
                   </div>
                   <div className="min-w-0">

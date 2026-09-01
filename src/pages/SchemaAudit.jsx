@@ -502,7 +502,7 @@ function ClearLeadRow({ it, onClear }) {
 
 function Tally({ icon: Icon, cls, n, label }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border ${cls}`}>
+    <span className={`inline-flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-none border ${cls}`}>
       <Icon size={15} /> <span className="font-semibold">{n}</span> {label}
     </span>
   )
@@ -530,7 +530,7 @@ function NotInRangeRow({ it }) {
         <span className="text-ink-70"> — {it.msg}</span>
         <div className="mt-1.5 flex flex-wrap items-center gap-2">
           <select value={selId} onChange={e => setSelId(e.target.value)}
-                  className="text-xs border border-ivory-dark rounded px-1.5 py-1 bg-white max-w-[220px]">
+                  className="text-xs border border-ivory-dark rounded-none px-1.5 py-1 bg-white max-w-[220px]">
             {orders.map(o => (
               <option key={o.id} value={o.id}>
                 {o.label}{o.qty ? ` (${o.qty} pcs)` : ''}

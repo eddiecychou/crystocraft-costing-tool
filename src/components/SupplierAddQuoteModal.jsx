@@ -100,7 +100,7 @@ export default function SupplierAddQuoteModal({ supplier, onClose, onSaved }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[92vh] overflow-y-auto">
+      <div className="relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-none shadow-xl max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey sticky top-0 bg-white z-10">
           <div>
             <h2 className="text-base font-semibold text-ink">Add Quote</h2>
@@ -124,7 +124,7 @@ export default function SupplierAddQuoteModal({ supplier, onClose, onSaved }) {
                 onBlur={() => setTimeout(() => setProductOpen(false), 150)}
               />
               {productOpen && (
-                <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-warm-grey rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-warm-grey rounded-none shadow-lg max-h-48 overflow-y-auto">
                   {filteredProducts.length === 0 ? (
                     <p className="text-xs text-ink-60 px-3 py-2">No products found</p>
                   ) : filteredProducts.map(p => (
@@ -157,7 +157,7 @@ export default function SupplierAddQuoteModal({ supplier, onClose, onSaved }) {
                     key={c.id}
                     type="button"
                     onClick={() => setSelectedComponent(c)}
-                    className={`text-left px-3 py-2 rounded-lg border text-sm transition-colors ${
+                    className={`text-left px-3 py-2 rounded-none border text-sm transition-colors ${
                       selectedComponent?.id === c.id
                         ? 'border-brand-500 bg-brand-50 text-brand-700 font-medium'
                         : 'border-warm-grey text-ink-80 hover:border-warm-grey hover:bg-ivory'

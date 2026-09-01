@@ -89,7 +89,7 @@ export default function PurchaseOrderDetail() {
             {menuOpen && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
-                <div className="absolute right-0 top-full mt-1 z-40 w-48 bg-white border border-warm-grey rounded-md shadow-lg py-1">
+                <div className="absolute right-0 top-full mt-1 z-40 w-48 bg-white border border-warm-grey rounded-none shadow-lg py-1">
                   <Link to={`/purchase-orders/new?from=${id}`} onClick={() => setMenuOpen(false)}
                         className="flex items-center gap-2.5 px-3 py-2 text-sm text-ink-80 hover:bg-ivory">
                     <Copy size={15} className="text-ink-60" />Duplicate / reorder

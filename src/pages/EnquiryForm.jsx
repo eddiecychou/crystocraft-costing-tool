@@ -271,7 +271,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
               onChange={e => setProductSearch(e.target.value)}
             />
             {productSearch && (
-              <div className="border border-warm-grey rounded-lg mt-1 max-h-36 overflow-y-auto divide-y divide-warm-grey">
+              <div className="border border-warm-grey rounded-none mt-1 max-h-36 overflow-y-auto divide-y divide-warm-grey">
                 {filteredProducts.length === 0 ? (
                   <button
                     type="button"
@@ -342,10 +342,10 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
             <div className="space-y-2">
               {/* Saved attachments */}
               {savedAttachments.map((att, idx) => (
-                <div key={idx} className="flex items-center gap-3 p-2.5 rounded-lg border border-warm-grey bg-ivory">
+                <div key={idx} className="flex items-center gap-3 p-2.5 rounded-none border border-warm-grey bg-ivory">
                   {att.name?.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? (
                     <a href={att.url} target="_blank" rel="noreferrer" className="shrink-0">
-                      <img src={att.url} alt="" className="h-10 w-14 object-cover rounded border border-warm-grey" />
+                      <img src={att.url} alt="" className="h-10 w-14 object-cover rounded-none border border-warm-grey" />
                     </a>
                   ) : (
                     <FileText size={20} className="text-ink-60 shrink-0" />
@@ -366,7 +366,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
 
               {/* Pending files (not yet uploaded) */}
               {pendingFiles.map((file, idx) => (
-                <div key={idx} className="flex items-center gap-3 p-2.5 rounded-lg border border-brand-200 bg-brand-50">
+                <div key={idx} className="flex items-center gap-3 p-2.5 rounded-none border border-brand-200 bg-brand-50">
                   <span className="text-ink-60 shrink-0">{file.type.startsWith('image/') ? <ImageIcon size={18} /> : <FileText size={18} />}</span>
                   <span className="flex-1 text-sm text-brand-700 truncate min-w-0">{file.name}</span>
                   {uploadProgress[file.name] != null && (
@@ -387,7 +387,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="mt-2 w-full border-2 border-dashed border-warm-grey rounded-lg py-3 text-sm text-ink-60 hover:border-brand-300 hover:text-brand-500 transition-colors"
+              className="mt-2 w-full border-2 border-dashed border-warm-grey rounded-none py-3 text-sm text-ink-60 hover:border-brand-300 hover:text-brand-500 transition-colors"
             >
               <span className="inline-flex items-center gap-1.5"><Paperclip size={15} />Add PDF or image</span>
             </button>
@@ -414,7 +414,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
                   <label key={q.id} className="flex items-center gap-2.5 text-sm text-ink-80 cursor-pointer select-none">
                     <input
                       type="checkbox"
-                      className="w-4 h-4 rounded border-warm-grey text-brand-600"
+                      className="w-4 h-4 rounded-none border-warm-grey text-brand-600"
                       checked={linkedQuoteIds.includes(q.id)}
                       onChange={() => toggleQuote(q.id)}
                     />

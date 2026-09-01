@@ -36,7 +36,7 @@ function ProductPickerModal({ products, selected, onToggle, onClose }) {
   const isSelected = p => selected.some(r => r.collection === p.collection && r.id === p.id)
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col max-h-[75vh]" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-md flex flex-col max-h-[75vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-warm-grey">
           <h3 className="text-sm font-semibold text-ink">Related products</h3>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70"><X size={16} /></button>
@@ -52,16 +52,16 @@ function ProductPickerModal({ products, selected, onToggle, onClose }) {
           {filtered.length === 0 ? (
             <p className="text-sm text-ink-60 text-center py-6">No matching products.</p>
           ) : filtered.map(p => (
-            <label key={`${p.collection}-${p.id}`} className="flex items-center gap-3 p-2 rounded-lg hover:bg-ivory cursor-pointer">
+            <label key={`${p.collection}-${p.id}`} className="flex items-center gap-3 p-2 rounded-none hover:bg-ivory cursor-pointer">
               <input type="checkbox" checked={isSelected(p)} onChange={() => onToggle(p)}
-                     className="w-4 h-4 rounded border-warm-grey text-brand-600" />
-              <div className="w-9 h-9 rounded bg-ivory-dark shrink-0 overflow-hidden">
+                     className="w-4 h-4 rounded-none border-warm-grey text-brand-600" />
+              <div className="w-9 h-9 rounded-none bg-ivory-dark shrink-0 overflow-hidden">
                 {p.image && <img src={p.image} alt="" className="w-full h-full object-cover" />}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-ink truncate">{p.name}</p>
               </div>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wide shrink-0 ${p.collection === 'range_products' ? 'bg-brand-50 text-brand-700' : 'bg-sapphire/10 text-sapphire'}`}>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-none uppercase tracking-wide shrink-0 ${p.collection === 'range_products' ? 'bg-brand-50 text-brand-700' : 'bg-sapphire/10 text-sapphire'}`}>
                 {p.collection === 'range_products' ? 'Figurine' : 'Corporate'}
               </span>
             </label>
@@ -100,7 +100,7 @@ function ProductPhotoPicker({ productId, customerId, imageId, onPick }) {
       {choices.map(im => (
         <button key={im.id} type="button" onClick={() => onPick(im.id)}
                 title={im.branded_for_customer_id === customerId ? 'This customer’s branded photo' : ''}
-                className={`w-7 h-7 rounded overflow-hidden border-2 shrink-0 ${activeId === im.id ? 'border-brand-500' : 'border-transparent hover:border-warm-grey'}`}>
+                className={`w-7 h-7 rounded-none overflow-hidden border-2 shrink-0 ${activeId === im.id ? 'border-brand-500' : 'border-transparent hover:border-warm-grey'}`}>
           <img src={im.file_url} alt="" className="w-full h-full object-cover" />
         </button>
       ))}
@@ -134,7 +134,7 @@ function SortableSection({ section, index, assets, products, customerId, onChang
   const productImage = ref => products.find(p => p.collection === ref.collection && p.id === ref.id)?.image || ''
 
   return (
-    <div ref={setNodeRef} style={style} className="border border-warm-grey rounded-lg p-4 bg-white">
+    <div ref={setNodeRef} style={style} className="border border-warm-grey rounded-none p-4 bg-white">
       <div className="flex items-start gap-2 mb-3">
         <button type="button" {...attributes} {...listeners} className="mt-1.5 text-platinum hover:text-ink-60 cursor-grab active:cursor-grabbing shrink-0" aria-label="Reorder">
           <GripVertical size={16} />
@@ -154,7 +154,7 @@ function SortableSection({ section, index, assets, products, customerId, onChang
         <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 mb-2">
           {assets.map(a => (
             <button key={a.id} type="button" onClick={() => toggleAsset(a.id)}
-                    className={`aspect-square rounded overflow-hidden border-2 transition-colors ${isAssetSelected(a.id) ? 'border-brand-500' : 'border-transparent hover:border-warm-grey'}`}>
+                    className={`aspect-square rounded-none overflow-hidden border-2 transition-colors ${isAssetSelected(a.id) ? 'border-brand-500' : 'border-transparent hover:border-warm-grey'}`}>
               <AssetThumb asset={a} className="w-full h-full" />
             </button>
           ))}
@@ -164,7 +164,7 @@ function SortableSection({ section, index, assets, products, customerId, onChang
           <div className="space-y-2">
             {section.asset_ids.map(ref => (
               <div key={ref.id} className="flex items-start gap-2">
-                <div className="w-9 h-9 rounded overflow-hidden shrink-0 border border-warm-grey">
+                <div className="w-9 h-9 rounded-none overflow-hidden shrink-0 border border-warm-grey">
                   <AssetThumb asset={assetById(ref.id)} className="w-full h-full" />
                 </div>
                 <div className="flex-1">
@@ -190,7 +190,7 @@ function SortableSection({ section, index, assets, products, customerId, onChang
           <div className="space-y-2">
             {section.product_refs.map(r => (
               <div key={`${r.collection}-${r.id}`} className="flex items-start gap-2">
-                <div className="w-9 h-9 rounded bg-ivory-dark shrink-0 overflow-hidden">
+                <div className="w-9 h-9 rounded-none bg-ivory-dark shrink-0 overflow-hidden">
                   {productImage(r) && <img src={productImage(r)} alt="" className="w-full h-full object-cover" />}
                 </div>
                 <p className="text-xs text-ink-80 w-24 shrink-0 truncate mt-1.5" title={productName(r)}>{productName(r)}</p>
@@ -305,7 +305,7 @@ function ImportProposalModal({ customerId, currentStatus, onClose, onApplied }) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={stage === 'applying' ? undefined : onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <h3 className="text-sm font-semibold text-ink inline-flex items-center gap-1.5"><FileJson size={15} /> Import mapped JSON</h3>
           <button onClick={onClose} disabled={stage === 'applying'} className="text-ink-60 hover:text-ink-70"><X size={16} /></button>
@@ -336,7 +336,7 @@ function ImportProposalModal({ customerId, currentStatus, onClose, onApplied }) 
               {problems.length === 0 ? (
                 <p className="text-xs text-emerald-700 inline-flex items-center gap-1.5"><CheckCircle2 size={14} /> Every reference resolved cleanly.</p>
               ) : (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
+                <div className="rounded-none border border-amber-200 bg-amber-50 p-3">
                   <p className="text-xs text-amber-800 font-medium mb-1.5 inline-flex items-center gap-1.5"><AlertTriangle size={13} /> {problems.length} thing{problems.length === 1 ? '' : 's'} to check</p>
                   <ul className="text-[11px] text-amber-700 space-y-1 list-disc list-inside">
                     {problems.map((p, i) => <li key={i}>{p}</li>)}
@@ -709,7 +709,7 @@ export default function ProposalEditor({ customerId, customerName }) {
       <div className="grid sm:grid-cols-[140px_1fr] gap-3 my-4">
         <div>
           <p className="label text-xs mb-1.5">Hero image</p>
-          <div className="w-full aspect-video rounded-lg overflow-hidden border border-warm-grey">
+          <div className="w-full aspect-video rounded-none overflow-hidden border border-warm-grey">
             <AssetThumb asset={heroAsset} className="w-full h-full" />
           </div>
         </div>

@@ -34,7 +34,7 @@ class Boundary extends Component {
           <p className="text-sm text-ink-60 mb-3">
             The page hit an error and couldn’t render. This is a bug — the rest of the app still works.
           </p>
-          <pre className="text-xs bg-ivory border border-warm-grey rounded p-2 overflow-auto text-red-600 mb-4">
+          <pre className="text-xs bg-ivory border border-warm-grey rounded-none p-2 overflow-auto text-red-600 mb-4">
             {this.state.error.message || String(this.state.error)}
           </pre>
           <div className="flex gap-2">

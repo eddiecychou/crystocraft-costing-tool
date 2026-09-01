@@ -47,7 +47,7 @@ function PackedVsOrdered({ packableLines, cartons }) {
   if (!rows.length) return null
   const allOk = rows.every(r => r.packed === r.ordered)
   return (
-    <div className={`rounded-lg border p-4 ${allOk ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'}`}>
+    <div className={`rounded-none border p-4 ${allOk ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'}`}>
       <div className="flex items-center gap-2 mb-3">
         {allOk
           ? <CheckCircle2 size={15} className="text-green-600" />
@@ -136,7 +136,7 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
   const palletOptions = Array.from({ length: maxPallet }, (_, i) => i + 1)
 
   return (
-    <div className="border border-warm-grey rounded-lg overflow-hidden mb-3">
+    <div className="border border-warm-grey rounded-none overflow-hidden mb-3">
       {/* Carton header */}
       <div className="bg-ivory px-4 py-3 flex flex-wrap items-center gap-3">
         {/* Reorder — move this carton up/down; renumbers to match physical stacking */}
@@ -163,7 +163,7 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
         </div>
 
         {/* Per-carton mode toggle */}
-        <div className="flex rounded-md border border-warm-grey overflow-hidden text-[11px]">
+        <div className="flex rounded-none border border-warm-grey overflow-hidden text-[11px]">
           {CARTON_MODES.map(m => (
             <button key={m.value} type="button" onClick={() => setMode(m.value)} title={m.desc}
               className={`px-2 py-1 font-medium transition-colors ${mode === m.value ? 'bg-ink text-white' : 'bg-white text-ink-60 hover:bg-ivory-dark'}`}>
@@ -213,8 +213,8 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
           </div>
           {cbm > 0 && <span className="text-xs text-ink-60">{cbm.toFixed(4)} CBM</span>}
           {c.is_estimate
-            ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-600">Est</span>
-            : <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">Actual</span>}
+            ? <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-blue-100 text-blue-600">Est</span>
+            : <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-green-100 text-green-700">Actual</span>}
         </div>
         <div className="ml-auto flex items-center gap-2">
           <div className="flex items-center gap-1">
@@ -262,7 +262,7 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
           <span className="text-xs text-ink-60">pcs</span>
           {extraItems > 0 && (
             <button type="button" onClick={() => setMode('mixed')}
-              className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 hover:bg-amber-200"
+              className="text-[10px] px-1.5 py-0.5 rounded-none bg-amber-100 text-amber-700 hover:bg-amber-200"
               title="This carton holds more items — switch to mixed to see them all">
               +{extraItems} more — show
             </button>
@@ -540,7 +540,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
   // ── Render ────────────────────────────────────────────────────────────────
   if (unclassified > 0) {
     return (
-      <div className="p-4 rounded-lg border border-amber-200 bg-amber-50 text-sm text-amber-700 flex items-center gap-2">
+      <div className="p-4 rounded-none border border-amber-200 bg-amber-50 text-sm text-amber-700 flex items-center gap-2">
         <AlertTriangle size={16} />
         Classify all order lines before building the packing list.
         ({unclassified} line{unclassified > 1 ? 's' : ''} need a type)
@@ -552,7 +552,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
 
   if (!scenarios.length && cartons.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-warm-grey p-10 text-center">
+      <div className="rounded-none border border-dashed border-warm-grey p-10 text-center">
         <Package size={36} strokeWidth={1.25} className="mx-auto mb-3 text-platinum" />
         <p className="text-ink-60 text-sm mb-1">No packing scenario yet for this shipment.</p>
         <p className="text-xs text-ink-60 mb-5">
@@ -590,7 +590,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
           const isActive = s.id === activeId
           return (
             <div key={s.id}
-              className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm transition-colors ${
+              className={`flex items-center gap-1.5 rounded-none border px-2.5 py-1.5 text-sm transition-colors ${
                 isActive ? 'border-ink bg-ink/5' : 'border-warm-grey hover:border-ink-60'}`}>
               <button type="button" onClick={() => chooseScenario(s.id)}
                 title={s.selected ? 'Selected plan (used for export/shipment)' : 'Use this scenario as the selected plan'}
@@ -610,7 +610,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
         })}
         {scenarios.length < SOFT_CAP && (
           <button type="button" onClick={() => createScenario(`Scenario ${scenarios.length + 1}`, [newCarton(1)])}
-            className="flex items-center gap-1 rounded-lg border border-dashed border-warm-grey px-2.5 py-1.5 text-sm text-ink-60 hover:border-brand-400 hover:text-brand-600">
+            className="flex items-center gap-1 rounded-none border border-dashed border-warm-grey px-2.5 py-1.5 text-sm text-ink-60 hover:border-brand-400 hover:text-brand-600">
             <Plus size={13} /> New scenario
           </button>
         )}
@@ -696,7 +696,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
 
       {/* ── Pallet dimensions ── */}
       {palletNums.length > 0 && (
-        <div className="border border-warm-grey rounded-lg p-4 space-y-3">
+        <div className="border border-warm-grey rounded-none p-4 space-y-3">
           <p className="text-sm font-medium text-ink-80">Pallet dimensions</p>
           <div className="space-y-2">
             {palletNums.map(no => {
@@ -762,7 +762,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
 
       {/* ── Actions ── */}
       {error && (
-        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+        <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 border border-red-200 rounded-none px-4 py-3">
           <AlertTriangle size={15} /> {error}
         </div>
       )}

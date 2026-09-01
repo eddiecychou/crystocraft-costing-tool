@@ -35,13 +35,13 @@ function SortableImage({ id, url, isHero, onRemove }) {
   return (
     <div ref={setNodeRef} style={style} className="relative w-16 h-16 shrink-0 group/img">
       {isHero && (
-        <div className="absolute top-0.5 left-0.5 z-10 bg-amber-400 text-white px-1 py-0.5 rounded leading-none pointer-events-none">
+        <div className="absolute top-0.5 left-0.5 z-10 bg-amber-400 text-white px-1 py-0.5 rounded-none leading-none pointer-events-none">
           <Star size={10} className="fill-current" />
         </div>
       )}
       <img
         src={url}
-        className="w-full h-full rounded-lg object-cover cursor-grab active:cursor-grabbing select-none"
+        className="w-full h-full rounded-none object-cover cursor-grab active:cursor-grabbing select-none"
         draggable={false}
         {...attributes}
         {...listeners}
@@ -49,7 +49,7 @@ function SortableImage({ id, url, isHero, onRemove }) {
       <button
         onPointerDown={e => e.stopPropagation()}
         onClick={onRemove}
-        className="absolute top-0.5 right-0.5 bg-white/90 hover:bg-white rounded text-red-400 leading-none p-0.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
+        className="absolute top-0.5 right-0.5 bg-white/90 hover:bg-white rounded-none text-red-400 leading-none p-0.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
       ><X size={12} /></button>
     </div>
   )
@@ -112,7 +112,7 @@ function ImageSequencer({ itemId, selectedImages, allImages, onUpdate }) {
               <button
                 key={url}
                 onClick={() => onUpdate(itemId, { selected_images: [...selectedImages, url] })}
-                className="relative w-16 h-16 rounded-lg border-2 border-dashed border-warm-grey hover:border-brand-300 overflow-hidden group/add transition-colors"
+                className="relative w-16 h-16 rounded-none border-2 border-dashed border-warm-grey hover:border-brand-300 overflow-hidden group/add transition-colors"
               >
                 <img src={url} alt="" className="w-full h-full object-cover opacity-40 group-hover/add:opacity-60 transition-opacity" />
                 <span className="absolute inset-0 flex items-center justify-center text-ink-60 group-hover/add:text-brand-500 text-xl font-light">+</span>
@@ -155,7 +155,7 @@ function CatalogueItem({ item, onUpdate, onDelete }) {
         </button>
 
         {/* Hero image preview */}
-        <div className="w-16 h-16 rounded-lg bg-ivory-dark shrink-0 overflow-hidden">
+        <div className="w-16 h-16 rounded-none bg-ivory-dark shrink-0 overflow-hidden">
           {selectedImages[0]
             ? <img src={selectedImages[0]} alt="" className="w-full h-full object-cover" />
             : <div className="w-full h-full flex items-center justify-center text-platinum"><Camera size={24} /></div>
@@ -223,15 +223,15 @@ function ProductPicker({ existingIds, onAdd, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white rounded-none shadow-xl w-full max-w-md flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="p-4 border-b border-warm-grey">
           <h3 className="font-semibold text-ink">Add Product to Catalogue</h3>
-          <div className="flex gap-1 mt-2 p-0.5 bg-ivory-dark rounded-lg">
+          <div className="flex gap-1 mt-2 p-0.5 bg-ivory-dark rounded-none">
             {PRODUCT_SOURCES.map(s => (
               <button
                 key={s.value}
                 onClick={() => setSource(s.value)}
-                className={`flex-1 text-xs py-1.5 rounded-md transition-colors ${
+                className={`flex-1 text-xs py-1.5 rounded-none transition-colors ${
                   source === s.value ? 'bg-white text-ink font-medium shadow-sm' : 'text-ink-60 hover:text-ink-80'
                 }`}
               >{s.label}</button>
@@ -253,9 +253,9 @@ function ProductPicker({ existingIds, onAdd, onClose }) {
             <button
               key={p.id}
               onClick={() => { onAdd(p); onClose() }}
-              className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-ivory text-left"
+              className="w-full flex items-center gap-3 p-3 rounded-none hover:bg-ivory text-left"
             >
-              <div className="w-10 h-10 rounded-lg bg-ivory-dark shrink-0 overflow-hidden">
+              <div className="w-10 h-10 rounded-none bg-ivory-dark shrink-0 overflow-hidden">
                 {p.heroImage
                   ? <img src={p.heroImage} alt="" className="w-full h-full object-cover" />
                   : <div className="w-full h-full flex items-center justify-center text-platinum"><Camera size={20} /></div>

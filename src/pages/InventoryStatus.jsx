@@ -114,7 +114,7 @@ export default function InventoryStatus() {
           {CLASSES.map(c => <option key={c} value={c}>{c === 'All' ? 'All classes' : c}</option>)}
         </select>
         <label className="text-xs text-ink-60 inline-flex items-center gap-1.5 cursor-pointer">
-          <input type="checkbox" checked={reorderOnly} onChange={e => setReorderOnly(e.target.checked)} className="w-3.5 h-3.5 rounded border-warm-grey text-brand-600" />
+          <input type="checkbox" checked={reorderOnly} onChange={e => setReorderOnly(e.target.checked)} className="w-3.5 h-3.5 rounded-sm border-warm-grey text-brand-600" />
           Reorder only
         </label>
         <button onClick={exportCsv} disabled={filtered.length === 0} className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1 disabled:opacity-40">

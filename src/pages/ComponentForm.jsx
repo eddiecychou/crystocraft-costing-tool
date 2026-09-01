@@ -89,7 +89,7 @@ export default function ComponentForm() {
 
       {/* Use Product Info banner — only on new component */}
       {!isEdit && product && (
-        <div className="mb-4 p-4 rounded-xl border border-brand-200 bg-brand-50 flex items-center justify-between gap-3">
+        <div className="mb-4 p-4 rounded-none border border-brand-200 bg-brand-50 flex items-center justify-between gap-3">
           <div>
             <p className="text-sm font-medium text-brand-800">Single-component product?</p>
             <p className="text-xs text-brand-600 mt-0.5">Pre-fill name & spec from the product — saves re-entering the same info.</p>
@@ -143,7 +143,7 @@ export default function ComponentForm() {
 
         {/* Copy images option — only on new, if product has images */}
         {!isEdit && productImages.length > 0 && (
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-ivory border border-warm-grey">
+          <div className="flex items-start gap-3 p-3 rounded-none bg-ivory border border-warm-grey">
             <input
               type="checkbox"
               id="copyImages"

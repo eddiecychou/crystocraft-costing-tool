@@ -632,14 +632,14 @@ export default function WooCommerceSync() {
         )}
 
         {error && (
-          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4 inline-flex items-start gap-2">
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2 mb-4 inline-flex items-start gap-2">
             <AlertTriangle size={14} className="mt-0.5 shrink-0" />
             {error}
           </p>
         )}
 
         {importError && (
-          <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4 inline-flex items-start gap-2">
+          <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2 mb-4 inline-flex items-start gap-2">
             <AlertTriangle size={14} className="mt-0.5 shrink-0" />
             Import failed for {importError}
           </p>
@@ -844,7 +844,7 @@ export default function WooCommerceSync() {
                   </button>
                 </div>
 
-                <div className="rounded-lg border border-brand-100 bg-brand-50/40 px-4 py-2.5 mb-3 flex items-center gap-4 flex-wrap">
+                <div className="rounded-none border border-brand-100 bg-brand-50/40 px-4 py-2.5 mb-3 flex items-center gap-4 flex-wrap">
                   <div>
                     <span className="text-[11px] text-ink-60 block">Total units sold</span>
                     <span className="text-lg font-medium text-ink tabular-nums">{itemReportTotals.unitsTotal}</span>

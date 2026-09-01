@@ -48,7 +48,7 @@ export default function Enquiries({ embedded = false }) {
       {!embedded && <h1 className="text-xl md:text-2xl mb-1">Enquiries</h1>}
       <p className="text-sm text-ink-60 mb-4">Customer requests for quotation from the wholesale catalogue.</p>
 
-      <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden mb-5">
+      <div className="inline-flex rounded-none border border-ivory-dark overflow-hidden mb-5">
         {['new', 'handled', 'archived'].map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark transition-colors capitalize
@@ -109,14 +109,14 @@ function Card({ r, set, onEdit, onDelete }) {
         <span className={`badge ${st?.cls || ''}`}>{st?.label || r.status}</span>
       </div>
 
-      {r.message && <p className="text-sm text-ink-70 mt-3 whitespace-pre-wrap bg-ivory rounded p-2">{r.message}</p>}
+      {r.message && <p className="text-sm text-ink-70 mt-3 whitespace-pre-wrap bg-ivory rounded-none p-2">{r.message}</p>}
 
       <div className="mt-3 divide-y divide-ivory-dark border-y border-ivory-dark">
         {(r.items || []).map((i, idx) => {
           const Icon = i.type === 'figurine' ? Gem : Package
           return (
             <div key={idx} className="flex items-center gap-3 py-2">
-              <div className="w-10 h-10 bg-white border border-ivory-dark rounded flex items-center justify-center overflow-hidden shrink-0">
+              <div className="w-10 h-10 bg-white border border-ivory-dark rounded-none flex items-center justify-center overflow-hidden shrink-0">
                 {i.image ? <img src={i.image} alt={i.name} className="w-full h-full object-contain" /> : <Icon size={16} className="text-platinum" />}
               </div>
               <div className="flex-1 min-w-0">
@@ -230,7 +230,7 @@ function EditModal({ r, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-xl max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-lg w-full max-w-xl max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-ivory-dark sticky top-0 bg-white">
           <h2 className="text-base font-semibold">Edit enquiry</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink"><X size={18} /></button>
@@ -245,7 +245,7 @@ function EditModal({ r, onClose }) {
           <div className="space-y-2">
             {items.length === 0 && <p className="text-sm text-ink-60">No items left.</p>}
             {items.map((i, idx) => (
-              <div key={idx} className="flex items-center gap-3 border border-ivory-dark rounded p-2">
+              <div key={idx} className="flex items-center gap-3 border border-ivory-dark rounded-none p-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-ink truncate">{i.name}</p>
                   <p className="text-[11px] text-ink-60">

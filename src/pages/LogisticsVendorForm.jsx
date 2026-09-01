@@ -124,7 +124,7 @@ export default function LogisticsVendorForm() {
           </div>
           <div className="space-y-3 mt-2">
             {form.coverage.map((c, i) => (
-              <div key={i} className="rounded-lg border border-warm-grey p-3 space-y-2.5">
+              <div key={i} className="rounded-none border border-warm-grey p-3 space-y-2.5">
                 <div className="flex gap-2">
                   <input
                     className="input flex-1" value={c.region}
@@ -213,7 +213,7 @@ export default function LogisticsVendorForm() {
           <label className="label">Contacts</label>
           <div className="space-y-3 mt-2">
             {form.contacts.map((c, i) => (
-              <div key={i} className="rounded-lg border border-warm-grey p-3">
+              <div key={i} className="rounded-none border border-warm-grey p-3">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-xs text-ink-60">Contact {i + 1}</span>
                   {form.contacts.length > 1 && (

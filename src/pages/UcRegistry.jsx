@@ -110,7 +110,7 @@ function SiPicker({ value, onChange }) {
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           placeholder="e.g. SI250087 or customer…"
-          className="w-full px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
+          className="w-full px-2.5 py-1.5 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
         {q && (
           <button type="button" onMouseDown={() => { setQ(''); onChange(''); setResults([]) }}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-platinum hover:text-ink-60" title="Clear">
@@ -119,14 +119,14 @@ function SiPicker({ value, onChange }) {
         )}
       </div>
       {open && (loading || results.length > 0) && (
-        <ul className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-warm-grey rounded-lg shadow-lg max-h-56 overflow-auto">
+        <ul className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-warm-grey rounded-none shadow-lg max-h-56 overflow-auto">
           {loading && <li className="px-3 py-2 text-xs text-ink-60">Searching…</li>}
           {results.map((r) => (
             <li key={r.code}>
               <button type="button" onMouseDown={() => pick(r)}
                 className="w-full text-left px-3 py-1.5 hover:bg-teal-50 flex items-baseline gap-2">
                 <span className="font-mono text-xs text-teal-700">{r.code}</span>
-                <span className={`text-[10px] px-1 rounded ${r.src === 'app' ? 'bg-blue-50 text-blue-600' : 'bg-ivory-dark text-ink-60'}`}>
+                <span className={`text-[10px] px-1 rounded-none ${r.src === 'app' ? 'bg-blue-50 text-blue-600' : 'bg-ivory-dark text-ink-60'}`}>
                   {r.src === 'app' ? 'app' : 'JES'}
                 </span>
                 <span className="text-xs text-ink-70 truncate flex-1">{r.customer}</span>
@@ -209,13 +209,13 @@ function UcForm({ record, onClose, onSaved }) {
     <label key={k} className={`flex flex-col gap-1 ${wide ? 'col-span-2' : ''}`}>
       <span className="text-xs font-medium text-ink-60">{label}</span>
       <input type={type} value={f[k] ?? ''} onChange={set(k)}
-        className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
+        className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
     </label>
   )
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-2xl my-8" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <h2 className="font-semibold text-ink flex items-center gap-2">
             <Hash size={18} className="text-teal-600" />
@@ -227,7 +227,7 @@ function UcForm({ record, onClose, onSaved }) {
         <div className="p-5 grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-ink-60">Source</span>
-            <select value={ucSource(f.source)} onChange={set('source')} className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg">
+            <select value={ucSource(f.source)} onChange={set('source')} className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-sm">
               <option value="">— not set —</option>
               {UC_SOURCES.map((s) => <option key={s}>{s}</option>)}
             </select>
@@ -240,7 +240,7 @@ function UcForm({ record, onClose, onSaved }) {
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-ink-60">Date</span>
             {record?.si_date ? (
-              <span className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg bg-ivory text-ink-70"
+              <span className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-none bg-ivory text-ink-70"
                     title={`Taken from invoice ${record.jes_si}`}>
                 {String(record.si_date).slice(0, 10)}
                 <span className="ml-1.5 text-xs text-ink-60">from {record.jes_si}</span>
@@ -252,13 +252,13 @@ function UcForm({ record, onClose, onSaved }) {
                   // keep the sheet's /YY year in sync automatically
                   setF({ ...f, doc_date: v, year: v ? `/${v.slice(2, 4)}` : f.year })
                 }}
-                className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
+                className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
             )}
           </label>
           <label className="flex flex-col gap-1 col-span-2">
             <span className="text-xs font-medium text-ink-60">Customer</span>
             <input type="text" value={f.customer ?? ''} onChange={set('customer')}
-              className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
+              className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
             {/* Free text stays the record of what the invoice actually says
                 (JES history, one-off names) — this links it to a real app
                 customer record when one exists, so the code (Cindy needs it
@@ -277,7 +277,7 @@ function UcForm({ record, onClose, onSaved }) {
           {field('Order no.', 'order_no')}
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-ink-60">Currency</span>
-            <select value={f.currency} onChange={set('currency')} className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg">
+            <select value={f.currency} onChange={set('currency')} className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-sm">
               {UC_CURRENCIES.map((c) => <option key={c}>{c}</option>)}
             </select>
           </label>
@@ -298,11 +298,11 @@ function UcForm({ record, onClose, onSaved }) {
               35,013,502). The COLUMNS are kept; only the fields are gone. */}
           <label className="flex items-center gap-2 text-sm text-ink-70 mt-1">
             <input type="checkbox" checked={!!f.confirmed} onChange={set('confirmed')}
-              className="rounded border-warm-grey text-teal-600 focus:ring-teal-500" /> Confirmed
+              className="rounded-none border-warm-grey text-teal-600 focus:ring-teal-500" /> Confirmed
           </label>
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-ink-60">Status</span>
-            <select value={f.status || 'open'} onChange={set('status')} className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg">
+            <select value={f.status || 'open'} onChange={set('status')} className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-sm">
               <option value="open">Open</option>
               <option value="closed">Closed (paid)</option>
               <option value="void">Void (cancelled / mistake)</option>
@@ -311,7 +311,7 @@ function UcForm({ record, onClose, onSaved }) {
           <label className="flex flex-col gap-1 col-span-2">
             <span className="text-xs font-medium text-ink-60">Remarks</span>
             <textarea value={f.remarks ?? ''} onChange={set('remarks')} rows={2}
-              className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg" />
+              className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-none" />
           </label>
         </div>
         {error && (
@@ -326,7 +326,7 @@ function UcForm({ record, onClose, onSaved }) {
           </div>
         )}
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-warm-grey">
-          <button onClick={onClose} className="px-3 py-1.5 text-sm text-ink-70 hover:bg-ivory-dark rounded-lg">Cancel</button>
+          <button onClick={onClose} className="px-3 py-1.5 text-sm text-ink-70 hover:bg-ivory-dark rounded-none">Cancel</button>
           <button onClick={save} disabled={saving} className="btn-primary text-sm disabled:opacity-50">
             {saving ? 'Saving…' : warning ? 'Save anyway' : isNew ? 'Create UC#' : 'Save'}
           </button>
@@ -356,7 +356,7 @@ function ErpInvoiceModal({ si, data, loading, error, onClose }) {
   )
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl my-8" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-3xl my-8" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <div className="flex items-center gap-2 flex-wrap">
             <FileText size={18} className="text-teal-600" />
@@ -370,7 +370,7 @@ function ErpInvoiceModal({ si, data, loading, error, onClose }) {
         <div className="p-4 max-h-[70vh] overflow-auto">
           {loading && <p className="text-sm text-ink-60 py-6 text-center">Loading ERP invoice…</p>}
           {error && (
-            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2">
               <AlertCircle size={16} /> {error}
             </div>
           )}
@@ -647,7 +647,7 @@ export default function UcRegistry() {
               Outstanding{confirmedFilter === 'yes' ? ' (confirmed)' : confirmedFilter === 'no' ? ' (not confirmed)' : ''}:
             </span>
             {ar.map(([c, v]) => (
-              <span key={c} className="bg-white border border-warm-grey rounded-lg px-3 py-1.5 text-sm">
+              <span key={c} className="bg-white border border-warm-grey rounded-none px-3 py-1.5 text-sm">
                 <b className="tabular-nums">{money(v)}</b> <span className="text-ink-60">{c}</span>
               </span>
             ))}
@@ -656,7 +656,7 @@ export default function UcRegistry() {
       </div>
 
       {list.error && (
-        <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
+        <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2 mb-4">
           <AlertCircle size={16} /> {list.error}
         </div>
       )}
@@ -666,19 +666,19 @@ export default function UcRegistry() {
         <div className="relative flex-1 min-w-[220px]">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-60" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search UC#, customer, SI#, order…"
-            className="w-full pl-9 pr-3 py-2 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
+            className="w-full pl-9 pr-3 py-2 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
         </div>
-        <select value={source} onChange={(e) => setSource(e.target.value)} className="px-2.5 py-2 text-sm border border-warm-grey rounded-lg">
+        <select value={source} onChange={(e) => setSource(e.target.value)} className="px-2.5 py-2 text-sm border border-warm-grey rounded-sm">
           <option value="">All sources</option>
           {UC_SOURCES.map((s) => <option key={s}>{s}</option>)}
         </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-2.5 py-2 text-sm border border-warm-grey rounded-lg">
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-2.5 py-2 text-sm border border-warm-grey rounded-sm">
           <option value="open">Open</option>
           <option value="closed">Closed</option>
           <option value="void">Void</option>
           <option value="">All statuses</option>
         </select>
-        <select value={confirmedFilter} onChange={(e) => setConfirmedFilter(e.target.value)} className="px-2.5 py-2 text-sm border border-warm-grey rounded-lg">
+        <select value={confirmedFilter} onChange={(e) => setConfirmedFilter(e.target.value)} className="px-2.5 py-2 text-sm border border-warm-grey rounded-sm">
           <option value="">Confirmed: any</option>
           <option value="yes">Confirmed only</option>
           <option value="no">Not confirmed</option>
@@ -692,7 +692,7 @@ export default function UcRegistry() {
       />
 
       {/* table */}
-      <div className="bg-white border border-warm-grey rounded-lg overflow-hidden">
+      <div className="bg-white border border-warm-grey rounded-none overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -725,7 +725,7 @@ export default function UcRegistry() {
                       onChange={(e) => setSourceInline(r, e.target.value)}
                       onClick={(e) => e.stopPropagation()}
                       title="Click to reclassify this UC's sales channel"
-                      className={`text-xs rounded px-1.5 py-0.5 border-0 cursor-pointer disabled:opacity-50 ${
+                      className={`text-xs rounded-none px-1.5 py-0.5 border-0 cursor-pointer disabled:opacity-50 ${
                         ucSource(r.source) ? (SOURCE_STYLE[ucSource(r.source)] || SOURCE_STYLE.Other) : 'bg-ivory text-platinum'
                       }`}>
                       <option value="">—</option>
@@ -754,7 +754,7 @@ export default function UcRegistry() {
                   <td className={`px-3 py-2 text-right tabular-nums ${Number(r.balance) > 0.005 ? 'font-semibold text-ink' : 'text-ink-60'}`}>{money(r.balance)}</td>
                   <td className="px-3 py-2">
                     {(() => { const st = STATUS_STYLE[r.status] || STATUS_STYLE.open
-                      return <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${st.cls}`}>{st.label}</span> })()}
+                      return <span className={`inline-block px-1.5 py-0.5 rounded-none text-xs ${st.cls}`}>{st.label}</span> })()}
                   </td>
                   <td className="px-3 py-2 text-right">
                     <button onClick={() => setEditing(r)} className="text-teal-600 hover:underline text-xs font-medium">Edit</button>

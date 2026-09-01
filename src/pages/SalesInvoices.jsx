@@ -320,7 +320,7 @@ export default function SalesInvoices() {
         {/* Reconciliation. Silence here means the two records agree — which is
             the only way a copy earns any trust. */}
         {drift && drift.length > 0 && (
-          <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2.5">
+          <div className="mb-4 rounded-none border border-amber-200 bg-amber-50 px-4 py-2.5">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <p className="text-sm text-amber-800 inline-flex items-center gap-2">
                 <AlertTriangle size={14} className="text-amber-600" />
@@ -332,7 +332,7 @@ export default function SalesInvoices() {
                   {showDrift ? 'Hide' : 'Show'}
                 </button>
                 <button type="button" onClick={resync} disabled={fixing}
-                  className="text-xs font-medium px-2.5 py-1 rounded border border-amber-300 bg-white text-amber-900 hover:bg-amber-100 disabled:opacity-50">
+                  className="text-xs font-medium px-2.5 py-1 rounded-none border border-amber-300 bg-white text-amber-900 hover:bg-amber-100 disabled:opacity-50">
                   {fixing ? 'Re-syncing…' : 'Re-sync all'}
                 </button>
               </div>
@@ -439,7 +439,7 @@ export default function SalesInvoices() {
                       <select
                         value=""
                         onChange={(e) => e.target.value && setNoInvoice(o, e.target.value)}
-                        className="text-xs border border-amber-200 bg-white rounded px-1.5 py-1 text-amber-800 hover:border-amber-400 cursor-pointer"
+                        className="text-xs border border-amber-200 bg-white rounded-none px-1.5 py-1 text-amber-800 hover:border-amber-400 cursor-pointer"
                         title="This order will not be invoiced in the app — say why, and it leaves this list">
                         <option value="">needs invoice ▾</option>
                         {NO_INVOICE_REASONS.map((r) => (
@@ -476,7 +476,7 @@ export default function SalesInvoices() {
                           {fmtValue(o.total_amount ?? o.subtotal)}
                         </td>
                         <td className="px-4 py-2.5 whitespace-nowrap">
-                          <span className="text-xs px-1.5 py-0.5 rounded bg-ivory-dark text-ink-70"
+                          <span className="text-xs px-1.5 py-0.5 rounded-none bg-ivory-dark text-ink-70"
                                 title={noInvoiceReasonOf(o.no_invoice_reason)?.hint}>
                             {noInvoiceReasonOf(o.no_invoice_reason)?.label || o.no_invoice_reason}
                           </span>
@@ -507,7 +507,7 @@ export default function SalesInvoices() {
         </div>
 
         {erp.error && (
-          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-none px-3 py-2 mb-3">
             JES history unavailable — {erp.error}
           </p>
         )}
@@ -548,7 +548,7 @@ export default function SalesInvoices() {
                         {r.no || '—'}
                         {void_ && <span className="ml-1.5 text-[10px] font-sans font-medium text-red-600">VOID</span>}
                         {r.channel === 'woocommerce' && (
-                          <span className="ml-1.5 text-[10px] font-sans font-medium text-teal-700 bg-teal-50 rounded px-1 py-0.5"
+                          <span className="ml-1.5 text-[10px] font-sans font-medium text-teal-700 bg-teal-50 rounded-none px-1 py-0.5"
                                 title={`WooCommerce order #${r.externalOrderNo}`}>
                             Woo #{r.externalOrderNo}
                           </span>

@@ -214,7 +214,7 @@ function cellValue(col, row) {
   const v = col.compute ? col.compute(row) : row[col.key]
   if (col.bool) {
     return v
-      ? <span className="inline-block px-1.5 py-0.5 rounded text-xs bg-blue-100 text-blue-700">Yes</span>
+      ? <span className="inline-block px-1.5 py-0.5 rounded-none text-xs bg-blue-100 text-blue-700">Yes</span>
       : <span className="text-platinum">—</span>
   }
   if (col.num) {
@@ -235,7 +235,7 @@ function cellValue(col, row) {
   if (col.badge) {
     if (!v) return <span className="text-platinum">—</span>
     const green = /confirm|complet|paid|ship|done/i.test(v)
-    return <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${green ? 'bg-green-100 text-green-700' : 'bg-ivory-dark text-ink-70'}`}>{v}</span>
+    return <span className={`inline-block px-1.5 py-0.5 rounded-none text-xs ${green ? 'bg-green-100 text-green-700' : 'bg-ivory-dark text-ink-70'}`}>{v}</span>
   }
   return (v ?? null) === null ? <span className="text-platinum">—</span> : v
 }
@@ -252,12 +252,12 @@ function DetailModal({ entity, row, onClose }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-4 overflow-y-auto"
          onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl my-8" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-3xl my-8" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between px-5 py-4 border-b border-warm-grey">
           <div>
             <div className="font-mono text-xs text-ink-60">{row.code}</div>
             <h2 className="text-lg font-semibold text-ink">{row.name}</h2>
-            <span className={`inline-block mt-1 px-1.5 py-0.5 rounded text-xs ${
+            <span className={`inline-block mt-1 px-1.5 py-0.5 rounded-none text-xs ${
               row.active ? 'bg-green-100 text-green-700' : 'bg-ivory-dark text-ink-60'
             }`}>{row.active ? 'Active' : 'Expired'}</span>
           </div>
@@ -287,7 +287,7 @@ function DetailModal({ entity, row, onClose }) {
 
           {/* The ERP has no usable bank master (see V7.15_ERP_Inventory.md), so
               say so rather than leaving a silent gap where banking should be. */}
-          <div className="text-xs text-ink-60 bg-ivory border border-warm-grey rounded-lg px-3 py-2">
+          <div className="text-xs text-ink-60 bg-ivory border border-warm-grey rounded-none px-3 py-2">
             No bank / remittance details: the ERP never stored them
             {row.bank_code ? <> (only a legacy bank code, <span className="font-mono">{row.bank_code}</span>)</> : null}.
           </div>
@@ -321,7 +321,7 @@ function LinesModal({ title, code, header, rows, surcharges, loading, error, onC
   )
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl my-8" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-3xl my-8" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <div className="flex items-center gap-2">
             <FileText size={18} className="text-teal-600" />
@@ -333,7 +333,7 @@ function LinesModal({ title, code, header, rows, surcharges, loading, error, onC
         <div className="p-4 max-h-[70vh] overflow-auto">
           {loading && <p className="text-sm text-ink-60 py-6 text-center">Loading lines…</p>}
           {error && (
-            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2">
               <AlertCircle size={16} /> {error}
             </div>
           )}
@@ -415,7 +415,7 @@ function BomModal({ code, rows, loading, error, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto"
          onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl my-8" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-3xl my-8" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <div className="flex items-center gap-2">
             <ListTree size={18} className="text-teal-600" />
@@ -427,7 +427,7 @@ function BomModal({ code, rows, loading, error, onClose }) {
         <div className="p-4 max-h-[70vh] overflow-auto">
           {loading && <p className="text-sm text-ink-60 py-6 text-center">Exploding BOM…</p>}
           {error && (
-            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2">
               <AlertCircle size={16} /> {error}
             </div>
           )}
@@ -453,7 +453,7 @@ function BomModal({ code, rows, loading, error, onClose }) {
                     </td>
                     <td className="px-2 py-1.5">
                       {r.component_type && (
-                        <span className="inline-block px-1.5 py-0.5 rounded text-xs bg-ivory-dark text-ink-70">{r.component_type}</span>
+                        <span className="inline-block px-1.5 py-0.5 rounded-none text-xs bg-ivory-dark text-ink-70">{r.component_type}</span>
                       )}
                     </td>
                     <td className="px-2 py-1.5 text-right tabular-nums text-ink-60">{fmtQty(r.qty)}</td>
@@ -480,7 +480,7 @@ function BomModal({ code, rows, loading, error, onClose }) {
 function PhotoModal({ url, row, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-2xl max-w-lg w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-warm-grey">
           <div className="min-w-0">
             <div className="font-mono text-sm text-ink truncate">{row.code}</div>
@@ -811,7 +811,7 @@ export default function ErpLookup() {
       </div>
 
       {/* Entity toggle */}
-      <div className="flex md:inline-flex overflow-x-auto rounded-lg border border-warm-grey bg-white p-1 mb-4 -mx-4 px-4 md:mx-0 md:px-1 scrollbar-none">
+      <div className="flex md:inline-flex overflow-x-auto rounded-none border border-warm-grey bg-white p-1 mb-4 -mx-4 px-4 md:mx-0 md:px-1 scrollbar-none">
         {entityKeys.map((key) => {
           const e = ENTITIES[key]
           const on = entity === key
@@ -819,7 +819,7 @@ export default function ErpLookup() {
             <button
               key={key}
               onClick={() => { setEntity(key); setRows([]); setSelectedCustomers(new Set()); setSelectedSuppliers(new Set()) }}
-              className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm rounded-md transition ${
+              className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm rounded-none transition ${
                 on ? 'bg-teal-600 text-white' : 'text-ink-70 hover:bg-ivory'
               }`}
             >
@@ -838,7 +838,7 @@ export default function ErpLookup() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder={`Search ${cfg.label.toLowerCase()} by code or name…`}
-            className="w-full pl-9 pr-3 py-2 text-sm border border-warm-grey rounded-lg
+            className="w-full pl-9 pr-3 py-2 text-sm border border-warm-grey rounded-none
                        focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
           />
         </div>
@@ -847,7 +847,7 @@ export default function ErpLookup() {
             <select
               value={warehouse}
               onChange={(e) => setWarehouse(e.target.value)}
-              className="px-3 py-2 text-sm border border-warm-grey rounded-lg bg-white
+              className="px-3 py-2 text-sm border border-warm-grey rounded-none bg-white
                          focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
             >
               <option value="">All warehouses</option>
@@ -865,7 +865,7 @@ export default function ErpLookup() {
             <select
               value={itemType}
               onChange={(e) => setItemType(e.target.value)}
-              className="px-3 py-2 text-sm border border-warm-grey rounded-lg bg-white
+              className="px-3 py-2 text-sm border border-warm-grey rounded-none bg-white
                          focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
             >
               <option value="">All types</option>
@@ -881,7 +881,7 @@ export default function ErpLookup() {
             </select>
             <label className="flex items-center gap-2 text-sm text-ink-70 select-none">
               <input type="checkbox" checked={nonZeroOnly} onChange={(e) => setNonZeroOnly(e.target.checked)}
-                     className="rounded border-warm-grey text-teal-600 focus:ring-teal-500" />
+                     className="rounded-none border-warm-grey text-teal-600 focus:ring-teal-500" />
               In stock only
             </label>
           </>
@@ -889,7 +889,7 @@ export default function ErpLookup() {
         {ACTIVE_FILTER.has(entity) && (
           <label className="flex items-center gap-2 text-sm text-ink-70 select-none">
             <input type="checkbox" checked={activeOnly} onChange={(e) => setActiveOnly(e.target.checked)}
-                   className="rounded border-warm-grey text-teal-600 focus:ring-teal-500" />
+                   className="rounded-none border-warm-grey text-teal-600 focus:ring-teal-500" />
             Active only
           </label>
         )}
@@ -899,7 +899,7 @@ export default function ErpLookup() {
             <select
               value={limit}
               onChange={(e) => setLimit(Number(e.target.value))}
-              className="px-2 py-1.5 text-sm border border-warm-grey rounded-lg bg-white
+              className="px-2 py-1.5 text-sm border border-warm-grey rounded-none bg-white
                          focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
             >
               <option value={50}>50</option>
@@ -914,7 +914,7 @@ export default function ErpLookup() {
       {/* Inventory: make the provenance explicit — this is a computed balance,
           not a stored one, and it is only as fresh as the last sync. */}
       {cfg.hasWarehouse && (
-        <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+        <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-none px-3 py-2 mb-4">
           <AlertCircle size={14} className="mt-0.5 shrink-0" />
           <span>
             Balances are <strong>computed from the movement ledger</strong> (sum of all stock
@@ -925,7 +925,7 @@ export default function ErpLookup() {
       )}
 
       {error && (
-        <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
+        <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2 mb-4">
           <AlertCircle size={16} /> {error}
         </div>
       )}
@@ -944,7 +944,7 @@ export default function ErpLookup() {
               <span className="text-xs text-ink-60">{selectedCustomers.size} selected</span>
               <button onClick={() => setSelectedCustomers(new Set())} className="text-xs text-ink-60 hover:text-ink-80">Clear</button>
               <button onClick={handleImportCustomers} disabled={importingCustomers}
-                className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 border border-brand-200 rounded-md px-2 py-1 disabled:opacity-50">
+                className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 border border-brand-200 rounded-none px-2 py-1 disabled:opacity-50">
                 <Download size={13} /> {importingCustomers ? 'Importing…' : 'Import as Customers'}
               </button>
             </div>
@@ -961,7 +961,7 @@ export default function ErpLookup() {
               <span className="text-xs text-ink-60">{selectedSuppliers.size} selected</span>
               <button onClick={() => setSelectedSuppliers(new Set())} className="text-xs text-ink-60 hover:text-ink-80">Clear</button>
               <button onClick={handleImportSuppliers} disabled={importingSuppliers}
-                className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 border border-brand-200 rounded-md px-2 py-1 disabled:opacity-50">
+                className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 border border-brand-200 rounded-none px-2 py-1 disabled:opacity-50">
                 <Download size={13} /> {importingSuppliers ? 'Importing…' : 'Import as Suppliers'}
               </button>
             </div>
@@ -970,7 +970,7 @@ export default function ErpLookup() {
       )}
 
       {/* Results */}
-      <div className="bg-white border border-warm-grey rounded-lg overflow-hidden">
+      <div className="bg-white border border-warm-grey rounded-none overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -978,14 +978,14 @@ export default function ErpLookup() {
                 {entity === 'customer' && (
                   <th className="px-3 py-2 w-8">
                     <input type="checkbox" checked={allCustomersShownSelected} onChange={toggleAllCustomerSel}
-                           className="rounded border-warm-grey text-teal-600 focus:ring-teal-500"
+                           className="rounded-none border-warm-grey text-teal-600 focus:ring-teal-500"
                            title="Select all shown (not already in the app)" />
                   </th>
                 )}
                 {entity === 'supplier' && (
                   <th className="px-3 py-2 w-8">
                     <input type="checkbox" checked={allSuppliersShownSelected} onChange={toggleAllSupplierSel}
-                           className="rounded border-warm-grey text-teal-600 focus:ring-teal-500"
+                           className="rounded-none border-warm-grey text-teal-600 focus:ring-teal-500"
                            title="Select all shown (not already in the app)" />
                   </th>
                 )}
@@ -1009,7 +1009,7 @@ export default function ErpLookup() {
                       <input type="checkbox" checked={selectedCustomers.has(r.code)}
                              disabled={existingErpCodes.has(String(r.code).toUpperCase())}
                              onChange={() => toggleCustomerSel(r.code)}
-                             className="rounded border-warm-grey text-teal-600 focus:ring-teal-500 disabled:opacity-30" />
+                             className="rounded-none border-warm-grey text-teal-600 focus:ring-teal-500 disabled:opacity-30" />
                     </td>
                   )}
                   {entity === 'supplier' && (
@@ -1017,7 +1017,7 @@ export default function ErpLookup() {
                       <input type="checkbox" checked={selectedSuppliers.has(r.code)}
                              disabled={existingSupplierErpCodes.has(String(r.code).toUpperCase())}
                              onChange={() => toggleSupplierSel(r.code)}
-                             className="rounded border-warm-grey text-teal-600 focus:ring-teal-500 disabled:opacity-30" />
+                             className="rounded-none border-warm-grey text-teal-600 focus:ring-teal-500 disabled:opacity-30" />
                     </td>
                   )}
                   {cfg.cols.map((c) => (
@@ -1044,12 +1044,12 @@ export default function ErpLookup() {
                         : entity === 'customer' && c.key === 'name' && existingErpCodes.has(String(r.code).toUpperCase())
                         ? <span className="inline-flex items-center gap-1.5">
                             {r.name}
-                            <span className="text-[10px] text-teal-600 bg-teal-50 rounded px-1 py-0.5 shrink-0" title="Already linked to an app customer">in app</span>
+                            <span className="text-[10px] text-teal-600 bg-teal-50 rounded-none px-1 py-0.5 shrink-0" title="Already linked to an app customer">in app</span>
                           </span>
                         : entity === 'supplier' && c.key === 'name' && existingSupplierErpCodes.has(String(r.code).toUpperCase())
                         ? <span className="inline-flex items-center gap-1.5">
                             {r.name}
-                            <span className="text-[10px] text-teal-600 bg-teal-50 rounded px-1 py-0.5 shrink-0" title="Already linked to an app supplier">in app</span>
+                            <span className="text-[10px] text-teal-600 bg-teal-50 rounded-none px-1 py-0.5 shrink-0" title="Already linked to an app supplier">in app</span>
                           </span>
                         : DETAIL_GROUPS[entity] && c.key === 'code'
                         ? <button onClick={() => setDetailRow(r)}
@@ -1089,7 +1089,7 @@ export default function ErpLookup() {
                           </button>
                         : <span className="text-platinum text-xs">—</span>
                     ) : (
-                      <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${
+                      <span className={`inline-block px-1.5 py-0.5 rounded-none text-xs ${
                         r.active ? 'bg-green-100 text-green-700' : 'bg-ivory-dark text-ink-60'
                       }`}>{r.active ? 'Active' : 'Expired'}</span>
                     )}
@@ -1103,10 +1103,10 @@ export default function ErpLookup() {
                           {/* loading="lazy": a 50-row page would otherwise pull
                               50 images from the CDN before any are scrolled to. */}
                           <img src={images[r.picture1]} alt="" loading="lazy"
-                               className="w-9 h-9 object-cover rounded border border-warm-grey bg-white hover:border-teal-400" />
+                               className="w-9 h-9 object-cover rounded-none border border-warm-grey bg-white hover:border-teal-400" />
                         </button>
                       ) : (
-                        <div className="w-9 h-9 rounded border border-dashed border-warm-grey flex items-center justify-center"
+                        <div className="w-9 h-9 rounded-none border border-dashed border-warm-grey flex items-center justify-center"
                              title={r.picture1 ? `${r.picture1} — referenced by the ERP but not in the image sync` : 'No image on this item'}>
                           <ImageOff size={13} className="text-platinum" />
                         </div>

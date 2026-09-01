@@ -132,7 +132,7 @@ export default function CrystalBomEditor({ bom, onChange, crystals = [], mixCode
             const sum = mixTotal(code)
             const mismatch = total > 0 && sum !== total
             return (
-              <div key={code} className="border border-warm-grey rounded-lg p-3">
+              <div key={code} className="border border-warm-grey rounded-none p-3">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm font-semibold text-ink-80">{code}</span>
@@ -199,7 +199,7 @@ export default function CrystalBomEditor({ bom, onChange, crystals = [], mixCode
             <span className="text-[11px] uppercase tracking-wide text-ink-60 mr-1">Add recipe:</span>
             {addable.map(mc => (
               <button type="button" key={mc} onClick={() => addMix(mc)}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] border border-warm-grey text-ink-60 hover:border-brand-300 hover:text-brand-600">
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-none text-[11px] border border-warm-grey text-ink-60 hover:border-brand-300 hover:text-brand-600">
                 <Plus size={11} /><span className="font-mono">{mc}</span>
               </button>
             ))}

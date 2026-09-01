@@ -28,7 +28,7 @@ function CopyButton({ text, label = 'Copy' }) {
   const [copied, setCopied] = useState(false)
   return (
     <button onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
-      className="text-xs px-2 py-1 rounded bg-ivory-dark hover:bg-brand-50 text-ink-70 hover:text-brand-700 transition-colors shrink-0">
+      className="text-xs px-2 py-1 rounded-none bg-ivory-dark hover:bg-brand-50 text-ink-70 hover:text-brand-700 transition-colors shrink-0">
       {copied ? <span className="inline-flex items-center gap-1"><Check size={12} />Copied!</span> : label}
     </button>
   )
@@ -51,12 +51,12 @@ function HeroPicker({ images, value, onChange }) {
         return (
           <button key={img.file_url || i} type="button"
             onClick={() => onChange(active ? null : img)}
-            className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${active ? 'border-brand-500' : 'border-warm-grey opacity-50 hover:opacity-90'}`}>
+            className={`relative aspect-square rounded-none overflow-hidden border-2 transition-all ${active ? 'border-brand-500' : 'border-warm-grey opacity-50 hover:opacity-90'}`}>
             <img src={img.file_url} alt="" className="w-full h-full object-cover" />
-            <span className={`absolute top-1 left-1 text-[10px] font-bold px-1 py-0.5 rounded leading-none ${orient.cls}`}>{orient.label}</span>
+            <span className={`absolute top-1 left-1 text-[10px] font-bold px-1 py-0.5 rounded-none leading-none ${orient.cls}`}>{orient.label}</span>
             {active && (
               <div className="absolute inset-0 bg-brand-500/20 flex items-end justify-center pb-1">
-                <span className="text-xs bg-brand-500 text-white px-1.5 py-0.5 rounded font-semibold">HERO</span>
+                <span className="text-xs bg-brand-500 text-white px-1.5 py-0.5 rounded-none font-semibold">HERO</span>
               </div>
             )}
           </button>
@@ -82,17 +82,17 @@ function SectionImagePicker({ images, heroImage, selected, onChange }) {
       <div className="flex items-center gap-2 flex-wrap">
         {selected.map((img, i) => (
           <div key={img.file_url} className="relative">
-            <img src={img.file_url} alt="" className="w-14 h-14 object-cover rounded-lg border border-warm-grey" />
+            <img src={img.file_url} alt="" className="w-14 h-14 object-cover rounded-none border border-warm-grey" />
             <button type="button" onClick={() => onChange(selected.filter(s => s.file_url !== img.file_url))}
               className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center leading-none"><X size={10} /></button>
-            <span className="absolute -bottom-1.5 -left-1 text-[10px] bg-ink text-white px-1 rounded">
+            <span className="absolute -bottom-1.5 -left-1 text-[10px] bg-ink text-white px-1 rounded-none">
               {i === 0 && selected.length === 1 ? 'right' : `${i + 1}`}
             </span>
           </div>
         ))}
         {selected.length < 3 && (
           <button type="button" onClick={() => setOpen(o => !o)}
-            className="w-14 h-14 rounded-lg border-2 border-dashed border-warm-grey hover:border-brand-400 text-ink-60 hover:text-brand-500 flex flex-col items-center justify-center text-xs gap-0.5 transition-colors">
+            className="w-14 h-14 rounded-none border-2 border-dashed border-warm-grey hover:border-brand-400 text-ink-60 hover:text-brand-500 flex flex-col items-center justify-center text-xs gap-0.5 transition-colors">
             <span className="text-lg leading-none">+</span>
             <span>photo</span>
           </button>
@@ -105,16 +105,16 @@ function SectionImagePicker({ images, heroImage, selected, onChange }) {
       </div>
 
       {open && (
-        <div className="border border-warm-grey rounded-lg p-3 bg-ivory">
+        <div className="border border-warm-grey rounded-none p-3 bg-ivory">
           <div className="grid grid-cols-6 gap-1.5">
             {available.map(img => {
               const active = Boolean(selected.find(s => s.file_url === img.file_url))
               const atMax = selected.length >= 3 && !active
               return (
                 <button key={img.file_url} type="button" onClick={() => toggle(img)} disabled={atMax}
-                  className={`relative aspect-square rounded overflow-hidden border-2 transition-all ${active ? 'border-brand-500' : 'border-transparent opacity-50 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
+                  className={`relative aspect-square rounded-none overflow-hidden border-2 transition-all ${active ? 'border-brand-500' : 'border-transparent opacity-50 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
                   <img src={img.file_url} alt="" className="w-full h-full object-cover" />
-                  {img.orientation && (() => { const o = ORIENTATION_BADGE[img.orientation]; return o ? <span className={`absolute top-0.5 left-0.5 text-[9px] font-bold px-0.5 rounded leading-none ${o.cls}`}>{o.label}</span> : null })()}
+                  {img.orientation && (() => { const o = ORIENTATION_BADGE[img.orientation]; return o ? <span className={`absolute top-0.5 left-0.5 text-[9px] font-bold px-0.5 rounded-none leading-none ${o.cls}`}>{o.label}</span> : null })()}
                   {active && <div className="absolute inset-0 bg-brand-500/30" />}
                 </button>
               )
@@ -260,10 +260,10 @@ function PreviewModal({ html, onClose }) {
       <div className="bg-white border-b border-warm-grey px-4 py-2.5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <h2 className="font-semibold text-ink text-sm">Blog Post Preview</h2>
-          <div className="flex gap-1 bg-ivory-dark p-0.5 rounded-md">
+          <div className="flex gap-1 bg-ivory-dark p-0.5 rounded-none">
             {[['desktop', 'Desktop', Monitor], ['mobile', 'Mobile', Smartphone]].map(([key, label, Icon]) => (
               <button key={key} onClick={() => setViewport(key)}
-                className={`inline-flex items-center gap-1 text-xs px-3 py-1 rounded transition-colors ${viewport === key ? 'bg-white shadow text-ink font-medium' : 'text-ink-60 hover:text-ink-80'}`}>
+                className={`inline-flex items-center gap-1 text-xs px-3 py-1 rounded-none transition-colors ${viewport === key ? 'bg-white shadow text-ink font-medium' : 'text-ink-60 hover:text-ink-80'}`}>
                 <Icon size={13} />{label}
               </button>
             ))}
@@ -275,7 +275,7 @@ function PreviewModal({ html, onClose }) {
         <iframe
           srcDoc={html}
           title="Blog Preview"
-          className="bg-white rounded-xl shadow-xl transition-all duration-300"
+          className="bg-white rounded-none shadow-xl transition-all duration-300"
           style={{ border: 'none', height: '100%', width: viewport === 'mobile' ? '390px' : '100%', maxWidth: viewport === 'desktop' ? '900px' : undefined }}
         />
       </div>
@@ -399,12 +399,12 @@ function WPPublishButton({ payload, disabled }) {
 
   if (state === 'success' && wpResult) {
     return (
-      <div className="rounded-lg border border-green-200 bg-green-50 p-4 space-y-2">
+      <div className="rounded-none border border-green-200 bg-green-50 p-4 space-y-2">
         <p className="flex items-center gap-1.5 text-sm font-semibold text-green-800"><Check size={15} />Draft published to WordPress!</p>
         <p className="text-xs text-green-700">{wpResult.images_uploaded}/{wpResult.images_total} images uploaded to Media Library</p>
         <div className="flex gap-2 flex-wrap">
           <a href={wpResult.edit_url} target="_blank" rel="noreferrer"
-            className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md bg-green-700 text-white hover:bg-green-800 transition-colors"><Pencil size={12} />Edit in WordPress →</a>
+            className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-none bg-green-700 text-white hover:bg-green-800 transition-colors"><Pencil size={12} />Edit in WordPress →</a>
         </div>
       </div>
     )
@@ -413,7 +413,7 @@ function WPPublishButton({ payload, disabled }) {
   return (
     <div className="space-y-1.5">
       <button onClick={handlePublish} disabled={state === 'compressing' || state === 'publishing' || disabled}
-        className="w-full py-2.5 px-4 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-40"
+        className="w-full py-2.5 px-4 rounded-none text-sm font-medium text-white transition-colors disabled:opacity-40"
         style={{ background: '#2563eb' }}>
         <span className="inline-flex items-center justify-center gap-1.5">
           {state === 'compressing'
@@ -467,7 +467,7 @@ function RewritePanel({ sectionType, heading, body, context, onRewrite }) {
   }
 
   return (
-    <div className="border border-brand-100 rounded-lg p-3 bg-brand-50 space-y-2 mt-1">
+    <div className="border border-brand-100 rounded-none p-3 bg-brand-50 space-y-2 mt-1">
       <p className="text-xs font-medium text-brand-700">What should be different?</p>
       <textarea
         className="input text-sm w-full"
@@ -480,11 +480,11 @@ function RewritePanel({ sectionType, heading, body, context, onRewrite }) {
       {error && <p className="text-xs text-red-500">{error}</p>}
       <div className="flex gap-2">
         <button type="button" onClick={handleRewrite} disabled={loading || !guidance.trim()}
-          className="text-xs px-3 py-1.5 rounded-md bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 transition-colors">
+          className="text-xs px-3 py-1.5 rounded-none bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 transition-colors">
           {loading ? <span className="inline-flex items-center gap-1"><Pencil size={12} />Rewriting…</span> : <span className="inline-flex items-center gap-1"><RotateCcw size={12} />Rewrite</span>}
         </button>
         <button type="button" onClick={() => { setOpen(false); setGuidance('') }}
-          className="text-xs px-3 py-1.5 rounded-md border border-warm-grey text-ink-60 hover:bg-ivory transition-colors">
+          className="text-xs px-3 py-1.5 rounded-none border border-warm-grey text-ink-60 hover:bg-ivory transition-colors">
           Cancel
         </button>
       </div>
@@ -635,7 +635,7 @@ function SpotlightTab({ preloadedProduct }) {
             {PRODUCT_SOURCES.map(s => (
               <button key={s.value} type="button"
                 onClick={() => { if (s.value !== source) { setSource(s.value); setSelectedId(''); setResult(null) } }}
-                className={`text-sm px-3 py-1.5 rounded-md border transition-colors ${source === s.value ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-70 border-warm-grey hover:bg-ivory'}`}>
+                className={`text-sm px-3 py-1.5 rounded-none border transition-colors ${source === s.value ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-70 border-warm-grey hover:bg-ivory'}`}>
                 {s.label}
               </button>
             ))}
@@ -691,7 +691,7 @@ function SpotlightTab({ preloadedProduct }) {
               <CopyButton text={result.sections?.map(s => [s.heading ? `## ${s.heading}` : '', s.body].filter(Boolean).join('\n\n')).join('\n\n')} label="Copy All" />
             </div>
             {result.sections?.map((s, i) => (
-              <div key={i} className="border border-warm-grey rounded-lg p-4 space-y-2">
+              <div key={i} className="border border-warm-grey rounded-none p-4 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold uppercase tracking-wide text-ink-60 shrink-0">{s.type?.replace('_', ' ') || `Section ${i + 1}`}</span>
                   <CopyButton text={[s.heading, s.body].filter(Boolean).join('\n\n')} />
@@ -734,7 +734,7 @@ function SpotlightTab({ preloadedProduct }) {
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-ink">Publish to WordPress</h3>
               <button onClick={() => setShowPreview(true)}
-                className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md border border-warm-grey text-ink-70 hover:bg-ivory transition-colors">
+                className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-none border border-warm-grey text-ink-70 hover:bg-ivory transition-colors">
                 <Eye size={13} />Preview HTML
               </button>
             </div>
@@ -905,7 +905,7 @@ function RoundupTab() {
             {PRODUCT_SOURCES.map(s => (
               <button key={s.value} type="button"
                 onClick={() => { if (s.value !== source) { setSource(s.value); setSelected([]); setProductImageMap({}); setItemImages({}); setHeroImage(null); setResult(null) } }}
-                className={`text-sm px-3 py-1.5 rounded-md border transition-colors ${source === s.value ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-70 border-warm-grey hover:bg-ivory'}`}>
+                className={`text-sm px-3 py-1.5 rounded-none border transition-colors ${source === s.value ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-70 border-warm-grey hover:bg-ivory'}`}>
                 {s.label}
               </button>
             ))}
@@ -920,10 +920,10 @@ function RoundupTab() {
               const isSelected = idx >= 0
               return (
                 <button key={p.id} type="button" onClick={() => toggleProduct(p)}
-                  className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-colors ${isSelected ? 'border-brand-300 bg-brand-50' : 'border-warm-grey hover:border-warm-grey hover:bg-ivory'}`}>
+                  className={`w-full flex items-center gap-3 p-2.5 rounded-none border text-left transition-colors ${isSelected ? 'border-brand-300 bg-brand-50' : 'border-warm-grey hover:border-warm-grey hover:bg-ivory'}`}>
                   {p.heroImage
-                    ? <img src={p.heroImage} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
-                    : <div className="w-10 h-10 rounded bg-ivory-dark flex items-center justify-center shrink-0 text-platinum"><Package size={18} /></div>
+                    ? <img src={p.heroImage} alt="" className="w-10 h-10 rounded-none object-cover shrink-0" />
+                    : <div className="w-10 h-10 rounded-none bg-ivory-dark flex items-center justify-center shrink-0 text-platinum"><Package size={18} /></div>
                   }
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-ink truncate">{p.name}</p>
@@ -1014,7 +1014,7 @@ function RoundupTab() {
               <div key={i} className="card p-5 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    {product?.heroImage && <img src={product.heroImage} alt="" className="w-7 h-7 rounded object-cover" />}
+                    {product?.heroImage && <img src={product.heroImage} alt="" className="w-7 h-7 rounded-none object-cover" />}
                     <span className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Product {i + 1} · {product?.name}</span>
                   </div>
                   <CopyButton text={`${item.heading}\n\n${item.body}`} />
@@ -1085,7 +1085,7 @@ function RoundupTab() {
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-ink">Publish to WordPress</h3>
               <button onClick={() => setShowPreview(true)}
-                className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md border border-warm-grey text-ink-70 hover:bg-ivory transition-colors">
+                className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-none border border-warm-grey text-ink-70 hover:bg-ivory transition-colors">
                 <Eye size={13} />Preview HTML
               </button>
             </div>
@@ -1121,11 +1121,11 @@ export default function BlogGenerator({ embedded = false }) {
         <p className="text-sm text-ink-60 mt-1">Generate SEO-optimised blog content, preview it, then publish as a WordPress draft.</p>
       </div>
 
-      <div className="flex gap-1 p-1 bg-ivory-dark rounded-lg mb-6">
+      <div className="flex gap-1 p-1 bg-ivory-dark rounded-none mb-6">
         {[{ key: 'spotlight', label: 'Product Spotlight', Icon: Flashlight, desc: 'One product, one post' },
           { key: 'roundup', label: 'Roundup Post', Icon: List, desc: 'Multiple products, one post' }].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${tab === t.key ? 'bg-white shadow text-ink' : 'text-ink-60 hover:text-ink-80'}`}>
+            className={`flex-1 py-2 px-3 rounded-none text-sm font-medium transition-all ${tab === t.key ? 'bg-white shadow text-ink' : 'text-ink-60 hover:text-ink-80'}`}>
             <span className="inline-flex items-center gap-1.5"><t.Icon size={14} />{t.label}</span>
             <span className="block text-xs font-normal text-ink-60">{t.desc}</span>
           </button>

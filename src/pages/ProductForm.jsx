@@ -188,7 +188,7 @@ export default function ProductForm() {
                 type="button"
                 onClick={handleGenerateCopy}
                 disabled={!form.name || aiLoading}
-                className="text-xs px-2.5 py-1 rounded-md bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                className="text-xs px-2.5 py-1 rounded-none bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
               >
                 {aiLoading ? 'Writing…' : <span className="inline-flex items-center gap-1"><Sparkles size={13} />AI Write</span>}
               </button>
@@ -228,7 +228,7 @@ export default function ProductForm() {
             </button>
           )}
           {rewriteOpen && (
-            <div className="border border-brand-100 rounded-lg p-3 bg-brand-50 space-y-2 mt-1">
+            <div className="border border-brand-100 rounded-none p-3 bg-brand-50 space-y-2 mt-1">
               <p className="text-xs font-medium text-brand-700">What should be different?</p>
               <textarea
                 className="input text-sm w-full"
@@ -241,11 +241,11 @@ export default function ProductForm() {
               {rewriteError && <p className="text-xs text-red-500">{rewriteError}</p>}
               <div className="flex gap-2">
                 <button type="button" onClick={handleRewrite} disabled={rewriteLoading || !rewriteGuide.trim()}
-                  className="text-xs px-3 py-1.5 rounded-md bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 transition-colors">
+                  className="text-xs px-3 py-1.5 rounded-none bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 transition-colors">
                   {rewriteLoading ? 'Rewriting…' : <span className="inline-flex items-center gap-1"><RotateCcw size={13} />Rewrite</span>}
                 </button>
                 <button type="button" onClick={() => { setRewriteOpen(false); setRewriteGuide('') }}
-                  className="text-xs px-3 py-1.5 rounded-md border border-warm-grey text-ink-60 hover:bg-ivory transition-colors">
+                  className="text-xs px-3 py-1.5 rounded-none border border-warm-grey text-ink-60 hover:bg-ivory transition-colors">
                   Cancel
                 </button>
               </div>

@@ -22,19 +22,19 @@ export default function ExportFilterBar({
       <label className="flex flex-col gap-1">
         <span className="text-[11px] font-medium text-ink-60 uppercase tracking-wide">From</span>
         <input type="date" value={from} onChange={(e) => onFrom(e.target.value)}
-          className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40" />
+          className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-teal-500/40" />
       </label>
       <label className="flex flex-col gap-1">
         <span className="text-[11px] font-medium text-ink-60 uppercase tracking-wide">To</span>
         <input type="date" value={to} onChange={(e) => onTo(e.target.value)}
-          className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40" />
+          className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-teal-500/40" />
       </label>
 
       {typeOptions && (
         <label className="flex flex-col gap-1">
           <span className="text-[11px] font-medium text-ink-60 uppercase tracking-wide">{typeLabel}</span>
           <select value={typeValue} onChange={(e) => onType(e.target.value)}
-            className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40">
+            className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-teal-500/40">
             <option value="">All</option>
             {typeOptions.map((o) => (
               <option key={o.value ?? o} value={o.value ?? o}>{o.label ?? o}</option>
@@ -45,7 +45,7 @@ export default function ExportFilterBar({
 
       {(from || to || typeValue) && (
         <button type="button" onClick={() => { onFrom(''); onTo(''); onType?.('') }}
-          className="px-2.5 py-1.5 text-sm text-ink-60 hover:text-ink-80 hover:bg-ivory-dark rounded-lg">
+          className="px-2.5 py-1.5 text-sm text-ink-60 hover:text-ink-80 hover:bg-ivory-dark rounded-none">
           Clear
         </button>
       )}

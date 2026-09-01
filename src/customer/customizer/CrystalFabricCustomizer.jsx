@@ -217,7 +217,7 @@ export default function CrystalFabricCustomizer({ product, profile }) {
             <div className="grid grid-cols-1 gap-2">
               {MODES.filter(m => m.available).map(m => (
                 <button key={m.value} type="button" onClick={() => set({ mode: m.value })}
-                  className={`text-left p-2.5 rounded-lg border text-sm transition-colors ${
+                  className={`text-left p-2.5 rounded-none border text-sm transition-colors ${
                     sel.mode === m.value ? 'border-brand-400 bg-brand-50' : 'border-ivory-dark hover:bg-ivory'}`}>
                   <span className="font-medium text-ink">{m.label}</span>
                   <span className="block text-[11px] text-ink-60 mt-0.5">{m.desc}</span>
@@ -230,7 +230,7 @@ export default function CrystalFabricCustomizer({ product, profile }) {
             <div className="grid grid-cols-1 gap-2">
               {crystalTypes.map(t => (
                 <button key={t.value} type="button" onClick={() => set({ crystal_type: t.value })}
-                  className={`text-left p-2.5 rounded-lg border text-sm transition-colors ${
+                  className={`text-left p-2.5 rounded-none border text-sm transition-colors ${
                     sel.crystal_type === t.value ? 'border-brand-400 bg-brand-50' : 'border-ivory-dark hover:bg-ivory'}`}>
                   <span className="font-medium text-ink">{t.label} <span className="text-ink-60 font-normal">{t.mm}</span></span>
                   <span className="block text-[11px] text-ink-60 mt-0.5">{t.hint}</span>
@@ -247,7 +247,7 @@ export default function CrystalFabricCustomizer({ product, profile }) {
               <div className="grid grid-cols-1 gap-2">
                 {CRYSTAL_TYPES.map(t => (
                   <button key={t.value} type="button" onClick={() => set({ bg_crystal_type: t.value })}
-                    className={`text-left p-2.5 rounded-lg border text-sm transition-colors ${
+                    className={`text-left p-2.5 rounded-none border text-sm transition-colors ${
                       sel.bg_crystal_type === t.value ? 'border-brand-400 bg-brand-50' : 'border-ivory-dark hover:bg-ivory'}`}>
                     <span className="font-medium text-ink">{t.label} <span className="text-ink-60 font-normal">{t.mm}</span></span>
                   </button>

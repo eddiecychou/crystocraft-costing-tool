@@ -235,7 +235,7 @@ function CriticalComponents() {
           {filtered.map(c => (
             <div key={c.id} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-3 py-2.5 hover:bg-ivory/50 transition-colors">
               <Link to={`/components/critical/${c.id}`} className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="w-11 h-11 shrink-0 bg-white border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
+                <div className="w-11 h-11 shrink-0 bg-white border border-ivory-dark rounded-none flex items-center justify-center overflow-hidden">
                   {c.images[0] ? <img src={c.images[0]} alt="" className="w-full h-full object-contain p-0.5" /> : <Puzzle size={18} className="text-platinum" />}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -346,7 +346,7 @@ function StockListImportModal({ components, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-md shadow-lg w-full max-w-lg p-5" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-lg w-full max-w-lg p-5" onClick={e => e.stopPropagation()}>
         <h2 className="text-base font-semibold mb-1">Import component stock list</h2>
         <p className="text-xs text-ink-60 mb-3">
           Paste straight from your Excel (select the data, copy). Columns:
@@ -371,7 +371,7 @@ function StockListImportModal({ components, onClose }) {
         {unmatched.length > 0 && (
           <details className="mt-2">
             <summary className="text-xs text-amber-700 cursor-pointer">{unmatched.length} unmatched product code{unmatched.length === 1 ? '' : 's'} (not found in Figurine products) — view</summary>
-            <div className="mt-1 max-h-32 overflow-auto border border-ivory-dark rounded p-2 font-mono text-[11px] text-ink-60">
+            <div className="mt-1 max-h-32 overflow-auto border border-ivory-dark rounded-none p-2 font-mono text-[11px] text-ink-60">
               {unmatched.join(', ')}
             </div>
           </details>
@@ -453,7 +453,7 @@ function CrystalColours() {
               <input className="input text-xs flex-1 min-w-0" value={r.name}
                      placeholder="Sapphire" onChange={e => update(i, 'name', e.target.value)} />
               <div className="w-14 shrink-0 flex items-center gap-1">
-                <input type="color" className="h-7 w-7 rounded cursor-pointer border border-warm-grey bg-white p-0.5"
+                <input type="color" className="h-7 w-7 rounded-sm cursor-pointer border border-warm-grey bg-white p-0.5"
                        value={r.swatch || '#cccccc'} title={r.swatch || 'No colour set'}
                        onChange={e => update(i, 'swatch', e.target.value)} />
                 {r.swatch && (

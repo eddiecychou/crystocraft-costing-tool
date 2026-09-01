@@ -352,7 +352,7 @@ export default function RangeCatalogueExport({ onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <h2 className="text-base font-semibold text-ink inline-flex items-center gap-2">
             <BookOpen size={16} className="text-brand-600" /> Full range catalogue
@@ -364,7 +364,7 @@ export default function RangeCatalogueExport({ onClose }) {
           <label className="block mb-3">
             <span className="text-xs font-medium text-ink-60 uppercase tracking-wide">Trade account</span>
             <select value={accountId} onChange={e => setAccountId(e.target.value)} disabled={loading || busy}
-              className="mt-1 w-full px-2.5 py-2 text-sm border border-warm-grey rounded-lg">
+              className="mt-1 w-full px-2.5 py-2 text-sm border border-warm-grey rounded-none">
               <option value="">— list price, USD (no account) —</option>
               {accounts.map(a => (
                 <option key={a.id} value={a.id}>{a.name || a.email}</option>
@@ -375,7 +375,7 @@ export default function RangeCatalogueExport({ onClose }) {
           {/* The pricing basis, stated plainly. ws_discount_pct is the % of list
               the account PAYS — 90 is a discount, 130 a markup — so calling it a
               discount anywhere would be wrong. */}
-          <div className="text-xs text-ink-70 bg-ivory border border-warm-grey rounded-lg px-3 py-2 mb-3 space-y-0.5">
+          <div className="text-xs text-ink-70 bg-ivory border border-warm-grey rounded-none px-3 py-2 mb-3 space-y-0.5">
             <div>{sellable.length} products · {lineCount.toLocaleString()} priced options · visible, non-retired only</div>
             <div>
               Prices: <strong>{profile ? `${Number(profile.ws_discount_pct) || 100}% of list` : '100% of list'}</strong>
@@ -385,7 +385,7 @@ export default function RangeCatalogueExport({ onClose }) {
           </div>
 
           {needsAttention.length > 0 && (
-            <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+            <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-none px-3 py-2 mb-3">
               <div className="font-medium inline-flex items-center gap-1.5">
                 <AlertTriangle size={13} /> {needsAttention.length} product{needsAttention.length === 1 ? '' : 's'} will show rows that look identical
               </div>
@@ -413,14 +413,14 @@ export default function RangeCatalogueExport({ onClose }) {
           )}
 
           {error && (
-            <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2">
               <AlertTriangle size={15} className="shrink-0 mt-0.5" /> {error}
             </div>
           )}
         </div>
 
         <div className="flex justify-end gap-2 px-5 py-3 border-t border-warm-grey">
-          <button onClick={onClose} className="px-3 py-1.5 text-sm text-ink-70 hover:bg-ivory-dark rounded-lg">Cancel</button>
+          <button onClick={onClose} className="px-3 py-1.5 text-sm text-ink-70 hover:bg-ivory-dark rounded-none">Cancel</button>
           <button onClick={build} disabled={loading || busy || !sellable.length}
             className="btn-primary text-sm inline-flex items-center gap-1.5 disabled:opacity-40">
             {busy ? <><Loader2 size={14} className="animate-spin" /> Building…</> : <>Build PDF</>}

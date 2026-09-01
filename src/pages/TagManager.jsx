@@ -118,7 +118,7 @@ export default function TagManager() {
         {groups && groups.length > 0 && (
           <div className="space-y-3 mt-4">
             {groups.map((g, idx) => (
-              <div key={idx} className="border border-warm-grey rounded-lg p-3">
+              <div key={idx} className="border border-warm-grey rounded-none p-3">
                 <div className="flex flex-wrap items-center gap-1.5 mb-2">
                   {g.tags.map(t => (
                     <span key={t} className="px-2 py-0.5 rounded-full text-xs bg-ivory-dark text-ink-70">{t}</span>

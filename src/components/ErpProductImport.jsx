@@ -99,7 +99,7 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-2xl my-8" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <h2 className="text-base font-semibold text-ink inline-flex items-center gap-2">
             <Database size={16} className="text-teal-600" /> Import a figurine from the ERP
@@ -117,7 +117,7 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
                   <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-60" />
                   <input autoFocus value={q} onChange={(e) => setQ(e.target.value)}
                     placeholder="e.g. D0268-001, or Zodiac Pisces"
-                    className="w-full pl-9 pr-3 py-2 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40" />
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-teal-500/40" />
                 </div>
               </label>
 
@@ -130,7 +130,7 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
               )}
 
               {results.length > 0 && (
-                <ul className="border border-warm-grey rounded-lg divide-y divide-warm-grey max-h-72 overflow-auto">
+                <ul className="border border-warm-grey rounded-none divide-y divide-warm-grey max-h-72 overflow-auto">
                   {results.map((r) => (
                     <li key={r.code}>
                       <button type="button" onClick={() => choose(r.code)}
@@ -166,7 +166,7 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
               </div>
 
               {already && (
-                <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-3">
+                <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2 mb-3">
                   <AlertTriangle size={15} className="shrink-0 mt-0.5" />
                   <span>
                     The app already has a product for <strong>{preview.base}</strong>
@@ -183,7 +183,7 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
               )}
 
               {preview.warnings.map((w, i) => (
-                <div key={i} className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
+                <div key={i} className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-none px-3 py-2 mb-2">
                   <AlertTriangle size={13} className="shrink-0 mt-0.5" /> <span>{w}</span>
                 </div>
               ))}
@@ -202,22 +202,22 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
                       {picked.size === preview.components.length ? 'Clear all' : 'Select all'}
                     </button>
                   </div>
-                  <ul className="border border-warm-grey rounded-lg divide-y divide-warm-grey max-h-64 overflow-auto mb-3">
+                  <ul className="border border-warm-grey rounded-none divide-y divide-warm-grey max-h-64 overflow-auto mb-3">
                     {preview.components.map((c) => (
                       <li key={c.code} className="px-3 py-2 flex items-start gap-2.5 hover:bg-ivory">
                         <input type="checkbox" checked={picked.has(c.code)} onChange={() => toggle(c.code)}
-                          className="mt-0.5 rounded border-warm-grey text-teal-600 focus:ring-teal-500" />
+                          className="mt-0.5 rounded-none border-warm-grey text-teal-600 focus:ring-teal-500" />
                         <div className="min-w-0 flex-1">
                           <div className="font-mono text-xs text-ink">{c.code}</div>
                           {c.name && <div className="text-xs text-ink-60 truncate">{c.name}</div>}
                           <div className="flex flex-wrap gap-1.5 mt-0.5">
                             {c.existing
-                              ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-ivory-dark text-ink-60">already in the app — will be linked, not changed</span>
-                              : <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">new component</span>}
+                              ? <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-ivory-dark text-ink-60">already in the app — will be linked, not changed</span>
+                              : <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-emerald-50 text-emerald-700">new component</span>}
                             {/* Almost always a plating-specific part. Worth seeing
                                 now rather than discovering it in a costing. */}
                             {c.partial && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-700"
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-amber-50 text-amber-700"
                                     title={`Only in: ${c.inVariants.join(', ')}`}>
                                 in {c.inVariants.length} of {preview.variants.length} variants
                               </span>
@@ -239,7 +239,7 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
           )}
 
           {error && (
-            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2 mt-3">
+            <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-none px-3 py-2 mt-3">
               <AlertTriangle size={15} /> {error}
             </div>
           )}
@@ -247,7 +247,7 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
 
         <div className="flex justify-between gap-2 px-5 py-3 border-t border-warm-grey">
           <button onClick={() => (preview && !initialCode ? setPreview(null) : onClose())}
-            className="px-3 py-1.5 text-sm text-ink-70 hover:bg-ivory-dark rounded-lg">
+            className="px-3 py-1.5 text-sm text-ink-70 hover:bg-ivory-dark rounded-none">
             {preview && !initialCode ? '← Back to search' : 'Cancel'}
           </button>
           {preview && (

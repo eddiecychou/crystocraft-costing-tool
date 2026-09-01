@@ -277,7 +277,7 @@ function PrintDoc({ pl, order, cartons }) {
                               precision, so a 4dp per-carton figure did not
                               multiply out: 0.0488 x 28 reads as 1.3664 against a
                               printed total of 1.3674. The total was right and
-                              the row was rounded — but a shipping document that
+                              the row was rounded-none — but a shipping document that
                               does not reconcile gets queried at customs. */}
                           <td style={{ textAlign: 'right' }}>{cbm > 0 ? fmt(cbm, 6) : ''}</td>
                           <td style={{ textAlign: 'right' }}>{cbm > 0 ? fmt(cbm * count) : ''}</td>

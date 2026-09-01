@@ -247,12 +247,12 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote, onA
             {galleryPickerOpen && (
               <>
                 <div className="fixed inset-0 z-30" onClick={() => setGalleryPickerOpen(false)} />
-                <div className="absolute z-40 top-8 left-0 w-56 bg-white border border-ivory-dark rounded-lg shadow-lg p-2 space-y-1">
+                <div className="absolute z-40 top-8 left-0 w-56 bg-white border border-ivory-dark rounded-none shadow-lg p-2 space-y-1">
                   <p className="text-[11px] text-ink-60 mb-1">Use an existing gallery photo</p>
                   <div className="grid grid-cols-4 gap-1">
                     {(gallery || []).map((g, gi) => g.url && (
                       <button key={gi} type="button" onClick={() => onPickGallery(target, g.url)}
-                              className="relative aspect-square bg-white border border-ivory-dark rounded overflow-hidden hover:border-brand-400"
+                              className="relative aspect-square bg-white border border-ivory-dark rounded-none overflow-hidden hover:border-brand-400"
                               title={g.caption || 'Use this image'}>
                         <img src={g.url} alt="" className="w-full h-full object-contain p-0.5" />
                       </button>
@@ -339,10 +339,10 @@ function VariantColourPreview({ docId, index, variant, libColors, onPromote, onA
 
       {zoomUrl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80" onClick={() => setZoomUrl(null)}>
-          <img src={zoomUrl} alt="" className="rounded-lg object-contain" style={{ width: 'min(85vw, 720px)', height: 'min(85vh, 720px)' }}
+          <img src={zoomUrl} alt="" className="rounded-none object-contain" style={{ width: 'min(85vw, 720px)', height: 'min(85vh, 720px)' }}
                onClick={e => e.stopPropagation()} />
           <button type="button" onClick={() => setZoomUrl(null)}
-                  className="absolute top-4 right-4 text-white bg-white/15 hover:bg-white/25 rounded-lg p-2" aria-label="Close">
+                  className="absolute top-4 right-4 text-white bg-white/15 hover:bg-white/25 rounded-none p-2" aria-label="Close">
             <X size={18} />
           </button>
         </div>
@@ -1139,7 +1139,7 @@ export default function RangeForm() {
                   {guideOpen ? 'Hide instructions' : '+ Instructions'}
                 </button>
                 <button type="button" onClick={handleGenerateCopy} disabled={!aiName || aiLoading}
-                  className="text-xs px-2.5 py-1 rounded-md bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1">
+                  className="text-xs px-2.5 py-1 rounded-none bg-brand-50 text-brand-700 hover:bg-brand-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1">
                   {aiLoading ? 'Writing…' : <span className="inline-flex items-center gap-1"><Sparkles size={13} />AI Write</span>}
                 </button>
               </div>
@@ -1169,7 +1169,7 @@ export default function RangeForm() {
               </button>
             )}
             {rewriteOpen && (
-              <div className="border border-brand-100 rounded-lg p-3 bg-brand-50 space-y-2 mt-1">
+              <div className="border border-brand-100 rounded-none p-3 bg-brand-50 space-y-2 mt-1">
                 <p className="text-xs font-medium text-brand-700">What should be different?</p>
                 <textarea className="input text-sm w-full" rows={2}
                   placeholder="e.g. More focused on collectors, shorter, emphasise the crystal sparkle…"
@@ -1177,11 +1177,11 @@ export default function RangeForm() {
                 {rewriteError && <p className="text-xs text-red-500">{rewriteError}</p>}
                 <div className="flex gap-2">
                   <button type="button" onClick={handleRewrite} disabled={rewriteLoading || !rewriteGuide.trim()}
-                    className="text-xs px-3 py-1.5 rounded-md bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 transition-colors">
+                    className="text-xs px-3 py-1.5 rounded-none bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-40 transition-colors">
                     {rewriteLoading ? 'Rewriting…' : <span className="inline-flex items-center gap-1"><RotateCcw size={13} />Rewrite</span>}
                   </button>
                   <button type="button" onClick={() => { setRewriteOpen(false); setRewriteGuide('') }}
-                    className="text-xs px-3 py-1.5 rounded-md border border-warm-grey text-ink-60 hover:bg-ivory transition-colors">
+                    className="text-xs px-3 py-1.5 rounded-none border border-warm-grey text-ink-60 hover:bg-ivory transition-colors">
                     Cancel
                   </button>
                 </div>
@@ -1256,7 +1256,7 @@ export default function RangeForm() {
               </div>
 
               {(compSearch.trim() || compCat) && (
-                <div className="mt-1.5 border border-ivory-dark rounded-md max-h-60 overflow-auto divide-y divide-ivory-dark">
+                <div className="mt-1.5 border border-ivory-dark rounded-none max-h-60 overflow-auto divide-y divide-ivory-dark">
                   {compResults.length === 0 ? (
                     <p className="text-xs text-ink-60 px-3 py-2.5">No matching components.</p>
                   ) : compResults.map(c => {
@@ -1264,7 +1264,7 @@ export default function RangeForm() {
                     return (
                       <button key={c.id || c.code} type="button" onClick={() => toggleComponent(c)}
                         className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${on ? 'bg-brand-50' : 'hover:bg-ivory/60'}`}>
-                        <div className="w-8 h-8 shrink-0 bg-white border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
+                        <div className="w-8 h-8 shrink-0 bg-white border border-ivory-dark rounded-none flex items-center justify-center overflow-hidden">
                           {c.images?.[0] ? <img src={c.images[0]} alt="" className="w-full h-full object-contain p-0.5" /> : <Puzzle size={16} className="text-platinum" />}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -1358,7 +1358,7 @@ export default function RangeForm() {
                    placeholder="Leave blank to auto-generate from status + stock + components" />
           </div>
 
-          <div className="mt-3 rounded-md bg-ivory/60 border border-ivory-dark p-3">
+          <div className="mt-3 rounded-none bg-ivory/60 border border-ivory-dark p-3">
             <p className="text-[10px] uppercase tracking-wide text-ink-60 mb-1">What the customer sees</p>
             <p className="text-sm text-ink-80">{availability.promise}</p>
             {availability.buildable != null && (
@@ -1397,8 +1397,8 @@ export default function RangeForm() {
           {form.gallery.length > 0 && (
             <div className="space-y-2 mb-3">
               {form.gallery.map((g, i) => (
-                <div key={i} className="flex items-center gap-3 border border-ivory-dark rounded p-2 bg-white">
-                  <div className="relative w-14 h-14 shrink-0 bg-white border border-ivory-dark rounded overflow-hidden flex items-center justify-center">
+                <div key={i} className="flex items-center gap-3 border border-ivory-dark rounded-none p-2 bg-white">
+                  <div className="relative w-14 h-14 shrink-0 bg-white border border-ivory-dark rounded-none overflow-hidden flex items-center justify-center">
                     {g.url ? <img src={g.url} alt="" onClick={() => setLightbox(g)} className="w-full h-full object-contain p-0.5 cursor-zoom-in" title="Click to enlarge" /> : <span className="text-[10px] text-ink-60">no image</span>}
                     {i === 0 && (
                       <span className="absolute top-0 left-0 bg-brand-600 text-white text-[9px] font-medium px-1 leading-tight rounded-br" title="Main image shown on the product card">MAIN</span>
@@ -1439,7 +1439,7 @@ export default function RangeForm() {
             </div>
           )}
 
-          <label className="border border-dashed border-ivory-dark rounded flex items-center justify-center gap-2 cursor-pointer text-ink-60 hover:border-brand-400 hover:text-brand-600 transition-colors py-3"
+          <label className="border border-dashed border-ivory-dark rounded-none flex items-center justify-center gap-2 cursor-pointer text-ink-60 hover:border-brand-400 hover:text-brand-600 transition-colors py-3"
                  title="Click to upload images">
             <span className="text-xl leading-none">＋</span>
             <span className="text-xs">{uploading === 'gallery' ? 'Uploading…' : 'Upload images'}</span>
@@ -1449,15 +1449,15 @@ export default function RangeForm() {
 
           {lightbox && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80" onClick={() => setLightbox(null)}>
-              <img src={lightbox.url} alt={lightbox.caption || ''} className="max-w-full max-h-full rounded-lg object-contain" onClick={e => e.stopPropagation()} />
-              <button type="button" className="absolute top-4 right-4 text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg text-sm inline-flex items-center"
+              <img src={lightbox.url} alt={lightbox.caption || ''} className="max-w-full max-h-full rounded-none object-contain" onClick={e => e.stopPropagation()} />
+              <button type="button" className="absolute top-4 right-4 text-white bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-none text-sm inline-flex items-center"
                       onClick={() => setLightbox(null)}>✕</button>
             </div>
           )}
 
           {enh && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={() => !enh.busy && setEnh(null)}>
-              <div className="bg-white rounded-xl max-w-3xl w-full p-5" onClick={e => e.stopPropagation()}>
+              <div className="bg-white rounded-none max-w-3xl w-full p-5" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-sm font-semibold text-ink-80 inline-flex items-center gap-1.5"><Sparkles size={15} /> Edit image — review before replacing</h3>
                   <button type="button" onClick={() => !enh.busy && setEnh(null)} className="text-ink-60 hover:text-ink"><X size={16} /></button>
@@ -1496,13 +1496,13 @@ export default function RangeForm() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Original</p>
-                    <div className="aspect-square bg-ivory-dark border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
+                    <div className="aspect-square bg-ivory-dark border border-ivory-dark rounded-none flex items-center justify-center overflow-hidden">
                       <img src={enh.before} alt="" className="w-full h-full object-contain" />
                     </div>
                   </div>
                   <div>
                     <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Enhanced {enh.after && `· ${enh.mode}`}</p>
-                    <div className="aspect-square bg-ivory-dark border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
+                    <div className="aspect-square bg-ivory-dark border border-ivory-dark rounded-none flex items-center justify-center overflow-hidden">
                       {enh.busy ? <span className="text-xs text-ink-60">Working… (AI, ~10–20s)</span>
                         : enh.after ? <img src={enh.after} alt="" className="w-full h-full object-contain" />
                         : <span className="text-xs text-ink-60">Describe colours below, then pick Clean or Enhance</span>}
@@ -1522,7 +1522,7 @@ export default function RangeForm() {
                   />
                 </div>
                 {/* Recolor panel */}
-                <div className="mt-3 border border-warm-grey rounded-lg overflow-hidden">
+                <div className="mt-3 border border-warm-grey rounded-none overflow-hidden">
                   <button type="button"
                     className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink-60 hover:bg-ivory"
                     onClick={() => setRecolorOpen(o => !o)}>
@@ -1550,7 +1550,7 @@ export default function RangeForm() {
                 </div>
                 {enh.error && <p className="text-xs text-red-500 mt-2">{enh.error}</p>}
                 {enh.colorWarning && (
-                  <div className="flex items-start gap-2 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5">
+                  <div className="flex items-start gap-2 mt-3 rounded-none border border-amber-300 bg-amber-50 px-3 py-2.5">
                     <AlertTriangle size={14} className="text-amber-600 mt-0.5 shrink-0" />
                     <p className="text-xs text-amber-800 leading-snug">
                       <span className="font-semibold">Possible colour change detected.</span>{' '}
@@ -1560,7 +1560,7 @@ export default function RangeForm() {
                   </div>
                 )}
                 {enh.reframed && (
-                  <div className="flex items-start gap-2 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5">
+                  <div className="flex items-start gap-2 mt-3 rounded-none border border-amber-300 bg-amber-50 px-3 py-2.5">
                     <AlertTriangle size={14} className="text-amber-600 mt-0.5 shrink-0" />
                     <p className="text-xs text-amber-800 leading-snug">
                       <span className="font-semibold">The AI reframed the shot.</span>{' '}
@@ -1649,7 +1649,7 @@ export default function RangeForm() {
                         {pickerFor === i && (
                           <>
                             <div className="fixed inset-0 z-30" onClick={() => setPickerFor(null)} />
-                            <div className="absolute z-40 top-[4.5rem] left-0 w-64 bg-white border border-ivory-dark rounded-lg shadow-lg p-2.5 space-y-2">
+                            <div className="absolute z-40 top-[4.5rem] left-0 w-64 bg-white border border-ivory-dark rounded-none shadow-lg p-2.5 space-y-2">
                               {form.gallery.length > 0 ? (
                                 <>
                                   <p className="text-[11px] text-ink-60">Use a product image</p>
@@ -1657,7 +1657,7 @@ export default function RangeForm() {
                                     {form.gallery.map((g, gi) => g.url && (
                                       <button key={gi} type="button"
                                               onClick={() => { patchVariant(i, { image: g.url }); setPickerFor(null) }}
-                                              className={`relative aspect-square bg-white border rounded overflow-hidden hover:border-brand-400 ${g.url === v.image ? 'border-brand-500 ring-1 ring-brand-400' : 'border-ivory-dark'}`}
+                                              className={`relative aspect-square bg-white border rounded-none overflow-hidden hover:border-brand-400 ${g.url === v.image ? 'border-brand-500 ring-1 ring-brand-400' : 'border-ivory-dark'}`}
                                               title={g.caption || 'Use this image'}>
                                         <img src={g.url} alt="" className="w-full h-full object-contain p-0.5" />
                                       </button>
@@ -1694,7 +1694,7 @@ export default function RangeForm() {
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono text-ink-80 bg-ivory px-2 py-0.5 rounded">{sku || '—'}</span>
+                          <span className="text-xs font-mono text-ink-80 bg-ivory px-2 py-0.5 rounded-none">{sku || '—'}</span>
                           {v.image && (
                             <button type="button" onClick={() => downloadRangeImage(v.image, sku || form.design_name)}
                                     className="inline-flex items-center gap-1 text-xs text-brand-600 hover:text-brand-700"

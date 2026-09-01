@@ -499,11 +499,11 @@ export default function QuoteExport({ quote, items, onClose, onQuoteChange }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white rounded-none shadow-xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
         <h2 className="font-semibold text-ink mb-1">Export Quote</h2>
 
         {/* Data preview — confirms what will appear in the Excel */}
-        <div className="mt-3 mb-5 rounded-lg bg-ivory border border-warm-grey px-3 py-2.5 space-y-1">
+        <div className="mt-3 mb-5 rounded-none bg-ivory border border-warm-grey px-3 py-2.5 space-y-1">
           {fields.map(({ label, value }) => (
             <div key={label} className="flex gap-2 text-xs">
               <span className="text-ink-60 w-14 shrink-0">{label}</span>
@@ -516,7 +516,7 @@ export default function QuoteExport({ quote, items, onClose, onQuoteChange }) {
 
         <label className="flex items-center gap-2 mb-4 text-xs text-ink-70 cursor-pointer select-none">
           <input type="checkbox" checked={includeTotal} onChange={e => setIncludeTotal(e.target.checked)}
-            className="rounded border-warm-grey" />
+            className="rounded-none border-warm-grey" />
           Include total on PDF <span className="text-ink-60">(same "Show total" switch as the quote page)</span>
           <span className="text-ink-60">— best for a customer who already knows what they're ordering</span>
         </label>

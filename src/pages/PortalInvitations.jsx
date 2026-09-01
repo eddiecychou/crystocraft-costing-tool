@@ -75,7 +75,7 @@ export default function PortalInvitations({ embedded = false }) {
     <div className={embedded ? '' : 'p-4 md:p-6'}>
       {!embedded && <h1 className="text-xl md:text-2xl mb-4">Portal Invitations</h1>}
       {error && (
-        <div className="mb-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">{error}</div>
+        <div className="mb-3 rounded-none bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">{error}</div>
       )}
       {loading ? (
         <p className="text-sm text-ink-60">Loading…</p>
@@ -95,7 +95,7 @@ export default function PortalInvitations({ embedded = false }) {
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-ink flex items-center gap-1.5">
                     {inv.contact_name || inv.contact_email}
-                    <span className={`text-[10px] uppercase tracking-wide rounded px-1 py-0.5 ${srcStyle.cls}`}>{srcStyle.label}</span>
+                    <span className={`text-[10px] uppercase tracking-wide rounded-none px-1 py-0.5 ${srcStyle.cls}`}>{srcStyle.label}</span>
                   </p>
                   <p className="text-xs text-ink-60">
                     {inv.contact_email} · {company || (inv.source === 'self'
@@ -122,7 +122,7 @@ export default function PortalInvitations({ embedded = false }) {
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className={`inline-flex items-center gap-1 text-xs rounded px-2 py-1 ${st.cls}`}>
+                  <span className={`inline-flex items-center gap-1 text-xs rounded-none px-2 py-1 ${st.cls}`}>
                     <st.Icon size={12} /> {st.label}
                   </span>
                   {busy ? (

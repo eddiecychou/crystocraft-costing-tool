@@ -278,7 +278,7 @@ function summarizeHistory(decisions) {
 function SourceBadge({ source }) {
   const isContact = source === 'contact'
   return (
-    <span className={`ml-1.5 text-[10px] uppercase tracking-wide rounded px-1 py-0.5 shrink-0 ${
+    <span className={`ml-1.5 text-[10px] uppercase tracking-wide rounded-none px-1 py-0.5 shrink-0 ${
       isContact ? 'text-amber-600 bg-amber-50' : 'text-blue-600 bg-blue-50'
     }`}>
       {isContact ? 'Lead' : 'Customer'}
@@ -1268,7 +1268,7 @@ export default function DailyDrafts() {
 
   return (
     <div className="p-4 md:p-6 max-w-4xl space-y-8">
-      {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</div>}
+      {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-none px-3 py-2">{error}</div>}
 
       {/* ── Draft Memory Layer (V8.9) — global writing rules review ──────
           Nothing here reaches a prompt until approved (activeRuleTexts
@@ -1293,7 +1293,7 @@ export default function DailyDrafts() {
               <div className="space-y-1.5">
                 <p className="text-xs font-medium text-ink-60">Pending — not used in any draft yet</p>
                 {pendingRules.map(r => (
-                  <div key={r.id} className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded px-2.5 py-1.5">
+                  <div key={r.id} className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded-none px-2.5 py-1.5">
                     <span className="min-w-0 flex-1">{r.text}</span>
                     <div className="flex items-center gap-2 shrink-0">
                       <button type="button" disabled={memoryRuleBusy === r.id} onClick={() => handleApproveRule(r.id)}
@@ -1311,7 +1311,7 @@ export default function DailyDrafts() {
               </p>
               {activeRules.length === 0 && <p className="text-xs text-ink-60">None yet — approve a pending rule, or add one directly below.</p>}
               {activeRules.map(r => (
-                <div key={r.id} className="flex items-start gap-2 text-sm bg-ivory-light rounded px-2.5 py-1.5">
+                <div key={r.id} className="flex items-start gap-2 text-sm bg-ivory-light rounded-none px-2.5 py-1.5">
                   {editingRuleId === r.id ? (
                     <>
                       <input value={editingRuleText} onChange={e => setEditingRuleText(e.target.value)}
@@ -1359,7 +1359,7 @@ export default function DailyDrafts() {
               + Link a product (optional, unlocks its photos)
             </button>
           ) : (
-            <div className="inline-flex items-center gap-1.5 text-sm bg-ivory-light rounded px-2 py-1">
+            <div className="inline-flex items-center gap-1.5 text-sm bg-ivory-light rounded-none px-2 py-1">
               <span className="truncate max-w-xs">{linkedProduct.name}</span>
               <button type="button" onClick={() => setLinkedProduct(null)} className="text-ink-60 hover:text-red-600">
                 <X size={12} />
@@ -1374,7 +1374,7 @@ export default function DailyDrafts() {
               unreliable) — paste the URL in by hand instead, same posture
               as send-personal-email.js's own `links` field. */}
           {masterLinks.map(l => (
-            <span key={l.url} className="inline-flex items-center gap-1 text-xs text-ink-60 bg-ivory-light rounded px-2 py-1">
+            <span key={l.url} className="inline-flex items-center gap-1 text-xs text-ink-60 bg-ivory-light rounded-none px-2 py-1">
               <Link2 size={11} /> {l.title}
               <button type="button" onClick={() => removeMasterLink(l.url)} className="text-ink-60 hover:text-red-600">
                 <X size={11} />
@@ -1390,13 +1390,13 @@ export default function DailyDrafts() {
           <div>
             <input value={linkProductQuery} onChange={e => setLinkProductQuery(e.target.value)}
               placeholder="Search Corporate Gifts or Crystocraft Range…" className="input w-full md:w-96 mb-1" />
-            <div className="border border-ivory-dark rounded max-h-48 overflow-y-auto w-full md:w-96">
+            <div className="border border-ivory-dark rounded-none max-h-48 overflow-y-auto w-full md:w-96">
               {filteredLinkProducts.map(p => (
                 <button key={`${p.source}-${p.id}`} type="button"
                   onClick={() => { setLinkedProduct(p); setLinkProductOpen(false); setLinkProductQuery('') }}
                   className="w-full flex items-center justify-between gap-2 text-left px-3 py-1.5 text-sm hover:bg-ivory-light">
                   <span className="truncate">{p.name}</span>
-                  <span className={`text-[10px] uppercase tracking-wide rounded px-1 py-0.5 shrink-0 ${
+                  <span className={`text-[10px] uppercase tracking-wide rounded-none px-1 py-0.5 shrink-0 ${
                     p.source === 'range' ? 'bg-brand-50 text-brand-700' : 'bg-blue-50 text-blue-700'
                   }`}>
                     {p.source === 'range' ? 'Range' : 'Corporate'}
@@ -1408,7 +1408,7 @@ export default function DailyDrafts() {
           </div>
         )}
         {masterLinkFormOpen && (
-          <div className="border border-ivory-dark rounded p-2 space-y-2 w-full md:w-96">
+          <div className="border border-ivory-dark rounded-none p-2 space-y-2 w-full md:w-96">
             <input value={masterLinkUrl} onChange={e => setMasterLinkUrl(e.target.value)}
               placeholder="https://www.crystocraft.com/blog/…" className="input w-full text-sm" />
             <input value={masterLinkTitle} onChange={e => setMasterLinkTitle(e.target.value)}
@@ -1469,7 +1469,7 @@ export default function DailyDrafts() {
                 <MessageCircle size={13} /> {masterChatOpen ? 'Close' : 'Rewrite / fine-tune with AI'}
               </button>
               {masterChatOpen && (
-                <div className="border border-ivory-dark rounded-lg p-3 bg-ivory-light space-y-2 mt-2">
+                <div className="border border-ivory-dark rounded-none p-3 bg-ivory-light space-y-2 mt-2">
                   {masterChatHistory.length > 0 && (
                     <div className="space-y-2 max-h-56 overflow-y-auto">
                       {masterChatHistory.map((h, i) => (
@@ -1505,7 +1505,7 @@ export default function DailyDrafts() {
             <div className="flex items-center gap-2 flex-wrap">
               {masterImageUrls.map(url => (
                 <div key={url} className="relative">
-                  <img src={url} alt="" className="w-10 h-10 rounded object-cover border border-ivory-dark" />
+                  <img src={url} alt="" className="w-10 h-10 rounded-none object-cover border border-ivory-dark" />
                   <button type="button" onClick={() => setMasterImageUrls(prev => prev.filter(u => u !== url))}
                     className="absolute -top-1.5 -right-1.5 bg-white rounded-full border border-ivory-dark text-ink-60 hover:text-red-600">
                     <X size={11} />
@@ -1513,7 +1513,7 @@ export default function DailyDrafts() {
                 </div>
               ))}
               {masterImageUrls.length < MAX_ATTACHED_IMAGES && (
-                <label className="text-xs text-ink-60 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5 cursor-pointer inline-flex items-center gap-1">
+                <label className="text-xs text-ink-60 hover:text-brand-600 border border-dashed border-ivory-dark rounded-none px-2 py-1.5 cursor-pointer inline-flex items-center gap-1">
                   {masterUploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
                   Upload
                   <input type="file" accept="image/*" className="hidden" disabled={masterUploading}
@@ -1530,7 +1530,7 @@ export default function DailyDrafts() {
                     const picked = masterImageUrls.includes(img.file_url)
                     return (
                       <button key={img.id || img.file_url} type="button" onClick={() => toggleMasterImage(img.file_url)}
-                        className={`relative w-12 h-12 rounded overflow-hidden border-2 ${picked ? 'border-brand-600' : 'border-transparent'}`}>
+                        className={`relative w-12 h-12 rounded-none overflow-hidden border-2 ${picked ? 'border-brand-600' : 'border-transparent'}`}>
                         <img src={img.file_url} alt="" className="w-full h-full object-cover" />
                       </button>
                     )
@@ -1611,7 +1611,7 @@ export default function DailyDrafts() {
         </div>
 
         {bulkRewriteOpen && drafts.length > 0 && (
-          <div className="border border-ivory-dark rounded-lg p-3 bg-ivory-light space-y-2">
+          <div className="border border-ivory-dark rounded-none p-3 bg-ivory-light space-y-2">
             <p className="text-xs text-ink-60">
               Applies to all {drafts.length} pending draft{drafts.length === 1 ? '' : 's'} — same instruction, sent
               to each one individually (a real AI call per draft, so this takes a moment for a large batch).
@@ -1699,7 +1699,7 @@ export default function DailyDrafts() {
               <div className="flex items-center gap-2 flex-wrap">
                 {(fields.imageUrls || []).map(url => (
                   <div key={url} className="relative">
-                    <img src={url} alt="" className="w-10 h-10 rounded object-cover border border-ivory-dark" />
+                    <img src={url} alt="" className="w-10 h-10 rounded-none object-cover border border-ivory-dark" />
                     <button type="button" onClick={() => removeDraftImage(d, url)}
                       className="absolute -top-1.5 -right-1.5 bg-white rounded-full border border-ivory-dark text-ink-60 hover:text-red-600">
                       <X size={11} />
@@ -1710,11 +1710,11 @@ export default function DailyDrafts() {
                   d.productId ? (
                     <button type="button"
                       onClick={() => { setPhotoPickerOpenId(photoPickerOpenId === d.id ? null : d.id); ensureProductImages(d.productId, d.productSource) }}
-                      className="text-xs text-ink-60 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5">
+                      className="text-xs text-ink-60 hover:text-brand-600 border border-dashed border-ivory-dark rounded-none px-2 py-1.5">
                       + Photo
                     </button>
                   ) : (
-                    <label className="text-xs text-ink-60 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5 cursor-pointer inline-flex items-center gap-1">
+                    <label className="text-xs text-ink-60 hover:text-brand-600 border border-dashed border-ivory-dark rounded-none px-2 py-1.5 cursor-pointer inline-flex items-center gap-1">
                       {draftUploading === d.id ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
                       Upload
                       <input type="file" accept="image/*" className="hidden" disabled={draftUploading === d.id}
@@ -1723,7 +1723,7 @@ export default function DailyDrafts() {
                   )
                 )}
                 {(fields.links || []).map(l => (
-                  <span key={l.url} className="inline-flex items-center gap-1 text-xs text-ink-60 bg-ivory-light rounded px-2 py-1">
+                  <span key={l.url} className="inline-flex items-center gap-1 text-xs text-ink-60 bg-ivory-light rounded-none px-2 py-1">
                     <Link2 size={11} /> {l.title}
                     <button type="button" onClick={() => removeDraftLink(d, l.url)} className="text-ink-60 hover:text-red-600">
                       <X size={11} />
@@ -1731,16 +1731,16 @@ export default function DailyDrafts() {
                   </span>
                 ))}
                 <button type="button" onClick={() => setLinkFormOpenId(linkFormOpenId === d.id ? null : d.id)}
-                  className="text-xs text-ink-60 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5">
+                  className="text-xs text-ink-60 hover:text-brand-600 border border-dashed border-ivory-dark rounded-none px-2 py-1.5">
                   + Link
                 </button>
               </div>
 
               {photoPickerOpenId === d.id && (
-                <div className="flex flex-wrap gap-2 border border-ivory-dark rounded p-2">
+                <div className="flex flex-wrap gap-2 border border-ivory-dark rounded-none p-2">
                   {(productImagesCache[`${d.productSource || 'corporate'}:${d.productId}`] || []).map(img => (
                     <button key={img.id || img.file_url} type="button" onClick={() => toggleDraftImage(d, img.file_url)}
-                      className={`relative w-12 h-12 rounded overflow-hidden border-2 ${(fields.imageUrls || []).includes(img.file_url) ? 'border-brand-600' : 'border-transparent'}`}>
+                      className={`relative w-12 h-12 rounded-none overflow-hidden border-2 ${(fields.imageUrls || []).includes(img.file_url) ? 'border-brand-600' : 'border-transparent'}`}>
                       <img src={img.file_url} alt="" className="w-full h-full object-cover" />
                     </button>
                   ))}
@@ -1749,7 +1749,7 @@ export default function DailyDrafts() {
               )}
 
               {linkFormOpenId === d.id && (
-                <div className="border border-ivory-dark rounded p-2 space-y-2">
+                <div className="border border-ivory-dark rounded-none p-2 space-y-2">
                   <input value={draftLinkUrl[d.id] || ''}
                     onChange={e => setDraftLinkUrl(prev => ({ ...prev, [d.id]: e.target.value }))}
                     placeholder="https://…" className="input w-full text-sm" />
@@ -1869,7 +1869,7 @@ export default function DailyDrafts() {
               })()}
 
               {isAddCustomerOpen && (
-                <div className="border border-ivory-dark rounded-lg p-3 bg-ivory-light space-y-2">
+                <div className="border border-ivory-dark rounded-none p-3 bg-ivory-light space-y-2">
                   <div className="flex gap-1.5">
                     {[{ key: 'new', label: 'Create as new customer' }, { key: 'existing', label: 'Add as a contact on an existing customer' }].map(opt => (
                       <button key={opt.key} type="button" onClick={() => { setAddCustomerMode(opt.key); setAddCustomerError('') }}
@@ -1909,7 +1909,7 @@ export default function DailyDrafts() {
               )}
 
               {isChatOpen && (
-                <div className="border border-ivory-dark rounded-lg p-3 bg-ivory-light space-y-2">
+                <div className="border border-ivory-dark rounded-none p-3 bg-ivory-light space-y-2">
                   {history.length > 0 && (
                     <div className="space-y-2 max-h-56 overflow-y-auto">
                       {history.map((h, i) => (
@@ -2015,7 +2015,7 @@ export default function DailyDrafts() {
                   </div>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     {ENGAGEMENT_BADGES.map(({ key, label, Icon }) => (
-                      <span key={key} className={`inline-flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5 ${
+                      <span key={key} className={`inline-flex items-center gap-1 text-[11px] rounded-none px-1.5 py-0.5 ${
                         d.engagement?.[key]
                           ? ((key === 'bounced' || key === 'complained') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700')
                           : 'bg-ivory text-platinum'
@@ -2024,7 +2024,7 @@ export default function DailyDrafts() {
                       </span>
                     ))}
                     {d.repliedAt && (
-                      <span className="inline-flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5 bg-brand-50 text-brand-700">
+                      <span className="inline-flex items-center gap-1 text-[11px] rounded-none px-1.5 py-0.5 bg-brand-50 text-brand-700">
                         <CheckCircle2 size={11} /> Replied{d.repliedChannel ? ` via ${d.repliedChannel}` : ''}
                       </span>
                     )}
@@ -2039,12 +2039,12 @@ export default function DailyDrafts() {
               </div>
 
               {isReplyOpen && (
-                <div className="border border-ivory-dark rounded-lg p-3 bg-ivory-light space-y-2">
+                <div className="border border-ivory-dark rounded-none p-3 bg-ivory-light space-y-2">
                   <div className="flex gap-2 flex-wrap">
                     {REPLY_CHANNELS.map(ch => (
                       <button key={ch} type="button"
                         onClick={() => setReplyChannel(prev => ({ ...prev, [d.id]: ch }))}
-                        className={`text-xs rounded px-2 py-1 border ${
+                        className={`text-xs rounded-none px-2 py-1 border ${
                           (replyChannel[d.id] || REPLY_CHANNELS[0]) === ch
                             ? 'border-brand-600 bg-brand-50 text-brand-700'
                             : 'border-ivory-dark text-ink-60 hover:bg-white'

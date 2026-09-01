@@ -159,7 +159,7 @@ export default function RangeQuoteForm() {
       <div className="card p-4 mb-4">
         <h2 className="text-sm font-semibold text-ink-80 mb-3">Quote Images / Screenshots</h2>
         <p className="text-xs text-ink-60 mb-3">Upload WeChat / WhatsApp screenshots or a PDF — AI will try to extract the pricing automatically.</p>
-        <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer transition-colors
+        <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-none p-6 cursor-pointer transition-colors
             ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
           onDragOver={e => { e.preventDefault(); setDragOver(true) }}
           onDragLeave={() => setDragOver(false)} onDrop={handleDrop}>
@@ -173,10 +173,10 @@ export default function RangeQuoteForm() {
         {files.length > 0 && (
           <div className="mt-3 space-y-2">
             {files.map(f => (
-              <div key={f._id} className="flex items-center gap-3 p-2 bg-ivory rounded-lg">
+              <div key={f._id} className="flex items-center gap-3 p-2 bg-ivory rounded-none">
                 {f.isPdf
-                  ? <div className="w-12 h-12 rounded bg-red-50 border border-red-100 flex items-center justify-center shrink-0"><FileText size={20} className="text-red-400" /></div>
-                  : <img src={f.preview} alt="" className="w-12 h-12 object-cover rounded shrink-0" />}
+                  ? <div className="w-12 h-12 rounded-none bg-red-50 border border-red-100 flex items-center justify-center shrink-0"><FileText size={20} className="text-red-400" /></div>
+                  : <img src={f.preview} alt="" className="w-12 h-12 object-cover rounded-none shrink-0" />}
                 <span className="text-xs text-ink-70 flex-1 truncate">{f.file.name}</span>
                 <button type="button" onClick={() => setFiles(prev => prev.filter(x => x._id !== f._id))} className="text-xs text-red-500 hover:text-red-700">Remove</button>
               </div>
@@ -188,7 +188,7 @@ export default function RangeQuoteForm() {
             )}
           </div>
         )}
-        {extracting && <div className="mt-2 h-1 bg-brand-100 rounded overflow-hidden"><div className="h-full bg-brand-500 animate-pulse w-full" /></div>}
+        {extracting && <div className="mt-2 h-1 bg-brand-100 rounded-none overflow-hidden"><div className="h-full bg-brand-500 animate-pulse w-full" /></div>}
         {extractError && <p className="text-xs text-red-500 mt-2">{extractError}</p>}
 
         {existingAttachments.length > 0 && (
@@ -198,8 +198,8 @@ export default function RangeQuoteForm() {
               {existingAttachments.map((a, i) => (
                 <div key={i} className="relative group/att">
                   {a.file_type === 'pdf'
-                    ? <a href={a.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-2 py-1 rounded border border-red-100 bg-red-50 text-xs text-red-700 hover:bg-red-100"><FileText size={14} /><span className="truncate max-w-32">{a.file_name}</span></a>
-                    : <a href={a.file_url} target="_blank" rel="noreferrer"><img src={a.file_url} alt="" className="w-12 h-12 object-cover rounded border" /></a>}
+                    ? <a href={a.file_url} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-2 py-1 rounded-none border border-red-100 bg-red-50 text-xs text-red-700 hover:bg-red-100"><FileText size={14} /><span className="truncate max-w-32">{a.file_name}</span></a>
+                    : <a href={a.file_url} target="_blank" rel="noreferrer"><img src={a.file_url} alt="" className="w-12 h-12 object-cover rounded-none border" /></a>}
                   <button type="button" onClick={() => setExistingAttachments(prev => prev.filter((_, idx) => idx !== i))}
                           className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full leading-none flex items-center justify-center opacity-0 group-hover/att:opacity-100 transition-opacity" title="Remove"><X size={10} /></button>
                 </div>

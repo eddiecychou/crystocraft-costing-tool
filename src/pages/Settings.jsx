@@ -291,7 +291,7 @@ function QuoteBrandingPanel() {
       </p>
 
       {stampUrl ? (
-        <div className="inline-block border border-ivory-dark rounded-md p-3 bg-white mb-4">
+        <div className="inline-block border border-ivory-dark rounded-none p-3 bg-white mb-4">
           <img src={stampUrl} alt="Quote stamp" className="max-h-24 max-w-xs object-contain" />
         </div>
       ) : (

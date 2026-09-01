@@ -308,7 +308,7 @@ export default function SupplierQuoteForm() {
         <p className="text-xs text-ink-60 mb-3">Upload WeChat or WhatsApp screenshots — AI will try to extract the pricing data automatically.</p>
 
         <label
-          className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer transition-colors
+          className={`flex flex-col items-center justify-center border-2 border-dashed rounded-none p-6 cursor-pointer transition-colors
             ${dragOver ? 'border-brand-400 bg-brand-50 scale-[1.01]' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
           onDragOver={e => { e.preventDefault(); setDragOver(true) }}
           onDragLeave={() => setDragOver(false)}
@@ -323,10 +323,10 @@ export default function SupplierQuoteForm() {
         {files.length > 0 && (
           <div className="mt-3 space-y-2">
             {files.map(f => (
-              <div key={f._id} className="flex items-center gap-3 p-2 bg-ivory rounded-lg">
+              <div key={f._id} className="flex items-center gap-3 p-2 bg-ivory rounded-none">
                 {f.isPdf
-                  ? <div className="w-12 h-12 rounded bg-red-50 border border-red-100 flex items-center justify-center shrink-0"><FileText size={20} className="text-red-400" /></div>
-                  : <img src={f.preview} alt="" className="w-12 h-12 object-cover rounded shrink-0" />}
+                  ? <div className="w-12 h-12 rounded-none bg-red-50 border border-red-100 flex items-center justify-center shrink-0"><FileText size={20} className="text-red-400" /></div>
+                  : <img src={f.preview} alt="" className="w-12 h-12 object-cover rounded-none shrink-0" />}
                 <span className="text-xs text-ink-70 flex-1 truncate">{f.file.name}</span>
                 <button type="button" onClick={() => removeFile(f._id)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
               </div>
@@ -340,7 +340,7 @@ export default function SupplierQuoteForm() {
         )}
 
         {extracting && (
-          <div className="mt-2 h-1 bg-brand-100 rounded overflow-hidden">
+          <div className="mt-2 h-1 bg-brand-100 rounded-none overflow-hidden">
             <div className="h-full bg-brand-500 animate-pulse w-full" />
           </div>
         )}
@@ -353,11 +353,11 @@ export default function SupplierQuoteForm() {
                 <div key={i} className="relative group/att">
                   {a.file_type === 'pdf'
                     ? <a href={a.file_url} target="_blank" rel="noreferrer"
-                          className="flex items-center gap-1.5 px-2 py-1 rounded border border-red-100 bg-red-50 text-xs text-red-700 hover:bg-red-100">
+                          className="flex items-center gap-1.5 px-2 py-1 rounded-none border border-red-100 bg-red-50 text-xs text-red-700 hover:bg-red-100">
                           <FileText size={14} /><span className="truncate max-w-32">{a.file_name}</span>
                         </a>
                     : <a href={a.file_url} target="_blank" rel="noreferrer">
-                          <img src={a.file_url} alt="" className="w-12 h-12 object-cover rounded border" />
+                          <img src={a.file_url} alt="" className="w-12 h-12 object-cover rounded-none border" />
                         </a>
                   }
                   <button
@@ -597,7 +597,7 @@ function SupplierCombobox({ suppliers, value, onChange }) {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-warm-grey rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-warm-grey rounded-none shadow-lg max-h-60 overflow-y-auto">
           {filtered.length === 0 ? (
             <p className="text-sm text-ink-60 text-center py-4">No suppliers found</p>
           ) : filtered.map(s => (
@@ -687,7 +687,7 @@ function CopyQuotePicker({ quotes, loaded, onSelect, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
           <h2 className="font-semibold text-ink">Copy from Previous Quote</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>

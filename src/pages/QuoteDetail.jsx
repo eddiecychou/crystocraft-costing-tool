@@ -73,7 +73,7 @@ function BankDetailsPicker({ quote, accounts, currency, onChange }) {
           </select>
 
           {mismatch && (
-            <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-2">
+            <div className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-none px-3 py-2 mb-2">
               <AlertCircle size={14} className="mt-0.5 shrink-0" />
               This quote is in <strong>{currency}</strong> but the selected account is{' '}
               <strong>{selected.currency}</strong>. The customer would pay into the wrong
@@ -82,7 +82,7 @@ function BankDetailsPicker({ quote, accounts, currency, onChange }) {
           )}
 
           {quote.bank_snapshot && (
-            <pre className="text-xs text-ink-70 bg-ivory border border-warm-grey rounded-lg px-3 py-2 whitespace-pre-wrap font-mono">
+            <pre className="text-xs text-ink-70 bg-ivory border border-warm-grey rounded-none px-3 py-2 whitespace-pre-wrap font-mono">
               {quote.bank_snapshot}
             </pre>
           )}
@@ -536,7 +536,7 @@ export default function QuoteDetail() {
                   updateDoc(doc(db, 'client_quotes', id), { show_total: e.target.checked })
                   setQuote(q => ({ ...q, show_total: e.target.checked }))
                 }}
-                className="rounded border-warm-grey"
+                className="rounded-none border-warm-grey"
               />
               Show total <span className="text-ink-60">— same switch as "Include total on PDF" in Export, so this page and the PDF always agree</span>
             </label>
@@ -594,7 +594,7 @@ export default function QuoteDetail() {
               setQuote(q => ({ ...q, notes: e.target.value }))
             }
           }}
-          className="w-full text-sm text-ink-80 placeholder-ink-60 border border-warm-grey rounded-lg px-3 py-2 resize-y focus:outline-none focus:border-brand-300 focus:ring-1 focus:ring-brand-200 bg-ivory hover:bg-white transition-colors leading-relaxed"
+          className="w-full text-sm text-ink-80 placeholder-ink-60 border border-warm-grey rounded-none px-3 py-2 resize-y focus:outline-none focus:border-brand-300 focus:ring-1 focus:ring-brand-200 bg-ivory hover:bg-white transition-colors leading-relaxed"
         />
       </div>
 
@@ -708,7 +708,7 @@ function QuoteItem({ item, quoteCurrency, customerId, rates, heroImage, onTiersC
   const style = { transform: CSS.Transform.toString(transform), transition }
 
   return (
-    <div ref={setNodeRef} style={style} className={`flex gap-3 p-3 rounded-lg border transition-colors ${isDragging ? 'border-brand-300 bg-brand-50 shadow-lg opacity-80' : 'border-warm-grey hover:border-warm-grey'}`}>
+    <div ref={setNodeRef} style={style} className={`flex gap-3 p-3 rounded-none border transition-colors ${isDragging ? 'border-brand-300 bg-brand-50 shadow-lg opacity-80' : 'border-warm-grey hover:border-warm-grey'}`}>
       {/* Drag handle */}
       <div {...attributes} {...listeners} className="flex items-start pt-1 cursor-grab active:cursor-grabbing text-platinum hover:text-ink-60 shrink-0 touch-none">
         <svg width="12" height="20" viewBox="0 0 12 20" fill="currentColor">
@@ -718,16 +718,16 @@ function QuoteItem({ item, quoteCurrency, customerId, rates, heroImage, onTiersC
         </svg>
       </div>
       {/* Image — click to open product image picker */}
-      <div className="group relative w-20 h-20 rounded-lg bg-ivory-dark shrink-0 overflow-hidden flex items-center justify-center cursor-pointer"
+      <div className="group relative w-20 h-20 rounded-none bg-ivory-dark shrink-0 overflow-hidden flex items-center justify-center cursor-pointer"
            onClick={() => setShowImgPicker(true)}>
         {displayImage
           ? <img src={displayImage} alt={item.product_name} className="w-full h-full object-cover" />
           : <Package size={24} strokeWidth={1.5} className="text-platinum" />}
-        <div className="absolute inset-0 rounded-lg bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-          <span className="bg-white/90 text-xs px-1.5 py-0.5 rounded text-ink-80">change</span>
+        <div className="absolute inset-0 rounded-none bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+          <span className="bg-white/90 text-xs px-1.5 py-0.5 rounded-none text-ink-80">change</span>
         </div>
         {item.custom_image && (
-          <div className="absolute bottom-1 left-1 bg-brand-600/80 text-white text-[9px] px-1 rounded leading-tight pointer-events-none">custom</div>
+          <div className="absolute bottom-1 left-1 bg-brand-600/80 text-white text-[9px] px-1 rounded-none leading-tight pointer-events-none">custom</div>
         )}
       </div>
 
@@ -880,7 +880,7 @@ function QuoteItem({ item, quoteCurrency, customerId, rates, heroImage, onTiersC
               e.target.style.height = 'auto'
               e.target.style.height = e.target.scrollHeight + 'px'
             }}
-            className="w-full text-xs text-ink-70 placeholder-ink-60 border border-warm-grey rounded-lg px-2.5 py-1.5 resize-none focus:outline-none focus:border-brand-300 focus:ring-1 focus:ring-brand-200 bg-ivory hover:bg-white transition-colors"
+            className="w-full text-xs text-ink-70 placeholder-ink-60 border border-warm-grey rounded-none px-2.5 py-1.5 resize-none focus:outline-none focus:border-brand-300 focus:ring-1 focus:ring-brand-200 bg-ivory hover:bg-white transition-colors"
           />
         </div>
       </div>
@@ -995,7 +995,7 @@ function ProductImagePicker({ productId, itemId, customerId, selectedUrl, onSele
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-md flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
           <h2 className="font-semibold text-ink text-sm">Choose Image</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>
@@ -1037,9 +1037,9 @@ function ProductImagePicker({ productId, itemId, customerId, selectedUrl, onSele
                   const isSelected = a.file_url === selectedUrl
                   return (
                     <div key={a.id} onClick={() => onSelect(a.file_url)} title={a.title || a.filename}
-                      className={`relative cursor-pointer rounded-lg overflow-hidden aspect-square border-2 bg-ivory transition-all ${isSelected ? 'border-brand-500 ring-2 ring-brand-200' : 'border-transparent hover:border-brand-300'}`}>
+                      className={`relative cursor-pointer rounded-none overflow-hidden aspect-square border-2 bg-ivory transition-all ${isSelected ? 'border-brand-500 ring-2 ring-brand-200' : 'border-transparent hover:border-brand-300'}`}>
                       <img src={a.file_url} alt={a.title || a.filename} className="w-full h-full object-contain" />
-                      <span className="absolute top-1 left-1 bg-black/50 text-white text-[9px] px-1 rounded leading-tight">{TYPE_LABEL[a.type]}</span>
+                      <span className="absolute top-1 left-1 bg-black/50 text-white text-[9px] px-1 rounded-none leading-tight">{TYPE_LABEL[a.type]}</span>
                       {isSelected && (
                         <div className="absolute inset-0 bg-brand-500/20 flex items-center justify-center">
                           <span className="bg-brand-500 text-white rounded-full w-5 h-5 flex items-center justify-center"><Check size={12} /></span>
@@ -1063,7 +1063,7 @@ function ProductImagePicker({ productId, itemId, customerId, selectedUrl, onSele
                   <div
                     key={img.id}
                     onClick={() => onSelect(img.file_url)}
-                    className={`relative cursor-pointer rounded-lg overflow-hidden aspect-square border-2 transition-all ${isSelected ? 'border-brand-500 ring-2 ring-brand-200' : 'border-transparent hover:border-brand-300'}`}
+                    className={`relative cursor-pointer rounded-none overflow-hidden aspect-square border-2 transition-all ${isSelected ? 'border-brand-500 ring-2 ring-brand-200' : 'border-transparent hover:border-brand-300'}`}
                   >
                     <img src={img.file_url} alt="" className="w-full h-full object-cover" />
                     {isSelected && (
@@ -1131,7 +1131,7 @@ function ProductPicker({ existingIds, onAdd, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
-      <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
+      <div className="relative bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="p-4 border-b border-warm-grey">
           <h2 className="font-semibold text-ink mb-3">Add Products to Quote</h2>
           <input
@@ -1153,9 +1153,9 @@ function ProductPicker({ existingIds, onAdd, onClose }) {
               <div
                 key={p.id}
                 onClick={() => toggle(p)}
-                className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-brand-50 border border-brand-200' : 'hover:bg-ivory border border-transparent'}`}
+                className={`flex items-center gap-3 p-3 rounded-none cursor-pointer transition-colors ${isSelected ? 'bg-brand-50 border border-brand-200' : 'hover:bg-ivory border border-transparent'}`}
               >
-                <div className="w-12 h-12 rounded bg-ivory-dark shrink-0 overflow-hidden flex items-center justify-center">
+                <div className="w-12 h-12 rounded-none bg-ivory-dark shrink-0 overflow-hidden flex items-center justify-center">
                   {p.heroImage
                     ? <img src={p.heroImage} alt={p.name} className="w-full h-full object-cover" />
                     : <Package size={18} strokeWidth={1.5} className="text-platinum" />}
@@ -1248,7 +1248,7 @@ function UploadedQuoteDetail({ quote, id, onDelete }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-xl md:text-2xl font-bold text-ink">{q.client_name}</h1>
-            <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-medium"><Paperclip size={11} />Uploaded</span>
+            <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-none bg-amber-50 text-amber-600 font-medium"><Paperclip size={11} />Uploaded</span>
           </div>
           <p className="text-xs text-ink-60 mt-0.5">Click any field to edit — changes save automatically</p>
         </div>
@@ -1306,15 +1306,15 @@ function UploadedQuoteDetail({ quote, id, onDelete }) {
         </div>
         {atts.length === 0 ? (
           <button onClick={() => fileInputRef.current?.click()}
-            className="w-full border-2 border-dashed border-warm-grey rounded-lg py-6 text-sm text-ink-60 hover:border-brand-300 hover:text-brand-500 transition-colors">
+            className="w-full border-2 border-dashed border-warm-grey rounded-none py-6 text-sm text-ink-60 hover:border-brand-300 hover:text-brand-500 transition-colors">
             <span className="inline-flex items-center gap-1.5"><Paperclip size={15} />Tap to add PDF or image files</span>
           </button>
         ) : (
           <div className="space-y-2">
             {atts.map((att, i) => (
-              <div key={i} className="flex items-center gap-3 p-2.5 rounded-lg border border-warm-grey bg-ivory">
+              <div key={i} className="flex items-center gap-3 p-2.5 rounded-none border border-warm-grey bg-ivory">
                 {att.name?.match(/\.(jpg|jpeg|png|webp|gif)$/i)
-                  ? <a href={att.url} target="_blank" rel="noreferrer" className="shrink-0"><img src={att.url} alt="" className="h-12 w-16 object-cover rounded border border-warm-grey" /></a>
+                  ? <a href={att.url} target="_blank" rel="noreferrer" className="shrink-0"><img src={att.url} alt="" className="h-12 w-16 object-cover rounded-none border border-warm-grey" /></a>
                   : <FileText size={24} className="text-ink-60 shrink-0" />
                 }
                 <a href={att.url} target="_blank" rel="noreferrer" className="flex-1 text-sm text-brand-600 hover:underline truncate min-w-0">
@@ -1327,7 +1327,7 @@ function UploadedQuoteDetail({ quote, id, onDelete }) {
               </div>
             ))}
             <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-              className="mt-1 w-full border-2 border-dashed border-warm-grey rounded-lg py-2.5 text-sm text-ink-60 hover:border-brand-300 hover:text-brand-500 transition-colors">
+              className="mt-1 w-full border-2 border-dashed border-warm-grey rounded-none py-2.5 text-sm text-ink-60 hover:border-brand-300 hover:text-brand-500 transition-colors">
               <span className="inline-flex items-center gap-1.5"><Paperclip size={15} />Add more files</span>
             </button>
           </div>

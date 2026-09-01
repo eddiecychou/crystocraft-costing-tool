@@ -73,7 +73,7 @@ function NewCustomerInline({ prefillWhatsapp, defaultChannel, onCreated, onCance
   }
 
   return (
-    <div className="border border-warm-grey rounded-lg p-3 space-y-2 bg-ivory">
+    <div className="border border-warm-grey rounded-none p-3 space-y-2 bg-ivory">
       <div className="flex items-center justify-between">
         <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide">New Customer</p>
         <button type="button" onClick={onCancel} className="text-ink-60 hover:text-ink-70"><X size={14} /></button>
@@ -199,7 +199,7 @@ function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChange
                     onChange={e => setCustomerSearch(e.target.value)}
                   />
                   {customerOpen && (
-                    <div className="absolute z-20 left-0 right-0 mt-1 border border-warm-grey rounded-lg bg-white shadow-lg max-h-52 overflow-y-auto">
+                    <div className="absolute z-20 left-0 right-0 mt-1 border border-warm-grey rounded-none bg-white shadow-lg max-h-52 overflow-y-auto">
                       {filteredCustomers.length === 0 ? (
                         <p className="text-xs text-ink-60 px-3 py-2">No matches</p>
                       ) : filteredCustomers.map(c => (

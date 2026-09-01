@@ -60,7 +60,7 @@ export default function CatalogueBand() {
       <p className="text-sm text-ink-60 mb-4">Curated “Shop by…” tiles shown at the top of the customer catalogue. Admin only.</p>
 
       {/* Catalogue switch */}
-      <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden mb-5">
+      <div className="inline-flex rounded-none border border-ivory-dark overflow-hidden mb-5">
         {CATALOGUES.map(c => (
           <button key={c.key} onClick={() => setCatalogue(c.key)}
                   className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark transition-colors ${catalogue === c.key ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory'}`}>
@@ -109,8 +109,8 @@ export default function CatalogueBand() {
                   <button onClick={() => move(i, -1)} disabled={i === 0} className="text-ink-60 hover:text-ink disabled:opacity-30"><ChevronUp size={15} /></button>
                   <button onClick={() => move(i, 1)} disabled={i === rows.length - 1} className="text-ink-60 hover:text-ink disabled:opacity-30"><ChevronDown size={15} /></button>
                 </div>
-                <div className="w-10 h-10 rounded shrink-0 flex items-center justify-center text-[10px] font-medium" style={{ background: ac.tile, color: ac.ink }}>
-                  {c.image_mode === 'custom' && c.custom_url ? <img src={c.custom_url} alt="" className="w-full h-full object-cover rounded" /> : 'Aa'}
+                <div className="w-10 h-10 rounded-none shrink-0 flex items-center justify-center text-[10px] font-medium" style={{ background: ac.tile, color: ac.ink }}>
+                  {c.image_mode === 'custom' && c.custom_url ? <img src={c.custom_url} alt="" className="w-full h-full object-cover rounded-none" /> : 'Aa'}
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-ink truncate">{c.title || <span className="text-ink-60 italic">Untitled</span>}</p>
@@ -183,7 +183,7 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[88vh]" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[88vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-ivory-dark">
           <h2 className="font-semibold text-ink">{f.id ? 'Edit collection' : 'New collection'}</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink"><X size={18} /></button>
@@ -197,7 +197,7 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
 
           <div>
             <label className="label">Type</label>
-            <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden">
+            <div className="inline-flex rounded-none border border-ivory-dark overflow-hidden">
               {[['filter', 'Use a category'], ['manual', 'Pick products'], ['smart', 'Smart (New In)']].map(([v, lbl]) => (
                 <button key={v} type="button" onClick={() => set('type', v)}
                         className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark ${f.type === v ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory'}`}>{lbl}</button>
@@ -220,15 +220,15 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
             <div>
               <label className="label">Products ({(f.product_ids || []).length} picked)</label>
               <input className="input mb-2" placeholder="Search products…" value={search} onChange={e => setSearch(e.target.value)} />
-              <div className="border border-ivory-dark rounded max-h-52 overflow-y-auto divide-y divide-ivory">
+              <div className="border border-ivory-dark rounded-none max-h-52 overflow-y-auto divide-y divide-ivory">
                 {matches.map(p => {
                   const on = picked.has(p.id)
                   return (
                     <button key={p.id} type="button"
                             onClick={() => set('product_ids', on ? f.product_ids.filter(x => x !== p.id) : [...(f.product_ids || []), p.id])}
                             className={`w-full flex items-center gap-2 px-2 py-1.5 text-left hover:bg-ivory ${on ? 'bg-brand-50' : ''}`}>
-                      <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] ${on ? 'bg-brand-600 border-brand-600 text-white' : 'border-warm-grey'}`}>{on ? '✓' : ''}</span>
-                      {p.image ? <img src={p.image} alt="" className="w-7 h-7 object-contain rounded bg-white border border-ivory" /> : <span className="w-7 h-7 rounded bg-ivory" />}
+                      <span className={`w-4 h-4 rounded-none border flex items-center justify-center text-[10px] ${on ? 'bg-brand-600 border-brand-600 text-white' : 'border-warm-grey'}`}>{on ? '✓' : ''}</span>
+                      {p.image ? <img src={p.image} alt="" className="w-7 h-7 object-contain rounded-none bg-white border border-ivory" /> : <span className="w-7 h-7 rounded-none bg-ivory" />}
                       <span className="text-sm text-ink-80 truncate flex-1">{p.name}</span>
                       <span className="text-[10px] text-ink-60">{p.cat}</span>
                     </button>
@@ -254,7 +254,7 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
             <div className="flex gap-2 flex-wrap">
               {ACCENTS.map(a => (
                 <button key={a.key} type="button" onClick={() => set('accent', a.key)} title={a.label}
-                        className={`w-8 h-8 rounded-md border-2 ${f.accent === a.key ? 'border-ink' : 'border-transparent'}`}
+                        className={`w-8 h-8 rounded-none border-2 ${f.accent === a.key ? 'border-ink' : 'border-transparent'}`}
                         style={{ background: a.tile }}>
                   <span className="text-[10px] font-medium" style={{ color: a.ink }}>Aa</span>
                 </button>
@@ -275,18 +275,18 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
                   <input type="file" accept="image/*" className="hidden" onChange={e => upload(e.target.files?.[0])} />
                 </label>
               )}
-              {f.image_mode === 'custom' && f.custom_url && <img src={f.custom_url} alt="" className="w-10 h-10 object-cover rounded border border-ivory-dark" />}
+              {f.image_mode === 'custom' && f.custom_url && <img src={f.custom_url} alt="" className="w-10 h-10 object-cover rounded-none border border-ivory-dark" />}
             </div>
             <p className="text-xs text-ink-60 mt-1">Custom uses your full-bleed image with the title overlaid (best look — keep a consistent style across tiles). Templated falls back to a representative product photo on the accent colour.</p>
           </div>
 
           {f.image_mode === 'custom' && (
-            <div className="rounded-lg border border-ivory-dark p-3 space-y-3">
+            <div className="rounded-none border border-ivory-dark p-3 space-y-3">
               <p className="text-xs font-medium text-ink-70">Label &amp; overlay</p>
               <div className="flex flex-wrap items-center gap-4">
                 <div>
                   <label className="label">Title colour</label>
-                  <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden">
+                  <div className="inline-flex rounded-none border border-ivory-dark overflow-hidden">
                     {[['white', 'White'], ['black', 'Black']].map(([v, lbl]) => (
                       <button key={v} type="button" onClick={() => set('title_color', v)}
                               className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark ${(f.title_color || 'white') === v ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory'}`}>{lbl}</button>
@@ -344,7 +344,7 @@ function TilePreview({ f, repImage }) {
     const op = f.overlay_color === 'none' ? 0 : (f.overlay_opacity ?? 0.55)
     const shadow = f.title_color === 'black' ? 'none' : '0 1px 3px rgba(0,0,0,0.55)'
     return (
-      <div style={wrap} className="relative rounded-xl overflow-hidden border border-ivory-dark">
+      <div style={wrap} className="relative rounded-none overflow-hidden border border-ivory-dark">
         <div className="aspect-square overflow-hidden">
           <img src={f.custom_url} alt="" className="block w-full h-full object-cover" />
         </div>
@@ -357,7 +357,7 @@ function TilePreview({ f, repImage }) {
     )
   }
   return (
-    <div style={wrap} className="rounded-xl overflow-hidden border border-ivory-dark">
+    <div style={wrap} className="rounded-none overflow-hidden border border-ivory-dark">
       <div className="aspect-square flex items-center justify-center" style={{ background: ac.tile }}>
         {repImage
           ? <img src={repImage} alt="" className="w-[78%] h-[78%] object-contain" />

@@ -175,18 +175,18 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
                 const isMatch = parsed?.crystal_code === code
                 return (
                   <div key={code} onClick={() => onSelect(url)}
-                    className={`group relative cursor-pointer rounded-lg overflow-hidden aspect-square border-2 transition-all ${isSelected ? 'border-brand-500 ring-2 ring-brand-200' : isMatch ? 'border-brand-300' : 'border-transparent hover:border-brand-300'}`}
+                    className={`group relative cursor-pointer rounded-none overflow-hidden aspect-square border-2 transition-all ${isSelected ? 'border-brand-500 ring-2 ring-brand-200' : isMatch ? 'border-brand-300' : 'border-transparent hover:border-brand-300'}`}
                     title={code}>
                     <img src={url} alt="" className="w-full h-full object-cover" />
                     <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button type="button" onClick={e => { e.stopPropagation(); setZoomUrl(url) }}
                         title="Enlarge"
-                        className="bg-black/50 hover:bg-black/70 text-white rounded p-1">
+                        className="bg-black/50 hover:bg-black/70 text-white rounded-none p-1">
                         <ZoomIn size={12} />
                       </button>
                       <button type="button" onClick={e => { e.stopPropagation(); downloadColourImage(url, `${variant?.plating_code || ''}${code}-retouch`) }}
                         title="Download to retouch, then Upload the corrected version for this colour"
-                        className="bg-black/50 hover:bg-black/70 text-white rounded p-1">
+                        className="bg-black/50 hover:bg-black/70 text-white rounded-none p-1">
                         <Download size={12} />
                       </button>
                     </div>
@@ -220,12 +220,12 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
                 {galleryPickerOpen && (
                   <>
                     <div className="fixed inset-0 z-[70]" onClick={() => setGalleryPickerOpen(false)} />
-                    <div className="absolute z-[80] top-8 left-0 w-56 bg-white border border-warm-grey rounded-lg shadow-lg p-2 space-y-1">
+                    <div className="absolute z-[80] top-8 left-0 w-56 bg-white border border-warm-grey rounded-none shadow-lg p-2 space-y-1">
                       <p className="text-[11px] text-ink-60 mb-1">Use an existing gallery photo</p>
                       <div className="grid grid-cols-4 gap-1">
                         {(product.gallery || []).map((g, gi) => g.url && (
                           <button key={gi} type="button" onClick={() => onPickGallery(g.url)}
-                            className="relative aspect-square bg-white border border-warm-grey rounded overflow-hidden hover:border-brand-400"
+                            className="relative aspect-square bg-white border border-warm-grey rounded-none overflow-hidden hover:border-brand-400"
                             title={g.caption || 'Use this image'}>
                             <img src={g.url} alt="" className="w-full h-full object-contain p-0.5" />
                           </button>
@@ -250,11 +250,11 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
               looked like barely more than the thumbnail (reported live,
               2026-08-23). Force a real target size instead. */}
           <img src={zoomUrl} alt=""
-               className="rounded-lg object-contain"
+               className="rounded-none object-contain"
                style={{ width: 'min(85vw, 720px)', height: 'min(85vh, 720px)' }}
                onClick={e => e.stopPropagation()} />
           <button type="button" onClick={() => setZoomUrl(null)}
-            className="absolute top-4 right-4 text-white bg-white/15 hover:bg-white/25 rounded-lg p-2" aria-label="Close">
+            className="absolute top-4 right-4 text-white bg-white/15 hover:bg-white/25 rounded-none p-2" aria-label="Close">
             <X size={18} />
           </button>
         </div>
