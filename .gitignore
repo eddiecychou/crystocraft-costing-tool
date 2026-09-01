@@ -54,3 +54,14 @@ qa/*compare*.png
 qa/*-empty.png
 qa/*-desktop.png
 qa/*-375.png
+
+# design-system/ reference bundles: keep the TEXT (tokens, component specs,
+# guidelines) in git; the logo/screenshot binaries are duplicates of
+# src/assets/ and were tripping Netlify's secret scanner (a byte sequence in
+# the JPEG data collides with an env-var value). Kept on disk, not tracked.
+design-system/**/*.jpg
+design-system/**/*.jpeg
+design-system/**/*.png
+design-system/**/*.webp
+design-system/**/*.gif
+design-system/**/.thumbnail

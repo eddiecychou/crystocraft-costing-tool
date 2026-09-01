@@ -5,8 +5,15 @@ last:
 
 | Folder | What it is |
 |---|---|
-| `2026-V2/` | The "2026 V2" export — logos, tokens, component specs, guidelines, templates, screenshots. |
+| `2026-V2/` | The "2026 V2" export — tokens, component specs, guidelines, templates. |
 | `V2.5/` | The V2.5 export — same shape as 2026-V2 plus a few extras (`thumbnail.html`, a composition guideline card, a `templates/proposal` set). The palette/typography/spacing values in `tailwind.config.js` and `src/index.css` were hand-copied from **this** bundle's `tokens/*.css`. |
+
+> **Binaries are not tracked.** The `assets/logos/`, `uploads/`, `screenshots/`
+> and `.thumbnail` files are gitignored — they're duplicates of the real logo
+> assets in `src/assets/`, and a byte sequence inside the logo JPEGs collides
+> with an env-var value, which trips Netlify's secret scanner. They stay on
+> disk locally; only the text (tokens, component `.jsx`/`.d.ts`, guidelines
+> `.html`, `.md`) is in git.
 
 ## These are NOT what the app runs on
 
