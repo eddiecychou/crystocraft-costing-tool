@@ -364,8 +364,14 @@ export default function CataloguePreview() {
     })
   }, [id])
 
-  if (loading) return <div className="p-6 text-ink-60">Loading…</div>
-  if (!catalogue) return <div className="p-6 text-ink-60">Catalogue not found.</div>
+  if (loading) return <div className="p-4 md:p-6"><p className="eyebrow text-ink-40 py-10 text-center">Loading…</p></div>
+  if (!catalogue) return (
+    <div className="p-4 md:p-6 text-center py-16">
+      <p className="eyebrow text-ink-40 mb-1.5">Not found</p>
+      <p className="text-sm text-ink-60">This catalogue no longer exists.</p>
+      <Link to="/catalogues" className="text-brand-600 text-sm mt-3 inline-block">← Catalogues</Link>
+    </div>
+  )
 
   // Build pages: auto-detect layout from image count
   const pages = []
@@ -405,7 +411,7 @@ export default function CataloguePreview() {
   return (
     <>
       {/* Print controls — hidden when printing */}
-      <div className="no-print fixed top-0 left-0 right-0 z-50 bg-white border-b border-warm-grey px-4 py-3 flex items-center justify-between shadow-sm">
+      <div className="no-print fixed top-0 left-0 right-0 z-50 bg-white border-b border-warm-grey px-4 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Link to={`/catalogues/${id}`} className="text-sm text-brand-600 hover:underline">← Back to Builder</Link>
           <span className="text-platinum">|</span>

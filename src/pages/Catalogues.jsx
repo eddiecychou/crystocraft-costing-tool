@@ -6,8 +6,8 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import { BookOpen, X } from 'lucide-react'
 
 const STATUS_STYLES = {
-  draft:     'bg-ivory-dark text-ink-70',
-  published: 'bg-green-100 text-green-700',
+  draft:     'badge bg-ivory-dark text-ink-70',
+  published: 'badge bg-green-100 text-green-700',
 }
 
 export default function Catalogues({ embedded = false }) {
@@ -28,23 +28,24 @@ export default function Catalogues({ embedded = false }) {
     setConfirmDelete(null)
   }
 
-  if (loading) return <div className="p-6 text-ink-60">Loading…</div>
+  if (loading) return <div className="p-4 md:p-6 max-w-4xl"><p className="eyebrow text-ink-40 py-10 text-center">Loading…</p></div>
 
   return (
     <div className="p-4 md:p-6 max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between gap-4 mb-6">
         <div>
           {!embedded && <h1 className="text-2xl text-ink">Catalogues</h1>}
-          <p className="text-sm text-ink-60 mt-0.5">Seasonal product collections for customers</p>
+          <p className="text-sm text-ink-60 mt-1">Seasonal product collections for customers</p>
         </div>
-        <Link to="/catalogues/new" className="btn-primary">+ New Catalogue</Link>
+        <Link to="/catalogues/new" className="btn-primary shrink-0">+ New Catalogue</Link>
       </div>
 
       {catalogues.length === 0 ? (
         <div className="card p-10 text-center">
-          <BookOpen size={36} strokeWidth={1.25} className="mx-auto mb-3 text-platinum" />
-          <p className="text-ink-60 text-sm">No catalogues yet. Create your first one.</p>
-          <Link to="/catalogues/new" className="btn-primary mt-4 inline-block">+ New Catalogue</Link>
+          <BookOpen size={32} strokeWidth={1.25} className="mx-auto mb-3 text-platinum" />
+          <p className="eyebrow text-ink-40 mb-1.5">Nothing yet</p>
+          <p className="text-sm text-ink-60">Create your first customer-facing catalogue.</p>
+          <Link to="/catalogues/new" className="text-brand-600 text-sm mt-3 inline-block">+ New Catalogue</Link>
         </div>
       ) : (
         <div className="space-y-3">
@@ -52,20 +53,21 @@ export default function Catalogues({ embedded = false }) {
             <div key={cat.id} className="card p-4 flex items-center gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h2 className=" text-ink truncate">{cat.name}</h2>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[cat.status] || STATUS_STYLES.draft}`}>
+                  <p className="text-sm text-ink truncate">{cat.name}</p>
+                  <span className={STATUS_STYLES[cat.status] || STATUS_STYLES.draft}>
                     {cat.status || 'draft'}
                   </span>
                 </div>
-                {cat.season && <p className="text-xs text-ink-60 mt-0.5">{cat.season}</p>}
-                {cat.tagline && <p className="text-sm text-ink-60 mt-1 truncate">{cat.tagline}</p>}
+                {cat.season && <p className="text-xs text-ink-60 mt-1">{cat.season}</p>}
+                {cat.tagline && <p className="text-xs text-ink-60 mt-1 truncate">{cat.tagline}</p>}
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <Link to={`/catalogues/${cat.id}/preview`} className="btn-secondary text-xs px-3 py-1.5">Preview</Link>
-                <Link to={`/catalogues/${cat.id}`} className="btn-primary text-xs px-3 py-1.5">Edit</Link>
+                <Link to={`/catalogues/${cat.id}`} className="btn-secondary text-xs px-3 py-1.5">Edit</Link>
                 <button
                   onClick={() => setConfirmDelete(cat)}
-                  className="text-ink-60 hover:text-red-500 px-2 py-1.5"
+                  aria-label={`Delete ${cat.name}`}
+                  className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-none text-ink-60 hover:text-red-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
                 ><X size={15} /></button>
               </div>
             </div>

@@ -68,7 +68,7 @@ export default function CatalogueForm() {
     }
   }
 
-  if (fetching) return <div className="p-6 text-ink-60">Loading…</div>
+  if (fetching) return <div className="p-4 md:p-6 max-w-lg"><p className="eyebrow text-ink-40 py-10 text-center">Loading…</p></div>
 
   return (
     <div className="p-4 md:p-6 max-w-lg">
@@ -78,8 +78,8 @@ export default function CatalogueForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Basic info */}
         <div className="card p-6 space-y-5">
+          <p className="eyebrow text-bronze">Details</p>
           <div>
             <label className="label">Catalogue Name *</label>
             <input className="input" value={form.name} onChange={set('name')} required placeholder="e.g. Q3 2026 Collection" />
@@ -101,9 +101,8 @@ export default function CatalogueForm() {
           </div>
         </div>
 
-        {/* Cover page design */}
         <div className="card p-6 space-y-5">
-          <h2 className=" text-ink text-sm">Cover Page Design</h2>
+          <p className="eyebrow text-bronze">Cover page design</p>
 
           {/* Background image upload — single hidden input, triggered by button/label */}
           <input
@@ -168,7 +167,7 @@ export default function CatalogueForm() {
                   className={`flex items-center gap-2 px-4 py-2 rounded-none border-2 text-sm capitalize transition-all ${
  form.overlay_color === color
                       ? 'border-brand-400 bg-brand-50 text-brand-700 font-medium'
-                      : 'border-warm-grey text-ink-60 hover:border-warm-grey'
+                      : 'border-warm-grey text-ink-60 hover:border-ink-60'
                   }`}
                 >
                   <span
@@ -184,15 +183,15 @@ export default function CatalogueForm() {
           {/* Overlay opacity */}
           <div>
             <label className="label">
-              Overlay Opacity — <span className="text-brand-600 font-semibold">{Math.round(form.overlay_opacity * 100)}%</span>
+              Overlay Opacity — <span className="text-brand-600">{Math.round(form.overlay_opacity * 100)}%</span>
             </label>
             <input
               type="range" min="0" max="0.9" step="0.05"
               value={form.overlay_opacity}
               onChange={e => setVal('overlay_opacity', parseFloat(e.target.value))}
-              className="w-full accent-amber-500"
+              className="w-full accent-brand-600"
             />
-            <div className="flex justify-between text-xs text-ink-60 mt-0.5">
+            <div className="flex justify-between text-xs text-ink-60 mt-1">
               <span>0% (fully transparent)</span>
               <span>90% (nearly opaque)</span>
             </div>

@@ -20,10 +20,10 @@ import { MARKETING_DESC_MAXLEN } from '../constants'
 
 // ── Auto layout label ─────────────────────────────────────────────────────────
 function layoutLabel(count) {
-  if (count === 0) return { text: 'No images', style: 'bg-ivory-dark text-ink-60' }
-  if (count >= 5)  return { text: `Full page · ${count} images`, style: 'bg-brand-50 text-brand-600' }
-  if (count <= 3)  return { text: `Quarter page · ${count} image${count > 1 ? 's' : ''}`, style: 'bg-purple-50 text-purple-600' }
-  return { text: `Half page · ${count} images`, style: 'bg-amber-50 text-amber-600' }
+  if (count === 0) return { text: 'No images', style: 'badge bg-ivory-dark text-ink-60' }
+  if (count >= 5)  return { text: `Full page · ${count} images`, style: 'badge bg-brand-50 text-brand-600' }
+  if (count <= 3)  return { text: `Quarter page · ${count} image${count > 1 ? 's' : ''}`, style: 'badge bg-purple-50 text-purple-600' }
+  return { text: `Half page · ${count} images`, style: 'badge bg-amber-50 text-amber-600' }
 }
 
 // ── Single draggable image in the selected strip ──────────────────────────────
@@ -73,7 +73,7 @@ function ImageSequencer({ itemId, selectedImages, allImages, onUpdate }) {
     <div className="space-y-2">
       {/* Layout badge */}
       <div className="flex items-center gap-2">
-        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${layoutStyle}`}>{layoutText}</span>
+        <span className={layoutStyle}>{layoutText}</span>
         {selectedImages.length > 0 && (
           <span className="inline-flex items-center gap-1 text-xs text-ink-60"><Star size={11} className="fill-current text-amber-400" />first image is hero · drag to reorder</span>
         )}
@@ -126,7 +126,7 @@ function ImageSequencer({ itemId, selectedImages, allImages, onUpdate }) {
       )}
 
       {allImages.length === 0 && (
-        <p className="text-xs text-platinum italic">No images uploaded for this product yet.</p>
+        <p className="text-xs text-platinum">No images uploaded for this product yet.</p>
       )}
     </div>
   )
@@ -164,12 +164,12 @@ function CatalogueItem({ item, onUpdate, onDelete }) {
 
         {/* Product info */}
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-ink text-sm truncate">{item.product_name}</p>
+          <p className="text-sm text-ink truncate">{item.product_name}</p>
           <p className="text-xs text-ink-60">{item.product_category}</p>
         </div>
 
         {/* Delete */}
-        <button onClick={() => onDelete(item.id)} className="text-platinum hover:text-red-400 shrink-0"><X size={15} /></button>
+        <button onClick={() => onDelete(item.id)} aria-label="Remove product" className="min-h-[32px] min-w-[32px] flex items-center justify-center rounded-none text-platinum hover:text-red-400 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"><X size={15} /></button>
       </div>
 
       {/* Image sequencer */}
@@ -182,7 +182,7 @@ function CatalogueItem({ item, onUpdate, onDelete }) {
 
       {/* Marketing description */}
       <div>
-        <label className="text-xs text-ink-60 block mb-1">Marketing Description</label>
+        <label className="label">Marketing description</label>
         <textarea
           className="input text-sm resize-none"
           rows={2}
@@ -225,7 +225,7 @@ function ProductPicker({ existingIds, onAdd, onClose }) {
       <div className="absolute inset-0 bg-black/40" />
       <div className="relative bg-white rounded-none shadow-xl w-full max-w-md flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="p-4 border-b border-warm-grey">
-          <h3 className=" text-ink">Add Product to Catalogue</h3>
+          <h3 className="text-ink">Add product to catalogue</h3>
           <div className="flex gap-1 mt-2 p-0.5 bg-ivory-dark rounded-none">
             {PRODUCT_SOURCES.map(s => (
               <button
@@ -247,7 +247,7 @@ function ProductPicker({ existingIds, onAdd, onClose }) {
         </div>
         <div className="overflow-y-auto flex-1 p-2">
           {filtered.length === 0 && (
-            <p className="text-sm text-ink-60 text-center py-8">No products found</p>
+            <p className="eyebrow text-ink-40 text-center py-8">No matches</p>
           )}
           {filtered.map(p => (
             <button
@@ -348,12 +348,12 @@ export default function CatalogueDetail() {
     ))
   }
 
-  if (!catalogue) return <div className="p-6 text-ink-60">Loading…</div>
+  if (!catalogue) return <div className="p-4 md:p-6 max-w-3xl"><p className="eyebrow text-ink-40 py-10 text-center">Loading…</p></div>
 
   return (
     <div className="p-4 md:p-6 max-w-3xl">
       {/* Header */}
-      <div className="flex items-start justify-between mb-2">
+      <div className="flex items-start justify-between gap-4 mb-4">
         <div>
           <Link to="/catalogues" className="text-sm text-brand-600 hover:underline">← Catalogues</Link>
           <h1 className="text-xl text-ink mt-1">{catalogue.name}</h1>
@@ -387,8 +387,9 @@ export default function CatalogueDetail() {
       </DndContext>
 
       {items.length === 0 && (
-        <div className="card p-10 text-center text-ink-60 text-sm">
-          No products yet — add some below.
+        <div className="card p-10 text-center">
+          <p className="eyebrow text-ink-40 mb-1.5">Empty catalogue</p>
+          <p className="text-sm text-ink-60">Add products with the button below, then curate images and copy.</p>
         </div>
       )}
 
@@ -414,22 +415,22 @@ export default function CatalogueDetail() {
 
         return (
           <div className="mt-4 card p-4 space-y-2">
-            <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Page Summary</p>
+            <p className="eyebrow text-bronze">Page summary</p>
             <div className="flex flex-wrap gap-2 text-xs">
               {quarterItems > 0 && (
-                <span className="px-2 py-1 rounded-full bg-purple-50 text-purple-600">
+                <span className="badge bg-purple-50 text-purple-600">
                   {quarterPages} quarter-page{quarterPages > 1 ? 's' : ''} · {quarterItems} product{quarterItems > 1 ? 's' : ''}
                   {quarterBlanks > 0 && <span className="ml-1 text-purple-400">({quarterBlanks} blank slot{quarterBlanks > 1 ? 's' : ''})</span>}
                 </span>
               )}
               {halfItems > 0 && (
-                <span className="px-2 py-1 rounded-full bg-amber-50 text-amber-600">
+                <span className="badge bg-amber-50 text-amber-600">
                   {halfPages} half-page{halfPages > 1 ? 's' : ''} · {halfItems} product{halfItems > 1 ? 's' : ''}
                   {halfBlanks > 0 && <span className="ml-1 text-amber-400">(1 blank slot)</span>}
                 </span>
               )}
               {fullItems > 0 && (
-                <span className="px-2 py-1 rounded-full bg-brand-50 text-brand-600">
+                <span className="badge bg-brand-50 text-brand-600">
                   {fullItems} full-page{fullItems > 1 ? 's' : ''}
                 </span>
               )}
