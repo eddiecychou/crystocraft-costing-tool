@@ -30,6 +30,7 @@ of record, one function at a time.
 | `docs/skills/MARKETING-WORKFLOW.md` | Daily Drafts, campaigns, blog→WordPress/SEO, the "Artgen" image-retouch family + Product-Truth rule |
 | `docs/skills/SOURCING-HUB.md` | Suppliers, sourcing links, per-channel comms capture (email/WhatsApp/Alibaba/WeChat) |
 | `docs/skills/LESSONS-LEARNED.md` | Every significant failure + its verified permanent fix (Symptom / Root cause / Fix) |
+| `docs/skills/DESIGN-SYSTEM.md` | The written spec of the shipped design system (V2.5) — token layer, component inventory + state matrix, WCAG contrast, drift baseline, V3 open decisions. `design-system/` holds the exported reference bundles. |
 | `INDEX.md` | Pointer into `docs/skills/` (kept so old links resolve) |
 | `PROJECT-PLAN.md` | The running record. Newest cycle first. **"Where V8.12 starts" is the current entry point.** |
 | `JES-RETIREMENT-PLAN.md` | The nine-step route to switching JES off, in plain language |

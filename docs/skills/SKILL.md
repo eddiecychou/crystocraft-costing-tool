@@ -69,7 +69,8 @@ wins on *facts*; skill wins on *rules and lessons*.
 | **`ARCHITECTURE-RULES.md`** | Hard boundaries: isolation, RBAC, data lifecycles, snapshots, verify/deploy | Any change to auth, rules, roles, or cross-collection data |
 | **`MARKETING-WORKFLOW.md`** | Daily Drafts, campaigns, blog→WordPress/SEO, image retouch ("Artgen") | Touching outreach, content, or product-image editing |
 | **`SOURCING-HUB.md`** | Suppliers, 1688/Taobao/Alibaba links, comms capture | Touching suppliers, quotes, or message ingestion |
-| **`UI-POLISH.md`** | The Crystocraft visual language (square/flat/hairline), storefront-vs-OpsCenter treatment, the measurable Second-Pass checklist | Any UI/layout/styling change — before "it looks fine" |
+| **`UI-POLISH.md`** | The Crystocraft visual language (square/flat/hairline), storefront-vs-OpsCenter treatment, the measurable Second-Pass checklist, §7 Mobile | Any UI/layout/styling change — before "it looks fine" |
+| **`DESIGN-SYSTEM.md`** | The written spec of what's shipped (V2.5): token layer, component inventory + state matrix, WCAG contrast, the OpsCenter drift baseline, the V3 open-decision list | Changing tokens / component classes, or any V2.5→V3 work |
 | **`LESSONS-LEARNED.md`** | Every significant failure + permanent fix | "Fixing" anything familiar — and after any new incident |
 
 **Reference layer — repo root (authoritative on facts):**
