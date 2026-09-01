@@ -3,7 +3,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import { myOrderHistory } from '../customerOrderHistoryApi'
 import { mergeSalesInvoiceHistory } from '../domain/salesInvoiceHistory'
-import { ClipboardList, Receipt, ChevronDown, ChevronUp } from 'lucide-react'
+import { Receipt, ChevronDown, ChevronUp } from 'lucide-react'
 
 const fmtDate = d => {
   if (!d) return '—'
@@ -91,34 +91,37 @@ export default function OrderHistoryPage({ profile }) {
 
   return (
     <div>
-      <div className="flex items-center gap-2 mb-1">
-        <ClipboardList size={20} className="text-brand-500" />
-        <h1 className="text-lg font-semibold text-ink">My Orders</h1>
-      </div>
+      <h1 className="text-xl md:text-2xl text-ink mb-1">My Orders</h1>
       <p className="text-sm text-ink-60 mb-5">Your order and invoice history with Crystocraft.</p>
 
       <div>
         <button type="button" onClick={() => setInvoicesOpen(v => !v)}
-                className="w-full flex items-center justify-between mb-3 text-left">
-          <h2 className="text-sm font-semibold text-ink-70">Sales Invoice History</h2>
+                className="w-full flex items-center justify-between mb-3 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
+          <h2 className="eyebrow text-bronze">Sales Invoice History</h2>
           {invoicesOpen ? <ChevronUp size={16} className="text-ink-40" /> : <ChevronDown size={16} className="text-ink-40" />}
         </button>
         {invoicesOpen && (
           historyLoading ? (
-            <p className="text-sm text-ink-40 py-6 text-center">Loading…</p>
+            <p className="text-sm text-ink-60 py-6 text-center">Loading…</p>
           ) : erpShared && invoiceHistory.length === 0 ? (
-            <div className="bg-white rounded-xl border border-ivory-dark p-6 text-center text-sm text-ink-60">
-              Your invoice history isn't linked to an individual account yet — contact us if you'd like a copy of a past invoice.
+            <div className="card p-6 text-center">
+              <p className="eyebrow text-ink-40 mb-1.5">Not linked to this account</p>
+              <p className="text-sm text-ink-60">Your invoice history isn't linked to an individual account yet — contact us if you'd like a copy of a past invoice.</p>
             </div>
           ) : invoiceHistory.length === 0 ? (
-            <div className="bg-white rounded-xl border border-ivory-dark p-6 text-center text-sm text-ink-60">
-              No invoices on file yet.
+            <div className="card p-6 text-center">
+              <p className="eyebrow text-ink-40 mb-1.5">Nothing yet</p>
+              <p className="text-sm text-ink-60">No invoices on file yet.</p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-ivory-dark divide-y divide-ivory-dark">
-              {invoiceHistory.slice(0, invoicesShown).map(r => (
-                <div key={r.key} onClick={() => window.open(`/shop/invoice/${r.key}`, '_blank', 'noopener')}
-                     className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-ivory transition-colors">
+            <div className="card divide-y divide-ivory-dark">
+              {invoiceHistory.slice(0, invoicesShown).map(r => {
+                const openInvoice = () => window.open(`/shop/invoice/${r.key}`, '_blank', 'noopener')
+                return (
+                <div key={r.key} onClick={openInvoice}
+                     role="button" tabIndex={0}
+                     onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openInvoice() } }}
+                     className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-ivory transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <Receipt size={14} className="text-ink-30 shrink-0" />
                     <div className="min-w-0">
@@ -138,10 +141,11 @@ export default function OrderHistoryPage({ profile }) {
                         than no badge at all, which read as "not confirmed"
                         next to a JES row's real CONFIRMED pill (found live,
                         2026-08-21). */}
-                    <span className="badge bg-gray-100 text-gray-600">{r.status || 'CONFIRMED'}</span>
+                    <span className="badge bg-ivory-dark text-ink-60">{r.status || 'CONFIRMED'}</span>
                   </div>
                 </div>
-              ))}
+                )
+              })}
               {invoiceHistory.length > invoicesShown && (
                 <button type="button" onClick={() => setInvoicesShown(n => n + 20)}
                         className="w-full text-xs text-brand-600 hover:text-brand-800 text-center py-2.5">
