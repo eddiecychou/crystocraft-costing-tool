@@ -51,3 +51,6 @@ qa/*-after-*.png
 qa/*-before.png
 qa/*-after.png
 qa/*compare*.png
+qa/*-empty.png
+qa/*-desktop.png
+qa/*-375.png
