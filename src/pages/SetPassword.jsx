@@ -86,7 +86,7 @@ export default function SetPassword() {
   if (checkError) {
     return (
       <Shell>
-        <h2 className="text-lg font-semibold text-ink mb-2">This link isn't available</h2>
+        <h2 className="text-lg text-ink mb-2">This link isn't available</h2>
         <p className="text-sm text-ink-70">{checkError}</p>
       </Shell>
     )
@@ -95,7 +95,7 @@ export default function SetPassword() {
   if (done) {
     return (
       <Shell>
-        <h2 className="text-lg font-semibold text-ink mb-2">Password set</h2>
+        <h2 className="text-lg text-ink mb-2">Password set</h2>
         <p className="text-sm text-ink-70">You're signed in — taking you to the portal…</p>
       </Shell>
     )
@@ -103,7 +103,7 @@ export default function SetPassword() {
 
   return (
     <Shell>
-      <h2 className="text-lg font-semibold text-ink mb-2">Set your password</h2>
+      <h2 className="text-lg text-ink mb-2">Set your password</h2>
       <p className="text-sm text-ink-70 mb-6">for <strong>{email}</strong></p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

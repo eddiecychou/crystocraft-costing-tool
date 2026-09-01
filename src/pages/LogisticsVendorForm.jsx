@@ -81,7 +81,7 @@ export default function LogisticsVendorForm() {
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
         <Link to="/logistics" className="text-sm text-brand-600 hover:underline">← Logistics</Link>
-        <h1 className="text-2xl font-bold text-ink mt-1">{isEdit ? 'Edit Vendor' : 'New Logistics Vendor'}</h1>
+        <h1 className="text-2xl text-ink mt-1">{isEdit ? 'Edit Vendor' : 'New Logistics Vendor'}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="card p-6 space-y-6">
@@ -105,7 +105,7 @@ export default function LogisticsVendorForm() {
               <button
                 key={m.value} type="button" onClick={() => toggle('modes', m.value)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                  form.modes.includes(m.value)
+ form.modes.includes(m.value)
                     ? 'bg-brand-600 text-white border-brand-600'
                     : 'bg-white text-ink-70 border-warm-grey hover:border-brand-400'
                 }`}
@@ -142,7 +142,7 @@ export default function LogisticsVendorForm() {
                     <button
                       key={s.value} type="button" onClick={() => setCov(i, 'strength', s.value)}
                       className={`px-2.5 py-1 rounded-full text-2xs font-medium border transition-colors ${
-                        c.strength === s.value ? s.style + ' ring-1 ring-inset ring-current' : 'bg-white text-ink-60 border-warm-grey'
+ c.strength === s.value ? s.style + ' ring-1 ring-inset ring-current' : 'bg-white text-ink-60 border-warm-grey'
                       }`}
                     >
                       {s.label}
@@ -154,7 +154,7 @@ export default function LogisticsVendorForm() {
                     <button
                       key={m.value} type="button" onClick={() => toggleCovMode(i, m.value)}
                       className={`px-2 py-0.5 rounded-full text-2xs border transition-colors ${
-                        c.modes.includes(m.value)
+ c.modes.includes(m.value)
                           ? 'bg-ink text-white border-ink'
                           : 'bg-white text-ink-60 border-warm-grey hover:border-ink-60'
                       }`}
@@ -185,7 +185,7 @@ export default function LogisticsVendorForm() {
                 <button
                   key={t} type="button" onClick={() => toggle('incoterms_supported', t)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                    form.incoterms_supported.includes(t)
+ form.incoterms_supported.includes(t)
                       ? 'bg-brand-600 text-white border-brand-600'
                       : 'bg-white text-ink-70 border-warm-grey hover:border-brand-400'
                   }`}

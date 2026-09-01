@@ -94,7 +94,7 @@ function ErpCrossCheck({ check, onUse }) {
 
   return (
     <div className={`mt-3 rounded-none border px-3 py-2.5 text-xs ${
-      clean ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'
+ clean ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'
     }`}>
       <div className="flex items-center gap-1.5 font-semibold mb-1">
         <Database size={13} />
@@ -860,7 +860,7 @@ export default function ShipmentForm() {
       <div className="mb-4">
         <Link to="/shipments" className="text-sm text-brand-600 hover:underline">← Order Listing</Link>
         <div className="flex items-start justify-between gap-3 mt-1">
-          <h1 className="text-2xl font-bold text-ink">
+          <h1 className="text-2xl text-ink">
             {isEdit
               ? (header.erp_si_no || header.uc_no || 'Order Detail')
               : (isDirect ? 'Direct Invoice' : 'New Order')}
@@ -916,7 +916,7 @@ export default function ShipmentForm() {
               type="button"
               onClick={() => setTab(t.v)}
               className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                tab === t.v
+ tab === t.v
                   ? 'border-brand-600 text-brand-600'
                   : 'border-transparent text-ink-60 hover:text-ink-80'
               }`}
@@ -956,7 +956,7 @@ export default function ShipmentForm() {
           <div className="card p-4">
             <label
               className={`flex flex-col items-center justify-center border-2 border-dashed rounded-none p-6 cursor-pointer transition-colors
-                ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
+ ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
               onDragOver={e => { e.preventDefault(); setDragOver(true) }}
               onDragLeave={() => setDragOver(false)} onDrop={handleDrop}>
               <span className="text-ink-60 mb-1">{dragOver ? <FolderOpen size={22} /> : <FileInput size={22} />}</span>
@@ -984,7 +984,7 @@ export default function ShipmentForm() {
             3-column grid, which was truncating the Revision placeholder and
             wrapping "+ New Rev" onto two lines. */}
         <div className="card p-4 md:p-6 space-y-3">
-          <h2 className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Customer</h2>
+          <h2 className="text-xs text-ink-60 uppercase tracking-wide">Customer</h2>
           <div>
             <label className="label">Customer</label>
             <select className="input" value={customers.find(c => c.id === header.customer_id) ? header.customer_id : ''} onChange={onCustomer}>
@@ -1009,7 +1009,7 @@ export default function ShipmentForm() {
         </div>
 
         <div className="card p-4 md:p-6 space-y-3">
-          <h2 className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Document References</h2>
+          <h2 className="text-xs text-ink-60 uppercase tracking-wide">Document References</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div>
               <label className="label flex items-center justify-between gap-2">
@@ -1081,7 +1081,7 @@ export default function ShipmentForm() {
         </div>
 
         <div className="card p-4 md:p-6 space-y-3">
-          <h2 className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Schedule &amp; Terms</h2>
+          <h2 className="text-xs text-ink-60 uppercase tracking-wide">Schedule &amp; Terms</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <label className="label">Order Date</label>
@@ -1132,7 +1132,7 @@ export default function ShipmentForm() {
         </div>
 
         <div className="card p-4 md:p-6 space-y-3">
-          <h2 className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Destination</h2>
+          <h2 className="text-xs text-ink-60 uppercase tracking-wide">Destination</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div><label className="label">Dest. Country</label><input className="input" value={header.destination.country} onChange={setDest('country')} placeholder="Germany" /></div>
             <div><label className="label">Dest. City</label><input className="input" value={header.destination.city} onChange={setDest('city')} placeholder="Hamburg" /></div>
@@ -1148,7 +1148,7 @@ export default function ShipmentForm() {
         {(
           <div className="card p-4 md:p-6">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-ink-80">Line items &amp; reconciliation</h2>
+              <h2 className="text-sm text-ink-80">Line items &amp; reconciliation</h2>
               <div className="flex items-center gap-3">
                 <button type="button" onClick={() => setLines(ls => rematchLines(ls, rangeProducts))}
                   className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1"
@@ -1232,7 +1232,7 @@ export default function ShipmentForm() {
                           {LINE_TYPES.map(lt => (
                             <button key={lt.value} type="button" onClick={() => classify(i, lt.value)}
                               className={`px-2.5 py-1 rounded-full text-2xs font-medium border transition-colors ${
-                                l.line_type === lt.value ? lt.style + ' border-current' : 'bg-white text-ink-60 border-warm-grey hover:border-ink-60'
+ l.line_type === lt.value ? lt.style + ' border-current' : 'bg-white text-ink-60 border-warm-grey hover:border-ink-60'
                               }`}>
                               {lt.label}
                             </button>
@@ -1270,7 +1270,7 @@ export default function ShipmentForm() {
           const fmt = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
           return (
             <div className="card p-4">
-              <h2 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-3">Order Totals</h2>
+              <h2 className="text-xs text-ink-60 uppercase tracking-wide mb-3">Order Totals</h2>
               <div className="space-y-1.5 text-sm">
                 {/* Computed subtotal vs PI stated */}
                 <div className="flex justify-between items-center">

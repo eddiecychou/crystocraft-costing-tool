@@ -121,7 +121,7 @@ export default function ProductForm() {
   return (
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-ink">{isEdit ? 'Edit Product' : 'New Product'}</h1>
+        <h1 className="text-2xl text-ink">{isEdit ? 'Edit Product' : 'New Product'}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="card p-6 space-y-5">

@@ -253,7 +253,7 @@ export default function Dashboard() {
 
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-ink">Dashboard</h1>
+          <h1 className="text-xl md:text-2xl text-ink">Dashboard</h1>
           <p className="text-sm text-ink-60 mt-0.5">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
         <button
@@ -322,7 +322,7 @@ export default function Dashboard() {
             key={value}
             onClick={() => setCategoryFilter(f => f === value ? null : value)}
             className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-              categoryFilter === value
+ categoryFilter === value
                 ? 'bg-ink border-ink text-white'
                 : 'bg-white border-warm-grey text-ink-70 hover:border-ink-60'
             }`}
@@ -333,7 +333,7 @@ export default function Dashboard() {
         <button
           onClick={() => setRetailFilter(v => !v)}
           className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-            retailFilter
+ retailFilter
               ? 'bg-ink border-ink text-white'
               : 'bg-white border-warm-grey text-ink-70 hover:border-ink-60'
           }`}
@@ -354,7 +354,7 @@ export default function Dashboard() {
       {activeFilter && (
         <div className="card mb-6 ring-2 ring-brand-200">
           <div className="px-5 py-4 border-b border-warm-grey flex items-center justify-between">
-            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink-80">
+            <h2 className="flex items-center gap-1.5 text-sm text-ink-80">
               {(() => { const I = filterConfig[activeFilter].Icon; return I ? <I size={15} /> : null })()}
               {filterConfig[activeFilter].title}
               {(categoryFilter || retailFilter) && (
@@ -482,7 +482,7 @@ export default function Dashboard() {
       {!activeFilter && (
         <div className="card mb-6">
           <div className="px-5 py-4 border-b border-warm-grey">
-            <h2 className="text-sm font-semibold text-ink-80">Priority Follow-ups</h2>
+            <h2 className="text-sm text-ink-80">Priority Follow-ups</h2>
           </div>
           {priorityFollowUps.length === 0 ? (
             <p className="text-sm text-ink-60 text-center py-8">
@@ -553,7 +553,7 @@ export default function Dashboard() {
       {personalWaCustomers.length > 0 && (
         <div className="card mb-4">
           <div className="px-5 py-4 border-b border-warm-grey">
-            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink-80"><Smartphone size={15} />Personal WhatsApp Contacts</h2>
+            <h2 className="flex items-center gap-1.5 text-sm text-ink-80"><Smartphone size={15} />Personal WhatsApp Contacts</h2>
             <p className="text-xs text-ink-60 mt-0.5">These contacts use personal WhatsApp — check your personal phone</p>
           </div>
           <ul className="divide-y divide-warm-grey">

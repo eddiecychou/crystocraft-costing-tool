@@ -84,7 +84,7 @@ export default function ComponentForm() {
     <div className="p-4 md:p-6 max-w-xl">
       <div className="mb-6">
         <Link to={`/products/${productId}`} className="text-sm text-brand-600 hover:underline">← {product?.name || '…'}</Link>
-        <h1 className="text-2xl font-bold text-ink mt-1">{isEdit ? 'Edit Component' : 'New Component'}</h1>
+        <h1 className="text-2xl text-ink mt-1">{isEdit ? 'Edit Component' : 'New Component'}</h1>
       </div>
 
       {/* Use Product Info banner — only on new component */}

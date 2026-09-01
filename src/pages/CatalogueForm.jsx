@@ -74,7 +74,7 @@ export default function CatalogueForm() {
     <div className="p-4 md:p-6 max-w-lg">
       <div className="mb-6">
         <Link to="/catalogues" className="text-sm text-brand-600 hover:underline">← Catalogues</Link>
-        <h1 className="text-2xl font-bold text-ink mt-1">{isEdit ? 'Edit Catalogue' : 'New Catalogue'}</h1>
+        <h1 className="text-2xl text-ink mt-1">{isEdit ? 'Edit Catalogue' : 'New Catalogue'}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -103,7 +103,7 @@ export default function CatalogueForm() {
 
         {/* Cover page design */}
         <div className="card p-6 space-y-5">
-          <h2 className="font-semibold text-ink text-sm">Cover Page Design</h2>
+          <h2 className=" text-ink text-sm">Cover Page Design</h2>
 
           {/* Background image upload — single hidden input, triggered by button/label */}
           <input
@@ -166,7 +166,7 @@ export default function CatalogueForm() {
                   type="button"
                   onClick={() => setVal('overlay_color', color)}
                   className={`flex items-center gap-2 px-4 py-2 rounded-none border-2 text-sm capitalize transition-all ${
-                    form.overlay_color === color
+ form.overlay_color === color
                       ? 'border-brand-400 bg-brand-50 text-brand-700 font-medium'
                       : 'border-warm-grey text-ink-60 hover:border-warm-grey'
                   }`}

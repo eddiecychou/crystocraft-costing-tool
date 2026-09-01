@@ -23,12 +23,16 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* Questrial uppercase headings — the wordmark-echo treatment (H1–H3) */
-  h1, h2, h3 {
+  /* Every heading is Questrial, weight 400 — the design system's headings
+     carry NO bold (V3: ~194 `font-bold`/`font-semibold` overrides removed).
+     The uppercase "wordmark echo" is reserved for the prominent h1–h3. */
+  h1, h2, h3, h4, h5, h6 {
     font-family: 'Questrial', system-ui, -apple-system, sans-serif;
+    font-weight: 400;
+  }
+  h1, h2, h3 {
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    font-weight: 400;
   }
 
   /* Printed documents (PI, SI, PO, packing list, catalogue) sit on the app's

@@ -62,7 +62,7 @@ function GoogleDetailsStep() {
   return (
     <>
       <img src={logo} alt="Crystocraft" className="h-9 w-auto mx-auto mb-6" />
-      <h2 className="text-lg font-semibold text-ink mb-2 text-center">One more thing</h2>
+      <h2 className="text-lg text-ink mb-2 text-center">One more thing</h2>
       <p className="text-sm text-ink-70 mb-6 text-center">
         Signed in as <strong>{auth.currentUser?.email}</strong> via Google. Just need your company name to submit
         your request.
@@ -114,7 +114,7 @@ export default function PendingScreen({ profile }) {
         <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-amber-100 text-amber-600 mb-4">
           <Clock size={22} />
         </div>
-        <h2 className="text-lg font-semibold text-ink mb-2">Awaiting approval</h2>
+        <h2 className="text-lg text-ink mb-2">Awaiting approval</h2>
         <p className="text-sm text-ink-70 mb-6">
           Your account{profile?.company_name ? ` for ${profile.company_name}` : ''} is being reviewed.
           We will enable your wholesale pricing access shortly and notify you by email.

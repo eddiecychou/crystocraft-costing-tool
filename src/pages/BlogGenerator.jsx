@@ -259,7 +259,7 @@ function PreviewModal({ html, onClose }) {
     <div className="fixed inset-0 z-50 bg-black/70 flex flex-col">
       <div className="bg-white border-b border-warm-grey px-4 py-2.5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <h2 className="font-semibold text-ink text-sm">Blog Post Preview</h2>
+          <h2 className=" text-ink text-sm">Blog Post Preview</h2>
           <div className="flex gap-1 bg-ivory-dark p-0.5 rounded-none">
             {[['desktop', 'Desktop', Monitor], ['mobile', 'Mobile', Smartphone]].map(([key, label, Icon]) => (
               <button key={key} onClick={() => setViewport(key)}
@@ -497,7 +497,7 @@ function EditableMeta({ result, onChange }) {
   function set(field) { return e => onChange({ ...result, [field]: e.target.value }) }
   return (
     <div className="card p-5 space-y-3">
-      <h3 className="font-semibold text-ink">SEO & Meta</h3>
+      <h3 className=" text-ink">SEO & Meta</h3>
       <div className="space-y-3">
         {[
           { label: 'SEO Title', field: 'seo_title', hint: `${result.seo_title?.length || 0}/65` },
@@ -635,7 +635,7 @@ function SpotlightTab({ preloadedProduct }) {
             {PRODUCT_SOURCES.map(s => (
               <button key={s.value} type="button"
                 onClick={() => { if (s.value !== source) { setSource(s.value); setSelectedId(''); setResult(null) } }}
-                className={`text-sm px-3 py-1.5 rounded-none border transition-colors ${source === s.value ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-70 border-warm-grey hover:bg-ivory'}`}>
+                className={`text-sm px-3 py-1.5 rounded-none border transition-colors ${source === s.value ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-70 border-warm-grey hover:bg-ivory-dark'}`}>
                 {s.label}
               </button>
             ))}
@@ -678,7 +678,7 @@ function SpotlightTab({ preloadedProduct }) {
           {/* Hero image picker */}
           <div className="card p-5 space-y-3">
             <div>
-              <h3 className="font-semibold text-ink">Hero Image</h3>
+              <h3 className=" text-ink">Hero Image</h3>
               <p className="text-xs text-ink-60 mt-0.5">Full-width image at the top of the post + WordPress featured image</p>
             </div>
             <HeroPicker images={productImages} value={heroImage} onChange={setHeroImage} />
@@ -687,7 +687,7 @@ function SpotlightTab({ preloadedProduct }) {
           {/* Content sections — editable with image pickers */}
           <div className="card p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-ink">Blog Content</h3>
+              <h3 className=" text-ink">Blog Content</h3>
               <CopyButton text={result.sections?.map(s => [s.heading ? `## ${s.heading}` : '', s.body].filter(Boolean).join('\n\n')).join('\n\n')} label="Copy All" />
             </div>
             {result.sections?.map((s, i) => (
@@ -732,7 +732,7 @@ function SpotlightTab({ preloadedProduct }) {
           {/* Publish card */}
           <div className="card p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-ink">Publish to WordPress</h3>
+              <h3 className=" text-ink">Publish to WordPress</h3>
               <button onClick={() => setShowPreview(true)}
                 className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-none border border-warm-grey text-ink-70 hover:bg-ivory transition-colors">
                 <Eye size={13} />Preview HTML
@@ -905,7 +905,7 @@ function RoundupTab() {
             {PRODUCT_SOURCES.map(s => (
               <button key={s.value} type="button"
                 onClick={() => { if (s.value !== source) { setSource(s.value); setSelected([]); setProductImageMap({}); setItemImages({}); setHeroImage(null); setResult(null) } }}
-                className={`text-sm px-3 py-1.5 rounded-none border transition-colors ${source === s.value ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-70 border-warm-grey hover:bg-ivory'}`}>
+                className={`text-sm px-3 py-1.5 rounded-none border transition-colors ${source === s.value ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-70 border-warm-grey hover:bg-ivory-dark'}`}>
                 {s.label}
               </button>
             ))}
@@ -981,7 +981,7 @@ function RoundupTab() {
           {/* Hero image picker */}
           <div className="card p-5 space-y-3">
             <div>
-              <h3 className="font-semibold text-ink">Hero Image</h3>
+              <h3 className=" text-ink">Hero Image</h3>
               <p className="text-xs text-ink-60 mt-0.5">Full-width banner at the top + WordPress featured image. Choose from any selected product's images.</p>
             </div>
             {allImages.length > 0
@@ -993,7 +993,7 @@ function RoundupTab() {
           {result.intro && (
             <div className="card p-5 space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-ink">Introduction</h3>
+                <h3 className=" text-ink">Introduction</h3>
                 <CopyButton text={result.intro.body} />
               </div>
               <textarea className="input text-sm" rows={3} value={result.intro.body || ''}
@@ -1058,7 +1058,7 @@ function RoundupTab() {
           {result.conclusion && (
             <div className="card p-5 space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-ink">Conclusion</h3>
+                <h3 className=" text-ink">Conclusion</h3>
                 <CopyButton text={`${result.conclusion.heading}\n\n${result.conclusion.body}`} />
               </div>
               <input className="input text-sm font-medium" value={result.conclusion.heading || ''}
@@ -1083,7 +1083,7 @@ function RoundupTab() {
 
           <div className="card p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-ink">Publish to WordPress</h3>
+              <h3 className=" text-ink">Publish to WordPress</h3>
               <button onClick={() => setShowPreview(true)}
                 className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-none border border-warm-grey text-ink-70 hover:bg-ivory transition-colors">
                 <Eye size={13} />Preview HTML
@@ -1117,7 +1117,7 @@ export default function BlogGenerator({ embedded = false }) {
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
         {!embedded && <Link to="/products" className="text-sm text-brand-600 hover:underline">← Products</Link>}
-        {!embedded && <h1 className="text-2xl font-bold text-ink mt-1">Blog Post Generator</h1>}
+        {!embedded && <h1 className="text-2xl text-ink mt-1">Blog Post Generator</h1>}
         <p className="text-sm text-ink-60 mt-1">Generate SEO-optimised blog content, preview it, then publish as a WordPress draft.</p>
       </div>
 

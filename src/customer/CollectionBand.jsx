@@ -21,7 +21,7 @@ export default function CollectionBand({ catalogue, products, active, onApply })
 
   return (
     <div className="mb-6">
-      <h2 className="text-sm font-semibold text-ink-80 mb-3">Shop by</h2>
+      <h2 className="text-sm text-ink-80 mb-3">Shop by</h2>
       <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
         {tiles.map(({ c, image }) => {
           const ac = accentOf(c.accent)

@@ -225,14 +225,14 @@ function ProductPicker({ existingIds, onAdd, onClose }) {
       <div className="absolute inset-0 bg-black/40" />
       <div className="relative bg-white rounded-none shadow-xl w-full max-w-md flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="p-4 border-b border-warm-grey">
-          <h3 className="font-semibold text-ink">Add Product to Catalogue</h3>
+          <h3 className=" text-ink">Add Product to Catalogue</h3>
           <div className="flex gap-1 mt-2 p-0.5 bg-ivory-dark rounded-none">
             {PRODUCT_SOURCES.map(s => (
               <button
                 key={s.value}
                 onClick={() => setSource(s.value)}
                 className={`flex-1 text-xs py-1.5 rounded-none transition-colors ${
-                  source === s.value ? 'bg-white text-ink font-medium shadow-sm' : 'text-ink-60 hover:text-ink-80'
+ source === s.value ? 'bg-white text-ink font-medium shadow-sm' : 'text-ink-60 hover:text-ink-80'
                 }`}
               >{s.label}</button>
             ))}
@@ -356,7 +356,7 @@ export default function CatalogueDetail() {
       <div className="flex items-start justify-between mb-2">
         <div>
           <Link to="/catalogues" className="text-sm text-brand-600 hover:underline">← Catalogues</Link>
-          <h1 className="text-xl font-bold text-ink mt-1">{catalogue.name}</h1>
+          <h1 className="text-xl text-ink mt-1">{catalogue.name}</h1>
           {catalogue.season && <p className="text-xs text-ink-60">{catalogue.season}</p>}
         </div>
         <div className="flex gap-2 shrink-0">

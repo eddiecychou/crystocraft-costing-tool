@@ -86,7 +86,7 @@ function AddQuoteForm({ orderId, scenarios, vendors, rates, onSaved, onCancel })
 
   return (
     <div className="border border-brand-200 rounded-none bg-brand-50/30 p-5 space-y-4">
-      <h3 className="text-sm font-semibold text-ink">Add freight quote</h3>
+      <h3 className="text-sm text-ink">Add freight quote</h3>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {/* Vendor */}
@@ -455,7 +455,7 @@ export default function FreightComparison({ orderId }) {
       {/* Matrix */}
       {quotes.length > 0 && (
         <div className="card p-5">
-          <h3 className="text-sm font-semibold text-ink-80 mb-4">Comparison matrix</h3>
+          <h3 className="text-sm text-ink-80 mb-4">Comparison matrix</h3>
           <ComparisonMatrix quotes={quotes} scenarios={scenarios} />
           {scenarios.length === 0 && (
             <p className="text-xs text-ink-60 mt-3">Save a packing scenario to link quotes to a packing method.</p>
@@ -466,7 +466,7 @@ export default function FreightComparison({ orderId }) {
       {/* Quote list */}
       {quotes.length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-ink-80">All quotes</h3>
+          <h3 className="text-sm text-ink-80">All quotes</h3>
           {quotes.map(q => (
             <QuoteRow key={q.id} quote={q} scenarios={scenarios} onDelete={handleDelete} onToggleChosen={handleToggleChosen} />
           ))}

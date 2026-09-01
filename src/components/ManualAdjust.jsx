@@ -181,7 +181,7 @@ export default function ManualAdjust({ src, onResult, disabled }) {
           {ASPECTS.map(a => (
             <button key={a.key} type="button" onClick={() => setAspectKey(a.key)}
               className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                aspectKey === a.key ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-warm-grey text-ink-60 hover:border-warm-grey'
+ aspectKey === a.key ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-warm-grey text-ink-60 hover:border-warm-grey'
               }`}>{a.label}</button>
           ))}
         </div>

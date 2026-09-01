@@ -50,7 +50,7 @@ export default function Products() {
 
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-ink">Products</h1>
+          <h1 className="text-xl md:text-2xl text-ink">Products</h1>
           <p className="text-sm text-ink-60 mt-0.5">{products.length} items in catalogue</p>
         </div>
         <Link to="/products/new" className="btn-primary text-sm">+ New</Link>
@@ -128,14 +128,14 @@ function ProductCard({ product: p }) {
   return (
     <Link to={`/products/${p.id}`} id={`product-card-${p.id}`}
       onClick={() => sessionStorage.setItem('products-last-id', p.id)}
-      className={`card hover:bg-ivory transition-colors overflow-hidden flex flex-col ${isRetired ? 'opacity-50 grayscale' : ''}`}>
+      className={`card hover:border-brand-300 transition-colors overflow-hidden flex flex-col ${isRetired ? 'opacity-50 grayscale' : ''}`}>
       <div className="aspect-square bg-ivory-dark flex items-center justify-center overflow-hidden relative">
         <CardImageCarousel images={images} alt={p.name}
           fallback={<Package size={40} strokeWidth={1.25} className="text-platinum" />} />
       </div>
       <div className="p-4 flex flex-col gap-1 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold text-ink text-sm leading-tight">{p.name}</h3>
+          <h3 className=" text-ink text-sm leading-tight">{p.name}</h3>
           <span className={`badge-${status.value} shrink-0`}>{status.label}</span>
         </div>
         <p className="text-xs text-ink-60">{p.category}</p>

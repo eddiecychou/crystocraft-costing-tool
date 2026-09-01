@@ -118,7 +118,7 @@ export default function QuoteForm() {
     <div className="p-4 md:p-6 max-w-xl">
       <div className="mb-6">
         <Link to="/quotes" className="text-sm text-brand-600 hover:underline">← Quotes</Link>
-        <h1 className="text-2xl font-bold text-ink mt-1">New Client Quote</h1>
+        <h1 className="text-2xl text-ink mt-1">New Client Quote</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

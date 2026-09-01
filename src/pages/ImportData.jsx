@@ -1264,7 +1264,7 @@ export default function ImportData() {
 
   return (
     <div className="p-4 md:p-6 max-w-2xl">
-      <h1 className="text-2xl font-bold text-ink mb-2">CRM Data Import</h1>
+      <h1 className="text-2xl text-ink mb-2">CRM Data Import</h1>
       <p className="text-sm text-ink-60 mb-6">One-time import of 40 customers from <code>Crystocraft_CRM_Import.xlsx</code>. Clears all existing customers first.</p>
       <div className="card p-5 mb-4">
         <ul className="text-sm text-ink-70 space-y-1 list-disc list-inside mb-4">

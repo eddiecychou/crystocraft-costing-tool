@@ -91,7 +91,7 @@ function NewCustomerInline({ prefillWhatsapp, defaultChannel, onCreated, onCance
             type="button"
             onClick={() => setCrmCategory(v => v === cat ? '' : cat)}
             className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-              crmCategory === cat ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-70 border-warm-grey hover:border-ink-60'
+ crmCategory === cat ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-70 border-warm-grey hover:border-ink-60'
             }`}
           >
             {cat}
@@ -170,7 +170,7 @@ function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChange
                 type="button"
                 onClick={() => onChangeMode(m)}
                 className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                  entry.matchMode === m ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-warm-grey hover:border-warm-grey'
+ entry.matchMode === m ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-warm-grey hover:border-warm-grey'
                 }`}
               >
                 {m === 'customer' ? 'Match to Customer' : 'Save as Lead'}
@@ -313,7 +313,7 @@ function SummaryScanSection() {
   return (
     <div className="card p-5 mt-8">
       <div className="flex items-center justify-between gap-3 mb-1">
-        <h2 className="text-sm font-semibold text-ink-80">Generate WhatsApp Summaries</h2>
+        <h2 className="text-sm text-ink-80">Generate WhatsApp Summaries</h2>
         <button type="button" onClick={handleScan} disabled={scanning} className="btn-secondary text-xs px-3 py-1.5 inline-flex items-center gap-1.5">
           {scanning ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
           {candidates ? 'Re-scan' : 'Scan customers'}
@@ -416,7 +416,7 @@ function ContactSummaryScanSection() {
   return (
     <div className="card p-5 mt-8">
       <div className="flex items-center justify-between gap-3 mb-1">
-        <h2 className="text-sm font-semibold text-ink-80">Generate WhatsApp Summaries — Marketing Leads</h2>
+        <h2 className="text-sm text-ink-80">Generate WhatsApp Summaries — Marketing Leads</h2>
         <button type="button" onClick={handleScan} disabled={scanning} className="btn-secondary text-xs px-3 py-1.5 inline-flex items-center gap-1.5">
           {scanning ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
           {scanning
@@ -551,7 +551,7 @@ export default function WhatsAppImport() {
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
         <Link to="/customers" className="text-sm text-brand-600 hover:underline">← Customers</Link>
-        <h1 className="text-2xl font-bold text-ink mt-1">Import WhatsApp Chats</h1>
+        <h1 className="text-2xl text-ink mt-1">Import WhatsApp Chats</h1>
         <p className="text-sm text-ink-60 mt-0.5">
           Upload the .zip files from WhatsApp's own "Export Chat" (Contact Info → Export Chat, on iPhone or web.whatsapp.com).
           Match each one to a real customer, or save it as a lead (for a number that never converted) — voice notes are

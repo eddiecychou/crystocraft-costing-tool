@@ -38,7 +38,7 @@ function ProductPickerModal({ products, selected, onToggle, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-md flex flex-col max-h-[75vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-4 py-3 border-b border-warm-grey">
-          <h3 className="text-sm font-semibold text-ink">Related products</h3>
+          <h3 className="text-sm text-ink">Related products</h3>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70"><X size={16} /></button>
         </div>
         <div className="p-3 border-b border-warm-grey">
@@ -307,7 +307,7 @@ function ImportProposalModal({ customerId, currentStatus, onClose, onApplied }) 
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={stage === 'applying' ? undefined : onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
-          <h3 className="text-sm font-semibold text-ink inline-flex items-center gap-1.5"><FileJson size={15} /> Import mapped JSON</h3>
+          <h3 className="text-sm text-ink inline-flex items-center gap-1.5"><FileJson size={15} /> Import mapped JSON</h3>
           <button onClick={onClose} disabled={stage === 'applying'} className="text-ink-60 hover:text-ink-70"><X size={16} /></button>
         </div>
 

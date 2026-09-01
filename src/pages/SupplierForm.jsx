@@ -244,7 +244,7 @@ export default function SupplierForm() {
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
         <Link to="/suppliers" className="text-sm text-brand-600 hover:underline">← Suppliers</Link>
-        <h1 className="text-2xl font-bold text-ink mt-1">{isEdit ? 'Edit Supplier' : 'New Supplier'}</h1>
+        <h1 className="text-2xl text-ink mt-1">{isEdit ? 'Edit Supplier' : 'New Supplier'}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="card p-6 space-y-5">
@@ -273,7 +273,7 @@ export default function SupplierForm() {
                 type="button"
                 onClick={() => setForm(f => ({ ...f, category: f.category === c.value ? '' : c.value }))}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                  form.category === c.value
+ form.category === c.value
                     ? 'bg-brand-600 text-white border-brand-600'
                     : 'bg-white text-ink-70 border-warm-grey hover:border-brand-400'
                 }`}

@@ -312,7 +312,7 @@ export default function PurchaseOrderForm() {
     <div className="p-4 md:p-6 max-w-4xl">
       <div className="mb-6">
         <Link to="/purchase-orders" className="text-sm text-brand-600 hover:underline">← Purchase Orders</Link>
-        <h1 className="text-2xl font-bold text-ink mt-1">{isEdit ? 'Edit Purchase Order' : 'New Purchase Order'}</h1>
+        <h1 className="text-2xl text-ink mt-1">{isEdit ? 'Edit Purchase Order' : 'New Purchase Order'}</h1>
         {dupFromPU && !isEdit && (
           <p className="text-sm text-ink-60 mt-1">Reordered from <span className="font-mono text-ink-80">{dupFromPU}</span> — enter the new PU number from the ERP.</p>
         )}
@@ -324,7 +324,7 @@ export default function PurchaseOrderForm() {
           <div className="card p-4">
             <label
               className={`flex flex-col items-center justify-center border-2 border-dashed rounded-none p-6 cursor-pointer transition-colors
-                ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
+ ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
               onDragOver={e => { e.preventDefault(); setDragOver(true) }}
               onDragLeave={() => setDragOver(false)} onDrop={handleDrop}>
               <span className="text-ink-60 mb-1">{dragOver ? <FolderOpen size={22} /> : <FileInput size={22} />}</span>
@@ -420,7 +420,7 @@ export default function PurchaseOrderForm() {
         {/* ── Line items ── */}
         <div className="card p-4 md:p-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-ink-80">Line Items</h2>
+            <h2 className="text-sm text-ink-80">Line Items</h2>
             <span className="text-xs text-ink-60">Type a component code (autocompletes) or free text for MISC items.</span>
           </div>
 
@@ -484,7 +484,7 @@ export default function PurchaseOrderForm() {
 
           {/* Discounts & additional charges */}
           <div className="mt-5 pt-4 border-t border-warm-grey">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-60 mb-2">Discounts &amp; Additional Charges</h3>
+            <h3 className="text-xs uppercase tracking-wide text-ink-60 mb-2">Discounts &amp; Additional Charges</h3>
             {adjustments.length > 0 && (
               <div className="space-y-2">
                 {adjustments.map(a => (

@@ -197,7 +197,7 @@ export default function BankDetailsAudit() {
       {loading && <LoadingBar />}
 
       <div className="mb-4">
-        <h1 className="text-xl md:text-2xl font-bold text-ink flex items-center gap-2">
+        <h1 className="text-xl md:text-2xl text-ink flex items-center gap-2">
           <Banknote size={22} className="text-teal-600" /> Bank Details Audit
         </h1>
         <p className="text-sm text-ink-60 mt-0.5">
@@ -240,7 +240,7 @@ export default function BankDetailsAudit() {
       {/* Suspected typos first — this is the question being asked. */}
       {!loading && (
         <div className={`rounded-none border px-4 py-3 mb-6 ${
-          flagged.length ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'
+ flagged.length ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'
         }`}>
           {flagged.length ? (
             <>
@@ -272,7 +272,7 @@ export default function BankDetailsAudit() {
       )}
 
       {/* Every distinct token */}
-      <h2 className="text-sm font-semibold text-ink-80 mb-2">All values found</h2>
+      <h2 className="text-sm text-ink-80 mb-2">All values found</h2>
       <div className="bg-white border border-warm-grey rounded-none overflow-hidden mb-6">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -313,7 +313,7 @@ export default function BankDetailsAudit() {
       </div>
 
       {/* Raw lines, for reading what the documents actually say */}
-      <h2 className="text-sm font-semibold text-ink-80 mb-2 flex items-center gap-1.5">
+      <h2 className="text-sm text-ink-80 mb-2 flex items-center gap-1.5">
         <Search size={14} /> Bank-related lines, most common first
       </h2>
       <div className="bg-white border border-warm-grey rounded-none divide-y divide-warm-grey">

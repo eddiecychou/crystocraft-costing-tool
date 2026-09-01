@@ -35,7 +35,7 @@ export default function Marketing() {
           {tabs.map(t => (
             <button key={t.v} onClick={() => setTab(t.v)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px shrink-0 ${
-                tab === t.v ? 'border-brand-600 text-brand-600' : 'border-transparent text-ink-60 hover:text-ink'
+ tab === t.v ? 'border-brand-600 text-brand-600' : 'border-transparent text-ink-60 hover:text-ink'
               }`}>
               {t.label}
             </button>

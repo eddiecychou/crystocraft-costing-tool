@@ -215,10 +215,11 @@ export default function HomePage({ profile }) {
       </section>
 
       {/* One section rhythm across the whole page (UI-POLISH §4.1): every
-          band is `py-12 md:py-16`, and every heading→grid gap is `mb-6`.
-          Storefront breathing room (§3), not Operation-Center density. */}
+          band is `py-16 md:py-24` (V3 — the landing-page band; list/detail
+          storefront pages stay tighter), and every heading→grid gap is
+          `mb-6`. Storefront breathing room (§3), not OpsCenter density. */}
       {inviteStatus && (
-        <section className="py-12 md:py-16">
+        <section className="py-16 md:py-24">
           <ProposalInviteCard status={inviteStatus} href="/shop/brand-portal" />
         </section>
       )}
@@ -229,7 +230,7 @@ export default function HomePage({ profile }) {
           Renders nothing while loading or if none are configured yet, so a
           fresh install isn't left with an empty section header. */}
       {featured?.items?.length > 0 && (
-        <section className="py-12 md:py-16">
+        <section className="py-16 md:py-24">
           <p className="eyebrow tracking-[0.08em] text-bronze mb-2">Featured</p>
           <h2 className="text-xl md:text-2xl text-ink mb-1.5">This season's selection</h2>
           <p className="text-sm text-ink-60 mb-6 max-w-2xl">A closer look at new arrivals and pieces we're showing this quarter.</p>
@@ -243,7 +244,7 @@ export default function HomePage({ profile }) {
       )}
 
       {/* Pillars */}
-      <section id="pillars" className="py-12 md:py-16 scroll-mt-4">
+      <section id="pillars" className="py-16 md:py-24 scroll-mt-4">
         <p className="eyebrow tracking-[0.08em] text-bronze mb-2">Collections</p>
         <h2 className="text-xl md:text-2xl text-ink mb-1.5">{pillarsSection.heading}</h2>
         <p className="text-sm text-ink-60 mb-6 max-w-2xl">{pillarsSection.supporting}</p>
@@ -255,7 +256,7 @@ export default function HomePage({ profile }) {
       </section>
 
       {/* Quick access */}
-      <section className="py-12 md:py-16 border-t border-ivory-dark">
+      <section className="py-16 md:py-24 border-t border-ivory-dark">
         <h2 className="text-lg md:text-xl text-ink mb-6">{quickAccessSection.heading}</h2>
         <div className="mosaic-grid grid-cols-2 lg:grid-cols-4">
           {visibleQuickActions.map(a => <QuickActionTile key={a.key} action={a} count={quickCount[a.key] || 0} />)}

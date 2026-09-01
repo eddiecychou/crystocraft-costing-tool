@@ -199,7 +199,7 @@ export default function Layout({ children, user }) {
           <button
             onClick={() => setMoreOpen(o => !o)}
             className={`flex-1 min-w-0 flex flex-col items-center justify-center py-2 gap-1 transition-colors ${
-              moreActive || moreOpen ? 'text-white' : 'text-ivory/40'
+ moreActive || moreOpen ? 'text-white' : 'text-ivory/40'
             }`}
           >
             <MoreHorizontal size={20} strokeWidth={1.75} />

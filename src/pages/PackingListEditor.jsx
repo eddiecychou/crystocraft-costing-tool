@@ -591,7 +591,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
           return (
             <div key={s.id}
               className={`flex items-center gap-1.5 rounded-none border px-2.5 py-1.5 text-sm transition-colors ${
-                isActive ? 'border-ink bg-ink/5' : 'border-warm-grey hover:border-ink-60'}`}>
+ isActive ? 'border-ink bg-ink/5' : 'border-warm-grey hover:border-ink-60'}`}>
               <button type="button" onClick={() => chooseScenario(s.id)}
                 title={s.selected ? 'Selected plan (used for export/shipment)' : 'Use this scenario as the selected plan'}
                 className={s.selected ? 'text-yellow-500' : 'text-platinum hover:text-yellow-500'}>

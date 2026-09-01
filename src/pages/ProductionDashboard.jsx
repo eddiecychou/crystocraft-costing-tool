@@ -81,7 +81,7 @@ export default function ProductionDashboard() {
 
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-ink-80">Reorder alerts</h2>
+          <h2 className="text-sm text-ink-80">Reorder alerts</h2>
           <Link to="/inventory" className="text-xs text-brand-600 hover:underline">Open Inventory →</Link>
         </div>
         {low.length === 0 ? (
@@ -106,7 +106,7 @@ export default function ProductionDashboard() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {LINKS.map(({ to, label, Icon }) => (
-          <Link key={to} to={to} className="card p-4 flex flex-col items-center gap-2 hover:bg-ivory transition-colors text-center">
+          <Link key={to} to={to} className="card p-4 flex flex-col items-center gap-2 hover:border-brand-300 transition-colors text-center">
             <Icon size={22} strokeWidth={1.6} className="text-ink-60" />
             <span className="text-sm text-ink-80">{label}</span>
           </Link>

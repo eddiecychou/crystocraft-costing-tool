@@ -676,7 +676,7 @@ function EmailSummaryScanModal({ onClose, onGenerated }) {
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-xl my-8" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
-          <h2 className="font-semibold text-ink flex items-center gap-1.5"><Sparkles size={16} className="text-brand-600" /> Generate Email Summaries</h2>
+          <h2 className=" text-ink flex items-center gap-1.5"><Sparkles size={16} className="text-brand-600" /> Generate Email Summaries</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-3 max-h-[70vh] overflow-auto">
@@ -779,7 +779,7 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-xl my-8" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
-          <h2 className="font-semibold text-ink">Manage tags</h2>
+          <h2 className=" text-ink">Manage tags</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
         </div>
         <div className="px-5 pt-3">
@@ -985,7 +985,7 @@ export default function MarketingContacts({ onSendEmail }) {
 
       <div className="flex items-start justify-between mb-4 gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-ink flex items-center gap-2">
+          <h1 className="text-xl md:text-2xl text-ink flex items-center gap-2">
             <Users size={22} className="text-brand-600" /> Marketing Contacts
           </h1>
           <p className="text-sm text-ink-60 mt-0.5">
@@ -1019,9 +1019,9 @@ export default function MarketingContacts({ onSendEmail }) {
             key={g.key}
             onClick={() => { setGroup(g.key); setAudience('') }}
             className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border transition-colors whitespace-nowrap ${
-              group === g.key
+ group === g.key
                 ? 'bg-brand-600 text-white border-brand-600'
-                : 'bg-white text-ink-70 border-warm-grey hover:border-warm-grey hover:bg-ivory'
+                : 'bg-white text-ink-70 border-warm-grey hover:border-warm-grey hover:bg-ivory-dark'
             }`}
           >
             {g.label} <span className={`ml-1 ${group === g.key ? 'text-white/70' : 'text-ink-60'}`}>{g.count}</span>
@@ -1175,7 +1175,7 @@ export default function MarketingContacts({ onSendEmail }) {
                     <div className="flex flex-wrap gap-1 max-w-[260px]">
                       {sortTags(c.tags).slice(0, 5).map(t => (
                         <span key={t} className={`inline-flex items-center gap-0.5 text-2xs rounded-none px-1 py-0.5 ${
-                          isCategoryTag(t) ? 'text-teal-700 bg-teal-100 font-medium' : 'text-ink-70 bg-ivory-dark'
+ isCategoryTag(t) ? 'text-teal-700 bg-teal-100 font-medium' : 'text-ink-70 bg-ivory-dark'
                         }`}>
                           <Tag size={9} />{t}
                         </span>

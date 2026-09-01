@@ -142,7 +142,7 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
-          <h2 className="font-semibold text-ink">Merge “{supplier.name}” into…</h2>
+          <h2 className=" text-ink">Merge “{supplier.name}” into…</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-3">
@@ -390,7 +390,7 @@ export default function SupplierDetail() {
       <div className="flex items-start justify-between mt-2 mb-6">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-bold text-ink">{supplier.name}</h1>
+            <h1 className="text-2xl text-ink">{supplier.name}</h1>
             {supplier.erp_code && (
               <span className="text-xs font-mono px-2 py-0.5 rounded-none bg-ivory-dark text-ink-60 border border-warm-grey">{supplier.erp_code}</span>
             )}
@@ -550,7 +550,7 @@ export default function SupplierDetail() {
       {/* Purchase Orders */}
       <div className="card mb-6">
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
-          <h2 className="text-sm font-semibold text-ink-80">
+          <h2 className="text-sm text-ink-80">
             Purchase Orders {!posLoading && <span className="text-ink-60 font-normal">({pos.length})</span>}
           </h2>
           <Link to={`/purchase-orders/new?supplier=${id}`} className="btn-primary text-xs py-1.5 px-3">+ New PO</Link>
@@ -587,7 +587,7 @@ export default function SupplierDetail() {
       {/* Supplier Quotes */}
       <div className="card mb-6">
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
-          <h2 className="text-sm font-semibold text-ink-80">
+          <h2 className="text-sm text-ink-80">
             Corp Gift Component Quotes {!quotesLoading && <span className="text-ink-60 font-normal">({quotes.length})</span>}
           </h2>
           <button onClick={() => setShowAddQuote(true)} className="btn-primary text-xs py-1.5 px-3">
@@ -668,7 +668,7 @@ export default function SupplierDetail() {
       {!quotesLoading && rangeQuotes.length > 0 && (
         <div className="card mb-6">
           <div className="px-5 py-4 border-b border-warm-grey">
-            <h2 className="text-sm font-semibold text-ink-80">
+            <h2 className="text-sm text-ink-80">
               Figurine Range Component Quotes <span className="text-ink-60 font-normal">({rangeQuotes.length})</span>
             </h2>
           </div>
@@ -723,7 +723,7 @@ export default function SupplierDetail() {
 
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Photos &amp; Videos</h2>
+          <h2 className="text-xs text-ink-60 uppercase tracking-wide">Photos &amp; Videos</h2>
           {photos.length > 0 && <span className="text-xs text-ink-60">{photos.length} photo{photos.length === 1 ? '' : 's'}</span>}
         </div>
         <p className="text-xs text-ink-60 mb-3">Exhibition / booth shots and clips. Drag a whole batch onto the box below — images and videos are sorted automatically. Drag photos to reorder; caption each; use <span className="inline-flex items-center gap-0.5"><Sparkles size={11} /> Clean background</span> on a photo the same way as product images.<br /><span className="text-amber-600">Videos: drag from <strong>Finder</strong>, not the Photos app — Photos hands the browser a still frame instead of the movie.</span></p>

@@ -152,15 +152,15 @@ export default function RangeQuoteForm() {
           {' / '}
           <Link to={`/components/critical/${componentId}`} className="hover:text-brand-600">{component?.code || component?.name || 'Component'}</Link>
         </div>
-        <h1 className="text-2xl font-bold text-ink">{isEdit ? 'Edit Supplier Quote' : 'Add Supplier Quote'}</h1>
+        <h1 className="text-2xl text-ink">{isEdit ? 'Edit Supplier Quote' : 'Add Supplier Quote'}</h1>
       </div>
 
       {/* Image upload + OCR */}
       <div className="card p-4 mb-4">
-        <h2 className="text-sm font-semibold text-ink-80 mb-3">Quote Images / Screenshots</h2>
+        <h2 className="text-sm text-ink-80 mb-3">Quote Images / Screenshots</h2>
         <p className="text-xs text-ink-60 mb-3">Upload WeChat / WhatsApp screenshots or a PDF — AI will try to extract the pricing automatically.</p>
         <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-none p-6 cursor-pointer transition-colors
-            ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
+ ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
           onDragOver={e => { e.preventDefault(); setDragOver(true) }}
           onDragLeave={() => setDragOver(false)} onDrop={handleDrop}>
           <span className="text-ink-60 mb-1">{dragOver ? <FolderOpen size={22} /> : <Paperclip size={22} />}</span>

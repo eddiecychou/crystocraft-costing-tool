@@ -84,7 +84,7 @@ export default function Customers() {
           below the title there. */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-ink">Customers</h1>
+          <h1 className="text-xl md:text-2xl text-ink">Customers</h1>
           <p className="text-sm text-ink-60 mt-0.5">{customers.length} clients</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -111,9 +111,9 @@ export default function Customers() {
               key={g.key}
               onClick={() => setGroup(g.key)}
               className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border transition-colors whitespace-nowrap ${
-                group === g.key
+ group === g.key
                   ? 'bg-brand-600 text-white border-brand-600'
-                  : 'bg-white text-ink-70 border-warm-grey hover:border-warm-grey hover:bg-ivory'
+                  : 'bg-white text-ink-70 border-warm-grey hover:border-warm-grey hover:bg-ivory-dark'
               }`}
             >
               {g.key === 'retail' && <ShoppingBag size={13} className="inline align-[-2px] mr-1" />}
@@ -134,9 +134,9 @@ export default function Customers() {
                 key={tab.key}
                 onClick={() => setFilterCategory(tab.key)}
                 className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap ${
-                  filterCategory === tab.key
+ filterCategory === tab.key
                     ? 'bg-ink text-white border-ink'
-                    : 'bg-white text-ink-70 border-warm-grey hover:border-warm-grey hover:bg-ivory'
+                    : 'bg-white text-ink-70 border-warm-grey hover:border-warm-grey hover:bg-ivory-dark'
                 }`}
               >
                 {tab.Icon && <tab.Icon size={13} className="inline align-[-2px] mr-1" />}{tab.label} <span className={`ml-1 ${filterCategory === tab.key ? 'text-white/70' : 'text-ink-60'}`}>{count}</span>

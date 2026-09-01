@@ -99,7 +99,7 @@ export default function ComponentCodeAudit() {
       {loading && <LoadingBar />}
 
       <div className="mb-4">
-        <h1 className="text-xl md:text-2xl font-bold text-ink flex items-center gap-2">
+        <h1 className="text-xl md:text-2xl text-ink flex items-center gap-2">
           <Puzzle size={22} className="text-teal-600" /> Component Code Audit
         </h1>
         <p className="text-sm text-ink-60 mt-0.5">
@@ -116,7 +116,7 @@ export default function ComponentCodeAudit() {
 
       {!loading && !error && (
         <div className={`rounded-none border px-4 py-3 mb-5 text-sm ${
-          missing.length || unused.length ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'
+ missing.length || unused.length ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'
         }`}>
           {missing.length || unused.length ? (
             <span className="text-amber-900">
@@ -138,7 +138,7 @@ export default function ComponentCodeAudit() {
 
       {missing.length > 0 && (
         <>
-          <h2 className="text-sm font-semibold text-ink-80 mb-2">Not found in the ERP</h2>
+          <h2 className="text-sm text-ink-80 mb-2">Not found in the ERP</h2>
           <div className="bg-white border border-warm-grey rounded-none divide-y divide-warm-grey mb-6">
             {missing.map(r => (
               <div key={r.id} className="px-3 py-2.5">
@@ -176,7 +176,7 @@ export default function ComponentCodeAudit() {
 
       {unused.length > 0 && (
         <>
-          <h2 className="text-sm font-semibold text-ink-80 mb-2">
+          <h2 className="text-sm text-ink-80 mb-2">
             Exists in the ERP, but no current BOM uses it
           </h2>
           <p className="text-xs text-ink-60 mb-2">

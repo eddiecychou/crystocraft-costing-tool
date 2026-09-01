@@ -162,7 +162,7 @@ function ContactDetailForm({ contact, customers, onPatched, onDeleted }) {
 
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-ink flex items-center gap-2">
+          <h1 className="text-xl md:text-2xl text-ink flex items-center gap-2">
             <Users size={22} className="text-brand-600" /> {contactName(contact)}
           </h1>
           <p className="text-sm text-ink-60 mt-0.5">Marketing Contact</p>
@@ -257,7 +257,7 @@ function ContactDetailForm({ contact, customers, onPatched, onDeleted }) {
           <textarea className="input w-full mt-0.5" rows={2} value={f.ai_context_summary} onChange={set('ai_context_summary')}
             placeholder="e.g. Prefers WhatsApp over email. Distributor, price-sensitive, replies slowly." />
           <span className={`text-2xs ${
-            f.ai_context_summary.trim().split(/\s+/).filter(Boolean).length > AI_CONTEXT_SUMMARY_MAX_WORDS ? 'text-red-600' : 'text-ink-60'
+ f.ai_context_summary.trim().split(/\s+/).filter(Boolean).length > AI_CONTEXT_SUMMARY_MAX_WORDS ? 'text-red-600' : 'text-ink-60'
           }`}>
             {f.ai_context_summary.trim() ? f.ai_context_summary.trim().split(/\s+/).filter(Boolean).length : 0} / {AI_CONTEXT_SUMMARY_MAX_WORDS} words —
             fed into every Daily Drafts email to this contact.

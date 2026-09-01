@@ -46,7 +46,7 @@ function BomCoverage({ prefixes, result, loading, error, onCheck }) {
   return (
     <section className="card p-4 mb-4">
       <div className="flex items-center justify-between gap-3 mb-2">
-        <h2 className="text-sm font-semibold text-ink-80 flex items-center gap-1.5">
+        <h2 className="text-sm text-ink-80 flex items-center gap-1.5">
           <ListChecks size={15} className="text-ink-60" /> ERP bill of materials
         </h2>
         <button type="button" onClick={onCheck} disabled={loading}
@@ -355,7 +355,7 @@ export default function RangeCosting() {
 
       {/* Component costs */}
       <div className="card p-5 mb-5">
-        <h2 className="text-sm font-semibold text-ink-80 mb-3">Critical component costs <span className="font-normal text-ink-60">(at qty 1)</span></h2>
+        <h2 className="text-sm text-ink-80 mb-3">Critical component costs <span className="font-normal text-ink-60">(at qty 1)</span></h2>
         {refs.length === 0 ? (
           <p className="text-sm text-ink-60">No critical components on this product. Add them in the <Link to={`/range/${id}`} className="text-brand-600 hover:underline">product editor</Link>, then set each part's cost under <Link to="/components" className="text-brand-600 hover:underline">Components</Link>.</p>
         ) : (
@@ -419,7 +419,7 @@ export default function RangeCosting() {
       {/* Extra cost lines */}
       <div className="card p-5 mb-5">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-sm font-semibold text-ink-80">Extra cost lines <span className="font-normal text-ink-60">(all variants)</span></h2>
+          <h2 className="text-sm text-ink-80">Extra cost lines <span className="font-normal text-ink-60">(all variants)</span></h2>
           <button type="button" onClick={addExtra} className="text-xs text-brand-600 hover:underline">+ Add line</button>
         </div>
         <p className="text-xs text-ink-60 mb-3">Assembly / labour, gift box, packaging — anything shared across every variant.</p>
@@ -444,7 +444,7 @@ export default function RangeCosting() {
 
       {/* Plating adder */}
       <div className="card p-5 mb-5">
-        <h2 className="text-sm font-semibold text-ink-80 mb-3">Plating adder</h2>
+        <h2 className="text-sm text-ink-80 mb-3">Plating adder</h2>
         {platings.length === 0 ? <p className="text-xs text-ink-60">No platings on this product.</p> : (
           <div className="space-y-2">
             {platings.map(p => (
@@ -464,7 +464,7 @@ export default function RangeCosting() {
       {/* Crystal cost — bill of materials (qty per stone size × shared unit-cost library) */}
       <div className="card p-5 mb-5">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-sm font-semibold text-ink-80">Crystal cost</h2>
+          <h2 className="text-sm text-ink-80">Crystal cost</h2>
           <Link to="/components" className="text-xs text-brand-600 hover:underline">Manage crystal cost list →</Link>
         </div>
         <p className="text-xs text-ink-60 mb-3">
@@ -561,7 +561,7 @@ export default function RangeCosting() {
 
       {/* Per-variant cost + sell table */}
       <div className="card p-5 mb-5">
-        <h2 className="text-sm font-semibold text-ink-80 mb-1">Per-variant cost &amp; sell <span className="font-normal text-ink-60">({markup.toFixed(2)}× markup, USD)</span></h2>
+        <h2 className="text-sm text-ink-80 mb-1">Per-variant cost &amp; sell <span className="font-normal text-ink-60">({markup.toFixed(2)}× markup, USD)</span></h2>
         <p className="text-xs text-ink-60 mb-3">All-in cost = components + extras + plating adder + crystal cost (+ tooling amortised). Sell = ⌈cost × markup⌉. Converted from HKD at {rates.USD} HKD/USD.</p>
         <div className="overflow-x-auto -mx-5 px-5">
           <table className="text-sm border-separate border-spacing-0 w-full" style={{ minWidth: 360 + qtyCols.length * 120 + 'px' }}>

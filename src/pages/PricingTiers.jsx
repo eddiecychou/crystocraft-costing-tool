@@ -187,12 +187,12 @@ export default function PricingTiers() {
   return (
     <div className="p-4 md:p-6 max-w-3xl">
       <Link to={`/products/${id}`} className="text-sm text-brand-600 hover:underline">← {product?.name}</Link>
-      <h1 className="text-2xl font-bold text-ink mt-1 mb-6">Pricing</h1>
+      <h1 className="text-2xl text-ink mt-1 mb-6">Pricing</h1>
 
       {/* Cost Summary */}
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-ink-80">Cost Breakdown (from preferred suppliers)</h2>
+          <h2 className="text-sm text-ink-80">Cost Breakdown (from preferred suppliers)</h2>
           {hasVolumeTiers && <span className="text-xs bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full font-medium">Volume pricing active</span>}
         </div>
 
@@ -263,7 +263,7 @@ export default function PricingTiers() {
 
       {/* Quantity Tiers — qty + lead time only; price is derived from cost × markup */}
       <div className="card p-5 mb-6">
-        <h2 className="text-sm font-semibold text-ink-80 mb-1">Quantity Tiers</h2>
+        <h2 className="text-sm text-ink-80 mb-1">Quantity Tiers</h2>
         <p className="text-xs text-ink-60 mb-4">Set the order-quantity breakpoints. Customer prices are computed from the all-in cost at each quantity multiplied by the customer's pricing-group markup.</p>
 
         {tiers.length === 0 ? (
@@ -331,7 +331,7 @@ export default function PricingTiers() {
       {/* Customer price preview by pricing group */}
       {tiers.length > 0 && (
         <div className="card p-5 mb-6">
-          <h2 className="text-sm font-semibold text-ink-80 mb-1">Customer Price Preview (HKD)</h2>
+          <h2 className="text-sm text-ink-80 mb-1">Customer Price Preview (HKD)</h2>
           <p className="text-xs text-ink-60 mb-4">
             All-in cost × each group's markup, rounded-none up. Customers with a per-customer override are priced at their own markup on publish.
           </p>
@@ -371,7 +371,7 @@ export default function PricingTiers() {
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h2 className="text-sm font-semibold text-ink-80">Publish to customers</h2>
+            <h2 className="text-sm text-ink-80">Publish to customers</h2>
             <p className="text-xs text-ink-60 mt-0.5">
               {!published ? 'Not published yet — customers see no corporate price until you publish.'
                 : stale ? 'Costs, tiers or markups changed since the last publish.'

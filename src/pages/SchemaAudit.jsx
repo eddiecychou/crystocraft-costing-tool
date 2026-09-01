@@ -399,7 +399,7 @@ export default function SchemaAudit() {
           {cats.map(c => (
             <button key={c} onClick={() => setActiveCat(c)}
               className={`px-3 py-2 text-sm font-medium -mb-px border-b-2 shrink-0 transition-colors ${
-                active === c ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-80'}`}>
+ active === c ? 'border-brand-600 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-80'}`}>
               {c}
               {catCounts[c] > 0 && <span className={`ml-1.5 text-xs px-1.5 py-0.5 rounded-full ${active === c ? 'bg-brand-50 text-brand-700' : 'bg-ivory text-ink-60'}`}>{catCounts[c]}</span>}
             </button>
@@ -418,7 +418,7 @@ export default function SchemaAudit() {
                   {hasIssues
                     ? (open ? <ChevronDown size={15} className="text-ink-60 shrink-0" /> : <ChevronRight size={15} className="text-ink-60 shrink-0" />)
                     : <span className="w-[15px] shrink-0" />}
-                  <h2 className="text-sm font-semibold text-ink-80 truncate">{g.name} <span className="font-normal text-ink-60">· {g.total} records</span></h2>
+                  <h2 className="text-sm text-ink-80 truncate">{g.name} <span className="font-normal text-ink-60">· {g.total} records</span></h2>
                 </button>
                 <div className="flex items-center gap-3 shrink-0">
                   {hasIssues ? (

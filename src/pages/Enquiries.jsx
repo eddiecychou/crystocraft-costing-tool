@@ -52,7 +52,7 @@ export default function Enquiries({ embedded = false }) {
         {['new', 'handled', 'archived'].map(t => (
           <button key={t} onClick={() => setTab(t)}
             className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark transition-colors capitalize
-              ${tab === t ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory'}`}>
+ ${tab === t ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory-dark'}`}>
             {t} <span className="opacity-60">{counts[t]}</span>
           </button>
         ))}
@@ -232,7 +232,7 @@ function EditModal({ r, onClose }) {
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-none shadow-lg w-full max-w-xl max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-ivory-dark sticky top-0 bg-white">
-          <h2 className="text-base font-semibold">Edit enquiry</h2>
+          <h2 className="text-base">Edit enquiry</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink"><X size={18} /></button>
         </div>
 

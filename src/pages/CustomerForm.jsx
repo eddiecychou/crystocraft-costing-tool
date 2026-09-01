@@ -270,7 +270,7 @@ export default function CustomerForm() {
         <Link to={isEdit ? `/customers/${id}` : '/customers'} className="text-sm text-brand-600 hover:underline">
           ← {isEdit ? 'Customer' : 'Customers'}
         </Link>
-        <h1 className="text-2xl font-bold text-ink mt-1">{isEdit ? 'Edit Customer' : 'New Customer'}</h1>
+        <h1 className="text-2xl text-ink mt-1">{isEdit ? 'Edit Customer' : 'New Customer'}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -407,7 +407,7 @@ export default function CustomerForm() {
                   type="button"
                   onClick={() => setForm(f => ({ ...f, crm_category: cat }))}
                   className={`px-3 py-2.5 rounded-none border text-sm font-medium transition-colors text-left ${
-                    form.crm_category === cat
+ form.crm_category === cat
                       ? 'border-brand-500 bg-brand-50 text-brand-700'
                       : 'border-warm-grey text-ink-70 hover:border-warm-grey hover:bg-ivory'
                   }`}
@@ -419,7 +419,7 @@ export default function CustomerForm() {
                 type="button"
                 onClick={toggleRetail}
                 className={`px-3 py-2.5 rounded-none border text-sm font-medium transition-colors text-left ${
-                  isRetail
+ isRetail
                     ? 'border-pink-500 bg-pink-50 text-pink-700'
                     : 'border-warm-grey text-ink-70 hover:border-warm-grey hover:bg-ivory'
                 }`}
@@ -444,7 +444,7 @@ export default function CustomerForm() {
                     type="button"
                     onClick={() => toggleChannel(ch)}
                     className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                      selected
+ selected
                         ? 'bg-brand-600 text-white border-brand-600'
                         : 'bg-white text-ink-70 border-warm-grey hover:border-brand-400'
                     }`}
@@ -529,7 +529,7 @@ export default function CustomerForm() {
           <textarea className="input" rows={2} value={form.ai_context_summary} onChange={set('ai_context_summary')}
             placeholder="e.g. Prefers WhatsApp over email. Distributor, price-sensitive, replies slowly." />
           <span className={`text-2xs ${
-            form.ai_context_summary.trim().split(/\s+/).filter(Boolean).length > AI_CONTEXT_SUMMARY_MAX_WORDS ? 'text-red-600' : 'text-ink-60'
+ form.ai_context_summary.trim().split(/\s+/).filter(Boolean).length > AI_CONTEXT_SUMMARY_MAX_WORDS ? 'text-red-600' : 'text-ink-60'
           }`}>
             {form.ai_context_summary.trim() ? form.ai_context_summary.trim().split(/\s+/).filter(Boolean).length : 0} / {AI_CONTEXT_SUMMARY_MAX_WORDS} words —
             fed into every Daily Drafts email to this customer.

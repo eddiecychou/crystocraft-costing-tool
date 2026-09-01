@@ -88,7 +88,7 @@ export default function FrontPageProductPicker({ onSelect, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
-          <h2 className="font-semibold text-ink text-sm">
+          <h2 className=" text-ink text-sm">
             {chosen ? `Choose a photo — ${chosen.name}` : 'Pick a product to feature'}
           </h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>

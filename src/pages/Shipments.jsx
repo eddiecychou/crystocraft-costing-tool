@@ -21,7 +21,7 @@ export default function Shipments() {
       {loading && <LoadingBar />}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-ink">Shipments</h1>
+          <h1 className="text-xl md:text-2xl text-ink">Shipments</h1>
           <p className="text-sm text-ink-60 mt-0.5">{filtered.length} of {orders.length} orders</p>
         </div>
         <Link to="/shipments/new" className="btn-primary text-sm whitespace-nowrap inline-flex items-center gap-1.5">

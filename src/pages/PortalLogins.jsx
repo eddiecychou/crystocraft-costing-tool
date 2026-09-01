@@ -171,7 +171,7 @@ export default function PortalLogins({ embedded = false }) {
   const chip = (v, label, n, cur, set) => (
     <button key={v} type="button" onClick={() => set(v)}
       className={`px-2.5 py-1 text-xs rounded-full border transition ${
-        cur === v ? 'bg-ink text-white border-ink' : 'bg-white text-ink-60 border-ivory-dark hover:bg-ivory'
+ cur === v ? 'bg-ink text-white border-ink' : 'bg-white text-ink-60 border-ivory-dark hover:bg-ivory-dark'
       }`}>
       {label}{n != null && <span className="opacity-60"> {n}</span>}
     </button>
@@ -189,7 +189,7 @@ export default function PortalLogins({ embedded = false }) {
       <div className="card p-4 mb-4">
         <div className="flex items-center gap-1.5 mb-2">
           <TrendingUp size={14} className="text-ink-60" />
-          <h2 className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Site traffic (Google Analytics)</h2>
+          <h2 className="text-xs text-ink-60 uppercase tracking-wide">Site traffic (Google Analytics)</h2>
         </div>
         {trafficError ? (
           <p className="text-sm text-red-600 flex items-center gap-1.5"><AlertTriangle size={14} />{trafficError}</p>

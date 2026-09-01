@@ -74,7 +74,7 @@ export default function ImageLightbox({ images, index, onIndexChange, onClose, a
           {images.map((im, i) => (
             <button key={i} type="button" onClick={() => onIndexChange(i)}
                     className={`shrink-0 w-12 h-12 rounded-none overflow-hidden border-2 transition-colors ${
-                      i === index ? 'border-white' : 'border-transparent opacity-60 hover:opacity-90'}`}>
+ i === index ? 'border-white' : 'border-transparent opacity-60 hover:opacity-90'}`}>
               <img src={im.url} alt="" className="w-full h-full object-cover" />
             </button>
           ))}

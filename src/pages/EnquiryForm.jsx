@@ -187,7 +187,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
       {/* Drawer */}
       <div className="w-full max-w-lg bg-white flex flex-col h-full shadow-xl overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey shrink-0">
-          <h2 className="text-base font-semibold text-ink">{isEdit ? 'Edit Interaction' : 'Log Interaction'}</h2>
+          <h2 className="text-base text-ink">{isEdit ? 'Edit Interaction' : 'Log Interaction'}</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>
         </div>
 
@@ -239,7 +239,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
                   type="button"
                   onClick={() => setStatus(s)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                    status === s
+ status === s
                       ? STATUS_SELECTED[s]
                       : 'border-warm-grey text-ink-60 hover:border-warm-grey'
                   }`}

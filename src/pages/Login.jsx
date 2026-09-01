@@ -154,7 +154,7 @@ export default function Login() {
   if (signedUp) {
     return (
       <Shell>
-        <h2 className="text-lg font-semibold text-ink mb-2">Your new account request is under review</h2>
+        <h2 className="text-lg text-ink mb-2">Your new account request is under review</h2>
         <p className="text-sm text-ink-70 mb-6">
           {mode === 'google-details'
             ? "We'll notify you by email once it's approved — no password to set, you'll just sign back in with Google. There's nothing else to do here in the meantime."
@@ -170,7 +170,7 @@ export default function Login() {
   if (mode === 'google-details') {
     return (
       <Shell>
-        <h2 className="text-lg font-semibold text-ink mb-2">One more thing</h2>
+        <h2 className="text-lg text-ink mb-2">One more thing</h2>
         <p className="text-sm text-ink-70 mb-6">
           Signed in as <strong>{email}</strong> via Google. Just need your company name to submit your request.
         </p>
@@ -201,14 +201,14 @@ export default function Login() {
         {['signin', 'signup'].map(m => (
           <button key={m} onClick={() => switchMode(m)}
             className={`flex-1 py-2 text-sm font-medium transition-colors ${
-              mode === m ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory'}`}>
+ mode === m ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory-dark'}`}>
             {m === 'signin' ? 'Sign in' : 'Create account'}
           </button>
         ))}
       </div>
 
       <button type="button" onClick={handleGoogleSignIn} disabled={googleLoading}
-        className="w-full flex items-center justify-center gap-2.5 py-2 mb-4 text-sm font-medium text-ink-70 bg-white border border-ivory-dark rounded-none hover:bg-ivory transition-colors disabled:opacity-60">
+        className="w-full flex items-center justify-center gap-2.5 py-2 mb-4 text-sm font-medium text-ink-70 bg-white border border-ivory-dark rounded-none hover:bg-ivory-dark transition-colors disabled:opacity-60">
         <GoogleIcon />
         {googleLoading ? 'Signing in…' : mode === 'signup' ? 'Sign up with Google' : 'Sign in with Google'}
       </button>

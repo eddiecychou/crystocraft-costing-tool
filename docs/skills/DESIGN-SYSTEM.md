@@ -39,9 +39,10 @@ equivalent — keep, but only for status.
 | `font-sans` / `font-serif` | **Questrial**, system-ui, -apple-system, sans-serif | Headings **and** body. (`serif` is an alias — there is no serif face.) |
 | `font-label` | **Work Sans** (400/500/600), system-ui, … | `.label`, `.eyebrow`, `.badge`, `.btn`, `.tag` only. |
 
-- **Headings (`h1–h3`, base layer):** Questrial, `text-transform: uppercase`,
-  `letter-spacing: 0.04em`, `font-weight: 400`. Applied globally — every `<h1/2/3>`
-  gets it, no class needed.
+- **Headings (`h1–h6`, base layer):** Questrial, `font-weight: 400` — **no
+  bold anywhere** (V3: ~194 `font-bold`/`font-semibold` overrides stripped).
+  `text-transform: uppercase` + `letter-spacing: 0.04em` on `h1–h3` only
+  (the wordmark echo; sub-headings h4–h6 are cased normally).
 - **Body:** Questrial, `#222`, `-webkit-font-smoothing: antialiased`.
 - **Size scale:** Tailwind default + one V3 addition:
   **`text-2xs` 11px** (`0.6875rem`/16px lh) / `text-xs` 12 / `text-sm` 14 /
@@ -63,7 +64,8 @@ equivalent — keep, but only for status.
 
 **Tailwind default 4px scale, unmodified.** `p-1`=4 … `p-2`=8 `p-3`=12 `p-4`=16
 `p-6`=24 `p-8`=32. Half-steps (`gap-1.5`, `py-2.5`) are in use and legitimate.
-Storefront section band = `py-12 md:py-16`; OpsCenter cards = `p-4`/`p-6`.
+Storefront section band = `py-16 md:py-24` (landing) / `py-12 md:py-16`
+(list/detail); OpsCenter cards = `p-4`/`p-6`.
 **Not an 8px grid** — external drafts that say so are wrong for this repo.
 
 ### 1.4 Elevation
@@ -305,3 +307,4 @@ None of these are "apply now" — they're the deltas a V3 would deliberately cho
 | 2026-09-02 | V3 — **OpsCenter shadow check**: resting `shadow-lg/xl/2xl` (~52) confirmed all on modals/dropdowns (legit per the flat posture); 5 stray `.card hover:shadow-md` lifts → `hover:bg-ivory`. `hover:scale`/`translate` already gone. OpsCenter mechanical refactor complete bar the `font-bold`/`font-semibold`-on-headings owner call. |
 | 2026-09-02 | V3 — **component-layer hardening**: `bronze` DEFAULT `#996632`→`#8A5B2C` (the `.eyebrow text-bronze` kicker clears AA on beige now, ×12); `.btn` gains `active:brightness-95`; `.input` gains `:disabled` (beige / `ink-60`) and `[aria-invalid="true"]` (red-700 border) states; new opt-in `.display` class (`0.015em` tracking + `1.05` leading) for `text-3xl`+ titles — the external "negative heading tracking" idea rejected (uppercase system). Storefront-verified (bronze eyebrow); bundle + lint clean. |
 | 2026-09-02 | V3 — **cleanup**: removed dead tokens (`ink-95`, `graphite`) and `.btn-outline-gold` (0 sites, gold text fails AA); `CollectionBand` tiles drop the stacked `hover:shadow-*` (image-scale is the signal); design-system bundles renamed lowercase `v2.5/` + `v2-2026/`. |
+| 2026-09-02 | V3 — **headings/rhythm/glass**: base rule now `h1–h6` weight 400, ~194 `font-bold`/`font-semibold` stripped from headings (93 files); HomePage section band `py-12 md:py-16` → `py-16 md:py-24` (landing pages only); `CustomerLayout` header is now sticky + `bg-ink/75 backdrop-blur-md` glass (solid fallback via `supports-[backdrop-filter]`), bottom bar too. **Hover regression fix** (user report): the `665cea2` `.card hover:bg-ivory` = page colour → cards vanished on hover; `.card`s → `hover:border-brand-300`, white toggle buttons `hover:bg-ivory` → `hover:bg-ivory-dark` (14 files). |

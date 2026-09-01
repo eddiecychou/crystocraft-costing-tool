@@ -115,7 +115,7 @@ export default function InvitationClaim() {
   if (previewError) {
     return (
       <Shell>
-        <h2 className="text-lg font-semibold text-ink mb-2">
+        <h2 className="text-lg text-ink mb-2">
           {previewError === 'email_mismatch' ? 'Email doesn\'t match' : 'This invitation isn\'t available'}
         </h2>
         <p className="text-sm text-ink-70 mb-4">{STATE_MESSAGES[previewError] || STATE_MESSAGES.invalid}</p>
@@ -129,7 +129,7 @@ export default function InvitationClaim() {
   if (claimed) {
     return (
       <Shell>
-        <h2 className="text-lg font-semibold text-ink mb-2">Thanks — you're all set for now</h2>
+        <h2 className="text-lg text-ink mb-2">Thanks — you're all set for now</h2>
         <p className="text-sm text-ink-70 mb-2">
           Your details have been sent to Crystocraft for review. Your status is <strong>Pending approval</strong>.
         </p>
@@ -146,7 +146,7 @@ export default function InvitationClaim() {
 
   return (
     <Shell>
-      <h2 className="text-lg font-semibold text-ink mb-2">You're invited to the Crystocraft customer portal</h2>
+      <h2 className="text-lg text-ink mb-2">You're invited to the Crystocraft customer portal</h2>
       <p className="text-sm text-ink-70 mb-1">
         Crystocraft is inviting you to set up an account for <strong>{preview?.companyName}</strong> — for
         browsing your catalogue, pricing, and order history in one place.

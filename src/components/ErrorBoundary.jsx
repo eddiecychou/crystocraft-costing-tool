@@ -30,7 +30,7 @@ class Boundary extends Component {
     return (
       <div className="p-6 max-w-lg mx-auto">
         <div className="card p-5">
-          <h1 className="text-lg font-semibold text-ink mb-1">Something went wrong on this page</h1>
+          <h1 className="text-lg text-ink mb-1">Something went wrong on this page</h1>
           <p className="text-sm text-ink-60 mb-3">
             The page hit an error and couldn’t render. This is a bug — the rest of the app still works.
           </p>

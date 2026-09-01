@@ -100,7 +100,7 @@ export default function RangeComponentForm() {
       <Link to={back || '/components'} className="text-xs text-brand-600 hover:underline">
         {back ? '← Back' : '← Components'}
       </Link>
-      <h1 className="text-xl font-semibold mt-1 mb-4">
+      <h1 className="text-xl mt-1 mb-4">
         {isNew ? 'New Component' : form.code || 'Component'}
       </h1>
 

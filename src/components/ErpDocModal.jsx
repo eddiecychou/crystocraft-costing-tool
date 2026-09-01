@@ -66,7 +66,7 @@ export default function ErpDocModal({ of, doc, onClose }) {
         <div className="flex items-start justify-between gap-4 px-5 py-4 border-b border-ivory-dark">
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-lg font-semibold text-ink font-mono">{code}</h2>
+              <h2 className="text-lg text-ink font-mono">{code}</h2>
               <span className="text-2xs font-medium text-ink-60 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
                 <Database size={10} /> JES · read-only
               </span>

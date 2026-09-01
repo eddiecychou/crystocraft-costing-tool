@@ -51,7 +51,7 @@ export default function ComponentLinkPicker({ onPick, onClose }) {
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={onClose}>
       <div className="bg-white rounded-none shadow-lg w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
-          <h2 className="text-base font-semibold">Link to a component</h2>
+          <h2 className="text-base">Link to a component</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70"><X size={18} /></button>
         </div>
 

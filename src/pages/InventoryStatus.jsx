@@ -101,7 +101,7 @@ export default function InventoryStatus() {
 
   return (
     <div className="max-w-5xl mx-auto p-4 sm:p-6">
-      <h1 className="text-xl font-semibold mb-1 inline-flex items-center gap-2"><Boxes size={20} className="text-brand-500" /> Inventory Status</h1>
+      <h1 className="text-xl mb-1 inline-flex items-center gap-2"><Boxes size={20} className="text-brand-500" /> Inventory Status</h1>
       <p className="text-sm text-ink-60 mb-4">
         On-hand, reserved and available across metal components, crystals, packaging and B2C finished goods.
         <span className="text-ink-60"> Available = On-hand − Reserved.</span> Set a reorder point on hot items to flag them before they run out.

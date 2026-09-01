@@ -140,7 +140,7 @@ export default function CustomerBrandGallery({ customerId }) {
       <div className="flex items-center justify-between gap-2 mb-1">
         <button type="button" onClick={toggleCollapsed} className="flex items-center gap-1.5 min-w-0 text-left">
           {collapsed ? <ChevronRight size={15} className="text-ink-60 shrink-0" /> : <ChevronDown size={15} className="text-ink-60 shrink-0" />}
-          <h2 className="text-sm font-semibold text-ink-80 truncate">Brand Gallery ({assets.length})</h2>
+          <h2 className="text-sm text-ink-80 truncate">Brand Gallery ({assets.length})</h2>
         </button>
         <button onClick={() => fileRef.current?.click()} disabled={uploading}
                 className="btn-primary text-xs py-1.5 px-3 inline-flex items-center gap-1 shrink-0">
@@ -155,7 +155,7 @@ export default function CustomerBrandGallery({ customerId }) {
         {CATEGORIES.map(c => (
           <button key={c} onClick={() => switchCategory(c)}
                   className={`px-3 py-1.5 text-xs font-medium -mb-px border-b-2 transition-colors ${
-                    category === c ? 'border-brand-500 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-70'}`}>
+ category === c ? 'border-brand-500 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-70'}`}>
             {CATEGORY_LABEL[c]} ({assets.filter(a => a.category === c).length + (c === 'product_gallery' ? brandedImages.length : 0)})
           </button>
         ))}
@@ -169,7 +169,7 @@ export default function CustomerBrandGallery({ customerId }) {
 
       {category === 'product_gallery' && (
         <div className="mb-4">
-          <h3 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-2">From Product Catalogue</h3>
+          <h3 className="text-xs text-ink-60 uppercase tracking-wide mb-2">From Product Catalogue</h3>
           {brandedLoading ? (
             <p className="text-xs text-ink-60 py-2">Loading…</p>
           ) : brandedImages.length === 0 ? (
@@ -210,7 +210,7 @@ export default function CustomerBrandGallery({ customerId }) {
           <p className="text-2xs text-ink-60 mt-2">
             Visibility and tagging for these are managed on the product itself, not here.
           </p>
-          <h3 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-2 mt-5">Additional Photos</h3>
+          <h3 className="text-xs text-ink-60 uppercase tracking-wide mb-2 mt-5">Additional Photos</h3>
         </div>
       )}
 
@@ -242,7 +242,7 @@ export default function CustomerBrandGallery({ customerId }) {
           {grouped.map(([type, list]) => (
             <div key={type}>
               {grouped.length > 1 && (
-                <h4 className="text-2xs font-semibold text-ink-60 uppercase tracking-wide mb-2">
+                <h4 className="text-2xs text-ink-60 uppercase tracking-wide mb-2">
                   {TYPE_LABEL[type]} ({list.length})
                 </h4>
               )}
@@ -336,7 +336,7 @@ function AssetDrawer({ customerId, asset, onClose }) {
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
       <div className="bg-white w-full max-w-md h-full overflow-y-auto shadow-xl" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey sticky top-0 bg-white">
-          <h3 className="text-sm font-semibold text-ink">Edit asset</h3>
+          <h3 className="text-sm text-ink">Edit asset</h3>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-4">

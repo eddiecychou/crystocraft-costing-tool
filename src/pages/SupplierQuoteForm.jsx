@@ -290,7 +290,7 @@ export default function SupplierQuoteForm() {
           {' / '}
           <Link to={`/products/${productId}/components/${componentId}`} className="hover:text-brand-600">{componentName}</Link>
         </div>
-        <h1 className="text-2xl font-bold text-ink">{isEdit ? 'Edit Supplier Quote' : 'Add Supplier Quote'}</h1>
+        <h1 className="text-2xl text-ink">{isEdit ? 'Edit Supplier Quote' : 'Add Supplier Quote'}</h1>
       </div>
 
       {/* Copy from previous quote */}
@@ -304,12 +304,12 @@ export default function SupplierQuoteForm() {
 
       {/* Image Upload */}
       <div className="card p-4 mb-4">
-        <h2 className="text-sm font-semibold text-ink-80 mb-3">Quote Images / Screenshots</h2>
+        <h2 className="text-sm text-ink-80 mb-3">Quote Images / Screenshots</h2>
         <p className="text-xs text-ink-60 mb-3">Upload WeChat or WhatsApp screenshots — AI will try to extract the pricing data automatically.</p>
 
         <label
           className={`flex flex-col items-center justify-center border-2 border-dashed rounded-none p-6 cursor-pointer transition-colors
-            ${dragOver ? 'border-brand-400 bg-brand-50 scale-[1.01]' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
+ ${dragOver ? 'border-brand-400 bg-brand-50 scale-[1.01]' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
           onDragOver={e => { e.preventDefault(); setDragOver(true) }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
@@ -689,7 +689,7 @@ function CopyQuotePicker({ quotes, loaded, onSelect, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
-          <h2 className="font-semibold text-ink">Copy from Previous Quote</h2>
+          <h2 className=" text-ink">Copy from Previous Quote</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>
         </div>
 

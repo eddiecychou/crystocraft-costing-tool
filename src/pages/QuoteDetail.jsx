@@ -48,7 +48,7 @@ function BankDetailsPicker({ quote, accounts, currency, onChange }) {
 
   return (
     <div className="card p-4 mb-4">
-      <h2 className="text-sm font-semibold text-ink-80 mb-2 flex items-center gap-1.5">
+      <h2 className="text-sm text-ink-80 mb-2 flex items-center gap-1.5">
         <Banknote size={15} className="text-ink-60" />
         Payment details <span className="font-normal text-ink-60">(shown on the quotation)</span>
       </h2>
@@ -491,7 +491,7 @@ export default function QuoteDetail() {
       {/* Items */}
       <div className="card p-5 mb-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-ink-80">Products ({items.length})</h2>
+          <h2 className="text-sm text-ink-80">Products ({items.length})</h2>
           <div className="flex items-center gap-2">
             <button className="btn-secondary text-xs py-1.5 px-3" onClick={handleAddCustomItem}>+ Custom Item</button>
             <button className="btn-primary text-xs py-1.5 px-3" onClick={() => setShowProductPicker(true)}>+ Add Products</button>
@@ -582,7 +582,7 @@ export default function QuoteDetail() {
           Details block above rather than from anyone typing them.
           Renders below the table on the exported quotation. */}
       <div className="card p-4 mb-4">
-        <h2 className="text-sm font-semibold text-ink-80 mb-2">Remarks <span className="font-normal text-ink-60">(shown on the quotation)</span></h2>
+        <h2 className="text-sm text-ink-80 mb-2">Remarks <span className="font-normal text-ink-60">(shown on the quotation)</span></h2>
         <textarea
           rows={4}
           placeholder={'Payment terms : 50% deposit, balance before shipment.\nDelivery : Hong Kong (one time shipment)'}
@@ -997,7 +997,7 @@ function ProductImagePicker({ productId, itemId, customerId, selectedUrl, onSele
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-md flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
-          <h2 className="font-semibold text-ink text-sm">Choose Image</h2>
+          <h2 className=" text-ink text-sm">Choose Image</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>
         </div>
 
@@ -1006,7 +1006,7 @@ function ProductImagePicker({ productId, itemId, customerId, selectedUrl, onSele
             {[['product', 'Product images'], ['brand', 'Customer brand images']].map(([k, label]) => (
               <button key={k} onClick={() => setTab(k)}
                 className={`px-3 py-1.5 text-xs font-medium rounded-t-lg border-b-2 -mb-px ${
-                  tab === k ? 'border-brand-500 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-70'}`}>
+ tab === k ? 'border-brand-500 text-brand-700' : 'border-transparent text-ink-60 hover:text-ink-70'}`}>
                 {label}
               </button>
             ))}
@@ -1020,7 +1020,7 @@ function ProductImagePicker({ productId, itemId, customerId, selectedUrl, onSele
               {CATEGORIES.map(c => (
                 <button key={c} type="button" onClick={() => setBrandCategory(c)}
                   className={`px-2.5 py-1 text-2xs font-medium rounded-full border transition-colors ${
-                    brandCategory === c ? 'bg-brand-50 border-brand-300 text-brand-700' : 'border-warm-grey text-ink-60 hover:text-ink-70'}`}>
+ brandCategory === c ? 'bg-brand-50 border-brand-300 text-brand-700' : 'border-warm-grey text-ink-60 hover:text-ink-70'}`}>
                   {CATEGORY_LABEL[c]}
                 </button>
               ))}
@@ -1133,7 +1133,7 @@ function ProductPicker({ existingIds, onAdd, onClose }) {
       <div className="absolute inset-0 bg-black/40" />
       <div className="relative bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="p-4 border-b border-warm-grey">
-          <h2 className="font-semibold text-ink mb-3">Add Products to Quote</h2>
+          <h2 className=" text-ink mb-3">Add Products to Quote</h2>
           <input
             type="text" placeholder="Search products…"
             className="input" value={search}
@@ -1247,7 +1247,7 @@ function UploadedQuoteDetail({ quote, id, onDelete }) {
       <div className="flex items-start gap-3 mt-3 mb-1">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-xl md:text-2xl font-bold text-ink">{q.client_name}</h1>
+            <h1 className="text-xl md:text-2xl text-ink">{q.client_name}</h1>
             <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-none bg-amber-50 text-amber-600 font-medium"><Paperclip size={11} />Uploaded</span>
           </div>
           <p className="text-xs text-ink-60 mt-0.5">Click any field to edit — changes save automatically</p>
@@ -1281,7 +1281,7 @@ function UploadedQuoteDetail({ quote, id, onDelete }) {
             {UPLOADED_STATUS_OPTIONS.map(s => (
               <button key={s} type="button" onClick={() => save('status', s)}
                 className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors capitalize ${
-                  (q.status || 'draft') === s
+ (q.status || 'draft') === s
                     ? UPLOADED_STATUS_STYLES[s] + ' border-transparent'
                     : 'border-warm-grey text-ink-60 hover:border-warm-grey'
                 }`}>{s}</button>
@@ -1297,7 +1297,7 @@ function UploadedQuoteDetail({ quote, id, onDelete }) {
 
       <div className="card p-5 mb-4">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-ink-80">Quote Files ({atts.length})</h2>
+          <h2 className="text-sm text-ink-80">Quote Files ({atts.length})</h2>
           <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
             className="text-xs text-brand-600 hover:underline font-medium">
             {uploading ? 'Uploading…' : '+ Add files'}

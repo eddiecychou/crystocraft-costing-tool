@@ -63,7 +63,7 @@ export default function CatalogueBand() {
       <div className="inline-flex rounded-none border border-ivory-dark overflow-hidden mb-5">
         {CATALOGUES.map(c => (
           <button key={c.key} onClick={() => setCatalogue(c.key)}
-                  className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark transition-colors ${catalogue === c.key ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory'}`}>
+                  className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark transition-colors ${catalogue === c.key ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory-dark'}`}>
             {c.label}
           </button>
         ))}
@@ -93,7 +93,7 @@ export default function CatalogueBand() {
 
       {/* Collections list */}
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-sm font-semibold text-ink-80">Collections ({rows.length})</h2>
+        <h2 className="text-sm text-ink-80">Collections ({rows.length})</h2>
         <button onClick={() => setEditing(blank(catalogue))} className="btn-primary text-sm inline-flex items-center gap-1"><Plus size={14} /> New collection</button>
       </div>
 
@@ -185,7 +185,7 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[88vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-ivory-dark">
-          <h2 className="font-semibold text-ink">{f.id ? 'Edit collection' : 'New collection'}</h2>
+          <h2 className=" text-ink">{f.id ? 'Edit collection' : 'New collection'}</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink"><X size={18} /></button>
         </div>
 
@@ -200,7 +200,7 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
             <div className="inline-flex rounded-none border border-ivory-dark overflow-hidden">
               {[['filter', 'Use a category'], ['manual', 'Pick products'], ['smart', 'Smart (New In)']].map(([v, lbl]) => (
                 <button key={v} type="button" onClick={() => set('type', v)}
-                        className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark ${f.type === v ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory'}`}>{lbl}</button>
+                        className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark ${f.type === v ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory-dark'}`}>{lbl}</button>
               ))}
             </div>
           </div>
@@ -289,7 +289,7 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
                   <div className="inline-flex rounded-none border border-ivory-dark overflow-hidden">
                     {[['white', 'White'], ['black', 'Black']].map(([v, lbl]) => (
                       <button key={v} type="button" onClick={() => set('title_color', v)}
-                              className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark ${(f.title_color || 'white') === v ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory'}`}>{lbl}</button>
+                              className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark ${(f.title_color || 'white') === v ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory-dark'}`}>{lbl}</button>
                     ))}
                   </div>
                 </div>

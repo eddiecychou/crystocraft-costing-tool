@@ -61,12 +61,12 @@ export default function CardImageCarousel({ images, alt, fallback, imgClassName 
               always reachable on touch via the swipe above. */}
           <button type="button" onClick={e => go(e, -1)} aria-label="Previous image"
                   className="absolute left-1 top-1/2 -translate-y-1/2 bg-black/35 hover:bg-black/55 text-white rounded-full p-1
-                             opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block">
+ opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block">
             <ChevronLeft size={14} />
           </button>
           <button type="button" onClick={e => go(e, 1)} aria-label="Next image"
                   className="absolute right-1 top-1/2 -translate-y-1/2 bg-black/35 hover:bg-black/55 text-white rounded-full p-1
-                             opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block">
+ opacity-0 group-hover:opacity-100 transition-opacity hidden sm:block">
             <ChevronRight size={14} />
           </button>
 

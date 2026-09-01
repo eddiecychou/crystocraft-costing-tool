@@ -68,7 +68,7 @@ export default function Suppliers() {
       {loading && <LoadingBar />}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-ink">Suppliers</h1>
+          <h1 className="text-xl md:text-2xl text-ink">Suppliers</h1>
           <p className="text-sm text-ink-60 mt-0.5">{filtered.length} of {suppliers.length} suppliers</p>
         </div>
         <Link to="/suppliers/new" className="btn-primary text-sm whitespace-nowrap">+ New Supplier</Link>
@@ -212,7 +212,7 @@ function BackfillProvincesModal({ suppliers, onClose }) {
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-2xl my-8" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
-          <h2 className="font-semibold text-ink">Backfill Province / Region</h2>
+          <h2 className=" text-ink">Backfill Province / Region</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1 text-lg leading-none">×</button>
         </div>
         <div className="p-5">

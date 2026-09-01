@@ -282,7 +282,7 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
   return (
     <div className="p-4 md:p-6 max-w-5xl space-y-8">
       <div className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-ink">New campaign</h2>
+        <h2 className="text-sm text-ink">New campaign</h2>
         {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-none px-3 py-2">{error}</div>}
 
         <div className="grid md:grid-cols-2 gap-4">
@@ -383,7 +383,7 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
       </div>
 
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-ink">Campaigns</h2>
+        <h2 className="text-sm text-ink">Campaigns</h2>
         {campaigns.length === 0 && <div className="text-sm text-ink-60">No campaigns yet.</div>}
         {campaigns.map(c => {
           const { remaining } = c.segment?.source === 'customers'

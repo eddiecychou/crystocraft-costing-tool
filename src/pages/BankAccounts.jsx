@@ -51,7 +51,7 @@ function AccountForm({ initial, onSave, onCancel, saving }) {
 
   return (
     <div className="border border-teal-200 rounded-none bg-teal-50/30 p-5 space-y-4 mb-6">
-      <h3 className="text-sm font-semibold text-ink">
+      <h3 className="text-sm text-ink">
         {initial.id ? 'Edit account' : 'Add bank account'}
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -67,7 +67,7 @@ function AccountForm({ initial, onSave, onCancel, saving }) {
               onChange={(e) => set(k, e.target.value)}
               placeholder={placeholder}
               className="w-full px-3 py-2 text-sm border border-warm-grey rounded-none
-                         focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
+ focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
             />
             {hint && <p className="text-xs text-ink-60 mt-1 leading-snug">{hint}</p>}
           </div>
@@ -107,7 +107,7 @@ function AuditModal({ account, rows, loading, onClose }) {
     <div className="fixed inset-0 z-50 bg-black/40 flex items-start justify-center p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-2xl my-8" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
-          <h2 className="font-semibold text-ink">
+          <h2 className=" text-ink">
             Change history — {account.currency} {account.label || account.bank_name}
           </h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
@@ -192,7 +192,7 @@ export default function BankAccounts() {
 
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-ink flex items-center gap-2">
+          <h1 className="text-xl md:text-2xl text-ink flex items-center gap-2">
             <Banknote size={22} className="text-teal-600" /> Bank Accounts
           </h1>
           <p className="text-sm text-ink-60 mt-0.5">

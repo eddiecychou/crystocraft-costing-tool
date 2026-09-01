@@ -215,7 +215,7 @@ export default function PurchaseOrders() {
       {loading && <LoadingBar />}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-ink">Purchase Orders</h1>
+          <h1 className="text-xl md:text-2xl text-ink">Purchase Orders</h1>
           <p className="text-sm text-ink-60 mt-0.5">
             {filtered.length} of {pos.length} app POs
             {jesOnlyCount > 0 && <> · {jesOnlyCount} more from JES{erp.loading ? ' (loading…)' : ''}</>}
@@ -298,7 +298,7 @@ export default function PurchaseOrders() {
           {[{ value: '', label: 'All' }, ...PO_STATUSES].map(s => (
             <button key={s.value || 'all'} onClick={() => setStatusFilter(s.value)}
               className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
-                statusFilter === s.value ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-warm-grey hover:border-brand-400'}`}>
+ statusFilter === s.value ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-warm-grey hover:border-brand-400'}`}>
               {s.label}
             </button>
           ))}

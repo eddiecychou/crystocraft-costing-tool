@@ -72,7 +72,7 @@ export default function CreditNotes() {
       {loading && <LoadingBar />}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-ink">Credit Notes</h1>
+          <h1 className="text-xl md:text-2xl text-ink">Credit Notes</h1>
           <p className="text-sm text-ink-60 mt-0.5">{filtered.length} of {rows.length} credit notes</p>
         </div>
         <Link to="/credit-notes/new" className="btn-primary text-sm whitespace-nowrap">+ New Credit Note</Link>
@@ -91,7 +91,7 @@ export default function CreditNotes() {
           {[{ value: '', label: 'All' }, ...CN_STATUSES].map(s => (
             <button key={s.value || 'all'} onClick={() => setStatusFilter(s.value)}
               className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
-                statusFilter === s.value ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-warm-grey hover:border-brand-400'}`}>
+ statusFilter === s.value ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-warm-grey hover:border-brand-400'}`}>
               {s.label}
             </button>
           ))}

@@ -67,7 +67,7 @@ export default function ComponentDetail() {
       </div>
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-ink">{component.name}</h1>
+          <h1 className="text-2xl text-ink">{component.name}</h1>
           <p className="text-sm text-ink-60 mt-0.5">
             Unit: {component.unit}
             {(Number(component.qty_per_product) || 1) > 1 && (
@@ -88,7 +88,7 @@ export default function ComponentDetail() {
           {/* Spec */}
           {component.spec && (
             <div className="card p-4">
-              <h2 className="text-sm font-semibold text-ink-80 mb-1">Specification</h2>
+              <h2 className="text-sm text-ink-80 mb-1">Specification</h2>
               <p className="text-sm text-ink-70 whitespace-pre-wrap">{component.spec}</p>
             </div>
           )}
@@ -96,7 +96,7 @@ export default function ComponentDetail() {
 
         {/* Component Images */}
         <div className="card p-4">
-          <h2 className="text-sm font-semibold text-ink-80 mb-3">
+          <h2 className="text-sm text-ink-80 mb-3">
             Images
             <span className="inline-flex items-center gap-1 text-xs text-ink-60 font-normal ml-1">hover to delete <X size={12} /></span>
           </h2>
@@ -115,7 +115,7 @@ export default function ComponentDetail() {
       <div className="card p-4">
         <LastActualPaid componentId={componentId} />
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-ink-80">Supplier Quotes</h2>
+          <h2 className="text-sm text-ink-80">Supplier Quotes</h2>
           <Link
             to={`/products/${productId}/components/${componentId}/quotes/new`}
             onClick={remember}

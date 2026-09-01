@@ -86,7 +86,7 @@ export default function LineImagePicker({ selectedUrl, orderId, matchedProductRe
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
         <div className="bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
           <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
-            <h2 className="font-semibold text-ink text-sm">Line image — {matchedProductRef.name || 'this product'}</h2>
+            <h2 className=" text-ink text-sm">Line image — {matchedProductRef.name || 'this product'}</h2>
             <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>
           </div>
           <div className="overflow-y-auto flex-1 p-4">
@@ -108,7 +108,7 @@ export default function LineImagePicker({ selectedUrl, orderId, matchedProductRe
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
-          <h2 className="font-semibold text-ink text-sm">
+          <h2 className=" text-ink text-sm">
             {chosen ? `Choose image — ${chosen.name}` : 'Line image'}
           </h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>

@@ -101,7 +101,7 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-2xl my-8" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
-          <h2 className="text-base font-semibold text-ink inline-flex items-center gap-2">
+          <h2 className="text-base text-ink inline-flex items-center gap-2">
             <Database size={16} className="text-teal-600" /> Import a figurine from the ERP
           </h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70"><X size={18} /></button>

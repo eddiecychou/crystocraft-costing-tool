@@ -217,7 +217,7 @@ function UcForm({ record, onClose, onSaved }) {
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-2xl my-8" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
-          <h2 className="font-semibold text-ink flex items-center gap-2">
+          <h2 className=" text-ink flex items-center gap-2">
             <Hash size={18} className="text-teal-600" />
             {isNew ? 'New UC# Invoice' : `Edit ${record.uc_no}`}
             {isNew && <span className="text-xs font-normal text-ink-60">— number assigned on save</span>}
@@ -360,7 +360,7 @@ function ErpInvoiceModal({ si, data, loading, error, onClose }) {
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <div className="flex items-center gap-2 flex-wrap">
             <FileText size={18} className="text-teal-600" />
-            <h2 className="font-semibold text-ink">ERP Invoice</h2>
+            <h2 className=" text-ink">ERP Invoice</h2>
             <span className="font-mono text-xs text-ink-60">{si}</span>
             {header?.customer && <span className="text-sm text-ink-60">· {header.customer}</span>}
             {header?.date && <span className="text-xs text-ink-60">· {String(header.date).slice(0, 10)}</span>}
@@ -625,7 +625,7 @@ export default function UcRegistry() {
 
       <div className="flex items-start justify-between mb-4 gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-ink flex items-center gap-2">
+          <h1 className="text-xl md:text-2xl text-ink flex items-center gap-2">
             <Hash size={22} className="text-teal-600" /> UC Invoice Registry
           </h1>
           <p className="text-sm text-ink-60 mt-0.5">
@@ -726,7 +726,7 @@ export default function UcRegistry() {
                       onClick={(e) => e.stopPropagation()}
                       title="Click to reclassify this UC's sales channel"
                       className={`text-xs rounded-none px-1.5 py-0.5 border-0 cursor-pointer disabled:opacity-50 ${
-                        ucSource(r.source) ? (SOURCE_STYLE[ucSource(r.source)] || SOURCE_STYLE.Other) : 'bg-ivory text-platinum'
+ ucSource(r.source) ? (SOURCE_STYLE[ucSource(r.source)] || SOURCE_STYLE.Other) : 'bg-ivory text-platinum'
                       }`}>
                       <option value="">—</option>
                       {UC_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}

@@ -154,7 +154,7 @@ function MergeCustomerModal({ customer, onClose, onMerged }) {
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
-          <h2 className="font-semibold text-ink">Merge “{customer.company_name}” into…</h2>
+          <h2 className=" text-ink">Merge “{customer.company_name}” into…</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-3">
@@ -254,7 +254,7 @@ function Collapsible({ storageKey, title, right, defaultOpen = true, children, c
       <div className={`flex items-center justify-between gap-2 px-5 py-4 cursor-pointer select-none ${!collapsed ? 'border-b border-warm-grey' : ''}`} onClick={toggle}>
         <div className="flex items-center gap-1.5 min-w-0">
           {collapsed ? <ChevronRight size={15} className="text-ink-60 shrink-0" /> : <ChevronDown size={15} className="text-ink-60 shrink-0" />}
-          <h2 className="text-sm font-semibold text-ink-80 truncate">{title}</h2>
+          <h2 className="text-sm text-ink-80 truncate">{title}</h2>
         </div>
         {right && <div onClick={e => e.stopPropagation()} className="shrink-0 flex items-center gap-2">{right}</div>}
       </div>
@@ -896,7 +896,7 @@ export default function CustomerDetail() {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
-          <h1 className="text-xl md:text-2xl font-bold text-ink">{customer.company_name}</h1>
+          <h1 className="text-xl md:text-2xl text-ink">{customer.company_name}</h1>
           {customer.erp_code && (
             <span className="text-xs font-mono px-2 py-0.5 rounded-none bg-ivory-dark text-ink-60 border border-warm-grey">{customer.erp_code}</span>
           )}
@@ -1298,7 +1298,7 @@ export default function CustomerDetail() {
                   {a.email && <span className="text-ink-60"> · {a.email}</span>}
                 </div>
                 <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium shrink-0 ${
-                  a.role === 'admin' ? 'bg-purple-100 text-purple-700'
+ a.role === 'admin' ? 'bg-purple-100 text-purple-700'
                   : a.status === 'approved' ? 'bg-green-100 text-green-700'
                   : 'bg-amber-100 text-amber-700'}`}>
                   {a.role === 'admin' ? 'Admin' : a.status === 'approved' ? 'Approved' : 'Pending'}
@@ -1366,7 +1366,7 @@ export default function CustomerDetail() {
         <div className="card mb-4">
           <button type="button" onClick={() => setInvoiceHistoryOpen(v => !v)}
                   className="w-full flex items-center justify-between px-5 py-4 border-b border-warm-grey text-left">
-            <h2 className="text-sm font-semibold text-ink-80">
+            <h2 className="text-sm text-ink-80">
               Sales Invoice History {erpCodeShareCount === null || erpCodeShareCount > 1 ? '' : `(${invoiceHistory.length})`}
             </h2>
             <span className="flex items-center gap-2 shrink-0">
@@ -1558,13 +1558,13 @@ export default function CustomerDetail() {
                 <p className="text-sm text-ink-80">{customer.email_summary.summary}</p>
                 {customer.email_summary.recent_activity && (
                   <div>
-                    <h4 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Recent activity</h4>
+                    <h4 className="text-xs text-ink-60 uppercase tracking-wide mb-1">Recent activity</h4>
                     <p className="text-sm text-ink-70">{customer.email_summary.recent_activity}</p>
                   </div>
                 )}
                 {customer.email_summary.open_commitments?.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Open commitments</h4>
+                    <h4 className="text-xs text-ink-60 uppercase tracking-wide mb-1">Open commitments</h4>
                     <ul className="text-sm text-ink-70 list-disc list-inside space-y-0.5">
                       {customer.email_summary.open_commitments.map((c, i) => <li key={i}>{c}</li>)}
                     </ul>
@@ -1644,13 +1644,13 @@ export default function CustomerDetail() {
                 <p className="text-sm text-ink-80">{customer.whatsapp_summary.summary}</p>
                 {customer.whatsapp_summary.recent_activity && (
                   <div>
-                    <h4 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Recent activity</h4>
+                    <h4 className="text-xs text-ink-60 uppercase tracking-wide mb-1">Recent activity</h4>
                     <p className="text-sm text-ink-70">{customer.whatsapp_summary.recent_activity}</p>
                   </div>
                 )}
                 {customer.whatsapp_summary.open_commitments?.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Open commitments</h4>
+                    <h4 className="text-xs text-ink-60 uppercase tracking-wide mb-1">Open commitments</h4>
                     <ul className="text-sm text-ink-70 list-disc list-inside space-y-0.5">
                       {customer.whatsapp_summary.open_commitments.map((c, i) => <li key={i}>{c}</li>)}
                     </ul>
@@ -1831,13 +1831,13 @@ export default function CustomerDetail() {
               <p className="text-sm text-ink-80">{customer.alibaba_summary.summary}</p>
               {customer.alibaba_summary.recent_activity && (
                 <div>
-                  <h4 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Recent activity</h4>
+                  <h4 className="text-xs text-ink-60 uppercase tracking-wide mb-1">Recent activity</h4>
                   <p className="text-sm text-ink-70">{customer.alibaba_summary.recent_activity}</p>
                 </div>
               )}
               {customer.alibaba_summary.open_commitments?.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Open commitments</h4>
+                  <h4 className="text-xs text-ink-60 uppercase tracking-wide mb-1">Open commitments</h4>
                   <ul className="text-sm text-ink-70 list-disc list-inside space-y-0.5">
                     {customer.alibaba_summary.open_commitments.map((c, i) => <li key={i}>{c}</li>)}
                   </ul>

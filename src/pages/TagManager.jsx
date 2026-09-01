@@ -82,7 +82,7 @@ export default function TagManager() {
       {loading && <LoadingBar />}
       <div className="mb-6">
         <Link to="/customers" className="text-sm text-brand-600 hover:underline">← Customers</Link>
-        <h1 className="text-2xl font-bold text-ink mt-1">Manage Tags</h1>
+        <h1 className="text-2xl text-ink mt-1">Manage Tags</h1>
         <p className="text-sm text-ink-60 mt-0.5">
           {tags.length} tag{tags.length === 1 ? '' : 's'} in use across all customers.
         </p>

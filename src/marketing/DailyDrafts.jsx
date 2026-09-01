@@ -279,7 +279,7 @@ function SourceBadge({ source }) {
   const isContact = source === 'contact'
   return (
     <span className={`ml-1.5 text-2xs uppercase tracking-wide rounded-none px-1 py-0.5 shrink-0 ${
-      isContact ? 'text-amber-600 bg-amber-50' : 'text-blue-600 bg-blue-50'
+ isContact ? 'text-amber-600 bg-amber-50' : 'text-blue-600 bg-blue-50'
     }`}>
       {isContact ? 'Lead' : 'Customer'}
     </span>
@@ -1350,7 +1350,7 @@ export default function DailyDrafts() {
 
       {/* ── 1. Compose ─────────────────────────────────────────────────── */}
       <div className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-ink">1. What do you want to say?</h2>
+        <h2 className="text-sm text-ink">1. What do you want to say?</h2>
 
         <div className="flex items-center gap-2 flex-wrap">
           {!linkedProduct ? (
@@ -1397,7 +1397,7 @@ export default function DailyDrafts() {
                   className="w-full flex items-center justify-between gap-2 text-left px-3 py-1.5 text-sm hover:bg-ivory-light">
                   <span className="truncate">{p.name}</span>
                   <span className={`text-2xs uppercase tracking-wide rounded-none px-1 py-0.5 shrink-0 ${
-                    p.source === 'range' ? 'bg-brand-50 text-brand-700' : 'bg-blue-50 text-blue-700'
+ p.source === 'range' ? 'bg-brand-50 text-brand-700' : 'bg-blue-50 text-blue-700'
                   }`}>
                     {p.source === 'range' ? 'Range' : 'Corporate'}
                   </span>
@@ -1545,7 +1545,7 @@ export default function DailyDrafts() {
 
       {/* ── 2. Target & Generate ───────────────────────────────────────── */}
       <div className={`card p-5 space-y-4 ${!hasMaster ? 'opacity-50' : ''}`}>
-        <h2 className="text-sm font-semibold text-ink">2. Who do you want to reach?</h2>
+        <h2 className="text-sm text-ink">2. Who do you want to reach?</h2>
         {/* Hard pre-filter, not a hint — see handleGenerate's own comment on
             why this can't just be folded into the free-text Targeting note
             below (the AI can ignore/misread free text; this can't be). */}
@@ -1597,7 +1597,7 @@ export default function DailyDrafts() {
 
       <div className="space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-y-2">
-          <h2 className="text-sm font-semibold text-ink">Pending review ({drafts.length})</h2>
+          <h2 className="text-sm text-ink">Pending review ({drafts.length})</h2>
           {drafts.length > 0 && (
             <div className="flex items-center gap-3">
               <button onClick={() => setBulkRewriteOpen(v => !v)} className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
@@ -1874,7 +1874,7 @@ export default function DailyDrafts() {
                     {[{ key: 'new', label: 'Create as new customer' }, { key: 'existing', label: 'Add as a contact on an existing customer' }].map(opt => (
                       <button key={opt.key} type="button" onClick={() => { setAddCustomerMode(opt.key); setAddCustomerError('') }}
                         className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                          addCustomerMode === opt.key ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-70 border-warm-grey hover:border-ink-60'
+ addCustomerMode === opt.key ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-70 border-warm-grey hover:border-ink-60'
                         }`}>
                         {opt.label}
                       </button>
@@ -2000,7 +2000,7 @@ export default function DailyDrafts() {
       </div>
 
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-ink">Sent ({sentDrafts.length})</h2>
+        <h2 className="text-sm text-ink">Sent ({sentDrafts.length})</h2>
         {sentDrafts.length === 0 && <div className="text-sm text-ink-60">Nothing sent yet.</div>}
         {sentDrafts.map(d => {
           const isReplyOpen = replyFormOpenId === d.id
@@ -2016,7 +2016,7 @@ export default function DailyDrafts() {
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     {ENGAGEMENT_BADGES.map(({ key, label, Icon }) => (
                       <span key={key} className={`inline-flex items-center gap-1 text-2xs rounded-none px-1.5 py-0.5 ${
-                        d.engagement?.[key]
+ d.engagement?.[key]
                           ? ((key === 'bounced' || key === 'complained') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700')
                           : 'bg-ivory text-platinum'
                       }`}>
@@ -2045,7 +2045,7 @@ export default function DailyDrafts() {
                       <button key={ch} type="button"
                         onClick={() => setReplyChannel(prev => ({ ...prev, [d.id]: ch }))}
                         className={`text-xs rounded-none px-2 py-1 border ${
-                          (replyChannel[d.id] || REPLY_CHANNELS[0]) === ch
+ (replyChannel[d.id] || REPLY_CHANNELS[0]) === ch
                             ? 'border-brand-600 bg-brand-50 text-brand-700'
                             : 'border-ivory-dark text-ink-60 hover:bg-white'
                         }`}>

@@ -256,9 +256,9 @@ function DetailModal({ entity, row, onClose }) {
         <div className="flex items-start justify-between px-5 py-4 border-b border-warm-grey">
           <div>
             <div className="font-mono text-xs text-ink-60">{row.code}</div>
-            <h2 className="text-lg font-semibold text-ink">{row.name}</h2>
+            <h2 className="text-lg text-ink">{row.name}</h2>
             <span className={`inline-block mt-1 px-1.5 py-0.5 rounded-none text-xs ${
-              row.active ? 'bg-green-100 text-green-700' : 'bg-ivory-dark text-ink-60'
+ row.active ? 'bg-green-100 text-green-700' : 'bg-ivory-dark text-ink-60'
             }`}>{row.active ? 'Active' : 'Expired'}</span>
           </div>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
@@ -270,7 +270,7 @@ function DetailModal({ entity, row, onClose }) {
             if (!shown.length) return null
             return (
               <div key={title}>
-                <h3 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-2">{title}</h3>
+                <h3 className="text-xs text-ink-60 uppercase tracking-wide mb-2">{title}</h3>
                 <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
                   {shown.map(([k, label]) => (
                     <div key={k} className="flex gap-2 text-sm">
@@ -325,7 +325,7 @@ function LinesModal({ title, code, header, rows, surcharges, loading, error, onC
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <div className="flex items-center gap-2">
             <FileText size={18} className="text-teal-600" />
-            <h2 className="font-semibold text-ink">{title}</h2>
+            <h2 className=" text-ink">{title}</h2>
             <span className="font-mono text-xs text-ink-60">{code}</span>
           </div>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
@@ -419,7 +419,7 @@ function BomModal({ code, rows, loading, error, onClose }) {
         <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <div className="flex items-center gap-2">
             <ListTree size={18} className="text-teal-600" />
-            <h2 className="font-semibold text-ink">Bill of Materials</h2>
+            <h2 className=" text-ink">Bill of Materials</h2>
             <span className="font-mono text-xs text-ink-60">{code}</span>
           </div>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
@@ -784,7 +784,7 @@ export default function ErpLookup() {
       )}
 
       <div className="mb-4">
-        <h1 className="text-xl md:text-2xl font-bold text-ink flex items-center gap-2">
+        <h1 className="text-xl md:text-2xl text-ink flex items-center gap-2">
           <Database size={22} className="text-teal-600" /> ERP Lookup
         </h1>
         <p className="text-sm text-ink-60 mt-0.5">
@@ -820,7 +820,7 @@ export default function ErpLookup() {
               key={key}
               onClick={() => { setEntity(key); setRows([]); setSelectedCustomers(new Set()); setSelectedSuppliers(new Set()) }}
               className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-sm rounded-none transition ${
-                on ? 'bg-teal-600 text-white' : 'text-ink-70 hover:bg-ivory'
+ on ? 'bg-teal-600 text-white' : 'text-ink-70 hover:bg-ivory'
               }`}
             >
               <e.Icon size={15} /> {e.label}
@@ -839,7 +839,7 @@ export default function ErpLookup() {
             onChange={(e) => setQ(e.target.value)}
             placeholder={`Search ${cfg.label.toLowerCase()} by code or name…`}
             className="w-full pl-9 pr-3 py-2 text-sm border border-warm-grey rounded-none
-                       focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
+ focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
           />
         </div>
         {cfg.hasWarehouse && (
@@ -848,7 +848,7 @@ export default function ErpLookup() {
               value={warehouse}
               onChange={(e) => setWarehouse(e.target.value)}
               className="px-3 py-2 text-sm border border-warm-grey rounded-none bg-white
-                         focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
+ focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
             >
               <option value="">All warehouses</option>
               {/* Only warehouses that actually hold stock — 49 exist in the ERP
@@ -866,7 +866,7 @@ export default function ErpLookup() {
               value={itemType}
               onChange={(e) => setItemType(e.target.value)}
               className="px-3 py-2 text-sm border border-warm-grey rounded-none bg-white
-                         focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
+ focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
             >
               <option value="">All types</option>
               {/* Only types that actually appear in stock (5 of the ERP's 6). */}
@@ -900,7 +900,7 @@ export default function ErpLookup() {
               value={limit}
               onChange={(e) => setLimit(Number(e.target.value))}
               className="px-2 py-1.5 text-sm border border-warm-grey rounded-none bg-white
-                         focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
+ focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500"
             >
               <option value={50}>50</option>
               <option value={100}>100</option>
@@ -1090,7 +1090,7 @@ export default function ErpLookup() {
                         : <span className="text-platinum text-xs">—</span>
                     ) : (
                       <span className={`inline-block px-1.5 py-0.5 rounded-none text-xs ${
-                        r.active ? 'bg-green-100 text-green-700' : 'bg-ivory-dark text-ink-60'
+ r.active ? 'bg-green-100 text-green-700' : 'bg-ivory-dark text-ink-60'
                       }`}>{r.active ? 'Active' : 'Expired'}</span>
                     )}
                   </td>

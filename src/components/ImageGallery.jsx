@@ -256,7 +256,7 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
             type="button"
             onClick={() => handleOrientationChange(o.value)}
             className={`flex-1 text-xs py-0.5 rounded-none font-medium transition-colors ${
-              (img.orientation || 'square') === o.value
+ (img.orientation || 'square') === o.value
                 ? ORIENTATION_STYLES[o.value]
                 : 'bg-ivory-dark text-ink-60 hover:bg-warm-grey'
             }`}
@@ -477,7 +477,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
       {/* Upload */}
       <label
         className={`flex items-center justify-center gap-2 border-2 border-dashed rounded-none p-4 cursor-pointer transition-colors
-          ${uploading   ? 'border-brand-300 bg-brand-50 cursor-wait' :
+ ${uploading   ? 'border-brand-300 bg-brand-50 cursor-wait' :
             dragOver    ? 'border-brand-400 bg-brand-50 scale-[1.01]' :
                           'border-warm-grey hover:border-brand-300 hover:bg-brand-50'}`}
         onDragOver={e => { e.preventDefault(); setDragOver(true) }}
@@ -559,7 +559,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={() => !enh.busy && closeEditor()}>
           <div className="bg-white rounded-none max-w-3xl w-full p-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-ink-80 inline-flex items-center gap-1.5"><Sparkles size={15} /> Edit image — review before replacing</h3>
+              <h3 className="text-sm text-ink-80 inline-flex items-center gap-1.5"><Sparkles size={15} /> Edit image — review before replacing</h3>
               <button type="button" onClick={() => !enh.busy && closeEditor()} className="text-ink-60 hover:text-ink-80"><X size={16} /></button>
             </div>
 
@@ -575,7 +575,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                   disabled={enh.busy}
                   onClick={() => { setEditTab(t.key); setEnh(e => e ? { ...e, after: null, mode: null, colorWarning: false, error: '' } : e) }}
                   className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                    editTab === t.key
+ editTab === t.key
                       ? 'border-brand-600 text-brand-700'
                       : 'border-transparent text-ink-60 hover:text-ink-70'
                   }`}

@@ -34,7 +34,7 @@ export default function Catalogues({ embedded = false }) {
     <div className="p-4 md:p-6 max-w-4xl">
       <div className="flex items-center justify-between mb-6">
         <div>
-          {!embedded && <h1 className="text-2xl font-bold text-ink">Catalogues</h1>}
+          {!embedded && <h1 className="text-2xl text-ink">Catalogues</h1>}
           <p className="text-sm text-ink-60 mt-0.5">Seasonal product collections for customers</p>
         </div>
         <Link to="/catalogues/new" className="btn-primary">+ New Catalogue</Link>
@@ -52,7 +52,7 @@ export default function Catalogues({ embedded = false }) {
             <div key={cat.id} className="card p-4 flex items-center gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <h2 className="font-semibold text-ink truncate">{cat.name}</h2>
+                  <h2 className=" text-ink truncate">{cat.name}</h2>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[cat.status] || STATUS_STYLES.draft}`}>
                     {cat.status || 'draft'}
                   </span>

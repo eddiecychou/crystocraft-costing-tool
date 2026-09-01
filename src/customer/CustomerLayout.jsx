@@ -61,7 +61,9 @@ export default function CustomerLayout({ children, profile }) {
   const moreActive = moreNav.some(n => location.pathname === n.to || location.pathname.startsWith(n.to + '/'))
   return (
     <div className="min-h-screen flex flex-col bg-ivory">
-      <header className="bg-ink text-white shrink-0">
+      {/* Glass nav (V3): sticky, translucent ink + blur where supported; a
+          solid ink fallback for browsers without backdrop-filter. */}
+      <header className="sticky top-0 z-40 text-white shrink-0 bg-ink supports-[backdrop-filter]:bg-ink/75 supports-[backdrop-filter]:backdrop-blur-md">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
           <Link to="/shop" className="flex items-center gap-3 min-w-0">
             <img src={logo} alt="Crystocraft" className="h-7 w-auto brightness-0 invert shrink-0" />
@@ -100,7 +102,7 @@ export default function CustomerLayout({ children, profile }) {
 
       {/* ── Mobile bottom tab bar — same pattern as the Operation Center's
           Layout.jsx: primary tabs + a "More" sheet, safe-area aware. ── */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-ink border-t border-white/10 flex pb-[env(safe-area-inset-bottom)]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 flex pb-[env(safe-area-inset-bottom)] bg-ink supports-[backdrop-filter]:bg-ink/75 supports-[backdrop-filter]:backdrop-blur-md">
         {primaryNav.map(({ to, short, Icon, badge, end }) => (
           <NavLink key={to} to={to} end={end}
             className={({ isActive }) =>
@@ -117,7 +119,7 @@ export default function CustomerLayout({ children, profile }) {
         ))}
         <button onClick={() => setMoreOpen(o => !o)}
           className={`flex-1 min-w-0 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] transition-colors ${
-            moreActive || moreOpen ? 'text-white' : 'text-ivory/40'}`}>
+ moreActive || moreOpen ? 'text-white' : 'text-ivory/40'}`}>
           <span className="relative">
             <MoreHorizontal size={20} strokeWidth={1.75} />
             {moreHasBadge && <span className="absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full bg-brand-500" />}

@@ -307,7 +307,7 @@ export default function Range() {
         ].map(t => (
           <button key={t.v} onClick={() => { setStatus(t.v); sessionStorage.setItem('rf-status', t.v) }}
                   className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark transition-colors
-                    ${status === t.v ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory'}`}>
+ ${status === t.v ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory-dark'}`}>
             {t.label} <span className="opacity-60">{statusCounts[t.v]}</span>
           </button>
         ))}
@@ -383,7 +383,7 @@ function ProductCard({ s, colorLookup = {} }) {
   return (
     <Link to={`/range/${s.id}`} id={`range-card-${s.id}`}
           onClick={() => sessionStorage.setItem('range-last-id', s.id)}
-          className={`card overflow-hidden flex flex-col hover:bg-ivory transition-colors group ${isRetired ? 'opacity-50 grayscale' : ''}`}>
+          className={`card overflow-hidden flex flex-col hover:border-brand-300 transition-colors group ${isRetired ? 'opacity-50 grayscale' : ''}`}>
       <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
         <CardImageCarousel images={s.images} alt={s.name} imgClassName="object-cover"
           fallback={<Gem size={30} strokeWidth={1.25} className="text-platinum" />} />

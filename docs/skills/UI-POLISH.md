@@ -43,7 +43,7 @@ These are facts from `index.css` — match them, don't reinvent them:
 | **Corners** | **Square.** Buttons/cards/badges are `rounded-none`. Inputs are `rounded-sm` (4px). Only clickable filter chips are `rounded-full`. **MUST NOT** round a card or button "to soften it." | `.card`, `.btn`, `.badge`, `.input`, `.tag` |
 | **Elevation** | **Flat.** A resting card is a 1px `warm-grey` (#E9E8E6) hairline, **no shadow**. Shadows (softened globally) are only for a genuinely floating layer (modal, dropdown) or a hover-lift. | `.card` |
 | **Dividers** | Hairline `#E9E8E6`. For a section break, the `.facet-divider` (hairline + tiny 45°-rotated champagne diamond), not a heavy `<hr>`. | `.facet-divider` |
-| **Headings** | **Questrial, UPPERCASE, `letter-spacing: 0.04em`, weight 400.** h1–h3 get this automatically. Body copy is **also Questrial** (`font-sans`). | base `h1,h2,h3` |
+| **Headings** | **Questrial, weight 400 — no bold.** h1–h6 all get weight 400 from the base rule (V3); `font-bold`/`font-semibold` on a heading is drift. UPPERCASE + `letter-spacing: 0.04em` is h1–h3 only (the wordmark echo). Body copy is **also Questrial**. | base `h1..h6` |
 | **Labels / kickers** | **Work Sans**, uppercase, `text-xs`, wide tracking (`.label` 0.14em / `.eyebrow` 0.18em), colour `ink-60` (#666). | `.label`, `.eyebrow` |
 | **Buttons** | Work Sans, uppercase, `letter-spacing: 0.1em`, square. Primary = solid `brand-600` burgundy. One primary per view. | `.btn-primary` + the ghost/outline/reversed variants |
 | **Palette** | App bg **beige** `#F7EEE3`; text **near-black** `#222`; body/secondary **mid-grey** `#666`; accent **burgundy** `brand-600 #6E2433`. Division accents: bronze/champagne (Gifts), sapphire (Crystals). | config `colors` |
@@ -67,7 +67,8 @@ Operation Center screen — it degrades scannability of the data those screens
 exist to show. Those ideas belong to the storefront, sparingly.
 
 **One rhythm beats local optimisation.** On the storefront, pick a single
-section band (`py-12 md:py-16`) and use it *everywhere*, even where it leaves
+section band and use it *everywhere* — **`py-16 md:py-24`** for landing-style
+pages (HomePage), the tighter `py-12 md:py-16` for list/detail pages — even where it leaves
 a short card floating in a lot of air (e.g. a one-line invite between two full
 bands). A consistent page beats a page tuned section-by-section — the reader
 feels the regularity. Remove a component's own ad-hoc `mt-*/mb-*` and let the

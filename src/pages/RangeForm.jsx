@@ -1459,7 +1459,7 @@ export default function RangeForm() {
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={() => !enh.busy && setEnh(null)}>
               <div className="bg-white rounded-none max-w-3xl w-full p-5" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-ink-80 inline-flex items-center gap-1.5"><Sparkles size={15} /> Edit image — review before replacing</h3>
+                  <h3 className="text-sm text-ink-80 inline-flex items-center gap-1.5"><Sparkles size={15} /> Edit image — review before replacing</h3>
                   <button type="button" onClick={() => !enh.busy && setEnh(null)} className="text-ink-60 hover:text-ink"><X size={16} /></button>
                 </div>
 
@@ -1475,7 +1475,7 @@ export default function RangeForm() {
                       disabled={enh.busy}
                       onClick={() => { setEditTab(t.key); setEnh(e => e ? { ...e, after: null, mode: null, colorWarning: false, error: '' } : e) }}
                       className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                        editTab === t.key
+ editTab === t.key
                           ? 'border-brand-600 text-brand-700'
                           : 'border-transparent text-ink-60 hover:text-ink-60'
                       }`}

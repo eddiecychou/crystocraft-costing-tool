@@ -252,7 +252,7 @@ function ImportModal({ inv, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
       <div className="bg-white rounded-none max-w-lg w-full p-5 max-h-[85vh] overflow-y-auto">
-        <h3 className="text-base font-semibold mb-1">Import stock</h3>
+        <h3 className="text-base mb-1">Import stock</h3>
         <p className="text-xs text-ink-60 mb-3">
           {inv.parsePaste
             ? <>Paste the full stock export <em>including its header row</em> — columns are matched by name. Each row is an absolute count and posts a stock-take; re-run any time.</>

@@ -500,7 +500,7 @@ export default function QuoteExport({ quote, items, onClose, onQuoteChange }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div className="relative bg-white rounded-none shadow-xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-        <h2 className="font-semibold text-ink mb-1">Export Quote</h2>
+        <h2 className=" text-ink mb-1">Export Quote</h2>
 
         {/* Data preview — confirms what will appear in the Excel */}
         <div className="mt-3 mb-5 rounded-none bg-ivory border border-warm-grey px-3 py-2.5 space-y-1">

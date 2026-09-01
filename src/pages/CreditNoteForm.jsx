@@ -236,7 +236,7 @@ export default function CreditNoteForm() {
       <div className="mb-6">
         <Link to="/credit-notes" className="text-sm text-brand-600 hover:underline">← Credit Notes</Link>
         <div className="flex items-center gap-2 mt-1">
-          <h1 className="text-2xl font-bold text-ink">
+          <h1 className="text-2xl text-ink">
             {header.cn_no || (isEdit ? 'Edit Credit Note' : 'New Credit Note')}
           </h1>
           {isEdit && (() => {
@@ -345,7 +345,7 @@ export default function CreditNoteForm() {
 
           {/* ── Line items ── */}
           <div className="card p-4 md:p-6">
-            <h2 className="text-sm font-semibold text-ink-80 mb-3">Returned Lines</h2>
+            <h2 className="text-sm text-ink-80 mb-3">Returned Lines</h2>
             <div className="hidden sm:grid grid-cols-[2fr_3fr_1fr_1fr_1.3fr_1.3fr_auto] gap-2 px-1 pb-1 text-2xs uppercase tracking-wide text-ink-60">
               <span>Item Code</span><span>Description</span><span className="text-right">Qty Returned</span>
               <span>Unit</span><span className="text-right">Unit Price</span><span className="text-right">Amount</span><span />

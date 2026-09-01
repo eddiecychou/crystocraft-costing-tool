@@ -196,7 +196,7 @@ export default function ProductDetail() {
         <Link to="/products" className="text-sm text-brand-600 hover:underline">← Products</Link>
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mt-1 gap-2">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-ink">{product.name}</h1>
+            <h1 className="text-xl md:text-2xl text-ink">{product.name}</h1>
             <div className="flex items-center gap-2 mt-1">
               <span className={`badge-${productStatusOf(product.status).value}`}>{productStatusOf(product.status).label}</span>
               <span className="text-sm text-ink-60">{product.category}</span>
@@ -233,14 +233,14 @@ export default function ProductDetail() {
         <div className="lg:col-span-2 space-y-4">
           {product.description && (
             <div className="card p-4">
-              <h2 className="text-sm font-semibold text-ink-80 mb-1">Description</h2>
+              <h2 className="text-sm text-ink-80 mb-1">Description</h2>
               <p className="text-sm text-ink-70">{product.description}</p>
             </div>
           )}
 
           {product.assembly_notes && (
             <div className="card p-4">
-              <h2 className="text-sm font-semibold text-ink-80 mb-1">Assembly Notes</h2>
+              <h2 className="text-sm text-ink-80 mb-1">Assembly Notes</h2>
               <p className="text-sm text-ink-70">{product.assembly_notes}</p>
             </div>
           )}
@@ -251,7 +251,7 @@ export default function ProductDetail() {
           {isSupplySide && (
           <div className="card p-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-ink-80">Bill of Materials</h2>
+              <h2 className="text-sm text-ink-80">Bill of Materials</h2>
               <div className="flex gap-2">
                 <button onClick={openPicker} className="btn-secondary text-xs py-1 px-3">+ Copy Existing</button>
                 <Link to={`/products/${id}/components/new`} onClick={remember} className="btn-primary text-xs py-1 px-3">+ New</Link>
@@ -290,7 +290,7 @@ export default function ProductDetail() {
           {canManagePricing && (
             <div className="card p-4">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-ink-80">Pricing Tiers</h2>
+                <h2 className="text-sm text-ink-80">Pricing Tiers</h2>
                 <Link to={`/products/${id}/pricing`} onClick={remember} className="btn-secondary text-xs py-1 px-3">Manage Pricing</Link>
               </div>
               <p className="text-sm text-ink-60 text-center py-2">Set up components and suppliers first, then add pricing tiers.</p>
@@ -301,7 +301,7 @@ export default function ProductDetail() {
         {/* Right: images */}
         <div className="space-y-4">
           <div className="card p-4">
-            <h2 className="text-sm font-semibold text-ink-80 mb-3">
+            <h2 className="text-sm text-ink-80 mb-3">
               Images
               <span className="inline-flex items-center gap-1 text-xs text-ink-60 font-normal ml-2">hover image to set hero <Star size={12} /> or delete <X size={12} /> · add a caption below each</span>
             </h2>
@@ -382,7 +382,7 @@ function ComponentPicker({ allComponents, currentProductId, search, onSearchChan
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-none shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
-          <h2 className="font-semibold text-ink">Copy Existing Component</h2>
+          <h2 className=" text-ink">Copy Existing Component</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>
         </div>
 

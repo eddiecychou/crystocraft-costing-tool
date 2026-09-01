@@ -455,7 +455,7 @@ export default function FigurineDetail({ profile }) {
                    onClick={(e) => e.stopPropagation()}
                    title="Download this photo"
                    className="absolute top-1.5 right-1.5 p-1.5 rounded-full bg-white/90 text-ink-60 shadow-sm
-                              opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:text-brand-600">
+ opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:text-brand-600">
                   <Download size={14} />
                 </a>
                 {g.caption && (

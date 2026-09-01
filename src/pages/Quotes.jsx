@@ -66,7 +66,7 @@ export default function Quotes() {
       {loading && <LoadingBar />}
       <div className="flex items-start justify-between mb-4 gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl md:text-2xl font-bold text-ink">Client Quotes</h1>
+          <h1 className="text-xl md:text-2xl text-ink">Client Quotes</h1>
           <p className="text-sm text-ink-60 mt-0.5">{filtered.length} of {quotes.length} quotes</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 shrink-0">

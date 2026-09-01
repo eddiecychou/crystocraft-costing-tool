@@ -91,7 +91,7 @@ export default function CustomerAccounts({ embedded = false }) {
           {tabs.map(t => (
             <button key={t.v} onClick={() => setTab(t.v)}
               className={`px-3 py-1.5 text-sm border-l first:border-l-0 border-ivory-dark transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0
-                ${tab === t.v ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory'}`}>
+ ${tab === t.v ? 'bg-ink text-white' : 'bg-white text-ink-70 hover:bg-ivory-dark'}`}>
               <t.Icon size={14} /> {t.label} <span className="opacity-60">{t.n}</span>
             </button>
           ))}
@@ -112,7 +112,7 @@ export default function CustomerAccounts({ embedded = false }) {
           {[['all', 'All'], ['customer', 'Customers'], ['internal', 'Internal']].map(([v, label]) => (
             <button key={v} onClick={() => setTypeFilter(v)}
               className={`px-2.5 py-1 rounded-full border transition-colors ${
-                typeFilter === v ? 'border-brand-600 text-brand-700 bg-brand-50' : 'border-ivory-dark text-ink-60 hover:bg-ivory'}`}>
+ typeFilter === v ? 'border-brand-600 text-brand-700 bg-brand-50' : 'border-ivory-dark text-ink-60 hover:bg-ivory'}`}>
               {label}
             </button>
           ))}
@@ -139,7 +139,7 @@ function Row({ u, linked, dup }) {
 
   return (
     <Link to={`/portal/accounts/${u.id}`}
-      className="card p-4 flex items-center gap-3 hover:bg-ivory/40 transition-colors">
+      className="card p-4 flex items-center gap-3 hover:border-brand-300 transition-colors">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="font-medium text-ink truncate">{name}</p>

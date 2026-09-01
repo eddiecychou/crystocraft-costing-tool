@@ -59,7 +59,7 @@ export default function Settings() {
               key={t.v}
               onClick={() => setTab(t.v)}
               className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors -mb-px ${
-                tab === t.v
+ tab === t.v
                   ? 'border-brand-600 text-brand-600'
                   : 'border-transparent text-ink-60 hover:text-ink'
               }`}
@@ -87,7 +87,7 @@ export default function Settings() {
                 key={t.v}
                 onClick={() => setProductTab(t.v)}
                 className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                  productTab === t.v
+ productTab === t.v
                     ? 'bg-ink text-white'
                     : 'bg-ivory text-ink-70 hover:bg-ivory-dark'
                 }`}
@@ -101,13 +101,13 @@ export default function Settings() {
             {productTab === 'images'     && <ImportImages />}
             {productTab === 'categories' && (
               <div className="p-4 md:p-6">
-                <h2 className="text-lg font-semibold mb-1">Bulk Categories</h2>
+                <h2 className="text-lg mb-1">Bulk Categories</h2>
                 <BulkCategoryEditor />
               </div>
             )}
             {productTab === 'video' && (
               <div className="p-4 md:p-6">
-                <h2 className="text-lg font-semibold mb-1">Bulk Video</h2>
+                <h2 className="text-lg mb-1">Bulk Video</h2>
                 <BulkVideoEditor />
               </div>
             )}
@@ -181,7 +181,7 @@ function ProductDefaults() {
   return (
     <div className="p-4 md:p-6 max-w-lg space-y-6">
       <div>
-        <h2 className="text-lg font-semibold mb-1">Product Defaults</h2>
+        <h2 className="text-lg mb-1">Product Defaults</h2>
         <p className="text-sm text-ink-60">Global settings that apply across all figurine products.</p>
       </div>
 
@@ -284,7 +284,7 @@ function QuoteBrandingPanel() {
 
   return (
     <div className="p-4 md:p-6 max-w-lg">
-      <h2 className="text-lg font-semibold mb-1">Quote Stamp &amp; Signature</h2>
+      <h2 className="text-lg mb-1">Quote Stamp &amp; Signature</h2>
       <p className="text-sm text-ink-60 mb-4">
         Upload a company chop / signature image once — it's embedded automatically over the
         "Issued By" line on every quote PDF. A PNG with a transparent background works best.
@@ -374,7 +374,7 @@ function ExchangeRatesPanel() {
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="card p-5 mb-4">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-sm font-semibold text-ink-80">Exchange Rates to HKD</h2>
+          <h2 className="text-sm text-ink-80">Exchange Rates to HKD</h2>
           <button onClick={fetchLiveRates} disabled={fetching}
             className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5">
             {fetching ? <><Spinner /> Fetching…</> : <span className="inline-flex items-center gap-1.5"><RefreshCw size={14} />Fetch Live Rates</span>}

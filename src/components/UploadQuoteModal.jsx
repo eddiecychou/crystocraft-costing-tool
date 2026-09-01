@@ -88,7 +88,7 @@ export default function UploadQuoteModal({ onClose, onCreated }) {
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-none shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey sticky top-0 bg-white z-10">
-          <h2 className="text-base font-semibold text-ink">Upload Quote</h2>
+          <h2 className="text-base text-ink">Upload Quote</h2>
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>
         </div>
 

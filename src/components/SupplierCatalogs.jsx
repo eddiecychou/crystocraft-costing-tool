@@ -100,7 +100,7 @@ export default function SupplierCatalogs({ supplierId }) {
   return (
     <div className="card p-5 mt-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-ink-80">Supplier Catalogs</h2>
+        <h2 className="text-sm text-ink-80">Supplier Catalogs</h2>
         <label className="btn-secondary text-xs py-1.5 px-3 cursor-pointer">
           + Upload Files
           <input

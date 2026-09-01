@@ -124,7 +124,7 @@ export default function ComponentRequirements() {
       {/* Order picker */}
       <div className="card mb-4">
         <div className="flex items-center justify-between px-4 py-3 border-b border-warm-grey">
-          <h2 className="text-sm font-semibold text-ink-80 inline-flex items-center gap-1.5">
+          <h2 className="text-sm text-ink-80 inline-flex items-center gap-1.5">
             <Boxes size={15} /> Orders
             <span className="font-normal text-ink-60">· {selected.size} selected · showing {visibleOrders.length} of {sortedOrders.length}</span>
           </h2>
@@ -235,7 +235,7 @@ export default function ComponentRequirements() {
           {crystalAll.length > 0 && (
             <div className="bg-white rounded-none border border-warm-grey mb-3">
               <div className="px-4 py-2.5 border-b border-warm-grey flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-ink-80 inline-flex items-center gap-1.5">
+                <h2 className="text-sm text-ink-80 inline-flex items-center gap-1.5">
                   <Gem size={14} className="text-brand-500" />
                   Crystals
                   <span className="font-normal text-ink-60">
