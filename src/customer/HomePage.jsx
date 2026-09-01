@@ -72,9 +72,11 @@ function useFeaturedProductsMeta(items) {
 
 function FeaturedProductCard({ item, meta }) {
   if (!meta) return null // product deleted/renamed away since being featured — skip rather than show a broken link
+  // One hover signal per tile type (UI-POLISH §4.6): the image lift IS the
+  // affordance for an image tile — no stacked shadow.
   return (
     <Link to={meta.to}
-      className="mosaic-tile flex flex-col hover:shadow-md transition-shadow group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
+      className="mosaic-tile flex flex-col group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
       <div className="aspect-square bg-ivory-dark overflow-hidden">
         <img src={item.image_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
       </div>
@@ -88,7 +90,7 @@ function FeaturedProductCard({ item, meta }) {
 function PillarCard({ pillar, spanFull }) {
   return (
     <Link to={pillar.to}
-      className={`mosaic-tile flex flex-col hover:shadow-md transition-shadow group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${spanFull ? 'sm:col-span-2 lg:col-span-1' : ''}`}>
+      className={`mosaic-tile flex flex-col group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 ${spanFull ? 'sm:col-span-2 lg:col-span-1' : ''}`}>
       <div className="aspect-[4/3] bg-ivory-dark overflow-hidden">
         <img src={PILLAR_IMAGE[pillar.key]} alt="" loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
@@ -107,10 +109,13 @@ function PillarCard({ pillar, spanFull }) {
 
 function QuickActionTile({ action }) {
   const Icon = ICONS[action.iconKey]
+  // Utility row, not a hero card (UI-POLISH §3): no transform / lift. Two
+  // coordinated colour shifts (tile warms, icon chip deepens) are the whole
+  // hover — enough to read as interactive, nothing that jitters the layout.
   return (
     <Link to={action.to}
-      className="mosaic-tile group flex flex-col items-center justify-center gap-3 py-6 px-3 text-center hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
-      <span className="w-11 h-11 rounded-full bg-brand-50 flex items-center justify-center group-hover:bg-brand-100 group-hover:scale-110 transition-all duration-200">
+      className="mosaic-tile group flex flex-col items-center justify-center gap-3 py-6 px-3 text-center hover:bg-ivory transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
+      <span className="w-11 h-11 rounded-full bg-brand-50 flex items-center justify-center group-hover:bg-brand-100 transition-colors">
         <Icon size={20} strokeWidth={1.5} className="text-brand-600" />
       </span>
       <span className="text-sm text-ink font-medium">{action.label}</span>
@@ -148,13 +153,20 @@ export default function HomePage({ profile }) {
               {profile?.company_name ? `Welcome back, ${profile.company_name}` : 'Welcome back'}
             </p>
             <h1 className="text-4xl md:text-6xl text-white leading-tight mb-3 max-w-2xl">{heroContent.heading}</h1>
-            <p className="text-sm md:text-base text-white/85 leading-relaxed mb-6 max-w-md">{heroContent.supporting}</p>
+            <p className="text-sm md:text-base text-white/85 leading-relaxed mb-6 max-w-xl">{heroContent.supporting}</p>
             <button onClick={scrollToPillars} className="btn-reversed w-full sm:w-auto">{heroContent.primaryCta.label}</button>
           </div>
         </div>
       </section>
 
-      {inviteStatus && <ProposalInviteCard status={inviteStatus} href="/shop/brand-portal" />}
+      {/* One section rhythm across the whole page (UI-POLISH §4.1): every
+          band is `py-12 md:py-16`, and every heading→grid gap is `mb-6`.
+          Storefront breathing room (§3), not Operation-Center density. */}
+      {inviteStatus && (
+        <section className="py-12 md:py-16">
+          <ProposalInviteCard status={inviteStatus} href="/shop/brand-portal" />
+        </section>
+      )}
 
       {/* Featured Products — hand-picked by an admin in Marketing → Front
           Page (src/pages/FrontPageConfig.jsx), each a specific product AND
@@ -162,7 +174,7 @@ export default function HomePage({ profile }) {
           Renders nothing while loading or if none are configured yet, so a
           fresh install isn't left with an empty section header. */}
       {featured?.items?.length > 0 && (
-        <section className="py-8 md:py-10">
+        <section className="py-12 md:py-16">
           <p className="eyebrow tracking-[0.08em] text-bronze mb-2">Featured</p>
           <h2 className="text-xl md:text-2xl text-ink mb-1.5">Featured Products</h2>
           <p className="text-sm text-ink-60 mb-6 max-w-2xl">A closer look at some of our new arrivals and best sellers.</p>
@@ -173,7 +185,7 @@ export default function HomePage({ profile }) {
       )}
 
       {/* Pillars */}
-      <section id="pillars" className="py-8 md:py-10 scroll-mt-4">
+      <section id="pillars" className="py-12 md:py-16 scroll-mt-4">
         <p className="eyebrow tracking-[0.08em] text-bronze mb-2">Collections</p>
         <h2 className="text-xl md:text-2xl text-ink mb-1.5">{pillarsSection.heading}</h2>
         <p className="text-sm text-ink-60 mb-6 max-w-2xl">{pillarsSection.supporting}</p>
@@ -185,8 +197,8 @@ export default function HomePage({ profile }) {
       </section>
 
       {/* Quick access */}
-      <section className="py-6 md:py-8 border-t border-ivory-dark">
-        <h2 className="text-lg md:text-xl text-ink mb-4">{quickAccessSection.heading}</h2>
+      <section className="py-12 md:py-16 border-t border-ivory-dark">
+        <h2 className="text-lg md:text-xl text-ink mb-6">{quickAccessSection.heading}</h2>
         <div className="mosaic-grid grid-cols-2 lg:grid-cols-4">
           {visibleQuickActions.map(a => <QuickActionTile key={a.key} action={a} />)}
         </div>
