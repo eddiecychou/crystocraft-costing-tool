@@ -169,7 +169,7 @@ export default function EnquiryPage({ profile }) {
                 )}
                 <input type="text" placeholder="Note (extra customisation, deadlines…)"
                   value={i.note || ''} onChange={e => cart.update(i.key, { note: e.target.value })}
-                  className="input py-1 text-xs mt-1 w-full" />
+                  className="input py-2 text-xs mt-1 w-full" />
               </div>
               <div className="flex flex-col items-end gap-1 shrink-0">
                 <span className="text-xs text-ink-50">
@@ -179,12 +179,12 @@ export default function EnquiryPage({ profile }) {
                   <div className="flex flex-col items-end gap-0.5">
                     <div className="inline-flex items-center border border-ivory-dark rounded-none overflow-hidden">
                       <button type="button" onClick={() => setCartons(cartons - 1)}
-                        className="px-2 py-1.5 hover:bg-ivory text-ink-70" aria-label="Fewer cartons"><Minus size={12} /></button>
+                        className="min-h-[40px] min-w-[40px] flex items-center justify-center hover:bg-ivory text-ink-70" aria-label="Fewer cartons"><Minus size={12} /></button>
                       <input type="number" min="1" value={cartons}
                         onChange={e => setCartons(Number(e.target.value))}
-                        className="w-12 text-center text-sm py-1 outline-none border-x border-ivory-dark" />
+                        className="w-12 text-center text-sm py-2 outline-none border-x border-ivory-dark" />
                       <button type="button" onClick={() => setCartons(cartons + 1)}
-                        className="px-2 py-1.5 hover:bg-ivory text-ink-70" aria-label="More cartons"><Plus size={12} /></button>
+                        className="min-h-[40px] min-w-[40px] flex items-center justify-center hover:bg-ivory text-ink-70" aria-label="More cartons"><Plus size={12} /></button>
                     </div>
                     <span className="text-xs text-ink-50">{cartons} ctn · {qtyPcs.toLocaleString()} pcs</span>
                   </div>
@@ -192,7 +192,7 @@ export default function EnquiryPage({ profile }) {
                   <label className="text-xs text-ink-50">{concept ? 'Estimated qty' : 'Qty (pcs)'}
                     <input type="number" min="1" value={qtyPcs}
                       onChange={e => setPcs(Number(e.target.value))}
-                      className="input py-1 w-20 ml-1 inline-block" />
+                      className="input py-2 w-20 ml-1 inline-block" />
                   </label>
                 )}
                 <span className="text-sm text-ink font-medium">

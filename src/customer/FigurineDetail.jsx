@@ -318,11 +318,11 @@ export default function FigurineDetail({ profile }) {
               {hasSelStock && (
                 <div className="flex rounded-none border border-ivory-dark overflow-hidden mb-3 text-xs">
                   <button type="button" onClick={() => { setOrderMode('stock'); setStockPcs(1) }}
-                    className={`flex-1 px-3 py-1.5 text-left transition-colors ${effectiveMode === 'stock' ? 'bg-brand-50 text-brand-700 font-medium' : 'hover:bg-ivory text-ink-60'}`}>
+                    className={`flex-1 px-3 py-2 min-h-[40px] text-left transition-colors ${effectiveMode === 'stock' ? 'bg-brand-50 text-brand-700 font-medium' : 'hover:bg-ivory text-ink-60'}`}>
                     From stock · <span className="font-medium">{selBuildable} pcs available</span> · any qty · fast
                   </button>
                   <button type="button" onClick={() => { setOrderMode('mto'); setCartons(1) }}
-                    className={`flex-1 px-3 py-1.5 text-left border-l border-ivory-dark transition-colors ${effectiveMode === 'mto' ? 'bg-brand-50 text-brand-700 font-medium' : 'hover:bg-ivory text-ink-60'}`}>
+                    className={`flex-1 px-3 py-2 min-h-[40px] text-left border-l border-ivory-dark transition-colors ${effectiveMode === 'mto' ? 'bg-brand-50 text-brand-700 font-medium' : 'hover:bg-ivory text-ink-60'}`}>
                     Make to order · cartons · MOQ applies
                   </button>
                 </div>
@@ -337,22 +337,22 @@ export default function FigurineDetail({ profile }) {
                   {effectiveMode === 'stock' ? (
                     <>
                       <button type="button" onClick={() => setStockPcs(n => Math.max(1, n - 1))}
-                        className="px-2.5 py-2 hover:bg-ivory text-ink-70" aria-label="Decrease"><Minus size={14} /></button>
+                        className="min-h-[40px] min-w-[40px] flex items-center justify-center hover:bg-ivory text-ink-70" aria-label="Decrease"><Minus size={14} /></button>
                       <input type="number" min="1" max={maxPcs > 0 ? maxPcs : undefined} value={stockPcs}
                         onChange={e => setStockPcs(Math.min(maxPcs, Math.max(1, Math.floor(Number(e.target.value) || 1))))}
-                        className="w-16 text-center text-sm py-1.5 outline-none border-x border-ivory-dark" />
+                        className="w-16 text-center text-sm py-2 outline-none border-x border-ivory-dark" />
                       <button type="button" onClick={() => setStockPcs(n => Math.min(maxPcs, n + 1))}
-                        className="px-2.5 py-2 hover:bg-ivory text-ink-70" aria-label="Increase"><Plus size={14} /></button>
+                        className="min-h-[40px] min-w-[40px] flex items-center justify-center hover:bg-ivory text-ink-70" aria-label="Increase"><Plus size={14} /></button>
                     </>
                   ) : (
                     <>
                       <button type="button" onClick={() => setCartons(c => Math.max(1, c - 1))}
-                        className="px-2.5 py-2 hover:bg-ivory text-ink-70" aria-label="Decrease"><Minus size={14} /></button>
+                        className="min-h-[40px] min-w-[40px] flex items-center justify-center hover:bg-ivory text-ink-70" aria-label="Decrease"><Minus size={14} /></button>
                       <input type="number" min="1" value={cartons}
                         onChange={e => setCartons(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
-                        className="w-14 text-center text-sm py-1.5 outline-none border-x border-ivory-dark" />
+                        className="w-14 text-center text-sm py-2 outline-none border-x border-ivory-dark" />
                       <button type="button" onClick={() => setCartons(c => c + 1)}
-                        className="px-2.5 py-2 hover:bg-ivory text-ink-70" aria-label="Increase"><Plus size={14} /></button>
+                        className="min-h-[40px] min-w-[40px] flex items-center justify-center hover:bg-ivory text-ink-70" aria-label="Increase"><Plus size={14} /></button>
                     </>
                   )}
                 </div>

@@ -40,19 +40,19 @@ export default function FavouritesPage() {
                 {it.code && <p className="text-xs text-ink-50 font-mono">{it.code}</p>}
                 <div className="mt-auto pt-2 flex items-center gap-2">
                   {inCart ? (
-                    <span className="text-xs px-2 py-1 rounded-none border border-ivory-dark text-ink-40">In enquiry</span>
+                    <span className="text-xs px-3 min-h-[40px] inline-flex items-center rounded-none border border-ivory-dark text-ink-40">In enquiry</span>
                   ) : it.type === 'figurine' ? (
                     <Link to={to}
-                      className="text-xs px-2 py-1 rounded-none border border-brand-500 text-brand-600 hover:bg-brand-50">
+                      className="text-xs px-3 min-h-[40px] inline-flex items-center rounded-none border border-brand-500 text-brand-600 hover:bg-brand-50">
                       Select options
                     </Link>
                   ) : (
                     <button onClick={() => cart?.add(it)}
-                      className="text-xs px-2 py-1 rounded-none border border-brand-500 text-brand-600 hover:bg-brand-50">
+                      className="text-xs px-3 min-h-[40px] inline-flex items-center rounded-none border border-brand-500 text-brand-600 hover:bg-brand-50">
                       Add to enquiry
                     </button>
                   )}
-                  <button onClick={() => fav?.toggle(it)} className="text-xs text-ink-40 hover:text-red-500 ml-auto">Remove</button>
+                  <button onClick={() => fav?.toggle(it)} className="text-xs text-ink-40 hover:text-red-500 ml-auto min-h-[40px] inline-flex items-center px-1">Remove</button>
                 </div>
               </div>
             </div>
