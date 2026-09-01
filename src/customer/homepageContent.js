@@ -11,7 +11,10 @@
 export const heroContent = {
   heading: 'Explore the Crystocraft Collection',
   supporting: 'Discover collectible figurines, custom corporate gifts and premium crystal embellishment materials for your next project.',
-  primaryCta: { label: 'Explore the Collection' }, // scrolls to #pillars, no route
+  // The hero button's DEFAULT (customer with no published proposal). HomePage
+  // swaps this for "View your proposal" → /shop/brand-portal when there is one.
+  // Points at a real destination (the largest catalogue), not a scroll-to-#pillars.
+  primaryCta: { label: 'Browse the catalogue', to: '/shop/figurine' },
 }
 
 export const pillarsSection = {

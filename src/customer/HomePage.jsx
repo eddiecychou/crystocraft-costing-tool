@@ -173,7 +173,13 @@ export default function HomePage({ profile }) {
   const featuredMeta = useFeaturedProductsMeta(featured?.items)
   const inviteStatus = useProposalInviteStatus(profile?.customer_id)
 
-  const scrollToPillars = () => document.getElementById('pillars')?.scrollIntoView({ behavior: 'smooth' })
+  // The hero CTA is the customer's most relevant first move, not a generic
+  // "explore" that echoes the heading + the pillars section below it: a
+  // customer with a published proposal jumps straight there; everyone else
+  // goes to the largest catalogue (a real destination, not a 200px scroll).
+  const heroCta = inviteStatus
+    ? { label: 'View your proposal', to: '/shop/brand-portal' }
+    : { label: heroContent.primaryCta.label, to: heroContent.primaryCta.to }
 
   return (
     <div>
@@ -198,7 +204,7 @@ export default function HomePage({ profile }) {
             </p>
             <h1 className="text-4xl md:text-6xl text-white leading-tight mb-3 max-w-2xl">{heroContent.heading}</h1>
             <p className="text-sm md:text-base text-white/85 leading-relaxed mb-6 max-w-xl">{heroContent.supporting}</p>
-            <button onClick={scrollToPillars} className="btn-reversed w-full sm:w-auto">{heroContent.primaryCta.label}</button>
+            <Link to={heroCta.to} className="btn-reversed w-full sm:w-auto">{heroCta.label}</Link>
           </div>
         </div>
       </section>
