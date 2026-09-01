@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuthState } from './hooks/useAuthState'
 import { useProfile, isAdmin, isProduction, isSales, isApproved, isPending } from './hooks/useProfile'
@@ -7,75 +7,75 @@ import Layout from './components/Layout'
 import LoadingBar from './components/LoadingBar'
 import ErrorBoundary from './components/ErrorBoundary'
 import Login from './pages/Login'
-import InvitationClaim from './pages/InvitationClaim'
-import SetPassword from './pages/SetPassword'
-import Storefront from './customer/Storefront'
-import PendingScreen from './customer/PendingScreen'
-import Products from './pages/Products'
-import Range from './pages/Range'
-import RangeForm from './pages/RangeForm'
-import RangeCosting from './pages/RangeCosting'
-import RangeQuoteForm from './pages/RangeQuoteForm'
-import ProductForm from './pages/ProductForm'
-import ProductDetail from './pages/ProductDetail'
-import ComponentForm from './pages/ComponentForm'
-import ComponentDetail from './pages/ComponentDetail'
-import SupplierQuoteForm from './pages/SupplierQuoteForm'
-import PricingTiers from './pages/PricingTiers'
-import Suppliers from './pages/Suppliers'
-import SupplierForm from './pages/SupplierForm'
-import SupplierDetail from './pages/SupplierDetail'
-import PurchaseOrders from './pages/PurchaseOrders'
-import PurchaseOrderForm from './pages/PurchaseOrderForm'
-import PurchaseOrderDetail from './pages/PurchaseOrderDetail'
-import PurchaseOrderPrint from './pages/PurchaseOrderPrint'
-import Quotes from './pages/Quotes'
-import QuoteForm from './pages/QuoteForm'
-import QuoteDetail from './pages/QuoteDetail'
-import Customers from './pages/Customers'
-import CustomerForm from './pages/CustomerForm'
-import TagManager from './pages/TagManager'
-import WhatsAppImport from './pages/WhatsAppImport'
-import CustomerDetail from './pages/CustomerDetail'
-import MarketingContactDetail from './pages/MarketingContactDetail'
-import Settings from './pages/Settings'
-import SchemaAudit from './pages/SchemaAudit'
-import BankDetailsAudit from './pages/BankDetailsAudit'
-import BankAccounts from './pages/BankAccounts'
-import ComponentsLib from './pages/Components'
-import InventoryStatus from './pages/InventoryStatus'
-import ErpLookup from './pages/ErpLookup'
-import UcRegistry from './pages/UcRegistry'
-import SwatchLibrary from './pages/SwatchLibrary'
-import RangeComponentForm from './pages/RangeComponentForm'
-import Catalogues from './pages/Catalogues'
-import CatalogueForm from './pages/CatalogueForm'
-import CatalogueDetail from './pages/CatalogueDetail'
-import CataloguePreview from './pages/CataloguePreview'
-import BlogGenerator from './pages/BlogGenerator'
-import Dashboard from './pages/Dashboard'
-import ImportData from './pages/ImportData'
-import CatalogueBand from './pages/CatalogueBand'
-import ImportImages from './pages/ImportImages'
-import CustomerAccounts from './pages/CustomerAccounts'
-import AccountEdit from './pages/AccountEdit'
-import Enquiries from './pages/Enquiries'
-import CreditNotes from './pages/CreditNotes'
-import CreditNoteForm from './pages/CreditNoteForm'
-import CreditNotePrint from './pages/CreditNotePrint'
-import Logistics from './pages/Logistics'
-import LogisticsVendorForm from './pages/LogisticsVendorForm'
-import Shipments from './pages/Shipments'
-import ShipmentForm from './pages/ShipmentForm'
-import Shipping from './pages/Shipping'
-import Portal from './pages/Portal'
-import Marketing from './pages/Marketing'
-import PackingListPrint from './pages/PackingListPrint'
-import ProformaInvoicePrint from './pages/ProformaInvoicePrint'
-import SalesInvoicePrint from './pages/SalesInvoicePrint'
-import SalesInvoices from './pages/SalesInvoices'
-import WooCommerceSync from './pages/WooCommerceSync'
-import ProductionDashboard from './pages/ProductionDashboard'
+const InvitationClaim = lazy(() => import('./pages/InvitationClaim'))
+const SetPassword = lazy(() => import('./pages/SetPassword'))
+const Storefront = lazy(() => import('./customer/Storefront'))
+const PendingScreen = lazy(() => import('./customer/PendingScreen'))
+const Products = lazy(() => import('./pages/Products'))
+const Range = lazy(() => import('./pages/Range'))
+const RangeForm = lazy(() => import('./pages/RangeForm'))
+const RangeCosting = lazy(() => import('./pages/RangeCosting'))
+const RangeQuoteForm = lazy(() => import('./pages/RangeQuoteForm'))
+const ProductForm = lazy(() => import('./pages/ProductForm'))
+const ProductDetail = lazy(() => import('./pages/ProductDetail'))
+const ComponentForm = lazy(() => import('./pages/ComponentForm'))
+const ComponentDetail = lazy(() => import('./pages/ComponentDetail'))
+const SupplierQuoteForm = lazy(() => import('./pages/SupplierQuoteForm'))
+const PricingTiers = lazy(() => import('./pages/PricingTiers'))
+const Suppliers = lazy(() => import('./pages/Suppliers'))
+const SupplierForm = lazy(() => import('./pages/SupplierForm'))
+const SupplierDetail = lazy(() => import('./pages/SupplierDetail'))
+const PurchaseOrders = lazy(() => import('./pages/PurchaseOrders'))
+const PurchaseOrderForm = lazy(() => import('./pages/PurchaseOrderForm'))
+const PurchaseOrderDetail = lazy(() => import('./pages/PurchaseOrderDetail'))
+const PurchaseOrderPrint = lazy(() => import('./pages/PurchaseOrderPrint'))
+const Quotes = lazy(() => import('./pages/Quotes'))
+const QuoteForm = lazy(() => import('./pages/QuoteForm'))
+const QuoteDetail = lazy(() => import('./pages/QuoteDetail'))
+const Customers = lazy(() => import('./pages/Customers'))
+const CustomerForm = lazy(() => import('./pages/CustomerForm'))
+const TagManager = lazy(() => import('./pages/TagManager'))
+const WhatsAppImport = lazy(() => import('./pages/WhatsAppImport'))
+const CustomerDetail = lazy(() => import('./pages/CustomerDetail'))
+const MarketingContactDetail = lazy(() => import('./pages/MarketingContactDetail'))
+const Settings = lazy(() => import('./pages/Settings'))
+const SchemaAudit = lazy(() => import('./pages/SchemaAudit'))
+const BankDetailsAudit = lazy(() => import('./pages/BankDetailsAudit'))
+const BankAccounts = lazy(() => import('./pages/BankAccounts'))
+const ComponentsLib = lazy(() => import('./pages/Components'))
+const InventoryStatus = lazy(() => import('./pages/InventoryStatus'))
+const ErpLookup = lazy(() => import('./pages/ErpLookup'))
+const UcRegistry = lazy(() => import('./pages/UcRegistry'))
+const SwatchLibrary = lazy(() => import('./pages/SwatchLibrary'))
+const RangeComponentForm = lazy(() => import('./pages/RangeComponentForm'))
+const Catalogues = lazy(() => import('./pages/Catalogues'))
+const CatalogueForm = lazy(() => import('./pages/CatalogueForm'))
+const CatalogueDetail = lazy(() => import('./pages/CatalogueDetail'))
+const CataloguePreview = lazy(() => import('./pages/CataloguePreview'))
+const BlogGenerator = lazy(() => import('./pages/BlogGenerator'))
+const Dashboard = lazy(() => import('./pages/Dashboard'))
+const ImportData = lazy(() => import('./pages/ImportData'))
+const CatalogueBand = lazy(() => import('./pages/CatalogueBand'))
+const ImportImages = lazy(() => import('./pages/ImportImages'))
+const CustomerAccounts = lazy(() => import('./pages/CustomerAccounts'))
+const AccountEdit = lazy(() => import('./pages/AccountEdit'))
+const Enquiries = lazy(() => import('./pages/Enquiries'))
+const CreditNotes = lazy(() => import('./pages/CreditNotes'))
+const CreditNoteForm = lazy(() => import('./pages/CreditNoteForm'))
+const CreditNotePrint = lazy(() => import('./pages/CreditNotePrint'))
+const Logistics = lazy(() => import('./pages/Logistics'))
+const LogisticsVendorForm = lazy(() => import('./pages/LogisticsVendorForm'))
+const Shipments = lazy(() => import('./pages/Shipments'))
+const ShipmentForm = lazy(() => import('./pages/ShipmentForm'))
+const Shipping = lazy(() => import('./pages/Shipping'))
+const Portal = lazy(() => import('./pages/Portal'))
+const Marketing = lazy(() => import('./pages/Marketing'))
+const PackingListPrint = lazy(() => import('./pages/PackingListPrint'))
+const ProformaInvoicePrint = lazy(() => import('./pages/ProformaInvoicePrint'))
+const SalesInvoicePrint = lazy(() => import('./pages/SalesInvoicePrint'))
+const SalesInvoices = lazy(() => import('./pages/SalesInvoices'))
+const WooCommerceSync = lazy(() => import('./pages/WooCommerceSync'))
+const ProductionDashboard = lazy(() => import('./pages/ProductionDashboard'))
 
 export default function App() {
   const user = useAuthState()
@@ -136,6 +136,11 @@ function AppRoutes({ user }) {
     : 'pending'
 
   return (
+    // Every page is a lazy() chunk now (code-split, 2026-09-02) — one Suspense
+    // boundary here covers the whole route tree; LoadingBar is the same
+    // fallback used while auth/profile resolve, so a chunk fetch looks
+    // identical to a normal load.
+    <Suspense fallback={<LoadingBar />}>
     <Routes>
       {/* SU-07A — public, unauthenticated pages, reachable regardless of
           sign-in state. Deliberately OUTSIDE the role-gated "/*" catch-all
@@ -155,6 +160,7 @@ function AppRoutes({ user }) {
         : <AdminApp user={user} role={role} />
       } />
     </Routes>
+    </Suspense>
   )
 }
 
@@ -184,6 +190,11 @@ function AdminApp({ user, role }) {
       <Route path="/*" element={
             <Layout user={user}>
               <ErrorBoundary home="/dashboard">
+              {/* Inner Suspense so a lazy page chunk loads WITHOUT tearing
+                  down the sidebar/header — only the content area shows the
+                  bar. The outer App-level Suspense still covers Storefront
+                  and the public pages. */}
+              <Suspense fallback={<LoadingBar />}>
               <Routes>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
                 {/* Dashboard resolves per role — production gets a supply-side
@@ -276,6 +287,7 @@ function AdminApp({ user, role }) {
                 <Route path="/catalogue-band" element={<Navigate to="/settings" replace />} />
                 <Route path="/import-data" element={<Gate module="settings"><ImportData /></Gate>} />
               </Routes>
+              </Suspense>
               </ErrorBoundary>
             </Layout>
       } />

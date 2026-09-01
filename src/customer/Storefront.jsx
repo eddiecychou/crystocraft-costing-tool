@@ -1,25 +1,28 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import CustomerLayout from './CustomerLayout'
-import HomePage from './HomePage'
-import FigurineShop from './FigurineShop'
-import CorporateShop from './CorporateShop'
-import FigurineDetail from './FigurineDetail'
-import CorporateDetail from './CorporateDetail'
-import FavouritesPage from './FavouritesPage'
-import EnquiryPage from './EnquiryPage'
-import CustomizerPage from './CustomizerPage'
-import BrandPortalPage from './BrandPortalPage'
-import OrderHistoryPage from './OrderHistoryPage'
-import SwatchLibraryPage from './SwatchLibraryPage'
-import CustomerInvoicePrint from './CustomerInvoicePrint'
-import ProposalPrint from './ProposalPrint'
+const HomePage = lazy(() => import('./HomePage'))
+const FigurineShop = lazy(() => import('./FigurineShop'))
+const CorporateShop = lazy(() => import('./CorporateShop'))
+const FigurineDetail = lazy(() => import('./FigurineDetail'))
+const CorporateDetail = lazy(() => import('./CorporateDetail'))
+const FavouritesPage = lazy(() => import('./FavouritesPage'))
+const EnquiryPage = lazy(() => import('./EnquiryPage'))
+const CustomizerPage = lazy(() => import('./CustomizerPage'))
+const BrandPortalPage = lazy(() => import('./BrandPortalPage'))
+const OrderHistoryPage = lazy(() => import('./OrderHistoryPage'))
+const SwatchLibraryPage = lazy(() => import('./SwatchLibraryPage'))
+const CustomerInvoicePrint = lazy(() => import('./CustomerInvoicePrint'))
+const ProposalPrint = lazy(() => import('./ProposalPrint'))
 import { CartProvider, FavouritesProvider } from './store'
 import ErrorBoundary from '../components/ErrorBoundary'
+import LoadingBar from '../components/LoadingBar'
 
 export default function Storefront({ profile }) {
   return (
     <FavouritesProvider uid={profile?.id}>
       <CartProvider>
+        <Suspense fallback={<LoadingBar />}>
         <Routes>
           {/* Print route — no CustomerLayout wrapper, same reason the admin
               print routes (SalesInvoicePrint etc.) sit outside Layout: the
@@ -29,6 +32,7 @@ export default function Storefront({ profile }) {
           <Route path="/*" element={
             <CustomerLayout profile={profile}>
               <ErrorBoundary home="/shop">
+              <Suspense fallback={<LoadingBar />}>
               <Routes>
                 <Route path="/shop" element={<HomePage profile={profile} />} />
                 <Route path="/shop/figurine" element={<FigurineShop profile={profile} />} />
@@ -46,10 +50,12 @@ export default function Storefront({ profile }) {
                 <Route path="/customize/:productId" element={<CustomizerPage profile={profile} />} />
                 <Route path="*" element={<Navigate to="/shop" replace />} />
               </Routes>
+              </Suspense>
               </ErrorBoundary>
             </CustomerLayout>
           } />
         </Routes>
+        </Suspense>
       </CartProvider>
     </FavouritesProvider>
   )
