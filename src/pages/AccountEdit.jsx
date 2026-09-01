@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { doc, getDoc, updateDoc, serverTimestamp, collection, getDocs, query, where } from 'firebase/firestore'
+import { doc, getDoc, updateDoc, serverTimestamp, collection, getDocs, query, where, addDoc } from 'firebase/firestore'
 import { db, auth } from '../firebase'
 import { useCustomers, getCustomer, saveCustomer, CUSTOMER_COUNTRIES, CRM_CATEGORIES, CUSTOMER_SOURCES } from '../domain/customer'
 import { CUSTOMER_CURRENCIES, useRates, fromUSD } from '../currency'
@@ -108,8 +108,26 @@ export default function AccountEdit() {
   // Persist a small patch immediately (lifecycle actions + link).
   async function apply(patch, { back = false } = {}) {
     setStatus('saving')
+    const before = u   // captured before the write, for the audit diff
     try {
       await updateDoc(doc(db, 'users', id), { ...patch, updatedAt: serverTimestamp() })
+      // Audit every role / status / account_type transition. L-01 (admin
+      // silently demoted to `pending`, TWICE) is exactly what this trail
+      // exists to catch. Best-effort and non-blocking — a failed audit
+      // write must never fail the account change itself.
+      const changed = ['role', 'status', 'account_type']
+        .filter(k => k in patch && patch[k] !== before?.[k])
+      if (changed.length) {
+        addDoc(collection(db, 'audit_logs'), {
+          kind: 'account',
+          target_uid: id,
+          target_email: before?.email || '',
+          changes: changed.map(k => ({ field: k, from: before?.[k] ?? null, to: patch[k] ?? null })),
+          actor_uid: auth.currentUser?.uid || null,
+          actor_email: auth.currentUser?.email || null,
+          at: serverTimestamp(),
+        }).catch(() => {})
+      }
       setU(prev => ({ ...prev, ...patch }))
       if (back) { navigate('/portal'); return }
       setStatus('saved')

@@ -49,6 +49,7 @@ Mixed since V8.12 — supply-side is *staff*, the sales/finance docs stay *admin
 - `client_quotes/{id}` (+ `items/{itemId}`) — Auth: **admin** (hard wall). Owned by `src/domain/customer.js` + `QuoteDetail.jsx`, `RangeQuoteForm.jsx`.
 - `credit_notes/{id}` — combined sales-return + credit-note working doc — the *posted* financial fact lives in Supabase (`credit-note.js`/`app_credit_note`, see API-REFERENCE.md), not here. Auth: **admin** (hard wall). Owned by `CreditNoteForm.jsx`, `CreditNotes.jsx`.
 - `portal_invitations/{id}` — SU-07A invite records, admin-**read-only** from the browser — the actual claim/approve write path bypasses rules entirely via the Admin SDK in `netlify/functions/portal-invite.js`. Owned by `PortalInvitations.jsx`.
+- `audit_logs/{id}` — **append-only** change trail. Auth: create = any internal login (`isStaff() || isFrontOffice()`), read = admin only, update/delete = never. First & only writer today: `AccountEdit.jsx`'s `apply()` logs every `role`/`status`/`account_type` change on a `users/{uid}` doc (`{ kind:'account', target_uid, target_email, changes:[{field,from,to}], actor_uid, actor_email, at }`) — closes the blind spot behind `LESSONS-LEARNED` L-01 (admin silently demoted, twice). Extend to other critical mutations (price groups, invitation approval via `portal-invite.js`) as needed.
 
 ## Customers & CRM
 

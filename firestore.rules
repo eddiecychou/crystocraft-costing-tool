@@ -292,6 +292,18 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // Append-only audit trail. First writer: AccountEdit.jsx logs every
+    // role/status/account_type change on a users/{uid} doc — the blind spot
+    // behind LESSONS-LEARNED L-01 (admin silently demoted to `pending`,
+    // twice). Any internal login may append (they're the only ones who can
+    // reach the admin screens that mutate accounts); only admin can read the
+    // history back; nothing may edit or delete an entry.
+    match /audit_logs/{entryId} {
+      allow create: if isStaff() || isFrontOffice();
+      allow read:   if isAdmin();
+      allow update, delete: if false;
+    }
+
     match /customers/{customerId} {
       // Front office (admin + sales, V8.13). Sales owns the customer relationship
       // and all its correspondence/CRM below; the supply side stays walled off.

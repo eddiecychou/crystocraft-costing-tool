@@ -37,6 +37,13 @@
 - **Corollary.** The `PendingScreen` message is generic — "same screen" ≠ "same
   bug". Three unrelated causes of "Awaiting approval" appeared in two cycles.
   **MUST** check *which uid / which doc exists* before assuming the mechanism.
+- **Auditability (added 2026-09-02).** Both demotions were only *noticed*, never
+  *explained* — there was no record of what wrote the doc or when. `AccountEdit.jsx`
+  now appends to `audit_logs` on every `role`/`status`/`account_type` change
+  (`FIRESTORE-COLLECTIONS.md` → `audit_logs`; append-only, admin-read). A future
+  unexplained flip leaves a trail. **TODO:** the invitation-approval path
+  (`netlify/functions/portal-invite.js`, Admin SDK) and price-group edits are
+  not yet audited.
 
 ## L-02 · `send-email.js` was a real open relay
 
