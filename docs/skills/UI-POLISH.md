@@ -204,6 +204,86 @@ Group Tailwind classes in a stable order so diffs stay readable:
 **typography** (`text- font- tracking- leading-`) → **visual** (`bg- border-
 shadow- rounded-`) → **state** (`hover: focus: disabled:`).
 
+## 7. Mobile — the storefront IS the mobile surface
+
+Wholesale buyers browse the portal on a phone; the OpsCenter is desktop-first
+but staff still open it on the move. Two external drafts
+(`MOBILE-FIRST-RESPONSIVE.md`, `PWA-BEST-PRACTICES.md`, Downloads 2026-08-22)
+were reconciled here.
+
+### 7.1 What's already built — don't reinvent it
+
+- **The Operation Center shell (`src/components/Layout.jsx`) already has the
+  full mobile treatment**: sidebar `hidden md:flex`, a `md:hidden` top bar, a
+  **fixed bottom tab bar** (`fixed bottom-0 … pb-[env(safe-area-inset-bottom)]`)
+  with a slide-up "More" sheet, `overscroll-contain` on `#main-scroll`,
+  `pb-20 md:pb-0` on `<main>`. Any "add a mobile nav" idea for the OpsCenter
+  is already done — read it first.
+- **The customer portal shell (`src/customer/CustomerLayout.jsx`) now matches
+  it** (2026-09-02): `<768px` hides the top strip and shows a 5-slot bottom
+  bar (Home / Figurines / Corporate / Enquiry / More), cart badge on Enquiry,
+  a dot on More when a hidden tab has a badge, a scrim + `rounded-xl` slide-up
+  sheet for the rest. `<main>` `pb-24 md:pb-6`; footer
+  `pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6`.
+- **Global base rules (`src/index.css` `@layer base`)**: `overscroll-behavior-y:
+  none` on body; `-webkit-tap-highlight-color: transparent` on
+  `a,button,[role="button"],summary,label`; a `.no-scrollbar` utility (hides
+  the bar, keeps momentum scroll) for horizontal strips.
+- **iOS input-zoom is already handled** — `@media (max-width:767px) {
+  input,select,textarea { font-size:16px } }` (L-… / V8.6). **MUST NOT** add a
+  "shrink fonts on mobile" rule that fights it.
+
+### 7.2 Touch targets — the pragmatic rule
+
+The draft says "every interactive element MUST be ≥44×44px". Applied literally
+to a dense wholesale catalogue that bloats every filter chip and stepper.
+Instead:
+
+- **Standalone tap target** (a nav item, a primary button, a table row that
+  opens something, a bottom-bar tab) → **≥44px**. Use `min-h-[44px]`
+  (+ `min-w-[44px]` for icon-only).
+- **Clustered secondary controls** (a `+`/`−` stepper pair, an inline
+  chip row with `gap-2`+) → **≥40px** and rely on the gap to prevent
+  mis-taps. `min-h-[40px] min-w-[40px] flex items-center justify-center` on
+  each button; bump the number `<input>` between them to `py-2` so the row
+  lines up.
+- **`.tag` filter chips are exempt** — shared with the OpsCenter's dense
+  filter bars, and low mis-tap risk in a gapped, wrapping row. Left at
+  `py-1.5`.
+
+### 7.3 The horizontal-scroll nav strip (when a bottom bar is overkill)
+
+A tablet/desktop tab strip that overflows: `.no-scrollbar` + a right-edge
+`from-ink to-transparent` fade (`sm:hidden`, `pointer-events-none`) so it
+reads as "more this way" not clipped, and on route change
+`ref.querySelector('[aria-current="page"]').scrollIntoView({inline:'center'})`
+so the active tab is never parked off-screen.
+
+### 7.4 The audit checklist (adds to §4.7)
+
+At 375px (`resize_window` mobile preset), per page:
+- [ ] **No horizontal scroll on the page body.** `documentElement.scrollWidth
+  <= clientWidth`; no element's `getBoundingClientRect().right` exceeds the
+  viewport (the intentional inner scroll strips excepted). This is the
+  single most common failure — check it first.
+- [ ] Primary action reachable with one thumb (bottom-ish, full-width).
+- [ ] Every standalone target ≥44px, clustered ≥40px (§7.2).
+- [ ] Content clears the fixed bottom bar and the home indicator
+  (`env(safe-area-inset-bottom)`).
+- [ ] Cards visually separable (hairline / `.mosaic-grid`, not just whitespace).
+- [ ] A "Back" affordance is present on every detail page.
+
+### 7.5 PWA is a project, not an audit
+
+The app has **no** PWA infra — no `manifest.json`, no service worker, no
+`vite-plugin-pwa`, no `theme-color` meta. Adding it is a deliberate build
+decision, not a polish pass. If it happens: cache the **shell** (JS/CSS/icons)
+Cache-First, but **do not** Stale-While-Revalidate *operational data*
+(inventory, quotes, prices) — a phone showing yesterday's stock is the same
+hazard as JES's stale balance tables (see `SKILL.md` data facts). Only the
+draft's §3 micro-fixes (tap-highlight, `overscroll-behavior`, `select-none`)
+were worth taking now, and they're in §7.1.
+
 ## Change Log
 
 | Date | Change |
@@ -211,3 +291,4 @@ shadow- rounded-`) → **state** (`hover: focus: disabled:`).
 | 2026-09-01 | Created. Reconciles the external `EXPERT-UI-UX-RULES.md` draft against the shipped design system: SSOT is `tailwind.config.js` + `src/index.css` (§1); the square/flat/hairline Crystocraft language (§2); storefront-vs-OpsCenter split (§3); a measurable Second-Pass checklist (§4); and the draft's factual corrections (§5). |
 | 2026-09-01 | From the customer HomePage Second Pass: §4.6 gained the "one hover signal, no stacked motion" worked example; §4.9 (data-derived UI → single source + free data over a new read) and §4.10 (contextual CTA over generic) added; §3 gained the "one rhythm beats local optimisation" rule; new §4a — how to headlessly preview a login-gated storefront/admin page (`qa/home-preview.jsx` + `qa/home-preview-seeded.mjs` patterns). |
 | 2026-09-02 | From the FigurineShop → SwatchLibrary batch (FigurineShop, CorporateShop, CorporateDetail, FigurineDetail, BrandPortalPage, EnquiryPage, FavouritesPage, OrderHistoryPage, SwatchLibraryPage — all done): §2 gained two rows (quiet section headings → `.eyebrow`, not `font-semibold`; any card-like wrapper → `.card`, never a bespoke `rounded-xl`/`rounded-md` container); §4 gained #11 (repeated hand-rolled `.label` markup → the class), #12 (a `<div onClick>` with no button sibling needs `role="button"`/`tabIndex`/keydown/focus-ring), #13 (every empty state needs a link out, not just a sentence). §4a gained four harness gotchas: esbuild's `.css` loader doesn't run Tailwind (seeded page renders unstyled until the real `tailwindcss` CLI runs **after** esbuild, last); serve `qa/` over `python3 -m http.server` rather than opening the `.html` by `file://` path (pinned tabs refuse to navigate, and file:// pages can render as static snapshots); stubbing a data module for the page under test often needs extra exports for what `CustomerLayout`'s own nav-visibility checks pull in (`hasBrandPortalContent`, `query`/`where`/`orderBy`/`limit`) — build, read the "No matching export" error, add, repeat; and the stash→rebuild→shoot→pop→rebuild recipe for before/after pairs, composed with `render-service/.venv`'s PIL. |
+| 2026-09-02 | New §7 Mobile, from the customer-portal mobile audit (reconciling the external `MOBILE-FIRST-RESPONSIVE` / `PWA-BEST-PRACTICES` drafts): §7.1 what's already built (both shells now have a fixed bottom tab bar + "More" sheet + safe-area; global `overscroll-behavior`/`tap-highlight`/`.no-scrollbar` in `index.css`); §7.2 the pragmatic touch-target rule (44px standalone / 40px clustered / `.tag` exempt); §7.3 the scroll-nav strip pattern (`.no-scrollbar` + edge fade + active-tab `scrollIntoView`); §7.4 the 375px audit checklist; §7.5 PWA is a build decision, and never SWR operational data. |

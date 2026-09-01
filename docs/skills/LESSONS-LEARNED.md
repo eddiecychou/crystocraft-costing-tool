@@ -198,6 +198,32 @@
   The `byUid` query is wrapped `.catch(()=>null)`, so a bad dimension name fails
   *silently* — check the dimension is registered (`customUser:app_uid`).
 
+## L-14 · react-pdf: blank pages and stranded headings from `<Page>` layout
+
+- **Symptom.** A generated Brand Proposal PDF (Sun Life, 2026-09-01) had a
+  fully blank page after a premium-only section (p.20), and a section whose
+  heading sat alone on one page with its products orphaned on the next, no
+  heading (pp.21–22).
+- **Root cause.** Two mechanisms in `src/components/BrandProposalPDF.jsx`.
+  (a) `paginate([])` returns `[[]]`, so a section with a feature product and
+  **no** regular products still emitted one body `<Page>` — a heading with
+  no products. (b) A refactor had split the section heading and the product
+  row into two *sibling* `<View>`s so the row could be vertically centred;
+  when the row overflowed the page by a hair, react-pdf moved only the row,
+  leaving the heading behind. Compounding it: a `flexGrow:1` centring wrapper
+  around a `wrap={false}` block that is taller than the page makes react-pdf
+  emit the block **and** a blank trailing page.
+- **Permanent fix.** Emit body pages only when `regular.length > 0`. Keep the
+  heading and the first content row **inside one `wrap={false}` block** (bind
+  them — the whole unit moves together or not at all); centre *that* block
+  with the `flexGrow` wrapper, and give it real headroom (feature image
+  340→320, duo card 270→210) so the tallest realistic case — full heading +
+  3-line captions — clears the 444pt content area. **MUST** render every
+  tier with `qa/render-proposal.jsx` → `pdftoppm` before shipping a
+  react-pdf layout change (esbuild parse says nothing about pagination — see
+  L-10); the harness now carries a premium-only section and a
+  full-heading-plus-duo section as permanent regression cases.
+
 ## Operational reminders (low blast radius, high friction)
 
 - **Bump `APP_VERSION` at cycle START**, not close (`src/appInfo.js`; corrected
@@ -225,3 +251,4 @@ sessions, add an auto-memory. Then note it in the Change Log.
 |---|---|
 | 2026-08-31 | Created by merging root `INDEX.md` §5 (mistakes table) into full Symptom/Root-cause/Permanent-fix entries, and adding the incidents the mistakes table only referenced: Resend ASCII tag + reversibility (L-04), edge-fn auto-scan deploy outage (L-05), open relay (L-02), Daily-Drafts stale closure (L-07), SEO double-branding (L-09), GA4 blank-column (L-13). |
 | 2026-09-01 | Formalized the failure-driven template at the top (Symptom / Root cause / Permanent fix is now the required, explicit format — "changed X" alone is not a lesson), per the Magister failure-driven-changelog pattern. |
+| 2026-09-02 | Added L-14 — react-pdf `<Page>` pagination: a blank page from a premium-only section (`paginate([])` → `[[]]`) and a stranded heading from decoupling heading/content across sibling views; the fix is to bind heading+first-row in one `wrap={false}` block and render every tier through `qa/render-proposal.jsx` before shipping. |
