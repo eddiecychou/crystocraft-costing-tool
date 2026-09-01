@@ -5,7 +5,8 @@ Then read the **skill system** at `docs/skills/` — start with
 `docs/skills/SKILL.md` (the master index + feature-area router: for any bug or
 task it names the exact pages / domain modules / edge functions / collections
 involved), then the topic files: `ARCHITECTURE-RULES.md` (hard boundaries, RBAC,
-data lifecycles, verify/deploy), `MARKETING-WORKFLOW.md`, `SOURCING-HUB.md`, and
+data lifecycles, verify/deploy), `MARKETING-WORKFLOW.md`, `SOURCING-HUB.md`,
+`UI-POLISH.md` (the visual language + Second-Pass checklist), and
 `LESSONS-LEARNED.md` (every past failure + its permanent fix). The old
 `INDEX.md` is now a pointer into that system.
 
