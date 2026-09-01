@@ -86,7 +86,7 @@ function AddQuoteForm({ orderId, scenarios, vendors, rates, onSaved, onCancel })
 
   return (
     <div className="border border-brand-200 rounded-xl bg-brand-50/30 p-5 space-y-4">
-      <h3 className="text-sm font-semibold text-gray-800">Add freight quote</h3>
+      <h3 className="text-sm font-semibold text-ink">Add freight quote</h3>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {/* Vendor */}
@@ -162,23 +162,23 @@ function AddQuoteForm({ orderId, scenarios, vendors, rates, onSaved, onCancel })
 
       {/* Cargo basis */}
       <div>
-        <p className="label mb-1">Cargo basis <span className="text-gray-400 font-normal">(prefilled from scenario totals — override if needed)</span></p>
+        <p className="label mb-1">Cargo basis <span className="text-ink-60 font-normal">(prefilled from scenario totals — override if needed)</span></p>
         <div className="flex gap-3 flex-wrap">
           <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-500">CBM</span>
+            <span className="text-xs text-ink-60">CBM</span>
             <input className="input py-1 text-xs w-20" type="number" step="0.0001" placeholder="0.0000"
               value={form.cargo_basis.cbm}
               onChange={e => setCargo({ cbm: e.target.value })} />
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-500">Charg. wt</span>
+            <span className="text-xs text-ink-60">Charg. wt</span>
             <input className="input py-1 text-xs w-20" type="number" step="0.1" placeholder="kg"
               value={form.cargo_basis.chargeable_weight_kg}
               onChange={e => setCargo({ chargeable_weight_kg: e.target.value })} />
-            <span className="text-xs text-gray-400">kg</span>
+            <span className="text-xs text-ink-60">kg</span>
           </div>
           <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-500">Cartons</span>
+            <span className="text-xs text-ink-60">Cartons</span>
             <input className="input py-1 text-xs w-16" type="number" min="0" placeholder="0"
               value={form.cargo_basis.cartons}
               onChange={e => setCargo({ cartons: e.target.value })} />
@@ -272,9 +272,9 @@ function ComparisonMatrix({ quotes, scenarios }) {
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr>
-            <th className="text-left py-2 pr-4 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Vendor</th>
+            <th className="text-left py-2 pr-4 text-xs font-semibold text-ink-60 uppercase tracking-wide whitespace-nowrap">Vendor</th>
             {cols.map(col => (
-              <th key={col.id ?? '__unlinked'} className="py-2 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">
+              <th key={col.id ?? '__unlinked'} className="py-2 px-3 text-left text-xs font-semibold text-ink-60 uppercase tracking-wide whitespace-nowrap">
                 {col.label}
                 {col.selected && <Star size={10} className="inline ml-1 text-yellow-500 fill-current" />}
               </th>
@@ -285,8 +285,8 @@ function ComparisonMatrix({ quotes, scenarios }) {
           {vendorNames.map(vendor => {
             const vk = vendor.toLowerCase()
             return (
-              <tr key={vendor} className="border-t border-gray-100">
-                <td className="py-2.5 pr-4 font-medium text-gray-700 whitespace-nowrap">{vendor}</td>
+              <tr key={vendor} className="border-t border-warm-grey">
+                <td className="py-2.5 pr-4 font-medium text-ink-80 whitespace-nowrap">{vendor}</td>
                 {cols.map(col => {
                   const q = lookup[vk]?.[col.id]
                   const total = hkd(q)
@@ -295,8 +295,8 @@ function ComparisonMatrix({ quotes, scenarios }) {
                   return (
                     <td key={col.id ?? '__unlinked'} className="py-2.5 px-3">
                       {q ? (
-                        <div className={`rounded-lg px-3 py-2 ${isBest ? 'bg-green-50 border border-green-200' : 'bg-gray-50'}`}>
-                          <div className={`font-semibold ${isBest ? 'text-green-700' : 'text-gray-800'}`}>
+                        <div className={`rounded-lg px-3 py-2 ${isBest ? 'bg-green-50 border border-green-200' : 'bg-ivory'}`}>
+                          <div className={`font-semibold ${isBest ? 'text-green-700' : 'text-ink'}`}>
                             {fmt(q.quoted_total, q.currency)}
                             {isBest && <span className="ml-1 text-[10px] text-green-600">★ cheapest</span>}
                           </div>
@@ -305,17 +305,17 @@ function ComparisonMatrix({ quotes, scenarios }) {
                               ranked by (bug-fix pack B-05). */}
                           {q.currency !== 'HKD' && (
                             total != null
-                              ? <div className="text-[10px] text-gray-400">≈ {fmt(total, 'HKD')}</div>
+                              ? <div className="text-[10px] text-ink-60">≈ {fmt(total, 'HKD')}</div>
                               : needsRate && <div className="text-[10px] text-amber-600">no HKD rate — excluded from ranking</div>
                           )}
-                          <div className="text-[10px] text-gray-400 mt-0.5 space-x-1.5">
+                          <div className="text-[10px] text-ink-60 mt-0.5 space-x-1.5">
                             <span>{modeLabel(q.mode)}</span>
                             {q.transit_days ? <span>· {q.transit_days}d</span> : null}
                             {q.cargo_basis?.cbm ? <span>· {q.cargo_basis.cbm} CBM</span> : null}
                           </div>
                         </div>
                       ) : (
-                        <span className="text-gray-300 text-xs">—</span>
+                        <span className="text-platinum text-xs">—</span>
                       )}
                     </td>
                   )
@@ -336,51 +336,51 @@ function QuoteRow({ quote, scenarios, onDelete, onToggleChosen }) {
   const total = parseFloat(quote.quoted_total)
 
   return (
-    <div className={`border rounded-lg overflow-hidden ${quote.is_chosen ? 'border-green-300' : 'border-gray-200'}`}>
+    <div className={`border rounded-lg overflow-hidden ${quote.is_chosen ? 'border-green-300' : 'border-warm-grey'}`}>
       <div className={`flex items-center gap-3 px-4 py-3 ${quote.is_chosen ? 'bg-green-50/50' : 'bg-white'}`}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-gray-800">{quote.vendor_name || '—'}</span>
+            <span className="font-medium text-ink">{quote.vendor_name || '—'}</span>
             {quote.is_chosen && (
               <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 font-medium">
                 <CheckCircle2 size={10} /> Chosen
               </span>
             )}
             {sc && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 border border-blue-100">{sc.label}</span>}
-            {!quote.scenario_id && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">Unlinked</span>}
-            <span className="text-xs text-gray-500">{modeLabel(quote.mode)}</span>
-            <span className="text-xs text-gray-400">{quote.incoterm}</span>
+            {!quote.scenario_id && <span className="text-[10px] px-1.5 py-0.5 rounded bg-ivory-dark text-ink-60">Unlinked</span>}
+            <span className="text-xs text-ink-60">{modeLabel(quote.mode)}</span>
+            <span className="text-xs text-ink-60">{quote.incoterm}</span>
           </div>
           <div className="flex items-center gap-3 mt-0.5">
-            <span className="text-sm font-semibold text-gray-900">
+            <span className="text-sm font-semibold text-ink">
               {!isNaN(total) ? `${quote.currency} ${total.toLocaleString('en-US', { minimumFractionDigits: 0 })}` : '—'}
             </span>
             {quote.currency !== 'HKD' && Number.isFinite(quote.quoted_total_hkd) && (
-              <span className="text-xs text-gray-400">≈ HKD {quote.quoted_total_hkd.toLocaleString('en-US', { minimumFractionDigits: 0 })}</span>
+              <span className="text-xs text-ink-60">≈ HKD {quote.quoted_total_hkd.toLocaleString('en-US', { minimumFractionDigits: 0 })}</span>
             )}
-            {quote.transit_days && <span className="text-xs text-gray-500">{quote.transit_days} days</span>}
-            {quote.quote_date && <span className="text-xs text-gray-400">{quote.quote_date}</span>}
+            {quote.transit_days && <span className="text-xs text-ink-60">{quote.transit_days} days</span>}
+            {quote.quote_date && <span className="text-xs text-ink-60">{quote.quote_date}</span>}
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {/* is_chosen had a data field and no way to set it (bug-fix pack
               B-05) — this is that missing control. */}
           <button type="button" onClick={() => onToggleChosen(quote)}
-                  className={`text-xs px-2 py-1 rounded border ${quote.is_chosen ? 'border-green-300 text-green-700 hover:bg-green-50' : 'border-gray-200 text-gray-500 hover:border-brand-400'}`}
+                  className={`text-xs px-2 py-1 rounded border ${quote.is_chosen ? 'border-green-300 text-green-700 hover:bg-green-50' : 'border-warm-grey text-ink-60 hover:border-brand-400'}`}
                   title={quote.is_chosen ? 'Unmark as chosen' : 'Mark as the chosen freight quote'}>
             {quote.is_chosen ? 'Chosen' : 'Choose'}
           </button>
-          <button type="button" onClick={() => setExpanded(e => !e)} className="text-gray-400 hover:text-gray-600 p-1">
+          <button type="button" onClick={() => setExpanded(e => !e)} className="text-ink-60 hover:text-ink-70 p-1">
             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
-          <button type="button" onClick={() => onDelete(quote.id)} className="text-gray-300 hover:text-red-500 p-1">
+          <button type="button" onClick={() => onDelete(quote.id)} className="text-platinum hover:text-red-500 p-1">
             <Trash2 size={14} />
           </button>
         </div>
       </div>
 
       {expanded && (
-        <div className="px-4 pb-3 pt-0 border-t border-gray-100 bg-gray-50 text-xs text-gray-600 space-y-1">
+        <div className="px-4 pb-3 pt-0 border-t border-warm-grey bg-ivory text-xs text-ink-70 space-y-1">
           <div className="flex gap-4 flex-wrap pt-2">
             {quote.cargo_basis?.cbm != null && <span>CBM: {quote.cargo_basis.cbm}</span>}
             {quote.cargo_basis?.chargeable_weight_kg != null && <span>Charg. wt: {quote.cargo_basis.chargeable_weight_kg} kg</span>}
@@ -394,7 +394,7 @@ function QuoteRow({ quote, scenarios, onDelete, onToggleChosen }) {
               {quote.breakdown.duties_included && <span className="text-green-600">duties included</span>}
             </div>
           )}
-          {quote.decision_notes && <p className="text-gray-500 italic">{quote.decision_notes}</p>}
+          {quote.decision_notes && <p className="text-ink-60 italic">{quote.decision_notes}</p>}
         </div>
       )}
     </div>
@@ -448,17 +448,17 @@ export default function FreightComparison({ orderId }) {
     ])
   }
 
-  if (loading) return <div className="py-8 text-center text-sm text-gray-400">Loading freight quotes…</div>
+  if (loading) return <div className="py-8 text-center text-sm text-ink-60">Loading freight quotes…</div>
 
   return (
     <div className="space-y-6">
       {/* Matrix */}
       {quotes.length > 0 && (
         <div className="card p-5">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">Comparison matrix</h3>
+          <h3 className="text-sm font-semibold text-ink-80 mb-4">Comparison matrix</h3>
           <ComparisonMatrix quotes={quotes} scenarios={scenarios} />
           {scenarios.length === 0 && (
-            <p className="text-xs text-gray-400 mt-3">Save a packing scenario to link quotes to a packing method.</p>
+            <p className="text-xs text-ink-60 mt-3">Save a packing scenario to link quotes to a packing method.</p>
           )}
         </div>
       )}
@@ -466,7 +466,7 @@ export default function FreightComparison({ orderId }) {
       {/* Quote list */}
       {quotes.length > 0 && (
         <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-gray-700">All quotes</h3>
+          <h3 className="text-sm font-semibold text-ink-80">All quotes</h3>
           {quotes.map(q => (
             <QuoteRow key={q.id} quote={q} scenarios={scenarios} onDelete={handleDelete} onToggleChosen={handleToggleChosen} />
           ))}
@@ -475,9 +475,9 @@ export default function FreightComparison({ orderId }) {
 
       {/* Empty state */}
       {quotes.length === 0 && !showForm && (
-        <div className="rounded-lg border border-dashed border-gray-300 p-10 text-center">
-          <p className="text-gray-500 text-sm mb-1">No freight quotes yet.</p>
-          <p className="text-xs text-gray-400 mb-5">
+        <div className="rounded-lg border border-dashed border-warm-grey p-10 text-center">
+          <p className="text-ink-60 text-sm mb-1">No freight quotes yet.</p>
+          <p className="text-xs text-ink-60 mb-5">
             Add quotes from multiple vendors to compare costs across packing scenarios.
           </p>
         </div>

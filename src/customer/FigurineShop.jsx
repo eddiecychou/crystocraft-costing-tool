@@ -218,7 +218,7 @@ export default function FigurineShop({ profile }) {
               <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
                 <CardImageCarousel images={s.images} alt={s.name}
                   imgClassName="object-cover group-hover:scale-105 transition-transform duration-300"
-                  fallback={<Gem size={30} strokeWidth={1.25} className="text-gray-300" />} />
+                  fallback={<Gem size={30} strokeWidth={1.25} className="text-platinum" />} />
                 {/* Badges stack top-left in a flex column — no magic top-8 offset
                     (UI-POLISH §3): status pill (when set) above the New pill. */}
                 <div className="absolute top-1.5 left-1.5 flex flex-col items-start gap-1">

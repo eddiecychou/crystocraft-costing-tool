@@ -50,8 +50,8 @@ export default function Products() {
 
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Products</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{products.length} items in catalogue</p>
+          <h1 className="text-xl md:text-2xl font-bold text-ink">Products</h1>
+          <p className="text-sm text-ink-60 mt-0.5">{products.length} items in catalogue</p>
         </div>
         <Link to="/products/new" className="btn-primary text-sm">+ New</Link>
       </div>
@@ -79,7 +79,7 @@ export default function Products() {
 
       {/* Grid */}
       {filtered.length === 0 && !loading ? (
-        <div className="text-center py-20 text-gray-400">
+        <div className="text-center py-20 text-ink-60">
           {products.length === 0 ? 'No products yet — add your first one.' : 'No products match your filters.'}
         </div>
       ) : (
@@ -129,34 +129,34 @@ function ProductCard({ product: p }) {
     <Link to={`/products/${p.id}`} id={`product-card-${p.id}`}
       onClick={() => sessionStorage.setItem('products-last-id', p.id)}
       className={`card hover:shadow-md transition-shadow overflow-hidden flex flex-col ${isRetired ? 'opacity-50 grayscale' : ''}`}>
-      <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
+      <div className="aspect-square bg-ivory-dark flex items-center justify-center overflow-hidden relative">
         <CardImageCarousel images={images} alt={p.name}
-          fallback={<Package size={40} strokeWidth={1.25} className="text-gray-300" />} />
+          fallback={<Package size={40} strokeWidth={1.25} className="text-platinum" />} />
       </div>
       <div className="p-4 flex flex-col gap-1 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="font-semibold text-gray-900 text-sm leading-tight">{p.name}</h3>
+          <h3 className="font-semibold text-ink text-sm leading-tight">{p.name}</h3>
           <span className={`badge-${status.value} shrink-0`}>{status.label}</span>
         </div>
-        <p className="text-xs text-gray-500">{p.category}</p>
-        {p.description && <p className="text-xs text-gray-600 mt-1 line-clamp-2">{p.description}</p>}
+        <p className="text-xs text-ink-60">{p.category}</p>
+        {p.description && <p className="text-xs text-ink-70 mt-1 line-clamp-2">{p.description}</p>}
 
         {/* Pricing tiers */}
         {tiers && tiers.length > 0 && (
-          <div className="mt-2 pt-2 border-t border-gray-100 flex flex-wrap gap-x-3 gap-y-1">
+          <div className="mt-2 pt-2 border-t border-warm-grey flex flex-wrap gap-x-3 gap-y-1">
             {tiers.map(t => (
               // price_hkd (written fresh on every publish, always in HKD) is the single
               // source of truth. Legacy sell_price/sell_currency fields are ignored —
               // they were never updated on publish and caused stale/mislabelled prices.
-              <span key={t.quantity} className="text-xs text-gray-700">
-                <span className="font-semibold text-gray-900">HKD {fmtTierPrice(t.price_hkd, 'HKD')}</span>
-                <span className="text-gray-400"> @ {t.quantity.toLocaleString()} pcs</span>
+              <span key={t.quantity} className="text-xs text-ink-80">
+                <span className="font-semibold text-ink">HKD {fmtTierPrice(t.price_hkd, 'HKD')}</span>
+                <span className="text-ink-60"> @ {t.quantity.toLocaleString()} pcs</span>
               </span>
             ))}
           </div>
         )}
         {tiers && tiers.length === 0 && (
-          <p className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-300 italic">No pricing set</p>
+          <p className="mt-2 pt-2 border-t border-warm-grey text-xs text-platinum italic">No pricing set</p>
         )}
       </div>
     </Link>

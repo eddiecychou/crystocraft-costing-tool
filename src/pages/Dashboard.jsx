@@ -60,7 +60,7 @@ const CHANNEL_BADGE = {
 }
 
 const QUOTE_STATUS_BADGE = {
-  draft: 'bg-gray-100 text-gray-600',
+  draft: 'bg-ivory-dark text-ink-70',
   sent:  'bg-blue-100 text-blue-700',
 }
 
@@ -253,8 +253,8 @@ export default function Dashboard() {
 
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <h1 className="text-xl md:text-2xl font-bold text-ink">Dashboard</h1>
+          <p className="text-sm text-ink-60 mt-0.5">{new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
         </div>
         <button
           onClick={refresh}
@@ -323,8 +323,8 @@ export default function Dashboard() {
             onClick={() => setCategoryFilter(f => f === value ? null : value)}
             className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
               categoryFilter === value
-                ? 'bg-gray-800 border-gray-800 text-white'
-                : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
+                ? 'bg-ink border-ink text-white'
+                : 'bg-white border-warm-grey text-ink-70 hover:border-ink-60'
             }`}
           >
             {Icon && <Icon size={13} className="inline align-[-2px] mr-1" />}{label}
@@ -334,8 +334,8 @@ export default function Dashboard() {
           onClick={() => setRetailFilter(v => !v)}
           className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
             retailFilter
-              ? 'bg-gray-800 border-gray-800 text-white'
-              : 'bg-white border-gray-200 text-gray-600 hover:border-gray-400'
+              ? 'bg-ink border-ink text-white'
+              : 'bg-white border-warm-grey text-ink-70 hover:border-ink-60'
           }`}
         >
           <ShoppingBag size={13} className="inline align-[-2px] mr-1" />{RETAIL_TAG}
@@ -343,7 +343,7 @@ export default function Dashboard() {
         {(categoryFilter || retailFilter) && (
           <button
             onClick={() => { setCategoryFilter(null); setRetailFilter(false) }}
-            className="px-3 py-1 rounded-full text-xs font-medium border border-dashed border-gray-300 text-gray-400 hover:text-gray-600 transition-colors"
+            className="px-3 py-1 rounded-full text-xs font-medium border border-dashed border-warm-grey text-ink-60 hover:text-ink-70 transition-colors"
           >
             Clear filter
           </button>
@@ -353,22 +353,22 @@ export default function Dashboard() {
       {/* Filtered panel — shown when a stat card is active */}
       {activeFilter && (
         <div className="card mb-6 ring-2 ring-brand-200">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+          <div className="px-5 py-4 border-b border-warm-grey flex items-center justify-between">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink-80">
               {(() => { const I = filterConfig[activeFilter].Icon; return I ? <I size={15} /> : null })()}
               {filterConfig[activeFilter].title}
               {(categoryFilter || retailFilter) && (
-                <span className="ml-2 text-xs font-normal text-gray-400">
+                <span className="ml-2 text-xs font-normal text-ink-60">
                   · {[categoryFilter, retailFilter ? RETAIL_TAG : null].filter(Boolean).join(' · ')}
                 </span>
               )}
             </h2>
-            <button onClick={() => setActiveFilter(null)} className="text-gray-400 hover:text-gray-600 leading-none"><X size={18} /></button>
+            <button onClick={() => setActiveFilter(null)} className="text-ink-60 hover:text-ink-70 leading-none"><X size={18} /></button>
           </div>
           {filterConfig[activeFilter].items.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">{filterConfig[activeFilter].empty}</p>
+            <p className="text-sm text-ink-60 text-center py-8">{filterConfig[activeFilter].empty}</p>
           ) : filterConfig[activeFilter].type === 'order' ? (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-warm-grey">
               {filterConfig[activeFilter].items.map(o => {
                 const cust = customerMap[o.customer_id]
                 const st = orderStatusOf(o.status)
@@ -379,46 +379,46 @@ export default function Dashboard() {
                   <Link
                     key={o.id}
                     to={`/shipments/${o.id}`}
-                    className="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-3 px-5 py-3.5 hover:bg-ivory transition-colors"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold text-gray-900">{cust?.company_name || o.customer_name || '—'}</p>
+                        <p className="text-sm font-semibold text-ink">{cust?.company_name || o.customer_name || '—'}</p>
                         <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${st.style}`}>{st.label}</span>
                       </div>
-                      <p className="text-xs text-gray-500 mt-0.5">{orderUc(o) || o.id}</p>
+                      <p className="text-xs text-ink-60 mt-0.5">{orderUc(o) || o.id}</p>
                     </div>
-                    <p className="text-xs text-gray-400 shrink-0">{dateStr}</p>
+                    <p className="text-xs text-ink-60 shrink-0">{dateStr}</p>
                   </Link>
                 )
               })}
             </div>
           ) : filterConfig[activeFilter].type === 'quote' ? (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-warm-grey">
               {filterConfig[activeFilter].items.map(q => {
                 const cust = customerMap[q.customer_id]
                 return (
                   <Link
                     key={q.id}
                     to={`/quotes/${q.id}`}
-                    className="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-3 px-5 py-3.5 hover:bg-ivory transition-colors"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-semibold text-gray-900">{cust?.company_name || q.customer_name || '—'}</p>
-                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium capitalize ${QUOTE_STATUS_BADGE[q.status] || 'bg-gray-100 text-gray-500'}`}>
+                        <p className="text-sm font-semibold text-ink">{cust?.company_name || q.customer_name || '—'}</p>
+                        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium capitalize ${QUOTE_STATUS_BADGE[q.status] || 'bg-ivory-dark text-ink-60'}`}>
                           {q.status}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500 mt-0.5">{q.title || q.id}</p>
+                      <p className="text-xs text-ink-60 mt-0.5">{q.title || q.id}</p>
                     </div>
-                    <p className="text-xs text-gray-400 shrink-0">{fmtDate(q.createdAt)}</p>
+                    <p className="text-xs text-ink-60 shrink-0">{fmtDate(q.createdAt)}</p>
                   </Link>
                 )
               })}
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-warm-grey">
               {filterConfig[activeFilter].items.map(enq => {
                 const overdue = enq.follow_up_date && isOverdue(enq.follow_up_date)
                 const today   = enq.follow_up_date && isToday(enq.follow_up_date)
@@ -427,29 +427,29 @@ export default function Dashboard() {
                     <div className="flex items-start gap-3">
                       <Link to={`/customers/${enq.customerId}`} className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold text-gray-900">{enq.companyName}</p>
-                          {enq.customerName && <p className="text-xs text-gray-400">{enq.customerName}</p>}
+                          <p className="text-sm font-semibold text-ink">{enq.companyName}</p>
+                          {enq.customerName && <p className="text-xs text-ink-60">{enq.customerName}</p>}
                           {enq.channel && (
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${CHANNEL_BADGE[enq.channel] || 'bg-gray-100 text-gray-500'}`}>
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${CHANNEL_BADGE[enq.channel] || 'bg-ivory-dark text-ink-60'}`}>
                               {enq.channel}
                             </span>
                           )}
                           {enq.status && (
-                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-gray-100 text-gray-500">
+                            <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-ivory-dark text-ink-60">
                               {enq.status}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-600 mt-0.5">
+                        <p className="text-xs text-ink-70 mt-0.5">
                           {enq.description?.slice(0, 100)}{enq.description?.length > 100 ? '…' : ''}
                         </p>
                         {enq.follow_up_date && (
-                          <p className={`text-xs font-semibold mt-1 ${overdue ? 'text-red-600' : today ? 'text-amber-600' : 'text-gray-400'}`}>
+                          <p className={`text-xs font-semibold mt-1 ${overdue ? 'text-red-600' : today ? 'text-amber-600' : 'text-ink-60'}`}>
                             {overdue ? <AlertTriangle size={11} className="inline align-[-1px] mr-1" /> : today ? <Calendar size={11} className="inline align-[-1px] mr-1" /> : null}Follow-up: {fmtDate(enq.follow_up_date)}
                           </p>
                         )}
                         {enq.date && !enq.follow_up_date && (
-                          <p className="text-xs text-gray-400 mt-1">{fmtDate(enq.date)}</p>
+                          <p className="text-xs text-ink-60 mt-1">{fmtDate(enq.date)}</p>
                         )}
                       </Link>
                       {(activeFilter === 'overdue') && (
@@ -463,7 +463,7 @@ export default function Dashboard() {
                           <button
                             onClick={e => handleDone(enq, e)}
                             disabled={dismissing === enq.id}
-                            className="px-2.5 py-1 rounded-lg border border-gray-200 bg-white text-gray-500 text-xs font-medium hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
+                            className="px-2.5 py-1 rounded-lg border border-warm-grey bg-white text-ink-60 text-xs font-medium hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
                           >
                             {dismissing === enq.id ? '…' : <span className="inline-flex items-center gap-1"><Check size={12} />Done</span>}
                           </button>
@@ -481,17 +481,17 @@ export default function Dashboard() {
       {/* Priority follow-ups (default, hidden when filter active) */}
       {!activeFilter && (
         <div className="card mb-6">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-700">Priority Follow-ups</h2>
+          <div className="px-5 py-4 border-b border-warm-grey">
+            <h2 className="text-sm font-semibold text-ink-80">Priority Follow-ups</h2>
           </div>
           {priorityFollowUps.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">
+            <p className="text-sm text-ink-60 text-center py-8">
               {(categoryFilter || retailFilter)
                 ? `No follow-ups for ${[categoryFilter, retailFilter ? RETAIL_TAG : null].filter(Boolean).join(' · ')} in the next 7 days`
                 : 'No follow-ups due in the next 7 days'}
             </p>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-warm-grey">
               {priorityFollowUps.map(enq => {
                 const overdue = isOverdue(enq.follow_up_date)
                 const today   = isToday(enq.follow_up_date)
@@ -500,18 +500,18 @@ export default function Dashboard() {
                     <div className="flex items-start gap-3">
                       <Link to={`/customers/${enq.customerId}`} className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold text-gray-900">{enq.companyName}</p>
-                          {enq.customerName && <p className="text-xs text-gray-400">{enq.customerName}</p>}
+                          <p className="text-sm font-semibold text-ink">{enq.companyName}</p>
+                          {enq.customerName && <p className="text-xs text-ink-60">{enq.customerName}</p>}
                           {enq.channel && (
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${CHANNEL_BADGE[enq.channel] || 'bg-gray-100 text-gray-500'}`}>
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${CHANNEL_BADGE[enq.channel] || 'bg-ivory-dark text-ink-60'}`}>
                               {enq.channel}
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-600 mt-0.5">
+                        <p className="text-xs text-ink-70 mt-0.5">
                           {enq.description?.slice(0, 100)}{enq.description?.length > 100 ? '…' : ''}
                         </p>
-                        <p className={`text-xs font-semibold mt-1 ${overdue ? 'text-red-600' : today ? 'text-amber-600' : 'text-gray-400'}`}>
+                        <p className={`text-xs font-semibold mt-1 ${overdue ? 'text-red-600' : today ? 'text-amber-600' : 'text-ink-60'}`}>
                           {overdue ? <AlertTriangle size={11} className="inline align-[-1px] mr-1" /> : today ? <Calendar size={11} className="inline align-[-1px] mr-1" /> : null}{fmtDate(enq.follow_up_date)}
                         </p>
                       </Link>
@@ -525,7 +525,7 @@ export default function Dashboard() {
                         <button
                           onClick={e => handleDone(enq, e)}
                           disabled={dismissing === enq.id}
-                          className="px-2.5 py-1 rounded-lg border border-gray-200 bg-white text-gray-500 text-xs font-medium hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
+                          className="px-2.5 py-1 rounded-lg border border-warm-grey bg-white text-ink-60 text-xs font-medium hover:bg-green-50 hover:border-green-300 hover:text-green-700 transition-colors"
                         >
                           {dismissing === enq.id ? '…' : <span className="inline-flex items-center gap-1"><Check size={12} />Done</span>}
                         </button>
@@ -552,20 +552,20 @@ export default function Dashboard() {
       {/* Personal WhatsApp panel */}
       {personalWaCustomers.length > 0 && (
         <div className="card mb-4">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-gray-700"><Smartphone size={15} />Personal WhatsApp Contacts</h2>
-            <p className="text-xs text-gray-400 mt-0.5">These contacts use personal WhatsApp — check your personal phone</p>
+          <div className="px-5 py-4 border-b border-warm-grey">
+            <h2 className="flex items-center gap-1.5 text-sm font-semibold text-ink-80"><Smartphone size={15} />Personal WhatsApp Contacts</h2>
+            <p className="text-xs text-ink-60 mt-0.5">These contacts use personal WhatsApp — check your personal phone</p>
           </div>
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-warm-grey">
             {personalWaCustomers.map(c => (
               <li key={c.id}>
                 <Link
                   to={`/customers/${c.id}`}
-                  className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors"
+                  className="flex items-center gap-3 px-5 py-3 hover:bg-ivory transition-colors"
                 >
-                  <span className="text-sm text-gray-800">
+                  <span className="text-sm text-ink">
                     <span className="font-medium">{c.contact_name || c.company_name}</span>
-                    {c.contact_name && c.company_name && <span className="text-gray-400"> · {c.company_name}</span>}
+                    {c.contact_name && c.company_name && <span className="text-ink-60"> · {c.company_name}</span>}
                   </span>
                 </Link>
               </li>
@@ -593,7 +593,7 @@ function StatCard({ label, value, colour, note, active, onClick }) {
     >
       <p className={`text-3xl font-bold ${c.num}`}>{value}</p>
       <p className={`text-xs font-semibold mt-1 leading-tight ${c.label}`}>{label}</p>
-      {note && <p className="text-xs text-gray-400 mt-0.5 leading-tight">{note}</p>}
+      {note && <p className="text-xs text-ink-60 mt-0.5 leading-tight">{note}</p>}
       {active && <p className={`inline-flex items-center gap-1 text-xs mt-1 font-medium ${c.label} opacity-70`}><ChevronUp size={12} />filtered</p>}
     </button>
   )

@@ -101,12 +101,12 @@ export default function SupplierAddQuoteModal({ supplier, onClose, onSaved }) {
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[92vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey sticky top-0 bg-white z-10">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">Add Quote</h2>
-            <p className="text-xs text-gray-400 mt-0.5">{supplier.name}</p>
+            <h2 className="text-base font-semibold text-ink">Add Quote</h2>
+            <p className="text-xs text-ink-60 mt-0.5">{supplier.name}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
@@ -124,16 +124,16 @@ export default function SupplierAddQuoteModal({ supplier, onClose, onSaved }) {
                 onBlur={() => setTimeout(() => setProductOpen(false), 150)}
               />
               {productOpen && (
-                <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-warm-grey rounded-lg shadow-lg max-h-48 overflow-y-auto">
                   {filteredProducts.length === 0 ? (
-                    <p className="text-xs text-gray-400 px-3 py-2">No products found</p>
+                    <p className="text-xs text-ink-60 px-3 py-2">No products found</p>
                   ) : filteredProducts.map(p => (
                     <button key={p.id} type="button"
                       onMouseDown={() => handleProductSelect(p)}
-                      className="w-full text-left px-3 py-2.5 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                      className="w-full text-left px-3 py-2.5 hover:bg-ivory border-b border-warm-grey last:border-0"
                     >
-                      <p className="text-sm font-medium text-gray-800">{p.name}</p>
-                      {p.category && <p className="text-xs text-gray-400">{p.category}</p>}
+                      <p className="text-sm font-medium text-ink">{p.name}</p>
+                      {p.category && <p className="text-xs text-ink-60">{p.category}</p>}
                     </button>
                   ))}
                 </div>
@@ -145,9 +145,9 @@ export default function SupplierAddQuoteModal({ supplier, onClose, onSaved }) {
           <div>
             <label className="label">Component *</label>
             {!selectedProduct ? (
-              <p className="text-xs text-gray-400 mt-1">Select a product first</p>
+              <p className="text-xs text-ink-60 mt-1">Select a product first</p>
             ) : loadingComponents ? (
-              <p className="text-xs text-gray-400 mt-1">Loading components…</p>
+              <p className="text-xs text-ink-60 mt-1">Loading components…</p>
             ) : components.length === 0 ? (
               <p className="text-xs text-amber-600 mt-1">This product has no components yet.</p>
             ) : (
@@ -160,18 +160,18 @@ export default function SupplierAddQuoteModal({ supplier, onClose, onSaved }) {
                     className={`text-left px-3 py-2 rounded-lg border text-sm transition-colors ${
                       selectedComponent?.id === c.id
                         ? 'border-brand-500 bg-brand-50 text-brand-700 font-medium'
-                        : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                        : 'border-warm-grey text-ink-80 hover:border-warm-grey hover:bg-ivory'
                     }`}
                   >
                     {c.name}
-                    {c.spec && <span className="text-xs text-gray-400 ml-1.5">{c.spec}</span>}
+                    {c.spec && <span className="text-xs text-ink-60 ml-1.5">{c.spec}</span>}
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="border-t border-gray-100 pt-3 space-y-4">
+          <div className="border-t border-warm-grey pt-3 space-y-4">
             {/* Unit cost */}
             <div>
               <label className="label">Unit Cost *</label>
@@ -186,7 +186,7 @@ export default function SupplierAddQuoteModal({ supplier, onClose, onSaved }) {
             {/* Volume tiers */}
             <div>
               <div className="flex items-center justify-between mb-1">
-                <label className="label mb-0 text-xs">Volume Price Tiers <span className="text-gray-400 font-normal">(optional)</span></label>
+                <label className="label mb-0 text-xs">Volume Price Tiers <span className="text-ink-60 font-normal">(optional)</span></label>
                 <button type="button" onClick={() => setVolumeTiers(t => [...t, { min_qty: '', unit_cost: '' }])}
                   className="text-xs text-brand-600 hover:text-brand-800">+ Add</button>
               </div>
@@ -225,7 +225,7 @@ export default function SupplierAddQuoteModal({ supplier, onClose, onSaved }) {
               <div className="grid grid-cols-3 gap-2">
                 {[['Sampling', 'sampling_lead_time_days'], ['Tooling', 'tooling_lead_time_days'], ['Production', 'production_lead_time_days']].map(([label, field]) => (
                   <div key={field}>
-                    <p className="text-xs text-gray-400 mb-1">{label}</p>
+                    <p className="text-xs text-ink-60 mb-1">{label}</p>
                     <input className="input" type="number" min="0" value={form[field]} onChange={set(field)} placeholder="days" />
                   </div>
                 ))}
@@ -233,7 +233,7 @@ export default function SupplierAddQuoteModal({ supplier, onClose, onSaved }) {
             </div>
 
             {/* Preferred */}
-            <label className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer">
+            <label className="flex items-center gap-2.5 text-sm text-ink-80 cursor-pointer">
               <input type="checkbox" className="w-4 h-4 accent-brand-600" checked={form.is_preferred}
                 onChange={e => setForm(f => ({ ...f, is_preferred: e.target.checked }))} />
               Mark as preferred supplier for this component

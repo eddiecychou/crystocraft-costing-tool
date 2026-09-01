@@ -10,7 +10,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 const STATUS = {
   new:      { label: 'New',      cls: 'bg-amber-100 text-amber-700' },
   handled:  { label: 'Handled',  cls: 'bg-emerald-100 text-emerald-700' },
-  archived: { label: 'Archived', cls: 'bg-gray-100 text-gray-500' },
+  archived: { label: 'Archived', cls: 'bg-ivory-dark text-ink-60' },
 }
 
 export default function Enquiries({ embedded = false }) {
@@ -117,7 +117,7 @@ function Card({ r, set, onEdit, onDelete }) {
           return (
             <div key={idx} className="flex items-center gap-3 py-2">
               <div className="w-10 h-10 bg-white border border-ivory-dark rounded flex items-center justify-center overflow-hidden shrink-0">
-                {i.image ? <img src={i.image} alt={i.name} className="w-full h-full object-contain" /> : <Icon size={16} className="text-gray-300" />}
+                {i.image ? <img src={i.image} alt={i.name} className="w-full h-full object-contain" /> : <Icon size={16} className="text-platinum" />}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-ink truncate">{i.name}</p>

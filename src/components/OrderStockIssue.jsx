@@ -115,7 +115,7 @@ export default function OrderStockIssue({ orderId, orderLabel }) {
   return (
     <div className="card p-4">
       <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between gap-2 text-left">
-        <span className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+        <span className="flex items-center gap-2 text-sm font-semibold text-ink-80">
           {open ? <ChevronDown size={15} className="text-ink-60" /> : <ChevronRight size={15} className="text-ink-60" />}
           Component stock
         </span>
@@ -231,7 +231,7 @@ function PreviewTable({ items }) {
             <th className="py-1.5 font-medium text-right">After reserve</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-50">
+        <tbody className="divide-y divide-warm-grey">
           {items.map(it => (
             <tr key={it.component_id}>
               <td className="py-1.5 pr-2"><span className="font-mono text-xs">{it.code}</span>{it.name ? <span className="text-ink-60"> · {it.name}</span> : ''}</td>
@@ -250,7 +250,7 @@ function LinesTable({ lines }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
-        <tbody className="divide-y divide-gray-50">
+        <tbody className="divide-y divide-warm-grey">
           {lines.map((l, i) => (
             <tr key={l.component_id || i}>
               <td className="py-1.5 pr-2"><span className="font-mono text-xs">{l.code}</span></td>

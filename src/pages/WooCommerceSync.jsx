@@ -393,12 +393,12 @@ export default function WooCommerceSync() {
 
         <div className="card p-4 mb-5 flex flex-wrap items-end gap-3">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">From (payment date)</label>
+            <label className="block text-xs text-ink-60 mb-1">From (payment date)</label>
             <input type="date" className="input" value={from}
               onChange={(e) => setRange((s) => ({ ...s, from: e.target.value }))} />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">To</label>
+            <label className="block text-xs text-ink-60 mb-1">To</label>
             <input type="date" className="input" value={to}
               onChange={(e) => setRange((s) => ({ ...s, to: e.target.value }))} />
           </div>
@@ -414,7 +414,7 @@ export default function WooCommerceSync() {
           )}
           {result?.rows?.length > 0 && (
             <button type="button" onClick={probePayout} disabled={payoutProbe === 'loading'}
-              className="text-xs text-gray-500 hover:text-gray-700 inline-flex items-center gap-1 disabled:opacity-50"
+              className="text-xs text-ink-60 hover:text-ink-80 inline-flex items-center gap-1 disabled:opacity-50"
               title="Payout DATE isn't in per-order data — this checks whether WooCommerce Payments' deposits/transactions REST endpoints are reachable">
               <Compass size={12} /> {payoutProbe === 'loading' ? 'Probing…' : 'Find payout date source'}
             </button>
@@ -422,7 +422,7 @@ export default function WooCommerceSync() {
         </div>
 
         <div className="card p-4 mb-5">
-          <p className="text-xs font-medium text-gray-500 mb-2">Find a customer's order history (any status, no date limit)</p>
+          <p className="text-xs font-medium text-ink-60 mb-2">Find a customer's order history (any status, no date limit)</p>
           <div className="flex flex-wrap items-center gap-2">
             <input type="text" value={personQuery} onChange={(e) => setPersonQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && searchPerson()}
@@ -436,7 +436,7 @@ export default function WooCommerceSync() {
             personResults.error ? (
               <p className="text-xs text-amber-700 mt-2">{personResults.error}</p>
             ) : personResults.length === 0 ? (
-              <p className="text-xs text-gray-400 mt-2">No WooCommerce orders found for "{personQuery}".</p>
+              <p className="text-xs text-ink-60 mt-2">No WooCommerce orders found for "{personQuery}".</p>
             ) : (
               // No overflow-x-auto here (unlike the other tables on this page):
               // CustomerPicker's dropdown below is `position: absolute`, and
@@ -448,7 +448,7 @@ export default function WooCommerceSync() {
               <div className="mt-3">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="text-left text-gray-400 border-b border-gray-100">
+                    <tr className="text-left text-ink-60 border-b border-warm-grey">
                       <th className="py-1.5 pr-3 font-medium">Order</th>
                       <th className="py-1.5 pr-3 font-medium">Status</th>
                       <th className="py-1.5 pr-3 font-medium">Date paid</th>
@@ -458,15 +458,15 @@ export default function WooCommerceSync() {
                       <th className="py-1.5 pr-3 font-medium" />
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody className="divide-y divide-warm-grey">
                     {personResults.map((o) => (
                       <Fragment key={o.id}>
                         <tr>
                           <td className="py-1.5 pr-3 font-mono">#{o.number}</td>
-                          <td className="py-1.5 pr-3 text-gray-500">{o.status}</td>
-                          <td className="py-1.5 pr-3 text-gray-500">{fmtDate(o.date_paid)}</td>
+                          <td className="py-1.5 pr-3 text-ink-60">{o.status}</td>
+                          <td className="py-1.5 pr-3 text-ink-60">{fmtDate(o.date_paid)}</td>
                           <td className="py-1.5 pr-3">{o.customer_name || '—'}</td>
-                          <td className="py-1.5 pr-3 text-gray-500">{o.customer_email || '—'}</td>
+                          <td className="py-1.5 pr-3 text-ink-60">{o.customer_email || '—'}</td>
                           <td className="py-1.5 pr-3 text-right tabular-nums">{o.currency} {fmtMoney(o.total)}</td>
                           <td className="py-1.5 pr-3 text-right whitespace-nowrap">
                             {linkedFor[o.id] ? (
@@ -484,9 +484,9 @@ export default function WooCommerceSync() {
                         </tr>
                         {linkOpenFor === o.id && (
                           <tr>
-                            <td colSpan={7} className="py-2 pr-3 bg-gray-50">
+                            <td colSpan={7} className="py-2 pr-3 bg-ivory">
                               {customers == null ? (
-                                <span className="text-gray-400">Loading customers…</span>
+                                <span className="text-ink-60">Loading customers…</span>
                               ) : (
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <CustomerPicker customers={customers} value={linkChoice} onChange={setLinkChoice} />
@@ -494,7 +494,7 @@ export default function WooCommerceSync() {
                                     className="btn-secondary text-xs py-1 px-2.5 disabled:opacity-50">
                                     {linkBusy ? 'Linking…' : 'Confirm link'}
                                   </button>
-                                  <button type="button" onClick={() => setLinkOpenFor(null)} className="text-gray-400 hover:text-brand-600">
+                                  <button type="button" onClick={() => setLinkOpenFor(null)} className="text-ink-60 hover:text-brand-600">
                                     Cancel
                                   </button>
                                 </div>
@@ -515,8 +515,8 @@ export default function WooCommerceSync() {
         <div className="card p-4 mb-5">
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
-              <p className="text-xs font-medium text-gray-500">Sync all WooCommerce customers who have transacted with us</p>
-              <p className="text-[11px] text-gray-400 mt-0.5">
+              <p className="text-xs font-medium text-ink-60">Sync all WooCommerce customers who have transacted with us</p>
+              <p className="text-[11px] text-ink-60 mt-0.5">
                 Scans all-time PAID order history (not WooCommerce's registered-account list) and creates a Retail
                 Customer record for each unique buyer, keyed by their real WooCommerce identity — never merges with
                 an existing customer on email match, only flags it for your review.
@@ -529,7 +529,7 @@ export default function WooCommerceSync() {
           </div>
 
           {customerScan?.scanning && (
-            <p className="text-xs text-gray-500 mt-3">
+            <p className="text-xs text-ink-60 mt-3">
               Page {customerScan.page} · {customerScan.ordersScanned} paid orders scanned · {customerScan.uniqueCount} unique customers found so far…
             </p>
           )}
@@ -541,10 +541,10 @@ export default function WooCommerceSync() {
             return (
               <div className="mt-4">
                 <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-ink-60">
                     {customerScan.length} unique buyers found — <span className="text-green-700 font-medium">{counts.new} new</span>,{' '}
                     <span className="text-amber-700 font-medium">{counts.possible_match} possible B2B match</span>,{' '}
-                    <span className="text-gray-500">{counts.linked} already linked</span>
+                    <span className="text-ink-60">{counts.linked} already linked</span>
                   </p>
                   {(counts.new + counts.possible_match) > 0 && (
                     <button type="button" onClick={confirmCustomerSync} disabled={customerSyncBusy}
@@ -563,7 +563,7 @@ export default function WooCommerceSync() {
                 <div className="overflow-x-auto max-h-96 overflow-y-auto">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="text-left text-gray-400 border-b border-gray-100 sticky top-0 bg-white">
+                      <tr className="text-left text-ink-60 border-b border-warm-grey sticky top-0 bg-white">
                         <th className="py-1.5 pr-3 font-medium">Name</th>
                         <th className="py-1.5 pr-3 font-medium">Email</th>
                         <th className="py-1.5 pr-3 font-medium text-right">Orders</th>
@@ -572,17 +572,17 @@ export default function WooCommerceSync() {
                         <th className="py-1.5 pr-3 font-medium">Marketing lead</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-warm-grey">
                       {customerScan.map((e) => (
                         <tr key={e.key}>
                           <td className="py-1.5 pr-3">{e.name || '—'}</td>
-                          <td className="py-1.5 pr-3 text-gray-500">{e.email || '—'}</td>
+                          <td className="py-1.5 pr-3 text-ink-60">{e.email || '—'}</td>
                           <td className="py-1.5 pr-3 text-right tabular-nums">{e.orderCount}</td>
-                          <td className="py-1.5 pr-3 text-gray-500">
+                          <td className="py-1.5 pr-3 text-ink-60">
                             {Object.entries(e.totalsByCurrency).map(([cur, sum]) => `${cur} ${fmtMoney(sum)}`).join(' · ')}
                           </td>
                           <td className="py-1.5 pr-3">
-                            {e.status === 'linked' && <span className="text-gray-400">Already linked</span>}
+                            {e.status === 'linked' && <span className="text-ink-60">Already linked</span>}
                             {e.status === 'new' && <span className="text-green-700">New</span>}
                             {e.status === 'possible_match' && (
                               <span className="text-amber-700" title={`Possible match: ${e.possibleMatch?.company_name}`}>
@@ -614,16 +614,16 @@ export default function WooCommerceSync() {
 
         {payoutProbe && payoutProbe !== 'loading' && (
           <div className="card p-4 mb-5 text-xs">
-            <p className="text-gray-500 mb-2 font-medium">Payout-date endpoint probe (spec §12 Q2/Q3) — diagnostic only, nothing is stored:</p>
+            <p className="text-ink-60 mb-2 font-medium">Payout-date endpoint probe (spec §12 Q2/Q3) — diagnostic only, nothing is stored:</p>
             {payoutProbe.error ? (
               <p className="text-amber-700">{payoutProbe.error}</p>
             ) : (
               <div className="space-y-1">
                 {payoutProbe.map((r) => (
-                  <div key={r.path} className={`flex items-start gap-2 ${r.ok ? 'text-green-700' : 'text-gray-500'}`}>
+                  <div key={r.path} className={`flex items-start gap-2 ${r.ok ? 'text-green-700' : 'text-ink-60'}`}>
                     <span className="font-mono shrink-0">{r.ok ? '200' : (r.status ?? 'ERR')}</span>
                     <span className="font-mono shrink-0">{r.path}</span>
-                    <span className="text-gray-400 truncate">{r.body}</span>
+                    <span className="text-ink-60 truncate">{r.body}</span>
                   </div>
                 ))}
               </div>
@@ -647,14 +647,14 @@ export default function WooCommerceSync() {
 
         {result && (
           <>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-ink-60 mb-4">
               {result.rows.length} paid order{result.rows.length === 1 ? '' : 's'}
               {result.skipped_unpaid > 0 && <span> · {result.skipped_unpaid} unpaid/cancelled fetched and excluded</span>}
               {result.refunds.length > 0 && <span> · {result.refunds.length} refund{result.refunds.length === 1 ? '' : 's'}</span>}
             </p>
 
             {result.rows.length === 0 ? (
-              <div className="text-center py-16 text-gray-400">
+              <div className="text-center py-16 text-ink-60">
                 <ShoppingCart size={28} className="mx-auto mb-3 opacity-40" />
                 No paid orders in this range.
               </div>
@@ -662,7 +662,7 @@ export default function WooCommerceSync() {
               <div className="card overflow-x-auto mb-6">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                    <tr className="text-left text-xs text-ink-60 border-b border-warm-grey">
                       <th className="px-4 py-2.5 font-medium whitespace-nowrap">Order</th>
                       <th className="px-4 py-2.5 font-medium whitespace-nowrap">Paid</th>
                       <th className="px-4 py-2.5 font-medium">Customer</th>
@@ -680,39 +680,39 @@ export default function WooCommerceSync() {
                       <th className="px-4 py-2.5 font-medium" />
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody className="divide-y divide-warm-grey">
                     {result.rows.map((o) => (
                       <Fragment key={o.id}>
-                        <tr className="hover:bg-gray-50">
-                          <td className="px-4 py-3 whitespace-nowrap font-mono text-xs font-medium text-gray-900">
+                        <tr className="hover:bg-ivory">
+                          <td className="px-4 py-3 whitespace-nowrap font-mono text-xs font-medium text-ink">
                             #{o.number}
                             {o.refunded_total > 0 && <span className="ml-1.5 text-[10px] font-sans font-medium text-amber-600">refunded</span>}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-gray-600">{fmtDate(o.date_paid)}</td>
-                          <td className="px-4 py-3 text-gray-900 min-w-0">
+                          <td className="px-4 py-3 whitespace-nowrap text-ink-70">{fmtDate(o.date_paid)}</td>
+                          <td className="px-4 py-3 text-ink min-w-0">
                             {/* Every row on this page is already a WooCommerce order, so
                                 repeating "O07 Online Crystocraft" per row is pure noise here
                                 (owner, 2026-08-22) — that exact format is still written onto
                                 the actual invoice at import time (wooImport.js's
                                 wooCustomerName, spec §3.2), unchanged. This is display-only. */}
                             <span className="truncate">{o.customer_name || 'Unnamed'}</span>
-                            {o.is_guest && <span className="ml-1.5 text-[10px] text-gray-400">guest</span>}
+                            {o.is_guest && <span className="ml-1.5 text-[10px] text-ink-60">guest</span>}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-gray-500">{o.currency}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{fmtMoney(o.subtotal)}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{fmtMoney(o.discount_total)}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{fmtMoney(o.shipping_total)}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{fmtMoney(o.tax_total)}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-900 font-medium">{fmtMoney(o.total)}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-gray-500 text-xs">{o.payment_method_title || o.payment_method || '—'}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600 text-xs"
+                          <td className="px-4 py-3 whitespace-nowrap text-ink-60">{o.currency}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink-70">{fmtMoney(o.subtotal)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink-70">{fmtMoney(o.discount_total)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink-70">{fmtMoney(o.shipping_total)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink-70">{fmtMoney(o.tax_total)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink font-medium">{fmtMoney(o.total)}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-ink-60 text-xs">{o.payment_method_title || o.payment_method || '—'}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink-70 text-xs"
                               title={o.gateway_fee_source ? `Source: ${o.gateway_fee_source}` : 'Not found on this order — check Meta'}>
                             {o.gateway_fee != null ? fmtMoney(o.gateway_fee) : '—'}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600 text-xs">
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink-70 text-xs">
                             {o.net_payout != null ? fmtMoney(o.net_payout) : '—'}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-gray-600 text-xs" title={o.deposit_id ? `Deposit ${o.deposit_id}` : ''}>
+                          <td className="px-4 py-3 whitespace-nowrap text-ink-70 text-xs" title={o.deposit_id ? `Deposit ${o.deposit_id}` : ''}>
                             {fmtDate(o.payout_date)}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-right">
@@ -737,7 +737,7 @@ export default function WooCommerceSync() {
                               {detailsFor === o.id ? 'Hide' : 'Details'}
                             </button>
                             <button type="button" onClick={() => inspectMeta(o.id)}
-                              className="text-xs text-gray-500 hover:text-gray-700 inline-flex items-center gap-1"
+                              className="text-xs text-ink-60 hover:text-ink-80 inline-flex items-center gap-1"
                               title="Inspect this order's raw meta for a hidden fee field">
                               <Search size={12} /> {metaFor === o.id ? 'Hide' : 'Meta'}
                             </button>
@@ -745,11 +745,11 @@ export default function WooCommerceSync() {
                         </tr>
                         {detailsFor === o.id && (
                           <tr>
-                            <td colSpan={15} className="px-4 py-3 bg-gray-50 border-t border-gray-100">
+                            <td colSpan={15} className="px-4 py-3 bg-ivory border-t border-warm-grey">
                               <div className="grid md:grid-cols-[1fr_auto] gap-4">
                                 <table className="w-full text-xs">
                                   <thead>
-                                    <tr className="text-left text-gray-400">
+                                    <tr className="text-left text-ink-60">
                                       <th className="pr-3 py-1 font-medium">Item</th>
                                       <th className="pr-3 py-1 font-medium">SKU</th>
                                       <th className="pr-3 py-1 font-medium text-right">Qty</th>
@@ -759,37 +759,37 @@ export default function WooCommerceSync() {
                                       <th className="pr-3 py-1 font-medium text-right">Line total</th>
                                     </tr>
                                   </thead>
-                                  <tbody className="divide-y divide-gray-100">
+                                  <tbody className="divide-y divide-warm-grey">
                                     {o.line_items.map((l, i) => (
                                       <tr key={i}>
-                                        <td className="pr-3 py-1.5 text-gray-800">{l.name}</td>
-                                        <td className="pr-3 py-1.5 font-mono text-gray-500">{l.sku || '—'}</td>
-                                        <td className="pr-3 py-1.5 text-right tabular-nums text-gray-600">{l.quantity}</td>
-                                        <td className="pr-3 py-1.5 text-right tabular-nums text-gray-600">{fmtMoney(l.unit_price)}</td>
-                                        <td className="pr-3 py-1.5 text-right tabular-nums text-gray-600">{l.discount ? fmtMoney(l.discount) : '—'}</td>
-                                        <td className="pr-3 py-1.5 text-right tabular-nums text-gray-600">{l.tax ? fmtMoney(l.tax) : '—'}</td>
-                                        <td className="pr-3 py-1.5 text-right tabular-nums text-gray-900 font-medium">{fmtMoney(l.total)}</td>
+                                        <td className="pr-3 py-1.5 text-ink">{l.name}</td>
+                                        <td className="pr-3 py-1.5 font-mono text-ink-60">{l.sku || '—'}</td>
+                                        <td className="pr-3 py-1.5 text-right tabular-nums text-ink-70">{l.quantity}</td>
+                                        <td className="pr-3 py-1.5 text-right tabular-nums text-ink-70">{fmtMoney(l.unit_price)}</td>
+                                        <td className="pr-3 py-1.5 text-right tabular-nums text-ink-70">{l.discount ? fmtMoney(l.discount) : '—'}</td>
+                                        <td className="pr-3 py-1.5 text-right tabular-nums text-ink-70">{l.tax ? fmtMoney(l.tax) : '—'}</td>
+                                        <td className="pr-3 py-1.5 text-right tabular-nums text-ink font-medium">{fmtMoney(l.total)}</td>
                                       </tr>
                                     ))}
                                   </tbody>
                                 </table>
-                                <div className="text-xs text-gray-600 min-w-[220px] space-y-2">
+                                <div className="text-xs text-ink-70 min-w-[220px] space-y-2">
                                   <div>
-                                    <p className="text-gray-400 font-medium mb-0.5">Billing</p>
+                                    <p className="text-ink-60 font-medium mb-0.5">Billing</p>
                                     <p>{o.customer_name || '—'}{o.customer_email && <> · {o.customer_email}</>}</p>
                                     {o.billing_phone && <p>{o.billing_phone}</p>}
                                     {o.billing_address && <p>{o.billing_address}</p>}
                                   </div>
                                   {(o.shipping_name || o.shipping_address) && (
                                     <div>
-                                      <p className="text-gray-400 font-medium mb-0.5">Shipping</p>
+                                      <p className="text-ink-60 font-medium mb-0.5">Shipping</p>
                                       {o.shipping_name && <p>{o.shipping_name}</p>}
                                       {o.shipping_address && <p>{o.shipping_address}</p>}
                                     </div>
                                   )}
                                   {o.customer_note && (
                                     <div>
-                                      <p className="text-gray-400 font-medium mb-0.5">Customer note</p>
+                                      <p className="text-ink-60 font-medium mb-0.5">Customer note</p>
                                       <p className="italic">{o.customer_note}</p>
                                     </div>
                                   )}
@@ -800,24 +800,24 @@ export default function WooCommerceSync() {
                         )}
                         {metaFor === o.id && (
                           <tr key={`${o.id}-meta`}>
-                            <td colSpan={15} className="px-4 py-3 bg-gray-50 border-t border-gray-100">
-                              {meta === 'loading' && <span className="text-xs text-gray-400">Loading order meta…</span>}
+                            <td colSpan={15} className="px-4 py-3 bg-ivory border-t border-warm-grey">
+                              {meta === 'loading' && <span className="text-xs text-ink-60">Loading order meta…</span>}
                               {meta?.error && <span className="text-xs text-amber-700">{meta.error}</span>}
                               {meta && meta !== 'loading' && !meta.error && (
                                 <div className="text-xs">
-                                  <p className="text-gray-500 mb-2">
+                                  <p className="text-ink-60 mb-2">
                                     payment_method: <span className="font-mono">{meta.payment_method || '—'}</span>
                                     {' · '}transaction_id: <span className="font-mono">{meta.transaction_id || '—'}</span>
                                     {' · '}{meta.meta.length} meta key{meta.meta.length === 1 ? '' : 's'}
                                   </p>
                                   {meta.meta.length === 0 ? (
-                                    <p className="text-gray-400">No meta keys returned by the API for this order (private/underscore-prefixed keys are commonly stripped server-side).</p>
+                                    <p className="text-ink-60">No meta keys returned by the API for this order (private/underscore-prefixed keys are commonly stripped server-side).</p>
                                   ) : (
                                     <div className="grid grid-cols-[minmax(0,220px)_1fr] gap-x-3 gap-y-1 max-h-64 overflow-y-auto">
                                       {[...meta.meta].sort((a, b) => (FEE_LIKE.test(b.key) ? 1 : 0) - (FEE_LIKE.test(a.key) ? 1 : 0)).map((m, i) => (
                                         <Fragment key={i}>
-                                          <span className={`font-mono truncate ${FEE_LIKE.test(m.key) ? 'text-amber-700 font-medium' : 'text-gray-600'}`}>{m.key}</span>
-                                          <span className="font-mono text-gray-800 truncate">{typeof m.value === 'object' ? JSON.stringify(m.value) : String(m.value)}</span>
+                                          <span className={`font-mono truncate ${FEE_LIKE.test(m.key) ? 'text-amber-700 font-medium' : 'text-ink-70'}`}>{m.key}</span>
+                                          <span className="font-mono text-ink truncate">{typeof m.value === 'object' ? JSON.stringify(m.value) : String(m.value)}</span>
                                         </Fragment>
                                       ))}
                                     </div>
@@ -837,7 +837,7 @@ export default function WooCommerceSync() {
             {itemReport.length > 0 && (
               <div className="mb-6">
                 <div className="flex items-center justify-between gap-3 mb-2">
-                  <h2 className="text-sm font-medium text-gray-700">By item</h2>
+                  <h2 className="text-sm font-medium text-ink-80">By item</h2>
                   <button type="button" onClick={exportItems}
                     className="text-xs text-brand-600 hover:text-brand-800 underline underline-offset-2">
                     Export items (CSV)
@@ -846,12 +846,12 @@ export default function WooCommerceSync() {
 
                 <div className="rounded-lg border border-brand-100 bg-brand-50/40 px-4 py-2.5 mb-3 flex items-center gap-4 flex-wrap">
                   <div>
-                    <span className="text-[11px] text-gray-500 block">Total units sold</span>
-                    <span className="text-lg font-medium text-gray-900 tabular-nums">{itemReportTotals.unitsTotal}</span>
+                    <span className="text-[11px] text-ink-60 block">Total units sold</span>
+                    <span className="text-lg font-medium text-ink tabular-nums">{itemReportTotals.unitsTotal}</span>
                   </div>
                   <div>
-                    <span className="text-[11px] text-gray-500 block">Turnover, converted to HKD{itemReportTotals.incomplete ? ' (partial)' : ''}</span>
-                    <span className="text-lg font-medium text-gray-900 tabular-nums">
+                    <span className="text-[11px] text-ink-60 block">Turnover, converted to HKD{itemReportTotals.incomplete ? ' (partial)' : ''}</span>
+                    <span className="text-lg font-medium text-ink tabular-nums">
                       {fx === 'loading' ? '…' : fx?.error ? '—' : `HKD ${fmtMoney(itemReportTotals.turnoverHkd)}`}
                     </span>
                   </div>
@@ -861,7 +861,7 @@ export default function WooCommerceSync() {
                 <div className="card overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                      <tr className="text-left text-xs text-ink-60 border-b border-warm-grey">
                         <th className="px-4 py-2.5 font-medium whitespace-nowrap">Base SKU</th>
                         <th className="px-4 py-2.5 font-medium">Item</th>
                         <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Orders</th>
@@ -870,20 +870,20 @@ export default function WooCommerceSync() {
                         <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">≈ HKD</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-warm-grey">
                       {itemReport.map((r) => (
-                        <tr key={r.base} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 whitespace-nowrap font-mono text-xs font-medium text-gray-900" title={r.skuList || ''}>{r.base}</td>
-                          <td className="px-4 py-3 text-gray-900 min-w-0">
+                        <tr key={r.base} className="hover:bg-ivory">
+                          <td className="px-4 py-3 whitespace-nowrap font-mono text-xs font-medium text-ink" title={r.skuList || ''}>{r.base}</td>
+                          <td className="px-4 py-3 text-ink min-w-0">
                             <span className="truncate">{r.name}</span>
-                            {r.variants > 1 && <span className="ml-1.5 text-[10px] text-gray-400">{r.variants} variants</span>}
+                            {r.variants > 1 && <span className="ml-1.5 text-[10px] text-ink-60">{r.variants} variants</span>}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600">{r.orders}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-900 font-medium">{r.qty}</td>
-                          <td className="px-4 py-3 whitespace-nowrap text-gray-600 text-xs">
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink-70">{r.orders}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink font-medium">{r.qty}</td>
+                          <td className="px-4 py-3 whitespace-nowrap text-ink-70 text-xs">
                             {r.currencies.map((c) => `${c.currency} ${fmtMoney(c.total)}`).join(' · ')}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-600 text-xs">
+                          <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink-70 text-xs">
                             {r.rowHkd != null ? fmtMoney(r.rowHkd) : '—'}
                           </td>
                         </tr>
@@ -891,7 +891,7 @@ export default function WooCommerceSync() {
                     </tbody>
                   </table>
                 </div>
-                <p className="text-[11px] text-gray-400 mt-1">
+                <p className="text-[11px] text-ink-60 mt-1">
                   Grouped by base product code (SKU up to the second "-", colour/running number dropped) — Qty sold is a unit count across
                   all currencies; "Amount by currency" stays exact/native. "≈ HKD" and the turnover total above are converted using a
                   <strong> live market rate</strong>{fx && fx !== 'loading' && !fx.error && ` (fetched ${fmtDate(fx.updatedAt)})`}, for
@@ -903,11 +903,11 @@ export default function WooCommerceSync() {
 
             {result.refunds.length > 0 && (
               <>
-                <h2 className="text-sm font-medium text-gray-700 mb-2">Refunds in range</h2>
+                <h2 className="text-sm font-medium text-ink-80 mb-2">Refunds in range</h2>
                 <div className="card overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                      <tr className="text-left text-xs text-ink-60 border-b border-warm-grey">
                         <th className="px-4 py-2.5 font-medium whitespace-nowrap">Order</th>
                         <th className="px-4 py-2.5 font-medium whitespace-nowrap">Refund date</th>
                         <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Amount</th>
@@ -915,15 +915,15 @@ export default function WooCommerceSync() {
                         <th className="px-4 py-2.5 font-medium" />
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-warm-grey">
                       {result.refunds.map((r) => {
                         const hasOrder = result.rows.some((o) => o.id === r.order_id)
                         return (
-                          <tr key={r.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-gray-900">#{r.order_number}</td>
-                            <td className="px-4 py-3 whitespace-nowrap text-gray-600">{fmtDate(r.date_created)}</td>
-                            <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-800">{fmtMoney(r.amount)}</td>
-                            <td className="px-4 py-3 text-gray-600 text-xs">{r.reason || '—'}</td>
+                          <tr key={r.id} className="hover:bg-ivory">
+                            <td className="px-4 py-3 whitespace-nowrap font-mono text-xs text-ink">#{r.order_number}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-ink-70">{fmtDate(r.date_created)}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink">{fmtMoney(r.amount)}</td>
+                            <td className="px-4 py-3 text-ink-70 text-xs">{r.reason || '—'}</td>
                             <td className="px-4 py-3 whitespace-nowrap text-right">
                               {importedRefundIds.has(r.id) ? (
                                 <Link to={`/credit-notes/woo-refund-${r.id}`} target="_blank" rel="noreferrer"

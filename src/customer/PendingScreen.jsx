@@ -9,7 +9,7 @@ import { applyForAccountGoogle } from '../portalInviteApi'
 
 function Shell({ children }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-ivory px-4">
       <div className="card w-full max-w-sm p-8">{children}</div>
     </div>
   )
@@ -87,7 +87,7 @@ function GoogleDetailsStep() {
           {submitting ? 'Submitting…' : 'Request account'}
         </button>
         <button type="button" onClick={() => signOut(auth).then(() => navigate('/login'))}
-          className="text-xs text-gray-500 hover:text-brand-600 w-full text-center">Cancel</button>
+          className="text-xs text-ink-60 hover:text-brand-600 w-full text-center">Cancel</button>
       </form>
     </>
   )

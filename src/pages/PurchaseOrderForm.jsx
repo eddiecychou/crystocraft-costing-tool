@@ -306,15 +306,15 @@ export default function PurchaseOrderForm() {
     }
   }
 
-  if (fetching) return <div className="p-6 text-gray-400">Loading…</div>
+  if (fetching) return <div className="p-6 text-ink-60">Loading…</div>
 
   return (
     <div className="p-4 md:p-6 max-w-4xl">
       <div className="mb-6">
         <Link to="/purchase-orders" className="text-sm text-brand-600 hover:underline">← Purchase Orders</Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-1">{isEdit ? 'Edit Purchase Order' : 'New Purchase Order'}</h1>
+        <h1 className="text-2xl font-bold text-ink mt-1">{isEdit ? 'Edit Purchase Order' : 'New Purchase Order'}</h1>
         {dupFromPU && !isEdit && (
-          <p className="text-sm text-gray-500 mt-1">Reordered from <span className="font-mono text-gray-700">{dupFromPU}</span> — enter the new PU number from the ERP.</p>
+          <p className="text-sm text-ink-60 mt-1">Reordered from <span className="font-mono text-ink-80">{dupFromPU}</span> — enter the new PU number from the ERP.</p>
         )}
       </div>
 
@@ -324,17 +324,17 @@ export default function PurchaseOrderForm() {
           <div className="card p-4">
             <label
               className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer transition-colors
-                ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-gray-300 hover:border-brand-400 hover:bg-brand-50'}`}
+                ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
               onDragOver={e => { e.preventDefault(); setDragOver(true) }}
               onDragLeave={() => setDragOver(false)} onDrop={handleDrop}>
-              <span className="text-gray-500 mb-1">{dragOver ? <FolderOpen size={22} /> : <FileInput size={22} />}</span>
-              <span className="text-sm text-gray-600">{dragOver ? 'Drop to import' : 'Upload an old PO to auto-fill (PDF or image)'}</span>
-              <span className="text-xs text-gray-400 mt-0.5">Reads the ERP PU sheet — you still type/confirm the PU number. PDF, JPG, PNG</span>
+              <span className="text-ink-60 mb-1">{dragOver ? <FolderOpen size={22} /> : <FileInput size={22} />}</span>
+              <span className="text-sm text-ink-70">{dragOver ? 'Drop to import' : 'Upload an old PO to auto-fill (PDF or image)'}</span>
+              <span className="text-xs text-ink-60 mt-0.5">Reads the ERP PU sheet — you still type/confirm the PU number. PDF, JPG, PNG</span>
               <input type="file" accept="image/*,.pdf" className="hidden"
                      onChange={e => { if (e.target.files[0]) importFile(e.target.files[0]); e.target.value = '' }} />
             </label>
             {pendingFile && (
-              <div className="flex items-center gap-2 mt-3 text-xs text-gray-600">
+              <div className="flex items-center gap-2 mt-3 text-xs text-ink-70">
                 <FileText size={14} className="text-red-400" /> {pendingFile.name}
               </div>
             )}
@@ -404,14 +404,14 @@ export default function PurchaseOrderForm() {
               </select>
             </div>
             <div>
-              <label className="label">Terms Note <span className="text-gray-400 font-normal">(optional)</span></label>
+              <label className="label">Terms Note <span className="text-ink-60 font-normal">(optional)</span></label>
               <input className="input" value={form.payment_terms_custom} onChange={set('payment_terms_custom')}
                      placeholder="e.g. balance on delivery" />
             </div>
           </div>
 
           <div>
-            <label className="label">Ship To <span className="text-gray-400 font-normal">(optional)</span></label>
+            <label className="label">Ship To <span className="text-ink-60 font-normal">(optional)</span></label>
             <input className="input" value={form.ship_to} onChange={set('ship_to')}
                    placeholder="Blank = default Crystocraft warehouse" />
           </div>
@@ -420,8 +420,8 @@ export default function PurchaseOrderForm() {
         {/* ── Line items ── */}
         <div className="card p-4 md:p-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-gray-700">Line Items</h2>
-            <span className="text-xs text-gray-400">Type a component code (autocompletes) or free text for MISC items.</span>
+            <h2 className="text-sm font-semibold text-ink-80">Line Items</h2>
+            <span className="text-xs text-ink-60">Type a component code (autocompletes) or free text for MISC items.</span>
           </div>
 
           <datalist id="po-component-codes">
@@ -429,7 +429,7 @@ export default function PurchaseOrderForm() {
           </datalist>
 
           {/* Column headers — desktop */}
-          <div className="hidden sm:grid grid-cols-[2fr_3fr_1fr_1fr_1.3fr_1.3fr_auto] gap-2 px-1 pb-1 text-[10px] uppercase tracking-wide text-gray-400">
+          <div className="hidden sm:grid grid-cols-[2fr_3fr_1fr_1fr_1.3fr_1.3fr_auto] gap-2 px-1 pb-1 text-[10px] uppercase tracking-wide text-ink-60">
             <span>Item Code</span><span>Description</span><span className="text-right">Qty</span>
             <span>Unit</span><span className="text-right">Unit Price</span><span className="text-right">Amount</span><span />
           </div>
@@ -449,11 +449,11 @@ export default function PurchaseOrderForm() {
                   </select>
                   <input className="input text-sm text-right tabular-nums" inputMode="decimal" value={ln.unit_price}
                          onChange={e => updateLine(ln._uid, { unit_price: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" />
-                  <div className="text-sm text-right tabular-nums text-gray-700 px-1">
+                  <div className="text-sm text-right tabular-nums text-ink-80 px-1">
                     {lineAmount(ln) ? lineAmount(ln).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
                   </div>
                   <button type="button" onClick={() => removeLine(ln._uid)}
-                          className="text-gray-300 hover:text-red-500 justify-self-end" title="Remove line">
+                          className="text-platinum hover:text-red-500 justify-self-end" title="Remove line">
                     <Trash2 size={15} />
                   </button>
                 </div>
@@ -469,8 +469,8 @@ export default function PurchaseOrderForm() {
                     </span>
                   ) : (
                     <button type="button" onClick={() => setLinkingUid(ln._uid)}
-                            className="inline-flex items-center gap-1 text-gray-400 hover:text-brand-600">
-                      <Link2 size={12} /> Link component <span className="text-gray-300">(optional)</span>
+                            className="inline-flex items-center gap-1 text-ink-60 hover:text-brand-600">
+                      <Link2 size={12} /> Link component <span className="text-platinum">(optional)</span>
                     </button>
                   )}
                 </div>
@@ -483,8 +483,8 @@ export default function PurchaseOrderForm() {
           </button>
 
           {/* Discounts & additional charges */}
-          <div className="mt-5 pt-4 border-t border-gray-100">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Discounts &amp; Additional Charges</h3>
+          <div className="mt-5 pt-4 border-t border-warm-grey">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-60 mb-2">Discounts &amp; Additional Charges</h3>
             {adjustments.length > 0 && (
               <div className="space-y-2">
                 {adjustments.map(a => (
@@ -500,7 +500,7 @@ export default function PurchaseOrderForm() {
                       <input className="input text-sm text-right tabular-nums flex-1 sm:flex-none" inputMode="decimal" value={a.amount}
                              onChange={e => updateAdjustment(a._uid, { amount: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" />
                       <button type="button" onClick={() => removeAdjustment(a._uid)}
-                              className="text-gray-300 hover:text-red-500 shrink-0 sm:justify-self-end" title="Remove"><Trash2 size={15} /></button>
+                              className="text-platinum hover:text-red-500 shrink-0 sm:justify-self-end" title="Remove"><Trash2 size={15} /></button>
                     </div>
                   </div>
                 ))}
@@ -512,25 +512,25 @@ export default function PurchaseOrderForm() {
           </div>
 
           {/* Totals */}
-          <div className="mt-5 pt-4 border-t border-gray-100 flex justify-end">
+          <div className="mt-5 pt-4 border-t border-warm-grey flex justify-end">
             <div className="w-full sm:w-72 space-y-1.5 text-sm">
-              <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span className="tabular-nums font-medium">{fmtMoney(totals.subtotal, form.currency)}</span></div>
+              <div className="flex justify-between"><span className="text-ink-60">Subtotal</span><span className="tabular-nums font-medium">{fmtMoney(totals.subtotal, form.currency)}</span></div>
               {cleanAdjustments(adjustments).map((a, i) => {
                 const disc = a.kind === 'discount'
                 return (
-                  <div key={i} className="flex justify-between text-gray-500">
+                  <div key={i} className="flex justify-between text-ink-60">
                     <span className="truncate max-w-[11rem]">{a.label || (disc ? 'Discount' : 'Additional charge')}</span>
                     <span className="tabular-nums">{disc ? '− ' : '+ '}{fmtMoney(a.amount, form.currency)}</span>
                   </div>
                 )
               })}
               {totals.adjustmentsTotal !== 0 && (
-                <div className="flex justify-between font-medium pt-1 border-t border-gray-100"><span className="text-gray-600">Order total</span><span className="tabular-nums">{fmtMoney(totals.grandTotal, form.currency)}</span></div>
+                <div className="flex justify-between font-medium pt-1 border-t border-warm-grey"><span className="text-ink-70">Order total</span><span className="tabular-nums">{fmtMoney(totals.grandTotal, form.currency)}</span></div>
               )}
               {totals.deposit > 0 && (
-                <div className="flex justify-between text-gray-500"><span>Deposit ({form.deposit_pct}%)</span><span className="tabular-nums">− {fmtMoney(totals.deposit, form.currency)}</span></div>
+                <div className="flex justify-between text-ink-60"><span>Deposit ({form.deposit_pct}%)</span><span className="tabular-nums">− {fmtMoney(totals.deposit, form.currency)}</span></div>
               )}
-              <div className="flex justify-between text-base font-semibold pt-1 border-t border-gray-100">
+              <div className="flex justify-between text-base font-semibold pt-1 border-t border-warm-grey">
                 <span>{totals.deposit > 0 ? 'Balance' : 'Total'}</span>
                 <span className="tabular-nums">{fmtMoney(totals.balance, form.currency)}</span>
               </div>

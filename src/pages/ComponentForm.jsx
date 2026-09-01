@@ -78,13 +78,13 @@ export default function ComponentForm() {
     }
   }
 
-  if (fetching) return <div className="p-6 text-gray-400">Loading…</div>
+  if (fetching) return <div className="p-6 text-ink-60">Loading…</div>
 
   return (
     <div className="p-4 md:p-6 max-w-xl">
       <div className="mb-6">
         <Link to={`/products/${productId}`} className="text-sm text-brand-600 hover:underline">← {product?.name || '…'}</Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-1">{isEdit ? 'Edit Component' : 'New Component'}</h1>
+        <h1 className="text-2xl font-bold text-ink mt-1">{isEdit ? 'Edit Component' : 'New Component'}</h1>
       </div>
 
       {/* Use Product Info banner — only on new component */}
@@ -132,7 +132,7 @@ export default function ComponentForm() {
               value={form.qty_per_product}
               onChange={set('qty_per_product')}
             />
-            <p className="text-xs text-gray-400 mt-1">How many of this component go into 1 finished product</p>
+            <p className="text-xs text-ink-60 mt-1">How many of this component go into 1 finished product</p>
           </div>
         </div>
 
@@ -143,7 +143,7 @@ export default function ComponentForm() {
 
         {/* Copy images option — only on new, if product has images */}
         {!isEdit && productImages.length > 0 && (
-          <div className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 border border-gray-100">
+          <div className="flex items-start gap-3 p-3 rounded-lg bg-ivory border border-warm-grey">
             <input
               type="checkbox"
               id="copyImages"
@@ -151,9 +151,9 @@ export default function ComponentForm() {
               checked={copyingImages}
               onChange={e => setCopyingImages(e.target.checked)}
             />
-            <label htmlFor="copyImages" className="text-sm text-gray-700 cursor-pointer">
+            <label htmlFor="copyImages" className="text-sm text-ink-80 cursor-pointer">
               Copy product images into this component
-              <span className="text-xs text-gray-400 ml-1">({productImages.length} image{productImages.length > 1 ? 's' : ''})</span>
+              <span className="text-xs text-ink-60 ml-1">({productImages.length} image{productImages.length > 1 ? 's' : ''})</span>
             </label>
           </div>
         )}

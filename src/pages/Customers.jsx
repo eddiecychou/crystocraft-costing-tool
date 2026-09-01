@@ -14,7 +14,7 @@ const CRM_STATUS_STYLES = {
   Active:   'bg-green-100 text-green-700',
   Prospect: 'bg-blue-100 text-blue-700',
   Dormant:  'bg-amber-100 text-amber-700',
-  Inactive: 'bg-gray-100 text-gray-500',
+  Inactive: 'bg-ivory-dark text-ink-60',
 }
 
 const CATEGORY_TABS = [
@@ -84,8 +84,8 @@ export default function Customers() {
           below the title there. */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Customers</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{customers.length} clients</p>
+          <h1 className="text-xl md:text-2xl font-bold text-ink">Customers</h1>
+          <p className="text-sm text-ink-60 mt-0.5">{customers.length} clients</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Link to="/customers/whatsapp-import" className="btn-secondary text-sm">Import WhatsApp</Link>
@@ -113,11 +113,11 @@ export default function Customers() {
               className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border transition-colors whitespace-nowrap ${
                 group === g.key
                   ? 'bg-brand-600 text-white border-brand-600'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                  : 'bg-white text-ink-70 border-warm-grey hover:border-warm-grey hover:bg-ivory'
               }`}
             >
               {g.key === 'retail' && <ShoppingBag size={13} className="inline align-[-2px] mr-1" />}
-              {g.label} <span className={`ml-1 ${group === g.key ? 'text-white/70' : 'text-gray-400'}`}>{count}</span>
+              {g.label} <span className={`ml-1 ${group === g.key ? 'text-white/70' : 'text-ink-60'}`}>{count}</span>
             </button>
           )
         })}
@@ -135,11 +135,11 @@ export default function Customers() {
                 onClick={() => setFilterCategory(tab.key)}
                 className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap ${
                   filterCategory === tab.key
-                    ? 'bg-gray-800 text-white border-gray-800'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                    ? 'bg-ink text-white border-ink'
+                    : 'bg-white text-ink-70 border-warm-grey hover:border-warm-grey hover:bg-ivory'
                 }`}
               >
-                {tab.Icon && <tab.Icon size={13} className="inline align-[-2px] mr-1" />}{tab.label} <span className={`ml-1 ${filterCategory === tab.key ? 'text-white/70' : 'text-gray-400'}`}>{count}</span>
+                {tab.Icon && <tab.Icon size={13} className="inline align-[-2px] mr-1" />}{tab.label} <span className={`ml-1 ${filterCategory === tab.key ? 'text-white/70' : 'text-ink-60'}`}>{count}</span>
               </button>
             )
           })}
@@ -172,27 +172,27 @@ export default function Customers() {
       </div>
 
       {filtered.length === 0 && !loading ? (
-        <div className="text-center py-20 text-gray-400">
-          <Building2 size={48} strokeWidth={1.25} className="mx-auto mb-4 text-gray-300" />
+        <div className="text-center py-20 text-ink-60">
+          <Building2 size={48} strokeWidth={1.25} className="mx-auto mb-4 text-platinum" />
           <p>{customers.length === 0 ? 'No customers yet — add your first client.' : 'No results found.'}</p>
         </div>
       ) : (
-        <div className="card divide-y divide-gray-100">
+        <div className="card divide-y divide-warm-grey">
           {filtered.map(c => (
-            <Link key={c.id} to={`/customers/${c.id}`} onClick={remember} className="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors">
+            <Link key={c.id} to={`/customers/${c.id}`} onClick={remember} className="flex items-center justify-between px-4 py-3.5 hover:bg-ivory transition-colors">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="font-semibold text-gray-900 text-sm truncate">{c.company_name}</p>
+                  <p className="font-semibold text-ink text-sm truncate">{c.company_name}</p>
                   {c.is_vip && <Star size={13} className="fill-current text-yellow-500 shrink-0" />}
-                  {c.is_personal_wa && <Smartphone size={13} className="text-gray-400 shrink-0" aria-label="Personal WhatsApp" />}
+                  {c.is_personal_wa && <Smartphone size={13} className="text-ink-60 shrink-0" aria-label="Personal WhatsApp" />}
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5 truncate">
+                <p className="text-xs text-ink-60 mt-0.5 truncate">
                   {[c.contact_name, c.country || c.region].filter(Boolean).join(' · ')}
-                  {c.crm_category && <span className="ml-1 text-gray-400">· {c.crm_category}</span>}
+                  {c.crm_category && <span className="ml-1 text-ink-60">· {c.crm_category}</span>}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-1">
                   {c.crm_status && (
-                    <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${CRM_STATUS_STYLES[c.crm_status] || 'bg-gray-100 text-gray-500'}`}>
+                    <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium ${CRM_STATUS_STYLES[c.crm_status] || 'bg-ivory-dark text-ink-60'}`}>
                       {c.crm_status}
                     </span>
                   )}
@@ -205,12 +205,12 @@ export default function Customers() {
                       {otherTags.slice(0, 3).map(tag => (
                         <span key={tag} className="px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-600 text-xs">{tag}</span>
                       ))}
-                      {otherTags.length > 3 && <span className="text-xs text-gray-400">+{otherTags.length - 3}</span>}
+                      {otherTags.length > 3 && <span className="text-xs text-ink-60">+{otherTags.length - 3}</span>}
                     </>
                   })()}
                 </div>
               </div>
-              <span className="text-xs text-gray-400 ml-3 shrink-0">→</span>
+              <span className="text-xs text-ink-60 ml-3 shrink-0">→</span>
             </Link>
           ))}
         </div>

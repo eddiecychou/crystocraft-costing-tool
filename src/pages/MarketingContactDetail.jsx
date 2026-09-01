@@ -44,7 +44,7 @@ export default function MarketingContactDetail() {
     return () => { cancelled = true }
   }, [id])
 
-  if (loading) return <div className="p-4 md:p-6 text-sm text-gray-400">Loading…</div>
+  if (loading) return <div className="p-4 md:p-6 text-sm text-ink-60">Loading…</div>
   if (loadError || !contact) {
     return (
       <div className="p-4 md:p-6">
@@ -149,7 +149,7 @@ function ContactDetailForm({ contact, customers, onPatched, onDeleted }) {
 
   const field = (label, k, type = 'text') => (
     <label className="block">
-      <span className="text-xs text-gray-500">{label}</span>
+      <span className="text-xs text-ink-60">{label}</span>
       <input type={type} className="input w-full mt-0.5" value={f[k]} onChange={set(k)} />
     </label>
   )
@@ -162,10 +162,10 @@ function ContactDetailForm({ contact, customers, onPatched, onDeleted }) {
 
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-xl md:text-2xl font-bold text-ink flex items-center gap-2">
             <Users size={22} className="text-brand-600" /> {contactName(contact)}
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">Marketing Contact</p>
+          <p className="text-sm text-ink-60 mt-0.5">Marketing Contact</p>
         </div>
         <button onClick={del} disabled={busy}
           className="text-sm text-red-600 hover:text-red-700 inline-flex items-center gap-1.5 disabled:opacity-50 shrink-0">
@@ -194,46 +194,46 @@ function ContactDetailForm({ contact, customers, onPatched, onDeleted }) {
           {field('WhatsApp', 'whatsapp')}
           {field('WeChat', 'wechat')}
         </div>
-        <p className="text-[11px] text-gray-400 -mt-2">At least one of email / phone / WhatsApp / WeChat is required to save.</p>
+        <p className="text-[11px] text-ink-60 -mt-2">At least one of email / phone / WhatsApp / WeChat is required to save.</p>
         <label className="block">
-          <span className="text-xs text-gray-500">Status</span>
+          <span className="text-xs text-ink-60">Status</span>
           <select className="input w-full mt-0.5" value={f.status} onChange={set('status')}>
             {MC_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </label>
         <div className="block">
-          <span className="text-xs text-gray-500">Audience</span>
+          <span className="text-xs text-ink-60">Audience</span>
           <div className="flex gap-3 mt-1">
             {MC_AUDIENCES.map(a => (
-              <label key={a} className="flex items-center gap-1.5 text-sm text-gray-700">
+              <label key={a} className="flex items-center gap-1.5 text-sm text-ink-80">
                 <input type="checkbox" checked={f.audiences.includes(a)} onChange={() => toggleAudience(a)}
-                       className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
+                       className="rounded border-warm-grey text-brand-600 focus:ring-brand-500" />
                 {a}
               </label>
             ))}
           </div>
         </div>
         <label className="block">
-          <span className="text-xs text-gray-500">Tags (comma-separated)</span>
+          <span className="text-xs text-ink-60">Tags (comma-separated)</span>
           <input className="input w-full mt-0.5" value={f.tags} onChange={set('tags')} placeholder="distributor, exhibition contact" />
-          <span className="text-[11px] text-gray-400">Category tags ({MC_CATEGORIES.slice(0, 5).join(', ')}…) show highlighted.</span>
+          <span className="text-[11px] text-ink-60">Category tags ({MC_CATEGORIES.slice(0, 5).join(', ')}…) show highlighted.</span>
         </label>
-        <label className="flex items-center gap-2 text-sm text-gray-600">
+        <label className="flex items-center gap-2 text-sm text-ink-70">
           <input type="checkbox" checked={f.is_customer} onChange={set('is_customer')}
-                 className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
+                 className="rounded border-warm-grey text-brand-600 focus:ring-brand-500" />
           Likely customer
         </label>
-        <div className="block border-t border-gray-100 pt-3">
-          <span className="text-xs text-gray-500">Linked app customer</span>
-          <p className="text-[11px] text-gray-400 mb-1.5">
+        <div className="block border-t border-warm-grey pt-3">
+          <span className="text-xs text-ink-60">Linked app customer</span>
+          <p className="text-[11px] text-ink-60 mb-1.5">
             {match ? `Currently linked to "${match.company_name}".` : 'Not linked — pick a customer if you know this contact is already in the app.'}
           </p>
           <div className="flex items-center gap-2 flex-wrap">
             <CustomerPicker customers={customers} value={match?.customer_id || ''} onChange={doLink} />
-            {linkState === 'saving' && <span className="text-[11px] text-gray-400">Saving…</span>}
+            {linkState === 'saving' && <span className="text-[11px] text-ink-60">Saving…</span>}
             {linkState === 'saved' && <span className="text-[11px] text-green-600">Saved ✓</span>}
             {match && (
-              <button type="button" onClick={doUnlink} className="text-[11px] text-gray-400 hover:text-red-600">Unlink</button>
+              <button type="button" onClick={doUnlink} className="text-[11px] text-ink-60 hover:text-red-600">Unlink</button>
             )}
           </div>
         </div>
@@ -247,23 +247,23 @@ function ContactDetailForm({ contact, customers, onPatched, onDeleted }) {
         <InteractionLog contactId={contact.id} />
 
         <label className="block">
-          <span className="text-xs text-gray-500">Notes</span>
+          <span className="text-xs text-ink-60">Notes</span>
           <textarea className="input w-full mt-0.5" rows={2} value={f.app_notes} onChange={set('app_notes')} />
         </label>
         <label className="block">
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-ink-60">
             AI writing preferences (Daily Drafts memory) — max {AI_CONTEXT_SUMMARY_MAX_WORDS} words
           </span>
           <textarea className="input w-full mt-0.5" rows={2} value={f.ai_context_summary} onChange={set('ai_context_summary')}
             placeholder="e.g. Prefers WhatsApp over email. Distributor, price-sensitive, replies slowly." />
           <span className={`text-[11px] ${
-            f.ai_context_summary.trim().split(/\s+/).filter(Boolean).length > AI_CONTEXT_SUMMARY_MAX_WORDS ? 'text-red-600' : 'text-gray-400'
+            f.ai_context_summary.trim().split(/\s+/).filter(Boolean).length > AI_CONTEXT_SUMMARY_MAX_WORDS ? 'text-red-600' : 'text-ink-60'
           }`}>
             {f.ai_context_summary.trim() ? f.ai_context_summary.trim().split(/\s+/).filter(Boolean).length : 0} / {AI_CONTEXT_SUMMARY_MAX_WORDS} words —
             fed into every Daily Drafts email to this contact.
           </span>
         </label>
-        <p className="text-[11px] text-gray-400">
+        <p className="text-[11px] text-ink-60">
           Status drives emailability automatically (only "subscribed" is emailable). Changing the email moves the record.
         </p>
       </div>

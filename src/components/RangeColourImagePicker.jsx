@@ -143,20 +143,20 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
     }
   }
 
-  if (loading) return <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
-  if (!product) return <p className="text-sm text-gray-400 text-center py-8">Product not found.</p>
+  if (loading) return <p className="text-sm text-ink-60 text-center py-8">Loading…</p>
+  if (!product) return <p className="text-sm text-ink-60 text-center py-8">Product not found.</p>
 
   return (
     <div className="space-y-3">
       {variantIndex == null && (
         <div>
-          <p className="text-xs text-gray-500 mb-1.5">
+          <p className="text-xs text-ink-60 mb-1.5">
             {parsed ? `Couldn't tell which plating "${itemCode}" is from — pick one:` : 'Pick a plating:'}
           </p>
           <div className="flex flex-wrap gap-1.5">
             {(product.variants || []).map((v, i) => (
               <button key={i} type="button" onClick={() => setVariantIndex(i)}
-                className="text-xs px-2.5 py-1 rounded-full border border-gray-200 hover:border-brand-400 bg-white">
+                className="text-xs px-2.5 py-1 rounded-full border border-warm-grey hover:border-brand-400 bg-white">
                 {v.plating_name || v.plating_code || `Variation ${i + 1}`}
               </button>
             ))}
@@ -167,7 +167,7 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
       {variant && (
         <>
           {Object.keys(colourImages).length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-2">No usable colour photos yet for this plating.</p>
+            <p className="text-sm text-ink-60 text-center py-2">No usable colour photos yet for this plating.</p>
           ) : (
             <div className="grid grid-cols-3 gap-2">
               {Object.entries(colourImages).map(([code, url]) => {
@@ -197,8 +197,8 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
             </div>
           )}
 
-          <div className="border-t border-gray-100 pt-2.5">
-            <p className="text-[11px] text-gray-500 mb-1.5">Generate a colour photo now, if one's missing:</p>
+          <div className="border-t border-warm-grey pt-2.5">
+            <p className="text-[11px] text-ink-60 mb-1.5">Generate a colour photo now, if one's missing:</p>
             <div className="flex items-center gap-1.5 flex-wrap">
               <select className="input text-xs py-1 flex-1 min-w-[8rem]" value={target} onChange={e => setTarget(e.target.value)}>
                 <option value="">Target colour…</option>
@@ -220,12 +220,12 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
                 {galleryPickerOpen && (
                   <>
                     <div className="fixed inset-0 z-[70]" onClick={() => setGalleryPickerOpen(false)} />
-                    <div className="absolute z-[80] top-8 left-0 w-56 bg-white border border-gray-200 rounded-lg shadow-lg p-2 space-y-1">
-                      <p className="text-[11px] text-gray-500 mb-1">Use an existing gallery photo</p>
+                    <div className="absolute z-[80] top-8 left-0 w-56 bg-white border border-warm-grey rounded-lg shadow-lg p-2 space-y-1">
+                      <p className="text-[11px] text-ink-60 mb-1">Use an existing gallery photo</p>
                       <div className="grid grid-cols-4 gap-1">
                         {(product.gallery || []).map((g, gi) => g.url && (
                           <button key={gi} type="button" onClick={() => onPickGallery(g.url)}
-                            className="relative aspect-square bg-white border border-gray-200 rounded overflow-hidden hover:border-brand-400"
+                            className="relative aspect-square bg-white border border-warm-grey rounded overflow-hidden hover:border-brand-400"
                             title={g.caption || 'Use this image'}>
                             <img src={g.url} alt="" className="w-full h-full object-contain p-0.5" />
                           </button>

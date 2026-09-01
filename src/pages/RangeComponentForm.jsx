@@ -183,7 +183,7 @@ export default function RangeComponentForm() {
                     <Star size={16} fill={q.is_preferred ? 'currentColor' : 'none'} />
                   </button>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-gray-800 truncate">
+                    <p className="text-sm text-ink truncate">
                       {q.supplier_name || 'Unnamed supplier'}
                       {q.is_preferred && <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-600">preferred</span>}
                     </p>

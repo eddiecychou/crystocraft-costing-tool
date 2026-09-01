@@ -20,7 +20,7 @@ import { MARKETING_DESC_MAXLEN } from '../constants'
 
 // ── Auto layout label ─────────────────────────────────────────────────────────
 function layoutLabel(count) {
-  if (count === 0) return { text: 'No images', style: 'bg-gray-100 text-gray-400' }
+  if (count === 0) return { text: 'No images', style: 'bg-ivory-dark text-ink-60' }
   if (count >= 5)  return { text: `Full page · ${count} images`, style: 'bg-brand-50 text-brand-600' }
   if (count <= 3)  return { text: `Quarter page · ${count} image${count > 1 ? 's' : ''}`, style: 'bg-purple-50 text-purple-600' }
   return { text: `Half page · ${count} images`, style: 'bg-amber-50 text-amber-600' }
@@ -75,7 +75,7 @@ function ImageSequencer({ itemId, selectedImages, allImages, onUpdate }) {
       <div className="flex items-center gap-2">
         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${layoutStyle}`}>{layoutText}</span>
         {selectedImages.length > 0 && (
-          <span className="inline-flex items-center gap-1 text-xs text-gray-400"><Star size={11} className="fill-current text-amber-400" />first image is hero · drag to reorder</span>
+          <span className="inline-flex items-center gap-1 text-xs text-ink-60"><Star size={11} className="fill-current text-amber-400" />first image is hero · drag to reorder</span>
         )}
       </div>
 
@@ -104,7 +104,7 @@ function ImageSequencer({ itemId, selectedImages, allImages, onUpdate }) {
       {/* Unselected images — click to add (max 6) */}
       {unselected.length > 0 && selectedImages.length < 6 && (
         <div>
-          <p className="text-xs text-gray-400 mb-1.5">
+          <p className="text-xs text-ink-60 mb-1.5">
             {selectedImages.length === 0 ? 'Select images to include:' : `Add more (${6 - selectedImages.length} remaining):`}
           </p>
           <div className="flex gap-2 flex-wrap">
@@ -112,10 +112,10 @@ function ImageSequencer({ itemId, selectedImages, allImages, onUpdate }) {
               <button
                 key={url}
                 onClick={() => onUpdate(itemId, { selected_images: [...selectedImages, url] })}
-                className="relative w-16 h-16 rounded-lg border-2 border-dashed border-gray-200 hover:border-brand-300 overflow-hidden group/add transition-colors"
+                className="relative w-16 h-16 rounded-lg border-2 border-dashed border-warm-grey hover:border-brand-300 overflow-hidden group/add transition-colors"
               >
                 <img src={url} alt="" className="w-full h-full object-cover opacity-40 group-hover/add:opacity-60 transition-opacity" />
-                <span className="absolute inset-0 flex items-center justify-center text-gray-400 group-hover/add:text-brand-500 text-xl font-light">+</span>
+                <span className="absolute inset-0 flex items-center justify-center text-ink-60 group-hover/add:text-brand-500 text-xl font-light">+</span>
               </button>
             ))}
           </div>
@@ -126,7 +126,7 @@ function ImageSequencer({ itemId, selectedImages, allImages, onUpdate }) {
       )}
 
       {allImages.length === 0 && (
-        <p className="text-xs text-gray-300 italic">No images uploaded for this product yet.</p>
+        <p className="text-xs text-platinum italic">No images uploaded for this product yet.</p>
       )}
     </div>
   )
@@ -150,26 +150,26 @@ function CatalogueItem({ item, onUpdate, onDelete }) {
     <div ref={setNodeRef} style={style} className="card p-4 space-y-3">
       <div className="flex items-start gap-3">
         {/* Drag handle */}
-        <button {...attributes} {...listeners} className="mt-1 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0">
+        <button {...attributes} {...listeners} className="mt-1 text-platinum hover:text-ink-60 cursor-grab active:cursor-grabbing shrink-0">
           ⠿
         </button>
 
         {/* Hero image preview */}
-        <div className="w-16 h-16 rounded-lg bg-gray-100 shrink-0 overflow-hidden">
+        <div className="w-16 h-16 rounded-lg bg-ivory-dark shrink-0 overflow-hidden">
           {selectedImages[0]
             ? <img src={selectedImages[0]} alt="" className="w-full h-full object-cover" />
-            : <div className="w-full h-full flex items-center justify-center text-gray-300"><Camera size={24} /></div>
+            : <div className="w-full h-full flex items-center justify-center text-platinum"><Camera size={24} /></div>
           }
         </div>
 
         {/* Product info */}
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-gray-900 text-sm truncate">{item.product_name}</p>
-          <p className="text-xs text-gray-400">{item.product_category}</p>
+          <p className="font-semibold text-ink text-sm truncate">{item.product_name}</p>
+          <p className="text-xs text-ink-60">{item.product_category}</p>
         </div>
 
         {/* Delete */}
-        <button onClick={() => onDelete(item.id)} className="text-gray-300 hover:text-red-400 shrink-0"><X size={15} /></button>
+        <button onClick={() => onDelete(item.id)} className="text-platinum hover:text-red-400 shrink-0"><X size={15} /></button>
       </div>
 
       {/* Image sequencer */}
@@ -182,7 +182,7 @@ function CatalogueItem({ item, onUpdate, onDelete }) {
 
       {/* Marketing description */}
       <div>
-        <label className="text-xs text-gray-400 block mb-1">Marketing Description</label>
+        <label className="text-xs text-ink-60 block mb-1">Marketing Description</label>
         <textarea
           className="input text-sm resize-none"
           rows={2}
@@ -224,15 +224,15 @@ function ProductPicker({ existingIds, onAdd, onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
-        <div className="p-4 border-b border-gray-100">
-          <h3 className="font-semibold text-gray-900">Add Product to Catalogue</h3>
-          <div className="flex gap-1 mt-2 p-0.5 bg-gray-100 rounded-lg">
+        <div className="p-4 border-b border-warm-grey">
+          <h3 className="font-semibold text-ink">Add Product to Catalogue</h3>
+          <div className="flex gap-1 mt-2 p-0.5 bg-ivory-dark rounded-lg">
             {PRODUCT_SOURCES.map(s => (
               <button
                 key={s.value}
                 onClick={() => setSource(s.value)}
                 className={`flex-1 text-xs py-1.5 rounded-md transition-colors ${
-                  source === s.value ? 'bg-white text-gray-900 font-medium shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  source === s.value ? 'bg-white text-ink font-medium shadow-sm' : 'text-ink-60 hover:text-ink-80'
                 }`}
               >{s.label}</button>
             ))}
@@ -247,28 +247,28 @@ function ProductPicker({ existingIds, onAdd, onClose }) {
         </div>
         <div className="overflow-y-auto flex-1 p-2">
           {filtered.length === 0 && (
-            <p className="text-sm text-gray-400 text-center py-8">No products found</p>
+            <p className="text-sm text-ink-60 text-center py-8">No products found</p>
           )}
           {filtered.map(p => (
             <button
               key={p.id}
               onClick={() => { onAdd(p); onClose() }}
-              className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 text-left"
+              className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-ivory text-left"
             >
-              <div className="w-10 h-10 rounded-lg bg-gray-100 shrink-0 overflow-hidden">
+              <div className="w-10 h-10 rounded-lg bg-ivory-dark shrink-0 overflow-hidden">
                 {p.heroImage
                   ? <img src={p.heroImage} alt="" className="w-full h-full object-cover" />
-                  : <div className="w-full h-full flex items-center justify-center text-gray-300"><Camera size={20} /></div>
+                  : <div className="w-full h-full flex items-center justify-center text-platinum"><Camera size={20} /></div>
                 }
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
-                <p className="text-xs text-gray-400">{p.category}</p>
+                <p className="text-sm font-medium text-ink truncate">{p.name}</p>
+                <p className="text-xs text-ink-60">{p.category}</p>
               </div>
             </button>
           ))}
         </div>
-        <div className="p-3 border-t border-gray-100">
+        <div className="p-3 border-t border-warm-grey">
           <button className="btn-secondary w-full text-center" onClick={onClose}>Cancel</button>
         </div>
       </div>
@@ -348,7 +348,7 @@ export default function CatalogueDetail() {
     ))
   }
 
-  if (!catalogue) return <div className="p-6 text-gray-400">Loading…</div>
+  if (!catalogue) return <div className="p-6 text-ink-60">Loading…</div>
 
   return (
     <div className="p-4 md:p-6 max-w-3xl">
@@ -356,8 +356,8 @@ export default function CatalogueDetail() {
       <div className="flex items-start justify-between mb-2">
         <div>
           <Link to="/catalogues" className="text-sm text-brand-600 hover:underline">← Catalogues</Link>
-          <h1 className="text-xl font-bold text-gray-900 mt-1">{catalogue.name}</h1>
-          {catalogue.season && <p className="text-xs text-gray-400">{catalogue.season}</p>}
+          <h1 className="text-xl font-bold text-ink mt-1">{catalogue.name}</h1>
+          {catalogue.season && <p className="text-xs text-ink-60">{catalogue.season}</p>}
         </div>
         <div className="flex gap-2 shrink-0">
           <Link to={`/catalogues/${id}/edit`} className="btn-secondary text-sm">Edit Info</Link>
@@ -365,7 +365,7 @@ export default function CatalogueDetail() {
         </div>
       </div>
 
-      <p className="text-xs text-gray-400 mb-5">
+      <p className="text-xs text-ink-60 mb-5">
         Add products, select and reorder images (first = hero), write marketing copy.
         Layout (half/full page) is set automatically by image count. Drag items to reorder.
       </p>
@@ -387,7 +387,7 @@ export default function CatalogueDetail() {
       </DndContext>
 
       {items.length === 0 && (
-        <div className="card p-10 text-center text-gray-400 text-sm">
+        <div className="card p-10 text-center text-ink-60 text-sm">
           No products yet — add some below.
         </div>
       )}
@@ -414,7 +414,7 @@ export default function CatalogueDetail() {
 
         return (
           <div className="mt-4 card p-4 space-y-2">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Page Summary</p>
+            <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Page Summary</p>
             <div className="flex flex-wrap gap-2 text-xs">
               {quarterItems > 0 && (
                 <span className="px-2 py-1 rounded-full bg-purple-50 text-purple-600">
@@ -434,7 +434,7 @@ export default function CatalogueDetail() {
                 </span>
               )}
             </div>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-ink-60">
               {totalPages + 1} pages total (including cover)
               {(quarterBlanks > 0 || halfBlanks > 0) && (
                 <span className="text-amber-500 ml-2">

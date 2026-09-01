@@ -152,20 +152,20 @@ export default function RangeQuoteForm() {
           {' / '}
           <Link to={`/components/critical/${componentId}`} className="hover:text-brand-600">{component?.code || component?.name || 'Component'}</Link>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Supplier Quote' : 'Add Supplier Quote'}</h1>
+        <h1 className="text-2xl font-bold text-ink">{isEdit ? 'Edit Supplier Quote' : 'Add Supplier Quote'}</h1>
       </div>
 
       {/* Image upload + OCR */}
       <div className="card p-4 mb-4">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Quote Images / Screenshots</h2>
-        <p className="text-xs text-gray-500 mb-3">Upload WeChat / WhatsApp screenshots or a PDF — AI will try to extract the pricing automatically.</p>
+        <h2 className="text-sm font-semibold text-ink-80 mb-3">Quote Images / Screenshots</h2>
+        <p className="text-xs text-ink-60 mb-3">Upload WeChat / WhatsApp screenshots or a PDF — AI will try to extract the pricing automatically.</p>
         <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer transition-colors
-            ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-gray-300 hover:border-brand-400 hover:bg-brand-50'}`}
+            ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
           onDragOver={e => { e.preventDefault(); setDragOver(true) }}
           onDragLeave={() => setDragOver(false)} onDrop={handleDrop}>
-          <span className="text-gray-500 mb-1">{dragOver ? <FolderOpen size={22} /> : <Paperclip size={22} />}</span>
-          <span className="text-sm text-gray-600">{dragOver ? 'Drop to upload' : 'Click to upload or drag & drop'}</span>
-          <span className="text-xs text-gray-400 mt-0.5">JPG, PNG, WebP, HEIC, PDF</span>
+          <span className="text-ink-60 mb-1">{dragOver ? <FolderOpen size={22} /> : <Paperclip size={22} />}</span>
+          <span className="text-sm text-ink-70">{dragOver ? 'Drop to upload' : 'Click to upload or drag & drop'}</span>
+          <span className="text-xs text-ink-60 mt-0.5">JPG, PNG, WebP, HEIC, PDF</span>
           <input type="file" accept="image/*,.pdf" multiple className="hidden"
                  onChange={e => { addFiles(Array.from(e.target.files)); e.target.value = '' }} />
         </label>
@@ -173,11 +173,11 @@ export default function RangeQuoteForm() {
         {files.length > 0 && (
           <div className="mt-3 space-y-2">
             {files.map(f => (
-              <div key={f._id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+              <div key={f._id} className="flex items-center gap-3 p-2 bg-ivory rounded-lg">
                 {f.isPdf
                   ? <div className="w-12 h-12 rounded bg-red-50 border border-red-100 flex items-center justify-center shrink-0"><FileText size={20} className="text-red-400" /></div>
                   : <img src={f.preview} alt="" className="w-12 h-12 object-cover rounded shrink-0" />}
-                <span className="text-xs text-gray-600 flex-1 truncate">{f.file.name}</span>
+                <span className="text-xs text-ink-70 flex-1 truncate">{f.file.name}</span>
                 <button type="button" onClick={() => setFiles(prev => prev.filter(x => x._id !== f._id))} className="text-xs text-red-500 hover:text-red-700">Remove</button>
               </div>
             ))}
@@ -193,7 +193,7 @@ export default function RangeQuoteForm() {
 
         {existingAttachments.length > 0 && (
           <div className="mt-3">
-            <p className="text-xs text-gray-400 mb-1.5">Saved attachments:</p>
+            <p className="text-xs text-ink-60 mb-1.5">Saved attachments:</p>
             <div className="flex gap-2 flex-wrap">
               {existingAttachments.map((a, i) => (
                 <div key={i} className="relative group/att">
@@ -229,12 +229,12 @@ export default function RangeQuoteForm() {
 
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="label mb-0">Volume Price Tiers <span className="text-gray-400 font-normal text-xs">(optional)</span></label>
+            <label className="label mb-0">Volume Price Tiers <span className="text-ink-60 font-normal text-xs">(optional)</span></label>
             <button type="button" onClick={() => setVolumeTiers(t => [...t, { min_qty: '', unit_cost: '' }])} className="text-xs text-brand-600 hover:text-brand-800 font-medium">+ Add Tier</button>
           </div>
           {volumeTiers.length > 0 && (
             <div className="space-y-2">
-              <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs text-gray-400 px-1"><span>Min Qty</span><span>Unit Cost ({form.unit_cost_currency})</span><span></span></div>
+              <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs text-ink-60 px-1"><span>Min Qty</span><span>Unit Cost ({form.unit_cost_currency})</span><span></span></div>
               {volumeTiers.map((t, i) => (
                 <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-2 items-center">
                   <input className="input py-1.5 text-sm" type="number" min="1" placeholder="e.g. 500" value={t.min_qty}
@@ -264,15 +264,15 @@ export default function RangeQuoteForm() {
         <div>
           <label className="label">Lead Times (days)</label>
           <div className="grid grid-cols-3 gap-3">
-            <div><p className="text-xs text-gray-500 mb-1">Sampling</p><input className="input" type="number" min="0" value={form.sampling_lead_time_days} onChange={set('sampling_lead_time_days')} placeholder="12" /></div>
-            <div><p className="text-xs text-gray-500 mb-1">Tooling</p><input className="input" type="number" min="0" value={form.tooling_lead_time_days} onChange={set('tooling_lead_time_days')} placeholder="15" /></div>
-            <div><p className="text-xs text-gray-500 mb-1">Production</p><input className="input" type="number" min="0" value={form.production_lead_time_days} onChange={set('production_lead_time_days')} placeholder="30" /></div>
+            <div><p className="text-xs text-ink-60 mb-1">Sampling</p><input className="input" type="number" min="0" value={form.sampling_lead_time_days} onChange={set('sampling_lead_time_days')} placeholder="12" /></div>
+            <div><p className="text-xs text-ink-60 mb-1">Tooling</p><input className="input" type="number" min="0" value={form.tooling_lead_time_days} onChange={set('tooling_lead_time_days')} placeholder="15" /></div>
+            <div><p className="text-xs text-ink-60 mb-1">Production</p><input className="input" type="number" min="0" value={form.production_lead_time_days} onChange={set('production_lead_time_days')} placeholder="30" /></div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <input type="checkbox" id="pref" className="w-4 h-4 accent-brand-600" checked={form.is_preferred} onChange={e => setForm(f => ({ ...f, is_preferred: e.target.checked }))} />
-          <label htmlFor="pref" className="text-sm text-gray-700">Mark as preferred — this quote drives the figurine cost</label>
+          <label htmlFor="pref" className="text-sm text-ink-80">Mark as preferred — this quote drives the figurine cost</label>
         </div>
 
         <div>

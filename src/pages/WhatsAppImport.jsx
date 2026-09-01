@@ -73,10 +73,10 @@ function NewCustomerInline({ prefillWhatsapp, defaultChannel, onCreated, onCance
   }
 
   return (
-    <div className="border border-gray-200 rounded-lg p-3 space-y-2 bg-gray-50">
+    <div className="border border-warm-grey rounded-lg p-3 space-y-2 bg-ivory">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">New Customer</p>
-        <button type="button" onClick={onCancel} className="text-gray-400 hover:text-gray-600"><X size={14} /></button>
+        <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide">New Customer</p>
+        <button type="button" onClick={onCancel} className="text-ink-60 hover:text-ink-70"><X size={14} /></button>
       </div>
       <input className="input text-sm" placeholder="Company Name *" value={companyName} onChange={e => setCompanyName(e.target.value)} />
       <input className="input text-sm" placeholder="Name" value={contactName} onChange={e => setContactName(e.target.value)} />
@@ -91,7 +91,7 @@ function NewCustomerInline({ prefillWhatsapp, defaultChannel, onCreated, onCance
             type="button"
             onClick={() => setCrmCategory(v => v === cat ? '' : cat)}
             className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-              crmCategory === cat ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+              crmCategory === cat ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-70 border-warm-grey hover:border-ink-60'
             }`}
           >
             {cat}
@@ -138,13 +138,13 @@ function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChange
     <div className="card p-4 space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-medium text-gray-900 truncate">{entry.file.name}</p>
-          {entry.status === 'parsing' && <p className="text-xs text-gray-400 mt-0.5">Reading zip…</p>}
+          <p className="font-medium text-ink truncate">{entry.file.name}</p>
+          {entry.status === 'parsing' && <p className="text-xs text-ink-60 mt-0.5">Reading zip…</p>}
           {entry.status === 'error' && (
             <p className="text-xs text-red-600 mt-0.5 flex items-center gap-1"><AlertCircle size={12} />{entry.error}</p>
           )}
           {entry.preview && (
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-ink-60 mt-0.5">
               {entry.preview.messageCount} messages · {fmtDate(entry.preview.dateRange?.[0])} – {fmtDate(entry.preview.dateRange?.[1])}
               {entry.preview.voiceCount > 0 && (
                 <span className="inline-flex items-center gap-0.5 ml-2 text-amber-600">
@@ -170,7 +170,7 @@ function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChange
                 type="button"
                 onClick={() => onChangeMode(m)}
                 className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-                  entry.matchMode === m ? 'bg-gray-800 text-white border-gray-800' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+                  entry.matchMode === m ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-warm-grey hover:border-warm-grey'
                 }`}
               >
                 {m === 'customer' ? 'Match to Customer' : 'Save as Lead'}
@@ -199,15 +199,15 @@ function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChange
                     onChange={e => setCustomerSearch(e.target.value)}
                   />
                   {customerOpen && (
-                    <div className="absolute z-20 left-0 right-0 mt-1 border border-gray-200 rounded-lg bg-white shadow-lg max-h-52 overflow-y-auto">
+                    <div className="absolute z-20 left-0 right-0 mt-1 border border-warm-grey rounded-lg bg-white shadow-lg max-h-52 overflow-y-auto">
                       {filteredCustomers.length === 0 ? (
-                        <p className="text-xs text-gray-400 px-3 py-2">No matches</p>
+                        <p className="text-xs text-ink-60 px-3 py-2">No matches</p>
                       ) : filteredCustomers.map(c => (
                         <button
                           key={c.id}
                           type="button"
                           onMouseDown={() => { onChangeCustomer(c.id); setCustomerOpen(false) }}
-                          className="w-full text-left text-sm px-3 py-2 hover:bg-gray-50 transition-colors text-gray-700"
+                          className="w-full text-left text-sm px-3 py-2 hover:bg-ivory transition-colors text-ink-80"
                         >
                           {c.company_name}
                         </button>
@@ -238,7 +238,7 @@ function FileRow({ entry, customers, onChangeCustomer, onChangeChannel, onChange
             </div>
           )}
           {entry.matchMode === 'lead' && (
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-ink-60">
               Saved under Marketing Contacts (not Customers) — matched or created by this phone number.
             </p>
           )}
@@ -313,20 +313,20 @@ function SummaryScanSection() {
   return (
     <div className="card p-5 mt-8">
       <div className="flex items-center justify-between gap-3 mb-1">
-        <h2 className="text-sm font-semibold text-gray-700">Generate WhatsApp Summaries</h2>
+        <h2 className="text-sm font-semibold text-ink-80">Generate WhatsApp Summaries</h2>
         <button type="button" onClick={handleScan} disabled={scanning} className="btn-secondary text-xs px-3 py-1.5 inline-flex items-center gap-1.5">
           {scanning ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
           {candidates ? 'Re-scan' : 'Scan customers'}
         </button>
       </div>
-      <p className="text-xs text-gray-400 mb-3">
+      <p className="text-xs text-ink-60 mb-3">
         Daily Drafts only uses a customer's WhatsApp history once a summary's been generated for them — this finds
         everyone with imported chats and (re)generates for anyone missing one or whose message count has grown since.
       </p>
 
       {candidates && (
         <>
-          <p className="text-sm text-gray-600 mb-2">
+          <p className="text-sm text-ink-70 mb-2">
             {candidates.length} customer{candidates.length === 1 ? '' : 's'} with imported WhatsApp —{' '}
             <span className={pending.length ? 'text-amber-600 font-medium' : 'text-green-600'}>
               {pending.length ? `${pending.length} need${pending.length === 1 ? 's' : ''} generating` : 'all up to date'}
@@ -342,12 +342,12 @@ function SummaryScanSection() {
             </button>
           )}
 
-          <div className="divide-y divide-gray-100 border-t border-gray-100">
+          <div className="divide-y divide-warm-grey border-t border-warm-grey">
             {candidates.map(c => (
               <div key={c.customerId} className="flex items-center justify-between py-2 text-sm">
                 <div className="min-w-0">
-                  <span className="text-gray-800">{c.companyName || c.customerId}</span>
-                  <span className="text-xs text-gray-400 ml-2">
+                  <span className="text-ink">{c.companyName || c.customerId}</span>
+                  <span className="text-xs text-ink-60 ml-2">
                     {c.threadCount} chat{c.threadCount === 1 ? '' : 's'} · {c.messageCount} messages
                   </span>
                 </div>
@@ -357,7 +357,7 @@ function SummaryScanSection() {
                   ) : results[c.customerId] ? (
                     <span className="text-red-600">{results[c.customerId]}</span>
                   ) : c.upToDate ? (
-                    <span className="text-gray-400">Up to date</span>
+                    <span className="text-ink-60">Up to date</span>
                   ) : c.hasSummary ? (
                     <span className="text-amber-600">Stale — new messages</span>
                   ) : (
@@ -416,7 +416,7 @@ function ContactSummaryScanSection() {
   return (
     <div className="card p-5 mt-8">
       <div className="flex items-center justify-between gap-3 mb-1">
-        <h2 className="text-sm font-semibold text-gray-700">Generate WhatsApp Summaries — Marketing Leads</h2>
+        <h2 className="text-sm font-semibold text-ink-80">Generate WhatsApp Summaries — Marketing Leads</h2>
         <button type="button" onClick={handleScan} disabled={scanning} className="btn-secondary text-xs px-3 py-1.5 inline-flex items-center gap-1.5">
           {scanning ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
           {scanning
@@ -424,7 +424,7 @@ function ContactSummaryScanSection() {
             : candidates ? 'Re-scan' : 'Scan marketing contacts'}
         </button>
       </div>
-      <p className="text-xs text-gray-400 mb-3">
+      <p className="text-xs text-ink-60 mb-3">
         Same as the customer scan above, over marketing_contacts leads — finds everyone with imported WhatsApp chats
         and (re)generates for anyone missing a summary or whose message count has grown since. Scans all ~2,600
         contacts, so this can take a while even when few actually have anything imported.
@@ -432,7 +432,7 @@ function ContactSummaryScanSection() {
 
       {candidates && (
         <>
-          <p className="text-sm text-gray-600 mb-2">
+          <p className="text-sm text-ink-70 mb-2">
             {candidates.length} contact{candidates.length === 1 ? '' : 's'} with imported WhatsApp —{' '}
             <span className={pending.length ? 'text-amber-600 font-medium' : 'text-green-600'}>
               {pending.length ? `${pending.length} need${pending.length === 1 ? 's' : ''} generating` : 'all up to date'}
@@ -448,12 +448,12 @@ function ContactSummaryScanSection() {
             </button>
           )}
 
-          <div className="divide-y divide-gray-100 border-t border-gray-100">
+          <div className="divide-y divide-warm-grey border-t border-warm-grey">
             {candidates.map(c => (
               <div key={c.contactId} className="flex items-center justify-between py-2 text-sm">
                 <div className="min-w-0">
-                  <span className="text-gray-800">{c.name || c.contactId}</span>
-                  <span className="text-xs text-gray-400 ml-2">
+                  <span className="text-ink">{c.name || c.contactId}</span>
+                  <span className="text-xs text-ink-60 ml-2">
                     {c.threadCount} chat{c.threadCount === 1 ? '' : 's'} · {c.messageCount} messages
                   </span>
                 </div>
@@ -463,7 +463,7 @@ function ContactSummaryScanSection() {
                   ) : results[c.contactId] ? (
                     <span className="text-red-600">{results[c.contactId]}</span>
                   ) : c.upToDate ? (
-                    <span className="text-gray-400">Up to date</span>
+                    <span className="text-ink-60">Up to date</span>
                   ) : c.hasSummary ? (
                     <span className="text-amber-600">Stale — new messages</span>
                   ) : (
@@ -551,25 +551,25 @@ export default function WhatsAppImport() {
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
         <Link to="/customers" className="text-sm text-brand-600 hover:underline">← Customers</Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-1">Import WhatsApp Chats</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <h1 className="text-2xl font-bold text-ink mt-1">Import WhatsApp Chats</h1>
+        <p className="text-sm text-ink-60 mt-0.5">
           Upload the .zip files from WhatsApp's own "Export Chat" (Contact Info → Export Chat, on iPhone or web.whatsapp.com).
           Match each one to a real customer, or save it as a lead (for a number that never converted) — voice notes are
           archived but not yet transcribed to text.
         </p>
       </div>
 
-      <label className="card p-8 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 hover:border-brand-400 transition-colors cursor-pointer mb-6">
-        <Upload size={28} className="text-gray-400" />
-        <span className="text-sm font-medium text-gray-700">Choose or drop .zip files</span>
-        <span className="text-xs text-gray-400">Multiple files at once is fine</span>
+      <label className="card p-8 flex flex-col items-center justify-center gap-2 border-2 border-dashed border-warm-grey hover:border-brand-400 transition-colors cursor-pointer mb-6">
+        <Upload size={28} className="text-ink-60" />
+        <span className="text-sm font-medium text-ink-80">Choose or drop .zip files</span>
+        <span className="text-xs text-ink-60">Multiple files at once is fine</span>
         <input type="file" accept=".zip" multiple className="hidden" onChange={e => e.target.files.length && handleFiles(e.target.files)} />
       </label>
 
       {entries.length > 0 && (
         <>
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm text-gray-500">{entries.length} file{entries.length === 1 ? '' : 's'}</p>
+            <p className="text-sm text-ink-60">{entries.length} file{entries.length === 1 ? '' : 's'}</p>
             {readyCount > 1 && (
               <button type="button" onClick={handleImportAll} className="btn-secondary text-sm">
                 Import all matched ({readyCount})

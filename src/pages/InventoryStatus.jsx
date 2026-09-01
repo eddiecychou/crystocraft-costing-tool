@@ -114,7 +114,7 @@ export default function InventoryStatus() {
           {CLASSES.map(c => <option key={c} value={c}>{c === 'All' ? 'All classes' : c}</option>)}
         </select>
         <label className="text-xs text-ink-60 inline-flex items-center gap-1.5 cursor-pointer">
-          <input type="checkbox" checked={reorderOnly} onChange={e => setReorderOnly(e.target.checked)} className="w-3.5 h-3.5 rounded border-gray-300 text-brand-600" />
+          <input type="checkbox" checked={reorderOnly} onChange={e => setReorderOnly(e.target.checked)} className="w-3.5 h-3.5 rounded border-warm-grey text-brand-600" />
           Reorder only
         </label>
         <button onClick={exportCsv} disabled={filtered.length === 0} className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1 disabled:opacity-40">
@@ -148,7 +148,7 @@ export default function InventoryStatus() {
                   <Th k="reorder_point" label="Reorder pt" align="right" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-warm-grey">
                 {filtered.map(r => (
                   <tr key={r.key} className={needsReorder(r) ? 'bg-red-50/40' : 'hover:bg-ivory/40'}>
                     <td className="px-3 py-2"><span className={`text-[10px] px-1.5 py-0.5 rounded-full ${BADGE[r.cls]}`}>{r.cls}</span></td>

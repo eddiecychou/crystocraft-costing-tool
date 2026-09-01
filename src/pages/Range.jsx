@@ -25,7 +25,7 @@ function priceRange(min, max) {
   return min === max ? money(min) : `${money(min)}–${money(max)}`
 }
 function stockBadge(n) {
-  if (n == null) return { label: 'No data', cls: 'bg-gray-100 text-gray-500' }
+  if (n == null) return { label: 'No data', cls: 'bg-ivory-dark text-ink-60' }
   if (n <= 0) return { label: 'Out of stock', cls: 'bg-red-100 text-red-700' }
   if (n < 100) return { label: `Low · ${Math.round(n)}`, cls: 'bg-amber-100 text-amber-700' }
   return { label: `${Math.round(n)} in stock`, cls: 'bg-emerald-100 text-emerald-700' }
@@ -386,11 +386,11 @@ function ProductCard({ s, colorLookup = {} }) {
           className={`card overflow-hidden flex flex-col hover:shadow-md transition-shadow group ${isRetired ? 'opacity-50 grayscale' : ''}`}>
       <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
         <CardImageCarousel images={s.images} alt={s.name} imgClassName="object-cover"
-          fallback={<Gem size={30} strokeWidth={1.25} className="text-gray-300" />} />
+          fallback={<Gem size={30} strokeWidth={1.25} className="text-platinum" />} />
         <span className={`absolute top-1.5 left-1.5 badge ${STATUS_META[s.status]?.badge || ''}`}>
           {STATUS_META[s.status]?.label || s.status}
         </span>
-        {!s.active && <span className="absolute top-7 left-1.5 badge bg-gray-200 text-gray-600">Hidden</span>}
+        {!s.active && <span className="absolute top-7 left-1.5 badge bg-warm-grey text-ink-70">Hidden</span>}
         {(s.skuCount > 1 || s.colorCount > 0) && (
           <span className="absolute bottom-1.5 left-1.5 text-[10px] bg-ink/70 text-white px-1.5 py-0.5 rounded">
             {s.skuCount > 1 ? `${s.skuCount} platings` : ''}
@@ -407,7 +407,7 @@ function ProductCard({ s, colorLookup = {} }) {
                 <span key={p} className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
                       style={{ background: PLATING_DOT[p] || '#ccc' }} title={p} />
               ))
-            : <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0 bg-gray-200" />}
+            : <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0 bg-warm-grey" />}
           <span className="text-[11px] text-ink-60 uppercase tracking-wide font-label ml-1 truncate">
             {s.platings.join(' · ') || '—'}
           </span>

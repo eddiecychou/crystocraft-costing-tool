@@ -197,10 +197,10 @@ export default function BankDetailsAudit() {
       {loading && <LoadingBar />}
 
       <div className="mb-4">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <h1 className="text-xl md:text-2xl font-bold text-ink flex items-center gap-2">
           <Banknote size={22} className="text-teal-600" /> Bank Details Audit
         </h1>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <p className="text-sm text-ink-60 mt-0.5">
           Read-only. Finds bank/account numbers pasted into free-text fields across quotes,
           orders, POs, customers and suppliers, and flags variants that look like typos.
         </p>
@@ -213,7 +213,7 @@ export default function BankDetailsAudit() {
       )}
 
       {!loading && (
-        <p className="text-xs text-gray-400 mb-4">
+        <p className="text-xs text-ink-60 mb-4">
           Scanned:{' '}
           {SOURCES.map((s) => `${s.name} (${scanned[s.name] ?? 0})`).join(' · ')}
         </p>
@@ -272,12 +272,12 @@ export default function BankDetailsAudit() {
       )}
 
       {/* Every distinct token */}
-      <h2 className="text-sm font-semibold text-gray-700 mb-2">All values found</h2>
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden mb-6">
+      <h2 className="text-sm font-semibold text-ink-80 mb-2">All values found</h2>
+      <div className="bg-white border border-warm-grey rounded-lg overflow-hidden mb-6">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-500 border-b border-gray-200 bg-gray-50">
+              <tr className="text-left text-ink-60 border-b border-warm-grey bg-ivory">
                 <th className="px-3 py-2 font-medium">Type</th>
                 <th className="px-3 py-2 font-medium">Value</th>
                 <th className="px-3 py-2 font-medium text-right">Uses</th>
@@ -287,23 +287,23 @@ export default function BankDetailsAudit() {
             </thead>
             <tbody>
               {tokens.map((t) => (
-                <tr key={t.key} className={`border-b border-gray-100 last:border-0 ${t.suspect ? 'bg-amber-50' : ''}`}>
-                  <td className="px-3 py-2 whitespace-nowrap text-xs text-gray-500">{t.kind}</td>
+                <tr key={t.key} className={`border-b border-warm-grey last:border-0 ${t.suspect ? 'bg-amber-50' : ''}`}>
+                  <td className="px-3 py-2 whitespace-nowrap text-xs text-ink-60">{t.kind}</td>
                   <td className="px-3 py-2 font-mono text-xs">{[...t.variants.keys()][0]}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{t.hits.length}</td>
-                  <td className="px-3 py-2 text-xs text-gray-500">
+                  <td className="px-3 py-2 text-xs text-ink-60">
                     {t.variants.size > 1
                       ? `${t.variants.size} formats: ${[...t.variants.keys()].join(' / ')}`
-                      : <span className="text-gray-300">—</span>}
+                      : <span className="text-platinum">—</span>}
                   </td>
-                  <td className="px-3 py-2 text-xs text-gray-500">
+                  <td className="px-3 py-2 text-xs text-ink-60">
                     {t.hits.slice(0, 4).map((h) => h.ref).join(', ')}
                     {t.hits.length > 4 ? ` +${t.hits.length - 4} more` : ''}
                   </td>
                 </tr>
               ))}
               {!loading && !tokens.length && (
-                <tr><td colSpan={5} className="px-3 py-10 text-center text-gray-400">
+                <tr><td colSpan={5} className="px-3 py-10 text-center text-ink-60">
                   No bank-like values found in any scanned field.
                 </td></tr>
               )}
@@ -313,18 +313,18 @@ export default function BankDetailsAudit() {
       </div>
 
       {/* Raw lines, for reading what the documents actually say */}
-      <h2 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-1.5">
+      <h2 className="text-sm font-semibold text-ink-80 mb-2 flex items-center gap-1.5">
         <Search size={14} /> Bank-related lines, most common first
       </h2>
-      <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
+      <div className="bg-white border border-warm-grey rounded-lg divide-y divide-warm-grey">
         {blocks.slice(0, 60).map((b, i) => (
           <div key={i} className="px-3 py-2 text-sm flex gap-3">
-            <span className="text-gray-400 tabular-nums text-xs w-10 shrink-0">{b.hits.length}×</span>
+            <span className="text-ink-60 tabular-nums text-xs w-10 shrink-0">{b.hits.length}×</span>
             <span className="font-mono text-xs break-words min-w-0">{b.text}</span>
           </div>
         ))}
         {!loading && !blocks.length && (
-          <div className="px-3 py-10 text-center text-gray-400">Nothing found.</div>
+          <div className="px-3 py-10 text-center text-ink-60">Nothing found.</div>
         )}
       </div>
     </div>

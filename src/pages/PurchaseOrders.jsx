@@ -215,8 +215,8 @@ export default function PurchaseOrders() {
       {loading && <LoadingBar />}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Purchase Orders</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-xl md:text-2xl font-bold text-ink">Purchase Orders</h1>
+          <p className="text-sm text-ink-60 mt-0.5">
             {filtered.length} of {pos.length} app POs
             {jesOnlyCount > 0 && <> · {jesOnlyCount} more from JES{erp.loading ? ' (loading…)' : ''}</>}
           </p>
@@ -234,7 +234,7 @@ export default function PurchaseOrders() {
         ) : dupError ? (
           <p className="text-xs text-amber-600">Could not check — {dupError}</p>
         ) : dupCheck.length === 0 ? (
-          <p className="text-xs text-gray-400">No app PO duplicates an existing JES record.</p>
+          <p className="text-xs text-ink-60">No app PO duplicates an existing JES record.</p>
         ) : (
           <div className="card border-amber-200 bg-amber-50 p-3">
             <div className="flex items-center justify-between gap-3 flex-wrap mb-2">
@@ -254,8 +254,8 @@ export default function PurchaseOrders() {
                 return (
                   <div key={po.id} className="flex items-center justify-between gap-3 text-xs bg-white rounded px-2.5 py-1.5 border border-amber-100">
                     <div className="min-w-0">
-                      <span className="font-mono font-medium text-gray-800">{po.pu_number}</span>
-                      <span className="text-gray-500 ml-2 truncate">{po.supplier_name}</span>
+                      <span className="font-mono font-medium text-ink">{po.pu_number}</span>
+                      <span className="text-ink-60 ml-2 truncate">{po.supplier_name}</span>
                       {mismatch && (
                         <span className="text-red-600 ml-2" title="App total differs from the JES amount">
                           app {fmtMoney(appTotal, po.currency || 'RMB')} ≠ JES {fmtMoney(erpAmount, e.currency || 'RMB')}
@@ -287,7 +287,7 @@ export default function PurchaseOrders() {
                value={search} onChange={e => setSearch(e.target.value)} />
         {/* Only affects the unfiltered JES fetch (search narrows the query
             itself, capped separately at 200 — see useErpPurchaseOrders). */}
-        <label className="flex items-center gap-1.5 text-xs text-gray-500 shrink-0" title="How many JES purchase orders to fetch when not searching">
+        <label className="flex items-center gap-1.5 text-xs text-ink-60 shrink-0" title="How many JES purchase orders to fetch when not searching">
           JES limit
           <select className="input py-1.5 text-xs w-auto" value={historyLimit} disabled={!!search.trim()}
                   onChange={e => setHistoryLimit(Number(e.target.value))}>
@@ -298,7 +298,7 @@ export default function PurchaseOrders() {
           {[{ value: '', label: 'All' }, ...PO_STATUSES].map(s => (
             <button key={s.value || 'all'} onClick={() => setStatusFilter(s.value)}
               className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
-                statusFilter === s.value ? 'bg-ink text-white border-ink' : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400'}`}>
+                statusFilter === s.value ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-warm-grey hover:border-brand-400'}`}>
               {s.label}
             </button>
           ))}
@@ -308,7 +308,7 @@ export default function PurchaseOrders() {
       {erpDoc && <ErpDocModal of="purchase" doc={erpDoc} onClose={() => setErpDoc(null)} />}
 
       {!loading && merged.length === 0 && !erp.loading ? (
-        <div className="card p-8 text-center text-sm text-gray-500">
+        <div className="card p-8 text-center text-sm text-ink-60">
           No purchase orders yet. <Link to="/purchase-orders/new" className="text-brand-600 hover:underline">Create your first PO</Link>.
         </div>
       ) : (
@@ -325,7 +325,7 @@ export default function PurchaseOrders() {
                   <th className="px-3 py-2 font-medium text-right">Amount</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-warm-grey">
                 {merged.map(row => row.src === 'app'
                   ? <AppPoRow key={row.key} p={row.o} onNavigate={remember} />
                   : <JesPoRow key={row.key} r={row.r} onOpen={() => setErpDoc(row.r)} />
@@ -360,25 +360,25 @@ function AppPoRow({ p, onNavigate }) {
   const navigate = useNavigate()
   const go = () => { onNavigate?.(); navigate(`/purchase-orders/${p.id}`) }
   return (
-    <tr onClick={go} className="hover:bg-gray-50 transition-colors cursor-pointer">
+    <tr onClick={go} className="hover:bg-ivory transition-colors cursor-pointer">
       <td className="px-3 py-2.5">
         <span className="inline-flex items-center gap-2">
-          <FileText size={14} className="text-gray-300 shrink-0" />
-          <span className="font-mono text-sm font-medium text-gray-900">{p.pu_number || '(no PU no.)'}</span>
+          <FileText size={14} className="text-platinum shrink-0" />
+          <span className="font-mono text-sm font-medium text-ink">{p.pu_number || '(no PU no.)'}</span>
         </span>
       </td>
-      <td className="px-3 py-2.5 text-gray-700">
+      <td className="px-3 py-2.5 text-ink-80">
         {p.supplier_name || '—'}{p.supplier_name_cn ? ` · ${p.supplier_name_cn}` : ''}
       </td>
-      <td className="px-3 py-2.5 text-gray-500 font-mono text-xs">{p.supplier_erp_code || '—'}</td>
-      <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{p.issued_date ? fmtDate(p.issued_date) : '—'}</td>
+      <td className="px-3 py-2.5 text-ink-60 font-mono text-xs">{p.supplier_erp_code || '—'}</td>
+      <td className="px-3 py-2.5 text-ink-60 whitespace-nowrap">{p.issued_date ? fmtDate(p.issued_date) : '—'}</td>
       <td className="px-3 py-2.5">
         <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${meta.badge}`}>{meta.label}</span>
         {!p.pu_number && (
           <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700">Needs PU #</span>
         )}
       </td>
-      <td className="px-3 py-2.5 text-right tabular-nums text-gray-800 font-medium whitespace-nowrap">
+      <td className="px-3 py-2.5 text-right tabular-nums text-ink font-medium whitespace-nowrap">
         {fmtMoney(balance, p.currency || 'RMB')}
       </td>
     </tr>
@@ -391,26 +391,26 @@ function AppPoRow({ p, onNavigate }) {
 function JesPoRow({ r, onOpen }) {
   const void_ = (r.status || '').trim().toUpperCase() === 'VOID'
   return (
-    <tr onClick={onOpen} className={`hover:bg-gray-50 transition-colors cursor-pointer ${void_ ? 'opacity-60' : ''}`}>
+    <tr onClick={onOpen} className={`hover:bg-ivory transition-colors cursor-pointer ${void_ ? 'opacity-60' : ''}`}>
       <td className="px-3 py-2.5">
         <span className="inline-flex items-center gap-2">
-          <Database size={14} className="text-gray-300 shrink-0" />
-          <span className="font-mono text-sm font-medium text-gray-900">{(r.code || '').trim()}</span>
+          <Database size={14} className="text-platinum shrink-0" />
+          <span className="font-mono text-sm font-medium text-ink">{(r.code || '').trim()}</span>
           <span title="Historical purchase order from JES — read-only archive"
                 className="text-[10px] font-medium text-ink-60 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
             <Database size={10} /> JES
           </span>
         </span>
       </td>
-      <td className="px-3 py-2.5 text-gray-700">{r.supplier || '—'}</td>
-      <td className="px-3 py-2.5 text-gray-500 font-mono text-xs">{r.supplier_code || '—'}</td>
-      <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{r.date ? fmtDate(r.date) : '—'}</td>
+      <td className="px-3 py-2.5 text-ink-80">{r.supplier || '—'}</td>
+      <td className="px-3 py-2.5 text-ink-60 font-mono text-xs">{r.supplier_code || '—'}</td>
+      <td className="px-3 py-2.5 text-ink-60 whitespace-nowrap">{r.date ? fmtDate(r.date) : '—'}</td>
       <td className="px-3 py-2.5">
         {void_
           ? <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-600">Void</span>
-          : <span className="text-xs text-gray-500">{(r.status || '').trim() || '—'}</span>}
+          : <span className="text-xs text-ink-60">{(r.status || '').trim() || '—'}</span>}
       </td>
-      <td className="px-3 py-2.5 text-right tabular-nums text-gray-800 font-medium whitespace-nowrap">
+      <td className="px-3 py-2.5 text-right tabular-nums text-ink font-medium whitespace-nowrap">
         {r.amount != null ? fmtMoney(Number(r.amount), r.currency || 'RMB') : '—'}
       </td>
     </tr>

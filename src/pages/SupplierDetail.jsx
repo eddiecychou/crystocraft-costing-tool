@@ -63,9 +63,9 @@ function toArray(val) {
 function InfoRow({ label, value }) {
   if (!value) return null
   return (
-    <div className="flex gap-3 py-2 border-b border-gray-50 last:border-0">
-      <span className="text-xs text-gray-500 w-28 shrink-0 pt-0.5">{label}</span>
-      <span className="text-sm text-gray-800 break-all">{value}</span>
+    <div className="flex gap-3 py-2 border-b border-warm-grey last:border-0">
+      <span className="text-xs text-ink-60 w-28 shrink-0 pt-0.5">{label}</span>
+      <span className="text-sm text-ink break-all">{value}</span>
     </div>
   )
 }
@@ -74,10 +74,10 @@ function MultiRow({ label, values, render }) {
   const arr = toArray(values)
   if (!arr.length) return null
   return (
-    <div className="flex gap-3 py-2 border-b border-gray-50 last:border-0">
-      <span className="text-xs text-gray-500 w-28 shrink-0 pt-0.5">{label}</span>
+    <div className="flex gap-3 py-2 border-b border-warm-grey last:border-0">
+      <span className="text-xs text-ink-60 w-28 shrink-0 pt-0.5">{label}</span>
       <div className="space-y-0.5">
-        {arr.map((v, i) => <div key={i} className="text-sm text-gray-800 break-all">{render ? render(v) : v}</div>)}
+        {arr.map((v, i) => <div key={i} className="text-sm text-ink break-all">{render ? render(v) : v}</div>)}
       </div>
     </div>
   )
@@ -141,9 +141,9 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
-          <h2 className="font-semibold text-gray-900">Merge “{supplier.name}” into…</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
+          <h2 className="font-semibold text-ink">Merge “{supplier.name}” into…</h2>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-3">
           {error && (
@@ -152,20 +152,20 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
             </div>
           )}
           <label className="block">
-            <span className="text-xs text-gray-500">The surviving supplier — search by name</span>
+            <span className="text-xs text-ink-60">The surviving supplier — search by name</span>
             <input className="input w-full mt-0.5" placeholder="Search suppliers…" value={search}
               onChange={e => { setSearch(e.target.value); setSurvivorId('') }} autoFocus />
           </label>
           {search && !survivorId && (
-            <div className="border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
+            <div className="border border-warm-grey rounded-lg max-h-48 overflow-y-auto">
               {results.length === 0 ? (
-                <p className="text-xs text-gray-400 px-3 py-2">No match.</p>
+                <p className="text-xs text-ink-60 px-3 py-2">No match.</p>
               ) : results.map(s => (
                 <button key={s.id} type="button"
                   onClick={() => { setSurvivorId(s.id); setSearch(s.name) }}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0">
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-ivory border-b border-warm-grey last:border-0">
                   {s.name}
-                  <span className="text-gray-400">
+                  <span className="text-ink-60">
                     {[s.erp_code, s.city || s.country].filter(Boolean).join(' · ') && ` — ${[s.erp_code, s.city || s.country].filter(Boolean).join(' · ')}`}
                     {' · '}<span className="font-mono text-[10px]">{s.id.slice(0, 6)}</span>
                   </span>
@@ -174,7 +174,7 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
             </div>
           )}
 
-          {previewing && <p className="text-xs text-gray-400">Checking what would move…</p>}
+          {previewing && <p className="text-xs text-ink-60">Checking what would move…</p>}
 
           {preview && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900 space-y-1.5">
@@ -204,7 +204,7 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
             </div>
           )}
         </div>
-        <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200">
+        <div className="flex justify-end gap-2 px-5 py-3 border-t border-warm-grey">
           <button onClick={onClose} disabled={busy} className="btn-secondary text-sm">Cancel</button>
           <button onClick={confirm} disabled={busy || !preview || !!error} className="btn-danger text-sm">
             {busy ? 'Merging…' : 'Merge & Delete'}
@@ -381,7 +381,7 @@ export default function SupplierDetail() {
     ? filteredRangeQuotes : filteredRangeQuotes.slice(0, COLLAPSE_THRESHOLD)
 
   if (loading) return <LoadingBar />
-  if (!supplier) return <div className="p-6 text-gray-500">Supplier not found.</div>
+  if (!supplier) return <div className="p-6 text-ink-60">Supplier not found.</div>
 
   return (
     <div className="p-4 md:p-6 max-w-2xl">
@@ -390,12 +390,12 @@ export default function SupplierDetail() {
       <div className="flex items-start justify-between mt-2 mb-6">
         <div>
           <div className="flex items-center gap-2 flex-wrap">
-            <h1 className="text-2xl font-bold text-gray-900">{supplier.name}</h1>
+            <h1 className="text-2xl font-bold text-ink">{supplier.name}</h1>
             {supplier.erp_code && (
-              <span className="text-xs font-mono px-2 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">{supplier.erp_code}</span>
+              <span className="text-xs font-mono px-2 py-0.5 rounded bg-ivory-dark text-ink-60 border border-warm-grey">{supplier.erp_code}</span>
             )}
           </div>
-          {supplier.name_cn && <p className="text-gray-500 text-sm mt-0.5">{supplier.name_cn}</p>}
+          {supplier.name_cn && <p className="text-ink-60 text-sm mt-0.5">{supplier.name_cn}</p>}
           {supplier.category && (() => {
             const cat = SUPPLIER_CATEGORIES.find(c => c.value === supplier.category)
             return cat ? (
@@ -452,24 +452,24 @@ export default function SupplierDetail() {
         const wechatId = (supplier.wechat_id || primaryC?.wechat || '').trim()
         return (
           <div className="card p-4 mb-6">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2.5">Quick Access</p>
+            <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-2.5">Quick Access</p>
             <div className="flex flex-wrap items-center gap-2">
               {links.map(l => (
                 <a key={l.key} href={supplier[l.key]} target="_blank" rel="noreferrer"
-                   className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
+                   className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-warm-grey text-ink-80 hover:border-brand-400 hover:text-brand-700 transition-colors">
                   <ExternalLink size={12} />{l.label}
                 </a>
               ))}
               {extraLinks.map(l => (
                 <a key={l.id || l.url} href={l.url} target="_blank" rel="noreferrer"
-                   className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
+                   className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-warm-grey text-ink-80 hover:border-brand-400 hover:text-brand-700 transition-colors">
                   <ExternalLink size={12} />{linkLabel(l)}
                 </a>
               ))}
               {wechatId && (
                 <button type="button" onClick={() => copyToClip('qa-wechat', wechatId)}
                    title={`Copy WeChat ID "${wechatId}"`}
-                   className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
+                   className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-warm-grey text-ink-80 hover:border-brand-400 hover:text-brand-700 transition-colors">
                   {copied === 'qa-wechat' ? <Check size={12} /> : <MessageCircle size={12} />}
                   {copied === 'qa-wechat' ? 'Copied' : 'Copy WeChat ID'}
                 </button>
@@ -477,13 +477,13 @@ export default function SupplierDetail() {
               {wechatPhone && (
                 <button type="button" onClick={() => copyToClip('qa-phone', wechatPhone)}
                    title={`Copy phone "${wechatPhone}" — paste into WeChat → Add Contacts`}
-                   className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
+                   className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-warm-grey text-ink-80 hover:border-brand-400 hover:text-brand-700 transition-colors">
                   {copied === 'qa-phone' ? <Check size={12} /> : <MessageCircle size={12} />}
                   {copied === 'qa-phone' ? 'Copied' : 'Copy phone for WeChat'}
                 </button>
               )}
               <a href="#catalogues"
-                 className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-700 hover:border-brand-400 hover:text-brand-700 transition-colors">
+                 className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-warm-grey text-ink-80 hover:border-brand-400 hover:text-brand-700 transition-colors">
                 <FolderOpen size={12} />Catalogues &amp; Files
               </a>
             </div>
@@ -499,14 +499,14 @@ export default function SupplierDetail() {
         // No per-contact copy chips here — they'd just duplicate the Quick
         // Access ones (owner). Values show as plain text / tel: / mailto:.
         const Card = (c, dim) => (
-          <div key={c.id} className={`py-3 border-b border-gray-50 last:border-0 ${dim ? 'opacity-60' : ''}`}>
+          <div key={c.id} className={`py-3 border-b border-warm-grey last:border-0 ${dim ? 'opacity-60' : ''}`}>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-sm font-medium text-gray-900">{c.name || '—'}</span>
-              {c.title && <span className="text-xs text-gray-500">{c.title}</span>}
+              <span className="text-sm font-medium text-ink">{c.name || '—'}</span>
+              {c.title && <span className="text-xs text-ink-60">{c.title}</span>}
               {c.is_primary && !dim && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 uppercase tracking-wide">Primary</span>}
-              {dim && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 uppercase tracking-wide">Left</span>}
+              {dim && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory-dark text-ink-60 uppercase tracking-wide">Left</span>}
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-600">
+            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-70">
               {c.phone && <a href={`tel:${c.phone}`} className="text-brand-600 hover:underline">{c.phone}</a>}
               {c.wechat && <span>WeChat: {c.wechat}</span>}
               {c.whatsapp && <span>WhatsApp: {c.whatsapp}</span>}
@@ -516,11 +516,11 @@ export default function SupplierDetail() {
         )
         return (
           <div className="card p-5 mb-6">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Contacts</p>
+            <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Contacts</p>
             {active.map(c => Card(c, false))}
             {gone.length > 0 && (
               <details className="mt-2">
-                <summary className="text-xs text-gray-400 cursor-pointer">Former contacts ({gone.length})</summary>
+                <summary className="text-xs text-ink-60 cursor-pointer">Former contacts ({gone.length})</summary>
                 {gone.map(c => Card(c, true))}
               </details>
             )}
@@ -540,43 +540,43 @@ export default function SupplierDetail() {
         <InfoRow label="Default Currency" value={supplier.default_currency} />
         <InfoRow label="Payment Terms" value={PO_PAYMENT_TERM_LABEL[supplier.default_payment_terms] || supplier.default_payment_terms} />
         {supplier.notes && (
-          <div className="pt-3 mt-2 border-t border-gray-100">
-            <p className="text-xs text-gray-500 mb-1">Notes</p>
-            <p className="text-sm text-gray-700 whitespace-pre-wrap">{supplier.notes}</p>
+          <div className="pt-3 mt-2 border-t border-warm-grey">
+            <p className="text-xs text-ink-60 mb-1">Notes</p>
+            <p className="text-sm text-ink-80 whitespace-pre-wrap">{supplier.notes}</p>
           </div>
         )}
       </div>
 
       {/* Purchase Orders */}
       <div className="card mb-6">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">
-            Purchase Orders {!posLoading && <span className="text-gray-400 font-normal">({pos.length})</span>}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
+          <h2 className="text-sm font-semibold text-ink-80">
+            Purchase Orders {!posLoading && <span className="text-ink-60 font-normal">({pos.length})</span>}
           </h2>
           <Link to={`/purchase-orders/new?supplier=${id}`} className="btn-primary text-xs py-1.5 px-3">+ New PO</Link>
         </div>
 
         {posLoading ? (
-          <p className="text-sm text-gray-400 text-center py-8">Loading purchase orders…</p>
+          <p className="text-sm text-ink-60 text-center py-8">Loading purchase orders…</p>
         ) : pos.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">No purchase orders for this supplier yet.</p>
+          <p className="text-sm text-ink-60 text-center py-8">No purchase orders for this supplier yet.</p>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-warm-grey">
             {pos.map(p => {
               const meta = PO_STATUS_META[p.status || 'draft'] || PO_STATUS_META.draft
               const { balance } = poTotals(p)
               return (
                 <Link key={p.id} to={`/purchase-orders/${p.id}`} onClick={remember}
-                      className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
-                  <FileText size={16} className="text-gray-300 shrink-0" />
+                      className="flex items-center gap-3 px-5 py-3 hover:bg-ivory transition-colors">
+                  <FileText size={16} className="text-platinum shrink-0" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-mono text-sm font-medium text-gray-900">{p.pu_number || '(no PU no.)'}</span>
+                      <span className="font-mono text-sm font-medium text-ink">{p.pu_number || '(no PU no.)'}</span>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${meta.badge}`}>{meta.label}</span>
                     </div>
-                    {p.issued_date && <p className="text-xs text-gray-500 mt-0.5">{fmtDate(p.issued_date)}</p>}
+                    {p.issued_date && <p className="text-xs text-ink-60 mt-0.5">{fmtDate(p.issued_date)}</p>}
                   </div>
-                  <span className="text-sm font-medium tabular-nums text-gray-800 shrink-0">{fmtMoney(balance, p.currency || 'RMB')}</span>
+                  <span className="text-sm font-medium tabular-nums text-ink shrink-0">{fmtMoney(balance, p.currency || 'RMB')}</span>
                 </Link>
               )
             })}
@@ -586,9 +586,9 @@ export default function SupplierDetail() {
 
       {/* Supplier Quotes */}
       <div className="card mb-6">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700">
-            Corp Gift Component Quotes {!quotesLoading && <span className="text-gray-400 font-normal">({quotes.length})</span>}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
+          <h2 className="text-sm font-semibold text-ink-80">
+            Corp Gift Component Quotes {!quotesLoading && <span className="text-ink-60 font-normal">({quotes.length})</span>}
           </h2>
           <button onClick={() => setShowAddQuote(true)} className="btn-primary text-xs py-1.5 px-3">
             + Add Quote
@@ -602,21 +602,21 @@ export default function SupplierDetail() {
         )}
 
         {quotes.length > COLLAPSE_THRESHOLD && (
-          <div className="px-5 py-2.5 border-b border-gray-100">
+          <div className="px-5 py-2.5 border-b border-warm-grey">
             <input type="text" placeholder="Search product or component…" className="input w-full text-sm"
                    value={quoteSearch} onChange={e => { setQuoteSearch(e.target.value); setShowAllQuotes(false) }} />
           </div>
         )}
 
         {quotesLoading ? (
-          <p className="text-sm text-gray-400 text-center py-8">Loading quotes…</p>
+          <p className="text-sm text-ink-60 text-center py-8">Loading quotes…</p>
         ) : quotes.length === 0 && !indexError ? (
-          <p className="text-sm text-gray-400 text-center py-8">No component quotes linked to this supplier yet.</p>
+          <p className="text-sm text-ink-60 text-center py-8">No component quotes linked to this supplier yet.</p>
         ) : filteredQuotes.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">No quotes match "{quoteSearch}".</p>
+          <p className="text-sm text-ink-60 text-center py-8">No quotes match "{quoteSearch}".</p>
         ) : (
           <>
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-warm-grey">
               {visibleQuotes.map(q => {
                 const isOrphaned = !q._productName || q._productName === q.productId
                 const productLabel = isOrphaned ? (q.supplier_name || 'Unknown Product') : q._productName
@@ -626,35 +626,35 @@ export default function SupplierDetail() {
                   <>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-medium text-gray-900 truncate">{productLabel}</p>
+                        <p className="text-sm font-medium text-ink truncate">{productLabel}</p>
                         {q.is_preferred && (
                           <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium shrink-0"><Star size={11} className="fill-current" />Preferred</span>
                         )}
                         {isOrphaned && (
-                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-400 shrink-0">Product deleted</span>
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-ivory-dark text-ink-60 shrink-0">Product deleted</span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 mt-0.5">Component: {componentLabel}</p>
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-400">
+                      <p className="text-xs text-ink-60 mt-0.5">Component: {componentLabel}</p>
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-ink-60">
                         {q.unit_cost != null && (
-                          <span className="font-medium text-gray-700">{q.unit_cost} {q.unit_cost_currency}</span>
+                          <span className="font-medium text-ink-80">{q.unit_cost} {q.unit_cost_currency}</span>
                         )}
                         {q.moq && <span>MOQ {q.moq.toLocaleString()}</span>}
                         {q.production_lead_time_days && <span>Prod {q.production_lead_time_days}d</span>}
                         {q.sampling_lead_time_days && <span>Sample {q.sampling_lead_time_days}d</span>}
                       </div>
-                      {q.notes && <p className="text-xs text-gray-400 mt-0.5 italic truncate">{q.notes}</p>}
+                      {q.notes && <p className="text-xs text-ink-60 mt-0.5 italic truncate">{q.notes}</p>}
                     </div>
-                    {!isOrphaned && <span className="text-xs text-gray-400 shrink-0 mt-1">Edit →</span>}
+                    {!isOrphaned && <span className="text-xs text-ink-60 shrink-0 mt-1">Edit →</span>}
                   </>
                 )
                 return isOrphaned
                   ? <div key={q.id} className={`${rowClass} opacity-50 cursor-default`}>{inner}</div>
-                  : <Link key={q.id} to={`/products/${q.productId}/components/${q.componentId}/quotes/${q.id}`} onClick={remember} className={`${rowClass} hover:bg-gray-50`}>{inner}</Link>
+                  : <Link key={q.id} to={`/products/${q.productId}/components/${q.componentId}/quotes/${q.id}`} onClick={remember} className={`${rowClass} hover:bg-ivory`}>{inner}</Link>
               })}
             </div>
             {!quoteSearch && filteredQuotes.length > COLLAPSE_THRESHOLD && (
-              <div className="px-5 py-3 border-t border-gray-100 text-center">
+              <div className="px-5 py-3 border-t border-warm-grey text-center">
                 <button onClick={() => setShowAllQuotes(s => !s)} className="text-xs text-brand-600 hover:underline">
                   {showAllQuotes ? 'Show less' : `Show all ${filteredQuotes.length}`}
                 </button>
@@ -667,50 +667,50 @@ export default function SupplierDetail() {
       {/* Range Component Quotes */}
       {!quotesLoading && rangeQuotes.length > 0 && (
         <div className="card mb-6">
-          <div className="px-5 py-4 border-b border-gray-100">
-            <h2 className="text-sm font-semibold text-gray-700">
-              Figurine Range Component Quotes <span className="text-gray-400 font-normal">({rangeQuotes.length})</span>
+          <div className="px-5 py-4 border-b border-warm-grey">
+            <h2 className="text-sm font-semibold text-ink-80">
+              Figurine Range Component Quotes <span className="text-ink-60 font-normal">({rangeQuotes.length})</span>
             </h2>
           </div>
 
           {rangeQuotes.length > COLLAPSE_THRESHOLD && (
-            <div className="px-5 py-2.5 border-b border-gray-100">
+            <div className="px-5 py-2.5 border-b border-warm-grey">
               <input type="text" placeholder="Search component…" className="input w-full text-sm"
                      value={rangeSearch} onChange={e => { setRangeSearch(e.target.value); setShowAllRangeQuotes(false) }} />
             </div>
           )}
 
           {filteredRangeQuotes.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-8">No quotes match "{rangeSearch}".</p>
+            <p className="text-sm text-ink-60 text-center py-8">No quotes match "{rangeSearch}".</p>
           ) : (
             <>
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-warm-grey">
                 {visibleRangeQuotes.map(q => (
                   <Link key={q.id} to={`/components/critical/${q.componentId}/quotes/${q.id}`}
-                        className="flex items-start justify-between px-5 py-3.5 gap-3 hover:bg-gray-50 transition-colors">
+                        className="flex items-start justify-between px-5 py-3.5 gap-3 hover:bg-ivory transition-colors">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-medium text-gray-900 truncate">{q._componentName}</p>
+                        <p className="text-sm font-medium text-ink truncate">{q._componentName}</p>
                         {q.is_preferred && (
                           <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium shrink-0">
                             <Star size={11} className="fill-current" />Preferred
                           </span>
                         )}
                       </div>
-                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-gray-400">
-                        {q.unit_cost != null && <span className="font-medium text-gray-700">{q.unit_cost} {q.unit_cost_currency}</span>}
+                      <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-ink-60">
+                        {q.unit_cost != null && <span className="font-medium text-ink-80">{q.unit_cost} {q.unit_cost_currency}</span>}
                         {q.moq && <span>MOQ {Number(q.moq).toLocaleString()}</span>}
                         {q.production_lead_time_days && <span>Prod {q.production_lead_time_days}d</span>}
                         {q.tooling_sample_cost != null && <span>Tooling {q.tooling_sample_cost} {q.tooling_sample_cost_currency}</span>}
                       </div>
-                      {q.notes && <p className="text-xs text-gray-400 mt-0.5 italic truncate">{q.notes}</p>}
+                      {q.notes && <p className="text-xs text-ink-60 mt-0.5 italic truncate">{q.notes}</p>}
                     </div>
-                    <span className="text-xs text-gray-400 shrink-0 mt-1">Edit →</span>
+                    <span className="text-xs text-ink-60 shrink-0 mt-1">Edit →</span>
                   </Link>
                 ))}
               </div>
               {!rangeSearch && filteredRangeQuotes.length > COLLAPSE_THRESHOLD && (
-                <div className="px-5 py-3 border-t border-gray-100 text-center">
+                <div className="px-5 py-3 border-t border-warm-grey text-center">
                   <button onClick={() => setShowAllRangeQuotes(s => !s)} className="text-xs text-brand-600 hover:underline">
                     {showAllRangeQuotes ? 'Show less' : `Show all ${filteredRangeQuotes.length}`}
                   </button>
@@ -723,10 +723,10 @@ export default function SupplierDetail() {
 
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Photos &amp; Videos</h2>
-          {photos.length > 0 && <span className="text-xs text-gray-400">{photos.length} photo{photos.length === 1 ? '' : 's'}</span>}
+          <h2 className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Photos &amp; Videos</h2>
+          {photos.length > 0 && <span className="text-xs text-ink-60">{photos.length} photo{photos.length === 1 ? '' : 's'}</span>}
         </div>
-        <p className="text-xs text-gray-400 mb-3">Exhibition / booth shots and clips. Drag a whole batch onto the box below — images and videos are sorted automatically. Drag photos to reorder; caption each; use <span className="inline-flex items-center gap-0.5"><Sparkles size={11} /> Clean background</span> on a photo the same way as product images.<br /><span className="text-amber-600">Videos: drag from <strong>Finder</strong>, not the Photos app — Photos hands the browser a still frame instead of the movie.</span></p>
+        <p className="text-xs text-ink-60 mb-3">Exhibition / booth shots and clips. Drag a whole batch onto the box below — images and videos are sorted automatically. Drag photos to reorder; caption each; use <span className="inline-flex items-center gap-0.5"><Sparkles size={11} /> Clean background</span> on a photo the same way as product images.<br /><span className="text-amber-600">Videos: drag from <strong>Finder</strong>, not the Photos app — Photos hands the browser a still frame instead of the movie.</span></p>
         <ImageGallery
           images={photos}
           firestorePath={`suppliers/${id}/images`}

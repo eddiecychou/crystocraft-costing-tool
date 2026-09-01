@@ -1262,7 +1262,7 @@ export default function DailyDrafts() {
     }
   }
 
-  if (loading) return <div className="p-6 text-sm text-gray-500">Loading…</div>
+  if (loading) return <div className="p-6 text-sm text-ink-60">Loading…</div>
 
   const hasMaster = masterSubject.trim() && masterBody.trim()
 
@@ -1276,7 +1276,7 @@ export default function DailyDrafts() {
           for what handleRememberRule() proposed. */}
       <div className="card p-4 space-y-3">
         <button type="button" onClick={() => setMemoryPanelOpen(!memoryPanelOpen)}
-          className="w-full flex items-center justify-between text-sm font-semibold text-gray-900">
+          className="w-full flex items-center justify-between text-sm font-semibold text-ink">
           <span className="inline-flex items-center gap-1.5">
             <Sparkles size={14} className="text-purple-500" /> Draft memory — standing rules
             {pendingRules.length > 0 && (
@@ -1291,7 +1291,7 @@ export default function DailyDrafts() {
           <div className="space-y-4">
             {pendingRules.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs font-medium text-gray-500">Pending — not used in any draft yet</p>
+                <p className="text-xs font-medium text-ink-60">Pending — not used in any draft yet</p>
                 {pendingRules.map(r => (
                   <div key={r.id} className="flex items-start gap-2 text-sm bg-amber-50 border border-amber-200 rounded px-2.5 py-1.5">
                     <span className="min-w-0 flex-1">{r.text}</span>
@@ -1299,17 +1299,17 @@ export default function DailyDrafts() {
                       <button type="button" disabled={memoryRuleBusy === r.id} onClick={() => handleApproveRule(r.id)}
                         className="text-xs text-green-700 hover:text-green-800 font-medium disabled:opacity-50">Approve</button>
                       <button type="button" disabled={memoryRuleBusy === r.id} onClick={() => handleRejectRule(r.id)}
-                        className="text-xs text-gray-400 hover:text-red-600 disabled:opacity-50">Dismiss</button>
+                        className="text-xs text-ink-60 hover:text-red-600 disabled:opacity-50">Dismiss</button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
             <div className="space-y-1.5">
-              <p className="text-xs font-medium text-gray-500">
+              <p className="text-xs font-medium text-ink-60">
                 Active — used in every draft/rewrite ({activeRules.length}/{MAX_ACTIVE_RULES})
               </p>
-              {activeRules.length === 0 && <p className="text-xs text-gray-400">None yet — approve a pending rule, or add one directly below.</p>}
+              {activeRules.length === 0 && <p className="text-xs text-ink-60">None yet — approve a pending rule, or add one directly below.</p>}
               {activeRules.map(r => (
                 <div key={r.id} className="flex items-start gap-2 text-sm bg-ivory-light rounded px-2.5 py-1.5">
                   {editingRuleId === r.id ? (
@@ -1317,18 +1317,18 @@ export default function DailyDrafts() {
                       <input value={editingRuleText} onChange={e => setEditingRuleText(e.target.value)}
                         className="input flex-1 text-sm py-1" autoFocus />
                       <button type="button" onClick={() => handleSaveRuleEdit(r.id)} className="text-xs text-brand-600 font-medium shrink-0">Save</button>
-                      <button type="button" onClick={() => setEditingRuleId(null)} className="text-xs text-gray-400 shrink-0">Cancel</button>
+                      <button type="button" onClick={() => setEditingRuleId(null)} className="text-xs text-ink-60 shrink-0">Cancel</button>
                     </>
                   ) : (
                     <>
                       <span className="min-w-0 flex-1">{r.text}</span>
                       <div className="flex items-center gap-2 shrink-0">
                         <button type="button" onClick={() => { setEditingRuleId(r.id); setEditingRuleText(r.text) }}
-                          className="text-xs text-gray-400 hover:text-brand-600">Edit</button>
+                          className="text-xs text-ink-60 hover:text-brand-600">Edit</button>
                         <button type="button" disabled={memoryRuleBusy === r.id} onClick={() => handleDisableRule(r.id)}
-                          className="text-xs text-gray-400 hover:text-amber-600 disabled:opacity-50">Disable</button>
+                          className="text-xs text-ink-60 hover:text-amber-600 disabled:opacity-50">Disable</button>
                         <button type="button" disabled={memoryRuleBusy === r.id} onClick={() => handleDeleteRule(r.id)}
-                          className="text-xs text-gray-400 hover:text-red-600 disabled:opacity-50">Delete</button>
+                          className="text-xs text-ink-60 hover:text-red-600 disabled:opacity-50">Delete</button>
                       </div>
                     </>
                   )}
@@ -1350,18 +1350,18 @@ export default function DailyDrafts() {
 
       {/* ── 1. Compose ─────────────────────────────────────────────────── */}
       <div className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-gray-900">1. What do you want to say?</h2>
+        <h2 className="text-sm font-semibold text-ink">1. What do you want to say?</h2>
 
         <div className="flex items-center gap-2 flex-wrap">
           {!linkedProduct ? (
             <button type="button" onClick={() => setLinkProductOpen(!linkProductOpen)}
-              className="text-xs text-gray-400 hover:text-brand-600">
+              className="text-xs text-ink-60 hover:text-brand-600">
               + Link a product (optional, unlocks its photos)
             </button>
           ) : (
             <div className="inline-flex items-center gap-1.5 text-sm bg-ivory-light rounded px-2 py-1">
               <span className="truncate max-w-xs">{linkedProduct.name}</span>
-              <button type="button" onClick={() => setLinkedProduct(null)} className="text-gray-400 hover:text-red-600">
+              <button type="button" onClick={() => setLinkedProduct(null)} className="text-ink-60 hover:text-red-600">
                 <X size={12} />
               </button>
             </div>
@@ -1374,15 +1374,15 @@ export default function DailyDrafts() {
               unreliable) — paste the URL in by hand instead, same posture
               as send-personal-email.js's own `links` field. */}
           {masterLinks.map(l => (
-            <span key={l.url} className="inline-flex items-center gap-1 text-xs text-gray-500 bg-ivory-light rounded px-2 py-1">
+            <span key={l.url} className="inline-flex items-center gap-1 text-xs text-ink-60 bg-ivory-light rounded px-2 py-1">
               <Link2 size={11} /> {l.title}
-              <button type="button" onClick={() => removeMasterLink(l.url)} className="text-gray-400 hover:text-red-600">
+              <button type="button" onClick={() => removeMasterLink(l.url)} className="text-ink-60 hover:text-red-600">
                 <X size={11} />
               </button>
             </span>
           ))}
           <button type="button" onClick={() => setMasterLinkFormOpen(!masterLinkFormOpen)}
-            className="text-xs text-gray-400 hover:text-brand-600">
+            className="text-xs text-ink-60 hover:text-brand-600">
             + Link a blog post or page (optional)
           </button>
         </div>
@@ -1403,7 +1403,7 @@ export default function DailyDrafts() {
                   </span>
                 </button>
               ))}
-              {!filteredLinkProducts.length && <div className="px-3 py-1.5 text-sm text-gray-400">No matches.</div>}
+              {!filteredLinkProducts.length && <div className="px-3 py-1.5 text-sm text-ink-60">No matches.</div>}
             </div>
           </div>
         )}
@@ -1417,7 +1417,7 @@ export default function DailyDrafts() {
               <button type="button" onClick={applyMasterLink} disabled={!masterLinkUrl.trim()} className="btn-secondary text-xs py-1.5 px-3">
                 Attach link
               </button>
-              <button type="button" onClick={() => setMasterLinkFormOpen(false)} className="text-xs text-gray-400 hover:text-brand-600">
+              <button type="button" onClick={() => setMasterLinkFormOpen(false)} className="text-xs text-ink-60 hover:text-brand-600">
                 Cancel
               </button>
             </div>
@@ -1425,7 +1425,7 @@ export default function DailyDrafts() {
         )}
 
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Topic</label>
+          <label className="block text-xs font-medium text-ink-60 mb-1">Topic</label>
           {topicTemplates.length > 0 && (
             <select value={selectedTemplateId} onChange={e => handleSelectTopicTemplate(e.target.value)}
               className="input w-full text-sm mb-1.5">
@@ -1449,7 +1449,7 @@ export default function DailyDrafts() {
             </button>
             {topicTemplates.some(t => t.id === selectedTemplateId) && (
               <button type="button" onClick={handleDeleteTopicTemplate}
-                className="text-xs text-gray-400 hover:text-red-600">
+                className="text-xs text-ink-60 hover:text-red-600">
                 Delete saved topic
               </button>
             )}
@@ -1465,7 +1465,7 @@ export default function DailyDrafts() {
 
             <div>
               <button type="button" onClick={() => setMasterChatOpen(!masterChatOpen)}
-                className="text-xs text-gray-500 hover:text-brand-600 inline-flex items-center gap-1">
+                className="text-xs text-ink-60 hover:text-brand-600 inline-flex items-center gap-1">
                 <MessageCircle size={13} /> {masterChatOpen ? 'Close' : 'Rewrite / fine-tune with AI'}
               </button>
               {masterChatOpen && (
@@ -1473,12 +1473,12 @@ export default function DailyDrafts() {
                   {masterChatHistory.length > 0 && (
                     <div className="space-y-2 max-h-56 overflow-y-auto">
                       {masterChatHistory.map((h, i) => (
-                        <div key={i} className={`text-sm flex items-start gap-1.5 ${h.role === 'assistant' ? 'text-gray-700' : 'text-gray-900'}`}>
+                        <div key={i} className={`text-sm flex items-start gap-1.5 ${h.role === 'assistant' ? 'text-ink-80' : 'text-ink'}`}>
                           <span className="min-w-0"><span className="font-medium">{h.role === 'assistant' ? 'AI:' : 'You:'}</span> {h.content}</span>
                           {h.role === 'user' && (
                             <button type="button" onClick={() => handleRememberRule(h.content)}
                               title="Remember this as a standing rule for every future draft (goes to review first)"
-                              className="text-gray-400 hover:text-brand-600 shrink-0">
+                              className="text-ink-60 hover:text-brand-600 shrink-0">
                               <Bookmark size={12} />
                             </button>
                           )}
@@ -1507,13 +1507,13 @@ export default function DailyDrafts() {
                 <div key={url} className="relative">
                   <img src={url} alt="" className="w-10 h-10 rounded object-cover border border-ivory-dark" />
                   <button type="button" onClick={() => setMasterImageUrls(prev => prev.filter(u => u !== url))}
-                    className="absolute -top-1.5 -right-1.5 bg-white rounded-full border border-ivory-dark text-gray-400 hover:text-red-600">
+                    className="absolute -top-1.5 -right-1.5 bg-white rounded-full border border-ivory-dark text-ink-60 hover:text-red-600">
                     <X size={11} />
                   </button>
                 </div>
               ))}
               {masterImageUrls.length < MAX_ATTACHED_IMAGES && (
-                <label className="text-xs text-gray-400 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5 cursor-pointer inline-flex items-center gap-1">
+                <label className="text-xs text-ink-60 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5 cursor-pointer inline-flex items-center gap-1">
                   {masterUploading ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
                   Upload
                   <input type="file" accept="image/*" className="hidden" disabled={masterUploading}
@@ -1524,7 +1524,7 @@ export default function DailyDrafts() {
 
             {linkedProduct && linkedProductImages.length > 0 && masterImageUrls.length < MAX_ATTACHED_IMAGES && (
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">…or from {linkedProduct.name}'s gallery</label>
+                <label className="block text-xs font-medium text-ink-60 mb-1">…or from {linkedProduct.name}'s gallery</label>
                 <div className="flex flex-wrap gap-2">
                   {linkedProductImages.map(img => {
                     const picked = masterImageUrls.includes(img.file_url)
@@ -1545,19 +1545,19 @@ export default function DailyDrafts() {
 
       {/* ── 2. Target & Generate ───────────────────────────────────────── */}
       <div className={`card p-5 space-y-4 ${!hasMaster ? 'opacity-50' : ''}`}>
-        <h2 className="text-sm font-semibold text-gray-900">2. Who do you want to reach?</h2>
+        <h2 className="text-sm font-semibold text-ink">2. Who do you want to reach?</h2>
         {/* Hard pre-filter, not a hint — see handleGenerate's own comment on
             why this can't just be folded into the free-text Targeting note
             below (the AI can ignore/misread free text; this can't be). */}
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Audience</label>
+          <label className="block text-xs font-medium text-ink-60 mb-1">Audience</label>
           <div className="flex items-center gap-3 flex-wrap">
             {[
               { v: 'b2b', label: 'B2B customers' },
               { v: 'retail', label: 'Retail customers only' },
               { v: 'all', label: 'Everyone' },
             ].map(opt => (
-              <label key={opt.v} className="flex items-center gap-1.5 text-sm text-gray-700">
+              <label key={opt.v} className="flex items-center gap-1.5 text-sm text-ink-80">
                 <input type="radio" name="audienceFilter" value={opt.v} checked={audienceFilter === opt.v}
                   disabled={!hasMaster} onChange={() => setAudienceFilter(opt.v)} />
                 {opt.label}
@@ -1567,24 +1567,24 @@ export default function DailyDrafts() {
           {audienceFilter === 'b2b' && (
             <div className="flex items-center gap-3 flex-wrap mt-2">
               {CRM_CATEGORIES.map(cat => (
-                <label key={cat} className="flex items-center gap-1.5 text-xs text-gray-600">
+                <label key={cat} className="flex items-center gap-1.5 text-xs text-ink-70">
                   <input type="checkbox" checked={categoryFilter.includes(cat)} disabled={!hasMaster}
                     onChange={e => setCategoryFilter(prev => e.target.checked ? [...prev, cat] : prev.filter(c => c !== cat))} />
                   {cat}
                 </label>
               ))}
-              <span className="text-[11px] text-gray-400">{categoryFilter.length ? '' : '(none checked = all categories)'}</span>
+              <span className="text-[11px] text-ink-60">{categoryFilter.length ? '' : '(none checked = all categories)'}</span>
             </div>
           )}
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Targeting (optional)</label>
+          <label className="block text-xs font-medium text-ink-60 mb-1">Targeting (optional)</label>
           <input value={targetingNote} onChange={e => setTargetingNote(e.target.value)} disabled={!hasMaster}
             placeholder='e.g. "Hong Kong corporate gift customers" or "Crystocraft distributors in Europe"'
             className="input w-full md:w-96" />
-          <div className="text-[11px] text-gray-400 mt-1">Leave blank and DeepSeek picks who's most relevant on its own judgment.</div>
+          <div className="text-[11px] text-ink-60 mt-1">Leave blank and DeepSeek picks who's most relevant on its own judgment.</div>
         </div>
-        <label className="flex items-center gap-2 text-sm text-gray-600">
+        <label className="flex items-center gap-2 text-sm text-ink-70">
           <input type="checkbox" checked={includeAlreadyContacted} disabled={!hasMaster}
             onChange={e => setIncludeAlreadyContacted(e.target.checked)} />
           Include people already contacted about this (drafted as a reminder, not a repeat pitch)
@@ -1597,7 +1597,7 @@ export default function DailyDrafts() {
 
       <div className="space-y-3">
         <div className="flex items-center justify-between flex-wrap gap-y-2">
-          <h2 className="text-sm font-semibold text-gray-900">Pending review ({drafts.length})</h2>
+          <h2 className="text-sm font-semibold text-ink">Pending review ({drafts.length})</h2>
           {drafts.length > 0 && (
             <div className="flex items-center gap-3">
               <button onClick={() => setBulkRewriteOpen(v => !v)} className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1">
@@ -1612,7 +1612,7 @@ export default function DailyDrafts() {
 
         {bulkRewriteOpen && drafts.length > 0 && (
           <div className="border border-ivory-dark rounded-lg p-3 bg-ivory-light space-y-2">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-ink-60">
               Applies to all {drafts.length} pending draft{drafts.length === 1 ? '' : 's'} — same instruction, sent
               to each one individually (a real AI call per draft, so this takes a moment for a large batch).
             </p>
@@ -1635,13 +1635,13 @@ export default function DailyDrafts() {
               </button>
             </div>
             {bulkRewriteProgress && (
-              <p className="text-xs text-gray-500">Rewrote {bulkRewriteProgress.done} of {bulkRewriteProgress.total}…</p>
+              <p className="text-xs text-ink-60">Rewrote {bulkRewriteProgress.done} of {bulkRewriteProgress.total}…</p>
             )}
             {bulkRewriteError && <p className="text-xs text-red-600">{bulkRewriteError}</p>}
           </div>
         )}
 
-        {drafts.length === 0 && <div className="text-sm text-gray-400">No drafts waiting — generate some above.</div>}
+        {drafts.length === 0 && <div className="text-sm text-ink-60">No drafts waiting — generate some above.</div>}
         {drafts.map(d => {
           const fields = fieldsFor(d)
           const isBusy = busyId === d.id
@@ -1653,38 +1653,38 @@ export default function DailyDrafts() {
             <div key={d.id} className="card p-4 space-y-3">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="font-medium text-gray-900 truncate">
-                    {d.customerName} <span className="text-gray-400 font-normal">— {d.customerEmail}</span>
+                  <div className="font-medium text-ink truncate">
+                    {d.customerName} <span className="text-ink-60 font-normal">— {d.customerEmail}</span>
                     <SourceBadge source={d.source} />
                   </div>
-                  <div className="text-xs text-gray-500 mt-0.5">
+                  <div className="text-xs text-ink-60 mt-0.5">
                     {d.productName || d.topicLabel} · fit {Math.round((d.fitScore || 0) * 100)}%
-                    {d.fitReason && <span className="text-gray-400"> — {d.fitReason}</span>}
+                    {d.fitReason && <span className="text-ink-60"> — {d.fitReason}</span>}
                   </div>
                   {d.contextSources?.length > 0 && (
                     <div className="flex items-center gap-2 mt-1">
                       {d.contextSources.includes('email') && (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-gray-500" title="This draft used the customer's ingested email history">
+                        <span className="inline-flex items-center gap-1 text-[11px] text-ink-60" title="This draft used the customer's ingested email history">
                           <Mail size={11} /> Email history
                         </span>
                       )}
                       {d.contextSources.includes('whatsapp') && (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-gray-500" title="This draft used the customer's imported WhatsApp history">
+                        <span className="inline-flex items-center gap-1 text-[11px] text-ink-60" title="This draft used the customer's imported WhatsApp history">
                           <Smartphone size={11} /> WhatsApp history
                         </span>
                       )}
                       {d.contextSources.includes('notes') && (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-gray-500" title="This draft used the CRM notes field">
+                        <span className="inline-flex items-center gap-1 text-[11px] text-ink-60" title="This draft used the CRM notes field">
                           <FileText size={11} /> CRM notes
                         </span>
                       )}
                       {d.contextSources.includes('invoices') && (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-gray-500" title="This draft used recent ERP order history">
+                        <span className="inline-flex items-center gap-1 text-[11px] text-ink-60" title="This draft used recent ERP order history">
                           <Receipt size={11} /> Recent orders
                         </span>
                       )}
                       {d.contextSources.includes('memory') && (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-gray-500" title="This draft used the contact's saved AI writing preferences">
+                        <span className="inline-flex items-center gap-1 text-[11px] text-ink-60" title="This draft used the contact's saved AI writing preferences">
                           <Sparkles size={11} /> Memory
                         </span>
                       )}
@@ -1701,7 +1701,7 @@ export default function DailyDrafts() {
                   <div key={url} className="relative">
                     <img src={url} alt="" className="w-10 h-10 rounded object-cover border border-ivory-dark" />
                     <button type="button" onClick={() => removeDraftImage(d, url)}
-                      className="absolute -top-1.5 -right-1.5 bg-white rounded-full border border-ivory-dark text-gray-400 hover:text-red-600">
+                      className="absolute -top-1.5 -right-1.5 bg-white rounded-full border border-ivory-dark text-ink-60 hover:text-red-600">
                       <X size={11} />
                     </button>
                   </div>
@@ -1710,11 +1710,11 @@ export default function DailyDrafts() {
                   d.productId ? (
                     <button type="button"
                       onClick={() => { setPhotoPickerOpenId(photoPickerOpenId === d.id ? null : d.id); ensureProductImages(d.productId, d.productSource) }}
-                      className="text-xs text-gray-400 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5">
+                      className="text-xs text-ink-60 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5">
                       + Photo
                     </button>
                   ) : (
-                    <label className="text-xs text-gray-400 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5 cursor-pointer inline-flex items-center gap-1">
+                    <label className="text-xs text-ink-60 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5 cursor-pointer inline-flex items-center gap-1">
                       {draftUploading === d.id ? <Loader2 size={12} className="animate-spin" /> : <Upload size={12} />}
                       Upload
                       <input type="file" accept="image/*" className="hidden" disabled={draftUploading === d.id}
@@ -1723,15 +1723,15 @@ export default function DailyDrafts() {
                   )
                 )}
                 {(fields.links || []).map(l => (
-                  <span key={l.url} className="inline-flex items-center gap-1 text-xs text-gray-500 bg-ivory-light rounded px-2 py-1">
+                  <span key={l.url} className="inline-flex items-center gap-1 text-xs text-ink-60 bg-ivory-light rounded px-2 py-1">
                     <Link2 size={11} /> {l.title}
-                    <button type="button" onClick={() => removeDraftLink(d, l.url)} className="text-gray-400 hover:text-red-600">
+                    <button type="button" onClick={() => removeDraftLink(d, l.url)} className="text-ink-60 hover:text-red-600">
                       <X size={11} />
                     </button>
                   </span>
                 ))}
                 <button type="button" onClick={() => setLinkFormOpenId(linkFormOpenId === d.id ? null : d.id)}
-                  className="text-xs text-gray-400 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5">
+                  className="text-xs text-ink-60 hover:text-brand-600 border border-dashed border-ivory-dark rounded px-2 py-1.5">
                   + Link
                 </button>
               </div>
@@ -1744,7 +1744,7 @@ export default function DailyDrafts() {
                       <img src={img.file_url} alt="" className="w-full h-full object-cover" />
                     </button>
                   ))}
-                  {!(productImagesCache[`${d.productSource || 'corporate'}:${d.productId}`] || []).length && <div className="text-xs text-gray-400 py-1">No public photos for this product.</div>}
+                  {!(productImagesCache[`${d.productSource || 'corporate'}:${d.productId}`] || []).length && <div className="text-xs text-ink-60 py-1">No public photos for this product.</div>}
                 </div>
               )}
 
@@ -1760,7 +1760,7 @@ export default function DailyDrafts() {
                     <button type="button" onClick={() => applyDraftLink(d)} disabled={!(draftLinkUrl[d.id] || '').trim()} className="btn-secondary text-xs py-1.5 px-3">
                       Attach link
                     </button>
-                    <button type="button" onClick={() => setLinkFormOpenId(null)} className="text-xs text-gray-400 hover:text-brand-600">
+                    <button type="button" onClick={() => setLinkFormOpenId(null)} className="text-xs text-ink-60 hover:text-brand-600">
                       Cancel
                     </button>
                   </div>
@@ -1808,7 +1808,7 @@ export default function DailyDrafts() {
                 <div className="w-full sm:w-auto sm:ml-auto flex items-center gap-3 flex-wrap">
                   {d.source === 'contact' && !addCustomerDone[d.id] && (
                     <button type="button" onClick={() => openAddCustomer(d)}
-                      className="text-xs text-gray-500 hover:text-brand-600 inline-flex items-center gap-1">
+                      className="text-xs text-ink-60 hover:text-brand-600 inline-flex items-center gap-1">
                       <UserPlus size={13} /> {isAddCustomerOpen ? 'Close' : 'Add to Customers'}
                     </button>
                   )}
@@ -1818,7 +1818,7 @@ export default function DailyDrafts() {
                     </span>
                   )}
                   <button onClick={() => setChatOpenId(isChatOpen ? null : d.id)}
-                    className="text-xs text-gray-500 hover:text-brand-600 inline-flex items-center gap-1">
+                    className="text-xs text-ink-60 hover:text-brand-600 inline-flex items-center gap-1">
                     <MessageCircle size={13} /> {isChatOpen ? 'Close' : 'Discuss with AI'}
                   </button>
                 </div>
@@ -1837,13 +1837,13 @@ export default function DailyDrafts() {
                 const hasNeutral = !hasPersonal && !hasBusiness && !!d.whatsapp
                 if (!hasPersonal && !hasBusiness && !hasNeutral) return null
                 const chip = (label, channel, number) => (
-                  <span key={channel} className="inline-flex items-center gap-1 rounded-full border border-gray-200 pl-1 pr-0.5 py-0.5">
+                  <span key={channel} className="inline-flex items-center gap-1 rounded-full border border-warm-grey pl-1 pr-0.5 py-0.5">
                     <button type="button" onClick={() => handleWhatsappOpen(d, channel, number)}
-                      className="text-xs text-gray-700 hover:text-brand-700 inline-flex items-center gap-1 px-1.5 py-0.5">
+                      className="text-xs text-ink-80 hover:text-brand-700 inline-flex items-center gap-1 px-1.5 py-0.5">
                       <Smartphone size={12} />{label}
                     </button>
                     <button type="button" onClick={() => navigator.clipboard.writeText(number)}
-                      title={`Copy ${label} number`} className="text-gray-300 hover:text-brand-600 px-1 py-0.5 text-[10px]">
+                      title={`Copy ${label} number`} className="text-platinum hover:text-brand-600 px-1 py-0.5 text-[10px]">
                       Copy
                     </button>
                   </span>
@@ -1874,7 +1874,7 @@ export default function DailyDrafts() {
                     {[{ key: 'new', label: 'Create as new customer' }, { key: 'existing', label: 'Add as a contact on an existing customer' }].map(opt => (
                       <button key={opt.key} type="button" onClick={() => { setAddCustomerMode(opt.key); setAddCustomerError('') }}
                         className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                          addCustomerMode === opt.key ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400'
+                          addCustomerMode === opt.key ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-70 border-warm-grey hover:border-ink-60'
                         }`}>
                         {opt.label}
                       </button>
@@ -1882,7 +1882,7 @@ export default function DailyDrafts() {
                   </div>
                   {addCustomerMode === 'new' ? (
                     <>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-ink-60">
                         Creates a new customer record from {d.customerName}'s lead info (company/name/email/phone/country) and links this lead to it.
                       </p>
                       <button type="button" onClick={() => handleCreateNewCustomer(d)} disabled={addCustomerBusy} className="btn-primary text-xs px-3 py-1.5 inline-flex items-center gap-1.5">
@@ -1892,7 +1892,7 @@ export default function DailyDrafts() {
                     </>
                   ) : (
                     <>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-ink-60">
                         Appends {d.customerName} as an extra contact on an existing customer — for a second person at a company already in the CRM.
                       </p>
                       <div className="flex items-center gap-2 flex-wrap">
@@ -1913,7 +1913,7 @@ export default function DailyDrafts() {
                   {history.length > 0 && (
                     <div className="space-y-2 max-h-56 overflow-y-auto">
                       {history.map((h, i) => (
-                        <div key={i} className={`text-sm ${h.role === 'assistant' ? 'text-gray-700' : 'text-gray-900'}`}>
+                        <div key={i} className={`text-sm ${h.role === 'assistant' ? 'text-ink-80' : 'text-ink'}`}>
                           <div className="flex items-start gap-1.5">
                             <span className="font-medium shrink-0">{h.role === 'assistant' ? 'AI:' : 'You:'}</span>
                             <span className="min-w-0">{h.content}</span>
@@ -1921,17 +1921,17 @@ export default function DailyDrafts() {
                               <span className="flex items-center gap-1 shrink-0">
                                 <button type="button" onClick={() => handleSaveNote(d, h.content)}
                                   title="Save this as a note on the customer record"
-                                  className="text-gray-400 hover:text-brand-600">
+                                  className="text-ink-60 hover:text-brand-600">
                                   <Bookmark size={12} />
                                 </button>
                                 <button type="button" onClick={() => handleRememberConclusion(d, h.content)}
                                   title="Remember for THIS draft only (feeds this draft's rewrite chat)"
-                                  className="text-gray-400 hover:text-blue-600">
+                                  className="text-ink-60 hover:text-blue-600">
                                   <Bookmark size={12} className="fill-current" style={{ opacity: 0.3 }} />
                                 </button>
                                 <button type="button" onClick={() => handleRememberRule(h.content)}
                                   title="Remember as a standing rule for every future draft (goes to review first)"
-                                  className="text-gray-400 hover:text-purple-600">
+                                  className="text-ink-60 hover:text-purple-600">
                                   <Sparkles size={12} />
                                 </button>
                               </span>
@@ -1989,7 +1989,7 @@ export default function DailyDrafts() {
                       {isChatBusy ? <Loader2 size={14} className="animate-spin" /> : 'Send'}
                     </button>
                   </div>
-                  <div className="text-[11px] text-gray-400">
+                  <div className="text-[11px] text-ink-60">
                     The AI only rewrites this email — it never edits the CRM record. Click <Bookmark size={10} className="inline" /> next to your own message to save it as a note instead.
                   </div>
                 </div>
@@ -2000,8 +2000,8 @@ export default function DailyDrafts() {
       </div>
 
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-900">Sent ({sentDrafts.length})</h2>
-        {sentDrafts.length === 0 && <div className="text-sm text-gray-400">Nothing sent yet.</div>}
+        <h2 className="text-sm font-semibold text-ink">Sent ({sentDrafts.length})</h2>
+        {sentDrafts.length === 0 && <div className="text-sm text-ink-60">Nothing sent yet.</div>}
         {sentDrafts.map(d => {
           const isReplyOpen = replyFormOpenId === d.id
           const isBusy = busyId === d.id
@@ -2009,8 +2009,8 @@ export default function DailyDrafts() {
             <div key={d.id} className="card p-3 space-y-2">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
-                  <div className="text-sm text-gray-900 truncate">
-                    {d.customerName} <span className="text-gray-400">— {d.productName || d.topicLabel}</span>
+                  <div className="text-sm text-ink truncate">
+                    {d.customerName} <span className="text-ink-60">— {d.productName || d.topicLabel}</span>
                     <SourceBadge source={d.source} />
                   </div>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -2018,7 +2018,7 @@ export default function DailyDrafts() {
                       <span key={key} className={`inline-flex items-center gap-1 text-[11px] rounded px-1.5 py-0.5 ${
                         d.engagement?.[key]
                           ? ((key === 'bounced' || key === 'complained') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700')
-                          : 'bg-gray-50 text-gray-300'
+                          : 'bg-ivory text-platinum'
                       }`}>
                         <Icon size={11} /> {label}
                       </span>
@@ -2032,7 +2032,7 @@ export default function DailyDrafts() {
                 </div>
                 {!d.repliedAt && (
                   <button onClick={() => setReplyFormOpenId(isReplyOpen ? null : d.id)}
-                    className="text-xs text-gray-500 hover:text-brand-600 shrink-0 whitespace-nowrap">
+                    className="text-xs text-ink-60 hover:text-brand-600 shrink-0 whitespace-nowrap">
                     {isReplyOpen ? 'Cancel' : 'Log a reply'}
                   </button>
                 )}
@@ -2047,7 +2047,7 @@ export default function DailyDrafts() {
                         className={`text-xs rounded px-2 py-1 border ${
                           (replyChannel[d.id] || REPLY_CHANNELS[0]) === ch
                             ? 'border-brand-600 bg-brand-50 text-brand-700'
-                            : 'border-ivory-dark text-gray-500 hover:bg-white'
+                            : 'border-ivory-dark text-ink-60 hover:bg-white'
                         }`}>
                         {ch}
                       </button>

@@ -20,8 +20,8 @@ function SwatchThumb({ filename, alt }) {
     return () => { alive = false; if (objUrl) URL.revokeObjectURL(objUrl) }
   }, [filename])
   return (
-    <div className="aspect-square bg-gray-100 rounded-md overflow-hidden flex items-center justify-center">
-      {url ? <img src={url} alt={alt} className="w-full h-full object-cover" /> : <Gem size={20} className="text-gray-300" />}
+    <div className="aspect-square bg-ivory-dark rounded-md overflow-hidden flex items-center justify-center">
+      {url ? <img src={url} alt={alt} className="w-full h-full object-cover" /> : <Gem size={20} className="text-platinum" />}
     </div>
   )
 }
@@ -64,9 +64,9 @@ function SwatchCardCarousel({ name, entry }) {
   }
 
   return (
-    <div className="aspect-square bg-gray-100 relative overflow-hidden group">
+    <div className="aspect-square bg-ivory-dark relative overflow-hidden group">
       {url ? <img src={url} alt={`${name} — ${current.style} on ${current.backfilm}`} className="w-full h-full object-cover" />
-        : <div className="w-full h-full flex items-center justify-center"><Gem size={20} className="text-gray-300" /></div>}
+        : <div className="w-full h-full flex items-center justify-center"><Gem size={20} className="text-platinum" /></div>}
       {photos.length > 1 && (
         <>
           <button type="button" onClick={e => step(-1, e)}

@@ -59,7 +59,7 @@ export default function StockLedger({ componentId, currentStock = 0, currentRese
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between mb-4 gap-4">
-        <h2 className="text-sm font-semibold text-gray-700">Stock Ledger</h2>
+        <h2 className="text-sm font-semibold text-ink-80">Stock Ledger</h2>
         <div className="flex items-center gap-5">
           <Stat label="On hand" value={onHand} cls={onHand < 0 ? 'text-red-600' : 'text-ink'} />
           <Stat label="Reserved" value={reserved} cls={reserved > 0 ? 'text-amber-600' : 'text-ink-60'} />
@@ -73,7 +73,7 @@ export default function StockLedger({ componentId, currentStock = 0, currentRese
           {MOVEMENT_TYPES.map(t => (
             <button key={t.value} type="button" onClick={() => setType(t.value)}
               className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
-                type === t.value ? 'bg-brand-50 text-brand-700 border-brand-300' : 'bg-white text-ink-60 border-ivory-dark hover:border-gray-300'}`}>
+                type === t.value ? 'bg-brand-50 text-brand-700 border-brand-300' : 'bg-white text-ink-60 border-ivory-dark hover:border-warm-grey'}`}>
               {t.label}
             </button>
           ))}
@@ -112,7 +112,7 @@ export default function StockLedger({ componentId, currentStock = 0, currentRese
                 <th className="py-1.5 font-medium whitespace-normal">Note</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-warm-grey">
               {movements.map(m => {
                 const Icon = ICONS[m.type] || Pencil
                 const dOn = Number(m.qty) || 0

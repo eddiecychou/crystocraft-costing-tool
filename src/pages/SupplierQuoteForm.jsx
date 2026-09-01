@@ -280,17 +280,17 @@ export default function SupplierQuoteForm() {
     }
   }
 
-  if (fetching) return <div className="p-6 text-gray-400">Loading…</div>
+  if (fetching) return <div className="p-6 text-ink-60">Loading…</div>
 
   return (
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
-        <div className="text-sm text-gray-500 mb-1">
+        <div className="text-sm text-ink-60 mb-1">
           <Link to={`/products/${productId}`} className="hover:text-brand-600">{productName}</Link>
           {' / '}
           <Link to={`/products/${productId}/components/${componentId}`} className="hover:text-brand-600">{componentName}</Link>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Supplier Quote' : 'Add Supplier Quote'}</h1>
+        <h1 className="text-2xl font-bold text-ink">{isEdit ? 'Edit Supplier Quote' : 'Add Supplier Quote'}</h1>
       </div>
 
       {/* Copy from previous quote */}
@@ -304,30 +304,30 @@ export default function SupplierQuoteForm() {
 
       {/* Image Upload */}
       <div className="card p-4 mb-4">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Quote Images / Screenshots</h2>
-        <p className="text-xs text-gray-500 mb-3">Upload WeChat or WhatsApp screenshots — AI will try to extract the pricing data automatically.</p>
+        <h2 className="text-sm font-semibold text-ink-80 mb-3">Quote Images / Screenshots</h2>
+        <p className="text-xs text-ink-60 mb-3">Upload WeChat or WhatsApp screenshots — AI will try to extract the pricing data automatically.</p>
 
         <label
           className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer transition-colors
-            ${dragOver ? 'border-brand-400 bg-brand-50 scale-[1.01]' : 'border-gray-300 hover:border-brand-400 hover:bg-brand-50'}`}
+            ${dragOver ? 'border-brand-400 bg-brand-50 scale-[1.01]' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
           onDragOver={e => { e.preventDefault(); setDragOver(true) }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
         >
-          <span className="text-gray-500 mb-1">{dragOver ? <FolderOpen size={22} /> : <Paperclip size={22} />}</span>
-          <span className="text-sm text-gray-600">{dragOver ? 'Drop to upload' : 'Click to upload or drag & drop'}</span>
-          <span className="text-xs text-gray-400 mt-0.5">JPG, PNG, WebP, HEIC, PDF</span>
+          <span className="text-ink-60 mb-1">{dragOver ? <FolderOpen size={22} /> : <Paperclip size={22} />}</span>
+          <span className="text-sm text-ink-70">{dragOver ? 'Drop to upload' : 'Click to upload or drag & drop'}</span>
+          <span className="text-xs text-ink-60 mt-0.5">JPG, PNG, WebP, HEIC, PDF</span>
           <input type="file" accept="image/*,.pdf" multiple className="hidden" onChange={handleFileChange} />
         </label>
 
         {files.length > 0 && (
           <div className="mt-3 space-y-2">
             {files.map(f => (
-              <div key={f._id} className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg">
+              <div key={f._id} className="flex items-center gap-3 p-2 bg-ivory rounded-lg">
                 {f.isPdf
                   ? <div className="w-12 h-12 rounded bg-red-50 border border-red-100 flex items-center justify-center shrink-0"><FileText size={20} className="text-red-400" /></div>
                   : <img src={f.preview} alt="" className="w-12 h-12 object-cover rounded shrink-0" />}
-                <span className="text-xs text-gray-600 flex-1 truncate">{f.file.name}</span>
+                <span className="text-xs text-ink-70 flex-1 truncate">{f.file.name}</span>
                 <button type="button" onClick={() => removeFile(f._id)} className="text-xs text-red-500 hover:text-red-700">Remove</button>
               </div>
             ))}
@@ -347,7 +347,7 @@ export default function SupplierQuoteForm() {
         {extractError && <p className="text-xs text-red-500 mt-2">{extractError}</p>}
         {existingAttachments.length > 0 && (
           <div className="mt-3">
-            <p className="text-xs text-gray-400 mb-1.5">Saved attachments:</p>
+            <p className="text-xs text-ink-60 mb-1.5">Saved attachments:</p>
             <div className="flex gap-2 flex-wrap">
               {existingAttachments.map((a, i) => (
                 <div key={i} className="relative group/att">
@@ -369,7 +369,7 @@ export default function SupplierQuoteForm() {
                 </div>
               ))}
             </div>
-            <p className="text-xs text-gray-400 mt-1">Hover to remove · changes save when you click Save Changes</p>
+            <p className="text-xs text-ink-60 mt-1">Hover to remove · changes save when you click Save Changes</p>
           </div>
         )}
       </div>
@@ -406,13 +406,13 @@ export default function SupplierQuoteForm() {
         {/* Volume Price Tiers */}
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="label mb-0">Volume Price Tiers <span className="text-gray-400 font-normal text-xs">(optional — different unit costs at higher quantities)</span></label>
+            <label className="label mb-0">Volume Price Tiers <span className="text-ink-60 font-normal text-xs">(optional — different unit costs at higher quantities)</span></label>
             <button type="button" onClick={() => setVolumeTiers(t => [...t, { min_qty: '', unit_cost: '' }])}
               className="text-xs text-brand-600 hover:text-brand-800 font-medium">+ Add Tier</button>
           </div>
           {volumeTiers.length > 0 && (
             <div className="space-y-2">
-              <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs text-gray-400 px-1">
+              <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-xs text-ink-60 px-1">
                 <span>Min Qty</span><span>Unit Cost ({form.unit_cost_currency})</span><span></span>
               </div>
               {volumeTiers.map((t, i) => (
@@ -425,7 +425,7 @@ export default function SupplierQuoteForm() {
                     className="text-red-300 hover:text-red-500 text-lg leading-none px-1">×</button>
                 </div>
               ))}
-              <p className="text-xs text-gray-400">Currency same as unit cost above. Pricing tiers will auto-select the best price for each order quantity.</p>
+              <p className="text-xs text-ink-60">Currency same as unit cost above. Pricing tiers will auto-select the best price for each order quantity.</p>
             </div>
           )}
         </div>
@@ -452,15 +452,15 @@ export default function SupplierQuoteForm() {
           <label className="label">Lead Times (days)</label>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <p className="text-xs text-gray-500 mb-1">Sampling</p>
+              <p className="text-xs text-ink-60 mb-1">Sampling</p>
               <input className="input" type="number" min="0" value={form.sampling_lead_time_days} onChange={set('sampling_lead_time_days')} placeholder="e.g. 12" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Tooling</p>
+              <p className="text-xs text-ink-60 mb-1">Tooling</p>
               <input className="input" type="number" min="0" value={form.tooling_lead_time_days} onChange={set('tooling_lead_time_days')} placeholder="e.g. 15" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-1">Production</p>
+              <p className="text-xs text-ink-60 mb-1">Production</p>
               <input className="input" type="number" min="0" value={form.production_lead_time_days} onChange={set('production_lead_time_days')} placeholder="e.g. 30" />
             </div>
           </div>
@@ -469,7 +469,7 @@ export default function SupplierQuoteForm() {
         {/* Preferred */}
         <div className="flex items-center gap-2">
           <input type="checkbox" id="preferred" className="w-4 h-4 accent-brand-600" checked={form.is_preferred} onChange={setCheck('is_preferred')} />
-          <label htmlFor="preferred" className="text-sm text-gray-700">Mark as preferred supplier for this component</label>
+          <label htmlFor="preferred" className="text-sm text-ink-80">Mark as preferred supplier for this component</label>
         </div>
 
         {/* Notes */}
@@ -579,11 +579,11 @@ function SupplierCombobox({ suppliers, value, onChange }) {
             }}
           />
         ) : (
-          <span className={`flex-1 text-sm truncate ${selected ? 'text-gray-900' : 'text-gray-400'}`}>
+          <span className={`flex-1 text-sm truncate ${selected ? 'text-ink' : 'text-ink-60'}`}>
             {selected ? displayName(selected) : 'Select supplier…'}
           </span>
         )}
-        <span className="text-gray-400 shrink-0">{open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
+        <span className="text-ink-60 shrink-0">{open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}</span>
       </div>
 
       {/* Hidden required-field anchor */}
@@ -597,19 +597,19 @@ function SupplierCombobox({ suppliers, value, onChange }) {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+        <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white border border-warm-grey rounded-lg shadow-lg max-h-60 overflow-y-auto">
           {filtered.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-4">No suppliers found</p>
+            <p className="text-sm text-ink-60 text-center py-4">No suppliers found</p>
           ) : filtered.map(s => (
             <button
               key={s.id}
               type="button"
               onMouseDown={e => e.preventDefault()}
               onClick={() => selectSupplier(s)}
-              className={`w-full text-left px-4 py-2.5 hover:bg-brand-50 transition-colors border-b border-gray-50 last:border-0 ${s.id === value ? 'bg-brand-50' : ''}`}
+              className={`w-full text-left px-4 py-2.5 hover:bg-brand-50 transition-colors border-b border-warm-grey last:border-0 ${s.id === value ? 'bg-brand-50' : ''}`}
             >
-              <p className="text-sm font-medium text-gray-900">{s.name}{s.name_cn ? <span className="text-gray-400 font-normal"> · {s.name_cn}</span> : ''}</p>
-              {s.contact_person && <p className="text-xs text-gray-400">{s.contact_person}</p>}
+              <p className="text-sm font-medium text-ink">{s.name}{s.name_cn ? <span className="text-ink-60 font-normal"> · {s.name_cn}</span> : ''}</p>
+              {s.contact_person && <p className="text-xs text-ink-60">{s.contact_person}</p>}
             </button>
           ))}
         </div>
@@ -688,12 +688,12 @@ function CopyQuotePicker({ quotes, loaded, onSelect, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-800">Copy from Previous Quote</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
+          <h2 className="font-semibold text-ink">Copy from Previous Quote</h2>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>
         </div>
 
-        <div className="px-4 py-3 border-b border-gray-100">
+        <div className="px-4 py-3 border-b border-warm-grey">
           <input
             autoFocus
             type="text"
@@ -706,38 +706,38 @@ function CopyQuotePicker({ quotes, loaded, onSelect, onClose }) {
 
         <div className="overflow-y-auto flex-1">
           {!loaded ? (
-            <p className="text-center text-sm text-gray-400 py-10">Loading all quotes…</p>
+            <p className="text-center text-sm text-ink-60 py-10">Loading all quotes…</p>
           ) : grouped.length === 0 ? (
-            <p className="text-center text-sm text-gray-400 py-10">No quotes found.</p>
+            <p className="text-center text-sm text-ink-60 py-10">No quotes found.</p>
           ) : grouped.map(([supplierName, qs]) => (
             <div key={supplierName}>
-              <p className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 sticky top-0">
+              <p className="px-4 py-2 text-xs font-semibold text-ink-60 uppercase tracking-wide bg-ivory sticky top-0">
                 {supplierName}
               </p>
               {qs.map(q => (
                 <button
                   key={q.id}
                   onClick={() => onSelect(q)}
-                  className="w-full text-left px-4 py-3 hover:bg-brand-50 transition-colors border-b border-gray-50 last:border-0"
+                  className="w-full text-left px-4 py-3 hover:bg-brand-50 transition-colors border-b border-warm-grey last:border-0"
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-ink-60">
                           {q._useCount > 1 ? q._componentName : `${q._productName} › ${q._componentName}`}
                         </p>
                         {q._useCount > 1 && (
-                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium shrink-0">
+                          <span className="text-xs px-1.5 py-0.5 rounded-full bg-ivory-dark text-ink-60 font-medium shrink-0">
                             used in {q._useCount}
                           </span>
                         )}
                       </div>
-                      <p className="text-sm font-medium text-gray-800 mt-0.5">
+                      <p className="text-sm font-medium text-ink mt-0.5">
                         {q.unit_cost != null ? `${q.unit_cost} ${q.unit_cost_currency}` : '—'}
                         {q.moq ? ` · MOQ ${q.moq.toLocaleString()}` : ''}
                       </p>
                       {(q.sampling_lead_time_days || q.production_lead_time_days) && (
-                        <p className="text-xs text-gray-400 mt-0.5">
+                        <p className="text-xs text-ink-60 mt-0.5">
                           {q.sampling_lead_time_days ? `Sample ${q.sampling_lead_time_days}d` : ''}
                           {q.sampling_lead_time_days && q.production_lead_time_days ? ' · ' : ''}
                           {q.production_lead_time_days ? `Prod ${q.production_lead_time_days}d` : ''}
@@ -752,7 +752,7 @@ function CopyQuotePicker({ quotes, loaded, onSelect, onClose }) {
           ))}
         </div>
 
-        <div className="px-5 py-3 border-t border-gray-100 text-xs text-gray-400">
+        <div className="px-5 py-3 border-t border-warm-grey text-xs text-ink-60">
           Click a quote to pre-fill the form. You can adjust before saving.
         </div>
       </div>

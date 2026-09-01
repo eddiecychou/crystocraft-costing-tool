@@ -166,7 +166,7 @@ export default function ManualAdjust({ src, onResult, disabled }) {
   if (cropMode) {
     return (
       <div>
-        <div className="relative w-full h-72 bg-gray-900 rounded overflow-hidden">
+        <div className="relative w-full h-72 bg-ink rounded overflow-hidden">
           <Cropper
             image={baseSrc}
             crop={crop} zoom={zoom} rotation={rotation} aspect={aspect}
@@ -181,7 +181,7 @@ export default function ManualAdjust({ src, onResult, disabled }) {
           {ASPECTS.map(a => (
             <button key={a.key} type="button" onClick={() => setAspectKey(a.key)}
               className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${
-                aspectKey === a.key ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                aspectKey === a.key ? 'border-brand-400 bg-brand-50 text-brand-700' : 'border-warm-grey text-ink-60 hover:border-warm-grey'
               }`}>{a.label}</button>
           ))}
         </div>
@@ -189,13 +189,13 @@ export default function ManualAdjust({ src, onResult, disabled }) {
         {/* Rotate + straighten */}
         <div className="mt-3 flex items-center gap-3">
           <button type="button" onClick={() => setQuarter(q => (q + 270) % 360)} title="Rotate left"
-            className="p-1.5 rounded border border-gray-200 text-gray-500 hover:border-gray-300"><RotateCcw size={15} /></button>
+            className="p-1.5 rounded border border-warm-grey text-ink-60 hover:border-warm-grey"><RotateCcw size={15} /></button>
           <button type="button" onClick={() => setQuarter(q => (q + 90) % 360)} title="Rotate right"
-            className="p-1.5 rounded border border-gray-200 text-gray-500 hover:border-gray-300"><RotateCw size={15} /></button>
-          <label className="text-xs font-medium text-gray-500 shrink-0 ml-1">Straighten</label>
+            className="p-1.5 rounded border border-warm-grey text-ink-60 hover:border-warm-grey"><RotateCw size={15} /></button>
+          <label className="text-xs font-medium text-ink-60 shrink-0 ml-1">Straighten</label>
           <input type="range" min={-45} max={45} value={straighten}
             onChange={e => setStraighten(Number(e.target.value))} className="flex-1 accent-brand-600" />
-          <span className={`w-10 text-right text-xs tabular-nums ${straighten === 0 ? 'text-gray-400' : 'text-gray-700 font-medium'}`}>
+          <span className={`w-10 text-right text-xs tabular-nums ${straighten === 0 ? 'text-ink-60' : 'text-ink-80 font-medium'}`}>
             {straighten > 0 ? `+${straighten}` : straighten}°
           </span>
         </div>
@@ -216,16 +216,16 @@ export default function ManualAdjust({ src, onResult, disabled }) {
     <div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Original</p>
-          <div className="aspect-square bg-gray-100 border border-gray-200 rounded flex items-center justify-center overflow-hidden">
+          <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Original</p>
+          <div className="aspect-square bg-ivory-dark border border-warm-grey rounded flex items-center justify-center overflow-hidden">
             <img src={src} alt="" className="w-full h-full object-contain" />
           </div>
         </div>
         <div>
-          <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Adjusted{base && ' · cropped'}</p>
-          <div className="aspect-square bg-gray-100 border border-gray-200 rounded flex items-center justify-center overflow-hidden">
+          <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Adjusted{base && ' · cropped'}</p>
+          <div className="aspect-square bg-ivory-dark border border-warm-grey rounded flex items-center justify-center overflow-hidden">
             {error ? <span className="text-xs text-red-500 px-3 text-center">{error}</span>
-              : !img ? <span className="text-xs text-gray-400">Loading…</span>
+              : !img ? <span className="text-xs text-ink-60">Loading…</span>
               : <canvas ref={canvasRef} className="w-full h-full object-contain" />}
           </div>
         </div>
@@ -239,20 +239,20 @@ export default function ManualAdjust({ src, onResult, disabled }) {
         </button>
         {base && (
           <button type="button" onClick={() => setBase(null)} disabled={disabled}
-            className="ml-2 text-xs text-gray-500 hover:text-gray-800">Undo crop</button>
+            className="ml-2 text-xs text-ink-60 hover:text-ink">Undo crop</button>
         )}
       </div>
 
       <div className="mt-4 space-y-2.5">
         {sliders.map(({ key, label, min, max, mid }) => (
           <div key={key} className="flex items-center gap-3">
-            <label className="w-20 text-xs font-medium text-gray-500 shrink-0">{label}</label>
+            <label className="w-20 text-xs font-medium text-ink-60 shrink-0">{label}</label>
             <input
               type="range" min={min} max={max} value={s[key]} onChange={set(key)}
               disabled={disabled || !img}
               className="flex-1 accent-brand-600"
             />
-            <span className={`w-10 text-right text-xs tabular-nums ${s[key] === mid ? 'text-gray-400' : 'text-gray-700 font-medium'}`}>
+            <span className={`w-10 text-right text-xs tabular-nums ${s[key] === mid ? 'text-ink-60' : 'text-ink-80 font-medium'}`}>
               {key === 'warmth' && s[key] > 0 ? `+${s[key]}` : s[key]}
             </span>
           </div>
@@ -264,11 +264,11 @@ export default function ManualAdjust({ src, onResult, disabled }) {
           type="button"
           onClick={() => setS(NEUTRAL)}
           disabled={disabled || isNeutral(s)}
-          className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 disabled:opacity-40"
+          className="inline-flex items-center gap-1.5 text-xs text-ink-60 hover:text-ink disabled:opacity-40"
         >
           <RotateCcw size={13} /> Reset
         </button>
-        <p className="text-[11px] text-gray-400">Instant, no AI — exact and repeatable. The original isn’t changed until you Keep.</p>
+        <p className="text-[11px] text-ink-60">Instant, no AI — exact and repeatable. The original isn’t changed until you Keep.</p>
       </div>
     </div>
   )

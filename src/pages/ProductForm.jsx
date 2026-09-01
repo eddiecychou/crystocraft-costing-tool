@@ -116,12 +116,12 @@ export default function ProductForm() {
     }
   }
 
-  if (fetching) return <div className="p-6 text-gray-400">Loading…</div>
+  if (fetching) return <div className="p-6 text-ink-60">Loading…</div>
 
   return (
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">{isEdit ? 'Edit Product' : 'New Product'}</h1>
+        <h1 className="text-2xl font-bold text-ink">{isEdit ? 'Edit Product' : 'New Product'}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="card p-6 space-y-5">
@@ -163,7 +163,7 @@ export default function ProductForm() {
           <select className="input max-w-sm" value={form.customizer_type || ''} onChange={set('customizer_type')}>
             {CUSTOMIZER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
-          <p className="text-[11px] text-gray-400 mt-1">
+          <p className="text-[11px] text-ink-60 mt-1">
             Lets customers preview this product with their own logo. Pick the customization engine that fits this product.
           </p>
         </div>
@@ -180,7 +180,7 @@ export default function ProductForm() {
               <button
                 type="button"
                 onClick={() => setGuideOpen(o => !o)}
-                className="text-xs text-gray-400 hover:text-brand-600 transition-colors"
+                className="text-xs text-ink-60 hover:text-brand-600 transition-colors"
               >
                 {guideOpen ? 'Hide instructions' : '+ Instructions'}
               </button>
@@ -203,7 +203,7 @@ export default function ProductForm() {
                 value={aiGuide}
                 onChange={e => setAiGuide(e.target.value)}
               />
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-ink-60 mt-1">
                 {form.heroImage
                   ? 'The product hero image will be sent to the AI so it can describe what it sees.'
                   : 'No hero image yet — add one on the product page so the AI can also see the product.'}
@@ -218,12 +218,12 @@ export default function ProductForm() {
             maxLength={MARKETING_DESC_MAXLEN}
             placeholder="Sell-copy for catalogues — evocative, customer-facing language… or click AI Write to generate"
           />
-          <p className="text-[11px] text-gray-400 mt-0.5 text-right">{(form.marketing_description || '').length}/{MARKETING_DESC_MAXLEN}</p>
+          <p className="text-[11px] text-ink-60 mt-0.5 text-right">{(form.marketing_description || '').length}/{MARKETING_DESC_MAXLEN}</p>
           {aiError && <p className="text-xs text-red-500 mt-1">{aiError}</p>}
-          {!form.name && <p className="text-xs text-gray-400 mt-1">Enter a product name first to enable AI writing</p>}
+          {!form.name && <p className="text-xs text-ink-60 mt-1">Enter a product name first to enable AI writing</p>}
           {form.marketing_description && !rewriteOpen && (
             <button type="button" onClick={() => setRewriteOpen(true)}
-              className="text-xs text-gray-400 hover:text-brand-600 transition-colors mt-1 flex items-center gap-1">
+              className="text-xs text-ink-60 hover:text-brand-600 transition-colors mt-1 flex items-center gap-1">
               <RotateCcw size={13} />Rewrite with guidance
             </button>
           )}
@@ -245,7 +245,7 @@ export default function ProductForm() {
                   {rewriteLoading ? 'Rewriting…' : <span className="inline-flex items-center gap-1"><RotateCcw size={13} />Rewrite</span>}
                 </button>
                 <button type="button" onClick={() => { setRewriteOpen(false); setRewriteGuide('') }}
-                  className="text-xs px-3 py-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+                  className="text-xs px-3 py-1.5 rounded-md border border-warm-grey text-ink-60 hover:bg-ivory transition-colors">
                   Cancel
                 </button>
               </div>

@@ -117,49 +117,49 @@ export default function ComponentRequirements() {
     <div className="p-4 md:p-6 max-w-4xl">
       {(loading || !ready) && <LoadingBar />}
 
-      <p className="text-sm text-gray-500 mb-4">
+      <p className="text-sm text-ink-60 mb-4">
         Select confirmed PIs to explode their figurine components, deduct current stock, and see what to order.
       </p>
 
       {/* Order picker */}
       <div className="card mb-4">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-warm-grey">
+          <h2 className="text-sm font-semibold text-ink-80 inline-flex items-center gap-1.5">
             <Boxes size={15} /> Orders
-            <span className="font-normal text-gray-400">· {selected.size} selected · showing {visibleOrders.length} of {sortedOrders.length}</span>
+            <span className="font-normal text-ink-60">· {selected.size} selected · showing {visibleOrders.length} of {sortedOrders.length}</span>
           </h2>
           <div className="flex gap-3 text-xs">
             <button onClick={() => setShowAll(s => !s)} className="text-brand-600 hover:underline">
               {showAll ? 'Confirmed + only' : `Show all (${sortedOrders.length})`}
             </button>
             <button onClick={() => setSelected(new Set(orders.filter(o => DEMAND.includes(o.status)).map(o => o.id)))} className="text-brand-600 hover:underline">Select demand</button>
-            <button onClick={() => { setSelected(new Set()); setResult(null) }} className="text-gray-500 hover:underline">Clear</button>
+            <button onClick={() => { setSelected(new Set()); setResult(null) }} className="text-ink-60 hover:underline">Clear</button>
           </div>
         </div>
         {visibleOrders.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">
+          <p className="text-sm text-ink-60 text-center py-8">
             {sortedOrders.length === 0 ? 'No orders yet.' : `No confirmed / packing / ready orders. `}
             {sortedOrders.length > 0 && <button onClick={() => setShowAll(true)} className="text-brand-600 hover:underline">Show all {sortedOrders.length}</button>}
           </p>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-warm-grey">
             {visibleOrders.map(o => {
               const st = orderStatusOf(o.status)
               return (
-                <label key={o.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 cursor-pointer">
-                  <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-brand-600" checked={selected.has(o.id)} onChange={() => toggle(o.id)} />
+                <label key={o.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-ivory cursor-pointer">
+                  <input type="checkbox" className="w-4 h-4 rounded border-warm-grey text-brand-600" checked={selected.has(o.id)} onChange={() => toggle(o.id)} />
                   <span className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-medium text-gray-800 truncate">{o.customer_name || 'Unnamed'}</span>
-                    {orderUc(o) && <span className="text-xs text-gray-400">{orderUc(o)}</span>}
+                    <span className="text-sm font-medium text-ink truncate">{o.customer_name || 'Unnamed'}</span>
+                    {orderUc(o) && <span className="text-xs text-ink-60">{orderUc(o)}</span>}
                     <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${st.style}`}>{st.label}</span>
                   </span>
-                  {o.order_date && <span className="text-xs text-gray-400 shrink-0">{o.order_date}</span>}
+                  {o.order_date && <span className="text-xs text-ink-60 shrink-0">{o.order_date}</span>}
                 </label>
               )
             })}
           </div>
         )}
-        <div className="px-4 py-3 border-t border-gray-100">
+        <div className="px-4 py-3 border-t border-warm-grey">
           <button onClick={compute} disabled={!ready || computing || selected.size === 0}
             className="btn-primary text-sm inline-flex items-center gap-1.5 disabled:opacity-40">
             <Calculator size={15} /> {computing ? 'Computing…' : 'Compute requirements'}
@@ -171,15 +171,15 @@ export default function ComponentRequirements() {
       {result && (
         <>
           <div className="flex items-center justify-between mb-2">
-            <p className="text-sm text-gray-600">
-              <span className="font-semibold text-gray-900">{shortCount}</span> component{shortCount === 1 ? '' : 's'} short
-              <span className="text-gray-400"> · {result.rows.length} required in total</span>
+            <p className="text-sm text-ink-70">
+              <span className="font-semibold text-ink">{shortCount}</span> component{shortCount === 1 ? '' : 's'} short
+              <span className="text-ink-60"> · {result.rows.length} required in total</span>
               {result.unmatched.length > 0 && <span className="text-red-600 font-medium"> · {result.unmatched.length} not in range</span>}
               {result.reservedSkipped > 0 && <span className="text-amber-600"> · {result.reservedSkipped} reserved order{result.reservedSkipped === 1 ? '' : 's'} excluded (already set aside)</span>}
             </p>
             <div className="flex items-center gap-3">
-              <label className="text-xs text-gray-500 inline-flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" checked={onlyShort} onChange={e => setOnlyShort(e.target.checked)} className="w-3.5 h-3.5 rounded border-gray-300 text-brand-600" />
+              <label className="text-xs text-ink-60 inline-flex items-center gap-1.5 cursor-pointer">
+                <input type="checkbox" checked={onlyShort} onChange={e => setOnlyShort(e.target.checked)} className="w-3.5 h-3.5 rounded border-warm-grey text-brand-600" />
                 Shortages only
               </label>
               <button onClick={exportCsv} disabled={shownRows.length === 0} className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1 disabled:opacity-40">
@@ -190,14 +190,14 @@ export default function ComponentRequirements() {
 
           <div className="card overflow-hidden mb-4">
             {shownRows.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-8">
+              <p className="text-sm text-ink-60 text-center py-8">
                 {onlyShort ? 'No shortages — every required component is in stock.' : 'No components required.'}
               </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                    <tr className="text-left text-xs text-ink-60 border-b border-warm-grey">
                       <th className="px-3 py-2 font-medium">Component</th>
                       <th className="px-3 py-2 font-medium">Plating</th>
                       <th className="px-3 py-2 font-medium text-right">Required</th>
@@ -207,19 +207,19 @@ export default function ComponentRequirements() {
                       <th className="px-3 py-2 font-medium">Used by</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody className="divide-y divide-warm-grey">
                     {shownRows.map(r => (
                       <tr key={r.code} className={r.shortage > 0 ? 'bg-red-50/40' : ''}>
                         <td className="px-3 py-2">
-                          <div className="font-medium text-gray-800 font-mono text-xs">{r.code}</div>
-                          {r.name && <div className="text-xs text-gray-400">{r.name}</div>}
+                          <div className="font-medium text-ink font-mono text-xs">{r.code}</div>
+                          {r.name && <div className="text-xs text-ink-60">{r.name}</div>}
                         </td>
-                        <td className="px-3 py-2 text-xs text-gray-500">{r.plating_code || <span className="text-gray-300">shared</span>}</td>
+                        <td className="px-3 py-2 text-xs text-ink-60">{r.plating_code || <span className="text-platinum">shared</span>}</td>
                         <td className="px-3 py-2 text-right tabular-nums">{r.required}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-gray-500">{r.inStock}</td>
-                        <td className={`px-3 py-2 text-right tabular-nums font-semibold ${r.shortage > 0 ? 'text-red-600' : 'text-gray-300'}`}>{r.shortage || '—'}</td>
-                        <td className="px-3 py-2 text-right text-xs text-gray-500">{r.leadWeeks != null ? `${r.leadWeeks}w` : '—'}</td>
-                        <td className="px-3 py-2 text-xs text-gray-500">{r.usedBy.join(', ')}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-ink-60">{r.inStock}</td>
+                        <td className={`px-3 py-2 text-right tabular-nums font-semibold ${r.shortage > 0 ? 'text-red-600' : 'text-platinum'}`}>{r.shortage || '—'}</td>
+                        <td className="px-3 py-2 text-right text-xs text-ink-60">{r.leadWeeks != null ? `${r.leadWeeks}w` : '—'}</td>
+                        <td className="px-3 py-2 text-xs text-ink-60">{r.usedBy.join(', ')}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -233,25 +233,25 @@ export default function ComponentRequirements() {
               per stone rather than per part. Only shown once a product in the
               selection actually carries a crystal BOM. */}
           {crystalAll.length > 0 && (
-            <div className="bg-white rounded-lg border border-gray-100 mb-3">
-              <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5">
+            <div className="bg-white rounded-lg border border-warm-grey mb-3">
+              <div className="px-4 py-2.5 border-b border-warm-grey flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-ink-80 inline-flex items-center gap-1.5">
                   <Gem size={14} className="text-brand-500" />
                   Crystals
-                  <span className="font-normal text-gray-400">
+                  <span className="font-normal text-ink-60">
                     · {crystalShort} short of {crystalAll.length} required
                   </span>
                 </h2>
               </div>
               {shownCrystals.length === 0 ? (
-                <p className="px-4 py-3 text-xs text-gray-500">
+                <p className="px-4 py-3 text-xs text-ink-60">
                   No crystal shortages — every stone is covered by available stock.
                 </p>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                      <tr className="text-left text-xs text-ink-60 border-b border-warm-grey">
                         <th className="px-3 py-2 font-medium">Crystal</th>
                         <th className="px-3 py-2 font-medium text-right">Required</th>
                         <th className="px-3 py-2 font-medium text-right">Available</th>
@@ -259,17 +259,17 @@ export default function ComponentRequirements() {
                         <th className="px-3 py-2 font-medium">Used by</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-warm-grey">
                       {shownCrystals.map(r => (
                         <tr key={r.code} className={r.shortage > 0 ? 'bg-red-50/40' : ''}>
                           <td className="px-3 py-2">
-                            <div className="font-medium text-gray-800 font-mono text-xs">{r.code}</div>
-                            {r.name && <div className="text-xs text-gray-400">{r.name}</div>}
+                            <div className="font-medium text-ink font-mono text-xs">{r.code}</div>
+                            {r.name && <div className="text-xs text-ink-60">{r.name}</div>}
                           </td>
                           <td className="px-3 py-2 text-right tabular-nums">{r.required}</td>
-                          <td className="px-3 py-2 text-right tabular-nums text-gray-500">{r.inStock}</td>
-                          <td className={`px-3 py-2 text-right tabular-nums font-semibold ${r.shortage > 0 ? 'text-red-600' : 'text-gray-300'}`}>{r.shortage || '—'}</td>
-                          <td className="px-3 py-2 text-xs text-gray-500">{r.usedBy.join(', ')}</td>
+                          <td className="px-3 py-2 text-right tabular-nums text-ink-60">{r.inStock}</td>
+                          <td className={`px-3 py-2 text-right tabular-nums font-semibold ${r.shortage > 0 ? 'text-red-600' : 'text-platinum'}`}>{r.shortage || '—'}</td>
+                          <td className="px-3 py-2 text-xs text-ink-60">{r.usedBy.join(', ')}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -316,7 +316,7 @@ export default function ComponentRequirements() {
 
           {/* Skipped — non-figurine lines, informational */}
           {result.skipped.length > 0 && (
-            <details className="text-xs text-gray-500">
+            <details className="text-xs text-ink-60">
               <summary className="cursor-pointer inline-flex items-center gap-1.5"><Info size={12} /> {result.skipped.length} non-figurine line{result.skipped.length === 1 ? '' : 's'} skipped</summary>
               <ul className="mt-1.5 space-y-0.5 pl-5">
                 {result.skipped.map((s, i) => (

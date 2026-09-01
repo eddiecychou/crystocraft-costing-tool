@@ -353,18 +353,18 @@ export default function RangeCatalogueExport({ onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
-          <h2 className="text-base font-semibold text-gray-900 inline-flex items-center gap-2">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
+          <h2 className="text-base font-semibold text-ink inline-flex items-center gap-2">
             <BookOpen size={16} className="text-brand-600" /> Full range catalogue
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink-70"><X size={18} /></button>
         </div>
 
         <div className="p-5">
           <label className="block mb-3">
-            <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Trade account</span>
+            <span className="text-xs font-medium text-ink-60 uppercase tracking-wide">Trade account</span>
             <select value={accountId} onChange={e => setAccountId(e.target.value)} disabled={loading || busy}
-              className="mt-1 w-full px-2.5 py-2 text-sm border border-gray-200 rounded-lg">
+              className="mt-1 w-full px-2.5 py-2 text-sm border border-warm-grey rounded-lg">
               <option value="">— list price, USD (no account) —</option>
               {accounts.map(a => (
                 <option key={a.id} value={a.id}>{a.name || a.email}</option>
@@ -375,7 +375,7 @@ export default function RangeCatalogueExport({ onClose }) {
           {/* The pricing basis, stated plainly. ws_discount_pct is the % of list
               the account PAYS — 90 is a discount, 130 a markup — so calling it a
               discount anywhere would be wrong. */}
-          <div className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 mb-3 space-y-0.5">
+          <div className="text-xs text-ink-70 bg-ivory border border-warm-grey rounded-lg px-3 py-2 mb-3 space-y-0.5">
             <div>{sellable.length} products · {lineCount.toLocaleString()} priced options · visible, non-retired only</div>
             <div>
               Prices: <strong>{profile ? `${Number(profile.ws_discount_pct) || 100}% of list` : '100% of list'}</strong>
@@ -402,10 +402,10 @@ export default function RangeCatalogueExport({ onClose }) {
 
           {progress && (
             <div className="mb-3">
-              <div className="flex justify-between text-xs text-gray-500 mb-1">
+              <div className="flex justify-between text-xs text-ink-60 mb-1">
                 <span>Fetching images…</span><span>{progress.done} / {progress.total}</span>
               </div>
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-ivory-dark rounded-full overflow-hidden">
                 <div className="h-full bg-brand-500 transition-all"
                      style={{ width: `${Math.round((progress.done / progress.total) * 100)}%` }} />
               </div>
@@ -419,8 +419,8 @@ export default function RangeCatalogueExport({ onClose }) {
           )}
         </div>
 
-        <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200">
-          <button onClick={onClose} className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <div className="flex justify-end gap-2 px-5 py-3 border-t border-warm-grey">
+          <button onClick={onClose} className="px-3 py-1.5 text-sm text-ink-70 hover:bg-ivory-dark rounded-lg">Cancel</button>
           <button onClick={build} disabled={loading || busy || !sellable.length}
             className="btn-primary text-sm inline-flex items-center gap-1.5 disabled:opacity-40">
             {busy ? <><Loader2 size={14} className="animate-spin" /> Building…</> : <>Build PDF</>}

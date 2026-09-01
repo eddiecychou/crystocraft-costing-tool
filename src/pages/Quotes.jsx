@@ -8,7 +8,7 @@ import { Paperclip, ClipboardList } from 'lucide-react'
 import { quoteIsConfirmed } from '../quotes'
 
 const STATUS_STYLES = {
-  draft:     'bg-gray-100 text-gray-600',
+  draft:     'bg-ivory-dark text-ink-70',
   sent:      'bg-blue-100 text-blue-700',
   confirmed: 'bg-green-100 text-green-700',
   lost:      'bg-red-100 text-red-600',
@@ -66,8 +66,8 @@ export default function Quotes() {
       {loading && <LoadingBar />}
       <div className="flex items-start justify-between mb-4 gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Client Quotes</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{filtered.length} of {quotes.length} quotes</p>
+          <h1 className="text-xl md:text-2xl font-bold text-ink">Client Quotes</h1>
+          <p className="text-sm text-ink-60 mt-0.5">{filtered.length} of {quotes.length} quotes</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-2 shrink-0">
           <button
@@ -98,23 +98,23 @@ export default function Quotes() {
       </div>
 
       {filtered.length === 0 && !loading ? (
-        <div className="text-center py-20 text-gray-400">
-          <ClipboardList size={48} strokeWidth={1.25} className="mx-auto mb-4 text-gray-300" />
+        <div className="text-center py-20 text-ink-60">
+          <ClipboardList size={48} strokeWidth={1.25} className="mx-auto mb-4 text-platinum" />
           <p>{quotes.length === 0 ? 'No quotes yet — create your first client quote.' : 'No quotes match your search.'}</p>
         </div>
       ) : (
-        <div className="card divide-y divide-gray-100">
+        <div className="card divide-y divide-warm-grey">
           {filtered.map(q => (
-            <Link key={q.id} to={`/quotes/${q.id}`} className="flex items-center justify-between px-4 py-3.5 hover:bg-gray-50 transition-colors">
+            <Link key={q.id} to={`/quotes/${q.id}`} className="flex items-center justify-between px-4 py-3.5 hover:bg-ivory transition-colors">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <p className="font-semibold text-gray-900 text-sm truncate">{q.client_name}</p>
+                  <p className="font-semibold text-ink text-sm truncate">{q.client_name}</p>
                   {q.quote_type === 'uploaded' && (
                     <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 font-medium shrink-0"><Paperclip size={11} />Uploaded</span>
                   )}
                 </div>
-                {q.contact_name && <p className="text-xs text-gray-500 mt-0.5">{q.contact_name}</p>}
-                <p className="text-xs text-gray-400 mt-0.5">
+                {q.contact_name && <p className="text-xs text-ink-60 mt-0.5">{q.contact_name}</p>}
+                <p className="text-xs text-ink-60 mt-0.5">
                   {formatDate(q)}
                   {q.quote_type !== 'uploaded' && q.item_count ? ` · ${q.item_count} item${q.item_count > 1 ? 's' : ''}` : ''}
                   {q.quote_type === 'uploaded' && q.attachments?.length ? ` · ${q.attachments.length} file${q.attachments.length > 1 ? 's' : ''}` : ''}
@@ -123,7 +123,7 @@ export default function Quotes() {
               </div>
               <div className="flex items-center gap-2 shrink-0 ml-3">
                 <span className={`badge ${STATUS_STYLES[q.status] || STATUS_STYLES.draft} capitalize`}>{q.status || 'draft'}</span>
-                <span className="text-xs text-gray-400">→</span>
+                <span className="text-xs text-ink-60">→</span>
               </div>
             </Link>
           ))}

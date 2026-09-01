@@ -100,11 +100,11 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
-          <h2 className="text-base font-semibold text-gray-900 inline-flex items-center gap-2">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
+          <h2 className="text-base font-semibold text-ink inline-flex items-center gap-2">
             <Database size={16} className="text-teal-600" /> Import a figurine from the ERP
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={18} /></button>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink-70"><X size={18} /></button>
         </div>
 
         <div className="p-5">
@@ -112,32 +112,32 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
           {!preview && (
             <>
               <label className="block mb-3">
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Item code or description</span>
+                <span className="text-xs font-medium text-ink-60 uppercase tracking-wide">Item code or description</span>
                 <div className="relative mt-1">
-                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-60" />
                   <input autoFocus value={q} onChange={(e) => setQ(e.target.value)}
                     placeholder="e.g. D0268-001, or Zodiac Pisces"
-                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40" />
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40" />
                 </div>
               </label>
 
               {q.trim().length > 0 && q.trim().length < 3 && (
-                <p className="text-xs text-gray-400">Keep typing — at least 3 characters.</p>
+                <p className="text-xs text-ink-60">Keep typing — at least 3 characters.</p>
               )}
-              {searching && <p className="text-xs text-gray-400 inline-flex items-center gap-1.5"><Loader2 size={12} className="animate-spin" /> Searching the item master…</p>}
+              {searching && <p className="text-xs text-ink-60 inline-flex items-center gap-1.5"><Loader2 size={12} className="animate-spin" /> Searching the item master…</p>}
               {!searching && q.trim().length >= 3 && results.length === 0 && (
-                <p className="text-xs text-gray-400">No finished-goods item matches. Only FG items can be imported as a figurine.</p>
+                <p className="text-xs text-ink-60">No finished-goods item matches. Only FG items can be imported as a figurine.</p>
               )}
 
               {results.length > 0 && (
-                <ul className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-72 overflow-auto">
+                <ul className="border border-warm-grey rounded-lg divide-y divide-warm-grey max-h-72 overflow-auto">
                   {results.map((r) => (
                     <li key={r.code}>
                       <button type="button" onClick={() => choose(r.code)}
-                        className="w-full text-left px-3 py-2 hover:bg-gray-50 flex items-center justify-between gap-3">
+                        className="w-full text-left px-3 py-2 hover:bg-ivory flex items-center justify-between gap-3">
                         <span className="min-w-0">
-                          <span className="font-mono text-xs text-gray-900">{r.code}</span>
-                          <span className="block text-xs text-gray-500 truncate">{r.name || '—'}</span>
+                          <span className="font-mono text-xs text-ink">{r.code}</span>
+                          <span className="block text-xs text-ink-60 truncate">{r.name || '—'}</span>
                         </span>
                         <span className="text-[11px] text-teal-600 shrink-0">Review →</span>
                       </button>
@@ -149,7 +149,7 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
           )}
 
           {loadingPreview && (
-            <p className="text-sm text-gray-500 inline-flex items-center gap-2 py-6">
+            <p className="text-sm text-ink-60 inline-flex items-center gap-2 py-6">
               <Loader2 size={15} className="animate-spin" /> Reading every variant and merging their BOMs…
             </p>
           )}
@@ -158,9 +158,9 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
           {preview && !loadingPreview && (
             <>
               <div className="mb-4">
-                <div className="font-mono text-sm text-gray-900">{preview.base}</div>
-                <div className="text-sm text-gray-600">{preview.name || '(no description in the ERP)'}</div>
-                <div className="text-xs text-gray-400 mt-1">
+                <div className="font-mono text-sm text-ink">{preview.base}</div>
+                <div className="text-sm text-ink-70">{preview.name || '(no description in the ERP)'}</div>
+                <div className="text-xs text-ink-60 mt-1">
                   Merged from {preview.variants.length} ERP variant{preview.variants.length === 1 ? '' : 's'}: {preview.variants.join(', ')}
                 </div>
               </div>
@@ -189,11 +189,11 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
               ))}
 
               {preview.components.length === 0 ? (
-                <p className="text-sm text-gray-500 py-4">No FM components in the ERP BOM for this design — the product would be created with no parts.</p>
+                <p className="text-sm text-ink-60 py-4">No FM components in the ERP BOM for this design — the product would be created with no parts.</p>
               ) : (
                 <>
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    <span className="text-xs font-medium text-ink-60 uppercase tracking-wide">
                       Components ({picked.size} of {preview.components.length})
                     </span>
                     <button type="button"
@@ -202,17 +202,17 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
                       {picked.size === preview.components.length ? 'Clear all' : 'Select all'}
                     </button>
                   </div>
-                  <ul className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-64 overflow-auto mb-3">
+                  <ul className="border border-warm-grey rounded-lg divide-y divide-warm-grey max-h-64 overflow-auto mb-3">
                     {preview.components.map((c) => (
-                      <li key={c.code} className="px-3 py-2 flex items-start gap-2.5 hover:bg-gray-50">
+                      <li key={c.code} className="px-3 py-2 flex items-start gap-2.5 hover:bg-ivory">
                         <input type="checkbox" checked={picked.has(c.code)} onChange={() => toggle(c.code)}
-                          className="mt-0.5 rounded border-gray-300 text-teal-600 focus:ring-teal-500" />
+                          className="mt-0.5 rounded border-warm-grey text-teal-600 focus:ring-teal-500" />
                         <div className="min-w-0 flex-1">
-                          <div className="font-mono text-xs text-gray-900">{c.code}</div>
-                          {c.name && <div className="text-xs text-gray-500 truncate">{c.name}</div>}
+                          <div className="font-mono text-xs text-ink">{c.code}</div>
+                          {c.name && <div className="text-xs text-ink-60 truncate">{c.name}</div>}
                           <div className="flex flex-wrap gap-1.5 mt-0.5">
                             {c.existing
-                              ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">already in the app — will be linked, not changed</span>
+                              ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-ivory-dark text-ink-60">already in the app — will be linked, not changed</span>
                               : <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700">new component</span>}
                             {/* Almost always a plating-specific part. Worth seeing
                                 now rather than discovering it in a costing. */}
@@ -224,14 +224,14 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
                             )}
                           </div>
                         </div>
-                        <span className="text-xs text-gray-500 tabular-nums shrink-0">×{c.qty}</span>
+                        <span className="text-xs text-ink-60 tabular-nums shrink-0">×{c.qty}</span>
                       </li>
                     ))}
                   </ul>
                 </>
               )}
 
-              <p className="text-xs text-gray-500 mb-3">
+              <p className="text-xs text-ink-60 mb-3">
                 The product is created <strong>hidden</strong> — it will not appear in a catalogue or the shop until you tick
                 “Visible in catalogue”. The ERP carries no costs, so components arrive uncosted.
               </p>
@@ -245,9 +245,9 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
           )}
         </div>
 
-        <div className="flex justify-between gap-2 px-5 py-3 border-t border-gray-200">
+        <div className="flex justify-between gap-2 px-5 py-3 border-t border-warm-grey">
           <button onClick={() => (preview && !initialCode ? setPreview(null) : onClose())}
-            className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">
+            className="px-3 py-1.5 text-sm text-ink-70 hover:bg-ivory-dark rounded-lg">
             {preview && !initialCode ? '← Back to search' : 'Cancel'}
           </button>
           {preview && (

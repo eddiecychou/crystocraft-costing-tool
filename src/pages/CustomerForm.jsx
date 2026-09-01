@@ -40,9 +40,9 @@ function ContactsEditor({ contacts, onChange }) {
   return (
     <div className="space-y-3">
       {contacts.map((c, i) => (
-        <div key={i} className="rounded-lg border border-gray-200 p-3 space-y-2">
+        <div key={i} className="rounded-lg border border-warm-grey p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <label className="flex items-center gap-1.5 text-xs text-gray-600 cursor-pointer select-none">
+            <label className="flex items-center gap-1.5 text-xs text-ink-70 cursor-pointer select-none">
               <input type="radio" name="primary-contact" checked={c.is_primary} onChange={() => setPrimary(i)}
                      className="w-3.5 h-3.5 text-brand-600" />
               Primary contact
@@ -51,17 +51,17 @@ function ContactsEditor({ contacts, onChange }) {
               {contacts.length > 1 && (
                 <div className="flex items-center">
                   <button type="button" onClick={() => move(i, -1)} disabled={i === 0}
-                          className="text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:hover:text-gray-400" title="Move up">
+                          className="text-ink-60 hover:text-ink-70 disabled:opacity-30 disabled:hover:text-ink-60" title="Move up">
                     <ChevronUp size={14} />
                   </button>
                   <button type="button" onClick={() => move(i, 1)} disabled={i === contacts.length - 1}
-                          className="text-gray-400 hover:text-gray-600 disabled:opacity-30 disabled:hover:text-gray-400" title="Move down">
+                          className="text-ink-60 hover:text-ink-70 disabled:opacity-30 disabled:hover:text-ink-60" title="Move down">
                     <ChevronDown size={14} />
                   </button>
                 </div>
               )}
               {contacts.length > 1 && (
-                <button type="button" onClick={() => remove(i)} className="text-gray-400 hover:text-red-500">
+                <button type="button" onClick={() => remove(i)} className="text-ink-60 hover:text-red-500">
                   <Trash2 size={14} />
                 </button>
               )}
@@ -262,7 +262,7 @@ export default function CustomerForm() {
     }
   }
 
-  if (fetching) return <div className="p-4 text-gray-400">Loading…</div>
+  if (fetching) return <div className="p-4 text-ink-60">Loading…</div>
 
   return (
     <div className="p-4 md:p-6 max-w-xl">
@@ -270,21 +270,21 @@ export default function CustomerForm() {
         <Link to={isEdit ? `/customers/${id}` : '/customers'} className="text-sm text-brand-600 hover:underline">
           ← {isEdit ? 'Customer' : 'Customers'}
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-1">{isEdit ? 'Edit Customer' : 'New Customer'}</h1>
+        <h1 className="text-2xl font-bold text-ink mt-1">{isEdit ? 'Edit Customer' : 'New Customer'}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
 
         {/* Company */}
         <div className="card p-5 space-y-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Company</p>
+          <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Company</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
               <label className="label">Company / Client Name *</label>
               <input className="input" value={form.company_name} onChange={set('company_name')} required placeholder="e.g. Manulife HK" />
             </div>
             <div>
-              <label className="label">ERP Code <span className="text-gray-400 font-normal">(optional)</span></label>
+              <label className="label">ERP Code <span className="text-ink-60 font-normal">(optional)</span></label>
               <input className="input" value={form.erp_code} onChange={set('erp_code')} placeholder="e.g. C-00123" />
             </div>
           </div>
@@ -299,13 +299,13 @@ export default function CustomerForm() {
               onChange={e => setCountrySearch(e.target.value)}
             />
             {countryOpen && (
-              <div className="absolute z-20 left-0 right-0 mt-1 border border-gray-200 rounded-lg bg-white shadow-lg max-h-52 overflow-y-auto">
+              <div className="absolute z-20 left-0 right-0 mt-1 border border-warm-grey rounded-lg bg-white shadow-lg max-h-52 overflow-y-auto">
                 {CUSTOMER_COUNTRIES.filter(c => c.toLowerCase().includes(countrySearch.toLowerCase())).map(c => (
                   <button
                     key={c}
                     type="button"
                     onMouseDown={() => { set('country')({ target: { value: c } }); setCountryOpen(false) }}
-                    className={`w-full text-left text-sm px-3 py-2 hover:bg-gray-50 transition-colors ${form.country === c ? 'text-brand-600 font-medium' : 'text-gray-700'}`}
+                    className={`w-full text-left text-sm px-3 py-2 hover:bg-ivory transition-colors ${form.country === c ? 'text-brand-600 font-medium' : 'text-ink-80'}`}
                   >
                     {form.country === c && <Check size={13} className="inline align-[-2px] mr-1" />}{c}
                   </button>
@@ -325,7 +325,7 @@ export default function CustomerForm() {
         <div className="card p-5 space-y-3">
           <div>
             <label className="label mb-0">Tags</label>
-            <p className="text-xs text-gray-400 mt-0.5">Pick an existing tag or type a new one.</p>
+            <p className="text-xs text-ink-60 mt-0.5">Pick an existing tag or type a new one.</p>
           </div>
 
           {/* Selected tags summary */}
@@ -359,13 +359,13 @@ export default function CustomerForm() {
                 .slice(0, 8)
               if (!matches.length) return null
               return (
-                <div className="absolute z-20 left-0 right-0 mt-1 border border-gray-200 rounded-lg bg-white shadow-lg max-h-52 overflow-y-auto">
+                <div className="absolute z-20 left-0 right-0 mt-1 border border-warm-grey rounded-lg bg-white shadow-lg max-h-52 overflow-y-auto">
                   {matches.map(t => (
                     <button
                       key={t}
                       type="button"
                       onMouseDown={e => { e.preventDefault(); addTag(t) }}
-                      className="w-full text-left text-sm px-3 py-2 hover:bg-gray-50 transition-colors text-gray-700"
+                      className="w-full text-left text-sm px-3 py-2 hover:bg-ivory transition-colors text-ink-80"
                     >
                       {t}
                     </button>
@@ -379,8 +379,8 @@ export default function CustomerForm() {
         {/* Contacts */}
         <div className="card p-5 space-y-4">
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Contacts</p>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Contacts</p>
+            <p className="text-xs text-ink-60 mt-0.5">
               Separate real people — quotes, orders and the interaction log can each be addressed to a specific one.
             </p>
           </div>
@@ -393,11 +393,11 @@ export default function CustomerForm() {
 
         {/* CRM */}
         <div className="card p-5 space-y-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">CRM</p>
+          <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide">CRM</p>
 
           <div>
             <label className="label">Customer Type *</label>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-ink-60 mt-0.5">
               Retail Customer isn't exclusive with the others — a trade-bucket customer can also buy retail sometimes.
             </p>
             <div className="grid grid-cols-2 gap-2 mt-1">
@@ -409,7 +409,7 @@ export default function CustomerForm() {
                   className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors text-left ${
                     form.crm_category === cat
                       ? 'border-brand-500 bg-brand-50 text-brand-700'
-                      : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                      : 'border-warm-grey text-ink-70 hover:border-warm-grey hover:bg-ivory'
                   }`}
                 >
                   {(() => { const I = CATEGORY_ICON[cat]; return I ? <I size={14} className="inline align-[-2px] mr-1" /> : null })()}{cat}
@@ -421,7 +421,7 @@ export default function CustomerForm() {
                 className={`px-3 py-2.5 rounded-lg border text-sm font-medium transition-colors text-left ${
                   isRetail
                     ? 'border-pink-500 bg-pink-50 text-pink-700'
-                    : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+                    : 'border-warm-grey text-ink-70 hover:border-warm-grey hover:bg-ivory'
                 }`}
               >
                 <ShoppingBag size={14} className="inline align-[-2px] mr-1" />{RETAIL_TAG}
@@ -430,9 +430,9 @@ export default function CustomerForm() {
           </div>
 
           <div>
-            <label className="label">Channels <span className="text-gray-400 font-normal">(select all that apply)</span></label>
-            <p className="text-xs text-gray-400 mt-0.5">
-              Channels marked <span className="text-gray-500">manual</span> have no API integration — the app can't see messages on them; interactions are logged by hand.
+            <label className="label">Channels <span className="text-ink-60 font-normal">(select all that apply)</span></label>
+            <p className="text-xs text-ink-60 mt-0.5">
+              Channels marked <span className="text-ink-60">manual</span> have no API integration — the app can't see messages on them; interactions are logged by hand.
             </p>
             <div className="flex flex-wrap gap-2 mt-1">
               {CHANNELS.map(ch => {
@@ -446,11 +446,11 @@ export default function CustomerForm() {
                     className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                       selected
                         ? 'bg-brand-600 text-white border-brand-600'
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400'
+                        : 'bg-white text-ink-70 border-warm-grey hover:border-brand-400'
                     }`}
                   >
                     {selected && <Check size={13} className="inline align-[-2px] mr-1" />}{ch}
-                    {manual && <span className={`ml-1 ${selected ? 'text-brand-100' : 'text-gray-400'}`}>· manual</span>}
+                    {manual && <span className={`ml-1 ${selected ? 'text-brand-100' : 'text-ink-60'}`}>· manual</span>}
                   </button>
                 )
               })}
@@ -483,28 +483,28 @@ export default function CustomerForm() {
           </div>
 
           <div className="space-y-2 pt-1">
-            <label className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer select-none">
+            <label className="flex items-center gap-2.5 text-sm text-ink-80 cursor-pointer select-none">
               <input
                 type="checkbox"
-                className="w-4 h-4 rounded border-gray-300 text-brand-600"
+                className="w-4 h-4 rounded border-warm-grey text-brand-600"
                 checked={isPersonalWa}
                 onChange={e => setIsPersonalWa(e.target.checked)}
               />
               <span>Communicates via <strong>personal WhatsApp</strong> (not WA Business)</span>
             </label>
-            <label className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer select-none">
+            <label className="flex items-center gap-2.5 text-sm text-ink-80 cursor-pointer select-none">
               <input
                 type="checkbox"
-                className="w-4 h-4 rounded border-gray-300 text-brand-600"
+                className="w-4 h-4 rounded border-warm-grey text-brand-600"
                 checked={isVip}
                 onChange={e => setIsVip(e.target.checked)}
               />
               <span className="inline-flex items-center gap-1"><Star size={14} className="fill-current text-yellow-500" />VIP customer</span>
             </label>
-            <label className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer select-none">
+            <label className="flex items-center gap-2.5 text-sm text-ink-80 cursor-pointer select-none">
               <input
                 type="checkbox"
-                className="w-4 h-4 rounded border-gray-300 text-brand-600"
+                className="w-4 h-4 rounded border-warm-grey text-brand-600"
                 checked={isSensitive}
                 onChange={e => setIsSensitive(e.target.checked)}
               />
@@ -529,7 +529,7 @@ export default function CustomerForm() {
           <textarea className="input" rows={2} value={form.ai_context_summary} onChange={set('ai_context_summary')}
             placeholder="e.g. Prefers WhatsApp over email. Distributor, price-sensitive, replies slowly." />
           <span className={`text-[11px] ${
-            form.ai_context_summary.trim().split(/\s+/).filter(Boolean).length > AI_CONTEXT_SUMMARY_MAX_WORDS ? 'text-red-600' : 'text-gray-400'
+            form.ai_context_summary.trim().split(/\s+/).filter(Boolean).length > AI_CONTEXT_SUMMARY_MAX_WORDS ? 'text-red-600' : 'text-ink-60'
           }`}>
             {form.ai_context_summary.trim() ? form.ai_context_summary.trim().split(/\s+/).filter(Boolean).length : 0} / {AI_CONTEXT_SUMMARY_MAX_WORDS} words —
             fed into every Daily Drafts email to this customer.

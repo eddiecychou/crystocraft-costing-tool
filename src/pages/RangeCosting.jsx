@@ -46,8 +46,8 @@ function BomCoverage({ prefixes, result, loading, error, onCheck }) {
   return (
     <section className="card p-4 mb-4">
       <div className="flex items-center justify-between gap-3 mb-2">
-        <h2 className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
-          <ListChecks size={15} className="text-gray-400" /> ERP bill of materials
+        <h2 className="text-sm font-semibold text-ink-80 flex items-center gap-1.5">
+          <ListChecks size={15} className="text-ink-60" /> ERP bill of materials
         </h2>
         <button type="button" onClick={onCheck} disabled={loading}
                 className="text-xs text-brand-600 hover:underline disabled:opacity-50">
@@ -355,11 +355,11 @@ export default function RangeCosting() {
 
       {/* Component costs */}
       <div className="card p-5 mb-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Critical component costs <span className="font-normal text-ink-60">(at qty 1)</span></h2>
+        <h2 className="text-sm font-semibold text-ink-80 mb-3">Critical component costs <span className="font-normal text-ink-60">(at qty 1)</span></h2>
         {refs.length === 0 ? (
           <p className="text-sm text-ink-60">No critical components on this product. Add them in the <Link to={`/range/${id}`} className="text-brand-600 hover:underline">product editor</Link>, then set each part's cost under <Link to="/components" className="text-brand-600 hover:underline">Components</Link>.</p>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-warm-grey">
             {refs.map((r, i) => {
               const c = resolveRef(r, lib)
               const unit = componentCostAtQty(c, 1)
@@ -369,7 +369,7 @@ export default function RangeCosting() {
               return (
                 <div key={`${r.id || r.code}::${plat}::${i}`} className="py-2.5 flex items-center justify-between gap-4">
                   <div className="min-w-0">
-                    <p className="text-sm text-gray-800">
+                    <p className="text-sm text-ink">
                       {c?.id ? (
                         <Link to={`/components/critical/${c.id}?back=${encodeURIComponent(`/range/${id}/costing`)}`}
                               className="text-brand-600 hover:underline" title="Open component — edit details or add a supplier quote">
@@ -379,24 +379,24 @@ export default function RangeCosting() {
                       {plat && <span className="ml-1.5 text-xs font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">{plat}</span>}
                       {qty > 1 && <span className="ml-1.5 text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">×{qty}</span>}</p>
                     {unit != null ? (
-                      <p className="text-xs text-gray-500">{c.code} · {unit} {c.unit_cost_currency}{qty > 1 ? ` × ${qty}` : ''}
+                      <p className="text-xs text-ink-60">{c.code} · {unit} {c.unit_cost_currency}{qty > 1 ? ` × ${qty}` : ''}
                         {c.volume_tiers?.length > 0 && <span className="ml-1.5 text-brand-500">· {c.volume_tiers.length} volume tier{c.volume_tiers.length > 1 ? 's' : ''}</span>}</p>
                     ) : (
                       <p className="text-xs text-red-400"><AlertTriangle size={12} className="inline align-[-2px] mr-1" />No cost set — click the name above to add a supplier quote</p>
                     )}
                   </div>
-                  <p className="text-sm font-medium text-gray-900 shrink-0">{hk != null ? `HKD ${hk.toFixed(2)}` : '—'}</p>
+                  <p className="text-sm font-medium text-ink shrink-0">{hk != null ? `HKD ${hk.toFixed(2)}` : '—'}</p>
                 </div>
               )
             })}
             {hasPlatingParts && platings.length ? (
               <>
                 {platings.map(p => (
-                  <div key={p.code} className="py-2.5 flex items-center justify-between border-t border-gray-200">
-                    <p className="text-sm font-semibold text-gray-700">
+                  <div key={p.code} className="py-2.5 flex items-center justify-between border-t border-warm-grey">
+                    <p className="text-sm font-semibold text-ink-80">
                       {p.name} <span className="font-mono text-ink-60">{p.code}</span> component subtotal
                     </p>
-                    <p className="text-sm font-bold text-gray-900">
+                    <p className="text-sm font-bold text-ink">
                       HKD {componentsCostHKD(draft, lib, rates, 1, { plating_code: p.code }).toFixed(2)}
                     </p>
                   </div>
@@ -407,9 +407,9 @@ export default function RangeCosting() {
                 </p>
               </>
             ) : (
-              <div className="py-2.5 flex items-center justify-between border-t border-gray-200">
-                <p className="text-sm font-semibold text-gray-700">Component subtotal</p>
-                <p className="text-sm font-bold text-gray-900">HKD {compCostHKD.toFixed(2)}</p>
+              <div className="py-2.5 flex items-center justify-between border-t border-warm-grey">
+                <p className="text-sm font-semibold text-ink-80">Component subtotal</p>
+                <p className="text-sm font-bold text-ink">HKD {compCostHKD.toFixed(2)}</p>
               </div>
             )}
           </div>
@@ -419,7 +419,7 @@ export default function RangeCosting() {
       {/* Extra cost lines */}
       <div className="card p-5 mb-5">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-sm font-semibold text-gray-700">Extra cost lines <span className="font-normal text-ink-60">(all variants)</span></h2>
+          <h2 className="text-sm font-semibold text-ink-80">Extra cost lines <span className="font-normal text-ink-60">(all variants)</span></h2>
           <button type="button" onClick={addExtra} className="text-xs text-brand-600 hover:underline">+ Add line</button>
         </div>
         <p className="text-xs text-ink-60 mb-3">Assembly / labour, gift box, packaging — anything shared across every variant.</p>
@@ -439,12 +439,12 @@ export default function RangeCosting() {
             ))}
           </div>
         )}
-        <p className="text-xs text-ink-60 mt-3">Extra subtotal: <span className="font-medium text-gray-800">HKD {extraHKD.toFixed(2)}</span></p>
+        <p className="text-xs text-ink-60 mt-3">Extra subtotal: <span className="font-medium text-ink">HKD {extraHKD.toFixed(2)}</span></p>
       </div>
 
       {/* Plating adder */}
       <div className="card p-5 mb-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Plating adder</h2>
+        <h2 className="text-sm font-semibold text-ink-80 mb-3">Plating adder</h2>
         {platings.length === 0 ? <p className="text-xs text-ink-60">No platings on this product.</p> : (
           <div className="space-y-2">
             {platings.map(p => (
@@ -464,7 +464,7 @@ export default function RangeCosting() {
       {/* Crystal cost — bill of materials (qty per stone size × shared unit-cost library) */}
       <div className="card p-5 mb-5">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-sm font-semibold text-gray-700">Crystal cost</h2>
+          <h2 className="text-sm font-semibold text-ink-80">Crystal cost</h2>
           <Link to="/components" className="text-xs text-brand-600 hover:underline">Manage crystal cost list →</Link>
         </div>
         <p className="text-xs text-ink-60 mb-3">
@@ -484,7 +484,7 @@ export default function RangeCosting() {
             {state.crystal_bom.map((l, i) => {
               const brandOptions = l.size ? crystalBrandsForSize(crystalItems, l.size) : []
               return (
-                <div key={l.id} className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 pb-2 border-b border-gray-100 sm:pb-0 sm:border-b-0">
+                <div key={l.id} className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 pb-2 border-b border-warm-grey sm:pb-0 sm:border-b-0">
                   <input className="input py-1.5 text-sm w-full sm:flex-1 sm:min-w-[140px]" list="crystal-size-options"
                          value={l.size} onChange={setCrystalLine(i, 'size')} placeholder="Size, e.g. 14mm Octagon" />
                   <select className="input py-1.5 text-sm w-full sm:flex-1 sm:min-w-[160px]" value={l.scope} onChange={setCrystalLine(i, 'scope')}>
@@ -509,14 +509,14 @@ export default function RangeCosting() {
         <button type="button" onClick={addCrystalLine} className="mt-2 text-xs text-brand-600 hover:underline">+ Add crystal line</button>
 
         {state.crystal_bom.length > 0 && productBrands.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-gray-100 space-y-1.5">
+          <div className="mt-3 pt-3 border-t border-warm-grey space-y-1.5">
             {productBrands.map(b => {
               const missing = missingCrystalLines(draft, { brand_code: b.code }, crystalItems)
               return (
                 <div key={b.code}>
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-ink-70">{b.name} crystal subtotal</span>
-                    <span className="font-medium text-gray-900">HKD {crystalBomCostHKD(draft, rates, { brand_code: b.code }, crystalItems).toFixed(2)}</span>
+                    <span className="font-medium text-ink">HKD {crystalBomCostHKD(draft, rates, { brand_code: b.code }, crystalItems).toFixed(2)}</span>
                   </div>
                   {missing.length > 0 && (
                     <p className="text-[11px] text-red-500 flex items-center gap-1 mt-0.5">
@@ -561,39 +561,39 @@ export default function RangeCosting() {
 
       {/* Per-variant cost + sell table */}
       <div className="card p-5 mb-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-1">Per-variant cost &amp; sell <span className="font-normal text-ink-60">({markup.toFixed(2)}× markup, USD)</span></h2>
-        <p className="text-xs text-gray-400 mb-3">All-in cost = components + extras + plating adder + crystal cost (+ tooling amortised). Sell = ⌈cost × markup⌉. Converted from HKD at {rates.USD} HKD/USD.</p>
+        <h2 className="text-sm font-semibold text-ink-80 mb-1">Per-variant cost &amp; sell <span className="font-normal text-ink-60">({markup.toFixed(2)}× markup, USD)</span></h2>
+        <p className="text-xs text-ink-60 mb-3">All-in cost = components + extras + plating adder + crystal cost (+ tooling amortised). Sell = ⌈cost × markup⌉. Converted from HKD at {rates.USD} HKD/USD.</p>
         <div className="overflow-x-auto -mx-5 px-5">
           <table className="text-sm border-separate border-spacing-0 w-full" style={{ minWidth: 360 + qtyCols.length * 120 + 'px' }}>
             <thead>
-              <tr className="text-xs text-gray-400 uppercase tracking-wide">
-                <th className="text-left pb-2 pr-3 font-semibold text-gray-600">Variant</th>
+              <tr className="text-xs text-ink-60 uppercase tracking-wide">
+                <th className="text-left pb-2 pr-3 font-semibold text-ink-70">Variant</th>
                 {qtyCols.map(q => (
-                  <th key={q} className="text-right pb-2 px-3 font-semibold border-l border-gray-100 whitespace-nowrap">
+                  <th key={q} className="text-right pb-2 px-3 font-semibold border-l border-warm-grey whitespace-nowrap">
                     {q === 1 && !tiers.length ? 'Unit' : `${q.toLocaleString()} pcs`}<br/>
-                    <span className="text-gray-300 font-normal normal-case tracking-normal">cost → sell</span>
+                    <span className="text-platinum font-normal normal-case tracking-normal">cost → sell</span>
                   </th>
                 ))}
               </tr>
-              <tr><td colSpan={qtyCols.length + 1} className="pb-1"><div className="border-b border-gray-200" /></td></tr>
+              <tr><td colSpan={qtyCols.length + 1} className="pb-1"><div className="border-b border-warm-grey" /></td></tr>
             </thead>
             <tbody>
               {variants.map((v, idx) => {
                 const label = v.sku || [v.brand_code, v.plating_name].filter(Boolean).join(' · ') || `Variant ${idx + 1}`
                 return (
-                  <tr key={v.sku || idx} className={idx % 2 ? 'bg-gray-50' : 'bg-white'}>
+                  <tr key={v.sku || idx} className={idx % 2 ? 'bg-ivory' : 'bg-white'}>
                     <td className="py-2.5 pr-3 align-top">
-                      <p className="font-mono text-xs text-gray-800">{label}</p>
-                      <p className="text-[11px] text-gray-400">{[v.plating_name, (v.crystal_colors || []).join('/')].filter(Boolean).join(' · ')}</p>
+                      <p className="font-mono text-xs text-ink">{label}</p>
+                      <p className="text-[11px] text-ink-60">{[v.plating_name, (v.crystal_colors || []).join('/')].filter(Boolean).join(' · ')}</p>
                     </td>
                     {qtyCols.map(q => {
                       const costUSD = variantAllInCostHKD(draft, lib, rates, v, q, crystalItems) / (rates.USD || 7.78)
                       const sellUSD = variantSellHKD(draft, lib, rates, v, q, markup, crystalItems) / (rates.USD || 7.78)
                       return (
-                        <td key={q} className="py-2.5 px-3 text-right border-l border-gray-100 whitespace-nowrap">
-                          <span className="text-gray-500">{costUSD.toFixed(2)}</span>
-                          <span className="text-gray-300"> → </span>
-                          <span className="font-semibold text-gray-900">{sellUSD.toFixed(2)}</span>
+                        <td key={q} className="py-2.5 px-3 text-right border-l border-warm-grey whitespace-nowrap">
+                          <span className="text-ink-60">{costUSD.toFixed(2)}</span>
+                          <span className="text-platinum"> → </span>
+                          <span className="font-semibold text-ink">{sellUSD.toFixed(2)}</span>
                         </td>
                       )
                     })}
@@ -606,7 +606,7 @@ export default function RangeCosting() {
             </tbody>
           </table>
         </div>
-        <p className="mt-3 text-xs text-gray-400">
+        <p className="mt-3 text-xs text-ink-60">
           Rates used: {Object.entries(rates).filter(([k, v]) => k !== 'HKD' && typeof v === 'number').map(([k, v]) => `1 ${k} = ${v} HKD`).join(' · ')}
           {' · '}<Link to="/settings" className="text-brand-500 hover:underline">Update rates</Link>
           {toolHKD > 0 && <> · Tooling USD {(toolHKD / (rates.USD || 7.78)).toFixed(2)} amortised over qty</>}
@@ -615,7 +615,7 @@ export default function RangeCosting() {
 
       {/* Actions */}
       <div className="card p-5 mb-6 flex items-center justify-between gap-3 flex-wrap">
-        <div className="text-xs text-gray-400">
+        <div className="text-xs text-ink-60">
           {product.costing?.published_at
             ? <span className="inline-flex items-center gap-1 text-green-600"><BadgeCheck size={14} /> Published {product.costing.published_at?.toDate?.().toLocaleString?.() || ''}</span>
             : 'Not published yet.'}

@@ -187,7 +187,7 @@ export default function ProductDetail() {
   }
 
   if (loading) return <LoadingBar />
-  if (!product) return <div className="p-6 text-gray-500">Product not found.</div>
+  if (!product) return <div className="p-6 text-ink-60">Product not found.</div>
 
   return (
     <div className="p-4 md:p-6 max-w-4xl">
@@ -196,21 +196,21 @@ export default function ProductDetail() {
         <Link to="/products" className="text-sm text-brand-600 hover:underline">← Products</Link>
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mt-1 gap-2">
           <div>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900">{product.name}</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-ink">{product.name}</h1>
             <div className="flex items-center gap-2 mt-1">
               <span className={`badge-${productStatusOf(product.status).value}`}>{productStatusOf(product.status).label}</span>
-              <span className="text-sm text-gray-500">{product.category}</span>
+              <span className="text-sm text-ink-60">{product.category}</span>
             </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <input type="checkbox" className="w-4 h-4 accent-emerald-600" checked={!!product.is_new}
                        onChange={e => toggleField('is_new', e.target.checked)} />
-                <span className="text-xs text-gray-600">New arrival</span>
+                <span className="text-xs text-ink-70">New arrival</span>
               </label>
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <input type="checkbox" className="w-4 h-4 accent-emerald-600" checked={product.active !== false}
                        onChange={e => toggleField('active', e.target.checked)} />
-                <span className="text-xs text-gray-600">Visible in catalogue</span>
+                <span className="text-xs text-ink-70">Visible in catalogue</span>
               </label>
             </div>
           </div>
@@ -233,15 +233,15 @@ export default function ProductDetail() {
         <div className="lg:col-span-2 space-y-4">
           {product.description && (
             <div className="card p-4">
-              <h2 className="text-sm font-semibold text-gray-700 mb-1">Description</h2>
-              <p className="text-sm text-gray-600">{product.description}</p>
+              <h2 className="text-sm font-semibold text-ink-80 mb-1">Description</h2>
+              <p className="text-sm text-ink-70">{product.description}</p>
             </div>
           )}
 
           {product.assembly_notes && (
             <div className="card p-4">
-              <h2 className="text-sm font-semibold text-gray-700 mb-1">Assembly Notes</h2>
-              <p className="text-sm text-gray-600">{product.assembly_notes}</p>
+              <h2 className="text-sm font-semibold text-ink-80 mb-1">Assembly Notes</h2>
+              <p className="text-sm text-ink-70">{product.assembly_notes}</p>
             </div>
           )}
 
@@ -251,14 +251,14 @@ export default function ProductDetail() {
           {isSupplySide && (
           <div className="card p-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-gray-700">Bill of Materials</h2>
+              <h2 className="text-sm font-semibold text-ink-80">Bill of Materials</h2>
               <div className="flex gap-2">
                 <button onClick={openPicker} className="btn-secondary text-xs py-1 px-3">+ Copy Existing</button>
                 <Link to={`/products/${id}/components/new`} onClick={remember} className="btn-primary text-xs py-1 px-3">+ New</Link>
               </div>
             </div>
             {components.length === 0 ? (
-              <p className="text-sm text-gray-400 py-4 text-center">No components yet — add the parts that make up this product.</p>
+              <p className="text-sm text-ink-60 py-4 text-center">No components yet — add the parts that make up this product.</p>
             ) : (
               <div className="space-y-2">
                 {components.map(c => (
@@ -266,18 +266,18 @@ export default function ProductDetail() {
                     key={c.id}
                     to={`/products/${id}/components/${c.id}`}
                     onClick={remember}
-                    className="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-brand-200 hover:bg-brand-50 transition-colors"
+                    className="flex items-center justify-between p-3 rounded-lg border border-warm-grey hover:border-brand-200 hover:bg-brand-50 transition-colors"
                   >
                     <div>
                       <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-gray-800">{c.name}</p>
+                        <p className="text-sm font-medium text-ink">{c.name}</p>
                         {(Number(c.qty_per_product) || 1) > 1 && (
                           <span className="text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">×{c.qty_per_product}</span>
                         )}
                       </div>
-                      {c.spec && <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{c.spec}</p>}
+                      {c.spec && <p className="text-xs text-ink-60 mt-0.5 line-clamp-1">{c.spec}</p>}
                     </div>
-                    <span className="text-xs text-gray-400">→</span>
+                    <span className="text-xs text-ink-60">→</span>
                   </Link>
                 ))}
               </div>
@@ -290,10 +290,10 @@ export default function ProductDetail() {
           {canManagePricing && (
             <div className="card p-4">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-gray-700">Pricing Tiers</h2>
+                <h2 className="text-sm font-semibold text-ink-80">Pricing Tiers</h2>
                 <Link to={`/products/${id}/pricing`} onClick={remember} className="btn-secondary text-xs py-1 px-3">Manage Pricing</Link>
               </div>
-              <p className="text-sm text-gray-400 text-center py-2">Set up components and suppliers first, then add pricing tiers.</p>
+              <p className="text-sm text-ink-60 text-center py-2">Set up components and suppliers first, then add pricing tiers.</p>
             </div>
           )}
         </div>
@@ -301,13 +301,13 @@ export default function ProductDetail() {
         {/* Right: images */}
         <div className="space-y-4">
           <div className="card p-4">
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">
+            <h2 className="text-sm font-semibold text-ink-80 mb-3">
               Images
-              <span className="inline-flex items-center gap-1 text-xs text-gray-400 font-normal ml-2">hover image to set hero <Star size={12} /> or delete <X size={12} /> · add a caption below each</span>
+              <span className="inline-flex items-center gap-1 text-xs text-ink-60 font-normal ml-2">hover image to set hero <Star size={12} /> or delete <X size={12} /> · add a caption below each</span>
             </h2>
-            <p className="text-xs text-gray-500 mb-3 leading-relaxed">
-              <span className="font-medium text-gray-600">Visibility</span> controls where each image may appear:
-              <span className="inline-block mx-1 px-1.5 py-0.5 rounded bg-gray-200 text-gray-600 text-[10px] font-medium">Internal</span> admin only,
+            <p className="text-xs text-ink-60 mb-3 leading-relaxed">
+              <span className="font-medium text-ink-70">Visibility</span> controls where each image may appear:
+              <span className="inline-block mx-1 px-1.5 py-0.5 rounded bg-warm-grey text-ink-70 text-[10px] font-medium">Internal</span> admin only,
               <span className="inline-block mx-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-[10px] font-medium">Storefront</span> shown to logged-in customers,
               <span className="inline-block mx-1 px-1.5 py-0.5 rounded bg-green-100 text-green-700 text-[10px] font-medium">Public</span> also allowed in blog posts.
               New uploads start <span className="font-medium">Internal</span> — set client-logo images carefully before sharing.
@@ -381,12 +381,12 @@ function ComponentPicker({ allComponents, currentProductId, search, onSearchChan
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-800">Copy Existing Component</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
+          <h2 className="font-semibold text-ink">Copy Existing Component</h2>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>
         </div>
 
-        <div className="px-4 py-3 border-b border-gray-100">
+        <div className="px-4 py-3 border-b border-warm-grey">
           <input
             autoFocus
             type="text"
@@ -399,13 +399,13 @@ function ComponentPicker({ allComponents, currentProductId, search, onSearchChan
 
         <div className="overflow-y-auto flex-1">
           {allComponents.length === 0 ? (
-            <p className="text-center text-sm text-gray-400 py-10">Loading components…</p>
+            <p className="text-center text-sm text-ink-60 py-10">Loading components…</p>
           ) : grouped.length === 0 ? (
-            <p className="text-center text-sm text-gray-400 py-10">No matching components found.</p>
+            <p className="text-center text-sm text-ink-60 py-10">No matching components found.</p>
           ) : (
             grouped.map(([productName, comps]) => (
               <div key={productName}>
-                <p className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50 sticky top-0">
+                <p className="px-4 py-2 text-xs font-semibold text-ink-60 uppercase tracking-wide bg-ivory sticky top-0">
                   {productName}
                 </p>
                 {comps.map(c => (
@@ -413,12 +413,12 @@ function ComponentPicker({ allComponents, currentProductId, search, onSearchChan
                     key={c.id}
                     disabled={copying}
                     onClick={() => onSelect(c)}
-                    className="w-full text-left px-4 py-3 hover:bg-brand-50 transition-colors border-b border-gray-50 last:border-0"
+                    className="w-full text-left px-4 py-3 hover:bg-brand-50 transition-colors border-b border-warm-grey last:border-0"
                   >
-                    <p className="text-sm font-medium text-gray-800">{c.name}</p>
-                    {c.spec && <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{c.spec}</p>}
+                    <p className="text-sm font-medium text-ink">{c.name}</p>
+                    {c.spec && <p className="text-xs text-ink-60 mt-0.5 line-clamp-1">{c.spec}</p>}
                     {(c.unit || c.qty_per_product) && (
-                      <span className="text-xs text-gray-400">
+                      <span className="text-xs text-ink-60">
                         {c.qty_per_product ? `${c.qty_per_product} ${c.unit || 'pcs'}` : `Unit: ${c.unit}`}
                       </span>
                     )}
@@ -429,7 +429,7 @@ function ComponentPicker({ allComponents, currentProductId, search, onSearchChan
           )}
         </div>
 
-        <div className="px-5 py-3 border-t border-gray-100 text-xs text-gray-400">
+        <div className="px-5 py-3 border-t border-warm-grey text-xs text-ink-60">
           Click a component to copy it into this product. You can edit it after copying.
         </div>
       </div>

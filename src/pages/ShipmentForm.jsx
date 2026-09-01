@@ -853,14 +853,14 @@ export default function ShipmentForm() {
     }
   }
 
-  if (fetching) return <div className="p-6 text-gray-400">Loading…</div>
+  if (fetching) return <div className="p-6 text-ink-60">Loading…</div>
 
   return (
     <div className="p-4 md:p-6 max-w-4xl">
       <div className="mb-4">
         <Link to="/shipments" className="text-sm text-brand-600 hover:underline">← Order Listing</Link>
         <div className="flex items-start justify-between gap-3 mt-1">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-ink">
             {isEdit
               ? (header.erp_si_no || header.uc_no || 'Order Detail')
               : (isDirect ? 'Direct Invoice' : 'New Order')}
@@ -895,7 +895,7 @@ export default function ShipmentForm() {
           )}
         </div>
         {!isEdit && (
-          <p className="text-sm text-gray-500 mt-1">
+          <p className="text-sm text-ink-60 mt-1">
             {isDirect
               ? 'A retail sale invoiced directly — no sales order needed. Add the lines, then allocate an invoice number.'
               : 'Enter the order directly, or drop a PI below to have AI read the header and line items.'}
@@ -905,7 +905,7 @@ export default function ShipmentForm() {
 
       {/* Tabs — only shown on edit (saved order) */}
       {isEdit && (
-        <div className="flex gap-0 border-b border-gray-200 mb-5">
+        <div className="flex gap-0 border-b border-warm-grey mb-5">
           {[
             { v: 'order',   label: 'Order & Lines' },
             { v: 'packing', label: 'Packing List' },
@@ -918,7 +918,7 @@ export default function ShipmentForm() {
               className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
                 tab === t.v
                   ? 'border-brand-600 text-brand-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  : 'border-transparent text-ink-60 hover:text-ink-80'
               }`}
             >
               {t.label}
@@ -956,17 +956,17 @@ export default function ShipmentForm() {
           <div className="card p-4">
             <label
               className={`flex flex-col items-center justify-center border-2 border-dashed rounded-lg p-6 cursor-pointer transition-colors
-                ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-gray-300 hover:border-brand-400 hover:bg-brand-50'}`}
+                ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-warm-grey hover:border-brand-400 hover:bg-brand-50'}`}
               onDragOver={e => { e.preventDefault(); setDragOver(true) }}
               onDragLeave={() => setDragOver(false)} onDrop={handleDrop}>
-              <span className="text-gray-500 mb-1">{dragOver ? <FolderOpen size={22} /> : <FileInput size={22} />}</span>
-              <span className="text-sm text-gray-600">{dragOver ? 'Drop to import' : 'Click to upload or drag & drop a PI (PDF or image)'}</span>
-              <span className="text-xs text-gray-400 mt-0.5">PDF, JPG, PNG</span>
+              <span className="text-ink-60 mb-1">{dragOver ? <FolderOpen size={22} /> : <FileInput size={22} />}</span>
+              <span className="text-sm text-ink-70">{dragOver ? 'Drop to import' : 'Click to upload or drag & drop a PI (PDF or image)'}</span>
+              <span className="text-xs text-ink-60 mt-0.5">PDF, JPG, PNG</span>
               <input type="file" accept="image/*,.pdf" className="hidden"
                      onChange={e => { if (e.target.files[0]) importFile(e.target.files[0]); e.target.value = '' }} />
             </label>
             {pendingFile && (
-              <div className="flex items-center gap-2 mt-3 text-xs text-gray-600">
+              <div className="flex items-center gap-2 mt-3 text-xs text-ink-70">
                 <FileText size={14} className="text-red-400" /> {pendingFile.name}
               </div>
             )}
@@ -984,7 +984,7 @@ export default function ShipmentForm() {
             3-column grid, which was truncating the Revision placeholder and
             wrapping "+ New Rev" onto two lines. */}
         <div className="card p-4 md:p-6 space-y-3">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Customer</h2>
+          <h2 className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Customer</h2>
           <div>
             <label className="label">Customer</label>
             <select className="input" value={customers.find(c => c.id === header.customer_id) ? header.customer_id : ''} onChange={onCustomer}>
@@ -1009,7 +1009,7 @@ export default function ShipmentForm() {
         </div>
 
         <div className="card p-4 md:p-6 space-y-3">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Document References</h2>
+          <h2 className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Document References</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div>
               <label className="label flex items-center justify-between gap-2">
@@ -1081,7 +1081,7 @@ export default function ShipmentForm() {
         </div>
 
         <div className="card p-4 md:p-6 space-y-3">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Schedule &amp; Terms</h2>
+          <h2 className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Schedule &amp; Terms</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
               <label className="label">Order Date</label>
@@ -1132,7 +1132,7 @@ export default function ShipmentForm() {
         </div>
 
         <div className="card p-4 md:p-6 space-y-3">
-          <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Destination</h2>
+          <h2 className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Destination</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
             <div><label className="label">Dest. Country</label><input className="input" value={header.destination.country} onChange={setDest('country')} placeholder="Germany" /></div>
             <div><label className="label">Dest. City</label><input className="input" value={header.destination.city} onChange={setDest('city')} placeholder="Hamburg" /></div>
@@ -1148,7 +1148,7 @@ export default function ShipmentForm() {
         {(
           <div className="card p-4 md:p-6">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-gray-700">Line items &amp; reconciliation</h2>
+              <h2 className="text-sm font-semibold text-ink-80">Line items &amp; reconciliation</h2>
               <div className="flex items-center gap-3">
                 <button type="button" onClick={() => setLines(ls => rematchLines(ls, rangeProducts))}
                   className="text-xs text-brand-600 hover:text-brand-800 inline-flex items-center gap-1"
@@ -1177,9 +1177,9 @@ export default function ShipmentForm() {
               {lines.map((l, i) => {
                 const t = l.line_type ? lineTypeOf(l.line_type) : null
                 return (
-                  <div key={i} className={`rounded-lg border p-3 ${l.line_type ? 'border-gray-200' : 'border-amber-200 bg-amber-50/40'}`}>
+                  <div key={i} className={`rounded-lg border p-3 ${l.line_type ? 'border-warm-grey' : 'border-amber-200 bg-amber-50/40'}`}>
                     <div className="grid grid-cols-[auto_auto_1fr_auto] gap-3 items-start">
-                      <div className="text-xs text-gray-400 pt-2 w-6">{l.line_no ?? i + 1}</div>
+                      <div className="text-xs text-ink-60 pt-2 w-6">{l.line_no ?? i + 1}</div>
                       {/* Line image — Corp Gift, Ad-hoc, and Figurine (range).
                           Figurine lines were excluded outright until V8.8
                           Phase 2 (owner, 2026-08-01): a range product's
@@ -1194,12 +1194,12 @@ export default function ShipmentForm() {
                       {(l.line_type === 'corp_gift' || l.line_type === 'ad_hoc' || l.line_type === 'range') ? (
                         <button type="button" onClick={() => setImgPickerLine(i)}
                           title={l.line_image ? 'Change this line’s invoice image' : 'Add an image for the Proforma / Invoice'}
-                          className="group relative w-14 h-14 rounded-lg bg-gray-100 border border-gray-200 overflow-hidden flex items-center justify-center shrink-0">
+                          className="group relative w-14 h-14 rounded-lg bg-ivory-dark border border-warm-grey overflow-hidden flex items-center justify-center shrink-0">
                           {l.line_image
                             ? <img src={l.line_image} alt="" className="w-full h-full object-cover" />
-                            : <ImageIcon size={16} strokeWidth={1.5} className="text-gray-300" />}
+                            : <ImageIcon size={16} strokeWidth={1.5} className="text-platinum" />}
                           <span className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                            <span className="bg-white/90 text-[9px] px-1 py-0.5 rounded text-gray-700">
+                            <span className="bg-white/90 text-[9px] px-1 py-0.5 rounded text-ink-80">
                               {l.line_image ? 'change' : 'add'}
                             </span>
                           </span>
@@ -1232,15 +1232,15 @@ export default function ShipmentForm() {
                           {LINE_TYPES.map(lt => (
                             <button key={lt.value} type="button" onClick={() => classify(i, lt.value)}
                               className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
-                                l.line_type === lt.value ? lt.style + ' border-current' : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
+                                l.line_type === lt.value ? lt.style + ' border-current' : 'bg-white text-ink-60 border-warm-grey hover:border-ink-60'
                               }`}>
                               {lt.label}
                             </button>
                           ))}
-                          {t && !t.packable && <span className="text-[11px] text-gray-400 self-center ml-1">excluded from packing</span>}
+                          {t && !t.packable && <span className="text-[11px] text-ink-60 self-center ml-1">excluded from packing</span>}
                         </div>
                       </div>
-                      <button type="button" onClick={() => removeLine(i)} className="text-gray-300 hover:text-red-500 pt-2"><Trash2 size={15} /></button>
+                      <button type="button" onClick={() => removeLine(i)} className="text-platinum hover:text-red-500 pt-2"><Trash2 size={15} /></button>
                     </div>
                   </div>
                 )
@@ -1270,22 +1270,22 @@ export default function ShipmentForm() {
           const fmt = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
           return (
             <div className="card p-4">
-              <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Order Totals</h2>
+              <h2 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-3">Order Totals</h2>
               <div className="space-y-1.5 text-sm">
                 {/* Computed subtotal vs PI stated */}
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500">Computed subtotal</span>
-                  <span className="font-mono font-medium text-gray-800">{header.currency} {fmt(computedSubtotal)}</span>
+                  <span className="text-ink-60">Computed subtotal</span>
+                  <span className="font-mono font-medium text-ink">{header.currency} {fmt(computedSubtotal)}</span>
                 </div>
                 {piSubtotal != null && (
                   <div className="flex justify-between items-center">
-                    <span className="flex items-center gap-1.5 text-gray-500">
+                    <span className="flex items-center gap-1.5 text-ink-60">
                       PI stated subtotal
                       {subtotalMatch
                         ? <span className="text-green-600 text-xs">✓ match</span>
                         : <span className="text-amber-600 text-xs">⚠ mismatch</span>}
                     </span>
-                    <span className={`font-mono text-sm ${subtotalMatch ? 'text-gray-500' : 'text-amber-600 font-medium'}`}>
+                    <span className={`font-mono text-sm ${subtotalMatch ? 'text-ink-60' : 'text-amber-600 font-medium'}`}>
                       {header.currency} {fmt(piSubtotal)}
                     </span>
                   </div>
@@ -1294,8 +1294,8 @@ export default function ShipmentForm() {
                 {/* Charges — flat-amount lines (freight, insurance, etc.) with no qty */}
                 {chargesTotal > 0 && (
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-500">Charges (freight, insurance, etc.)</span>
-                    <span className="font-mono text-gray-800">+ {header.currency} {fmt(chargesTotal)}</span>
+                    <span className="text-ink-60">Charges (freight, insurance, etc.)</span>
+                    <span className="font-mono text-ink">+ {header.currency} {fmt(chargesTotal)}</span>
                   </div>
                 )}
 
@@ -1307,9 +1307,9 @@ export default function ShipmentForm() {
                     discount_amount over discount_pct when both are present — this
                     just exposes the input that was missing, it doesn't add new
                     calculation logic. */}
-                <div className="flex items-center justify-between pt-1 border-t border-gray-100 mt-1">
+                <div className="flex items-center justify-between pt-1 border-t border-warm-grey mt-1">
                   <div className="flex items-center gap-2">
-                    <span className="text-gray-500">Discount</span>
+                    <span className="text-ink-60">Discount</span>
                     <div className="flex items-center gap-1">
                       <input
                         type="number" step="0.01" min="0" max="100"
@@ -1322,11 +1322,11 @@ export default function ShipmentForm() {
                         }}
                         placeholder="0"
                       />
-                      <span className="text-xs text-gray-400">%</span>
+                      <span className="text-xs text-ink-60">%</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className="text-xs text-gray-400">−  {header.currency}</span>
+                    <span className="text-xs text-ink-60">−  {header.currency}</span>
                     <input
                       type="number" step="0.01" min="0"
                       className="input py-0.5 text-xs w-20 text-right font-mono text-red-600"
@@ -1343,10 +1343,10 @@ export default function ShipmentForm() {
                 </div>
 
                 {/* Total */}
-                <div className="flex justify-between items-center pt-1.5 border-t border-gray-200 mt-0.5">
-                  <span className="font-semibold text-gray-800">Total Amount</span>
+                <div className="flex justify-between items-center pt-1.5 border-t border-warm-grey mt-0.5">
+                  <span className="font-semibold text-ink">Total Amount</span>
                   <div className="text-right">
-                    <span className="font-mono font-bold text-gray-900 text-base">{header.currency} {fmt(computedTotal)}</span>
+                    <span className="font-mono font-bold text-ink text-base">{header.currency} {fmt(computedTotal)}</span>
                     {piTotal != null && Math.abs(computedTotal - piTotal) >= 0.02 && (
                       <div className="text-xs text-amber-600">PI states {header.currency} {fmt(piTotal)}</div>
                     )}
@@ -1362,11 +1362,11 @@ export default function ShipmentForm() {
                   const accTotal = header.accounting_total !== '' ? parseFloat(header.accounting_total) : computedTotal
                   const adj = Math.round((accTotal - computedTotal) * 100) / 100
                   return (
-                    <div className="pt-2 mt-1 border-t border-gray-100 space-y-1.5">
+                    <div className="pt-2 mt-1 border-t border-warm-grey space-y-1.5">
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-500" title="What finance records for this invoice. Blank uses the Total Amount above.">Accounting Total</span>
+                        <span className="text-ink-60" title="What finance records for this invoice. Blank uses the Total Amount above.">Accounting Total</span>
                         <div className="flex items-center gap-1">
-                          <span className="text-xs text-gray-400">{header.currency}</span>
+                          <span className="text-xs text-ink-60">{header.currency}</span>
                           <input type="number" step="0.01" className="input py-0.5 text-xs w-24 text-right font-mono"
                                  value={header.accounting_total} onChange={setH('accounting_total')}
                                  placeholder={fmt(computedTotal)} />
@@ -1401,7 +1401,7 @@ export default function ShipmentForm() {
           <label className="label">Remarks</label>
           <textarea className="input" rows={2} value={header.notes} onChange={setH('notes')}
                      placeholder="Prints on the Proforma and Sales Invoice — accounting context, exceptions, etc." />
-          <label className="flex items-center gap-2 mt-3 text-sm text-gray-600">
+          <label className="flex items-center gap-2 mt-3 text-sm text-ink-70">
             <input
               type="checkbox"
               checked={!!header.hide_total_qty}

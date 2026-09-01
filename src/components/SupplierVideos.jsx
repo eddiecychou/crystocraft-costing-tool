@@ -85,10 +85,10 @@ const SupplierVideos = forwardRef(function SupplierVideos({ supplierId }, ref) {
   }
 
   return (
-    <div className="mt-5 pt-4 border-t border-gray-100">
+    <div className="mt-5 pt-4 border-t border-warm-grey">
       <div className="flex items-center justify-between mb-2">
-        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-1.5">
-          <VideoIcon size={13} /> Videos {videos.length > 0 && <span className="text-gray-400 font-normal">{videos.length}</span>}
+        <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide flex items-center gap-1.5">
+          <VideoIcon size={13} /> Videos {videos.length > 0 && <span className="text-ink-60 font-normal">{videos.length}</span>}
         </p>
         {/* Photos AND videos share the one drop zone above (ImageGallery's,
             routed here via onExtraFiles) — this is just a manual fallback. */}
@@ -101,18 +101,18 @@ const SupplierVideos = forwardRef(function SupplierVideos({ supplierId }, ref) {
       {err && <p className="text-xs text-red-500 mb-2">{err}</p>}
 
       {uploads.map(u => (
-        <div key={u.uid} className="text-xs text-gray-500 mb-1">
+        <div key={u.uid} className="text-xs text-ink-60 mb-1">
           Uploading {u.name}… {u.progress}%
-          <div className="h-1 bg-gray-100 rounded mt-0.5"><div className="h-1 bg-brand-500 rounded" style={{ width: `${u.progress}%` }} /></div>
+          <div className="h-1 bg-ivory-dark rounded mt-0.5"><div className="h-1 bg-brand-500 rounded" style={{ width: `${u.progress}%` }} /></div>
         </div>
       ))}
 
       {videos.length === 0 && uploads.length === 0 ? (
-        <p className="text-xs text-gray-400">No videos yet — booth walk-throughs, product demos, etc. Up to {MAX_MB} MB each.</p>
+        <p className="text-xs text-ink-60">No videos yet — booth walk-throughs, product demos, etc. Up to {MAX_MB} MB each.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {videos.map(v => (
-            <div key={v.id} className="rounded-lg border border-gray-200 overflow-hidden">
+            <div key={v.id} className="rounded-lg border border-warm-grey overflow-hidden">
               <div className="relative bg-black">
                 <video src={v.file_url} controls preload="metadata" className="w-full max-h-64 bg-black" />
                 <button type="button" onClick={() => setConfirmDelete(v)}
@@ -122,7 +122,7 @@ const SupplierVideos = forwardRef(function SupplierVideos({ supplierId }, ref) {
                 </button>
               </div>
               <input
-                className="w-full text-xs px-2 py-1.5 border-t border-gray-100 focus:outline-none"
+                className="w-full text-xs px-2 py-1.5 border-t border-warm-grey focus:outline-none"
                 defaultValue={v.caption || ''}
                 placeholder="Caption — e.g. Canton Fair 2026 booth walk-through"
                 onBlur={e => saveCaption(v, e.target.value.trim())}

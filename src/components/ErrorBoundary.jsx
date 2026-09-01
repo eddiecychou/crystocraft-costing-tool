@@ -30,11 +30,11 @@ class Boundary extends Component {
     return (
       <div className="p-6 max-w-lg mx-auto">
         <div className="card p-5">
-          <h1 className="text-lg font-semibold text-gray-900 mb-1">Something went wrong on this page</h1>
+          <h1 className="text-lg font-semibold text-ink mb-1">Something went wrong on this page</h1>
           <p className="text-sm text-ink-60 mb-3">
             The page hit an error and couldn’t render. This is a bug — the rest of the app still works.
           </p>
-          <pre className="text-xs bg-gray-50 border border-gray-200 rounded p-2 overflow-auto text-red-600 mb-4">
+          <pre className="text-xs bg-ivory border border-warm-grey rounded p-2 overflow-auto text-red-600 mb-4">
             {this.state.error.message || String(this.state.error)}
           </pre>
           <div className="flex gap-2">

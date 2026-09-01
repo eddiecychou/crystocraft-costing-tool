@@ -102,7 +102,7 @@ export default function CorporateDetail({ profile }) {
           {displayHero ? (
             <img src={displayHero} alt={p.name} className="w-full h-full object-cover cursor-zoom-in group-hover:scale-[1.02] transition-transform duration-300"
                  onClick={() => setLightboxIndex(0)} />
-          ) : <Package size={56} className="text-gray-300" />}
+          ) : <Package size={56} className="text-platinum" />}
           <FavHeart item={{ type: 'corporate', id: p.id, name: p.name, code: '', image: displayHero || '' }} className="absolute top-3 right-3" />
         </div>
         {/* One vertical rhythm down the right column (UI-POLISH §4.1) — the

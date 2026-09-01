@@ -187,20 +187,20 @@ export default function PricingTiers() {
   return (
     <div className="p-4 md:p-6 max-w-3xl">
       <Link to={`/products/${id}`} className="text-sm text-brand-600 hover:underline">← {product?.name}</Link>
-      <h1 className="text-2xl font-bold text-gray-900 mt-1 mb-6">Pricing</h1>
+      <h1 className="text-2xl font-bold text-ink mt-1 mb-6">Pricing</h1>
 
       {/* Cost Summary */}
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-gray-700">Cost Breakdown (from preferred suppliers)</h2>
+          <h2 className="text-sm font-semibold text-ink-80">Cost Breakdown (from preferred suppliers)</h2>
           {hasVolumeTiers && <span className="text-xs bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full font-medium">Volume pricing active</span>}
         </div>
 
         {components.length === 0 ? (
-          <p className="text-sm text-gray-400">No components yet — <Link to={`/products/${id}`} className="text-brand-600 hover:underline">add components</Link> first.</p>
+          <p className="text-sm text-ink-60">No components yet — <Link to={`/products/${id}`} className="text-brand-600 hover:underline">add components</Link> first.</p>
         ) : (
           <>
-            <div className="divide-y divide-gray-100 mb-4">
+            <div className="divide-y divide-warm-grey mb-4">
               {components.map(c => {
                 const q = c.preferred_quote
                 const qty = Number(c.qty_per_product) || 1
@@ -208,12 +208,12 @@ export default function PricingTiers() {
                 return (
                   <div key={c.id} className="py-2.5 flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                      <p className="text-sm text-gray-800">
+                      <p className="text-sm text-ink">
                         {c.name}
                         {qty > 1 && <span className="ml-1.5 text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">×{c.qty_per_product}</span>}
                       </p>
                       {q ? (
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-ink-60">
                           {q.supplier_name} · {q.unit_cost} {q.unit_cost_currency}{qty > 1 ? ` × ${c.qty_per_product}` : ''}
                           {q.volume_tiers?.length > 0 && <span className="ml-1.5 text-brand-500">· {q.volume_tiers.length} volume tier{q.volume_tiers.length > 1 ? 's' : ''}</span>}
                         </p>
@@ -227,27 +227,27 @@ export default function PricingTiers() {
                         </Link>
                       )}
                     </div>
-                    <p className="text-sm font-medium text-gray-900 shrink-0">{costHKD != null ? `HKD ${costHKD.toFixed(2)}` : '—'}</p>
+                    <p className="text-sm font-medium text-ink shrink-0">{costHKD != null ? `HKD ${costHKD.toFixed(2)}` : '—'}</p>
                   </div>
                 )
               })}
             </div>
 
             {toolingHKD > 0 && (
-              <div className="flex items-center justify-between py-2.5 border-t border-gray-100">
+              <div className="flex items-center justify-between py-2.5 border-t border-warm-grey">
                 <div>
-                  <p className="text-sm text-gray-800">Tooling / Sample Cost</p>
-                  <p className="text-xs text-gray-400">One-time — amortised per tier quantity</p>
+                  <p className="text-sm text-ink">Tooling / Sample Cost</p>
+                  <p className="text-xs text-ink-60">One-time — amortised per tier quantity</p>
                 </div>
-                <p className="text-sm font-medium text-gray-900">HKD {toolingHKD.toFixed(2)}</p>
+                <p className="text-sm font-medium text-ink">HKD {toolingHKD.toFixed(2)}</p>
               </div>
             )}
-            <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-              <p className="text-sm font-semibold text-gray-700">Recurring Unit Cost</p>
-              <p className="text-lg font-bold text-gray-900">HKD {unitCostHKD.toFixed(2)}</p>
+            <div className="flex items-center justify-between pt-3 border-t border-warm-grey">
+              <p className="text-sm font-semibold text-ink-80">Recurring Unit Cost</p>
+              <p className="text-lg font-bold text-ink">HKD {unitCostHKD.toFixed(2)}</p>
             </div>
 
-            <div className="mt-3 text-xs text-gray-400">
+            <div className="mt-3 text-xs text-ink-60">
               Rates used: {Object.entries(rates).filter(([k, v]) => k !== 'HKD' && typeof v === 'number').map(([k, v]) => `${k}→HKD ${v}`).join(' · ')}
               {' · '}<Link to="/settings" className="text-brand-500 hover:underline">Update in Settings</Link>
             </div>
@@ -263,46 +263,46 @@ export default function PricingTiers() {
 
       {/* Quantity Tiers — qty + lead time only; price is derived from cost × markup */}
       <div className="card p-5 mb-6">
-        <h2 className="text-sm font-semibold text-gray-700 mb-1">Quantity Tiers</h2>
-        <p className="text-xs text-gray-400 mb-4">Set the order-quantity breakpoints. Customer prices are computed from the all-in cost at each quantity multiplied by the customer's pricing-group markup.</p>
+        <h2 className="text-sm font-semibold text-ink-80 mb-1">Quantity Tiers</h2>
+        <p className="text-xs text-ink-60 mb-4">Set the order-quantity breakpoints. Customer prices are computed from the all-in cost at each quantity multiplied by the customer's pricing-group markup.</p>
 
         {tiers.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-4">No tiers yet — add your first quantity breakpoint below.</p>
+          <p className="text-sm text-ink-60 text-center py-4">No tiers yet — add your first quantity breakpoint below.</p>
         ) : (
           <div className="overflow-x-auto -mx-5 px-5">
             <table className="text-sm border-separate border-spacing-0 w-full" style={{ minWidth: '520px' }}>
               <thead>
-                <tr className="text-xs text-gray-400 uppercase tracking-wide">
-                  <th className="text-left pb-3 pr-4 font-semibold text-gray-600 whitespace-nowrap">Qty</th>
-                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Unit Cost<br/><span className="text-gray-300 font-normal normal-case tracking-normal">{hasVolumeTiers ? 'at qty' : '(HKD)'}</span></th>
-                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Tooling<br/><span className="text-gray-300 font-normal normal-case tracking-normal">/unit</span></th>
-                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">All-in Cost<br/><span className="text-gray-300 font-normal normal-case tracking-normal">(HKD)</span></th>
-                  <th className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">Lead Time<br/><span className="text-gray-300 font-normal normal-case tracking-normal">(days)</span></th>
-                  <th className="pb-3 pl-3 border-l border-gray-100"></th>
+                <tr className="text-xs text-ink-60 uppercase tracking-wide">
+                  <th className="text-left pb-3 pr-4 font-semibold text-ink-70 whitespace-nowrap">Qty</th>
+                  <th className="text-right pb-3 px-4 font-semibold border-l border-warm-grey whitespace-nowrap">Unit Cost<br/><span className="text-platinum font-normal normal-case tracking-normal">{hasVolumeTiers ? 'at qty' : '(HKD)'}</span></th>
+                  <th className="text-right pb-3 px-4 font-semibold border-l border-warm-grey whitespace-nowrap">Tooling<br/><span className="text-platinum font-normal normal-case tracking-normal">/unit</span></th>
+                  <th className="text-right pb-3 px-4 font-semibold border-l border-warm-grey whitespace-nowrap">All-in Cost<br/><span className="text-platinum font-normal normal-case tracking-normal">(HKD)</span></th>
+                  <th className="text-right pb-3 px-4 font-semibold border-l border-warm-grey whitespace-nowrap">Lead Time<br/><span className="text-platinum font-normal normal-case tracking-normal">(days)</span></th>
+                  <th className="pb-3 pl-3 border-l border-warm-grey"></th>
                 </tr>
-                <tr><td colSpan={6} className="pb-1"><div className="border-b border-gray-200" /></td></tr>
+                <tr><td colSpan={6} className="pb-1"><div className="border-b border-warm-grey" /></td></tr>
               </thead>
               <tbody>
                 {tiers.map((tier, idx) => {
                   const toolingPerUnit = toolingHKD / tier.quantity
                   const allInCost = totalUnitCostAtQty(components, rates, tier.quantity)
-                  const rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  const rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-ivory'
                   return (
                     <tr key={tier.id} className={rowBg}>
-                      <td className="py-3 pr-4 font-bold text-gray-900 whitespace-nowrap">{tier.quantity.toLocaleString()}</td>
-                      <td className="py-3 px-4 text-right text-gray-600 border-l border-gray-100 whitespace-nowrap">
+                      <td className="py-3 pr-4 font-bold text-ink whitespace-nowrap">{tier.quantity.toLocaleString()}</td>
+                      <td className="py-3 px-4 text-right text-ink-70 border-l border-warm-grey whitespace-nowrap">
                         {unitCostHKDAtQty(components, rates, tier.quantity).toFixed(2)}
                         {hasVolumeTiers && unitCostHKDAtQty(components, rates, tier.quantity) !== unitCostHKD && (
                           <span className="block text-xs text-brand-500">vol. price</span>
                         )}
                       </td>
-                      <td className="py-3 px-4 text-right text-gray-400 text-xs border-l border-gray-100 whitespace-nowrap">{toolingHKD > 0 ? `+${toolingPerUnit.toFixed(2)}` : '—'}</td>
-                      <td className="py-3 px-4 text-right font-semibold text-gray-800 border-l border-gray-100 whitespace-nowrap">{allInCost.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-right border-l border-gray-100">
+                      <td className="py-3 px-4 text-right text-ink-60 text-xs border-l border-warm-grey whitespace-nowrap">{toolingHKD > 0 ? `+${toolingPerUnit.toFixed(2)}` : '—'}</td>
+                      <td className="py-3 px-4 text-right font-semibold text-ink border-l border-warm-grey whitespace-nowrap">{allInCost.toFixed(2)}</td>
+                      <td className="py-3 px-4 text-right border-l border-warm-grey">
                         <input type="number" className="input text-right w-20 py-1 text-sm" defaultValue={tier.production_lead_time_days ?? ''} placeholder="—"
                           onBlur={e => handleLeadTimeChange(tier.id, e.target.value)} />
                       </td>
-                      <td className="py-3 pl-3 text-right border-l border-gray-100">
+                      <td className="py-3 pl-3 text-right border-l border-warm-grey">
                         <button type="button" onClick={() => setConfirmDelete(tier)} className="text-red-300 hover:text-red-500 transition-colors"><X size={14} /></button>
                       </td>
                     </tr>
@@ -313,13 +313,13 @@ export default function PricingTiers() {
           </div>
         )}
 
-        <form onSubmit={handleAddTier} className="flex gap-2 mt-4 pt-4 border-t border-gray-100 flex-wrap">
+        <form onSubmit={handleAddTier} className="flex gap-2 mt-4 pt-4 border-t border-warm-grey flex-wrap">
           <div>
-            <p className="text-xs text-gray-500 mb-1">Quantity *</p>
+            <p className="text-xs text-ink-60 mb-1">Quantity *</p>
             <input type="number" min="1" placeholder="e.g. 200" className="input w-28 py-1.5 text-sm" value={newQty} onChange={e => setNewQty(e.target.value)} required />
           </div>
           <div>
-            <p className="text-xs text-gray-500 mb-1">Lead Time (days)</p>
+            <p className="text-xs text-ink-60 mb-1">Lead Time (days)</p>
             <input type="number" min="0" placeholder="e.g. 30" className="input w-28 py-1.5 text-sm" value={newLeadTime} onChange={e => setNewLeadTime(e.target.value)} />
           </div>
           <div className="flex items-end">
@@ -331,32 +331,32 @@ export default function PricingTiers() {
       {/* Customer price preview by pricing group */}
       {tiers.length > 0 && (
         <div className="card p-5 mb-6">
-          <h2 className="text-sm font-semibold text-gray-700 mb-1">Customer Price Preview (HKD)</h2>
-          <p className="text-xs text-gray-400 mb-4">
+          <h2 className="text-sm font-semibold text-ink-80 mb-1">Customer Price Preview (HKD)</h2>
+          <p className="text-xs text-ink-60 mb-4">
             All-in cost × each group's markup, rounded up. Customers with a per-customer override are priced at their own markup on publish.
           </p>
           <div className="overflow-x-auto -mx-5 px-5">
             <table className="text-sm border-separate border-spacing-0" style={{ minWidth: '420px' }}>
               <thead>
-                <tr className="text-xs text-gray-400 uppercase tracking-wide">
-                  <th className="text-left pb-3 pr-4 font-semibold text-gray-600 whitespace-nowrap">Qty</th>
+                <tr className="text-xs text-ink-60 uppercase tracking-wide">
+                  <th className="text-left pb-3 pr-4 font-semibold text-ink-70 whitespace-nowrap">Qty</th>
                   {previewGroups.map(g => (
-                    <th key={g.id} className="text-right pb-3 px-4 font-semibold border-l border-gray-100 whitespace-nowrap">
-                      {g.name}<br/><span className="text-gray-300 font-normal normal-case tracking-normal">{g.markup.toFixed(2)}×</span>
+                    <th key={g.id} className="text-right pb-3 px-4 font-semibold border-l border-warm-grey whitespace-nowrap">
+                      {g.name}<br/><span className="text-platinum font-normal normal-case tracking-normal">{g.markup.toFixed(2)}×</span>
                     </th>
                   ))}
                 </tr>
-                <tr><td colSpan={previewGroups.length + 1} className="pb-1"><div className="border-b border-gray-200" /></td></tr>
+                <tr><td colSpan={previewGroups.length + 1} className="pb-1"><div className="border-b border-warm-grey" /></td></tr>
               </thead>
               <tbody>
                 {tiers.map((tier, idx) => {
                   const allIn = totalUnitCostAtQty(components, rates, tier.quantity)
-                  const rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                  const rowBg = idx % 2 === 0 ? 'bg-white' : 'bg-ivory'
                   return (
                     <tr key={tier.id} className={rowBg}>
-                      <td className="py-3 pr-4 font-bold text-gray-900 whitespace-nowrap">{tier.quantity.toLocaleString()}</td>
+                      <td className="py-3 pr-4 font-bold text-ink whitespace-nowrap">{tier.quantity.toLocaleString()}</td>
                       {previewGroups.map(g => (
-                        <td key={g.id} className="py-3 px-4 text-right text-gray-800 border-l border-gray-100 whitespace-nowrap">{Math.ceil(allIn * g.markup).toLocaleString()}</td>
+                        <td key={g.id} className="py-3 px-4 text-right text-ink border-l border-warm-grey whitespace-nowrap">{Math.ceil(allIn * g.markup).toLocaleString()}</td>
                       ))}
                     </tr>
                   )
@@ -371,8 +371,8 @@ export default function PricingTiers() {
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <h2 className="text-sm font-semibold text-gray-700">Publish to customers</h2>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <h2 className="text-sm font-semibold text-ink-80">Publish to customers</h2>
+            <p className="text-xs text-ink-60 mt-0.5">
               {!published ? 'Not published yet — customers see no corporate price until you publish.'
                 : stale ? 'Costs, tiers or markups changed since the last publish.'
                 : `Up to date · last published ${product.prices_published_at?.toDate?.().toLocaleString?.() || ''}`}

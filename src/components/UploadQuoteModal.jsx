@@ -87,9 +87,9 @@ export default function UploadQuoteModal({ onClose, onCreated }) {
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} />
       <div className="relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
-          <h2 className="text-base font-semibold text-gray-900">Upload Quote</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey sticky top-0 bg-white z-10">
+          <h2 className="text-base font-semibold text-ink">Upload Quote</h2>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
@@ -128,7 +128,7 @@ export default function UploadQuoteModal({ onClose, onCreated }) {
           {/* Amount + Status */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="label">Amount <span className="text-gray-400 font-normal">(optional)</span></label>
+              <label className="label">Amount <span className="text-ink-60 font-normal">(optional)</span></label>
               <input className="input" type="number" min="0" step="0.01" value={form.amount} onChange={set('amount')} placeholder="e.g. 12000" />
             </div>
             <div>
@@ -144,17 +144,17 @@ export default function UploadQuoteModal({ onClose, onCreated }) {
 
           {/* Notes */}
           <div>
-            <label className="label">Notes <span className="text-gray-400 font-normal">(optional)</span></label>
+            <label className="label">Notes <span className="text-ink-60 font-normal">(optional)</span></label>
             <textarea className="input" rows={2} value={form.notes} onChange={set('notes')} placeholder="Brief description of what was quoted…" />
           </div>
 
           {/* File attachments */}
           <div>
-            <label className="label">Quote Files <span className="text-gray-400 font-normal">(PDF or images)</span></label>
+            <label className="label">Quote Files <span className="text-ink-60 font-normal">(PDF or images)</span></label>
             <div className="space-y-2">
               {pendingFiles.map((file, idx) => (
                 <div key={idx} className="flex items-center gap-3 p-2.5 rounded-lg border border-brand-200 bg-brand-50">
-                  <span className="text-gray-500 shrink-0">{file.type.startsWith('image/') ? <ImageIcon size={18} /> : <FileText size={18} />}</span>
+                  <span className="text-ink-60 shrink-0">{file.type.startsWith('image/') ? <ImageIcon size={18} /> : <FileText size={18} />}</span>
                   <span className="flex-1 text-sm text-brand-700 truncate min-w-0">{file.name}</span>
                   {uploadProgress[file.name] != null && (
                     <span className="text-xs text-brand-500 shrink-0">{uploadProgress[file.name]}%</span>
@@ -167,7 +167,7 @@ export default function UploadQuoteModal({ onClose, onCreated }) {
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="mt-2 w-full border-2 border-dashed border-gray-200 rounded-lg py-3 text-sm text-gray-400 hover:border-brand-300 hover:text-brand-500 transition-colors"
+              className="mt-2 w-full border-2 border-dashed border-warm-grey rounded-lg py-3 text-sm text-ink-60 hover:border-brand-300 hover:text-brand-500 transition-colors"
             >
               <span className="inline-flex items-center gap-1.5"><Paperclip size={15} />Add PDF or image</span>
             </button>

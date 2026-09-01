@@ -69,14 +69,14 @@ export function EmailThreads({ contactId, emailSummary, onSummaryUpdated }) {
   if (threads.length === 0) return null
 
   return (
-    <div className="block border-t border-gray-100 pt-3">
+    <div className="block border-t border-warm-grey pt-3">
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-xs text-gray-500 flex items-center gap-1.5">
-          <Mail size={13} className="text-gray-400" /> Email
-          <span className="text-gray-400 font-normal">({threads.length} thread{threads.length === 1 ? '' : 's'})</span>
+        <span className="text-xs text-ink-60 flex items-center gap-1.5">
+          <Mail size={13} className="text-ink-60" /> Email
+          <span className="text-ink-60 font-normal">({threads.length} thread{threads.length === 1 ? '' : 's'})</span>
         </span>
         <button type="button" onClick={handleRefreshSummary} disabled={summaryBusy}
-          className="text-xs text-gray-500 hover:text-brand-600 inline-flex items-center gap-1 disabled:opacity-50">
+          className="text-xs text-ink-60 hover:text-brand-600 inline-flex items-center gap-1 disabled:opacity-50">
           {summaryBusy ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
           {summary ? 'Refresh summary' : 'Generate summary'}
         </button>
@@ -88,35 +88,35 @@ export function EmailThreads({ contactId, emailSummary, onSummaryUpdated }) {
       )}
       {summary && (
         <div className="bg-ivory-light rounded-lg px-2.5 py-2 mb-1.5 space-y-1">
-          <p className="text-xs text-gray-700">{summary.summary}</p>
-          {summary.recent_activity && <p className="text-xs text-gray-600">{summary.recent_activity}</p>}
+          <p className="text-xs text-ink-80">{summary.summary}</p>
+          {summary.recent_activity && <p className="text-xs text-ink-70">{summary.recent_activity}</p>}
           {summary.open_commitments?.length > 0 && (
-            <ul className="text-xs text-gray-600 list-disc list-inside">
+            <ul className="text-xs text-ink-70 list-disc list-inside">
               {summary.open_commitments.map((c, i) => <li key={i}>{c}</li>)}
             </ul>
           )}
-          <p className="text-[10px] text-gray-400">A draft, not verified — used by Daily Drafts.</p>
+          <p className="text-[10px] text-ink-60">A draft, not verified — used by Daily Drafts.</p>
         </div>
       )}
       <div className="space-y-1.5">
         {threads.map(t => {
           const isOpen = expanded === t.id
           return (
-            <div key={t.id} className="border border-gray-100 rounded-lg">
+            <div key={t.id} className="border border-warm-grey rounded-lg">
               <button type="button" onClick={() => setExpanded(v => v === t.id ? null : t.id)}
                 className="w-full flex items-center justify-between text-left px-2.5 py-2">
-                <p className="text-xs text-gray-600 truncate">
+                <p className="text-xs text-ink-70 truncate">
                   {t.subject || '(no subject)'} · {t.message_count} message{t.message_count === 1 ? '' : 's'}
                   {t.date_range?.length === 2 && ` · ${fmtIsoDate(t.date_range[0])} – ${fmtIsoDate(t.date_range[1])}`}
                 </p>
-                {isOpen ? <ChevronUp size={14} className="text-gray-400 shrink-0" /> : <ChevronDown size={14} className="text-gray-400 shrink-0" />}
+                {isOpen ? <ChevronUp size={14} className="text-ink-60 shrink-0" /> : <ChevronDown size={14} className="text-ink-60 shrink-0" />}
               </button>
               {isOpen && (
-                <div className="max-h-56 overflow-y-auto space-y-2 border-t border-gray-100 px-2.5 py-2">
+                <div className="max-h-56 overflow-y-auto space-y-2 border-t border-warm-grey px-2.5 py-2">
                   {(t.messages || []).map((m, i) => (
                     <div key={i} className="text-xs">
-                      <span className="text-gray-400">{fmtIsoDate(m.date)} · {m.from}</span>
-                      {m.body_text && <p className="text-gray-700 whitespace-pre-wrap">{m.body_text.slice(0, 500)}</p>}
+                      <span className="text-ink-60">{fmtIsoDate(m.date)} · {m.from}</span>
+                      {m.body_text && <p className="text-ink-80 whitespace-pre-wrap">{m.body_text.slice(0, 500)}</p>}
                     </div>
                   ))}
                 </div>
@@ -190,11 +190,11 @@ export function WhatsAppThreads({ contactId, phone, whatsappSummary, onSummaryUp
   }
 
   return (
-    <div className="block border-t border-gray-100 pt-3">
+    <div className="block border-t border-warm-grey pt-3">
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-xs text-gray-500 flex items-center gap-1.5">
-          <Smartphone size={13} className="text-gray-400" /> WhatsApp
-          <span className="text-gray-400 font-normal">
+        <span className="text-xs text-ink-60 flex items-center gap-1.5">
+          <Smartphone size={13} className="text-ink-60" /> WhatsApp
+          <span className="text-ink-60 font-normal">
             ({threads.length} chat{threads.length === 1 ? '' : 's'} imported
             {threads[0]?.date_range?.[1] && (
               <> · latest {new Date(threads[0].date_range[1]).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</>
@@ -202,7 +202,7 @@ export function WhatsAppThreads({ contactId, phone, whatsappSummary, onSummaryUp
           </span>
         </span>
         <button type="button" onClick={handleRefreshSummary} disabled={summaryBusy}
-          className="text-xs text-gray-500 hover:text-brand-600 inline-flex items-center gap-1 disabled:opacity-50">
+          className="text-xs text-ink-60 hover:text-brand-600 inline-flex items-center gap-1 disabled:opacity-50">
           {summaryBusy ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
           {summary ? 'Refresh summary' : 'Generate summary'}
         </button>
@@ -214,14 +214,14 @@ export function WhatsAppThreads({ contactId, phone, whatsappSummary, onSummaryUp
       )}
       {summary && (
         <div className="bg-ivory-light rounded-lg px-2.5 py-2 mb-1.5 space-y-1">
-          <p className="text-xs text-gray-700">{summary.summary}</p>
-          {summary.recent_activity && <p className="text-xs text-gray-600">{summary.recent_activity}</p>}
+          <p className="text-xs text-ink-80">{summary.summary}</p>
+          {summary.recent_activity && <p className="text-xs text-ink-70">{summary.recent_activity}</p>}
           {summary.open_commitments?.length > 0 && (
-            <ul className="text-xs text-gray-600 list-disc list-inside">
+            <ul className="text-xs text-ink-70 list-disc list-inside">
               {summary.open_commitments.map((c, i) => <li key={i}>{c}</li>)}
             </ul>
           )}
-          <p className="text-[10px] text-gray-400">A draft, not verified — used by Daily Drafts.</p>
+          <p className="text-[10px] text-ink-60">A draft, not verified — used by Daily Drafts.</p>
         </div>
       )}
       {transcribeError && <p className="text-xs text-red-600 mb-1.5">{transcribeError}</p>}
@@ -230,13 +230,13 @@ export function WhatsAppThreads({ contactId, phone, whatsappSummary, onSummaryUp
           const voiceCount = (t.messages || []).filter(m => m.needs_transcription).length
           const isOpen = expanded === t.id
           return (
-            <div key={t.id} className="border border-gray-100 rounded-lg">
+            <div key={t.id} className="border border-warm-grey rounded-lg">
               <button
                 type="button"
                 onClick={() => setExpanded(v => v === t.id ? null : t.id)}
                 className="w-full flex items-center justify-between text-left px-2.5 py-2"
               >
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-ink-70">
                   {t.channel} · {t.message_count} message{t.message_count === 1 ? '' : 's'}
                   {t.date_range?.length === 2 && ` · ${fmtIsoDate(t.date_range[0])} – ${fmtIsoDate(t.date_range[1])}`}
                   {voiceCount > 0 && (
@@ -245,21 +245,21 @@ export function WhatsAppThreads({ contactId, phone, whatsappSummary, onSummaryUp
                     </span>
                   )}
                 </p>
-                {isOpen ? <ChevronUp size={14} className="text-gray-400 shrink-0" /> : <ChevronDown size={14} className="text-gray-400 shrink-0" />}
+                {isOpen ? <ChevronUp size={14} className="text-ink-60 shrink-0" /> : <ChevronDown size={14} className="text-ink-60 shrink-0" />}
               </button>
               {isOpen && (
-                <div className="max-h-56 overflow-y-auto space-y-1.5 border-t border-gray-100 px-2.5 py-2">
+                <div className="max-h-56 overflow-y-auto space-y-1.5 border-t border-warm-grey px-2.5 py-2">
                   {(t.messages || []).map((m, i) => {
                     const msgBusy = transcribingKey === `${t.id}:${i}`
                     const langKey = `${t.id}:${i}`
                     const selectedLang = transcribeLang[langKey] || 'zh-HK'
                     return (
                       <div key={i} className="text-xs">
-                        <span className="text-gray-400">{fmtIsoDate(m.date)} · {m.from}</span>
-                        {m.body_text && <p className="text-gray-700">{m.body_text}</p>}
+                        <span className="text-ink-60">{fmtIsoDate(m.date)} · {m.from}</span>
+                        {m.body_text && <p className="text-ink-80">{m.body_text}</p>}
                         {m.transcript && (
-                          <p className="text-gray-700 italic">
-                            <Mic size={10} className="inline align-[-1px] mr-1 text-gray-400" />{m.transcript}
+                          <p className="text-ink-80 italic">
+                            <Mic size={10} className="inline align-[-1px] mr-1 text-ink-60" />{m.transcript}
                           </p>
                         )}
                         {m.attachment_filename && (
@@ -271,7 +271,7 @@ export function WhatsAppThreads({ contactId, phone, whatsappSummary, onSummaryUp
                                   value={selectedLang}
                                   onChange={e => setTranscribeLang(prev => ({ ...prev, [langKey]: e.target.value }))}
                                   disabled={!!transcribingKey}
-                                  className="border border-gray-200 rounded px-1 py-0.5 text-gray-600"
+                                  className="border border-warm-grey rounded px-1 py-0.5 text-ink-70"
                                 >
                                   {WHATSAPP_TRANSCRIBE_LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                                 </select>
@@ -359,17 +359,17 @@ export function AlibabaThreads({ contactId, alibabaSummary, onSummaryUpdated }) 
   }
 
   return (
-    <div className="block border-t border-gray-100 pt-3">
+    <div className="block border-t border-warm-grey pt-3">
       <div className="flex items-center justify-between mb-1.5">
-        <span className="text-xs text-gray-500 flex items-center gap-1.5">
-          <MessageSquare size={13} className="text-gray-400" /> Alibaba Messages
+        <span className="text-xs text-ink-60 flex items-center gap-1.5">
+          <MessageSquare size={13} className="text-ink-60" /> Alibaba Messages
           {threads.length > 0 && (
-            <span className="text-gray-400 font-normal">({threads.length} paste{threads.length === 1 ? '' : 's'})</span>
+            <span className="text-ink-60 font-normal">({threads.length} paste{threads.length === 1 ? '' : 's'})</span>
           )}
         </span>
         {threads.length > 0 && (
           <button type="button" onClick={handleRefreshSummary} disabled={summaryBusy}
-            className="text-xs text-gray-500 hover:text-brand-600 inline-flex items-center gap-1 disabled:opacity-50">
+            className="text-xs text-ink-60 hover:text-brand-600 inline-flex items-center gap-1 disabled:opacity-50">
             {summaryBusy ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
             {summary ? 'Refresh summary' : 'Generate summary'}
           </button>
@@ -378,7 +378,7 @@ export function AlibabaThreads({ contactId, alibabaSummary, onSummaryUpdated }) 
 
       <div className="mb-1.5">
         {threads.length > 0 && (
-          <p className="text-xs font-medium text-gray-500 mb-1">
+          <p className="text-xs font-medium text-ink-60 mb-1">
             Last pasted: {(threads[0].pasted_at?.toDate ? threads[0].pasted_at.toDate() : new Date(threads[0].pasted_at || Date.now())).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
             {' — '}only copy what's newer than this next time.
           </p>
@@ -416,14 +416,14 @@ export function AlibabaThreads({ contactId, alibabaSummary, onSummaryUpdated }) 
       )}
       {summary && (
         <div className="bg-ivory-light rounded-lg px-2.5 py-2 mb-1.5 space-y-1">
-          <p className="text-xs text-gray-700">{summary.summary}</p>
-          {summary.recent_activity && <p className="text-xs text-gray-600">{summary.recent_activity}</p>}
+          <p className="text-xs text-ink-80">{summary.summary}</p>
+          {summary.recent_activity && <p className="text-xs text-ink-70">{summary.recent_activity}</p>}
           {summary.open_commitments?.length > 0 && (
-            <ul className="text-xs text-gray-600 list-disc list-inside">
+            <ul className="text-xs text-ink-70 list-disc list-inside">
               {summary.open_commitments.map((c, i) => <li key={i}>{c}</li>)}
             </ul>
           )}
-          <p className="text-[10px] text-gray-400">A draft, not verified — used by Daily Drafts.</p>
+          <p className="text-[10px] text-ink-60">A draft, not verified — used by Daily Drafts.</p>
         </div>
       )}
       {threads.length > 0 && (
@@ -433,20 +433,20 @@ export function AlibabaThreads({ contactId, alibabaSummary, onSummaryUpdated }) 
             const d = t.pasted_at?.toDate ? t.pasted_at.toDate() : (t.pasted_at ? new Date(t.pasted_at) : null)
             const dateLabel = d ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '(unknown date)'
             return (
-              <div key={t.id} className="border border-gray-100 rounded-lg">
+              <div key={t.id} className="border border-warm-grey rounded-lg">
                 <button
                   type="button"
                   onClick={() => setExpanded(v => v === t.id ? null : t.id)}
                   className="w-full flex items-center justify-between text-left px-2.5 py-2"
                 >
-                  <p className="text-xs text-gray-600">
+                  <p className="text-xs text-ink-70">
                     Pasted {dateLabel} · {(t.char_count || (t.raw_text || '').length).toLocaleString()} characters
                   </p>
-                  {isOpen ? <ChevronUp size={14} className="text-gray-400 shrink-0" /> : <ChevronDown size={14} className="text-gray-400 shrink-0" />}
+                  {isOpen ? <ChevronUp size={14} className="text-ink-60 shrink-0" /> : <ChevronDown size={14} className="text-ink-60 shrink-0" />}
                 </button>
                 {isOpen && (
-                  <div className="max-h-56 overflow-y-auto border-t border-gray-100 px-2.5 py-2">
-                    <p className="text-xs text-gray-700 whitespace-pre-wrap">{t.raw_text}</p>
+                  <div className="max-h-56 overflow-y-auto border-t border-warm-grey px-2.5 py-2">
+                    <p className="text-xs text-ink-80 whitespace-pre-wrap">{t.raw_text}</p>
                   </div>
                 )}
               </div>
@@ -509,11 +509,11 @@ export function InteractionLog({ contactId }) {
   }
 
   return (
-    <div className="block border-t border-gray-100 pt-3">
+    <div className="block border-t border-warm-grey pt-3">
       <button type="button" onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between text-xs text-gray-500 mb-1.5">
-        <span>Interaction Log {!loading && entries.length > 0 && <span className="text-gray-400 font-normal">({entries.length})</span>}</span>
-        {expanded ? <ChevronUp size={14} className="text-gray-400" /> : <ChevronDown size={14} className="text-gray-400" />}
+        className="w-full flex items-center justify-between text-xs text-ink-60 mb-1.5">
+        <span>Interaction Log {!loading && entries.length > 0 && <span className="text-ink-60 font-normal">({entries.length})</span>}</span>
+        {expanded ? <ChevronUp size={14} className="text-ink-60" /> : <ChevronDown size={14} className="text-ink-60" />}
       </button>
       {expanded && (
         <div className="space-y-2">
@@ -533,19 +533,19 @@ export function InteractionLog({ contactId }) {
             </button>
           </div>
           {loading ? (
-            <p className="text-xs text-gray-400">Loading…</p>
+            <p className="text-xs text-ink-60">Loading…</p>
           ) : entries.length === 0 ? (
-            <p className="text-xs text-gray-400">Nothing logged yet.</p>
+            <p className="text-xs text-ink-60">Nothing logged yet.</p>
           ) : (
             <div className="space-y-1 max-h-48 overflow-y-auto">
               {entries.map(e => (
                 <div key={e.id} className="flex items-start gap-2 text-xs bg-ivory-light rounded px-2 py-1.5">
                   <div className="min-w-0 flex-1">
-                    <span className="text-gray-400">{fmtIsoOrTimestamp(e.date)} · {e.channel}</span>
-                    <p className="text-gray-700 whitespace-pre-wrap">{e.description}</p>
+                    <span className="text-ink-60">{fmtIsoOrTimestamp(e.date)} · {e.channel}</span>
+                    <p className="text-ink-80 whitespace-pre-wrap">{e.description}</p>
                   </div>
                   <button type="button" onClick={() => handleDelete(e.id)}
-                    className="text-gray-300 hover:text-red-600 shrink-0"><X size={12} /></button>
+                    className="text-platinum hover:text-red-600 shrink-0"><X size={12} /></button>
                 </div>
               ))}
             </div>
@@ -558,7 +558,7 @@ export function InteractionLog({ contactId }) {
 
 const STATUS_STYLE = {
   subscribed:    'bg-green-100 text-green-700',
-  nonsubscribed: 'bg-gray-100 text-gray-500',
+  nonsubscribed: 'bg-ivory-dark text-ink-60',
   unsubscribed:  'bg-amber-100 text-amber-700',
   cleaned:       'bg-red-100 text-red-700',
 }
@@ -572,7 +572,7 @@ const DISPLAY_CAP = 300
 // Plain when there's nothing to filter to (Total, Suppressed); a button when
 // `onClick` is given, so a stat can double as a quick filter — click again
 // (active=true) to clear it.
-function Stat({ Icon, label, value, tone = 'text-gray-900', onClick, active }) {
+function Stat({ Icon, label, value, tone = 'text-ink', onClick, active }) {
   const Tag_ = onClick ? 'button' : 'div'
   return (
     <Tag_
@@ -584,7 +584,7 @@ function Stat({ Icon, label, value, tone = 'text-gray-900', onClick, active }) {
       <Icon size={20} className="text-brand-600 shrink-0" />
       <div>
         <div className={`text-lg font-bold leading-none ${tone}`}>{value.toLocaleString()}</div>
-        <div className="text-xs text-gray-500 mt-0.5">{label}</div>
+        <div className="text-xs text-ink-60 mt-0.5">{label}</div>
       </div>
     </Tag_>
   )
@@ -675,12 +675,12 @@ function EmailSummaryScanModal({ onClose, onGenerated }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-xl my-8" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
-          <h2 className="font-semibold text-gray-900 flex items-center gap-1.5"><Sparkles size={16} className="text-brand-600" /> Generate Email Summaries</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
+          <h2 className="font-semibold text-ink flex items-center gap-1.5"><Sparkles size={16} className="text-brand-600" /> Generate Email Summaries</h2>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-3 max-h-[70vh] overflow-auto">
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-ink-60">
             Finds every marketing contact email-sync matched (has_email_threads) and (re)generates a summary for
             anyone missing one or whose thread count has grown since. Only scans flagged contacts, not all ~2,600.
           </p>
@@ -693,7 +693,7 @@ function EmailSummaryScanModal({ onClose, onGenerated }) {
 
           {candidates && (
             <>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-ink-70">
                 {candidates.length} contact{candidates.length === 1 ? '' : 's'} with email history —{' '}
                 <span className={pending.length ? 'text-amber-600 font-medium' : 'text-green-600'}>
                   {pending.length ? `${pending.length} need${pending.length === 1 ? 's' : ''} generating` : 'all up to date'}
@@ -709,12 +709,12 @@ function EmailSummaryScanModal({ onClose, onGenerated }) {
                 </button>
               )}
 
-              <div className="divide-y divide-gray-100 border-t border-gray-100">
+              <div className="divide-y divide-warm-grey border-t border-warm-grey">
                 {candidates.map(c => (
                   <div key={c.contactId} className="flex items-center justify-between py-2 text-sm">
                     <div className="min-w-0">
-                      <span className="text-gray-800">{c.name || c.contactId}</span>
-                      <span className="text-xs text-gray-400 ml-2">{c.threadCount} thread{c.threadCount === 1 ? '' : 's'}</span>
+                      <span className="text-ink">{c.name || c.contactId}</span>
+                      <span className="text-xs text-ink-60 ml-2">{c.threadCount} thread{c.threadCount === 1 ? '' : 's'}</span>
                     </div>
                     <span className="text-xs shrink-0 ml-2">
                       {results[c.contactId] === 'done' ? (
@@ -722,7 +722,7 @@ function EmailSummaryScanModal({ onClose, onGenerated }) {
                       ) : results[c.contactId] ? (
                         <span className="text-red-600">{results[c.contactId]}</span>
                       ) : c.upToDate ? (
-                        <span className="text-gray-400">Up to date</span>
+                        <span className="text-ink-60">Up to date</span>
                       ) : c.hasSummary ? (
                         <span className="text-amber-600">Stale — new messages</span>
                       ) : (
@@ -778,9 +778,9 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-xl my-8" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
-          <h2 className="font-semibold text-gray-900">Manage tags</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
+          <h2 className="font-semibold text-ink">Manage tags</h2>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
         </div>
         <div className="px-5 pt-3">
           <input type="text" placeholder="Search tags…" className="input w-full" value={q} onChange={e => setQ(e.target.value)} />
@@ -788,7 +788,7 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
         <div className="p-5 space-y-2 max-h-[65vh] overflow-auto">
           {shown.map(([tag, count]) => (
             <div key={tag} className="flex items-center gap-2">
-              <span className={`shrink-0 w-8 text-center text-[10px] rounded px-1 py-0.5 ${isCategoryTag(tag) ? 'text-teal-700 bg-teal-100 font-medium' : 'text-gray-600 bg-gray-100'}`}>
+              <span className={`shrink-0 w-8 text-center text-[10px] rounded px-1 py-0.5 ${isCategoryTag(tag) ? 'text-teal-700 bg-teal-100 font-medium' : 'text-ink-70 bg-ivory-dark'}`}>
                 {count}
               </span>
               <input
@@ -807,9 +807,9 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
               </button>
             </div>
           ))}
-          {shown.length === 0 && <div className="text-sm text-gray-400 text-center py-8">No tags match.</div>}
+          {shown.length === 0 && <div className="text-sm text-ink-60 text-center py-8">No tags match.</div>}
         </div>
-        <p className="px-5 pb-4 text-[11px] text-gray-400">
+        <p className="px-5 pb-4 text-[11px] text-ink-60">
           Renaming to a tag that already exists on some of these contacts merges the two — no duplicates.
         </p>
       </div>
@@ -985,10 +985,10 @@ export default function MarketingContacts({ onSendEmail }) {
 
       <div className="flex items-start justify-between mb-4 gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-xl md:text-2xl font-bold text-ink flex items-center gap-2">
             <Users size={22} className="text-brand-600" /> Marketing Contacts
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm text-ink-60 mt-0.5">
             Cleaned Mailchimp list — kept separate from Customers. {stats.total.toLocaleString()} contacts.
           </p>
         </div>
@@ -1021,10 +1021,10 @@ export default function MarketingContacts({ onSendEmail }) {
             className={`px-3.5 py-1.5 rounded-full text-sm font-semibold border transition-colors whitespace-nowrap ${
               group === g.key
                 ? 'bg-brand-600 text-white border-brand-600'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                : 'bg-white text-ink-70 border-warm-grey hover:border-warm-grey hover:bg-ivory'
             }`}
           >
-            {g.label} <span className={`ml-1 ${group === g.key ? 'text-white/70' : 'text-gray-400'}`}>{g.count}</span>
+            {g.label} <span className={`ml-1 ${group === g.key ? 'text-white/70' : 'text-ink-60'}`}>{g.count}</span>
           </button>
         ))}
       </div>
@@ -1083,7 +1083,7 @@ export default function MarketingContacts({ onSendEmail }) {
 
       {/* Count + bulk bar */}
       <div className="flex items-center justify-between mb-2 min-h-[28px] flex-wrap gap-2">
-        <p className="text-xs text-gray-500 flex items-center gap-2">
+        <p className="text-xs text-ink-60 flex items-center gap-2">
           {filtered.length.toLocaleString()} match{filtered.length === 1 ? '' : 'es'}
           {filtered.length > DISPLAY_CAP && ` — showing first ${DISPLAY_CAP}, refine to narrow`}
           {inApp === 'yes' && (
@@ -1095,8 +1095,8 @@ export default function MarketingContacts({ onSendEmail }) {
         </p>
         {selected.size > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">{selected.size} selected</span>
-            <button onClick={() => setSelected(new Set())} className="text-xs text-gray-500 hover:text-gray-700">Clear</button>
+            <span className="text-xs text-ink-60">{selected.size} selected</span>
+            <button onClick={() => setSelected(new Set())} className="text-xs text-ink-60 hover:text-ink-80">Clear</button>
             <button onClick={bulkPromote} disabled={promoting}
               className="inline-flex items-center gap-1 text-xs font-medium text-brand-600 hover:text-brand-700 border border-brand-200 rounded-md px-2 py-1 disabled:opacity-50">
               <UserPlus size={13} /> {promoting ? 'Adding…' : 'Add to Customers'}
@@ -1116,14 +1116,14 @@ export default function MarketingContacts({ onSendEmail }) {
       </div>
 
       {/* Results */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-white border border-warm-grey rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-500 border-b border-gray-200 bg-gray-50">
+              <tr className="text-left text-ink-60 border-b border-warm-grey bg-ivory">
                 <th className="px-3 py-2 w-8">
                   <input type="checkbox" checked={allShownSelected} onChange={toggleAllShown}
-                         className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                         className="rounded border-warm-grey text-brand-600 focus:ring-brand-500"
                          title="Select all shown" />
                 </th>
                 <th className="px-3 py-2 font-medium">Name</th>
@@ -1138,20 +1138,20 @@ export default function MarketingContacts({ onSendEmail }) {
             </thead>
             <tbody>
               {shown.map(c => (
-                <tr key={c.id} className={`border-b border-gray-100 last:border-0 hover:bg-gray-50 align-top ${selected.has(c.id) ? 'bg-brand-50/40' : ''}`}>
+                <tr key={c.id} className={`border-b border-warm-grey last:border-0 hover:bg-ivory align-top ${selected.has(c.id) ? 'bg-brand-50/40' : ''}`}>
                   <td className="px-3 py-2">
                     <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleSel(c.id)}
-                           className="rounded border-gray-300 text-brand-600 focus:ring-brand-500" />
+                           className="rounded border-warm-grey text-brand-600 focus:ring-brand-500" />
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
                     <Link to={`/marketing-contacts/${c.id}`} className="text-brand-600 hover:underline font-medium text-left">
                       {contactName(c)}
                     </Link>
                     {c.is_customer && <UserCheck size={13} className="inline ml-1 align-[-2px] text-brand-600" title="Likely customer (bought / logged in)" />}
-                    {c.has_email_threads && <Mail size={13} className="inline ml-1 align-[-2px] text-gray-400" title="Has email history (email-sync matched this address)" />}
+                    {c.has_email_threads && <Mail size={13} className="inline ml-1 align-[-2px] text-ink-60" title="Has email history (email-sync matched this address)" />}
                   </td>
                   <td className="px-3 py-2">
-                    {c.company || <span className="text-gray-300">—</span>}
+                    {c.company || <span className="text-platinum">—</span>}
                     {c.possible_customer_match && (
                       <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-brand-600 bg-brand-50 rounded px-1 py-0.5"
                             title={`Already an app customer: ${c.possible_customer_match.company_name}`}>
@@ -1161,13 +1161,13 @@ export default function MarketingContacts({ onSendEmail }) {
                   </td>
                   <td className="px-3 py-2 font-mono text-xs">
                     {c.email}
-                    {c.role_address && <span className="ml-1 text-[10px] text-gray-400" title="Role address (info@, sales@…)">role</span>}
+                    {c.role_address && <span className="ml-1 text-[10px] text-ink-60" title="Role address (info@, sales@…)">role</span>}
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap">{c.country || <span className="text-gray-300">—</span>}</td>
+                  <td className="px-3 py-2 whitespace-nowrap">{c.country || <span className="text-platinum">—</span>}</td>
                   <td className="px-3 py-2">
                     <div className="flex gap-1">
                       {c.audiences.map(a => (
-                        <span key={a} className={`inline-block px-1.5 py-0.5 rounded text-[10px] ${AUD_STYLE[a] || 'bg-gray-100 text-gray-500'}`}>{a}</span>
+                        <span key={a} className={`inline-block px-1.5 py-0.5 rounded text-[10px] ${AUD_STYLE[a] || 'bg-ivory-dark text-ink-60'}`}>{a}</span>
                       ))}
                     </div>
                   </td>
@@ -1175,16 +1175,16 @@ export default function MarketingContacts({ onSendEmail }) {
                     <div className="flex flex-wrap gap-1 max-w-[260px]">
                       {sortTags(c.tags).slice(0, 5).map(t => (
                         <span key={t} className={`inline-flex items-center gap-0.5 text-[10px] rounded px-1 py-0.5 ${
-                          isCategoryTag(t) ? 'text-teal-700 bg-teal-100 font-medium' : 'text-gray-600 bg-gray-100'
+                          isCategoryTag(t) ? 'text-teal-700 bg-teal-100 font-medium' : 'text-ink-70 bg-ivory-dark'
                         }`}>
                           <Tag size={9} />{t}
                         </span>
                       ))}
-                      {c.tags.length > 5 && <span className="text-[10px] text-gray-400">+{c.tags.length - 5}</span>}
+                      {c.tags.length > 5 && <span className="text-[10px] text-ink-60">+{c.tags.length - 5}</span>}
                     </div>
                   </td>
                   <td className="px-3 py-2">
-                    <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${STATUS_STYLE[c.status] || 'bg-gray-100 text-gray-500'}`}>{c.status}</span>
+                    <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${STATUS_STYLE[c.status] || 'bg-ivory-dark text-ink-60'}`}>{c.status}</span>
                   </td>
                   <td className="px-3 py-2 text-right">
                     <Link to={`/marketing-contacts/${c.id}`} title="Edit contact"
@@ -1195,8 +1195,8 @@ export default function MarketingContacts({ onSendEmail }) {
                 </tr>
               ))}
               {!loading && filtered.length === 0 && (
-                <tr><td colSpan={9} className="px-3 py-12 text-center text-gray-400">
-                  <AlertCircle size={32} strokeWidth={1.25} className="mx-auto mb-2 text-gray-300" />
+                <tr><td colSpan={9} className="px-3 py-12 text-center text-ink-60">
+                  <AlertCircle size={32} strokeWidth={1.25} className="mx-auto mb-2 text-platinum" />
                   No contacts match these filters.
                 </td></tr>
               )}
@@ -1205,7 +1205,7 @@ export default function MarketingContacts({ onSendEmail }) {
         </div>
       </div>
 
-      <p className="text-xs text-gray-400 mt-3">
+      <p className="text-xs text-ink-60 mt-3">
         Click <strong>Edit</strong> (or a contact’s name) to change their details; tick rows to delete in bulk or add them as
         Customers. The two stat tiles above are filters too — click one to narrow the list. The suppressed list
         (unsubscribed / bounced) is retained for reference only and must never be emailed.

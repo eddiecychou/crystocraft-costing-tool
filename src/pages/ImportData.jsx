@@ -1264,10 +1264,10 @@ export default function ImportData() {
 
   return (
     <div className="p-4 md:p-6 max-w-2xl">
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">CRM Data Import</h1>
-      <p className="text-sm text-gray-500 mb-6">One-time import of 40 customers from <code>Crystocraft_CRM_Import.xlsx</code>. Clears all existing customers first.</p>
+      <h1 className="text-2xl font-bold text-ink mb-2">CRM Data Import</h1>
+      <p className="text-sm text-ink-60 mb-6">One-time import of 40 customers from <code>Crystocraft_CRM_Import.xlsx</code>. Clears all existing customers first.</p>
       <div className="card p-5 mb-4">
-        <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside mb-4">
+        <ul className="text-sm text-ink-70 space-y-1 list-disc list-inside mb-4">
           <li>Deletes ALL existing customers in Firestore</li>
           <li>Imports 40 customers with crm_category (Distributor / Small B2B / Gift OEM / Crystal Fabric)</li>
           <li>Seeds one initial enquiry per customer from last contact notes</li>
@@ -1277,7 +1277,7 @@ export default function ImportData() {
         </button>
       </div>
       {log.length > 0 && (
-        <div className="card p-4 font-mono text-xs text-gray-700 space-y-0.5 max-h-96 overflow-y-auto">
+        <div className="card p-4 font-mono text-xs text-ink-80 space-y-0.5 max-h-96 overflow-y-auto">
           {log.map((line, i) => <div key={i}>{line || <br />}</div>)}
         </div>
       )}

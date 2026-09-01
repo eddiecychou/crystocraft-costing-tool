@@ -297,7 +297,7 @@ export default function AccountEdit() {
 
       {/* Activity */}
       <div className="card p-5 mb-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Activity</h2>
+        <h2 className="text-sm font-semibold text-ink-80 mb-3">Activity</h2>
         <div className="grid grid-cols-3 gap-3 mb-4">
           <Stat label="Registered" value={fmtDate(u.createdAt)} />
           <Stat label="Last sign-in" value={fmtDate(u.last_login_at)} />
@@ -307,7 +307,7 @@ export default function AccountEdit() {
         {enquiries.length === 0 ? (
           <p className="text-sm text-ink-60">{isAdmin ? 'No enquiries.' : 'No enquiries yet — a good candidate to follow up with.'}</p>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-warm-grey">
             {enquiries.slice(0, 8).map(e => (
               <div key={e.id} className="py-2 flex items-center justify-between gap-3 text-sm">
                 <span className="text-ink-70">
@@ -326,7 +326,7 @@ export default function AccountEdit() {
 
       {/* Linked customer */}
       <div className="card p-5 mb-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-1">Linked customer</h2>
+        <h2 className="text-sm font-semibold text-ink-80 mb-1">Linked customer</h2>
         <p className="text-xs text-ink-60 mb-3">
           Link this login to a customer record so the account shows that customer's name and country.
           Edit the name itself on the <Link to="/customers" className="text-brand-600 hover:underline">Customers</Link> page.
@@ -395,7 +395,7 @@ export default function AccountEdit() {
       {/* Category */}
       {!isAdmin && (
         <div className="card p-5 mb-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-1">Account category</h2>
+          <h2 className="text-sm font-semibold text-ink-80 mb-1">Account category</h2>
           <p className="text-xs text-ink-60 mb-3">Mark internal test / checking logins so they can be told apart from real customers.</p>
           <div className="inline-flex rounded-lg border border-ivory-dark overflow-hidden">
             {[['customer', 'Customer'], ['internal', 'Internal']].map(([v, label]) => (
@@ -412,7 +412,7 @@ export default function AccountEdit() {
       {/* Pricing */}
       {!isAdmin && (
         <div className="card p-5 mb-5">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Pricing</h2>
+          <h2 className="text-sm font-semibold text-ink-80 mb-3">Pricing</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="text-xs text-ink-60">Base currency
               <select className="input py-1.5 mt-1 w-full" value={cur} onChange={e => setCur(e.target.value)}>
@@ -458,7 +458,7 @@ export default function AccountEdit() {
 
       {/* Lifecycle */}
       <div className="card p-5">
-        <h2 className="text-sm font-semibold text-gray-700 mb-3">Account status</h2>
+        <h2 className="text-sm font-semibold text-ink-80 mb-3">Account status</h2>
         <div className="flex flex-wrap items-center gap-3">
           {isPending && (
             <button className="btn-primary text-sm" onClick={handleApprove}>

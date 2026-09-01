@@ -211,20 +211,40 @@ Measured against the two real backgrounds:
 ## 4. Current adherence — the V3 baseline
 
 The storefront (`src/customer/*`, ~20 files) was brought to spec by the
-2026-09-01/02 Second-Pass sweep. **The Operation Center (`src/pages/*` ~78,
-`src/components/*`) has not been** — it predates the system and carries heavy
-drift.
+2026-09-01/02 Second-Pass sweep. The Operation Center (`src/pages/*` ~78,
+`src/components/*`) predates the system. The **colour** drift is now cleared
+(§4.1a, 2026-09-02); radius / arbitrary-size / shadow / `font-bold` drift
+remain.
 
-### 4.1 Measured drift (grep over `src/**/*.jsx`, 2026-09-02)
+### 4.1 Measured drift (grep over `src/**/*.jsx`)
 
-| Signal | Count | Meaning |
+| Signal | Was (2026-09-02) | Now | Meaning |
+|---|---|---|---|
+| `gray-*` (any prefix) | **~2640** | **0** ✅ | RESOLVED — codemodded to tokens (§4.1a). |
+| `rounded-md/lg/xl/2xl` | ~340 | ~340 | still open — the square-corner pass. `rounded-full` (dots/pills) is legitimate and stays. |
+| `text-[Npx]` arbitrary | ~350 | ~350 | still open — one-off font sizes off the scale. |
+| `shadow-md/lg/xl/2xl` | ~58 | ~58 | still open — resting shadows against the flat posture. |
+| `hover:scale / hover:-translate-y` | ~16 | ~16 | still open — transforms on interactives (UI-POLISH §3). |
+| `font-bold` on headings | — | ~open | headings are weight 400; `font-bold` is drift. Not yet swept. |
+| `amber/emerald/purple/sky-*` | ~450 | ~450 | mostly legitimate status colour; audit for non-status use. |
+
+### 4.1a The `gray-*` → token map (canonical — reuse for any future stragglers)
+
+| From | To | Rationale |
 |---|---|---|
-| `bg-gray-* / text-gray-*` | **~2100** | should be `ink-*` / `warm-grey` / `beige`. The single biggest gap. Almost all OpsCenter. |
-| `rounded-md/lg/xl/2xl` | **~340** | violates the square rule. OpsCenter. |
-| `text-[Npx]` arbitrary | **~350** | one-off font sizes off the scale. |
-| `shadow-md/lg/xl/2xl` | ~58 | resting shadows — against the flat posture. |
-| `hover:scale / hover:-translate-y` | ~16 | transforms on interactives (UI-POLISH §3 forbids on list rows/buttons). |
-| `amber/emerald/purple/sky-*` | ~450 | mostly legitimate status colour; audit for non-status use. |
+| `border-gray-{50,100,200,300}` · `divide-gray-*` | `border/divide-warm-grey` | one hairline colour |
+| `border-gray-400` (hover) | `border-ink-60` | visible hover line |
+| `bg-gray-50` | `bg-ivory` | lightest warm fill |
+| `bg-gray-100` | `bg-ivory-dark` | subtle warm inset (thumbnail wells) |
+| `bg-gray-200` | `bg-warm-grey` | |
+| `bg-gray-400` (opaque placeholder block) | `bg-ivory-dark` + dark text | the "reads as broken" grey block (cf. L-12 family) |
+| `bg-gray-{700,800,900}` (active/dark surface) | `bg-ink` (+ `border-ink`) | the one dark surface |
+| `text-gray-300` · `placeholder-gray-300` | `text/placeholder-platinum` / `-ink-60` | faint / placeholder |
+| `text-gray-{400,500}` | `text-ink-60` | secondary text (the floor) |
+| `text-gray-600` | `text-ink-70` | mid secondary |
+| `text-gray-700` | `text-ink-80` | strong secondary |
+| `text-gray-{800,900}` | `text-ink` | primary |
+| status badges (`bg-gray-200 text-gray-600` = `.badge-retired`) | keep | sanctioned neutral chip |
 
 ### 4.2 Structural gaps in the token layer
 
@@ -258,7 +278,7 @@ None of these are "apply now" — they're the deltas a V3 would deliberately cho
 | **Portal nav material** | flat opaque `bg-ink` (top strip + bottom bar) | `backdrop-blur` glass nav | VISUAL-REFINEMENT §4 |
 | **Button `:active`** | none | a `:active` darken/press on all `.btn*` | DESIGN-SYSTEM-AUDIT §2 |
 | **`.input` states** | resting + focus only | defined `:disabled`, `[aria-invalid]`, success | DESIGN-SYSTEM-AUDIT §2 |
-| **OpsCenter refactor** | ~2100 `gray-*`, ~340 `rounded-*` | codemod to tokens + square; verify with the qa harness | §4.1 |
+| **OpsCenter refactor** | colour DONE (§4.1a). ~340 `rounded-*`, ~350 `text-[Npx]`, `font-bold` headings still open | square-corner + size + weight pass next | §4.1 |
 | **Bundle naming** | `design-system/V2.5` vs `/2026-V2` | normalise (`v2.5` / `v2-2026` / `v3`) | housekeeping |
 
 ## Change Log
@@ -267,3 +287,4 @@ None of these are "apply now" — they're the deltas a V3 would deliberately cho
 |---|---|
 | 2026-09-02 | Created — the written V2.5 spec extracted from `tailwind.config.js` + `src/index.css`: token layer (§1), component inventory + partial state matrix (§2), measured WCAG contrast (§3), the OpsCenter drift baseline and the dead-`ink-*`-ramp finding (§4), and the V3 open-decision list (§5). Foundation for any V2.5→V3 work. |
 | 2026-09-02 | V3 first change — **ink ramp resolved** (hybrid): added `ink-70` `#585853` (AA 6.2:1 on beige); codemodded ~360 dead `text-ink-30/40/50/90` + `border-ink-10/30` sites to real AA-safe tokens (`ink-60` is now the lightest grey allowed for text). All `ink-*` classes in `src/` now resolve. |
+| 2026-09-02 | V3 — **OpsCenter colour refactor**: ~2640 `gray-*` sites across 97 files codemodded to the warm token palette per the §4.1a map (0 `gray-*` left in `src/`). Verified: full bundle + `qa/eslint.no-undef` + tailwind build (no orphan classes). **NOT visually verified** — OpsCenter pages are login-gated with no harness; the colour deltas are principled (warmer, equal-or-better contrast) but the owner should eyeball post-deploy. |

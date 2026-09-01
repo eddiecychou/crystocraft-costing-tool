@@ -374,23 +374,23 @@ function ExchangeRatesPanel() {
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="card p-5 mb-4">
         <div className="flex items-center justify-between mb-1">
-          <h2 className="text-sm font-semibold text-gray-700">Exchange Rates to HKD</h2>
+          <h2 className="text-sm font-semibold text-ink-80">Exchange Rates to HKD</h2>
           <button onClick={fetchLiveRates} disabled={fetching}
             className="btn-secondary text-xs py-1.5 px-3 flex items-center gap-1.5">
             {fetching ? <><Spinner /> Fetching…</> : <span className="inline-flex items-center gap-1.5"><RefreshCw size={14} />Fetch Live Rates</span>}
           </button>
         </div>
-        <p className="text-xs text-gray-400 mb-4">Used when creating new client quotes. Fetch live rates or enter manually.</p>
+        <p className="text-xs text-ink-60 mb-4">Used when creating new client quotes. Fetch live rates or enter manually.</p>
         {fxUpdatedAt && <p className="text-xs text-blue-500 mb-3">Live rate as of: {fxUpdatedAt}</p>}
         {fetchError  && <p className="text-xs text-red-500 mb-3">{fetchError}</p>}
         <div className="space-y-3">
           {CURRENCIES.map(cur => (
             <div key={cur} className="flex items-center gap-3">
-              <label className="w-28 text-sm text-gray-600 shrink-0">{LABELS[cur]}</label>
+              <label className="w-28 text-sm text-ink-70 shrink-0">{LABELS[cur]}</label>
               <div className="relative flex-1">
                 <input type="number" step="0.0001" min="0" className="input pr-16 text-right tabular-nums"
                   value={rates[cur]} onChange={e => setRates(r => ({ ...r, [cur]: e.target.value }))} />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 pointer-events-none">HKD</span>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-60 pointer-events-none">HKD</span>
               </div>
               {savedRates && String(rates[cur]) !== String(savedRates[cur]) && (
                 <span className="text-xs text-amber-500 shrink-0">unsaved</span>
@@ -403,7 +403,7 @@ function ExchangeRatesPanel() {
             {saving ? 'Saving…' : 'Save Rates'}
           </button>
           {lastSaved && (
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-ink-60">
               Last saved: {lastSaved.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </p>
           )}
@@ -411,8 +411,8 @@ function ExchangeRatesPanel() {
         </div>
       </div>
 
-      <div className="card p-5 text-sm text-gray-500 space-y-1.5">
-        <p className="font-medium text-gray-700 mb-1">How exchange rates work</p>
+      <div className="card p-5 text-sm text-ink-60 space-y-1.5">
+        <p className="font-medium text-ink-80 mb-1">How exchange rates work</p>
         <p>• Rates are stored in Firestore and used when creating new quotes.</p>
         <p>• Each new quote pre-fills with these rates, which can be adjusted per-quote.</p>
         <p>• <strong>Fetch Live Rates</strong> pulls today's mid-market rate from{' '}

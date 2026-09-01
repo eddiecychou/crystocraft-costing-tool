@@ -186,9 +186,9 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
 
       {/* Drawer */}
       <div className="w-full max-w-lg bg-white flex flex-col h-full shadow-xl overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
-          <h2 className="text-base font-semibold text-gray-900">{isEdit ? 'Edit Interaction' : 'Log Interaction'}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey shrink-0">
+          <h2 className="text-base font-semibold text-ink">{isEdit ? 'Edit Interaction' : 'Log Interaction'}</h2>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-4">
@@ -241,7 +241,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                     status === s
                       ? STATUS_SELECTED[s]
-                      : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                      : 'border-warm-grey text-ink-60 hover:border-warm-grey'
                   }`}
                 >
                   {s}
@@ -271,7 +271,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
               onChange={e => setProductSearch(e.target.value)}
             />
             {productSearch && (
-              <div className="border border-gray-200 rounded-lg mt-1 max-h-36 overflow-y-auto divide-y divide-gray-100">
+              <div className="border border-warm-grey rounded-lg mt-1 max-h-36 overflow-y-auto divide-y divide-warm-grey">
                 {filteredProducts.length === 0 ? (
                   <button
                     type="button"
@@ -287,7 +287,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
                         key={p.id}
                         type="button"
                         onClick={() => { toggleProduct(p.name); setProductSearch('') }}
-                        className={`w-full text-left text-sm px-3 py-2 hover:bg-gray-50 transition-colors ${selectedProducts.includes(p.name) ? 'text-brand-600 font-medium' : 'text-gray-700'}`}
+                        className={`w-full text-left text-sm px-3 py-2 hover:bg-ivory transition-colors ${selectedProducts.includes(p.name) ? 'text-brand-600 font-medium' : 'text-ink-80'}`}
                       >
                         {selectedProducts.includes(p.name) && <Check size={13} className="inline align-[-2px] mr-1" />}{p.name}
                       </button>
@@ -307,14 +307,14 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
 
           {/* Follow-up date */}
           <div>
-            <label className="label">Follow-up Date <span className="text-gray-400 font-normal">(optional)</span></label>
+            <label className="label">Follow-up Date <span className="text-ink-60 font-normal">(optional)</span></label>
             <div className="flex items-center gap-2">
               <input type="date" className="input flex-1" value={followUpDate} onChange={e => setFollowUpDate(e.target.value)} />
               {followUpDate && (
                 <button
                   type="button"
                   onClick={() => setFollowUpDate('')}
-                  className="text-gray-400 hover:text-red-500 transition-colors text-lg leading-none shrink-0"
+                  className="text-ink-60 hover:text-red-500 transition-colors text-lg leading-none shrink-0"
                   title="Clear date"
                 >
                   ×
@@ -325,7 +325,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
 
           {/* Outcome notes */}
           <div>
-            <label className="label">Outcome Notes <span className="text-gray-400 font-normal">(optional)</span></label>
+            <label className="label">Outcome Notes <span className="text-ink-60 font-normal">(optional)</span></label>
             <textarea
               className="input"
               rows={2}
@@ -337,18 +337,18 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
 
           {/* Quote file attachments */}
           <div>
-            <label className="label">Quote Attachments <span className="text-gray-400 font-normal">(PDF or images)</span></label>
+            <label className="label">Quote Attachments <span className="text-ink-60 font-normal">(PDF or images)</span></label>
 
             <div className="space-y-2">
               {/* Saved attachments */}
               {savedAttachments.map((att, idx) => (
-                <div key={idx} className="flex items-center gap-3 p-2.5 rounded-lg border border-gray-200 bg-gray-50">
+                <div key={idx} className="flex items-center gap-3 p-2.5 rounded-lg border border-warm-grey bg-ivory">
                   {att.name?.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? (
                     <a href={att.url} target="_blank" rel="noreferrer" className="shrink-0">
-                      <img src={att.url} alt="" className="h-10 w-14 object-cover rounded border border-gray-200" />
+                      <img src={att.url} alt="" className="h-10 w-14 object-cover rounded border border-warm-grey" />
                     </a>
                   ) : (
-                    <FileText size={20} className="text-gray-400 shrink-0" />
+                    <FileText size={20} className="text-ink-60 shrink-0" />
                   )}
                   <a href={att.url} target="_blank" rel="noreferrer" className="flex-1 text-sm text-brand-600 hover:underline truncate min-w-0">
                     {att.name || `Attachment ${idx + 1}`}
@@ -367,7 +367,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
               {/* Pending files (not yet uploaded) */}
               {pendingFiles.map((file, idx) => (
                 <div key={idx} className="flex items-center gap-3 p-2.5 rounded-lg border border-brand-200 bg-brand-50">
-                  <span className="text-gray-500 shrink-0">{file.type.startsWith('image/') ? <ImageIcon size={18} /> : <FileText size={18} />}</span>
+                  <span className="text-ink-60 shrink-0">{file.type.startsWith('image/') ? <ImageIcon size={18} /> : <FileText size={18} />}</span>
                   <span className="flex-1 text-sm text-brand-700 truncate min-w-0">{file.name}</span>
                   {uploadProgress[file.name] != null && (
                     <span className="text-xs text-brand-500 shrink-0">{uploadProgress[file.name]}%</span>
@@ -387,7 +387,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className="mt-2 w-full border-2 border-dashed border-gray-200 rounded-lg py-3 text-sm text-gray-400 hover:border-brand-300 hover:text-brand-500 transition-colors"
+              className="mt-2 w-full border-2 border-dashed border-warm-grey rounded-lg py-3 text-sm text-ink-60 hover:border-brand-300 hover:text-brand-500 transition-colors"
             >
               <span className="inline-flex items-center gap-1.5"><Paperclip size={15} />Add PDF or image</span>
             </button>
@@ -408,20 +408,20 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
           {/* Linked quotes */}
           {customerQuotes.length > 0 && (
             <div>
-              <label className="label">Linked Quotes <span className="text-gray-400 font-normal">(optional)</span></label>
+              <label className="label">Linked Quotes <span className="text-ink-60 font-normal">(optional)</span></label>
               <div className="space-y-1.5 max-h-36 overflow-y-auto">
                 {customerQuotes.map(q => (
-                  <label key={q.id} className="flex items-center gap-2.5 text-sm text-gray-700 cursor-pointer select-none">
+                  <label key={q.id} className="flex items-center gap-2.5 text-sm text-ink-80 cursor-pointer select-none">
                     <input
                       type="checkbox"
-                      className="w-4 h-4 rounded border-gray-300 text-brand-600"
+                      className="w-4 h-4 rounded border-warm-grey text-brand-600"
                       checked={linkedQuoteIds.includes(q.id)}
                       onChange={() => toggleQuote(q.id)}
                     />
                     <span>
                       {q.createdAt?.toDate?.().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                       {q.quote_currency ? ` · ${q.quote_currency}` : ''}
-                      {' · '}<span className={`capitalize ${quoteIsConfirmed(q.status) ? 'text-green-600' : q.status === 'lost' ? 'text-red-500' : 'text-gray-500'}`}>{q.status || 'draft'}</span>
+                      {' · '}<span className={`capitalize ${quoteIsConfirmed(q.status) ? 'text-green-600' : q.status === 'lost' ? 'text-red-500' : 'text-ink-60'}`}>{q.status || 'draft'}</span>
                     </span>
                   </label>
                 ))}
@@ -432,7 +432,7 @@ export default function EnquiryForm({ customerId, customerQuotes = [], enquiry =
           {error && <p className="text-sm text-red-600">{error}</p>}
         </form>
 
-        <div className="px-5 py-4 border-t border-gray-100 flex gap-3 shrink-0">
+        <div className="px-5 py-4 border-t border-warm-grey flex gap-3 shrink-0">
           <button onClick={handleSubmit} className="btn-primary" disabled={loading}>
             {loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Log Interaction'}
           </button>
@@ -448,7 +448,7 @@ const STATUS_SELECTED = {
   Quoted:         'border-blue-400 bg-blue-50 text-blue-700',
   Confirmed:      'border-green-400 bg-green-50 text-green-700',
   Lost:           'border-red-400 bg-red-50 text-red-600',
-  'On Hold':      'border-gray-400 bg-gray-100 text-gray-600',
+  'On Hold':      'border-ink-60 bg-ivory-dark text-ink-70',
   // Legacy (no longer offered for new entries, kept so old records still style)
   'In Production':'border-purple-400 bg-purple-50 text-purple-700',
   Completed:      'border-teal-400 bg-teal-50 text-teal-700',

@@ -238,7 +238,7 @@ function CorpCard({ p, cur, rates, profile, images }) {
       <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
         <CardImageCarousel images={images} alt={p.name}
           imgClassName="object-cover group-hover:scale-105 transition-transform duration-300"
-          fallback={<Package size={32} strokeWidth={1.25} className="text-gray-300" />} />
+          fallback={<Package size={32} strokeWidth={1.25} className="text-platinum" />} />
         {isNew(p) && (
           <span className="absolute top-1.5 left-1.5 badge-active" title="New arrival">New</span>
         )}

@@ -16,7 +16,7 @@ const googleProvider = new GoogleAuthProvider()
 // portal-invite.js for the full state machine this page's states mirror.
 function Shell({ children }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-ivory px-4">
       <div className="card w-full max-w-md p-8">
         <div className="mb-8 text-center">
           <img src={logo} alt="Crystocraft" className="h-10 w-auto mx-auto" />
@@ -109,7 +109,7 @@ export default function InvitationClaim() {
   }
 
   if (loading) {
-    return <Shell><p className="text-sm text-gray-500 text-center">Checking your invitation…</p></Shell>
+    return <Shell><p className="text-sm text-ink-60 text-center">Checking your invitation…</p></Shell>
   }
 
   if (previewError) {
@@ -119,7 +119,7 @@ export default function InvitationClaim() {
           {previewError === 'email_mismatch' ? 'Email doesn\'t match' : 'This invitation isn\'t available'}
         </h2>
         <p className="text-sm text-ink-70 mb-4">{STATE_MESSAGES[previewError] || STATE_MESSAGES.invalid}</p>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-ink-60">
           If you weren't expecting this invitation, you can safely ignore it — no account will be created.
         </p>
       </Shell>
@@ -178,9 +178,9 @@ export default function InvitationClaim() {
         </p>
       )}
       <div className="flex items-center gap-3 mb-4">
-        <div className="h-px bg-gray-100 flex-1" />
-        <span className="text-xs text-gray-400">or set a password instead</span>
-        <div className="h-px bg-gray-100 flex-1" />
+        <div className="h-px bg-ivory-dark flex-1" />
+        <span className="text-xs text-ink-60">or set a password instead</span>
+        <div className="h-px bg-ivory-dark flex-1" />
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -203,7 +203,7 @@ export default function InvitationClaim() {
           {submitting ? 'Confirming…' : 'Confirm and continue'}
         </button>
       </form>
-      <p className="text-xs text-gray-400 mt-6">
+      <p className="text-xs text-ink-60 mt-6">
         If you weren't expecting this invitation, or aren't sure why you received it, please reply to the
         invitation email and let us know — no account will be created unless you confirm it yourself.
       </p>

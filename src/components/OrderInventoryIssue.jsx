@@ -69,7 +69,7 @@ export default function OrderInventoryIssue({ orderId, orderLabel, inv }) {
   return (
     <div className="card p-4">
       <button type="button" onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between gap-2 text-left">
-        <span className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+        <span className="flex items-center gap-2 text-sm font-semibold text-ink-80">
           {open ? <ChevronDown size={15} className="text-ink-60" /> : <ChevronRight size={15} className="text-ink-60" />}
           <Icon size={14} className="text-brand-400" /> {inv.cardTitle} stock
         </span>
@@ -88,7 +88,7 @@ export default function OrderInventoryIssue({ orderId, orderLabel, inv }) {
                 {state.lines.length} line(s) {state.stage === 'committed' ? 'consumed (production-in)' : 'reserved — on the line, not yet consumed'}.
               </p>
               <table className="w-full text-sm">
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-warm-grey">
                   {state.lines.map((l, i) => (
                     <tr key={l[idField] || i}>
                       <td className="py-1.5 pr-2"><span className="font-mono text-xs">{l.code || byId[l[idField]]?.code || l[idField]}</span>{byId[l[idField]]?.[inv.attrField] ? <span className="text-ink-60"> · {byId[l[idField]][inv.attrField]}</span> : ''}</td>
@@ -134,7 +134,7 @@ export default function OrderInventoryIssue({ orderId, orderLabel, inv }) {
                         <span className="text-[11px] text-ink-60 w-28 shrink-0">
                           {avail != null ? <>avail {fmt(avail)}{after != null ? <> → <span className={after < 0 ? 'text-red-600 font-semibold' : ''}>{fmt(after)}</span></> : ''}</> : ''}
                         </span>
-                        <button type="button" onClick={() => removeRow(r._uid)} className="text-gray-300 hover:text-red-500 shrink-0"><Trash2 size={15} /></button>
+                        <button type="button" onClick={() => removeRow(r._uid)} className="text-platinum hover:text-red-500 shrink-0"><Trash2 size={15} /></button>
                       </div>
                     </div>
                   )

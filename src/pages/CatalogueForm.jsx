@@ -68,13 +68,13 @@ export default function CatalogueForm() {
     }
   }
 
-  if (fetching) return <div className="p-6 text-gray-400">Loading…</div>
+  if (fetching) return <div className="p-6 text-ink-60">Loading…</div>
 
   return (
     <div className="p-4 md:p-6 max-w-lg">
       <div className="mb-6">
         <Link to="/catalogues" className="text-sm text-brand-600 hover:underline">← Catalogues</Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-1">{isEdit ? 'Edit Catalogue' : 'New Catalogue'}</h1>
+        <h1 className="text-2xl font-bold text-ink mt-1">{isEdit ? 'Edit Catalogue' : 'New Catalogue'}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
@@ -103,7 +103,7 @@ export default function CatalogueForm() {
 
         {/* Cover page design */}
         <div className="card p-6 space-y-5">
-          <h2 className="font-semibold text-gray-800 text-sm">Cover Page Design</h2>
+          <h2 className="font-semibold text-ink text-sm">Cover Page Design</h2>
 
           {/* Background image upload — single hidden input, triggered by button/label */}
           <input
@@ -132,7 +132,7 @@ export default function CatalogueForm() {
                 <button
                   type="button"
                   onClick={() => fileRef.current.click()}
-                  className="absolute top-2 right-2 bg-white/90 text-xs px-2 py-1 rounded text-gray-700 hover:bg-white"
+                  className="absolute top-2 right-2 bg-white/90 text-xs px-2 py-1 rounded text-ink-80 hover:bg-white"
                 >
                   Change
                 </button>
@@ -149,7 +149,7 @@ export default function CatalogueForm() {
                 type="button"
                 onClick={() => fileRef.current.click()}
                 disabled={uploading}
-                className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-lg p-6 hover:border-brand-300 hover:bg-brand-50 transition-colors text-gray-500 text-sm"
+                className="w-full flex items-center justify-center gap-2 border-2 border-dashed border-warm-grey rounded-lg p-6 hover:border-brand-300 hover:bg-brand-50 transition-colors text-ink-60 text-sm"
               >
                 {uploading ? 'Uploading…' : <span className="inline-flex items-center gap-1.5"><Camera size={15} />Click to upload cover image</span>}
               </button>
@@ -168,11 +168,11 @@ export default function CatalogueForm() {
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 text-sm capitalize transition-all ${
                     form.overlay_color === color
                       ? 'border-brand-400 bg-brand-50 text-brand-700 font-medium'
-                      : 'border-gray-200 text-gray-500 hover:border-gray-300'
+                      : 'border-warm-grey text-ink-60 hover:border-warm-grey'
                   }`}
                 >
                   <span
-                    className="w-4 h-4 rounded-full border border-gray-300 inline-block"
+                    className="w-4 h-4 rounded-full border border-warm-grey inline-block"
                     style={{ background: color }}
                   />
                   {color}
@@ -192,7 +192,7 @@ export default function CatalogueForm() {
               onChange={e => setVal('overlay_opacity', parseFloat(e.target.value))}
               className="w-full accent-amber-500"
             />
-            <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+            <div className="flex justify-between text-xs text-ink-60 mt-0.5">
               <span>0% (fully transparent)</span>
               <span>90% (nearly opaque)</span>
             </div>

@@ -75,13 +75,13 @@ export default function LogisticsVendorForm() {
     navigate('/logistics')
   }
 
-  if (fetching) return <div className="p-6 text-gray-400">Loading…</div>
+  if (fetching) return <div className="p-6 text-ink-60">Loading…</div>
 
   return (
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
         <Link to="/logistics" className="text-sm text-brand-600 hover:underline">← Logistics</Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-1">{isEdit ? 'Edit Vendor' : 'New Logistics Vendor'}</h1>
+        <h1 className="text-2xl font-bold text-ink mt-1">{isEdit ? 'Edit Vendor' : 'New Logistics Vendor'}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="card p-6 space-y-6">
@@ -107,7 +107,7 @@ export default function LogisticsVendorForm() {
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                   form.modes.includes(m.value)
                     ? 'bg-brand-600 text-white border-brand-600'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400'
+                    : 'bg-white text-ink-70 border-warm-grey hover:border-brand-400'
                 }`}
               >
                 {m.label}
@@ -117,14 +117,14 @@ export default function LogisticsVendorForm() {
         </div>
 
         {/* Coverage — graded tags */}
-        <div className="border-t border-gray-100 pt-5">
+        <div className="border-t border-warm-grey pt-5">
           <div className="flex items-center justify-between mb-1">
             <label className="label mb-0">Coverage</label>
-            <span className="text-xs text-gray-400">Region + how good they are there</span>
+            <span className="text-xs text-ink-60">Region + how good they are there</span>
           </div>
           <div className="space-y-3 mt-2">
             {form.coverage.map((c, i) => (
-              <div key={i} className="rounded-lg border border-gray-200 p-3 space-y-2.5">
+              <div key={i} className="rounded-lg border border-warm-grey p-3 space-y-2.5">
                 <div className="flex gap-2">
                   <input
                     className="input flex-1" value={c.region}
@@ -132,7 +132,7 @@ export default function LogisticsVendorForm() {
                     placeholder="Country / region — e.g. Germany, EU, USA West"
                   />
                   {form.coverage.length > 1 && (
-                    <button type="button" onClick={() => rmCov(i)} className="text-gray-400 hover:text-red-500 px-1">
+                    <button type="button" onClick={() => rmCov(i)} className="text-ink-60 hover:text-red-500 px-1">
                       <X size={16} />
                     </button>
                   )}
@@ -142,7 +142,7 @@ export default function LogisticsVendorForm() {
                     <button
                       key={s.value} type="button" onClick={() => setCov(i, 'strength', s.value)}
                       className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
-                        c.strength === s.value ? s.style + ' ring-1 ring-inset ring-current' : 'bg-white text-gray-400 border-gray-200'
+                        c.strength === s.value ? s.style + ' ring-1 ring-inset ring-current' : 'bg-white text-ink-60 border-warm-grey'
                       }`}
                     >
                       {s.label}
@@ -155,8 +155,8 @@ export default function LogisticsVendorForm() {
                       key={m.value} type="button" onClick={() => toggleCovMode(i, m.value)}
                       className={`px-2 py-0.5 rounded-full text-[10.5px] border transition-colors ${
                         c.modes.includes(m.value)
-                          ? 'bg-gray-700 text-white border-gray-700'
-                          : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
+                          ? 'bg-ink text-white border-ink'
+                          : 'bg-white text-ink-60 border-warm-grey hover:border-ink-60'
                       }`}
                     >
                       {m.label}
@@ -177,7 +177,7 @@ export default function LogisticsVendorForm() {
         </div>
 
         {/* Incoterms + reliability + payment */}
-        <div className="border-t border-gray-100 pt-5 grid grid-cols-2 gap-4">
+        <div className="border-t border-warm-grey pt-5 grid grid-cols-2 gap-4">
           <div className="col-span-2">
             <label className="label">Incoterms Supported</label>
             <div className="flex gap-2 mt-1">
@@ -187,7 +187,7 @@ export default function LogisticsVendorForm() {
                   className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                     form.incoterms_supported.includes(t)
                       ? 'bg-brand-600 text-white border-brand-600'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400'
+                      : 'bg-white text-ink-70 border-warm-grey hover:border-brand-400'
                   }`}
                 >
                   {t}
@@ -196,7 +196,7 @@ export default function LogisticsVendorForm() {
             </div>
           </div>
           <div>
-            <label className="label">Reliability (1–5) <span className="text-gray-400 font-normal">fragile-goods weighted</span></label>
+            <label className="label">Reliability (1–5) <span className="text-ink-60 font-normal">fragile-goods weighted</span></label>
             <input
               className="input max-w-[8rem]" type="number" min="1" max="5" step="1"
               value={form.reliability_rating} onChange={set('reliability_rating')} placeholder="e.g. 4"
@@ -209,15 +209,15 @@ export default function LogisticsVendorForm() {
         </div>
 
         {/* Contacts */}
-        <div className="border-t border-gray-100 pt-5">
+        <div className="border-t border-warm-grey pt-5">
           <label className="label">Contacts</label>
           <div className="space-y-3 mt-2">
             {form.contacts.map((c, i) => (
-              <div key={i} className="rounded-lg border border-gray-200 p-3">
+              <div key={i} className="rounded-lg border border-warm-grey p-3">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs text-gray-400">Contact {i + 1}</span>
+                  <span className="text-xs text-ink-60">Contact {i + 1}</span>
                   {form.contacts.length > 1 && (
-                    <button type="button" onClick={() => rmContact(i)} className="text-gray-400 hover:text-red-500"><X size={15} /></button>
+                    <button type="button" onClick={() => rmContact(i)} className="text-ink-60 hover:text-red-500"><X size={15} /></button>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -236,7 +236,7 @@ export default function LogisticsVendorForm() {
         </div>
 
         {/* Notes */}
-        <div className="border-t border-gray-100 pt-5 space-y-4">
+        <div className="border-t border-warm-grey pt-5 space-y-4">
           <div>
             <label className="label">Damage / Claims History</label>
             <textarea className="input" rows={2} value={form.damage_notes} onChange={set('damage_notes')} placeholder="Handling quality, breakage claims, how disputes were resolved…" />

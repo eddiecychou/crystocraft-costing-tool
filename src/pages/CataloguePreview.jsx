@@ -364,8 +364,8 @@ export default function CataloguePreview() {
     })
   }, [id])
 
-  if (loading) return <div className="p-6 text-gray-400">Loading…</div>
-  if (!catalogue) return <div className="p-6 text-gray-400">Catalogue not found.</div>
+  if (loading) return <div className="p-6 text-ink-60">Loading…</div>
+  if (!catalogue) return <div className="p-6 text-ink-60">Catalogue not found.</div>
 
   // Build pages: auto-detect layout from image count
   const pages = []
@@ -405,11 +405,11 @@ export default function CataloguePreview() {
   return (
     <>
       {/* Print controls — hidden when printing */}
-      <div className="no-print fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm">
+      <div className="no-print fixed top-0 left-0 right-0 z-50 bg-white border-b border-warm-grey px-4 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
           <Link to={`/catalogues/${id}`} className="text-sm text-brand-600 hover:underline">← Back to Builder</Link>
-          <span className="text-gray-300">|</span>
-          <span className="text-sm text-gray-500">{catalogue.name}</span>
+          <span className="text-platinum">|</span>
+          <span className="text-sm text-ink-60">{catalogue.name}</span>
         </div>
         <button
           onClick={() => {

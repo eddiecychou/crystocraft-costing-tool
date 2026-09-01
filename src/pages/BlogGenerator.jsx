@@ -28,7 +28,7 @@ function CopyButton({ text, label = 'Copy' }) {
   const [copied, setCopied] = useState(false)
   return (
     <button onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
-      className="text-xs px-2 py-1 rounded bg-gray-100 hover:bg-brand-50 text-gray-600 hover:text-brand-700 transition-colors shrink-0">
+      className="text-xs px-2 py-1 rounded bg-ivory-dark hover:bg-brand-50 text-ink-70 hover:text-brand-700 transition-colors shrink-0">
       {copied ? <span className="inline-flex items-center gap-1"><Check size={12} />Copied!</span> : label}
     </button>
   )
@@ -42,7 +42,7 @@ const ORIENTATION_BADGE = {
 }
 
 function HeroPicker({ images, value, onChange }) {
-  if (!images.length) return <p className="text-xs text-gray-400">No images on this product yet.</p>
+  if (!images.length) return <p className="text-xs text-ink-60">No images on this product yet.</p>
   return (
     <div className="grid grid-cols-5 gap-2">
       {images.map((img, i) => {
@@ -51,7 +51,7 @@ function HeroPicker({ images, value, onChange }) {
         return (
           <button key={img.file_url || i} type="button"
             onClick={() => onChange(active ? null : img)}
-            className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${active ? 'border-brand-500' : 'border-gray-200 opacity-50 hover:opacity-90'}`}>
+            className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${active ? 'border-brand-500' : 'border-warm-grey opacity-50 hover:opacity-90'}`}>
             <img src={img.file_url} alt="" className="w-full h-full object-cover" />
             <span className={`absolute top-1 left-1 text-[10px] font-bold px-1 py-0.5 rounded leading-none ${orient.cls}`}>{orient.label}</span>
             {active && (
@@ -82,30 +82,30 @@ function SectionImagePicker({ images, heroImage, selected, onChange }) {
       <div className="flex items-center gap-2 flex-wrap">
         {selected.map((img, i) => (
           <div key={img.file_url} className="relative">
-            <img src={img.file_url} alt="" className="w-14 h-14 object-cover rounded-lg border border-gray-200" />
+            <img src={img.file_url} alt="" className="w-14 h-14 object-cover rounded-lg border border-warm-grey" />
             <button type="button" onClick={() => onChange(selected.filter(s => s.file_url !== img.file_url))}
               className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center leading-none"><X size={10} /></button>
-            <span className="absolute -bottom-1.5 -left-1 text-[10px] bg-gray-700 text-white px-1 rounded">
+            <span className="absolute -bottom-1.5 -left-1 text-[10px] bg-ink text-white px-1 rounded">
               {i === 0 && selected.length === 1 ? 'right' : `${i + 1}`}
             </span>
           </div>
         ))}
         {selected.length < 3 && (
           <button type="button" onClick={() => setOpen(o => !o)}
-            className="w-14 h-14 rounded-lg border-2 border-dashed border-gray-200 hover:border-brand-400 text-gray-400 hover:text-brand-500 flex flex-col items-center justify-center text-xs gap-0.5 transition-colors">
+            className="w-14 h-14 rounded-lg border-2 border-dashed border-warm-grey hover:border-brand-400 text-ink-60 hover:text-brand-500 flex flex-col items-center justify-center text-xs gap-0.5 transition-colors">
             <span className="text-lg leading-none">+</span>
             <span>photo</span>
           </button>
         )}
         {selected.length > 0 && (
-          <p className="text-xs text-gray-400 ml-1">
+          <p className="text-xs text-ink-60 ml-1">
             {selected.length === 1 ? '1 image — appears below text' : `${selected.length} images — appear below text`}
           </p>
         )}
       </div>
 
       {open && (
-        <div className="border border-gray-100 rounded-lg p-3 bg-gray-50">
+        <div className="border border-warm-grey rounded-lg p-3 bg-ivory">
           <div className="grid grid-cols-6 gap-1.5">
             {available.map(img => {
               const active = Boolean(selected.find(s => s.file_url === img.file_url))
@@ -119,9 +119,9 @@ function SectionImagePicker({ images, heroImage, selected, onChange }) {
                 </button>
               )
             })}
-            {available.length === 0 && <p className="col-span-6 text-xs text-gray-400 text-center py-2">No other images — hero image is already selected</p>}
+            {available.length === 0 && <p className="col-span-6 text-xs text-ink-60 text-center py-2">No other images — hero image is already selected</p>}
           </div>
-          <button type="button" onClick={() => setOpen(false)} className="text-xs text-gray-400 hover:text-gray-600 mt-2">Done</button>
+          <button type="button" onClick={() => setOpen(false)} className="text-xs text-ink-60 hover:text-ink-70 mt-2">Done</button>
         </div>
       )}
     </div>
@@ -257,21 +257,21 @@ function PreviewModal({ html, onClose }) {
   const [viewport, setViewport] = useState('desktop')
   return (
     <div className="fixed inset-0 z-50 bg-black/70 flex flex-col">
-      <div className="bg-white border-b border-gray-200 px-4 py-2.5 flex items-center justify-between shrink-0">
+      <div className="bg-white border-b border-warm-grey px-4 py-2.5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <h2 className="font-semibold text-gray-800 text-sm">Blog Post Preview</h2>
-          <div className="flex gap-1 bg-gray-100 p-0.5 rounded-md">
+          <h2 className="font-semibold text-ink text-sm">Blog Post Preview</h2>
+          <div className="flex gap-1 bg-ivory-dark p-0.5 rounded-md">
             {[['desktop', 'Desktop', Monitor], ['mobile', 'Mobile', Smartphone]].map(([key, label, Icon]) => (
               <button key={key} onClick={() => setViewport(key)}
-                className={`inline-flex items-center gap-1 text-xs px-3 py-1 rounded transition-colors ${viewport === key ? 'bg-white shadow text-gray-800 font-medium' : 'text-gray-500 hover:text-gray-700'}`}>
+                className={`inline-flex items-center gap-1 text-xs px-3 py-1 rounded transition-colors ${viewport === key ? 'bg-white shadow text-ink font-medium' : 'text-ink-60 hover:text-ink-80'}`}>
                 <Icon size={13} />{label}
               </button>
             ))}
           </div>
         </div>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-700 leading-none px-1"><X size={22} /></button>
+        <button onClick={onClose} className="text-ink-60 hover:text-ink-80 leading-none px-1"><X size={22} /></button>
       </div>
-      <div className="flex-1 overflow-auto bg-gray-200 p-4 flex justify-center">
+      <div className="flex-1 overflow-auto bg-warm-grey p-4 flex justify-center">
         <iframe
           srcDoc={html}
           title="Blog Preview"
@@ -424,7 +424,7 @@ function WPPublishButton({ payload, disabled }) {
         </span>
       </button>
       {state === 'error' && <p className="text-xs text-red-500">{errMsg}</p>}
-      <p className="text-xs text-gray-400 text-center">Images upload to WP Media Library for maximum SEO benefit</p>
+      <p className="text-xs text-ink-60 text-center">Images upload to WP Media Library for maximum SEO benefit</p>
     </div>
   )
 }
@@ -460,7 +460,7 @@ function RewritePanel({ sectionType, heading, body, context, onRewrite }) {
   if (!open) {
     return (
       <button type="button" onClick={() => setOpen(true)}
-        className="text-xs text-gray-400 hover:text-brand-600 transition-colors flex items-center gap-1">
+        className="text-xs text-ink-60 hover:text-brand-600 transition-colors flex items-center gap-1">
         <RotateCcw size={12} />Rewrite
       </button>
     )
@@ -484,7 +484,7 @@ function RewritePanel({ sectionType, heading, body, context, onRewrite }) {
           {loading ? <span className="inline-flex items-center gap-1"><Pencil size={12} />Rewriting…</span> : <span className="inline-flex items-center gap-1"><RotateCcw size={12} />Rewrite</span>}
         </button>
         <button type="button" onClick={() => { setOpen(false); setGuidance('') }}
-          className="text-xs px-3 py-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+          className="text-xs px-3 py-1.5 rounded-md border border-warm-grey text-ink-60 hover:bg-ivory transition-colors">
           Cancel
         </button>
       </div>
@@ -497,7 +497,7 @@ function EditableMeta({ result, onChange }) {
   function set(field) { return e => onChange({ ...result, [field]: e.target.value }) }
   return (
     <div className="card p-5 space-y-3">
-      <h3 className="font-semibold text-gray-800">SEO & Meta</h3>
+      <h3 className="font-semibold text-ink">SEO & Meta</h3>
       <div className="space-y-3">
         {[
           { label: 'SEO Title', field: 'seo_title', hint: `${result.seo_title?.length || 0}/65` },
@@ -506,7 +506,7 @@ function EditableMeta({ result, onChange }) {
         ].map(({ label, field, hint }) => (
           <div key={field}>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-xs text-gray-500">{label}{hint ? ` · ${hint} chars` : ''}</label>
+              <label className="text-xs text-ink-60">{label}{hint ? ` · ${hint} chars` : ''}</label>
               <CopyButton text={result[field] || ''} />
             </div>
             <input className="input text-sm" value={result[field] || ''} onChange={set(field)} />
@@ -514,14 +514,14 @@ function EditableMeta({ result, onChange }) {
         ))}
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-xs text-gray-500">Meta Description · {result.meta_description?.length || 0}/155 chars</label>
+            <label className="text-xs text-ink-60">Meta Description · {result.meta_description?.length || 0}/155 chars</label>
             <CopyButton text={result.meta_description || ''} />
           </div>
           <textarea className="input text-sm" rows={2} value={result.meta_description || ''} onChange={set('meta_description')} />
         </div>
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="text-xs text-gray-500">Tags (comma separated)</label>
+            <label className="text-xs text-ink-60">Tags (comma separated)</label>
             <CopyButton text={result.tags?.join(', ') || ''} />
           </div>
           <input className="input text-sm" value={result.tags?.join(', ') || ''}
@@ -635,7 +635,7 @@ function SpotlightTab({ preloadedProduct }) {
             {PRODUCT_SOURCES.map(s => (
               <button key={s.value} type="button"
                 onClick={() => { if (s.value !== source) { setSource(s.value); setSelectedId(''); setResult(null) } }}
-                className={`text-sm px-3 py-1.5 rounded-md border transition-colors ${source === s.value ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                className={`text-sm px-3 py-1.5 rounded-md border transition-colors ${source === s.value ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-70 border-warm-grey hover:bg-ivory'}`}>
                 {s.label}
               </button>
             ))}
@@ -649,7 +649,7 @@ function SpotlightTab({ preloadedProduct }) {
           </select>
         </div>
         <div>
-          <label className="label">Target Industry <span className="text-gray-400 font-normal">(optional)</span></label>
+          <label className="label">Target Industry <span className="text-ink-60 font-normal">(optional)</span></label>
           <select className="input" value={industry} onChange={e => setIndustry(e.target.value)}>
             <option value="">General corporate gifting</option>
             {INDUSTRIES.map(i => <option key={i} value={i}>{i}</option>)}
@@ -657,7 +657,7 @@ function SpotlightTab({ preloadedProduct }) {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="sm:col-span-2">
-            <label className="label">Enquiry / CTA URL <span className="text-gray-400 font-normal">(optional — adds a button at the end of the post)</span></label>
+            <label className="label">Enquiry / CTA URL <span className="text-ink-60 font-normal">(optional — adds a button at the end of the post)</span></label>
             <input className="input" type="url" value={productUrl} onChange={e => setProductUrl(e.target.value)} placeholder="https://crystocraft.com/products/..." />
           </div>
           <div>
@@ -678,8 +678,8 @@ function SpotlightTab({ preloadedProduct }) {
           {/* Hero image picker */}
           <div className="card p-5 space-y-3">
             <div>
-              <h3 className="font-semibold text-gray-800">Hero Image</h3>
-              <p className="text-xs text-gray-400 mt-0.5">Full-width image at the top of the post + WordPress featured image</p>
+              <h3 className="font-semibold text-ink">Hero Image</h3>
+              <p className="text-xs text-ink-60 mt-0.5">Full-width image at the top of the post + WordPress featured image</p>
             </div>
             <HeroPicker images={productImages} value={heroImage} onChange={setHeroImage} />
           </div>
@@ -687,13 +687,13 @@ function SpotlightTab({ preloadedProduct }) {
           {/* Content sections — editable with image pickers */}
           <div className="card p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800">Blog Content</h3>
+              <h3 className="font-semibold text-ink">Blog Content</h3>
               <CopyButton text={result.sections?.map(s => [s.heading ? `## ${s.heading}` : '', s.body].filter(Boolean).join('\n\n')).join('\n\n')} label="Copy All" />
             </div>
             {result.sections?.map((s, i) => (
-              <div key={i} className="border border-gray-100 rounded-lg p-4 space-y-2">
+              <div key={i} className="border border-warm-grey rounded-lg p-4 space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-gray-400 shrink-0">{s.type?.replace('_', ' ') || `Section ${i + 1}`}</span>
+                  <span className="text-xs font-semibold uppercase tracking-wide text-ink-60 shrink-0">{s.type?.replace('_', ' ') || `Section ${i + 1}`}</span>
                   <CopyButton text={[s.heading, s.body].filter(Boolean).join('\n\n')} />
                 </div>
                 {s.heading !== undefined && (
@@ -712,12 +712,12 @@ function SpotlightTab({ preloadedProduct }) {
                     updateSection(i, 'body', data.body)
                   }}
                 />
-                <input className="input text-xs text-gray-500" type="url" value={s.section_url || ''} placeholder="Section link URL (overrides global — links images & heading)"
+                <input className="input text-xs text-ink-60" type="url" value={s.section_url || ''} placeholder="Section link URL (overrides global — links images & heading)"
                   onChange={e => updateSection(i, 'section_url', e.target.value)} />
 
                 {/* Section image picker */}
-                <div className="border-t border-gray-50 pt-2">
-                  <p className="text-xs text-gray-400 mb-1">Section images <span className="text-gray-300">(0–3 · 1 image = right side, 2–3 images = row below text)</span></p>
+                <div className="border-t border-warm-grey pt-2">
+                  <p className="text-xs text-ink-60 mb-1">Section images <span className="text-platinum">(0–3 · 1 image = right side, 2–3 images = row below text)</span></p>
                   <SectionImagePicker
                     images={productImages}
                     heroImage={heroImage}
@@ -732,9 +732,9 @@ function SpotlightTab({ preloadedProduct }) {
           {/* Publish card */}
           <div className="card p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800">Publish to WordPress</h3>
+              <h3 className="font-semibold text-ink">Publish to WordPress</h3>
               <button onClick={() => setShowPreview(true)}
-                className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md border border-warm-grey text-ink-70 hover:bg-ivory transition-colors">
                 <Eye size={13} />Preview HTML
               </button>
             </div>
@@ -905,29 +905,29 @@ function RoundupTab() {
             {PRODUCT_SOURCES.map(s => (
               <button key={s.value} type="button"
                 onClick={() => { if (s.value !== source) { setSource(s.value); setSelected([]); setProductImageMap({}); setItemImages({}); setHeroImage(null); setResult(null) } }}
-                className={`text-sm px-3 py-1.5 rounded-md border transition-colors ${source === s.value ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}`}>
+                className={`text-sm px-3 py-1.5 rounded-md border transition-colors ${source === s.value ? 'bg-brand-600 text-white border-brand-600' : 'bg-white text-ink-70 border-warm-grey hover:bg-ivory'}`}>
                 {s.label}
               </button>
             ))}
           </div>
-          <p className="text-xs text-gray-400 mt-1">A roundup features products from one source at a time.</p>
+          <p className="text-xs text-ink-60 mt-1">A roundup features products from one source at a time.</p>
         </div>
         <div>
-          <label className="label">Select Products <span className="text-gray-400 font-normal">(2–7, in order)</span></label>
+          <label className="label">Select Products <span className="text-ink-60 font-normal">(2–7, in order)</span></label>
           <div className="mt-2 space-y-1.5 max-h-64 overflow-y-auto pr-1">
             {products.map(p => {
               const idx = selected.findIndex(s => s.id === p.id)
               const isSelected = idx >= 0
               return (
                 <button key={p.id} type="button" onClick={() => toggleProduct(p)}
-                  className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-colors ${isSelected ? 'border-brand-300 bg-brand-50' : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50'}`}>
+                  className={`w-full flex items-center gap-3 p-2.5 rounded-lg border text-left transition-colors ${isSelected ? 'border-brand-300 bg-brand-50' : 'border-warm-grey hover:border-warm-grey hover:bg-ivory'}`}>
                   {p.heroImage
                     ? <img src={p.heroImage} alt="" className="w-10 h-10 rounded object-cover shrink-0" />
-                    : <div className="w-10 h-10 rounded bg-gray-100 flex items-center justify-center shrink-0 text-gray-300"><Package size={18} /></div>
+                    : <div className="w-10 h-10 rounded bg-ivory-dark flex items-center justify-center shrink-0 text-platinum"><Package size={18} /></div>
                   }
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
-                    <p className="text-xs text-gray-400">{p.category}</p>
+                    <p className="text-sm font-medium text-ink truncate">{p.name}</p>
+                    <p className="text-xs text-ink-60">{p.category}</p>
                   </div>
                   {!p.heroImage && <span className="text-xs text-amber-500 shrink-0">no image</span>}
                   {isSelected && (
@@ -959,7 +959,7 @@ function RoundupTab() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="sm:col-span-2">
-            <label className="label">Enquiry / CTA URL <span className="text-gray-400 font-normal">(optional — adds a button after the conclusion)</span></label>
+            <label className="label">Enquiry / CTA URL <span className="text-ink-60 font-normal">(optional — adds a button after the conclusion)</span></label>
             <input className="input" type="url" value={productUrl} onChange={e => setProductUrl(e.target.value)} placeholder="https://crystocraft.com/products/..." />
           </div>
           <div>
@@ -970,7 +970,7 @@ function RoundupTab() {
         <button onClick={handleGenerate} disabled={selected.length < 2 || loading} className="btn-primary w-full justify-center">
           {loading ? <span className="inline-flex items-center gap-1.5"><Pencil size={15} />Writing roundup…</span> : <span className="inline-flex items-center gap-1.5"><Sparkles size={15} />Generate Roundup · {selected.length} products</span>}
         </button>
-        {selected.length < 2 && <p className="text-xs text-gray-400 text-center">Select at least 2 products</p>}
+        {selected.length < 2 && <p className="text-xs text-ink-60 text-center">Select at least 2 products</p>}
         {error && <p className="text-sm text-red-500">{error}</p>}
       </div>
 
@@ -981,19 +981,19 @@ function RoundupTab() {
           {/* Hero image picker */}
           <div className="card p-5 space-y-3">
             <div>
-              <h3 className="font-semibold text-gray-800">Hero Image</h3>
-              <p className="text-xs text-gray-400 mt-0.5">Full-width banner at the top + WordPress featured image. Choose from any selected product's images.</p>
+              <h3 className="font-semibold text-ink">Hero Image</h3>
+              <p className="text-xs text-ink-60 mt-0.5">Full-width banner at the top + WordPress featured image. Choose from any selected product's images.</p>
             </div>
             {allImages.length > 0
               ? <HeroPicker images={allImages} value={heroImage} onChange={setHeroImage} />
-              : <p className="text-xs text-gray-400">No images found — upload images to the selected products first.</p>
+              : <p className="text-xs text-ink-60">No images found — upload images to the selected products first.</p>
             }
           </div>
 
           {result.intro && (
             <div className="card p-5 space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-800">Introduction</h3>
+                <h3 className="font-semibold text-ink">Introduction</h3>
                 <CopyButton text={result.intro.body} />
               </div>
               <textarea className="input text-sm" rows={3} value={result.intro.body || ''}
@@ -1015,7 +1015,7 @@ function RoundupTab() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {product?.heroImage && <img src={product.heroImage} alt="" className="w-7 h-7 rounded object-cover" />}
-                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Product {i + 1} · {product?.name}</span>
+                    <span className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Product {i + 1} · {product?.name}</span>
                   </div>
                   <CopyButton text={`${item.heading}\n\n${item.body}`} />
                 </div>
@@ -1033,13 +1033,13 @@ function RoundupTab() {
                     updateItem(i, 'body', data.body)
                   }}
                 />
-                <input className="input text-xs text-gray-500" type="url" value={item.item_url || ''} placeholder="Product link URL (overrides global — links images & heading)"
+                <input className="input text-xs text-ink-60" type="url" value={item.item_url || ''} placeholder="Product link URL (overrides global — links images & heading)"
                   onChange={e => updateItem(i, 'item_url', e.target.value)} />
 
                 {/* Per-product image picker */}
-                <div className="border-t border-gray-50 pt-2">
-                  <p className="text-xs text-gray-400 mb-1">
-                    Section images <span className="text-gray-300">(0–3 · 1 image = right side, 2–3 = row below text)</span>
+                <div className="border-t border-warm-grey pt-2">
+                  <p className="text-xs text-ink-60 mb-1">
+                    Section images <span className="text-platinum">(0–3 · 1 image = right side, 2–3 = row below text)</span>
                   </p>
                   {productImages.length > 0
                     ? <SectionImagePicker
@@ -1058,7 +1058,7 @@ function RoundupTab() {
           {result.conclusion && (
             <div className="card p-5 space-y-2">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-gray-800">Conclusion</h3>
+                <h3 className="font-semibold text-ink">Conclusion</h3>
                 <CopyButton text={`${result.conclusion.heading}\n\n${result.conclusion.body}`} />
               </div>
               <input className="input text-sm font-medium" value={result.conclusion.heading || ''}
@@ -1083,9 +1083,9 @@ function RoundupTab() {
 
           <div className="card p-5 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-800">Publish to WordPress</h3>
+              <h3 className="font-semibold text-ink">Publish to WordPress</h3>
               <button onClick={() => setShowPreview(true)}
-                className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
+                className="inline-flex items-center gap-1 text-xs px-3 py-1.5 rounded-md border border-warm-grey text-ink-70 hover:bg-ivory transition-colors">
                 <Eye size={13} />Preview HTML
               </button>
             </div>
@@ -1117,17 +1117,17 @@ export default function BlogGenerator({ embedded = false }) {
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
         {!embedded && <Link to="/products" className="text-sm text-brand-600 hover:underline">← Products</Link>}
-        {!embedded && <h1 className="text-2xl font-bold text-gray-900 mt-1">Blog Post Generator</h1>}
-        <p className="text-sm text-gray-500 mt-1">Generate SEO-optimised blog content, preview it, then publish as a WordPress draft.</p>
+        {!embedded && <h1 className="text-2xl font-bold text-ink mt-1">Blog Post Generator</h1>}
+        <p className="text-sm text-ink-60 mt-1">Generate SEO-optimised blog content, preview it, then publish as a WordPress draft.</p>
       </div>
 
-      <div className="flex gap-1 p-1 bg-gray-100 rounded-lg mb-6">
+      <div className="flex gap-1 p-1 bg-ivory-dark rounded-lg mb-6">
         {[{ key: 'spotlight', label: 'Product Spotlight', Icon: Flashlight, desc: 'One product, one post' },
           { key: 'roundup', label: 'Roundup Post', Icon: List, desc: 'Multiple products, one post' }].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${tab === t.key ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700'}`}>
+            className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all ${tab === t.key ? 'bg-white shadow text-ink' : 'text-ink-60 hover:text-ink-80'}`}>
             <span className="inline-flex items-center gap-1.5"><t.Icon size={14} />{t.label}</span>
-            <span className="block text-xs font-normal text-gray-400">{t.desc}</span>
+            <span className="block text-xs font-normal text-ink-60">{t.desc}</span>
           </button>
         ))}
       </div>

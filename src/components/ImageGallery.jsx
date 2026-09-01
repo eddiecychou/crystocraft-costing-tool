@@ -134,7 +134,7 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
           <div className="absolute top-1 left-1 z-10 bg-yellow-400 px-1 py-0.5 rounded text-white leading-none"><Star size={11} className="fill-current" /></div>
         )}
         {showVisibility && (
-          <div className={`absolute z-10 bottom-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-medium leading-none ${visMeta?.cls || 'bg-gray-200 text-gray-600'}`}>
+          <div className={`absolute z-10 bottom-1 left-1 px-1.5 py-0.5 rounded text-[10px] font-medium leading-none ${visMeta?.cls || 'bg-warm-grey text-ink-70'}`}>
             {visMeta?.short || vis}
           </div>
         )}
@@ -205,7 +205,7 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
 
       {typeOptions && (
         <select
-          className="text-xs border border-gray-200 rounded px-1.5 py-1 text-gray-600 bg-white w-full"
+          className="text-xs border border-warm-grey rounded px-1.5 py-1 text-ink-70 bg-white w-full"
           value={img.type || typeOptions[0].value}
           onChange={e => handleTypeChange(e.target.value)}
         >
@@ -219,12 +219,12 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
           onChange={e => setCaption(e.target.value)}
           onBlur={saveCaption}
           placeholder="Caption (optional)"
-          className="text-xs border border-gray-200 rounded px-1.5 py-1 text-gray-600 bg-white w-full"
+          className="text-xs border border-warm-grey rounded px-1.5 py-1 text-ink-70 bg-white w-full"
         />
       )}
       {showVisibility && (
         <select
-          className={`text-xs border rounded px-1.5 py-1 w-full font-medium ${visMeta?.cls || 'bg-white text-gray-600 border-gray-200'}`}
+          className={`text-xs border rounded px-1.5 py-1 w-full font-medium ${visMeta?.cls || 'bg-white text-ink-70 border-warm-grey'}`}
           value={vis}
           onChange={e => handleVisibilityChange(e.target.value)}
           title="Where this image is allowed to appear"
@@ -234,7 +234,7 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
       )}
       {brandedForCustomers && (
         <select
-          className={`text-xs border rounded px-1.5 py-1 w-full ${img.branded_for_customer_id ? 'bg-red-50 text-red-700 border-red-200 font-medium' : 'bg-white text-gray-500 border-gray-200'}`}
+          className={`text-xs border rounded px-1.5 py-1 w-full ${img.branded_for_customer_id ? 'bg-red-50 text-red-700 border-red-200 font-medium' : 'bg-white text-ink-60 border-warm-grey'}`}
           value={img.branded_for_customer_id || ''}
           onChange={e => handleBrandedForChange(e.target.value)}
           title="Whose branding appears in this photo — a customer flagged 'sensitive' never sees another client's tagged photo"
@@ -258,7 +258,7 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
             className={`flex-1 text-xs py-0.5 rounded font-medium transition-colors ${
               (img.orientation || 'square') === o.value
                 ? ORIENTATION_STYLES[o.value]
-                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                : 'bg-ivory-dark text-ink-60 hover:bg-warm-grey'
             }`}
             title={o.label}
           >
@@ -479,13 +479,13 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
         className={`flex items-center justify-center gap-2 border-2 border-dashed rounded-lg p-4 cursor-pointer transition-colors
           ${uploading   ? 'border-brand-300 bg-brand-50 cursor-wait' :
             dragOver    ? 'border-brand-400 bg-brand-50 scale-[1.01]' :
-                          'border-gray-200 hover:border-brand-300 hover:bg-brand-50'}`}
+                          'border-warm-grey hover:border-brand-300 hover:bg-brand-50'}`}
         onDragOver={e => { e.preventDefault(); setDragOver(true) }}
         onDragLeave={() => setDragOver(false)}
         onDrop={handleDrop}
       >
-        <span className="text-gray-500">{dragOver ? <FolderOpen size={20} /> : <Paperclip size={20} />}</span>
-        <span className="text-sm text-gray-600">
+        <span className="text-ink-60">{dragOver ? <FolderOpen size={20} /> : <Paperclip size={20} />}</span>
+        <span className="text-sm text-ink-70">
           {uploading ? 'Uploading…' : dragOver ? 'Drop to upload'
             : onExtraFiles ? 'Upload photos or videos, or drag & drop' : 'Upload images or drag & drop'}
         </span>
@@ -496,7 +496,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
       {/* Sortable grid */}
       {images.length > 0 && (
         <>
-          <p className="text-xs text-gray-400 mt-2 mb-1">Drag images to reorder</p>
+          <p className="text-xs text-ink-60 mt-2 mb-1">Drag images to reorder</p>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={images.map(i => i.id)} strategy={rectSortingStrategy}>
               <div className="grid grid-cols-2 gap-2">
@@ -559,12 +559,12 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={() => !enh.busy && closeEditor()}>
           <div className="bg-white rounded-xl max-w-3xl w-full p-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5"><Sparkles size={15} /> Edit image — review before replacing</h3>
-              <button type="button" onClick={() => !enh.busy && closeEditor()} className="text-gray-400 hover:text-gray-700"><X size={16} /></button>
+              <h3 className="text-sm font-semibold text-ink-80 inline-flex items-center gap-1.5"><Sparkles size={15} /> Edit image — review before replacing</h3>
+              <button type="button" onClick={() => !enh.busy && closeEditor()} className="text-ink-60 hover:text-ink-80"><X size={16} /></button>
             </div>
 
             {/* Tabs: AI enhance vs manual adjust */}
-            <div className="flex gap-1 mb-3 border-b border-gray-100">
+            <div className="flex gap-1 mb-3 border-b border-warm-grey">
               {[
                 { key: 'ai',     label: 'AI enhance' },
                 { key: 'adjust', label: 'Adjust (manual)' },
@@ -577,7 +577,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                   className={`px-3 py-1.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
                     editTab === t.key
                       ? 'border-brand-600 text-brand-700'
-                      : 'border-transparent text-gray-400 hover:text-gray-600'
+                      : 'border-transparent text-ink-60 hover:text-ink-70'
                   }`}
                 >
                   {t.label}
@@ -595,24 +595,24 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
             <>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Original</p>
-                <div className="aspect-square bg-gray-100 border border-gray-200 rounded flex items-center justify-center overflow-hidden">
+                <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Original</p>
+                <div className="aspect-square bg-ivory-dark border border-warm-grey rounded flex items-center justify-center overflow-hidden">
                   <img src={enh.before} alt="" className="w-full h-full object-contain" />
                 </div>
               </div>
               <div>
-                <p className="text-[11px] uppercase tracking-wide text-gray-400 mb-1">Enhanced {enh.after && `· ${enh.mode}`}</p>
-                <div className="aspect-square bg-gray-100 border border-gray-200 rounded flex items-center justify-center overflow-hidden">
-                  {enh.busy ? <span className="text-xs text-gray-500">Working… (AI, ~10–20s)</span>
+                <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Enhanced {enh.after && `· ${enh.mode}`}</p>
+                <div className="aspect-square bg-ivory-dark border border-warm-grey rounded flex items-center justify-center overflow-hidden">
+                  {enh.busy ? <span className="text-xs text-ink-60">Working… (AI, ~10–20s)</span>
                     : enh.after ? <img src={enh.after} alt="" className="w-full h-full object-contain" />
-                    : <span className="text-xs text-gray-400">Describe colours below, then pick Clean or Enhance</span>}
+                    : <span className="text-xs text-ink-60">Describe colours below, then pick Clean or Enhance</span>}
                 </div>
               </div>
             </div>
             {/* Colour hint — shown before first enhancement and persists */}
             <div className="mt-3">
-              <label className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">
-                Describe product colours <span className="normal-case font-normal text-gray-400">(optional — helps AI preserve them)</span>
+              <label className="text-[11px] font-medium text-ink-60 uppercase tracking-wide">
+                Describe product colours <span className="normal-case font-normal text-ink-60">(optional — helps AI preserve them)</span>
               </label>
               <input
                 className="input mt-1 text-sm"
@@ -623,15 +623,15 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
               />
             </div>
             {/* Recolor panel */}
-            <div className="mt-3 border border-gray-200 rounded-lg overflow-hidden">
+            <div className="mt-3 border border-warm-grey rounded-lg overflow-hidden">
               <button type="button"
-                className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-gray-500 hover:bg-gray-50"
+                className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink-60 hover:bg-ivory"
                 onClick={() => setRecolorOpen(o => !o)}>
                 <span className="flex items-center gap-1.5"><Sparkles size={12} /> Change colours</span>
-                <span className="text-gray-400">{recolorOpen ? '▲' : '▼'}</span>
+                <span className="text-ink-60">{recolorOpen ? '▲' : '▼'}</span>
               </button>
               {recolorOpen && (
-                <div className="px-3 pb-3 pt-2 bg-gray-50 space-y-2">
+                <div className="px-3 pb-3 pt-2 bg-ivory space-y-2">
                   <input
                     className="input text-sm"
                     placeholder="e.g. change the gold to silver, make the ribbon red instead of blue"
@@ -645,7 +645,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                     className="btn-primary text-xs py-1.5 disabled:opacity-40">
                     {enh.busy ? 'Working…' : 'Apply recolor'}
                   </button>
-                  <p className="text-[10px] text-gray-400 leading-snug">AI changes only what you describe — shape, background, and unmentioned colours stay the same. Always review before keeping.</p>
+                  <p className="text-[10px] text-ink-60 leading-snug">AI changes only what you describe — shape, background, and unmentioned colours stay the same. Always review before keeping.</p>
                 </div>
               )}
             </div>
@@ -682,7 +682,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                 <button type="button" disabled={enh.busy} onClick={() => runEnhance(enh.img, 'enhance')} className="btn-secondary text-sm">Enhance (lighting + colour)</button>
               </>}
               <div className="flex-1" />
-              <button type="button" disabled={enh.busy} onClick={closeEditor} className="text-sm text-gray-500 hover:text-gray-800 px-2">Discard</button>
+              <button type="button" disabled={enh.busy} onClick={closeEditor} className="text-sm text-ink-60 hover:text-ink px-2">Discard</button>
               <button type="button" disabled={enh.busy || !enh.after} onClick={saveAsNew} className="btn-secondary text-sm inline-flex items-center gap-1">
                 <Plus size={14} /> {enh.busy ? 'Saving…' : 'Save as new'}
               </button>
@@ -690,7 +690,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                 <Check size={14} /> {enh.busy ? 'Saving…' : 'Replace original'}
               </button>
             </div>
-            <p className="text-[11px] text-gray-400 mt-2">
+            <p className="text-[11px] text-ink-60 mt-2">
               {editTab === 'ai'
                 ? 'AI re-renders the image — check the shape and colours match the real product before keeping. The original isn’t changed until you Keep.'
                 : 'Adjustments are applied exactly as shown. The original isn’t changed until you Keep.'}

@@ -72,8 +72,8 @@ export default function CreditNotes() {
       {loading && <LoadingBar />}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900">Credit Notes</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{filtered.length} of {rows.length} credit notes</p>
+          <h1 className="text-xl md:text-2xl font-bold text-ink">Credit Notes</h1>
+          <p className="text-sm text-ink-60 mt-0.5">{filtered.length} of {rows.length} credit notes</p>
         </div>
         <Link to="/credit-notes/new" className="btn-primary text-sm whitespace-nowrap">+ New Credit Note</Link>
       </div>
@@ -91,7 +91,7 @@ export default function CreditNotes() {
           {[{ value: '', label: 'All' }, ...CN_STATUSES].map(s => (
             <button key={s.value || 'all'} onClick={() => setStatusFilter(s.value)}
               className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${
-                statusFilter === s.value ? 'bg-ink text-white border-ink' : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400'}`}>
+                statusFilter === s.value ? 'bg-ink text-white border-ink' : 'bg-white text-ink-70 border-warm-grey hover:border-brand-400'}`}>
               {s.label}
             </button>
           ))}
@@ -99,7 +99,7 @@ export default function CreditNotes() {
       </div>
 
       {!loading && filtered.length === 0 ? (
-        <div className="card p-8 text-center text-sm text-gray-500">
+        <div className="card p-8 text-center text-sm text-ink-60">
           No credit notes yet. <Link to="/credit-notes/new" className="text-brand-600 hover:underline">Create your first credit note</Link>.
         </div>
       ) : (
@@ -116,21 +116,21 @@ export default function CreditNotes() {
                   <th className="px-3 py-2 font-medium text-right">Amount</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-warm-grey">
                 {filtered.map(r => {
                   const meta = STATUS_META[r.status || 'draft'] || STATUS_META.draft
                   const amount = r.accounting_amount ?? cnTotals(r.lines).subtotal
                   return (
                     <tr key={r.id} onClick={() => navigate(`/credit-notes/${r.id}`)}
-                        className={`hover:bg-gray-50 transition-colors cursor-pointer ${r.status === 'void' ? 'opacity-60' : ''}`}>
-                      <td className="px-3 py-2.5 font-mono text-sm font-medium text-gray-900">{r.cn_no || '(draft)'}</td>
-                      <td className="px-3 py-2.5 text-gray-700">{r.customer_name || r.marketplace_ref || '—'}</td>
-                      <td className="px-3 py-2.5 text-gray-500 font-mono text-xs">{[r.original_si_no, r.original_uc_no].filter(Boolean).join(' · ') || '—'}</td>
-                      <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{r.record_date ? fmtDate(r.record_date) : '—'}</td>
+                        className={`hover:bg-ivory transition-colors cursor-pointer ${r.status === 'void' ? 'opacity-60' : ''}`}>
+                      <td className="px-3 py-2.5 font-mono text-sm font-medium text-ink">{r.cn_no || '(draft)'}</td>
+                      <td className="px-3 py-2.5 text-ink-80">{r.customer_name || r.marketplace_ref || '—'}</td>
+                      <td className="px-3 py-2.5 text-ink-60 font-mono text-xs">{[r.original_si_no, r.original_uc_no].filter(Boolean).join(' · ') || '—'}</td>
+                      <td className="px-3 py-2.5 text-ink-60 whitespace-nowrap">{r.record_date ? fmtDate(r.record_date) : '—'}</td>
                       <td className="px-3 py-2.5">
                         <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${meta.badge}`}>{meta.label}</span>
                       </td>
-                      <td className="px-3 py-2.5 text-right tabular-nums text-gray-800 font-medium whitespace-nowrap">
+                      <td className="px-3 py-2.5 text-right tabular-nums text-ink font-medium whitespace-nowrap">
                         {fmtMoney(amount, r.currency || 'USD')}
                       </td>
                     </tr>

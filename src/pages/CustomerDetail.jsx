@@ -27,7 +27,7 @@ import { createInvitation } from '../portalInviteApi'
 import { wooOrdersByCustomerId, searchWooOrders } from '../wooSyncApi'
 
 const STATUS_STYLES = {
-  draft: 'bg-gray-100 text-gray-600',
+  draft: 'bg-ivory-dark text-ink-70',
   sent:  'bg-blue-100 text-blue-700',
   won:   'bg-green-100 text-green-700',
   lost:  'bg-red-100 text-red-600',
@@ -38,7 +38,7 @@ const ENQUIRY_STATUS_STYLES = {
   Quoted:    'bg-blue-100 text-blue-700',
   Confirmed: 'bg-green-100 text-green-700',
   Lost:      'bg-red-100 text-red-600',
-  'On Hold': 'bg-gray-100 text-gray-500',
+  'On Hold': 'bg-ivory-dark text-ink-60',
   // Legacy statuses (no longer offered) — kept so old records still render
   Won:            'bg-green-100 text-green-700',
   Completed:      'bg-teal-100 text-teal-700',
@@ -50,7 +50,7 @@ const ENQUIRY_STATUS_DOT = {
   Quoted:    'bg-blue-500',
   Confirmed: 'bg-green-500',
   Lost:      'bg-red-500',
-  'On Hold': 'bg-gray-400',
+  'On Hold': 'bg-ink-60',
   Won:            'bg-green-500',
   Completed:      'bg-teal-500',
   'In Production':'bg-purple-500',
@@ -60,7 +60,7 @@ const ENQUIRY_STATUS_DOT = {
 const PORTAL_STATUS_STYLES = {
   new:      'bg-amber-100 text-amber-700',
   handled:  'bg-green-100 text-green-700',
-  archived: 'bg-gray-100 text-gray-500',
+  archived: 'bg-ivory-dark text-ink-60',
 }
 
 function fmtMoney(n, cur) {
@@ -77,7 +77,7 @@ const CRM_STATUS_STYLES = {
   Active:   'bg-green-100 text-green-700',
   Prospect: 'bg-blue-100 text-blue-700',
   Dormant:  'bg-amber-100 text-amber-700',
-  Inactive: 'bg-gray-100 text-gray-500',
+  Inactive: 'bg-ivory-dark text-ink-60',
 }
 
 const CHANNEL_BADGE = {
@@ -153,9 +153,9 @@ function MergeCustomerModal({ customer, onClose, onMerged }) {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg my-8" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
-          <h2 className="font-semibold text-gray-900">Merge “{customer.company_name}” into…</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
+          <h2 className="font-semibold text-ink">Merge “{customer.company_name}” into…</h2>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
         </div>
         <div className="p-5 space-y-3">
           {error && (
@@ -164,25 +164,25 @@ function MergeCustomerModal({ customer, onClose, onMerged }) {
             </div>
           )}
           <label className="block">
-            <span className="text-xs text-gray-500">The surviving record — search by company name</span>
+            <span className="text-xs text-ink-60">The surviving record — search by company name</span>
             <input className="input w-full mt-0.5" placeholder="Search customers…" value={search}
               onChange={e => { setSearch(e.target.value); setSurvivorId('') }} autoFocus />
           </label>
           {search && !survivorId && (
-            <div className="border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
+            <div className="border border-warm-grey rounded-lg max-h-48 overflow-y-auto">
               {results.length === 0 ? (
-                <p className="text-xs text-gray-400 px-3 py-2">No match.</p>
+                <p className="text-xs text-ink-60 px-3 py-2">No match.</p>
               ) : results.map(c => (
                 <button key={c.id} type="button"
                   onClick={() => { setSurvivorId(c.id); setSearch(c.company_name) }}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-100 last:border-0">
-                  {c.company_name} {c.country && <span className="text-gray-400">— {c.country}</span>}
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-ivory border-b border-warm-grey last:border-0">
+                  {c.company_name} {c.country && <span className="text-ink-60">— {c.country}</span>}
                 </button>
               ))}
             </div>
           )}
 
-          {previewing && <p className="text-xs text-gray-400">Checking what would move…</p>}
+          {previewing && <p className="text-xs text-ink-60">Checking what would move…</p>}
 
           {preview && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-900 space-y-1.5">
@@ -213,7 +213,7 @@ function MergeCustomerModal({ customer, onClose, onMerged }) {
             </div>
           )}
         </div>
-        <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200">
+        <div className="flex justify-end gap-2 px-5 py-3 border-t border-warm-grey">
           <button onClick={onClose} disabled={busy} className="btn-secondary text-sm">Cancel</button>
           <button onClick={confirm} disabled={busy || !preview} className="btn-danger text-sm">
             {busy ? 'Merging…' : 'Merge & Delete'}
@@ -251,10 +251,10 @@ function Collapsible({ storageKey, title, right, defaultOpen = true, children, c
   }
   return (
     <div className={className}>
-      <div className={`flex items-center justify-between gap-2 px-5 py-4 cursor-pointer select-none ${!collapsed ? 'border-b border-gray-100' : ''}`} onClick={toggle}>
+      <div className={`flex items-center justify-between gap-2 px-5 py-4 cursor-pointer select-none ${!collapsed ? 'border-b border-warm-grey' : ''}`} onClick={toggle}>
         <div className="flex items-center gap-1.5 min-w-0">
-          {collapsed ? <ChevronRight size={15} className="text-gray-400 shrink-0" /> : <ChevronDown size={15} className="text-gray-400 shrink-0" />}
-          <h2 className="text-sm font-semibold text-gray-700 truncate">{title}</h2>
+          {collapsed ? <ChevronRight size={15} className="text-ink-60 shrink-0" /> : <ChevronDown size={15} className="text-ink-60 shrink-0" />}
+          <h2 className="text-sm font-semibold text-ink-80 truncate">{title}</h2>
         </div>
         {right && <div onClick={e => e.stopPropagation()} className="shrink-0 flex items-center gap-2">{right}</div>}
       </div>
@@ -878,7 +878,7 @@ export default function CustomerDetail() {
   }
 
   if (loading) return <LoadingBar />
-  if (!customer) return <div className="p-4 text-gray-500">Customer not found.</div>
+  if (!customer) return <div className="p-4 text-ink-60">Customer not found.</div>
 
   const followUpEnquiries = enquiries.filter(e => e.follow_up_date)
 
@@ -896,9 +896,9 @@ export default function CustomerDetail() {
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900">{customer.company_name}</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-ink">{customer.company_name}</h1>
           {customer.erp_code && (
-            <span className="text-xs font-mono px-2 py-0.5 rounded bg-gray-100 text-gray-500 border border-gray-200">{customer.erp_code}</span>
+            <span className="text-xs font-mono px-2 py-0.5 rounded bg-ivory-dark text-ink-60 border border-warm-grey">{customer.erp_code}</span>
           )}
         </div>
               {customer.is_vip && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700 text-xs font-semibold"><Star size={12} className="fill-current" />VIP</span>}
@@ -914,12 +914,12 @@ export default function CustomerDetail() {
                 </span>
               )}
               {customer.crm_status && (
-                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${CRM_STATUS_STYLES[customer.crm_status] || 'bg-gray-100 text-gray-500'}`}>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${CRM_STATUS_STYLES[customer.crm_status] || 'bg-ivory-dark text-ink-60'}`}>
                   {customer.crm_status}
                 </span>
               )}
             </div>
-            <p className="text-sm text-gray-500 mt-0.5">{customer.country || customer.region || ''}</p>
+            <p className="text-sm text-ink-60 mt-0.5">{customer.country || customer.region || ''}</p>
             {customer.tags?.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {customer.tags.map(tag => (
@@ -950,9 +950,9 @@ export default function CustomerDetail() {
             + Log Interaction
           </button>}>
         {enquiries.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">No interactions logged yet.</p>
+          <p className="text-sm text-ink-60 text-center py-8">No interactions logged yet.</p>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-warm-grey">
             {(() => {
               const hasResolved = enquiries.some(e => RESOLVED_STATUSES.includes(e.status))
               const hasActive   = enquiries.some(e => !RESOLVED_STATUSES.includes(e.status))
@@ -965,7 +965,7 @@ export default function CustomerDetail() {
                 return (
               <div key={enq.id}>
                 {showHeader && (
-                  <div className="px-5 pt-3 pb-1 text-xs font-semibold text-gray-400 uppercase tracking-wide bg-gray-50">
+                  <div className="px-5 pt-3 pb-1 text-xs font-semibold text-ink-60 uppercase tracking-wide bg-ivory">
                     {isResolved ? 'History' : 'Active'}
                   </div>
                 )}
@@ -974,44 +974,44 @@ export default function CustomerDetail() {
                   <div className="flex-1 min-w-0">
                     {/* Date · Channel · Status */}
                     <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                      <span className="text-xs text-gray-500">{fmtDate(enq.date)}</span>
-                      {enq.channel && <span className="text-xs text-gray-400">· {enq.channel}</span>}
+                      <span className="text-xs text-ink-60">{fmtDate(enq.date)}</span>
+                      {enq.channel && <span className="text-xs text-ink-60">· {enq.channel}</span>}
                       {enq.contact_id && (() => {
                         const c = (customer.contacts || []).find(x => x.id === enq.contact_id)
-                        return c ? <span className="text-xs text-gray-400">· with {c.name || '(no name)'}</span> : null
+                        return c ? <span className="text-xs text-ink-60">· with {c.name || '(no name)'}</span> : null
                       })()}
                       {enq.status && (
-                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${ENQUIRY_STATUS_STYLES[enq.status] || 'bg-gray-100 text-gray-500'}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${ENQUIRY_STATUS_DOT[enq.status] || 'bg-gray-400'}`} />
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${ENQUIRY_STATUS_STYLES[enq.status] || 'bg-ivory-dark text-ink-60'}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${ENQUIRY_STATUS_DOT[enq.status] || 'bg-ink-60'}`} />
                           {enq.status}
                         </span>
                       )}
                     </div>
                     {/* Description */}
-                    <p className="text-sm text-gray-800">{enq.description}</p>
+                    <p className="text-sm text-ink">{enq.description}</p>
                     {/* Products */}
                     {enq.product_interest?.length > 0 && (
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-ink-60 mt-1">
                         <span className="font-medium">Products:</span> {enq.product_interest.join(', ')}
                       </p>
                     )}
                     {/* Follow-up + linked quotes */}
                     <div className="flex flex-wrap gap-x-4 gap-y-0.5 mt-1">
                       {enq.follow_up_date && (
-                        <p className={`text-xs font-medium ${isOverdue(enq.follow_up_date) ? 'text-red-600' : 'text-gray-500'}`}>
+                        <p className={`text-xs font-medium ${isOverdue(enq.follow_up_date) ? 'text-red-600' : 'text-ink-60'}`}>
                           Follow-up: {fmtDate(enq.follow_up_date)}
                           {isOverdue(enq.follow_up_date) && <AlertTriangle size={11} className="inline align-[-1px] ml-1" />}
                         </p>
                       )}
                       {enq.linked_quote_ids?.length > 0 && (
-                        <p className="text-xs text-gray-500">
+                        <p className="text-xs text-ink-60">
                           Linked: {enq.linked_quote_ids.length} quote{enq.linked_quote_ids.length > 1 ? 's' : ''}
                         </p>
                       )}
                     </div>
                     {/* Outcome notes */}
                     {enq.outcome_notes && (
-                      <p className="text-xs text-gray-500 mt-1 italic">{enq.outcome_notes}</p>
+                      <p className="text-xs text-ink-60 mt-1 italic">{enq.outcome_notes}</p>
                     )}
                     {/* Quote attachments */}
                     {(() => {
@@ -1030,7 +1030,7 @@ export default function CustomerDetail() {
                                 className="inline-flex items-center gap-1.5 text-xs text-brand-600 hover:underline"
                               >
                                 {att.name?.match(/\.(jpg|jpeg|png|webp|gif)$/i)
-                                  ? <img src={att.url} alt="" className="h-10 w-14 object-cover rounded border border-gray-200" />
+                                  ? <img src={att.url} alt="" className="h-10 w-14 object-cover rounded border border-warm-grey" />
                                   : <><FileText size={14} className="shrink-0" /><span className="truncate max-w-[140px]">{att.name || `Quote ${i + 1}`}</span></>
                                 }
                               </a>
@@ -1134,14 +1134,14 @@ export default function CustomerDetail() {
       <Collapsible storageKey={`${id}:contacts`} title={`Contacts (${(customer.contacts || []).length})`}
                    right={<Link to={`/customers/${id}/edit`} className="text-xs text-brand-600 hover:underline">Edit →</Link>}>
         {(customer.contacts || []).length === 0 ? (
-          <p className="text-sm text-gray-400">No contacts on file yet.</p>
+          <p className="text-sm text-ink-60">No contacts on file yet.</p>
         ) : (
           <div className="space-y-3">
             {customer.contacts.map(c => (
-              <div key={c.id} className="rounded-lg border border-gray-100 p-3">
+              <div key={c.id} className="rounded-lg border border-warm-grey p-3">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-medium text-gray-800">{c.name || '(no name)'}</span>
-                  {c.title && <span className="text-xs text-gray-400">· {c.title}</span>}
+                  <span className="text-sm font-medium text-ink">{c.name || '(no name)'}</span>
+                  {c.title && <span className="text-xs text-ink-60">· {c.title}</span>}
                   {c.is_primary && <Star size={12} className="fill-current text-amber-400 shrink-0" />}
                 </div>
                 <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
@@ -1156,9 +1156,9 @@ export default function CustomerDetail() {
                   {c.whatsapp_personal && <a href={`https://wa.me/${c.whatsapp_personal.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">WA Personal: {c.whatsapp_personal}</a>}
                   {c.whatsapp_business && <a href={`https://wa.me/${c.whatsapp_business.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">WA Business: {c.whatsapp_business}</a>}
                   {c.whatsapp && <a href={`https://wa.me/${c.whatsapp.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline">WA: {c.whatsapp}</a>}
-                  {c.wechat && <span className="text-gray-600">WeChat: {c.wechat}</span>}
+                  {c.wechat && <span className="text-ink-70">WeChat: {c.wechat}</span>}
                 </div>
-                {c.address && <p className="mt-1 text-xs text-gray-500">{c.address}</p>}
+                {c.address && <p className="mt-1 text-xs text-ink-60">{c.address}</p>}
                 {/* SU-07A — the natural moment to invite this specific
                     contact: an admin looking at a real named person's email
                     on a real customer record, same spot the SU-07A audit
@@ -1196,10 +1196,10 @@ export default function CustomerDetail() {
         <Collapsible storageKey={`${id}:woo-orders`}
           title={`WooCommerce Orders${Array.isArray(wooOrders) ? ` (${wooOrders.length})` : ''}`}
           right={<Link to="/woo-sync" className="text-xs text-brand-600 hover:underline inline-flex items-center gap-1"><ShoppingCart size={12} /> Open sync</Link>}>
-          {wooOrders === 'loading' && <p className="text-sm text-gray-400">Loading…</p>}
+          {wooOrders === 'loading' && <p className="text-sm text-ink-60">Loading…</p>}
           {wooOrders?.error && <p className="text-sm text-amber-700">{wooOrders.error}</p>}
           {Array.isArray(wooOrders) && wooOrders.length === 0 && (
-            <p className="text-sm text-gray-400">No WooCommerce orders found.</p>
+            <p className="text-sm text-ink-60">No WooCommerce orders found.</p>
           )}
           {Array.isArray(wooOrders) && wooOrders.length > 0 && (() => {
             // Total spent per currency, shown as a one-line summary above the
@@ -1210,25 +1210,25 @@ export default function CustomerDetail() {
             for (const o of wooOrders) byCurrency.set(o.currency, (byCurrency.get(o.currency) || 0) + (o.total || 0))
             return (
               <>
-                <p className="text-xs text-gray-500 mb-3">
+                <p className="text-xs text-ink-60 mb-3">
                   Total spent: {[...byCurrency.entries()].map(([cur, sum]) => fmtMoney(sum, cur)).join(' · ')}
                 </p>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                      <tr className="text-left text-xs text-ink-60 border-b border-warm-grey">
                         <th className="pb-1.5 pr-3 font-medium">Order</th>
                         <th className="pb-1.5 pr-3 font-medium">Status</th>
                         <th className="pb-1.5 pr-3 font-medium">Date paid</th>
                         <th className="pb-1.5 pr-3 font-medium text-right">Total</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-50">
+                    <tbody className="divide-y divide-warm-grey">
                       {wooOrders.map(o => (
                         <tr key={o.id}>
                           <td className="py-1.5 pr-3 font-mono text-xs">#{o.number}</td>
-                          <td className="py-1.5 pr-3 text-xs text-gray-500">{o.status}</td>
-                          <td className="py-1.5 pr-3 text-xs text-gray-500">{fmtIsoDate(o.date_paid)}</td>
+                          <td className="py-1.5 pr-3 text-xs text-ink-60">{o.status}</td>
+                          <td className="py-1.5 pr-3 text-xs text-ink-60">{fmtIsoDate(o.date_paid)}</td>
                           <td className="py-1.5 pr-3 text-right text-xs tabular-nums">{fmtMoney(o.total, o.currency)}</td>
                         </tr>
                       ))}
@@ -1254,7 +1254,7 @@ export default function CustomerDetail() {
           {/* CRM fields */}
           {customer.crm_category && (
             <Row label="Type" value={
-              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">{customer.crm_category}</span>
+              <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-ivory-dark text-ink-80">{customer.crm_category}</span>
             } />
           )}
           {(() => {
@@ -1263,7 +1263,7 @@ export default function CustomerDetail() {
               <Row label="Channels" value={
                 <div className="flex flex-wrap gap-1">
                   {chs.map(ch => (
-                    <span key={ch} className={`px-2 py-0.5 rounded-full text-xs font-medium ${CHANNEL_BADGE[ch] || 'bg-gray-100 text-gray-600'}`}>
+                    <span key={ch} className={`px-2 py-0.5 rounded-full text-xs font-medium ${CHANNEL_BADGE[ch] || 'bg-ivory-dark text-ink-70'}`}>
                       {ch}
                     </span>
                   ))}
@@ -1276,7 +1276,7 @@ export default function CustomerDetail() {
           {customer.segment && <Row label="Segment" value={customer.segment} />}
           {customer.folder_path && (
             <Row label="Folder" value={
-              <span className="font-mono text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded">{customer.folder_path}</span>
+              <span className="font-mono text-xs text-ink-70 bg-ivory-dark px-2 py-0.5 rounded">{customer.folder_path}</span>
             } />
           )}
         </dl>
@@ -1284,9 +1284,9 @@ export default function CustomerDetail() {
 
       {/* Linked storefront accounts */}
       <Collapsible storageKey={`${id}:accounts`} title={`Storefront Accounts (${accounts.length})`}>
-        <p className="text-xs text-gray-400 mb-3">Login accounts linked to this customer. Manage links on the Accounts page.</p>
+        <p className="text-xs text-ink-60 mb-3">Login accounts linked to this customer. Manage links on the Accounts page.</p>
         {accounts.length === 0 ? (
-          <p className="text-sm text-gray-400">
+          <p className="text-sm text-ink-60">
             No accounts linked yet. Link one from <Link to="/customer-accounts" className="text-brand-600 hover:underline">Accounts</Link>.
           </p>
         ) : (
@@ -1294,8 +1294,8 @@ export default function CustomerDetail() {
             {accounts.map(a => (
               <div key={a.id} className="flex items-center justify-between gap-2 text-sm">
                 <div className="min-w-0">
-                  <span className="text-gray-800">{a.contact_name || a.company_name || a.email}</span>
-                  {a.email && <span className="text-gray-400"> · {a.email}</span>}
+                  <span className="text-ink">{a.contact_name || a.company_name || a.email}</span>
+                  {a.email && <span className="text-ink-60"> · {a.email}</span>}
                 </div>
                 <span className={`px-1.5 py-0.5 rounded-full text-xs font-medium shrink-0 ${
                   a.role === 'admin' ? 'bg-purple-100 text-purple-700'
@@ -1312,7 +1312,7 @@ export default function CustomerDetail() {
       {/* Notes */}
       {customer.notes && (
         <Collapsible storageKey={`${id}:notes`} title="Notes">
-          <p className="text-sm text-gray-600 whitespace-pre-wrap">{customer.notes}</p>
+          <p className="text-sm text-ink-70 whitespace-pre-wrap">{customer.notes}</p>
         </Collapsible>
       )}
 
@@ -1320,33 +1320,33 @@ export default function CustomerDetail() {
       <Collapsible storageKey={`${id}:pi-orders`} title={`PI Orders (${orders.length})`} bodyClassName=""
                    right={<Link to={`/shipments/new?customer_id=${id}`} className="btn-primary text-xs py-1.5 px-3">+ New PI</Link>}>
         {orders.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">No PI orders for this customer.</p>
+          <p className="text-sm text-ink-60 text-center py-8">No PI orders for this customer.</p>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-warm-grey">
             {orders.map(o => {
               const piNo = o.uc_no || o.erp_pi_no || o.erp_so_no || '—'
               const dateStr = o.order_date
                 ? new Date(o.order_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
                 : '—'
               const statusColour = {
-                draft:     'bg-gray-100 text-gray-600',
+                draft:     'bg-ivory-dark text-ink-70',
                 confirmed: 'bg-blue-100 text-blue-700',
                 shipped:   'bg-amber-100 text-amber-700',
                 delivered: 'bg-green-100 text-green-700',
                 cancelled: 'bg-red-100 text-red-600',
-              }[o.status] || 'bg-gray-100 text-gray-600'
+              }[o.status] || 'bg-ivory-dark text-ink-70'
               return (
-                <Link key={o.id} to={`/shipments/${o.id}`} className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors">
+                <Link key={o.id} to={`/shipments/${o.id}`} className="flex items-center justify-between px-5 py-3.5 hover:bg-ivory transition-colors">
                   <div className="flex items-center gap-3 min-w-0">
-                    <Package size={15} className="text-gray-400 shrink-0" />
+                    <Package size={15} className="text-ink-60 shrink-0" />
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{piNo}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{dateStr}{o.currency ? ` · ${o.currency}` : ''}</p>
+                      <p className="text-sm font-medium text-ink truncate">{piNo}</p>
+                      <p className="text-xs text-ink-60 mt-0.5">{dateStr}{o.currency ? ` · ${o.currency}` : ''}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <span className={`badge ${statusColour}`}>{o.status || 'draft'}</span>
-                    <span className="text-xs text-gray-400">→</span>
+                    <span className="text-xs text-ink-60">→</span>
                   </div>
                 </Link>
               )
@@ -1365,18 +1365,18 @@ export default function CustomerDetail() {
       {customer.erp_code && (
         <div className="card mb-4">
           <button type="button" onClick={() => setInvoiceHistoryOpen(v => !v)}
-                  className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100 text-left">
-            <h2 className="text-sm font-semibold text-gray-700">
+                  className="w-full flex items-center justify-between px-5 py-4 border-b border-warm-grey text-left">
+            <h2 className="text-sm font-semibold text-ink-80">
               Sales Invoice History {erpCodeShareCount === null || erpCodeShareCount > 1 ? '' : `(${invoiceHistory.length})`}
             </h2>
             <span className="flex items-center gap-2 shrink-0">
-              <span className="text-xs font-mono text-gray-400">{customer.erp_code}</span>
-              {invoiceHistoryOpen ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+              <span className="text-xs font-mono text-ink-60">{customer.erp_code}</span>
+              {invoiceHistoryOpen ? <ChevronUp size={16} className="text-ink-60" /> : <ChevronDown size={16} className="text-ink-60" />}
             </span>
           </button>
           {invoiceHistoryOpen && (
             erpHistoryLoading ? (
-              <p className="text-sm text-gray-400 text-center py-8">Loading…</p>
+              <p className="text-sm text-ink-60 text-center py-8">Loading…</p>
             ) : erpCodeShareCount > 1 ? (
               <div className="px-5 py-4 flex items-start gap-2 text-sm text-amber-700 bg-amber-50">
                 <AlertTriangle size={15} className="shrink-0 mt-0.5" />
@@ -1387,29 +1387,29 @@ export default function CustomerDetail() {
                 </span>
               </div>
             ) : invoiceHistory.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-8">No sales invoices found for this customer.</p>
+              <p className="text-sm text-ink-60 text-center py-8">No sales invoices found for this customer.</p>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-warm-grey">
                 {invoiceHistory.slice(0, invoiceHistoryShown).map(r => {
                   const dateStr = r.date ? new Date(r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'
                   const isApp = r.src === 'app'
                   const open = () => isApp ? navigate(`/shipments/${r.id}`) : setErpDoc(r.raw)
                   return (
                     <div key={r.key} onClick={open}
-                         className="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-gray-50 transition-colors">
+                         className="flex items-center justify-between px-5 py-3 cursor-pointer hover:bg-ivory transition-colors">
                       <div className="flex items-center gap-3 min-w-0">
-                        <Receipt size={15} className="text-gray-400 shrink-0" />
+                        <Receipt size={15} className="text-ink-60 shrink-0" />
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
+                          <p className="text-sm font-medium text-ink truncate">
                             {r.no || '—'}
                             {/* r.uc (JES siref / app uc_no) already reads "UC4920/26" — no extra label prefix, or it doubles up. */}
-                            {r.uc && <span className="ml-1.5 text-xs font-mono font-normal text-gray-400">{r.uc}</span>}
+                            {r.uc && <span className="ml-1.5 text-xs font-mono font-normal text-ink-60">{r.uc}</span>}
                           </p>
-                          <p className="text-xs text-gray-500 mt-0.5">{dateStr}{r.currency ? ` · ${r.currency}` : ''}</p>
+                          <p className="text-xs text-ink-60 mt-0.5">{dateStr}{r.currency ? ` · ${r.currency}` : ''}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 shrink-0">
-                        {r.amount != null && <span className="text-sm text-gray-700 tabular-nums">{Number(r.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>}
+                        {r.amount != null && <span className="text-sm text-ink-80 tabular-nums">{Number(r.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>}
                         {/* An app row's status is always null by design
                             (domain/salesInvoiceHistory.js: "an app row's
                             invoiced-ness IS its confirmation") — shown as
@@ -1420,9 +1420,9 @@ export default function CustomerDetail() {
                             page, this list isn't pre-filtered to confirmed
                             rows only, so a genuinely-unconfirmed JES row must
                             not get an invented CONFIRMED label. */}
-                        {(r.status || isApp) && <span className="badge bg-gray-100 text-gray-600">{r.status || 'CONFIRMED'}</span>}
+                        {(r.status || isApp) && <span className="badge bg-ivory-dark text-ink-70">{r.status || 'CONFIRMED'}</span>}
                         <span title={isApp ? 'Raised in the app' : 'From JES (read-only)'}
-                              className="text-[10px] font-medium text-gray-400 inline-flex items-center gap-1 border border-gray-200 rounded-full px-1.5 py-0.5">
+                              className="text-[10px] font-medium text-ink-60 inline-flex items-center gap-1 border border-warm-grey rounded-full px-1.5 py-0.5">
                           {isApp ? 'App' : <><Database size={9} /> JES</>}
                         </span>
                       </div>
@@ -1446,23 +1446,23 @@ export default function CustomerDetail() {
       <Collapsible storageKey={`${id}:quotes`} title={`Quotes (${quotes.length})`} bodyClassName=""
                    right={<Link to={`/quotes/new?customer_id=${id}`} onClick={remember} className="btn-primary text-xs py-1.5 px-3">+ New Quote</Link>}>
         {quotes.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">No quotes yet for this customer.</p>
+          <p className="text-sm text-ink-60 text-center py-8">No quotes yet for this customer.</p>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-warm-grey">
             {quotes.map(q => (
-              <Link key={q.id} to={`/quotes/${q.id}`} onClick={remember} className="flex items-center justify-between px-5 py-3.5 hover:bg-gray-50 transition-colors">
+              <Link key={q.id} to={`/quotes/${q.id}`} onClick={remember} className="flex items-center justify-between px-5 py-3.5 hover:bg-ivory transition-colors">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-ink">
                     {q.quote_date || q.createdAt?.toDate?.().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
+                  <p className="text-xs text-ink-60 mt-0.5">
                     {q.item_count ? `${q.item_count} item${q.item_count > 1 ? 's' : ''}` : 'No items'}
                     {q.quote_currency ? ` · ${q.quote_currency}` : ''}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
                   <span className={`badge ${STATUS_STYLES[q.status] || STATUS_STYLES.draft}`}>{q.status || 'draft'}</span>
-                  <span className="text-xs text-gray-400">→</span>
+                  <span className="text-xs text-ink-60">→</span>
                 </div>
               </Link>
             ))}
@@ -1480,39 +1480,39 @@ export default function CustomerDetail() {
       <Collapsible storageKey={`${id}:portal-enquiries`} title={`Portal Enquiries (${portalEnquiries.length})`} bodyClassName=""
                    right={<Link to="/enquiries" onClick={remember} className="text-xs text-brand-600 hover:underline">Manage →</Link>}>
         {accounts.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">
+          <p className="text-sm text-ink-60 text-center py-8">
             No storefront account linked, so portal enquiries can't be matched.{' '}
             <Link to="/customer-accounts" className="text-brand-600 hover:underline">Link one</Link>.
           </p>
         ) : portalEnquiries.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">No portal enquiries from this customer.</p>
+          <p className="text-sm text-ink-60 text-center py-8">No portal enquiries from this customer.</p>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-warm-grey">
             {portalEnquiries.map(e => {
               const items = Array.isArray(e.items) ? e.items : []
               return (
                 <div key={e.id} className="px-5 py-4">
                   <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                    <span className="text-xs text-gray-500">{fmtDate(e.createdAt)}</span>
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${PORTAL_STATUS_STYLES[e.status || 'new'] || 'bg-gray-100 text-gray-500'}`}>
+                    <span className="text-xs text-ink-60">{fmtDate(e.createdAt)}</span>
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${PORTAL_STATUS_STYLES[e.status || 'new'] || 'bg-ivory-dark text-ink-60'}`}>
                       {e.status || 'new'}
                     </span>
-                    <span className="text-xs text-gray-400">
+                    <span className="text-xs text-ink-60">
                       · {items.length} item{items.length === 1 ? '' : 's'}
                       {e.estimated_total ? ` · est. ${fmtMoney(e.estimated_total, e.currency)}` : ''}
                     </span>
                   </div>
-                  {e.message && <p className="text-sm text-gray-800 whitespace-pre-wrap mb-1.5">{e.message}</p>}
+                  {e.message && <p className="text-sm text-ink whitespace-pre-wrap mb-1.5">{e.message}</p>}
                   {items.length > 0 && (
-                    <ul className="text-xs text-gray-600 space-y-0.5">
+                    <ul className="text-xs text-ink-70 space-y-0.5">
                       {items.slice(0, 6).map((it, i) => (
                         <li key={i} className="truncate">
-                          <span className="text-gray-400">{it.qty || 1}×</span>{' '}
+                          <span className="text-ink-60">{it.qty || 1}×</span>{' '}
                           {it.name || it.code || 'Item'}
-                          {it.code && it.name ? <span className="text-gray-400"> ({it.code})</span> : null}
+                          {it.code && it.name ? <span className="text-ink-60"> ({it.code})</span> : null}
                         </li>
                       ))}
-                      {items.length > 6 && <li className="text-gray-400">…and {items.length - 6} more</li>}
+                      {items.length > 6 && <li className="text-ink-60">…and {items.length - 6} more</li>}
                     </ul>
                   )}
                 </div>
@@ -1531,10 +1531,10 @@ export default function CustomerDetail() {
       {mergedEmailThreads.length > 0 && (
         <Collapsible storageKey={`${id}:email-summary`}
           title={<span className="inline-flex items-center gap-1.5">
-            <Mail size={15} className="text-gray-400" /> Email Summary
-            <span className="text-xs font-normal text-gray-400">({mergedEmailThreads.length} thread{mergedEmailThreads.length === 1 ? '' : 's'} ingested)</span>
+            <Mail size={15} className="text-ink-60" /> Email Summary
+            <span className="text-xs font-normal text-ink-60">({mergedEmailThreads.length} thread{mergedEmailThreads.length === 1 ? '' : 's'} ingested)</span>
             {emailSyncStatus?.last_run_at && (
-              <span className="text-xs font-normal text-gray-400"
+              <span className="text-xs font-normal text-ink-60"
                     title={`Mailbox last synced ${new Date(emailSyncStatus.last_run_at).toLocaleString('en-GB')} (${emailSyncStatus.new_messages ?? '?'} new message${emailSyncStatus.new_messages === 1 ? '' : 's'} that run)`}>
                 · mailbox synced {new Date(emailSyncStatus.last_run_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
               </span>
@@ -1552,33 +1552,33 @@ export default function CustomerDetail() {
               </div>
             )}
             {!customer?.email_summary ? (
-              <p className="text-sm text-gray-400">Not generated yet — click {emailSummaryBusy ? '…' : 'Generate'} to have DeepSeek read the ingested threads.</p>
+              <p className="text-sm text-ink-60">Not generated yet — click {emailSummaryBusy ? '…' : 'Generate'} to have DeepSeek read the ingested threads.</p>
             ) : (
               <>
-                <p className="text-sm text-gray-700">{customer.email_summary.summary}</p>
+                <p className="text-sm text-ink-80">{customer.email_summary.summary}</p>
                 {customer.email_summary.recent_activity && (
                   <div>
-                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Recent activity</h4>
-                    <p className="text-sm text-gray-600">{customer.email_summary.recent_activity}</p>
+                    <h4 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Recent activity</h4>
+                    <p className="text-sm text-ink-70">{customer.email_summary.recent_activity}</p>
                   </div>
                 )}
                 {customer.email_summary.open_commitments?.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Open commitments</h4>
-                    <ul className="text-sm text-gray-600 list-disc list-inside space-y-0.5">
+                    <h4 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Open commitments</h4>
+                    <ul className="text-sm text-ink-70 list-disc list-inside space-y-0.5">
                       {customer.email_summary.open_commitments.map((c, i) => <li key={i}>{c}</li>)}
                     </ul>
                   </div>
                 )}
-                <p className="text-[11px] text-gray-400">
+                <p className="text-[11px] text-ink-60">
                   Generated over {customer.email_summary.thread_count ?? mergedEmailThreads.length} thread{(customer.email_summary.thread_count ?? mergedEmailThreads.length) === 1 ? '' : 's'} — a draft, not verified. Refresh after new mail comes in.
                 </p>
               </>
             )}
 
-            <div className="pt-2 border-t border-gray-100">
+            <div className="pt-2 border-t border-warm-grey">
               <button onClick={() => setEmailChatOpen(v => !v)}
-                className="text-xs text-gray-500 hover:text-brand-600 inline-flex items-center gap-1">
+                className="text-xs text-ink-60 hover:text-brand-600 inline-flex items-center gap-1">
                 <MessageCircle size={13} /> {emailChatOpen ? 'Close' : 'Discover more about this customer'}
               </button>
               {emailChatOpen && (
@@ -1586,7 +1586,7 @@ export default function CustomerDetail() {
                   {emailChatHistory.length > 0 && (
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {emailChatHistory.map((h, i) => (
-                        <div key={i} className={`text-sm ${h.role === 'assistant' ? 'text-gray-700' : 'text-gray-900'}`}>
+                        <div key={i} className={`text-sm ${h.role === 'assistant' ? 'text-ink-80' : 'text-ink'}`}>
                           <span className="font-medium">{h.role === 'assistant' ? 'AI: ' : 'You: '}</span>{h.content}
                         </div>
                       ))}
@@ -1618,8 +1618,8 @@ export default function CustomerDetail() {
       {mergedWhatsappThreads.length > 0 && (
         <Collapsible storageKey={`${id}:whatsapp`} bodyClassName=""
           title={<span className="inline-flex items-center gap-1.5">
-            <Smartphone size={15} className="text-gray-400" /> WhatsApp
-            <span className="text-xs font-normal text-gray-400">
+            <Smartphone size={15} className="text-ink-60" /> WhatsApp
+            <span className="text-xs font-normal text-ink-60">
               ({mergedWhatsappThreads.length} chat{mergedWhatsappThreads.length === 1 ? '' : 's'} imported
               {mergedWhatsappThreads[0]?.date_range?.[1] && (
                 <> · latest message {new Date(mergedWhatsappThreads[0].date_range[1]).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</>
@@ -1631,32 +1631,32 @@ export default function CustomerDetail() {
               {whatsappSummaryBusy ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
               {customer?.whatsapp_summary ? 'Refresh' : 'Generate'}
             </button>}>
-          <div className="px-5 py-4 space-y-3 border-b border-gray-100">
+          <div className="px-5 py-4 space-y-3 border-b border-warm-grey">
             {whatsappSummaryError && (
               <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 flex items-start gap-1.5">
                 <AlertTriangle size={14} className="mt-0.5 shrink-0" /> {whatsappSummaryError}
               </div>
             )}
             {!customer?.whatsapp_summary ? (
-              <p className="text-sm text-gray-400">Not generated yet — click {whatsappSummaryBusy ? '…' : 'Generate'} to have DeepSeek read the imported chats.</p>
+              <p className="text-sm text-ink-60">Not generated yet — click {whatsappSummaryBusy ? '…' : 'Generate'} to have DeepSeek read the imported chats.</p>
             ) : (
               <>
-                <p className="text-sm text-gray-700">{customer.whatsapp_summary.summary}</p>
+                <p className="text-sm text-ink-80">{customer.whatsapp_summary.summary}</p>
                 {customer.whatsapp_summary.recent_activity && (
                   <div>
-                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Recent activity</h4>
-                    <p className="text-sm text-gray-600">{customer.whatsapp_summary.recent_activity}</p>
+                    <h4 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Recent activity</h4>
+                    <p className="text-sm text-ink-70">{customer.whatsapp_summary.recent_activity}</p>
                   </div>
                 )}
                 {customer.whatsapp_summary.open_commitments?.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Open commitments</h4>
-                    <ul className="text-sm text-gray-600 list-disc list-inside space-y-0.5">
+                    <h4 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Open commitments</h4>
+                    <ul className="text-sm text-ink-70 list-disc list-inside space-y-0.5">
                       {customer.whatsapp_summary.open_commitments.map((c, i) => <li key={i}>{c}</li>)}
                     </ul>
                   </div>
                 )}
-                <p className="text-[11px] text-gray-400">
+                <p className="text-[11px] text-ink-60">
                   Generated over {customer.whatsapp_summary.thread_count ?? whatsappThreads.length} chat{(customer.whatsapp_summary.thread_count ?? whatsappThreads.length) === 1 ? '' : 's'} — a draft, not verified. Refresh after new chats come in. Used by Daily Drafts.
                 </p>
               </>
@@ -1665,7 +1665,7 @@ export default function CustomerDetail() {
           {transcribeError && (
             <p className="px-5 pt-3 text-xs text-red-600">{transcribeError}</p>
           )}
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-warm-grey">
             {mergedWhatsappThreads.map(t => {
               const voiceCount = (t.messages || []).filter(m => m.needs_transcription).length
               const expanded = whatsappExpanded === t.id
@@ -1678,7 +1678,7 @@ export default function CustomerDetail() {
                     className="w-full flex items-center justify-between text-left"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
+                      <p className="text-sm font-medium text-ink flex items-center gap-1.5">
                         {t.subject || t.id}
                         {isLinked && (
                           <span className="text-[10px] font-normal uppercase tracking-wide rounded px-1 py-0.5 text-amber-600 bg-amber-50 shrink-0">
@@ -1686,7 +1686,7 @@ export default function CustomerDetail() {
                           </span>
                         )}
                       </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
+                      <p className="text-xs text-ink-60 mt-0.5">
                         {t.channel} · {t.message_count} message{t.message_count === 1 ? '' : 's'}
                         {t.date_range?.length === 2 && ` · ${fmtIsoDate(t.date_range[0])} – ${fmtIsoDate(t.date_range[1])}`}
                         {voiceCount > 0 && (
@@ -1696,12 +1696,12 @@ export default function CustomerDetail() {
                         )}
                       </p>
                     </div>
-                    {expanded ? <ChevronUp size={16} className="text-gray-400 shrink-0" /> : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
+                    {expanded ? <ChevronUp size={16} className="text-ink-60 shrink-0" /> : <ChevronDown size={16} className="text-ink-60 shrink-0" />}
                   </button>
                   {expanded && (
-                    <div className="mt-3 max-h-80 overflow-y-auto space-y-2 border-t border-gray-100 pt-3">
+                    <div className="mt-3 max-h-80 overflow-y-auto space-y-2 border-t border-warm-grey pt-3">
                       {isLinked && (
-                        <p className="text-[11px] text-gray-400 italic">
+                        <p className="text-[11px] text-ink-60 italic">
                           Imported under the linked Marketing Contact record, not this customer — transcription isn't available from here. Open it from Marketing Contacts to transcribe.
                         </p>
                       )}
@@ -1711,11 +1711,11 @@ export default function CustomerDetail() {
                         const selectedLang = transcribeLang[langKey] || 'zh-HK'
                         return (
                           <div key={i} className="text-sm">
-                            <span className="text-xs text-gray-400">{fmtIsoDate(m.date)} · {m.from}</span>
-                            {m.body_text && <p className="text-gray-700">{m.body_text}</p>}
+                            <span className="text-xs text-ink-60">{fmtIsoDate(m.date)} · {m.from}</span>
+                            {m.body_text && <p className="text-ink-80">{m.body_text}</p>}
                             {m.transcript && (
-                              <p className="text-gray-700 italic">
-                                <Mic size={11} className="inline align-[-1px] mr-1 text-gray-400" />{m.transcript}
+                              <p className="text-ink-80 italic">
+                                <Mic size={11} className="inline align-[-1px] mr-1 text-ink-60" />{m.transcript}
                               </p>
                             )}
                             {m.attachment_filename && (
@@ -1727,7 +1727,7 @@ export default function CustomerDetail() {
                                       value={selectedLang}
                                       onChange={e => setTranscribeLang(prev => ({ ...prev, [langKey]: e.target.value }))}
                                       disabled={!!transcribingKey}
-                                      className="text-xs border border-gray-200 rounded px-1 py-0.5 text-gray-600"
+                                      className="text-xs border border-warm-grey rounded px-1 py-0.5 text-ink-70"
                                     >
                                       {WHATSAPP_TRANSCRIBE_LANGUAGES.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
                                     </select>
@@ -1763,9 +1763,9 @@ export default function CustomerDetail() {
           gets in. */}
       <Collapsible storageKey={`${id}:alibaba`} bodyClassName=""
         title={<span className="inline-flex items-center gap-1.5">
-          <MessageSquare size={15} className="text-gray-400" /> Alibaba Messages
+          <MessageSquare size={15} className="text-ink-60" /> Alibaba Messages
           {mergedAlibabaThreads.length > 0 && (
-            <span className="text-xs font-normal text-gray-400">
+            <span className="text-xs font-normal text-ink-60">
               ({mergedAlibabaThreads.length} paste{mergedAlibabaThreads.length === 1 ? '' : 's'})
             </span>
           )}
@@ -1777,14 +1777,14 @@ export default function CustomerDetail() {
             {customer?.alibaba_summary ? 'Refresh' : 'Generate'}
           </button>
         )}>
-        <div className="px-5 py-4 space-y-3 border-b border-gray-100">
+        <div className="px-5 py-4 space-y-3 border-b border-warm-grey">
           <div>
             <label className="label">Paste Alibaba chat</label>
-            <p className="text-xs text-gray-400 mb-1.5">
+            <p className="text-xs text-ink-60 mb-1.5">
               Alibaba.com gives no export for buyer-seller chat — copy the conversation off the site and paste it here. Safe to paste again later as new messages come in; nothing is overwritten.
             </p>
             {alibabaThreads.length > 0 && (
-              <p className="text-xs font-medium text-gray-500 mb-1.5">
+              <p className="text-xs font-medium text-ink-60 mb-1.5">
                 Last pasted: {(alibabaThreads[0].pasted_at?.toDate ? alibabaThreads[0].pasted_at.toDate() : new Date(alibabaThreads[0].pasted_at || Date.now())).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
                 {' — '}Alibaba shows the whole conversation every time, so only copy what's newer than this date next time.
               </p>
@@ -1823,34 +1823,34 @@ export default function CustomerDetail() {
             </div>
           )}
           {mergedAlibabaThreads.length === 0 ? (
-            <p className="text-sm text-gray-400">Nothing pasted yet — paste the chat above to get started.</p>
+            <p className="text-sm text-ink-60">Nothing pasted yet — paste the chat above to get started.</p>
           ) : !customer?.alibaba_summary ? (
-            <p className="text-sm text-gray-400">Not generated yet — click {alibabaSummaryBusy ? '…' : 'Generate'} to have DeepSeek read the pasted messages.</p>
+            <p className="text-sm text-ink-60">Not generated yet — click {alibabaSummaryBusy ? '…' : 'Generate'} to have DeepSeek read the pasted messages.</p>
           ) : (
             <>
-              <p className="text-sm text-gray-700">{customer.alibaba_summary.summary}</p>
+              <p className="text-sm text-ink-80">{customer.alibaba_summary.summary}</p>
               {customer.alibaba_summary.recent_activity && (
                 <div>
-                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Recent activity</h4>
-                  <p className="text-sm text-gray-600">{customer.alibaba_summary.recent_activity}</p>
+                  <h4 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Recent activity</h4>
+                  <p className="text-sm text-ink-70">{customer.alibaba_summary.recent_activity}</p>
                 </div>
               )}
               {customer.alibaba_summary.open_commitments?.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Open commitments</h4>
-                  <ul className="text-sm text-gray-600 list-disc list-inside space-y-0.5">
+                  <h4 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Open commitments</h4>
+                  <ul className="text-sm text-ink-70 list-disc list-inside space-y-0.5">
                     {customer.alibaba_summary.open_commitments.map((c, i) => <li key={i}>{c}</li>)}
                   </ul>
                 </div>
               )}
-              <p className="text-[11px] text-gray-400">
+              <p className="text-[11px] text-ink-60">
                 Generated over {customer.alibaba_summary.paste_count ?? mergedAlibabaThreads.length} paste{(customer.alibaba_summary.paste_count ?? mergedAlibabaThreads.length) === 1 ? '' : 's'} — a draft, not verified. Refresh after new messages come in. Used by Daily Drafts.
               </p>
             </>
           )}
         </div>
         {mergedAlibabaThreads.length > 0 && (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-warm-grey">
             {mergedAlibabaThreads.map(t => {
               const expanded = alibabaExpanded === t.id
               const isLinked = t._source === 'linked'
@@ -1864,7 +1864,7 @@ export default function CustomerDetail() {
                     className="w-full flex items-center justify-between text-left"
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
+                      <p className="text-sm font-medium text-ink flex items-center gap-1.5">
                         Pasted {dateLabel}
                         {isLinked && (
                           <span className="text-[10px] font-normal uppercase tracking-wide rounded px-1 py-0.5 text-amber-600 bg-amber-50 shrink-0">
@@ -1872,13 +1872,13 @@ export default function CustomerDetail() {
                           </span>
                         )}
                       </p>
-                      <p className="text-xs text-gray-400 mt-0.5">{(t.char_count || (t.raw_text || '').length).toLocaleString()} characters</p>
+                      <p className="text-xs text-ink-60 mt-0.5">{(t.char_count || (t.raw_text || '').length).toLocaleString()} characters</p>
                     </div>
-                    {expanded ? <ChevronUp size={16} className="text-gray-400 shrink-0" /> : <ChevronDown size={16} className="text-gray-400 shrink-0" />}
+                    {expanded ? <ChevronUp size={16} className="text-ink-60 shrink-0" /> : <ChevronDown size={16} className="text-ink-60 shrink-0" />}
                   </button>
                   {expanded && (
-                    <div className="mt-3 max-h-80 overflow-y-auto border-t border-gray-100 pt-3">
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{t.raw_text}</p>
+                    <div className="mt-3 max-h-80 overflow-y-auto border-t border-warm-grey pt-3">
+                      <p className="text-sm text-ink-80 whitespace-pre-wrap">{t.raw_text}</p>
                     </div>
                   )}
                 </div>
@@ -1892,11 +1892,11 @@ export default function CustomerDetail() {
       <Collapsible storageKey={`${id}:compose`} defaultOpen={false}
         title={<span className="inline-flex items-center gap-1.5"><Sparkle size={15} />Compose Message</span>}
         bodyClassName="px-5 pb-5 space-y-4">
-        <p className="text-xs text-gray-400 -mt-2 mb-1">AI-written message tailored to this customer</p>
+        <p className="text-xs text-ink-60 -mt-2 mb-1">AI-written message tailored to this customer</p>
 
           {/* Product picker */}
           <div>
-            <label className="label">Product <span className="text-gray-400 font-normal">(optional)</span></label>
+            <label className="label">Product <span className="text-ink-60 font-normal">(optional)</span></label>
             {composeProduct ? (
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg border border-brand-200 bg-brand-50">
                 <span className="text-sm font-medium text-brand-700 flex-1">{composeProduct.name}</span>
@@ -1915,9 +1915,9 @@ export default function CustomerDetail() {
                   onBlur={() => setTimeout(() => setComposeProductOpen(false), 150)}
                 />
                 {composeProductOpen && composeProductSearch && (
-                  <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                  <div className="absolute z-10 w-full bg-white border border-warm-grey rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                     {allProducts.filter(p => p.name.toLowerCase().includes(composeProductSearch.toLowerCase())).length === 0 ? (
-                      <p className="text-xs text-gray-400 px-3 py-2">No products found</p>
+                      <p className="text-xs text-ink-60 px-3 py-2">No products found</p>
                     ) : allProducts
                         .filter(p => p.name.toLowerCase().includes(composeProductSearch.toLowerCase()))
                         .map(p => (
@@ -1925,10 +1925,10 @@ export default function CustomerDetail() {
                             key={p.id}
                             type="button"
                             onMouseDown={() => { setComposeProduct(p); setComposeProductSearch(''); setComposeProductOpen(false) }}
-                            className="w-full text-left px-3 py-2.5 hover:bg-gray-50 border-b border-gray-100 last:border-0"
+                            className="w-full text-left px-3 py-2.5 hover:bg-ivory border-b border-warm-grey last:border-0"
                           >
-                            <p className="text-sm font-medium text-gray-800">{p.name}</p>
-                            {p.category && <p className="text-xs text-gray-400">{p.category}</p>}
+                            <p className="text-sm font-medium text-ink">{p.name}</p>
+                            {p.category && <p className="text-xs text-ink-60">{p.category}</p>}
                           </button>
                         ))
                     }
@@ -2053,8 +2053,8 @@ export default function CustomerDetail() {
 function Row({ label, value }) {
   return (
     <div className="flex gap-3 text-sm">
-      <dt className="w-20 text-gray-400 shrink-0">{label}</dt>
-      <dd className="text-gray-800 min-w-0 break-words">{value}</dd>
+      <dt className="w-20 text-ink-60 shrink-0">{label}</dt>
+      <dd className="text-ink min-w-0 break-words">{value}</dd>
     </div>
   )
 }

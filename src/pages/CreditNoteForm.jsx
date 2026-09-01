@@ -229,14 +229,14 @@ export default function CreditNoteForm() {
     }
   }
 
-  if (fetching) return <div className="p-6 text-gray-400">Loading…</div>
+  if (fetching) return <div className="p-6 text-ink-60">Loading…</div>
 
   return (
     <div className="p-4 md:p-6 max-w-4xl">
       <div className="mb-6">
         <Link to="/credit-notes" className="text-sm text-brand-600 hover:underline">← Credit Notes</Link>
         <div className="flex items-center gap-2 mt-1">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-ink">
             {header.cn_no || (isEdit ? 'Edit Credit Note' : 'New Credit Note')}
           </h1>
           {isEdit && (() => {
@@ -245,7 +245,7 @@ export default function CreditNoteForm() {
           })()}
         </div>
         {locked && (
-          <p className="text-xs text-gray-400 mt-1 inline-flex items-center gap-1">
+          <p className="text-xs text-ink-60 mt-1 inline-flex items-center gap-1">
             <Lock size={11} /> {posted ? 'Posted — this is a permanent financial fact and cannot be edited.' : 'Voided.'}
           </p>
         )}
@@ -274,7 +274,7 @@ export default function CreditNoteForm() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="label">Original Order <span className="text-gray-400 font-normal">(optional)</span></label>
+                <label className="label">Original Order <span className="text-ink-60 font-normal">(optional)</span></label>
                 <select className="input" value={header.order_id} onChange={e => pickOrder(e.target.value)}>
                   <option value="">— none / not in the app —</option>
                   {invoicedOrders.map(o => (
@@ -306,7 +306,7 @@ export default function CreditNoteForm() {
                 </datalist>
               </div>
               <div>
-                <label className="label">Marketplace Reference <span className="text-gray-400 font-normal">(optional)</span></label>
+                <label className="label">Marketplace Reference <span className="text-ink-60 font-normal">(optional)</span></label>
                 <input className="input" value={header.marketplace_ref} onChange={set('marketplace_ref')} placeholder="e.g. Amazon order / settlement id" />
               </div>
             </div>
@@ -330,7 +330,7 @@ export default function CreditNoteForm() {
                   {CN_DISPOSITIONS.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
                 </select>
                 {header.disposition && (
-                  <p className="text-xs text-gray-400 mt-1">{CN_DISPOSITIONS.find(d => d.value === header.disposition)?.hint}</p>
+                  <p className="text-xs text-ink-60 mt-1">{CN_DISPOSITIONS.find(d => d.value === header.disposition)?.hint}</p>
                 )}
               </div>
               <div>
@@ -345,8 +345,8 @@ export default function CreditNoteForm() {
 
           {/* ── Line items ── */}
           <div className="card p-4 md:p-6">
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">Returned Lines</h2>
-            <div className="hidden sm:grid grid-cols-[2fr_3fr_1fr_1fr_1.3fr_1.3fr_auto] gap-2 px-1 pb-1 text-[10px] uppercase tracking-wide text-gray-400">
+            <h2 className="text-sm font-semibold text-ink-80 mb-3">Returned Lines</h2>
+            <div className="hidden sm:grid grid-cols-[2fr_3fr_1fr_1fr_1.3fr_1.3fr_auto] gap-2 px-1 pb-1 text-[10px] uppercase tracking-wide text-ink-60">
               <span>Item Code</span><span>Description</span><span className="text-right">Qty Returned</span>
               <span>Unit</span><span className="text-right">Unit Price</span><span className="text-right">Amount</span><span />
             </div>
@@ -369,11 +369,11 @@ export default function CreditNoteForm() {
                              onChange={e => updateLine(ln._uid, { unit: e.target.value })} placeholder="pcs" />
                       <input className="input text-sm text-right tabular-nums" inputMode="decimal" value={ln.unit_price}
                              onChange={e => updateLine(ln._uid, { unit_price: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" />
-                      <div className="text-sm text-right tabular-nums text-gray-700 px-1">
+                      <div className="text-sm text-right tabular-nums text-ink-80 px-1">
                         {lineAmount(ln) ? lineAmount(ln).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
                       </div>
                       <button type="button" onClick={() => removeLine(ln._uid)}
-                              className="text-gray-300 hover:text-red-500 justify-self-end" title="Remove line">
+                              className="text-platinum hover:text-red-500 justify-self-end" title="Remove line">
                         <Trash2 size={15} />
                       </button>
                     </div>
@@ -401,19 +401,19 @@ export default function CreditNoteForm() {
             {/* Accounting amount — what finance actually records, kept
                 separate from the system-calculated total. A nonzero gap
                 needs a reason (SR-05); enforced here and again server-side. */}
-            <div className="mt-5 pt-4 border-t border-gray-100 flex justify-end">
+            <div className="mt-5 pt-4 border-t border-warm-grey flex justify-end">
               <div className="w-full sm:w-72 space-y-1.5 text-sm">
                 {totals.totalQty > 0 && (
-                  <div className="flex justify-between"><span className="text-gray-500">Total Qty</span><span className="tabular-nums font-medium">{totals.totalQty}</span></div>
+                  <div className="flex justify-between"><span className="text-ink-60">Total Qty</span><span className="tabular-nums font-medium">{totals.totalQty}</span></div>
                 )}
-                <div className="flex justify-between items-center pt-1 border-t border-gray-100">
-                  <span className="text-gray-500">System Amount</span>
+                <div className="flex justify-between items-center pt-1 border-t border-warm-grey">
+                  <span className="text-ink-60">System Amount</span>
                   <span className="tabular-nums font-medium">{fmtMoney(systemAmount, header.currency)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-500" title="What finance records. Blank uses the System Amount above.">Accounting Amount</span>
+                  <span className="text-ink-60" title="What finance records. Blank uses the System Amount above.">Accounting Amount</span>
                   <div className="flex items-center gap-1">
-                    <span className="text-xs text-gray-400">{header.currency}</span>
+                    <span className="text-xs text-ink-60">{header.currency}</span>
                     <input type="number" step="0.01" className="input py-0.5 text-xs w-24 text-right font-mono"
                            value={header.accounting_amount} onChange={set('accounting_amount')}
                            placeholder={systemAmount.toFixed(2)} />
@@ -430,7 +430,7 @@ export default function CreditNoteForm() {
                            placeholder="Reason for the adjustment (required)" />
                   </>
                 )}
-                <div className="flex justify-between text-base font-semibold pt-1.5 border-t border-gray-200">
+                <div className="flex justify-between text-base font-semibold pt-1.5 border-t border-warm-grey">
                   <span>Total</span>
                   <span className="tabular-nums">{fmtMoney(accountingAmount, header.currency)}</span>
                 </div>

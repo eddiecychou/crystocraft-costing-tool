@@ -25,9 +25,9 @@ import { buildBrandProposalPdf } from '../brandProposalExport'
 // (CustomerBrandGallery, the product catalogue); this only references them.
 
 function AssetThumb({ asset, className }) {
-  if (!asset) return <div className={`${className} bg-gray-100 flex items-center justify-center`}><ImageOff size={16} className="text-gray-300" /></div>
-  if (cannotRenderAsImage(asset.filename)) return <div className={`${className} bg-gray-400 flex items-center justify-center text-[9px] text-white/80`}>FILE</div>
-  return <img src={asset.file_url} alt={asset.title || asset.filename} className={`${className} object-contain bg-gray-50`} />
+  if (!asset) return <div className={`${className} bg-ivory-dark flex items-center justify-center`}><ImageOff size={16} className="text-platinum" /></div>
+  if (cannotRenderAsImage(asset.filename)) return <div className={`${className} bg-ivory-dark flex items-center justify-center text-[9px] text-ink-60`}>FILE</div>
+  return <img src={asset.file_url} alt={asset.title || asset.filename} className={`${className} object-contain bg-ivory`} />
 }
 
 function ProductPickerModal({ products, selected, onToggle, onClose }) {
@@ -37,29 +37,29 @@ function ProductPickerModal({ products, selected, onToggle, onClose }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md flex flex-col max-h-[75vh]" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-800">Related products</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-warm-grey">
+          <h3 className="text-sm font-semibold text-ink">Related products</h3>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink-70"><X size={16} /></button>
         </div>
-        <div className="p-3 border-b border-gray-100">
+        <div className="p-3 border-b border-warm-grey">
           <div className="relative">
-            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-300" />
+            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-platinum" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search products…"
                    className="input text-sm pl-7 w-full" />
           </div>
         </div>
         <div className="overflow-y-auto flex-1 p-2">
           {filtered.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">No matching products.</p>
+            <p className="text-sm text-ink-60 text-center py-6">No matching products.</p>
           ) : filtered.map(p => (
-            <label key={`${p.collection}-${p.id}`} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+            <label key={`${p.collection}-${p.id}`} className="flex items-center gap-3 p-2 rounded-lg hover:bg-ivory cursor-pointer">
               <input type="checkbox" checked={isSelected(p)} onChange={() => onToggle(p)}
-                     className="w-4 h-4 rounded border-gray-300 text-brand-600" />
-              <div className="w-9 h-9 rounded bg-gray-100 shrink-0 overflow-hidden">
+                     className="w-4 h-4 rounded border-warm-grey text-brand-600" />
+              <div className="w-9 h-9 rounded bg-ivory-dark shrink-0 overflow-hidden">
                 {p.image && <img src={p.image} alt="" className="w-full h-full object-cover" />}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm text-gray-800 truncate">{p.name}</p>
+                <p className="text-sm text-ink truncate">{p.name}</p>
               </div>
               <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase tracking-wide shrink-0 ${p.collection === 'range_products' ? 'bg-brand-50 text-brand-700' : 'bg-sapphire/10 text-sapphire'}`}>
                 {p.collection === 'range_products' ? 'Figurine' : 'Corporate'}
@@ -67,7 +67,7 @@ function ProductPickerModal({ products, selected, onToggle, onClose }) {
             </label>
           ))}
         </div>
-        <div className="px-4 py-3 border-t border-gray-100 text-right">
+        <div className="px-4 py-3 border-t border-warm-grey text-right">
           <button onClick={onClose} className="btn-primary text-xs py-1.5 px-3">Done</button>
         </div>
       </div>
@@ -96,11 +96,11 @@ function ProductPhotoPicker({ productId, customerId, imageId, onPick }) {
 
   return (
     <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-      <span className="text-[10px] text-gray-400 mr-0.5">Photo:</span>
+      <span className="text-[10px] text-ink-60 mr-0.5">Photo:</span>
       {choices.map(im => (
         <button key={im.id} type="button" onClick={() => onPick(im.id)}
                 title={im.branded_for_customer_id === customerId ? 'This customer’s branded photo' : ''}
-                className={`w-7 h-7 rounded overflow-hidden border-2 shrink-0 ${activeId === im.id ? 'border-brand-500' : 'border-transparent hover:border-gray-200'}`}>
+                className={`w-7 h-7 rounded overflow-hidden border-2 shrink-0 ${activeId === im.id ? 'border-brand-500' : 'border-transparent hover:border-warm-grey'}`}>
           <img src={im.file_url} alt="" className="w-full h-full object-cover" />
         </button>
       ))}
@@ -134,9 +134,9 @@ function SortableSection({ section, index, assets, products, customerId, onChang
   const productImage = ref => products.find(p => p.collection === ref.collection && p.id === ref.id)?.image || ''
 
   return (
-    <div ref={setNodeRef} style={style} className="border border-gray-100 rounded-lg p-4 bg-white">
+    <div ref={setNodeRef} style={style} className="border border-warm-grey rounded-lg p-4 bg-white">
       <div className="flex items-start gap-2 mb-3">
-        <button type="button" {...attributes} {...listeners} className="mt-1.5 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0" aria-label="Reorder">
+        <button type="button" {...attributes} {...listeners} className="mt-1.5 text-platinum hover:text-ink-60 cursor-grab active:cursor-grabbing shrink-0" aria-label="Reorder">
           <GripVertical size={16} />
         </button>
         <div className="flex-1 space-y-2">
@@ -144,7 +144,7 @@ function SortableSection({ section, index, assets, products, customerId, onChang
           <input className="input text-sm" placeholder="Section tagline" value={section.tagline} onChange={e => set('tagline', e.target.value)} />
           <textarea className="input text-sm min-h-[70px]" placeholder="Section briefing" value={section.briefing} onChange={e => set('briefing', e.target.value)} />
         </div>
-        <button type="button" onClick={onRemove} className="text-gray-300 hover:text-red-500 shrink-0" aria-label="Remove section">
+        <button type="button" onClick={onRemove} className="text-platinum hover:text-red-500 shrink-0" aria-label="Remove section">
           <Trash2 size={15} />
         </button>
       </div>
@@ -154,24 +154,24 @@ function SortableSection({ section, index, assets, products, customerId, onChang
         <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 mb-2">
           {assets.map(a => (
             <button key={a.id} type="button" onClick={() => toggleAsset(a.id)}
-                    className={`aspect-square rounded overflow-hidden border-2 transition-colors ${isAssetSelected(a.id) ? 'border-brand-500' : 'border-transparent hover:border-gray-200'}`}>
+                    className={`aspect-square rounded overflow-hidden border-2 transition-colors ${isAssetSelected(a.id) ? 'border-brand-500' : 'border-transparent hover:border-warm-grey'}`}>
               <AssetThumb asset={a} className="w-full h-full" />
             </button>
           ))}
-          {assets.length === 0 && <p className="text-xs text-gray-400 col-span-full py-2">No assets on file for this customer yet.</p>}
+          {assets.length === 0 && <p className="text-xs text-ink-60 col-span-full py-2">No assets on file for this customer yet.</p>}
         </div>
         {section.asset_ids.length > 0 && (
           <div className="space-y-2">
             {section.asset_ids.map(ref => (
               <div key={ref.id} className="flex items-start gap-2">
-                <div className="w-9 h-9 rounded overflow-hidden shrink-0 border border-gray-100">
+                <div className="w-9 h-9 rounded overflow-hidden shrink-0 border border-warm-grey">
                   <AssetThumb asset={assetById(ref.id)} className="w-full h-full" />
                 </div>
                 <div className="flex-1">
                   <textarea className="input text-xs min-h-[44px] resize-y w-full" maxLength={CAPTION_MAX_LEN}
                             placeholder="Why this image fits (shown to the customer)"
                             value={ref.caption} onChange={e => setAssetCaption(ref.id, e.target.value)} />
-                  <p className="text-[10px] text-gray-300 text-right mt-0.5">{ref.caption.length}/{CAPTION_MAX_LEN}</p>
+                  <p className="text-[10px] text-platinum text-right mt-0.5">{ref.caption.length}/{CAPTION_MAX_LEN}</p>
                 </div>
               </div>
             ))}
@@ -190,21 +190,21 @@ function SortableSection({ section, index, assets, products, customerId, onChang
           <div className="space-y-2">
             {section.product_refs.map(r => (
               <div key={`${r.collection}-${r.id}`} className="flex items-start gap-2">
-                <div className="w-9 h-9 rounded bg-gray-100 shrink-0 overflow-hidden">
+                <div className="w-9 h-9 rounded bg-ivory-dark shrink-0 overflow-hidden">
                   {productImage(r) && <img src={productImage(r)} alt="" className="w-full h-full object-cover" />}
                 </div>
-                <p className="text-xs text-gray-700 w-24 shrink-0 truncate mt-1.5" title={productName(r)}>{productName(r)}</p>
+                <p className="text-xs text-ink-80 w-24 shrink-0 truncate mt-1.5" title={productName(r)}>{productName(r)}</p>
                 <div className="flex-1">
                   <textarea className="input text-xs min-h-[44px] resize-y w-full" maxLength={CAPTION_MAX_LEN}
                             placeholder="Why this product fits / a short intro (shown to the customer)"
                             value={r.caption} onChange={e => setProductCaption(r, e.target.value)} />
-                  <p className="text-[10px] text-gray-300 text-right mt-0.5">{r.caption.length}/{CAPTION_MAX_LEN}</p>
+                  <p className="text-[10px] text-platinum text-right mt-0.5">{r.caption.length}/{CAPTION_MAX_LEN}</p>
                   {r.collection === 'products' && (
                     <ProductPhotoPicker productId={r.id} customerId={customerId} imageId={r.image_id}
                                         onPick={id => setProductImage(r, id)} />
                   )}
                 </div>
-                <button type="button" onClick={() => toggleProduct(r)} className="text-gray-400 hover:text-red-500 shrink-0 mt-1.5"><X size={13} /></button>
+                <button type="button" onClick={() => toggleProduct(r)} className="text-ink-60 hover:text-red-500 shrink-0 mt-1.5"><X size={13} /></button>
               </div>
             ))}
           </div>
@@ -306,15 +306,15 @@ function ImportProposalModal({ customerId, currentStatus, onClose, onApplied }) 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={stage === 'applying' ? undefined : onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100">
-          <h3 className="text-sm font-semibold text-gray-800 inline-flex items-center gap-1.5"><FileJson size={15} /> Import mapped JSON</h3>
-          <button onClick={onClose} disabled={stage === 'applying'} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+        <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
+          <h3 className="text-sm font-semibold text-ink inline-flex items-center gap-1.5"><FileJson size={15} /> Import mapped JSON</h3>
+          <button onClick={onClose} disabled={stage === 'applying'} className="text-ink-60 hover:text-ink-70"><X size={16} /></button>
         </div>
 
         <div className="overflow-y-auto flex-1 p-5">
           {stage === 'pick' && (
             <div>
-              <p className="text-xs text-gray-500 mb-3">
+              <p className="text-xs text-ink-60 mb-3">
                 Pick the JSON file from Manus (or anyone following the schema). Every product/figurine reference is checked
                 against the live catalogue before anything is saved — nothing is written yet.
               </p>
@@ -325,10 +325,10 @@ function ImportProposalModal({ customerId, currentStatus, onClose, onApplied }) 
               {fileError && <p className="text-xs text-red-600 mt-2">{fileError}</p>}
             </div>
           )}
-          {stage === 'checking' && <p className="text-sm text-gray-400 text-center py-8">Checking every reference against the catalogue…</p>}
+          {stage === 'checking' && <p className="text-sm text-ink-60 text-center py-8">Checking every reference against the catalogue…</p>}
           {(stage === 'preview' || stage === 'applying') && parsed && (
             <div className="space-y-3">
-              <div className="flex items-center gap-4 text-xs text-gray-600">
+              <div className="flex items-center gap-4 text-xs text-ink-70">
                 <span>{sectionCount} section{sectionCount === 1 ? '' : 's'}</span>
                 <span>{productRefCount} product ref{productRefCount === 1 ? '' : 's'}</span>
                 <span>{assetRefCount} image ref{assetRefCount === 1 ? '' : 's'}</span>
@@ -346,7 +346,7 @@ function ImportProposalModal({ customerId, currentStatus, onClose, onApplied }) 
               {blocking.length > 0 && (
                 <p className="text-[11px] text-red-600">Fix duplicates/missing references in the source file and re-import — those refs would be silently dropped otherwise.</p>
               )}
-              <p className="text-[11px] text-gray-400">
+              <p className="text-[11px] text-ink-60">
                 {currentStatus === 'published'
                   ? 'This proposal is currently published — importing will move it back to draft for review, not publish the new content automatically.'
                   : 'Will be saved as a draft — nothing changes for the customer until you publish.'}
@@ -356,8 +356,8 @@ function ImportProposalModal({ customerId, currentStatus, onClose, onApplied }) 
         </div>
 
         {(stage === 'preview' || stage === 'applying') && (
-          <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
-            <button onClick={onClose} disabled={stage === 'applying'} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+          <div className="px-5 py-3 border-t border-warm-grey flex items-center justify-between">
+            <button onClick={onClose} disabled={stage === 'applying'} className="text-xs text-ink-60 hover:text-ink-80">Cancel</button>
             <button onClick={apply} disabled={stage === 'applying' || blocking.length > 0} className="btn-primary text-xs py-1.5 px-3">
               {stage === 'applying' ? 'Applying…' : 'Apply as draft'}
             </button>
@@ -670,11 +670,11 @@ export default function ProposalEditor({ customerId, customerName }) {
     <div className="card p-5 mb-4">
       <div className="flex flex-col gap-3 mb-1">
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <button type="button" onClick={toggleCollapsed} className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5 text-left">
-            {collapsed ? <ChevronRight size={15} className="text-gray-400 shrink-0" /> : <ChevronDown size={15} className="text-gray-400 shrink-0" />}
+          <button type="button" onClick={toggleCollapsed} className="text-sm font-semibold text-ink-80 inline-flex items-center gap-1.5 text-left">
+            {collapsed ? <ChevronRight size={15} className="text-ink-60 shrink-0" /> : <ChevronDown size={15} className="text-ink-60 shrink-0" />}
             <Presentation size={15} className="text-brand-500" /> Proposal
           </button>
-          <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${proposal.status === 'published' ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500'}`}>
+          <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${proposal.status === 'published' ? 'bg-emerald-100 text-emerald-700' : 'bg-ivory-dark text-ink-60'}`}>
             {proposal.status === 'published' ? 'Published — customer can see this' : 'Draft — admin preview only'}
           </span>
         </div>
@@ -698,7 +698,7 @@ export default function ProposalEditor({ customerId, customerName }) {
           </button>
         </div>
       </div>
-      {savedAt && <p className="text-[11px] text-gray-400 mb-2">Saved {savedAt.toLocaleTimeString()}</p>}
+      {savedAt && <p className="text-[11px] text-ink-60 mb-2">Saved {savedAt.toLocaleTimeString()}</p>}
       {importing && (
         <ImportProposalModal customerId={customerId} currentStatus={proposal.status}
                               onClose={() => setImporting(false)}
@@ -709,7 +709,7 @@ export default function ProposalEditor({ customerId, customerName }) {
       <div className="grid sm:grid-cols-[140px_1fr] gap-3 my-4">
         <div>
           <p className="label text-xs mb-1.5">Hero image</p>
-          <div className="w-full aspect-video rounded-lg overflow-hidden border border-gray-100">
+          <div className="w-full aspect-video rounded-lg overflow-hidden border border-warm-grey">
             <AssetThumb asset={heroAsset} className="w-full h-full" />
           </div>
         </div>
@@ -732,11 +732,11 @@ export default function ProposalEditor({ customerId, customerName }) {
             )}
           </div>
           {heroAsset && (
-            <p className="text-[11px] text-gray-400 -mt-1">
+            <p className="text-[11px] text-ink-60 -mt-1">
               Stored under <strong>Product Gallery</strong> in this customer's Brand Gallery (Customer Detail page) — not Brand Assets.
             </p>
           )}
-          <p className="text-[11px] text-gray-400 -mt-1">
+          <p className="text-[11px] text-ink-60 -mt-1">
             Recommended: a wide landscape photo, at least 2000×840px (roughly 2.4:1) — it fills the full-width banner and
             crops from the sides on ultra-wide screens, so keep the main subject centred. JPG or PNG.
           </p>
@@ -753,7 +753,7 @@ export default function ProposalEditor({ customerId, customerName }) {
       </div>
 
       {proposal.sections.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-6">No sections yet — add one to start building the proposal.</p>
+        <p className="text-sm text-ink-60 text-center py-6">No sections yet — add one to start building the proposal.</p>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={proposal.sections.map(s => s._key)} strategy={verticalListSortingStrategy}>

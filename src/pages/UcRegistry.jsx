@@ -15,15 +15,15 @@ const money = (v) => (v === '' || v == null || Number.isNaN(Number(v)))
 
 const STATUS_STYLE = {
   open: { cls: 'bg-green-100 text-green-700', label: 'Open' },
-  closed: { cls: 'bg-gray-100 text-gray-500', label: 'Closed' },
+  closed: { cls: 'bg-ivory-dark text-ink-60', label: 'Closed' },
   void: { cls: 'bg-red-100 text-red-700', label: 'Void' },
 }
 
 const SOURCE_STYLE = {
-  Wholesale: 'bg-gray-100 text-gray-600', Alibaba: 'bg-orange-100 text-orange-700',
+  Wholesale: 'bg-ivory-dark text-ink-70', Alibaba: 'bg-orange-100 text-orange-700',
   Amazon: 'bg-yellow-100 text-yellow-800', 'Online Shop': 'bg-blue-100 text-blue-700',
   Retail: 'bg-purple-100 text-purple-700',
-  Other: 'bg-gray-100 text-gray-500',
+  Other: 'bg-ivory-dark text-ink-60',
 }
 
 // Where the invoice lives — derived on uc_registry_dated, never typed. Since
@@ -102,7 +102,7 @@ function SiPicker({ value, onChange }) {
 
   return (
     <label className="flex flex-col gap-1 relative">
-      <span className="text-xs font-medium text-gray-500">Invoice (SI#) — search to link, JES or app</span>
+      <span className="text-xs font-medium text-ink-60">Invoice (SI#) — search to link, JES or app</span>
       <div className="relative">
         <input
           value={q}
@@ -110,27 +110,27 @@ function SiPicker({ value, onChange }) {
           onFocus={() => setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 150)}
           placeholder="e.g. SI250087 or customer…"
-          className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
+          className="w-full px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
         {q && (
           <button type="button" onMouseDown={() => { setQ(''); onChange(''); setResults([]) }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500" title="Clear">
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-platinum hover:text-ink-60" title="Clear">
             <X size={14} />
           </button>
         )}
       </div>
       {open && (loading || results.length > 0) && (
-        <ul className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-auto">
-          {loading && <li className="px-3 py-2 text-xs text-gray-400">Searching…</li>}
+        <ul className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-warm-grey rounded-lg shadow-lg max-h-56 overflow-auto">
+          {loading && <li className="px-3 py-2 text-xs text-ink-60">Searching…</li>}
           {results.map((r) => (
             <li key={r.code}>
               <button type="button" onMouseDown={() => pick(r)}
                 className="w-full text-left px-3 py-1.5 hover:bg-teal-50 flex items-baseline gap-2">
                 <span className="font-mono text-xs text-teal-700">{r.code}</span>
-                <span className={`text-[10px] px-1 rounded ${r.src === 'app' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
+                <span className={`text-[10px] px-1 rounded ${r.src === 'app' ? 'bg-blue-50 text-blue-600' : 'bg-ivory-dark text-ink-60'}`}>
                   {r.src === 'app' ? 'app' : 'JES'}
                 </span>
-                <span className="text-xs text-gray-600 truncate flex-1">{r.customer}</span>
-                <span className="text-xs tabular-nums text-gray-400">{money(r.amount)} {r.currency}</span>
+                <span className="text-xs text-ink-70 truncate flex-1">{r.customer}</span>
+                <span className="text-xs tabular-nums text-ink-60">{money(r.amount)} {r.currency}</span>
               </button>
             </li>
           ))}
@@ -207,27 +207,27 @@ function UcForm({ record, onClose, onSaved }) {
   // A plain function (not a nested component) so inputs don't remount/lose focus.
   const field = (label, k, type = 'text', wide = false) => (
     <label key={k} className={`flex flex-col gap-1 ${wide ? 'col-span-2' : ''}`}>
-      <span className="text-xs font-medium text-gray-500">{label}</span>
+      <span className="text-xs font-medium text-ink-60">{label}</span>
       <input type={type} value={f[k] ?? ''} onChange={set(k)}
-        className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
+        className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
     </label>
   )
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl my-8" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
-          <h2 className="font-semibold text-gray-900 flex items-center gap-2">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
+          <h2 className="font-semibold text-ink flex items-center gap-2">
             <Hash size={18} className="text-teal-600" />
             {isNew ? 'New UC# Invoice' : `Edit ${record.uc_no}`}
-            {isNew && <span className="text-xs font-normal text-gray-400">— number assigned on save</span>}
+            {isNew && <span className="text-xs font-normal text-ink-60">— number assigned on save</span>}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
         </div>
         <div className="p-5 grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-gray-500">Source</span>
-            <select value={ucSource(f.source)} onChange={set('source')} className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg">
+            <span className="text-xs font-medium text-ink-60">Source</span>
+            <select value={ucSource(f.source)} onChange={set('source')} className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg">
               <option value="">— not set —</option>
               {UC_SOURCES.map((s) => <option key={s}>{s}</option>)}
             </select>
@@ -238,12 +238,12 @@ function UcForm({ record, onClose, onSaved }) {
               stops being editable. Rows with no invoice keep the manual entry.
               (Cindy, 2026-07-21.) */}
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-gray-500">Date</span>
+            <span className="text-xs font-medium text-ink-60">Date</span>
             {record?.si_date ? (
-              <span className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-600"
+              <span className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg bg-ivory text-ink-70"
                     title={`Taken from invoice ${record.jes_si}`}>
                 {String(record.si_date).slice(0, 10)}
-                <span className="ml-1.5 text-xs text-gray-400">from {record.jes_si}</span>
+                <span className="ml-1.5 text-xs text-ink-60">from {record.jes_si}</span>
               </span>
             ) : (
               <input type="date" value={f.doc_date ?? ''}
@@ -252,13 +252,13 @@ function UcForm({ record, onClose, onSaved }) {
                   // keep the sheet's /YY year in sync automatically
                   setF({ ...f, doc_date: v, year: v ? `/${v.slice(2, 4)}` : f.year })
                 }}
-                className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
+                className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
             )}
           </label>
           <label className="flex flex-col gap-1 col-span-2">
-            <span className="text-xs font-medium text-gray-500">Customer</span>
+            <span className="text-xs font-medium text-ink-60">Customer</span>
             <input type="text" value={f.customer ?? ''} onChange={set('customer')}
-              className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
+              className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
             {/* Free text stays the record of what the invoice actually says
                 (JES history, one-off names) — this links it to a real app
                 customer record when one exists, so the code (Cindy needs it
@@ -276,8 +276,8 @@ function UcForm({ record, onClose, onSaved }) {
           <SiPicker value={f.jes_si} onChange={(v) => setF({ ...f, jes_si: v })} />
           {field('Order no.', 'order_no')}
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-gray-500">Currency</span>
-            <select value={f.currency} onChange={set('currency')} className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg">
+            <span className="text-xs font-medium text-ink-60">Currency</span>
+            <select value={f.currency} onChange={set('currency')} className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg">
               {UC_CURRENCIES.map((c) => <option key={c}>{c}</option>)}
             </select>
           </label>
@@ -296,22 +296,22 @@ function UcForm({ record, onClose, onSaved }) {
               /20 rows (a constant pasted down a spreadsheet column) and one
               row where it simply duplicates the invoice total (UC3502,
               35,013,502). The COLUMNS are kept; only the fields are gone. */}
-          <label className="flex items-center gap-2 text-sm text-gray-600 mt-1">
+          <label className="flex items-center gap-2 text-sm text-ink-70 mt-1">
             <input type="checkbox" checked={!!f.confirmed} onChange={set('confirmed')}
-              className="rounded border-gray-300 text-teal-600 focus:ring-teal-500" /> Confirmed
+              className="rounded border-warm-grey text-teal-600 focus:ring-teal-500" /> Confirmed
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-medium text-gray-500">Status</span>
-            <select value={f.status || 'open'} onChange={set('status')} className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg">
+            <span className="text-xs font-medium text-ink-60">Status</span>
+            <select value={f.status || 'open'} onChange={set('status')} className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg">
               <option value="open">Open</option>
               <option value="closed">Closed (paid)</option>
               <option value="void">Void (cancelled / mistake)</option>
             </select>
           </label>
           <label className="flex flex-col gap-1 col-span-2">
-            <span className="text-xs font-medium text-gray-500">Remarks</span>
+            <span className="text-xs font-medium text-ink-60">Remarks</span>
             <textarea value={f.remarks ?? ''} onChange={set('remarks')} rows={2}
-              className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg" />
+              className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-lg" />
           </label>
         </div>
         {error && (
@@ -325,8 +325,8 @@ function UcForm({ record, onClose, onSaved }) {
             <span>{warning} <strong className="whitespace-nowrap">Save again to keep it.</strong></span>
           </div>
         )}
-        <div className="flex justify-end gap-2 px-5 py-3 border-t border-gray-200">
-          <button onClick={onClose} className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+        <div className="flex justify-end gap-2 px-5 py-3 border-t border-warm-grey">
+          <button onClick={onClose} className="px-3 py-1.5 text-sm text-ink-70 hover:bg-ivory-dark rounded-lg">Cancel</button>
           <button onClick={save} disabled={saving} className="btn-primary text-sm disabled:opacity-50">
             {saving ? 'Saving…' : warning ? 'Save anyway' : isNew ? 'Create UC#' : 'Save'}
           </button>
@@ -350,25 +350,25 @@ function ErpInvoiceModal({ si, data, loading, error, onClose }) {
   const deposit = n(header?.deposit)
   const curr = header?.currency ? ` ${header.currency}` : ''
   const Row = ({ label, value, strong, sign }) => (
-    <div className={`flex justify-between gap-8 py-0.5 ${strong ? 'font-semibold text-gray-900 border-t border-gray-200 mt-1 pt-1.5' : 'text-gray-600'}`}>
+    <div className={`flex justify-between gap-8 py-0.5 ${strong ? 'font-semibold text-ink border-t border-warm-grey mt-1 pt-1.5' : 'text-ink-70'}`}>
       <span>{label}</span><span className="tabular-nums">{sign === '-' && value ? '−' : ''}{money(value)}{curr}</span>
     </div>
   )
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-4 overflow-y-auto" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl my-8" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-warm-grey">
           <div className="flex items-center gap-2 flex-wrap">
             <FileText size={18} className="text-teal-600" />
-            <h2 className="font-semibold text-gray-900">ERP Invoice</h2>
-            <span className="font-mono text-xs text-gray-500">{si}</span>
-            {header?.customer && <span className="text-sm text-gray-500">· {header.customer}</span>}
-            {header?.date && <span className="text-xs text-gray-400">· {String(header.date).slice(0, 10)}</span>}
+            <h2 className="font-semibold text-ink">ERP Invoice</h2>
+            <span className="font-mono text-xs text-ink-60">{si}</span>
+            {header?.customer && <span className="text-sm text-ink-60">· {header.customer}</span>}
+            {header?.date && <span className="text-xs text-ink-60">· {String(header.date).slice(0, 10)}</span>}
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1"><X size={18} /></button>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink-70 p-1"><X size={18} /></button>
         </div>
         <div className="p-4 max-h-[70vh] overflow-auto">
-          {loading && <p className="text-sm text-gray-500 py-6 text-center">Loading ERP invoice…</p>}
+          {loading && <p className="text-sm text-ink-60 py-6 text-center">Loading ERP invoice…</p>}
           {error && (
             <div className="flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
               <AlertCircle size={16} /> {error}
@@ -380,7 +380,7 @@ function ErpInvoiceModal({ si, data, loading, error, onClose }) {
               invoice issued since the last office-LAN sync. Say that, rather
               than a bare "not found" that reads like a bad number. */}
           {!loading && !error && rows.length === 0 && surcharges.length === 0 && (
-            <div className="text-sm text-gray-400 py-6 text-center">
+            <div className="text-sm text-ink-60 py-6 text-center">
               <p>{si} is not in the JES mirror.</p>
               <p className="text-xs mt-1">If it was raised in JES recently, the ERP sync has not run since — it is not necessarily missing.</p>
             </div>
@@ -388,7 +388,7 @@ function ErpInvoiceModal({ si, data, loading, error, onClose }) {
           {!loading && (rows.length > 0 || surcharges.length > 0) && (
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-gray-500 border-b border-gray-200">
+                <tr className="text-left text-ink-60 border-b border-warm-grey">
                   <th className="px-2 py-1.5 font-medium">#</th>
                   <th className="px-2 py-1.5 font-medium">Item</th>
                   <th className="px-2 py-1.5 font-medium">Description</th>
@@ -399,8 +399,8 @@ function ErpInvoiceModal({ si, data, loading, error, onClose }) {
               </thead>
               <tbody>
                 {rows.map((r, i) => (
-                  <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
-                    <td className="px-2 py-1.5 text-gray-400 tabular-nums">{r.seq}</td>
+                  <tr key={i} className="border-b border-warm-grey hover:bg-ivory">
+                    <td className="px-2 py-1.5 text-ink-60 tabular-nums">{r.seq}</td>
                     <td className="px-2 py-1.5 font-mono text-xs">{r.item_code}</td>
                     <td className="px-2 py-1.5">{r.description}</td>
                     <td className="px-2 py-1.5 text-right tabular-nums">{r.qty}</td>
@@ -409,10 +409,10 @@ function ErpInvoiceModal({ si, data, loading, error, onClose }) {
                   </tr>
                 ))}
                 {surcharges.map((s, i) => (
-                  <tr key={`s${i}`} className="border-b border-gray-50 bg-amber-50/40">
+                  <tr key={`s${i}`} className="border-b border-warm-grey bg-amber-50/40">
                     <td className="px-2 py-1.5"></td>
                     <td className="px-2 py-1.5 text-xs text-amber-700">{s.code || 'CHARGE'}</td>
-                    <td className="px-2 py-1.5 text-gray-600" colSpan={3}>{s.description}</td>
+                    <td className="px-2 py-1.5 text-ink-70" colSpan={3}>{s.description}</td>
                     <td className="px-2 py-1.5 text-right tabular-nums">{money(s.amount)}</td>
                   </tr>
                 ))}
@@ -443,7 +443,7 @@ function SortTh({ label, col, sort, onSort, align = 'left' }) {
   return (
     <th className={`px-3 py-2 font-medium whitespace-nowrap ${align === 'right' ? 'text-right' : ''}`}>
       <button type="button" onClick={() => onSort(col)}
-        className={`inline-flex items-center gap-1 hover:text-gray-900 transition-colors ${on ? 'text-gray-900' : ''}`}
+        className={`inline-flex items-center gap-1 hover:text-ink transition-colors ${on ? 'text-ink' : ''}`}
         title={`Sort by ${label}`}>
         {label}
         <span className={`text-[9px] leading-none ${on ? 'opacity-100' : 'opacity-0'}`}>
@@ -625,10 +625,10 @@ export default function UcRegistry() {
 
       <div className="flex items-start justify-between mb-4 gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
+          <h1 className="text-xl md:text-2xl font-bold text-ink flex items-center gap-2">
             <Hash size={22} className="text-teal-600" /> UC Invoice Registry
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm text-ink-60 mt-0.5">
             Every order gets a unique UC# — across ERP, Alibaba, Amazon, online shop, and retail.
           </p>
         </div>
@@ -640,15 +640,15 @@ export default function UcRegistry() {
       {/* AR summary */}
       <div className="flex flex-wrap gap-2 mb-4">
         {ar.length === 0 ? (
-          <span className="text-sm text-gray-400">No outstanding balances.</span>
+          <span className="text-sm text-ink-60">No outstanding balances.</span>
         ) : (
           <>
-            <span className="text-sm text-gray-500 self-center mr-1">
+            <span className="text-sm text-ink-60 self-center mr-1">
               Outstanding{confirmedFilter === 'yes' ? ' (confirmed)' : confirmedFilter === 'no' ? ' (not confirmed)' : ''}:
             </span>
             {ar.map(([c, v]) => (
-              <span key={c} className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-sm">
-                <b className="tabular-nums">{money(v)}</b> <span className="text-gray-500">{c}</span>
+              <span key={c} className="bg-white border border-warm-grey rounded-lg px-3 py-1.5 text-sm">
+                <b className="tabular-nums">{money(v)}</b> <span className="text-ink-60">{c}</span>
               </span>
             ))}
           </>
@@ -664,21 +664,21 @@ export default function UcRegistry() {
       {/* filters */}
       <div className="flex flex-wrap items-center gap-3 mb-4">
         <div className="relative flex-1 min-w-[220px]">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-60" />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search UC#, customer, SI#, order…"
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
+            className="w-full pl-9 pr-3 py-2 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:border-teal-500" />
         </div>
-        <select value={source} onChange={(e) => setSource(e.target.value)} className="px-2.5 py-2 text-sm border border-gray-200 rounded-lg">
+        <select value={source} onChange={(e) => setSource(e.target.value)} className="px-2.5 py-2 text-sm border border-warm-grey rounded-lg">
           <option value="">All sources</option>
           {UC_SOURCES.map((s) => <option key={s}>{s}</option>)}
         </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-2.5 py-2 text-sm border border-gray-200 rounded-lg">
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="px-2.5 py-2 text-sm border border-warm-grey rounded-lg">
           <option value="open">Open</option>
           <option value="closed">Closed</option>
           <option value="void">Void</option>
           <option value="">All statuses</option>
         </select>
-        <select value={confirmedFilter} onChange={(e) => setConfirmedFilter(e.target.value)} className="px-2.5 py-2 text-sm border border-gray-200 rounded-lg">
+        <select value={confirmedFilter} onChange={(e) => setConfirmedFilter(e.target.value)} className="px-2.5 py-2 text-sm border border-warm-grey rounded-lg">
           <option value="">Confirmed: any</option>
           <option value="yes">Confirmed only</option>
           <option value="no">Not confirmed</option>
@@ -692,11 +692,11 @@ export default function UcRegistry() {
       />
 
       {/* table */}
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-white border border-warm-grey rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-gray-500 border-b border-gray-200 bg-gray-50">
+              <tr className="text-left text-ink-60 border-b border-warm-grey bg-ivory">
                 {[
                   ['UC #', 'uc_no'], ['Date', 'effective_date'], ['Source', 'source'],
                   ['Customer', 'customer'], ['SI #', 'jes_si'], ['Cur', 'currency'],
@@ -709,9 +709,9 @@ export default function UcRegistry() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className={`border-b border-gray-100 last:border-0 hover:bg-gray-50 ${r.status === 'void' ? 'opacity-55' : ''}`}>
+                <tr key={r.id} className={`border-b border-warm-grey last:border-0 hover:bg-ivory ${r.status === 'void' ? 'opacity-55' : ''}`}>
                   <td className="px-3 py-2 font-mono text-xs">{r.uc_no}</td>
-                  <td className="px-3 py-2 whitespace-nowrap text-gray-500">
+                  <td className="px-3 py-2 whitespace-nowrap text-ink-60">
                     {r.effective_date
                       ? <span title={r.si_date ? `From invoice ${r.jes_si}` : 'Entered by hand'}>
                           {String(r.effective_date).slice(0, 10)}
@@ -726,20 +726,20 @@ export default function UcRegistry() {
                       onClick={(e) => e.stopPropagation()}
                       title="Click to reclassify this UC's sales channel"
                       className={`text-xs rounded px-1.5 py-0.5 border-0 cursor-pointer disabled:opacity-50 ${
-                        ucSource(r.source) ? (SOURCE_STYLE[ucSource(r.source)] || SOURCE_STYLE.Other) : 'bg-gray-50 text-gray-300'
+                        ucSource(r.source) ? (SOURCE_STYLE[ucSource(r.source)] || SOURCE_STYLE.Other) : 'bg-ivory text-platinum'
                       }`}>
                       <option value="">—</option>
                       {UC_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                     {r.invoice_location && (
-                      <span className="ml-1.5 text-[10px] text-gray-400" title={LOCATION_TITLE[r.invoice_location]}>
+                      <span className="ml-1.5 text-[10px] text-ink-60" title={LOCATION_TITLE[r.invoice_location]}>
                         {LOCATION_LABEL[r.invoice_location]}
                       </span>
                     )}
                   </td>
                   <td className="px-3 py-2">
                     {r.customer}
-                    {customerCodeFor(r) && <span className="ml-1.5 text-xs text-gray-400 font-mono">· {customerCodeFor(r)}</span>}
+                    {customerCodeFor(r) && <span className="ml-1.5 text-xs text-ink-60 font-mono">· {customerCodeFor(r)}</span>}
                   </td>
                   <td className="px-3 py-2 font-mono text-xs">
                     {r.jes_si
@@ -747,11 +747,11 @@ export default function UcRegistry() {
                           title={r.invoice_location === 'app'
                             ? 'Raised in the app — opens the app’s own invoice'
                             : 'Opens the JES invoice from the ERP mirror'}>{r.jes_si}</button>
-                      : <span className="text-gray-300">—</span>}
+                      : <span className="text-platinum">—</span>}
                   </td>
-                  <td className="px-3 py-2 whitespace-nowrap text-gray-500">{r.currency}</td>
+                  <td className="px-3 py-2 whitespace-nowrap text-ink-60">{r.currency}</td>
                   <td className="px-3 py-2 text-right tabular-nums">{money(r.total)}</td>
-                  <td className={`px-3 py-2 text-right tabular-nums ${Number(r.balance) > 0.005 ? 'font-semibold text-gray-900' : 'text-gray-400'}`}>{money(r.balance)}</td>
+                  <td className={`px-3 py-2 text-right tabular-nums ${Number(r.balance) > 0.005 ? 'font-semibold text-ink' : 'text-ink-60'}`}>{money(r.balance)}</td>
                   <td className="px-3 py-2">
                     {(() => { const st = STATUS_STYLE[r.status] || STATUS_STYLE.open
                       return <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${st.cls}`}>{st.label}</span> })()}
@@ -762,7 +762,7 @@ export default function UcRegistry() {
                 </tr>
               ))}
               {!list.loading && rows.length === 0 && (
-                <tr><td colSpan={10} className="px-3 py-10 text-center text-gray-400">No matching UC# records.</td></tr>
+                <tr><td colSpan={10} className="px-3 py-10 text-center text-ink-60">No matching UC# records.</td></tr>
               )}
             </tbody>
           </table>

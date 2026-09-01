@@ -81,13 +81,13 @@ export default function ProductionDashboard() {
 
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-700">Reorder alerts</h2>
+          <h2 className="text-sm font-semibold text-ink-80">Reorder alerts</h2>
           <Link to="/inventory" className="text-xs text-brand-600 hover:underline">Open Inventory →</Link>
         </div>
         {low.length === 0 ? (
           <p className="text-sm text-ink-60">Nothing below its reorder point.</p>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-warm-grey">
             {low.slice(0, 12).map((r, i) => (
               <div key={`${r.cls}-${r.id || i}`} className="py-2 flex items-center justify-between gap-3 text-sm">
                 <span className="text-ink-70 truncate">

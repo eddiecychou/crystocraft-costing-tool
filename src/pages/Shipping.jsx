@@ -158,10 +158,10 @@ function ShipmentsList() {
     <div className="p-4 md:p-6">
       {loading && <LoadingBar />}
       <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-ink-60">
           {merged.length} order{merged.length === 1 ? '' : 's'}
-          {jesOnly > 0 && <span className="text-gray-400"> · {filtered.length} in the app, {jesOnly} from JES</span>}
-          {erp.loading && <span className="text-gray-400"> · loading JES history…</span>}
+          {jesOnly > 0 && <span className="text-ink-60"> · {filtered.length} in the app, {jesOnly} from JES</span>}
+          {erp.loading && <span className="text-ink-60"> · loading JES history…</span>}
         </p>
         <div className="flex items-center gap-2">
           {/* An order can be entered directly now, not only imported from a PDF.
@@ -190,7 +190,7 @@ function ShipmentsList() {
       {erpDoc && <ErpDocModal of="sales_order" doc={erpDoc} onClose={() => setErpDoc(null)} />}
 
       {merged.length === 0 && !loading && !erp.loading ? (
-        <div className="text-center py-20 text-gray-400">
+        <div className="text-center py-20 text-ink-60">
           {orders.length === 0
             ? <><Link to="/shipments/new" className="text-brand-600 hover:underline">Import a proforma invoice</Link> to get started.</>
             : 'No shipments match your search.'}
@@ -199,7 +199,7 @@ function ShipmentsList() {
         <div className="card overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+              <tr className="text-left text-xs text-ink-60 border-b border-warm-grey">
                 <th className="px-4 py-2.5 font-medium whitespace-nowrap">Order Date</th>
                 <th className="px-4 py-2.5 font-medium whitespace-nowrap">UC#</th>
                 <th className="px-4 py-2.5 font-medium whitespace-nowrap">SO #</th>
@@ -210,7 +210,7 @@ function ShipmentsList() {
                 <th className="px-2 py-2.5"></th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-warm-grey">
               {merged.map(row => {
                 if (row.src === 'jes') return <JesOrderRow key={row.key} r={row.r} onOpen={() => setErpDoc(row.r)} />
                 const o = row.o
@@ -218,18 +218,18 @@ function ShipmentsList() {
                 const needsReconcile = (o._raw?.lines_unreconciled ?? 0) > 0
                 const value = o.total_amount ?? o.subtotal
                 return (
-                  <tr key={row.key} className="hover:bg-gray-50 transition-colors cursor-pointer"
+                  <tr key={row.key} className="hover:bg-ivory transition-colors cursor-pointer"
                     onClick={() => navigate(`/shipments/${o.id}`)}>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{fmtOrderDate(o.order_date)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{orderUc(o) || '—'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{orderSoDisplay(o) || '—'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-ink-70">{fmtOrderDate(o.order_date)}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-ink-70">{orderUc(o) || '—'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-ink-70">{orderSoDisplay(o) || '—'}</td>
                     <td className="px-4 py-3 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-medium text-gray-900 truncate">{o.customer_name || 'Unnamed customer'}</span>
+                        <span className="font-medium text-ink truncate">{o.customer_name || 'Unnamed customer'}</span>
                         {erpCodeByCustomerId[o.customer_id] && (
-                          <span className="text-xs text-gray-400 font-mono">{erpCodeByCustomerId[o.customer_id]}</span>
+                          <span className="text-xs text-ink-60 font-mono">{erpCodeByCustomerId[o.customer_id]}</span>
                         )}
-                        {o.uc_no && <span className="text-xs text-gray-400">{o.uc_no}</span>}
+                        {o.uc_no && <span className="text-xs text-ink-60">{o.uc_no}</span>}
                         {needsReconcile && (
                           <span title="Needs reconcile" className="inline-flex items-center text-amber-600">
                             <ClipboardCheck size={12} />
@@ -237,14 +237,14 @@ function ShipmentsList() {
                         )}
                       </div>
                       {(o.destination?.country || o.destination?.city) && (
-                        <span className="inline-flex items-center gap-1 text-xs text-gray-400">
+                        <span className="inline-flex items-center gap-1 text-xs text-ink-60">
                           <MapPin size={11} />{[o.destination.city, o.destination.country].filter(Boolean).join(', ')}
                         </span>
                       )}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-500">{o.currency}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-800">
-                      {value != null ? fmtValue(value) : <span className="text-gray-300">—</span>}
+                    <td className="px-4 py-3 whitespace-nowrap text-ink-60">{o.currency}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink">
+                      {value != null ? fmtValue(value) : <span className="text-platinum">—</span>}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
@@ -267,7 +267,7 @@ function ShipmentsList() {
                     <td className="px-2 py-3 whitespace-nowrap text-right" onClick={e => e.stopPropagation()}>
                       <button type="button" onClick={() => handleDuplicate(o)} disabled={duplicatingId === o.id}
                               title="Duplicate this order — allocates a fresh UC#"
-                              className="p-1.5 rounded-lg text-gray-400 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-50 transition-colors">
+                              className="p-1.5 rounded-lg text-ink-60 hover:text-brand-600 hover:bg-brand-50 disabled:opacity-50 transition-colors">
                         <Copy size={14} className={duplicatingId === o.id ? 'animate-pulse' : ''} />
                       </button>
                     </td>
@@ -289,23 +289,23 @@ function JesOrderRow({ r, onOpen }) {
   const void_ = (r.status || '').trim().toUpperCase() === 'VOID'
   return (
     <tr onClick={onOpen}
-        className={`transition-colors cursor-pointer hover:bg-gray-50 ${void_ ? 'opacity-60' : ''}`}>
-      <td className="px-4 py-3 whitespace-nowrap text-gray-600">{fmtOrderDate(r.date)}</td>
-      <td className="px-4 py-3 whitespace-nowrap text-gray-500">{(r.ref || '').trim() || '—'}</td>
-      <td className="px-4 py-3 whitespace-nowrap text-gray-600 font-mono text-xs">{(r.code || '').trim()}</td>
+        className={`transition-colors cursor-pointer hover:bg-ivory ${void_ ? 'opacity-60' : ''}`}>
+      <td className="px-4 py-3 whitespace-nowrap text-ink-70">{fmtOrderDate(r.date)}</td>
+      <td className="px-4 py-3 whitespace-nowrap text-ink-60">{(r.ref || '').trim() || '—'}</td>
+      <td className="px-4 py-3 whitespace-nowrap text-ink-70 font-mono text-xs">{(r.code || '').trim()}</td>
       <td className="px-4 py-3 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium text-gray-900 truncate">{r.customer || 'Unnamed customer'}</span>
-          {r.customer_code && <span className="text-xs text-gray-400 font-mono">{r.customer_code}</span>}
-          {r.customer_po && <span className="text-xs text-gray-400">{r.customer_po}</span>}
+          <span className="font-medium text-ink truncate">{r.customer || 'Unnamed customer'}</span>
+          {r.customer_code && <span className="text-xs text-ink-60 font-mono">{r.customer_code}</span>}
+          {r.customer_po && <span className="text-xs text-ink-60">{r.customer_po}</span>}
         </div>
       </td>
-      <td className="px-4 py-3 whitespace-nowrap text-gray-500">{r.currency}</td>
-      <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-800">
-        {r.amount != null ? fmtValue(r.amount) : <span className="text-gray-300">—</span>}
+      <td className="px-4 py-3 whitespace-nowrap text-ink-60">{r.currency}</td>
+      <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink">
+        {r.amount != null ? fmtValue(r.amount) : <span className="text-platinum">—</span>}
       </td>
       <td className="px-4 py-3 whitespace-nowrap">
-        <span className="text-xs text-gray-500">{(r.status || '').trim() || '—'}</span>
+        <span className="text-xs text-ink-60">{(r.status || '').trim() || '—'}</span>
       </td>
       <td className="px-2 py-3 whitespace-nowrap text-right">
         <span title="Historical order from JES — read-only archive"
@@ -343,7 +343,7 @@ function LogisticsList() {
     <div className="p-4 md:p-6">
       {loading && <LoadingBar />}
       <div className="flex items-center justify-between mb-4">
-        <p className="text-sm text-gray-500">{filtered.length} of {vendors.length} forwarders</p>
+        <p className="text-sm text-ink-60">{filtered.length} of {vendors.length} forwarders</p>
         <Link to="/logistics/new" className="btn-primary text-sm whitespace-nowrap">+ New Vendor</Link>
       </div>
 
@@ -352,7 +352,7 @@ function LogisticsList() {
 
       <div className="flex gap-2 flex-wrap mb-4">
         <button onClick={() => setMode('')}
-          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${!mode ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${!mode ? 'bg-brand-600 text-white' : 'bg-ivory-dark text-ink-70 hover:bg-warm-grey'}`}>
           All modes
         </button>
         {FREIGHT_MODES.map(m => {
@@ -360,7 +360,7 @@ function LogisticsList() {
           if (!count) return null
           return (
             <button key={m.value} onClick={() => setMode(mode === m.value ? '' : m.value)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${mode === m.value ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${mode === m.value ? 'bg-brand-600 text-white' : 'bg-ivory-dark text-ink-70 hover:bg-warm-grey'}`}>
               {m.label} <span className="opacity-60 ml-0.5">({count})</span>
             </button>
           )
@@ -368,18 +368,18 @@ function LogisticsList() {
       </div>
 
       {filtered.length === 0 && !loading ? (
-        <div className="text-center py-20 text-gray-400">
+        <div className="text-center py-20 text-ink-60">
           {vendors.length === 0 ? 'No logistics vendors yet — add your first forwarder.' : 'No vendors match your filter.'}
         </div>
       ) : (
-        <div className="card divide-y divide-gray-100">
+        <div className="card divide-y divide-warm-grey">
           {filtered.map(v => (
-            <Link key={v.id} to={`/logistics/${v.id}`} className="block px-4 py-3.5 hover:bg-gray-50 transition-colors">
+            <Link key={v.id} to={`/logistics/${v.id}`} className="block px-4 py-3.5 hover:bg-ivory transition-colors">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium text-gray-900 text-sm">{v.name}</p>
-                    {v.name_cn && <span className="text-xs text-gray-500">{v.name_cn}</span>}
+                    <p className="font-medium text-ink text-sm">{v.name}</p>
+                    {v.name_cn && <span className="text-xs text-ink-60">{v.name_cn}</span>}
                     {v.reliability_rating != null && (
                       <span className="inline-flex items-center gap-0.5 text-xs text-amber-600">
                         <Star size={12} className="fill-amber-400 stroke-amber-500" />{v.reliability_rating}
@@ -389,7 +389,7 @@ function LogisticsList() {
                   {v.modes.length > 0 && (
                     <div className="flex gap-1.5 mt-1.5 flex-wrap">
                       {v.modes.map(m => (
-                        <span key={m} className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                        <span key={m} className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-ivory-dark text-ink-70">
                           <Truck size={11} />{modeLabel(m)}
                         </span>
                       ))}
@@ -405,17 +405,17 @@ function LogisticsList() {
                           </span>
                         )
                       })}
-                      {v.coverage.length > 6 && <span className="text-[11px] text-gray-400 self-center">+{v.coverage.length - 6}</span>}
+                      {v.coverage.length > 6 && <span className="text-[11px] text-ink-60 self-center">+{v.coverage.length - 6}</span>}
                     </div>
                   )}
                   {v.contacts[0] && (v.contacts[0].wechat || v.contacts[0].name) && (
-                    <div className="flex gap-3 mt-1.5 text-xs text-gray-400 flex-wrap">
+                    <div className="flex gap-3 mt-1.5 text-xs text-ink-60 flex-wrap">
                       {v.contacts[0].name && <span>{v.contacts[0].name}</span>}
                       {v.contacts[0].wechat && <span className="inline-flex items-center gap-1"><MessageCircle size={12} />{v.contacts[0].wechat}</span>}
                     </div>
                   )}
                 </div>
-                <span className="text-xs text-gray-400 ml-3">→</span>
+                <span className="text-xs text-ink-60 ml-3">→</span>
               </div>
             </Link>
           ))}

@@ -418,7 +418,7 @@ export default function SchemaAudit() {
                   {hasIssues
                     ? (open ? <ChevronDown size={15} className="text-ink-60 shrink-0" /> : <ChevronRight size={15} className="text-ink-60 shrink-0" />)
                     : <span className="w-[15px] shrink-0" />}
-                  <h2 className="text-sm font-semibold text-gray-700 truncate">{g.name} <span className="font-normal text-ink-60">· {g.total} records</span></h2>
+                  <h2 className="text-sm font-semibold text-ink-80 truncate">{g.name} <span className="font-normal text-ink-60">· {g.total} records</span></h2>
                 </button>
                 <div className="flex items-center gap-3 shrink-0">
                   {hasIssues ? (
@@ -446,7 +446,7 @@ export default function SchemaAudit() {
                     {g.hint}
                     {g.hintLink && <> · <Link to={g.hintLink.to} className="text-brand-600 hover:underline">{g.hintLink.label}</Link></>}
                   </p>
-                  <div className="divide-y divide-gray-100">
+                  <div className="divide-y divide-warm-grey">
                     {g.issues.slice(0, 100).map((it, i) => (
                       it.notInRange
                         ? <NotInRangeRow key={i} it={it} />

@@ -173,12 +173,12 @@ export default function CrystalFabricCustomizer({ product, profile }) {
       <div className="grid md:grid-cols-2 gap-6">
         {/* Preview */}
         <div className="md:sticky md:top-4 self-start">
-          <div className="card aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
+          <div className="card aspect-square bg-ivory-dark flex items-center justify-center overflow-hidden relative">
             {previewUrl
               ? <img src={previewUrl} alt="Crystal preview" className="w-full h-full object-cover" />
               : (
                 <div className="text-center text-ink-60 px-6">
-                  <Gem size={40} className="mx-auto mb-2 text-gray-300" />
+                  <Gem size={40} className="mx-auto mb-2 text-platinum" />
                   <p className="text-sm">Your crystal preview appears here.</p>
                   <p className="text-xs mt-1">Upload a logo, then “Generate preview”.</p>
                 </div>
@@ -218,7 +218,7 @@ export default function CrystalFabricCustomizer({ product, profile }) {
               {MODES.filter(m => m.available).map(m => (
                 <button key={m.value} type="button" onClick={() => set({ mode: m.value })}
                   className={`text-left p-2.5 rounded-lg border text-sm transition-colors ${
-                    sel.mode === m.value ? 'border-brand-400 bg-brand-50' : 'border-ivory-dark hover:bg-gray-50'}`}>
+                    sel.mode === m.value ? 'border-brand-400 bg-brand-50' : 'border-ivory-dark hover:bg-ivory'}`}>
                   <span className="font-medium text-ink">{m.label}</span>
                   <span className="block text-[11px] text-ink-60 mt-0.5">{m.desc}</span>
                 </button>
@@ -231,7 +231,7 @@ export default function CrystalFabricCustomizer({ product, profile }) {
               {crystalTypes.map(t => (
                 <button key={t.value} type="button" onClick={() => set({ crystal_type: t.value })}
                   className={`text-left p-2.5 rounded-lg border text-sm transition-colors ${
-                    sel.crystal_type === t.value ? 'border-brand-400 bg-brand-50' : 'border-ivory-dark hover:bg-gray-50'}`}>
+                    sel.crystal_type === t.value ? 'border-brand-400 bg-brand-50' : 'border-ivory-dark hover:bg-ivory'}`}>
                   <span className="font-medium text-ink">{t.label} <span className="text-ink-60 font-normal">{t.mm}</span></span>
                   <span className="block text-[11px] text-ink-60 mt-0.5">{t.hint}</span>
                 </button>
@@ -248,7 +248,7 @@ export default function CrystalFabricCustomizer({ product, profile }) {
                 {CRYSTAL_TYPES.map(t => (
                   <button key={t.value} type="button" onClick={() => set({ bg_crystal_type: t.value })}
                     className={`text-left p-2.5 rounded-lg border text-sm transition-colors ${
-                      sel.bg_crystal_type === t.value ? 'border-brand-400 bg-brand-50' : 'border-ivory-dark hover:bg-gray-50'}`}>
+                      sel.bg_crystal_type === t.value ? 'border-brand-400 bg-brand-50' : 'border-ivory-dark hover:bg-ivory'}`}>
                     <span className="font-medium text-ink">{t.label} <span className="text-ink-60 font-normal">{t.mm}</span></span>
                   </button>
                 ))}

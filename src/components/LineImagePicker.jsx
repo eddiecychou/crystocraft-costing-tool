@@ -85,16 +85,16 @@ export default function LineImagePicker({ selectedUrl, orderId, matchedProductRe
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
         <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <h2 className="font-semibold text-gray-800 text-sm">Line image — {matchedProductRef.name || 'this product'}</h2>
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+          <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
+            <h2 className="font-semibold text-ink text-sm">Line image — {matchedProductRef.name || 'this product'}</h2>
+            <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>
           </div>
           <div className="overflow-y-auto flex-1 p-4">
             <RangeColourImagePicker productId={matchedProductRef.id} itemCode={itemCode} selectedUrl={selectedUrl} onSelect={onSelect} />
           </div>
           {selectedUrl && (
-            <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-end">
-              <button type="button" onClick={onClear} className="text-xs text-gray-400 hover:text-red-500 py-1.5 px-2">
+            <div className="px-4 py-3 border-t border-warm-grey flex items-center justify-end">
+              <button type="button" onClick={onClear} className="text-xs text-ink-60 hover:text-red-500 py-1.5 px-2">
                 Remove image
               </button>
             </div>
@@ -107,22 +107,22 @@ export default function LineImagePicker({ selectedUrl, orderId, matchedProductRe
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[80vh]" onClick={e => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-          <h2 className="font-semibold text-gray-800 text-sm">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-warm-grey">
+          <h2 className="font-semibold text-ink text-sm">
             {chosen ? `Choose image — ${chosen.name}` : 'Line image'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+          <button onClick={onClose} className="text-ink-60 hover:text-ink-70 text-xl leading-none">×</button>
         </div>
 
         {!chosen && (
           <div className="px-4 pt-3">
             <div className="relative">
-              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-300" />
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-platinum" />
               <input
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search corp gift products…"
-                className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/30"
+                className="w-full pl-8 pr-3 py-1.5 text-sm border border-warm-grey rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500/30"
               />
             </div>
           </div>
@@ -130,8 +130,8 @@ export default function LineImagePicker({ selectedUrl, orderId, matchedProductRe
 
         <div className="overflow-y-auto flex-1 p-4">
           {chosen ? (
-            imgLoading ? <p className="text-sm text-gray-400 text-center py-8">Loading images…</p>
-            : images.length === 0 ? <p className="text-sm text-gray-400 text-center py-6">This product has no images yet.</p>
+            imgLoading ? <p className="text-sm text-ink-60 text-center py-8">Loading images…</p>
+            : images.length === 0 ? <p className="text-sm text-ink-60 text-center py-6">This product has no images yet.</p>
             : (
               <div className="grid grid-cols-3 gap-2">
                 {images.map(img => {
@@ -151,22 +151,22 @@ export default function LineImagePicker({ selectedUrl, orderId, matchedProductRe
               </div>
             )
           ) : loading ? (
-            <p className="text-sm text-gray-400 text-center py-8">Loading products…</p>
+            <p className="text-sm text-ink-60 text-center py-8">Loading products…</p>
           ) : filtered.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">
+            <p className="text-sm text-ink-60 text-center py-6">
               No matching products. Use “Upload a photo” below for a one-off image.
             </p>
           ) : (
             <div className="space-y-1">
               {filtered.map(p => (
                 <button key={p.id} type="button" onClick={() => openProduct(p)}
-                  className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 text-left">
-                  <div className="w-10 h-10 rounded bg-gray-100 shrink-0 overflow-hidden">
+                  className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-ivory text-left">
+                  <div className="w-10 h-10 rounded bg-ivory-dark shrink-0 overflow-hidden">
                     {p.heroImage && <img src={p.heroImage} alt="" className="w-full h-full object-cover" />}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm text-gray-800 truncate">{p.name}</p>
-                    <p className="text-xs text-gray-400 truncate">{p.category}</p>
+                    <p className="text-sm text-ink truncate">{p.name}</p>
+                    <p className="text-xs text-ink-60 truncate">{p.category}</p>
                   </div>
                 </button>
               ))}
@@ -174,7 +174,7 @@ export default function LineImagePicker({ selectedUrl, orderId, matchedProductRe
           )}
         </div>
 
-        <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between gap-2">
+        <div className="px-4 py-3 border-t border-warm-grey flex items-center justify-between gap-2">
           <div className="flex gap-2">
             {chosen && (
               <button type="button" onClick={() => { setChosen(null); setImages([]) }}
@@ -187,7 +187,7 @@ export default function LineImagePicker({ selectedUrl, orderId, matchedProductRe
             <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleUpload} />
           </div>
           {selectedUrl && (
-            <button type="button" onClick={onClear} className="text-xs text-gray-400 hover:text-red-500 py-1.5 px-2">
+            <button type="button" onClick={onClear} className="text-xs text-ink-60 hover:text-red-500 py-1.5 px-2">
               Remove image
             </button>
           )}

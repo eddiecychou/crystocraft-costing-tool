@@ -364,7 +364,7 @@ export default function SalesInvoices() {
         />
 
         {wooAccountingRows.length > 0 && (
-          <p className="text-xs text-gray-500 mb-4 -mt-2">
+          <p className="text-xs text-ink-60 mb-4 -mt-2">
             {wooAccountingRows.length} WooCommerce invoice{wooAccountingRows.length === 1 ? '' : 's'} in this date range —{' '}
             <button type="button" onClick={exportWooAccounting}
               className="text-brand-600 hover:text-brand-800 underline underline-offset-2">
@@ -401,17 +401,17 @@ export default function SalesInvoices() {
               </p>
             </div>
             <table className="w-full text-sm">
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-warm-grey">
                 {(showAllAwaiting ? awaiting : awaiting.slice(0, AWAITING_PREVIEW)).map((o) => (
-                  <tr key={o.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/shipments/${o.id}`)}>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-gray-600">{fmtDate(o.order_date)}</td>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-gray-500 font-mono text-xs">{o.erp_so_no || '—'}</td>
-                    <td className="px-4 py-2.5 font-medium text-gray-900">
+                  <tr key={o.id} className="hover:bg-ivory cursor-pointer" onClick={() => navigate(`/shipments/${o.id}`)}>
+                    <td className="px-4 py-2.5 whitespace-nowrap text-ink-70">{fmtDate(o.order_date)}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap text-ink-60 font-mono text-xs">{o.erp_so_no || '—'}</td>
+                    <td className="px-4 py-2.5 font-medium text-ink">
                       {o.customer_name || 'Unnamed customer'}
-                      {erpCodeByCustomerId[o.customer_id] && <span className="ml-1.5 text-xs font-mono font-normal text-gray-400">· {erpCodeByCustomerId[o.customer_id]}</span>}
+                      {erpCodeByCustomerId[o.customer_id] && <span className="ml-1.5 text-xs font-mono font-normal text-ink-60">· {erpCodeByCustomerId[o.customer_id]}</span>}
                     </td>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{o.currency}</td>
-                    <td className="px-4 py-2.5 whitespace-nowrap text-right tabular-nums text-gray-800">
+                    <td className="px-4 py-2.5 whitespace-nowrap text-ink-60">{o.currency}</td>
+                    <td className="px-4 py-2.5 whitespace-nowrap text-right tabular-nums text-ink">
                       {fmtValue(o.total_amount ?? o.subtotal)}
                     </td>
                     {/* The wholesale path, made explicit. A wholesale invoice is
@@ -457,34 +457,34 @@ export default function SalesInvoices() {
         {resolved.length > 0 && (
           <div className="mb-5">
             <button type="button" onClick={() => setShowResolved(v => !v)}
-              className="text-xs text-gray-500 hover:text-gray-700 underline underline-offset-2">
+              className="text-xs text-ink-60 hover:text-ink-80 underline underline-offset-2">
               {showResolved ? 'Hide' : 'Show'} {resolved.length} order{resolved.length === 1 ? '' : 's'} marked as not needing an invoice
             </button>
             {showResolved && (
               <div className="card mt-2 overflow-hidden">
                 <table className="w-full text-sm">
-                  <tbody className="divide-y divide-gray-50">
+                  <tbody className="divide-y divide-warm-grey">
                     {resolved.map((o) => (
-                      <tr key={o.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => navigate(`/shipments/${o.id}`)}>
-                        <td className="px-4 py-2.5 whitespace-nowrap text-gray-500">{fmtDate(o.order_date)}</td>
-                        <td className="px-4 py-2.5 whitespace-nowrap text-gray-500 font-mono text-xs">{o.erp_so_no || '—'}</td>
-                        <td className="px-4 py-2.5 text-gray-700">
+                      <tr key={o.id} className="hover:bg-ivory cursor-pointer" onClick={() => navigate(`/shipments/${o.id}`)}>
+                        <td className="px-4 py-2.5 whitespace-nowrap text-ink-60">{fmtDate(o.order_date)}</td>
+                        <td className="px-4 py-2.5 whitespace-nowrap text-ink-60 font-mono text-xs">{o.erp_so_no || '—'}</td>
+                        <td className="px-4 py-2.5 text-ink-80">
                           {o.customer_name || 'Unnamed customer'}
-                          {erpCodeByCustomerId[o.customer_id] && <span className="ml-1.5 text-xs font-mono text-gray-400">· {erpCodeByCustomerId[o.customer_id]}</span>}
+                          {erpCodeByCustomerId[o.customer_id] && <span className="ml-1.5 text-xs font-mono text-ink-60">· {erpCodeByCustomerId[o.customer_id]}</span>}
                         </td>
-                        <td className="px-4 py-2.5 whitespace-nowrap text-right tabular-nums text-gray-600">
+                        <td className="px-4 py-2.5 whitespace-nowrap text-right tabular-nums text-ink-70">
                           {fmtValue(o.total_amount ?? o.subtotal)}
                         </td>
                         <td className="px-4 py-2.5 whitespace-nowrap">
-                          <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600"
+                          <span className="text-xs px-1.5 py-0.5 rounded bg-ivory-dark text-ink-70"
                                 title={noInvoiceReasonOf(o.no_invoice_reason)?.hint}>
                             {noInvoiceReasonOf(o.no_invoice_reason)?.label || o.no_invoice_reason}
                           </span>
-                          {o.no_invoice_at && <span className="text-[11px] text-gray-400 ml-1.5">{o.no_invoice_at}</span>}
+                          {o.no_invoice_at && <span className="text-[11px] text-ink-60 ml-1.5">{o.no_invoice_at}</span>}
                         </td>
                         <td className="px-4 py-2.5 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                           <button type="button" onClick={() => setNoInvoice(o, '')}
-                            className="text-xs text-gray-500 hover:text-brand-600 underline underline-offset-2"
+                            className="text-xs text-ink-60 hover:text-brand-600 underline underline-offset-2"
                             title="Put this order back in the needs-invoice list">
                             Undo
                           </button>
@@ -499,11 +499,11 @@ export default function SalesInvoices() {
         )}
 
         <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-ink-60">
             {merged.length} invoice{merged.length === 1 ? '' : 's'}
-            {erp.rows.length > 0 && <span className="text-gray-400"> · {invoiced.length} in the app, {merged.length - invoiced.length} from JES</span>}
+            {erp.rows.length > 0 && <span className="text-ink-60"> · {invoiced.length} in the app, {merged.length - invoiced.length} from JES</span>}
           </p>
-          {erp.loading && <span className="text-xs text-gray-400">loading JES history…</span>}
+          {erp.loading && <span className="text-xs text-ink-60">loading JES history…</span>}
         </div>
 
         {erp.error && (
@@ -513,7 +513,7 @@ export default function SalesInvoices() {
         )}
 
         {merged.length === 0 && !loading && !erp.loading ? (
-          <div className="text-center py-16 text-gray-400">
+          <div className="text-center py-16 text-ink-60">
             <Receipt size={28} className="mx-auto mb-3 opacity-40" />
             {search ? 'No invoices match your search.' : 'No invoices yet. Open an order and allocate an invoice number to raise one.'}
           </div>
@@ -521,7 +521,7 @@ export default function SalesInvoices() {
           <div className="card overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-xs text-gray-400 border-b border-gray-100">
+                <tr className="text-left text-xs text-ink-60 border-b border-warm-grey">
                   <th className="px-4 py-2.5 font-medium whitespace-nowrap">Invoice No</th>
                   <th className="px-4 py-2.5 font-medium whitespace-nowrap">Date</th>
                   <th className="px-4 py-2.5 font-medium whitespace-nowrap">SO No</th>
@@ -532,7 +532,7 @@ export default function SalesInvoices() {
                   <th className="px-4 py-2.5 font-medium" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-warm-grey">
                 {merged.map((r) => {
                   const isApp = r.src === 'app'
                   // App rows open the order; JES rows open a read-only viewer.
@@ -542,8 +542,8 @@ export default function SalesInvoices() {
                   // from the PBIS import, so it must not read as a normal row.
                   const void_ = r.status === 'VOID'
                   return (
-                    <tr key={r.key} className={`transition-colors hover:bg-gray-50 ${void_ ? 'opacity-60' : ''}`}>
-                      <td className={`px-4 py-3 whitespace-nowrap font-mono text-xs font-medium cursor-pointer ${isApp ? 'text-gray-900' : 'text-gray-600'}`}
+                    <tr key={r.key} className={`transition-colors hover:bg-ivory ${void_ ? 'opacity-60' : ''}`}>
+                      <td className={`px-4 py-3 whitespace-nowrap font-mono text-xs font-medium cursor-pointer ${isApp ? 'text-ink' : 'text-ink-70'}`}
                           onClick={open}>
                         {r.no || '—'}
                         {void_ && <span className="ml-1.5 text-[10px] font-sans font-medium text-red-600">VOID</span>}
@@ -554,15 +554,15 @@ export default function SalesInvoices() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-600 cursor-pointer" onClick={open}>{fmtDate(r.date)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-500 font-mono text-xs">{r.so || '—'}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-500 font-mono text-xs">{r.uc || '—'}</td>
-                      <td className="px-4 py-3 font-medium text-gray-900 min-w-0 cursor-pointer" onClick={open}>
+                      <td className="px-4 py-3 whitespace-nowrap text-ink-70 cursor-pointer" onClick={open}>{fmtDate(r.date)}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-ink-60 font-mono text-xs">{r.so || '—'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-ink-60 font-mono text-xs">{r.uc || '—'}</td>
+                      <td className="px-4 py-3 font-medium text-ink min-w-0 cursor-pointer" onClick={open}>
                         <span className="truncate">{r.customer || 'Unnamed customer'}</span>
-                        {r.code && <span className="ml-1.5 text-xs font-mono font-normal text-gray-400">· {r.code}</span>}
+                        {r.code && <span className="ml-1.5 text-xs font-mono font-normal text-ink-60">· {r.code}</span>}
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-500">{r.currency}</td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-gray-800">
+                      <td className="px-4 py-3 whitespace-nowrap text-ink-60">{r.currency}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink">
                         {fmtValue(r.amount)}
                         {/* Accounting adjustment on this invoice — an amber flag
                             pointing to the accounting total, not a rewrite of the

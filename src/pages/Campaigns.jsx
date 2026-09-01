@@ -277,35 +277,35 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
     }
   }
 
-  if (loading || contactsLoading || customersLoading) return <div className="p-6 text-sm text-gray-500">Loading…</div>
+  if (loading || contactsLoading || customersLoading) return <div className="p-6 text-sm text-ink-60">Loading…</div>
 
   return (
     <div className="p-4 md:p-6 max-w-5xl space-y-8">
       <div className="card p-5 space-y-4">
-        <h2 className="text-sm font-semibold text-gray-900">New campaign</h2>
+        <h2 className="text-sm font-semibold text-ink">New campaign</h2>
         {error && <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">{error}</div>}
 
         <div className="grid md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Campaign name (internal)</label>
+            <label className="block text-xs font-medium text-ink-60 mb-1">Campaign name (internal)</label>
             <input value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Q3 2026 wholesale re-engagement"
               className="input w-full" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Subject</label>
+            <label className="block text-xs font-medium text-ink-60 mb-1">Subject</label>
             <input value={subject} onChange={e => setSubject(e.target.value)} className="input w-full" />
           </div>
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Audience</label>
+          <label className="block text-xs font-medium text-ink-60 mb-1">Audience</label>
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-1.5 text-sm text-gray-700">
+            <label className="flex items-center gap-1.5 text-sm text-ink-80">
               <input type="radio" name="audienceSource" checked={audienceSource === 'contacts'}
                 onChange={() => setAudienceSource('contacts')} />
               Marketing Contacts
             </label>
-            <label className="flex items-center gap-1.5 text-sm text-gray-700">
+            <label className="flex items-center gap-1.5 text-sm text-ink-80">
               <input type="radio" name="audienceSource" checked={audienceSource === 'customers'}
                 onChange={() => setAudienceSource('customers')} />
               Retail Customers
@@ -315,18 +315,18 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
 
         {audienceSource === 'contacts' ? (
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Segment</label>
+            <label className="block text-xs font-medium text-ink-60 mb-1">Segment</label>
             <select value={segValue} onChange={e => setSegValue(e.target.value)} className="input w-full md:w-96">
               {segOptions.map(o => <option key={o.v} value={o.v}>{o.label}</option>)}
             </select>
-            <div className="text-xs text-gray-500 mt-1">{previewCount.toLocaleString()} subscribed contact{previewCount === 1 ? '' : 's'} match this segment</div>
+            <div className="text-xs text-ink-60 mt-1">{previewCount.toLocaleString()} subscribed contact{previewCount === 1 ? '' : 's'} match this segment</div>
           </div>
         ) : (
           <div>
             {/* No sub-segmentation yet — see eligibleRetailCustomers's own
                 comment for why v1 is "every retail customer," full stop. */}
-            <div className="text-sm text-gray-700">All retail customers</div>
-            <div className="text-xs text-gray-500 mt-1">
+            <div className="text-sm text-ink-80">All retail customers</div>
+            <div className="text-xs text-ink-60 mt-1">
               {previewCount.toLocaleString()} retail customer{previewCount === 1 ? '' : 's'} eligible to receive email
               (excludes anyone unsubscribed, bounced, or without an email on file)
             </div>
@@ -334,7 +334,7 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
         )}
 
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Start from a template (optional)</label>
+          <label className="block text-xs font-medium text-ink-60 mb-1">Start from a template (optional)</label>
           <div className="flex items-center gap-2 flex-wrap">
             <select value={loadedTemplateId || ''} onChange={e => applyTemplate(e.target.value)} className="input w-full md:w-96">
               <option value="" disabled>{templates.length ? 'Choose a template…' : 'No templates yet — save one below'}</option>
@@ -351,14 +351,14 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
               {savingTemplate ? 'Saving…' : '+ Save as new template'}
             </button>
           </div>
-          <div className="text-[11px] text-gray-400 mt-1">Fills the subject and message below — edit freely before sending.</div>
+          <div className="text-[11px] text-ink-60 mt-1">Fills the subject and message below — edit freely before sending.</div>
           {templates.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap mt-1.5">
               {templates.map(t => (
-                <span key={t.id} className="inline-flex items-center gap-1 text-[11px] text-gray-400 bg-gray-50 rounded px-1.5 py-0.5">
+                <span key={t.id} className="inline-flex items-center gap-1 text-[11px] text-ink-60 bg-ivory rounded px-1.5 py-0.5">
                   {t.name}
                   <button type="button" onClick={() => handleDeleteTemplate(t.id, t.name)}
-                          className="text-gray-300 hover:text-red-500" title={`Delete "${t.name}"`}>×</button>
+                          className="text-platinum hover:text-red-500" title={`Delete "${t.name}"`}>×</button>
                 </span>
               ))}
             </div>
@@ -366,7 +366,7 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
         </div>
 
         <div>
-          <label className="block text-xs font-medium text-gray-500 mb-1">Message</label>
+          <label className="block text-xs font-medium text-ink-60 mb-1">Message</label>
           {/* Unlayer drag-and-drop email builder — proper columns, images,
               buttons, exported as mobile-responsive/Outlook-safe HTML.
               Unsubscribe link + List-Unsubscribe header are added
@@ -383,8 +383,8 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
       </div>
 
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-gray-900">Campaigns</h2>
-        {campaigns.length === 0 && <div className="text-sm text-gray-400">No campaigns yet.</div>}
+        <h2 className="text-sm font-semibold text-ink">Campaigns</h2>
+        {campaigns.length === 0 && <div className="text-sm text-ink-60">No campaigns yet.</div>}
         {campaigns.map(c => {
           const { remaining } = c.segment?.source === 'customers'
             ? eligibleRetailCustomers(c, allCustomers, BATCH_SIZE)
@@ -395,8 +395,8 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
           return (
             <div key={c.id} className="card p-4 flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <div className="font-medium text-gray-900 truncate">{c.name}</div>
-                <div className="text-xs text-gray-500 mt-0.5">
+                <div className="font-medium text-ink truncate">{c.name}</div>
+                <div className="text-xs text-ink-60 mt-0.5">
                   {segmentLabel(c.segment)} · {sentCount} sent{failedCount ? `, ${failedCount} failed` : ''}
                   {c.status === 'completed' && <span className="ml-2 inline-flex items-center gap-1 text-green-700"><CheckCircle2 size={12} /> Completed</span>}
                 </div>

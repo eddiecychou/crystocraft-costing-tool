@@ -160,7 +160,7 @@ export default function Login() {
             ? "We'll notify you by email once it's approved — no password to set, you'll just sign back in with Google. There's nothing else to do here in the meantime."
             : "Please check your email — we'll notify you there once it's approved, along with a secure link to set your password and sign in. There's nothing else to do here in the meantime."}
         </p>
-        <button onClick={() => switchMode('signin')} className="text-xs text-gray-500 hover:text-brand-600 w-full text-center">
+        <button onClick={() => switchMode('signin')} className="text-xs text-ink-60 hover:text-brand-600 w-full text-center">
           Back to sign in
         </button>
       </Shell>
@@ -187,7 +187,7 @@ export default function Login() {
           <button type="submit" className="btn-primary w-full justify-center" disabled={loading}>
             {loading ? 'Submitting…' : 'Request account'}
           </button>
-          <button type="button" onClick={cancelGoogleDetails} className="text-xs text-gray-500 hover:text-brand-600 w-full text-center">
+          <button type="button" onClick={cancelGoogleDetails} className="text-xs text-ink-60 hover:text-brand-600 w-full text-center">
             Cancel
           </button>
         </form>
@@ -227,7 +227,7 @@ export default function Login() {
           <button type="submit" className="btn-primary w-full justify-center" disabled={loading}>
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
-          <button type="button" onClick={handleReset} className="text-xs text-gray-500 hover:text-brand-600 w-full text-center">
+          <button type="button" onClick={handleReset} className="text-xs text-ink-60 hover:text-brand-600 w-full text-center">
             Forgot password?
           </button>
         </form>
@@ -263,7 +263,7 @@ export default function Login() {
 
 function Shell({ children }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-ivory px-4">
       <div className="card w-full max-w-sm p-8">
         <div className="mb-8 text-center">
           <img src={logo} alt="Crystocraft" className="h-10 w-auto mx-auto" />

@@ -29,14 +29,14 @@ function Suggestions({ hits }) {
     <>
       {hits.map((h, i) => (
         <div key={h.code} className={`text-xs ${i === 0 ? 'font-medium' : ''}`}>
-          <span className="font-mono text-gray-800">{h.code}</span>
-          <span className="text-gray-500"> · {h.bom_count} BOMs · {h.name || '—'}</span>
+          <span className="font-mono text-ink">{h.code}</span>
+          <span className="text-ink-60"> · {h.bom_count} BOMs · {h.name || '—'}</span>
           {h.reason === 'same code without the .NN segment' && (
             <span className="ml-1 text-teal-600">· same code without “.NN”</span>
           )}
         </div>
       ))}
-      <p className="text-xs text-gray-400 mt-1">
+      <p className="text-xs text-ink-60 mt-1">
         Suggestions only — confirm which part is really meant before changing anything.
       </p>
     </>
@@ -99,10 +99,10 @@ export default function ComponentCodeAudit() {
       {loading && <LoadingBar />}
 
       <div className="mb-4">
-        <h1 className="text-xl md:text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <h1 className="text-xl md:text-2xl font-bold text-ink flex items-center gap-2">
           <Puzzle size={22} className="text-teal-600" /> Component Code Audit
         </h1>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <p className="text-sm text-ink-60 mt-0.5">
           A component's code is meant to be the ERP item code — that's the join between the two
           systems. This checks which codes actually exist in the ERP item master.
         </p>
@@ -138,14 +138,14 @@ export default function ComponentCodeAudit() {
 
       {missing.length > 0 && (
         <>
-          <h2 className="text-sm font-semibold text-gray-700 mb-2">Not found in the ERP</h2>
-          <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100 mb-6">
+          <h2 className="text-sm font-semibold text-ink-80 mb-2">Not found in the ERP</h2>
+          <div className="bg-white border border-warm-grey rounded-lg divide-y divide-warm-grey mb-6">
             {missing.map(r => (
               <div key={r.id} className="px-3 py-2.5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="font-mono text-sm">{r.code}</div>
-                    {r.name && <div className="text-xs text-gray-500">{r.name}</div>}
+                    {r.name && <div className="text-xs text-ink-60">{r.name}</div>}
                   </div>
                   <button
                     onClick={() => findCandidates(r.code)}
@@ -158,13 +158,13 @@ export default function ComponentCodeAudit() {
                 </div>
 
                 {Array.isArray(candidates[r.code]) && (
-                  <div className="mt-2 pl-3 border-l-2 border-gray-100">
-                    <p className="text-xs text-gray-400 mb-1">What current BOMs use instead:</p>
+                  <div className="mt-2 pl-3 border-l-2 border-warm-grey">
+                    <p className="text-xs text-ink-60 mb-1">What current BOMs use instead:</p>
                     <Suggestions hits={candidates[r.code]} />
                   </div>
                 )}
                 {candidates[r.code] === 'none' && (
-                  <p className="mt-1 pl-3 text-xs text-gray-400">
+                  <p className="mt-1 pl-3 text-xs text-ink-60">
                     Nothing similar found — this may be a part the ERP never had.
                   </p>
                 )}
@@ -176,20 +176,20 @@ export default function ComponentCodeAudit() {
 
       {unused.length > 0 && (
         <>
-          <h2 className="text-sm font-semibold text-gray-700 mb-2">
+          <h2 className="text-sm font-semibold text-ink-80 mb-2">
             Exists in the ERP, but no current BOM uses it
           </h2>
-          <p className="text-xs text-gray-500 mb-2">
+          <p className="text-xs text-ink-60 mb-2">
             The code is real, so it isn't a typo — but nothing is built from it. Usually this
             means the part was superseded and the BOMs moved to a different code.
           </p>
-          <div className="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100 mb-6">
+          <div className="bg-white border border-warm-grey rounded-lg divide-y divide-warm-grey mb-6">
             {unused.map(r => (
               <div key={r.id} className="px-3 py-2.5">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="font-mono text-sm">{r.code}</div>
-                    {r.name && <div className="text-xs text-gray-500">{r.name}</div>}
+                    {r.name && <div className="text-xs text-ink-60">{r.name}</div>}
                   </div>
                   <button
                     onClick={() => findCandidates(r.code)}
@@ -201,13 +201,13 @@ export default function ComponentCodeAudit() {
                   </button>
                 </div>
                 {Array.isArray(candidates[r.code]) && (
-                  <div className="mt-2 pl-3 border-l-2 border-gray-100">
-                    <p className="text-xs text-gray-400 mb-1">What current BOMs use instead:</p>
+                  <div className="mt-2 pl-3 border-l-2 border-warm-grey">
+                    <p className="text-xs text-ink-60 mb-1">What current BOMs use instead:</p>
                     <Suggestions hits={candidates[r.code]} />
                   </div>
                 )}
                 {candidates[r.code] === 'none' && (
-                  <p className="mt-1 pl-3 text-xs text-gray-400">Nothing similar found.</p>
+                  <p className="mt-1 pl-3 text-xs text-ink-60">Nothing similar found.</p>
                 )}
               </div>
             ))}
@@ -217,21 +217,21 @@ export default function ComponentCodeAudit() {
 
       {ok.length > 0 && (
         <details className="text-sm">
-          <summary className="cursor-pointer text-gray-600">
+          <summary className="cursor-pointer text-ink-70">
             {ok.length} code{ok.length === 1 ? '' : 's'} exist and are used by current BOMs
           </summary>
-          <div className="mt-2 bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
+          <div className="mt-2 bg-white border border-warm-grey rounded-lg divide-y divide-warm-grey">
             {ok.map(r => (
               <div key={r.id} className="px-3 py-1.5 flex justify-between gap-3">
                 <span className="font-mono text-xs">{r.code}</span>
-                <span className="text-xs text-gray-400 shrink-0">{r.bomCount} BOMs</span>
+                <span className="text-xs text-ink-60 shrink-0">{r.bomCount} BOMs</span>
               </div>
             ))}
           </div>
         </details>
       )}
 
-      <p className="text-xs text-gray-400 mt-4">
+      <p className="text-xs text-ink-60 mt-4">
         Read-only. Fixing a code is a decision about which part is really meant, so it's done in{' '}
         Components, not here.
       </p>

@@ -62,8 +62,8 @@ function PackedVsOrdered({ packableLines, cartons }) {
           const diff = r.packed - r.ordered
           return (
             <div key={r.key} className="flex items-center justify-between text-xs gap-4">
-              <span className="font-mono text-gray-600 shrink-0">{r.item_code}</span>
-              <span className="text-gray-500 truncate flex-1">{r.description}</span>
+              <span className="font-mono text-ink-70 shrink-0">{r.item_code}</span>
+              <span className="text-ink-60 truncate flex-1">{r.description}</span>
               <span className={`shrink-0 font-medium ${ok ? 'text-green-700' : 'text-amber-700'}`}>
                 {r.packed} / {r.ordered} {ok ? '✓' : diff > 0 ? `+${diff} over` : `${diff} short`}
               </span>
@@ -136,21 +136,21 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
   const palletOptions = Array.from({ length: maxPallet }, (_, i) => i + 1)
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden mb-3">
+    <div className="border border-warm-grey rounded-lg overflow-hidden mb-3">
       {/* Carton header */}
-      <div className="bg-gray-50 px-4 py-3 flex flex-wrap items-center gap-3">
+      <div className="bg-ivory px-4 py-3 flex flex-wrap items-center gap-3">
         {/* Reorder — move this carton up/down; renumbers to match physical stacking */}
         <div className="flex flex-col -my-1">
           <button type="button" onClick={onMoveUp} disabled={isFirst} title="Move up"
-            className="text-gray-400 hover:text-brand-600 disabled:opacity-25 disabled:hover:text-gray-400 leading-none"><ChevronUp size={14} /></button>
+            className="text-ink-60 hover:text-brand-600 disabled:opacity-25 disabled:hover:text-ink-60 leading-none"><ChevronUp size={14} /></button>
           <button type="button" onClick={onMoveDown} disabled={isLast} title="Move down"
-            className="text-gray-400 hover:text-brand-600 disabled:opacity-25 disabled:hover:text-gray-400 leading-none"><ChevronDown size={14} /></button>
+            className="text-ink-60 hover:text-brand-600 disabled:opacity-25 disabled:hover:text-ink-60 leading-none"><ChevronDown size={14} /></button>
         </div>
-        <span className="text-sm font-medium text-gray-700 min-w-[78px]">{seqLabel}</span>
+        <span className="text-sm font-medium text-ink-80 min-w-[78px]">{seqLabel}</span>
 
         {/* Pallet assignment */}
         <div className="flex items-center gap-1">
-          <span className="text-xs text-gray-500">Plt</span>
+          <span className="text-xs text-ink-60">Plt</span>
           <select
             className="input py-1 text-xs w-14"
             value={c.pallet_no || 1}
@@ -163,17 +163,17 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
         </div>
 
         {/* Per-carton mode toggle */}
-        <div className="flex rounded-md border border-gray-200 overflow-hidden text-[11px]">
+        <div className="flex rounded-md border border-warm-grey overflow-hidden text-[11px]">
           {CARTON_MODES.map(m => (
             <button key={m.value} type="button" onClick={() => setMode(m.value)} title={m.desc}
-              className={`px-2 py-1 font-medium transition-colors ${mode === m.value ? 'bg-ink text-white' : 'bg-white text-gray-500 hover:bg-gray-100'}`}>
+              className={`px-2 py-1 font-medium transition-colors ${mode === m.value ? 'bg-ink text-white' : 'bg-white text-ink-60 hover:bg-ivory-dark'}`}>
               {m.label}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
           <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-500">GW</span>
+            <span className="text-xs text-ink-60">GW</span>
             <input
               className={`input py-1 text-xs w-20 text-right ${c.gw_kg_actual !== null ? 'border-green-400' : ''}`}
               type="number" step="0.1" min="0" placeholder="kg"
@@ -181,13 +181,13 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
               onChange={e => onChange({ ...c, gw_kg_actual: e.target.value === '' ? null : parseFloat(e.target.value) || null, is_estimate: false })}
               title={c.gw_kg_standard ? `Standard: ${c.gw_kg_standard} kg` : ''}
             />
-            <span className="text-xs text-gray-400">kg</span>
+            <span className="text-xs text-ink-60">kg</span>
           </div>
           {/* Net weight. The printed packing list has always had N.W/Ctn and
               N.W columns; until 2026-07-21 there was no way to fill them, so
               they printed blank on every document. */}
           <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-500">NW</span>
+            <span className="text-xs text-ink-60">NW</span>
             <input
               className={`input py-1 text-xs w-20 text-right ${nwOverGw ? 'border-red-400' : ''}`}
               type="number" step="0.1" min="0" placeholder="kg"
@@ -197,7 +197,7 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
                 ? 'Net weight is higher than gross weight — one of the two is wrong.'
                 : 'Net weight per carton: the goods alone, without carton or packaging.'}
             />
-            <span className="text-xs text-gray-400">kg</span>
+            <span className="text-xs text-ink-60">kg</span>
           </div>
           <div className="flex items-center gap-1">
             {(['length_cm','width_cm','height_cm']).map(f => (
@@ -209,16 +209,16 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
                 onChange={e => patchDims(f, e.target.value)}
               />
             ))}
-            <span className="text-xs text-gray-400">cm</span>
+            <span className="text-xs text-ink-60">cm</span>
           </div>
-          {cbm > 0 && <span className="text-xs text-gray-500">{cbm.toFixed(4)} CBM</span>}
+          {cbm > 0 && <span className="text-xs text-ink-60">{cbm.toFixed(4)} CBM</span>}
           {c.is_estimate
             ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-600">Est</span>
             : <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700">Actual</span>}
         </div>
         <div className="ml-auto flex items-center gap-2">
           <div className="flex items-center gap-1">
-            <span className="text-xs text-gray-500">× Ctns</span>
+            <span className="text-xs text-ink-60">× Ctns</span>
             <input
               className="input py-1 text-xs w-14 text-right"
               type="number" min="1"
@@ -226,7 +226,7 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
               onChange={e => onChange({ ...c, carton_count: parseInt(e.target.value) || 1 })}
             />
           </div>
-          <button type="button" onClick={onRemove} className="text-gray-300 hover:text-red-500 ml-2">
+          <button type="button" onClick={onRemove} className="text-platinum hover:text-red-500 ml-2">
             <Trash2 size={15} />
           </button>
         </div>
@@ -259,7 +259,7 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
             type="number" min="0" value={contents[0]?.qty || ''} placeholder="Pcs/ctn"
             onChange={e => patchFirstContent({ qty: e.target.value })}
           />
-          <span className="text-xs text-gray-400">pcs</span>
+          <span className="text-xs text-ink-60">pcs</span>
           {extraItems > 0 && (
             <button type="button" onClick={() => setMode('mixed')}
               className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 hover:bg-amber-200"
@@ -296,8 +296,8 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
                 type="number" min="0" value={item.qty} placeholder="Qty"
                 onChange={e => updateItem(i, { qty: e.target.value })}
               />
-              <span className="text-xs text-gray-400">pcs</span>
-              <button type="button" onClick={() => removeItem(i)} className="text-gray-300 hover:text-red-500">
+              <span className="text-xs text-ink-60">pcs</span>
+              <button type="button" onClick={() => removeItem(i)} className="text-platinum hover:text-red-500">
                 <Trash2 size={13} />
               </button>
             </div>
@@ -548,14 +548,14 @@ export default function PackingListEditor({ orderId, orderLines }) {
     )
   }
 
-  if (loading) return <div className="py-8 text-center text-sm text-gray-400">Loading packing list…</div>
+  if (loading) return <div className="py-8 text-center text-sm text-ink-60">Loading packing list…</div>
 
   if (!scenarios.length && cartons.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-gray-300 p-10 text-center">
-        <Package size={36} strokeWidth={1.25} className="mx-auto mb-3 text-gray-300" />
-        <p className="text-gray-500 text-sm mb-1">No packing scenario yet for this shipment.</p>
-        <p className="text-xs text-gray-400 mb-5">
+      <div className="rounded-lg border border-dashed border-warm-grey p-10 text-center">
+        <Package size={36} strokeWidth={1.25} className="mx-auto mb-3 text-platinum" />
+        <p className="text-ink-60 text-sm mb-1">No packing scenario yet for this shipment.</p>
+        <p className="text-xs text-ink-60 mb-5">
           {packableLines.length} packable line{packableLines.length !== 1 ? 's' : ''} from the order will be included.
           You can pack it more than one way (e.g. Standard carton vs Flat pack) and compare.
         </p>
@@ -591,26 +591,26 @@ export default function PackingListEditor({ orderId, orderLines }) {
           return (
             <div key={s.id}
               className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-sm transition-colors ${
-                isActive ? 'border-ink bg-ink/5' : 'border-gray-200 hover:border-gray-400'}`}>
+                isActive ? 'border-ink bg-ink/5' : 'border-warm-grey hover:border-ink-60'}`}>
               <button type="button" onClick={() => chooseScenario(s.id)}
                 title={s.selected ? 'Selected plan (used for export/shipment)' : 'Use this scenario as the selected plan'}
-                className={s.selected ? 'text-yellow-500' : 'text-gray-300 hover:text-yellow-500'}>
+                className={s.selected ? 'text-yellow-500' : 'text-platinum hover:text-yellow-500'}>
                 <Star size={14} className={s.selected ? 'fill-current' : ''} />
               </button>
-              <button type="button" onClick={() => switchScenario(s.id)} className="font-medium text-gray-700">
+              <button type="button" onClick={() => switchScenario(s.id)} className="font-medium text-ink-80">
                 {s.label}
               </button>
               <button type="button" onClick={() => { const l = prompt('Rename scenario', s.label); if (l && l.trim()) renameScenario(s.id, l.trim()) }}
-                className="text-gray-300 hover:text-brand-600" title="Rename"><Pencil size={12} /></button>
+                className="text-platinum hover:text-brand-600" title="Rename"><Pencil size={12} /></button>
               {scenarios.length > 1 && (
-                <button type="button" onClick={() => removeScenario(s.id)} className="text-gray-300 hover:text-red-500" title="Delete scenario"><Trash2 size={12} /></button>
+                <button type="button" onClick={() => removeScenario(s.id)} className="text-platinum hover:text-red-500" title="Delete scenario"><Trash2 size={12} /></button>
               )}
             </div>
           )
         })}
         {scenarios.length < SOFT_CAP && (
           <button type="button" onClick={() => createScenario(`Scenario ${scenarios.length + 1}`, [newCarton(1)])}
-            className="flex items-center gap-1 rounded-lg border border-dashed border-gray-300 px-2.5 py-1.5 text-sm text-gray-500 hover:border-brand-400 hover:text-brand-600">
+            className="flex items-center gap-1 rounded-lg border border-dashed border-warm-grey px-2.5 py-1.5 text-sm text-ink-60 hover:border-brand-400 hover:text-brand-600">
             <Plus size={13} /> New scenario
           </button>
         )}
@@ -621,7 +621,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
           </button>
         )}
         {scenarios.length >= SOFT_CAP && (
-          <span className="text-[11px] text-gray-400">Keep scenarios to a few for a clean comparison.</span>
+          <span className="text-[11px] text-ink-60">Keep scenarios to a few for a clean comparison.</span>
         )}
       </div>
 
@@ -637,10 +637,10 @@ export default function PackingListEditor({ orderId, orderLines }) {
         </button>
         <div className="ml-auto flex items-center gap-2">
           {pl?.status && <StatusBadge status={pl.status} />}
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-ink-60">
             {totals.totalCartons} CTN
             {totals.palletCount > 0
-              ? <> · cartons {totals.cartonCbm}/pallet {totals.totalCbm} CBM · {totals.totalGw} kg GW <span className="text-gray-300">(incl. {totals.palletWt}kg pallet{totals.palletCount > 1 ? 's' : ''})</span></>
+              ? <> · cartons {totals.cartonCbm}/pallet {totals.totalCbm} CBM · {totals.totalGw} kg GW <span className="text-platinum">(incl. {totals.palletWt}kg pallet{totals.palletCount > 1 ? 's' : ''})</span></>
               : <> · {totals.totalCbm} CBM · {totals.totalGw} kg GW</>}
           </span>
         </div>
@@ -648,7 +648,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
 
       {/* Shipped Per (vessel / carrier) */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-gray-500 whitespace-nowrap">Shipped per (vessel / carrier)</label>
+        <label className="text-xs text-ink-60 whitespace-nowrap">Shipped per (vessel / carrier)</label>
         <input
           className="input py-1 text-sm flex-1 max-w-xs"
           value={shippedPer}
@@ -659,7 +659,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
 
       {/* Case Mark (printed in the boxed area on the PDF, top-right) */}
       <div className="flex items-start gap-2">
-        <label className="text-xs text-gray-500 whitespace-nowrap pt-1.5">Case mark</label>
+        <label className="text-xs text-ink-60 whitespace-nowrap pt-1.5">Case mark</label>
         <textarea
           className="input py-1 text-sm flex-1 max-w-xs font-mono"
           rows={5}
@@ -696,8 +696,8 @@ export default function PackingListEditor({ orderId, orderLines }) {
 
       {/* ── Pallet dimensions ── */}
       {palletNums.length > 0 && (
-        <div className="border border-gray-200 rounded-lg p-4 space-y-3">
-          <p className="text-sm font-medium text-gray-700">Pallet dimensions</p>
+        <div className="border border-warm-grey rounded-lg p-4 space-y-3">
+          <p className="text-sm font-medium text-ink-80">Pallet dimensions</p>
           <div className="space-y-2">
             {palletNums.map(no => {
               const palletCartons = cartons.filter(c => (parseInt(c.pallet_no) || 1) === no)
@@ -711,11 +711,11 @@ export default function PackingListEditor({ orderId, orderLines }) {
               const dimCbm = palletDimCbm(pallets.find(p => (parseInt(p.pallet_no) || 1) === no))
               return (
                 <div key={no} className="flex items-center gap-3 flex-wrap">
-                  <span className="text-sm text-gray-600 w-20 shrink-0">Pallet {no}</span>
-                  <span className="text-xs text-gray-400 w-44 shrink-0">
+                  <span className="text-sm text-ink-70 w-20 shrink-0">Pallet {no}</span>
+                  <span className="text-xs text-ink-60 w-44 shrink-0">
                     CTN {firstSeq}–{lastSeq} ({palletCtns} ctns)
                     {dimCbm != null
-                      ? <> · <span className="text-gray-600 font-medium">{dimCbm.toFixed(4)} CBM</span> <span className="text-gray-300 line-through">{palletCbm.toFixed(4)}</span></>
+                      ? <> · <span className="text-ink-70 font-medium">{dimCbm.toFixed(4)} CBM</span> <span className="text-platinum line-through">{palletCbm.toFixed(4)}</span></>
                       : <> · {palletCbm.toFixed(4)} CBM</>}
                   </span>
                   <div className="flex items-center gap-1">
@@ -729,7 +729,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
                         onChange={e => updatePallet(no, f, e.target.value)}
                       />
                     ))}
-                    <span className="text-xs text-gray-400">m</span>
+                    <span className="text-xs text-ink-60">m</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <input
@@ -740,10 +740,10 @@ export default function PackingListEditor({ orderId, orderLines }) {
                       onChange={e => updatePallet(no, 'weight_kg', e.target.value)}
                       title={`Empty pallet weight — defaults to ${PALLET_WEIGHT_KG}kg`}
                     />
-                    <span className="text-xs text-gray-400">kg pallet</span>
+                    <span className="text-xs text-ink-60">kg pallet</span>
                   </div>
                   {getPallet(no, 'length_m') && getPallet(no, 'width_m') && getPallet(no, 'height_m') && (
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-ink-60">
                       {getPallet(no, 'length_m')} × {getPallet(no, 'width_m')} × {getPallet(no, 'height_m')} m
                     </span>
                   )}
@@ -751,7 +751,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
               )
             })}
           </div>
-          <p className="text-[11px] text-gray-400">Pallet dimensions print on the exported PDF.</p>
+          <p className="text-[11px] text-ink-60">Pallet dimensions print on the exported PDF.</p>
         </div>
       )}
 
@@ -802,7 +802,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
         )}
         {saved && <span className="text-xs text-green-600">Saved ✓</span>}
         {!canFinal && cartons.length > 0 && pl?.status !== 'final' && (
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-ink-60">
             {!pvOAllOk ? 'Qty mismatch · ' : ''}{!allActual ? 'Enter actual dims to finalise' : ''}
           </span>
         )}

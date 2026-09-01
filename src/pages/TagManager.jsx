@@ -82,8 +82,8 @@ export default function TagManager() {
       {loading && <LoadingBar />}
       <div className="mb-6">
         <Link to="/customers" className="text-sm text-brand-600 hover:underline">← Customers</Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-1">Manage Tags</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
+        <h1 className="text-2xl font-bold text-ink mt-1">Manage Tags</h1>
+        <p className="text-sm text-ink-60 mt-0.5">
           {tags.length} tag{tags.length === 1 ? '' : 's'} in use across all customers.
         </p>
       </div>
@@ -92,8 +92,8 @@ export default function TagManager() {
       <div className="card p-5 mb-6">
         <div className="flex items-center justify-between mb-2">
           <div>
-            <p className="text-sm font-semibold text-gray-700">AI-suggested merges</p>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-sm font-semibold text-ink-80">AI-suggested merges</p>
+            <p className="text-xs text-ink-60 mt-0.5">
               Finds custom tags that likely mean the same thing (casing, wording, near-duplicates) and proposes one
               spelling. Nothing changes until you apply a group.
             </p>
@@ -112,20 +112,20 @@ export default function TagManager() {
         {suggestError && <p className="text-xs text-red-600 mt-2">{suggestError}</p>}
 
         {groups && groups.length === 0 && !suggesting && (
-          <p className="text-sm text-gray-400 mt-3">No likely duplicates found.</p>
+          <p className="text-sm text-ink-60 mt-3">No likely duplicates found.</p>
         )}
 
         {groups && groups.length > 0 && (
           <div className="space-y-3 mt-4">
             {groups.map((g, idx) => (
-              <div key={idx} className="border border-gray-200 rounded-lg p-3">
+              <div key={idx} className="border border-warm-grey rounded-lg p-3">
                 <div className="flex flex-wrap items-center gap-1.5 mb-2">
                   {g.tags.map(t => (
-                    <span key={t} className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">{t}</span>
+                    <span key={t} className="px-2 py-0.5 rounded-full text-xs bg-ivory-dark text-ink-70">{t}</span>
                   ))}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400">→</span>
+                  <span className="text-xs text-ink-60">→</span>
                   <input
                     className="input text-sm py-1 flex-1"
                     value={g.canonical}
@@ -142,7 +142,7 @@ export default function TagManager() {
                   <button
                     type="button"
                     onClick={() => setGroups(gs => gs.filter((_, i) => i !== idx))}
-                    className="text-gray-400 hover:text-gray-600 shrink-0"
+                    className="text-ink-60 hover:text-ink-70 shrink-0"
                     title="Dismiss"
                   >
                     <X size={16} />
@@ -156,11 +156,11 @@ export default function TagManager() {
 
       {/* Every tag, manual rename/delete */}
       <div className="card p-5">
-        <p className="text-sm font-semibold text-gray-700 mb-3">All tags ({tags.length})</p>
+        <p className="text-sm font-semibold text-ink-80 mb-3">All tags ({tags.length})</p>
         {tags.length === 0 ? (
-          <p className="text-sm text-gray-400">No tags yet.</p>
+          <p className="text-sm text-ink-60">No tags yet.</p>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-warm-grey">
             {tags.map(s => (
               <div key={s.tag} className="flex items-center justify-between py-2.5 gap-3">
                 {renaming === s.tag ? (
@@ -175,23 +175,23 @@ export default function TagManager() {
                     <button type="button" onClick={commitRename} className="text-brand-600 hover:text-brand-800">
                       <Check size={16} />
                     </button>
-                    <button type="button" onClick={() => setRenaming(null)} className="text-gray-400 hover:text-gray-600">
+                    <button type="button" onClick={() => setRenaming(null)} className="text-ink-60 hover:text-ink-70">
                       <X size={16} />
                     </button>
                   </div>
                 ) : (
                   <>
                     <div className="min-w-0">
-                      <span className="text-sm text-gray-800">{s.tag}</span>
-                      <span className="text-xs text-gray-400 ml-2">
+                      <span className="text-sm text-ink">{s.tag}</span>
+                      <span className="text-xs text-ink-60 ml-2">
                         {s.count} customer{s.count === 1 ? '' : 's'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <button type="button" onClick={() => startRename(s.tag)} className="text-gray-400 hover:text-gray-600" title="Rename everywhere">
+                      <button type="button" onClick={() => startRename(s.tag)} className="text-ink-60 hover:text-ink-70" title="Rename everywhere">
                         <Pencil size={14} />
                       </button>
-                      <button type="button" onClick={() => setConfirmDelete(s.tag)} className="text-gray-400 hover:text-red-600" title="Delete everywhere">
+                      <button type="button" onClick={() => setConfirmDelete(s.tag)} className="text-ink-60 hover:text-red-600" title="Delete everywhere">
                         <Trash2 size={14} />
                       </button>
                     </div>

@@ -308,7 +308,7 @@ export default function PortalLogins({ embedded = false }) {
                       <div className="text-ink">{u.name || u.email || u.id}</div>
                       {u.name && u.email && <div className="text-[11px] text-ink-60">{u.email}</div>}
                       {roleGroupOf(u) === 'internal' && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 uppercase tracking-wide">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-ivory-dark text-ink-60 uppercase tracking-wide">
                           {u.role === 'admin' || u.role === 'production' ? u.role : 'internal'}
                         </span>
                       )}

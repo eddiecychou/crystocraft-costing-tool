@@ -55,20 +55,20 @@ export default function ComponentDetail() {
   }
 
   if (loading) return <LoadingBar />
-  if (!component) return <div className="p-6 text-gray-500">Component not found.</div>
+  if (!component) return <div className="p-6 text-ink-60">Component not found.</div>
 
   return (
     <div className="p-4 md:p-6 max-w-3xl">
       {/* Breadcrumb */}
-      <div className="text-sm text-gray-500 mb-1">
+      <div className="text-sm text-ink-60 mb-1">
         <Link to="/products" className="hover:text-brand-600">Products</Link>
         {' / '}
         <Link to={`/products/${productId}`} className="hover:text-brand-600">{product?.name}</Link>
       </div>
       <div className="flex items-start justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{component.name}</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <h1 className="text-2xl font-bold text-ink">{component.name}</h1>
+          <p className="text-sm text-ink-60 mt-0.5">
             Unit: {component.unit}
             {(Number(component.qty_per_product) || 1) > 1 && (
               <span className="ml-2 text-xs font-semibold text-brand-600 bg-brand-50 px-1.5 py-0.5 rounded">
@@ -88,17 +88,17 @@ export default function ComponentDetail() {
           {/* Spec */}
           {component.spec && (
             <div className="card p-4">
-              <h2 className="text-sm font-semibold text-gray-700 mb-1">Specification</h2>
-              <p className="text-sm text-gray-600 whitespace-pre-wrap">{component.spec}</p>
+              <h2 className="text-sm font-semibold text-ink-80 mb-1">Specification</h2>
+              <p className="text-sm text-ink-70 whitespace-pre-wrap">{component.spec}</p>
             </div>
           )}
         </div>
 
         {/* Component Images */}
         <div className="card p-4">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">
+          <h2 className="text-sm font-semibold text-ink-80 mb-3">
             Images
-            <span className="inline-flex items-center gap-1 text-xs text-gray-400 font-normal ml-1">hover to delete <X size={12} /></span>
+            <span className="inline-flex items-center gap-1 text-xs text-ink-60 font-normal ml-1">hover to delete <X size={12} /></span>
           </h2>
           <ImageGallery
             images={images}
@@ -115,7 +115,7 @@ export default function ComponentDetail() {
       <div className="card p-4">
         <LastActualPaid componentId={componentId} />
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-gray-700">Supplier Quotes</h2>
+          <h2 className="text-sm font-semibold text-ink-80">Supplier Quotes</h2>
           <Link
             to={`/products/${productId}/components/${componentId}/quotes/new`}
             onClick={remember}
@@ -126,7 +126,7 @@ export default function ComponentDetail() {
         </div>
 
         {quotes.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-6">
+          <p className="text-sm text-ink-60 text-center py-6">
             No supplier quotes yet — add one to start tracking costs.
           </p>
         ) : (
@@ -166,32 +166,32 @@ function QuoteCard({ quote: q, productId, componentId, onNavigate, onDeleted }) 
 
   return (
     <>
-      <div className="relative group flex items-start justify-between p-4 rounded-lg border border-gray-100 hover:border-brand-200 hover:bg-brand-50 transition-colors">
+      <div className="relative group flex items-start justify-between p-4 rounded-lg border border-warm-grey hover:border-brand-200 hover:bg-brand-50 transition-colors">
         <Link
           to={`/products/${productId}/components/${componentId}/quotes/${q.id}`}
           onClick={onNavigate}
           className="flex-1 min-w-0 space-y-1"
         >
           <div className="flex items-center gap-2">
-            <p className="font-medium text-sm text-gray-900">{q.supplier_name}</p>
+            <p className="font-medium text-sm text-ink">{q.supplier_name}</p>
             {q.is_preferred && (
               <span className="badge bg-brand-100 text-brand-700">Preferred</span>
             )}
           </div>
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-ink-80">
             <span className="font-semibold">{q.unit_cost} {q.unit_cost_currency}</span>
             {q.moq ? ` · MOQ ${q.moq.toLocaleString()} pcs` : ''}
           </p>
-          <div className="flex gap-4 text-xs text-gray-500">
+          <div className="flex gap-4 text-xs text-ink-60">
             {q.sampling_lead_time_days ? <span>Sample: {q.sampling_lead_time_days}d</span> : null}
             {q.production_lead_time_days ? <span>Production: {q.production_lead_time_days}d</span> : null}
           </div>
         </Link>
         <div className="flex items-center gap-2 ml-3 shrink-0">
-          <span className="text-xs text-gray-400">→</span>
+          <span className="text-xs text-ink-60">→</span>
           <button
             onClick={e => { e.preventDefault(); setConfirmDel(true) }}
-            className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-500 leading-none px-1"
+            className="opacity-0 group-hover:opacity-100 transition-opacity text-platinum hover:text-red-500 leading-none px-1"
             title="Delete quote"
           ><X size={15} /></button>
         </div>

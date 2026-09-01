@@ -118,14 +118,14 @@ export default function QuoteForm() {
     <div className="p-4 md:p-6 max-w-xl">
       <div className="mb-6">
         <Link to="/quotes" className="text-sm text-brand-600 hover:underline">← Quotes</Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-1">New Client Quote</h1>
+        <h1 className="text-2xl font-bold text-ink mt-1">New Client Quote</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
 
         {/* Customer picker */}
         <div className="card p-5 space-y-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Client</p>
+          <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Client</p>
           <div>
             <label className="label">Select Existing Customer</label>
             <select className="input" value={selectedCustomerId} onChange={handleCustomerSelect}>
@@ -136,7 +136,7 @@ export default function QuoteForm() {
                 </option>
               ))}
             </select>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-ink-60 mt-1">
               Selecting a customer pre-fills the fields below.{' '}
               <Link to="/customers/new" className="text-brand-500 hover:underline" target="_blank">+ Add new customer</Link>
             </p>
@@ -149,7 +149,7 @@ export default function QuoteForm() {
 
         {/* Client details */}
         <div className="card p-5 space-y-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Client Details</p>
+          <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Client Details</p>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label">Company / Client Name *</label>
@@ -188,13 +188,13 @@ export default function QuoteForm() {
 
         {/* Currency & rates */}
         <div className="card p-5 space-y-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Quote Currency & Exchange Rates</p>
+          <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide">Quote Currency & Exchange Rates</p>
           <div>
             <label className="label">Quote Currency</label>
             <select className="input w-40" value={form.quote_currency} onChange={set('quote_currency')}>
               {CURRENCIES.map(c => <option key={c}>{c}</option>)}
             </select>
-            <p className="text-xs text-gray-400 mt-1">All prices in this quote will be shown in this currency.</p>
+            <p className="text-xs text-ink-60 mt-1">All prices in this quote will be shown in this currency.</p>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>

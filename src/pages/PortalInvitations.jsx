@@ -22,8 +22,8 @@ const STATUS_STYLE = {
   claimed:  { label: 'Claimed — awaiting approval', Icon: Mail, cls: 'text-blue-600 bg-blue-50' },
   approved: { label: 'Approved', Icon: CheckCircle2, cls: 'text-green-600 bg-green-50' },
   rejected: { label: 'Rejected', Icon: XCircle,     cls: 'text-red-600 bg-red-50' },
-  revoked:  { label: 'Revoked',  Icon: Ban,         cls: 'text-gray-500 bg-gray-100' },
-  expired:  { label: 'Expired',  Icon: Clock,       cls: 'text-gray-500 bg-gray-100' },
+  revoked:  { label: 'Revoked',  Icon: Ban,         cls: 'text-ink-60 bg-ivory-dark' },
+  expired:  { label: 'Expired',  Icon: Clock,       cls: 'text-ink-60 bg-ivory-dark' },
 }
 
 // source:'admin' vs 'self' — see portal-invite.js's createInvitation/
@@ -78,11 +78,11 @@ export default function PortalInvitations({ embedded = false }) {
         <div className="mb-3 rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2">{error}</div>
       )}
       {loading ? (
-        <p className="text-sm text-gray-400">Loading…</p>
+        <p className="text-sm text-ink-60">Loading…</p>
       ) : invitations.length === 0 ? (
-        <p className="text-sm text-gray-400">No invitations yet. Invite a customer contact from their record in Customers, or wait for a self-submitted request.</p>
+        <p className="text-sm text-ink-60">No invitations yet. Invite a customer contact from their record in Customers, or wait for a self-submitted request.</p>
       ) : (
-        <div className="card divide-y divide-gray-100">
+        <div className="card divide-y divide-warm-grey">
           {invitations.map(inv => {
             const st = STATUS_STYLE[inv.status] || STATUS_STYLE.pending
             const srcStyle = SOURCE_STYLE[inv.source] || SOURCE_STYLE.admin
@@ -93,16 +93,16 @@ export default function PortalInvitations({ embedded = false }) {
             return (
               <div key={inv.id} className="px-4 py-3 flex items-start justify-between gap-4 flex-wrap">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-800 flex items-center gap-1.5">
+                  <p className="text-sm font-medium text-ink flex items-center gap-1.5">
                     {inv.contact_name || inv.contact_email}
                     <span className={`text-[10px] uppercase tracking-wide rounded px-1 py-0.5 ${srcStyle.cls}`}>{srcStyle.label}</span>
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-ink-60">
                     {inv.contact_email} · {company || (inv.source === 'self'
                       ? `Applicant typed "${inv.applicant_company_name || '—'}" — no customer linked yet`
                       : '—')}
                   </p>
-                  <p className="text-[11px] text-gray-400 mt-0.5">
+                  <p className="text-[11px] text-ink-60 mt-0.5">
                     {inv.source === 'self' ? 'Applied' : 'Invited'} {fmtDate(inv.created_at)}{inv.source === 'admin' && ` by ${inv.created_by || '—'}`}
                     {inv.claimed_at && inv.source === 'admin' && ` · Claimed ${fmtDate(inv.claimed_at)}`}
                     {inv.approved_at && ` · Approved ${fmtDate(inv.approved_at)}`}
@@ -112,7 +112,7 @@ export default function PortalInvitations({ embedded = false }) {
                   </p>
                   {needsCustomerLink && (
                     <div className="mt-2 max-w-xs">
-                      <label className="text-[11px] text-gray-500 mb-1 flex items-center gap-1"><UserPlus size={11} /> Link to a customer before approving</label>
+                      <label className="text-[11px] text-ink-60 mb-1 flex items-center gap-1"><UserPlus size={11} /> Link to a customer before approving</label>
                       <CustomerPicker
                         customers={customers}
                         value={pickedCustomerId}
@@ -126,7 +126,7 @@ export default function PortalInvitations({ embedded = false }) {
                     <st.Icon size={12} /> {st.label}
                   </span>
                   {busy ? (
-                    <Loader2 size={16} className="animate-spin text-gray-400" />
+                    <Loader2 size={16} className="animate-spin text-ink-60" />
                   ) : (
                     <>
                       {inv.status === 'claimed' && (

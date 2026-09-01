@@ -100,7 +100,7 @@ export default function SupplierCatalogs({ supplierId }) {
   return (
     <div className="card p-5 mt-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-semibold text-gray-700">Supplier Catalogs</h2>
+        <h2 className="text-sm font-semibold text-ink-80">Supplier Catalogs</h2>
         <label className="btn-secondary text-xs py-1.5 px-3 cursor-pointer">
           + Upload Files
           <input
@@ -113,29 +113,29 @@ export default function SupplierCatalogs({ supplierId }) {
         </label>
       </div>
 
-      <p className="text-xs text-gray-400 mb-4">Upload supplier product catalogs, lookbooks, or price lists — PDF, images, or Office files (Excel / PowerPoint / Word). Stored as-is; Office files open in a download.</p>
+      <p className="text-xs text-ink-60 mb-4">Upload supplier product catalogs, lookbooks, or price lists — PDF, images, or Office files (Excel / PowerPoint / Word). Stored as-is; Office files open in a download.</p>
 
       {/* In-progress uploads */}
       {uploads.map(u => (
         <div key={u.uid} className="flex items-center gap-3 p-3 bg-brand-50 rounded-lg mb-2">
-          <span className="text-gray-500"><FileTypeIcon type={u.type} name={u.name} size={20} /></span>
+          <span className="text-ink-60"><FileTypeIcon type={u.type} name={u.name} size={20} /></span>
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-gray-700 truncate">{u.name}</p>
+            <p className="text-xs text-ink-80 truncate">{u.name}</p>
             <div className="mt-1 h-1 bg-brand-200 rounded overflow-hidden">
               <div className="h-full bg-brand-600 transition-all" style={{ width: `${u.progress}%` }} />
             </div>
           </div>
-          <span className="text-xs text-gray-400">{u.progress}%</span>
+          <span className="text-xs text-ink-60">{u.progress}%</span>
         </div>
       ))}
 
       {/* Catalog list */}
       {catalogs.length === 0 && uploads.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-6">No catalogs yet — upload PDF, image, or Office files.</p>
+        <p className="text-sm text-ink-60 text-center py-6">No catalogs yet — upload PDF, image, or Office files.</p>
       ) : (
         <div className="space-y-2">
           {catalogs.map(c => (
-            <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-colors group">
+            <div key={c.id} className="flex items-center gap-3 p-3 rounded-lg border border-warm-grey hover:border-warm-grey hover:bg-ivory transition-colors group">
               {/* Thumbnail or icon */}
               {isImage(c.file_type) ? (
                 <img
@@ -145,13 +145,13 @@ export default function SupplierCatalogs({ supplierId }) {
                   onClick={() => setLightbox(c)}
                 />
               ) : (
-                <span className="text-gray-500 shrink-0"><FileTypeIcon type={c.file_type} name={c.file_name} size={24} /></span>
+                <span className="text-ink-60 shrink-0"><FileTypeIcon type={c.file_type} name={c.file_name} size={24} /></span>
               )}
 
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-800 truncate font-medium">{c.file_name}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{formatBytes(c.file_size)}</p>
+                <p className="text-sm text-ink truncate font-medium">{c.file_name}</p>
+                <p className="text-xs text-ink-60 mt-0.5">{formatBytes(c.file_size)}</p>
               </div>
 
               {/* Actions */}

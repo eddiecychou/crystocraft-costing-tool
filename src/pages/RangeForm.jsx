@@ -1181,7 +1181,7 @@ export default function RangeForm() {
                     {rewriteLoading ? 'Rewriting…' : <span className="inline-flex items-center gap-1"><RotateCcw size={13} />Rewrite</span>}
                   </button>
                   <button type="button" onClick={() => { setRewriteOpen(false); setRewriteGuide('') }}
-                    className="text-xs px-3 py-1.5 rounded-md border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors">
+                    className="text-xs px-3 py-1.5 rounded-md border border-warm-grey text-ink-60 hover:bg-ivory transition-colors">
                     Cancel
                   </button>
                 </div>
@@ -1265,7 +1265,7 @@ export default function RangeForm() {
                       <button key={c.id || c.code} type="button" onClick={() => toggleComponent(c)}
                         className={`w-full flex items-center gap-3 px-3 py-2 text-left transition-colors ${on ? 'bg-brand-50' : 'hover:bg-ivory/60'}`}>
                         <div className="w-8 h-8 shrink-0 bg-white border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
-                          {c.images?.[0] ? <img src={c.images[0]} alt="" className="w-full h-full object-contain p-0.5" /> : <Puzzle size={16} className="text-gray-300" />}
+                          {c.images?.[0] ? <img src={c.images[0]} alt="" className="w-full h-full object-contain p-0.5" /> : <Puzzle size={16} className="text-platinum" />}
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
@@ -1459,12 +1459,12 @@ export default function RangeForm() {
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70" onClick={() => !enh.busy && setEnh(null)}>
               <div className="bg-white rounded-xl max-w-3xl w-full p-5" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold text-gray-700 inline-flex items-center gap-1.5"><Sparkles size={15} /> Edit image — review before replacing</h3>
+                  <h3 className="text-sm font-semibold text-ink-80 inline-flex items-center gap-1.5"><Sparkles size={15} /> Edit image — review before replacing</h3>
                   <button type="button" onClick={() => !enh.busy && setEnh(null)} className="text-ink-60 hover:text-ink"><X size={16} /></button>
                 </div>
 
                 {/* Tabs: AI enhance vs manual adjust */}
-                <div className="flex gap-1 mb-3 border-b border-gray-100">
+                <div className="flex gap-1 mb-3 border-b border-warm-grey">
                   {[
                     { key: 'ai',     label: 'AI enhance' },
                     { key: 'adjust', label: 'Adjust (manual)' },
@@ -1496,13 +1496,13 @@ export default function RangeForm() {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Original</p>
-                    <div className="aspect-square bg-gray-100 border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
+                    <div className="aspect-square bg-ivory-dark border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
                       <img src={enh.before} alt="" className="w-full h-full object-contain" />
                     </div>
                   </div>
                   <div>
                     <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Enhanced {enh.after && `· ${enh.mode}`}</p>
-                    <div className="aspect-square bg-gray-100 border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
+                    <div className="aspect-square bg-ivory-dark border border-ivory-dark rounded flex items-center justify-center overflow-hidden">
                       {enh.busy ? <span className="text-xs text-ink-60">Working… (AI, ~10–20s)</span>
                         : enh.after ? <img src={enh.after} alt="" className="w-full h-full object-contain" />
                         : <span className="text-xs text-ink-60">Describe colours below, then pick Clean or Enhance</span>}
@@ -1522,15 +1522,15 @@ export default function RangeForm() {
                   />
                 </div>
                 {/* Recolor panel */}
-                <div className="mt-3 border border-gray-200 rounded-lg overflow-hidden">
+                <div className="mt-3 border border-warm-grey rounded-lg overflow-hidden">
                   <button type="button"
-                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink-60 hover:bg-gray-50"
+                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-ink-60 hover:bg-ivory"
                     onClick={() => setRecolorOpen(o => !o)}>
                     <span className="flex items-center gap-1.5"><Sparkles size={12} /> Change colours</span>
                     <span className="text-ink-60">{recolorOpen ? '▲' : '▼'}</span>
                   </button>
                   {recolorOpen && (
-                    <div className="px-3 pb-3 pt-2 bg-gray-50 space-y-2">
+                    <div className="px-3 pb-3 pt-2 bg-ivory space-y-2">
                       <input
                         className="input text-sm"
                         placeholder="e.g. change gold plating to silver chrome, change clear crystals to red"
@@ -1638,7 +1638,7 @@ export default function RangeForm() {
                             ? <span className="text-[10px] text-ink-60">…</span>
                             : v.image
                               ? <img src={v.image} alt="" className="w-full h-full object-contain p-1" />
-                              : <Gem size={20} className="text-gray-300" />}
+                              : <Gem size={20} className="text-platinum" />}
                         </button>
                         {v.image && (
                           <button type="button" onClick={() => patchVariant(i, { image: '' })}

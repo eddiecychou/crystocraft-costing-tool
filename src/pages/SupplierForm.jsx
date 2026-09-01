@@ -44,7 +44,7 @@ function ExtraLinkRows({ links, onChange, errors }) {
             <input className="input flex-1" type="url" value={l.url} onChange={e => set(i, 'url', e.target.value)}
                    placeholder="https://…" />
             <button type="button" onClick={() => remove(i)}
-                    className="text-gray-400 hover:text-red-500 px-1 text-lg leading-none shrink-0">×</button>
+                    className="text-ink-60 hover:text-red-500 px-1 text-lg leading-none shrink-0">×</button>
           </div>
           {errors?.[l.id] && <p className="text-xs text-red-600 mt-1">{errors[l.id]}</p>}
         </div>
@@ -79,7 +79,7 @@ function MultiInput({ label, values, onChange, type = 'text', placeholder }) {
               placeholder={placeholder}
             />
             {values.length > 1 && (
-              <button type="button" onClick={() => remove(i)} className="text-gray-400 hover:text-red-500 px-1 text-lg leading-none">×</button>
+              <button type="button" onClick={() => remove(i)} className="text-ink-60 hover:text-red-500 px-1 text-lg leading-none">×</button>
             )}
           </div>
         ))}
@@ -106,12 +106,12 @@ function ContactRows({ contacts, onChange }) {
   return (
     <div className="space-y-3">
       {contacts.length === 0 && (
-        <p className="text-xs text-gray-400">No contacts yet — add the supplier's sales rep(s).</p>
+        <p className="text-xs text-ink-60">No contacts yet — add the supplier's sales rep(s).</p>
       )}
       {contacts.map((c, i) => {
         const inactive = c.active === false
         return (
-          <div key={c.id || i} className={`rounded-lg border p-3 space-y-2 ${inactive ? 'border-gray-200 bg-gray-50 opacity-70' : 'border-gray-200'}`}>
+          <div key={c.id || i} className={`rounded-lg border p-3 space-y-2 ${inactive ? 'border-warm-grey bg-ivory opacity-70' : 'border-warm-grey'}`}>
             <div className="grid grid-cols-2 gap-2">
               <input className="input" value={c.name} onChange={e => set(i, 'name', e.target.value)} placeholder="Name e.g. 王小姐, David Lee" />
               <input className="input" value={c.title} onChange={e => set(i, 'title', e.target.value)} placeholder="Title / role (optional)" />
@@ -121,18 +121,18 @@ function ContactRows({ contacts, onChange }) {
               <input className="input" type="email" value={c.email} onChange={e => set(i, 'email', e.target.value)} placeholder="Email" />
             </div>
             <div className="flex items-center gap-4 text-xs">
-              <label className={`inline-flex items-center gap-1.5 ${inactive ? 'text-gray-400' : 'text-gray-600'}`}>
+              <label className={`inline-flex items-center gap-1.5 ${inactive ? 'text-ink-60' : 'text-ink-70'}`}>
                 <input type="radio" name="supplier-primary-contact" disabled={inactive}
                        checked={!!c.is_primary && !inactive} onChange={() => setPrimary(i)} />
                 Primary
               </label>
-              <label className="inline-flex items-center gap-1.5 text-gray-600">
+              <label className="inline-flex items-center gap-1.5 text-ink-70">
                 <input type="checkbox" checked={!inactive}
                        onChange={e => set(i, 'active', e.target.checked)} />
                 Active (still at this supplier)
               </label>
               <button type="button" onClick={() => removeRow(i)}
-                      className="ml-auto text-gray-400 hover:text-red-500">Remove</button>
+                      className="ml-auto text-ink-60 hover:text-red-500">Remove</button>
             </div>
           </div>
         )
@@ -238,13 +238,13 @@ export default function SupplierForm() {
     }
   }
 
-  if (fetching) return <div className="p-6 text-gray-400">Loading…</div>
+  if (fetching) return <div className="p-6 text-ink-60">Loading…</div>
 
   return (
     <div className="p-4 md:p-6 max-w-2xl">
       <div className="mb-6">
         <Link to="/suppliers" className="text-sm text-brand-600 hover:underline">← Suppliers</Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-1">{isEdit ? 'Edit Supplier' : 'New Supplier'}</h1>
+        <h1 className="text-2xl font-bold text-ink mt-1">{isEdit ? 'Edit Supplier' : 'New Supplier'}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="card p-6 space-y-5">
@@ -260,7 +260,7 @@ export default function SupplierForm() {
         </div>
 
         <div>
-          <label className="label">ERP Code <span className="text-gray-400 font-normal">(optional)</span></label>
+          <label className="label">ERP Code <span className="text-ink-60 font-normal">(optional)</span></label>
           <input className="input max-w-xs" value={form.erp_code} onChange={set('erp_code')} placeholder="e.g. S-00456" />
         </div>
 
@@ -275,7 +275,7 @@ export default function SupplierForm() {
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
                   form.category === c.value
                     ? 'bg-brand-600 text-white border-brand-600'
-                    : 'bg-white text-gray-600 border-gray-200 hover:border-brand-400'
+                    : 'bg-white text-ink-70 border-warm-grey hover:border-brand-400'
                 }`}
               >
                 <c.Icon size={13} className="inline align-[-2px] mr-1" />{c.value}
@@ -312,15 +312,15 @@ export default function SupplierForm() {
           <textarea className="input" rows={2} value={form.address} onChange={set('address')} placeholder="Full address…" />
         </div>
 
-        <div className="border-t border-gray-100 pt-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">People</p>
-          <p className="text-xs text-gray-400 mb-3">One row per sales rep / contact. Mark who's <strong>Primary</strong> (used on purchase orders); un-tick <strong>Active</strong> when someone leaves — the row is kept greyed for history.</p>
+        <div className="border-t border-warm-grey pt-4">
+          <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">People</p>
+          <p className="text-xs text-ink-60 mb-3">One row per sales rep / contact. Mark who's <strong>Primary</strong> (used on purchase orders); un-tick <strong>Active</strong> when someone leaves — the row is kept greyed for history.</p>
           <ContactRows contacts={contacts} onChange={setContacts} />
         </div>
 
-        <div className="border-t border-gray-100 pt-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Office lines</p>
-          <p className="text-xs text-gray-400 mb-3">General supplier phone / email — reception or shared inbox, not tied to one person.</p>
+        <div className="border-t border-warm-grey pt-4">
+          <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Office lines</p>
+          <p className="text-xs text-ink-60 mb-3">General supplier phone / email — reception or shared inbox, not tied to one person.</p>
           <div className="grid grid-cols-2 gap-4">
             <MultiInput label="Phone" values={phones} onChange={setPhones} placeholder="+86 xxx xxxx xxxx" />
             <MultiInput label="Email" values={emails} onChange={setEmails} type="email" placeholder="supplier@example.com" />
@@ -331,9 +331,9 @@ export default function SupplierForm() {
             as buttons on the detail page. Internal-only (suppliers/{id} is
             admin-gated in firestore.rules; nothing here is ever surfaced to
             the Customer Portal). */}
-        <div className="border-t border-gray-100 pt-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Sourcing Links</p>
-          <p className="text-xs text-gray-400 mb-3">Internal only — quick-access buttons on the supplier page. Leave blank if unknown.</p>
+        <div className="border-t border-warm-grey pt-4">
+          <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Sourcing Links</p>
+          <p className="text-xs text-ink-60 mb-3">Internal only — quick-access buttons on the supplier page. Leave blank if unknown.</p>
           <div className="grid grid-cols-2 gap-4">
             {LINK_FIELDS.map(({ key, label }) => (
               <div key={key}>
@@ -343,13 +343,13 @@ export default function SupplierForm() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-gray-400 mt-4 mb-1">More links — extra 1688 / Taobao pages, a catalogue folder, a WeChat shop, anything else. One chip each on the supplier page.</p>
+          <p className="text-xs text-ink-60 mt-4 mb-1">More links — extra 1688 / Taobao pages, a catalogue folder, a WeChat shop, anything else. One chip each on the supplier page.</p>
           <ExtraLinkRows links={extraLinks} onChange={setExtraLinks} errors={linkErrors} />
         </div>
 
-        <div className="border-t border-gray-100 pt-4">
-          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Purchasing Defaults</p>
-          <p className="text-xs text-gray-400 mb-3">Pre-fill new purchase orders for this supplier. Both are overridable per PO.</p>
+        <div className="border-t border-warm-grey pt-4">
+          <p className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-1">Purchasing Defaults</p>
+          <p className="text-xs text-ink-60 mb-3">Pre-fill new purchase orders for this supplier. Both are overridable per PO.</p>
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Default Currency</label>

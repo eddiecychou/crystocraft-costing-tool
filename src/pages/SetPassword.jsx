@@ -18,7 +18,7 @@ const MIN_PASSWORD_LENGTH = 8
 
 function Shell({ children }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+    <div className="min-h-screen flex items-center justify-center bg-ivory px-4">
       <div className="card w-full max-w-sm p-8">
         <div className="mb-8 text-center">
           <img src={logo} alt="Crystocraft" className="h-10 w-auto mx-auto" />
@@ -81,7 +81,7 @@ export default function SetPassword() {
     }
   }
 
-  if (checking) return <Shell><p className="text-sm text-gray-500 text-center">Checking your link…</p></Shell>
+  if (checking) return <Shell><p className="text-sm text-ink-60 text-center">Checking your link…</p></Shell>
 
   if (checkError) {
     return (
