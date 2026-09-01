@@ -5,6 +5,7 @@ import { loadProposal, resolveProposalAsset, resolveProposalAssetIds, resolvePro
 import { isStorefrontVisible } from '../constants'
 import { Download, FileText, Loader2 } from 'lucide-react'
 import FacetDivider from '../components/FacetDivider'
+import LoadingBar from '../components/LoadingBar'
 import { buildBrandProposalPdf } from '../brandProposalExport'
 
 // "Brand Portal" — replaces the old separate "My Brand Gallery" / "My
@@ -129,20 +130,22 @@ export default function BrandPortalPage({ profile }) {
   const hasBrandAssets = brandAssets.length > 0
   const total = (hasProposal ? 1 : 0) + galleryProducts.length + galleryAssets.length + brandAssets.length
 
-  if (loading) return <p className="text-sm text-ink-40 py-10 text-center">Loading…</p>
+  if (loading) return <LoadingBar />
 
   if (!customerId) {
     return (
-      <div className="card p-8 text-center text-sm text-ink-60">
-        No brand content is linked to your account yet. Contact us and we'll set it up.
+      <div className="text-center py-16">
+        <p className="eyebrow text-ink-40 mb-1.5">Nothing linked yet</p>
+        <p className="text-sm text-ink-60">No brand content is linked to your account yet. Contact us and we'll set it up.</p>
       </div>
     )
   }
 
   if (total === 0) {
     return (
-      <div className="card p-8 text-center text-sm text-ink-60">
-        Nothing here yet — we haven't added any of your brand content to the portal.
+      <div className="text-center py-16">
+        <p className="eyebrow text-ink-40 mb-1.5">Coming soon</p>
+        <p className="text-sm text-ink-60">We haven't added any of your brand content to the portal yet.</p>
       </div>
     )
   }
@@ -162,7 +165,7 @@ export default function BrandPortalPage({ profile }) {
               {pdfBusy ? 'Building…' : 'Download PDF'}
             </button>
             {pdfError && (
-              <div className="absolute top-14 right-4 z-10 max-w-xs text-xs text-white bg-red-900/90 rounded px-3 py-2">
+              <div className="absolute top-14 right-4 z-10 max-w-xs text-xs text-white bg-red-900/90 rounded-none px-3 py-2">
                 {pdfError}
               </div>
             )}
@@ -192,30 +195,32 @@ export default function BrandPortalPage({ profile }) {
                           const inner = (
                             <>
                               <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
-                                <img src={a.file_url} alt={a.title || ''} className="w-full h-full object-contain" />
+                                <img src={a.file_url} alt={a.title || ''} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
                               </div>
                               {(a.title || a.caption) && (
                                 <div className="p-2.5">
                                   {a.title && <p className="text-xs text-ink line-clamp-1 break-words">{a.title}</p>}
-                                  {a.caption && <p className="text-[11px] text-ink-60 leading-snug line-clamp-6 mt-0.5 break-words">{a.caption}</p>}
+                                  {a.caption && <p className="text-xs text-ink-60 leading-snug line-clamp-6 mt-0.5 break-words">{a.caption}</p>}
                                 </div>
                               )}
                             </>
                           )
                           return to ? (
-                            <Link key={a.id} to={to} className="mosaic-tile flex flex-col hover:shadow-md transition-shadow">{inner}</Link>
+                            <Link key={a.id} to={to}
+                              className="mosaic-tile group flex flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">{inner}</Link>
                           ) : (
                             <div key={a.id} className="mosaic-tile flex flex-col">{inner}</div>
                           )
                         })}
                         {s.products.map(prod => (
-                          <Link key={`${prod.collection}-${prod.id}`} to={prod.to} className="mosaic-tile flex flex-col hover:shadow-md transition-shadow">
+                          <Link key={`${prod.collection}-${prod.id}`} to={prod.to}
+                            className="mosaic-tile group flex flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
                             <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
-                              {prod.image && <img src={prod.image} alt={prod.name} className="w-full h-full object-contain" />}
+                              {prod.image && <img src={prod.image} alt={prod.name} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />}
                             </div>
                             <div className="p-2.5">
                               <p className="text-xs text-ink line-clamp-1 break-words">{prod.name}</p>
-                              {prod.caption && <p className="text-[11px] text-ink-60 leading-snug line-clamp-6 mt-0.5 break-words">{prod.caption}</p>}
+                              {prod.caption && <p className="text-xs text-ink-60 leading-snug line-clamp-6 mt-0.5 break-words">{prod.caption}</p>}
                             </div>
                           </Link>
                         ))}
@@ -234,7 +239,7 @@ export default function BrandPortalPage({ profile }) {
           the customer understands WHY this is a separate, secondary section
           rather than a repeat of the proposal (owner, post-launch). */}
       {hasGallery && (
-        <div className="mb-10">
+        <div className="mb-12">
           {hasProposal && <FacetDivider />}
           <h2 className="text-xl md:text-2xl text-ink mb-1.5 mt-6">
             {hasProposal ? 'More products for your brand' : 'Your curated brand collection'}
@@ -246,9 +251,10 @@ export default function BrandPortalPage({ profile }) {
           </p>
           <div className="mosaic-grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {galleryProducts.map(img => (
-              <div key={img.product_id} className="mosaic-tile flex flex-col hover:shadow-md transition-shadow">
-                <Link to={`/shop/corporate/${img.product_id}`} className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
-                  <img src={img.file_url} alt={img.caption || img.product_name} className="w-full h-full object-contain" />
+              <div key={img.product_id} className="mosaic-tile group flex flex-col">
+                <Link to={`/shop/corporate/${img.product_id}`}
+                  className="aspect-square bg-ivory flex items-center justify-center overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset">
+                  <img src={img.file_url} alt={img.caption || img.product_name} className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" />
                 </Link>
                 <div className="p-2.5 flex items-center justify-between gap-2">
                   <Link to={`/shop/corporate/${img.product_id}`} className="min-w-0 hover:text-brand-600">
@@ -262,12 +268,12 @@ export default function BrandPortalPage({ profile }) {
               </div>
             ))}
             {galleryAssets.map(a => (
-              <div key={a.id} className="mosaic-tile flex flex-col hover:shadow-md transition-shadow">
-                <div className="aspect-square bg-gray-400 flex items-center justify-center overflow-hidden">
+              <div key={a.id} className="mosaic-tile flex flex-col">
+                <div className="aspect-square bg-ivory flex items-center justify-center overflow-hidden">
                   {cannotRenderAsImage(a.filename) ? (
-                    <div className="flex flex-col items-center gap-1 text-white/80">
+                    <div className="flex flex-col items-center gap-1 text-ink-40">
                       <FileText size={26} strokeWidth={1.5} />
-                      <span className="text-[10px] font-medium">{extOf(a.filename)}</span>
+                      <span className="text-xs font-medium">{extOf(a.filename)}</span>
                     </div>
                   ) : (
                     <img src={a.file_url} alt={a.title || a.filename} className="w-full h-full object-contain" />
@@ -276,7 +282,7 @@ export default function BrandPortalPage({ profile }) {
                 <div className="p-2.5 flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="text-xs text-ink truncate">{a.title || a.filename}</p>
-                    <p className="text-[10px] text-ink-40">{TYPE_LABEL[a.type]} · {extOf(a.filename)}</p>
+                    <p className="text-xs text-ink-40">{TYPE_LABEL[a.type]} · {extOf(a.filename)}</p>
                   </div>
                   <a href={downloadUrl(a.file_url, a.filename)}
                      title="Download" className="shrink-0 text-ink-40 hover:text-brand-600">
@@ -301,13 +307,13 @@ export default function BrandPortalPage({ profile }) {
       {hasBrandAssets && (
         <div>
           {(hasProposal || hasGallery) && <FacetDivider />}
-          <h2 className="text-sm font-semibold text-ink-70 mb-1 mt-6">Brand Assets</h2>
-          <p className="text-xs text-ink-40 mb-3">Access your approved logos, guidelines and brand materials.</p>
+          <h2 className="eyebrow text-bronze mt-6 mb-1.5">Brand Assets</h2>
+          <p className="text-xs text-ink-60 mb-3">Access your approved logos, guidelines and brand materials.</p>
           <div className="card divide-y divide-ivory-dark">
             {brandAssets.map(a => (
               <a key={a.id} href={downloadUrl(a.file_url, a.filename)}
                  className="flex items-center gap-3 px-3 py-2.5 hover:bg-ivory/60 transition-colors">
-                <div className="w-11 h-11 shrink-0 rounded-sm border border-ivory-dark bg-white flex items-center justify-center overflow-hidden">
+                <div className="w-11 h-11 shrink-0 rounded-none border border-ivory-dark bg-white flex items-center justify-center overflow-hidden">
                   {cannotRenderAsImage(a.filename) ? (
                     <FileText size={18} strokeWidth={1.5} className="text-ink-40" />
                   ) : (
@@ -316,7 +322,7 @@ export default function BrandPortalPage({ profile }) {
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-ink truncate">{a.title || a.filename}</p>
-                  <p className="text-[11px] text-ink-40">{TYPE_LABEL[a.type]} · {extOf(a.filename)}</p>
+                  <p className="text-xs text-ink-40">{TYPE_LABEL[a.type]} · {extOf(a.filename)}</p>
                 </div>
                 <Download size={16} className="shrink-0 text-ink-40" />
               </a>
