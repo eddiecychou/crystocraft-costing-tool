@@ -37,15 +37,17 @@ migration/marketing_contacts/
 # now that the app exists, too large/stale for git.
 LocalWeb/
 
-# qa headless harness build artifacts
-qa/home-preview-seeded.js
-qa/home-preview-seeded.css
-qa/home-preview-seeded.html
+# qa headless harness build artifacts — the *.mjs / *-preview.jsx sources are
+# tracked; the generated bundle (.js/.css/.html) and screenshots are not.
+# (gitignore has no brace expansion — one line per extension.)
+qa/*-preview-seeded.js
+qa/*-preview-seeded.css
+qa/*-preview-seeded.html
 qa/*-VXBWXKA3*
-
-# qa/home-preview-seeded.mjs build artifacts (headless HomePage harness)
-qa/home-preview-seeded.js
-qa/home-preview-seeded.css
-qa/home-preview-seeded.html
 qa/*-????????.jpg
 qa/*-????????.png
+qa/*-before-*.png
+qa/*-after-*.png
+qa/*-before.png
+qa/*-after.png
+qa/*compare*.png

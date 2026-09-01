@@ -211,11 +211,12 @@ export default function FigurineDetail({ profile }) {
         <ArrowLeft size={15} /> Back to Figurine Gifts
       </Link>
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="card overflow-hidden bg-white aspect-square flex items-center justify-center relative">
+        <div className="card overflow-hidden bg-white aspect-square flex items-center justify-center relative group">
           {(colourImage || selVariant.image || image) ? (
-            <img src={colourImage || selVariant.image || image} alt={name} className="w-full h-full object-contain p-4 cursor-zoom-in"
+            <img src={colourImage || selVariant.image || image} alt={name}
+                 className="w-full h-full object-contain p-4 cursor-zoom-in group-hover:scale-[1.02] transition-transform duration-300"
                  onClick={() => setLightboxIndex(0)} />
-          ) : <Gem size={56} className="text-gray-200" />}
+          ) : <Gem size={56} className="text-platinum" />}
           <FavHeart item={{ type: 'figurine', id: p.id, name, code: baseCode, image }} className="absolute top-3 right-3" />
         </div>
         <div>
@@ -239,10 +240,10 @@ export default function FigurineDetail({ profile }) {
           )}
 
           {/* Plating finish — select one (doubles as price list) */}
-          <div className="mt-5">
-            <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-2">
-              Plating finish {!inCart && <span className="text-red-500">*</span>}
-              <span className="normal-case text-ink-40"> · Ex-factory price ({cur})</span>
+          <div className="mt-6">
+            <p className="label mb-2">
+              Plating finish {!inCart && <span className="text-brand-600">*</span>}
+              <span className="normal-case text-ink-60"> · Ex-factory price ({cur})</span>
             </p>
             <div className="card divide-y divide-ivory-dark">
               {variants.map((v, i) => {
@@ -291,9 +292,9 @@ export default function FigurineDetail({ profile }) {
 
           {/* Crystal colour — required pick */}
           {needsColor && (
-            <div className="mt-4">
-              <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-1.5">
-                Crystal colour {!inCart && <span className="text-red-500">*</span>}
+            <div className="mt-6">
+              <p className="label mb-1.5">
+                Crystal colour {!inCart && <span className="text-brand-600">*</span>}
                 {colorValid && <span className="normal-case text-ink-60"> · {lookup[color]?.name || color}</span>}
               </p>
               <div className="flex items-center gap-2 flex-wrap">
@@ -312,10 +313,10 @@ export default function FigurineDetail({ profile }) {
 
           {/* Quantity */}
           {!inCart && (
-            <div className="mt-4">
+            <div className="mt-6">
               {/* Mode toggle — only for MTO products that have stock on hand for this plating */}
               {hasSelStock && (
-                <div className="flex rounded-md border border-ivory-dark overflow-hidden mb-3 text-xs">
+                <div className="flex rounded-none border border-ivory-dark overflow-hidden mb-3 text-xs">
                   <button type="button" onClick={() => { setOrderMode('stock'); setStockPcs(1) }}
                     className={`flex-1 px-3 py-1.5 text-left transition-colors ${effectiveMode === 'stock' ? 'bg-brand-50 text-brand-700 font-medium' : 'hover:bg-ivory text-ink-60'}`}>
                     From stock · <span className="font-medium">{selBuildable} pcs available</span> · any qty · fast
@@ -326,13 +327,13 @@ export default function FigurineDetail({ profile }) {
                   </button>
                 </div>
               )}
-              <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-1.5">
+              <p className="label mb-1.5">
                 {effectiveMode === 'stock'
                   ? <>Quantity <span className="normal-case text-ink-40">· pcs{isLastStock ? ` (max ${maxPcs})` : (isConcept || isRetired) ? ' · optional' : ''}</span></>
                   : <>Quantity {ppc > 0 && <span className="normal-case text-ink-40">· {ppc} pcs/carton</span>}</>}
               </p>
               <div className="flex items-center gap-3 flex-wrap">
-                <div className="inline-flex items-center border border-ivory-dark rounded-md overflow-hidden">
+                <div className="inline-flex items-center border border-ivory-dark rounded-none overflow-hidden">
                   {effectiveMode === 'stock' ? (
                     <>
                       <button type="button" onClick={() => setStockPcs(n => Math.max(1, n - 1))}
@@ -365,22 +366,22 @@ export default function FigurineDetail({ profile }) {
                 <p className="text-sm text-ink mt-2">Subtotal: <span className="font-medium">{fmtMoney(net(selVariant.ws_price_usd) * pcs, cur)}</span></p>
               )}
               {effectiveMode === 'stock' && !isLastStock && !isConcept && !isRetired && (
-                <p className="text-[11px] mt-1.5 text-sky-700">
+                <p className="text-xs mt-1.5 text-sapphire">
                   Fulfilling from available stock — no minimum quantity applies.
                 </p>
               )}
               {isConcept && (
-                <p className="text-[11px] mt-1.5 text-purple-700">
+                <p className="text-xs mt-1.5 text-purple-700">
                   Concept design — add to enquiry to register interest; quantity is optional.
                 </p>
               )}
               {isRetired && (
-                <p className="text-[11px] mt-1.5 text-ink-50">
+                <p className="text-xs mt-1.5 text-ink-60">
                   Retired design — no stock remaining and no further production. Enquire if you'd like us to check for any remaining pieces.
                 </p>
               )}
               {effectiveMode === 'mto' && (moq > 0 || fmtMoq > 0) && (
-                <div className="text-[11px] mt-1.5">
+                <div className="text-xs mt-1.5">
                   {/* Concise headline — the numbers customers scan for */}
                   <p className={belowMoq || belowFormatMoq ? 'text-amber-700' : 'text-ink-50'}>
                     Made to order
@@ -404,7 +405,7 @@ export default function FigurineDetail({ profile }) {
             </div>
           )}
 
-          <div className="mt-5 flex items-center gap-3">
+          <div className="mt-6 flex items-center gap-3">
             <button onClick={addToEnquiry}
               disabled={inCart || !canAdd}
               className={`btn-primary ${(inCart || !canAdd) ? 'opacity-60 pointer-events-none' : ''}`}>
@@ -414,7 +415,7 @@ export default function FigurineDetail({ profile }) {
             {inCart && <span className="text-xs text-ink-50">Adjust quantity in your enquiry list</span>}
           </div>
 
-          <p className="text-[11px] text-ink-40 mt-3">
+          <p className="text-xs text-ink-60 mt-5">
             Ex-factory prices — freight not included. Final pricing and availability confirmed on enquiry.
           </p>
         </div>
@@ -424,7 +425,7 @@ export default function FigurineDetail({ profile }) {
         const videos = normVideos(p.videos, p.video_url).filter(youtubeEmbed)
         if (!videos.length) return null
         return (
-          <div className="mt-8 max-w-2xl mx-auto">
+          <div className="mt-12 md:mt-16 max-w-2xl mx-auto">
             <div className="space-y-4">
               {videos.map((v, i) => <VideoEmbed key={i} url={v} title={`${name} video ${i + 1}`} />)}
             </div>
@@ -435,14 +436,16 @@ export default function FigurineDetail({ profile }) {
       {gallery.length > 0 && (() => {
         const galleryOffset = heroUrl && heroUrl !== gallery[0]?.url ? 1 : 0
         return (
-        <div className="mt-8">
-          <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-3">Reference photos</p>
+        <div className="mt-12 md:mt-16">
+          <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">Gallery</p>
+          <h2 className="text-lg md:text-xl text-ink mb-4">Reference photos</h2>
           <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
             {gallery.map((g, i) => (
               <figure key={i} className="mosaic-tile relative group">
                 <div className="aspect-square bg-white flex items-center justify-center overflow-hidden cursor-zoom-in"
                      onClick={() => setLightboxIndex(galleryOffset + i)}>
-                  <img src={g.url} alt={g.caption || name} className="w-full h-full object-contain p-2" />
+                  <img src={g.url} alt={g.caption || name}
+                       className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300" />
                 </div>
                 {/* Own click target, not the lightbox's — stopPropagation so
                     tapping it doesn't also open the zoom view underneath.
@@ -456,7 +459,7 @@ export default function FigurineDetail({ profile }) {
                   <Download size={14} />
                 </a>
                 {g.caption && (
-                  <figcaption className="px-2 py-1.5 text-[11px] text-ink-60 border-t border-ivory-dark truncate" title={g.caption}>
+                  <figcaption className="px-2 py-1.5 text-xs text-ink-60 border-t border-ivory-dark truncate" title={g.caption}>
                     {g.caption}
                   </figcaption>
                 )}
@@ -515,9 +518,10 @@ function Swatch({ code, mixes, lookup, selected, onClick }) {
 
 function NotFound() {
   return (
-    <div className="text-center py-20 text-ink-60">
-      <p>This product is no longer available.</p>
-      <Link to="/shop/figurine" className="text-brand-600 text-sm mt-2 inline-block">Back to catalogue</Link>
+    <div className="text-center py-16">
+      <p className="eyebrow text-ink-40 mb-1.5">Unavailable</p>
+      <p className="text-sm text-ink-60">This product is no longer available.</p>
+      <Link to="/shop/figurine" className="text-brand-600 text-sm mt-3 inline-block">Back to catalogue</Link>
     </div>
   )
 }
