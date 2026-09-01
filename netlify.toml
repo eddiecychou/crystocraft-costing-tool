@@ -17,7 +17,15 @@
   directory = "netlify/functions"
 
 [context.production]
-  SECRETS_SCAN_OMIT_KEYS = "VITE_FIREBASE_API_KEY,VITE_FIREBASE_MESSAGING_SENDER_ID,VITE_FIREBASE_APP_ID"
+  # VITE_FIREBASE_* are public by design (client Firebase config).
+  # RENDER_ADMIN_PASSWORD is server-side only (Deno.env.get in
+  # swatch-library.js — never VITE_-prefixed, never in the client bundle);
+  # the scanner flagged it as a coincidental byte sequence inside the
+  # design-system logo JPEGs, not a real exposure. Belt-and-braces alongside
+  # untracking those binaries (see .gitignore). Follow-up hygiene: rotate
+  # RENDER_ADMIN_PASSWORD (+ the Fly service's ADMIN_PASSWORD) to a long
+  # random value so it can't collide with binary data again.
+  SECRETS_SCAN_OMIT_KEYS = "VITE_FIREBASE_API_KEY,VITE_FIREBASE_MESSAGING_SENDER_ID,VITE_FIREBASE_APP_ID,RENDER_ADMIN_PASSWORD"
 
 [[edge_functions]]
   function = "erp"
