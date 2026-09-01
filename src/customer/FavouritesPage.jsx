@@ -9,10 +9,11 @@ export default function FavouritesPage() {
 
   if (items.length === 0) {
     return (
-      <div className="text-center py-20 text-ink-60">
-        <Heart size={32} className="mx-auto text-ink-30 mb-3" />
-        <p>No favourites yet.</p>
-        <p className="text-sm text-ink-50 mt-1">Tap the heart on any product to save it here.</p>
+      <div className="text-center py-16">
+        <Heart size={30} className="mx-auto text-platinum mb-3" />
+        <p className="eyebrow text-ink-40 mb-1.5">Nothing saved yet</p>
+        <p className="text-sm text-ink-60">Tap the heart on any product to save it here.</p>
+        <Link to="/shop/figurine" className="text-brand-600 text-sm mt-3 inline-block">Browse the catalogue</Link>
       </div>
     )
   }
@@ -20,7 +21,7 @@ export default function FavouritesPage() {
   return (
     <div>
       <h1 className="text-xl md:text-2xl mb-4">Favourites <span className="text-ink-50 text-base">({items.length})</span></h1>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
+      <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
         {items.map(it => {
           const to = it.type === 'figurine' ? `/shop/figurine/${it.id}` : `/shop/corporate/${it.id}`
           const Icon = it.type === 'figurine' ? Gem : Package
@@ -28,25 +29,26 @@ export default function FavouritesPage() {
           // corporate (single-SKU) favourites can report an in-enquiry state here.
           const inCart = it.type !== 'figurine' && cart?.has({ type: it.type, id: it.id })
           return (
-            <div key={`${it.type}-${it.id}`} className="card overflow-hidden flex flex-col">
-              <Link to={to} className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark">
-                {it.image ? <img src={it.image} alt={it.name} className="w-full h-full object-contain p-2" />
-                  : <Icon size={28} className="text-gray-300" />}
+            <div key={`${it.type}-${it.id}`} className="mosaic-tile group flex flex-col">
+              <Link to={to}
+                className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset">
+                {it.image ? <img src={it.image} alt={it.name} className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300" />
+                  : <Icon size={28} className="text-platinum" />}
               </Link>
               <div className="p-3 flex flex-col gap-1 flex-1">
-                <Link to={to}><h3 className="text-sm leading-tight text-ink line-clamp-2">{it.name}</h3></Link>
-                {it.code && <p className="text-[11px] text-ink-50 font-mono">{it.code}</p>}
+                <Link to={to}><h3 className="text-sm leading-tight text-ink line-clamp-2 hover:text-brand-600">{it.name}</h3></Link>
+                {it.code && <p className="text-xs text-ink-50 font-mono">{it.code}</p>}
                 <div className="mt-auto pt-2 flex items-center gap-2">
                   {inCart ? (
-                    <span className="text-xs px-2 py-1 rounded border border-ivory-dark text-ink-40">In enquiry</span>
+                    <span className="text-xs px-2 py-1 rounded-none border border-ivory-dark text-ink-40">In enquiry</span>
                   ) : it.type === 'figurine' ? (
                     <Link to={to}
-                      className="text-xs px-2 py-1 rounded border border-brand-500 text-brand-600 hover:bg-brand-50">
+                      className="text-xs px-2 py-1 rounded-none border border-brand-500 text-brand-600 hover:bg-brand-50">
                       Select options
                     </Link>
                   ) : (
                     <button onClick={() => cart?.add(it)}
-                      className="text-xs px-2 py-1 rounded border border-brand-500 text-brand-600 hover:bg-brand-50">
+                      className="text-xs px-2 py-1 rounded-none border border-brand-500 text-brand-600 hover:bg-brand-50">
                       Add to enquiry
                     </button>
                   )}
