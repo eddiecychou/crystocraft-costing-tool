@@ -1,5 +1,9 @@
 import { Document, Page, View, Text, Image, Font, StyleSheet, Svg, Defs, LinearGradient, Stop, Rect } from '@react-pdf/renderer'
 import logoUrl from '../assets/logo.png'
+// The base logo is a black glyph on transparency — invisible on the dark
+// cover and the dark brief page. logo-reversed.png is the same alpha mask
+// recoloured white, for dark surfaces only.
+import logoReversedUrl from '../assets/logo-reversed.png'
 import QuestrialRegular from '../assets/fonts/Questrial-Regular.ttf'
 import WorkSansRegular  from '../assets/fonts/WorkSans-Regular.ttf'
 import WorkSansMedium   from '../assets/fonts/WorkSans-Medium.ttf'
@@ -115,6 +119,16 @@ const s = StyleSheet.create({
   // all the pages"). Every section page is exactly one row of ≤3 items now,
   // so there is no wrap risk in decoupling heading from content.
   contentFill: { flexGrow: 1, justifyContent: 'center', paddingBottom: 14 },
+
+  // ── Brief page — a statement, not a stray paragraph on a white field.
+  // Head (accent rule + kicker), body (the brief, large, generous measure),
+  // foot (a hairline + "prepared for"), all centred as one block. ──
+  briefWrap: { flexGrow: 1, justifyContent: 'center', maxWidth: 660 },
+  briefRule: { width: 40, height: 2, marginBottom: 14 },
+  briefKicker: { fontFamily: 'Work Sans', fontWeight: 600, fontSize: 10, letterSpacing: 2.4, textTransform: 'uppercase', marginBottom: 18 },
+  briefBody: { fontSize: 17, lineHeight: 1.7, color: DS_COLORS.nearBlack },
+  briefFootDivider: { borderTopWidth: 0.8, borderTopColor: DS_COLORS.warmGrey, marginTop: 30, paddingTop: 12, maxWidth: 320 },
+  briefFootText: { fontFamily: 'Work Sans', fontSize: 8.5, letterSpacing: 0.6, textTransform: 'uppercase', color: DS_COLORS.midGrey },
 
   // ── Product card — image, name, ONE caption line, optional tag. No specs/
   // MOQ/supplier/lead time anywhere on these pages, per the brief. ──
@@ -402,7 +416,7 @@ export default function BrandProposalPDF({ client, hero, tagline, briefing, sect
           <Rect x="0" y="0" width={PAGE[0]} height={PAGE[1]} fill="url(#coverScrim)" />
         </Svg>
         <View style={s.coverContent}>
-          <Image style={s.coverLogo} src={logoUrl} />
+          <Image style={s.coverLogo} src={logoReversedUrl} />
           <View>
             <Text style={s.coverEyebrow}>Brand Proposal</Text>
             <Text style={s.coverTitle}>{clientName || 'Prepared for you'}</Text>
@@ -425,9 +439,17 @@ export default function BrandProposalPDF({ client, hero, tagline, briefing, sect
           filler page. */}
       {briefing ? (
         <Page size={PAGE} style={s.page}>
-          <View style={{ flex: 1, justifyContent: 'center', maxWidth: 620 }}>
-            <Text style={s.sectionEyebrow}>The Brief</Text>
-            <Text style={{ fontSize: 18, lineHeight: 1.6, color: DS_COLORS.nearBlack }}>{briefing}</Text>
+          <View style={s.briefWrap}>
+            <View style={[s.briefRule, { backgroundColor: accent }]} />
+            <Text style={[s.briefKicker, { color: accent }]}>The Brief</Text>
+            <Text style={s.briefBody}>{briefing}</Text>
+            {(clientName || client?.date) ? (
+              <View style={s.briefFootDivider}>
+                <Text style={s.briefFootText}>
+                  {clientName ? `Prepared for ${clientName}` : 'Prepared'}{client?.date ? ` · ${client.date}` : ''}
+                </Text>
+              </View>
+            ) : null}
           </View>
           <Footer />
         </Page>
