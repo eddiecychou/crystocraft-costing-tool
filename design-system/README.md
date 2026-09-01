@@ -5,8 +5,8 @@ last:
 
 | Folder | What it is |
 |---|---|
-| `2026-V2/` | The "2026 V2" export — tokens, component specs, guidelines, templates. |
-| `V2.5/` | The V2.5 export — same shape as 2026-V2 plus a few extras (`thumbnail.html`, a composition guideline card, a `templates/proposal` set). The palette/typography/spacing values in `tailwind.config.js` and `src/index.css` were hand-copied from **this** bundle's `tokens/*.css`. |
+| `v2-2026/` | The "2026 V2" export — tokens, component specs, guidelines, templates. |
+| `v2.5/` | The V2.5 export — same shape as v2-2026 plus a few extras (`thumbnail.html`, a composition guideline card, a `templates/proposal` set). The palette/typography/spacing values in `tailwind.config.js` and `src/index.css` were hand-copied from **this** bundle's `tokens/*.css`. |
 
 > **Binaries are not tracked.** The `assets/logos/`, `uploads/`, `screenshots/`
 > and `.thumbnail` files are gitignored — they're duplicates of the real logo

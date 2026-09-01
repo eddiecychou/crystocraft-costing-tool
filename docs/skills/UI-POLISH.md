@@ -20,8 +20,8 @@
 **Authoritative token source:** `tailwind.config.js` (`theme.extend`) +
 `src/index.css` (`@layer base` / `@layer components`). Nothing else.
 
-- The exported bundles under `design-system/` (`design-system/V2.5/`,
-  `design-system/2026-V2/`) are **reference material** — the app does **not**
+- The exported bundles under `design-system/` (`design-system/v2.5/`,
+  `design-system/v2-2026/`) are **reference material** — the app does **not**
   import their `tokens/*.css`. `src/index.css`'s own comment says the values
   are hand-copied in "so tokens don't depend on a dev-server restart."
   **MUST NOT** tell anyone to "use the tokens in `colors.css`/`spacing.css`"

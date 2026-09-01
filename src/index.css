@@ -90,10 +90,9 @@
   .btn-danger {
     @apply btn bg-red-800 text-white hover:bg-red-900 focus:ring-red-500;
   }
-  /* V2.5 — variants beyond primary/secondary/danger, first needed for the
-     customer-portal design-system pass (a hero CTA sitting on a photo needs
-     a treatment that reads on a dark background, which primary's solid
-     burgundy doesn't guarantee against every photo). */
+  /* V2.5 — quiet variants beyond primary/secondary/danger, for a CTA that
+     needs less weight than solid burgundy. `.btn-outline-gold` was dropped
+     V3: 0 call sites and gold text (#C6A664, 2.3:1) fails contrast anyway. */
   .btn-ghost {
     @apply btn bg-transparent text-ink hover:bg-ink/5 focus:ring-brand-500;
   }
@@ -101,11 +100,6 @@
     @apply btn bg-transparent border hover:bg-ink/5 focus:ring-brand-500;
     color: #222222;
     border-color: #222222;
-  }
-  .btn-outline-gold {
-    @apply btn bg-transparent border hover:bg-gold/10 focus:ring-gold;
-    color: #C6A664;
-    border-color: #C6A664;
   }
   /* For a dark/photo background — inverted from secondary, same hairline posture. */
   .btn-reversed {

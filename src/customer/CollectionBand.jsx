@@ -35,7 +35,7 @@ export default function CollectionBand({ catalogue, products, active, onApply })
             const shadow = c.title_color === 'black' ? 'none' : '0 1px 3px rgba(0,0,0,0.55)'
             return (
               <button key={c.id} onClick={() => onApply(c)}
-                      className={`group relative aspect-square rounded-none overflow-hidden text-left transition-shadow hover:shadow-lg ${on ? 'ring-2 ring-inset ring-ink' : ''}`}>
+                      className={`group relative aspect-square rounded-none overflow-hidden text-left ${on ? 'ring-2 ring-inset ring-ink' : ''}`}>
                 <img src={c.custom_url} alt="" loading="lazy"
                      className="block w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
                 <div className="absolute inset-x-0 bottom-0 px-2.5 py-2"
@@ -50,11 +50,11 @@ export default function CollectionBand({ catalogue, products, active, onApply })
           // Templated tile: accent background, product image centred, label overlay at bottom
           return (
             <button key={c.id} onClick={() => onApply(c)}
-                    className={`group relative aspect-square rounded-none overflow-hidden text-left transition-shadow hover:shadow-md ${on ? 'ring-2 ring-inset ring-ink' : ''}`}
+                    className={`group relative aspect-square rounded-none overflow-hidden text-left ${on ? 'ring-2 ring-inset ring-ink' : ''}`}
                     style={{ background: ac.tile }}>
               <div className="w-full h-full flex items-center justify-center pb-7">
                 {image
-                  ? <img src={image} alt="" className="w-[72%] h-[72%] object-contain" loading="lazy" />
+                  ? <img src={image} alt="" className="w-[72%] h-[72%] object-contain transition-transform duration-300 group-hover:scale-105" loading="lazy" />
                   : <span className="text-2xl font-medium" style={{ color: ac.ink }}>{(c.title || '?').slice(0, 1)}</span>}
               </div>
               <div className="absolute inset-x-0 bottom-0 px-2.5 py-2" style={{ background: ac.tile }}>

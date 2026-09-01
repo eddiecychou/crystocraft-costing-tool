@@ -3,7 +3,7 @@
 > The written spec of the Crystocraft Design System **as it exists in code today**,
 > extracted from `tailwind.config.js` + `src/index.css`. This is the baseline any
 > V3 work starts from. `UI-POLISH.md` is the *how to apply it* companion; this is
-> *what it is*. The bundles in `design-system/V2.5/` and `design-system/2026-V2/`
+> *what it is*. The bundles in `design-system/v2.5/` and `design-system/v2-2026/`
 > are visual reference only — the app imports nothing from them.
 >
 > **SSOT:** `tailwind.config.js` (`theme.extend`) + `src/index.css`
@@ -19,17 +19,15 @@
 | Token | Values | What it is FOR | Notes |
 |---|---|---|---|
 | `brand-*` | 50 `#f5f0f1` · 100 `#f0e3e6` · 200 `#e2c2c9` · 300 `#cc94a0` · 400 `#a8556a` · **500 `#8b3347`** · **600 `#6e2433`** · 700 `#5b1c29` · 800 `#501829` · 900 `#380f1a` | The single accent — burgundy / garnet (Bespoke division). `600` = primary actions, active states, links. `500` = focus ring, hover text. `50/100` = tint backgrounds. | The **only** accent used for interaction. |
-| `ink` | **DEFAULT `#222`** · 95 `#2E2E2C` · 80 `#4A4A47` · **70 `#585853`** · **60 `#666`** | Text + dark surfaces. `DEFAULT` = headings / primary text / dark nav. `80` = strong secondary. `70` = mid secondary (added V3, AA 6.2:1 on beige). `60` = body copy / **lightest AA-safe grey — the floor**. | **Ramp resolved (V3, 2026-09-02).** `70` added; dead `text-ink-30/40/50` codemodded to `-60`, `text-ink-90` → `text-ink`, dead `border-ink-10/30` → `border-warm-grey`/`border-ink-60`. `ink-95` + `graphite` remain defined but unused. |
+| `ink` | **DEFAULT `#222`** · 80 `#4A4A47` · **70 `#585853`** · **60 `#666`** | Text + dark surfaces. `DEFAULT` = headings / primary text / dark nav. `80` = strong secondary. `70` = mid secondary (V3, AA 6.2:1 on beige). `60` = body copy / **lightest AA-safe grey — the floor**. | **Ramp resolved (V3).** `70` added, dead `ink-30/40/50/90` + `border-ink-10/30` codemodded to real tokens; `ink-95` and `graphite` (dead) removed. |
 | `ivory` / `beige` | ivory.DEFAULT = beige = `#F7EEE3` · ivory.dark `#EFE6D8` · ivory.mid `#F2EAE0` | Warm app background. `ivory.dark` = subtle inset / thumbnail wells / hover tint on white. | `beige` and `ivory.DEFAULT` are the same value — two names, back-compat. |
 | `warm-grey` | `#E9E8E6` | Hairline borders, dividers, `.card` border. **The** line colour. | ~7% off beige → the intended "soft edge". |
-| `bronze` | DEFAULT `#996632` · light `#B3824A` · dark `#7A4F26` | Gifts-division accent. Eyebrow kickers on some storefront pages, feature accent rules. | `#996632` on beige = **4.25:1 — fails AA for small text** (§3). |
-| `gold` (champagne) | DEFAULT `#C6A664` · light `#D4BB82` · dark `#A88D4F` | Metallic-fill accent — foil, the facet-divider diamond, `.btn-outline-gold`. | **Fill only — never text** (`#C6A664` = 2.0:1). |
+| `bronze` | DEFAULT `#8A5B2C` (V3, was `#996632`) · light `#B3824A` · dark `#7A4F26` | Gifts-division accent. `.eyebrow` kickers, feature accent rules. | Darkened V3 so small `text-bronze` clears AA on beige (5.1:1). `light` = fill only. |
+| `gold` (champagne) | DEFAULT `#C6A664` · light `#D4BB82` · dark `#A88D4F` | Metallic-fill accent — foil, the facet-divider diamond. | **Fill only — never text** (`#C6A664` = 2.0:1). |
 | `sapphire` | DEFAULT `#1C4F64` · light `#2A6A84` · dark `#163B4B` | Crystals-division accent. "from stock" notes, division theming. | Passes AA as text. |
 | `platinum` | `#C9CBCC` | Placeholder / empty-icon grey (`<Gem>` / `<Package>` fallbacks). | Decorative only (1.4:1). |
-| `graphite` | `#666` | Alias of `ink-60`. Rarely used. | Candidate for removal in V3. |
 
-**Not in the config, used anyway (drift):** `gray-*` (2100+ call sites, mostly
-OpsCenter — should be `ink-*` / `warm-grey`), and the semantic status set
+**Not in the config, used anyway:** the semantic status set
 `amber-* / emerald-* / purple-* / sky-* / red-*` (~450 sites) which are
 **deliberate** for status (badges, warnings, destructive) and have no brand
 equivalent — keep, but only for status.
@@ -91,7 +89,7 @@ dropdown) or a deliberate hover-lift, never a resting surface.
 
 **Square by default.** `.btn` / `.card` / `.badge` = `rounded-none`. `.input` =
 `rounded-sm` (2px). `.tag` = `rounded-full` (it's a chip). Nothing else rounds.
-`rounded-md/lg/xl` in JSX (340+ sites, OpsCenter) is **drift**.
+`rounded-md/lg/xl` in JSX was ~570-site drift — codemodded to `rounded-none` (V3, §4.1).
 
 ---
 
@@ -113,13 +111,13 @@ text-sm uppercase`, Work Sans 500, `letter-spacing 0.1em`, `transition-colors`,
 | `.btn-danger` | `bg-red-800 text-white` | `bg-red-900` | `red-500` | opacity-40 | ~10 |
 | `.btn-ghost` | transparent, `text-ink` | `bg-ink/5` | `brand-500` | opacity-40 | 0 |
 | `.btn-outline` | transparent, `#222` text + border | `bg-ink/5` | `brand-500` | opacity-40 | 0 |
-| `.btn-outline-gold` | transparent, `#C6A664` text + border | `bg-gold/10` | `gold` | opacity-40 | 0 |
 | `.btn-reversed` | `bg-white text-ink` (for photos/dark) | `bg-white/90` | `white` | opacity-40 | ~2 |
 
 - **`:active`** (V3) — `.btn` base has `active:brightness-95` (a subtle press
   darken, uniform across every variant); disabled buttons opt out.
-- `.btn-ghost` / `.btn-outline` / `.btn-outline-gold` have **zero call sites** —
-  added for a storefront pass, never adopted. V3: adopt or drop.
+- `.btn-ghost` / `.btn-outline` have **zero call sites** — kept as generic
+  quiet-CTA options. `.btn-outline-gold` was removed V3 (0 sites + gold text
+  fails contrast).
 - **One primary per view** (UI-POLISH §4.2).
 
 ### 2.2 Form — `.input`
@@ -290,9 +288,11 @@ None of these are "apply now" — they're the deltas a V3 would deliberately cho
 | **Section rhythm** | storefront `py-12 md:py-16` | larger band (`py-20`/`py-24`) for landing-style pages only | VISUAL-REFINEMENT §3 |
 | **Portal nav material** | flat opaque `bg-ink` (top strip + bottom bar) | `backdrop-blur` glass nav | VISUAL-REFINEMENT §4 |
 | ~~**Button `:active`**~~ | ~~none~~ | **DONE** — `.btn` base `active:brightness-95` | DESIGN-SYSTEM-AUDIT §2 |
+| ~~**`.btn-ghost/outline/outline-gold`**~~ | ~~0 sites~~ | **DONE** — `-gold` removed; `ghost`/`outline` kept as generic quiet-CTA | §4.2 |
+| ~~**`ink-95` / `graphite` dead tokens**~~ | ~~0 sites~~ | **DONE** — removed from config | §4.2 |
 | ~~**`.input` states**~~ | ~~resting + focus only~~ | **DONE** — `:disabled` (beige/ink-60) + `[aria-invalid="true"]` (red border). No success style. | DESIGN-SYSTEM-AUDIT §2 |
-| **OpsCenter refactor** | colour + radius + `text-[Npx]` + stray hover-shadows DONE (§4.1); resting `shadow-lg/xl` confirmed legit. Only `font-bold`/`font-semibold` on ~194 headings left | that's an owner call, not a codemod | §4.1 |
-| **Bundle naming** | `design-system/V2.5` vs `/2026-V2` | normalise (`v2.5` / `v2-2026` / `v3`) | housekeeping |
+| **`font-bold`/`font-semibold` on ~194 headings** | overrides the base weight-400 | owner call: weight-400 "wordmark echo" vs table scannability. Not codemodded. | §4.1 |
+| ~~**Bundle naming**~~ | ~~`V2.5` / `2026-V2`~~ | **DONE** — `design-system/v2.5/` + `/v2-2026/` | housekeeping |
 
 ## Change Log
 
@@ -304,3 +304,4 @@ None of these are "apply now" — they're the deltas a V3 would deliberately cho
 | 2026-09-02 | V3 — **OpsCenter radius refactor**: ~576 `rounded`/`rounded-md/lg/xl/2xl` → `rounded-none` across 96 files (form controls → `rounded-sm`); `rounded-full` + 6 directional corners kept. Then **`text-[Npx]` refactor**: added the `text-2xs` (11px) tier; ~350 `text-[8..12px]` sites across 69 files mapped onto the scale. Bundle + lint clean; not visually verified (login-gated). |
 | 2026-09-02 | V3 — **OpsCenter shadow check**: resting `shadow-lg/xl/2xl` (~52) confirmed all on modals/dropdowns (legit per the flat posture); 5 stray `.card hover:shadow-md` lifts → `hover:bg-ivory`. `hover:scale`/`translate` already gone. OpsCenter mechanical refactor complete bar the `font-bold`/`font-semibold`-on-headings owner call. |
 | 2026-09-02 | V3 — **component-layer hardening**: `bronze` DEFAULT `#996632`→`#8A5B2C` (the `.eyebrow text-bronze` kicker clears AA on beige now, ×12); `.btn` gains `active:brightness-95`; `.input` gains `:disabled` (beige / `ink-60`) and `[aria-invalid="true"]` (red-700 border) states; new opt-in `.display` class (`0.015em` tracking + `1.05` leading) for `text-3xl`+ titles — the external "negative heading tracking" idea rejected (uppercase system). Storefront-verified (bronze eyebrow); bundle + lint clean. |
+| 2026-09-02 | V3 — **cleanup**: removed dead tokens (`ink-95`, `graphite`) and `.btn-outline-gold` (0 sites, gold text fails AA); `CollectionBand` tiles drop the stacked `hover:shadow-*` (image-scale is the signal); design-system bundles renamed lowercase `v2.5/` + `v2-2026/`. |

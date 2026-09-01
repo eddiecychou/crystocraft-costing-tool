@@ -20,7 +20,6 @@ export default {
         // Foundation palette — Crystocraft Design System 2026 V2
         ink: {
           DEFAULT: '#222222',  // near-black — primary text, headings, dark sections
-          95:      '#2E2E2C',
           80:      '#4A4A47',  // strong secondary
           70:      '#585853',  // mid secondary — AA on beige (6.2:1). Added V3.
           60:      '#666666',  // mid-grey — body copy / lightest AA-safe grey
@@ -53,7 +52,6 @@ export default {
           light:   '#2A6A84',
           dark:    '#163B4B',
         },
-        graphite: '#666666',
         platinum: '#C9CBCC',
       },
       fontFamily: {
