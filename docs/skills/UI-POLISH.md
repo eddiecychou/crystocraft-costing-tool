@@ -46,6 +46,8 @@ These are facts from `index.css` — match them, don't reinvent them:
 | **Buttons** | Work Sans, uppercase, `letter-spacing: 0.1em`, square. Primary = solid `brand-600` burgundy. One primary per view. | `.btn-primary` + the ghost/outline/reversed variants |
 | **Palette** | App bg **beige** `#F7EEE3`; text **near-black** `#222`; body/secondary **mid-grey** `#666`; accent **burgundy** `brand-600 #6E2433`. Division accents: bronze/champagne (Gifts), sapphire (Crystals). | config `colors` |
 | **Storefront grids** | Product grids use `.mosaic-grid` + `.mosaic-tile` (edge-to-edge tiles, 1px beige gap reads as a hairline) — **not** `.card` with gutters. | `.mosaic-*` |
+| **Quiet section headings** | A subordinate heading (e.g. "Brand Assets" below a hero proposal, "Sales Invoice History" behind a collapse toggle) is **not** `text-sm font-semibold` — that's an off-vocab weight nothing else uses. It's an `.eyebrow` (Work Sans caps, `text-bronze` or `text-ink-60`), still wrapped in a real `<h2>` for semantics. | `.eyebrow` |
+| **Panels/containers** | Any "card-like" wrapper (empty state, list panel, modal body) is `.card` — never a bespoke `bg-white rounded-xl border …`. `.card` already gives square corners + the hairline border; inventing the radius by hand is how `rounded-xl`/`rounded-md` sneaks back in. | `.card` |
 
 ## 3. Two surfaces, two treatments — do not mix them
 
@@ -114,6 +116,22 @@ report the before/after (§7a — an impression is not evidence). Check, in orde
    heading + the section below, scrolled 200px) → now proposal-aware: "View
    your proposal" when one exists, else "Browse the catalogue" → `/shop/figurine`
    — driven by a hook the page loads anyway, no new read.
+11. **Hand-rolled label → `.label`.** Grep the diff for
+   `font-label uppercase tracking-wide` — if it appears more than once in a
+   file, it's `.label` reinvented every time (FigurineDetail had it **4×**:
+   plating/colour/quantity/gallery). Collapse to the class; it already sets
+   the weight, tracking and colour, so only the `mb-*` needs to stay explicit.
+12. **A `<div onClick>` that is the primary way to open something is a
+   keyboard trap.** If there's no sibling `<a>`/`<button>` doing the same
+   thing, add `role="button"`, `tabIndex={0}`, an Enter/Space `onKeyDown`,
+   and a `focus-visible:ring`. Worked example: OrderHistoryPage's invoice
+   rows opened a new tab on click only — a keyboard user could see them but
+   never activate one.
+13. **Dead-end empty state → one link out.** "No X yet" with nothing to do
+   next reads as broken, not calm. Every empty state gets a link back into
+   the catalogue (or wherever the content would come from), not just a
+   sentence. Checked across Enquiry/Favourites/OrderHistory/SwatchLibrary —
+   several had the sentence but no exit.
 
 **Report format** for a polish pass (per §7a): before/after screenshot (or the
 exact class deltas), the gap-consolidation ("was 4 distinct section spacings →
@@ -138,6 +156,34 @@ most admin routes need admin). To get a real before/after without a login:
 - **Gotchas:** the esbuild `file` loader dumps hashed asset copies next to the
   entry — gitignore `qa/*-????????.{jpg,png}`. Remote image hosts (picsum etc.)
   are blocked headless, so tiles render blank — judge *layout*, not the photo.
+- **The seeded page renders unstyled (serif type, blue links, no grid) even
+  though the build "succeeded."** esbuild's `.css` loader on `../src/index.css`
+  just **copies the raw `@tailwind base/components/utilities` directives** —
+  it does not run PostCSS/Tailwind. Fix: after the esbuild step, run the real
+  CLI over the same content glob, **overwriting the seeded css last**:
+  `node_modules/.bin/tailwindcss -i src/index.css -o qa/<name>-preview-seeded.css
+  --content "./src/**/*.{js,jsx}","./qa/<name>-preview.jsx"`. Order matters —
+  if the tailwindcss build runs before the esbuild step (or the esbuild step
+  is re-run after), esbuild clobbers it back to the raw file. A screenshot
+  that comes back suspiciously small/blank is usually this, not a real bug.
+- **Console errors from a `file://` tab, or a tab pinned to a local-file
+  preview that then refuses to `navigate()`.** Serve the `qa/` directory over
+  plain HTTP instead of opening the `.html` by path — `python3 -m http.server
+  5185 --directory .` (any free port), then `preview_start`/`navigate` to
+  `http://localhost:5185/qa/<name>-preview-seeded.html`. Kill the server when
+  done (`pkill -f "http.server 5185"`).
+- **Stubbing one data module surfaces a second, unrelated import to satisfy.**
+  `CustomerLayout` (used by every storefront harness) pulls in
+  `customerProposal`'s `hasBrandPortalContent` and `customerAssets`/
+  `customerProposal`'s `query`/`where`/`orderBy`/`limit` just to build the nav
+  — a stub for one module needs every export anything in the render tree
+  touches, not just the ones the page under test calls directly. Build once,
+  read the esbuild "No matching export" errors, add the missing export as a
+  trivial stub, rebuild — usually 1–2 more errors, not a rabbit hole.
+- **Before/after compare:** `git stash push -- <file>` → rebuild → screenshot
+  → `git stash pop` → rebuild again, so the working tree ends back on the new
+  version. Compose side-by-side with `render-service/.venv/bin/python` (PIL is
+  installed there) rather than eyeballing two separate files.
 
 ## 5. Corrections to the external draft (do NOT follow these as written)
 
@@ -164,3 +210,4 @@ shadow- rounded-`) → **state** (`hover: focus: disabled:`).
 |---|---|
 | 2026-09-01 | Created. Reconciles the external `EXPERT-UI-UX-RULES.md` draft against the shipped design system: SSOT is `tailwind.config.js` + `src/index.css` (§1); the square/flat/hairline Crystocraft language (§2); storefront-vs-OpsCenter split (§3); a measurable Second-Pass checklist (§4); and the draft's factual corrections (§5). |
 | 2026-09-01 | From the customer HomePage Second Pass: §4.6 gained the "one hover signal, no stacked motion" worked example; §4.9 (data-derived UI → single source + free data over a new read) and §4.10 (contextual CTA over generic) added; §3 gained the "one rhythm beats local optimisation" rule; new §4a — how to headlessly preview a login-gated storefront/admin page (`qa/home-preview.jsx` + `qa/home-preview-seeded.mjs` patterns). |
+| 2026-09-02 | From the FigurineShop → SwatchLibrary batch (FigurineShop, CorporateShop, CorporateDetail, FigurineDetail, BrandPortalPage, EnquiryPage, FavouritesPage, OrderHistoryPage, SwatchLibraryPage — all done): §2 gained two rows (quiet section headings → `.eyebrow`, not `font-semibold`; any card-like wrapper → `.card`, never a bespoke `rounded-xl`/`rounded-md` container); §4 gained #11 (repeated hand-rolled `.label` markup → the class), #12 (a `<div onClick>` with no button sibling needs `role="button"`/`tabIndex`/keydown/focus-ring), #13 (every empty state needs a link out, not just a sentence). §4a gained four harness gotchas: esbuild's `.css` loader doesn't run Tailwind (seeded page renders unstyled until the real `tailwindcss` CLI runs **after** esbuild, last); serve `qa/` over `python3 -m http.server` rather than opening the `.html` by `file://` path (pinned tabs refuse to navigate, and file:// pages can render as static snapshots); stubbing a data module for the page under test often needs extra exports for what `CustomerLayout`'s own nav-visibility checks pull in (`hasBrandPortalContent`, `query`/`where`/`orderBy`/`limit`) — build, read the "No matching export" error, add, repeat; and the stash→rebuild→shoot→pop→rebuild recipe for before/after pairs, composed with `render-service/.venv`'s PIL. |

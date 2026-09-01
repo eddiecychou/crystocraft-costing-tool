@@ -63,8 +63,8 @@ function SwatchThumb({ filename, alt }) {
     return () => { alive = false; if (objUrl) URL.revokeObjectURL(objUrl) }
   }, [filename, inView])
   return (
-    <div ref={ref} className="aspect-square bg-gray-100 rounded-md overflow-hidden flex items-center justify-center">
-      {url ? <img src={url} alt={alt} className="w-full h-full object-cover" /> : <Sparkles size={20} className="text-gray-300" />}
+    <div ref={ref} className="aspect-square bg-ivory rounded-none overflow-hidden flex items-center justify-center">
+      {url ? <img src={url} alt={alt} className="w-full h-full object-cover" /> : <Sparkles size={20} className="text-platinum" />}
     </div>
   )
 }
@@ -90,9 +90,9 @@ function SwatchCardCarousel({ name, entry }) {
   }
 
   return (
-    <div ref={ref} className="aspect-square bg-gray-100 relative overflow-hidden group">
-      {url ? <img src={url} alt={`${name} — ${current.style} on ${current.backfilm}`} className="w-full h-full object-cover" />
-        : <div className="w-full h-full flex items-center justify-center"><Sparkles size={20} className="text-gray-300" /></div>}
+    <div ref={ref} className="aspect-square bg-ivory relative overflow-hidden group">
+      {url ? <img src={url} alt={`${name} — ${current.style} on ${current.backfilm}`} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+        : <div className="w-full h-full flex items-center justify-center"><Sparkles size={20} className="text-platinum" /></div>}
       {photos.length > 1 && (
         <>
           <button type="button" onClick={e => step(-1, e)}
@@ -103,7 +103,7 @@ function SwatchCardCarousel({ name, entry }) {
             className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             <ChevronRight size={14} />
           </button>
-          <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-white bg-black/40 rounded-full px-1.5 py-0.5">
+          <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-xs text-white bg-black/40 rounded-full px-1.5 py-0.5">
             {i + 1}/{photos.length}
           </span>
         </>
@@ -145,12 +145,12 @@ function SwatchDetail({ name, entry, onClose }) {
 
         {styles.map(([style, backfilms]) => (
           <div key={style} className="mb-4">
-            <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-2">{STYLE_LABEL[style] || style}</p>
+            <p className="label mb-2">{STYLE_LABEL[style] || style}</p>
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {Object.entries(backfilms).map(([bf, slot]) => (
                 <div key={bf}>
                   <SwatchThumb filename={slot.file} alt={`${name} ${style} on ${bf}`} />
-                  <p className="text-[11px] text-ink-50 mt-1 text-center truncate">{bf}</p>
+                  <p className="text-xs text-ink-50 mt-1 text-center truncate">{bf}</p>
                 </div>
               ))}
             </div>
@@ -159,7 +159,7 @@ function SwatchDetail({ name, entry, onClose }) {
 
         {notes?.legacy_swarovski_refs?.length > 0 && (
           <div className="mb-4">
-            <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-1.5">Closest legacy Swarovski references</p>
+            <p className="label mb-1.5">Closest legacy Swarovski references</p>
             <div className="flex flex-wrap gap-1.5">
               {notes.legacy_swarovski_refs.map((v, i) => (
                 <span key={i} className="badge bg-brand-50 text-brand-700">{v}</span>
@@ -176,7 +176,7 @@ function SwatchDetail({ name, entry, onClose }) {
             </div>
           ) : (
             <>
-              <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-2">Request a physical sample</p>
+              <p className="label mb-2">Request a physical sample</p>
               {styles.length > 1 && (
                 <select className="input w-full mb-2 text-sm" value={pickedStyle || ''} onChange={e => setPickedStyle(e.target.value || null)}>
                   <option value="">Any crystal type</option>
@@ -218,13 +218,13 @@ export default function SwatchLibraryPage({ profile }) {
     <div>
       <div className="mb-2">
         <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">Materials</p>
-        <h1 className="text-2xl md:text-3xl text-ink flex items-center gap-2"><Sparkles size={20} className="text-brand-500" /> Swatch Library</h1>
+        <h1 className="text-2xl md:text-3xl text-ink">Swatch Library</h1>
         <p className="text-sm text-ink-60 mt-0.5">
           Real photographed crystal swatches — browse colours and crystal types, then request a physical sample.
         </p>
       </div>
 
-      {error && <div className="rounded-md bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 mb-4">{error}</div>}
+      {error && <div className="rounded-none bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 mb-4">{error}</div>}
 
       <div className="relative mb-5">
         <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-30" />
@@ -233,18 +233,21 @@ export default function SwatchLibraryPage({ profile }) {
       </div>
 
       {!registry && !error ? <LoadingBar /> : entries.length === 0 ? (
-        <div className="text-center py-20 text-ink-60">No swatches match.</div>
+        <div className="text-center py-16">
+          <p className="eyebrow text-ink-40 mb-1.5">No matches</p>
+          <p className="text-sm text-ink-60">No swatches match your search.</p>
+        </div>
       ) : (
         <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
           {entries.map(([name, entry]) => (
             <div key={name} role="button" tabIndex={0}
               onClick={() => setSelected([name, entry])}
               onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setSelected([name, entry]) } }}
-              className="mosaic-tile flex flex-col text-left hover:shadow-md transition-shadow cursor-pointer">
+              className="mosaic-tile group flex flex-col text-left cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset">
               <SwatchCardCarousel name={name} entry={entry} />
               <div className="p-2">
                 <p className="text-sm text-ink truncate">{name}</p>
-                <p className="text-[11px] text-ink-50">
+                <p className="text-xs text-ink-50">
                   {Object.entries(entry.slots || {}).filter(([, bf]) => Object.keys(bf).length).map(([s]) => STYLE_LABEL[s] || s).join(' · ')}
                 </p>
               </div>
