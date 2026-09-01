@@ -95,14 +95,14 @@ export default function PortalInvitations({ embedded = false }) {
                 <div className="min-w-0">
                   <p className="text-sm font-medium text-ink flex items-center gap-1.5">
                     {inv.contact_name || inv.contact_email}
-                    <span className={`text-[10px] uppercase tracking-wide rounded-none px-1 py-0.5 ${srcStyle.cls}`}>{srcStyle.label}</span>
+                    <span className={`text-2xs uppercase tracking-wide rounded-none px-1 py-0.5 ${srcStyle.cls}`}>{srcStyle.label}</span>
                   </p>
                   <p className="text-xs text-ink-60">
                     {inv.contact_email} · {company || (inv.source === 'self'
                       ? `Applicant typed "${inv.applicant_company_name || '—'}" — no customer linked yet`
                       : '—')}
                   </p>
-                  <p className="text-[11px] text-ink-60 mt-0.5">
+                  <p className="text-2xs text-ink-60 mt-0.5">
                     {inv.source === 'self' ? 'Applied' : 'Invited'} {fmtDate(inv.created_at)}{inv.source === 'admin' && ` by ${inv.created_by || '—'}`}
                     {inv.claimed_at && inv.source === 'admin' && ` · Claimed ${fmtDate(inv.claimed_at)}`}
                     {inv.approved_at && ` · Approved ${fmtDate(inv.approved_at)}`}
@@ -112,7 +112,7 @@ export default function PortalInvitations({ embedded = false }) {
                   </p>
                   {needsCustomerLink && (
                     <div className="mt-2 max-w-xs">
-                      <label className="text-[11px] text-ink-60 mb-1 flex items-center gap-1"><UserPlus size={11} /> Link to a customer before approving</label>
+                      <label className="text-2xs text-ink-60 mb-1 flex items-center gap-1"><UserPlus size={11} /> Link to a customer before approving</label>
                       <CustomerPicker
                         customers={customers}
                         value={pickedCustomerId}

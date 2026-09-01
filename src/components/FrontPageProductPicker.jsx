@@ -141,7 +141,7 @@ export default function FrontPageProductPicker({ onSelect, onClose }) {
                     <p className="text-sm text-ink truncate">{p.name}</p>
                     <p className="text-xs text-ink-60 truncate">{p.cat}</p>
                   </div>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-none uppercase tracking-wide shrink-0 ${p.type === 'range' ? 'bg-brand-50 text-brand-700' : 'bg-sapphire/10 text-sapphire'}`}>
+                  <span className={`text-2xs px-1.5 py-0.5 rounded-none uppercase tracking-wide shrink-0 ${p.type === 'range' ? 'bg-brand-50 text-brand-700' : 'bg-sapphire/10 text-sapphire'}`}>
                     {p.type === 'range' ? 'Figurine' : 'Corporate'}
                   </span>
                 </button>

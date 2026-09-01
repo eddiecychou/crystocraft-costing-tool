@@ -298,17 +298,17 @@ function ComparisonMatrix({ quotes, scenarios }) {
                         <div className={`rounded-none px-3 py-2 ${isBest ? 'bg-green-50 border border-green-200' : 'bg-ivory'}`}>
                           <div className={`font-semibold ${isBest ? 'text-green-700' : 'text-ink'}`}>
                             {fmt(q.quoted_total, q.currency)}
-                            {isBest && <span className="ml-1 text-[10px] text-green-600">★ cheapest</span>}
+                            {isBest && <span className="ml-1 text-2xs text-green-600">★ cheapest</span>}
                           </div>
                           {/* Normalised comparison value, shown alongside the
                               original — the number this column is actually
                               ranked by (bug-fix pack B-05). */}
                           {q.currency !== 'HKD' && (
                             total != null
-                              ? <div className="text-[10px] text-ink-60">≈ {fmt(total, 'HKD')}</div>
-                              : needsRate && <div className="text-[10px] text-amber-600">no HKD rate — excluded from ranking</div>
+                              ? <div className="text-2xs text-ink-60">≈ {fmt(total, 'HKD')}</div>
+                              : needsRate && <div className="text-2xs text-amber-600">no HKD rate — excluded from ranking</div>
                           )}
-                          <div className="text-[10px] text-ink-60 mt-0.5 space-x-1.5">
+                          <div className="text-2xs text-ink-60 mt-0.5 space-x-1.5">
                             <span>{modeLabel(q.mode)}</span>
                             {q.transit_days ? <span>· {q.transit_days}d</span> : null}
                             {q.cargo_basis?.cbm ? <span>· {q.cargo_basis.cbm} CBM</span> : null}
@@ -342,12 +342,12 @@ function QuoteRow({ quote, scenarios, onDelete, onToggleChosen }) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-medium text-ink">{quote.vendor_name || '—'}</span>
             {quote.is_chosen && (
-              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-none bg-green-100 text-green-700 font-medium">
+              <span className="inline-flex items-center gap-1 text-2xs px-1.5 py-0.5 rounded-none bg-green-100 text-green-700 font-medium">
                 <CheckCircle2 size={10} /> Chosen
               </span>
             )}
-            {sc && <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-blue-50 text-blue-600 border border-blue-100">{sc.label}</span>}
-            {!quote.scenario_id && <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-ivory-dark text-ink-60">Unlinked</span>}
+            {sc && <span className="text-2xs px-1.5 py-0.5 rounded-none bg-blue-50 text-blue-600 border border-blue-100">{sc.label}</span>}
+            {!quote.scenario_id && <span className="text-2xs px-1.5 py-0.5 rounded-none bg-ivory-dark text-ink-60">Unlinked</span>}
             <span className="text-xs text-ink-60">{modeLabel(quote.mode)}</span>
             <span className="text-xs text-ink-60">{quote.incoterm}</span>
           </div>

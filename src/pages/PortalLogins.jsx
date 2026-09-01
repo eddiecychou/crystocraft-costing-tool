@@ -222,7 +222,7 @@ export default function PortalLogins({ embedded = false }) {
                 <p className="text-xs text-ink-60">Busiest day, last 30 days</p>
               </div>
             </div>
-            <p className="text-[11px] text-ink-60 mt-3 pt-2 border-t border-ivory-dark">
+            <p className="text-2xs text-ink-60 mt-3 pt-2 border-t border-ivory-dark">
               These totals are every visitor to the whole site — staff included, not matched to any account.
               The "GA sessions (30d)" column in the table below IS matched per account, via a Firebase-uid
               tag added 2026-08-27 — use these totals to sanity-check the overall trend, the column for a
@@ -255,7 +255,7 @@ export default function PortalLogins({ embedded = false }) {
         ].map(([label, n, cls]) => (
           <div key={label} className="min-w-[92px]">
             <div className={`text-lg font-semibold ${cls}`}>{n}</div>
-            <div className="text-[11px] text-ink-60 uppercase tracking-wide">{label}</div>
+            <div className="text-2xs text-ink-60 uppercase tracking-wide">{label}</div>
           </div>
         ))}
       </div>
@@ -306,9 +306,9 @@ export default function PortalLogins({ embedded = false }) {
                   <tr key={u.id} className="border-b border-ivory last:border-0 hover:bg-ivory/40">
                     <td className="px-3 py-2.5">
                       <div className="text-ink">{u.name || u.email || u.id}</div>
-                      {u.name && u.email && <div className="text-[11px] text-ink-60">{u.email}</div>}
+                      {u.name && u.email && <div className="text-2xs text-ink-60">{u.email}</div>}
                       {roleGroupOf(u) === 'internal' && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-ivory-dark text-ink-60 uppercase tracking-wide">
+                        <span className="text-2xs px-1.5 py-0.5 rounded-none bg-ivory-dark text-ink-60 uppercase tracking-wide">
                           {u.role === 'admin' || u.role === 'production' ? u.role : 'internal'}
                         </span>
                       )}
@@ -326,7 +326,7 @@ export default function PortalLogins({ embedded = false }) {
                       {ga ? <span className="text-ink-70">{ga.sessions}</span> : <span className="text-ink-60">—</span>}
                     </td>
                     <td className="px-3 py-2.5">
-                      <span className={`text-[11px] px-1.5 py-0.5 rounded-none ${STATUS_STYLE[status]}`}>{status}</span>
+                      <span className={`text-2xs px-1.5 py-0.5 rounded-none ${STATUS_STYLE[status]}`}>{status}</span>
                     </td>
                     <td className="px-3 py-2.5 text-right">
                       <Link to={`/portal/accounts/${u.id}`} className="text-ink-60 hover:text-brand-600 inline-flex">
@@ -341,7 +341,7 @@ export default function PortalLogins({ embedded = false }) {
         </div>
       </div>
 
-      <p className="text-[11px] text-ink-60 mt-2">
+      <p className="text-2xs text-ink-60 mt-2">
         "Sign-ins" comes from each account's own record, updated on sign-in — so this is the last time someone
         signed in, not a history of every visit. "GA sessions" is a real per-account match from Google Analytics,
         but only counts from 2026-08-27 onward (when session tagging shipped) — a "—" there can mean either no

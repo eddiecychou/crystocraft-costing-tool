@@ -26,7 +26,7 @@ function AssetThumb({ asset, className = '' }) {
     return (
       <div className={`flex flex-col items-center justify-center gap-1 text-white/80 ${className}`}>
         <FileText size={28} strokeWidth={1.5} />
-        <span className="text-[10px] font-medium">{extOf(asset.filename)}</span>
+        <span className="text-2xs font-medium">{extOf(asset.filename)}</span>
       </div>
     )
   }
@@ -193,7 +193,7 @@ export default function CustomerBrandGallery({ customerId }) {
                         {img.product_name || 'Untitled product'} <ExternalLink size={10} className="text-platinum group-hover:text-brand-500 shrink-0" />
                       </Link>
                       <div className="flex items-center justify-between mt-1">
-                        <span className={`inline-block text-[10px] px-1.5 py-0.5 rounded-full font-medium ${visMeta?.cls || 'bg-warm-grey text-ink-70'}`}>
+                        <span className={`inline-block text-2xs px-1.5 py-0.5 rounded-full font-medium ${visMeta?.cls || 'bg-warm-grey text-ink-70'}`}>
                           {visMeta?.short || vis}
                         </span>
                         <a href={downloadUrl(img.file_url, `${img.product_name || 'product'}.jpg`)}
@@ -207,7 +207,7 @@ export default function CustomerBrandGallery({ customerId }) {
               })}
             </div>
           )}
-          <p className="text-[11px] text-ink-60 mt-2">
+          <p className="text-2xs text-ink-60 mt-2">
             Visibility and tagging for these are managed on the product itself, not here.
           </p>
           <h3 className="text-xs font-semibold text-ink-60 uppercase tracking-wide mb-2 mt-5">Additional Photos</h3>
@@ -242,7 +242,7 @@ export default function CustomerBrandGallery({ customerId }) {
           {grouped.map(([type, list]) => (
             <div key={type}>
               {grouped.length > 1 && (
-                <h4 className="text-[11px] font-semibold text-ink-60 uppercase tracking-wide mb-2">
+                <h4 className="text-2xs font-semibold text-ink-60 uppercase tracking-wide mb-2">
                   {TYPE_LABEL[type]} ({list.length})
                 </h4>
               )}
@@ -262,12 +262,12 @@ export default function CustomerBrandGallery({ customerId }) {
                       <div className="px-2 pb-2">
                         <div className="flex items-center justify-between gap-1 mt-1 flex-wrap">
                           <div className="flex items-center gap-1 flex-wrap">
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory-dark text-ink-60">{TYPE_LABEL[a.type]} · {extOf(a.filename)}</span>
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5 ${vb.cls}`}>
+                            <span className="text-2xs px-1.5 py-0.5 rounded-full bg-ivory-dark text-ink-60">{TYPE_LABEL[a.type]} · {extOf(a.filename)}</span>
+                            <span className={`text-2xs px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5 ${vb.cls}`}>
                               <vb.Icon size={9} />{VISIBILITY_LABEL[a.visibility]}
                             </span>
                             {usableInMarketing(a) && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 inline-flex items-center gap-0.5">
+                              <span className="text-2xs px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-600 inline-flex items-center gap-0.5">
                                 <Megaphone size={9} />OK
                               </span>
                             )}
@@ -343,7 +343,7 @@ function AssetDrawer({ customerId, asset, onClose }) {
           <div className="rounded-none bg-ivory-dark border border-warm-grey aspect-video flex items-center justify-center overflow-hidden">
             <AssetThumb asset={asset} className="max-w-full max-h-full object-contain" />
           </div>
-          <p className="text-[11px] text-ink-60 break-all">
+          <p className="text-2xs text-ink-60 break-all">
             {asset.filename}{' — '}
             <a href={asset.file_url} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline">view</a>
             {' · '}
@@ -371,7 +371,7 @@ function AssetDrawer({ customerId, asset, onClose }) {
             <select className="input text-sm" value={f.visibility} onChange={set('visibility')}>
               {VISIBILITIES.map(v => <option key={v} value={v}>{VISIBILITY_LABEL[v]}</option>)}
             </select>
-            <p className="text-[11px] text-ink-60 mt-1">
+            <p className="text-2xs text-ink-60 mt-1">
               {f.visibility === 'internal_only' && 'Staff only — never shown to the customer or public.'}
               {f.visibility === 'customer_private' && 'Visible to this customer when they log in, and to staff.'}
               {f.visibility === 'public_reference' && 'May be shown publicly — still needs marketing consent below.'}
@@ -384,7 +384,7 @@ function AssetDrawer({ customerId, asset, onClose }) {
                    className="w-4 h-4 rounded-none border-warm-grey text-brand-600" />
             Marketing consent — may appear in blog / case studies
           </label>
-          {!marketingAllowed && <p className="text-[11px] text-ink-60 -mt-2">Only available on a Public reference asset.</p>}
+          {!marketingAllowed && <p className="text-2xs text-ink-60 -mt-2">Only available on a Public reference asset.</p>}
 
           <div>
             <label className="label text-xs">Tags</label>

@@ -309,7 +309,7 @@ function JesOrderRow({ r, onOpen }) {
       </td>
       <td className="px-2 py-3 whitespace-nowrap text-right">
         <span title="Historical order from JES — read-only archive"
-              className="text-[10px] font-medium text-ink-60 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
+              className="text-2xs font-medium text-ink-60 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
           <Database size={10} /> JES
         </span>
       </td>
@@ -389,7 +389,7 @@ function LogisticsList() {
                   {v.modes.length > 0 && (
                     <div className="flex gap-1.5 mt-1.5 flex-wrap">
                       {v.modes.map(m => (
-                        <span key={m} className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-ivory-dark text-ink-70">
+                        <span key={m} className="inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-full bg-ivory-dark text-ink-70">
                           <Truck size={11} />{modeLabel(m)}
                         </span>
                       ))}
@@ -400,12 +400,12 @@ function LogisticsList() {
                       {v.coverage.slice(0, 6).map((c, i) => {
                         const s = strengthOf(c.strength)
                         return (
-                          <span key={i} className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ${s.style}`}>
+                          <span key={i} className={`inline-flex items-center gap-1 text-2xs px-2 py-0.5 rounded-full border ${s.style}`}>
                             <MapPin size={11} />{c.region}
                           </span>
                         )
                       })}
-                      {v.coverage.length > 6 && <span className="text-[11px] text-ink-60 self-center">+{v.coverage.length - 6}</span>}
+                      {v.coverage.length > 6 && <span className="text-2xs text-ink-60 self-center">+{v.coverage.length - 6}</span>}
                     </div>
                   )}
                   {v.contacts[0] && (v.contacts[0].wechat || v.contacts[0].name) && (

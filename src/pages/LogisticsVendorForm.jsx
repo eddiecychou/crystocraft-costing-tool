@@ -141,7 +141,7 @@ export default function LogisticsVendorForm() {
                   {COVERAGE_STRENGTH.map(s => (
                     <button
                       key={s.value} type="button" onClick={() => setCov(i, 'strength', s.value)}
-                      className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+                      className={`px-2.5 py-1 rounded-full text-2xs font-medium border transition-colors ${
                         c.strength === s.value ? s.style + ' ring-1 ring-inset ring-current' : 'bg-white text-ink-60 border-warm-grey'
                       }`}
                     >
@@ -153,7 +153,7 @@ export default function LogisticsVendorForm() {
                   {FREIGHT_MODES.map(m => (
                     <button
                       key={m.value} type="button" onClick={() => toggleCovMode(i, m.value)}
-                      className={`px-2 py-0.5 rounded-full text-[10.5px] border transition-colors ${
+                      className={`px-2 py-0.5 rounded-full text-2xs border transition-colors ${
                         c.modes.includes(m.value)
                           ? 'bg-ink text-white border-ink'
                           : 'bg-white text-ink-60 border-warm-grey hover:border-ink-60'

@@ -144,8 +144,8 @@ function Row({ u, linked, dup }) {
         <div className="flex items-center gap-2 flex-wrap">
           <p className="font-medium text-ink truncate">{name}</p>
           {u.role === 'customer' && <TypeBadge type={type} />}
-          {dup && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 uppercase tracking-wide" title="Another account uses this same email — likely an orphaned or duplicate login to reconcile">Duplicate email</span>}
-          {!linked && <span className="text-[10px] uppercase tracking-wide text-amber-600">Not linked</span>}
+          {dup && <span className="text-2xs px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 uppercase tracking-wide" title="Another account uses this same email — likely an orphaned or duplicate login to reconcile">Duplicate email</span>}
+          {!linked && <span className="text-2xs uppercase tracking-wide text-amber-600">Not linked</span>}
         </div>
         <p className="text-xs text-ink-70 break-all">{u.email || '—'}</p>
         <p className="text-xs text-ink-60">{country || <span className="text-ink-60">No country</span>}</p>
@@ -157,9 +157,9 @@ function Row({ u, linked, dup }) {
 
 export function TypeBadge({ type }) {
   return type === 'internal' ? (
-    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase tracking-wide">Internal</span>
+    <span className="text-2xs px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase tracking-wide">Internal</span>
   ) : (
-    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 uppercase tracking-wide">Customer</span>
+    <span className="text-2xs px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 uppercase tracking-wide">Customer</span>
   )
 }
 

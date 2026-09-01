@@ -139,7 +139,7 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
                           <span className="font-mono text-xs text-ink">{r.code}</span>
                           <span className="block text-xs text-ink-60 truncate">{r.name || '—'}</span>
                         </span>
-                        <span className="text-[11px] text-teal-600 shrink-0">Review →</span>
+                        <span className="text-2xs text-teal-600 shrink-0">Review →</span>
                       </button>
                     </li>
                   ))}
@@ -212,12 +212,12 @@ export default function ErpProductImport({ products = [], initialCode = '', onCl
                           {c.name && <div className="text-xs text-ink-60 truncate">{c.name}</div>}
                           <div className="flex flex-wrap gap-1.5 mt-0.5">
                             {c.existing
-                              ? <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-ivory-dark text-ink-60">already in the app — will be linked, not changed</span>
-                              : <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-emerald-50 text-emerald-700">new component</span>}
+                              ? <span className="text-2xs px-1.5 py-0.5 rounded-none bg-ivory-dark text-ink-60">already in the app — will be linked, not changed</span>
+                              : <span className="text-2xs px-1.5 py-0.5 rounded-none bg-emerald-50 text-emerald-700">new component</span>}
                             {/* Almost always a plating-specific part. Worth seeing
                                 now rather than discovering it in a costing. */}
                             {c.partial && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-amber-50 text-amber-700"
+                              <span className="text-2xs px-1.5 py-0.5 rounded-none bg-amber-50 text-amber-700"
                                     title={`Only in: ${c.inVariants.join(', ')}`}>
                                 in {c.inVariants.length} of {preview.variants.length} variants
                               </span>

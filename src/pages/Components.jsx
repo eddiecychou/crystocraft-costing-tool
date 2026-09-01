@@ -241,8 +241,8 @@ function CriticalComponents() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-mono text-sm text-ink truncate">{c.code}</span>
-                    {c.plating_code && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 shrink-0">{c.plating_code}</span>}
-                    {c.category && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 shrink-0">{c.category}</span>}
+                    {c.plating_code && <span className="text-2xs px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 shrink-0">{c.plating_code}</span>}
+                    {c.category && <span className="text-2xs px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 shrink-0">{c.category}</span>}
                   </div>
                   <p className="text-xs text-ink-60 truncate">
                     {c.name || '—'}{c.supplierName ? ` · ${c.supplierName}` : ''}
@@ -371,7 +371,7 @@ function StockListImportModal({ components, onClose }) {
         {unmatched.length > 0 && (
           <details className="mt-2">
             <summary className="text-xs text-amber-700 cursor-pointer">{unmatched.length} unmatched product code{unmatched.length === 1 ? '' : 's'} (not found in Figurine products) — view</summary>
-            <div className="mt-1 max-h-32 overflow-auto border border-ivory-dark rounded-none p-2 font-mono text-[11px] text-ink-60">
+            <div className="mt-1 max-h-32 overflow-auto border border-ivory-dark rounded-none p-2 font-mono text-2xs text-ink-60">
               {unmatched.join(', ')}
             </div>
           </details>
@@ -439,7 +439,7 @@ function CrystalColours() {
         <p className="text-xs text-ink-60">No colours yet — add one.</p>
       ) : (
         <div className="space-y-2">
-          <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-wide text-ink-60 px-1">
+          <div className="hidden sm:flex items-center gap-2 text-2xs uppercase tracking-wide text-ink-60 px-1">
             <span className="w-16 shrink-0">Code</span>
             <span className="flex-1">Name</span>
             <span className="w-14 shrink-0">Swatch</span>
@@ -575,7 +575,7 @@ function FormatMoqs() {
         <p className="text-xs text-ink-60">No formats yet — add one.</p>
       ) : (
         <div className="space-y-2">
-          <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-wide text-ink-60 px-1">
+          <div className="hidden sm:flex items-center gap-2 text-2xs uppercase tracking-wide text-ink-60 px-1">
             <span className="w-20 shrink-0">Code</span>
             <span className="flex-1">Name</span>
             <span className="w-28 shrink-0">MOQ (pcs)</span>
@@ -694,7 +694,7 @@ function PricingGroups() {
         <p className="text-xs text-ink-60">No groups yet — add one (e.g. Standard 2.0×, Preferred 1.7×, VIP 1.5×).</p>
       ) : (
         <div className="space-y-2">
-          <div className="hidden sm:flex items-center gap-2 text-[10px] uppercase tracking-wide text-ink-60 px-1">
+          <div className="hidden sm:flex items-center gap-2 text-2xs uppercase tracking-wide text-ink-60 px-1">
             <span className="flex-1">Group name</span>
             <span className="w-28 shrink-0">Markup (×)</span>
             <span className="w-6 shrink-0" />

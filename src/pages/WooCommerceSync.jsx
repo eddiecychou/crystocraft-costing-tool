@@ -516,7 +516,7 @@ export default function WooCommerceSync() {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <div>
               <p className="text-xs font-medium text-ink-60">Sync all WooCommerce customers who have transacted with us</p>
-              <p className="text-[11px] text-ink-60 mt-0.5">
+              <p className="text-2xs text-ink-60 mt-0.5">
                 Scans all-time PAID order history (not WooCommerce's registered-account list) and creates a Retail
                 Customer record for each unique buyer, keyed by their real WooCommerce identity — never merges with
                 an existing customer on email match, only flags it for your review.
@@ -686,7 +686,7 @@ export default function WooCommerceSync() {
                         <tr className="hover:bg-ivory">
                           <td className="px-4 py-3 whitespace-nowrap font-mono text-xs font-medium text-ink">
                             #{o.number}
-                            {o.refunded_total > 0 && <span className="ml-1.5 text-[10px] font-sans font-medium text-amber-600">refunded</span>}
+                            {o.refunded_total > 0 && <span className="ml-1.5 text-2xs font-sans font-medium text-amber-600">refunded</span>}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-ink-70">{fmtDate(o.date_paid)}</td>
                           <td className="px-4 py-3 text-ink min-w-0">
@@ -696,7 +696,7 @@ export default function WooCommerceSync() {
                                 the actual invoice at import time (wooImport.js's
                                 wooCustomerName, spec §3.2), unchanged. This is display-only. */}
                             <span className="truncate">{o.customer_name || 'Unnamed'}</span>
-                            {o.is_guest && <span className="ml-1.5 text-[10px] text-ink-60">guest</span>}
+                            {o.is_guest && <span className="ml-1.5 text-2xs text-ink-60">guest</span>}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-ink-60">{o.currency}</td>
                           <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink-70">{fmtMoney(o.subtotal)}</td>
@@ -846,11 +846,11 @@ export default function WooCommerceSync() {
 
                 <div className="rounded-none border border-brand-100 bg-brand-50/40 px-4 py-2.5 mb-3 flex items-center gap-4 flex-wrap">
                   <div>
-                    <span className="text-[11px] text-ink-60 block">Total units sold</span>
+                    <span className="text-2xs text-ink-60 block">Total units sold</span>
                     <span className="text-lg font-medium text-ink tabular-nums">{itemReportTotals.unitsTotal}</span>
                   </div>
                   <div>
-                    <span className="text-[11px] text-ink-60 block">Turnover, converted to HKD{itemReportTotals.incomplete ? ' (partial)' : ''}</span>
+                    <span className="text-2xs text-ink-60 block">Turnover, converted to HKD{itemReportTotals.incomplete ? ' (partial)' : ''}</span>
                     <span className="text-lg font-medium text-ink tabular-nums">
                       {fx === 'loading' ? '…' : fx?.error ? '—' : `HKD ${fmtMoney(itemReportTotals.turnoverHkd)}`}
                     </span>
@@ -876,7 +876,7 @@ export default function WooCommerceSync() {
                           <td className="px-4 py-3 whitespace-nowrap font-mono text-xs font-medium text-ink" title={r.skuList || ''}>{r.base}</td>
                           <td className="px-4 py-3 text-ink min-w-0">
                             <span className="truncate">{r.name}</span>
-                            {r.variants > 1 && <span className="ml-1.5 text-[10px] text-ink-60">{r.variants} variants</span>}
+                            {r.variants > 1 && <span className="ml-1.5 text-2xs text-ink-60">{r.variants} variants</span>}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink-70">{r.orders}</td>
                           <td className="px-4 py-3 whitespace-nowrap text-right tabular-nums text-ink font-medium">{r.qty}</td>
@@ -891,7 +891,7 @@ export default function WooCommerceSync() {
                     </tbody>
                   </table>
                 </div>
-                <p className="text-[11px] text-ink-60 mt-1">
+                <p className="text-2xs text-ink-60 mt-1">
                   Grouped by base product code (SKU up to the second "-", colour/running number dropped) — Qty sold is a unit count across
                   all currencies; "Amount by currency" stays exact/native. "≈ HKD" and the turnover total above are converted using a
                   <strong> live market rate</strong>{fx && fx !== 'loading' && !fx.error && ` (fetched ${fmtDate(fx.updatedAt)})`}, for

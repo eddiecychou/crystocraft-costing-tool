@@ -167,7 +167,7 @@ function MergeSupplierModal({ supplier, onClose, onMerged }) {
                   {s.name}
                   <span className="text-ink-60">
                     {[s.erp_code, s.city || s.country].filter(Boolean).join(' · ') && ` — ${[s.erp_code, s.city || s.country].filter(Boolean).join(' · ')}`}
-                    {' · '}<span className="font-mono text-[10px]">{s.id.slice(0, 6)}</span>
+                    {' · '}<span className="font-mono text-2xs">{s.id.slice(0, 6)}</span>
                   </span>
                 </button>
               ))}
@@ -503,8 +503,8 @@ export default function SupplierDetail() {
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-medium text-ink">{c.name || '—'}</span>
               {c.title && <span className="text-xs text-ink-60">{c.title}</span>}
-              {c.is_primary && !dim && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 uppercase tracking-wide">Primary</span>}
-              {dim && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory-dark text-ink-60 uppercase tracking-wide">Left</span>}
+              {c.is_primary && !dim && <span className="text-2xs px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 uppercase tracking-wide">Primary</span>}
+              {dim && <span className="text-2xs px-1.5 py-0.5 rounded-full bg-ivory-dark text-ink-60 uppercase tracking-wide">Left</span>}
             </div>
             <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-70">
               {c.phone && <a href={`tel:${c.phone}`} className="text-brand-600 hover:underline">{c.phone}</a>}
@@ -572,7 +572,7 @@ export default function SupplierDetail() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-mono text-sm font-medium text-ink">{p.pu_number || '(no PU no.)'}</span>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${meta.badge}`}>{meta.label}</span>
+                      <span className={`text-2xs px-1.5 py-0.5 rounded-full ${meta.badge}`}>{meta.label}</span>
                     </div>
                     {p.issued_date && <p className="text-xs text-ink-60 mt-0.5">{fmtDate(p.issued_date)}</p>}
                   </div>

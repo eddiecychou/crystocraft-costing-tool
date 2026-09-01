@@ -94,8 +94,8 @@ export default function InventoryStockTab({ inv }) {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="font-mono text-sm text-ink truncate">{c.code}</span>
-                      {c[inv.attrField] && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 shrink-0">{c[inv.attrField]}</span>}
-                      {c.size && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 shrink-0">{c.size}</span>}
+                      {c[inv.attrField] && <span className="text-2xs px-1.5 py-0.5 rounded-full bg-brand-50 text-brand-700 shrink-0">{c[inv.attrField]}</span>}
+                      {c.size && <span className="text-2xs px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 shrink-0">{c.size}</span>}
                     </div>
                     <p className="text-xs text-ink-60 truncate">
                       {c.name || '—'}
@@ -176,12 +176,12 @@ function EditRow({ inv, item }) {
   return (
     <div className="pt-3 pb-2">
       <div className="flex items-baseline justify-between mb-1.5">
-        <label className="text-[11px] uppercase tracking-wide text-ink-60">Details</label>
+        <label className="text-2xs uppercase tracking-wide text-ink-60">Details</label>
         {/* Shown on a successful write, not on `!dirty`. `dirty` compares
             against the subscribed item, which only refreshes when the snapshot
             comes back — so gating on it left the user with no feedback at all
             between clicking Save and the round trip completing. */}
-        {saved && <span className="text-[11px] text-green-600">saved</span>}
+        {saved && <span className="text-2xs text-green-600">saved</span>}
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 items-end">
         <div>

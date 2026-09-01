@@ -143,7 +143,7 @@ export default function RangeComponentForm() {
               <label className="label">Stock on hand <span className="text-ink-60 font-normal">(raw parts)</span></label>
               <div className="input bg-ivory/40 text-ink-70 tabular-nums flex items-center justify-between">
                 <span>{form.stock_qty === '' ? '0' : Number(form.stock_qty).toLocaleString()}</span>
-                <span className="text-[10px] text-ink-60">{isNew ? 'set below after saving' : 'managed in ledger ↓'}</span>
+                <span className="text-2xs text-ink-60">{isNew ? 'set below after saving' : 'managed in ledger ↓'}</span>
               </div>
             </div>
             <div>
@@ -185,7 +185,7 @@ export default function RangeComponentForm() {
                   <div className="min-w-0 flex-1">
                     <p className="text-sm text-ink truncate">
                       {q.supplier_name || 'Unnamed supplier'}
-                      {q.is_preferred && <span className="ml-2 text-[10px] uppercase tracking-wide text-amber-600">preferred</span>}
+                      {q.is_preferred && <span className="ml-2 text-2xs uppercase tracking-wide text-amber-600">preferred</span>}
                     </p>
                     <p className="text-xs text-ink-60">
                       {q.unit_cost != null ? `${q.unit_cost} ${q.unit_cost_currency}` : 'no price'}
@@ -220,7 +220,7 @@ export default function RangeComponentForm() {
             <label className="aspect-square border border-dashed border-ivory-dark rounded-none flex flex-col items-center justify-center cursor-pointer text-ink-60 hover:border-brand-400 hover:text-brand-600 transition-colors"
                    title="Click to upload images">
               <span className="text-2xl leading-none">＋</span>
-              <span className="text-[10px] mt-0.5">{uploading ? 'Uploading…' : 'Upload'}</span>
+              <span className="text-2xs mt-0.5">{uploading ? 'Uploading…' : 'Upload'}</span>
               <input type="file" accept="image/*" multiple className="hidden"
                      onChange={e => handleUpload(e.target.files)} />
             </label>

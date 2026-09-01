@@ -109,7 +109,7 @@ export default function CatalogueBand() {
                   <button onClick={() => move(i, -1)} disabled={i === 0} className="text-ink-60 hover:text-ink disabled:opacity-30"><ChevronUp size={15} /></button>
                   <button onClick={() => move(i, 1)} disabled={i === rows.length - 1} className="text-ink-60 hover:text-ink disabled:opacity-30"><ChevronDown size={15} /></button>
                 </div>
-                <div className="w-10 h-10 rounded-none shrink-0 flex items-center justify-center text-[10px] font-medium" style={{ background: ac.tile, color: ac.ink }}>
+                <div className="w-10 h-10 rounded-none shrink-0 flex items-center justify-center text-2xs font-medium" style={{ background: ac.tile, color: ac.ink }}>
                   {c.image_mode === 'custom' && c.custom_url ? <img src={c.custom_url} alt="" className="w-full h-full object-cover rounded-none" /> : 'Aa'}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -227,10 +227,10 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
                     <button key={p.id} type="button"
                             onClick={() => set('product_ids', on ? f.product_ids.filter(x => x !== p.id) : [...(f.product_ids || []), p.id])}
                             className={`w-full flex items-center gap-2 px-2 py-1.5 text-left hover:bg-ivory ${on ? 'bg-brand-50' : ''}`}>
-                      <span className={`w-4 h-4 rounded-none border flex items-center justify-center text-[10px] ${on ? 'bg-brand-600 border-brand-600 text-white' : 'border-warm-grey'}`}>{on ? '✓' : ''}</span>
+                      <span className={`w-4 h-4 rounded-none border flex items-center justify-center text-2xs ${on ? 'bg-brand-600 border-brand-600 text-white' : 'border-warm-grey'}`}>{on ? '✓' : ''}</span>
                       {p.image ? <img src={p.image} alt="" className="w-7 h-7 object-contain rounded-none bg-white border border-ivory" /> : <span className="w-7 h-7 rounded-none bg-ivory" />}
                       <span className="text-sm text-ink-80 truncate flex-1">{p.name}</span>
-                      <span className="text-[10px] text-ink-60">{p.cat}</span>
+                      <span className="text-2xs text-ink-60">{p.cat}</span>
                     </button>
                   )
                 })}
@@ -256,7 +256,7 @@ function CollectionEditor({ value, catalogue, filterValues, products, onClose, o
                 <button key={a.key} type="button" onClick={() => set('accent', a.key)} title={a.label}
                         className={`w-8 h-8 rounded-none border-2 ${f.accent === a.key ? 'border-ink' : 'border-transparent'}`}
                         style={{ background: a.tile }}>
-                  <span className="text-[10px] font-medium" style={{ color: a.ink }}>Aa</span>
+                  <span className="text-2xs font-medium" style={{ color: a.ink }}>Aa</span>
                 </button>
               ))}
             </div>
@@ -351,7 +351,7 @@ function TilePreview({ f, repImage }) {
         <div className="absolute inset-x-0 bottom-0 px-2.5 py-2"
              style={{ background: `linear-gradient(to top, rgba(${rgb},${op}), rgba(${rgb},0))` }}>
           <p className="text-xs font-medium truncate" style={{ color: tcol, textShadow: shadow }}>{f.title || 'Title'}</p>
-          {f.subtitle && <p className="text-[10px] truncate" style={{ color: tcol, opacity: 0.85, textShadow: shadow }}>{f.subtitle}</p>}
+          {f.subtitle && <p className="text-2xs truncate" style={{ color: tcol, opacity: 0.85, textShadow: shadow }}>{f.subtitle}</p>}
         </div>
       </div>
     )
@@ -365,7 +365,7 @@ function TilePreview({ f, repImage }) {
       </div>
       <div className="px-2.5 py-2" style={{ background: ac.tile }}>
         <p className="text-xs font-medium truncate" style={{ color: ac.ink }}>{f.title || 'Title'}</p>
-        {f.subtitle && <p className="text-[10px] truncate" style={{ color: ac.ink, opacity: 0.7 }}>{f.subtitle}</p>}
+        {f.subtitle && <p className="text-2xs truncate" style={{ color: ac.ink, opacity: 0.7 }}>{f.subtitle}</p>}
       </div>
     </div>
   )

@@ -189,7 +189,7 @@ function ProductDefaults() {
       <div className="card p-5 space-y-3">
         <div>
           <h3 className="font-medium text-sm mb-0.5">Default parts lead time</h3>
-          <p className="text-[12px] text-ink-60">
+          <p className="text-xs text-ink-60">
             When a product has no critical components listed, this is the assumed time to source parts.
             Total lead time shown to customers = parts lead + per-product assembly lead. Applies immediately to all products without tracked components.
           </p>
@@ -210,7 +210,7 @@ function ProductDefaults() {
       <div className="card p-5 space-y-4">
         <div>
           <h3 className="font-medium text-sm mb-0.5">Bulk-apply assembly lead time &amp; MOQ</h3>
-          <p className="text-[12px] text-ink-60">
+          <p className="text-xs text-ink-60">
             Set assembly lead time and MOQ on all products that do not already have these values.
             Products with existing values are left untouched — override them individually in the product editor.
           </p>
@@ -220,13 +220,13 @@ function ProductDefaults() {
             <label className="label">Assembly lead time <span className="text-ink-60 font-normal">(weeks)</span></label>
             <input className="input" type="number" min="1" value={leadTime}
                    onChange={e => setLeadTime(e.target.value)} placeholder="3" />
-            <p className="text-[11px] text-ink-60 mt-1">Weeks to assemble when components are on hand</p>
+            <p className="text-2xs text-ink-60 mt-1">Weeks to assemble when components are on hand</p>
           </div>
           <div>
             <label className="label">MOQ <span className="text-ink-60 font-normal">(pcs)</span></label>
             <input className="input" type="number" min="1" value={moq}
                    onChange={e => setMoq(e.target.value)} placeholder="100" />
-            <p className="text-[11px] text-ink-60 mt-1">Minimum order quantity for made-to-order</p>
+            <p className="text-2xs text-ink-60 mt-1">Minimum order quantity for made-to-order</p>
           </div>
         </div>
         <div className="flex items-center gap-3">

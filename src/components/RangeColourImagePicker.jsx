@@ -190,7 +190,7 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
                         <Download size={12} />
                       </button>
                     </div>
-                    <span className="absolute bottom-0 inset-x-0 bg-black/50 text-white text-[10px] text-center py-0.5">{code}</span>
+                    <span className="absolute bottom-0 inset-x-0 bg-black/50 text-white text-2xs text-center py-0.5">{code}</span>
                   </div>
                 )
               })}
@@ -198,7 +198,7 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
           )}
 
           <div className="border-t border-warm-grey pt-2.5">
-            <p className="text-[11px] text-ink-60 mb-1.5">Generate a colour photo now, if one's missing:</p>
+            <p className="text-2xs text-ink-60 mb-1.5">Generate a colour photo now, if one's missing:</p>
             <div className="flex items-center gap-1.5 flex-wrap">
               <select className="input text-xs py-1 flex-1 min-w-[8rem]" value={target} onChange={e => setTarget(e.target.value)}>
                 <option value="">Target colour…</option>
@@ -221,7 +221,7 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
                   <>
                     <div className="fixed inset-0 z-[70]" onClick={() => setGalleryPickerOpen(false)} />
                     <div className="absolute z-[80] top-8 left-0 w-56 bg-white border border-warm-grey rounded-none shadow-lg p-2 space-y-1">
-                      <p className="text-[11px] text-ink-60 mb-1">Use an existing gallery photo</p>
+                      <p className="text-2xs text-ink-60 mb-1">Use an existing gallery photo</p>
                       <div className="grid grid-cols-4 gap-1">
                         {(product.gallery || []).map((g, gi) => g.url && (
                           <button key={gi} type="button" onClick={() => onPickGallery(g.url)}
@@ -236,8 +236,8 @@ export default function RangeColourImagePicker({ productId, itemCode, selectedUr
                 )}
               </div>
             </div>
-            {!variant.image && <p className="text-[10px] text-amber-600 mt-1">This plating has no source photo, so AI generation isn't available — upload works regardless.</p>}
-            {error && <p className="text-[11px] text-red-600 mt-1">{error}</p>}
+            {!variant.image && <p className="text-2xs text-amber-600 mt-1">This plating has no source photo, so AI generation isn't available — upload works regardless.</p>}
+            {error && <p className="text-2xs text-red-600 mt-1">{error}</p>}
           </div>
         </>
       )}

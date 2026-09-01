@@ -138,7 +138,7 @@ export default function InventoryStatus() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-[10px] uppercase tracking-wide text-ink-60 border-b border-ivory-dark">
+                <tr className="text-2xs uppercase tracking-wide text-ink-60 border-b border-ivory-dark">
                   <Th k="cls" label="Class" />
                   <Th k="code" label="Code" />
                   <Th k="name" label="Name" />
@@ -151,7 +151,7 @@ export default function InventoryStatus() {
               <tbody className="divide-y divide-warm-grey">
                 {filtered.map(r => (
                   <tr key={r.key} className={needsReorder(r) ? 'bg-red-50/40' : 'hover:bg-ivory/40'}>
-                    <td className="px-3 py-2"><span className={`text-[10px] px-1.5 py-0.5 rounded-full ${BADGE[r.cls]}`}>{r.cls}</span></td>
+                    <td className="px-3 py-2"><span className={`text-2xs px-1.5 py-0.5 rounded-full ${BADGE[r.cls]}`}>{r.cls}</span></td>
                     <td className="px-3 py-2"><Link to={linkFor(r)} className="font-mono text-xs text-brand-600 hover:underline">{r.code}</Link></td>
                     <td className="px-3 py-2 text-xs text-ink-60 truncate max-w-[220px]">{r.name || '—'}{r.attr ? <span className="text-ink-60"> · {r.attr}</span> : ''}</td>
                     <td className="px-3 py-2 text-right font-mono tabular-nums text-ink-80">{fmt(r.onHand)}</td>

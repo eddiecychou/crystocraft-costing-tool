@@ -401,7 +401,7 @@ export default function RangeCosting() {
                     </p>
                   </div>
                 ))}
-                <p className="pt-2 text-[11px] text-ink-60">
+                <p className="pt-2 text-2xs text-ink-60">
                   Plating-specific parts count only toward their own variant — one piece never uses both.
                   Shared (blank-plating) parts are included in every variant.
                 </p>
@@ -519,7 +519,7 @@ export default function RangeCosting() {
                     <span className="font-medium text-ink">HKD {crystalBomCostHKD(draft, rates, { brand_code: b.code }, crystalItems).toFixed(2)}</span>
                   </div>
                   {missing.length > 0 && (
-                    <p className="text-[11px] text-red-500 flex items-center gap-1 mt-0.5">
+                    <p className="text-2xs text-red-500 flex items-center gap-1 mt-0.5">
                       <AlertTriangle size={11} /> {missing.map(m => m.brand ? `No price for ${m.size} × ${m.brand}` : `${m.size} — brand not selected`).join(', ')} — set it in{' '}
                       <Link to="/components" className="underline">Components → Crystal Costs</Link>.
                     </p>
@@ -538,7 +538,7 @@ export default function RangeCosting() {
             <label className="label">Markup</label>
             <input className="input w-28" inputMode="decimal" value={state.markup}
                    onChange={e => setState(s => ({ ...s, markup: e.target.value.replace(/[^\d.]/g, '') }))} placeholder={DEFAULT_MARKUP.toFixed(2)} />
-            <p className="text-[10px] text-ink-60 mt-0.5">Blank = default {DEFAULT_MARKUP.toFixed(2)}×</p>
+            <p className="text-2xs text-ink-60 mt-0.5">Blank = default {DEFAULT_MARKUP.toFixed(2)}×</p>
           </div>
           <div className="flex-1" />
           <button type="button" onClick={addTier} className="text-xs text-brand-600 hover:underline">+ Add quantity tier</button>
@@ -584,7 +584,7 @@ export default function RangeCosting() {
                   <tr key={v.sku || idx} className={idx % 2 ? 'bg-ivory' : 'bg-white'}>
                     <td className="py-2.5 pr-3 align-top">
                       <p className="font-mono text-xs text-ink">{label}</p>
-                      <p className="text-[11px] text-ink-60">{[v.plating_name, (v.crystal_colors || []).join('/')].filter(Boolean).join(' · ')}</p>
+                      <p className="text-2xs text-ink-60">{[v.plating_name, (v.crystal_colors || []).join('/')].filter(Boolean).join(' · ')}</p>
                     </td>
                     {qtyCols.map(q => {
                       const costUSD = variantAllInCostHKD(draft, lib, rates, v, q, crystalItems) / (rates.USD || 7.78)

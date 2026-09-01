@@ -60,6 +60,13 @@ export default {
         serif: ['Questrial', 'system-ui', '-apple-system', 'sans-serif'],
         label: ['Work Sans', 'system-ui', '-apple-system', 'sans-serif'],
       },
+      fontSize: {
+        // V3 — the one tier below Tailwind's `text-xs` (12px). The app has
+        // ~350 micro-labels (image overlays, status pills, dense-table
+        // sub-text) that were hard-coded `text-[9..12px]`; they map here.
+        // Not for body copy — badges/overlays/pills only.
+        '2xs': ['0.6875rem', { lineHeight: '1rem' }], // 11px / 16px
+      },
       // V2.5 — "restraint over decoration": near-flat elevation, reserved for
       // genuinely floating surfaces or a hover lift, never a resting card.
       // Redefines Tailwind's own shadow-* utility names (not new ones) so

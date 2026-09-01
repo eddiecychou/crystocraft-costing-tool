@@ -163,7 +163,7 @@ export default function ProductForm() {
           <select className="input max-w-sm" value={form.customizer_type || ''} onChange={set('customizer_type')}>
             {CUSTOMIZER_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
           </select>
-          <p className="text-[11px] text-ink-60 mt-1">
+          <p className="text-2xs text-ink-60 mt-1">
             Lets customers preview this product with their own logo. Pick the customization engine that fits this product.
           </p>
         </div>
@@ -218,7 +218,7 @@ export default function ProductForm() {
             maxLength={MARKETING_DESC_MAXLEN}
             placeholder="Sell-copy for catalogues — evocative, customer-facing language… or click AI Write to generate"
           />
-          <p className="text-[11px] text-ink-60 mt-0.5 text-right">{(form.marketing_description || '').length}/{MARKETING_DESC_MAXLEN}</p>
+          <p className="text-2xs text-ink-60 mt-0.5 text-right">{(form.marketing_description || '').length}/{MARKETING_DESC_MAXLEN}</p>
           {aiError && <p className="text-xs text-red-500 mt-1">{aiError}</p>}
           {!form.name && <p className="text-xs text-ink-60 mt-1">Enter a product name first to enable AI writing</p>}
           {form.marketing_description && !rewriteOpen && (

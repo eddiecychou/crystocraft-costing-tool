@@ -104,7 +104,7 @@ function Card({ r, set, onEdit, onDelete }) {
             </a>
             {r.base_currency ? ` · ${r.base_currency}` : ''}
           </p>
-          {when && <p className="text-[11px] text-ink-60 mt-0.5">{when}</p>}
+          {when && <p className="text-2xs text-ink-60 mt-0.5">{when}</p>}
         </div>
         <span className={`badge ${st?.cls || ''}`}>{st?.label || r.status}</span>
       </div>
@@ -121,7 +121,7 @@ function Card({ r, set, onEdit, onDelete }) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-ink truncate">{i.name}</p>
-                <p className="text-[11px] text-ink-60">
+                <p className="text-2xs text-ink-60">
                   {i.code ? `${i.code} · ` : ''}{i.type}
                   {i.finish ? ` · ${i.finish}` : ''}
                   {(i.color_name || i.color) ? ` · ${i.color_name || i.color}` : ''}
@@ -134,10 +134,10 @@ function Card({ r, set, onEdit, onDelete }) {
                   {Number(i.pcs_per_carton) > 0 && Number(i.cartons) > 0 && <span className="text-ink-60"> · {i.cartons} ctn</span>}
                 </p>
                 {Number(i.moq) > 0 && Number(i.qty || 1) < Number(i.moq) &&
-                  <p className="text-[10px] text-amber-700">below MOQ {Number(i.moq).toLocaleString()}</p>}
+                  <p className="text-2xs text-amber-700">below MOQ {Number(i.moq).toLocaleString()}</p>}
                 {i.line_total != null
                   ? <p className="text-sm text-ink font-medium">{fmtMoney(i.line_total, cur)}</p>
-                  : <p className="text-[11px] text-ink-60 italic">On enquiry</p>}
+                  : <p className="text-2xs text-ink-60 italic">On enquiry</p>}
               </div>
             </div>
           )
@@ -248,7 +248,7 @@ function EditModal({ r, onClose }) {
               <div key={idx} className="flex items-center gap-3 border border-ivory-dark rounded-none p-2">
                 <div className="flex-1 min-w-0">
                   <p className="text-sm text-ink truncate">{i.name}</p>
-                  <p className="text-[11px] text-ink-60">
+                  <p className="text-2xs text-ink-60">
                     {i.code ? `${i.code} · ` : ''}{i.type}
                     {i.finish ? ` · ${i.finish}` : ''}
                     {(i.color_name || i.color) ? ` · ${i.color_name || i.color}` : ''}

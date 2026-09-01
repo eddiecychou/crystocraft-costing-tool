@@ -163,7 +163,7 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
         </div>
 
         {/* Per-carton mode toggle */}
-        <div className="flex rounded-none border border-warm-grey overflow-hidden text-[11px]">
+        <div className="flex rounded-none border border-warm-grey overflow-hidden text-2xs">
           {CARTON_MODES.map(m => (
             <button key={m.value} type="button" onClick={() => setMode(m.value)} title={m.desc}
               className={`px-2 py-1 font-medium transition-colors ${mode === m.value ? 'bg-ink text-white' : 'bg-white text-ink-60 hover:bg-ivory-dark'}`}>
@@ -213,8 +213,8 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
           </div>
           {cbm > 0 && <span className="text-xs text-ink-60">{cbm.toFixed(4)} CBM</span>}
           {c.is_estimate
-            ? <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-blue-100 text-blue-600">Est</span>
-            : <span className="text-[10px] px-1.5 py-0.5 rounded-none bg-green-100 text-green-700">Actual</span>}
+            ? <span className="text-2xs px-1.5 py-0.5 rounded-none bg-blue-100 text-blue-600">Est</span>
+            : <span className="text-2xs px-1.5 py-0.5 rounded-none bg-green-100 text-green-700">Actual</span>}
         </div>
         <div className="ml-auto flex items-center gap-2">
           <div className="flex items-center gap-1">
@@ -262,7 +262,7 @@ function CartonCard({ carton, packableLines, palletCount, onChange, onRemove, on
           <span className="text-xs text-ink-60">pcs</span>
           {extraItems > 0 && (
             <button type="button" onClick={() => setMode('mixed')}
-              className="text-[10px] px-1.5 py-0.5 rounded-none bg-amber-100 text-amber-700 hover:bg-amber-200"
+              className="text-2xs px-1.5 py-0.5 rounded-none bg-amber-100 text-amber-700 hover:bg-amber-200"
               title="This carton holds more items — switch to mixed to see them all">
               +{extraItems} more — show
             </button>
@@ -621,7 +621,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
           </button>
         )}
         {scenarios.length >= SOFT_CAP && (
-          <span className="text-[11px] text-ink-60">Keep scenarios to a few for a clean comparison.</span>
+          <span className="text-2xs text-ink-60">Keep scenarios to a few for a clean comparison.</span>
         )}
       </div>
 
@@ -751,7 +751,7 @@ export default function PackingListEditor({ orderId, orderLines }) {
               )
             })}
           </div>
-          <p className="text-[11px] text-ink-60">Pallet dimensions print on the exported PDF.</p>
+          <p className="text-2xs text-ink-60">Pallet dimensions print on the exported PDF.</p>
         </div>
       )}
 

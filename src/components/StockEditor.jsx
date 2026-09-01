@@ -56,12 +56,12 @@ export default function StockEditor({ component: c, collectionPath = 'range_comp
                 className="w-6 h-6 rounded-none border border-ivory-dark text-ink-60 hover:bg-ivory flex items-center justify-center"><Plus size={13} /></button>
       </div>
       <div className="w-12 text-right leading-tight">
-        <p className="text-[10px] text-ink-60">pcs</p>
+        <p className="text-2xs text-ink-60">pcs</p>
         {saving
-          ? <p className="text-[10px] text-ink-60">saving…</p>
+          ? <p className="text-2xs text-ink-60">saving…</p>
           : saved
-            ? <p className="inline-flex items-center gap-0.5 text-[10px] text-green-600"><Check size={11} />saved</p>
-            : <p className="text-[10px] text-ink-60">{c.lead_time_weeks != null ? `${c.lead_time_weeks}wk lead` : '—'}</p>}
+            ? <p className="inline-flex items-center gap-0.5 text-2xs text-green-600"><Check size={11} />saved</p>
+            : <p className="text-2xs text-ink-60">{c.lead_time_weeks != null ? `${c.lead_time_weeks}wk lead` : '—'}</p>}
       </div>
     </div>
   )

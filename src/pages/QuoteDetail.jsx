@@ -727,7 +727,7 @@ function QuoteItem({ item, quoteCurrency, customerId, rates, heroImage, onTiersC
           <span className="bg-white/90 text-xs px-1.5 py-0.5 rounded-none text-ink-80">change</span>
         </div>
         {item.custom_image && (
-          <div className="absolute bottom-1 left-1 bg-brand-600/80 text-white text-[9px] px-1 rounded-none leading-tight pointer-events-none">custom</div>
+          <div className="absolute bottom-1 left-1 bg-brand-600/80 text-white text-2xs px-1 rounded-none leading-tight pointer-events-none">custom</div>
         )}
       </div>
 
@@ -1019,7 +1019,7 @@ function ProductImagePicker({ productId, itemId, customerId, selectedUrl, onSele
             <div className="flex gap-1 mb-3">
               {CATEGORIES.map(c => (
                 <button key={c} type="button" onClick={() => setBrandCategory(c)}
-                  className={`px-2.5 py-1 text-[11px] font-medium rounded-full border transition-colors ${
+                  className={`px-2.5 py-1 text-2xs font-medium rounded-full border transition-colors ${
                     brandCategory === c ? 'bg-brand-50 border-brand-300 text-brand-700' : 'border-warm-grey text-ink-60 hover:text-ink-70'}`}>
                   {CATEGORY_LABEL[c]}
                 </button>
@@ -1039,7 +1039,7 @@ function ProductImagePicker({ productId, itemId, customerId, selectedUrl, onSele
                     <div key={a.id} onClick={() => onSelect(a.file_url)} title={a.title || a.filename}
                       className={`relative cursor-pointer rounded-none overflow-hidden aspect-square border-2 bg-ivory transition-all ${isSelected ? 'border-brand-500 ring-2 ring-brand-200' : 'border-transparent hover:border-brand-300'}`}>
                       <img src={a.file_url} alt={a.title || a.filename} className="w-full h-full object-contain" />
-                      <span className="absolute top-1 left-1 bg-black/50 text-white text-[9px] px-1 rounded-none leading-tight">{TYPE_LABEL[a.type]}</span>
+                      <span className="absolute top-1 left-1 bg-black/50 text-white text-2xs px-1 rounded-none leading-tight">{TYPE_LABEL[a.type]}</span>
                       {isSelected && (
                         <div className="absolute inset-0 bg-brand-500/20 flex items-center justify-center">
                           <span className="bg-brand-500 text-white rounded-full w-5 h-5 flex items-center justify-center"><Check size={12} /></span>

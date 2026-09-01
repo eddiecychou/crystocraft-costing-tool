@@ -85,7 +85,7 @@ export default function PoReceiveStock({ po }) {
                 <tbody className="divide-y divide-warm-grey">
                   {state.lines.map((l, i) => (
                     <tr key={l.sku_id || i}>
-                      <td className="py-1.5 pr-2"><span className={`text-[10px] px-1.5 py-0.5 rounded-full ${CLASS_BADGE[l.cls] || ''}`}>{l.cls}</span></td>
+                      <td className="py-1.5 pr-2"><span className={`text-2xs px-1.5 py-0.5 rounded-full ${CLASS_BADGE[l.cls] || ''}`}>{l.cls}</span></td>
                       <td className="py-1.5 pr-2 font-mono text-xs">{l.code}</td>
                       <td className="py-1.5 text-right font-mono tabular-nums text-green-700">+{fmt(l.qty)}</td>
                     </tr>
@@ -108,7 +108,7 @@ export default function PoReceiveStock({ po }) {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="text-[10px] uppercase tracking-wide text-ink-60 text-left border-b border-warm-grey">
+                        <tr className="text-2xs uppercase tracking-wide text-ink-60 text-left border-b border-warm-grey">
                           <th className="py-1.5 pr-2 font-medium">Class</th>
                           <th className="py-1.5 pr-2 font-medium">Code</th>
                           <th className="py-1.5 pr-2 font-medium">Name</th>
@@ -120,7 +120,7 @@ export default function PoReceiveStock({ po }) {
                       <tbody className="divide-y divide-warm-grey">
                         {preview.items.map((it, i) => (
                           <tr key={`${it.cls}:${it.sku_id}`}>
-                            <td className="py-1.5 pr-2"><span className={`text-[10px] px-1.5 py-0.5 rounded-full ${CLASS_BADGE[it.cls] || ''}`}>{it.cls}</span></td>
+                            <td className="py-1.5 pr-2"><span className={`text-2xs px-1.5 py-0.5 rounded-full ${CLASS_BADGE[it.cls] || ''}`}>{it.cls}</span></td>
                             <td className="py-1.5 pr-2 font-mono text-xs">{it.code}</td>
                             <td className="py-1.5 pr-2 text-xs text-ink-60 truncate max-w-[180px]">{it.name || '—'}</td>
                             <td className="py-1.5 pr-2 text-right font-mono tabular-nums text-ink-60">{fmt(it.stock)}</td>

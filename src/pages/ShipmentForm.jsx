@@ -1016,7 +1016,7 @@ export default function ShipmentForm() {
                 <span>SO / Doc No</span>
                 {!header.erp_so_no && (
                   <button type="button" onClick={doAllocateSo} disabled={allocatingSo}
-                          className="text-[11px] text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case whitespace-nowrap shrink-0"
+                          className="text-2xs text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case whitespace-nowrap shrink-0"
                           title="Allocate the next SO number. New orders get one automatically on create; this is for an older order that has none.">
                     {allocatingSo ? 'Allocating…' : 'Allocate'}
                   </button>
@@ -1030,7 +1030,7 @@ export default function ShipmentForm() {
                 <span>UC#</span>
                 {!header.uc_no && (
                   <button type="button" onClick={doAllocateUc} disabled={allocatingUc}
-                          className="text-[11px] text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case whitespace-nowrap shrink-0"
+                          className="text-2xs text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case whitespace-nowrap shrink-0"
                           title="Allocate a fresh UC# now, without waiting to raise an invoice. Never reuses an existing UC — a carried-over UC is exactly the slip this exists to prevent.">
                     {allocatingUc ? 'Allocating…' : 'Allocate'}
                   </button>
@@ -1050,7 +1050,7 @@ export default function ShipmentForm() {
                 <span>Invoice No</span>
                 {!header.erp_si_no && (
                   <button type="button" onClick={doAllocateSi} disabled={allocatingSi}
-                          className="text-[11px] text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case whitespace-nowrap shrink-0"
+                          className="text-2xs text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case whitespace-nowrap shrink-0"
                           title="Issue the invoice: allocate the next SI number (and a UC if none), and stamp today as the invoice date. Deliberately manual — an order is invoiced when you invoice it, not when it is created.">
                     {allocatingSi ? 'Allocating…' : 'Allocate'}
                   </button>
@@ -1064,7 +1064,7 @@ export default function ShipmentForm() {
                 <span>Revision</span>
                 <button type="button"
                         onClick={() => setHeader(h => ({ ...h, pi_revision: String((parseInt(h.pi_revision, 10) || 0) + 1) }))}
-                        className="text-[11px] text-brand-600 hover:text-brand-800 font-normal normal-case whitespace-nowrap shrink-0"
+                        className="text-2xs text-brand-600 hover:text-brand-800 font-normal normal-case whitespace-nowrap shrink-0"
                         title="Bump the revision printed on the PI/Invoice — for when a customer needs to tell an updated version apart from one they've already seen. Never bumps automatically.">
                   + New Rev
                 </button>
@@ -1120,7 +1120,7 @@ export default function ShipmentForm() {
                 <label className="label">Status</label>
                 <select className="input" value={header.status} onChange={setStatus}>{ORDER_STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}</select>
                 {stock && (
-                  <span className={`mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium border rounded-full px-2 py-0.5 ${STOCK_STATUS_STYLE[stock.state]}`}
+                  <span className={`mt-1.5 inline-flex items-center gap-1 text-2xs font-medium border rounded-full px-2 py-0.5 ${STOCK_STATUS_STYLE[stock.state]}`}
                         title={stockStatusDetail(stock) || 'All material consumption for this order has been recorded.'}>
                     {stock.state !== 'recorded' && <AlertTriangle size={11} />}
                     {STOCK_STATUS_LABEL[stock.state]}
@@ -1199,7 +1199,7 @@ export default function ShipmentForm() {
                             ? <img src={l.line_image} alt="" className="w-full h-full object-cover" />
                             : <ImageIcon size={16} strokeWidth={1.5} className="text-platinum" />}
                           <span className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                            <span className="bg-white/90 text-[9px] px-1 py-0.5 rounded-none text-ink-80">
+                            <span className="bg-white/90 text-2xs px-1 py-0.5 rounded-none text-ink-80">
                               {l.line_image ? 'change' : 'add'}
                             </span>
                           </span>
@@ -1231,13 +1231,13 @@ export default function ShipmentForm() {
                         <div className="flex gap-1.5 flex-wrap">
                           {LINE_TYPES.map(lt => (
                             <button key={lt.value} type="button" onClick={() => classify(i, lt.value)}
-                              className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+                              className={`px-2.5 py-1 rounded-full text-2xs font-medium border transition-colors ${
                                 l.line_type === lt.value ? lt.style + ' border-current' : 'bg-white text-ink-60 border-warm-grey hover:border-ink-60'
                               }`}>
                               {lt.label}
                             </button>
                           ))}
-                          {t && !t.packable && <span className="text-[11px] text-ink-60 self-center ml-1">excluded from packing</span>}
+                          {t && !t.packable && <span className="text-2xs text-ink-60 self-center ml-1">excluded from packing</span>}
                         </div>
                       </div>
                       <button type="button" onClick={() => removeLine(i)} className="text-platinum hover:text-red-500 pt-2"><Trash2 size={15} /></button>

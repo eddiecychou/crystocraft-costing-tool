@@ -214,7 +214,7 @@ export default function Login() {
       </button>
       <div className="flex items-center gap-3 mb-4">
         <div className="flex-1 h-px bg-ivory-dark" />
-        <span className="text-[11px] text-ink-60 uppercase tracking-wide">or</span>
+        <span className="text-2xs text-ink-60 uppercase tracking-wide">or</span>
         <div className="flex-1 h-px bg-ivory-dark" />
       </div>
 

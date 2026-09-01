@@ -131,7 +131,7 @@ export default function OrderInventoryIssue({ orderId, orderLabel, inv }) {
                       <div className="flex gap-2 items-center">
                         <input className="input text-sm w-24 text-right tabular-nums" inputMode="numeric" value={r.qty}
                                onChange={e => setRow(r._uid, { qty: e.target.value.replace(/[^\d]/g, '') })} placeholder="Qty" />
-                        <span className="text-[11px] text-ink-60 w-28 shrink-0">
+                        <span className="text-2xs text-ink-60 w-28 shrink-0">
                           {avail != null ? <>avail {fmt(avail)}{after != null ? <> → <span className={after < 0 ? 'text-red-600 font-semibold' : ''}>{fmt(after)}</span></> : ''}</> : ''}
                         </span>
                         <button type="button" onClick={() => removeRow(r._uid)} className="text-platinum hover:text-red-500 shrink-0"><Trash2 size={15} /></button>

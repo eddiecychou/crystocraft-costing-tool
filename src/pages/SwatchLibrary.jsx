@@ -77,7 +77,7 @@ function SwatchCardCarousel({ name, entry }) {
             className="absolute right-1 top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-black/40 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
             <ChevronRight size={14} />
           </button>
-          <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-white bg-black/40 rounded-full px-1.5 py-0.5">
+          <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-2xs text-white bg-black/40 rounded-full px-1.5 py-0.5">
             {i + 1}/{photos.length}
           </span>
         </>
@@ -149,7 +149,7 @@ function SwatchDetail({ name, entry, onClose }) {
                 {Object.entries(backfilms).map(([bf, slot]) => (
                   <div key={bf}>
                     <SwatchThumb filename={slot.file} alt={`${name} ${style} on ${bf}`} />
-                    <p className="text-[11px] text-ink-60 mt-1 text-center truncate">{bf}</p>
+                    <p className="text-2xs text-ink-60 mt-1 text-center truncate">{bf}</p>
                   </div>
                 ))}
               </div>
@@ -162,7 +162,7 @@ function SwatchDetail({ name, entry, onClose }) {
             <TagEditor label="Legacy Swarovski references" values={notes.legacy_swarovski_refs}
               onChange={v => persist({ ...notes, legacy_swarovski_refs: v })}
               placeholder="e.g. 2058 Xilion Rose — press Enter" />
-            {saving && <p className="text-[11px] text-ink-60">Saving…</p>}
+            {saving && <p className="text-2xs text-ink-60">Saving…</p>}
           </div>
         ) : <p className="text-sm text-ink-60 py-4">Loading notes…</p>}
       </div>
@@ -221,7 +221,7 @@ export default function SwatchLibrary() {
                 <SwatchCardCarousel name={name} entry={entry} />
                 <div className="p-2">
                   <p className="text-sm text-ink truncate">{name}</p>
-                  <p className="text-[11px] text-ink-60">
+                  <p className="text-2xs text-ink-60">
                     {Object.entries(entry.slots || {}).filter(([, bf]) => Object.keys(bf).length).map(([s]) => STYLE_LABEL[s] || s).join(' · ') || 'No photos'}
                   </p>
                 </div>

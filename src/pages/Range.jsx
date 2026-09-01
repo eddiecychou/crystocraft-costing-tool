@@ -392,13 +392,13 @@ function ProductCard({ s, colorLookup = {} }) {
         </span>
         {!s.active && <span className="absolute top-7 left-1.5 badge bg-warm-grey text-ink-70">Hidden</span>}
         {(s.skuCount > 1 || s.colorCount > 0) && (
-          <span className="absolute bottom-1.5 left-1.5 text-[10px] bg-ink/70 text-white px-1.5 py-0.5 rounded-none">
+          <span className="absolute bottom-1.5 left-1.5 text-2xs bg-ink/70 text-white px-1.5 py-0.5 rounded-none">
             {s.skuCount > 1 ? `${s.skuCount} platings` : ''}
             {s.skuCount > 1 && s.colorCount > 0 ? ' · ' : ''}
             {s.colorCount > 0 ? `${s.colorCount} colours` : ''}
           </span>
         )}
-        <span className="absolute bottom-1.5 right-1.5 text-[10px] uppercase tracking-wide bg-ink/70 text-white px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
+        <span className="absolute bottom-1.5 right-1.5 text-2xs uppercase tracking-wide bg-ink/70 text-white px-1.5 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity">Edit</span>
       </div>
       <div className="p-3 flex flex-col gap-1.5 flex-1">
         <div className="flex items-center gap-1">
@@ -408,25 +408,25 @@ function ProductCard({ s, colorLookup = {} }) {
                       style={{ background: PLATING_DOT[p] || '#ccc' }} title={p} />
               ))
             : <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0 bg-warm-grey" />}
-          <span className="text-[11px] text-ink-60 uppercase tracking-wide font-label ml-1 truncate">
+          <span className="text-2xs text-ink-60 uppercase tracking-wide font-label ml-1 truncate">
             {s.platings.join(' · ') || '—'}
           </span>
         </div>
         <h3 className="text-sm leading-tight text-ink line-clamp-2" title={s.name}>{s.name}</h3>
         <div className="flex items-center gap-1 flex-wrap">
-          <p className="text-[11px] text-ink-60 font-mono">{s.code}</p>
+          <p className="text-2xs text-ink-60 font-mono">{s.code}</p>
           {s.multiBrand && s.brands.map(b => (
-            <span key={b} className="text-[9px] uppercase tracking-wide bg-ivory text-ink-60 border border-ivory-dark rounded-none px-1 leading-tight"
+            <span key={b} className="text-2xs uppercase tracking-wide bg-ivory text-ink-60 border border-ivory-dark rounded-none px-1 leading-tight"
                   title={`Also available in ${BRAND_NAME[b] || b}`}>{b}</span>
           ))}
         </div>
-        <p className="text-[11px] text-ink-60">{s.size}</p>
+        <p className="text-2xs text-ink-60">{s.size}</p>
         {crystalCodes.length > 0 && (
           <div className="flex items-center gap-1 flex-wrap" title="Crystal colours">
             {crystalCodes.slice(0, 12).map(code => (
               <Swatch key={code} code={code} mixes={s.mixes} lookup={colorLookup} />
             ))}
-            {crystalCodes.length > 12 && <span className="text-[10px] text-ink-60">+{crystalCodes.length - 12}</span>}
+            {crystalCodes.length > 12 && <span className="text-2xs text-ink-60">+{crystalCodes.length - 12}</span>}
           </div>
         )}
         <div className="mt-auto pt-1.5 flex items-center justify-between gap-2 flex-wrap">
@@ -438,7 +438,7 @@ function ProductCard({ s, colorLookup = {} }) {
                 const tip = bn ? `Limited by ${bn}` : `${p}: ${n} buildable`
                 return (
                   <span key={p} title={tip}
-                        className={`badge whitespace-nowrap shrink-0 text-[10px] cursor-help ${n <= 0 ? 'bg-red-100 text-red-700' : n < 50 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        className={`badge whitespace-nowrap shrink-0 text-2xs cursor-help ${n <= 0 ? 'bg-red-100 text-red-700' : n < 50 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
                     {p}: {n}
                   </span>
                 )

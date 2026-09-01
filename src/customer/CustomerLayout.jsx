@@ -85,7 +85,7 @@ export default function CustomerLayout({ children, profile }) {
                     isActive ? 'border-brand-500 text-white' : 'border-transparent text-ivory/50 hover:text-ivory'}`}>
                 <Icon size={16} strokeWidth={1.75} /> {label}
                 {badge > 0 && (
-                  <span className="ml-0.5 text-[10px] bg-brand-500 text-white rounded-full px-1.5 py-0.5 leading-none">{badge}</span>
+                  <span className="ml-0.5 text-2xs bg-brand-500 text-white rounded-full px-1.5 py-0.5 leading-none">{badge}</span>
                 )}
               </NavLink>
             ))}
@@ -109,10 +109,10 @@ export default function CustomerLayout({ children, profile }) {
             <span className="relative">
               <Icon size={20} strokeWidth={1.75} />
               {badge > 0 && (
-                <span className="absolute -top-1.5 -right-2 text-[9px] bg-brand-500 text-white rounded-full px-1 min-w-[0.9rem] text-center leading-[0.9rem]">{badge}</span>
+                <span className="absolute -top-1.5 -right-2 text-2xs bg-brand-500 text-white rounded-full px-1 min-w-[0.9rem] text-center leading-[0.9rem]">{badge}</span>
               )}
             </span>
-            <span className="text-[10px] font-medium leading-none truncate max-w-full px-0.5">{short}</span>
+            <span className="text-2xs font-medium leading-none truncate max-w-full px-0.5">{short}</span>
           </NavLink>
         ))}
         <button onClick={() => setMoreOpen(o => !o)}
@@ -122,7 +122,7 @@ export default function CustomerLayout({ children, profile }) {
             <MoreHorizontal size={20} strokeWidth={1.75} />
             {moreHasBadge && <span className="absolute -top-1 -right-1.5 w-1.5 h-1.5 rounded-full bg-brand-500" />}
           </span>
-          <span className="text-[10px] font-medium leading-none">More</span>
+          <span className="text-2xs font-medium leading-none">More</span>
         </button>
       </nav>
 
@@ -141,9 +141,9 @@ export default function CustomerLayout({ children, profile }) {
                     `relative flex flex-col items-center justify-center gap-1.5 py-3 px-1 min-h-[44px] rounded-none text-center transition-colors ${
                       isActive ? 'bg-brand-50 text-brand-600' : 'text-ink-70 active:bg-ivory'}`}>
                   <Icon size={22} strokeWidth={1.6} className="shrink-0" />
-                  <span className="text-[11px] font-medium leading-tight line-clamp-2">{label}</span>
+                  <span className="text-2xs font-medium leading-tight line-clamp-2">{label}</span>
                   {badge > 0 && (
-                    <span className="absolute top-1.5 right-2 text-[9px] bg-brand-500 text-white rounded-full px-1 min-w-[1rem] text-center leading-4">{badge}</span>
+                    <span className="absolute top-1.5 right-2 text-2xs bg-brand-500 text-white rounded-full px-1 min-w-[1rem] text-center leading-4">{badge}</span>
                   )}
                 </NavLink>
               ))}

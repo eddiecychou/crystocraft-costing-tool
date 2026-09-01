@@ -442,7 +442,7 @@ export default function SchemaAudit() {
               </div>
               {open && hasIssues && (
                 <>
-                  <p className="text-[11px] text-ink-60 mt-2 mb-1">
+                  <p className="text-2xs text-ink-60 mt-2 mb-1">
                     {g.hint}
                     {g.hintLink && <> · <Link to={g.hintLink.to} className="text-brand-600 hover:underline">{g.hintLink.label}</Link></>}
                   </p>

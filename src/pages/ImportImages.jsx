@@ -210,8 +210,8 @@ export default function ImportImages() {
                               className={`relative aspect-square bg-white border rounded-none overflow-hidden ${on ? 'border-brand-500 ring-1 ring-brand-400' : 'border-ivory-dark opacity-50'}`}
                               title={img.filename}>
                         <img src={img.url} alt={img.alt || img.filename} loading="lazy" className="w-full h-full object-contain p-0.5" />
-                        {on && <span className="absolute top-0.5 right-0.5 bg-brand-600 text-white text-[9px] px-1 rounded-none">✓</span>}
-                        <span className="absolute bottom-0 inset-x-0 bg-black/55 text-white text-[8px] leading-tight px-0.5 truncate">{img.filename}</span>
+                        {on && <span className="absolute top-0.5 right-0.5 bg-brand-600 text-white text-2xs px-1 rounded-none">✓</span>}
+                        <span className="absolute bottom-0 inset-x-0 bg-black/55 text-white text-2xs leading-tight px-0.5 truncate">{img.filename}</span>
                       </button>
                     )
                   })}

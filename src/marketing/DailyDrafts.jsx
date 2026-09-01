@@ -278,7 +278,7 @@ function summarizeHistory(decisions) {
 function SourceBadge({ source }) {
   const isContact = source === 'contact'
   return (
-    <span className={`ml-1.5 text-[10px] uppercase tracking-wide rounded-none px-1 py-0.5 shrink-0 ${
+    <span className={`ml-1.5 text-2xs uppercase tracking-wide rounded-none px-1 py-0.5 shrink-0 ${
       isContact ? 'text-amber-600 bg-amber-50' : 'text-blue-600 bg-blue-50'
     }`}>
       {isContact ? 'Lead' : 'Customer'}
@@ -1280,7 +1280,7 @@ export default function DailyDrafts() {
           <span className="inline-flex items-center gap-1.5">
             <Sparkles size={14} className="text-purple-500" /> Draft memory — standing rules
             {pendingRules.length > 0 && (
-              <span className="text-[11px] font-normal bg-amber-100 text-amber-700 rounded-full px-2 py-0.5">
+              <span className="text-2xs font-normal bg-amber-100 text-amber-700 rounded-full px-2 py-0.5">
                 {pendingRules.length} pending review
               </span>
             )}
@@ -1396,7 +1396,7 @@ export default function DailyDrafts() {
                   onClick={() => { setLinkedProduct(p); setLinkProductOpen(false); setLinkProductQuery('') }}
                   className="w-full flex items-center justify-between gap-2 text-left px-3 py-1.5 text-sm hover:bg-ivory-light">
                   <span className="truncate">{p.name}</span>
-                  <span className={`text-[10px] uppercase tracking-wide rounded-none px-1 py-0.5 shrink-0 ${
+                  <span className={`text-2xs uppercase tracking-wide rounded-none px-1 py-0.5 shrink-0 ${
                     p.source === 'range' ? 'bg-brand-50 text-brand-700' : 'bg-blue-50 text-blue-700'
                   }`}>
                     {p.source === 'range' ? 'Range' : 'Corporate'}
@@ -1573,7 +1573,7 @@ export default function DailyDrafts() {
                   {cat}
                 </label>
               ))}
-              <span className="text-[11px] text-ink-60">{categoryFilter.length ? '' : '(none checked = all categories)'}</span>
+              <span className="text-2xs text-ink-60">{categoryFilter.length ? '' : '(none checked = all categories)'}</span>
             </div>
           )}
         </div>
@@ -1582,7 +1582,7 @@ export default function DailyDrafts() {
           <input value={targetingNote} onChange={e => setTargetingNote(e.target.value)} disabled={!hasMaster}
             placeholder='e.g. "Hong Kong corporate gift customers" or "Crystocraft distributors in Europe"'
             className="input w-full md:w-96" />
-          <div className="text-[11px] text-ink-60 mt-1">Leave blank and DeepSeek picks who's most relevant on its own judgment.</div>
+          <div className="text-2xs text-ink-60 mt-1">Leave blank and DeepSeek picks who's most relevant on its own judgment.</div>
         </div>
         <label className="flex items-center gap-2 text-sm text-ink-70">
           <input type="checkbox" checked={includeAlreadyContacted} disabled={!hasMaster}
@@ -1664,27 +1664,27 @@ export default function DailyDrafts() {
                   {d.contextSources?.length > 0 && (
                     <div className="flex items-center gap-2 mt-1">
                       {d.contextSources.includes('email') && (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-ink-60" title="This draft used the customer's ingested email history">
+                        <span className="inline-flex items-center gap-1 text-2xs text-ink-60" title="This draft used the customer's ingested email history">
                           <Mail size={11} /> Email history
                         </span>
                       )}
                       {d.contextSources.includes('whatsapp') && (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-ink-60" title="This draft used the customer's imported WhatsApp history">
+                        <span className="inline-flex items-center gap-1 text-2xs text-ink-60" title="This draft used the customer's imported WhatsApp history">
                           <Smartphone size={11} /> WhatsApp history
                         </span>
                       )}
                       {d.contextSources.includes('notes') && (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-ink-60" title="This draft used the CRM notes field">
+                        <span className="inline-flex items-center gap-1 text-2xs text-ink-60" title="This draft used the CRM notes field">
                           <FileText size={11} /> CRM notes
                         </span>
                       )}
                       {d.contextSources.includes('invoices') && (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-ink-60" title="This draft used recent ERP order history">
+                        <span className="inline-flex items-center gap-1 text-2xs text-ink-60" title="This draft used recent ERP order history">
                           <Receipt size={11} /> Recent orders
                         </span>
                       )}
                       {d.contextSources.includes('memory') && (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-ink-60" title="This draft used the contact's saved AI writing preferences">
+                        <span className="inline-flex items-center gap-1 text-2xs text-ink-60" title="This draft used the contact's saved AI writing preferences">
                           <Sparkles size={11} /> Memory
                         </span>
                       )}
@@ -1843,7 +1843,7 @@ export default function DailyDrafts() {
                       <Smartphone size={12} />{label}
                     </button>
                     <button type="button" onClick={() => navigator.clipboard.writeText(number)}
-                      title={`Copy ${label} number`} className="text-platinum hover:text-brand-600 px-1 py-0.5 text-[10px]">
+                      title={`Copy ${label} number`} className="text-platinum hover:text-brand-600 px-1 py-0.5 text-2xs">
                       Copy
                     </button>
                   </span>
@@ -1945,7 +1945,7 @@ export default function DailyDrafts() {
                               makes that mismatch visible instead of silently
                               confusing — say it again or reword the request. */}
                           {h.role === 'assistant' && h.applied === false && (
-                            <p className="text-[11px] text-amber-700 ml-6 mt-0.5">
+                            <p className="text-2xs text-amber-700 ml-6 mt-0.5">
                               ⚠ No actual change was applied to the draft above — try rephrasing the request.
                             </p>
                           )}
@@ -1989,7 +1989,7 @@ export default function DailyDrafts() {
                       {isChatBusy ? <Loader2 size={14} className="animate-spin" /> : 'Send'}
                     </button>
                   </div>
-                  <div className="text-[11px] text-ink-60">
+                  <div className="text-2xs text-ink-60">
                     The AI only rewrites this email — it never edits the CRM record. Click <Bookmark size={10} className="inline" /> next to your own message to save it as a note instead.
                   </div>
                 </div>
@@ -2015,7 +2015,7 @@ export default function DailyDrafts() {
                   </div>
                   <div className="flex items-center gap-2 mt-1 flex-wrap">
                     {ENGAGEMENT_BADGES.map(({ key, label, Icon }) => (
-                      <span key={key} className={`inline-flex items-center gap-1 text-[11px] rounded-none px-1.5 py-0.5 ${
+                      <span key={key} className={`inline-flex items-center gap-1 text-2xs rounded-none px-1.5 py-0.5 ${
                         d.engagement?.[key]
                           ? ((key === 'bounced' || key === 'complained') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700')
                           : 'bg-ivory text-platinum'
@@ -2024,7 +2024,7 @@ export default function DailyDrafts() {
                       </span>
                     ))}
                     {d.repliedAt && (
-                      <span className="inline-flex items-center gap-1 text-[11px] rounded-none px-1.5 py-0.5 bg-brand-50 text-brand-700">
+                      <span className="inline-flex items-center gap-1 text-2xs rounded-none px-1.5 py-0.5 bg-brand-50 text-brand-700">
                         <CheckCircle2 size={11} /> Replied{d.repliedChannel ? ` via ${d.repliedChannel}` : ''}
                       </span>
                     )}

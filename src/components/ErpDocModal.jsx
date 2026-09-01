@@ -67,11 +67,11 @@ export default function ErpDocModal({ of, doc, onClose }) {
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg font-semibold text-ink font-mono">{code}</h2>
-              <span className="text-[10px] font-medium text-ink-60 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
+              <span className="text-2xs font-medium text-ink-60 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
                 <Database size={10} /> JES · read-only
               </span>
               {(doc.status || '').trim().toUpperCase() === 'VOID' && (
-                <span className="text-[10px] font-medium text-red-600 border border-red-200 bg-red-50 rounded-full px-2 py-0.5">VOID</span>
+                <span className="text-2xs font-medium text-red-600 border border-red-200 bg-red-50 rounded-full px-2 py-0.5">VOID</span>
               )}
             </div>
             <p className="text-sm text-ink-70 mt-1 truncate">{doc.customer || '—'}</p>
@@ -140,7 +140,7 @@ export default function ErpDocModal({ of, doc, onClose }) {
                         <td className="py-2 pr-3 text-ink-60">
                           {(sc.description || '').trim() || (sc.code || '').trim() || 'Surcharge'}
                           {sc.description && sc.code && (
-                            <span className="ml-1.5 font-mono text-[10px] text-ink-60">{(sc.code || '').trim()}</span>
+                            <span className="ml-1.5 font-mono text-2xs text-ink-60">{(sc.code || '').trim()}</span>
                           )}
                         </td>
                         <td className="py-2 text-right tabular-nums text-ink-80">{fmtMoney(sc.amount)}</td>
@@ -177,7 +177,7 @@ export default function ErpDocModal({ of, doc, onClose }) {
 function Field({ label, value, mono }) {
   return (
     <div className="min-w-0">
-      <p className="text-[10px] uppercase tracking-wide text-ink-60">{label}</p>
+      <p className="text-2xs uppercase tracking-wide text-ink-60">{label}</p>
       <p className={`text-ink truncate ${mono ? 'font-mono text-xs' : ''}`}>{value}</p>
     </div>
   )

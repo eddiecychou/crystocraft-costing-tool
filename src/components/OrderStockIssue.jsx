@@ -224,7 +224,7 @@ function PreviewTable({ items }) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="text-[10px] uppercase tracking-wide text-ink-60 text-left border-b border-ivory-dark">
+          <tr className="text-2xs uppercase tracking-wide text-ink-60 text-left border-b border-ivory-dark">
             <th className="py-1.5 pr-2 font-medium">Component</th>
             <th className="py-1.5 pr-2 font-medium text-right">Need</th>
             <th className="py-1.5 pr-2 font-medium text-right">In stock</th>

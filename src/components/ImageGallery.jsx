@@ -134,7 +134,7 @@ function SortableImageCard({ img, idx, typeOptions, captionable, showVisibility,
           <div className="absolute top-1 left-1 z-10 bg-yellow-400 px-1 py-0.5 rounded-none text-white leading-none"><Star size={11} className="fill-current" /></div>
         )}
         {showVisibility && (
-          <div className={`absolute z-10 bottom-1 left-1 px-1.5 py-0.5 rounded-none text-[10px] font-medium leading-none ${visMeta?.cls || 'bg-warm-grey text-ink-70'}`}>
+          <div className={`absolute z-10 bottom-1 left-1 px-1.5 py-0.5 rounded-none text-2xs font-medium leading-none ${visMeta?.cls || 'bg-warm-grey text-ink-70'}`}>
             {visMeta?.short || vis}
           </div>
         )}
@@ -595,13 +595,13 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
             <>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Original</p>
+                <p className="text-2xs uppercase tracking-wide text-ink-60 mb-1">Original</p>
                 <div className="aspect-square bg-ivory-dark border border-warm-grey rounded-none flex items-center justify-center overflow-hidden">
                   <img src={enh.before} alt="" className="w-full h-full object-contain" />
                 </div>
               </div>
               <div>
-                <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Enhanced {enh.after && `· ${enh.mode}`}</p>
+                <p className="text-2xs uppercase tracking-wide text-ink-60 mb-1">Enhanced {enh.after && `· ${enh.mode}`}</p>
                 <div className="aspect-square bg-ivory-dark border border-warm-grey rounded-none flex items-center justify-center overflow-hidden">
                   {enh.busy ? <span className="text-xs text-ink-60">Working… (AI, ~10–20s)</span>
                     : enh.after ? <img src={enh.after} alt="" className="w-full h-full object-contain" />
@@ -611,7 +611,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
             </div>
             {/* Colour hint — shown before first enhancement and persists */}
             <div className="mt-3">
-              <label className="text-[11px] font-medium text-ink-60 uppercase tracking-wide">
+              <label className="text-2xs font-medium text-ink-60 uppercase tracking-wide">
                 Describe product colours <span className="normal-case font-normal text-ink-60">(optional — helps AI preserve them)</span>
               </label>
               <input
@@ -645,7 +645,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                     className="btn-primary text-xs py-1.5 disabled:opacity-40">
                     {enh.busy ? 'Working…' : 'Apply recolor'}
                   </button>
-                  <p className="text-[10px] text-ink-60 leading-snug">AI changes only what you describe — shape, background, and unmentioned colours stay the same. Always review before keeping.</p>
+                  <p className="text-2xs text-ink-60 leading-snug">AI changes only what you describe — shape, background, and unmentioned colours stay the same. Always review before keeping.</p>
                 </div>
               )}
             </div>
@@ -690,7 +690,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                 <Check size={14} /> {enh.busy ? 'Saving…' : 'Replace original'}
               </button>
             </div>
-            <p className="text-[11px] text-ink-60 mt-2">
+            <p className="text-2xs text-ink-60 mt-2">
               {editTab === 'ai'
                 ? 'AI re-renders the image — check the shape and colours match the real product before keeping. The original isn’t changed until you Keep.'
                 : 'Adjustments are applied exactly as shown. The original isn’t changed until you Keep.'}

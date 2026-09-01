@@ -393,7 +393,7 @@ export default function RangeCatalogueExport({ onClose }) {
                 Two priced variants share a brand, plating and description, so the catalogue cannot tell them apart.
                 Fill in the crystal description on those variants to fix it.
               </p>
-              <p className="mt-1 font-mono text-[11px] text-amber-900">
+              <p className="mt-1 font-mono text-2xs text-amber-900">
                 {needsAttention.slice(0, 12).map(p => codeOf(p)).join('  ')}
                 {needsAttention.length > 12 ? `  +${needsAttention.length - 12} more` : ''}
               </p>

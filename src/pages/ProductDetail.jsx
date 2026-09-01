@@ -307,12 +307,12 @@ export default function ProductDetail() {
             </h2>
             <p className="text-xs text-ink-60 mb-3 leading-relaxed">
               <span className="font-medium text-ink-70">Visibility</span> controls where each image may appear:
-              <span className="inline-block mx-1 px-1.5 py-0.5 rounded-none bg-warm-grey text-ink-70 text-[10px] font-medium">Internal</span> admin only,
-              <span className="inline-block mx-1 px-1.5 py-0.5 rounded-none bg-amber-100 text-amber-700 text-[10px] font-medium">Storefront</span> shown to logged-in customers,
-              <span className="inline-block mx-1 px-1.5 py-0.5 rounded-none bg-green-100 text-green-700 text-[10px] font-medium">Public</span> also allowed in blog posts.
+              <span className="inline-block mx-1 px-1.5 py-0.5 rounded-none bg-warm-grey text-ink-70 text-2xs font-medium">Internal</span> admin only,
+              <span className="inline-block mx-1 px-1.5 py-0.5 rounded-none bg-amber-100 text-amber-700 text-2xs font-medium">Storefront</span> shown to logged-in customers,
+              <span className="inline-block mx-1 px-1.5 py-0.5 rounded-none bg-green-100 text-green-700 text-2xs font-medium">Public</span> also allowed in blog posts.
               New uploads start <span className="font-medium">Internal</span> — set client-logo images carefully before sharing.
               If a storefront photo shows a specific client's branding, tag it
-              <span className="inline-block mx-1 px-1.5 py-0.5 rounded-none bg-red-50 text-red-700 text-[10px] font-medium">Branded for</span>
+              <span className="inline-block mx-1 px-1.5 py-0.5 rounded-none bg-red-50 text-red-700 text-2xs font-medium">Branded for</span>
               that customer — anyone flagged "sensitive" (Customers → edit) will never see it, automatically.
             </p>
             <ImageGallery

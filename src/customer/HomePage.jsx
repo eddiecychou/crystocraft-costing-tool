@@ -132,7 +132,7 @@ function PillarCard({ pillar, spanFull }) {
       <div className="p-4 flex flex-col gap-1.5 flex-1">
         <h3 className="text-lg text-ink">{pillar.title}</h3>
         <p className="text-sm text-ink-60 leading-snug">{pillar.description}</p>
-        <p className="text-[11px] text-ink-60 uppercase tracking-wide font-label">{pillar.metadata}</p>
+        <p className="text-2xs text-ink-60 uppercase tracking-wide font-label">{pillar.metadata}</p>
         <div className="mt-auto pt-3 flex items-center gap-1.5 text-sm text-brand-600 font-medium group-hover:gap-2.5 transition-all">
           {pillar.ctaLabel} <ArrowRight size={15} />
         </div>
@@ -154,7 +154,7 @@ function QuickActionTile({ action, count }) {
       <span className="relative w-11 h-11 rounded-full bg-brand-50 flex items-center justify-center group-hover:bg-brand-100 transition-colors">
         <Icon size={20} strokeWidth={1.5} className="text-brand-600" />
         {count > 0 && (
-          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-600 text-white text-[10px] font-label font-medium flex items-center justify-center leading-none">
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-600 text-white text-2xs font-label font-medium flex items-center justify-center leading-none">
             {count}
           </span>
         )}

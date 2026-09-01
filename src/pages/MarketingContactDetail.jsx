@@ -194,7 +194,7 @@ function ContactDetailForm({ contact, customers, onPatched, onDeleted }) {
           {field('WhatsApp', 'whatsapp')}
           {field('WeChat', 'wechat')}
         </div>
-        <p className="text-[11px] text-ink-60 -mt-2">At least one of email / phone / WhatsApp / WeChat is required to save.</p>
+        <p className="text-2xs text-ink-60 -mt-2">At least one of email / phone / WhatsApp / WeChat is required to save.</p>
         <label className="block">
           <span className="text-xs text-ink-60">Status</span>
           <select className="input w-full mt-0.5" value={f.status} onChange={set('status')}>
@@ -216,7 +216,7 @@ function ContactDetailForm({ contact, customers, onPatched, onDeleted }) {
         <label className="block">
           <span className="text-xs text-ink-60">Tags (comma-separated)</span>
           <input className="input w-full mt-0.5" value={f.tags} onChange={set('tags')} placeholder="distributor, exhibition contact" />
-          <span className="text-[11px] text-ink-60">Category tags ({MC_CATEGORIES.slice(0, 5).join(', ')}…) show highlighted.</span>
+          <span className="text-2xs text-ink-60">Category tags ({MC_CATEGORIES.slice(0, 5).join(', ')}…) show highlighted.</span>
         </label>
         <label className="flex items-center gap-2 text-sm text-ink-70">
           <input type="checkbox" checked={f.is_customer} onChange={set('is_customer')}
@@ -225,15 +225,15 @@ function ContactDetailForm({ contact, customers, onPatched, onDeleted }) {
         </label>
         <div className="block border-t border-warm-grey pt-3">
           <span className="text-xs text-ink-60">Linked app customer</span>
-          <p className="text-[11px] text-ink-60 mb-1.5">
+          <p className="text-2xs text-ink-60 mb-1.5">
             {match ? `Currently linked to "${match.company_name}".` : 'Not linked — pick a customer if you know this contact is already in the app.'}
           </p>
           <div className="flex items-center gap-2 flex-wrap">
             <CustomerPicker customers={customers} value={match?.customer_id || ''} onChange={doLink} />
-            {linkState === 'saving' && <span className="text-[11px] text-ink-60">Saving…</span>}
-            {linkState === 'saved' && <span className="text-[11px] text-green-600">Saved ✓</span>}
+            {linkState === 'saving' && <span className="text-2xs text-ink-60">Saving…</span>}
+            {linkState === 'saved' && <span className="text-2xs text-green-600">Saved ✓</span>}
             {match && (
-              <button type="button" onClick={doUnlink} className="text-[11px] text-ink-60 hover:text-red-600">Unlink</button>
+              <button type="button" onClick={doUnlink} className="text-2xs text-ink-60 hover:text-red-600">Unlink</button>
             )}
           </div>
         </div>
@@ -256,14 +256,14 @@ function ContactDetailForm({ contact, customers, onPatched, onDeleted }) {
           </span>
           <textarea className="input w-full mt-0.5" rows={2} value={f.ai_context_summary} onChange={set('ai_context_summary')}
             placeholder="e.g. Prefers WhatsApp over email. Distributor, price-sensitive, replies slowly." />
-          <span className={`text-[11px] ${
+          <span className={`text-2xs ${
             f.ai_context_summary.trim().split(/\s+/).filter(Boolean).length > AI_CONTEXT_SUMMARY_MAX_WORDS ? 'text-red-600' : 'text-ink-60'
           }`}>
             {f.ai_context_summary.trim() ? f.ai_context_summary.trim().split(/\s+/).filter(Boolean).length : 0} / {AI_CONTEXT_SUMMARY_MAX_WORDS} words —
             fed into every Daily Drafts email to this contact.
           </span>
         </label>
-        <p className="text-[11px] text-ink-60">
+        <p className="text-2xs text-ink-60">
           Status drives emailability automatically (only "subscribed" is emailable). Changing the email moves the record.
         </p>
       </div>

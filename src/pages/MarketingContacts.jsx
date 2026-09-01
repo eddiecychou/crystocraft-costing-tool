@@ -95,7 +95,7 @@ export function EmailThreads({ contactId, emailSummary, onSummaryUpdated }) {
               {summary.open_commitments.map((c, i) => <li key={i}>{c}</li>)}
             </ul>
           )}
-          <p className="text-[10px] text-ink-60">A draft, not verified — used by Daily Drafts.</p>
+          <p className="text-2xs text-ink-60">A draft, not verified — used by Daily Drafts.</p>
         </div>
       )}
       <div className="space-y-1.5">
@@ -221,7 +221,7 @@ export function WhatsAppThreads({ contactId, phone, whatsappSummary, onSummaryUp
               {summary.open_commitments.map((c, i) => <li key={i}>{c}</li>)}
             </ul>
           )}
-          <p className="text-[10px] text-ink-60">A draft, not verified — used by Daily Drafts.</p>
+          <p className="text-2xs text-ink-60">A draft, not verified — used by Daily Drafts.</p>
         </div>
       )}
       {transcribeError && <p className="text-xs text-red-600 mb-1.5">{transcribeError}</p>}
@@ -423,7 +423,7 @@ export function AlibabaThreads({ contactId, alibabaSummary, onSummaryUpdated }) 
               {summary.open_commitments.map((c, i) => <li key={i}>{c}</li>)}
             </ul>
           )}
-          <p className="text-[10px] text-ink-60">A draft, not verified — used by Daily Drafts.</p>
+          <p className="text-2xs text-ink-60">A draft, not verified — used by Daily Drafts.</p>
         </div>
       )}
       {threads.length > 0 && (
@@ -788,7 +788,7 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
         <div className="p-5 space-y-2 max-h-[65vh] overflow-auto">
           {shown.map(([tag, count]) => (
             <div key={tag} className="flex items-center gap-2">
-              <span className={`shrink-0 w-8 text-center text-[10px] rounded-none px-1 py-0.5 ${isCategoryTag(tag) ? 'text-teal-700 bg-teal-100 font-medium' : 'text-ink-70 bg-ivory-dark'}`}>
+              <span className={`shrink-0 w-8 text-center text-2xs rounded-none px-1 py-0.5 ${isCategoryTag(tag) ? 'text-teal-700 bg-teal-100 font-medium' : 'text-ink-70 bg-ivory-dark'}`}>
                 {count}
               </span>
               <input
@@ -809,7 +809,7 @@ function TagManagerModal({ contacts, onClose, onApplied }) {
           ))}
           {shown.length === 0 && <div className="text-sm text-ink-60 text-center py-8">No tags match.</div>}
         </div>
-        <p className="px-5 pb-4 text-[11px] text-ink-60">
+        <p className="px-5 pb-4 text-2xs text-ink-60">
           Renaming to a tag that already exists on some of these contacts merges the two — no duplicates.
         </p>
       </div>
@@ -1153,7 +1153,7 @@ export default function MarketingContacts({ onSendEmail }) {
                   <td className="px-3 py-2">
                     {c.company || <span className="text-platinum">—</span>}
                     {c.possible_customer_match && (
-                      <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-brand-600 bg-brand-50 rounded-none px-1 py-0.5"
+                      <span className="ml-1 inline-flex items-center gap-0.5 text-2xs text-brand-600 bg-brand-50 rounded-none px-1 py-0.5"
                             title={`Already an app customer: ${c.possible_customer_match.company_name}`}>
                         <Link2 size={10} /> in app
                       </span>
@@ -1161,26 +1161,26 @@ export default function MarketingContacts({ onSendEmail }) {
                   </td>
                   <td className="px-3 py-2 font-mono text-xs">
                     {c.email}
-                    {c.role_address && <span className="ml-1 text-[10px] text-ink-60" title="Role address (info@, sales@…)">role</span>}
+                    {c.role_address && <span className="ml-1 text-2xs text-ink-60" title="Role address (info@, sales@…)">role</span>}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">{c.country || <span className="text-platinum">—</span>}</td>
                   <td className="px-3 py-2">
                     <div className="flex gap-1">
                       {c.audiences.map(a => (
-                        <span key={a} className={`inline-block px-1.5 py-0.5 rounded-none text-[10px] ${AUD_STYLE[a] || 'bg-ivory-dark text-ink-60'}`}>{a}</span>
+                        <span key={a} className={`inline-block px-1.5 py-0.5 rounded-none text-2xs ${AUD_STYLE[a] || 'bg-ivory-dark text-ink-60'}`}>{a}</span>
                       ))}
                     </div>
                   </td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-1 max-w-[260px]">
                       {sortTags(c.tags).slice(0, 5).map(t => (
-                        <span key={t} className={`inline-flex items-center gap-0.5 text-[10px] rounded-none px-1 py-0.5 ${
+                        <span key={t} className={`inline-flex items-center gap-0.5 text-2xs rounded-none px-1 py-0.5 ${
                           isCategoryTag(t) ? 'text-teal-700 bg-teal-100 font-medium' : 'text-ink-70 bg-ivory-dark'
                         }`}>
                           <Tag size={9} />{t}
                         </span>
                       ))}
-                      {c.tags.length > 5 && <span className="text-[10px] text-ink-60">+{c.tags.length - 5}</span>}
+                      {c.tags.length > 5 && <span className="text-2xs text-ink-60">+{c.tags.length - 5}</span>}
                     </div>
                   </td>
                   <td className="px-3 py-2">

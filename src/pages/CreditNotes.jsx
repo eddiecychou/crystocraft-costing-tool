@@ -107,7 +107,7 @@ export default function CreditNotes() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-[10px] uppercase tracking-wide text-ink-60 border-b border-ivory-dark">
+                <tr className="text-2xs uppercase tracking-wide text-ink-60 border-b border-ivory-dark">
                   <th className="px-3 py-2 font-medium text-left">CN No.</th>
                   <th className="px-3 py-2 font-medium text-left">Customer</th>
                   <th className="px-3 py-2 font-medium text-left">Original SI / UC</th>
@@ -128,7 +128,7 @@ export default function CreditNotes() {
                       <td className="px-3 py-2.5 text-ink-60 font-mono text-xs">{[r.original_si_no, r.original_uc_no].filter(Boolean).join(' · ') || '—'}</td>
                       <td className="px-3 py-2.5 text-ink-60 whitespace-nowrap">{r.record_date ? fmtDate(r.record_date) : '—'}</td>
                       <td className="px-3 py-2.5">
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${meta.badge}`}>{meta.label}</span>
+                        <span className={`text-2xs px-1.5 py-0.5 rounded-full ${meta.badge}`}>{meta.label}</span>
                       </td>
                       <td className="px-3 py-2.5 text-right tabular-nums text-ink font-medium whitespace-nowrap">
                         {fmtMoney(amount, r.currency || 'USD')}

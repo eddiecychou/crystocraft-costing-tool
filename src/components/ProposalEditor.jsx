@@ -26,7 +26,7 @@ import { buildBrandProposalPdf } from '../brandProposalExport'
 
 function AssetThumb({ asset, className }) {
   if (!asset) return <div className={`${className} bg-ivory-dark flex items-center justify-center`}><ImageOff size={16} className="text-platinum" /></div>
-  if (cannotRenderAsImage(asset.filename)) return <div className={`${className} bg-ivory-dark flex items-center justify-center text-[9px] text-ink-60`}>FILE</div>
+  if (cannotRenderAsImage(asset.filename)) return <div className={`${className} bg-ivory-dark flex items-center justify-center text-2xs text-ink-60`}>FILE</div>
   return <img src={asset.file_url} alt={asset.title || asset.filename} className={`${className} object-contain bg-ivory`} />
 }
 
@@ -61,7 +61,7 @@ function ProductPickerModal({ products, selected, onToggle, onClose }) {
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-ink truncate">{p.name}</p>
               </div>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-none uppercase tracking-wide shrink-0 ${p.collection === 'range_products' ? 'bg-brand-50 text-brand-700' : 'bg-sapphire/10 text-sapphire'}`}>
+              <span className={`text-2xs px-1.5 py-0.5 rounded-none uppercase tracking-wide shrink-0 ${p.collection === 'range_products' ? 'bg-brand-50 text-brand-700' : 'bg-sapphire/10 text-sapphire'}`}>
                 {p.collection === 'range_products' ? 'Figurine' : 'Corporate'}
               </span>
             </label>
@@ -96,7 +96,7 @@ function ProductPhotoPicker({ productId, customerId, imageId, onPick }) {
 
   return (
     <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-      <span className="text-[10px] text-ink-60 mr-0.5">Photo:</span>
+      <span className="text-2xs text-ink-60 mr-0.5">Photo:</span>
       {choices.map(im => (
         <button key={im.id} type="button" onClick={() => onPick(im.id)}
                 title={im.branded_for_customer_id === customerId ? 'This customer’s branded photo' : ''}
@@ -171,7 +171,7 @@ function SortableSection({ section, index, assets, products, customerId, onChang
                   <textarea className="input text-xs min-h-[44px] resize-y w-full" maxLength={CAPTION_MAX_LEN}
                             placeholder="Why this image fits (shown to the customer)"
                             value={ref.caption} onChange={e => setAssetCaption(ref.id, e.target.value)} />
-                  <p className="text-[10px] text-platinum text-right mt-0.5">{ref.caption.length}/{CAPTION_MAX_LEN}</p>
+                  <p className="text-2xs text-platinum text-right mt-0.5">{ref.caption.length}/{CAPTION_MAX_LEN}</p>
                 </div>
               </div>
             ))}
@@ -198,7 +198,7 @@ function SortableSection({ section, index, assets, products, customerId, onChang
                   <textarea className="input text-xs min-h-[44px] resize-y w-full" maxLength={CAPTION_MAX_LEN}
                             placeholder="Why this product fits / a short intro (shown to the customer)"
                             value={r.caption} onChange={e => setProductCaption(r, e.target.value)} />
-                  <p className="text-[10px] text-platinum text-right mt-0.5">{r.caption.length}/{CAPTION_MAX_LEN}</p>
+                  <p className="text-2xs text-platinum text-right mt-0.5">{r.caption.length}/{CAPTION_MAX_LEN}</p>
                   {r.collection === 'products' && (
                     <ProductPhotoPicker productId={r.id} customerId={customerId} imageId={r.image_id}
                                         onPick={id => setProductImage(r, id)} />
@@ -338,15 +338,15 @@ function ImportProposalModal({ customerId, currentStatus, onClose, onApplied }) 
               ) : (
                 <div className="rounded-none border border-amber-200 bg-amber-50 p-3">
                   <p className="text-xs text-amber-800 font-medium mb-1.5 inline-flex items-center gap-1.5"><AlertTriangle size={13} /> {problems.length} thing{problems.length === 1 ? '' : 's'} to check</p>
-                  <ul className="text-[11px] text-amber-700 space-y-1 list-disc list-inside">
+                  <ul className="text-2xs text-amber-700 space-y-1 list-disc list-inside">
                     {problems.map((p, i) => <li key={i}>{p}</li>)}
                   </ul>
                 </div>
               )}
               {blocking.length > 0 && (
-                <p className="text-[11px] text-red-600">Fix duplicates/missing references in the source file and re-import — those refs would be silently dropped otherwise.</p>
+                <p className="text-2xs text-red-600">Fix duplicates/missing references in the source file and re-import — those refs would be silently dropped otherwise.</p>
               )}
-              <p className="text-[11px] text-ink-60">
+              <p className="text-2xs text-ink-60">
                 {currentStatus === 'published'
                   ? 'This proposal is currently published — importing will move it back to draft for review, not publish the new content automatically.'
                   : 'Will be saved as a draft — nothing changes for the customer until you publish.'}
@@ -674,7 +674,7 @@ export default function ProposalEditor({ customerId, customerName }) {
             {collapsed ? <ChevronRight size={15} className="text-ink-60 shrink-0" /> : <ChevronDown size={15} className="text-ink-60 shrink-0" />}
             <Presentation size={15} className="text-brand-500" /> Proposal
           </button>
-          <span className={`text-[11px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${proposal.status === 'published' ? 'bg-emerald-100 text-emerald-700' : 'bg-ivory-dark text-ink-60'}`}>
+          <span className={`text-2xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${proposal.status === 'published' ? 'bg-emerald-100 text-emerald-700' : 'bg-ivory-dark text-ink-60'}`}>
             {proposal.status === 'published' ? 'Published — customer can see this' : 'Draft — admin preview only'}
           </span>
         </div>
@@ -687,7 +687,7 @@ export default function ProposalEditor({ customerId, customerName }) {
                   className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1 whitespace-nowrap">
             <Download size={12} /> {exporting ? 'Exporting…' : 'Export for AI mapping'}
           </button>
-          {pdfError && <span className="text-[11px] text-red-600 whitespace-nowrap">{pdfError}</span>}
+          {pdfError && <span className="text-2xs text-red-600 whitespace-nowrap">{pdfError}</span>}
           <button onClick={() => setImporting(true)} title="Import a mapped JSON file back in, as a draft, after validating every reference"
                   className="btn-secondary text-xs py-1.5 px-3 inline-flex items-center gap-1 whitespace-nowrap">
             <FileJson size={12} /> Import mapped JSON
@@ -698,7 +698,7 @@ export default function ProposalEditor({ customerId, customerName }) {
           </button>
         </div>
       </div>
-      {savedAt && <p className="text-[11px] text-ink-60 mb-2">Saved {savedAt.toLocaleTimeString()}</p>}
+      {savedAt && <p className="text-2xs text-ink-60 mb-2">Saved {savedAt.toLocaleTimeString()}</p>}
       {importing && (
         <ImportProposalModal customerId={customerId} currentStatus={proposal.status}
                               onClose={() => setImporting(false)}
@@ -732,11 +732,11 @@ export default function ProposalEditor({ customerId, customerName }) {
             )}
           </div>
           {heroAsset && (
-            <p className="text-[11px] text-ink-60 -mt-1">
+            <p className="text-2xs text-ink-60 -mt-1">
               Stored under <strong>Product Gallery</strong> in this customer's Brand Gallery (Customer Detail page) — not Brand Assets.
             </p>
           )}
-          <p className="text-[11px] text-ink-60 -mt-1">
+          <p className="text-2xs text-ink-60 -mt-1">
             Recommended: a wide landscape photo, at least 2000×840px (roughly 2.4:1) — it fills the full-width banner and
             crops from the sides on ultra-wide screens, so keep the main subject centred. JPG or PNG.
           </p>

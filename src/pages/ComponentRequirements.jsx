@@ -286,7 +286,7 @@ export default function ComponentRequirements() {
               <p className="text-xs font-semibold text-red-700 inline-flex items-center gap-1.5 mb-1.5">
                 <AlertTriangle size={13} /> {result.unmatched.length} item{result.unmatched.length === 1 ? '' : 's'} not in the product range — components can’t be computed
               </p>
-              <p className="text-[11px] text-red-600/80 mb-1.5">Add these to Figurine Gifts (with their critical components), or check the item code, then recompute.</p>
+              <p className="text-2xs text-red-600/80 mb-1.5">Add these to Figurine Gifts (with their critical components), or check the item code, then recompute.</p>
               <ul className="space-y-0.5">
                 {result.unmatched.map((u, i) => (
                   <li key={i} className="text-xs text-red-800">

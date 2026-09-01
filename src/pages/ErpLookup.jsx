@@ -489,7 +489,7 @@ function PhotoModal({ url, row, onClose }) {
           <button onClick={onClose} className="text-ink-60 hover:text-ink-70 shrink-0"><X size={18} /></button>
         </div>
         <img src={url} alt={row.code} className="w-full max-h-[70vh] object-contain bg-ivory" />
-        <div className="px-4 py-2 text-[11px] text-ink-60 font-mono truncate border-t border-warm-grey">{row.picture1}</div>
+        <div className="px-4 py-2 text-2xs text-ink-60 font-mono truncate border-t border-warm-grey">{row.picture1}</div>
       </div>
     </div>
   )
@@ -1033,7 +1033,7 @@ export default function ErpLookup() {
                                 for that design yet. */}
                             {String(r.type).toUpperCase() === 'FG' && (
                               inApp(r.code)
-                                ? <span className="text-[10px] text-ink-60" title="This design is already a product in the app">in app</span>
+                                ? <span className="text-2xs text-ink-60" title="This design is already a product in the app">in app</span>
                                 : <button onClick={() => setImportCode(r.code)}
                                     className="inline-flex items-center gap-0.5 text-brand-600 hover:underline text-xs font-medium"
                                     title="Create a figurine product from this item and its BOM">
@@ -1044,12 +1044,12 @@ export default function ErpLookup() {
                         : entity === 'customer' && c.key === 'name' && existingErpCodes.has(String(r.code).toUpperCase())
                         ? <span className="inline-flex items-center gap-1.5">
                             {r.name}
-                            <span className="text-[10px] text-teal-600 bg-teal-50 rounded-none px-1 py-0.5 shrink-0" title="Already linked to an app customer">in app</span>
+                            <span className="text-2xs text-teal-600 bg-teal-50 rounded-none px-1 py-0.5 shrink-0" title="Already linked to an app customer">in app</span>
                           </span>
                         : entity === 'supplier' && c.key === 'name' && existingSupplierErpCodes.has(String(r.code).toUpperCase())
                         ? <span className="inline-flex items-center gap-1.5">
                             {r.name}
-                            <span className="text-[10px] text-teal-600 bg-teal-50 rounded-none px-1 py-0.5 shrink-0" title="Already linked to an app supplier">in app</span>
+                            <span className="text-2xs text-teal-600 bg-teal-50 rounded-none px-1 py-0.5 shrink-0" title="Already linked to an app supplier">in app</span>
                           </span>
                         : DETAIL_GROUPS[entity] && c.key === 'code'
                         ? <button onClick={() => setDetailRow(r)}
@@ -1064,12 +1064,12 @@ export default function ErpLookup() {
                         : (entity === 'sales_invoice' || entity === 'sales_order') && c.key === 'customer' && r.customer_code
                         ? <span className="inline-flex items-center gap-1.5 flex-wrap">
                             {r.customer}
-                            <span className="text-[10px] text-ink-60 font-mono">{r.customer_code}</span>
+                            <span className="text-2xs text-ink-60 font-mono">{r.customer_code}</span>
                           </span>
                         : entity === 'purchase' && c.key === 'supplier' && r.supplier_code
                         ? <span className="inline-flex items-center gap-1.5 flex-wrap">
                             {r.supplier}
-                            <span className="text-[10px] text-ink-60 font-mono">{r.supplier_code}</span>
+                            <span className="text-2xs text-ink-60 font-mono">{r.supplier_code}</span>
                           </span>
                         : cellValue(c, r)}
                     </td>

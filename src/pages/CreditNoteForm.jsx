@@ -241,7 +241,7 @@ export default function CreditNoteForm() {
           </h1>
           {isEdit && (() => {
             const meta = CN_STATUSES.find(s => s.value === header.status) || CN_STATUSES[0]
-            return <span className={`text-[11px] px-2 py-0.5 rounded-full ${meta.badge}`}>{meta.label}</span>
+            return <span className={`text-2xs px-2 py-0.5 rounded-full ${meta.badge}`}>{meta.label}</span>
           })()}
         </div>
         {locked && (
@@ -346,7 +346,7 @@ export default function CreditNoteForm() {
           {/* ── Line items ── */}
           <div className="card p-4 md:p-6">
             <h2 className="text-sm font-semibold text-ink-80 mb-3">Returned Lines</h2>
-            <div className="hidden sm:grid grid-cols-[2fr_3fr_1fr_1fr_1.3fr_1.3fr_auto] gap-2 px-1 pb-1 text-[10px] uppercase tracking-wide text-ink-60">
+            <div className="hidden sm:grid grid-cols-[2fr_3fr_1fr_1fr_1.3fr_1.3fr_auto] gap-2 px-1 pb-1 text-2xs uppercase tracking-wide text-ink-60">
               <span>Item Code</span><span>Description</span><span className="text-right">Qty Returned</span>
               <span>Unit</span><span className="text-right">Unit Price</span><span className="text-right">Amount</span><span />
             </div>

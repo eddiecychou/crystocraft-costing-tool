@@ -37,7 +37,7 @@ function StatCard({ Icon, label, value, tone = 'ink' }) {
     <div className="card p-5">
       <div className="flex items-center gap-2 text-ink-60 mb-2">
         <Icon size={16} strokeWidth={1.75} />
-        <span className="text-[11px] uppercase tracking-wide">{label}</span>
+        <span className="text-2xs uppercase tracking-wide">{label}</span>
       </div>
       <p className={`text-3xl font-semibold ${toneCls}`}>{value}</p>
     </div>
@@ -91,7 +91,7 @@ export default function ProductionDashboard() {
             {low.slice(0, 12).map((r, i) => (
               <div key={`${r.cls}-${r.id || i}`} className="py-2 flex items-center justify-between gap-3 text-sm">
                 <span className="text-ink-70 truncate">
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 uppercase tracking-wide mr-2">{r.cls}</span>
+                  <span className="text-2xs px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 uppercase tracking-wide mr-2">{r.cls}</span>
                   {r.code || r.name || r.id}
                 </span>
                 <span className={`shrink-0 ${r.available < 0 ? 'text-red-600' : 'text-amber-600'}`}>

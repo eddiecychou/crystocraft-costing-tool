@@ -126,7 +126,7 @@ function SiPicker({ value, onChange }) {
               <button type="button" onMouseDown={() => pick(r)}
                 className="w-full text-left px-3 py-1.5 hover:bg-teal-50 flex items-baseline gap-2">
                 <span className="font-mono text-xs text-teal-700">{r.code}</span>
-                <span className={`text-[10px] px-1 rounded-none ${r.src === 'app' ? 'bg-blue-50 text-blue-600' : 'bg-ivory-dark text-ink-60'}`}>
+                <span className={`text-2xs px-1 rounded-none ${r.src === 'app' ? 'bg-blue-50 text-blue-600' : 'bg-ivory-dark text-ink-60'}`}>
                   {r.src === 'app' ? 'app' : 'JES'}
                 </span>
                 <span className="text-xs text-ink-70 truncate flex-1">{r.customer}</span>
@@ -446,7 +446,7 @@ function SortTh({ label, col, sort, onSort, align = 'left' }) {
         className={`inline-flex items-center gap-1 hover:text-ink transition-colors ${on ? 'text-ink' : ''}`}
         title={`Sort by ${label}`}>
         {label}
-        <span className={`text-[9px] leading-none ${on ? 'opacity-100' : 'opacity-0'}`}>
+        <span className={`text-2xs leading-none ${on ? 'opacity-100' : 'opacity-0'}`}>
           {sort.dir === 'asc' ? '▲' : '▼'}
         </span>
       </button>
@@ -732,7 +732,7 @@ export default function UcRegistry() {
                       {UC_SOURCES.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                     {r.invoice_location && (
-                      <span className="ml-1.5 text-[10px] text-ink-60" title={LOCATION_TITLE[r.invoice_location]}>
+                      <span className="ml-1.5 text-2xs text-ink-60" title={LOCATION_TITLE[r.invoice_location]}>
                         {LOCATION_LABEL[r.invoice_location]}
                       </span>
                     )}

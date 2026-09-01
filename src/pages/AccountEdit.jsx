@@ -287,12 +287,12 @@ export default function AccountEdit() {
         <div className="flex items-center gap-2 flex-wrap mb-1">
           <h1 className="text-xl">{displayName}</h1>
           {!isStaff && <TypeBadge type={type} />}
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 uppercase tracking-wide">{roleStatusLabel}</span>
+          <span className="text-2xs px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 uppercase tracking-wide">{roleStatusLabel}</span>
         </div>
         <p className="text-sm text-ink-70 break-all">{u.email || '—'}</p>
         {u.contact_name && <p className="text-sm text-ink-60">{u.contact_name}</p>}
         {linked?.country && <p className="text-sm text-ink-60">{linked.country}</p>}
-        <p className="text-[11px] text-ink-60 mt-1 font-mono break-all" title="Account (users doc) ID — matches the User UID in Firebase Console → Authentication for a real login. An orphaned/hand-made duplicate won't match any Auth user.">ID: {u.id}</p>
+        <p className="text-2xs text-ink-60 mt-1 font-mono break-all" title="Account (users doc) ID — matches the User UID in Firebase Console → Authentication for a real login. An orphaned/hand-made duplicate won't match any Auth user.">ID: {u.id}</p>
       </div>
 
       {/* Activity */}
@@ -303,7 +303,7 @@ export default function AccountEdit() {
           <Stat label="Last sign-in" value={fmtDate(u.last_login_at)} />
           <Stat label="Sign-ins" value={u.login_count ?? 0} />
         </div>
-        <p className="text-[10px] uppercase tracking-wide text-ink-60 mb-2">Enquiries ({enquiries.length})</p>
+        <p className="text-2xs uppercase tracking-wide text-ink-60 mb-2">Enquiries ({enquiries.length})</p>
         {enquiries.length === 0 ? (
           <p className="text-sm text-ink-60">{isAdmin ? 'No enquiries.' : 'No enquiries yet — a good candidate to follow up with.'}</p>
         ) : (
@@ -315,7 +315,7 @@ export default function AccountEdit() {
                 </span>
                 <span className="flex items-center gap-2 shrink-0">
                   {e.estimated_total != null && <span className="text-ink">{e.currency || ''} {Number(e.estimated_total).toLocaleString()}</span>}
-                  {e.status && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 uppercase tracking-wide">{e.status}</span>}
+                  {e.status && <span className="text-2xs px-1.5 py-0.5 rounded-full bg-ivory text-ink-60 uppercase tracking-wide">{e.status}</span>}
                 </span>
               </div>
             ))}
@@ -348,19 +348,19 @@ export default function AccountEdit() {
           <div className="mt-3 p-3 rounded-none bg-ivory-light border border-ivory-dark space-y-2.5">
             <div className="grid grid-cols-3 gap-2">
               <label className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase tracking-wide text-ink-60">Country</span>
+                <span className="text-2xs uppercase tracking-wide text-ink-60">Country</span>
                 <select className="input text-xs" value={newCountry} onChange={e => setNewCountry(e.target.value)}>
                   {CUSTOMER_COUNTRIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase tracking-wide text-ink-60">Customer type</span>
+                <span className="text-2xs uppercase tracking-wide text-ink-60">Customer type</span>
                 <select className="input text-xs" value={newType} onChange={e => setNewType(e.target.value)}>
                   {CRM_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase tracking-wide text-ink-60">Source</span>
+                <span className="text-2xs uppercase tracking-wide text-ink-60">Source</span>
                 <select className="input text-xs" value={newSource} onChange={e => setNewSource(e.target.value)}>
                   {CUSTOMER_SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
@@ -553,7 +553,7 @@ export default function AccountEdit() {
 function Stat({ label, value }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wide text-ink-60">{label}</p>
+      <p className="text-2xs uppercase tracking-wide text-ink-60">{label}</p>
       <p className="text-sm text-ink mt-0.5">{value}</p>
     </div>
   )

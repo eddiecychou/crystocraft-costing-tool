@@ -41,7 +41,7 @@ export default function CollectionBand({ catalogue, products, active, onApply })
                 <div className="absolute inset-x-0 bottom-0 px-2.5 py-2"
                      style={{ background: `linear-gradient(to top, rgba(${rgb},${op}), rgba(${rgb},0))` }}>
                   <p className="text-xs font-medium truncate" style={{ color: tcol, textShadow: shadow }}>{c.title}</p>
-                  {c.subtitle && <p className="text-[10px] truncate" style={{ color: tcol, opacity: 0.85, textShadow: shadow }}>{c.subtitle}</p>}
+                  {c.subtitle && <p className="text-2xs truncate" style={{ color: tcol, opacity: 0.85, textShadow: shadow }}>{c.subtitle}</p>}
                 </div>
               </button>
             )
@@ -59,7 +59,7 @@ export default function CollectionBand({ catalogue, products, active, onApply })
               </div>
               <div className="absolute inset-x-0 bottom-0 px-2.5 py-2" style={{ background: ac.tile }}>
                 <p className="text-xs font-medium truncate" style={{ color: ac.ink }}>{c.title}</p>
-                {c.subtitle && <p className="text-[10px] truncate opacity-70" style={{ color: ac.ink }}>{c.subtitle}</p>}
+                {c.subtitle && <p className="text-2xs truncate opacity-70" style={{ color: ac.ink }}>{c.subtitle}</p>}
               </div>
             </button>
           )

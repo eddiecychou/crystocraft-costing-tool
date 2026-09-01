@@ -20,19 +20,19 @@ export default function ExportFilterBar({
   return (
     <div className="flex flex-wrap items-end gap-2 mb-3">
       <label className="flex flex-col gap-1">
-        <span className="text-[11px] font-medium text-ink-60 uppercase tracking-wide">From</span>
+        <span className="text-2xs font-medium text-ink-60 uppercase tracking-wide">From</span>
         <input type="date" value={from} onChange={(e) => onFrom(e.target.value)}
           className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-teal-500/40" />
       </label>
       <label className="flex flex-col gap-1">
-        <span className="text-[11px] font-medium text-ink-60 uppercase tracking-wide">To</span>
+        <span className="text-2xs font-medium text-ink-60 uppercase tracking-wide">To</span>
         <input type="date" value={to} onChange={(e) => onTo(e.target.value)}
           className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-teal-500/40" />
       </label>
 
       {typeOptions && (
         <label className="flex flex-col gap-1">
-          <span className="text-[11px] font-medium text-ink-60 uppercase tracking-wide">{typeLabel}</span>
+          <span className="text-2xs font-medium text-ink-60 uppercase tracking-wide">{typeLabel}</span>
           <select value={typeValue} onChange={(e) => onType(e.target.value)}
             className="px-2.5 py-1.5 text-sm border border-warm-grey rounded-none focus:outline-none focus:ring-2 focus:ring-teal-500/40">
             <option value="">All</option>

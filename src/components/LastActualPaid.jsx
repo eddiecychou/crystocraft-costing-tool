@@ -59,12 +59,12 @@ export default function LastActualPaid({ componentId }) {
           </span>
         </div>
         <Link to={`/purchase-orders/${latest.po_id}`}
-              className="text-[11px] font-mono text-amber-700 hover:underline shrink-0">
+              className="text-2xs font-mono text-amber-700 hover:underline shrink-0">
           {latest.pu_number}{latest.issued_date ? ` · ${fmtDate(latest.issued_date)}` : ''}
         </Link>
       </div>
       {rows.length > 1 && (
-        <p className="text-[11px] text-amber-600/80 mt-1 pl-6">
+        <p className="text-2xs text-amber-600/80 mt-1 pl-6">
           {rows.length} linked PO lines · range {fmtMoney(Math.min(...rows.map(r => r.unit_price)), latest.currency)}–{fmtMoney(Math.max(...rows.map(r => r.unit_price)), latest.currency).replace(/^\w+\s/, '')}
         </p>
       )}

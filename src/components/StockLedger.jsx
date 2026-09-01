@@ -51,7 +51,7 @@ export default function StockLedger({ componentId, currentStock = 0, currentRese
 
   const Stat = ({ label, value, cls }) => (
     <div className="text-right">
-      <span className="text-[10px] uppercase tracking-wide text-ink-60 block leading-none">{label}</span>
+      <span className="text-2xs uppercase tracking-wide text-ink-60 block leading-none">{label}</span>
       <span className={`font-mono text-lg font-semibold tabular-nums ${cls}`}>{fmt(value)}</span>
     </div>
   )
@@ -72,13 +72,13 @@ export default function StockLedger({ componentId, currentStock = 0, currentRese
         <div className="flex flex-wrap gap-1.5">
           {MOVEMENT_TYPES.map(t => (
             <button key={t.value} type="button" onClick={() => setType(t.value)}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+              className={`px-2.5 py-1 rounded-full text-2xs font-medium border transition-colors ${
                 type === t.value ? 'bg-brand-50 text-brand-700 border-brand-300' : 'bg-white text-ink-60 border-ivory-dark hover:border-warm-grey'}`}>
               {t.label}
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-ink-60">{MOVEMENT_TYPES.find(t => t.value === type)?.note}</p>
+        <p className="text-2xs text-ink-60">{MOVEMENT_TYPES.find(t => t.value === type)?.note}</p>
         <div className="flex flex-col sm:flex-row gap-2">
           <input className="input text-sm sm:w-28" inputMode="numeric" value={qty}
                  onChange={e => setQty(e.target.value.replace(isStocktake || type === 'adjustment' ? /[^\d.\-]/g : /[^\d.]/g, ''))}
@@ -89,7 +89,7 @@ export default function StockLedger({ componentId, currentStock = 0, currentRese
           <button type="submit" disabled={saving} className="btn-primary text-sm shrink-0">{saving ? 'Posting…' : 'Post'}</button>
         </div>
         {preview != null && (
-          <p className="text-[11px] text-ink-60">New on-hand would be <span className={`font-mono font-medium ${preview < 0 ? 'text-red-600' : 'text-ink-80'}`}>{fmt(preview)}</span></p>
+          <p className="text-2xs text-ink-60">New on-hand would be <span className={`font-mono font-medium ${preview < 0 ? 'text-red-600' : 'text-ink-80'}`}>{fmt(preview)}</span></p>
         )}
         {error && <p className="text-xs text-red-600">{error}</p>}
       </form>
@@ -103,7 +103,7 @@ export default function StockLedger({ componentId, currentStock = 0, currentRese
         <div className="overflow-x-auto">
           <table className="w-full text-sm whitespace-nowrap">
             <thead>
-              <tr className="text-[10px] uppercase tracking-wide text-ink-60 text-left border-b border-ivory-dark">
+              <tr className="text-2xs uppercase tracking-wide text-ink-60 text-left border-b border-ivory-dark">
                 <th className="py-1.5 pr-2 font-medium">Date</th>
                 <th className="py-1.5 pr-2 font-medium">Type</th>
                 <th className="py-1.5 pr-2 font-medium text-right">Change</th>

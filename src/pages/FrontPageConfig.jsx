@@ -93,7 +93,7 @@ export default function FrontPageConfig({ embedded = false }) {
               </div>
               <div className="p-3">
                 <p className="text-sm text-ink truncate" title={meta?.name}>{meta?.name || '(product not found)'}</p>
-                <p className="text-[11px] text-ink-60 uppercase tracking-wide mb-2">{it.product_type === 'range' ? 'Figurine' : 'Corporate'}</p>
+                <p className="text-2xs text-ink-60 uppercase tracking-wide mb-2">{it.product_type === 'range' ? 'Figurine' : 'Corporate'}</p>
                 <div className="flex items-center gap-1.5">
                   <button type="button" onClick={() => move(i, -1)} disabled={i === 0}
                     className="p-1 rounded-none border border-ivory-dark text-ink-60 hover:text-ink disabled:opacity-30" title="Move earlier">

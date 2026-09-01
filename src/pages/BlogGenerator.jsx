@@ -53,7 +53,7 @@ function HeroPicker({ images, value, onChange }) {
             onClick={() => onChange(active ? null : img)}
             className={`relative aspect-square rounded-none overflow-hidden border-2 transition-all ${active ? 'border-brand-500' : 'border-warm-grey opacity-50 hover:opacity-90'}`}>
             <img src={img.file_url} alt="" className="w-full h-full object-cover" />
-            <span className={`absolute top-1 left-1 text-[10px] font-bold px-1 py-0.5 rounded-none leading-none ${orient.cls}`}>{orient.label}</span>
+            <span className={`absolute top-1 left-1 text-2xs font-bold px-1 py-0.5 rounded-none leading-none ${orient.cls}`}>{orient.label}</span>
             {active && (
               <div className="absolute inset-0 bg-brand-500/20 flex items-end justify-center pb-1">
                 <span className="text-xs bg-brand-500 text-white px-1.5 py-0.5 rounded-none font-semibold">HERO</span>
@@ -85,7 +85,7 @@ function SectionImagePicker({ images, heroImage, selected, onChange }) {
             <img src={img.file_url} alt="" className="w-14 h-14 object-cover rounded-none border border-warm-grey" />
             <button type="button" onClick={() => onChange(selected.filter(s => s.file_url !== img.file_url))}
               className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center leading-none"><X size={10} /></button>
-            <span className="absolute -bottom-1.5 -left-1 text-[10px] bg-ink text-white px-1 rounded-none">
+            <span className="absolute -bottom-1.5 -left-1 text-2xs bg-ink text-white px-1 rounded-none">
               {i === 0 && selected.length === 1 ? 'right' : `${i + 1}`}
             </span>
           </div>
@@ -114,7 +114,7 @@ function SectionImagePicker({ images, heroImage, selected, onChange }) {
                 <button key={img.file_url} type="button" onClick={() => toggle(img)} disabled={atMax}
                   className={`relative aspect-square rounded-none overflow-hidden border-2 transition-all ${active ? 'border-brand-500' : 'border-transparent opacity-50 hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed'}`}>
                   <img src={img.file_url} alt="" className="w-full h-full object-cover" />
-                  {img.orientation && (() => { const o = ORIENTATION_BADGE[img.orientation]; return o ? <span className={`absolute top-0.5 left-0.5 text-[9px] font-bold px-0.5 rounded-none leading-none ${o.cls}`}>{o.label}</span> : null })()}
+                  {img.orientation && (() => { const o = ORIENTATION_BADGE[img.orientation]; return o ? <span className={`absolute top-0.5 left-0.5 text-2xs font-bold px-0.5 rounded-none leading-none ${o.cls}`}>{o.label}</span> : null })()}
                   {active && <div className="absolute inset-0 bg-brand-500/30" />}
                 </button>
               )

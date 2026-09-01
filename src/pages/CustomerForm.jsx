@@ -528,7 +528,7 @@ export default function CustomerForm() {
           </label>
           <textarea className="input" rows={2} value={form.ai_context_summary} onChange={set('ai_context_summary')}
             placeholder="e.g. Prefers WhatsApp over email. Distributor, price-sensitive, replies slowly." />
-          <span className={`text-[11px] ${
+          <span className={`text-2xs ${
             form.ai_context_summary.trim().split(/\s+/).filter(Boolean).length > AI_CONTEXT_SUMMARY_MAX_WORDS ? 'text-red-600' : 'text-ink-60'
           }`}>
             {form.ai_context_summary.trim() ? form.ai_context_summary.trim().split(/\s+/).filter(Boolean).length : 0} / {AI_CONTEXT_SUMMARY_MAX_WORDS} words —

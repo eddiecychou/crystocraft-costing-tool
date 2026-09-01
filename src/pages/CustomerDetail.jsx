@@ -1166,7 +1166,7 @@ export default function CustomerDetail() {
                 {c.email && (
                   <div className="mt-2">
                     {inviteResult[c.email] ? (
-                      <span className={`text-[11px] ${inviteResult[c.email].ok ? 'text-green-600' : 'text-red-600'}`}>
+                      <span className={`text-2xs ${inviteResult[c.email].ok ? 'text-green-600' : 'text-red-600'}`}>
                         {inviteResult[c.email].message}
                       </span>
                     ) : (
@@ -1174,7 +1174,7 @@ export default function CustomerDetail() {
                         type="button"
                         onClick={() => handleInviteContact(c)}
                         disabled={inviteBusy === c.email}
-                        className="text-[11px] text-brand-600 hover:text-brand-800 disabled:opacity-50 inline-flex items-center gap-1"
+                        className="text-2xs text-brand-600 hover:text-brand-800 disabled:opacity-50 inline-flex items-center gap-1"
                       >
                         {inviteBusy === c.email ? <Loader2 size={11} className="animate-spin" /> : <Mail size={11} />}
                         {inviteBusy === c.email ? 'Sending invite…' : 'Invite to portal'}
@@ -1422,7 +1422,7 @@ export default function CustomerDetail() {
                             not get an invented CONFIRMED label. */}
                         {(r.status || isApp) && <span className="badge bg-ivory-dark text-ink-70">{r.status || 'CONFIRMED'}</span>}
                         <span title={isApp ? 'Raised in the app' : 'From JES (read-only)'}
-                              className="text-[10px] font-medium text-ink-60 inline-flex items-center gap-1 border border-warm-grey rounded-full px-1.5 py-0.5">
+                              className="text-2xs font-medium text-ink-60 inline-flex items-center gap-1 border border-warm-grey rounded-full px-1.5 py-0.5">
                           {isApp ? 'App' : <><Database size={9} /> JES</>}
                         </span>
                       </div>
@@ -1570,7 +1570,7 @@ export default function CustomerDetail() {
                     </ul>
                   </div>
                 )}
-                <p className="text-[11px] text-ink-60">
+                <p className="text-2xs text-ink-60">
                   Generated over {customer.email_summary.thread_count ?? mergedEmailThreads.length} thread{(customer.email_summary.thread_count ?? mergedEmailThreads.length) === 1 ? '' : 's'} — a draft, not verified. Refresh after new mail comes in.
                 </p>
               </>
@@ -1656,7 +1656,7 @@ export default function CustomerDetail() {
                     </ul>
                   </div>
                 )}
-                <p className="text-[11px] text-ink-60">
+                <p className="text-2xs text-ink-60">
                   Generated over {customer.whatsapp_summary.thread_count ?? whatsappThreads.length} chat{(customer.whatsapp_summary.thread_count ?? whatsappThreads.length) === 1 ? '' : 's'} — a draft, not verified. Refresh after new chats come in. Used by Daily Drafts.
                 </p>
               </>
@@ -1681,7 +1681,7 @@ export default function CustomerDetail() {
                       <p className="text-sm font-medium text-ink flex items-center gap-1.5">
                         {t.subject || t.id}
                         {isLinked && (
-                          <span className="text-[10px] font-normal uppercase tracking-wide rounded-none px-1 py-0.5 text-amber-600 bg-amber-50 shrink-0">
+                          <span className="text-2xs font-normal uppercase tracking-wide rounded-none px-1 py-0.5 text-amber-600 bg-amber-50 shrink-0">
                             via linked lead
                           </span>
                         )}
@@ -1701,7 +1701,7 @@ export default function CustomerDetail() {
                   {expanded && (
                     <div className="mt-3 max-h-80 overflow-y-auto space-y-2 border-t border-warm-grey pt-3">
                       {isLinked && (
-                        <p className="text-[11px] text-ink-60 italic">
+                        <p className="text-2xs text-ink-60 italic">
                           Imported under the linked Marketing Contact record, not this customer — transcription isn't available from here. Open it from Marketing Contacts to transcribe.
                         </p>
                       )}
@@ -1843,7 +1843,7 @@ export default function CustomerDetail() {
                   </ul>
                 </div>
               )}
-              <p className="text-[11px] text-ink-60">
+              <p className="text-2xs text-ink-60">
                 Generated over {customer.alibaba_summary.paste_count ?? mergedAlibabaThreads.length} paste{(customer.alibaba_summary.paste_count ?? mergedAlibabaThreads.length) === 1 ? '' : 's'} — a draft, not verified. Refresh after new messages come in. Used by Daily Drafts.
               </p>
             </>
@@ -1867,7 +1867,7 @@ export default function CustomerDetail() {
                       <p className="text-sm font-medium text-ink flex items-center gap-1.5">
                         Pasted {dateLabel}
                         {isLinked && (
-                          <span className="text-[10px] font-normal uppercase tracking-wide rounded-none px-1 py-0.5 text-amber-600 bg-amber-50 shrink-0">
+                          <span className="text-2xs font-normal uppercase tracking-wide rounded-none px-1 py-0.5 text-amber-600 bg-amber-50 shrink-0">
                             via linked lead
                           </span>
                         )}

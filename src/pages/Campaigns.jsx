@@ -351,11 +351,11 @@ export default function Campaigns({ presetContactIds, onConsumedPreset }) {
               {savingTemplate ? 'Saving…' : '+ Save as new template'}
             </button>
           </div>
-          <div className="text-[11px] text-ink-60 mt-1">Fills the subject and message below — edit freely before sending.</div>
+          <div className="text-2xs text-ink-60 mt-1">Fills the subject and message below — edit freely before sending.</div>
           {templates.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap mt-1.5">
               {templates.map(t => (
-                <span key={t.id} className="inline-flex items-center gap-1 text-[11px] text-ink-60 bg-ivory rounded-none px-1.5 py-0.5">
+                <span key={t.id} className="inline-flex items-center gap-1 text-2xs text-ink-60 bg-ivory rounded-none px-1.5 py-0.5">
                   {t.name}
                   <button type="button" onClick={() => handleDeleteTemplate(t.id, t.name)}
                           className="text-platinum hover:text-red-500" title={`Delete "${t.name}"`}>×</button>

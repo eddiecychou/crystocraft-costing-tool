@@ -480,7 +480,7 @@ export default function SalesInvoices() {
                                 title={noInvoiceReasonOf(o.no_invoice_reason)?.hint}>
                             {noInvoiceReasonOf(o.no_invoice_reason)?.label || o.no_invoice_reason}
                           </span>
-                          {o.no_invoice_at && <span className="text-[11px] text-ink-60 ml-1.5">{o.no_invoice_at}</span>}
+                          {o.no_invoice_at && <span className="text-2xs text-ink-60 ml-1.5">{o.no_invoice_at}</span>}
                         </td>
                         <td className="px-4 py-2.5 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                           <button type="button" onClick={() => setNoInvoice(o, '')}
@@ -546,9 +546,9 @@ export default function SalesInvoices() {
                       <td className={`px-4 py-3 whitespace-nowrap font-mono text-xs font-medium cursor-pointer ${isApp ? 'text-ink' : 'text-ink-70'}`}
                           onClick={open}>
                         {r.no || '—'}
-                        {void_ && <span className="ml-1.5 text-[10px] font-sans font-medium text-red-600">VOID</span>}
+                        {void_ && <span className="ml-1.5 text-2xs font-sans font-medium text-red-600">VOID</span>}
                         {r.channel === 'woocommerce' && (
-                          <span className="ml-1.5 text-[10px] font-sans font-medium text-teal-700 bg-teal-50 rounded-none px-1 py-0.5"
+                          <span className="ml-1.5 text-2xs font-sans font-medium text-teal-700 bg-teal-50 rounded-none px-1 py-0.5"
                                 title={`WooCommerce order #${r.externalOrderNo}`}>
                             Woo #{r.externalOrderNo}
                           </span>
@@ -568,7 +568,7 @@ export default function SalesInvoices() {
                             pointing to the accounting total, not a rewrite of the
                             calculated amount shown here (SR-05). */}
                         {Math.abs(r.adjustment || 0) > 0.005 && (
-                          <span className="ml-1.5 text-[10px] font-medium text-amber-600"
+                          <span className="ml-1.5 text-2xs font-medium text-amber-600"
                                 title={`Accounting total ${fmtValue(r.accountingTotal)} (${r.adjustment > 0 ? '+' : ''}${fmtValue(r.adjustment)})`}>
                             adj
                           </span>
@@ -582,7 +582,7 @@ export default function SalesInvoices() {
                           </Link>
                         ) : (
                           <span title="Historical invoice from JES — read-only archive"
-                                className="text-[10px] font-medium text-ink-60 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
+                                className="text-2xs font-medium text-ink-60 inline-flex items-center gap-1 border border-ivory-dark rounded-full px-2 py-0.5">
                             <Database size={10} /> JES
                           </span>
                         )}

@@ -216,13 +216,13 @@ export default function ManualAdjust({ src, onResult, disabled }) {
     <div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Original</p>
+          <p className="text-2xs uppercase tracking-wide text-ink-60 mb-1">Original</p>
           <div className="aspect-square bg-ivory-dark border border-warm-grey rounded-none flex items-center justify-center overflow-hidden">
             <img src={src} alt="" className="w-full h-full object-contain" />
           </div>
         </div>
         <div>
-          <p className="text-[11px] uppercase tracking-wide text-ink-60 mb-1">Adjusted{base && ' · cropped'}</p>
+          <p className="text-2xs uppercase tracking-wide text-ink-60 mb-1">Adjusted{base && ' · cropped'}</p>
           <div className="aspect-square bg-ivory-dark border border-warm-grey rounded-none flex items-center justify-center overflow-hidden">
             {error ? <span className="text-xs text-red-500 px-3 text-center">{error}</span>
               : !img ? <span className="text-xs text-ink-60">Loading…</span>
@@ -268,7 +268,7 @@ export default function ManualAdjust({ src, onResult, disabled }) {
         >
           <RotateCcw size={13} /> Reset
         </button>
-        <p className="text-[11px] text-ink-60">Instant, no AI — exact and repeatable. The original isn’t changed until you Keep.</p>
+        <p className="text-2xs text-ink-60">Instant, no AI — exact and repeatable. The original isn’t changed until you Keep.</p>
       </div>
     </div>
   )

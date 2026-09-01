@@ -45,9 +45,13 @@ equivalent — keep, but only for status.
   `letter-spacing: 0.04em`, `font-weight: 400`. Applied globally — every `<h1/2/3>`
   gets it, no class needed.
 - **Body:** Questrial, `#222`, `-webkit-font-smoothing: antialiased`.
-- **Size scale:** Tailwind default (`text-xs` 12 / `text-sm` 14 / `text-base` 16 /
-  `text-lg` 18 / `text-xl` 20 / `text-2xl` 24 / `text-3xl` 30 / `text-4xl` 36).
-  No custom scale. Storefront page titles = `text-xl md:text-2xl`.
+- **Size scale:** Tailwind default + one V3 addition:
+  **`text-2xs` 11px** (`0.6875rem`/16px lh) / `text-xs` 12 / `text-sm` 14 /
+  `text-base` 16 / `text-lg` 18 / `text-xl` 20 / `text-2xl` 24 / `text-3xl` 30 /
+  `text-4xl` 36. `text-2xs` is the micro tier — image overlays, status pills,
+  dense-table sub-text — **not body copy**. It replaced ~350 hard-coded
+  `text-[8..12px]` values (V3, 2026-09-02). Storefront page titles =
+  `text-xl md:text-2xl`.
 - **Letter-spacing conventions:** `.label` 0.14em · `.eyebrow` 0.18em ·
   `.badge` 0.08em · `.btn` 0.1em · `.tag` 0.04em · headings 0.04em.
   Everything caps-set is Work Sans + wide tracking; body Questrial is untracked.
@@ -221,8 +225,8 @@ remain.
 | Signal | Was (2026-09-02) | Now | Meaning |
 |---|---|---|---|
 | `gray-*` (any prefix) | **~2640** | **0** ✅ | RESOLVED — codemodded to tokens (§4.1a). |
-| `rounded-md/lg/xl/2xl` | ~340 | ~340 | still open — the square-corner pass. `rounded-full` (dots/pills) is legitimate and stays. |
-| `text-[Npx]` arbitrary | ~350 | ~350 | still open — one-off font sizes off the scale. |
+| `rounded-md/lg/xl/2xl` + bare `rounded` | ~570 | **0** ✅ | RESOLVED — `→ rounded-none` (form controls `→ rounded-sm`). `rounded-full` (dots/pills) + 6 deliberate directional corners kept. |
+| `text-[Npx]` arbitrary | ~350 | **0** ✅ | RESOLVED — added `text-2xs` (11px) tier; `text-[8..11px]` → `text-2xs`, `text-[12px]` → `text-xs`. |
 | `shadow-md/lg/xl/2xl` | ~58 | ~58 | still open — resting shadows against the flat posture. |
 | `hover:scale / hover:-translate-y` | ~16 | ~16 | still open — transforms on interactives (UI-POLISH §3). |
 | `font-bold` on headings | — | ~open | headings are weight 400; `font-bold` is drift. Not yet swept. |
@@ -278,7 +282,7 @@ None of these are "apply now" — they're the deltas a V3 would deliberately cho
 | **Portal nav material** | flat opaque `bg-ink` (top strip + bottom bar) | `backdrop-blur` glass nav | VISUAL-REFINEMENT §4 |
 | **Button `:active`** | none | a `:active` darken/press on all `.btn*` | DESIGN-SYSTEM-AUDIT §2 |
 | **`.input` states** | resting + focus only | defined `:disabled`, `[aria-invalid]`, success | DESIGN-SYSTEM-AUDIT §2 |
-| **OpsCenter refactor** | colour DONE (§4.1a). ~340 `rounded-*`, ~350 `text-[Npx]`, `font-bold` headings still open | square-corner + size + weight pass next | §4.1 |
+| **OpsCenter refactor** | colour + radius + `text-[Npx]` DONE (§4.1). `font-bold`/`font-semibold` on ~194 headings and ~58 resting `shadow-*` still open | weight + shadow pass next | §4.1 |
 | **Bundle naming** | `design-system/V2.5` vs `/2026-V2` | normalise (`v2.5` / `v2-2026` / `v3`) | housekeeping |
 
 ## Change Log
@@ -288,3 +292,4 @@ None of these are "apply now" — they're the deltas a V3 would deliberately cho
 | 2026-09-02 | Created — the written V2.5 spec extracted from `tailwind.config.js` + `src/index.css`: token layer (§1), component inventory + partial state matrix (§2), measured WCAG contrast (§3), the OpsCenter drift baseline and the dead-`ink-*`-ramp finding (§4), and the V3 open-decision list (§5). Foundation for any V2.5→V3 work. |
 | 2026-09-02 | V3 first change — **ink ramp resolved** (hybrid): added `ink-70` `#585853` (AA 6.2:1 on beige); codemodded ~360 dead `text-ink-30/40/50/90` + `border-ink-10/30` sites to real AA-safe tokens (`ink-60` is now the lightest grey allowed for text). All `ink-*` classes in `src/` now resolve. |
 | 2026-09-02 | V3 — **OpsCenter colour refactor**: ~2640 `gray-*` sites across 97 files codemodded to the warm token palette per the §4.1a map (0 `gray-*` left in `src/`). Verified: full bundle + `qa/eslint.no-undef` + tailwind build (no orphan classes). **NOT visually verified** — OpsCenter pages are login-gated with no harness; the colour deltas are principled (warmer, equal-or-better contrast) but the owner should eyeball post-deploy. |
+| 2026-09-02 | V3 — **OpsCenter radius refactor**: ~576 `rounded`/`rounded-md/lg/xl/2xl` → `rounded-none` across 96 files (form controls → `rounded-sm`); `rounded-full` + 6 directional corners kept. Then **`text-[Npx]` refactor**: added the `text-2xs` (11px) tier; ~350 `text-[8..12px]` sites across 69 files mapped onto the scale. Bundle + lint clean; not visually verified (login-gated). |

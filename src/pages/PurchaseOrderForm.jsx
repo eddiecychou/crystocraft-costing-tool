@@ -351,7 +351,7 @@ export default function PurchaseOrderForm() {
                 <span>PU Number</span>
                 {!form.pu_number && (
                   <button type="button" onClick={doAllocatePu} disabled={allocatingPu}
-                          className="text-[11px] text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case"
+                          className="text-2xs text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case"
                           title="Allocate the next PU number in the app's own series.">
                     {allocatingPu ? 'Allocating…' : 'Allocate'}
                   </button>
@@ -429,7 +429,7 @@ export default function PurchaseOrderForm() {
           </datalist>
 
           {/* Column headers — desktop */}
-          <div className="hidden sm:grid grid-cols-[2fr_3fr_1fr_1fr_1.3fr_1.3fr_auto] gap-2 px-1 pb-1 text-[10px] uppercase tracking-wide text-ink-60">
+          <div className="hidden sm:grid grid-cols-[2fr_3fr_1fr_1fr_1.3fr_1.3fr_auto] gap-2 px-1 pb-1 text-2xs uppercase tracking-wide text-ink-60">
             <span>Item Code</span><span>Description</span><span className="text-right">Qty</span>
             <span>Unit</span><span className="text-right">Unit Price</span><span className="text-right">Amount</span><span />
           </div>

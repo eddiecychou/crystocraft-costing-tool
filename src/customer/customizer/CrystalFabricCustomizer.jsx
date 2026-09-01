@@ -192,7 +192,7 @@ export default function CrystalFabricCustomizer({ product, profile }) {
               </div>
             )}
           </div>
-          <p className="text-[11px] text-ink-60 mt-2 flex items-start gap-1">
+          <p className="text-2xs text-ink-60 mt-2 flex items-start gap-1">
             <AlertTriangle size={12} className="shrink-0 mt-0.5" />
             Indicative preview — final crystal artwork is confirmed by our team before production.
           </p>
@@ -207,7 +207,7 @@ export default function CrystalFabricCustomizer({ product, profile }) {
                 onChange={e => onLogo(e.target.files?.[0])} />
             </label>
             {logoName && <p className="text-xs text-ink-60 mt-1.5 truncate">{logoName}</p>}
-            <p className="text-[11px] text-ink-60 mt-1.5">
+            <p className="text-2xs text-ink-60 mt-1.5">
               Best results: a bold, high-contrast logo. A transparent PNG works best; fine
               lines and small text may not survive in crystals.
             </p>
@@ -220,7 +220,7 @@ export default function CrystalFabricCustomizer({ product, profile }) {
                   className={`text-left p-2.5 rounded-none border text-sm transition-colors ${
                     sel.mode === m.value ? 'border-brand-400 bg-brand-50' : 'border-ivory-dark hover:bg-ivory'}`}>
                   <span className="font-medium text-ink">{m.label}</span>
-                  <span className="block text-[11px] text-ink-60 mt-0.5">{m.desc}</span>
+                  <span className="block text-2xs text-ink-60 mt-0.5">{m.desc}</span>
                 </button>
               ))}
             </div>
@@ -233,7 +233,7 @@ export default function CrystalFabricCustomizer({ product, profile }) {
                   className={`text-left p-2.5 rounded-none border text-sm transition-colors ${
                     sel.crystal_type === t.value ? 'border-brand-400 bg-brand-50' : 'border-ivory-dark hover:bg-ivory'}`}>
                   <span className="font-medium text-ink">{t.label} <span className="text-ink-60 font-normal">{t.mm}</span></span>
-                  <span className="block text-[11px] text-ink-60 mt-0.5">{t.hint}</span>
+                  <span className="block text-2xs text-ink-60 mt-0.5">{t.hint}</span>
                 </button>
               ))}
             </div>
@@ -241,7 +241,7 @@ export default function CrystalFabricCustomizer({ product, profile }) {
 
           {isZone && (
             <Section title="4. Background crystal type">
-              <p className="text-[11px] text-ink-60 mb-2">
+              <p className="text-2xs text-ink-60 mb-2">
                 Can be a different stone size to the logo — e.g. a fine logo on a coarser sparkling background.
               </p>
               <div className="grid grid-cols-1 gap-2">
@@ -268,7 +268,7 @@ export default function CrystalFabricCustomizer({ product, profile }) {
             {!paletteLoading && !paletteError && fgAvailColors.length > 0 && (
               <>
                 {!isZone && (
-                  <p className="text-[11px] text-ink-60 mb-2">
+                  <p className="text-2xs text-ink-60 mb-2">
                     Only Crystal AB is transparent enough to show your graphic through it — the other captured colours are opaque or metallic-coated.
                   </p>
                 )}
@@ -282,7 +282,7 @@ export default function CrystalFabricCustomizer({ product, profile }) {
                         value={sel.bg_color} palette={bgAvailColors} colorHex={colorHex}
                         onChange={name => set({ bg_color: name })} />
                     ) : (
-                      <p className="text-[11px] text-ink-60">No crystal colours captured for this background stone type yet — pick another type above.</p>
+                      <p className="text-2xs text-ink-60">No crystal colours captured for this background stone type yet — pick another type above.</p>
                     )}
                   </div>
                 )}

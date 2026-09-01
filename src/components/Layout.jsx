@@ -116,7 +116,7 @@ export default function Layout({ children, user }) {
         <div className="px-5 py-5 border-b border-white/10">
           <img src={logo} alt="Crystocraft" className="h-7 w-auto brightness-0 invert" />
           <p className="text-xs font-medium text-ivory/50 mt-2 tracking-[0.14em] uppercase font-label">{APP_NAME}</p>
-          <p className="text-[10px] text-ivory/30 mt-1 font-label tracking-wide">{versionLabel()}</p>
+          <p className="text-2xs text-ivory/30 mt-1 font-label tracking-wide">{versionLabel()}</p>
         </div>
 
         {/* min-h-0 + overflow-y-auto: without both, a flex child refuses to
@@ -127,7 +127,7 @@ export default function Layout({ children, user }) {
           {visibleNav.map((item, i) => (
             item.group ? (
               <p key={`g-${item.group}`}
-                 className={`px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-ivory/25 ${i === 0 ? 'pb-1' : 'pt-4 pb-1'}`}>
+                 className={`px-3 text-2xs font-semibold uppercase tracking-[0.12em] text-ivory/25 ${i === 0 ? 'pb-1' : 'pt-4 pb-1'}`}>
                 {item.group}
               </p>
             ) : (
@@ -191,7 +191,7 @@ export default function Layout({ children, user }) {
               }
             >
               <Icon size={20} strokeWidth={1.75} />
-              <span className="text-[10px] font-medium leading-none truncate max-w-full px-0.5">{short}</span>
+              <span className="text-2xs font-medium leading-none truncate max-w-full px-0.5">{short}</span>
             </NavLink>
           ))}
 
@@ -203,7 +203,7 @@ export default function Layout({ children, user }) {
             }`}
           >
             <MoreHorizontal size={20} strokeWidth={1.75} />
-            <span className="text-[10px] font-medium leading-none">More</span>
+            <span className="text-2xs font-medium leading-none">More</span>
           </button>
         </nav>
 
@@ -229,7 +229,7 @@ export default function Layout({ children, user }) {
                     }
                   >
                     <Icon size={24} strokeWidth={1.6} className="shrink-0" />
-                    <span className="text-[10.5px] font-medium leading-tight line-clamp-2">{short}</span>
+                    <span className="text-2xs font-medium leading-tight line-clamp-2">{short}</span>
                   </NavLink>
                 ))}
               </div>

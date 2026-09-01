@@ -278,7 +278,7 @@ export default function FigurineDetail({ profile }) {
                         )}
                       </span>
                       {vStock != null && vStock > 0 && (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${isLastStock ? (vStock < 50 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700') : 'bg-sky-100 text-sky-700'}`}>
+                        <span className={`text-2xs px-1.5 py-0.5 rounded-full shrink-0 ${isLastStock ? (vStock < 50 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700') : 'bg-sky-100 text-sky-700'}`}>
                           {isLastStock ? `${vStock} left` : `${vStock} in stock`}
                         </span>
                       )}
