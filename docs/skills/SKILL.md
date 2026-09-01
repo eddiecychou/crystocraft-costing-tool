@@ -122,6 +122,7 @@ the fast path from a request to the exact code.
 - Upload/gallery: `src/components/ImageGallery.jsx` → `src/imageResize.js` (`resizeToJpeg`). **Downscale only** — aspect preserved, nothing cropped to square. An `orientation` field (`square` = ratio 0.85–1.18 / `landscape` / `portrait`) is auto-detected; only consumer is `BlogGenerator.jsx`. Manual crop: `ManualAdjust.jsx` / `src/imageCrop.js`.
 - Card display: `src/components/CardImageCarousel.jsx` (grid-card carousel; distinct from `ImageLightbox`). All four card grids (`Products.jsx`, `Range.jsx`, `customer/CorporateShop.jsx`, `customer/FigurineShop.jsx`) use `object-cover` (uniform square crop).
 - "Square as standard" is a **content convention, not enforced.** Brand proposal **banner** is NOT a product image — it's `proposal.hero_asset_id` → a `customers/{id}/assets` doc (`src/customerAssets.js`, Storage prefix `customer-assets/…`).
+- ⚠️ **Before changing product/card image display, read `MARKETING-WORKFLOW.md` §6.5** — external DeepSeek editorial art (full-bleed, borderless, text-free) must not be square-cropped, letterboxed, or captioned in ways that fight the composition.
 
 ### Components & BOM costing
 - Pages: `Components.jsx`, `ComponentDetail.jsx`, `ComponentForm.jsx`, `ComponentRequirements.jsx`, `ComponentCodeAudit.jsx`
@@ -173,6 +174,7 @@ the fast path from a request to the exact code.
 - Logic: `src/domain/marketingContact.js`, `src/domain/campaigns.js`, `src/domain/outreachDrafts.js`, `src/domain/draftMemoryRules.js`, `src/domain/outreachTopicTemplates.js`, `src/outreachApi.js`, `src/campaignApi.js`
 - Edge fns: `draft-outreach-topic`, `discuss-outreach-draft`, `generate-outreach-drafts`, `send-personal-email`, `send-campaign`, `generate-blog`, `publish-to-wordpress`, `subscribe`, `unsubscribe`, `suggest-tag-merges`, `resend-webhook`
 - Collections: `marketing_contacts/{id}` (+ same thread subcollections as customers), `marketing_campaigns`, `campaign_templates`, `outreach_drafts`, `draft_memory_rules`, `outreach_topic_templates`. Three sending identities — do not merge (`email-senders` memory).
+- ⚠️ **Before changing the Blog UI, `publish-to-wordpress.js`, or any SEO/image surface, read `MARKETING-WORKFLOW.md` §6** — the external DeepSeek SEO/Artgen engine's rules (Product Truth, locked art styles, WPML/Elementor/redirect publishing contract) live there; the OC is their custodian and can't see them from its own code.
 
 ### Message ingestion & AI summaries (email / WhatsApp / Alibaba) → see `SOURCING-HUB.md` §Comms-capture
 - Pages: `WhatsAppImport.jsx` · Components: `WhatsAppAttachment.jsx`
