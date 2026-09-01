@@ -224,6 +224,38 @@ runtime generation). The spine is a provenance manifest:
    Library, then swaps them into the Elementor layout. **Nothing reaches
    WordPress without human sign-off.**
 
+### 6.1a Prompt structure for image generation (DSH's technique)
+
+Reconciled from an external `DETERMINISTIC-ART-GEN.md` draft (Downloads,
+2026-09-02) — a prompt-engineering reference for whoever compiles the Gemini
+prompts in step 1 ("Style"), not a code change on our side. Its actual
+technique is worth keeping; its one substantive rule (no invented products)
+**duplicates §6.2 below** — that's the same immutable rule stated twice, not
+a second rule, and §6.2 is the authoritative version (it's backed by
+`product-truth.js`'s code classifier, not just prompt wording).
+
+**Three-layer prompt, every time**, to stop the model "forgetting" mid-prompt
+on a long compiled brief:
+
+1. **[FOUNDATION]** — the art profile (e.g. `zodiac-editorial`), technical
+   spec (aspect ratio, resolution), material constraints (crystal/metal only,
+   no plastic/paper-craft — matches §6.3's per-family "avoid" list).
+2. **[NARRATIVE]** — the specific story beat for this asset (e.g. "Taurus
+   Love — two figures tending a tree").
+3. **[ANCHORS]** — precise, percentage-based positioning for anything that
+   tends to drift or get clipped: *"logo in the top-right corner, 10% from
+   the edge"*, *"maintain a 15% clear margin on all sides"*, *"subject
+   occupies the central 60% of the frame"*, always with an explicit
+   ground/horizon line so nothing "floats" or gets cut off at the bottom.
+
+**Failure recovery:** if a render comes back wrong (logo missing, subject
+truncated), don't patch the brief with "add the logo" — that's the same
+under-specified prompt that just failed once already. Rewrite the
+[ANCHORS] layer to be markedly more specific about size/colour/coordinate,
+then re-roll. A pre-flight checklist before sending any prompt: primary
+subject present, the specific action explicit, the family's locked accent
+colour present (§6.3), and the title's negative space preserved.
+
 ### 6.2 Product Truth — the IMMUTABLE hard rule (CRITICAL)
 
 `product-truth.js`. Three asset classes, and only these:
@@ -337,3 +369,4 @@ When changing the Blog or Product image UI (`BlogGenerator.jsx`,
 | 2026-08-31 | Created. Daily Drafts (incl. two-step memory gate + stale-closure rule), campaigns, blog/WordPress SEO patterns, and the "Artgen" image-retouch family documented from the actual implementation (`enhance-image.js` + `imageCrop.js` + Fly.io prototype); "Product Truth" grounded in the enhance-image prompts. Resend ASCII-tag + sending-identity rules. |
 | 2026-09-01 | Added §6 External Governance for the DeepSeek SEO & Artgen engine (custodian rules): the Style→Manifest→Review→Upload pipeline + `art.meta.json` provenance; the immutable Product-Truth three-class rule; the locked Chinese-Zodiac + Western-Astrology visual grammars; the WordPress/WPML/Elementor/redirect publishing contract; and the OC UI's obligation to display full-bleed editorial art without fighting it. Corrected §4's outdated "no separate Artgen engine" claim — it meant "not in THIS repo"; the engine lives in the external `Deepseek Workbench`. |
 | 2026-09-01 | §6.2 Product Truth flagged as DETERMINISTIC on DeepSeek's side (code classifier + human gate) vs prompt-only in our enhance-image — cross-links ARCHITECTURE-RULES §8. |
+| 2026-09-02 | Added §6.1a — DSH's three-layer prompt technique ([FOUNDATION]/[NARRATIVE]/[ANCHORS]), percentage-based visual anchoring + margin-safety to stop truncation/drift, and the "rewrite the ANCHORS layer, don't just re-ask" failure-recovery rule. Folded from an external `DETERMINISTIC-ART-GEN.md` draft; its "no invented products" line noted as a restatement of §6.2, not a new rule. |
