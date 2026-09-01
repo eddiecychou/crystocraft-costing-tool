@@ -248,6 +248,17 @@ runtime generation). The spine is a provenance manifest:
 - This is the same principle §4 enforces for in-repo retouch — **do not weaken
   it in either place.**
 
+**This rule is DETERMINISTIC on DeepSeek's side, and that's the point**
+(`ARCHITECTURE-RULES.md` §8). The model does not self-certify "this isn't a
+product": `product-truth.js` `couldCustomerAskForPrice(brief)` runs a
+word-boundary check against a product-noun list, and `upload.js` refuses any
+asset not human-`approved`. The model *observes/draws*; code + a human gate
+*decide*. **Our in-repo `enhance-image.js` is weaker** — Product Truth there is
+enforced by the prompt plus the human before/after "Keep" gate, not a code
+classifier; the human Keep IS the deterministic step, so never auto-replace an
+image. If you strengthen either side, strengthen toward the code classifier,
+never away from it.
+
 ### 6.3 Locked art styles (per-family visual grammar)
 
 Two content families are fully specified and **style-locked**. Their profiles
@@ -325,3 +336,4 @@ When changing the Blog or Product image UI (`BlogGenerator.jsx`,
 |---|---|
 | 2026-08-31 | Created. Daily Drafts (incl. two-step memory gate + stale-closure rule), campaigns, blog/WordPress SEO patterns, and the "Artgen" image-retouch family documented from the actual implementation (`enhance-image.js` + `imageCrop.js` + Fly.io prototype); "Product Truth" grounded in the enhance-image prompts. Resend ASCII-tag + sending-identity rules. |
 | 2026-09-01 | Added §6 External Governance for the DeepSeek SEO & Artgen engine (custodian rules): the Style→Manifest→Review→Upload pipeline + `art.meta.json` provenance; the immutable Product-Truth three-class rule; the locked Chinese-Zodiac + Western-Astrology visual grammars; the WordPress/WPML/Elementor/redirect publishing contract; and the OC UI's obligation to display full-bleed editorial art without fighting it. Corrected §4's outdated "no separate Artgen engine" claim — it meant "not in THIS repo"; the engine lives in the external `Deepseek Workbench`. |
+| 2026-09-01 | §6.2 Product Truth flagged as DETERMINISTIC on DeepSeek's side (code classifier + human gate) vs prompt-only in our enhance-image — cross-links ARCHITECTURE-RULES §8. |

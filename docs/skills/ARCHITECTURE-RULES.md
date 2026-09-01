@@ -49,6 +49,12 @@ photos. Isolation is enforced at three layers:
 subcollections) without re-checking these rules — an equality filter that looks
 scoped can still be a leak if the rule doesn't constrain it.
 
+**This isolation is DETERMINISTIC, and MUST stay so (see §8).** Who may see a
+branded photo is decided by a Firestore rule computing `viewerIsSensitive()`
+against the customer's own `sensitive` flag and `branded_for_customer_id` — a
+data comparison in code, **not** an AI judgment, a UI check, or a "looks fine"
+call. Never gate confidentiality on anything a model or the client decides.
+
 ## 2. RBAC — roles and the multi-file contract
 
 Roles live on `users/{uid}.role`. The **capability map `src/access.js`
@@ -248,8 +254,93 @@ not. esbuild-parse is never "verified".
 **Deploy order:** rules first (§3) → confirm with user → `git pull --rebase` →
 `git push` → verify live via `src/appInfo.js` `BUILD_TIME` in the sidebar.
 
+### 7a. Measure before you change — "looks fine to me" is always wrong
+
+A subjective impression is not evidence. When you fix a UI, a layout, an SEO
+surface, or anything with a measurable output, **MUST** report honest
+**before/after numbers or artifacts**, not an opinion:
+
+- **Rules/RBAC** → the emulator assertion count and pass/fail (e.g. "88 assertions,
+  all pass"), and which specific allow/deny you added.
+- **UI/layout** → a before and an after (screenshot or the exact
+  `object-fit`/computed value that changed) — the "cropped dots" fix (L-12) was
+  only truly diagnosed once rendered and looked at, never from the description.
+- **PDF** → the rasterised page, not "the break looks right now".
+- **SEO/content** → the concrete field that changed (the `<title>`, the redirect
+  row, the media id), and where practical the GA/Search-Console delta — never
+  "this should help traffic".
+- **Data/backfill** → counts: rows matched, rows written, rows skipped.
+
+If you cannot measure it, say so explicitly and say what you did instead. State
+what was NOT measured. A change reported as "done" with no observable is treated
+as unverified.
+
+## 8. Deterministic boundaries — AI reports observables, code decides
+
+Adopted from Magister's engine rule ("the LLM never emits coordinates and never
+emits scores — it reports observables; code applies the rules"). **Any decision
+that must be correct, auditable, or safe MUST be made by deterministic code, not
+by a model's judgment.** The model may extract or describe; it never adjudicates.
+
+| Domain | The model may… | Code/human decides (deterministic) | Never |
+|---|---|---|---|
+| **Product Truth** (Artgen) | generate abstract art from a brief | `product-truth.js` `couldCustomerAskForPrice()` classifies the brief against a product-noun list; approval is a human reject-only gate; `upload.js` refuses anything not `approved` | let the model self-certify "this isn't a product" |
+| **In-repo image retouch** | propose a cleaned/recolored image | the **human before/after "Keep"** gate — nothing auto-replaces the original (`enhance-image.js` + `ImageGallery.jsx`). NB: our side is prompt-instructed + human-gated, **not** code-classified like DeepSeek's — the human Keep IS the deterministic gate here | auto-overwrite a real product photo |
+| **B2B isolation** | — | the Firestore rule `viewerIsSensitive()` + `branded_for_customer_id` comparison (§1) | gate confidentiality on a UI check or AI |
+| **Pricing** | extract a number from a supplier quote (`process-quote`) | tier prices are **derived by code** from component cost + markup (`pricing.js`, `PricingTiers`); a quote/PI/SI number comes from the snapshot + `/api/uc` allocation | let AI "guess" or round a price |
+| **Finance / FX** | — | exchange rates are **copied verbatim** from Cindy's audit table; UC#/SO#/SI allocation is atomic counters + `/api/uc` | ever compute/AI-guess an FX rate or an invoice number (`CLAUDE.md`) |
+| **Message ingestion** | summarise a thread (`refresh-*-summary`) | which record a message attaches to is `common.py` `match_entity` (exact email → domain), a deterministic match; unmatched are dropped | let AI decide whose customer record a message belongs to |
+
+**Rule of thumb:** if getting it wrong loses money, leaks a competitor's data, or
+ships a fake product, a **model output must never be the last step** — a
+deterministic check or a human gate comes after it. When adding an AI feature,
+name explicitly which part is the model's (observe/draft) and which is code's
+(decide/enforce). If you can't point to the deterministic step, it isn't safe yet.
+
+## 9. Load-Bearing Decisions — MUST NOT be undone
+
+Decisions that hold the system up. Each was made deliberately, usually after a
+real failure; reversing one silently re-opens a class of bug or a security hole.
+**MUST NOT** undo any of these without an explicit, logged owner decision — and
+if you do, update this list and `LESSONS-LEARNED.md` in the same change.
+
+1. **B2B data isolation** (§1) — customer data admin-only; branded images
+   screened by a deterministic rule. The whole business depends on competitors
+   never seeing each other's work.
+2. **The Product-Truth rule** (`MARKETING-WORKFLOW.md` §6.2) — AI never presents
+   a product that isn't in the verified catalogue; abstract editorial art only.
+3. **Rules are the security boundary, not the UI** (§2) — `firestore.rules` +
+   `storage.rules`; `AccessContext` fails open by design *because* the rules,
+   not the client, enforce access.
+4. **Rules deploy separately, rules-first** (§3) — never assume `git push`
+   ships them.
+5. **No client-side self-heal of `users/{uid}`** (`LESSONS-LEARNED.md` L-01) —
+   caused two real admin demotions; the effect was removed, not patched.
+6. **Sales can never write roles / approve accounts** (§2a) — the no-escalation
+   line, enforced in `firestore.rules`.
+7. **`normLine` is a strict whitelist** (§5) — order/PI/invoice line fields are
+   deliberate snapshots.
+8. **Exchange rates are copied, never computed** (§6, `CLAUDE.md`) — the books'
+   integrity depends on it.
+9. **Resend tag ids go through `encodeTagId` (base64url)** (`LESSONS-LEARNED.md`
+   L-04) — reversible ASCII, or webhook correlation silently breaks.
+10. **Shared edge-fn helpers live in `netlify/edge-functions/lib/`**
+    (`LESSONS-LEARNED.md` L-05) — a top-level helper broke the whole deploy.
+11. **The pricing/cost coupling** (§2a note) — the tier editor is cost-derived,
+    so it cannot be opened to sales without exposing supplier costs.
+12. **Mutual read-only boundary with DeepSeek** (`MARKETING-WORKFLOW.md` §6.0) —
+    this session owns the app and does not write the Workbench or WordPress.
+
+*Not on this list (and why):* a "WhatsApp-first CTA" / "trust-link" outreach
+convention was raised as a candidate but is **not implemented in this codebase**
+(the Daily Drafts / outreach code has no such feature). By the SSOT rule it
+cannot be a load-bearing decision until it's a real, code-backed fact. If the
+owner adopts it as a policy, add it here **with** the code or written rule that
+makes it real.
+
 ## Change Log
 
 | Date | Change |
 |---|---|
 | 2026-08-31 | Created by merging root `INDEX.md` §4/§6 (cross-cutting + verify/deploy) with new hard-rule sections (isolation, RBAC contract, data lifecycles). Added the **Planned `sales` role** (§2a) per owner scope. Grounded in V8.12. |
+| 2026-09-01 | Adopted the Magister "AI management" patterns: §1 framed as a deterministic boundary; new §7a "Measure before you change" (report before/after numbers, never "looks fine"); new §8 Deterministic boundaries (AI reports observables, code decides — Product Truth, isolation, pricing, FX, ingestion); new §9 Load-Bearing Decisions (12 rules that must not be undone, plus the honest note that "WhatsApp-first CTA" is NOT implemented so cannot be one). |

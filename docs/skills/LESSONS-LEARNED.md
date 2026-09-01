@@ -1,11 +1,20 @@
 # Lessons Learned — the Error Log (CRITICAL)
 
-> Every significant failure and its **verified permanent fix**, in
-> Symptom / Root cause / Permanent fix form, code-linked. Read this before
-> "fixing" anything that feels familiar. **After any new incident, add an
-> entry** — this file is how the same mistake stops being made twice.
+> Every significant failure and its **verified permanent fix**, code-linked.
+> Read this before "fixing" anything that feels familiar. **After any new
+> incident, add an entry** — this file is how the same mistake stops being made
+> twice.
 >
-> Ordered roughly by blast radius. Related boundaries: `ARCHITECTURE-RULES.md`.
+> **Required template (failure-driven — record the failure that caused the fix,
+> never just the change):**
+> - **Symptom** — the observable wrong behaviour (what broke, for whom).
+> - **Root cause** — *why* it happened, at the mechanism level.
+> - **Permanent fix** — what makes it structurally impossible to recur, plus the
+>   **MUST/MUST NOT** rule it establishes and the exact file(s).
+>
+> A changelog line that says only "changed X" is not a lesson — without the
+> failure and the cause, the next person re-derives the bug. Ordered roughly by
+> blast radius. Related boundaries: `ARCHITECTURE-RULES.md`.
 
 ---
 
@@ -215,3 +224,4 @@ sessions, add an auto-memory. Then note it in the Change Log.
 | Date | Change |
 |---|---|
 | 2026-08-31 | Created by merging root `INDEX.md` §5 (mistakes table) into full Symptom/Root-cause/Permanent-fix entries, and adding the incidents the mistakes table only referenced: Resend ASCII tag + reversibility (L-04), edge-fn auto-scan deploy outage (L-05), open relay (L-02), Daily-Drafts stale closure (L-07), SEO double-branding (L-09), GA4 blank-column (L-13). |
+| 2026-09-01 | Formalized the failure-driven template at the top (Symptom / Root cause / Permanent fix is now the required, explicit format — "changed X" alone is not a lesson), per the Magister failure-driven-changelog pattern. |

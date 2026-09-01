@@ -10,6 +10,17 @@
 > the master index AND the feature-area router: §5 is the fast path from "the
 > user described a bug/feature" to the exact pages, logic, edge functions and
 > collections involved.
+>
+> **SINGLE SOURCE OF TRUTH (SSOT).** The `docs/skills/` set is the authority for
+> the rules, facts, terminology, and lessons of this project. **If a fact isn't
+> written here (or in a reference doc these link to), it is not a fact** — do
+> not act on a half-remembered detail; find it here or verify it in the code,
+> then write it here. The four files divide the authority: **SKILL.md** = what
+> exists and where; **ARCHITECTURE-RULES.md** = the hard boundaries and the
+> Load-Bearing Decisions that must not be undone; **MARKETING-WORKFLOW.md** =
+> content/SEO/Artgen governance; **LESSONS-LEARNED.md** = every failure and its
+> fix. Keep them current in the same commit as the change they describe — a
+> stale SSOT is worse than none.
 
 ## 1. What the Operation Center is
 
