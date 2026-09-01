@@ -3,17 +3,32 @@ import { collection, addDoc, deleteDoc, doc, onSnapshot, orderBy, query, serverT
 import { ref as storageRef, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
 import { db, storage } from '../firebase'
 import ConfirmDialog from './ConfirmDialog'
-import { FileText, Image as ImageIcon, File, X } from 'lucide-react'
+import { FileText, Image as ImageIcon, File, FileSpreadsheet, Presentation, FileType, X } from 'lucide-react'
 
 const FILE_ICONS = {
   'application/pdf': FileText,
   'image/jpeg': ImageIcon,
   'image/png': ImageIcon,
   'image/webp': ImageIcon,
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': FileSpreadsheet, // .xlsx
+  'application/vnd.ms-excel': FileSpreadsheet,                                          // .xls
+  'text/csv': FileSpreadsheet,
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': Presentation, // .pptx
+  'application/vnd.ms-powerpoint': Presentation,                                            // .ppt
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': FileType,       // .docx
+  'application/msword': FileType,                                                           // .doc
   default: File,
 }
-const FileTypeIcon = ({ type, size }) => {
-  const I = FILE_ICONS[type] || FILE_ICONS.default
+// Some OSes report an empty file.type for Office files — fall back to the
+// extension so the right icon still shows.
+const EXT_ICONS = {
+  xlsx: FileSpreadsheet, xls: FileSpreadsheet, csv: FileSpreadsheet,
+  pptx: Presentation, ppt: Presentation,
+  docx: FileType, doc: FileType, pdf: FileText,
+}
+const FileTypeIcon = ({ type, name, size }) => {
+  const ext = (name || '').split('.').pop()?.toLowerCase()
+  const I = FILE_ICONS[type] || EXT_ICONS[ext] || FILE_ICONS.default
   return <I size={size} />
 }
 
@@ -88,16 +103,22 @@ export default function SupplierCatalogs({ supplierId }) {
         <h2 className="text-sm font-semibold text-gray-700">Supplier Catalogs</h2>
         <label className="btn-secondary text-xs py-1.5 px-3 cursor-pointer">
           + Upload Files
-          <input type="file" accept=".pdf,image/*" multiple className="hidden" onChange={handleFiles} />
+          <input
+            type="file"
+            accept=".pdf,image/*,.xlsx,.xls,.csv,.pptx,.ppt,.docx,.doc,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,text/csv"
+            multiple
+            className="hidden"
+            onChange={handleFiles}
+          />
         </label>
       </div>
 
-      <p className="text-xs text-gray-400 mb-4">Upload supplier product catalogs, lookbooks, or price lists (PDF or images). Stored here for inspiration when building new products.</p>
+      <p className="text-xs text-gray-400 mb-4">Upload supplier product catalogs, lookbooks, or price lists — PDF, images, or Office files (Excel / PowerPoint / Word). Stored as-is; Office files open in a download.</p>
 
       {/* In-progress uploads */}
       {uploads.map(u => (
         <div key={u.uid} className="flex items-center gap-3 p-3 bg-brand-50 rounded-lg mb-2">
-          <span className="text-gray-500"><FileTypeIcon type={u.type} size={20} /></span>
+          <span className="text-gray-500"><FileTypeIcon type={u.type} name={u.name} size={20} /></span>
           <div className="flex-1 min-w-0">
             <p className="text-xs text-gray-700 truncate">{u.name}</p>
             <div className="mt-1 h-1 bg-brand-200 rounded overflow-hidden">
@@ -110,7 +131,7 @@ export default function SupplierCatalogs({ supplierId }) {
 
       {/* Catalog list */}
       {catalogs.length === 0 && uploads.length === 0 ? (
-        <p className="text-sm text-gray-400 text-center py-6">No catalogs yet — upload PDF or image files.</p>
+        <p className="text-sm text-gray-400 text-center py-6">No catalogs yet — upload PDF, image, or Office files.</p>
       ) : (
         <div className="space-y-2">
           {catalogs.map(c => (
@@ -124,7 +145,7 @@ export default function SupplierCatalogs({ supplierId }) {
                   onClick={() => setLightbox(c)}
                 />
               ) : (
-                <span className="text-gray-500 shrink-0"><FileTypeIcon type={c.file_type} size={24} /></span>
+                <span className="text-gray-500 shrink-0"><FileTypeIcon type={c.file_type} name={c.file_name} size={24} /></span>
               )}
 
               {/* Info */}
