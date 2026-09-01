@@ -28,6 +28,52 @@ function bytesToBase64(bytes) {
   return btoa(binary)
 }
 
+function base64ToBytes(b64) {
+  const bin = atob(b64)
+  const out = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i)
+  return out
+}
+
+// Pixel dimensions from PNG or JPEG header bytes — no Image API in Deno edge.
+// Used only to detect the model silently reframing/cropping the product.
+function imageSize(bytes) {
+  if (!bytes || bytes.length < 24) return null
+  if (bytes[0] === 0x89 && bytes[1] === 0x50) { // PNG — IHDR width/height at 16..24
+    return {
+      w: (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19],
+      h: (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23],
+    }
+  }
+  if (bytes[0] === 0xFF && bytes[1] === 0xD8) { // JPEG — first SOF marker
+    let o = 2
+    while (o + 9 < bytes.length) {
+      if (bytes[o] !== 0xFF) { o++; continue }
+      const marker = bytes[o + 1]
+      const len = (bytes[o + 2] << 8) | bytes[o + 3]
+      const isSOF = marker >= 0xC0 && marker <= 0xCF &&
+        marker !== 0xC4 && marker !== 0xC8 && marker !== 0xCC
+      if (isSOF) return { h: (bytes[o + 5] << 8) | bytes[o + 6], w: (bytes[o + 7] << 8) | bytes[o + 8] }
+      o += 2 + len
+    }
+  }
+  return null
+}
+
+// Anchors shared by every mode (DETERMINISTIC-ART-GEN §2): stop the image
+// model doing what image models do — silently re-zoom, re-crop, rotate, or
+// re-centre the subject while it edits the background.
+const FRAMING =
+  `FRAMING (do not violate): keep the product fully within the frame with even margin on all sides — ` +
+  `do not crop, zoom, pan, rotate, re-centre, or change the camera angle. ` +
+  `The output must have the SAME pixel dimensions and aspect ratio as the input image.`
+
+// Consolidated negative constraints (DETERMINISTIC-ART-GEN §3).
+const EXCLUDE =
+  `MUST NOT: add props, text, watermarks, logos, borders, or a second copy of the product; ` +
+  `add a gradient, vignette, glow, or coloured cast to the background; ` +
+  `add reflections of the old scene; restyle, "beautify", or reinterpret any part of the product.`
+
 // Plating and crystal recolor — targeted change, everything else preserved.
 const RECOLOR_PROMPT = instructions =>
   `You are editing a product photo of a Crystocraft crystal giftware item. ` +
@@ -39,6 +85,7 @@ const RECOLOR_PROMPT = instructions =>
   `- All surface facets, engravings, and fine details\n` +
   `- Lighting direction and intensity\n` +
   `- Every colour NOT explicitly mentioned in the change instructions above\n` +
+  `${FRAMING} ${EXCLUDE}\n` +
   `Output only the edited image.`
 
 const COLOR_RULES =
@@ -54,9 +101,10 @@ const COLOR_RULES =
 const PROMPTS = {
   clean:
     `Edit this product photo of a Crystocraft crystal giftware / corporate gift item. ` +
-    `Replace ONLY the background with a clean, pure solid WHITE studio background (#FFFFFF), evenly lit, no shadows behind the object, no props, no reflections of the old scene. ` +
+    `Replace ONLY the background with a clean, pure solid WHITE studio background (#FFFFFF), evenly lit, no shadows behind the object. ` +
     `CRITICAL: keep the product itself PIXEL-IDENTICAL — do not change its shape, proportions, facets, engraving, or any colours. ` +
     `${COLOR_RULES} ` +
+    `${FRAMING} ${EXCLUDE} ` +
     `Preserve a soft natural contact shadow under the object. Output only the edited image.`,
   enhance:
     `Edit this product photo of a Crystocraft crystal giftware / corporate gift item for a premium wholesale catalogue. ` +
@@ -64,7 +112,8 @@ const PROMPTS = {
     `Gently enhance clarity and make the metal plating (gold or chrome) and the crystal stones read richer and truer to a polished studio shot — improve lighting and sparkle only. ` +
     `CRITICAL: stay faithful to the REAL product — keep the exact shape, proportions, facets, engraving, and all colours. ` +
     `${COLOR_RULES} ` +
-    `Do NOT invent, add, remove, or restyle any detail. Output only the edited image.`,
+    `${FRAMING} ${EXCLUDE} ` +
+    `Output only the edited image.`,
 }
 
 export default async function handler(req) {
@@ -103,10 +152,14 @@ export default async function handler(req) {
       : ''
     prompt = (PROMPTS[mode] || PROMPTS.clean) + colorHintBlock
   }
+  // 'clean' and 'recolor' are meant to be pixel-faithful → fully deterministic.
+  // 'enhance' is allowed a little latitude for lighting/sparkle.
+  const temperature = mode === 'enhance' ? 0.2 : 0
   const body = {
     contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mime, data: dataB64 } }] }],
-    generationConfig: { responseModalities: ['IMAGE'], temperature: 0.2 },
+    generationConfig: { responseModalities: ['IMAGE'], temperature },
   }
+  const srcSize = imageSize(base64ToBytes(dataB64))
 
   let lastError = null
   for (let i = 0; i < IMAGE_MODELS.length; i++) {
@@ -150,7 +203,20 @@ export default async function handler(req) {
     }
 
     if (model !== IMAGE_MODELS[0]) console.log(`enhance-image: served by fallback model ${model} after ${IMAGE_MODELS[0]} failed`)
-    return json({ image: inline.data, mimeType: inline.mime_type || inline.mimeType || 'image/png' })
+
+    // Reframe guard (DETERMINISTIC-ART-GEN §4 "missing-element audit"): a
+    // changed aspect ratio is the strongest signal the model cropped/zoomed
+    // the product despite the FRAMING anchor. Non-fatal — the caller shows a
+    // before/after and the human decides — but flag it so the UI can warn.
+    const outSize = imageSize(base64ToBytes(inline.data))
+    let reframed = false
+    if (srcSize?.w && outSize?.w) {
+      const arSrc = srcSize.w / srcSize.h
+      const arOut = outSize.w / outSize.h
+      reframed = Math.abs(arSrc - arOut) / arSrc > 0.02
+      if (reframed) console.warn(`enhance-image: model reframed ${srcSize.w}x${srcSize.h} -> ${outSize.w}x${outSize.h} (mode ${mode})`)
+    }
+    return json({ image: inline.data, mimeType: inline.mime_type || inline.mimeType || 'image/png', reframed })
   }
 
   // Unreachable (the loop always returns), but keeps this defensive.

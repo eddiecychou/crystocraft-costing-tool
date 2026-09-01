@@ -877,7 +877,7 @@ export default function RangeForm() {
       const data = await enhanceProductImage(g.url, { mode, colorHint, recolorInstructions })
       const afterUrl = `data:${data.mimeType || 'image/png'};base64,${data.image}`
       const colorWarning = await detectColorLoss(g.url, afterUrl)
-      setEnh(e => (e && e.i === i ? { ...e, after: afterUrl, busy: false, colorWarning } : e))
+      setEnh(e => (e && e.i === i ? { ...e, after: afterUrl, busy: false, colorWarning, reframed: !!data.reframed } : e))
     } catch (err) {
       setEnh(e => (e && e.i === i ? { ...e, busy: false, error: err.message } : e))
     }
@@ -1556,6 +1556,16 @@ export default function RangeForm() {
                       <span className="font-semibold">Possible colour change detected.</span>{' '}
                       Parts of the product that were coloured in the original appear white or transparent in the enhanced version.
                       Describe the product colours above and try again, or discard and use the original.
+                    </p>
+                  </div>
+                )}
+                {enh.reframed && (
+                  <div className="flex items-start gap-2 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5">
+                    <AlertTriangle size={14} className="text-amber-600 mt-0.5 shrink-0" />
+                    <p className="text-xs text-amber-800 leading-snug">
+                      <span className="font-semibold">The AI reframed the shot.</span>{' '}
+                      The output aspect ratio differs from the original — the product was cropped, zoomed or re-centred.
+                      Check the framing before keeping.
                     </p>
                   </div>
                 )}

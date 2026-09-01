@@ -332,7 +332,7 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
       const data = await enhanceProductImage(img.file_url, { mode, colorHint, recolorInstructions })
       const afterUrl = `data:${data.mimeType || 'image/png'};base64,${data.image}`
       const colorWarning = await detectColorLoss(img.file_url, afterUrl)
-      setEnh(e => (e && e.img.id === img.id ? { ...e, after: afterUrl, busy: false, colorWarning } : e))
+      setEnh(e => (e && e.img.id === img.id ? { ...e, after: afterUrl, busy: false, colorWarning, reframed: !!data.reframed } : e))
     } catch (err) {
       setEnh(e => (e && e.img.id === img.id ? { ...e, busy: false, error: err.message } : e))
     }
@@ -659,6 +659,16 @@ export default function ImageGallery({ images, firestorePath, storagePath, typeO
                   (e.g. a red body became white, or a blue crystal detail became clear).
                   This is a known AI limitation with certain product colours.
                   Check carefully — if colours are wrong, discard and try again or use the original.
+                </p>
+              </div>
+            )}
+            {enh.reframed && (
+              <div className="flex items-start gap-2 mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5">
+                <AlertTriangle size={14} className="text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-800 leading-snug">
+                  <span className="font-semibold">The AI reframed the shot.</span>{' '}
+                  The output aspect ratio differs from the original, so the product was cropped, zoomed, or re-centred.
+                  Check the framing before keeping — discard and retry if part of the product is cut off.
                 </p>
               </div>
             )}
