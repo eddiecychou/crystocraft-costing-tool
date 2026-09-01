@@ -104,7 +104,7 @@ const s = StyleSheet.create({
   // title are very squeezed and need some proper spacing".
   sectionTitle: { fontSize: 24, color: DS_COLORS.nearBlack, marginBottom: 8 },
   sectionTagline: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 11, color: DS_COLORS.midGrey, marginBottom: 10 },
-  sectionBriefing: { fontSize: 10, color: DS_COLORS.midGrey, lineHeight: 1.55, maxWidth: 640, marginBottom: 0 },
+  sectionBriefing: { fontSize: 10, color: DS_COLORS.midGrey, lineHeight: 1.55, maxWidth: 640, marginBottom: 18 },
   // Running section number ("01") above the title on a section's FIRST page —
   // gives a 6+ page multi-section proposal a spine, and lets every later page
   // of the same section say "· continued" instead of reprinting the H1
@@ -118,7 +118,11 @@ const s = StyleSheet.create({
   // (owner, 2026-08-24: "lots of empty space for page 3, 4, 5, 6… basically
   // all the pages"). Every section page is exactly one row of ≤3 items now,
   // so there is no wrap risk in decoupling heading from content.
-  contentFill: { flexGrow: 1, justifyContent: 'center', paddingBottom: 14 },
+  // Fills the height between the page's top margin and the footer, and
+  // centres the bound heading+content block in it. NO extra padding — the
+  // block is `wrap={false}`, so any height it can't claim here becomes a
+  // blank trailing page (react-pdf emits the un-wrappable node, then breaks).
+  contentFill: { flexGrow: 1, justifyContent: 'center' },
 
   // ── Brief page — a statement, not a stray paragraph on a white field.
   // Head (accent rule + kicker), body (the brief, large, generous measure),
@@ -265,7 +269,11 @@ function FeatureDuo({ products, accent }) {
   return (
     <View style={[s.featureRow, { justifyContent: 'center' }]} wrap={false}>
       {products.map(p => (
-        <View key={p.key} style={{ width: 270 }}>
+        // 210, not 270 — a duo paired with a 'full' heading (title + tagline
+        // + briefing) AND 3-line captions has to fit, heading and both cards,
+        // inside one wrap={false} block on a 444pt content area, or the
+        // heading strands / a blank page follows (owner report, pp.20–22).
+        <View key={p.key} style={{ width: 210 }}>
           <View style={[s.featureImageWrap, s.cardBorder]}>
             {p.image ? <Image style={s.featureImage} src={p.image} /> : null}
           </View>
@@ -322,11 +330,12 @@ function SectionPages({ section, accent, index }) {
   const chunks = paginate(regular)
   const num = String(index).padStart(2, '0')
 
-  // The heading block — a plain View at the top of the page, no longer bound
-  // wrap={false} to the content: every section page is exactly one row of
-  // ≤3 items (MAX_PER_PAGE) and the heading always fits above it on the same
-  // 540pt page, so the cross-page split the old binding guarded against can't
-  // happen. Decoupling lets `contentFill` centre the row in the space left.
+  // The heading is rendered INSIDE the same `wrap={false}` block as the
+  // product row (see the page maps below), and that block is vertically
+  // centred by `contentFill`. Binding them is load-bearing: a decoupled
+  // heading whose sibling content overflowed by a hair got left stranded on
+  // its own page while the row moved to the next (owner report, pp.20–22).
+  // Bound, the whole unit moves together or not at all.
   // Heading modes:
   //  'full'      — number + title + tagline + briefing (a section's first
   //                page, when that page is a product grid).
@@ -353,24 +362,32 @@ function SectionPages({ section, accent, index }) {
   // the regular grid — a high-value piece leads, never buried mid-grid.
   const featurePages = featured.map((p, i) => (
     <Page key={`${section.key}-feature-${i}`} size={PAGE} style={s.page}>
-      {heading(i === 0 ? 'compact' : 'continued')}
-      <View style={s.contentFill} wrap={false}>
-        <FeatureSolo p={p} accent={accent} width={340} large />
+      <View style={s.contentFill}>
+        <View wrap={false}>
+          {heading(i === 0 ? 'compact' : 'continued')}
+          <FeatureSolo p={p} accent={accent} width={320} large />
+        </View>
       </View>
       <Footer />
     </Page>
   ))
 
-  const bodyChunks = chunks.length ? chunks : [[]]
+  // Only emit body pages when there ARE regular products. paginate([])
+  // returns [[]], which used to render one page with a heading and no
+  // products at all — a premium-only section left a blank page behind its
+  // feature (owner report, p.20).
+  const bodyChunks = regular.length ? chunks : []
   const bodyPages = bodyChunks.map((chunk, i) => {
     const tier = tierFor(chunk.length)
     return (
       <Page key={`${section.key}-${i}`} size={PAGE} style={s.page}>
-        {heading(featured.length === 0 && i === 0 ? 'full' : 'continued')}
-        <View style={s.contentFill} wrap={false}>
-          {tier === 'solo' && chunk.length === 1 && <FeatureSolo p={chunk[0]} accent={accent} width={330} />}
-          {tier === 'duo' && <FeatureDuo products={chunk} accent={accent} />}
-          {tier === 'triple' && <Triple products={chunk} accent={accent} />}
+        <View style={s.contentFill}>
+          <View wrap={false}>
+            {heading(featured.length === 0 && i === 0 ? 'full' : 'continued')}
+            {tier === 'solo' && chunk.length === 1 && <FeatureSolo p={chunk[0]} accent={accent} width={330} />}
+            {tier === 'duo' && <FeatureDuo products={chunk} accent={accent} />}
+            {tier === 'triple' && <Triple products={chunk} accent={accent} />}
+          </View>
         </View>
         <Footer />
       </Page>

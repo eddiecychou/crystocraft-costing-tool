@@ -62,13 +62,26 @@ const sections = [
     ],
   },
   {
-    key: 'desk',
-    heading: 'Everyday desk pieces',
-    tagline: 'Seen every working day',
-    briefing: 'Lower-cost pieces for wider distribution — the kind a recipient actually keeps on the desk.',
+    // Premium-only section — no regular products. Used to leave a blank
+    // page behind the feature (owner report, p.20).
+    key: 'connected',
+    heading: 'Connected everyday',
+    tagline: 'Smart, sleek, always in reach',
+    briefing: 'A single hero piece for the modern desk.',
     products: [
-      P('e', 'Mini Globe Paperweight', 'Etched meridian lines, 60 mm.', '#1c4f64'),
-      P('f', 'Card Holder', 'Angled crystal slot, polished edges.', '#996632'),
+      P('h', 'Charging Cable with Adaptor & Phone Stand', 'A premium charging cable with adaptor & phone stand that blends smart functionality with sleek design for modern productivity.', '#5b1c29', { premium: true, tag: 'Signature' }),
+    ],
+  },
+  {
+    // Full heading + a duo with long, 3-line captions — the case that
+    // stranded the heading on its own page (owner report, pp.21–22).
+    key: 'moments',
+    heading: 'Sunlit moments',
+    tagline: 'Gifts for shared time and relaxed connection',
+    briefing: 'Social and leisure gifts built around gathering, conversation and shared moments of joy.',
+    products: [
+      P('e', '10L Insulated Camping Cooler', 'Create memorable shared experiences with this 10l insulated camping cooler, perfect for social connection.', '#1c4f64'),
+      P('f', 'Mahjong Gift Set', 'Create memorable shared experiences with this mahjong gift set, perfect for social connection.', '#996632'),
     ],
   },
   {
