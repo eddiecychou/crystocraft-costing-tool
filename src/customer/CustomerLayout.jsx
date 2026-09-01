@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { NavLink, Link, useNavigate } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
 import { Home, Gem, Package, Heart, ClipboardList, Images, Receipt, Sparkles } from 'lucide-react'
@@ -9,8 +9,16 @@ import logo from '../assets/logo.png'
 
 export default function CustomerLayout({ children, profile }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const cart = useCart()
   const fav = useFavourites()
+  // The nav is a horizontal scroll strip on mobile — keep the current
+  // section's tab visible instead of letting it sit scrolled off-screen.
+  const navRef = useRef(null)
+  useEffect(() => {
+    navRef.current?.querySelector('[aria-current="page"]')
+      ?.scrollIntoView({ inline: 'center', block: 'nearest' })
+  }, [location.pathname])
   const customerId = profile?.customer_id || null
   // Hidden until proven otherwise — an empty Brand Portal tab is a dead
   // end (owner request), not just an empty page, so default to NOT showing
@@ -55,22 +63,27 @@ export default function CustomerLayout({ children, profile }) {
             <button onClick={handleSignOut} className="text-ivory/50 hover:text-red-400 transition-colors">Sign out</button>
           </div>
         </div>
-        <nav className="max-w-6xl mx-auto px-4 flex gap-1 overflow-x-auto">
-          {nav.map(({ to, label, Icon, badge, end }) => (
-            <NavLink key={to} to={to} end={end}
-              className={({ isActive }) =>
-                `flex items-center gap-2 px-3 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  isActive ? 'border-brand-500 text-white' : 'border-transparent text-ivory/50 hover:text-ivory'}`}>
-              <Icon size={16} strokeWidth={1.75} /> {label}
-              {badge > 0 && (
-                <span className="ml-0.5 text-[10px] bg-brand-500 text-white rounded-full px-1.5 py-0.5 leading-none">{badge}</span>
-              )}
-            </NavLink>
-          ))}
-        </nav>
+        {/* relative + right-edge fade so a scrolled-off tab row reads as
+            "more this way" rather than clipped. */}
+        <div className="relative max-w-6xl mx-auto">
+          <nav ref={navRef} className="no-scrollbar px-4 flex gap-1 overflow-x-auto">
+            {nav.map(({ to, label, Icon, badge, end }) => (
+              <NavLink key={to} to={to} end={end}
+                className={({ isActive }) =>
+                  `flex items-center gap-2 px-3 py-3 min-h-[44px] text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                    isActive ? 'border-brand-500 text-white' : 'border-transparent text-ivory/50 hover:text-ivory'}`}>
+                <Icon size={16} strokeWidth={1.75} /> {label}
+                {badge > 0 && (
+                  <span className="ml-0.5 text-[10px] bg-brand-500 text-white rounded-full px-1.5 py-0.5 leading-none">{badge}</span>
+                )}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-ink to-transparent sm:hidden" />
+        </div>
       </header>
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6">{children}</main>
-      <footer className="text-center text-xs text-ink-40 py-6">
+      <footer className="text-center text-xs text-ink-40 pt-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         Ex-factory prices shown in {profile?.base_currency} — freight not included. Corporate gift prices are indicative — made to order.
       </footer>
     </div>

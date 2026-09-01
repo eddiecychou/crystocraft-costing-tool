@@ -11,6 +11,16 @@
     font-family: 'Questrial', system-ui, -apple-system, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    /* Stop the whole-page rubber-band / pull-to-refresh on mobile — inner
+       scroll regions keep their own overscroll-contain (see Layout.jsx's
+       #main-scroll). Imperceptible with a mouse. */
+    overscroll-behavior-y: none;
+  }
+
+  /* Remove the grey tap-flash WebKit paints over buttons/links on touch —
+     the app's own hover/active states are the feedback. */
+  a, button, [role="button"], summary, label {
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* Questrial uppercase headings — the wordmark-echo treatment (H1–H3) */
@@ -232,5 +242,17 @@
   }
   .mosaic-tile {
     @apply bg-white overflow-hidden;
+  }
+
+  /* A horizontally-scrolling strip (mobile tab nav, chip rows) with no
+     visible scrollbar — the content itself is the affordance, plus an edge
+     fade at the call site. */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
   }
 }
