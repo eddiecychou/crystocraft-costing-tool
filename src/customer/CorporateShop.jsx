@@ -167,37 +167,43 @@ export default function CorporateShop({ profile }) {
   return (
     <div>
       {(loading || stillResolving) && <LoadingBar />}
-      <div className="mb-2">
+      <div className="mb-5">
         <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">Catalogue</p>
         <h1 className="text-2xl md:text-3xl text-ink">Corporate Gifts</h1>
-        <p className="text-sm text-ink-60 mt-0.5">{filtered.length} products · indicative prices in {cur}</p>
+        <p className="text-sm text-ink-60 mt-0.5">{filtered.length} products</p>
       </div>
-      <div className="rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2 mb-5">
+      <div className="bg-gold/10 border border-gold/40 text-ink-80 text-xs px-3 py-2 mb-5">
         Corporate gifts are made to order. Prices shown are indicative reference points only — final pricing varies
         by specification, quantity and customisation. Contact us for a quotation.
       </div>
       <CollectionBand catalogue="corp_gift" products={bandItems} active={coll}
         onApply={c => { setColl(c); setCat(''); window.scrollTo({ top: 0 }) }} />
       {coll && (
-        <div className="flex items-center justify-between gap-2 mb-4 px-3 py-2 rounded-md bg-ink/5 border border-ivory-dark">
+        <div className="flex items-center justify-between gap-2 mb-4 px-3 py-2 bg-ink/5 border border-ivory-dark">
           <span className="text-sm text-ink-80">Showing <span className="font-medium">{coll.title}</span></span>
           <button onClick={() => setColl(null)} className="text-sm text-ink-60 hover:text-ink shrink-0">Clear</button>
         </div>
       )}
-      <div className="mb-5 space-y-2.5">
+      <div className="mb-5 space-y-4">
         <input type="text" placeholder="Search products…" className="input w-full sm:max-w-xs"
           value={search} onChange={e => { setSearch(e.target.value); sessionStorage.setItem('cs-search', e.target.value) }} />
-        <div className="flex flex-wrap gap-1.5">
-          <button type="button" onClick={() => { setColl(null); setCat(''); sessionStorage.setItem('cs-cat', '') }}
-            className={(coll ? false : cat === '') ? 'tag-active' : 'tag-clickable'}>All categories</button>
-          {categories.map(c => (
-            <button key={c} type="button" onClick={() => { setColl(null); setCat(c); sessionStorage.setItem('cs-cat', c) }}
-              className={(!coll && cat === c) ? 'tag-active' : 'tag-clickable'}>{c}</button>
-          ))}
+        <div>
+          <p className="label mb-1.5">Category</p>
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" onClick={() => { setColl(null); setCat(''); sessionStorage.setItem('cs-cat', '') }}
+              className={(coll ? false : cat === '') ? 'tag-active' : 'tag-clickable'}>All categories</button>
+            {categories.map(c => (
+              <button key={c} type="button" onClick={() => { setColl(null); setCat(c); sessionStorage.setItem('cs-cat', c) }}
+                className={(!coll && cat === c) ? 'tag-active' : 'tag-clickable'}>{c}</button>
+            ))}
+          </div>
         </div>
       </div>
       {stillResolving ? null : filtered.length === 0 ? (
-        <div className="text-center py-20 text-ink-60">No products match your search.</div>
+        <div className="text-center py-16">
+          <p className="eyebrow text-ink-40 mb-1.5">No matches</p>
+          <p className="text-sm text-ink-60">No products match your search or filters.</p>
+        </div>
       ) : (
         <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
           {filtered.map(p => (
@@ -228,9 +234,10 @@ function CorpCard({ p, cur, rates, profile, images }) {
   return (
     <Link id={`corp-card-${p.id}`} to={`/shop/corporate/${p.id}`}
       onClick={() => sessionStorage.setItem('cs-last-id', p.id)}
-      className="mosaic-tile flex flex-col hover:shadow-md transition-shadow">
-      <div className="aspect-square bg-gray-100 flex items-center justify-center overflow-hidden relative">
+      className="mosaic-tile flex flex-col group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
+      <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
         <CardImageCarousel images={images} alt={p.name}
+          imgClassName="object-cover group-hover:scale-105 transition-transform duration-300"
           fallback={<Package size={32} strokeWidth={1.25} className="text-gray-300" />} />
         {isNew(p) && (
           <span className="absolute top-1.5 left-1.5 badge-active" title="New arrival">New</span>
@@ -240,12 +247,12 @@ function CorpCard({ p, cur, rates, profile, images }) {
       </div>
       <div className="p-3 flex flex-col gap-1 flex-1">
         <h3 className="text-sm leading-tight text-ink line-clamp-2" title={p.name}>{p.name}</h3>
-        <p className="text-[11px] text-ink-50">{p.category}</p>
-        {p.description && <p className="text-[11px] text-ink-60 line-clamp-2">{p.description}</p>}
+        <p className="text-xs text-ink-50">{p.category}</p>
+        {p.description && <p className="text-xs text-ink-60 line-clamp-2">{p.description}</p>}
         <div className="mt-auto pt-1.5">
           {fromPrice === undefined ? <span className="text-xs text-ink-40">…</span>
             : fromPrice == null ? <span className="text-xs text-ink-40 italic">Enquire for pricing</span>
-            : <span className="text-sm text-ink"><span className="text-[11px] text-ink-50">from </span>{fmtMoney(fromPrice, cur)}</span>}
+            : <span className="text-sm text-ink"><span className="text-xs text-ink-50">from </span>{fmtMoney(fromPrice, cur)}</span>}
         </div>
       </div>
     </Link>
