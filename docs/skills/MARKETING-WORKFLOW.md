@@ -130,6 +130,17 @@ never auto-overwrites the original. When editing these prompts, **MUST** preserv
 the "do not alter the product" clause. A retouch that changes the product is a
 bug, not a feature.
 
+**Deterministic-control hardening (2026-09-02, from the DETERMINISTIC-ART-GEN
+audit — see §6.1a).** `enhance-image.js` now also carries a shared **`FRAMING`**
+anchor (no crop / zoom / pan / rotate / re-centre; same output dimensions and
+aspect ratio) and a consolidated **`EXCLUDE`** block (no props / text /
+watermark / border / duplicate product / bg gradient / vignette / glow / colour
+cast). `temperature` is **0** for `clean` and `recolor` (only `enhance` keeps
+0.2). A code-level **reframe guard** (`imageSize()` reads PNG/JPEG header dims)
+sets `reframed: true` on the response when the output aspect ratio drifts >2%
+from the source; `ImageGallery.jsx` / `RangeForm.jsx` show an amber warning
+alongside the colour-loss one. Keep all three when editing prompts.
+
 ## 5. Sending discipline (Resend)
 
 - **MUST** normalize every Resend **tag name and value** through
@@ -370,3 +381,4 @@ When changing the Blog or Product image UI (`BlogGenerator.jsx`,
 | 2026-09-01 | Added §6 External Governance for the DeepSeek SEO & Artgen engine (custodian rules): the Style→Manifest→Review→Upload pipeline + `art.meta.json` provenance; the immutable Product-Truth three-class rule; the locked Chinese-Zodiac + Western-Astrology visual grammars; the WordPress/WPML/Elementor/redirect publishing contract; and the OC UI's obligation to display full-bleed editorial art without fighting it. Corrected §4's outdated "no separate Artgen engine" claim — it meant "not in THIS repo"; the engine lives in the external `Deepseek Workbench`. |
 | 2026-09-01 | §6.2 Product Truth flagged as DETERMINISTIC on DeepSeek's side (code classifier + human gate) vs prompt-only in our enhance-image — cross-links ARCHITECTURE-RULES §8. |
 | 2026-09-02 | Added §6.1a — DSH's three-layer prompt technique ([FOUNDATION]/[NARRATIVE]/[ANCHORS]), percentage-based visual anchoring + margin-safety to stop truncation/drift, and the "rewrite the ANCHORS layer, don't just re-ask" failure-recovery rule. Folded from an external `DETERMINISTIC-ART-GEN.md` draft; its "no invented products" line noted as a restatement of §6.2, not a new rule. |
+| 2026-09-02 | §4 Product Truth: recorded the DETERMINISTIC-ART-GEN audit outcome applied to the in-repo retoucher — `enhance-image.js` gained a `FRAMING` anti-reframe anchor, a consolidated `EXCLUDE` negative-constraint block, `temperature 0` for the faithful modes, and a PNG/JPEG-header reframe guard that surfaces `reframed:true` as an amber UI warning. |
