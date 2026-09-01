@@ -9,16 +9,30 @@
 import { build } from 'esbuild'
 import { writeFileSync } from 'fs'
 
+// A SQUARE test image with its top & bottom edges labelled — makes any
+// aspect-ratio crop on the Featured lead tile obvious (see the 2026-09-01
+// square-image-crop fix).
+const squareSvg = encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="600" height="600">' +
+  '<rect width="600" height="600" fill="#efe6d8"/>' +
+  '<rect x="235" y="60" width="130" height="480" rx="14" fill="#3b3f4a"/>' +
+  '<text x="300" y="52" font-size="22" fill="#8a3b52" text-anchor="middle" font-family="sans-serif">TOP EDGE</text>' +
+  '<text x="300" y="575" font-size="22" fill="#8a3b52" text-anchor="middle" font-family="sans-serif">BOTTOM EDGE</text>' +
+  '</svg>'
+)
+const IMG = `data:image/svg+xml;utf8,${squareSvg}`
+
 const STUBS = {
-  // useFrontPageFeatured -> 5 fake items (one flagged is_new via meta stub below)
+  // useFrontPageFeatured -> 5 fake items (some flagged is_new via the meta stub below)
   'frontPageFeatured': `
+    const IMG = ${JSON.stringify(IMG)};
     export function useFrontPageFeatured() {
       return { items: [
-        { id:'f1', product_id:'p1', product_type:'range',     image_url:'https://picsum.photos/seed/cc1/600' },
-        { id:'f2', product_id:'p2', product_type:'corp_gift', image_url:'https://picsum.photos/seed/cc2/600' },
-        { id:'f3', product_id:'p3', product_type:'range',     image_url:'https://picsum.photos/seed/cc3/600' },
-        { id:'f4', product_id:'p4', product_type:'corp_gift', image_url:'https://picsum.photos/seed/cc4/600' },
-        { id:'f5', product_id:'p5', product_type:'range',     image_url:'https://picsum.photos/seed/cc5/600' },
+        { id:'f1', product_id:'p1', product_type:'range',     image_url: IMG },
+        { id:'f2', product_id:'p2', product_type:'corp_gift', image_url: IMG },
+        { id:'f3', product_id:'p3', product_type:'range',     image_url: IMG },
+        { id:'f4', product_id:'p4', product_type:'corp_gift', image_url: IMG },
+        { id:'f5', product_id:'p5', product_type:'range',     image_url: IMG },
       ] }
     }
     export const saveFrontPageFeatured = async () => {}

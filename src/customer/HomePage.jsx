@@ -80,24 +80,29 @@ function NewPill({ className = '' }) {
   )
 }
 
-// Featured section = one large LEAD tile (image + title overlaid, like a
-// smaller hero) followed by a rail of standard tiles (UI-POLISH §4.1: the
-// lead absorbs the old 5-in-a-4-col orphan, and gives the eye one entry
-// point). `lead` picks the treatment; both share the image-lift hover (§4.6).
+// Featured section = one large LEAD tile followed by a rail of standard tiles
+// (UI-POLISH §4.1: the lead absorbs the old 5-in-a-4-col orphan and gives the
+// eye one entry point). The lead is a SPLIT card — square image cell + text
+// panel — NOT a wide banner: the whole catalogue's photos are square, and a
+// square source in a wide `object-cover` frame crops ~25% off the top and
+// bottom (owner, 2026-09-01). A square image cell fits a square photo with
+// zero crop, needs no landscape re-shoot, and still reads as a showcase.
 function FeaturedProductCard({ item, meta, lead = false }) {
   if (!meta) return null // product deleted/renamed away since being featured — skip rather than show a broken link
   if (lead) {
     return (
       <Link to={meta.to}
-        className="mosaic-tile relative block group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
-        <div className="aspect-[4/3] sm:aspect-[2/1] bg-ivory-dark overflow-hidden">
+        className="mosaic-tile group grid sm:grid-cols-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
+        <div className="relative aspect-square bg-ivory-dark overflow-hidden">
           <img src={item.image_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+          {meta.isNew && <NewPill className="absolute top-3 left-3" />}
         </div>
-        <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/10 to-transparent" />
-        {meta.isNew && <NewPill className="absolute top-3 left-3" />}
-        <div className="absolute inset-x-0 bottom-0 p-5 md:p-6">
-          <p className="eyebrow text-white/70 mb-1">Featured</p>
-          <p className="text-lg md:text-2xl text-white leading-tight max-w-md line-clamp-2">{meta.name}</p>
+        <div className="flex flex-col justify-center gap-2 p-6 md:p-8">
+          <p className="eyebrow text-bronze">Featured</p>
+          <p className="text-xl md:text-3xl text-ink leading-tight line-clamp-3">{meta.name}</p>
+          <span className="mt-1 inline-flex items-center gap-1.5 text-sm text-brand-600 font-medium group-hover:gap-2.5 transition-all">
+            View product <ArrowRight size={15} />
+          </span>
         </div>
       </Link>
     )
