@@ -1170,6 +1170,42 @@ did NOT get the same `position: fixed` repeating footer the quote PDF got
 cross-browser print inconsistencies is not where to risk an unverified
 guess).
 
+## Where V8.13 starts
+
+- **The `sales` (front-office) RBAC role is BUILT and live** — `admin` /
+  `production` / `sales` / `customer`, enforced across all five boundaries
+  (Firestore, Storage, `erp.js`, `access.js`, edge functions). Full contract
+  in `docs/skills/ARCHITECTURE-RULES.md` §2a. Owner-confirmed this cycle:
+  `sales` sees **all** customers (no per-account scoping — fine for one
+  person, revisit if the team grows), and **may post** credit notes /
+  invoices / bank-account records (front office owns the customer money
+  relationship, not read-only).
+- **Code-review (V8.13) actioned:**
+  - `isAdmin()` → `isFrontOffice()` in 14 edge functions whose local helper
+    had quietly widened to `['admin','sales']` — the name no longer lies.
+    `send-email.js` keeps `isAdmin` (genuinely `=== 'admin'`).
+  - Convert-to-PI (`ShipmentForm.jsx`) was tagging every converted quote
+    line `line_type:'range'` + `range_products/` ref; a client quote is
+    always a **corp-gift** product, so `packing.js` found nothing and
+    silently fell back to 1 carton / no dims under a green ✓. Now
+    `corp_gift` + `products/`.
+  - `users/{uid}` role/status/account_type changes now append to an
+    append-only `audit_logs` collection (closes the L-01 blind spot — the
+    two silent admin demotions were noticed but never explained).
+  - `isStaff` name-collision (client = admin+prod+sales, rules =
+    admin+prod) — warning comments added on both sides; no behaviour change.
+- **Still open (owner decisions, not touched):**
+  - The 3 unguarded edge functions (`customizer-render/palette.js`,
+    `enhance-image.js`) — owner confirmed "not important, leave"; quota/CPU
+    abuse only, no secret reaches the browser. Recorded in `TECH-DEBT.md`.
+  - `audit_logs` does **not** yet cover the invitation-approval path
+    (`netlify/functions/portal-invite.js`, Admin SDK) or price-group edits.
+- **Deploy note:** this cycle changed `firestore.rules` (the `audit_logs`
+  block). Rules deploy **separately** and **first** —
+  `npx firebase-tools deploy --only firestore:rules` before the Netlify
+  push, or the audit writes permission-deny (silently — the account change
+  still works, you just get no log). See L-11.
+
 ## Where V8.12 starts
 
 - **PI/Invoice repeating footer** — DONE for the PI (`ProformaInvoicePrint.jsx`,

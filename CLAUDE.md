@@ -26,13 +26,13 @@ of record, one function at a time.
 | File | What it holds |
 |---|---|
 | `docs/skills/SKILL.md` | **Master router + skill index.** Feature-area index (pages ↔ logic ↔ edge fns ↔ collections ↔ spec), stack, session-start. Start here to locate anything. |
-| `docs/skills/ARCHITECTURE-RULES.md` | Hard boundaries: data isolation, RBAC (incl. the Planned `sales` role), data lifecycles, snapshots, verify/deploy playbook |
+| `docs/skills/ARCHITECTURE-RULES.md` | Hard boundaries: data isolation, RBAC (`admin`/`production`/`sales`/`customer` — `sales` BUILT V8.13), data lifecycles, snapshots, verify/deploy playbook |
 | `docs/skills/MARKETING-WORKFLOW.md` | Daily Drafts, campaigns, blog→WordPress/SEO, the "Artgen" image-retouch family + Product-Truth rule |
 | `docs/skills/SOURCING-HUB.md` | Suppliers, sourcing links, per-channel comms capture (email/WhatsApp/Alibaba/WeChat) |
 | `docs/skills/LESSONS-LEARNED.md` | Every significant failure + its verified permanent fix (Symptom / Root cause / Fix) |
 | `docs/skills/DESIGN-SYSTEM.md` | The written spec of the shipped design system (V2.5) — token layer, component inventory + state matrix, WCAG contrast, drift baseline, V3 open decisions. `design-system/` holds the exported reference bundles. |
 | `INDEX.md` | Pointer into `docs/skills/` (kept so old links resolve) |
-| `PROJECT-PLAN.md` | The running record. Newest cycle first. **"Where V8.12 starts" is the current entry point.** |
+| `PROJECT-PLAN.md` | The running record. Newest cycle first. **"Where V8.13 starts" is the current entry point.** |
 | `JES-RETIREMENT-PLAN.md` | The nine-step route to switching JES off, in plain language |
 | `V7.15_ERP_Inventory.md` | What the ERP actually contains — measured, not assumed |
 | `PBIS-IMPORT-FORMAT.md` | The JES→PBIS import contract — what an app-generated invoice must reproduce |

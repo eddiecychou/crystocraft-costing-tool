@@ -305,9 +305,14 @@ export default function ShipmentForm() {
           qty_ordered: tier.quantity ?? '',
           unit: it.product_unit || 'pcs',
           unit_price: tier.price ?? '',
-          line_type: isCatalogue ? 'range' : 'ad_hoc', packable: true,
+          // A client_quotes line is a CORP-GIFT product (QuoteDetail's only
+          // picker reads `products/`), never a figurine — was mislabelled
+          // `range` + `range_products/`, so packing.js looked the id up in
+          // the figurine catalogue, found nothing, and silently fell back to
+          // 1 carton / no dims while still showing a green "matched" ✓.
+          line_type: isCatalogue ? 'corp_gift' : 'ad_hoc', packable: true,
           match_status: isCatalogue ? 'matched' : 'manual',
-          matched_product_ref: isCatalogue ? { collection: 'range_products', id: it.product_id, name: it.product_name } : null,
+          matched_product_ref: isCatalogue ? { collection: 'products', id: it.product_id, name: it.product_name } : null,
           line_image: it.custom_image || it.hero_image || null,
         }
       })

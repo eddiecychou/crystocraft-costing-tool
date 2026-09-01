@@ -42,7 +42,7 @@ export const PAYMENT_TERMS = [
 export const ORDER_CURRENCIES = ['HKD', 'USD', 'EUR', 'GBP', 'RMB', 'CAD', 'AED', 'MXN']
 
 export const ORDER_STATUSES = [
-  { value: 'draft',     label: 'Draft',     style: 'bg-gray-100 text-gray-600' },
+  { value: 'draft',     label: 'Draft',     style: 'bg-ivory-dark text-ink-70' },
   { value: 'confirmed', label: 'Confirmed', style: 'bg-blue-50 text-blue-700' },
   { value: 'packing',   label: 'Packing',   style: 'bg-amber-50 text-amber-700' },
   { value: 'ready',     label: 'Ready',     style: 'bg-purple-50 text-purple-700' },
@@ -69,7 +69,7 @@ export const LINE_TYPES = [
   { value: 'range',       label: 'Figurine',  packable: true,  style: 'bg-indigo-50 text-indigo-700' },
   { value: 'corp_gift',   label: 'Corp Gift', packable: true,  style: 'bg-sky-50 text-sky-700' },
   { value: 'ad_hoc',      label: 'Ad-hoc',    packable: true,  style: 'bg-amber-50 text-amber-700' },
-  { value: 'non_product', label: 'Charge',    packable: false, style: 'bg-gray-100 text-gray-500' },
+  { value: 'non_product', label: 'Charge',    packable: false, style: 'bg-ivory-dark text-ink-60' },
 ]
 export const lineTypeOf = v => LINE_TYPES.find(t => t.value === v) || LINE_TYPES[2]
 export const isPackable = v => lineTypeOf(v).packable

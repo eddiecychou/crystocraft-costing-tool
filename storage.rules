@@ -34,6 +34,9 @@ service firebase.storage {
     // customer-facing customer_uploads/{uid} + renders/{uid} paths and every
     // admin-only domain path (customers, marketing, catalogues, settings
     // branding, orders, client_quotes) stay as they were.
+    // SUPPLY-side wall: admin + production only. The client-side isStaff
+    // (src/hooks/useProfile.js) has the SAME name but a WIDER set (also
+    // 'sales'); they are not interchangeable. (Code review, V8.13.)
     function isStaff() {
       return isAuth() &&
         firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&

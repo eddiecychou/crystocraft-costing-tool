@@ -33,7 +33,7 @@ const JWKS = createRemoteJWKSet(
 const json = (b, status = 200) =>
   new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } })
 
-async function isAdmin(uid, idToken, projectId) {
+async function isFrontOffice(uid, idToken, projectId) {
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`
   const r = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } })
   if (!r.ok) return false
@@ -105,7 +105,7 @@ export default async function handler(req) {
     })
     uid = payload.sub
   } catch { return json({ error: 'Invalid or expired session' }, 401) }
-  if (!(await isAdmin(uid, token, PROJECT_ID))) return json({ error: 'Access denied' }, 403)
+  if (!(await isFrontOffice(uid, token, PROJECT_ID))) return json({ error: 'Access denied' }, 403)
 
   let body
   try { body = await req.json() } catch { return json({ error: 'Bad JSON' }, 400) }

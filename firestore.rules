@@ -24,6 +24,9 @@ service cloud.firestore {
     function isProduction() {
       return hasProfile() && profile().role == 'production';
     }
+    // SUPPLY-side wall: admin + production only. NOTE the client-side
+    // isStaff (src/hooks/useProfile.js) has the SAME name but a WIDER set
+    // (also 'sales'); they are not interchangeable. (Code review, V8.13.)
     function isStaff() {
       return isAdmin() || isProduction();
     }

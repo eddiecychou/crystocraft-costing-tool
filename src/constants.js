@@ -84,7 +84,7 @@ export const PO_PAYMENT_TERM_LABEL = Object.fromEntries(PO_PAYMENT_TERMS.map(t =
 export const PO_UNITS = ['pcs', 'set', 'm', 'kg', 'roll', 'sheet', 'pair']
 
 export const PO_STATUSES = [
-  { value: 'draft',  label: 'Draft',  badge: 'bg-gray-100 text-gray-600' },
+  { value: 'draft',  label: 'Draft',  badge: 'bg-ivory-dark text-ink-70' },
   { value: 'issued', label: 'Issued', badge: 'bg-emerald-100 text-emerald-700' },
 ]
 
@@ -95,7 +95,7 @@ export const PO_STATUSES = [
 // no financial weight yet); 'posted' means the Postgres fact exists
 // (app_credit_note); 'void' flips that fact's status without deleting it.
 export const CN_STATUSES = [
-  { value: 'draft',  label: 'Draft',  badge: 'bg-gray-100 text-gray-600' },
+  { value: 'draft',  label: 'Draft',  badge: 'bg-ivory-dark text-ink-70' },
   { value: 'posted', label: 'Posted', badge: 'bg-emerald-100 text-emerald-700' },
   { value: 'void',   label: 'Void',   badge: 'bg-red-100 text-red-600' },
 ]
@@ -177,7 +177,7 @@ export const IMAGE_ORIENTATIONS = [
 //   private  — shown to logged-in customers in the storefront catalogue.
 //   public   — also allowed in public blog posts / website content.
 export const IMAGE_VISIBILITY = [
-  { value: 'internal', label: 'Internal', short: 'Internal', cls: 'bg-gray-200 text-gray-600' },
+  { value: 'internal', label: 'Internal', short: 'Internal', cls: 'bg-warm-grey text-ink-70' },
   { value: 'private',  label: 'Storefront', short: 'Storefront', cls: 'bg-amber-100 text-amber-700' },
   { value: 'public',   label: 'Public', short: 'Public', cls: 'bg-green-100 text-green-700' },
 ]
@@ -256,7 +256,7 @@ export const RANGE_STATUSES = [
   { value: 'active',  label: 'Made to Order', badge: 'bg-emerald-100 text-emerald-700' },
   { value: 'stock',   label: 'Retired Stock', badge: 'bg-amber-100 text-amber-700' },
   { value: 'concept', label: 'Concept',       badge: 'bg-purple-100 text-purple-700' },
-  { value: 'retired', label: 'Retired — Sold Out', badge: 'bg-gray-200 text-gray-600' },
+  { value: 'retired', label: 'Retired — Sold Out', badge: 'bg-warm-grey text-ink-70' },
 ]
 
 // Customer-facing availability labels + explanatory tooltips for range figurines.
@@ -282,7 +282,7 @@ export const RANGE_STATUS_CUSTOMER = {
   },
   retired: {
     label: 'Retired — Sold Out',
-    cls: 'bg-gray-200 text-gray-600',
+    cls: 'bg-warm-grey text-ink-70',
     tip: 'Retired — no stock remaining. This design will not be produced again.',
   },
 }

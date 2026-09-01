@@ -13,25 +13,42 @@ Each entry: what it is, why it's not already fixed, and where to look.
 `customizer-render.js`, `customizer-palette.js`, and `enhance-image.js`
 proxy third-party secrets (`RENDER_TOKEN`, `GEMINI_API_KEY`) but have no
 `isAdmin()`/`requireAdmin()` check in their source — every other AI/proxy
-function in `API-REFERENCE.md` does. May be intentional (the customizer is a
-public-facing feature; the secret staying server-side is the actual
-mitigation either way) or may be an oversight. Changing auth posture on a
-public-facing feature is a product decision, not a code cleanup — flagged
-2026-08-26, not changed.
+function in `API-REFERENCE.md` does. The secret never reaches the browser,
+so the exposure is **quota/CPU abuse, not secret theft**.
+
+**Owner decision (V8.13 code review): leave them open — "not important, no
+need to guard."** So this is now a *recorded, accepted* posture, not an
+open oversight. If abuse ever shows up, add `requireFrontOffice()` (from
+`lib/auth.js`) — `enhance-image.js` is the low-risk one to gate first.
 
 **Where:** `netlify/edge-functions/customizer-render.js`,
 `customizer-palette.js`, `enhance-image.js`.
 
-## Two parallel implementations of the same admin check
+## Parallel implementations of the same auth check
 
 Most edge functions inline their own `isAdmin(uid, idToken, projectId)` (a
-Firestore REST check of `users/{uid}.role === 'admin'`). A newer set —
+Firestore REST check of `users/{uid}.role`). A newer set —
 `credit-note.js`, `compose-message.js`, `extract-pi.js`, `extract-po.js`,
 `generate-blog.js`, `generate-marketing-copy.js`, `process-quote.js`,
 `rewrite-section.js`, `scrape-images.js`, `woo-sync.js` — imports a shared
-`requireAdmin()` from `netlify/edge-functions/lib/auth.js` instead. Same
-effect, two implementations. Worth converging on the shared one over time
-rather than adding a 38th inline copy next time a new function needs auth.
+`requireAdmin()` / `requireFrontOffice()` from
+`netlify/edge-functions/lib/auth.js` instead. Same effect, two shapes.
+Worth converging on the shared one over time rather than adding another
+inline copy.
+
+**V8.13 code-review fix:** 14 functions
+(`send-campaign`, `send-personal-email`, `generate-outreach-drafts`,
+`draft-outreach-topic`, `discuss-outreach-draft`, `discuss-customer-email`,
+`route-email-question`, `compose-email-answer`, `suggest-tag-merges`,
+`transcribe-whatsapp-audio`, `refresh-{email,whatsapp,alibaba}-summary`,
+`uc.js`) had a *local* helper literally named `isAdmin()` whose body had
+quietly widened to `['admin','sales'].includes(role)` — so "isAdmin-gated"
+read as owner-only when it was actually front-office. **Renamed to
+`isFrontOffice()`** in place (the honest name; `lib/auth.js` already exports
+a real `requireFrontOffice`). `send-email.js` keeps `isAdmin` — its check is
+genuinely `role === 'admin'`. Migrating the 14 renamed locals to the shared
+`requireFrontOffice()` is the next step, not done (14× call-shape change,
+low urgency now the name is truthful).
 
 V8.12 added a *third* shape: `erp.js` now has `getRole()` (returns the
 role string, not a bool) because it needs to distinguish `production` from
@@ -39,7 +56,7 @@ role string, not a bool) because it needs to distinguish `production` from
 (not admin-only) auth, `lib/auth.js` should grow a `requireRole()` /
 `getRole()` rather than each one re-inlining the Firestore REST read.
 
-**Where:** compare any inline `isAdmin()` block against
+**Where:** compare any inline `isAdmin()` / `isFrontOffice()` block against
 `netlify/edge-functions/lib/auth.js`; `erp.js`'s `getRole()`.
 
 ## RBAC (`production` role) — client capability map vs server rules can drift
@@ -70,7 +87,19 @@ emulator test on any `firestore.rules` change. See `PROJECT-PLAN.md` V8.12
 `src/pages/ErpLookup.jsx` (`PRODUCTION_ERP_ENTITIES`),
 `qa/rbac-rules.test.mjs`.
 
-## Corp-gift quote lines are labelled as figurine products on Convert-to-PI
+## ~~Corp-gift quote lines are labelled as figurine products on Convert-to-PI~~ — FIXED V8.13
+
+**Fixed (V8.13 code review):** the convert path in `ShipmentForm.jsx` now
+writes `line_type: 'corp_gift'` + `matched_product_ref.collection: 'products'`
+for catalogue lines (a client quote is always a corp-gift product — that's the
+only picker `QuoteDetail.jsx` has). `corp_gift` is a real `LINE_TYPES` value
+(packable, "Corp Gift" badge) that the figurine-MRP special-case
+(`shipping.js:576` `line_type === 'range'`) correctly skips. `buildFullCartonPlan`
+still returns 1 carton for it — but that is now *correct* (corp gifts carry no
+structured packing DB; CuiLing types dims), not a silent failure wearing a
+false "matched ✓". Original analysis kept below for context.
+
+---
 
 `ShipmentForm.jsx:310` writes `matched_product_ref: { collection:
 'range_products', id: it.product_id, … }` and `line_type: 'range'` for **any**
