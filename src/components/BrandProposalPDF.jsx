@@ -100,7 +100,21 @@ const s = StyleSheet.create({
   // title are very squeezed and need some proper spacing".
   sectionTitle: { fontSize: 24, color: DS_COLORS.nearBlack, marginBottom: 8 },
   sectionTagline: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 11, color: DS_COLORS.midGrey, marginBottom: 10 },
-  sectionBriefing: { fontSize: 10, color: DS_COLORS.midGrey, lineHeight: 1.55, maxWidth: 640, marginBottom: 26 },
+  sectionBriefing: { fontSize: 10, color: DS_COLORS.midGrey, lineHeight: 1.55, maxWidth: 640, marginBottom: 0 },
+  // Running section number ("01") above the title on a section's FIRST page —
+  // gives a 6+ page multi-section proposal a spine, and lets every later page
+  // of the same section say "· continued" instead of reprinting the H1
+  // (which read as a bug when "The recognition story" appeared identically on
+  // two consecutive pages — the premium-feature page and the grid page).
+  sectionKicker: { fontFamily: 'Work Sans', fontWeight: 600, fontSize: 9, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 },
+  sectionContinued: { fontFamily: 'Work Sans', fontWeight: 500, fontSize: 9, letterSpacing: 1.6, textTransform: 'uppercase', color: DS_COLORS.midGrey, marginBottom: 4 },
+  // The heading block sits at the top; this fills all remaining height down to
+  // the footer and CENTRES the single product row in it, instead of leaving
+  // the row jammed under the heading with 40–60% of the page empty below
+  // (owner, 2026-08-24: "lots of empty space for page 3, 4, 5, 6… basically
+  // all the pages"). Every section page is exactly one row of ≤3 items now,
+  // so there is no wrap risk in decoupling heading from content.
+  contentFill: { flexGrow: 1, justifyContent: 'center', paddingBottom: 14 },
 
   // ── Product card — image, name, ONE caption line, optional tag. No specs/
   // MOQ/supplier/lead time anywhere on these pages, per the brief. ──
@@ -141,7 +155,15 @@ const s = StyleSheet.create({
   // reads at a clearly smaller size in Work Sans SemiBold rather than
   // Questrial, matching the visual role cardName plays under the grid tiers.
   featureName: { fontFamily: 'Work Sans', fontWeight: 600, fontSize: 16, color: DS_COLORS.nearBlack, marginBottom: 9 },
-  featureCaption: { fontFamily: 'Work Sans', fontSize: 11, color: DS_COLORS.midGrey, lineHeight: 1.55, maxWidth: 320 },
+  featureCaption: { fontFamily: 'Work Sans', fontSize: 11, color: DS_COLORS.midGrey, lineHeight: 1.55, maxWidth: 340 },
+  // Premium/Signature feature: the text side was a thin column whispering next
+  // to a page-tall silent colour block (owner render, 2026-09-02). A short
+  // accent rule + a larger name give the copy enough weight to hold its half
+  // of the spread; the image drops from 380 to 340 so the row reads as two
+  // balanced halves rather than one dominant block.
+  featureAccentRule: { width: 34, height: 2, marginBottom: 12 },
+  featureNameLarge: { fontFamily: 'Work Sans', fontWeight: 600, fontSize: 21, color: DS_COLORS.nearBlack, marginBottom: 11, marginTop: 10 },
+  featureCaptionLarge: { fontFamily: 'Work Sans', fontSize: 11.5, color: DS_COLORS.midGrey, lineHeight: 1.6, maxWidth: 340 },
 })
 
 // ── Adaptive tiering — the whole point of this file. Never one fixed grid.
@@ -209,16 +231,17 @@ function ProductCard({ p, accent }) {
 // usable width (960 - 2×MARGIN) and up to ~350pt of usable height below a
 // section heading; the old widths (260/220/190) left most of that empty.
 // These are sized to actually use the page rather than float in it.
-function FeatureSolo({ p, accent, width = 300 }) {
+function FeatureSolo({ p, accent, width = 300, large = false }) {
   return (
-    <View style={s.featureRow} wrap={false}>
+    <View style={[s.featureRow, { justifyContent: 'center' }]} wrap={false}>
       <View style={[s.featureImageWrap, s.cardBorder, { width }]}>
         {p.image ? <Image style={s.featureImage} src={p.image} /> : null}
       </View>
-      <View style={[s.featureText, { width: 380 }]}>
+      <View style={[s.featureText, { width: large ? 360 : 340 }]}>
+        {large && <View style={[s.featureAccentRule, { backgroundColor: accent }]} />}
         {p.tag ? <Tag accent={accent}>{p.tag}</Tag> : null}
-        <Text style={s.featureName}>{p.name}</Text>
-        {p.caption ? <Text style={s.featureCaption}>{p.caption}</Text> : null}
+        <Text style={large ? s.featureNameLarge : s.featureName}>{p.name}</Text>
+        {p.caption ? <Text style={large ? s.featureCaptionLarge : s.featureCaption}>{p.caption}</Text> : null}
       </View>
     </View>
   )
@@ -277,62 +300,70 @@ function Footer() {
 // One <Page> per chunk of a section's products — a section with more than
 // MAX_PER_PAGE products becomes multiple pages automatically via
 // paginate() above; every other tier is exactly one page.
-function SectionPages({ section, accent }) {
+// `index` is the 1-based position of this section among the sections that
+// actually render — drives the "01" running number.
+function SectionPages({ section, accent, index }) {
   const featured = section.products.filter(p => p.premium)
   const regular = section.products.filter(p => !p.premium)
   const chunks = paginate(regular)
+  const num = String(index).padStart(2, '0')
 
-  const pages = []
-
-  // Featured/premium products each get their own full-feature page,
-  // BEFORE the regular grid — a high-value piece leads, never buried
-  // mid-grid (brief: "larger, more editorial layouts for VIP/HNW/
-  // Signature/premium products... never a tiny standard catalogue card").
-  featured.forEach((p, i) => {
-    pages.push(
-      <Page key={`${section.key}-feature-${i}`} size={PAGE} style={s.page}>
-        {/* Heading bound into the SAME wrap={false} block as the feature —
-            the exact bug RangeCataloguePDF.jsx's own "bind heading into the
-            first row" comment already warns about: if they can split
-            independently, the title can strand itself alone on a near-blank
-            page while the content overflows to the next. */}
-        <View wrap={false}>
-          <Text style={s.sectionTitle}>{section.heading}</Text>
-          <FeatureSolo p={p} accent={accent} width={380} />
-        </View>
-        <Footer />
-      </Page>,
+  // The heading block — a plain View at the top of the page, no longer bound
+  // wrap={false} to the content: every section page is exactly one row of
+  // ≤3 items (MAX_PER_PAGE) and the heading always fits above it on the same
+  // 540pt page, so the cross-page split the old binding guarded against can't
+  // happen. Decoupling lets `contentFill` centre the row in the space left.
+  // Heading modes:
+  //  'full'      — number + title + tagline + briefing (a section's first
+  //                page, when that page is a product grid).
+  //  'compact'   — number + title + tagline only (a section that LEADS with a
+  //                Signature feature: the hero product is the section's
+  //                statement there, and a 340pt image + a full briefing block
+  //                overflow one 540pt page. The cover already carries the
+  //                proposal-wide brief; a per-section briefing on a
+  //                feature-led page was crowding the hero, so it's dropped).
+  //  'continued' — quiet "title · continued" eyebrow, no H1 reprint.
+  const heading = (mode) => {
+    if (mode === 'continued') return <Text style={s.sectionContinued}>{section.heading} · continued</Text>
+    return (
+      <View>
+        <Text style={[s.sectionKicker, { color: accent }]}>{num}</Text>
+        <Text style={s.sectionTitle}>{section.heading}</Text>
+        {section.tagline ? <Text style={s.sectionTagline}>{section.tagline}</Text> : null}
+        {mode === 'full' && section.briefing ? <Text style={s.sectionBriefing}>{section.briefing}</Text> : null}
+      </View>
     )
-  })
+  }
+
+  // Featured/premium products each get their own full-feature page, BEFORE
+  // the regular grid — a high-value piece leads, never buried mid-grid.
+  const featurePages = featured.map((p, i) => (
+    <Page key={`${section.key}-feature-${i}`} size={PAGE} style={s.page}>
+      {heading(i === 0 ? 'compact' : 'continued')}
+      <View style={s.contentFill} wrap={false}>
+        <FeatureSolo p={p} accent={accent} width={340} large />
+      </View>
+      <Footer />
+    </Page>
+  ))
 
   const bodyChunks = chunks.length ? chunks : [[]]
-  bodyChunks.forEach((chunk, i) => {
+  const bodyPages = bodyChunks.map((chunk, i) => {
     const tier = tierFor(chunk.length)
-    pages.push(
+    return (
       <Page key={`${section.key}-${i}`} size={PAGE} style={s.page}>
-        {/* Heading+tagline+briefing bound into the SAME wrap={false} unit
-            as the first content block — same reasoning as the premium
-            feature page above (and RangeCataloguePDF.jsx's own precedent):
-            without this, the heading and the row could split across two
-            pages independently, stranding the heading alone. */}
-        <View wrap={false}>
-          {i === 0 && (
-            <>
-              <Text style={s.sectionTitle}>{section.heading}</Text>
-              {section.tagline ? <Text style={s.sectionTagline}>{section.tagline}</Text> : null}
-              {section.briefing ? <Text style={s.sectionBriefing}>{section.briefing}</Text> : null}
-            </>
-          )}
-          {tier === 'solo' && chunk.length === 1 && <FeatureSolo p={chunk[0]} accent={accent} />}
+        {heading(featured.length === 0 && i === 0 ? 'full' : 'continued')}
+        <View style={s.contentFill} wrap={false}>
+          {tier === 'solo' && chunk.length === 1 && <FeatureSolo p={chunk[0]} accent={accent} width={330} />}
           {tier === 'duo' && <FeatureDuo products={chunk} accent={accent} />}
           {tier === 'triple' && <Triple products={chunk} accent={accent} />}
         </View>
         <Footer />
-      </Page>,
+      </Page>
     )
   })
 
-  return pages
+  return [...featurePages, ...bodyPages]
 }
 
 /**
@@ -402,8 +433,8 @@ export default function BrandProposalPDF({ client, hero, tagline, briefing, sect
         </Page>
       ) : null}
 
-      {sections.filter(sec => sec.products.length > 0).flatMap(sec => (
-        SectionPages({ section: sec, accent })
+      {sections.filter(sec => sec.products.length > 0).flatMap((sec, i) => (
+        SectionPages({ section: sec, accent, index: i + 1 })
       ))}
     </Document>
   )
