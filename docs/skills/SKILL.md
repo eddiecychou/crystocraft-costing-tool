@@ -200,6 +200,12 @@ the fast path from a request to the exact code.
 - Edge/Node fns: `netlify/functions/portal-invite.js` (Node, Admin SDK, `jose` 5.9.6), `swatch-library`, `ga-portal-activity`
 - Collections: `users/{uid}`, `portal_invitations/{id}` (browser read-only), `favourites/{uid}`. GA4 per-account traffic via `app_uid` (details in `MARKETING-WORKFLOW.md`/`LESSONS-LEARNED.md`).
 
+### Storefront / wholesale shop UI (`src/customer/*`) → see `UI-POLISH.md`
+- Shell: `Storefront.jsx` (routes), `CustomerLayout.jsx` (nav/footer), `store.jsx` (`CartProvider`/`FavouritesProvider` — enquiry cart in localStorage, favourites in `favourites/{uid}`).
+- Pages: `HomePage.jsx` (+ `homepageContent.js`), `FigurineShop.jsx`/`FigurineDetail.jsx`, `CorporateShop.jsx`/`CorporateDetail.jsx`, `FavouritesPage.jsx`, `EnquiryPage.jsx`, `OrderHistoryPage.jsx`, `BrandPortalPage.jsx`, `SwatchLibraryPage.jsx`, `CustomizerPage.jsx`, `CustomerInvoicePrint.jsx`, `ProposalPrint.jsx`.
+- Logic: `src/frontPageFeatured.js` (homepage Featured, `settings/front_page`), `src/newArrivals.js` (`isNew` — the one new-arrival flag), `src/customerProposal.js`, `src/customerAssets.js`, `src/sensitiveImages.js`.
+- **This is the premium/editorial surface** — full `UI-POLISH.md` treatment (generous rhythm, `.mosaic-grid`), unlike the dense Operation Center. `/shop/*` is customer-login-gated; preview headlessly via `qa/home-preview.jsx` / `qa/home-preview-seeded.mjs` (`UI-POLISH.md §4a`).
+
 ### RBAC / access control → see `ARCHITECTURE-RULES.md` §RBAC
 - Files that MUST agree: `src/access.js` (`PRODUCTION_MODULES`), `firestore.rules`, `storage.rules`, `netlify/edge-functions/erp.js` (`PRODUCTION_ENTITIES`), `src/pages/ErpLookup.jsx` (`PRODUCTION_ERP_ENTITIES`)
 - UI: `src/components/Layout.jsx`, `src/App.jsx` (`<Gate module>`), `src/pages/ProductionDashboard.jsx`. Test: `qa/rbac-rules.test.mjs`.

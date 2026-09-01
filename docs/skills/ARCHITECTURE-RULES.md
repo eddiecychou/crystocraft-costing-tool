@@ -242,8 +242,10 @@ later edited.
    across the graph.
 4. **UI change → run it**: `preview_start` the dev server, exercise it,
    screenshot. Can't run it (login-gated)? Mount the component in a `qa/*.html`
-   harness and headless-render with Chrome `--headless=new --screenshot`. Say in
-   the commit message what was and wasn't verified.
+   harness and headless-render with Chrome `--headless=new --screenshot` — for a
+   storefront/customer page that also needs seeded Firestore data, esbuild-bundle
+   the real component with a stubbed data layer (recipe: `UI-POLISH.md §4a`,
+   `qa/home-preview*`). Say in the commit message what was and wasn't verified.
 5. **PDF change → headless render** + rasterise, look at the PNG.
 6. **`firestore.rules`/`storage.rules` change → `qa/rbac-rules.test.mjs`** on the
    emulator (needs a scratch JRE — `/usr/bin/java` is a stub).

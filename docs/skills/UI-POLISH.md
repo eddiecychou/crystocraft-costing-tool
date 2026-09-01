@@ -62,6 +62,13 @@ or "add `hover:scale-95` to everything" (from the external draft) to an
 Operation Center screen — it degrades scannability of the data those screens
 exist to show. Those ideas belong to the storefront, sparingly.
 
+**One rhythm beats local optimisation.** On the storefront, pick a single
+section band (`py-12 md:py-16`) and use it *everywhere*, even where it leaves
+a short card floating in a lot of air (e.g. a one-line invite between two full
+bands). A consistent page beats a page tuned section-by-section — the reader
+feels the regularity. Remove a component's own ad-hoc `mt-*/mb-*` and let the
+section wrapper own the spacing.
+
 ## 4. The Second Pass — mandatory, and measurable
 
 A screen is **not done** when the data renders. Do a deliberate second pass and
@@ -82,16 +89,55 @@ report the before/after (§7a — an impression is not evidence). Check, in orde
    values are `text-sm` `ink` (#222). A label must never out-weigh its value.
 5. **Empty / loading / error states exist** and use the same card + `.eyebrow`
    voice as the populated state — not a bare "No data".
-6. **Hover/focus feedback** on every interactive element: a `bg-*` or `opacity`
-   change + a visible `focus:ring` (keyboard). No dead clickable-looking things.
+6. **Hover/focus feedback — ONE signal per element type.** A `bg-*` /
+   `opacity` change (+ a visible `focus:ring` for keyboard). No dead
+   clickable-looking things — but also no *stacked* motion. *Worked example
+   (HomePage, 2026-09-01):* a Quick-Access tile ran **4** simultaneous hover
+   animations (`shadow-lg` + `-translate-y` + icon-chip bg + icon `scale-110`)
+   → cut to 2 coordinated colour shifts, zero transform. For an **image tile**
+   the image lift (`group-hover:scale-105`) IS the affordance — don't also
+   stack a shadow (`.mosaic-tile` has no border, so the reflex is to add one;
+   resist). Utility rows (§3) get **no** transform at all.
 7. **Responsive:** the layout holds at 375px (mobile) — check with
    `resize_window` mobile preset, per `ARCHITECTURE-RULES.md §7`.
 8. **Token audit:** grep the diff for `bg-gray-`, `text-gray-`, `#`, `-[` —
    replace each with a config token.
+9. **Data-derived UI reuses the single source of truth, and free data over a
+   new read.** A "New" badge → `newArrivals.isNew(p)` (the one flag), not a
+   local `createdAt` guess. A count on a tile → `useFavourites()`/`useCart()`
+   context, which costs nothing — *never* add a Firestore read on a
+   high-traffic page (the homepage) just to show a number. If the useful
+   number needs a heavy query, it's probably not worth it — say so.
+10. **Context over generic copy.** A hero/primary CTA should be a real
+   destination, not a scroll-jump, and should use what the page already knows.
+   *Example:* HomePage's hero button was "Explore the Collection" (echoed the
+   heading + the section below, scrolled 200px) → now proposal-aware: "View
+   your proposal" when one exists, else "Browse the catalogue" → `/shop/figurine`
+   — driven by a hook the page loads anyway, no new read.
 
 **Report format** for a polish pass (per §7a): before/after screenshot (or the
-exact class deltas), the gap-consolidation ("was 5 distinct vertical gaps → now
-3"), and the token-audit result ("0 arbitrary colours"). Never "looks cleaner."
+exact class deltas), the gap-consolidation ("was 4 distinct section spacings →
+now 1"), the hover count ("4 animations → 2 colour shifts"), and the
+token-audit result ("0 arbitrary colours"). Never "looks cleaner."
+
+### 4a. Seeing a login-gated storefront / admin page
+
+Most screens can't be reached without a session (`/shop/*` needs a customer,
+most admin routes need admin). To get a real before/after without a login:
+
+- **Component behind auth but data-light:** mount it in a `qa/*.html` harness
+  on the Vite dev server with a fake `profile` prop; the Firestore hooks
+  error → empty state, which is often the baseline you want. (`qa/home-preview.jsx`
+  — HomePage in the real `CustomerLayout` + store providers.)
+- **Component needs seeded data** (featured products, a proposal, counts):
+  esbuild-bundle the real component with the **data layer stubbed and seeded**
+  via an `onResolve`/`onLoad` plugin swapping `../firebase`, `firebase/firestore`,
+  and the feature's data module for fakes. Pattern: `qa/home-preview-seeded.mjs`
+  → `qa/home-preview-seeded.html` (build outputs gitignored). Then headless
+  Chrome `--headless=new --screenshot` at desktop + 375px.
+- **Gotchas:** the esbuild `file` loader dumps hashed asset copies next to the
+  entry — gitignore `qa/*-????????.{jpg,png}`. Remote image hosts (picsum etc.)
+  are blocked headless, so tiles render blank — judge *layout*, not the photo.
 
 ## 5. Corrections to the external draft (do NOT follow these as written)
 
@@ -117,3 +163,4 @@ shadow- rounded-`) → **state** (`hover: focus: disabled:`).
 | Date | Change |
 |---|---|
 | 2026-09-01 | Created. Reconciles the external `EXPERT-UI-UX-RULES.md` draft against the shipped design system: SSOT is `tailwind.config.js` + `src/index.css` (§1); the square/flat/hairline Crystocraft language (§2); storefront-vs-OpsCenter split (§3); a measurable Second-Pass checklist (§4); and the draft's factual corrections (§5). |
+| 2026-09-01 | From the customer HomePage Second Pass: §4.6 gained the "one hover signal, no stacked motion" worked example; §4.9 (data-derived UI → single source + free data over a new read) and §4.10 (contextual CTA over generic) added; §3 gained the "one rhythm beats local optimisation" rule; new §4a — how to headlessly preview a login-gated storefront/admin page (`qa/home-preview.jsx` + `qa/home-preview-seeded.mjs` patterns). |
