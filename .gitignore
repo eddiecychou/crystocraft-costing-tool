@@ -36,3 +36,16 @@ migration/marketing_contacts/
 # Legacy PHP B2B site — kept locally as build reference only, not useful
 # now that the app exists, too large/stale for git.
 LocalWeb/
+
+# qa headless harness build artifacts
+qa/home-preview-seeded.js
+qa/home-preview-seeded.css
+qa/home-preview-seeded.html
+qa/*-VXBWXKA3*
+
+# qa/home-preview-seeded.mjs build artifacts (headless HomePage harness)
+qa/home-preview-seeded.js
+qa/home-preview-seeded.css
+qa/home-preview-seeded.html
+qa/*-????????.jpg
+qa/*-????????.png

@@ -4,6 +4,8 @@ import { doc, getDoc } from 'firebase/firestore'
 import { db } from '../firebase'
 import { Heart, ClipboardList, Receipt, Images, ArrowRight } from 'lucide-react'
 import { useFrontPageFeatured } from '../frontPageFeatured'
+import { isNew } from '../newArrivals'
+import { useCart, useFavourites } from './store'
 import { loadBrandedProductImages } from '../customerAssets'
 import { loadProposal } from '../customerProposal'
 import { isStorefrontVisible } from '../constants'
@@ -63,23 +65,50 @@ function useFeaturedProductsMeta(items) {
       const p = snap.data()
       const name = it.product_type === 'corp_gift' ? (p.name || it.product_id) : (p.design_name || p.description || p.design_code || it.product_id)
       const to = it.product_type === 'corp_gift' ? `/shop/corporate/${it.product_id}` : `/shop/figurine/${it.product_id}`
-      return [it.id, { name, to }]
+      return [it.id, { name, to, isNew: isNew(p) }]
     })).then(entries => { if (alive) setMeta(Object.fromEntries(entries.filter(Boolean))) })
     return () => { alive = false }
   }, [items])
   return meta
 }
 
-function FeaturedProductCard({ item, meta }) {
+// A "New" pill for the featured tiles — square, Work Sans caps, same family as
+// the storefront .badge (index.css), tinted to read on a photo.
+function NewPill({ className = '' }) {
+  return (
+    <span className={`badge bg-white/90 text-ink backdrop-blur-sm ${className}`}>New</span>
+  )
+}
+
+// Featured section = one large LEAD tile (image + title overlaid, like a
+// smaller hero) followed by a rail of standard tiles (UI-POLISH §4.1: the
+// lead absorbs the old 5-in-a-4-col orphan, and gives the eye one entry
+// point). `lead` picks the treatment; both share the image-lift hover (§4.6).
+function FeaturedProductCard({ item, meta, lead = false }) {
   if (!meta) return null // product deleted/renamed away since being featured — skip rather than show a broken link
-  // One hover signal per tile type (UI-POLISH §4.6): the image lift IS the
-  // affordance for an image tile — no stacked shadow.
+  if (lead) {
+    return (
+      <Link to={meta.to}
+        className="mosaic-tile relative block group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
+        <div className="aspect-[4/3] sm:aspect-[2/1] bg-ivory-dark overflow-hidden">
+          <img src={item.image_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/10 to-transparent" />
+        {meta.isNew && <NewPill className="absolute top-3 left-3" />}
+        <div className="absolute inset-x-0 bottom-0 p-5 md:p-6">
+          <p className="eyebrow text-white/70 mb-1">Featured</p>
+          <p className="text-lg md:text-2xl text-white leading-tight max-w-md line-clamp-2">{meta.name}</p>
+        </div>
+      </Link>
+    )
+  }
   return (
     <Link to={meta.to}
-      className="mosaic-tile flex flex-col group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
+      className="mosaic-tile relative flex flex-col group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
       <div className="aspect-square bg-ivory-dark overflow-hidden">
         <img src={item.image_url} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
       </div>
+      {meta.isNew && <NewPill className="absolute top-2 left-2" />}
       <div className="p-3">
         <p className="text-sm text-ink line-clamp-2 leading-snug">{meta.name}</p>
       </div>
@@ -107,24 +136,39 @@ function PillarCard({ pillar, spanFull }) {
   )
 }
 
-function QuickActionTile({ action }) {
+function QuickActionTile({ action, count }) {
   const Icon = ICONS[action.iconKey]
   // Utility row, not a hero card (UI-POLISH §3): no transform / lift. Two
   // coordinated colour shifts (tile warms, icon chip deepens) are the whole
   // hover — enough to read as interactive, nothing that jitters the layout.
+  // `count` (favourites / enquiry lines) turns the tile from a nav duplicate
+  // into a status glance — both come free from context, no extra reads.
   return (
     <Link to={action.to}
       className="mosaic-tile group flex flex-col items-center justify-center gap-3 py-6 px-3 text-center hover:bg-ivory transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
-      <span className="w-11 h-11 rounded-full bg-brand-50 flex items-center justify-center group-hover:bg-brand-100 transition-colors">
+      <span className="relative w-11 h-11 rounded-full bg-brand-50 flex items-center justify-center group-hover:bg-brand-100 transition-colors">
         <Icon size={20} strokeWidth={1.5} className="text-brand-600" />
+        {count > 0 && (
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-brand-600 text-white text-[10px] font-label font-medium flex items-center justify-center leading-none">
+            {count}
+          </span>
+        )}
       </span>
       <span className="text-sm text-ink font-medium">{action.label}</span>
+      <span className="text-xs text-ink-50 -mt-1.5 h-4">
+        {count > 0
+          ? (action.key === 'favourites' ? `${count} saved` : action.key === 'enquiry' ? `${count} item${count === 1 ? '' : 's'}` : '')
+          : ''}
+      </span>
     </Link>
   )
 }
 
 export default function HomePage({ profile }) {
   const visibleQuickActions = quickActions.filter(a => !a.requiresCustomer || profile?.customer_id)
+  const fav = useFavourites()
+  const cart = useCart()
+  const quickCount = { favourites: fav?.count || 0, enquiry: cart?.count || 0 }
   const featured = useFrontPageFeatured()
   const featuredMeta = useFeaturedProductsMeta(featured?.items)
   const inviteStatus = useProposalInviteStatus(profile?.customer_id)
@@ -176,11 +220,14 @@ export default function HomePage({ profile }) {
       {featured?.items?.length > 0 && (
         <section className="py-12 md:py-16">
           <p className="eyebrow tracking-[0.08em] text-bronze mb-2">Featured</p>
-          <h2 className="text-xl md:text-2xl text-ink mb-1.5">Featured Products</h2>
-          <p className="text-sm text-ink-60 mb-6 max-w-2xl">A closer look at some of our new arrivals and best sellers.</p>
-          <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-            {featured.items.map(it => <FeaturedProductCard key={it.id} item={it} meta={featuredMeta[it.id]} />)}
-          </div>
+          <h2 className="text-xl md:text-2xl text-ink mb-1.5">This season's selection</h2>
+          <p className="text-sm text-ink-60 mb-6 max-w-2xl">A closer look at new arrivals and pieces we're showing this quarter.</p>
+          <FeaturedProductCard lead item={featured.items[0]} meta={featuredMeta[featured.items[0].id]} />
+          {featured.items.length > 1 && (
+            <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 mt-px">
+              {featured.items.slice(1).map(it => <FeaturedProductCard key={it.id} item={it} meta={featuredMeta[it.id]} />)}
+            </div>
+          )}
         </section>
       )}
 
@@ -200,7 +247,7 @@ export default function HomePage({ profile }) {
       <section className="py-12 md:py-16 border-t border-ivory-dark">
         <h2 className="text-lg md:text-xl text-ink mb-6">{quickAccessSection.heading}</h2>
         <div className="mosaic-grid grid-cols-2 lg:grid-cols-4">
-          {visibleQuickActions.map(a => <QuickActionTile key={a.key} action={a} />)}
+          {visibleQuickActions.map(a => <QuickActionTile key={a.key} action={a} count={quickCount[a.key] || 0} />)}
         </div>
       </section>
     </div>
