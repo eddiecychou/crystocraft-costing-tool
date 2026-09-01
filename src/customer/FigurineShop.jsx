@@ -140,19 +140,17 @@ export default function FigurineShop({ profile }) {
   return (
     <div>
       {loading && <LoadingBar />}
-      <div className="mb-4">
+      <div className="mb-5">
         <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">Catalogue</p>
         <h1 className="text-2xl md:text-3xl text-ink">Figurine Gifts</h1>
-        <p className="text-sm text-ink-60 mt-0.5">
-          {filtered.length} designs · ex-factory prices in {cur}
-        </p>
+        <p className="text-sm text-ink-60 mt-0.5">{filtered.length} designs</p>
       </div>
       {!designFilter && !formatFilter && (
         <CollectionBand catalogue="range" products={items} active={coll}
           onApply={c => { setColl(c); setCat(''); window.scrollTo({ top: 0 }) }} />
       )}
       {coll && (
-        <div className="flex items-center justify-between gap-2 mb-4 px-3 py-2 rounded-md bg-ink/5 border border-ivory-dark">
+        <div className="flex items-center justify-between gap-2 mb-4 px-3 py-2 bg-ink/5 border border-ivory-dark">
           <span className="text-sm text-ink-80">Showing <span className="font-medium">{coll.title}</span></span>
           <button onClick={() => setColl(null)} className="inline-flex items-center gap-1 text-sm text-ink-60 hover:text-ink shrink-0">
             <X size={14} /> Clear
@@ -160,68 +158,82 @@ export default function FigurineShop({ profile }) {
         </div>
       )}
       {(designFilter || formatFilter) && (
-        <div className="flex items-center justify-between gap-2 mb-4 px-3 py-2 rounded-md bg-amber-50 border border-amber-200">
-          <span className="text-sm text-amber-800">
+        <div className="flex items-center justify-between gap-2 mb-4 px-3 py-2 bg-gold/10 border border-gold/40">
+          <span className="text-sm text-ink-80">
             Showing {designFilter ? <>designs in number <span className="font-mono font-medium">{designFilter}</span></> : <>all <span className="font-medium">{formatName}</span> designs</>} to help reach the minimum order quantity.
           </span>
-          <button onClick={clearMoqFilter} className="inline-flex items-center gap-1 text-sm text-amber-800 hover:text-amber-950 shrink-0">
+          <button onClick={clearMoqFilter} className="inline-flex items-center gap-1 text-sm text-ink-60 hover:text-ink shrink-0">
             <X size={14} /> Clear
           </button>
         </div>
       )}
-      <div className="mb-5 space-y-2.5">
+      <div className="mb-5 space-y-4">
         <input type="text" placeholder="Search name or code…" className="input w-full sm:max-w-xs"
           value={search} onChange={e => { setSearch(e.target.value); sessionStorage.setItem('fs-search', e.target.value) }} />
-        <div className="flex flex-wrap gap-1.5">
-          <button type="button" onClick={() => { setColl(null); setCat(''); sessionStorage.setItem('fs-cat', '') }}
-            className={(coll ? false : cat === '') ? 'tag-active' : 'tag-clickable'}>All categories</button>
-          {categories.map(c => (
-            <button key={c} type="button" onClick={() => { setColl(null); setCat(c); sessionStorage.setItem('fs-cat', c) }}
-              className={(!coll && cat === c) ? 'tag-active' : 'tag-clickable'}>{c}</button>
-          ))}
+        <div>
+          <p className="label mb-1.5">Category</p>
+          <div className="flex flex-wrap gap-1.5">
+            <button type="button" onClick={() => { setColl(null); setCat(''); sessionStorage.setItem('fs-cat', '') }}
+              className={(coll ? false : cat === '') ? 'tag-active' : 'tag-clickable'}>All categories</button>
+            {categories.map(c => (
+              <button key={c} type="button" onClick={() => { setColl(null); setCat(c); sessionStorage.setItem('fs-cat', c) }}
+                className={(!coll && cat === c) ? 'tag-active' : 'tag-clickable'}>{c}</button>
+            ))}
+          </div>
+        </div>
+        {/* Lifecycle status filter — All / Made to Order / Retired Stock / Concept.
+            Sold-out retired designs are filtered out of the list entirely. */}
+        <div>
+          <p className="label mb-1.5">Availability</p>
+          <div className="flex flex-wrap gap-1.5">
+            {/* Retired designs never reach `products` (filtered out above), so
+                offering a Retired chip here would always show zero results. */}
+            {[{ value: '', label: 'All' }, ...RANGE_STATUSES.filter(s => s.value !== 'retired')].map(s => (
+              <button key={s.value || 'all'} onClick={() => { setStatusFilter(s.value); sessionStorage.setItem('fs-status', s.value) }}
+                className={statusFilter === s.value ? 'tag-active' : 'tag-clickable'}>
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-      {/* Lifecycle status filter — All / Made to Order / Retired Stock / Concept.
-          Sold-out retired designs are filtered out of the list entirely. */}
-      <div className="flex flex-wrap gap-1.5 mb-5">
-        {/* Retired designs never reach `products` (filtered out above), so
-            offering a Retired chip here would always show zero results. */}
-        {[{ value: '', label: 'All' }, ...RANGE_STATUSES.filter(s => s.value !== 'retired')].map(s => (
-          <button key={s.value || 'all'} onClick={() => { setStatusFilter(s.value); sessionStorage.setItem('fs-status', s.value) }}
-            className={statusFilter === s.value ? 'tag-active' : 'tag-clickable'}>
-            {s.label}
-          </button>
-        ))}
-      </div>
       {filtered.length === 0 ? (
-        <div className="text-center py-20 text-ink-60">No designs match your search.</div>
+        <div className="text-center py-16">
+          <p className="eyebrow text-ink-40 mb-1.5">No matches</p>
+          <p className="text-sm text-ink-60">No designs match your search or filters.</p>
+        </div>
       ) : (
         <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
           {filtered.map(s => (
             <Link key={s.id} id={`fig-card-${s.id}`} to={`/shop/figurine/${s.id}`}
               onClick={() => sessionStorage.setItem('fs-last-id', s.id)}
-              className="mosaic-tile flex flex-col hover:shadow-md transition-shadow group">
+              className="mosaic-tile flex flex-col group focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2">
               <div className="aspect-square bg-white flex items-center justify-center overflow-hidden border-b border-ivory-dark relative">
-                <CardImageCarousel images={s.images} alt={s.name} imgClassName="object-cover"
+                <CardImageCarousel images={s.images} alt={s.name}
+                  imgClassName="object-cover group-hover:scale-105 transition-transform duration-300"
                   fallback={<Gem size={30} strokeWidth={1.25} className="text-gray-300" />} />
-                {RANGE_STATUS_CUSTOMER[s.status] && (
-                  <span className={`absolute top-1.5 left-1.5 badge ${RANGE_STATUS_CUSTOMER[s.status].cls}`}
-                        title={RANGE_STATUS_CUSTOMER[s.status].tip}>
-                    {RANGE_STATUS_CUSTOMER[s.status].label}
-                  </span>
-                )}
-                {s.is_new && (
-                  <span className={`absolute left-1.5 badge-active ${RANGE_STATUS_CUSTOMER[s.status] ? 'top-8' : 'top-1.5'}`}
-                        title="New arrival">New</span>
-                )}
+                {/* Badges stack top-left in a flex column — no magic top-8 offset
+                    (UI-POLISH §3): status pill (when set) above the New pill. */}
+                <div className="absolute top-1.5 left-1.5 flex flex-col items-start gap-1">
+                  {RANGE_STATUS_CUSTOMER[s.status] && (
+                    <span className={`badge ${RANGE_STATUS_CUSTOMER[s.status].cls}`}
+                          title={RANGE_STATUS_CUSTOMER[s.status].tip}>
+                      {RANGE_STATUS_CUSTOMER[s.status].label}
+                    </span>
+                  )}
+                  {s.is_new && <span className="badge-active" title="New arrival">New</span>}
+                </div>
                 <FavHeart item={{ type: 'figurine', id: s.id, name: s.name, code: s.code, image: s.image }}
                   className="absolute top-1.5 right-1.5" />
               </div>
               <div className="p-3 flex flex-col gap-1 flex-1">
                 <h3 className="text-sm leading-tight text-ink line-clamp-2" title={s.name}>{s.name}</h3>
-                <p className="text-[11px] text-ink-60 font-mono">{s.code}</p>
-                <p className="text-[11px] text-ink-60">{s.size}</p>
-                <p className="text-[11px] text-ink-50 truncate">{s.platings.join(' · ')}</p>
+                <p className="text-xs text-ink-60">
+                  <span className="font-mono">{s.code}</span>{s.size ? ` · ${s.size}` : ''}
+                </p>
+                {s.platings.length > 0 && (
+                  <p className="text-xs text-ink-50 truncate">{s.platings.join(' · ')}</p>
+                )}
                 <div className="mt-auto pt-1.5">
                   <span className="text-base text-ink font-medium">{priceLabel(s)}</span>
                 </div>
