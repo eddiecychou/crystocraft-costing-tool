@@ -58,9 +58,10 @@ export default function CorporateDetail({ profile }) {
 
   if (p === undefined) return <LoadingBar />
   if (p === null) return (
-    <div className="text-center py-20 text-ink-60">
-      <p>This product is no longer available.</p>
-      <Link to="/shop/corporate" className="text-brand-600 text-sm mt-2 inline-block">Back to catalogue</Link>
+    <div className="text-center py-16">
+      <p className="eyebrow text-ink-40 mb-1.5">Unavailable</p>
+      <p className="text-sm text-ink-60">This product is no longer available.</p>
+      <Link to="/shop/corporate" className="text-brand-600 text-sm mt-3 inline-block">Back to catalogue</Link>
     </div>
   )
 
@@ -97,26 +98,31 @@ export default function CorporateDetail({ profile }) {
         <ArrowLeft size={15} /> Back to Corporate Gifts
       </Link>
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="card overflow-hidden bg-gray-100 aspect-square flex items-center justify-center relative">
+        <div className="card overflow-hidden bg-white aspect-square flex items-center justify-center relative group">
           {displayHero ? (
-            <img src={displayHero} alt={p.name} className="w-full h-full object-cover cursor-zoom-in"
+            <img src={displayHero} alt={p.name} className="w-full h-full object-cover cursor-zoom-in group-hover:scale-[1.02] transition-transform duration-300"
                  onClick={() => setLightboxIndex(0)} />
           ) : <Package size={56} className="text-gray-300" />}
           <FavHeart item={{ type: 'corporate', id: p.id, name: p.name, code: '', image: displayHero || '' }} className="absolute top-3 right-3" />
         </div>
-        <div>
-          {p.category && <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">{p.category}</p>}
-          <h1 className="text-xl md:text-2xl text-ink">{p.name}</h1>
-          {p.marketing_description && <p className="text-sm text-ink-70 leading-relaxed mt-3">{p.marketing_description}</p>}
-          {p.description && <p className="text-sm text-ink-60 mt-3">{p.description}</p>}
+        {/* One vertical rhythm down the right column (UI-POLISH §4.1) — the
+            header (eyebrow + title + copy) then space-y-5 for the rest,
+            instead of an mt-3/mt-4/mt-5/mt-6 cascade. */}
+        <div className="space-y-5">
+          <div>
+            {p.category && <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">{p.category}</p>}
+            <h1 className="text-xl md:text-2xl text-ink">{p.name}</h1>
+            {p.marketing_description && <p className="text-sm text-ink-70 leading-relaxed mt-3">{p.marketing_description}</p>}
+            {p.description && <p className="text-sm text-ink-60 mt-2">{p.description}</p>}
+          </div>
 
-          <div className="rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-xs px-3 py-2 mt-4">
+          <div className="bg-gold/10 border border-gold/40 text-ink-80 text-xs px-3 py-2">
             Made to order. Prices below are indicative reference points only — final pricing varies by
             specification, quantity and customisation.
             {minQty > 0 && <span className="block mt-1 font-medium">Minimum order: {minQty.toLocaleString()} pcs per design.</span>}
           </div>
 
-          <div className="mt-5">
+          <div>
             <button onClick={() => cart?.add({ type: 'corporate', id: p.id, name: p.name, code: '', image: displayHero || '', qty: minQty || 1, moq: minQty })}
               disabled={inCart}
               className={`btn-primary ${inCart ? 'opacity-60 pointer-events-none' : ''}`}>
@@ -126,7 +132,7 @@ export default function CorporateDetail({ profile }) {
           </div>
 
           {engineAvailable(engineTypeOf(p)) && (
-            <div className="mt-4">
+            <div>
               <Link to={`/customize/${p.id}`}
                 className="btn-secondary inline-flex items-center gap-1.5 border-brand-300 text-brand-700">
                 <Sparkles size={16} /> Customise &amp; Preview with your logo
@@ -136,8 +142,8 @@ export default function CorporateDetail({ profile }) {
           )}
 
           {tiers.length > 0 && (
-            <div className="mt-6">
-              <p className="text-xs font-label uppercase tracking-wide text-ink-50 mb-2">Indicative ex-factory prices ({cur})</p>
+            <div>
+              <p className="label mb-2">Indicative ex-factory prices ({cur})</p>
               <div className="card divide-y divide-ivory-dark">
                 {tiers.map((t, i) => (
                   <div key={i} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
@@ -155,7 +161,7 @@ export default function CorporateDetail({ profile }) {
         const videos = normVideos(p.videos, p.video_url).filter(youtubeEmbed)
         if (!videos.length) return null
         return (
-          <div className="mt-10 max-w-2xl mx-auto">
+          <div className="mt-12 md:mt-16 max-w-2xl mx-auto">
             <div className="space-y-4">
               {videos.map((v, i) => <VideoEmbed key={i} url={v} title={`${p.name} video ${i + 1}`} />)}
             </div>
@@ -164,15 +170,16 @@ export default function CorporateDetail({ profile }) {
       })()}
 
       {gallery.length > 0 && (
-        <div className="mt-10">
-          <h2 className="text-lg text-ink mb-3">Gallery & inspiration</h2>
+        <div className="mt-12 md:mt-16">
+          <p className="eyebrow tracking-[0.08em] text-bronze mb-1.5">Gallery</p>
+          <h2 className="text-lg md:text-xl text-ink mb-4">Gallery &amp; inspiration</h2>
           <div className="mosaic-grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
             {gallery.map((im, i) => (
               <figure key={im.id} className="mosaic-tile flex flex-col relative group">
-                <div className="aspect-square bg-gray-100 overflow-hidden cursor-zoom-in"
+                <div className="aspect-square bg-white overflow-hidden cursor-zoom-in"
                      onClick={() => setLightboxIndex((displayHero ? 1 : 0) + i)}>
                   <img src={im.file_url} alt={im.caption || p.name} loading="lazy"
-                    className="w-full h-full object-cover" />
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 </div>
                 {/* Own click target, not the lightbox's — stopPropagation so
                     tapping it doesn't also open the zoom view underneath.
