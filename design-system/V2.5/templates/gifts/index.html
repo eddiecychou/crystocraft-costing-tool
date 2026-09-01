@@ -1,0 +1,331 @@
+<!-- @template name="Gifts Hub" description="Crystocraft Gifts flagship consumer website — product grid, category filters, heritage section, product detail modal" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crystocraft — Craftsmanship that catches the light</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Questrial&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body { background: var(--color-ivory); color: var(--color-ink); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+.nav {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--color-ivory);
+  border-bottom: 1px solid var(--color-border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 56px; height: 68px;
+}
+.nav-logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+.nav-logo img { height: 34px; mix-blend-mode: multiply; }
+.nav-links { display: flex; gap: 36px; align-items: center; }
+.nav-link {
+  font-family: var(--font-sans); font-size: 11px; font-weight: 500;
+  letter-spacing: 0.18em; text-transform: uppercase; color: var(--color-graphite);
+  cursor: pointer; text-decoration: none; border: none; background: none;
+  transition: color 0.15s;
+}
+.nav-link:hover, .nav-link.active { color: var(--color-ink); }
+.nav-right { display: flex; align-items: center; gap: 20px; }
+.nav-icon-btn { background: none; border: none; cursor: pointer; color: var(--color-ink); padding: 6px; display: flex; align-items: center; }
+
+/* Hero */
+.hero {
+  background: var(--color-ink);
+  min-height: 580px;
+  display: flex; align-items: flex-end;
+  padding: 0 56px 72px;
+  position: relative; overflow: hidden;
+}
+.hero-bg-mark {
+  position: absolute; right: -60px; top: 50%; transform: translateY(-50%);
+  width: 480px; height: 480px; opacity: 0.04;
+  pointer-events: none;
+}
+.hero-content { max-width: 620px; position: relative; z-index: 2; }
+.hero-eyebrow {
+  font-family: var(--font-sans); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.24em; text-transform: uppercase;
+  color: var(--color-gold); margin-bottom: 20px; display: block;
+}
+.hero-title {
+  font-family: var(--font-serif); font-size: 60px; font-weight: 400;
+  line-height: 1.06; letter-spacing: 0.01em; text-transform: uppercase;
+  color: var(--color-ivory); margin-bottom: 24px;
+}
+.hero-subtitle {
+  font-family: var(--font-sans); font-size: 15px; font-weight: 300;
+  line-height: 1.7; color: rgba(247,244,239,0.6);
+  max-width: 480px; margin-bottom: 36px;
+}
+.hero-actions { display: flex; gap: 14px; align-items: center; }
+.hero-rule {
+  position: absolute; top: 0; left: 56px; right: 56px; height: 1px;
+  background: rgba(247,244,239,0.08);
+}
+
+/* Eyebrow section header */
+.section-header { padding: 56px 56px 0; display: flex; align-items: baseline; gap: 24px; }
+.section-eyebrow {
+  font-family: var(--font-sans); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.24em; text-transform: uppercase; color: var(--color-graphite);
+}
+.section-title {
+  font-family: var(--font-serif); font-size: 32px; font-weight: 400;
+  text-transform: uppercase; letter-spacing: 0.02em;
+  color: var(--color-ink); margin-top: 6px;
+}
+
+/* Category filters */
+.filters { padding: 32px 56px 0; display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* Product grid */
+.product-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; padding: 28px 56px 64px; background: var(--color-border); }
+.product-tile {
+  background: var(--color-white); cursor: pointer; position: relative; overflow: hidden;
+  transition: box-shadow 0.22s ease;
+}
+.product-tile:hover { box-shadow: var(--shadow-lg); z-index: 1; }
+.product-tile:hover .tile-img-inner { transform: scale(1.03); }
+.tile-img { aspect-ratio: 4/3; background: var(--color-ink); overflow: hidden; position: relative; }
+.tile-img-inner { width: 100%; height: 100%; transition: transform 0.4s ease; display: flex; align-items: center; justify-content: center; }
+.tile-mark { width: 64px; height: 64px; opacity: 0.12; filter: invert(1); }
+.tile-body { padding: 18px 20px 22px; }
+.tile-category {
+  font-family: var(--font-sans); font-size: 9px; font-weight: 500;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--color-graphite);
+  margin-bottom: 6px; display: block;
+}
+.tile-name { font-family: var(--font-serif); font-size: 20px; font-weight: 400; color: var(--color-ink); margin-bottom: 4px; line-height: 1.25; }
+.tile-desc { font-size: 13px; color: var(--color-graphite); margin-bottom: 14px; line-height: 1.5; }
+.tile-price { font-family: var(--font-sans); font-size: 13px; font-weight: 500; color: var(--color-ink); letter-spacing: 0.04em; }
+.tile-badge { position: absolute; top: 14px; left: 14px; }
+
+/* Heritage strip */
+.heritage-strip {
+  background: var(--color-ink); padding: 56px;
+  display: flex; align-items: center; justify-content: space-between; gap: 40px;
+}
+.heritage-text { max-width: 560px; }
+.heritage-eyebrow {
+  font-family: var(--font-sans); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.24em; text-transform: uppercase; color: var(--color-gold); margin-bottom: 16px;
+}
+.heritage-title {
+  font-family: var(--font-serif); font-size: 34px; font-weight: 400; line-height: 1.18;
+  text-transform: uppercase; letter-spacing: 0.01em;
+  color: var(--color-ivory); margin-bottom: 16px;
+}
+.heritage-body { font-size: 14px; font-weight: 300; line-height: 1.8; color: rgba(247,244,239,0.6); max-width: 440px; }
+.heritage-seal { flex-shrink: 0; }
+
+/* Footer */
+.footer {
+  background: var(--color-ivory-dark); border-top: 1px solid var(--color-border);
+  padding: 48px 56px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.footer-mark { height: 28px; mix-blend-mode: multiply; opacity: 0.5; }
+.footer-links { display: flex; gap: 28px; }
+.footer-link {
+  font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--color-graphite); cursor: pointer; text-decoration: none;
+  transition: color 0.15s;
+}
+.footer-link:hover { color: var(--color-ink); }
+.footer-copy { font-size: 11px; color: rgba(110,108,102,0.55); }
+
+/* Modal */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(28,28,26,0.7); display: flex; align-items: center; justify-content: center;
+}
+.modal {
+  background: var(--color-white); max-width: 860px; width: 94%;
+  max-height: 90vh; overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr;
+}
+.modal-img { background: var(--color-ink); display: flex; align-items: center; justify-content: center; min-height: 360px; }
+.modal-mark { width: 90px; height: 90px; opacity: 0.15; filter: invert(1); }
+.modal-body { padding: 40px; display: flex; flex-direction: column; gap: 16px; }
+.modal-eyebrow { font-size: 10px; font-weight: 500; letter-spacing: 0.22em; text-transform: uppercase; color: var(--color-graphite); }
+.modal-name { font-family: var(--font-serif); font-size: 32px; font-weight: 400; line-height: 1.15; }
+.modal-desc { font-size: 14px; line-height: 1.75; color: var(--color-graphite); font-weight: 300; }
+.modal-price { font-size: 18px; font-weight: 500; letter-spacing: 0.04em; }
+.modal-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.modal-close {
+  position: sticky; top: 0; left: 100%; background: none; border: none;
+  cursor: pointer; padding: 12px; color: var(--color-graphite);
+  font-size: 20px; line-height: 1; display: flex; align-items: center; justify-content: flex-end;
+  width: 100%;
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { Button, Badge, Tag } = window.CrystocraftDesignSystem_25701b || {};
+
+const PRODUCTS = [
+  { id:1, name:'Crystal Butterfly Suncatcher', category:'Figurines', desc:'The original 1958 design. Hand-finished butterfly on a leaded crystal disc.', price:'From HK$280', badge:'Heritage', badgeVariant:'solid-ink', bg:'#1C1C1A' },
+  { id:2, name:'Crystal Rose', category:'Florals', desc:'Petals formed from a single hand-cut crystal. Eternal bloom in pure clear crystal.', price:'From HK$360', badge:'New', badgeVariant:'new', bg:'#2A2A27' },
+  { id:3, name:'Crystal Music Box', category:'Gifts', desc:'Rotating crystal figurine with hand-wound mechanical movement and 18-note comb.', price:'From HK$580', badge:'Featured', badgeVariant:'solid-gold', bg:'#1C1C1A' },
+  { id:4, name:'Crystal Swan', category:'Figurines', desc:'Smooth-Spin swan on a mirror base. Dazzle Cut wings catch directional light.', price:'From HK$480', badge:'', badgeVariant:'', bg:'#2A2A27' },
+  { id:5, name:'Crystal Photo Frame', category:'Home', desc:'Heavyweight clear crystal frame with satin-finish silver metal inlay. Holds 4×6".', price:'From HK$320', badge:'', badgeVariant:'', bg:'#1C1C1A' },
+  { id:6, name:'Crystal Gift Set', category:'Gift Sets', desc:'Curated presentation set: two champagne flutes, two keepsakes, and a gift box.', price:'From HK$880', badge:'Premium', badgeVariant:'platinum', bg:'#2A2A27' },
+];
+
+const CATS = ['All', 'Figurines', 'Florals', 'Gifts', 'Home', 'Gift Sets'];
+
+function TileImage({ bg }) {
+  return (
+    <div className="tile-img">
+      <div className="tile-img-inner" style={{ background: bg }}>
+        <img src="../../assets/logos/logo-mark.png" className="tile-mark" alt="" />
+      </div>
+    </div>
+  );
+}
+
+function ProductModal({ product, onClose }) {
+  if (!product) return null;
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-img" style={{ background: product.bg }}>
+          <img src="../../assets/logos/logo-mark.png" className="modal-mark" alt="" />
+        </div>
+        <div className="modal-body">
+          <button className="modal-close" onClick={onClose}>✕</button>
+          {product.badge && <Badge variant={product.badgeVariant} size="xs" style={{marginBottom: 0}}>{product.badge}</Badge>}
+          <p className="modal-eyebrow">{product.category}</p>
+          <h2 className="modal-name">{product.name}</h2>
+          <p className="modal-desc">{product.desc} Each piece is inspected and sealed with the Crystocraft authentication mark before dispatch.</p>
+          <p className="modal-price">{product.price}</p>
+          <div className="modal-actions">
+            {Button && <Button variant="primary" fullWidth>Enquire About This Piece</Button>}
+            {Button && <Button variant="ghost" fullWidth>Add to Wishlist</Button>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [activeCat, setActiveCat] = React.useState('All');
+  const [activeNav, setActiveNav] = React.useState('Collections');
+  const [selected, setSelected] = React.useState(null);
+
+  const filtered = activeCat === 'All' ? PRODUCTS : PRODUCTS.filter(p => p.category === activeCat);
+
+  return (
+    <div>
+      {/* Nav */}
+      <nav className="nav">
+        <a className="nav-logo" href="#">
+          <img src="../../assets/logos/logo-horizontal.jpg" alt="Crystocraft" />
+        </a>
+        <div className="nav-links">
+          {['Collections','Florals','Gift Sets','Heritage','Contact'].map(n => (
+            <button key={n} className={`nav-link${activeNav===n?' active':''}`} onClick={()=>setActiveNav(n)}>{n}</button>
+          ))}
+        </div>
+        <div className="nav-right">
+          <button className="nav-icon-btn" aria-label="Search">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="11" cy="11" r="7"/><path d="M16.5 16.5L21 21" strokeLinecap="round"/></svg>
+          </button>
+          <button className="nav-icon-btn" aria-label="Cart">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+          </button>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <section className="hero">
+        <div className="hero-rule" />
+        <img src="../../assets/logos/logo-mark.png" className="hero-bg-mark" alt="" />
+        <div className="hero-content">
+          <span className="hero-eyebrow">Since 1958 · Hong Kong</span>
+          <h1 className="hero-title">Craftsmanship<br/>that catches<br/>the light.</h1>
+          <p className="hero-subtitle">Masters of metal and crystal in-house. Every piece designed in Hong Kong, every crystal cut to our standard.</p>
+          <div className="hero-actions">
+            {Button
+              ? <><Button variant="reversed" size="lg">Explore the Collection</Button><Button variant="outline-gold" size="lg">Our Heritage</Button></>
+              : <span style={{color:'rgba(247,244,239,0.4)',fontSize:12}}>Loading…</span>
+            }
+          </div>
+        </div>
+      </section>
+
+      {/* Collection header */}
+      <div className="section-header">
+        <div>
+          <p className="section-eyebrow">Collections · 2025</p>
+          <h2 className="section-title">Made to be treasured.</h2>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="filters">
+        {CATS.map(c => (
+          Tag
+            ? <Tag key={c} active={activeCat===c} onClick={()=>setActiveCat(c)}>{c}</Tag>
+            : <button key={c} onClick={()=>setActiveCat(c)} style={{fontSize:12,padding:'6px 14px',background:activeCat===c?'#222222':'transparent',color:activeCat===c?'#F7EEE3':'#666666',border:'1px solid rgba(34,34,34,0.2)',cursor:'pointer'}}>{c}</button>
+        ))}
+      </div>
+
+      {/* Product grid */}
+      <div className="product-grid" style={{marginTop: 0}}>
+        {filtered.map(p => (
+          <div key={p.id} className="product-tile" onClick={()=>setSelected(p)}>
+            <TileImage bg={p.bg} />
+            <div className="tile-body">
+              {p.badge && Badge && <Badge variant={p.badgeVariant} size="xs" style={{marginBottom:8, display:'inline-flex'}}>{p.badge}</Badge>}
+              <p className="tile-category">{p.category}</p>
+              <p className="tile-name">{p.name}</p>
+              <p className="tile-desc">{p.desc}</p>
+              <p className="tile-price">{p.price}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Heritage strip */}
+      <div className="heritage-strip">
+        <div className="heritage-text">
+          <p className="heritage-eyebrow">Masters of craft</p>
+          <h2 className="heritage-title">Quality kept alive when the rest of the market chased cost.</h2>
+          <p className="heritage-body">Founded in 1958 by master metalsmith Mr. Chou, Crystocraft pioneered cold-stamping and built the Butterfly Suncatcher that still defines the brand. When Swarovski discontinued its crystal supply, we built our own.</p>
+        </div>
+        <div className="heritage-seal">
+          {Button && <Button variant="outline-gold" size="md">Our Story</Button>}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <footer className="footer">
+        <img src="../../assets/logos/logo-horizontal.jpg" className="footer-mark" alt="Crystocraft" />
+        <div className="footer-links">
+          {['Collections','Heritage','Trade & Wholesale','Crystals','Bespoke Gifting','Contact'].map(l => (
+            <a key={l} className="footer-link" href="#">{l}</a>
+          ))}
+        </div>
+        <p className="footer-copy">© Crystocraft 2025</p>
+      </footer>
+
+      {selected && <ProductModal product={selected} onClose={()=>setSelected(null)} />}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

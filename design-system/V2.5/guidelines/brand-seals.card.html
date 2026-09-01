@@ -1,0 +1,148 @@
+<!-- @dsCard group="Brand" viewport="700x270" name="Trust Seals" subtitle="Authentication · Heritage · Origin · Dazzle Cut · Smooth-Spin" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { background: var(--color-ivory); }
+body {
+  background: var(--color-ivory);
+  height: 270px; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  gap: 14px; padding: 24px 20px;
+}
+.wrap { display: flex; flex-direction: column; align-items: center; gap: 9px; flex-shrink: 0; }
+.seal-frame { position: relative; }
+.seal-frame svg { display: block; }
+.seal-mark {
+  position: absolute;
+  pointer-events: none;
+}
+.lbl {
+  font-family: 'Work Sans', sans-serif;
+  font-size: 9px; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--color-graphite);
+}
+</style>
+</head>
+<body>
+<script>
+function buildSeal(cfg) {
+  const { id, text, center, color, isGold, size } = cfg;
+  const S = size, cx = S/2, cy = S/2;
+
+  /* ── Radii ───────────────────────────── */
+  const R1  = S * 0.472;   // outer rim bold
+  const R2  = S * 0.447;   // inner rim hairline
+  const Rtk = S * 0.416;   // tick endpoint
+  const Rt  = S * 0.366;   // text-path radius
+  const Ri  = S * 0.272;   // inner decorative ring
+  const Rm  = S * 0.150;   // mark half-size (kept inside inner ring)
+  const fs  = S * 0.056;   // font size
+
+  /* ── Dynamic letter-spacing (80% fill) ── */
+  const circ = 2 * Math.PI * Rt;
+  const avgCW = fs * 0.58;
+  const ls = Math.max(1.0, (circ * 0.80 - text.length * avgCW) / text.length);
+
+  /* ── Tick marks (36 @ 10°, skip cardinals) ── */
+  const cards = new Set([0, 9, 18, 27]);
+  let ticks = '';
+  for (let i = 0; i < 36; i++) {
+    if (cards.has(i)) continue;
+    const a   = (i / 36 * 360 - 90) * Math.PI / 180;
+    const lng = (i % 3 === 0);
+    const r0  = R2;
+    const r1  = lng ? Rtk : (R2 + Rtk) / 2;
+    const cos = Math.cos(a), sin = Math.sin(a);
+    ticks += `<line
+      x1="${f(cx+cos*r0)}" y1="${f(cy+sin*r0)}"
+      x2="${f(cx+cos*r1)}" y2="${f(cy+sin*r1)}"
+      stroke="currentColor"
+      stroke-width="${f(lng ? S*0.010 : S*0.005)}"
+      stroke-linecap="square"/>`;
+  }
+
+  /* ── Cardinal diamonds (N/E/S/W between rims) ── */
+  let diamonds = '';
+  [0,90,180,270].forEach(deg => {
+    const a = (deg - 90) * Math.PI / 180;
+    const r = (R1 + R2) * 0.5;
+    const x = f(cx + Math.cos(a) * r);
+    const y = f(cy + Math.sin(a) * r);
+    const s = f(S * 0.022);
+    diamonds += `<rect x="${x-s/2}" y="${y-s/2}" width="${s}" height="${s}"
+      fill="currentColor" transform="rotate(45,${x},${y})"/>`;
+  });
+
+  /* ── Circular text path ── */
+  const pid = `p${id}`;
+  const pd  = `M ${cx-Rt},${cy} a ${Rt},${Rt} 0 1,1 ${Rt*2},0 a ${Rt},${Rt} 0 1,1 -${Rt*2},0`;
+
+  /* ── Inner layout: rule + label ── */
+  const ruleY  = f(cy + Ri * 0.36);
+  const labelY = f(cy + Ri * 0.74);
+
+  /* ── Mark filter + blend ── */
+  const mf = isGold
+    ? 'filter:sepia(1) saturate(3) brightness(0.72);mix-blend-mode:multiply'
+    : 'mix-blend-mode:multiply';
+
+  /* ── Assemble SVG (no <image> — mark is an HTML img overlay) ── */
+  const svg = `<svg width="${S}" height="${S}" viewBox="0 0 ${S} ${S}"
+    style="color:${color};display:block;overflow:visible">
+  <defs><path id="${pid}" d="${pd}"/></defs>
+  <circle cx="${cx}" cy="${cy}" r="${f(R1)}" fill="none" stroke="currentColor" stroke-width="${f(S*0.013)}"/>
+  <circle cx="${cx}" cy="${cy}" r="${f(R2)}" fill="none" stroke="currentColor" stroke-width="${f(S*0.004)}"/>
+  ${ticks}
+  ${diamonds}
+  <text font-family="'Work Sans',sans-serif" font-size="${f(fs)}" font-weight="500"
+        letter-spacing="${f(ls)}" fill="currentColor" text-anchor="middle">
+    <textPath href="#${pid}" startOffset="25%">${text}</textPath>
+  </text>
+  <circle cx="${cx}" cy="${cy}" r="${f(Ri)}" fill="none" stroke="currentColor" stroke-width="${f(S*0.005)}"/>
+  <line x1="${f(cx-Ri*0.42)}" y1="${ruleY}" x2="${f(cx+Ri*0.42)}" y2="${ruleY}"
+    stroke="currentColor" stroke-width="${f(S*0.0045)}"/>
+  <text x="${cx}" y="${labelY}" font-family="'Work Sans',sans-serif"
+    font-size="${f(S*0.064)}" font-weight="600" letter-spacing="${f(S*0.003)}"
+    fill="currentColor" text-anchor="middle" dominant-baseline="middle">${center}</text>
+</svg>`;
+
+  /* ── HTML overlay for mark ── */
+  const ms = f(Rm * 2);
+  const mt = f(cy - Rm - S * 0.035);
+  const ml = f(cx - Rm);
+  const mark = `<img src="../assets/logos/logo-mark.png" alt=""
+    class="seal-mark"
+    style="width:${ms}px;height:${ms}px;top:${mt}px;left:${ml}px;${mf}"/>`;
+
+  return `<div class="seal-frame" style="width:${S}px;height:${S}px">${svg}${mark}</div>`;
+}
+
+function f(n) { return Number(n).toFixed(2); }
+
+const SEALS = [
+  { id:'au', text:'· GENUINE CRYSTOCRAFT CRYSTAL · DAZZLE CUT ·', center:'GENUINE',   color:'#222222', isGold:false, label:'Authentication' },
+  { id:'he', text:'· CRAFTED SINCE 1958 · CRYSTOCRAFT ·',         center:'EST 1958',  color:'#222222', isGold:false, label:'Heritage'       },
+  { id:'or', text:'· BOHEMIAN CRYSTAL · CRYSTOCRAFT ·',           center:'ORIGIN',    color:'#222222', isGold:false, label:'Origin'         },
+  { id:'dc', text:'· DAZZLE CRYSTAL CUT™ · 32 FACETS ·',          center:'32 FACETS', color:'#996632', isGold:true,  label:'Dazzle Cut'     },
+  { id:'ss', text:'· SMOOTH-SPIN™ · PATENTED ·',                  center:'PATENTED',  color:'#222222', isGold:false, label:'Smooth-Spin'    },
+];
+
+document.addEventListener('DOMContentLoaded', () => {
+  SEALS.forEach(s => {
+    const w = document.createElement('div');
+    w.className = 'wrap';
+    w.innerHTML = buildSeal({ ...s, size: 110 }) +
+      `<span class="lbl">${s.label}</span>`;
+    document.body.appendChild(w);
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+:root {
+  /* ════════════════════════════════════════════════════════
+     V2 visual rule: restraint over decoration. Hairline rules
+     do most of the work; elevation is kept whisper-soft and is
+     reserved for genuinely floating surfaces (modals, popovers).
+     ════════════════════════════════════════════════════════ */
+
+  /* ── Elevation (soft, near-flat) ────────────────────── */
+  --shadow-none: none;
+  --shadow-xs:   0 1px 2px  rgba(34, 34, 34, 0.04);
+  --shadow-sm:   0 1px 3px  rgba(34, 34, 34, 0.05);
+  --shadow-md:   0 4px 14px rgba(34, 34, 34, 0.07);
+  --shadow-lg:   0 10px 30px rgba(34, 34, 34, 0.09);
+  --shadow-xl:   0 20px 50px rgba(34, 34, 34, 0.11);
+  --shadow-2xl:  0 36px 80px rgba(34, 34, 34, 0.14);
+
+  /* ── Accent glows (use sparingly) ───────────────────── */
+  --shadow-bronze:   0 4px 20px rgba(153, 102, 50,  0.20);
+  --shadow-sapphire: 0 4px 20px rgba(28,  79,  100, 0.20);
+  --shadow-burgundy: 0 4px 20px rgba(110, 36,  51,  0.20);
+  --shadow-gold:     var(--shadow-bronze); /* back-compat alias */
+
+  /* ── Hairline rules (the preferred separator) ───────── */
+  --hairline:       1px solid var(--color-warm-grey);
+  --hairline-ink:   1px solid var(--color-near-black);
+  --hairline-faint: 1px solid var(--color-ink-08);
+
+  /* ── Inset ──────────────────────────────────────────── */
+  --shadow-inset-xs: inset 0 1px 2px rgba(34, 34, 34, 0.05);
+  --shadow-inset-sm: inset 0 2px 4px rgba(34, 34, 34, 0.08);
+}

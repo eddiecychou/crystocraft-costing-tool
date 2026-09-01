@@ -1,0 +1,86 @@
+:root {
+  /* ════════════════════════════════════════════════════════
+     Crystocraft V2 colour system
+     One master brand · three divisions · accent is the only
+     thing that changes. Logo is always monochrome.
+     ════════════════════════════════════════════════════════ */
+
+  /* ── System colours ─────────────────────────────────── */
+  --color-near-black: #222222;  /* primary text, headings, dark sections */
+  --color-warm-grey:  #E9E8E6;  /* backgrounds, dividers, hairlines */
+  --color-mid-grey:   #666666;  /* body copy, descriptions */
+  --color-bronze:     #996632;  /* Gifts accent · links · CTAs */
+  --color-beige:      #F7EEE3;  /* warm section background */
+  --color-white:      #FFFFFF;  /* page backgrounds, reversed text */
+
+  /* ── Extended palette — print & packaging metallics ─── */
+  --color-ink-black:  #1C1C1A;  /* deepest dark — foil base, packaging */
+  --color-champagne:  #C6A664;  /* premium metallic finish — foil, engraving */
+  --color-platinum:   #C9CBCC;  /* secondary metallic — borders, fine details */
+
+  /* ── Division accents (deep, muted jewel tones) ─────── */
+  --color-gifts:    #996632;    /* Bronze Gold — topaz */
+  --color-crystals: #1C4F64;    /* Sapphire */
+  --color-bespoke:  #6E2433;    /* Burgundy — garnet */
+
+  /* ── Division light backgrounds ─────────────────────── */
+  --color-gifts-bg:    #F7EEE3; /* Beige */
+  --color-crystals-bg: #F0F5F8; /* Sapphire Light */
+  --color-bespoke-bg:  #F5F0F1; /* Burgundy Light */
+
+  /* ── Near-black scale ───────────────────────────────── */
+  --color-ink-95:     #2E2E2C;
+  --color-ink-80:     #4A4A47;
+  --color-ink-60:     #666666;
+  --color-ink-20:     rgba(34, 34, 34, 0.20);
+  --color-ink-12:     rgba(34, 34, 34, 0.12);
+  --color-ink-08:     rgba(34, 34, 34, 0.08);
+  --color-ink-05:     rgba(34, 34, 34, 0.05);
+
+  /* ── Beige scale ────────────────────────────────────── */
+  --color-ivory-dark: #EFE6D8;
+  --color-ivory-mid:  #F2EAE0;
+
+  /* ── Bronze (Gifts accent) scale ────────────────────── */
+  --color-gold-light: #B3824A;
+  --color-gold-dark:  #7A4F26;
+  --color-gold-pale:  rgba(153, 102, 50, 0.10);
+
+  /* ── Champagne (metallic) scale ─────────────────────── */
+  --color-champagne-light: #D4BB82;
+  --color-champagne-dark:  #A88D4F;
+
+  /* ── Crystals (sapphire) scale ──────────────────────── */
+  --color-crystals-light: #2A6A84;
+  --color-crystals-dark:  #163B4B;
+  --color-crystals-pale:  rgba(28, 79, 100, 0.10);
+
+  /* ── Bespoke (burgundy) scale ───────────────────────── */
+  --color-bespoke-light: #8B3347;
+  --color-bespoke-dark:  #501829;
+  --color-bespoke-pale:  rgba(110, 36, 51, 0.10);
+
+  /* ── Back-compat foundation aliases ─────────────────── */
+  --color-ink:        var(--color-near-black);
+  --color-ivory:      var(--color-beige);
+  --color-graphite:   var(--color-mid-grey);
+  --color-gold:       var(--color-bronze);
+
+  /* ── Semantic aliases ───────────────────────────────── */
+  --color-bg:             var(--color-white);
+  --color-bg-warm:        var(--color-beige);
+  --color-bg-dark:        var(--color-near-black);
+  --color-surface:        var(--color-white);
+  --color-text-primary:   var(--color-near-black);
+  --color-text-secondary: var(--color-mid-grey);
+  --color-text-on-dark:   var(--color-white);
+  --color-text-gold:      var(--color-bronze);
+  --color-border:         var(--color-ink-08);
+  --color-border-mid:     var(--color-ink-20);
+  --color-divider:        var(--color-warm-grey);
+  --color-accent:         var(--color-bronze);
+
+  /* ── Status ─────────────────────────────────────────── */
+  --color-error:   #7A2828;
+  --color-success: #2A5C3F;
+}

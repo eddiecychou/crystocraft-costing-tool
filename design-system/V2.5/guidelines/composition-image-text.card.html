@@ -1,0 +1,60 @@
+<!-- @dsCard group="Spacing" viewport="700x520" name="Image / Text Compositions" subtitle="Four editorial patterns — asymmetric split, overlay caption, offset stack, running pull-image" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Questrial&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--color-white); padding: 24px 28px; font-family: var(--font-body); }
+.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.pat { border: 1px solid var(--color-border); }
+.pat-lbl { font-family: var(--font-label); font-size: 9px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-graphite); padding: 8px 12px; border-bottom: 1px solid var(--color-border); }
+.ph { background: repeating-linear-gradient(135deg, #E9E8E6, #E9E8E6 6px, #F2EAE0 6px, #F2EAE0 12px); }
+/* 1 asymmetric split */
+.split { display: grid; grid-template-columns: 38% 62%; height: 130px; }
+.split .ph { }
+.split .txt { padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+.eyebrow { font-family: var(--font-label); font-size: 9px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-bronze); }
+.h { font-family: var(--font-display); font-size: 16px; text-transform: uppercase; color: var(--color-near-black); }
+.body { font-size: 10px; color: var(--color-mid-grey); line-height: 1.4; }
+/* 2 overlay caption */
+.overlay { position: relative; height: 130px; }
+.overlay .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 14px; background: linear-gradient(to top, rgba(34,34,34,0.75), transparent); }
+.overlay .cap .h { color: #F7EEE3; font-size: 14px; }
+/* 3 offset stack */
+.stack { height: 130px; position: relative; padding: 10px 0 0 40%; }
+.stack .ph { position: absolute; left: 0; top: 0; width: 55%; height: 100px; }
+.stack .txt { position: relative; padding: 14px 12px 0 6px; z-index: 2; }
+/* 4 running pull-image */
+.pull { display: grid; grid-template-columns: 1fr 90px 1fr; align-items: center; height: 130px; padding: 0 12px; gap: 10px; }
+.pull .ph { width: 90px; height: 90px; }
+.pull .body { font-size: 9.5px; }
+</style>
+</head>
+<body>
+<div class="grid">
+  <div class="pat">
+    <div class="pat-lbl">1 · Asymmetric Split (38/62)</div>
+    <div class="split">
+      <div class="ph"></div>
+      <div class="txt"><span class="eyebrow">Gifts</span><span class="h">Dazzle Cut</span><span class="body">32 facets, cut to catch every angle of light.</span></div>
+    </div>
+  </div>
+  <div class="pat">
+    <div class="pat-lbl">2 · Overlay Caption</div>
+    <div class="overlay"><div class="ph" style="height:100%"></div><div class="cap"><span class="h">Since 1958</span></div></div>
+  </div>
+  <div class="pat">
+    <div class="pat-lbl">3 · Offset Stack</div>
+    <div class="stack"><div class="ph"></div><div class="txt"><span class="eyebrow">Bespoke</span><span class="h">A Brief, Realised</span></div></div>
+  </div>
+  <div class="pat">
+    <div class="pat-lbl">4 · Running Pull-Image</div>
+    <div class="pull"><span class="body">Every order is proofed by hand before it ever reaches the line.</span><div class="ph"></div><span class="body">Sapphire register, checked under raking light for consistency.</span></div>
+  </div>
+</div>
+</body>
+</html>

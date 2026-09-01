@@ -1,0 +1,301 @@
+<!-- @template name="Bespoke Gifting Hub" description="Crystocraft Bespoke Gifting corporate website — process section, portfolio grid, brief submission form" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crystocraft Bespoke Gifting — From Brief to Brilliance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Questrial&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--color-ivory); color: var(--color-ink); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; }
+
+/* Nav */
+.nav {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--color-bespoke);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 56px; height: 64px;
+}
+.nav-brand { display: flex; flex-direction: column; text-decoration: none; }
+.nav-wordmark { display: flex; align-items: center; gap: 10px; }
+.nav-logo-mark { height: 22px; filter: invert(1); opacity: 0.85; }
+.nav-name { font-size: 13px; font-weight: 500; letter-spacing: 0.22em; text-transform: uppercase; color: var(--color-ivory); }
+.nav-descriptor { font-size: 8px; font-weight: 400; letter-spacing: 0.26em; text-transform: uppercase; color: rgba(247,244,239,0.45); margin-top: 3px; border-top: 1px solid rgba(110,36,51,0.5); padding-top: 3px; }
+.nav-links { display: flex; gap: 28px; }
+.nav-link { font-size: 10px; font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(247,244,239,0.5); cursor: pointer; border: none; background: none; transition: color 0.15s; }
+.nav-link:hover, .nav-link.active { color: var(--color-ivory); }
+.nav-cta { font-size: 10px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; background: var(--color-ivory); color: var(--color-bespoke); border: none; padding: 9px 20px; cursor: pointer; transition: background 0.15s, color 0.15s; }
+.nav-cta:hover { background: var(--color-ivory-dark); }
+
+/* Hero */
+.hero { background: var(--color-ink); padding: 80px 56px 72px; display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center; position: relative; overflow: hidden; }
+.hero-bg { position: absolute; right: -40px; top: 50%; transform: translateY(-50%); width: 420px; opacity: 0.04; pointer-events: none; filter: invert(1); }
+.hero-eyebrow { font-size: 10px; font-weight: 500; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(110,36,51,0.8); margin-bottom: 18px; display: block; }
+.hero-title { font-family: var(--font-serif); font-size: 50px; font-weight: 400; line-height: 1.08; text-transform: uppercase; letter-spacing: 0.01em; color: var(--color-ivory); margin-bottom: 20px; }
+.hero-subtitle { font-size: 14px; font-weight: 300; line-height: 1.8; color: rgba(247,244,239,0.6); max-width: 420px; margin-bottom: 32px; }
+.hero-actions { display: flex; gap: 12px; }
+
+/* Process section */
+.process-section { background: var(--color-white); padding: 72px 56px; }
+.process-eyebrow { font-size: 10px; font-weight: 500; letter-spacing: 0.24em; text-transform: uppercase; color: var(--color-bespoke); margin-bottom: 8px; }
+.process-title { font-family: var(--font-serif); font-size: 32px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.02em; color: var(--color-ink); margin-bottom: 48px; }
+.process-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--color-border); }
+.process-step { background: var(--color-white); padding: 28px; }
+.step-num { font-family: var(--font-serif); font-size: 48px; font-weight: 400; color: var(--color-bespoke); opacity: 0.25; line-height: 1; margin-bottom: 14px; }
+.step-name { font-family: var(--font-serif); font-size: 20px; font-weight: 400; margin-bottom: 8px; }
+.step-desc { font-size: 13px; font-weight: 300; line-height: 1.7; color: var(--color-graphite); }
+
+/* Portfolio */
+.portfolio-section { padding: 72px 0; background: var(--color-ivory); }
+.portfolio-header { padding: 0 56px 36px; }
+.portfolio-eyebrow { font-size: 10px; font-weight: 500; letter-spacing: 0.24em; text-transform: uppercase; color: var(--color-graphite); margin-bottom: 8px; }
+.portfolio-title { font-family: var(--font-serif); font-size: 30px; font-weight: 400; text-transform: uppercase; letter-spacing: 0.02em; }
+.portfolio-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--color-border); }
+.portfolio-item { background: var(--color-white); cursor: pointer; transition: box-shadow 0.2s; }
+.portfolio-item:hover { box-shadow: var(--shadow-lg); z-index: 1; }
+.portfolio-img { aspect-ratio: 4/3; background: var(--color-bespoke); display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; }
+.portfolio-img-inner { width: 60px; height: 60px; opacity: 0.15; filter: invert(1); }
+.portfolio-overlay { position: absolute; inset: 0; background: rgba(28,28,26,0); transition: background 0.2s; }
+.portfolio-item:hover .portfolio-overlay { background: rgba(28,28,26,0.2); }
+.portfolio-body { padding: 20px 20px 24px; }
+.portfolio-client { font-size: 9px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(--color-bespoke); margin-bottom: 5px; }
+.portfolio-name { font-family: var(--font-serif); font-size: 18px; font-weight: 400; margin-bottom: 5px; }
+.portfolio-detail { font-size: 12px; color: var(--color-graphite); }
+
+/* Brief form */
+.brief-section { background: var(--color-ink); padding: 80px 56px; display: grid; grid-template-columns: 1fr 1fr; gap: 64px; }
+.brief-left {}
+.brief-eyebrow { font-size: 10px; font-weight: 500; letter-spacing: 0.24em; text-transform: uppercase; color: rgba(110,36,51,0.8); margin-bottom: 14px; }
+.brief-title { font-family: var(--font-serif); font-size: 36px; font-weight: 400; line-height: 1.12; text-transform: uppercase; letter-spacing: 0.01em; color: var(--color-ivory); margin-bottom: 20px; }
+.brief-desc { font-size: 14px; font-weight: 300; line-height: 1.8; color: rgba(247,244,239,0.55); margin-bottom: 32px; }
+.brief-promise { display: flex; flex-direction: column; gap: 12px; }
+.brief-promise-item { display: flex; gap: 12px; align-items: flex-start; }
+.brief-promise-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--color-bespoke-light); flex-shrink: 0; margin-top: 7px; }
+.brief-promise-text { font-size: 13px; font-weight: 300; line-height: 1.6; color: rgba(247,244,239,0.6); }
+.brief-right {}
+.brief-form { display: flex; flex-direction: column; gap: 24px; }
+.brief-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.brief-textarea {
+  font-family: var(--font-sans); font-size: 14px; font-weight: 300;
+  background: transparent; border: none; border-bottom: 1px solid rgba(247,244,239,0.2);
+  color: var(--color-ivory); padding: var(--space-3) 0;
+  width: 100%; resize: none; outline: none; min-height: 80px;
+  transition: border-color 0.18s;
+}
+.brief-textarea::placeholder { color: rgba(247,244,239,0.25); }
+.brief-textarea:focus { border-bottom-color: var(--color-bespoke-light); }
+.brief-field-label { font-size: 9px; font-weight: 500; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(247,244,239,0.4); margin-bottom: 6px; display: block; }
+.brief-input {
+  font-family: var(--font-sans); font-size: 14px; font-weight: 300;
+  background: transparent; border: none; border-bottom: 1px solid rgba(247,244,239,0.2);
+  color: var(--color-ivory); padding: var(--space-3) 0; width: 100%; outline: none;
+  transition: border-color 0.18s;
+}
+.brief-input::placeholder { color: rgba(247,244,239,0.25); }
+.brief-input:focus { border-bottom-color: var(--color-bespoke-light); }
+
+/* Footer */
+.footer { padding: 36px 56px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--color-border); background: var(--color-ivory-dark); }
+.footer-brand { display: flex; align-items: center; gap: 10px; }
+.footer-logo { height: 24px; mix-blend-mode: multiply; opacity: 0.5; }
+.footer-div { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--color-bespoke); font-weight: 500; }
+.footer-links { display: flex; gap: 24px; }
+.footer-link { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--color-graphite); cursor: pointer; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { Button, Badge, Input, Select } = window.CrystocraftDesignSystem_25701b || {};
+
+const PORTFOLIO = [
+  { client:'Fortune 500 — Finance', name:'Crystal Trophy — Annual Awards', detail:'Bespoke butterfly mark etched in 24% lead crystal · 180 units', bg:'#6E2433' },
+  { client:'Luxury Hotel Group', name:'Crystal Guest Amenity Set', detail:'Custom logoed crystal paperweight · 2,000 units per quarter', bg:'#501829' },
+  { client:'International Airline', name:'Crystal Service Pin — 20 Years', detail:'Sterling silver + Dazzle Cut crystal · 450 units', bg:'#8B3347' },
+  { client:'Property Developer', name:'Crystal Key Presentation Set', detail:'Custom cut landmark crystal + mahogany box · 120 units', bg:'#6E2433' },
+  { client:'Pharmaceutical Co.', name:'Crystal Milestone Award — IPO', detail:'Bespoke octagon crystal on metal plinth · 60 units', bg:'#501829' },
+  { client:'Fashion House', name:'Crystal Boutique Display Stand', detail:'Decorative spinning crystal installation · 8 units', bg:'#8B3347' },
+];
+
+const STEPS = [
+  { num:'01', name:'Brief', desc:'Tell us the occasion, quantity, timeline and any brand elements. We respond within 24 hours.' },
+  { num:'02', name:'Design', desc:'Our team develops concepts, a render, and a sample for approval. Revisions included.' },
+  { num:'03', name:'Craft', desc:'Production begins on sign-off. Every piece manufactured in-house and quality-checked.' },
+  { num:'04', name:'Deliver', desc:'Presented in Crystocraft packaging. White-glove delivery or direct fulfilment available.' },
+];
+
+function App() {
+  const [activeNav, setActiveNav] = React.useState('Process');
+  const [submitted, setSubmitted] = React.useState(false);
+
+  return (
+    <div>
+      {/* Nav */}
+      <nav className="nav">
+        <a className="nav-brand" href="#">
+          <div className="nav-wordmark">
+            <img src="../../assets/logos/logo-mark.png" className="nav-logo-mark" alt="" />
+            <span className="nav-name">Crystocraft</span>
+          </div>
+          <span className="nav-descriptor">Bespoke Gifting</span>
+        </a>
+        <div className="nav-links">
+          {['Process','Portfolio','Occasions','Trade','About'].map(n => (
+            <button key={n} className={`nav-link${activeNav===n?' active':''}`} onClick={()=>setActiveNav(n)}>{n}</button>
+          ))}
+        </div>
+        <button className="nav-cta">Submit a Brief</button>
+      </nav>
+
+      {/* Hero */}
+      <section className="hero">
+        <img src="../../assets/logos/logo-mark.png" className="hero-bg" alt="" />
+        <div>
+          <span className="hero-eyebrow">Crystocraft Bespoke Gifting</span>
+          <h1 className="hero-title">From brief<br/>to brilliance.</h1>
+          <p className="hero-subtitle">Custom crystal and metal gifts for milestone moments. Your brand, beautifully crafted — managed end-to-end from concept to delivery.</p>
+          <div className="hero-actions">
+            {Button
+              ? <><Button variant="burgundy" size="lg">Submit a Brief</Button><Button variant="outline" size="lg" style={{color:'rgba(247,244,239,0.7)',borderColor:'rgba(247,244,239,0.25)'}}>View Portfolio</Button></>
+              : null}
+          </div>
+        </div>
+        <div />
+      </section>
+
+      {/* Process */}
+      <section className="process-section">
+        <p className="process-eyebrow">Our process</p>
+        <h2 className="process-title">Fast, at any scale, managed end-to-end.</h2>
+        <div className="process-grid">
+          {STEPS.map(s => (
+            <div key={s.num} className="process-step">
+              <p className="step-num">{s.num}</p>
+              <h3 className="step-name">{s.name}</h3>
+              <p className="step-desc">{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Portfolio */}
+      <section className="portfolio-section">
+        <div className="portfolio-header">
+          <p className="portfolio-eyebrow">Selected work</p>
+          <h2 className="portfolio-title">Bespoke gifts for brands that matter.</h2>
+        </div>
+        <div className="portfolio-grid">
+          {PORTFOLIO.map((p, i) => (
+            <div key={i} className="portfolio-item">
+              <div className="portfolio-img" style={{background: p.bg}}>
+                <div className="portfolio-overlay" />
+                <img src="../../assets/logos/logo-mark.png" className="portfolio-img-inner" alt="" />
+              </div>
+              <div className="portfolio-body">
+                {Badge && <Badge variant="bespoke" size="xs" style={{marginBottom:8}}>{p.client}</Badge>}
+                <p className="portfolio-name">{p.name}</p>
+                <p className="portfolio-detail">{p.detail}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Brief form */}
+      <section className="brief-section">
+        <div className="brief-left">
+          <p className="brief-eyebrow">Submit a brief</p>
+          <h2 className="brief-title">Tell us about your occasion.</h2>
+          <p className="brief-desc">We work with organisations of every size — from a single retirement keepsake to an annual awards programme of 10,000 units. Every enquiry receives a personal response within one business day.</p>
+          <div className="brief-promise">
+            {[
+              'Response within 24 hours, every enquiry.',
+              'Concept render provided before any commitment.',
+              'In-house manufacture — no outsourcing, no surprises.',
+              'Global delivery with white-glove fulfilment options.',
+            ].map(t => (
+              <div key={t} className="brief-promise-item">
+                <div className="brief-promise-dot" />
+                <p className="brief-promise-text">{t}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="brief-right">
+          {submitted ? (
+            <div style={{display:'flex',flexDirection:'column',gap:16,alignItems:'flex-start'}}>
+              <div style={{width:48,height:48,borderRadius:'50%',border:'1px solid rgba(110,36,51,0.6)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(247,244,239,0.7)" strokeWidth="1.5"><polyline points="20 6 9 17 4 12"/></svg>
+              </div>
+              <h3 style={{fontFamily:'var(--font-serif)',fontSize:28,fontWeight:300,color:'var(--color-ivory)',lineHeight:1.2}}>Thank you.<br/>We'll be in touch.</h3>
+              <p style={{fontSize:13,fontWeight:300,lineHeight:1.75,color:'rgba(247,244,239,0.55)'}}>Your brief has been received. A member of our bespoke gifting team will respond within one business day.</p>
+              {Button && <Button variant="outline" size="sm" onClick={()=>setSubmitted(false)} style={{color:'rgba(247,244,239,0.5)',borderColor:'rgba(247,244,239,0.2)',marginTop:8}}>Submit another brief</Button>}
+            </div>
+          ) : (
+            <div className="brief-form">
+              <div className="brief-form-row">
+                <div>
+                  <span className="brief-field-label">Your Name</span>
+                  <input className="brief-input" placeholder="First and last name" />
+                </div>
+                <div>
+                  <span className="brief-field-label">Company</span>
+                  <input className="brief-input" placeholder="Organisation name" />
+                </div>
+              </div>
+              <div className="brief-form-row">
+                <div>
+                  <span className="brief-field-label">Email Address</span>
+                  <input className="brief-input" type="email" placeholder="your@company.com" />
+                </div>
+                <div>
+                  <span className="brief-field-label">Approximate Quantity</span>
+                  <input className="brief-input" placeholder="e.g. 250 units" />
+                </div>
+              </div>
+              <div>
+                <span className="brief-field-label">Occasion / Purpose</span>
+                <input className="brief-input" placeholder="e.g. Annual awards, client gifts, product launch..." />
+              </div>
+              <div>
+                <span className="brief-field-label">Brief Details</span>
+                <textarea className="brief-textarea" placeholder="Tell us about the gift you have in mind — materials, customisation, deadline, budget range..." rows={4} />
+              </div>
+              {Button && (
+                <Button variant="burgundy" size="lg" onClick={() => setSubmitted(true)}>
+                  Submit Brief
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="footer">
+        <div className="footer-brand">
+          <img src="../../assets/logos/logo-horizontal.jpg" className="footer-logo" alt="Crystocraft" />
+          <span className="footer-div">Bespoke Gifting</span>
+        </div>
+        <div className="footer-links">
+          {['Process','Portfolio','Occasions','Crystocraft Gifts','Crystocraft Crystals','Contact'].map(l => (
+            <span key={l} className="footer-link">{l}</span>
+          ))}
+        </div>
+        <p style={{fontSize:11,color:'rgba(110,108,102,0.55)'}}>© Crystocraft 2025</p>
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

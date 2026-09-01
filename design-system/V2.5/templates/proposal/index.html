@@ -1,0 +1,197 @@
+<!-- @template name="Bespoke Proposal" description="Crystocraft Bespoke Gifting client proposal document — cover, concept, craft notes, investment table, signatures" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crystocraft Bespoke — Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Questrial&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--color-white); color: var(--color-near-black); font-family: var(--font-body); -webkit-font-smoothing: antialiased; }
+.doc { max-width: 920px; margin: 0 auto; }
+
+/* Cover */
+.cover { background: var(--color-near-black); color: var(--color-beige); padding: 90px 64px 70px; display: flex; flex-direction: column; justify-content: space-between; min-height: 480px; position: relative; overflow: hidden; }
+.cover-mark { position: absolute; right: -30px; bottom: -30px; width: 320px; opacity: 0.05; filter: invert(1); }
+.cover-eyebrow { font-family: var(--font-label); font-size: 11px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-bespoke-light); margin-bottom: 26px; display: block; }
+.cover-title { font-family: var(--font-display); font-size: 46px; text-transform: uppercase; line-height: 1.12; letter-spacing: 0.01em; max-width: 560px; }
+.cover-meta { display: flex; gap: 48px; margin-top: 56px; position: relative; z-index: 1; }
+.cover-meta-item span { display: block; }
+.cover-meta-label { font-family: var(--font-label); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(247,238,227,0.45); margin-bottom: 6px; }
+.cover-meta-value { font-family: var(--font-label); font-size: 13px; color: var(--color-beige); }
+
+/* Section shell */
+.section { padding: 56px 64px; }
+.section--tight { padding: 40px 64px; }
+.eyebrow { font-family: var(--font-label); font-size: 11px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-bespoke); display: block; margin-bottom: 14px; }
+.h2 { font-family: var(--font-display); font-size: 26px; text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 18px; }
+.lede { font-size: 16px; line-height: 1.6; color: var(--color-mid-grey); max-width: 640px; }
+
+/* Concept: asymmetric split with craft note */
+.concept { display: grid; grid-template-columns: 40% 1fr; gap: 40px; align-items: start; }
+.concept-img { aspect-ratio: 4/5; background: repeating-linear-gradient(135deg, var(--color-bespoke-bg), var(--color-bespoke-bg) 8px, #fff 8px, #fff 16px); border: 1px solid var(--color-border); }
+.concept-copy { display: flex; flex-direction: column; gap: 22px; }
+.concept-body { font-size: 15px; line-height: 1.65; color: var(--color-mid-grey); }
+.note-stack { display: flex; flex-direction: column; gap: 16px; margin-top: 6px; }
+
+/* Materials: offset stack composition */
+.materials { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+.mat-card { border: 1px solid var(--color-border); padding: 22px; display: flex; flex-direction: column; gap: 10px; }
+.mat-swatch { width: 32px; height: 32px; border: 1px solid var(--color-border-mid); }
+.mat-name { font-family: var(--font-display); font-size: 15px; text-transform: uppercase; }
+.mat-detail { font-family: var(--font-label); font-size: 12px; color: var(--color-mid-grey); line-height: 1.5; }
+
+/* Investment table */
+.table { width: 100%; border-collapse: collapse; }
+.table th { font-family: var(--font-label); font-size: 10px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-graphite); text-align: left; padding: 10px 0; border-bottom: 1px solid var(--color-near-black); }
+.table td { padding: 14px 0; border-bottom: 1px solid var(--color-border); font-size: 14px; }
+.table td:last-child, .table th:last-child { text-align: right; font-family: var(--font-label); font-variant-numeric: tabular-nums; }
+.table tfoot td { border-bottom: none; border-top: 1px solid var(--color-near-black); font-family: var(--font-label); font-weight: 500; padding-top: 16px; }
+
+/* Timeline */
+.timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; }
+.tl-step { padding: 0 20px 0 0; border-left: 1px solid var(--color-border); padding-left: 20px; }
+.tl-step:first-child { border-left: none; padding-left: 0; }
+.tl-num { font-family: var(--font-display); font-size: 30px; color: var(--color-bespoke); opacity: 0.3; margin-bottom: 8px; }
+.tl-name { font-family: var(--font-label); font-size: 12px; font-weight: 500; letter-spacing: 0.04em; margin-bottom: 6px; }
+.tl-detail { font-size: 13px; color: var(--color-mid-grey); line-height: 1.5; }
+
+/* Signatures */
+.sign { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 30px; }
+.sign-line { border-top: 1px solid var(--color-near-black); padding-top: 10px; margin-top: 46px; }
+.sign-label { font-family: var(--font-label); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-graphite); }
+
+.footer { padding: 32px 64px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--color-border); }
+.footer-note { font-family: var(--font-label); font-size: 10px; letter-spacing: 0.06em; color: var(--color-graphite); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const ns = window.CrystocraftDesignSystem_25701b || {};
+const { FacetDivider, CraftNote } = ns;
+
+const MATERIALS = [
+  { name: 'Bohemian Crystal', swatch: '#F0F5F8', detail: 'Dazzle Cut \u00b7 32 facets \u00b7 optical-grade clarity' },
+  { name: 'Brushed Brass', swatch: '#B3824A', detail: 'Hand-brushed finish \u00b7 tarnish-resistant coat' },
+  { name: 'Walnut Base', swatch: '#5A3E2B', detail: 'FSC-certified \u00b7 hand-oiled, satin sheen' },
+  { name: 'Engraved Plate', swatch: '#C9CBCC', detail: 'Laser-etched \u00b7 proofed twice before production' },
+];
+
+const LINE_ITEMS = [
+  { item: 'Dazzle Cut Crystal Award, 32-facet, custom engraving', qty: '250', unit: '$68.00', total: '$17,000' },
+  { item: 'Walnut presentation base', qty: '250', unit: '$14.00', total: '$3,500' },
+  { item: 'Individual gift box, foil-stamped', qty: '250', unit: '$9.50', total: '$2,375' },
+  { item: 'Design proofing & engraving setup', qty: '1', unit: '$450.00', total: '$450' },
+];
+
+function App() {
+  return (
+    <div className="doc">
+      <section className="cover">
+        <img src="../../assets/logos/logo-mark.png" className="cover-mark" alt="" />
+        <div>
+          <span className="cover-eyebrow">Bespoke Gifting · Proposal</span>
+          <h1 className="cover-title">Annual Recognition Awards, 2027 Programme</h1>
+        </div>
+        <div className="cover-meta">
+          <div className="cover-meta-item"><span className="cover-meta-label">Prepared For</span><span className="cover-meta-value">Northfield & Rowe Ltd.</span></div>
+          <div className="cover-meta-item"><span className="cover-meta-label">Prepared By</span><span className="cover-meta-value">Crystocraft Bespoke Gifting</span></div>
+          <div className="cover-meta-item"><span className="cover-meta-label">Date</span><span className="cover-meta-value">14 September 2026</span></div>
+          <div className="cover-meta-item"><span className="cover-meta-label">Reference</span><span className="cover-meta-value">CB-2609-014</span></div>
+        </div>
+      </section>
+
+      <section className="section">
+        <span className="eyebrow">The Brief</span>
+        <h2 className="h2">Understanding the Occasion</h2>
+        <p className="lede">Northfield & Rowe asked for a recognition award that feels considered rather than corporate — something a recipient keeps on a shelf, not a drawer. Our proposal centres on a single Dazzle Cut crystal form, set on a hand-finished walnut base, engraved to order.</p>
+      </section>
+      {FacetDivider && <div style={{padding: '0 64px'}}><FacetDivider variant="bespoke" /></div>}
+
+      <section className="section">
+        <span className="eyebrow">The Concept</span>
+        <div className="concept">
+          <div className="concept-img"></div>
+          <div className="concept-copy">
+            <h2 className="h2" style={{marginBottom: 0}}>A Form That Holds the Light</h2>
+            <p className="concept-body">The award reads as a single continuous facet from every angle — no seam, no obvious "front." Recipients place it under any light and it performs the same way: the geometry, not a printed logo, does the work of feeling premium.</p>
+            {CraftNote && (
+              <div className="note-stack">
+                <CraftNote variant="bespoke" label="Cut">32-facet Dazzle Cut, hand-polished after moulding to remove all tooling marks.</CraftNote>
+                <CraftNote variant="bespoke" label="Engraving">Recipient name and year set on the base, never on the crystal face.</CraftNote>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+      {FacetDivider && <div style={{padding: '0 64px'}}><FacetDivider variant="bespoke" /></div>}
+
+      <section className="section">
+        <span className="eyebrow">Materials & Craft</span>
+        <h2 className="h2">What Each Piece Is Made Of</h2>
+        <div className="materials">
+          {MATERIALS.map(m => (
+            <div className="mat-card" key={m.name}>
+              <div className="mat-swatch" style={{background: m.swatch}}></div>
+              <span className="mat-name">{m.name}</span>
+              <span className="mat-detail">{m.detail}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="section section--tight">
+        <span className="eyebrow">Investment</span>
+        <h2 className="h2">Cost Breakdown</h2>
+        <table className="table">
+          <thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th>Total</th></tr></thead>
+          <tbody>
+            {LINE_ITEMS.map(li => (
+              <tr key={li.item}><td>{li.item}</td><td>{li.qty}</td><td>{li.unit}</td><td>{li.total}</td></tr>
+            ))}
+          </tbody>
+          <tfoot><tr><td colSpan={3}>Estimated Total</td><td>$23,325</td></tr></tfoot>
+        </table>
+      </section>
+
+      <section className="section section--tight">
+        <span className="eyebrow">Timeline</span>
+        <h2 className="h2">From Approval to Delivery</h2>
+        <div className="timeline">
+          <div className="tl-step"><div className="tl-num">01</div><div className="tl-name">Proof & Sign-Off</div><div className="tl-detail">Digital + physical sample, 10 business days.</div></div>
+          <div className="tl-step"><div className="tl-num">02</div><div className="tl-name">Production</div><div className="tl-detail">Casting, cutting, polishing — 4 weeks.</div></div>
+          <div className="tl-step"><div className="tl-num">03</div><div className="tl-name">Engraving</div><div className="tl-detail">Base engraving, quality check — 1 week.</div></div>
+          <div className="tl-step"><div className="tl-num">04</div><div className="tl-name">Delivery</div><div className="tl-detail">Boxed, insured freight — 1 week.</div></div>
+        </div>
+      </section>
+      {FacetDivider && <div style={{padding: '0 64px'}}><FacetDivider variant="bespoke" /></div>}
+
+      <section className="section">
+        <span className="eyebrow">Agreement</span>
+        <h2 className="h2">Sign to Proceed</h2>
+        <p className="lede">This proposal is valid for 30 days from the date above. A signed copy authorises Crystocraft Bespoke Gifting to begin the proofing stage.</p>
+        <div className="sign">
+          <div><div className="sign-line"></div><span className="sign-label">Client Signature &amp; Date</span></div>
+          <div><div className="sign-line"></div><span className="sign-label">Crystocraft Signature &amp; Date</span></div>
+        </div>
+      </section>
+
+      <footer className="footer">
+        <span className="footer-note">Crystocraft Bespoke Gifting · Est. 1958</span>
+        <span className="footer-note">CB-2609-014 · Page 1 of 1</span>
+      </footer>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

@@ -1,0 +1,102 @@
+<!-- @dsCard group="Components" viewport="700x560" name="Core" subtitle="Button · Badge · Tag · Divider · FacetDivider · CraftNote" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Questrial&family=Work+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--color-ivory); font-family: var(--font-sans); padding: 22px 28px; }
+.sec { margin-bottom: 16px; }
+.lbl { display: block; font-family: var(--font-label); font-size: 10px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--color-graphite); margin-bottom: 10px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.mt { margin-top: 8px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const ns = window.CrystocraftDesignSystem_25701b || {};
+const { Button, Badge, Tag, Divider, FacetDivider, CraftNote } = ns;
+function App() {
+  if (!Button) return <div style={{color:'#999',fontSize:12,padding:20}}>Loading DS bundle…</div>;
+  return (
+    <div>
+      <div className="sec">
+        <span className="lbl">Button</span>
+        <div className="row">
+          <Button size="sm">Primary</Button>
+          <Button variant="secondary" size="sm">Secondary</Button>
+          <Button variant="ghost" size="sm">Ghost</Button>
+          <Button variant="outline" size="sm">Outline</Button>
+          <Button variant="outline-gold" size="sm">Gold</Button>
+          <Button variant="sapphire" size="sm">Sapphire</Button>
+          <Button variant="burgundy" size="sm">Burgundy</Button>
+          <Button size="sm" disabled>Disabled</Button>
+        </div>
+        <div className="row mt">
+          <Button size="lg">Large</Button>
+          <Button variant="outline" size="md">Medium Outline</Button>
+          <Button variant="secondary" size="md">Gold Fill</Button>
+        </div>
+      </div>
+      <div className="sec">
+        <span className="lbl">Badge</span>
+        <div className="row">
+          <Badge>Default</Badge>
+          <Badge variant="gifts">Gifts</Badge>
+          <Badge variant="crystals">Crystals</Badge>
+          <Badge variant="bespoke">Bespoke</Badge>
+          <Badge variant="solid-ink">Limited</Badge>
+          <Badge variant="solid-gold">Featured</Badge>
+          <Badge variant="platinum">Premium</Badge>
+          <Badge variant="new" size="xs">New</Badge>
+        </div>
+      </div>
+      <div className="sec">
+        <span className="lbl">Tag</span>
+        <div className="row">
+          <Tag>Crystal Figurines</Tag>
+          <Tag variant="gold">Gold Collection</Tag>
+          <Tag variant="sapphire">32 Facets</Tag>
+          <Tag variant="burgundy">Bespoke</Tag>
+          <Tag active>Selected</Tag>
+          <Tag variant="dark">Dark</Tag>
+        </div>
+      </div>
+      <div className="sec">
+        <span className="lbl">Divider</span>
+        <Divider />
+        <div style={{height:10}} />
+        <Divider variant="gold" label="Collections" />
+        <div style={{height:10}} />
+        <Divider variant="subtle" label="Or" />
+      </div>
+      <div className="sec">
+        <span className="lbl">FacetDivider</span>
+        <FacetDivider variant="gifts" />
+        <div style={{height:10}} />
+        <FacetDivider variant="crystals" />
+        <div style={{height:10}} />
+        <FacetDivider variant="bespoke" />
+      </div>
+      <div className="sec">
+        <span className="lbl">CraftNote</span>
+        <div className="row">
+          <CraftNote variant="gifts" label="Materials">Hand-set Bohemian crystal, 32-facet Dazzle Cut, checked under raking light.</CraftNote>
+          <CraftNote variant="bespoke" label="Finish">Engraving proofed twice before the run is released to production.</CraftNote>
+        </div>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

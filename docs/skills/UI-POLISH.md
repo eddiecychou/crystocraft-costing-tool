@@ -20,11 +20,13 @@
 **Authoritative token source:** `tailwind.config.js` (`theme.extend`) +
 `src/index.css` (`@layer base` / `@layer components`). Nothing else.
 
-- The folders `Crystocraft Design System V2.5/` and `…2026V2/` are **untracked
-  reference material** — the app does **not** import their `tokens/*.css`.
-  `src/index.css`'s own comment says the values are hand-copied in "so tokens
-  don't depend on a dev-server restart." **MUST NOT** tell anyone to "use the
-  tokens in `colors.css`/`spacing.css`" — point at `tailwind.config.js`.
+- The exported bundles under `design-system/` (`design-system/V2.5/`,
+  `design-system/2026-V2/`) are **reference material** — the app does **not**
+  import their `tokens/*.css`. `src/index.css`'s own comment says the values
+  are hand-copied in "so tokens don't depend on a dev-server restart."
+  **MUST NOT** tell anyone to "use the tokens in `colors.css`/`spacing.css`"
+  — there is no such file the app reads; point at `tailwind.config.js`.
+  See `design-system/README.md`.
 - **MUST** use config tokens, never arbitrary Tailwind palette classes.
   `bg-brand-600` / `text-ink-60` / `border-warm-grey` — never `bg-blue-500`,
   `text-gray-700`, `#hexvalue` in JSX.

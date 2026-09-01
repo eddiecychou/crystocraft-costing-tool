@@ -1,0 +1,42 @@
+<!-- @dsCard group="Colors" viewport="700x130" name="System Palette" subtitle="Near-Black · Mid Grey · Warm Grey · Beige · White — the shared foundation" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { margin: 0; height: 130px; }
+.row { display: flex; height: 100%; }
+.swatch { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 10px 14px; }
+.name { font-family: 'Work Sans', sans-serif; font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 3px; }
+.hex  { font-family: 'Work Sans', sans-serif; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="row">
+  <div class="swatch" style="background:#222222">
+    <span class="name" style="color:#F7EEE3">Near-Black</span>
+    <span class="hex"  style="color:rgba(247,238,227,0.55)">#222222</span>
+  </div>
+  <div class="swatch" style="background:#666666">
+    <span class="name" style="color:#FFFFFF">Mid Grey</span>
+    <span class="hex"  style="color:rgba(255,255,255,0.7)">#666666</span>
+  </div>
+  <div class="swatch" style="background:#E9E8E6">
+    <span class="name" style="color:#222222">Warm Grey</span>
+    <span class="hex"  style="color:#666666">#E9E8E6</span>
+  </div>
+  <div class="swatch" style="background:#F7EEE3">
+    <span class="name" style="color:#222222">Beige</span>
+    <span class="hex"  style="color:#666666">#F7EEE3</span>
+  </div>
+  <div class="swatch" style="background:#FFFFFF;border:1px solid rgba(34,34,34,0.1)">
+    <span class="name" style="color:#222222">White</span>
+    <span class="hex"  style="color:#666666">#FFFFFF</span>
+  </div>
+</div>
+</body>
+</html>
