@@ -110,8 +110,15 @@ export default function FigurineShop({ profile }) {
     })
     if (coll?.type === 'manual') return out
     return out.sort((a, b) => {
-      if (a.sortRank !== b.sortRank) return a.sortRank - b.sortRank
-      return newFirst(a, b)
+      // Customer discovery: NEW designs lead the list whatever their crystal
+      // brand. Ranking by brand first (D/Bohemia → U/Swarovski → A/Asfour → M)
+      // buried a new Swarovski or Asfour design below the entire Bohemia block
+      // — a customer expects "what's new" up top regardless of code. Within
+      // the new group, and within the rest, the brand-series order still holds.
+      // Matches CorporateShop, which already sorts new-first.
+      const byNew = newFirst(a, b)
+      if (byNew) return byNew
+      return a.sortRank - b.sortRank
     })
   }, [items, coll, search, cat, statusFilter, designFilter, formatFilter])
 

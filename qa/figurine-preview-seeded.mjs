@@ -9,7 +9,7 @@ import { writeFileSync } from 'fs'
 
 const DESIGNS = Array.from({ length: 10 }, (_, i) => ({
   id: 'd' + i,
-  design_code: 'D' + String(3300 + i),
+  design_code: (i === 7 ? 'U' : i === 8 ? 'A' : 'D') + String(3300 + i),
   design_no: String(3300 + i),
   format_code: '001',
   description: ['Zodiac Rabbit', 'Fan-Out Peacock', 'Crystal Rose Bloom', 'Guardian Lion Pair',
@@ -19,7 +19,7 @@ const DESIGNS = Array.from({ length: 10 }, (_, i) => ({
   size: ['6 x 8 cm', '9 x 12 cm', '4 x 5 cm'][i % 3],
   active: true,
   status: i === 2 ? 'stock' : i === 5 ? 'concept' : 'active',
-  is_new: i === 1 || i === 7,
+  is_new: i === 1 || i === 7 || i === 8,   // d7=U (Swarovski), d8=A (Asfour) — both NEW
   gallery: [],
   finishes: [
     { finish_name: 'Chrome', sku: 'D' + (3300 + i) + '-CH', ws_price_usd: 4 + i * 0.4, image: '' },
