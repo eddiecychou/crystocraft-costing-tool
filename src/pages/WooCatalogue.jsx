@@ -3,7 +3,7 @@ import { wooCataloguePage, wooProbeI18nSeo } from '../wooSyncApi'
 import { loadWooCatalogueOverviewCache, saveWooCatalogueOverviewCache } from '../wooCache'
 import { downloadCsv } from '../exportCsv'
 import LoadingBar from '../components/LoadingBar'
-import { RefreshCcw, Download, AlertTriangle, ShoppingCart, ExternalLink, ChevronRight } from 'lucide-react'
+import { RefreshCcw, Download, AlertTriangle, ShoppingCart, ExternalLink, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react'
 
 // WooCommerce catalogue overview + SEO heuristic checklist (Ecommerce, admin).
 // Read-only. Cached to woo_cache/catalogue_overview so it loads instantly and
@@ -66,6 +66,7 @@ export default function WooCatalogue() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [issuesOnly, setIssuesOnly] = useState(true)
+  const [sort, setSort] = useState({ key: null, dir: 'asc' })
   const [expanded, setExpanded] = useState(null)
   const [probe, setProbe] = useState(null)
   const [probing, setProbing] = useState(false)
@@ -119,15 +120,38 @@ export default function WooCatalogue() {
     return { withSeo, counts }
   }, [rows])
 
+  const SORT_VAL = {
+    product: p => (p.name || '').toLowerCase(),
+    sku: p => (p.sku || '').toLowerCase(),
+    categories: p => (p.categories || []).join(', ').toLowerCase(),
+    price: p => { const v = parseFloat(String(p._price).split('–')[0]); return Number.isFinite(v) ? v : -1 },
+    sales: p => p.total_sales || 0,
+    stock: p => p.stock_status || 'zzz',
+    modified: p => p.date_modified || '',
+  }
+
   const catalogueRows = useMemo(() => {
     if (!model) return []
     const q = search.trim().toUpperCase()
-    return model.withSeo.filter(p => {
+    const list = model.withSeo.filter(p => {
       if (statusFilter !== 'all' && p.status !== statusFilter) return false
       if (q && !`${p.name} ${p.sku}`.toUpperCase().includes(q)) return false
       return true
     })
-  }, [model, search, statusFilter])
+    if (sort.key && SORT_VAL[sort.key]) {
+      const f = SORT_VAL[sort.key], s = sort.dir === 'asc' ? 1 : -1
+      list.sort((a, b) => {
+        const av = f(a), bv = f(b)
+        const cmp = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv))
+        return (cmp || (a.product_id - b.product_id)) * s
+      })
+    }
+    return list
+  }, [model, search, statusFilter, sort])
+
+  const toggleSort = (key) => setSort(s =>
+    s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' }
+      : { key, dir: (key === 'sales' || key === 'modified' || key === 'price') ? 'desc' : 'asc' })
 
   const seoRows = useMemo(() => {
     if (!model) return []
@@ -239,35 +263,37 @@ export default function WooCatalogue() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-2xs uppercase tracking-wide text-ink-60 border-b border-ivory-dark">
-                      <th className="px-3 py-2 text-left">Product</th>
-                      <th className="px-3 py-2 text-left">SKU</th>
+                      <Sh k="product" label="Product" sort={sort} onSort={toggleSort} />
+                      <Sh k="sku" label="SKU" sort={sort} onSort={toggleSort} />
                       <th className="px-3 py-2 text-left">Status</th>
-                      <th className="px-3 py-2 text-left">Categories</th>
-                      <th className="px-3 py-2 text-right">Price</th>
-                      <th className="px-3 py-2 text-right">Sales</th>
-                      <th className="px-3 py-2 text-left">Stock</th>
-                      <th className="px-3 py-2 text-right">Modified</th>
+                      <Sh k="categories" label="Categories" sort={sort} onSort={toggleSort} />
+                      <Sh k="price" label="Price" align="right" sort={sort} onSort={toggleSort} />
+                      <Sh k="sales" label="Sales" align="right" sort={sort} onSort={toggleSort} />
+                      <Sh k="stock" label="Stock" sort={sort} onSort={toggleSort} />
+                      <Sh k="modified" label="Modified" align="right" sort={sort} onSort={toggleSort} />
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-warm-grey">
                     {catalogueRows.map(p => (
                       <Fragment key={p.product_id}>
                         <tr className="hover:bg-ivory/40">
-                          <td className="px-3 py-2 max-w-[280px]">
-                            <button onClick={() => setExpanded(expanded === p.product_id ? null : p.product_id)}
-                              className="text-left inline-flex items-start gap-1 text-ink hover:text-brand-600">
-                              {p.variations?.length > 0 && (
-                                <ChevronRight size={13} className={`mt-0.5 shrink-0 transition-transform ${expanded === p.product_id ? 'rotate-90' : ''}`} />
+                          <td className="px-3 py-2">
+                            <div className="flex items-center gap-1.5 w-[300px] max-w-[300px]">
+                              <button onClick={() => setExpanded(expanded === p.product_id ? null : p.product_id)}
+                                className="min-w-0 flex items-center gap-1 text-left text-ink hover:text-brand-600">
+                                {p.variations?.length > 0
+                                  ? <ChevronRight size={13} className={`shrink-0 transition-transform ${expanded === p.product_id ? 'rotate-90' : ''}`} />
+                                  : <span className="w-[13px] shrink-0" />}
+                                <span className="truncate">{p.name}</span>
+                              </button>
+                              {p.permalink && (
+                                <a href={p.permalink} target="_blank" rel="noreferrer" className="shrink-0 text-ink-40 hover:text-brand-600">
+                                  <ExternalLink size={11} />
+                                </a>
                               )}
-                              <span className="truncate">{p.name}</span>
-                            </button>
-                            {p.permalink && (
-                              <a href={p.permalink} target="_blank" rel="noreferrer" className="ml-1 text-ink-40 hover:text-brand-600 inline-block align-middle">
-                                <ExternalLink size={11} />
-                              </a>
-                            )}
+                            </div>
                           </td>
-                          <td className="px-3 py-2 font-mono text-xs text-ink-60">{p.sku || '—'}</td>
+                          <td className="px-3 py-2 font-mono text-xs text-ink-60 whitespace-nowrap">{p.sku || '—'}</td>
                           <td className="px-3 py-2">
                             <span className={`text-2xs px-1.5 py-0.5 rounded-full ${STATUS_BADGE[p.status] || 'bg-ivory text-ink-70'}`}>{p.status}</span>
                             {p.catalog_visibility && p.catalog_visibility !== 'visible' && (
@@ -378,6 +404,18 @@ export default function WooCatalogue() {
         </>
       )}
     </div>
+  )
+}
+
+function Sh({ k, label, align = 'left', sort, onSort }) {
+  const active = sort.key === k
+  return (
+    <th className={`px-3 py-2 cursor-pointer select-none ${align === 'right' ? 'text-right' : 'text-left'}`} onClick={() => onSort(k)}>
+      <span className={`inline-flex items-center gap-1 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
+        {label}
+        {active && (sort.dir === 'asc' ? <ArrowUp size={11} /> : <ArrowDown size={11} />)}
+      </span>
+    </th>
   )
 }
 

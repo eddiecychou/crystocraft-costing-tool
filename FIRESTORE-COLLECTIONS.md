@@ -101,7 +101,7 @@ Mixed since V8.12 — supply-side is *staff*, the sales/finance docs stay *admin
 
 - `uc_invoices/{id}` — UC# invoice registry mirroring app-generated invoices — the team's "PI"/"invoice"/JES-SO/SI distinctions from CLAUDE.md apply here. Auth: admin only.
 - `counters/{name}` — atomic per-year allocation counters: `uc_<yy>` (UC#, `uc.js`), `so_<yy>` (sales order, `soNumber.js`), `pu_<yy>` (purchase order, `puNumber.js`). Auth: admin, **except `pu_<yy>` which is also production-writable** (V8.12 — needed to number a new PO); the rule matches `name.matches('pu_[0-9]+')`.
-- `woo_cache/{doc}` — **pure cache**, admin only. Docs: `orders`, `product_catalogue`, `customer_scan`, `catalogue_overview` — each holds the last WooCommerce pull so `WooCommerceSync.jsx` / `WooStockReconcile.jsx` / `WooCatalogue.jsx` restore on open instead of re-hitting WooCommerce (the fetch/scan button refreshes). Written by `src/wooCache.js`, size-guarded at ~900 KB. Nothing downstream reads it — safe to wipe.
+- `woo_cache/{doc}` — **pure cache**, admin only. Docs: `orders`, `product_catalogue`, `customer_scan`, and `catalogue_overview` (+ `catalogue_overview_0`, `_1`, … chunk docs, since ~1k products exceed one Firestore doc; the head doc holds `chunks`). Each holds the last WooCommerce pull so `WooCommerceSync.jsx` / `WooStockReconcile.jsx` / `WooCatalogue.jsx` restore on open instead of re-hitting WooCommerce (the fetch/scan button refreshes). Written by `src/wooCache.js`, size-guarded at ~900 KB per doc. Nothing downstream reads it — safe to wipe.
 
 ---
 

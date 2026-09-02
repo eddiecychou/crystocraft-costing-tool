@@ -200,6 +200,16 @@ export default async function handler(req) {
   // plugin registers sits under wc/v3.
   const wpJson = (path) => fetch(`${WC_BASE_URL.replace(/\/$/, '')}/wp-json/${path}`, { headers: wcAuthHeader })
 
+  // The core WordPress REST API (wp/v2/*, pll/v1, the wp-json root) does NOT
+  // accept the WooCommerce Consumer Key/Secret — it needs a WP Application
+  // Password (WP_USER / WP_PASS, same pair publish-to-wordpress.js uses).
+  // Without it, those endpoints 401 "invalid_username". Only used by the
+  // i18n/SEO probe.
+  const WP_USER = Deno.env.get('WP_USER')
+  const WP_PASS = Deno.env.get('WP_PASS')
+  const wpAuthHeader = WP_USER && WP_PASS ? { Authorization: `Basic ${btoa(`${WP_USER}:${WP_PASS}`)}` } : {}
+  const wpCore = (path) => fetch(`${WC_BASE_URL.replace(/\/$/, '')}/wp-json/${path}`, { headers: wpAuthHeader })
+
   // ── list paid orders in a date range, with their refunds ───────────────────
   if (body.op === 'list_orders') {
     const from = /^\d{4}-\d{2}-\d{2}$/.test(String(body.from || '')) ? body.from : null
@@ -527,17 +537,36 @@ export default async function handler(req) {
         const text = await r.text()
         let parsed = null
         try { parsed = JSON.parse(text) } catch { /* keep raw */ }
-        results.push({ label, status: r.status, ok: r.ok, sample: parsed ? JSON.stringify(parsed).slice(0, 1200) : text.slice(0, 800) })
+        let sample
+        if (Array.isArray(parsed)) {
+          // an array of objects → the KEYS of the first tell us which fields exist
+          sample = `[${parsed.length} rows] first keys: ${JSON.stringify(Object.keys(parsed[0] || {}))}`
+        } else if (parsed && parsed.namespaces) {
+          sample = `namespaces: ${JSON.stringify(parsed.namespaces)}`
+        } else if (parsed) {
+          sample = JSON.stringify(parsed).slice(0, 1200)
+        } else {
+          sample = text.slice(0, 800)
+        }
+        results.push({ label, status: r.status, ok: r.ok, sample })
       } catch (e) {
         results.push({ label, status: null, ok: false, sample: String(e?.message || e).slice(0, 300) })
       }
     }
-    await tryJson('wp-json root (namespaces)', wpJson(''))
-    await tryJson('wc/v3/products first row keys', wc('products', { per_page: 1 }))
-    await tryJson('wp/v2/types/product', wpJson('wp/v2/types/product'))
-    await tryJson('wp/v2/product first (lang/translations/yoast)', wpJson('wp/v2/product?per_page=1&_fields=id,slug,status,lang,translations,yoast_head_json'))
-    await tryJson('pll/v1 languages (Polylang)', wpJson('pll/v1/languages'))
-    return json({ results })
+    if (!(WP_USER && WP_PASS)) {
+      results.push({ label: 'WP Application Password', status: null, ok: false,
+        sample: 'WP_USER / WP_PASS not set on this function — wp/v2 and plugin-namespace checks below will 401. Add the same Application Password publish-to-wordpress.js uses.' })
+    }
+    // wc/v3 uses the Consumer Key/Secret; everything under wp/v2, the root and
+    // plugin namespaces need the WP Application Password (wpCore).
+    await tryJson('wp-json root (namespaces)', wpCore(''))
+    await tryJson('wc/v3/products first-row keys', wc('products', { per_page: 1 }))
+    await tryJson('wc/v3/products with i18n/seo _fields', wc('products', { per_page: 1, _fields: 'id,name,lang,translations,yoast_head_json,meta_data' }))
+    await tryJson('wp/v2/types/product', wpCore('wp/v2/types/product'))
+    await tryJson('wp/v2/product first row', wpCore('wp/v2/product?per_page=1&_fields=id,slug,status,lang,translations,yoast_head_json'))
+    await tryJson('pll/v1 languages (Polylang)', wpCore('pll/v1/languages'))
+    await tryJson('wpml/v1 (WPML)', wpCore('wpml/v1'))
+    return json({ results, wp_app_password_configured: !!(WP_USER && WP_PASS) })
   }
 
   // ── refunds for one order, on demand ────────────────────────────────────────

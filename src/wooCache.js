@@ -43,9 +43,30 @@ export const saveWooCatalogueCache = (rows) =>
   save('product_catalogue', { rows, row_count: rows.length })
 
 // ── catalogue overview: product-shaped rows + SEO fields (WooCatalogue) ─────
-export const loadWooCatalogueOverviewCache = () => load('catalogue_overview')
-export const saveWooCatalogueOverviewCache = (rows) =>
-  save('catalogue_overview', { rows, row_count: rows.length })
+// The full catalogue (~1k products) exceeds one Firestore doc, so it's split
+// into chunk docs (catalogue_overview_0, _1, …) with a head doc holding the
+// count. Head is written LAST so a partial write can't claim chunks it
+// doesn't have.
+const OVERVIEW_CHUNK = 400
+export async function loadWooCatalogueOverviewCache() {
+  const head = await load('catalogue_overview')
+  if (!head) return null
+  if (!head.chunks) return head.rows ? head : null // legacy single-doc form
+  const parts = await Promise.all(
+    Array.from({ length: head.chunks }, (_, i) => load(`catalogue_overview_${i}`)),
+  )
+  if (parts.some(p => !p)) return null // a chunk went missing — treat as no cache
+  return { rows: parts.flatMap(p => p.rows || []), fetchedAt: head.fetchedAt }
+}
+export async function saveWooCatalogueOverviewCache(rows) {
+  const chunks = Math.max(1, Math.ceil(rows.length / OVERVIEW_CHUNK))
+  for (let i = 0; i < chunks; i++) {
+    const res = await save(`catalogue_overview_${i}`, { rows: rows.slice(i * OVERVIEW_CHUNK, (i + 1) * OVERVIEW_CHUNK) })
+    if (res.skipped) return res
+  }
+  await save('catalogue_overview', { chunks, row_count: rows.length })
+  return { ok: true }
+}
 
 // ── order sync result, keyed by the date range it was fetched for ──────────
 export const loadWooOrdersCache = () => load('orders')
