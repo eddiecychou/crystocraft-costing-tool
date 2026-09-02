@@ -49,14 +49,37 @@ export async function saveSeoState(rows) {
 }
 
 // ── history (append-only) ─────────────────────────────────────────────────
-// Rows are compact (ids, slugs, hashes — no bodies), so a full snapshot fits
-// one doc. If it ever doesn't, the write is skipped and the caller is told.
+// Only the fields a rollback needs to compare against — no titles/permalinks/
+// translation maps. Once products (all languages) landed in seo_state the full
+// rows blew past the 900 KB single-doc cap ("Snapshot too large to store");
+// slimmed, ~2k rows fit comfortably. Chunked into a subcollection as a
+// backstop if it ever still doesn't.
+const SNAP_CHUNK = 800
+const slimRow = (r) => ({
+  id: r.id, kind: r.kind, lang: r.lang || '', slug: r.slug || '', status: r.status || '',
+  seo_title: String(r.seo_title || '').slice(0, 300),
+  seo_desc: String(r.seo_desc || '').slice(0, 400),
+  seo_title_set: !!r.seo_title_set, seo_desc_set: !!r.seo_desc_set,
+  elementor_hash: r.elementor_hash ?? null, elementor_len: r.elementor_len || 0,
+})
+
 export async function saveSeoSnapshot(rows, note = '') {
-  const payload = { rows, row_count: rows.length, note: String(note).slice(0, 500), taken_at: serverTimestamp() }
-  const bytes = new Blob([JSON.stringify(payload)]).size
-  if (bytes > MAX_BYTES) return { skipped: 'too_large', bytes }
-  const ref = await addDoc(collection(db, 'seo_state_history'), payload)
-  return { ok: true, id: ref.id }
+  const slim = (rows || []).map(slimRow)
+  const meta = { row_count: slim.length, note: String(note).slice(0, 500), taken_at: serverTimestamp() }
+  const oneDoc = { ...meta, rows: slim }
+  if (new Blob([JSON.stringify(oneDoc)]).size <= MAX_BYTES) {
+    const ref = await addDoc(collection(db, 'seo_state_history'), oneDoc)
+    return { ok: true, id: ref.id }
+  }
+  // Chunked: parent holds meta + chunk count, rows live in a subcollection.
+  const chunks = Math.max(1, Math.ceil(slim.length / SNAP_CHUNK))
+  const parent = await addDoc(collection(db, 'seo_state_history'), { ...meta, chunks })
+  for (let i = 0; i < chunks; i++) {
+    const part = { rows: slim.slice(i * SNAP_CHUNK, (i + 1) * SNAP_CHUNK) }
+    if (new Blob([JSON.stringify(part)]).size > MAX_BYTES) return { skipped: 'too_large' }
+    await setDoc(doc(db, 'seo_state_history', parent.id, 'chunks', `c${i}`), part)
+  }
+  return { ok: true, id: parent.id }
 }
 
 export async function listSeoSnapshots(max = 30) {
@@ -74,6 +97,13 @@ export async function loadSeoSnapshot(id) {
     const d = await getDoc(doc(db, 'seo_state_history', id))
     if (!d.exists()) return null
     const x = d.data()
-    return { id, rows: x.rows || [], takenAt: toDate(x.taken_at), note: x.note || '' }
+    let rows = x.rows || []
+    if (x.chunks) {
+      const parts = await Promise.all(
+        Array.from({ length: x.chunks }, (_, i) => getDoc(doc(db, 'seo_state_history', id, 'chunks', `c${i}`))),
+      )
+      rows = parts.flatMap(p => (p.exists() ? p.data().rows || [] : []))
+    }
+    return { id, rows, takenAt: toDate(x.taken_at), note: x.note || '' }
   } catch { return null }
 }

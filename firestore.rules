@@ -241,6 +241,11 @@ service cloud.firestore {
     match /seo_state_history/{doc} {
       allow read, create: if isAdmin() || can('woo');
       allow update, delete: if false;
+      // Row chunks for a snapshot too large for one doc (created, never mutated).
+      match /chunks/{c} {
+        allow read, create: if isAdmin() || can('woo');
+        allow update, delete: if false;
+      }
     }
     match /seo_batches/{doc} {
       allow read, update: if isAdmin() || can('woo');
