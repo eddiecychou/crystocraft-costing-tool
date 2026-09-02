@@ -9,15 +9,7 @@ import { collection, getDocs, addDoc, serverTimestamp } from 'firebase/firestore
 import { db } from '../firebase'
 import { loadCustomers, importErpCustomers } from '../domain/customer'
 import { CURRENCIES } from '../constants'
-import { useRole } from '../access'
-
-// ERP entities a production login may see — items and stock only. The JES
-// mirror also holds customers, invoices and sales orders, which production
-// must never reach; those tabs are hidden here AND the /api/erp edge function
-// rejects a production caller for any other entity, so the tab list is UI
-// convenience, not the security boundary. Keep this in sync with erp.js's
-// own PRODUCTION_ENTITIES set.
-const PRODUCTION_ERP_ENTITIES = ['item', 'stock']
+import { useCan } from '../access'
 
 // Import ERP supplier records as app Suppliers (mirrors importErpCustomers).
 // Suppliers have no domain module yet — SupplierForm.jsx writes this same
@@ -506,14 +498,13 @@ function fmtSyncTime(v) {
 }
 
 export default function ErpLookup() {
-  const isProduction = useRole() === 'production'
-  // Production sees only Items + Inventory; everyone else (admin) sees the
-  // full entity set. Object key order is preserved, so the visible tabs stay
-  // in their normal order.
-  const entityKeys = isProduction
-    ? Object.keys(ENTITIES).filter(k => PRODUCTION_ERP_ENTITIES.includes(k))
-    : Object.keys(ENTITIES)
-  const [entity, setEntity] = useState(isProduction ? 'item' : 'customer')
+  const can = useCan()
+  // V8.14 — the `erp` module is all-or-nothing (owner's call); the full
+  // entity set is visible to anyone who has it. The customer-import helper
+  // (below) still needs the `customers` module, or its read permission-denies.
+  const canCustomers = can('customers')
+  const entityKeys = Object.keys(ENTITIES)
+  const [entity, setEntity] = useState('customer')
   const [q, setQ] = useState('')
   const [activeOnly, setActiveOnly] = useState(true)
   const [limit, setLimit] = useState(50)
@@ -618,10 +609,9 @@ export default function ErpLookup() {
 
   // Same idea for customers: which JES customer codes are already linked to an
   // app Customer, so an ERP row can be marked "in app" and excluded from import.
-  // Skipped for production — the customers collection is owner-only (they'd
-  // just hit permission-denied) and they never see the customer-import tab.
+  // Skipped without the `customers` module — the read would permission-deny.
   useEffect(() => {
-    if (isProduction) return
+    if (!canCustomers) return
     let alive = true
     loadCustomers()
       .then(list => { if (alive) setExistingErpCodes(new Set(list.map(c => String(c.erp_code || '').toUpperCase()).filter(Boolean))) })

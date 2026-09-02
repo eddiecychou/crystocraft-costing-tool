@@ -1,93 +1,93 @@
 import { createContext, useContext } from 'react'
 
 // RBAC capability map — the SINGLE source of truth that both the sidebar
-// (Layout.jsx) and the route guards (App.jsx's <Gate>) read, so a menu item
-// and the URL it points at can never disagree about who may see a module.
+// (Layout.jsx) and the route guards (App.jsx's <Gate>) read.
 //
-// V8.12 introduces one new staff role, `production` (factory floor). It is
-// NOT admin and NOT a customer — a distinct internal login that may touch
-// only the supply/production side of the tool and must never see customers,
-// finance, quotes, proposals or marketing. `admin` stays the super-user with
-// access to everything; `customer` never reaches these modules at all (they
-// get the Storefront, a different tree entirely). A future `sales` role would
-// slot in here with its own allow-set; deliberately not built this cycle.
+// V8.14 — flat staff role. Every account is `admin`, `staff`, or `customer`.
+// `admin` sees everything; `customer` gets the Storefront (a different tree).
+// A `staff` account's access is EXACTLY the module keys listed in its
+// `users/{uid}.modules[]` array, toggled by the admin in AccountEdit.jsx.
+// The old fixed `production` / `sales` roles are gone (a legacy shim below
+// keeps an un-migrated old-role account working until it's converted).
 //
 // A moduleKey is an ABSTRACT capability, not a route — several routes share
 // one (e.g. /products, /products/:id, /products/:id/edit are all 'products').
 // Tag each nav entry and each gated route with its key; access is decided
-// here and nowhere else.
+// here and nowhere else. The Firestore rules mirror these keys with a
+// `can('<key>')` check — see RBAC-FLEX-PLAN.md §4.
 
-// Exactly the modules the factory needs (owner, V8.12): the catalogue of
-// what's made, its bill-of-materials components, who supplies them, what's in
-// stock, and a basic dashboard. Everything else is admin-only until a role
-// is explicitly given the key. Purchase Orders and the Figurine range are
-// deliberately NOT here — flip them in by adding the key if that changes.
-const PRODUCTION_MODULES = new Set([
-  'dashboard', 'products', 'components', 'suppliers', 'inventory',
-  // Figurine Gifts — Crystocraft's own crystal-figurine catalogue, which the
-  // factory makes. Full access incl. its wholesale prices and the markup/
-  // costing page (owner's call, V8.12): production edits figurines like admin.
-  'figurine',
-  // Purchase Orders — supplier procurement. Added to production on the owner's
-  // request (V8.12); it's supply-side cost data, not customer/sales data.
-  'purchase_orders',
-  // ERP Lookup, restricted to the Items + Inventory tabs — the page hides the
-  // customer/invoice/sales-order tabs for production and the /api/erp edge
-  // function rejects a production caller for any non-item entity. Added
-  // V8.12 on the owner's request so factory staff can look up JES item/stock.
-  'erp',
-])
+// The full catalogue of module keys, grouped for the AccountEdit checklist.
+// `sensitive: true` = grants sight of costs / margins / all-customer data /
+// money / trade secrets — the admin should think before ticking.
+export const MODULE_GROUPS = [
+  { group: 'Catalogue', keys: [
+    { key: 'products',    label: 'Corp Gifts' },
+    { key: 'figurine',    label: 'Figurine Gifts (catalogue + costing)' },
+    { key: 'swatch',      label: 'Swatch Library' },
+    { key: 'catalogues',  label: 'Printed Catalogues' },
+    { key: 'pricing',     label: 'Pricing — corp-gift tier editor', sensitive: true },
+  ] },
+  { group: 'Front office', keys: [
+    { key: 'customers',   label: 'Customers & CRM', sensitive: true },
+    { key: 'quotes',      label: 'Quotes' },
+    { key: 'marketing',   label: 'Marketing' },
+    { key: 'portal',      label: 'Portal — account list (view only)' },
+  ] },
+  { group: 'Fulfilment & finance', keys: [
+    { key: 'shipping',     label: 'Production / Shipping' },
+    { key: 'invoices',     label: 'Sales Invoices', sensitive: true },
+    { key: 'credit_notes', label: 'Credit Notes', sensitive: true },
+    { key: 'uc',           label: 'UC Registry', sensitive: true },
+  ] },
+  { group: 'Supply', keys: [
+    { key: 'supply',      label: 'Supply — Components, Suppliers, Purchase Orders, Inventory' },
+  ] },
+  { group: 'Ecommerce', keys: [
+    { key: 'woo',         label: 'WooCommerce + SEO control plane' },
+  ] },
+  { group: 'System', keys: [
+    { key: 'dashboard',   label: 'Dashboard' },
+    { key: 'erp',         label: 'ERP Lookup', sensitive: true },
+    { key: 'settings',    label: 'Settings', sensitive: true },
+  ] },
+]
+export const ALL_MODULE_KEYS = MODULE_GROUPS.flatMap(g => g.keys.map(k => k.key))
+export const SENSITIVE_MODULE_KEYS = MODULE_GROUPS.flatMap(g => g.keys.filter(k => k.sensitive).map(k => k.key))
 
-// V8.13 — the `sales` role: the customer-facing FRONT OFFICE, the mirror image
-// of `production`'s supply/back office. Owner's call (2026-08-31, all four
-// scope toggles): full CRM (customers + email/WhatsApp/Alibaba ingestion),
-// quoting, marketing/Daily Drafts, catalogue + pricing (view AND edit, unlike
-// production which is walled off from pricing), printed catalogues, plus
-// fulfilment (Production/shipping) and finance (invoices, credit notes) and
-// read-only Portal login visibility.
-//
-// HARD SAFETY LINE, enforced in firestore.rules NOT here: sales may READ the
-// accounts list but may NEVER write users/{uid} role/status, nor create/approve
-// portal invitations (that path is the admin-SDK function). So the Portal
-// module is view-only for sales — no privilege escalation.
-//
-// Deliberately EXCLUDED (supply side + system internals, admin/production only):
-// components, suppliers, purchase_orders, inventory, erp (ERP Lookup page),
-// uc (UC Registry page), woo (WooCommerce Sync), settings.
-const SALES_MODULES = new Set([
-  'dashboard',
-  'customers', 'quotes', 'marketing', 'catalogues',
-  'products', 'figurine',
-  // NOTE: the `pricing` module (the /products/:id/pricing tier editor) is
-  // deliberately NOT here. Corp-gift tier prices are derived from component
-  // COSTS + supplier quotes + the pricing_groups markup formula — all of which
-  // sales must not see. Sales READS the resulting prices (pricing_tiers /
-  // customer_prices, opened in firestore.rules) to build quotes, but the
-  // cost-derived tier editor stays admin. Figurine COSTING is gated the same
-  // way (the /range/:id/costing route is admin+production only).
-  'shipping', 'invoices', 'credit_notes',
-  'portal', // view-only — mutations stay admin (see firestore.rules users/{uid})
-])
+// ── legacy shim ──────────────────────────────────────────────────────────
+// A `production` / `sales` account that hasn't been hand-migrated to
+// `staff` + modules[] yet still resolves to the equivalent module set, so
+// nothing breaks in the window between deploy and migration. Remove this
+// (and the two branches) once both live accounts are converted.
+const LEGACY_PRODUCTION = ['dashboard', 'products', 'figurine', 'supply', 'erp']
+const LEGACY_SALES = ['dashboard', 'customers', 'quotes', 'marketing', 'catalogues', 'products', 'figurine', 'shipping', 'invoices', 'credit_notes', 'portal']
 
-// Is `moduleKey` visible to `role`? Admin sees all; production and sales each
-// see only their allow-set; anyone else (unknown role) sees nothing — a closed
-// default, the safe direction for an access check.
-export function canAccess(role, moduleKey) {
-  if (role === 'admin') return true
-  if (role === 'production') return PRODUCTION_MODULES.has(moduleKey)
-  if (role === 'sales') return SALES_MODULES.has(moduleKey)
-  return false
+// The effective module list for a profile. Admin doesn't need it (canAccess
+// short-circuits). Returns [] for anyone who shouldn't be in the app.
+export function resolveModules(profile) {
+  if (!profile) return []
+  if (profile.role === 'staff') return Array.isArray(profile.modules) ? profile.modules : []
+  if (profile.role === 'production') return LEGACY_PRODUCTION
+  if (profile.role === 'sales') return LEGACY_SALES
+  return []
 }
 
-// Role is provided once near the top of the tree (App.jsx) and read by any
-// descendant that needs to gate itself, so role doesn't have to be threaded
-// through every intermediate component. Defaults to 'admin' only so a
-// provider-less render (shouldn't happen in the app) fails OPEN for staff
-// tooling rather than white-screening — the Firestore rules are the real
-// boundary regardless.
-export const AccessContext = createContext('admin')
-export const useRole = () => useContext(AccessContext)
+// Is `moduleKey` available to this caller? Admin: everything. Otherwise: only
+// if the key is in their resolved module list. Unknown role → nothing (a
+// closed default — the safe direction).
+export function canAccess(role, moduleKey, modules = []) {
+  if (role === 'admin') return true
+  return Array.isArray(modules) && modules.includes(moduleKey)
+}
+
+// Provided once near the top of the tree (App.jsx) as { role, modules } and
+// read by any descendant that needs to gate itself. Defaults to admin/all so
+// a provider-less render fails OPEN for staff tooling rather than
+// white-screening — the Firestore rules are the real boundary regardless.
+export const AccessContext = createContext({ role: 'admin', modules: [] })
+export const useAccess = () => useContext(AccessContext)
+export const useRole = () => useAccess().role
 export const useCan = () => {
-  const role = useRole()
-  return (moduleKey) => canAccess(role, moduleKey)
+  const { role, modules } = useAccess()
+  return (moduleKey) => canAccess(role, moduleKey, modules)
 }

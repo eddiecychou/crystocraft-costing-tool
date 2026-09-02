@@ -2,131 +2,74 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // All access requires a signed-in user
     function isAuth() {
       return request.auth != null;
     }
-
-    // Mirrors firestore.rules' isAdmin() — same users/{uid}.role=='admin' check,
-    // via Storage's cross-service Firestore reference (firestore.get()/exists()).
-    // V8.5 hardening: every path below used to be isAuth(), meaning a signed-in
-    // CUSTOMER account (role:'customer') could read and write admin-only paths
-    // (supplier quotes, settings assets, campaign images, etc.) — flagged during
-    // the Supplier Workstation build, fixed here. Portal image display is
-    // unaffected: customer pages only ever consume pre-resolved Firestore-stored
-    // download-token URLs (getDownloadURL() output), which carry their own
-    // access token and bypass these rules by design — they never call the
-    // Storage SDK directly. customer_uploads/{uid} and renders/{uid} below stay
-    // isAuth()/uid-owned — those ARE genuinely customer-facing (Customizer logo
-    // upload + render preview).
+    function pDoc() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data;
+    }
+    function pExists() {
+      return isAuth() && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid));
+    }
     function isAdmin() {
-      return isAuth() &&
-        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
-        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return pExists() && pDoc().role == 'admin';
     }
 
-    // Mirrors firestore.rules' isStaff() = admin OR the V8.12 `production`
-    // role. Used on exactly the object paths whose Firestore records were
-    // opened to isStaff() — supply-side catalogue/component/supplier assets.
-    // Without this, a production user could edit a product/figurine/component/
-    // supplier record but every file attach (gallery image, supplier catalog,
-    // quote attachment) would be denied by Storage's default-deny. The
-    // customer-facing customer_uploads/{uid} + renders/{uid} paths and every
-    // admin-only domain path (customers, marketing, catalogues, settings
-    // branding, orders, client_quotes) stay as they were.
-    // SUPPLY-side wall: admin + production only. The client-side isStaff
-    // (src/hooks/useProfile.js) has the SAME name but a WIDER set (also
-    // 'sales'); they are not interchangeable. (Code review, V8.13.)
-    function isStaff() {
-      return isAuth() &&
-        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
-        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'production'];
+    // ── V8.14 RBAC — flat staff role (mirrors firestore.rules) ────────────
+    // access = users/{uid}.modules[]; legacy production/sales resolve to an
+    // equivalent set (shim). Keep in sync with firestore.rules / src/access.js.
+    function roleName() {
+      return pExists() ? pDoc().role : '';
+    }
+    function moduleList() {
+      return roleName() == 'staff'
+          ? (pDoc().get('modules', []) is list ? pDoc().get('modules', []) : [])
+        : roleName() == 'production'
+          ? ['dashboard', 'products', 'figurine', 'supply', 'erp']
+        : roleName() == 'sales'
+          ? ['dashboard', 'customers', 'quotes', 'marketing', 'catalogues', 'products', 'figurine', 'shipping', 'invoices', 'credit_notes', 'portal']
+        : [];
+    }
+    function can(m) {
+      return isAdmin() || (pExists() && (m in moduleList()));
     }
 
-    // Mirrors firestore.rules' isFrontOffice() = admin OR the V8.13 `sales`
-    // role. Used on the customer-facing object paths whose Firestore records
-    // were opened to isFrontOffice() — customer/marketing/quote/order/finance
-    // assets and the catalogue images sales may edit. Supply-side paths
-    // (components/suppliers/range_components/supplier_quotes) stay isStaff, and
-    // settings/** stays isAdmin.
-    function isFrontOffice() {
-      return isAuth() &&
-        firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
-        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ['admin', 'sales'];
-    }
-
-    // Product images + BOM-component images + BOM-component quote attachments
-    // (all built under products/{id}/… — see SupplierQuoteForm.jsx). Firestore:
-    // products + products/{id}/components + …/supplier_quotes are isStaff.
+    // Product images + BOM-component images + quote attachments (products/{id}/…).
     match /products/{productId}/{allPaths=**} {
-      allow read, write: if isStaff() || isFrontOffice();
+      allow read, write: if can('products') || can('supply');
     }
-
-    // Component images (legacy top-level path; current code writes component
-    // images under products/{id}/… above). isStaff for parity with the
-    // Firestore products/{id}/components grant.
     match /components/{componentId}/{allPaths=**} {
-      allow read, write: if isStaff();
+      allow read, write: if can('supply');
     }
-
-    // Supplier quote attachments (legacy top-level path; parity with the
-    // {path=**}/supplier_quotes collection-group rule, now isStaff).
     match /supplier_quotes/{quoteId}/{allPaths=**} {
-      allow read, write: if isStaff();
+      allow read, write: if can('supply');
     }
-
-    // Supplier catalogs — Firestore suppliers is isStaff.
     match /suppliers/{supplierId}/{allPaths=**} {
-      allow read, write: if isStaff();
+      allow read, write: if can('supply');
     }
-
-    // Catalogue cover images
     match /catalogues/{catalogueId}/{allPaths=**} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('catalogues');
     }
-
-    // Customer enquiry attachments
     match /customers/{customerId}/{allPaths=**} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('customers');
     }
-
-    // WhatsApp "weak lead" attachments (V8.2) — marketing_contacts/{id}/whatsapp/…,
-    // same idea as customers/{customerId}/whatsapp/… above but for a chat that
-    // was saved as a lead rather than matched to a real customer.
     match /marketing_contacts/{contactId}/{allPaths=**} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('customers');
     }
-
-    // Customer Brand Gallery (V7.21) — uploaded to customer-assets/{customerId}/…
-    // (customerAssets.js), a DIFFERENT top-level path from customers/{customerId}
-    // above (that one is enquiry attachments). Was missing entirely — with no
-    // matching rule, Storage's default-deny would have silently rejected every
-    // Brand Gallery upload. The real access control is the Firestore doc's rule
-    // (firestore.rules, admin-write / owner-read); this just needs to not block
-    // the object write, same posture as the other admin-curated paths above.
     match /customer-assets/{customerId}/{allPaths=**} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('customers');
     }
-
-    // Figurine Gifts (Crystocraft Range) images — Firestore range_products is
-    // isStaff (production has full figurine access incl. costing).
     match /range_products/{rangeId}/{allPaths=**} {
-      allow read, write: if isStaff() || isFrontOffice();
+      allow read, write: if can('figurine');
     }
-
-    // Critical Components library images — Firestore range_components is isStaff.
     match /range_components/{componentId}/{allPaths=**} {
-      allow read, write: if isStaff();
+      allow read, write: if can('supply');
     }
-
-    // App-wide settings assets — quote stamp/signature, etc.
     match /settings/{allPaths=**} {
-      allow read, write: if isAdmin();
+      allow read, write: if isAdmin() || can('settings');
     }
 
-    // Customizer — customer-uploaded logos + saved crystal render previews.
-    // A user owns their own folder; anyone signed in may read (renders are shown
-    // in enquiries/admin). Keyed by uid.
+    // Customizer — customer-owned folders, keyed by uid.
     match /customer_uploads/{uid}/{allPaths=**} {
       allow read: if isAuth();
       allow write: if request.auth.uid == uid;
@@ -136,42 +79,23 @@ service firebase.storage {
       allow write: if request.auth.uid == uid;
     }
 
-    // Shipping module — imported PI files (orders/imports/…) + freight quote
-    // attachments.
+    // Shipping — imported PI files + freight quote attachments.
     match /orders/{orderId}/{allPaths=**} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('shipping');
     }
     match /freight_quotes/{quoteId}/{allPaths=**} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('shipping');
     }
-
-    // Custom (non-catalogue) quote item images (V8.11, QuoteDetail.jsx's
-    // "+ Custom Item") — path built as
-    // client_quotes/custom_items/{itemId}/{Date.now()}.jpg. A custom item has
-    // no product doc to file its image under products/{productId}/images, so
-    // it gets its own path here — same idiom as campaign_images below, and
-    // the same bug that comment describes (a missing rule here silently
-    // rejects the upload with Storage's default-deny, not a helpful error).
+    // Custom quote item images.
     match /client_quotes/{allPaths=**} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('quotes');
     }
-
-    // Daily Drafts (V8.0) — images uploaded directly in the Compose phase
-    // (not from a product's existing gallery — see DailyDrafts.jsx), same
-    // idiom as campaign_images (Campaigns.jsx's Unlayer editor uploads).
+    // Daily Drafts + marketing campaign editor uploads.
     match /daily_draft_images/{allPaths=**} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('marketing');
     }
-
-    // Marketing campaign images (Campaigns.jsx's Unlayer editor uploads,
-    // path built as campaign_images/{Date.now()}_{filename}). Was flagged in
-    // the comment above but never actually added — with no matching rule,
-    // Storage's default-deny silently rejected every campaign image upload
-    // (bug-fix pack C-03). Same posture as every other admin-only path in
-    // this file: real access control is app-level (only the Campaigns admin
-    // page ever writes here), this just needs to not block the object write.
     match /campaign_images/{allPaths=**} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('marketing');
     }
   }
 }

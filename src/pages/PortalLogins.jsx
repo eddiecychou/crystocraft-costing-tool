@@ -63,7 +63,7 @@ const STATUS_STYLE = {
 // "internal". Staff DO carry GA4 app_uid sessions, so they show under the
 // Internal / All filters; the headline "customer" stats never count them.
 const roleGroupOf = u =>
-  (u?.role === 'admin' || u?.role === 'production' || u?.account_type === 'internal') ? 'internal' : 'customer'
+  (['admin', 'staff', 'production', 'sales'].includes(u?.role) || u?.account_type === 'internal') ? 'internal' : 'customer'
 
 export default function PortalLogins({ embedded = false }) {
   const [users, setUsers] = useState([])
@@ -309,7 +309,7 @@ export default function PortalLogins({ embedded = false }) {
                       {u.name && u.email && <div className="text-2xs text-ink-60">{u.email}</div>}
                       {roleGroupOf(u) === 'internal' && (
                         <span className="text-2xs px-1.5 py-0.5 rounded-none bg-ivory-dark text-ink-60 uppercase tracking-wide">
-                          {u.role === 'admin' || u.role === 'production' ? u.role : 'internal'}
+                          {['admin', 'staff', 'production', 'sales'].includes(u.role) ? u.role : 'internal'}
                         </span>
                       )}
                     </td>

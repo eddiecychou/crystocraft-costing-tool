@@ -26,15 +26,29 @@ const JWKS = createRemoteJWKSet(
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
-// Returns the caller's users/{uid}.role string, or '' if the doc/field is
-// missing. (Was a boolean isAdmin(); generalized so requireRole can gate on
-// the V8.13 `sales` front-office role too — same shape erp.js already uses.)
-async function getUserRole(uid, idToken, projectId) {
+// Returns the caller's { role, modules } from users/{uid} — role string ('' if
+// missing) and the V8.14 module list. Legacy production/sales roles resolve to
+// their equivalent module set (the shim; keep in sync with src/access.js and
+// the rules files).
+const LEGACY_PRODUCTION = ['dashboard', 'products', 'figurine', 'supply', 'erp']
+const LEGACY_SALES = ['dashboard', 'customers', 'quotes', 'marketing', 'catalogues', 'products', 'figurine', 'shipping', 'invoices', 'credit_notes', 'portal']
+
+async function getUserRoleAndModules(uid, idToken, projectId) {
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`
   const r = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } })
-  if (!r.ok) return ''
+  if (!r.ok) return { role: '', modules: [] }
   const doc = await r.json()
-  return doc?.fields?.role?.stringValue || ''
+  const role = doc?.fields?.role?.stringValue || ''
+  const raw = doc?.fields?.modules?.arrayValue?.values || []
+  const declared = raw.map(v => v?.stringValue).filter(Boolean)
+  const modules = role === 'staff' ? declared
+    : role === 'production' ? LEGACY_PRODUCTION
+    : role === 'sales' ? LEGACY_SALES
+    : []
+  return { role, modules }
+}
+async function getUserRole(uid, idToken, projectId) {
+  return (await getUserRoleAndModules(uid, idToken, projectId)).role
 }
 
 // Verifies the caller is a signed-in user whose role is in `allowedRoles`.
@@ -71,9 +85,29 @@ export function requireAdmin(req) {
   return requireRole(req, ['admin'])
 }
 
-// Front-office gate — admin OR the V8.13 `sales` role. Use on CRM / marketing /
-// quote / customer-email functions sales is allowed to drive; keep requireAdmin
-// on supply-side / finance-posting / system functions.
-export function requireFrontOffice(req) {
-  return requireRole(req, ['admin', 'sales'])
+// V8.14 module gate — admin, OR a staff account whose users/{uid}.modules[]
+// contains `moduleKey` (legacy production/sales resolve via the shim above).
+// Returns { ok: true, uid, email, role, modules } on success.
+export async function requireModule(req, moduleKey) {
+  const PROJECT_ID = Deno.env.get('VITE_FIREBASE_PROJECT_ID') || Deno.env.get('FIREBASE_PROJECT_ID')
+  if (!PROJECT_ID) return { ok: false, response: json({ error: 'Server not configured' }, 500) }
+
+  const token = (req.headers.get('authorization') || '').match(/^Bearer (.+)$/i)?.[1]
+  if (!token) return { ok: false, response: json({ error: 'Not signed in' }, 401) }
+
+  let uid, email
+  try {
+    const { payload } = await jwtVerify(token, JWKS, {
+      issuer: `https://securetoken.google.com/${PROJECT_ID}`, audience: PROJECT_ID,
+    })
+    uid = payload.sub; email = payload.email || null
+  } catch {
+    return { ok: false, response: json({ error: 'Invalid or expired session' }, 401) }
+  }
+
+  const { role, modules } = await getUserRoleAndModules(uid, token, PROJECT_ID)
+  if (role !== 'admin' && !modules.includes(moduleKey)) {
+    return { ok: false, response: json({ error: 'Access denied' }, 403) }
+  }
+  return { ok: true, uid, email, role, modules }
 }

@@ -1,9 +1,9 @@
-import { requireFrontOffice } from './lib/auth.js'
+import { requireModule } from './lib/auth.js'
 
 export default async function handler(req) {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
-  const auth = await requireFrontOffice(req)
+  const auth = await requireModule(req, 'marketing')
   if (!auth.ok) return auth.response
 
   const WP_BASE_URL     = Deno.env.get('WP_BASE_URL')

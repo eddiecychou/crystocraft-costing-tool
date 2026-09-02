@@ -21,7 +21,7 @@
 // granted Viewer access on the property). jose is already an edge-function
 // dependency elsewhere (lib/auth.js) — same version, no new import surface.
 import { SignJWT, importPKCS8 } from 'https://esm.sh/jose@5.9.6'
-import { requireFrontOffice } from './lib/auth.js'
+import { requireModule } from './lib/auth.js'
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
@@ -51,7 +51,7 @@ async function getAccessToken(clientEmail, privateKeyPem) {
 }
 
 export default async function handler(req) {
-  const auth = await requireFrontOffice(req)
+  const auth = await requireModule(req, 'portal')
   if (!auth.ok) return auth.response
 
   const clientEmail = Deno.env.get('GA_CLIENT_EMAIL')

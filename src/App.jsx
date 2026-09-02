@@ -1,8 +1,8 @@
 import { useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuthState } from './hooks/useAuthState'
-import { useProfile, isAdmin, isProduction, isSales, isApproved, isPending } from './hooks/useProfile'
-import { AccessContext, useCan } from './access'
+import { useProfile, isAdmin, isStaffRole, isProduction, isSales, isApproved, isPending } from './hooks/useProfile'
+import { AccessContext, useCan, resolveModules } from './access'
 import Layout from './components/Layout'
 import LoadingBar from './components/LoadingBar'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -135,8 +135,9 @@ function AppRoutes({ user }) {
 
   const role = !user ? null
     : isAdmin(profile) ? 'admin'
-    : isProduction(profile) ? 'production'
-    : isSales(profile) ? 'sales'
+    : isStaffRole(profile) ? 'staff'
+    : isProduction(profile) ? 'production'   // legacy — shim in access.js
+    : isSales(profile) ? 'sales'             // legacy — shim in access.js
     : isApproved(profile) ? 'customer'
     : 'pending'
 
@@ -154,7 +155,7 @@ function AppRoutes({ user }) {
       <Route path="/portal/set-password" element={<SetPassword />} />
       <Route path="/login" element={
         !user ? <Login />
-        : role === 'admin' || role === 'production' || role === 'sales' ? <Navigate to="/dashboard" replace />
+        : role && role !== 'customer' && role !== 'pending' ? <Navigate to="/dashboard" replace />
         : role === 'customer' ? <Navigate to="/shop" replace />
         : <PendingScreen profile={profile} />
       } />
@@ -162,7 +163,7 @@ function AppRoutes({ user }) {
         !user ? <Navigate to="/login" replace />
         : role === 'pending' ? <PendingScreen profile={profile} />
         : role === 'customer' ? <Storefront profile={profile} />
-        : <AdminApp user={user} role={role} />
+        : <AdminApp user={user} profile={profile} role={role} />
       } />
     </Routes>
     </Suspense>
@@ -181,13 +182,22 @@ function Gate({ module, children }) {
   return can(module) ? children : <Navigate to="/dashboard" replace />
 }
 
-function AdminApp({ user, role }) {
+// /dashboard resolves per capability — a staff account with no front-office
+// modules gets the supply-side ProductionDashboard (reads no sales data);
+// anyone with customers/quotes/invoices gets the full Dashboard.
+function DashboardRoute() {
+  const can = useCan()
+  return (can('customers') || can('quotes') || can('invoices'))
+    ? <Dashboard /> : <ProductionDashboard />
+}
+
+function AdminApp({ user, profile, role }) {
   return (
-    <AccessContext.Provider value={role}>
+    <AccessContext.Provider value={{ role, modules: resolveModules(profile) }}>
     <Routes>
       {/* Print routes — no Layout wrapper */}
       <Route path="/packing/:plId/print" element={<Gate module="shipping"><PackingListPrint /></Gate>} />
-      <Route path="/purchase-orders/:id/print" element={<Gate module="purchase_orders"><PurchaseOrderPrint /></Gate>} />
+      <Route path="/purchase-orders/:id/print" element={<Gate module="supply"><PurchaseOrderPrint /></Gate>} />
       <Route path="/shipments/:id/pi" element={<Gate module="shipping"><ProformaInvoicePrint /></Gate>} />
       <Route path="/shipments/:id/invoice" element={<Gate module="invoices"><SalesInvoicePrint /></Gate>} />
       <Route path="/credit-notes/:id/print" element={<Gate module="credit_notes"><CreditNotePrint /></Gate>} />
@@ -202,43 +212,42 @@ function AdminApp({ user, role }) {
               <Suspense fallback={<LoadingBar />}>
               <Routes>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                {/* Dashboard resolves per role — production gets a supply-side
-                    dashboard that reads no sales data (see ProductionDashboard). */}
-                <Route path="/dashboard" element={role === 'production' ? <ProductionDashboard /> : <Dashboard />} />
-                <Route path="/products" element={<Products />} />
+                <Route path="/dashboard" element={<DashboardRoute />} />
+                <Route path="/products" element={<Gate module="products"><Products /></Gate>} />
                 <Route path="/range" element={<Gate module="figurine"><Range /></Gate>} />
                 <Route path="/range/import-images" element={<Gate module="figurine"><ImportImages /></Gate>} />
-                {/* Figurine costing is cost-derived (crystal unit costs + BOM)
-                    — supply-side. Sales browses/quotes figurines but not their
-                    costing; admin + production only. */}
-                <Route path="/range/:id/costing" element={role === 'sales' ? <Navigate to="/range" replace /> : <Gate module="figurine"><RangeCosting /></Gate>} />
+                {/* Figurine costing shows component costs + BOM + markup — cost
+                    data, gated on `pricing` (V8.14), not just `figurine`. */}
+                <Route path="/range/:id/costing" element={<Gate module="pricing"><RangeCosting /></Gate>} />
                 <Route path="/range/:id" element={<Gate module="figurine"><RangeForm /></Gate>} />
-                <Route path="/components" element={<ComponentsLib />} />
-                <Route path="/inventory" element={<InventoryStatus />} />
+                {/* Supply side — Components, Suppliers, Inventory, POs, BOM
+                    editing — all one `supply` module (V8.14). */}
+                <Route path="/components" element={<Gate module="supply"><ComponentsLib /></Gate>} />
+                <Route path="/inventory" element={<Gate module="supply"><InventoryStatus /></Gate>} />
                 <Route path="/erp-lookup" element={<Gate module="erp"><ErpLookup /></Gate>} />
                 <Route path="/uc-registry" element={<Gate module="uc"><UcRegistry /></Gate>} />
                 <Route path="/swatch-library" element={<Gate module="swatch"><SwatchLibrary /></Gate>} />
-                <Route path="/components/critical/new" element={<RangeComponentForm />} />
-                <Route path="/components/critical/:id/quotes/new" element={<RangeQuoteForm />} />
-                <Route path="/components/critical/:id/quotes/:quoteId" element={<RangeQuoteForm />} />
-                <Route path="/components/critical/:id" element={<RangeComponentForm />} />
-                <Route path="/products/new" element={<ProductForm />} />
-                <Route path="/products/:id" element={<ProductDetail />} />
-                <Route path="/products/:id/edit" element={<ProductForm />} />
+                <Route path="/components/critical/new" element={<Gate module="supply"><RangeComponentForm /></Gate>} />
+                <Route path="/components/critical/:id/quotes/new" element={<Gate module="supply"><RangeQuoteForm /></Gate>} />
+                <Route path="/components/critical/:id/quotes/:quoteId" element={<Gate module="supply"><RangeQuoteForm /></Gate>} />
+                <Route path="/components/critical/:id" element={<Gate module="supply"><RangeComponentForm /></Gate>} />
+                <Route path="/products/new" element={<Gate module="products"><ProductForm /></Gate>} />
+                <Route path="/products/:id" element={<Gate module="products"><ProductDetail /></Gate>} />
+                <Route path="/products/:id/edit" element={<Gate module="products"><ProductForm /></Gate>} />
                 <Route path="/products/:id/pricing" element={<Gate module="pricing"><PricingTiers /></Gate>} />
-                <Route path="/products/:productId/components/new" element={<ComponentForm />} />
-                <Route path="/products/:productId/components/:componentId" element={<ComponentDetail />} />
-                <Route path="/products/:productId/components/:componentId/edit" element={<ComponentForm />} />
-                <Route path="/products/:productId/components/:componentId/quotes/new" element={<SupplierQuoteForm />} />
-                <Route path="/products/:productId/components/:componentId/quotes/:quoteId" element={<SupplierQuoteForm />} />
-                <Route path="/suppliers" element={<Suppliers />} />
-                <Route path="/suppliers/new" element={<SupplierForm />} />
-                <Route path="/suppliers/:id" element={<SupplierDetail />} />
-                <Route path="/suppliers/:id/edit" element={<SupplierForm />} />
-                <Route path="/purchase-orders" element={<Gate module="purchase_orders"><PurchaseOrders /></Gate>} />
-                <Route path="/purchase-orders/new" element={<Gate module="purchase_orders"><PurchaseOrderForm /></Gate>} />
-                <Route path="/purchase-orders/:id" element={<Gate module="purchase_orders"><PurchaseOrderDetail /></Gate>} />
-                <Route path="/purchase-orders/:id/edit" element={<Gate module="purchase_orders"><PurchaseOrderForm /></Gate>} />
+                <Route path="/products/:productId/components/new" element={<Gate module="supply"><ComponentForm /></Gate>} />
+                <Route path="/products/:productId/components/:componentId" element={<Gate module="supply"><ComponentDetail /></Gate>} />
+                <Route path="/products/:productId/components/:componentId/edit" element={<Gate module="supply"><ComponentForm /></Gate>} />
+                <Route path="/products/:productId/components/:componentId/quotes/new" element={<Gate module="supply"><SupplierQuoteForm /></Gate>} />
+                <Route path="/products/:productId/components/:componentId/quotes/:quoteId" element={<Gate module="supply"><SupplierQuoteForm /></Gate>} />
+                <Route path="/suppliers" element={<Gate module="supply"><Suppliers /></Gate>} />
+                <Route path="/suppliers/new" element={<Gate module="supply"><SupplierForm /></Gate>} />
+                <Route path="/suppliers/:id" element={<Gate module="supply"><SupplierDetail /></Gate>} />
+                <Route path="/suppliers/:id/edit" element={<Gate module="supply"><SupplierForm /></Gate>} />
+                <Route path="/purchase-orders" element={<Gate module="supply"><PurchaseOrders /></Gate>} />
+                <Route path="/purchase-orders/new" element={<Gate module="supply"><PurchaseOrderForm /></Gate>} />
+                <Route path="/purchase-orders/:id" element={<Gate module="supply"><PurchaseOrderDetail /></Gate>} />
+                <Route path="/purchase-orders/:id/edit" element={<Gate module="supply"><PurchaseOrderForm /></Gate>} />
                 <Route path="/quotes" element={<Gate module="quotes"><Quotes /></Gate>} />
                 <Route path="/quotes/new" element={<Gate module="quotes"><QuoteForm /></Gate>} />
                 <Route path="/quotes/:id" element={<Gate module="quotes"><QuoteDetail /></Gate>} />

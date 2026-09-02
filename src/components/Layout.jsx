@@ -5,7 +5,7 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore'
 import { auth, db } from '../firebase'
 import logo from '../assets/logo.png'
 import { APP_NAME, APP_VERSION, versionLabel } from '../appInfo'
-import { canAccess, useRole } from '../access'
+import { canAccess, useAccess } from '../access'
 import {
   LayoutDashboard, Package, Gem, ClipboardList, Puzzle,
   Factory, Building2, Megaphone, Settings, MoreHorizontal, Users, Truck, FileText, Boxes, Database, Hash, Receipt, Sparkles, RotateCcw, ShoppingCart,
@@ -50,10 +50,10 @@ const nav = [
   { to: '/woo-stock',  label: 'Woo Stock Match', short: 'WooStock', Icon: ShoppingCart, module: 'woo' },
 
   { group: 'Supply' },
-  { to: '/components', label: 'Components',    short: 'Comps',    Icon: Puzzle, module: 'components' },
-  { to: '/suppliers',  label: 'Suppliers',     short: 'Suppliers',Icon: Factory, module: 'suppliers' },
-  { to: '/purchase-orders', label: 'Purchase Orders', short: 'POs', Icon: FileText, module: 'purchase_orders' },
-  { to: '/inventory',  label: 'Inventory',     short: 'Stock',    Icon: Boxes, module: 'inventory' },
+  { to: '/components', label: 'Components',    short: 'Comps',    Icon: Puzzle, module: 'supply' },
+  { to: '/suppliers',  label: 'Suppliers',     short: 'Suppliers',Icon: Factory, module: 'supply' },
+  { to: '/purchase-orders', label: 'Purchase Orders', short: 'POs', Icon: FileText, module: 'supply' },
+  { to: '/inventory',  label: 'Inventory',     short: 'Stock',    Icon: Boxes, module: 'supply' },
 
   { group: 'System' },
   { to: '/erp-lookup', label: 'ERP Lookup',    short: 'ERP',      Icon: Database, module: 'erp' },
@@ -64,19 +64,19 @@ const nav = [
 // when the role can see none of the destinations that follow it, so a
 // production login never gets a bare "Sales" header over an empty section.
 function useVisibleNav() {
-  const role = useRole()
+  const { role, modules } = useAccess()
   const out = []
   for (let i = 0; i < nav.length; i++) {
     const item = nav[i]
     if (item.group) {
       // Look ahead: keep the heading only if at least one following
-      // destination (before the next heading) is visible to this role.
+      // destination (before the next heading) is visible to this user.
       let keep = false
       for (let j = i + 1; j < nav.length && !nav[j].group; j++) {
-        if (canAccess(role, nav[j].module)) { keep = true; break }
+        if (canAccess(role, nav[j].module, modules)) { keep = true; break }
       }
       if (keep) out.push(item)
-    } else if (canAccess(role, item.module)) {
+    } else if (canAccess(role, item.module, modules)) {
       out.push(item)
     }
   }
@@ -84,7 +84,7 @@ function useVisibleNav() {
 }
 
 export default function Layout({ children, user }) {
-  const role = useRole()
+  const { role, modules } = useAccess()
   const visibleNav = useVisibleNav()
   const navItems = visibleNav.filter(n => n.to)
   const mainNav  = navItems.filter(n => n.primary)
@@ -113,10 +113,10 @@ export default function Layout({ children, user }) {
   // skip the subscription for anyone else so it doesn't permission-deny.
   const [seoPending, setSeoPending] = useState(0)
   useEffect(() => {
-    if (!canAccess(role, 'woo')) { setSeoPending(0); return }
+    if (!canAccess(role, 'woo', modules)) { setSeoPending(0); return }
     const q = query(collection(db, 'seo_batches'), where('status', '==', 'pending_review'))
     return onSnapshot(q, snap => setSeoPending(snap.size), () => setSeoPending(0))
-  }, [role])
+  }, [role, modules])
   const badgeFor = (to) => (to === '/seo-review' && seoPending > 0 ? seoPending : 0)
   const moreActive = moreNav.some(n => location.pathname.startsWith(n.to))
 

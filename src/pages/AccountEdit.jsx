@@ -9,7 +9,11 @@ import ContactPicker from '../components/ContactPicker'
 import { notifyEmail } from '../notify'
 import { approveInvitation, deleteAccount } from '../portalInviteApi'
 import LoadingBar from '../components/LoadingBar'
+import { MODULE_GROUPS, resolveModules } from '../access'
 import { ArrowLeft } from 'lucide-react'
+
+const sameSet = (a = [], b = []) =>
+  JSON.stringify([...a].sort()) === JSON.stringify([...b].sort())
 
 const fmtDate = ts => {
   const d = ts?.toDate?.() || (ts instanceof Date ? ts : null)
@@ -51,12 +55,14 @@ export default function AccountEdit() {
   const [newType, setNewType] = useState(CRM_CATEGORIES[0])
   const [newSource, setNewSource] = useState('Website')
   const [enquiries, setEnquiries] = useState([])
+  const [mods, setMods] = useState([])   // staff module checklist, editable
 
   useEffect(() => {
     getDoc(doc(db, 'users', id)).then(s => {
       if (s.exists()) {
         const d = { id: s.id, ...s.data() }
         setU(d)
+        setMods(Array.isArray(d.modules) ? d.modules : resolveModules(d))
         setCur(d.base_currency || 'USD')
         setFxRate(d.fx_rate ?? '')
         setDisc(Number(d.ws_discount_pct) > 0 ? d.ws_discount_pct : 100)
@@ -93,9 +99,9 @@ export default function AccountEdit() {
 
   const isSelf   = auth.currentUser?.uid === id
   const isAdmin  = u.role === 'admin'
-  const isProduction = u.role === 'production'
-  const isSales  = u.role === 'sales'
-  const isStaff  = isAdmin || isProduction || isSales   // internal login, not a customer
+  const isStaffRole = u.role === 'staff'
+  const isLegacyStaff = u.role === 'production' || u.role === 'sales'   // pre-V8.14, not yet migrated
+  const isStaff  = isAdmin || isStaffRole || isLegacyStaff   // any internal login
   const isPending   = u.role === 'customer' && u.status !== 'approved' && u.status !== 'suspended'
   const isApproved  = u.role === 'customer' && u.status === 'approved'
   const isSuspended = u.role === 'customer' && u.status === 'suspended'
@@ -115,8 +121,11 @@ export default function AccountEdit() {
       // silently demoted to `pending`, TWICE) is exactly what this trail
       // exists to catch. Best-effort and non-blocking — a failed audit
       // write must never fail the account change itself.
-      const changed = ['role', 'status', 'account_type']
-        .filter(k => k in patch && patch[k] !== before?.[k])
+      const changed = ['role', 'status', 'account_type', 'modules'].filter(k => {
+        if (!(k in patch)) return false
+        if (k === 'modules') return !sameSet(patch[k] || [], before?.modules || [])
+        return patch[k] !== before?.[k]
+      })
       if (changed.length) {
         addDoc(collection(db, 'audit_logs'), {
           kind: 'account',
@@ -136,6 +145,28 @@ export default function AccountEdit() {
       setStatus('Error: ' + (e?.message || 'could not save'))
     }
   }
+
+  // Role change (V8.14). `staff` carries a `modules[]` list — seed it from the
+  // checklist below (or the legacy shim, if converting an old production/sales
+  // account). admin/customer clear it.
+  function changeRole(next) {
+    if (next === u.role) return
+    if (next === 'admin') {
+      const ans = prompt(`⚠️ Make ${displayName} a FULL ADMIN?\n\nAn admin sees EVERYTHING — costs, margins, every customer, all trade secrets. Only for your own trusted staff.\n\nType  MAKE ADMIN  to confirm.`)
+      if ((ans || '').trim().toUpperCase() !== 'MAKE ADMIN') return
+      apply({ role: 'admin', modules: [] }, { back: true })
+    } else if (next === 'staff') {
+      const seed = mods.length ? mods : (resolveModules({ role: u.role }).length ? resolveModules({ role: u.role }) : ['dashboard'])
+      if (!confirm(`Make ${displayName} STAFF?\n\nThey get an operation-center login limited to the modules you tick below. Tick nothing sensitive by mistake — ⚠ items reveal costs, margins or trade data.`)) return
+      setMods(seed)
+      apply({ role: 'staff', status: 'approved', modules: seed })
+    } else { // customer
+      if (!confirm(`Revert ${displayName} to a normal customer? They lose all operation-center access — Storefront only.`)) return
+      apply({ role: 'customer', status: 'approved', modules: [] }, { back: true })
+    }
+  }
+  const toggleMod = (key) =>
+    setMods(m => m.includes(key) ? m.filter(x => x !== key) : [...m, key])
 
   // SU-07A (2026-08-19 fix): an account created via the invitation/self-apply
   // flow (u.invitation_id set) has NO password on its Auth record at all —
@@ -288,8 +319,8 @@ export default function AccountEdit() {
   }
 
   const roleStatusLabel = isAdmin ? 'Admin'
-    : isProduction ? 'Production staff'
-    : isSales ? 'Sales staff'
+    : isStaffRole ? `Staff · ${(u.modules || []).length} module${(u.modules || []).length === 1 ? '' : 's'}`
+    : isLegacyStaff ? `${u.role} (legacy)`
     : isApproved ? 'Approved customer'
     : isSuspended ? 'Suspended'
     : 'Pending approval'
@@ -484,40 +515,10 @@ export default function AccountEdit() {
             </button>
           )}
           {isApproved && (
-            <>
-              <button className="btn-secondary text-sm"
-                onClick={() => { if (confirm('Suspend this customer? They lose pricing access and move to the Suspended tab. You can restore them anytime.')) apply({ status: 'suspended' }, { back: true }) }}>
-                Suspend
-              </button>
-              {/* Factory-floor staff (V8.12 RBAC). A production login sees
-                  only Products / Components / Suppliers / Inventory and the
-                  supply-side dashboard — never customers, quotes, finance or
-                  marketing. Lighter confirm than admin: it grants no sensitive
-                  access, so a plain confirm() is enough. */}
-              <button className="btn-secondary text-sm"
-                onClick={() => { if (confirm(`Make ${displayName} PRODUCTION STAFF?\n\nThey get a factory login: Products, Components, Suppliers and Inventory only. They will NOT see customers, quotes, invoices, credit notes or marketing.`)) apply({ role: 'production' }, { back: true }) }}>
-                Make production staff
-              </button>
-              {/* Sales / front-office staff (V8.13 RBAC). A sales login sees
-                  customers, CRM & message ingestion, quotes, marketing,
-                  catalogue + pricing, printed catalogues, fulfilment and
-                  finance — the customer-facing side. It does NOT see the
-                  supply side (components, suppliers, purchase orders,
-                  inventory) or system internals (ERP, settings, Woo), and it
-                  can NEVER change account roles. Sales sees prices, so a
-                  slightly firmer confirm than production. */}
-              <button className="btn-secondary text-sm"
-                onClick={() => { if (confirm(`Make ${displayName} SALES STAFF?\n\nThey get a front-office login: customers & CRM, message history, quotes (incl. prices), marketing, catalogues, fulfilment and invoices/credit notes.\n\nThey will NOT see components, suppliers, purchase orders, inventory, the ERP, or settings — and they can NEVER change account roles or approve logins.`)) apply({ role: 'sales' }, { back: true }) }}>
-                Make sales staff
-              </button>
-              <button className="text-sm text-red-600 border border-red-200 rounded-none px-2.5 py-1 hover:bg-red-50"
-                onClick={() => {
-                  const ans = prompt(`⚠️ Make ${displayName} a FULL ADMIN?\n\nAn admin can see EVERYTHING in the costing tool — costs, margins, suppliers, every customer, and all your trade secrets. Only do this for your own staff.\n\nType  MAKE ADMIN  to confirm.`)
-                  if ((ans || '').trim().toUpperCase() === 'MAKE ADMIN') apply({ role: 'admin' }, { back: true })
-                }}>
-                Make admin
-              </button>
-            </>
+            <button className="btn-secondary text-sm"
+              onClick={() => { if (confirm('Suspend this customer? They lose pricing access and move to the Suspended tab. You can restore them anytime.')) apply({ status: 'suspended' }, { back: true }) }}>
+              Suspend
+            </button>
           )}
           {isSuspended && (
             <button className="btn-secondary text-sm"
@@ -525,45 +526,71 @@ export default function AccountEdit() {
               Restore
             </button>
           )}
-          {/* Staff (production/sales) role management — promote to admin, or
-              revoke back to a normal customer account. Same shape for both. */}
-          {(isProduction || isSales) && !isSelf && (
-            <>
-              <button className="btn-secondary text-sm"
-                onClick={() => {
-                  const ans = prompt(`⚠️ Make ${displayName} a FULL ADMIN?\n\nAn admin can see EVERYTHING — costs, margins, every customer, all trade secrets. Only do this for trusted staff.\n\nType  MAKE ADMIN  to confirm.`)
-                  if ((ans || '').trim().toUpperCase() === 'MAKE ADMIN') apply({ role: 'admin' }, { back: true })
-                }}>
-                Promote to admin
-              </button>
-              {isSales
-                ? <button className="btn-secondary text-sm"
-                    onClick={() => { if (confirm(`Switch ${displayName} to PRODUCTION STAFF?\n\nThey lose the customer-facing side and get the factory login instead: Products, Components, Suppliers, Inventory.`)) apply({ role: 'production' }, { back: true }) }}>
-                    Switch to production staff
-                  </button>
-                : <button className="btn-secondary text-sm"
-                    onClick={() => { if (confirm(`Switch ${displayName} to SALES STAFF?\n\nThey lose the supply side and get the front-office login instead: customers, CRM, quotes, marketing, catalogue/pricing, fulfilment, invoices.`)) apply({ role: 'sales' }, { back: true }) }}>
-                    Switch to sales staff
-                  </button>}
-              <button className="text-sm text-red-600 border border-red-200 rounded-none px-2.5 py-1 hover:bg-red-50"
-                onClick={() => { if (confirm('Revoke staff access? They revert to a normal (approved) customer login — Storefront only, no operation-center access.')) apply({ role: 'customer', status: 'approved' }, { back: true }) }}>
-                Revoke — back to normal account
-              </button>
-            </>
-          )}
-          {isAdmin && !isSelf && (
-            <button className="btn-secondary text-sm"
-              onClick={() => { if (confirm('Remove admin access? They revert to a normal (approved) customer — they keep shopping/pricing access but can no longer see any costing data.')) apply({ role: 'customer', status: 'approved' }, { back: true }) }}>
-              Revoke admin — back to normal account
-            </button>
-          )}
           {isStaff && isSelf && <span className="text-sm text-ink-60">This is your own {isAdmin ? 'admin' : 'staff'} account.</span>}
-
           {canDelete && (
             <button className="text-sm text-ink-60 hover:text-red-600 sm:ml-auto" onClick={del}>Delete account</button>
           )}
         </div>
       </div>
+
+      {/* Role & access (V8.14) */}
+      {!isSelf && (isApproved || isSuspended || isStaff) && (
+        <div className="card p-5 mt-4">
+          <h2 className="text-sm text-ink-80 mb-3">Role &amp; access</h2>
+          {isLegacyStaff && (
+            <p className="text-xs text-amber-700 mb-3">
+              This is a legacy <strong>{u.role}</strong> account. It still works via a fallback; switch it to
+              <strong> Staff</strong> and confirm its module ticks to finish the migration.
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2 mb-4">
+            {[
+              { r: 'customer', label: 'Customer — storefront only' },
+              { r: 'staff', label: 'Staff — pick modules below' },
+              { r: 'admin', label: 'Admin — everything' },
+            ].map(({ r, label }) => (
+              <button key={r} onClick={() => changeRole(r)}
+                className={`text-sm px-3 py-1.5 rounded-none border transition-colors ${
+                  u.role === r ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-warm-grey text-ink-70 hover:border-ink-60'
+                }`}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {u.role === 'staff' && (
+            <div className="border border-warm-grey p-3">
+              <p className="text-2xs uppercase tracking-wide text-ink-60 mb-2">What this staff account can open</p>
+              {MODULE_GROUPS.map(g => (
+                <div key={g.group} className="mb-2.5">
+                  <p className="text-2xs font-semibold text-ink-70 mb-1">{g.group}</p>
+                  <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+                    {g.keys.map(k => (
+                      <label key={k.key} className="text-xs inline-flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" className="w-3.5 h-3.5 rounded-sm border-warm-grey text-brand-600"
+                          checked={mods.includes(k.key)} onChange={() => toggleMod(k.key)} />
+                        <span className={k.sensitive ? 'text-amber-700' : 'text-ink-70'}>
+                          {k.label}{k.sensitive ? ' ⚠' : ''}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <p className="text-2xs text-ink-60 mt-2">⚠ = reveals costs, margins or trade data — grant deliberately.</p>
+              <div className="flex items-center gap-2 mt-3">
+                <button className="btn-primary text-xs py-1 px-3" disabled={status === 'saving' || sameSet(mods, u.modules || [])}
+                  onClick={() => apply({ modules: mods })}>
+                  Save access
+                </button>
+                <span className={`text-2xs ${sameSet(mods, u.modules || []) ? 'text-ink-60' : 'text-amber-600'}`}>
+                  {sameSet(mods, u.modules || []) ? 'no unsaved changes' : 'unsaved'}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

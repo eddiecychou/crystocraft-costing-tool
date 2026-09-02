@@ -8,18 +8,16 @@ import ImageGallery from '../components/ImageGallery'
 import { IMAGE_TYPES, productStatusOf } from '../constants'
 import { Star, X } from 'lucide-react'
 import useScrollMemory from '../hooks/useScrollMemory'
-import { useRole } from '../access'
+import { useCan } from '../access'
 
 export default function ProductDetail() {
   const { id } = useParams()
-  const role = useRole()
-  // Branded-for image tagging reads the customers collection — admin AND sales
-  // (V8.13) may, production may not (rules deny it). The name `isAdmin` is kept
-  // for the existing customers-fetch guard below; it means "may read customers".
-  const isAdmin = role === 'admin' || role === 'sales'
-  // The Pricing Tiers editor is cost-derived (components + supplier quotes +
-  // markup formula) — admin only. Sales sees prices when quoting, not here.
-  const canManagePricing = role === 'admin'
+  const can = useCan()
+  // "Branded for" image tagging reads the customers collection — needs the
+  // `customers` module (rules deny otherwise). Name kept as `isAdmin` for the
+  // downstream customers-fetch guard; it means "may read customers".
+  const isAdmin = can('customers')
+  const canManagePricing = can('pricing')
   const navigate = useNavigate()
   const [product, setProduct]       = useState(null)
   const [components, setComponents] = useState([])
@@ -43,11 +41,10 @@ export default function ProductDetail() {
     })
   }, [id])
 
-  // BOM/components are supply-side (admin + production only in firestore.rules).
-  // Sales edits the catalogue's customer-facing fields + pricing but not the
-  // bill of materials — so don't subscribe (the read would permission-deny)
+  // BOM/components are supply-side — need the `supply` module (rules deny
+  // otherwise). Without it, don't subscribe (the read would permission-deny)
   // and the Components card + Duplicate are hidden below.
-  const isSupplySide = role === 'admin' || role === 'production'
+  const isSupplySide = can('supply')
   useEffect(() => {
     if (!isSupplySide) return
     const q = query(collection(db, 'products', id, 'components'), orderBy('sort_order'))

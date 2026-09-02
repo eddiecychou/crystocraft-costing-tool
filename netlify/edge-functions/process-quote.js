@@ -1,9 +1,9 @@
-import { requireFrontOffice } from './lib/auth.js'
+import { requireModule } from './lib/auth.js'
 
 export default async function handler(req) {
   if (req.method !== 'POST') return new Response('Method not allowed', { status: 405 })
 
-  const auth = await requireFrontOffice(req)
+  const auth = await requireModule(req, 'quotes')
   if (!auth.ok) return auth.response
 
   const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY')

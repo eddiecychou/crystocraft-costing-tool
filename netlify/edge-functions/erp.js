@@ -86,9 +86,11 @@ const json = (body, status = 200) =>
 async function getRole(uid, idToken, projectId) {
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`
   const r = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } })
-  if (!r.ok) return null
+  if (!r.ok) return { role: null, modules: [] }
   const doc = await r.json()
-  return doc?.fields?.role?.stringValue || null
+  const role = doc?.fields?.role?.stringValue || null
+  const modules = (doc?.fields?.modules?.arrayValue?.values || []).map(v => v?.stringValue).filter(Boolean)
+  return { role, modules }
 }
 
 // Items + stock, plus the item-only helpers (BOM explosion, code utilities,
@@ -144,11 +146,13 @@ export default async function handler(req) {
     return json({ error: 'Invalid or expired session' }, 401)
   }
 
-  // 1b) Resolve the caller's role. Admin and production may proceed; the
-  //     per-entity restriction for production is applied after we parse the
-  //     request (2·5, once payload.entity is known).
-  const role = await getRole(uid, token, PROJECT_ID)
-  if (role !== 'admin' && role !== 'production' && role !== 'sales') {
+  // 1b) Resolve the caller's role + V8.14 modules. Admin, or a `staff` account
+  //     holding the `erp` module, get the FULL ERP surface (one erp = full — no
+  //     per-entity split). Legacy production/sales keep their narrower entity
+  //     sets, enforced at 2·5 below, until they're hand-migrated to `staff`.
+  const { role, modules } = await getRole(uid, token, PROJECT_ID)
+  const erpFull = role === 'admin' || (role === 'staff' && modules.includes('erp'))
+  if (!erpFull && role !== 'production' && role !== 'sales') {
     return json({ error: 'Access denied' }, 403)
   }
 

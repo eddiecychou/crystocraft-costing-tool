@@ -14,53 +14,46 @@ service cloud.firestore {
     function isAdmin() {
       return hasProfile() && profile().role == 'admin';
     }
-    // V8.12 RBAC — factory-floor staff. May read/write the supply side
-    // (catalogue, components, suppliers, inventory) but NEVER customers,
-    // finance, quotes, proposals or marketing. isStaff() is the union of the
-    // internal logins (admin + production); use it on a collection the
-    // production role is allowed to touch, and keep isAdmin() on everything
-    // that must stay owner-only. See src/access.js for the matching app-side
-    // capability map — the two must agree.
-    function isProduction() {
-      return hasProfile() && profile().role == 'production';
-    }
-    // SUPPLY-side wall: admin + production only. NOTE the client-side
-    // isStaff (src/hooks/useProfile.js) has the SAME name but a WIDER set
-    // (also 'sales'); they are not interchangeable. (Code review, V8.13.)
-    function isStaff() {
-      return isAdmin() || isProduction();
-    }
-    // V8.13 RBAC — the customer-facing FRONT OFFICE staff role, the mirror of
-    // production. May read/write customers + CRM (all message ingestion),
-    // quotes, marketing, printed catalogues, fulfilment (orders/shipping) and
-    // finance (invoices/credit notes), and read+edit the catalogue + pricing —
-    // but NEVER the supply side (components/suppliers/POs/inventory) or system
-    // internals (settings write, ERP). isFrontOffice() = admin OR sales; use it
-    // on a collection sales is allowed to touch, keeping isAdmin() on the
-    // owner-only ones. See src/access.js for the matching capability map.
+
+    // ── V8.14 RBAC — flat staff role ─────────────────────────────────────
+    // Every account is admin | staff | customer. A `staff` account's access
+    // is EXACTLY the module keys in users/{uid}.modules[]. `can('<key>')`
+    // is the check every collection below uses. Keep the key list + this
+    // mapping in sync with src/access.js and RBAC-FLEX-PLAN.md §4.
     //
-    // HARD LINE: sales may READ users/{uid} (the accounts list) but the users
-    // write rule below stays admin-only, and portal_invitations write stays
-    // admin — so sales can never change a role, approve a login, or escalate.
-    function isSales() {
-      return hasProfile() && profile().role == 'sales';
+    // Legacy shim: a pre-V8.14 `production` / `sales` account (not yet
+    // hand-migrated) resolves to the equivalent module set. Remove the two
+    // branches once both live accounts are converted.
+    function roleName() {
+      return hasProfile() ? profile().role : '';
     }
-    function isFrontOffice() {
-      return isAdmin() || isSales();
+    function moduleList() {
+      return roleName() == 'staff'
+          ? (profile().get('modules', []) is list ? profile().get('modules', []) : [])
+        : roleName() == 'production'
+          ? ['dashboard', 'products', 'figurine', 'supply', 'erp']
+        : roleName() == 'sales'
+          ? ['dashboard', 'customers', 'quotes', 'marketing', 'catalogues', 'products', 'figurine', 'shipping', 'invoices', 'credit_notes', 'portal']
+        : [];
     }
+    function can(m) {
+      return isAdmin() || (hasProfile() && (m in moduleList()));
+    }
+    // Any internal login (used only where "one of our people" is enough).
+    function isInternal() {
+      return isAdmin() || roleName() == 'staff' || roleName() == 'production' || roleName() == 'sales';
+    }
+
     function isApprovedCustomer() {
       return hasProfile() && profile().role == 'customer' && profile().status == 'approved';
     }
     function canShop() {
       return isAdmin() || isApprovedCustomer();
     }
-    // A customer flagged "sensitive" on their customers/ record (Customers →
-    // edit) must never be shown a storefront product photo tagged
-    // "branded_for_customer_id" for a DIFFERENT customer — e.g. Sunlife must
-    // never see a Manulife-branded case-study photo. get() inside a rule reads
-    // the target document's raw data regardless of that document's own read
-    // rule (same mechanism profile() already relies on for users/{uid}), so
-    // this needs no new client-readable field on customers/.
+    // A customer flagged "sensitive" on their customers/ record must never be
+    // shown a storefront product photo tagged "branded_for_customer_id" for a
+    // DIFFERENT customer. get() inside a rule reads the target doc's raw data
+    // regardless of its own read rule.
     function viewerIsSensitive() {
       return hasProfile()
         && profile().get('customer_id', '') != ''
@@ -69,27 +62,22 @@ service cloud.firestore {
     }
 
     match /users/{uid} {
-      // Sales reads the accounts roster (Portal → Login activity), but the
-      // update/delete rules below stay admin-only — sales can never change a
-      // role or status (no privilege escalation). V8.13.
-      allow read: if isAdmin() || isSales() || request.auth.uid == uid;
+      // `portal` module = view-only account roster (Portal → Login activity).
+      // update/delete stay admin-only — a staff account can never change a
+      // role/status or its own modules (no privilege escalation).
+      allow read: if isAdmin() || can('portal') || request.auth.uid == uid;
       allow create: if request.auth.uid == uid
         && request.resource.data.role == 'customer'
         && request.resource.data.status == 'pending'
         && request.resource.data.ws_discount_pct == 0;
-      // sensitive/erp_code/erp_code_shared are ADMIN-MIRRORED fields (see
-      // domain/customer.js's mirrorToLinkedAccounts) — a customer must never
-      // be able to set these on their own doc, since sensitive gates whether
-      // they see a competitor's branded photos and erp_code/erp_code_shared
-      // gate whether the portal order-history feature will hand them ANOTHER
-      // customer's JES sales data (netlify/edge-functions/
-      // customer-order-history.js trusts these fields straight off the
-      // caller's own users/{uid} doc — it has no elevated Firestore access to
-      // re-verify them, so the write-side lock IS the security boundary).
+      // sensitive/erp_code/erp_code_shared are ADMIN-MIRRORED fields — a
+      // customer must never set these on their own doc (they gate branded-photo
+      // screening and the portal order-history data leak).
       allow update: if isAdmin()
         || (request.auth.uid == uid
             && request.resource.data.role == resource.data.role
             && request.resource.data.status == resource.data.status
+            && request.resource.data.get('modules', []) == resource.data.get('modules', [])
             && request.resource.data.ws_discount_pct == resource.data.ws_discount_pct
             && request.resource.data.get('pricing_group', '') == resource.data.get('pricing_group', '')
             && request.resource.data.get('corp_markup_override', 0) == resource.data.get('corp_markup_override', 0)
@@ -100,111 +88,81 @@ service cloud.firestore {
     }
 
     match /products/{productId} {
-      // Production AND sales manage the catalogue, so read+write is staff or
-      // sales; approved customers still read via canShop(). PRICING below is
-      // opened to sales (they quote) but NOT production (walled off).
-      allow read: if canShop() || isProduction() || isSales();
-      allow write: if isStaff() || isSales();
-      // Storefront product photos. Screened per-viewer against
-      // branded_for_customer_id + the viewer's own "sensitive" flag — see
-      // viewerIsSensitive() above. A blank/unset branded_for is generic and
-      // always visible; nothing changes for the existing catalogue. Staff
-      // (admin + production) see every image unscreened.
+      allow read: if canShop() || can('products') || can('quotes');
+      allow write: if can('products');
+      // Storefront photos — screened per-viewer (viewerIsSensitive). A
+      // blank/unset branded_for is generic and always visible.
       match /images/{imageId} {
-        allow read: if isStaff() || isSales()
+        allow read: if can('products') || can('quotes')
           || (isApprovedCustomer()
               && (resource.data.get('branded_for_customer_id', '') == ''
                   || resource.data.get('branded_for_customer_id', '') == profile().get('customer_id', '')
                   || !viewerIsSensitive()));
-        allow write: if isStaff() || isSales();
+        allow write: if can('products');
       }
-      // Pricing is margin data. Sales READS it (to quote); only admin WRITES
-      // (the tier editor is cost-derived). Production never reads it at all.
+      // Tier prices — margin data. Read by quote-builders; the cost-derived
+      // editor writes behind `pricing`.
       match /pricing_tiers/{tierId} {
-        // Sales READS tier prices to build quotes; the tier editor is
-        // cost-derived (components + supplier quotes + pricing_groups) so its
-        // WRITE stays admin-only. Production still never reads pricing.
-        allow read: if canShop() || isSales();
-        allow write: if isAdmin();
+        allow read: if canShop() || can('pricing') || can('quotes');
+        allow write: if can('pricing');
       }
       match /customer_prices/{priceUid} {
-        allow read: if request.auth.uid == priceUid || isFrontOffice();
-        allow write: if isAdmin();
+        allow read: if request.auth.uid == priceUid || can('quotes') || can('customers');
+        allow write: if can('pricing');
       }
-      // Product bill-of-materials components + their supplier quotes — supply
-      // data, opened to staff so production can build and cost a product's BOM.
+      // Product bill-of-materials + supplier quotes — supply data.
       match /components/{componentId} {
-        allow read, write: if isStaff();
+        allow read, write: if can('supply');
         match /images/{imageId} {
-          allow read, write: if isStaff();
+          allow read, write: if can('supply');
         }
         match /supplier_quotes/{quoteId} {
-          allow read, write: if isStaff();
+          allow read, write: if can('supply');
           match /attachments/{attachmentId} {
-            allow read, write: if isStaff();
+            allow read, write: if can('supply');
           }
         }
       }
     }
 
     match /range_products/{rangeId} {
-      // Figurine catalogue — Crystocraft's own product line. Opened to staff
-      // read+write (owner, V8.12): production manages figurines, incl. their
-      // costing which writes back here. Approved customers still read via
-      // canShop() for the storefront.
-      allow read: if canShop() || isProduction() || isSales();
-      allow write: if isStaff() || isSales();
+      allow read: if canShop() || can('figurine') || can('quotes');
+      allow write: if can('figurine');
       match /{allPaths=**} {
-        allow read: if canShop() || isProduction() || isSales();
-        allow write: if isStaff() || isSales();
+        allow read: if canShop() || can('figurine') || can('quotes');
+        allow write: if can('figurine');
       }
     }
 
-    // V8.8 Phase 1 colour-preview drafts — deliberately top-level, not a
-    // range_products/{id} subcollection, so the canShop() wildcard above
-    // never grants a customer read of an unreviewed draft.
+    // V8.8 Phase 1 colour-preview drafts — top-level so the canShop() wildcard
+    // above never grants a customer a read of an unreviewed draft.
     match /range_colour_previews/{previewId} {
       allow read, write: if isAdmin();
     }
 
-    // The `settings` collection mixes storefront config with genuinely
-    // internal data — settings/pricing_groups holds each customer tier's
-    // markup PERCENTAGE and settings/crystal_unit_costs holds raw supplier
-    // unit costs; settings/components is the legacy admin-only cost tool.
-    // None of those are ever read from customer-facing code (verified
-    // 2026-08-17, bug-fix pack A-03) — only this allowlisted set is. A
-    // canShop() blanket read here used to hand any approved customer the
-    // company's markup formula and raw costs along with the catalogue config
-    // they actually need.
+    // `settings` mixes storefront config with internal cost data. Storefront
+    // reads are allow-listed to the customer-facing docs only; the cost docs
+    // (pricing_groups markup %, crystal_unit_costs) open to `pricing` / the
+    // supply side; everything else is the `settings` module (sensitive).
     match /settings/{docId} {
       allow read: if isAdmin()
+        || can('settings')
         || (canShop() && docId in [
           'catalogue_band', 'exchange_rates', 'format_moq',
           'front_page', 'productDefaults', 'quote_branding', 'crystal_colors',
         ])
-        // Production supply-config: the docs behind the Components hub's
-        // Format MOQs / Crystal Costs / Categories / Crystal Colours tabs,
-        // plus exchange_rates (read-only) which the figurine costing page
-        // needs to convert HKD→USD. Deliberately does NOT include
-        // pricing_groups — that's the customer-tier markup table, owner-only.
-        // crystal_unit_costs IS here: it's the factory's own raw crystal
-        // price list, supply-side, not customer markup.
-        || (isProduction() && docId in [
-          'format_moq', 'crystal_unit_costs', 'component_categories', 'crystal_colors',
-          'exchange_rates',
+        || (can('pricing') && docId in [
+          'pricing_groups', 'crystal_unit_costs', 'format_moq',
+          'component_categories', 'crystal_colors', 'exchange_rates',
         ])
-        // Sales (V8.13) reads the front-office config a quote/marketing screen
-        // needs — branding, FX, MOQ format, defaults, colours, catalogue band,
-        // front-page config. Deliberately NOT pricing_groups (the customer-tier
-        // markup table stays owner-only) and NOT crystal_unit_costs (supply).
-        || (isSales() && docId in [
-          'catalogue_band', 'exchange_rates', 'format_moq',
-          'front_page', 'productDefaults', 'quote_branding', 'crystal_colors',
+        || (can('supply') && docId in [
+          'format_moq', 'crystal_unit_costs', 'component_categories',
+          'crystal_colors', 'exchange_rates',
         ]);
       allow write: if isAdmin()
-        || (isProduction() && docId in [
-          'format_moq', 'crystal_unit_costs', 'component_categories', 'crystal_colors',
-        ]);
+        || (can('settings') && docId != 'pricing_groups')
+        || (can('pricing') && docId in ['pricing_groups', 'crystal_unit_costs', 'component_categories'])
+        || (can('supply') && docId in ['crystal_unit_costs', 'component_categories', 'crystal_colors', 'format_moq']);
     }
 
     match /favourites/{uid} {
@@ -230,362 +188,239 @@ service cloud.firestore {
       allow update, delete: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
     }
 
-    // Suppliers — supply-side, opened to staff. Their purchase orders stay
-    // owner-only (see purchase_orders below); SupplierDetail's PO section is
-    // admin-gated in the app to match.
+    // Suppliers — supply-side.
     match /suppliers/{supplierId} {
-      allow read, write: if isStaff();
+      allow read, write: if can('supply');
       match /catalogs/{catalogId} {
-        allow read, write: if isStaff();
+        allow read, write: if can('supply');
       }
-      // Supplier photo + video gallery (exhibition/booth shots and clips) —
-      // internal scrapbook, no visibility/branded-for screening, never
-      // customer-facing. Storage objects live under suppliers/{id}/images/…
-      // and suppliers/{id}/videos/… which storage.rules already covers via
-      // the suppliers/{id}/** isStaff rule.
       match /images/{imageId} {
-        allow read, write: if isStaff();
+        allow read, write: if can('supply');
       }
       match /videos/{videoId} {
-        allow read, write: if isStaff();
+        allow read, write: if can('supply');
       }
     }
     match /client_quotes/{quoteId} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('quotes');
       match /items/{itemId} {
-        allow read, write: if isFrontOffice();
+        allow read, write: if can('quotes');
       }
     }
 
-    // Supplier purchase orders — procurement records. Opened to staff (owner,
-    // V8.12): supply-side cost data the factory needs, not customer/sales data.
+    // Supplier purchase orders — procurement records, supply-side.
     match /purchase_orders/{poId} {
-      allow read, write: if isStaff();
+      allow read, write: if can('supply');
     }
 
-    // Credit Notes (Sales Return / Credit Note Phase C) — one combined
-    // record: the goods-return details AND the accounting document (Cindy,
-    // 2026-08-17: a return never existed without a credit note or vice
-    // versa). This is the editable WORKING doc; the posted financial fact
-    // lives in Postgres app_credit_note, reachable only via the admin-gated
-    // /api/credit-note edge function. Admin only, no customer visibility —
-    // same posture as purchase_orders.
-    //
-    // Replaces the Phase B sales_returns rule; that collection was never
-    // used in production (confirmed with Cindy before removing it), so
-    // there is nothing to keep readable for a migration.
+    // Credit Notes — goods-return + accounting doc. The posted financial fact
+    // lives in Postgres app_credit_note, reachable only via /api/credit-note.
     match /credit_notes/{cnId} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('credit_notes');
     }
 
-    // SU-07A portal invitations — admin-only from the browser's perspective
-    // (the admin UI lists/manages them here). The claim/approve/resend/
-    // revoke logic itself never goes through this rule at all: it's server-
-    // side in netlify/functions/portal-invite.js via the Firebase ADMIN SDK,
-    // which bypasses security rules entirely (a trusted server context, same
-    // posture as the service-account writes in resend-webhook.js/subscribe.js
-    // elsewhere in this app) — this rule exists only to block a browser
-    // (customer or otherwise) from ever reading/writing this collection
-    // directly. An unauthenticated invitee's claim page never touches
-    // Firestore directly; it only calls the admin-SDK function.
+    // SU-07A portal invitations — the claim/approve/resend/revoke logic runs
+    // server-side (portal-invite.js, Admin SDK, bypasses rules). This rule
+    // only blocks a browser from touching the collection directly.
     match /portal_invitations/{invitationId} {
-      // Sales VIEWS invitations (Portal tab); create/approve/revoke stay
-      // admin (and go through the admin-SDK function anyway). V8.13.
-      allow read: if isAdmin() || isSales();
+      allow read: if isAdmin() || can('portal');
       allow write: if isAdmin();
     }
 
-    // Append-only audit trail. First writer: AccountEdit.jsx logs every
-    // role/status/account_type change on a users/{uid} doc — the blind spot
-    // behind LESSONS-LEARNED L-01 (admin silently demoted to `pending`,
-    // twice). Any internal login may append (they're the only ones who can
-    // reach the admin screens that mutate accounts); only admin can read the
-    // history back; nothing may edit or delete an entry.
+    // Append-only audit trail (AccountEdit.jsx logs role/status/modules
+    // changes — the L-01 blind spot). Any internal login may append; only
+    // admin reads it back; nothing edits or deletes an entry.
     match /audit_logs/{entryId} {
-      allow create: if isStaff() || isFrontOffice();
+      allow create: if isInternal();
       allow read:   if isAdmin();
       allow update, delete: if false;
     }
 
-    // Cached WooCommerce API pulls (order sync + product-catalogue/stock
-    // reconciliation) so the pages restore the last fetch instead of hitting
-    // WooCommerce on every visit — "Refresh" refetches. Admin-only, matching
-    // the `woo` module. Pure cache: nothing downstream reads it, safe to
-    // wipe. Docs: `orders`, `product_catalogue`.
+    // Cached WooCommerce API pulls + the SEO control-plane stores. `woo` module.
     match /woo_cache/{doc} {
-      allow read, write: if isAdmin();
+      allow read, write: if isAdmin() || can('woo');
     }
-
-    // SEO control plane (Step 1). seo_state = the current "what's live now"
-    // snapshot (mutable cache). seo_state_history = APPEND-ONLY timestamped
-    // snapshots — the rollback reference; never edited or deleted. Admin only.
     match /seo_state/{doc} {
-      allow read, write: if isAdmin();
+      allow read, write: if isAdmin() || can('woo');
     }
     match /seo_state_history/{doc} {
-      allow read, create: if isAdmin();
+      allow read, create: if isAdmin() || can('woo');
       allow update, delete: if false;
     }
-    // SEO control plane Step 2 — DSH-prepared change batches. Created by the
-    // seo-batch Node function (Admin SDK, bypasses rules); the human reads and
-    // sets per-item decisions + status from SeoReview.jsx. No client create.
     match /seo_batches/{doc} {
-      allow read, update: if isAdmin();
+      allow read, update: if isAdmin() || can('woo');
       allow create, delete: if false;
     }
 
     match /customers/{customerId} {
-      // Front office (admin + sales, V8.13). Sales owns the customer relationship
-      // and all its correspondence/CRM below; the supply side stays walled off.
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('customers');
       match /enquiries/{enquiryId} {
-        allow read, write: if isFrontOffice();
+        allow read, write: if can('customers');
       }
-      // Email ingestion (V8.1 spike) — raw thread envelopes pulled from the
-      // live IMAP mailbox, matched to this customer. Admin-only, always —
-      // this is real correspondence content, never customer-facing, unlike
-      // Brand Gallery assets below (see PROJECT-PLAN.md's V8.1 entry §6:
-      // "nothing leaks through portal or customer-facing routes").
       match /email_threads/{threadId} {
-        allow read, write: if isFrontOffice();
+        allow read, write: if can('customers');
       }
-      // WhatsApp ingestion (V8.2) — parsed from the owner's manual "Export
-      // Chat" .txt exports (Business and Personal WhatsApp both — no API
-      // access to either), matched to this customer by hand at import time
-      // (the export carries no phone/email to auto-match against). Same
-      // admin-only, never-customer-facing posture as email_threads above —
-      // real correspondence content.
       match /whatsapp_threads/{threadId} {
-        allow read, write: if isFrontOffice();
+        allow read, write: if can('customers');
       }
-      // Alibaba Messages (V8.10) — raw text pasted by hand off Alibaba.com's
-      // buyer-seller chat interface (no export/API exists for it, unlike
-      // WhatsApp's manual .txt exports above or email's IMAP sync — see
-      // alibabaSummaryApi.js). Each doc is one pasted batch, additive/
-      // append-only. Same admin-only, never-customer-facing posture as
-      // whatsapp_threads/email_threads above — real correspondence content.
       match /alibaba_threads/{threadId} {
-        allow read, write: if isFrontOffice();
+        allow read, write: if can('customers');
       }
-      // Brand Gallery assets (V7.21) — customer logos / brand images.
-      // The privacy guarantee (Customer_Brand_Gallery_Spec.md §6): admins have
-      // full access; a logged-in customer may read ONLY their own linked
-      // customer's non-internal assets. A customer-facing list query MUST
-      // constrain itself to non-internal visibility, or the read is rejected.
+      // Brand Gallery assets — a logged-in customer may read ONLY their own
+      // linked customer's non-internal assets.
       match /assets/{assetId} {
-        allow read: if isFrontOffice()
+        allow read: if can('customers')
           || (signedIn()
               && profile().get('customer_id', '') == customerId
               && resource.data.visibility != 'internal_only');
-        allow write: if isFrontOffice();
+        allow write: if can('customers');
       }
-
-      // Proposal — customer-specific hero/tagline/sections presentation built
-      // on top of the assets above (Sun-Life-Proposal-Build-Spec.md §4).
-      // Single doc per customer (docId fixed to 'current'). Customer read is
-      // scoped to their own linked customer AND published only — a draft is
-      // admin-preview-only, same posture as assets' internal_only. Admin is
-      // the sole writer.
+      // Proposal — customer read scoped to their own linked customer AND
+      // published only.
       match /proposal/{docId} {
-        allow read: if isFrontOffice()
+        allow read: if can('customers')
           || (isApprovedCustomer()
               && profile().get('customer_id', '') != ''
               && profile().get('customer_id', '') == customerId
               && resource.data.status == 'published');
-        allow write: if isFrontOffice();
+        allow write: if can('customers');
       }
     }
 
-    // Marketing contacts — the cleaned Mailchimp list + WordPress signups.
-    // Kept separate from customers; admin-only in the app. Public signups are
-    // written server-side by the /api/subscribe edge function (service account,
-    // which bypasses these rules), never by the browser.
+    // Marketing contacts (cleaned Mailchimp list + WP signups) — CRM data.
+    // Public signups are written server-side by /api/subscribe.
     match /marketing_contacts/{contactId} {
-      allow read, write: if isFrontOffice();
-      // WhatsApp ingestion (V8.2) — a "weak lead" chat (phone number only,
-      // never converted to a real customer) saved via the WhatsApp import
-      // page's "Save as Lead" path. Same shape/posture as
-      // customers/{id}/whatsapp_threads above.
+      allow read, write: if can('customers');
       match /whatsapp_threads/{threadId} {
-        allow read, write: if isFrontOffice();
+        allow read, write: if can('customers');
       }
-      // Alibaba Messages (V8.10) — same shape/posture as
-      // customers/{id}/alibaba_threads above, extended to marketing leads.
       match /alibaba_threads/{threadId} {
-        allow read, write: if isFrontOffice();
+        allow read, write: if can('customers');
       }
-      // Email ingestion (V8.9) — extended from customers/ (see
-      // email-sync/common.py's load_marketing_contact_index/match_entity).
-      // Same admin-only, never-customer-facing posture as
-      // customers/{id}/email_threads above.
       match /email_threads/{threadId} {
-        allow read, write: if isFrontOffice();
+        allow read, write: if can('customers');
       }
-      // CRM Interaction Log (V8.9) — same subcollection name/shape as
-      // customers/{id}/enquiries (see domain/interactionLog.js), so a
-      // marketing lead can get findings logged the same way a customer can,
-      // and so the existing `{path=**}/enquiries` collection-group rule
-      // below already covers reads here with no change needed.
       match /enquiries/{enquiryId} {
-        allow read, write: if isFrontOffice();
+        allow read, write: if can('customers');
       }
     }
-    // Marketing campaigns — batched Resend sends to marketing_contacts
-    // segments. Admin-only, same posture as marketing_contacts. Unsubscribes
-    // are written server-side by the /api/unsubscribe edge function (service
-    // account, bypasses these rules) directly onto marketing_contacts, not here.
+    // Marketing campaigns / templates / Daily Drafts.
     match /marketing_campaigns/{campaignId} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('marketing');
     }
-    // Reusable campaign starting points, owner-saved from the Unlayer editor
-    // (Campaigns.jsx's "Save current as template") — same admin-only posture.
     match /campaign_templates/{templateId} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('marketing');
     }
-    // Daily Drafts re-engagement engine (V7.23) — AI-drafted outreach emails,
-    // pending human review before send. Admin-only, same posture as the other
-    // marketing collections; both the browser (create/skip) and the admin's
-    // own token via the generate/send edge functions read and write here.
     match /outreach_drafts/{draftId} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('marketing');
     }
-    // Draft Memory Layer (V8.9) — small, admin-confirmed writing rules that
-    // feed the Daily Drafts prompts (draft-outreach-topic.js,
-    // discuss-outreach-draft.js, generate-outreach-drafts.js) so Eddie stops
-    // repeating the same corrections every session. Admin-only, same posture
-    // as the rest of Daily Drafts. status: 'pending' (awaiting review) |
-    // 'active' (in the prompt) | 'disabled'. See domain/draftMemoryRules.js.
     match /draft_memory_rules/{ruleId} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('marketing');
     }
-    // Saved "what do you want to say?" topic templates for Daily Drafts
-    // (V8.11) — reusable topic text, same admin-only posture as everything
-    // else in Daily Drafts. See domain/outreachTopicTemplates.js.
     match /outreach_topic_templates/{templateId} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('marketing');
     }
-    // Daily Drafts topic de-duplication (V8.0) — before targeting anyone
-    // about a topic, DailyDrafts.jsx checks whether they already have a
-    // logged Interaction Log entry for it, via a collectionGroup('enquiries')
-    // query across every customer's own subcollection at once. The nested
-    // `match /customers/{customerId} { match /enquiries/{enquiryId} {...} } }`
-    // rule above does NOT authorize a collection-group query — Firestore
-    // requires this separate top-level wildcard rule for that, same pattern
-    // already used for supplier_quotes below. Read-only; writes still only
-    // ever happen through the nested customers/{id}/enquiries path.
+    // Collection-group query over every customer's/lead's enquiries subcollection.
     match /{path=**}/enquiries/{enquiryId} {
-      allow read: if isFrontOffice();
+      allow read: if can('customers');
     }
-    // Supply-side quote history (collection-group query, e.g. SupplierDetail).
-    // Opened to staff — same posture as the nested supplier_quotes rules.
+    // Collection-group query over supplier_quotes.
     match /{path=**}/supplier_quotes/{quoteId} {
-      allow read, write: if isStaff();
+      allow read, write: if can('supply');
     }
     match /catalogues/{catalogueId} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('catalogues');
       match /items/{itemId} {
-        allow read, write: if isFrontOffice();
+        allow read, write: if can('catalogues');
       }
     }
-    // Critical components master (metal parts) — supply-side, opened to staff.
+    // Critical components master (metal parts) — supply-side.
     match /range_components/{componentId} {
-      allow read, write: if isStaff();
+      allow read, write: if can('supply');
       match /supplier_quotes/{quoteId} {
-        allow read, write: if isStaff();
+        allow read, write: if can('supply');
       }
-      // Stock ledger (V7.13a) — append-only movement history behind on-hand.
       match /movements/{movementId} {
-        allow read, write: if isStaff();
+        allow read, write: if can('supply');
       }
     }
 
-    // Crystal inventory (V7.13a) — per-colour SKUs, opened to staff, with the
-    // same append-only stock ledger.
+    // Crystal inventory + its append-only stock ledger — supply-side.
     match /crystals/{crystalId} {
-      allow read, write: if isStaff();
+      allow read, write: if can('supply');
       match /movements/{movementId} {
-        allow read, write: if isStaff();
+        allow read, write: if can('supply');
       }
     }
 
-    // Crystal Fabric Studio swatch notes (V7.22 §5a/§5b) — curated
-    // legacy-Swarovski-ref metadata per crystal colour. Read opened to
-    // approved portal customers in §5b (the whole point of the reference
-    // list is a designer matching an old Swarovski article number); editing
-    // stays admin-only. The photos themselves live in the render service's
-    // own registry, not here — see Crystal_Fabric_Studio_Spec.md.
+    // Crystal Fabric Studio swatch notes — read opened to approved portal
+    // customers (designer matching an old Swarovski article no.) + the swatch
+    // module; editing behind `swatch`.
     match /crystal_swatch_notes/{colorId} {
-      allow read: if isAdmin() || isApprovedCustomer();
-      allow write: if isAdmin();
+      allow read: if isAdmin() || can('swatch') || isApprovedCustomer();
+      allow write: if isAdmin() || can('swatch');
     }
 
-    // Packaging inventory (V7.13a) — gift boxes / cartons / inserts, opened
-    // to staff.
+    // Packaging inventory — supply-side.
     match /packaging/{packagingId} {
-      allow read, write: if isStaff();
+      allow read, write: if can('supply');
       match /movements/{movementId} {
-        allow read, write: if isStaff();
+        allow read, write: if can('supply');
       }
     }
 
-    // B2C finished-goods stock (V7.21) — trading stock, unconnected to
-    // production; same shape as crystals/packaging, opened to staff (it's an
-    // inventory class on the Inventory + Components screens).
+    // B2C finished-goods stock — trading stock, supply-side (an inventory
+    // class on the Inventory + Components screens).
     match /b2c_stock/{b2cId} {
-      allow read, write: if isStaff();
+      allow read, write: if can('supply');
       match /movements/{movementId} {
-        allow read, write: if isStaff();
+        allow read, write: if can('supply');
       }
     }
 
-    // ---- Shipping & Logistics module (admin only, except a customer's own
-    // orders — portal order history, owner 2026-08-07) ---------------------
+    // ---- Shipping & Logistics — `shipping` module, except a customer's own
+    // orders (portal order history) ------------------------------------------
     match /orders/{orderId} {
-      // profile().get('customer_id','') == '' for an unlinked customer login
-      // — require it non-empty too, or that would match an order with an
-      // equally-blank/malformed customer_id and leak it to any unlinked
-      // customer account.
-      allow read: if isFrontOffice()
+      allow read: if can('shipping')
         || (isApprovedCustomer()
             && profile().get('customer_id', '') != ''
             && resource.data.get('customer_id', '') == profile().get('customer_id', ''));
-      allow write: if isFrontOffice();
+      allow write: if can('shipping');
       match /{allPaths=**} {
-        allow read: if isFrontOffice()
+        allow read: if can('shipping')
           || (isApprovedCustomer()
               && profile().get('customer_id', '') != ''
               && get(/databases/$(database)/documents/orders/$(orderId)).data.get('customer_id', '') == profile().get('customer_id', ''));
-        allow write: if isFrontOffice();
+        allow write: if can('shipping');
       }
     }
     match /packing_lists/{plId} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('shipping');
       match /{allPaths=**} {
-        allow read, write: if isFrontOffice();
+        allow read, write: if can('shipping');
       }
     }
     match /logistics_vendors/{vendorId} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('shipping');
     }
     match /freight_quotes/{quoteId} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('shipping');
     }
     match /freight_rfqs/{rfqId} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('shipping');
     }
 
-    // ---- UC# invoice registry (admin only) ------------------------------
+    // ---- UC# invoice registry — `uc` module ------------------------------
     match /uc_invoices/{id} {
-      allow read, write: if isFrontOffice();
+      allow read, write: if can('uc');
     }
     // Atomic allocation counters (counters/uc_<yy>, so_<yy>, pu_<yy>).
-    // Production may touch ONLY the purchase-order counter (pu_*), which it
-    // needs to number a new PO; the UC and sales-order counters stay
-    // owner-only, matching those admin-only modules.
+    // Supply may touch ONLY pu_* (numbering a new PO); the UC/SO counters
+    // belong to the quote flow.
     match /counters/{name} {
       allow read, write: if isAdmin()
-        || (isProduction() && name.matches('pu_[0-9]+'))
-        || (isSales() && name.matches('(uc|so)_[0-9]+'));
+        || (can('supply') && name.matches('pu_[0-9]+'))
+        || (can('quotes') && name.matches('(uc|so)_[0-9]+'));
     }
   }
 }
