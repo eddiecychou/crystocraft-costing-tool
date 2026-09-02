@@ -200,6 +200,7 @@ export default function ProductDetail() {
             <div className="flex items-center gap-2 mt-1">
               <span className={`badge-${productStatusOf(product.status).value}`}>{productStatusOf(product.status).label}</span>
               <span className="text-sm text-ink-60">{product.category}</span>
+              {product.product_code && <span className="text-xs font-mono text-ink-60">· {product.product_code}</span>}
             </div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2">
               <label className="flex items-center gap-1.5 cursor-pointer">

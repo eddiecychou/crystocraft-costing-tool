@@ -128,7 +128,7 @@ export default function WooCatalogue() {
       }
       setInternal({
         figurine: idx(rangeSnap.docs.map(d => d.data()), x => x.design_code || x.sku, x => x.design_name || x.description),
-        corp: idx(corpSnap.docs.map(d => d.data()), x => x.sku || x.code || x.model_no || '', x => x.name),
+        corp: idx(corpSnap.docs.map(d => d.data()), x => x.product_code || x.sku || x.code || '', x => x.name),
         b2c: idx(b2c || [], x => x.code, x => x.name),
       })
     } catch (e) {

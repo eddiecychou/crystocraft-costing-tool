@@ -13,7 +13,7 @@ export default function ProductForm() {
   const isEdit = Boolean(id)
 
   const [form, setForm] = useState({
-    name: '', category: '', status: 'concept', description: '', marketing_description: '', assembly_notes: '', videos: [],
+    name: '', product_code: '', category: '', status: 'concept', description: '', marketing_description: '', assembly_notes: '', videos: [],
     is_new: false, customizer_type: '', active: true,
   })
   const [loading, setLoading]   = useState(false)
@@ -125,10 +125,18 @@ export default function ProductForm() {
       </div>
 
       <form onSubmit={handleSubmit} className="card p-6 space-y-5">
-        <div>
-          <label className="label">Product Name *</label>
-          <input className="input" value={form.name} onChange={set('name')} required placeholder="e.g. Crystal Tumbler Set" />
+        <div className="grid grid-cols-[1fr_auto] gap-4">
+          <div>
+            <label className="label">Product Name *</label>
+            <input className="input" value={form.name} onChange={set('name')} required placeholder="e.g. Crystal Tumbler Set" />
+          </div>
+          <div>
+            <label className="label">Item code</label>
+            <input className="input font-mono w-40" value={form.product_code || ''} onChange={set('product_code')}
+                   placeholder="e.g. A0231" />
+          </div>
         </div>
+        <p className="text-2xs text-ink-60 -mt-3">Used to match this product to its WooCommerce listing and the ERP. Leave blank if there isn't one.</p>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
