@@ -27,20 +27,10 @@ export function useProfile(user) {
 export const isAdmin      = p => !!p && p.role === 'admin'
 // V8.14 — the flat internal role; access is p.modules[] (see src/access.js).
 export const isStaffRole  = p => !!p && p.role === 'staff'
-// Legacy fixed roles — kept for the migration shim only (src/access.js
-// resolveModules). Remove once the two live accounts are converted.
-export const isProduction = p => !!p && p.role === 'production'
-export const isSales      = p => !!p && p.role === 'sales'
-// Any internal STAFF login (not a customer) — the set that lands in the
-// operation-center app rather than the Storefront. Grows if more staff roles
-// are added; keep it the single test for "is this one of our people".
-//
-// ⚠️ NAME COLLISION, DIFFERENT MEANING: `firestore.rules` / `storage.rules`
-// also define `isStaff()`, but there it's admin + production ONLY (the
-// SUPPLY-side wall — sales is deliberately excluded from suppliers, POs,
-// crystals, BOM cost, …). This client `isStaff` is the wider "any internal
-// login" set. Do NOT reason about one from the other; when you touch either,
-// check you're not folding `sales` onto the supply side. (Code review, V8.13.)
-export const isStaff      = p => isAdmin(p) || isStaffRole(p) || isProduction(p) || isSales(p)
+// Any internal login (not a customer) — the set that lands in the
+// operation-center app rather than the Storefront. Per-capability access is
+// decided by p.modules[] via src/access.js; this is only the coarse
+// "one of our people" test.
+export const isStaff      = p => isAdmin(p) || isStaffRole(p)
 export const isApproved   = p => !!p && p.role === 'customer' && p.status === 'approved'
 export const isPending    = p => !!p && p.role === 'customer' && p.status !== 'approved'

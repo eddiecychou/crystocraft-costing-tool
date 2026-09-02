@@ -1,7 +1,7 @@
 import { useEffect, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { useAuthState } from './hooks/useAuthState'
-import { useProfile, isAdmin, isStaffRole, isProduction, isSales, isApproved, isPending } from './hooks/useProfile'
+import { useProfile, isAdmin, isStaffRole, isApproved, isPending } from './hooks/useProfile'
 import { AccessContext, useCan, resolveModules } from './access'
 import Layout from './components/Layout'
 import LoadingBar from './components/LoadingBar'
@@ -136,8 +136,6 @@ function AppRoutes({ user }) {
   const role = !user ? null
     : isAdmin(profile) ? 'admin'
     : isStaffRole(profile) ? 'staff'
-    : isProduction(profile) ? 'production'   // legacy — shim in access.js
-    : isSales(profile) ? 'sales'             // legacy — shim in access.js
     : isApproved(profile) ? 'customer'
     : 'pending'
 

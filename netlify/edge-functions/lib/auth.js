@@ -26,13 +26,9 @@ const JWKS = createRemoteJWKSet(
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
-// Returns the caller's { role, modules } from users/{uid} — role string ('' if
-// missing) and the V8.14 module list. Legacy production/sales roles resolve to
-// their equivalent module set (the shim; keep in sync with src/access.js and
-// the rules files).
-const LEGACY_PRODUCTION = ['dashboard', 'products', 'figurine', 'supply', 'erp']
-const LEGACY_SALES = ['dashboard', 'customers', 'quotes', 'marketing', 'catalogues', 'products', 'figurine', 'shipping', 'invoices', 'credit_notes', 'portal']
-
+// Returns the caller's { role, modules } from users/{uid}. V8.14 flat model:
+// a `staff` account's access IS its modules[] list; anyone else gets []. Mirror
+// of src/access.js resolveModules.
 async function getUserRoleAndModules(uid, idToken, projectId) {
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`
   const r = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } })
@@ -40,11 +36,7 @@ async function getUserRoleAndModules(uid, idToken, projectId) {
   const doc = await r.json()
   const role = doc?.fields?.role?.stringValue || ''
   const raw = doc?.fields?.modules?.arrayValue?.values || []
-  const declared = raw.map(v => v?.stringValue).filter(Boolean)
-  const modules = role === 'staff' ? declared
-    : role === 'production' ? LEGACY_PRODUCTION
-    : role === 'sales' ? LEGACY_SALES
-    : []
+  const modules = role === 'staff' ? raw.map(v => v?.stringValue).filter(Boolean) : []
   return { role, modules }
 }
 async function getUserRole(uid, idToken, projectId) {

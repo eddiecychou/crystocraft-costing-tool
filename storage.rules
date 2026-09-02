@@ -16,18 +16,13 @@ service firebase.storage {
     }
 
     // ── V8.14 RBAC — flat staff role (mirrors firestore.rules) ────────────
-    // access = users/{uid}.modules[]; legacy production/sales resolve to an
-    // equivalent set (shim). Keep in sync with firestore.rules / src/access.js.
+    // access = users/{uid}.modules[]; `can(key)` is the only gate.
     function roleName() {
       return pExists() ? pDoc().role : '';
     }
     function moduleList() {
       return roleName() == 'staff'
-          ? (pDoc().get('modules', []) is list ? pDoc().get('modules', []) : [])
-        : roleName() == 'production'
-          ? ['dashboard', 'products', 'figurine', 'supply', 'erp']
-        : roleName() == 'sales'
-          ? ['dashboard', 'customers', 'quotes', 'marketing', 'catalogues', 'products', 'figurine', 'shipping', 'invoices', 'credit_notes', 'portal']
+        ? (pDoc().get('modules', []) is list ? pDoc().get('modules', []) : [])
         : [];
     }
     function can(m) {

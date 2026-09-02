@@ -119,9 +119,12 @@ function clean(input) {
 async function getRole(uid, idToken, projectId) {
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`
   const r = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } })
-  if (!r.ok) return ''
+  if (!r.ok) return { role: '', modules: [] }
   const doc = await r.json()
-  return doc?.fields?.role?.stringValue || ''
+  const role = doc?.fields?.role?.stringValue || ''
+  const raw = doc?.fields?.modules?.arrayValue?.values || []
+  const modules = role === 'staff' ? raw.map(v => v?.stringValue).filter(Boolean) : []
+  return { role, modules }
 }
 
 export default async function handler(req) {
@@ -141,16 +144,17 @@ export default async function handler(req) {
     })
     uid = payload.sub; email = payload.email || null
   } catch { return json({ error: 'Invalid or expired session' }, 401) }
-  // V8.13: admin has full access; sales (front office) may READ its own
-  // receiving-bank details (op 'list'/'audit') to show on a quote/PI/invoice,
-  // but never create/update an account (that stays admin — BankAccounts is a
-  // settings page sales can't reach).
-  const role = await getRole(uid, token, PROJECT_ID)
-  if (role !== 'admin' && role !== 'sales') return json({ error: 'Access denied' }, 403)
+  // V8.14: admin has full access; a `staff` account holding the `invoices`
+  // module may READ receiving-bank details (op 'list'/'audit') to show on a
+  // quote/PI/invoice, but never create/update an account (BankAccounts is a
+  // settings page — admin only).
+  const { role, modules } = await getRole(uid, token, PROJECT_ID)
+  const canBank = role === 'admin' || (role === 'staff' && modules.includes('invoices'))
+  if (!canBank) return json({ error: 'Access denied' }, 403)
 
   let body
   try { body = await req.json() } catch { return json({ error: 'Bad JSON' }, 400) }
-  if (role === 'sales' && !['list', 'audit'].includes(body.op)) {
+  if (role !== 'admin' && !['list', 'audit'].includes(body.op)) {
     return json({ error: 'Bank account changes are admin-only.' }, 403)
   }
   const rest = (path, init) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, {

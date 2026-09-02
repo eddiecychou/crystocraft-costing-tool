@@ -101,20 +101,25 @@ non-customer non-admin account is `role:'staff'` with a `users/{uid}.modules[]`
 array of module keys an admin toggles on the account page (`AccountEdit.jsx` →
 "Role & access" card). 17 keys grouped in `src/access.js` `MODULE_GROUPS`
 (`supply` is one key for Components+Suppliers+POs+Inventory; `erp` is
-all-or-nothing). Legacy production/sales accounts keep working via a shim
-(`LEGACY_PRODUCTION` / `LEGACY_SALES` literal arrays in access.js +
-firestore.rules + storage.rules + `netlify/edge-functions/lib/auth.js`) until
-hand-migrated. Contract: `firestore.rules`/`storage.rules` `can(m)` +
-`moduleList()` (deployed 2026-09-02); `lib/auth.js` `requireModule(req, key)`
-with 24 edge functions retagged off `requireFrontOffice`/inline `isFrontOffice`.
-Commit 49a90cb. Full spec: `docs/skills/ARCHITECTURE-RULES.md` §2 + §2·legacy;
-locked decisions in `RBAC-FLEX-PLAN.md`.
+all-or-nothing). Contract: `firestore.rules`/`storage.rules` `can(m)` + `moduleList()`;
+`lib/auth.js` `requireModule(req, key)` with 26 edge functions retagged off
+`requireFrontOffice`/inline `isFrontOffice`/inline role checks (`erp.js` →
+`erp` = full surface; `bank.js` → `invoices`). Commits 49a90cb (refactor +
+rules deploy), then migration + shim removal same day.
 
-**Open:** migrate the 2 live accounts (`2647939198@qq.com` sales,
-`pack5@uart.com.hk` production) to `role:'staff'` + explicit modules, then
-delete the shim. Note `/range/:id/costing` is now gated on `pricing`, absent
-from `LEGACY_PRODUCTION` — pack5 loses figurine costing unless admin ticks
-`pricing`.
+**Migration done 2026-09-02.** The two legacy accounts were converted to
+`role:'staff'` and the `production`/`sales` shim deleted entirely:
+- `pack5@uart.com.hk` → `dashboard, supply, products, figurine, swatch,
+  catalogues` (owner spec; dropped `erp` + `pricing` vs the old production set,
+  so it lost ERP Lookup + figurine costing — admin re-adds with a tick).
+- `2647939198@qq.com` → `dashboard, products, figurine, swatch, catalogues,
+  pricing, customers, quotes, marketing, portal, shipping, invoices,
+  credit_notes, supply` (no `uc`/`woo`/`erp`/`settings`).
+
+Smoke-tested with `qa/rbac-rules.test.mjs` rewritten for the flat model (62
+emulator assertions, all pass — the two real migrated shapes, escalation
+blocks, storage path parity). Full spec: `docs/skills/ARCHITECTURE-RULES.md`
+§2; `RBAC-FLEX-PLAN.md`. Staff should log in and confirm access looks right.
 
 ### The SEO control plane — Steps 1–4, all built
 

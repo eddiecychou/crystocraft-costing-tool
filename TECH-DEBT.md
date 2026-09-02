@@ -51,9 +51,9 @@ copies of the PEM-repair idiom.
 `uc.js`) had a *local* helper literally named `isAdmin()` whose body had
 quietly widened to `['admin','sales'].includes(role)`. **V8.14 (2026-09-02)**
 broadened each in place to `isFrontOffice(uid, token, PROJECT_ID, moduleKey)`
-— admin / legacy production|sales (shim) / `staff` holding `moduleKey`. Still
-13 near-identical inline copies (uc.js is the 14th): converge them onto the
-shared `requireModule()` from `lib/auth.js` when next touched. The 10
+— admin / `staff` holding `moduleKey`. Still 13 near-identical inline copies
+(uc.js is the 14th): converge them onto the shared `requireModule()` from
+`lib/auth.js` when next touched. The 10
 functions that already used the shared helper were retagged
 `requireFrontOffice` → `requireModule(req, key)` in the same commit.
 
@@ -77,9 +77,8 @@ in places that must agree, with no single source:
 4. `netlify/edge-functions/lib/auth.js` (`requireModule`) + each edge fn's key;
    `erp.js` checks `erp` for the full surface.
 
-**Legacy shim to delete:** `LEGACY_PRODUCTION` / `LEGACY_SALES` literal arrays
-are duplicated in (1)(2)(3)(4). Remove all four together once no `production` /
-`sales` account remains (currently 2: `2647939198@qq.com`, `pack5@uart.com.hk`).
+The legacy `production` / `sales` shim was removed 2026-09-02 (both accounts
+migrated). `bank.js` and `erp.js` no longer carry per-entity role tiers.
 
 `qa/rbac-rules.test.mjs` covers the Firestore layer only — not storage, not
 the edge function, not the UI map. Adding a module to `access.js` without

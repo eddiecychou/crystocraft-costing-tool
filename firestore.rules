@@ -21,19 +21,14 @@ service cloud.firestore {
     // is the check every collection below uses. Keep the key list + this
     // mapping in sync with src/access.js and RBAC-FLEX-PLAN.md §4.
     //
-    // Legacy shim: a pre-V8.14 `production` / `sales` account (not yet
-    // hand-migrated) resolves to the equivalent module set. Remove the two
-    // branches once both live accounts are converted.
+    // V8.14 flat model: a `staff` account's access is EXACTLY its modules[]
+    // list; `can(key)` is the only gate. Mirror of src/access.js.
     function roleName() {
       return hasProfile() ? profile().role : '';
     }
     function moduleList() {
       return roleName() == 'staff'
-          ? (profile().get('modules', []) is list ? profile().get('modules', []) : [])
-        : roleName() == 'production'
-          ? ['dashboard', 'products', 'figurine', 'supply', 'erp']
-        : roleName() == 'sales'
-          ? ['dashboard', 'customers', 'quotes', 'marketing', 'catalogues', 'products', 'figurine', 'shipping', 'invoices', 'credit_notes', 'portal']
+        ? (profile().get('modules', []) is list ? profile().get('modules', []) : [])
         : [];
     }
     function can(m) {
@@ -41,7 +36,7 @@ service cloud.firestore {
     }
     // Any internal login (used only where "one of our people" is enough).
     function isInternal() {
-      return isAdmin() || roleName() == 'staff' || roleName() == 'production' || roleName() == 'sales';
+      return isAdmin() || roleName() == 'staff';
     }
 
     function isApprovedCustomer() {

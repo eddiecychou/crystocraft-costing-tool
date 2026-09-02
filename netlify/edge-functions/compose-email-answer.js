@@ -26,10 +26,9 @@ async function isFrontOffice(uid, idToken, projectId, moduleKey) {
   const r = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } })
   if (!r.ok) return false
   const doc = await r.json()
-  // V8.14: admin, OR a legacy production/sales account (shim), OR a `staff`
-  // account whose modules[] contains this function's module key.
+  // V8.14: admin, OR a `staff` account whose modules[] contains this key.
   const role = doc?.fields?.role?.stringValue
-  if (role === 'admin' || role === 'sales' || role === 'production') return true
+  if (role === 'admin') return true
   if (role !== 'staff') return false
   const mods = (doc?.fields?.modules?.arrayValue?.values || []).map(v => v?.stringValue)
   return mods.includes(moduleKey)

@@ -7,8 +7,9 @@ import { createContext, useContext } from 'react'
 // `admin` sees everything; `customer` gets the Storefront (a different tree).
 // A `staff` account's access is EXACTLY the module keys listed in its
 // `users/{uid}.modules[]` array, toggled by the admin in AccountEdit.jsx.
-// The old fixed `production` / `sales` roles are gone (a legacy shim below
-// keeps an un-migrated old-role account working until it's converted).
+// The old fixed `production` / `sales` roles are fully retired — both live
+// accounts were migrated to `staff` + modules[] on 2026-09-02 and the shim
+// removed.
 //
 // A moduleKey is an ABSTRACT capability, not a route — several routes share
 // one (e.g. /products, /products/:id, /products/:id/edit are all 'products').
@@ -54,21 +55,11 @@ export const MODULE_GROUPS = [
 export const ALL_MODULE_KEYS = MODULE_GROUPS.flatMap(g => g.keys.map(k => k.key))
 export const SENSITIVE_MODULE_KEYS = MODULE_GROUPS.flatMap(g => g.keys.filter(k => k.sensitive).map(k => k.key))
 
-// ── legacy shim ──────────────────────────────────────────────────────────
-// A `production` / `sales` account that hasn't been hand-migrated to
-// `staff` + modules[] yet still resolves to the equivalent module set, so
-// nothing breaks in the window between deploy and migration. Remove this
-// (and the two branches) once both live accounts are converted.
-const LEGACY_PRODUCTION = ['dashboard', 'products', 'figurine', 'supply', 'erp']
-const LEGACY_SALES = ['dashboard', 'customers', 'quotes', 'marketing', 'catalogues', 'products', 'figurine', 'shipping', 'invoices', 'credit_notes', 'portal']
-
 // The effective module list for a profile. Admin doesn't need it (canAccess
 // short-circuits). Returns [] for anyone who shouldn't be in the app.
 export function resolveModules(profile) {
   if (!profile) return []
   if (profile.role === 'staff') return Array.isArray(profile.modules) ? profile.modules : []
-  if (profile.role === 'production') return LEGACY_PRODUCTION
-  if (profile.role === 'sales') return LEGACY_SALES
   return []
 }
 

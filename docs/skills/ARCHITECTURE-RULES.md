@@ -93,10 +93,12 @@ opens onto a permission-denied page, or data is granted with no way to reach it:
 2. `firestore.rules` — `can(m)` / `moduleList()` (the real boundary).
 3. `storage.rules` — `can(m)` (object uploads; MUST track (2) path-for-path).
 4. `netlify/edge-functions/lib/auth.js` — `requireModule(req, key)`; each edge fn
-   passes its own key. `erp.js` checks `erp` for the full surface.
-5. The **legacy shim** — `LEGACY_PRODUCTION` / `LEGACY_SALES` literal arrays
-   appear in all four of the above; delete them together once no `production` /
-   `sales` account remains.
+   passes its own key. `erp.js` checks `erp` for the full surface; `bank.js`
+   checks `invoices`.
+
+The legacy `production` / `sales` shim was removed 2026-09-02 once both live
+accounts were migrated — there is no longer any role but `admin | staff |
+customer` anywhere in the contract.
 
 **MUST** re-run `qa/rbac-rules.test.mjs` (emulator, needs a scratch JRE) on any
 `firestore.rules`/`storage.rules` change. It covers Firestore + Storage, **not**
@@ -110,14 +112,16 @@ confidentiality.
 
 ### 2·legacy — the `production` (V8.12) and `sales` (V8.13) roles
 
-Retired in V8.14; kept alive by the shim. `LEGACY_PRODUCTION` =
-`dashboard, products, figurine, supply, erp`. `LEGACY_SALES` =
-`dashboard, customers, quotes, marketing, catalogues, products, figurine,
-shipping, invoices, credit_notes, portal`. To migrate an account: set
-`role:'staff'` and copy the matching array into `modules[]` (or tick boxes on
-the account page). Note `/range/:id/costing` is now gated on `pricing`, which is
-**not** in `LEGACY_PRODUCTION` — a migrated ex-production account loses figurine
-costing unless the admin also ticks `pricing`.
+Retired in V8.14. Both live accounts were migrated to `role:'staff'` on
+2026-09-02 and the shim deleted:
+- `pack5@uart.com.hk` → `dashboard, supply, products, figurine, swatch, catalogues`
+  (ex-production, minus `erp` and `pricing` — owner's spec). It therefore lost
+  ERP Lookup and figurine costing (`/range/:id/costing` is gated on `pricing`);
+  admin re-adds either with a checkbox.
+- `2647939198@qq.com` → `dashboard, products, figurine, swatch, catalogues,
+  pricing, customers, quotes, marketing, portal, shipping, invoices,
+  credit_notes, supply` (ex-sales + full catalogue + supply; no `uc`, `woo`,
+  `erp`, `settings`).
 
 ### 2a. The `sales` role — BUILT (V8.13)
 

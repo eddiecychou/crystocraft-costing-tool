@@ -73,16 +73,11 @@ const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
 // The ERP archive holds costs, margins, supplier pricing AND the customer /
-// invoice / sales-order history — most of it trade-secret, some of it the very
-// customer/financial data the V8.12 `production` role must never see. So the
-// caller's role is read from their Firestore users/{uid} doc (with their own
-// token — rules allow a user to read it) and enforced below:
-//   admin       → every entity.
-//   production  → ONLY the item/stock family in PRODUCTION_ENTITIES; any other
-//                 entity (customer, supplier, sales_invoice, sales_order,
-//                 purchase, lines) is refused. This is the real boundary — the
-//                 ErpLookup UI hiding those tabs is convenience, not security.
-//   anyone else → refused.
+// invoice / sales-order history — most of it trade-secret. V8.14: access is
+// all-or-nothing. The caller's role + modules[] are read from their Firestore
+// users/{uid} doc (with their own token — rules allow a user to read it):
+//   admin, or staff holding the `erp` module → every entity.
+//   anyone else                              → refused.
 async function getRole(uid, idToken, projectId) {
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/users/${uid}`
   const r = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } })
@@ -92,30 +87,6 @@ async function getRole(uid, idToken, projectId) {
   const modules = (doc?.fields?.modules?.arrayValue?.values || []).map(v => v?.stringValue).filter(Boolean)
   return { role, modules }
 }
-
-// Items + stock, plus the item-only helpers (BOM explosion, code utilities,
-// sync freshness, item photos, and the warehouse/item_type pickers the stock
-// filters need). Deliberately excludes customer, supplier, sales_invoice,
-// sales_order, purchase and the 'lines' detail action. Keep in sync with
-// ErpLookup.jsx's PRODUCTION_ERP_ENTITIES (a subset — the UI only surfaces
-// item + stock as tabs; the rest here are background calls those tabs make).
-const PRODUCTION_ENTITIES = new Set([
-  'item', 'stock', 'warehouse', 'item_type',
-  'bom', 'alternatives', 'codes', 'sync_status', 'item_images',
-])
-
-// V8.13 — the sales/front-office ERP surface: the customer side (customer /
-// sales_invoice / sales_order, for SI-matching and JES order history) PLUS the
-// item/catalogue family production also gets (so figurine ERP-import and any
-// item/stock lookup work — sales edits the catalogue). The ONLY entities
-// withheld are `supplier` and `purchase` — supplier contacts/terms and what we
-// PAY suppliers, the supply-cost wall. The `lines` entity is further
-// constrained to sales_invoice/sales_order below (never purchase lines).
-const SALES_ENTITIES = new Set([
-  'customer', 'sales_invoice', 'sales_order', 'lines',
-  'item', 'stock', 'warehouse', 'item_type',
-  'bom', 'alternatives', 'codes', 'sync_status', 'item_images',
-])
 
 export default async function handler(req) {
   if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
@@ -146,38 +117,17 @@ export default async function handler(req) {
     return json({ error: 'Invalid or expired session' }, 401)
   }
 
-  // 1b) Resolve the caller's role + V8.14 modules. Admin, or a `staff` account
-  //     holding the `erp` module, get the FULL ERP surface (one erp = full — no
-  //     per-entity split). Legacy production/sales keep their narrower entity
-  //     sets, enforced at 2·5 below, until they're hand-migrated to `staff`.
+  // 1b) V8.14 — one `erp` module = the FULL ERP surface. Admin, or a `staff`
+  //     account holding `erp`. No per-entity split (the old production/sales
+  //     entity tiers are gone with the flat-role migration).
   const { role, modules } = await getRole(uid, token, PROJECT_ID)
-  const erpFull = role === 'admin' || (role === 'staff' && modules.includes('erp'))
-  if (!erpFull && role !== 'production' && role !== 'sales') {
+  if (role !== 'admin' && !(role === 'staff' && modules.includes('erp'))) {
     return json({ error: 'Access denied' }, 403)
   }
 
   // 2) Parse the request.
   let payload
   try { payload = await req.json() } catch { return json({ error: 'Bad JSON' }, 400) }
-
-  // 2·5) Production staff: items/stock only. This is the enforcement point —
-  //      it runs before every dispatch branch below, so a hand-crafted POST
-  //      for entity:'customer' or entity:'lines' is refused just the same as
-  //      the hidden UI tab. Admin skips the check.
-  if (role === 'production' && !PRODUCTION_ENTITIES.has(payload?.entity)) {
-    return json({ error: 'This ERP data is restricted to administrators' }, 403)
-  }
-  // Sales staff: the customer side only. Same enforcement point as production
-  // above. The `lines` entity is additionally constrained to sales documents
-  // (never purchase lines, which carry supplier cost).
-  if (role === 'sales') {
-    if (!SALES_ENTITIES.has(payload?.entity)) {
-      return json({ error: 'This ERP data is restricted to administrators' }, 403)
-    }
-    if (payload?.entity === 'lines' && !['sales_invoice', 'sales_order'].includes(payload?.of)) {
-      return json({ error: 'This ERP data is restricted to administrators' }, 403)
-    }
-  }
 
   // 2a) BOM explosion: { entity: 'bom', code } → recursive explode_bom() RPC.
   if (payload?.entity === 'bom') {
