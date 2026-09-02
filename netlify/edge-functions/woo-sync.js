@@ -450,7 +450,11 @@ export default async function handler(req) {
   if (body.op === 'catalogue_page') {
    try {
     const page = Math.max(1, parseInt(body.page, 10) || 1)
-    const r = await wc('products', { per_page: 100, page, status: 'any', orderby: 'id', order: 'asc' })
+    // lang: 'all' — WPML filter. Without it wc/v3/products returns ONLY the
+    // default language, so every es/fr/ja/zh translation was invisible to
+    // SEO State (each translation is its own product id; `lang` /
+    // `translations` on the row below carry which language it is).
+    const r = await wc('products', { per_page: 100, page, status: 'any', orderby: 'id', order: 'asc', lang: 'all' })
     if (!r.ok) return json({ error: 'WooCommerce product fetch failed', detail: (await r.text()).slice(0, 300) }, 502)
     const products = await r.json()
     if (!Array.isArray(products)) {
