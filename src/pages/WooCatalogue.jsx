@@ -20,7 +20,11 @@ const fmtWhen = (d) => {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 const fmtDate = (s) => (s ? new Date(s).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }) : '—')
-const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : null)
+const num = (v) => {
+  if (v === null || v === undefined || v === '') return null // Number(null) is 0 — guard it
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
 
 // Min/max selling price across a product's own price or its variations.
 function priceRange(p) {
