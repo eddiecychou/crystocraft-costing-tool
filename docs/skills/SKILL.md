@@ -156,9 +156,10 @@ the fast path from a request to the exact code.
 - Collections: `purchase_orders/{id}` (**staff**; snapshots supplier name/code/address), `counters/pu_<yy>` (uniquely production-writable)
 
 ### Inventory & stock ledger
-- Pages: `InventoryStatus.jsx` · Components: `InventoryStockTab.jsx`, `StockEditor.jsx`, `StockLedger.jsx`, `ManualAdjust.jsx`, `PoReceiveStock.jsx`, `OrderStockIssue.jsx`, `OrderInventoryIssue.jsx`
-- Logic: `src/stockLedger.js`, `src/orderStock.js`, `src/orderStockStatus.js`, `src/inventoryClass.js`, `src/b2cStock.js`, `src/b2cImport.js`
+- Pages: `InventoryStatus.jsx`, `WooStockReconcile.jsx` (`/woo-stock`, admin — Woo catalogue vs Finished Goods) · Components: `InventoryStockTab.jsx`, `StockEditor.jsx`, `StockLedger.jsx`, `ManualAdjust.jsx`, `PoReceiveStock.jsx`, `OrderStockIssue.jsx`, `OrderInventoryIssue.jsx`
+- Logic: `src/stockLedger.js`, `src/orderStock.js`, `src/orderStockStatus.js`, `src/inventoryClass.js`, `src/b2cStock.js`, `src/b2cImport.js`, `src/wooCache.js`
 - Collections: `crystals`, `packaging`, `b2c_stock`, `range_components` — each with an **append-only `movements/{id}` ledger** (never mutate a balance; write a movement). Spec: `Inventory_Roadmap_V7.13_Spec.md`. JES stock is stale except crystals.
+- **Woo ↔ Finished Goods reconciliation** (Spec Phase 6, 2026-09-02): `b2c_stock` gets an optional one-time manual map to WooCommerce (`woo_sku`/`woo_product_id`/`woo_variation_id`, written by `setWooLink`). Match = manual link first, then exact normalised SKU. Most B2C products are Woo **variable products** with often-blank variation SKUs, so most rows link by hand. Read-only against Woo; FG→Woo push is a later phase (open owner decision).
 
 ### Client quotes
 - Pages: `Quotes.jsx`, `QuoteDetail.jsx`, `QuoteForm.jsx`, `RangeQuoteForm.jsx` · Components: `QuotePDF.jsx`, `QuoteExport.jsx`, `LineImagePicker.jsx`
@@ -222,8 +223,9 @@ the fast path from a request to the exact code.
 - Mirror: `erp-sync/` — Supabase, all columns `text`, views in `api_views.sql` (every view must cast). SQL Server LAN-only (`192.168.10.251`). Prefer ledgers over balance tables; column names lie.
 
 ### WooCommerce B2C sync → see `ARCHITECTURE-RULES.md` §Woo-to-invoice
-- Pages: `WooCommerceSync.jsx` · Logic: `src/wooSyncApi.js`, `src/wooImport.js`, `src/wooRefundImport.js`, `src/wooCustomerSync.js` · Edge fns: `woo-sync` (read-only Phase 1)
+- Pages: `WooCommerceSync.jsx`, `WooStockReconcile.jsx` · Logic: `src/wooSyncApi.js`, `src/wooImport.js`, `src/wooRefundImport.js`, `src/wooCustomerSync.js`, `src/wooCache.js` · Edge fns: `woo-sync` (read-only: orders/refunds Phase 1, `products_page` Phase 6)
 - Spec: `WooCommerce_B2C_Sync_Spec.md`. Pointer: `customers.woo_customer_id`. Shared shop customer: `online-crystocraft-o07`.
+- **`woo_cache/{doc}`** (admin-only, pure cache): `orders`, `product_catalogue`, `customer_scan` each hold the last pull so the pages restore on open instead of re-hitting WooCommerce; the fetch/scan button refreshes. Size-guarded at ~900 KB. Nothing downstream reads it — safe to wipe.
 
 ### Bank / Logistics / Catalogues / Settings
 - Bank: `BankAccounts.jsx`, `BankDetailsAudit.jsx`, `src/bankAccounts.js`, `bank` fn.
