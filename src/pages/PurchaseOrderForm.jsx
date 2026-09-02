@@ -9,6 +9,7 @@ import { emptyLine, lineAmount, poTotals, cleanLines, linkedComponentIds, emptyA
 import { allocatePuNo } from '../puNumber'
 import ComponentLinkPicker from '../components/ComponentLinkPicker'
 import { Trash2, Plus, FileInput, FolderOpen, FileText, Link2, X } from 'lucide-react'
+import { useT } from '../i18n'
 
 const PO_TERM_VALUES = PO_PAYMENT_TERMS.map(t => t.value)
 
@@ -39,6 +40,7 @@ function snapshotSupplier(s) {
 }
 
 export default function PurchaseOrderForm() {
+  const t = useT()
   const { id } = useParams()
   const isEdit = Boolean(id)
   const navigate = useNavigate()
@@ -77,7 +79,7 @@ export default function PurchaseOrderForm() {
       const no = await allocatePuNo()
       setForm(f => ({ ...f, pu_number: no }))
     } catch (e) {
-      setPuError(e.message || 'Could not allocate a PU number.')
+      setPuError(e.message || t('Could not allocate a PU number.'))
     } finally {
       setAllocatingPu(false)
     }
@@ -218,13 +220,13 @@ export default function PurchaseOrderForm() {
 
       // Surface anything the operator still needs to resolve.
       const notes = []
-      if (!mapped.length) notes.push('No line items found — add them manually.')
+      if (!mapped.length) notes.push(t('No line items found — add them manually.'))
       if (!match && (data.supplier_name || data.supplier_code)) {
-        notes.push(`Supplier “${data.supplier_name || data.supplier_code}” not matched — pick it above or add it first.`)
+        notes.push(t('Supplier “{name}” not matched — pick it above or add it first.', { name: data.supplier_name || data.supplier_code }))
       }
       setExtractError(notes.join(' '))
     } catch {
-      setExtractError('Could not read this PO — fill the header and add lines manually.')
+      setExtractError(t('Could not read this PO — fill the header and add lines manually.'))
     } finally {
       setExtracting(false)
     }
@@ -266,13 +268,13 @@ export default function PurchaseOrderForm() {
     // PU number is optional at any status — "Issued" here means sent to the
     // supplier, which can happen before anyone gets round to clicking
     // Allocate. Not required at save time; the number can be added later.
-    if (!form.supplier_id) { setError('Select a supplier.'); return }
+    if (!form.supplier_id) { setError(t('Select a supplier.')); return }
     const clean = cleanLines(lines)
-    if (!clean.length) { setError('Add at least one line item.'); return }
+    if (!clean.length) { setError(t('Add at least one line item.')); return }
 
     setLoading(true)
     try {
-      const t = poTotals({ lines, deposit_pct: form.deposit_pct, adjustments })
+      const tot = poTotals({ lines, deposit_pct: form.deposit_pct, adjustments })
       const payload = {
         pu_number: form.pu_number.trim(),
         ...supplierSnap,
@@ -288,9 +290,9 @@ export default function PurchaseOrderForm() {
         lines: clean,
         adjustments: cleanAdjustments(adjustments),
         linked_component_ids: linkedComponentIds(clean),
-        subtotal: t.subtotal,
-        grand_total: t.grandTotal,   // subtotal after discounts / extra charges
-        total: t.balance,            // amount actually payable after any deposit split
+        subtotal: tot.subtotal,
+        grand_total: tot.grandTotal,   // subtotal after discounts / extra charges
+        total: tot.balance,            // amount actually payable after any deposit split
         updatedAt: serverTimestamp(),
       }
       if (isEdit) {
@@ -301,20 +303,20 @@ export default function PurchaseOrderForm() {
         navigate(`/purchase-orders/${ref.id}`)
       }
     } catch (err) {
-      setError(err.message || 'Failed to save.')
+      setError(err.message || t('Failed to save.'))
       setLoading(false)
     }
   }
 
-  if (fetching) return <div className="p-6 text-ink-60">Loading…</div>
+  if (fetching) return <div className="p-6 text-ink-60">{t('Loading…')}</div>
 
   return (
     <div className="p-4 md:p-6 max-w-4xl">
       <div className="mb-6">
-        <Link to="/purchase-orders" className="text-sm text-brand-600 hover:underline">← Purchase Orders</Link>
-        <h1 className="text-2xl text-ink mt-1">{isEdit ? 'Edit Purchase Order' : 'New Purchase Order'}</h1>
+        <Link to="/purchase-orders" className="text-sm text-brand-600 hover:underline">← {t('Purchase Orders')}</Link>
+        <h1 className="text-2xl text-ink mt-1">{isEdit ? t('Edit Purchase Order') : t('New Purchase Order')}</h1>
         {dupFromPU && !isEdit && (
-          <p className="text-sm text-ink-60 mt-1">Reordered from <span className="font-mono text-ink-80">{dupFromPU}</span> — enter the new PU number from the ERP.</p>
+          <p className="text-sm text-ink-60 mt-1">{t('Reordered from')} <span className="font-mono text-ink-80">{dupFromPU}</span> — {t('enter the new PU number from the ERP.')}</p>
         )}
       </div>
 
@@ -328,8 +330,8 @@ export default function PurchaseOrderForm() {
               onDragOver={e => { e.preventDefault(); setDragOver(true) }}
               onDragLeave={() => setDragOver(false)} onDrop={handleDrop}>
               <span className="text-ink-60 mb-1">{dragOver ? <FolderOpen size={22} /> : <FileInput size={22} />}</span>
-              <span className="text-sm text-ink-70">{dragOver ? 'Drop to import' : 'Upload an old PO to auto-fill (PDF or image)'}</span>
-              <span className="text-xs text-ink-60 mt-0.5">Reads the ERP PU sheet — you still type/confirm the PU number. PDF, JPG, PNG</span>
+              <span className="text-sm text-ink-70">{dragOver ? t('Drop to import') : t('Upload an old PO to auto-fill (PDF or image)')}</span>
+              <span className="text-xs text-ink-60 mt-0.5">{t('Reads the ERP PU sheet — you still type/confirm the PU number. PDF, JPG, PNG')}</span>
               <input type="file" accept="image/*,.pdf" className="hidden"
                      onChange={e => { if (e.target.files[0]) importFile(e.target.files[0]); e.target.value = '' }} />
             </label>
@@ -348,23 +350,23 @@ export default function PurchaseOrderForm() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="label flex items-center justify-between gap-2">
-                <span>PU Number</span>
+                <span>{t('PU Number')}</span>
                 {!form.pu_number && (
                   <button type="button" onClick={doAllocatePu} disabled={allocatingPu}
                           className="text-2xs text-brand-600 hover:text-brand-800 disabled:opacity-50 font-normal normal-case"
-                          title="Allocate the next PU number in the app's own series.">
-                    {allocatingPu ? 'Allocating…' : 'Allocate'}
+                          title={t("Allocate the next PU number in the app's own series.")}>
+                    {allocatingPu ? t('Allocating…') : t('Allocate')}
                   </button>
                 )}
               </label>
               <input className="input font-mono" value={form.pu_number} onChange={set('pu_number')}
-                     placeholder="e.g. PU260048 — or click Allocate" />
+                     placeholder={t('e.g. PU260048 — or click Allocate')} />
               {puError && <p className="text-xs text-red-600 mt-1">{puError}</p>}
             </div>
             <div>
-              <label className="label">Supplier *</label>
+              <label className="label">{t('Supplier *')}</label>
               <select className="input" value={form.supplier_id} onChange={e => pickSupplier(e.target.value)}>
-                <option value="">— select supplier —</option>
+                <option value="">{t('— select supplier —')}</option>
                 {suppliers.map(s => (
                   <option key={s.id} value={s.id}>{s.erp_code ? `[${s.erp_code}] ` : ''}{s.name}{s.name_cn ? ` · ${s.name_cn}` : ''}</option>
                 ))}
@@ -374,21 +376,21 @@ export default function PurchaseOrderForm() {
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <label className="label">Issued Date</label>
+              <label className="label">{t('Issued Date')}</label>
               <input type="date" className="input" value={form.issued_date} onChange={set('issued_date')} />
             </div>
             <div>
-              <label className="label">Est. Ship Date</label>
+              <label className="label">{t('Est. Ship Date')}</label>
               <input type="date" className="input" value={form.est_ship_date} onChange={set('est_ship_date')} />
             </div>
             <div>
-              <label className="label">Currency</label>
+              <label className="label">{t('Currency')}</label>
               <select className="input" value={form.currency} onChange={set('currency')}>
                 {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
             <div>
-              <label className="label">Deposit %</label>
+              <label className="label">{t('Deposit %')}</label>
               <input className="input text-right tabular-nums" inputMode="decimal" value={form.deposit_pct}
                      onChange={e => setForm(f => ({ ...f, deposit_pct: e.target.value.replace(/[^\d.]/g, '') }))}
                      placeholder="0" />
@@ -397,31 +399,31 @@ export default function PurchaseOrderForm() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="label">Payment Terms</label>
+              <label className="label">{t('Payment Terms')}</label>
               <select className="input" value={form.payment_terms} onChange={set('payment_terms')}>
-                <option value="">— none —</option>
-                {PO_PAYMENT_TERMS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                <option value="">{t('— none —')}</option>
+                {PO_PAYMENT_TERMS.map(term => <option key={term.value} value={term.value}>{term.label}</option>)}
               </select>
             </div>
             <div>
-              <label className="label">Terms Note <span className="text-ink-60 font-normal">(optional)</span></label>
+              <label className="label">{t('Terms Note')} <span className="text-ink-60 font-normal">{t('(optional)')}</span></label>
               <input className="input" value={form.payment_terms_custom} onChange={set('payment_terms_custom')}
-                     placeholder="e.g. balance on delivery" />
+                     placeholder={t('e.g. balance on delivery')} />
             </div>
           </div>
 
           <div>
-            <label className="label">Ship To <span className="text-ink-60 font-normal">(optional)</span></label>
+            <label className="label">{t('Ship To')} <span className="text-ink-60 font-normal">{t('(optional)')}</span></label>
             <input className="input" value={form.ship_to} onChange={set('ship_to')}
-                   placeholder="Blank = default Crystocraft warehouse" />
+                   placeholder={t('Blank = default Crystocraft warehouse')} />
           </div>
         </div>
 
         {/* ── Line items ── */}
         <div className="card p-4 md:p-6">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm text-ink-80">Line Items</h2>
-            <span className="text-xs text-ink-60">Type a component code (autocompletes) or free text for MISC items.</span>
+            <h2 className="text-sm text-ink-80">{t('Line Items')}</h2>
+            <span className="text-xs text-ink-60">{t('Type a component code (autocompletes) or free text for MISC items.')}</span>
           </div>
 
           <datalist id="po-component-codes">
@@ -430,8 +432,8 @@ export default function PurchaseOrderForm() {
 
           {/* Column headers — desktop */}
           <div className="hidden sm:grid grid-cols-[2fr_3fr_1fr_1fr_1.3fr_1.3fr_auto] gap-2 px-1 pb-1 text-2xs uppercase tracking-wide text-ink-60">
-            <span>Item Code</span><span>Description</span><span className="text-right">Qty</span>
-            <span>Unit</span><span className="text-right">Unit Price</span><span className="text-right">Amount</span><span />
+            <span>{t('Item Code')}</span><span>{t('Description')}</span><span className="text-right">{t('Qty')}</span>
+            <span>{t('Unit')}</span><span className="text-right">{t('Unit Price')}</span><span className="text-right">{t('Amount')}</span><span />
           </div>
 
           <div className="space-y-3">
@@ -441,7 +443,7 @@ export default function PurchaseOrderForm() {
                   <input className="input text-sm font-mono" list="po-component-codes" value={ln.code}
                          onChange={e => onCodeChange(ln._uid, e.target.value)} placeholder="P-… / FM-… / MISC" />
                   <input className="input text-sm" value={ln.description}
-                         onChange={e => updateLine(ln._uid, { description: e.target.value })} placeholder="Description" />
+                         onChange={e => updateLine(ln._uid, { description: e.target.value })} placeholder={t('Description')} />
                   <input className="input text-sm text-right tabular-nums" inputMode="decimal" value={ln.qty}
                          onChange={e => updateLine(ln._uid, { qty: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0" />
                   <select className="input text-sm" value={ln.unit} onChange={e => updateLine(ln._uid, { unit: e.target.value })}>
@@ -453,7 +455,7 @@ export default function PurchaseOrderForm() {
                     {lineAmount(ln) ? lineAmount(ln).toLocaleString(undefined, { maximumFractionDigits: 2 }) : '—'}
                   </div>
                   <button type="button" onClick={() => removeLine(ln._uid)}
-                          className="text-platinum hover:text-red-500 justify-self-end" title="Remove line">
+                          className="text-platinum hover:text-red-500 justify-self-end" title={t('Remove line')}>
                     <Trash2 size={15} />
                   </button>
                 </div>
@@ -462,15 +464,15 @@ export default function PurchaseOrderForm() {
                   {ln.linked?.component_id ? (
                     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-brand-50 text-brand-700">
                       <Link2 size={12} />
-                      <span className="truncate max-w-[220px]">{ln.linked.label || 'Linked component'}</span>
-                      <span className="text-brand-400">· {ln.linked.type === 'range' ? 'Figurine' : 'Corp'}</span>
+                      <span className="truncate max-w-[220px]">{ln.linked.label || t('Linked component')}</span>
+                      <span className="text-brand-400">· {ln.linked.type === 'range' ? t('Figurine') : t('Corp')}</span>
                       <button type="button" onClick={() => updateLine(ln._uid, { linked: null })}
-                              className="text-brand-400 hover:text-red-500" title="Unlink"><X size={12} /></button>
+                              className="text-brand-400 hover:text-red-500" title={t('Unlink')}><X size={12} /></button>
                     </span>
                   ) : (
                     <button type="button" onClick={() => setLinkingUid(ln._uid)}
                             className="inline-flex items-center gap-1 text-ink-60 hover:text-brand-600">
-                      <Link2 size={12} /> Link component <span className="text-platinum">(optional)</span>
+                      <Link2 size={12} /> {t('Link component')} <span className="text-platinum">{t('(optional)')}</span>
                     </button>
                   )}
                 </div>
@@ -479,59 +481,59 @@ export default function PurchaseOrderForm() {
           </div>
 
           <button type="button" onClick={addLine} className="mt-3 inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-800">
-            <Plus size={14} /> Add line
+            <Plus size={14} /> {t('Add line')}
           </button>
 
           {/* Discounts & additional charges */}
           <div className="mt-5 pt-4 border-t border-warm-grey">
-            <h3 className="text-xs uppercase tracking-wide text-ink-60 mb-2">Discounts &amp; Additional Charges</h3>
+            <h3 className="text-xs uppercase tracking-wide text-ink-60 mb-2">{t('Discounts & Additional Charges')}</h3>
             {adjustments.length > 0 && (
               <div className="space-y-2">
                 {adjustments.map(a => (
                   <div key={a._uid} className="flex flex-col sm:grid sm:grid-cols-[1fr_7.5rem_7rem_auto] gap-2 sm:items-center">
                     <input className="input text-sm" value={a.label}
                            onChange={e => updateAdjustment(a._uid, { label: e.target.value })}
-                           placeholder={a.kind === 'discount' ? 'e.g. volume discount' : 'e.g. freight, mould fee'} />
+                           placeholder={a.kind === 'discount' ? t('e.g. volume discount') : t('e.g. freight, mould fee')} />
                     <div className="flex gap-2 items-center sm:contents">
                       <select className="input text-sm flex-none w-28 sm:w-auto" value={a.kind} onChange={e => updateAdjustment(a._uid, { kind: e.target.value })}>
-                        <option value="charge">Charge +</option>
-                        <option value="discount">Discount −</option>
+                        <option value="charge">{t('Charge +')}</option>
+                        <option value="discount">{t('Discount −')}</option>
                       </select>
                       <input className="input text-sm text-right tabular-nums flex-1 sm:flex-none" inputMode="decimal" value={a.amount}
                              onChange={e => updateAdjustment(a._uid, { amount: e.target.value.replace(/[^\d.]/g, '') })} placeholder="0.00" />
                       <button type="button" onClick={() => removeAdjustment(a._uid)}
-                              className="text-platinum hover:text-red-500 shrink-0 sm:justify-self-end" title="Remove"><Trash2 size={15} /></button>
+                              className="text-platinum hover:text-red-500 shrink-0 sm:justify-self-end" title={t('Remove')}><Trash2 size={15} /></button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
             <button type="button" onClick={addAdjustment} className="mt-2 inline-flex items-center gap-1 text-sm text-brand-600 hover:text-brand-800">
-              <Plus size={14} /> Add discount / charge
+              <Plus size={14} /> {t('Add discount / charge')}
             </button>
           </div>
 
           {/* Totals */}
           <div className="mt-5 pt-4 border-t border-warm-grey flex justify-end">
             <div className="w-full sm:w-72 space-y-1.5 text-sm">
-              <div className="flex justify-between"><span className="text-ink-60">Subtotal</span><span className="tabular-nums font-medium">{fmtMoney(totals.subtotal, form.currency)}</span></div>
+              <div className="flex justify-between"><span className="text-ink-60">{t('Subtotal')}</span><span className="tabular-nums font-medium">{fmtMoney(totals.subtotal, form.currency)}</span></div>
               {cleanAdjustments(adjustments).map((a, i) => {
                 const disc = a.kind === 'discount'
                 return (
                   <div key={i} className="flex justify-between text-ink-60">
-                    <span className="truncate max-w-[11rem]">{a.label || (disc ? 'Discount' : 'Additional charge')}</span>
+                    <span className="truncate max-w-[11rem]">{a.label || (disc ? t('Discount') : t('Additional charge'))}</span>
                     <span className="tabular-nums">{disc ? '− ' : '+ '}{fmtMoney(a.amount, form.currency)}</span>
                   </div>
                 )
               })}
               {totals.adjustmentsTotal !== 0 && (
-                <div className="flex justify-between font-medium pt-1 border-t border-warm-grey"><span className="text-ink-70">Order total</span><span className="tabular-nums">{fmtMoney(totals.grandTotal, form.currency)}</span></div>
+                <div className="flex justify-between font-medium pt-1 border-t border-warm-grey"><span className="text-ink-70">{t('Order total')}</span><span className="tabular-nums">{fmtMoney(totals.grandTotal, form.currency)}</span></div>
               )}
               {totals.deposit > 0 && (
-                <div className="flex justify-between text-ink-60"><span>Deposit ({form.deposit_pct}%)</span><span className="tabular-nums">− {fmtMoney(totals.deposit, form.currency)}</span></div>
+                <div className="flex justify-between text-ink-60"><span>{t('Deposit')} ({form.deposit_pct}%)</span><span className="tabular-nums">− {fmtMoney(totals.deposit, form.currency)}</span></div>
               )}
               <div className="flex justify-between text-base font-semibold pt-1 border-t border-warm-grey">
-                <span>{totals.deposit > 0 ? 'Balance' : 'Total'}</span>
+                <span>{totals.deposit > 0 ? t('Balance') : t('Total')}</span>
                 <span className="tabular-nums">{fmtMoney(totals.balance, form.currency)}</span>
               </div>
             </div>
@@ -540,24 +542,24 @@ export default function PurchaseOrderForm() {
 
         {/* ── Remarks ── */}
         <div className="card p-6">
-          <label className="label">Remarks</label>
+          <label className="label">{t('Remarks')}</label>
           <textarea className="input" rows={2} value={form.remarks} onChange={set('remarks')}
-                    placeholder="Deposit paid, delivery notes, etc." />
+                    placeholder={t('Deposit paid, delivery notes, etc.')} />
         </div>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <div className="flex flex-wrap gap-3">
           <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? 'Saving…' : isEdit ? 'Save Changes' : 'Save Draft'}
+            {loading ? t('Saving…') : isEdit ? t('Save Changes') : t('Save Draft')}
           </button>
           {form.status !== 'issued' && (
             <button type="button" className="btn-secondary" disabled={loading}
                     onClick={e => handleSubmit(e, 'issued')}>
-              Save &amp; mark Issued
+              {t('Save & mark Issued')}
             </button>
           )}
-          <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>Cancel</button>
+          <button type="button" className="btn-secondary" onClick={() => navigate(-1)}>{t('Cancel')}</button>
         </div>
       </form>
 

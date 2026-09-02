@@ -4,6 +4,7 @@ import { collection, query, where, getDocs } from 'firebase/firestore'
 import { db } from '../firebase'
 import { fmtMoney } from '../currency'
 import { Receipt } from 'lucide-react'
+import { useT } from '../i18n'
 
 function fmtDate(s) {
   if (!s) return ''
@@ -15,6 +16,7 @@ function fmtDate(s) {
 // from linked purchase-order lines. A sanity signal against the quoted cost;
 // it never feeds the costing engine. Renders nothing when no PO is linked.
 export default function LastActualPaid({ componentId }) {
+  const t = useT()
   const [rows, setRows] = useState(null)   // null = loading, [] = none
 
   useEffect(() => {
@@ -54,7 +56,7 @@ export default function LastActualPaid({ componentId }) {
         <div className="flex items-center gap-2 min-w-0">
           <Receipt size={14} className="text-amber-600 shrink-0" />
           <span className="text-xs text-amber-800">
-            <span className="font-medium">Last actual paid:</span>{' '}
+            <span className="font-medium">{t('Last actual paid:')}</span>{' '}
             <span className="font-semibold tabular-nums">{fmtMoney(latest.unit_price, latest.currency)}</span>
           </span>
         </div>
@@ -65,7 +67,7 @@ export default function LastActualPaid({ componentId }) {
       </div>
       {rows.length > 1 && (
         <p className="text-2xs text-amber-600/80 mt-1 pl-6">
-          {rows.length} linked PO lines · range {fmtMoney(Math.min(...rows.map(r => r.unit_price)), latest.currency)}–{fmtMoney(Math.max(...rows.map(r => r.unit_price)), latest.currency).replace(/^\w+\s/, '')}
+          {t('{n} linked PO lines · range', { n: rows.length })} {fmtMoney(Math.min(...rows.map(r => r.unit_price)), latest.currency)}–{fmtMoney(Math.max(...rows.map(r => r.unit_price)), latest.currency).replace(/^\w+\s/, '')}
         </p>
       )}
     </div>
