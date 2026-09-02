@@ -32,6 +32,19 @@ const FileTypeIcon = ({ type, name, size }) => {
   return <I size={size} />
 }
 
+const OFFICE_EXT = new Set(['xlsx', 'xls', 'csv', 'pptx', 'ppt', 'docx', 'doc'])
+const extOf = name => (name || '').split('.').pop()?.toLowerCase() || ''
+const isOffice = (type, name) => OFFICE_EXT.has(extOf(name)) ||
+  /officedocument|ms-excel|ms-powerpoint|msword/.test(type || '')
+const isPdf = (type, name) => type === 'application/pdf' || extOf(name) === 'pdf'
+
+// Microsoft's public Office Online viewer. Needs a URL it can fetch itself —
+// Firebase download URLs carry their own token and are publicly reachable, so
+// this works as-is. The file transits Microsoft's servers to be rendered;
+// supplier catalogs / lookbooks / price lists only (owner: nothing sensitive).
+const officeEmbedUrl = fileUrl =>
+  `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`
+
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
@@ -44,6 +57,7 @@ export default function SupplierCatalogs({ supplierId }) {
   const [uploads, setUploads]     = useState([])   // in-progress uploads
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [lightbox, setLightbox]   = useState(null)
+  const [viewer, setViewer]       = useState(null)   // catalog being previewed in a modal
 
   useEffect(() => {
     const q = query(collection(db, 'suppliers', supplierId, 'catalogs'), orderBy('uploaded_at', 'desc'))
@@ -113,7 +127,7 @@ export default function SupplierCatalogs({ supplierId }) {
         </label>
       </div>
 
-      <p className="text-xs text-ink-60 mb-4">Upload supplier product catalogs, lookbooks, or price lists — PDF, images, or Office files (Excel / PowerPoint / Word). Stored as-is; Office files open in a download.</p>
+      <p className="text-xs text-ink-60 mb-4">Upload supplier product catalogs, lookbooks, or price lists — PDF, images, or Office files (Excel / PowerPoint / Word). Office files preview in-app through Microsoft's viewer.</p>
 
       {/* In-progress uploads */}
       {uploads.map(u => (
@@ -145,7 +159,10 @@ export default function SupplierCatalogs({ supplierId }) {
                   onClick={() => setLightbox(c)}
                 />
               ) : (
-                <span className="text-ink-60 shrink-0"><FileTypeIcon type={c.file_type} name={c.file_name} size={24} /></span>
+                <span
+                  className={`text-ink-60 shrink-0 ${(isOffice(c.file_type, c.file_name) || isPdf(c.file_type, c.file_name)) ? 'cursor-pointer' : ''}`}
+                  onClick={() => (isOffice(c.file_type, c.file_name) || isPdf(c.file_type, c.file_name)) && setViewer(c)}
+                ><FileTypeIcon type={c.file_type} name={c.file_name} size={24} /></span>
               )}
 
               {/* Info */}
@@ -156,6 +173,15 @@ export default function SupplierCatalogs({ supplierId }) {
 
               {/* Actions */}
               <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                {(isOffice(c.file_type, c.file_name) || isPdf(c.file_type, c.file_name)) && (
+                  <button
+                    type="button"
+                    onClick={() => setViewer(c)}
+                    className="text-xs text-brand-600 hover:text-brand-800 px-2 py-1 rounded-none hover:bg-brand-50"
+                  >
+                    View
+                  </button>
+                )}
                 <a
                   href={c.file_url}
                   target="_blank"
@@ -174,6 +200,25 @@ export default function SupplierCatalogs({ supplierId }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Document viewer — Office files via Microsoft's embed, PDFs direct */}
+      {viewer && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-black/80" onClick={() => setViewer(null)}>
+          <div className="flex items-center justify-between px-4 py-2.5 bg-white shrink-0" onClick={e => e.stopPropagation()}>
+            <p className="text-sm text-ink truncate font-medium">{viewer.file_name}</p>
+            <div className="flex items-center gap-3 shrink-0">
+              <a href={viewer.file_url} target="_blank" rel="noreferrer" className="text-xs text-brand-600 hover:text-brand-800">Open in new tab</a>
+              <button onClick={() => setViewer(null)} className="text-ink-60 hover:text-ink-80"><X size={20} /></button>
+            </div>
+          </div>
+          <iframe
+            title={viewer.file_name}
+            src={isPdf(viewer.file_type, viewer.file_name) ? viewer.file_url : officeEmbedUrl(viewer.file_url)}
+            className="flex-1 w-full bg-white border-0"
+            onClick={e => e.stopPropagation()}
+          />
         </div>
       )}
 
