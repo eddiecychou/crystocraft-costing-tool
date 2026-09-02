@@ -8,11 +8,19 @@ import { downloadCsv } from '../exportCsv'
 import LoadingBar from '../components/LoadingBar'
 import { RefreshCcw, Download, AlertTriangle, ShoppingCart, ExternalLink, ChevronRight, ArrowUp, ArrowDown } from 'lucide-react'
 
-// A product code's stem: leading 0-2 letters + digits, before any suffix.
-// "U0265-001" → "U0265"  ·  "D0268-001-GC1" → "D0268". Per owner, the
-// U/D/A prefix and the format/colour suffix aren't load-bearing for "is this
-// in our catalogue" — the design stem is the join key.
-const stem = (s) => (String(s || '').toUpperCase().match(/^[A-Z]{0,2}\d{3,6}/) || [''])[0]
+// A product code's join stems. "U0265-001" → ["U0265"]. A 2-letter prefix
+// like "UA062-224" (body letter + brand letter) yields ["UA062","U062","A062"]
+// because the internal catalogue's design_code often carries only ONE of them.
+// Suffix (format / colour / running-no) is always dropped — per owner it isn't
+// load-bearing for "is this in our catalogue".
+function stems(code) {
+  const m = String(code || '').toUpperCase().match(/^([A-Z]{0,3})(\d{2,6})/)
+  if (!m) return []
+  const [, letters, digits] = m
+  const out = [letters + digits]
+  if (letters.length >= 2) { out.push(letters[0] + digits, letters[letters.length - 1] + digits) }
+  return [...new Set(out.filter(Boolean))]
+}
 
 // WooCommerce catalogue overview + SEO checklist + WPML translation coverage
 // (Ecommerce, admin). Read-only. Cached (chunked) to woo_cache so it loads
@@ -118,17 +126,21 @@ export default function WooCatalogue() {
         getDocs(collection(db, 'products')),
         loadB2cStock(),
       ])
-      const idx = (arr, codeOf, nameOf) => {
+      // Index by EVERY stem candidate of each code field, so a Woo SKU can hit
+      // whichever form the internal catalogue stored (UA062 / U062 / A062).
+      const idx = (arr, codesOf, nameOf) => {
         const m = new Map()
         for (const x of arr) {
-          const s = stem(codeOf(x))
-          if (s && !m.has(s)) m.set(s, { name: nameOf(x) || s, code: codeOf(x) })
+          const name = nameOf(x)
+          for (const raw of [].concat(codesOf(x)).filter(Boolean)) {
+            for (const s of stems(raw)) if (s && !m.has(s)) m.set(s, { name: name || s, code: raw })
+          }
         }
         return m
       }
       setInternal({
-        figurine: idx(rangeSnap.docs.map(d => d.data()), x => x.design_code || x.sku, x => x.design_name || x.description),
-        corp: idx(corpSnap.docs.map(d => d.data()), x => x.product_code || x.sku || x.code || '', x => x.name),
+        figurine: idx(rangeSnap.docs.map(d => d.data()), x => [x.design_code, x.sku], x => x.design_name || x.description),
+        corp: idx(corpSnap.docs.map(d => d.data()), x => [x.product_code, x.sku, x.code], x => x.name),
         b2c: idx(b2c || [], x => x.code, x => x.name),
       })
     } catch (e) {
@@ -277,14 +289,15 @@ export default function WooCatalogue() {
   const matchModel = useMemo(() => {
     if (!model || !internal) return null
     const rows = model.withSeo.map(p => {
-      const s = stem(p.sku)
+      const cands = stems(p.sku)
+      const hit = (m) => { for (const s of cands) if (m.has(s)) return { key: s, ...m.get(s) }; return null }
       const hits = []
-      if (s && internal.figurine.has(s)) hits.push({ src: 'figurine', ...internal.figurine.get(s) })
-      if (s && internal.corp.has(s)) hits.push({ src: 'corp', ...internal.corp.get(s) })
-      if (s && internal.b2c.has(s)) hits.push({ src: 'b2c', ...internal.b2c.get(s) })
-      return { ...p, _stem: s, _hits: hits }
+      const fh = hit(internal.figurine); if (fh) hits.push({ src: 'figurine', ...fh })
+      const ch = hit(internal.corp); if (ch) hits.push({ src: 'corp', ...ch })
+      const bh = hit(internal.b2c); if (bh) hits.push({ src: 'b2c', ...bh })
+      return { ...p, _stem: cands[0] || '', _hits: hits }
     })
-    const used = new Set(rows.flatMap(r => (r._hits.length ? [r._stem] : [])))
+    const used = new Set(rows.flatMap(r => r._hits.map(h => h.key)))
     const counts = {
       figurine: rows.filter(r => r._hits.some(h => h.src === 'figurine')).length,
       corp: rows.filter(r => r._hits.some(h => h.src === 'corp')).length,
