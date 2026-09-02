@@ -5,9 +5,11 @@
 > carries a `modules[]` list of exactly which functions they can reach, toggled
 > by the admin in the account editor. Admin = everything; customer = storefront.
 >
-> **Status: NOT STARTED.** This reshapes the security boundary across the five
-> RBAC surfaces + a rules deploy. Sign off on §2 (module list), §6 (open
-> decisions) and the mapping in §4 before any code.
+> **Status: decisions locked (owner, 2026-09-02) — ready to build on "go
+> ahead".** §6 answered: (1) one `erp` key, no items-only split; (2) one
+> `supply` key covers components + suppliers + purchase orders + inventory;
+> (3) `pricing` is its own (sensitive) checkbox; (4) `dashboard` is an
+> explicit checkbox. §2 and §4 below are updated to match.
 
 ---
 
@@ -22,22 +24,24 @@
 `production` and `sales` are **removed**. A transitional shim (§5) keeps an
 un-migrated old-role account working until it's converted.
 
-## 2. Module catalogue  *(sign-off needed — is this the right set + grouping?)*
+## 2. Module catalogue (17 keys — LOCKED)
 
-21 keys. `†` = **sensitive** (grants sight of costs / margins / all-customer data
-/ money / trade secrets — the admin should think before ticking).
+`†` = **sensitive** (grants sight of costs / margins / all-customer data / money
+/ trade secrets — the admin should think before ticking).
 
 | Group | Keys |
 |---|---|
 | Catalogue | `products`, `figurine`, `swatch`, `catalogues`, `pricing` † |
 | Front office | `customers` †, `quotes`, `marketing`, `portal` |
 | Fulfilment & finance | `shipping`, `invoices` †, `credit_notes` †, `uc` † |
-| Supply | `components`, `suppliers`, `purchase_orders`, `inventory` |
+| Supply | **`supply`** — the whole supply side: Components, Suppliers, Purchase Orders, Inventory (all four nav items + every supply collection + `movements` ledgers) |
 | Ecommerce | `woo` |
 | System | `dashboard`, `erp` †, `settings` † |
 
-`dashboard` is effectively always-on for any staff (a landing page); could be
-implicit rather than a checkbox.
+- `supply` is one checkbox (owner). The four supply nav items all tag
+  `module: 'supply'`.
+- `erp` is one checkbox = full ERP (no items-only variant).
+- `dashboard` is an explicit checkbox (not implicit).
 
 ## 3. The five surfaces
 
@@ -69,10 +73,8 @@ collection; `isFrontOffice()` (front office) → the front-office module.
 
 | Collection(s) | Today | New |
 |---|---|---|
-| `range_components`, `range_components/*/{supplier_quotes,movements}`, `components`, `suppliers`, `supplier_quotes`, `{path=**}/supplier_quotes` | `isStaff()` | `can('components')` (suppliers/quotes) / `can('inventory')` for `*/movements` — **or one `can('components')` for the lot?** ← decide |
-| `crystals`, `packaging`, `b2c_stock` (+ their `movements`) | `isStaff()` | `can('inventory')` |
-| `purchase_orders` | `isStaff()` | `can('purchase_orders')` |
-| `attachments`, `catalogs`, `videos` (storage-ish meta) | `isStaff()` | `can('suppliers')` (supplier catalogs/attachments) / `can('products')` (product videos) — split by path |
+| `range_components` (+ `*/supplier_quotes`, `*/movements`), `components`, `suppliers`, `supplier_quotes`, `{path=**}/supplier_quotes`, `crystals` (+ `movements`), `packaging` (+ `movements`), `b2c_stock` (+ `movements`), `purchase_orders`, `catalogs`, `attachments` | `isStaff()` | `can('supply')` |
+| `videos` (product videos) | `isStaff()` | `can('products')` |
 | `products/{id}` read | `canShop() \|\| isProduction() \|\| isSales()` | `canShop() \|\| can('products') \|\| can('figurine')` |
 | `products/{id}` write, `products/{id}/images` write | `isStaff() \|\| isSales()` | `can('products')` |
 | `products/{id}/pricing_tiers` | read `canShop() \|\| isSales()`, write `isAdmin()` | read `canShop() \|\| can('pricing') \|\| can('quotes')`, write `can('pricing')` |
@@ -88,7 +90,7 @@ collection; `isFrontOffice()` (front office) → the front-office module.
 | `uc_invoices` | `isFrontOffice()` | `can('uc')` |
 | `client_quotes` proposal subdoc | `isFrontOffice()` | `can('quotes')` |
 | `settings/{docId}` — `pricing_groups` etc. | `isProduction()`/`isSales()` allow-listed docIds, else `isAdmin()` | drop the allow-lists → `can('settings')` for the settings module; `pricing_groups` write stays `can('pricing')` |
-| `counters/{name}` | `isAdmin() \|\| (isProduction() && pu_*) \|\| (isSales() && (uc\|so)_*)` | `isAdmin() \|\| (can('purchase_orders') && pu_*) \|\| (can('quotes') && (uc\|so)_*)` |
+| `counters/{name}` | `isAdmin() \|\| (isProduction() && pu_*) \|\| (isSales() && (uc\|so)_*)` | `isAdmin() \|\| (can('supply') && pu_*) \|\| (can('quotes') && (uc\|so)_*)` |
 | `users/{uid}` read | `isAdmin() \|\| isSales() \|\| own` | `isAdmin() \|\| can('portal') \|\| own` (portal module = view-only account visibility; **write stays admin-only — the privilege-escalation wall**) |
 | `audit_logs` create | `isStaff() \|\| isFrontOffice()` | `isAdmin() \|\| isStaff()` (any internal login) |
 | `portal_invitations` | `isSales()` (read/list) + admin actions | `can('portal')` read; create/approve stays the admin-SDK function (unchanged) |
@@ -101,7 +103,7 @@ collection; `isFrontOffice()` (front office) → the front-office module.
 | `generate-blog`, `generate-marketing-copy`, `rewrite-section`, `scrape-images`, `publish-to-wordpress` | `requireFrontOffice` | `requireModule(req,'marketing')` |
 | `credit-note` | `requireFrontOffice` | `requireModule(req,'credit_notes')` |
 | `ga-portal-activity` | `requireFrontOffice` | `requireModule(req,'portal')` |
-| `erp.js` | admin all; `production` → item/stock family only | `can('erp')` → full ERP. **The item-only sub-split is lost** unless we add an `erp_items` key (§6). |
+| `erp.js` | admin all; `production` → item/stock family only | `can('erp')` → full ERP (the per-entity `PRODUCTION_ENTITIES` restriction is removed — one `erp` key, owner's call). |
 | `woo-sync`, `seo-state`, `seo-batch`, everything else on `requireAdmin` | `requireAdmin` | unchanged |
 
 ## 5. Migration (2 accounts — do by hand, no script)
@@ -109,7 +111,7 @@ collection; `isFrontOffice()` (front office) → the front-office module.
 | uid | email | was | → `role` | → `modules[]` |
 |---|---|---|---|---|
 | `1fSOuzrW…` | `2647939198@qq.com` | `sales` | `staff` | `dashboard, customers, quotes, marketing, catalogues, products, figurine, shipping, invoices, credit_notes, portal` |
-| `DvQHPUOu…` | `pack5@uart.com.hk` | `production` | `staff` | `dashboard, products, figurine, components, suppliers, purchase_orders, inventory, erp` |
+| `DvQHPUOu…` | `pack5@uart.com.hk` | `production` | `staff` | `dashboard, products, figurine, supply, erp` |
 
 (6 admins + 38 customers untouched.)
 
@@ -118,25 +120,24 @@ collection; `isFrontOffice()` (front office) → the front-office module.
 `modules = [SALES set]`, so nothing breaks in the window between deploy and
 hand-migration. Remove the shim once both accounts are converted (verified).
 
-## 6. Open decisions  *(need answers before build)*
+## 6. Decisions — ANSWERED (owner, 2026-09-02)
 
-1. **ERP granularity.** Keep the "item/stock only, not customer/invoice" split
-   (adds an `erp_items` key alongside `erp`), or collapse to one `erp` = full?
-   — pack5 currently only needs items/stock.
-2. **`components` vs `inventory`.** Are these one checkbox for the supply person,
-   or genuinely separate (someone who counts stock but shouldn't see supplier
-   prices)? Affects whether `range_components`/`suppliers`/`supplier_quotes` map
-   to `can('components')` or `can('suppliers')`.
-3. **`pricing` as a plain checkbox.** Confirmed you accept that ticking it grants
-   cost/margin visibility and it's on you not to tick it for the wrong person
-   (today it's a hard wall from `production`).
-4. **`dashboard`** — implicit for any staff, or an explicit checkbox?
+1. **ERP** — one `erp` key = full ERP. No items-only split. The per-entity
+   `PRODUCTION_ENTITIES` gate in `erp.js` is removed.
+2. **Supply** — one `supply` key covering Components + Suppliers + Purchase
+   Orders + Inventory (all four nav items, every supply collection, all
+   `movements`).
+3. **`pricing`** — its own sensitive checkbox. Ticking it grants cost/margin
+   visibility; the admin owns not mis-ticking it.
+4. **`dashboard`** — explicit checkbox.
 
 ## 7. Sequencing
 
-1. Agree §2 / §4 / §6.
+1. ~~Agree §2 / §4 / §6.~~ Done — awaiting "go ahead".
 2. Branch. `access.js` + `AccountEdit` + nav/gates + `ALL_MODULES` (with the
-   legacy shim). Build, esbuild/lint.
+   legacy shim). The four supply nav items (`Components`, `Suppliers`,
+   `Purchase Orders`, `Inventory`) retag to `module: 'supply'`. Build,
+   esbuild/lint.
 3. `firestore.rules` + `storage.rules` rewrite. `firebase deploy --only
    firestore:rules` then `--only storage` — **before** the app push (L-11).
 4. `lib/auth.js` `requireModule` + retag the 11 callers + `erp.js`.
