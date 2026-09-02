@@ -88,7 +88,7 @@ Mixed since V8.12 — supply-side is *staff*, the sales/finance docs stay *admin
 - `crystals/{id}` — per-colour crystal SKUs. Auth: staff (+ `movements`).
 - `crystal_swatch_notes/{colorId}` — curated legacy-Swarovski-reference metadata; **uniquely also portal-readable** (approved customers) even though write stays admin-only. (Not opened to production — read is admin/portal.)
 - `packaging/{id}` — gift boxes/cartons/inserts. Auth: staff (+ `movements`).
-- `b2c_stock/{id}` — retail finished-goods stock; per project memory, ChunCi's 卡斯库存 XLS is the real source, this collection doesn't connect to the production process. Auth: staff (+ `movements`).
+- `b2c_stock/{id}` — retail finished-goods stock; per project memory, ChunCi's 卡斯库存 XLS is the real source, this collection doesn't connect to the production process. Auth: staff (+ `movements`). Optional `woo_sku` / `woo_product_id` / `woo_variation_id` / `woo_linked_at` — a one-time manual mapping to the WooCommerce catalogue, set from `WooStockReconcile.jsx` (`setWooLink` in `b2cStock.js`); `save()`/`importStock()` write from their own field whitelists so neither clobbers these.
 
 ## Shipping & logistics
 

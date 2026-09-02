@@ -19,6 +19,7 @@
 //           POST { op: 'search_orders', q }         -- email/name, no date bound
 //           POST { op: 'search_orders', customer_id }  -- exact WC customer ID
 //           POST { op: 'orders_page', page }        -- lightweight, client-paginated, all-time
+//           POST { op: 'products_page', page }       -- catalogue + per-variation stock, client-paginated
 //           POST { op: 'order_refunds', order_id }
 //           POST { op: 'order_meta', order_id }
 //           POST { op: 'probe_payout', order_id? }   -- diagnostic, see below
@@ -329,6 +330,100 @@ export default async function handler(req) {
         total: parseFloat(o.total) || 0,
       })),
       has_more: rows.length === 100,
+    })
+  }
+
+  // ── one page of the WooCommerce product catalogue + stock, for the
+  // Finished-Goods reconciliation (WooStockReconcile.jsx) ───────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // CLIENT-paginated, same reasoning as orders_page: a catalogue has no known
+  // upper bound and every VARIABLE product needs an extra /variations call,
+  // so looping the whole thing server-side risks the edge-function time limit.
+  // The browser calls this once per page until has_more is false.
+  //
+  // Most B2C products are variable products (owner, 2026-09-02): colour/plating
+  // is a variation, and stock is tracked per VARIATION — the parent product's
+  // own stock_quantity is null. So a variable product emits one row per
+  // variation (carrying the parent's name + the variation's own sku/attributes/
+  // stock); a simple product emits a single row. Variation fetches for the
+  // page are run in small parallel batches to stay inside the time budget.
+  if (body.op === 'products_page') {
+    const page = Math.max(1, parseInt(body.page, 10) || 1)
+    // status=any → includes draft/private/pending, excludes only trash, so a
+    // not-yet-published product still shows up in the reconciliation rather
+    // than looking like "missing from Woo".
+    const r = await wc('products', { per_page: 100, page, status: 'any', orderby: 'id', order: 'asc' })
+    if (!r.ok) return json({ error: 'WooCommerce product fetch failed', detail: (await r.text()).slice(0, 300) }, 502)
+    const products = await r.json()
+
+    const attrPairs = (list) => (list || []).map(a => ({ name: a.name, option: a.option ?? a.options?.join(', ') ?? '' }))
+    const baseRow = (p, extra) => ({
+      product_id: p.id,
+      type: p.type,
+      status: p.status,
+      name: p.name,
+      permalink: p.permalink || null,
+      ...extra,
+    })
+
+    const rows = []
+    const variableProducts = []
+    for (const p of products) {
+      if (p.type === 'variable') { variableProducts.push(p); continue }
+      // simple / grouped / external — one row, its own sku + stock
+      rows.push(baseRow(p, {
+        variation_id: null,
+        sku: p.sku || '',
+        parent_sku: '',
+        attributes: [],
+        manage_stock: !!p.manage_stock,
+        stock_quantity: Number.isFinite(p.stock_quantity) ? p.stock_quantity : null,
+        stock_status: p.stock_status || null,
+        price: p.price || null,
+      }))
+    }
+
+    // Variations, in parallel batches of 6.
+    for (let i = 0; i < variableProducts.length; i += 6) {
+      const batch = variableProducts.slice(i, i + 6)
+      await Promise.all(batch.map(async (p) => {
+        const vars = []
+        for (let vp = 1; vp <= 10; vp++) {
+          const vr = await wc(`products/${p.id}/variations`, { per_page: 100, page: vp })
+          if (!vr.ok) break // best-effort — one product's variation lookup failing must not sink the page
+          const vrows = await vr.json()
+          vars.push(...vrows)
+          if (vrows.length < 100) break
+        }
+        if (!vars.length) {
+          // variable product with no variations defined yet — still surface it
+          rows.push(baseRow(p, {
+            variation_id: null, sku: p.sku || '', parent_sku: p.sku || '',
+            attributes: [], manage_stock: false, stock_quantity: null,
+            stock_status: p.stock_status || null, price: p.price || null,
+          }))
+          return
+        }
+        for (const v of vars) {
+          rows.push(baseRow(p, {
+            variation_id: v.id,
+            sku: v.sku || '',
+            parent_sku: p.sku || '',
+            attributes: attrPairs(v.attributes),
+            manage_stock: !!v.manage_stock,
+            stock_quantity: Number.isFinite(v.stock_quantity) ? v.stock_quantity : null,
+            stock_status: v.stock_status || null,
+            price: v.price || null,
+          }))
+        }
+      }))
+    }
+
+    return json({
+      rows,
+      has_more: products.length === 100,
+      products_on_page: products.length,
+      variable_count: variableProducts.length,
     })
   }
 

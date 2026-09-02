@@ -40,6 +40,13 @@ export const wooOrdersPage = (page) => wooSync('orders_page', { page })
 
 export const wooOrderRefunds = (orderId) => wooSync('order_refunds', { order_id: orderId }).then(d => d.rows || [])
 
+// One page of the WooCommerce product catalogue with per-variation stock —
+// for the Finished-Goods reconciliation (WooStockReconcile.jsx). Caller loops
+// pages until has_more is false; client-paginated for the same reason as
+// wooOrdersPage (a catalogue plus a /variations call per variable product has
+// no safe server-side loop bound). Returns { rows, has_more, ... }.
+export const wooProductsPage = (page) => wooSync('products_page', { page })
+
 // Diagnostic: full meta_data for one order — used to check for a gateway fee
 // hiding in private post meta once fee_lines comes back empty. See spec §12 Q4.
 export const wooOrderMeta = (orderId) => wooSync('order_meta', { order_id: orderId })

@@ -322,6 +322,46 @@ phases are re-scoped after seeing real data.
 
 ---
 
+## Phase 6 — Finished-goods stock reconciliation (added 2026-09-02)
+
+Separate from the order/refund flow above: this compares WooCommerce
+**catalogue stock** against the `b2c_stock` collection (the Finished Goods
+tab on Inventory Status), which is fed by ChunCi's 卡斯库存 XLS. The two
+drift because they are maintained independently. Owner's goal: first just
+**see** the Woo numbers next to the FG numbers; pushing corrected stock to
+Woo is a later phase, blocked until the SKU mapping exists.
+
+**The hard part — the match key.** Most B2C products are **variable
+products**: colour/plating is a variation, stock is per-variation, the
+parent product's own `stock_quantity` is null. WooCommerce variation SKUs
+are frequently left blank. ChunCi's barcode (`b2c_stock.code`, e.g.
+`D0268-001-GC1`) bakes colour into the tail and is a single opaque atom
+(`b2cImport.js` never splits it). So an exact normalised-SKU auto-match
+catches only the easy rows; the rest are mapped **by hand, once**.
+
+**Built:**
+- `woo-sync.js` `op: 'products_page'` — client-paginated catalogue pull,
+  one row per variation (name from parent, sku/attributes/stock from the
+  variation), `status: 'any'` so drafts show. Read-only.
+- `b2cStock.js` `setWooLink(id, link)` — writes `woo_sku` /
+  `woo_product_id` / `woo_variation_id` / `woo_linked_at` onto the
+  `b2c_stock` doc as a targeted merge. `save()` and `importStock()` both
+  write from field whitelists, so a normal FG edit or a fresh XLS import
+  never clobbers the link.
+- `WooStockReconcile.jsx` (`/woo-stock`, nav "Woo Stock Match", `module:
+  'woo'` → admin-only) — loads the catalogue, joins on manual link first
+  then exact normalised SKU, buckets every FG SKU (in sync / qty differs /
+  no Woo count / no match / link broken) plus Woo-only rows and a
+  blank-SKU-variation count, and offers a filter-and-click picker to set
+  each link. CSV export of the full reconciliation.
+
+**Open (owner, before Phase 7):** direction of truth once they disagree —
+is Woo display-only in OpsCenter, or should OpsCenter push stock
+corrections back to Woo? Answerable once the reconciliation shows the real
+match rate and Δ pattern.
+
+---
+
 ## 5. Recommended immediate next step
 
 Build Phase 1 only, and use its real output to close §12 Q2/Q3/Q4 with

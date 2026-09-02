@@ -45,6 +45,7 @@ const nav = [
   { to: '/erp-lookup', label: 'ERP Lookup',    short: 'ERP',      Icon: Database, module: 'erp' },
   { to: '/uc-registry',label: 'UC Registry',   short: 'UC#',      Icon: Hash, module: 'uc' },
   { to: '/woo-sync',   label: 'WooCommerce Sync', short: 'WooSync', Icon: ShoppingCart, module: 'woo' },
+  { to: '/woo-stock',  label: 'Woo Stock Match', short: 'WooStock', Icon: ShoppingCart, module: 'woo' },
   { to: '/settings',   label: 'Settings',      short: 'Settings', Icon: Settings, module: 'settings' },
 ]
 
